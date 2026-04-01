@@ -14,14 +14,24 @@ module ClaimsApi
     end
 
     ##
-    # Search documents by claim and file number
+    # Search documents by claim ID and either participant ID or file number
     #
+    # @param claim_id [String] The claim ID
+    # @param participant_id [String, nil] The participant ID
+    # @param file_number [String, nil] The file number
     # @return Documents list
-    def search(claim_id, file_number)
+    def search(claim_id, participant_id: nil, file_number: nil)
       @multipart = false
-      body = { data: { claimId: claim_id, fileNumber: file_number } }
+      if participant_id.blank? && file_number.blank?
+        raise ArgumentError, 'Either participant_id or file_number must be provided'
+      end
+
+      identifier = participant_id.present? ? { participantId: participant_id } : { fileNumber: file_number }
+      body = { data: { claimId: claim_id }.merge(identifier) }
+
       ClaimsApi::Logger.log('benefits_documents',
-                            detail: "calling benefits documents search for claimId #{claim_id}")
+                            detail: "calling benefits documents search for claimId #{claim_id} " \
+                                    "with #{identifier.keys.first}")
       res = client.post('documents/search', body)&.body
 
       raise ::Common::Exceptions::GatewayTimeout.new(detail: 'Upstream service error.') unless res.is_a?(Hash)

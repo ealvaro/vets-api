@@ -660,25 +660,27 @@ RSpec.describe 'ClaimsApi::V2::Veterans::Claims', type: :request do
         end
       end
 
-      it 'uses BD when it should', vcr: 'claims_api/v2/claims_show' do
+      it 'uses BD when it should' do
         allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_use_birls_id).and_return false
         allow_any_instance_of(ClaimsApi::PersonWebService)
           .to receive(:find_by_ssn).and_return({ file_nbr: '796378782' })
+        allow_any_instance_of(ClaimsApi::V2::Veterans::ClaimsController)
+          .to receive(:target_veteran).and_return(target_veteran)
         lh_claim = create(:auto_established_claim, status: 'PENDING', veteran_icn: '1012667169V030190',
                                                    evss_id: '600397218')
         mock_ccg(scopes) do |auth_header|
-          allow_any_instance_of(ClaimsApi::V2::Veterans::ClaimsController)
-            .to receive(:target_veteran).and_return(target_veteran)
-          expect(ClaimsApi::AutoEstablishedClaim)
-            .to receive(:get_by_id_and_icn).and_return(lh_claim)
-          # To re-record VCR cassettes, comment out stub_claims_api_auth_token
-          stub_claims_api_auth_token
+          VCR.use_cassette('claims_api/v2/claims_show') do
+            expect(ClaimsApi::AutoEstablishedClaim)
+              .to receive(:get_by_id_and_icn).and_return(lh_claim)
+            # To re-record VCR cassettes, comment out stub_claims_api_auth_token
+            stub_claims_api_auth_token
 
-          get claim_by_id_path, headers: auth_header
-          json_response = JSON.parse(response.body)
+            get claim_by_id_path, headers: auth_header
+            json_response = JSON.parse(response.body)
 
-          expect(response).to have_http_status(:ok)
-          expect(json_response['data']['attributes']['supportingDocuments'].length).to eq(1)
+            expect(response).to have_http_status(:ok)
+            expect(json_response['data']['attributes']['supportingDocuments'].length).to eq(1)
+          end
         end
       end
 
@@ -949,8 +951,8 @@ RSpec.describe 'ClaimsApi::V2::Veterans::Claims', type: :request do
             end
 
             context 'when the birls_id is present' do
-              let(:no_ssn_target_veteran) do
-                OpenStruct.new(
+              let(:base_veteran_attributes) do
+                {
                   icn: '1012832025V743496',
                   first_name: 'Wesley',
                   last_name: 'Ford',
@@ -958,38 +960,75 @@ RSpec.describe 'ClaimsApi::V2::Veterans::Claims', type: :request do
                   loa: { current: 3, highest: 3 },
                   edipi: '2536798',
                   ssn: nil,
-                  participant_id: '600061742',
                   birls_id: '796043735',
                   mpi: OpenStruct.new(
                     icn: '1012832025V743496',
                     profile: OpenStruct.new(ssn: nil, birls_id: '796043735')
                   )
-                )
+                }
               end
 
-              it 'the file_number should equal the birls_id' do
-                mock_ccg(scopes) do |auth_header|
-                  VCR.use_cassette('claims_api/bgs/tracked_items/find_tracked_items') do
-                    VCR.use_cassette('claims_api/evss/documents/get_claim_documents') do
-                      allow_any_instance_of(ClaimsApi::V2::Veterans::ClaimsController)
-                        .to receive(:use_birls_id_file_number?).and_return(true)
-                      allow_any_instance_of(ClaimsApi::V2::Veterans::ClaimsController)
-                        .to receive(:target_veteran).and_return(no_ssn_target_veteran)
+              context 'and participant_id is nil' do
+                let(:test_target_veteran) do
+                  OpenStruct.new(base_veteran_attributes.merge(participant_id: nil))
+                end
 
-                      expect_any_instance_of(bnft_claim_web_service)
-                        .to receive(:find_benefit_claim_details_by_benefit_claim_id).and_return(bgs_claim)
-                      allow(person_web_service).to receive(:find_by_ssn).with('796043735').and_return('796043735')
+                it 'the file_number should equal the birls_id' do
+                  mock_ccg(scopes) do |auth_header|
+                    VCR.use_cassette('claims_api/bgs/tracked_items/find_tracked_items') do
+                      VCR.use_cassette('claims_api/evss/documents/get_claim_documents') do
+                        allow_any_instance_of(ClaimsApi::V2::Veterans::ClaimsController)
+                          .to receive(:use_birls_id_file_number?).and_return(true)
+                        allow_any_instance_of(ClaimsApi::V2::Veterans::ClaimsController)
+                          .to receive(:target_veteran).and_return(test_target_veteran)
 
-                      benefits_doc_api = double
-                      allow_any_instance_of(ClaimsApi::V2::Veterans::ClaimsController)
-                        .to receive(:benefits_doc_api)
-                        .and_return(benefits_doc_api)
+                        expect_any_instance_of(bnft_claim_web_service)
+                          .to receive(:find_benefit_claim_details_by_benefit_claim_id).and_return(bgs_claim)
 
-                      expect(benefits_doc_api).to receive(:search).with(claim_id, '796043735')
+                        benefits_doc_api = double
+                        allow_any_instance_of(ClaimsApi::V2::Veterans::ClaimsController)
+                          .to receive(:benefits_doc_api)
+                          .and_return(benefits_doc_api)
 
-                      get claim_by_id_path, headers: auth_header
+                        expect(benefits_doc_api).to receive(:search).with(claim_id, file_number: '796043735')
 
-                      expect(response).to have_http_status(:ok)
+                        get claim_by_id_path, headers: auth_header
+
+                        expect(response).to have_http_status(:ok)
+                      end
+                    end
+                  end
+                end
+              end
+
+              context 'and participant_id is present' do
+                let(:test_target_veteran) do
+                  OpenStruct.new(base_veteran_attributes.merge(participant_id: '600061742'))
+                end
+
+                it 'uses participant_id for supporting docs when present' do
+                  mock_ccg(scopes) do |auth_header|
+                    VCR.use_cassette('claims_api/bgs/tracked_items/find_tracked_items') do
+                      VCR.use_cassette('claims_api/evss/documents/get_claim_documents') do
+                        allow_any_instance_of(ClaimsApi::V2::Veterans::ClaimsController)
+                          .to receive(:use_birls_id_file_number?).and_return(true)
+                        allow_any_instance_of(ClaimsApi::V2::Veterans::ClaimsController)
+                          .to receive(:target_veteran).and_return(test_target_veteran)
+
+                        expect_any_instance_of(bnft_claim_web_service)
+                          .to receive(:find_benefit_claim_details_by_benefit_claim_id).and_return(bgs_claim)
+
+                        benefits_doc_api = double
+                        allow_any_instance_of(ClaimsApi::V2::Veterans::ClaimsController)
+                          .to receive(:benefits_doc_api)
+                          .and_return(benefits_doc_api)
+
+                        expect(benefits_doc_api).to receive(:search).with(claim_id, participant_id: '600061742')
+
+                        get claim_by_id_path, headers: auth_header
+
+                        expect(response).to have_http_status(:ok)
+                      end
                     end
                   end
                 end
@@ -1267,6 +1306,8 @@ RSpec.describe 'ClaimsApi::V2::Veterans::Claims', type: :request do
                 allow_any_instance_of(ClaimsApi::V2::ClaimsRequests::SupportingDocuments).to receive(
                   :get_file_number
                 ).and_return('796378782')
+                allow_any_instance_of(ClaimsApi::V2::Veterans::ClaimsController)
+                  .to receive(:target_veteran).and_return(target_veteran)
 
                 # To re-record VCR cassettes, comment out stub_claims_api_auth_token
                 stub_claims_api_auth_token
@@ -1294,6 +1335,8 @@ RSpec.describe 'ClaimsApi::V2::Veterans::Claims', type: :request do
                 allow_any_instance_of(ClaimsApi::V2::ClaimsRequests::SupportingDocuments).to receive(
                   :get_file_number
                 ).and_return('796378782')
+                allow_any_instance_of(ClaimsApi::V2::Veterans::ClaimsController)
+                  .to receive(:target_veteran).and_return(target_veteran)
                 # To re-record VCR cassettes, comment out stub_claims_api_auth_token
                 stub_claims_api_auth_token
                 expect(ClaimsApi::AutoEstablishedClaim)
@@ -1316,6 +1359,8 @@ RSpec.describe 'ClaimsApi::V2::Veterans::Claims', type: :request do
                 allow_any_instance_of(ClaimsApi::V2::ClaimsRequests::SupportingDocuments).to receive(
                   :get_file_number
                 ).and_return('796378782')
+                allow_any_instance_of(ClaimsApi::V2::Veterans::ClaimsController)
+                  .to receive(:target_veteran).and_return(target_veteran)
                 # To re-record VCR cassettes, comment out stub_claims_api_auth_token
                 stub_claims_api_auth_token
                 expect(ClaimsApi::AutoEstablishedClaim)

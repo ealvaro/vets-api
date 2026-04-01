@@ -66,25 +66,42 @@ describe ClaimsApi::BD do
     end
 
     # To re-record VCR cassettes: change :stub_bd_auth to stub_bd_auth: false
-    describe '#search', :stub_bd_auth, vcr: 'claims_api/bd/search' do
+    describe '#search', :stub_bd_auth do
       let(:claim_id) { '600397218' }
-      let(:file_number) { '796378782' }
 
-      it 'locates claim documents when provided a fileNumber and claimId' do
-        result = subject.search(claim_id, file_number)
-        documents = result[:data][:documents]
+      [
+        { file_number: '796378782' },
+        { participant_id: '600045025' }
+      ].each do |identifier|
+        identifier_type = identifier.keys.first
 
-        expect(result).to be_a Hash
-        expect(documents).to be_truthy
-        expect(documents).not_to be_empty
+        it "locates claim documents when provided #{identifier_type} and claimId" do
+          VCR.use_cassette("claims_api/bd/search_with_#{identifier_type}") do
+            result = subject.search(claim_id, **identifier)
+            documents = result[:data][:documents]
 
-        first_doc = documents.first
-        expect(first_doc).to have_key(:documentId)
-        expect(first_doc).to have_key(:documentUuid)
-        expect(first_doc).to have_key(:currentVersionUuid)
-        expect(first_doc).to have_key(:originalFileName)
-        expect(first_doc).to have_key(:documentTypeLabel)
-        expect(first_doc).to have_key(:uploadedDateTime)
+            expect(result).to be_a Hash
+            expect(documents).to be_truthy
+            expect(documents).not_to be_empty
+
+            first_doc = documents.first
+            expect(first_doc).to have_key(:documentId)
+            expect(first_doc).to have_key(:documentUuid)
+            expect(first_doc).to have_key(:currentVersionUuid)
+            expect(first_doc).to have_key(:originalFileName)
+            expect(first_doc).to have_key(:documentTypeLabel)
+            expect(first_doc).to have_key(:uploadedDateTime)
+          end
+        end
+      end
+
+      it 'returns empty hash and logs error when neither participant_id nor file_number is provided' do
+        expect(ClaimsApi::Logger).to receive(:log).with(
+          'benefits_documents',
+          hash_including(detail: /Either participant_id or file_number must be provided/)
+        )
+        result = subject.search(claim_id)
+        expect(result).to eq({})
       end
     end
 
@@ -343,13 +360,13 @@ describe ClaimsApi::BD do
       end
 
       it 'returns an empty hash' do
-        result = subject.search(claim_id, file_number)
+        result = subject.search(claim_id, file_number:)
 
         expect(result).to eq({})
       end
 
       it 'logs the Gateway timeout' do
-        subject.search(claim_id, file_number)
+        subject.search(claim_id, file_number:)
 
         expect(ClaimsApi::Logger).to have_received(:log)
           .with('benefits_documents', { detail: "/search failure for claimId #{claim_id}, Gateway timeout" })

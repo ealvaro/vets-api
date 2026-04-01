@@ -17,8 +17,8 @@ http_interactions:
               <vaws:CLIENT_MACHINE>127.0.0.1</vaws:CLIENT_MACHINE>
               <vaws:STN_ID>281</vaws:STN_ID>
               <vaws:applicationName>VAGOVAPI</vaws:applicationName>
-              <vaws:ExternalUid>9358943618</vaws:ExternalUid>
-              <vaws:ExternalKey>9358943618</vaws:ExternalKey>
+              <vaws:ExternalUid>600045025</vaws:ExternalUid>
+              <vaws:ExternalKey>600045025</vaws:ExternalKey>
             </vaws:VaServiceHeaders>
           </wsse:Security>
         </env:Header>
@@ -47,13 +47,13 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Wed, 25 Mar 2026 15:40:24 GMT
+      - Mon, 30 Mar 2026 22:05:10 GMT
       Server:
       - Apache/2.4.37 (Red Hat Enterprise Linux) OpenSSL/1.1.1k
       X-Oneagent-Js-Injection:
       - 'true'
       Server-Timing:
-      - dtSInfo;desc="0", dtRpid;desc="-1556780548"
+      - dtSInfo;desc="0", dtRpid;desc="-2054324029"
       Transfer-Encoding:
       - chunked
       Content-Type:
@@ -70,7 +70,7 @@ http_interactions:
         Work Queue</regionalOfficeJrsdctn><submtrApplcnTypeCd>VBMS</submtrApplcnTypeCd><submtrRoleTypeCd>VBA</submtrRoleTypeCd><tempRegionalOfficeJrsdctn>St.
         Petersburg</tempRegionalOfficeJrsdctn><wsyswwn><addressLine1>National Work
         Queue</addressLine1><addressLine2>810 Vermont Avenue NW</addressLine2><addressLine3></addressLine3><city>Washington</city><state>DC</state><zip>20420</zip></wsyswwn></BenefitClaimDetailsDTO></ns0:findBenefitClaimDetailsByBnftClaimIdResponse></S:Body></S:Envelope>
-  recorded_at: Wed, 25 Mar 2026 15:40:24 GMT
+  recorded_at: Mon, 30 Mar 2026 22:05:10 GMT
 - request:
     method: post
     uri: "<CLAIMS_API_BD_URL>/oauth2/benefits-documents/system/v1/token"
@@ -92,21 +92,21 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Wed, 25 Mar 2026 15:40:25 GMT
+      - Mon, 30 Mar 2026 22:05:11 GMT
       Content-Type:
       - application/json; charset=utf-8
       Connection:
       - keep-alive
-      Ratelimit-Limit:
-      - '240'
+      X-Ratelimit-Remaining-Minute:
+      - '239'
       X-Ratelimit-Limit-Minute:
       - '240'
       Ratelimit-Remaining:
       - '239'
-      X-Ratelimit-Remaining-Minute:
-      - '239'
       Ratelimit-Reset:
-      - '35'
+      - '49'
+      Ratelimit-Limit:
+      - '240'
       Vary:
       - Origin
       Cache-Control:
@@ -114,30 +114,30 @@ http_interactions:
       Pragma:
       - no-cache
       Etag:
-      - W/"409-Y0ab1iTjvDgX2fezksCJT/tTKVM:dtagent10331260218130851XRmU"
+      - W/"409-teQkexk7e6QFHwB/Lext2zUjRE4:dtagent10331260218130851XRmU"
       Server-Timing:
-      - dtSInfo;desc="0", dtRpid;desc="932827825"
+      - dtSInfo;desc="0", dtRpid;desc="-1774360538"
       X-Envoy-Upstream-Service-Time:
-      - '324'
+      - '180'
       Strict-Transport-Security:
       - max-age=16000000; includeSubDomains; preload;
       Access-Control-Allow-Origin:
       - "*"
       Correlation-Id:
-      - a8bb6619-8190-499c-9ca9-6c1b4cc53147#273782
+      - f5246c5f-6e0c-4a86-ae65-bc041c06cfc9#1169986
       Transfer-Encoding:
       - chunked
     body:
       encoding: ASCII-8BIT
       string: '{"access_token":"<TOKEN>","token_type":"Bearer","scope":"documents.write
         documents.read","expires_in":600,"state":null}'
-  recorded_at: Wed, 25 Mar 2026 15:40:25 GMT
+  recorded_at: Mon, 30 Mar 2026 22:05:10 GMT
 - request:
     method: post
     uri: "<CLAIMS_API_BD_URL>/services/benefits-documents/v1/documents/search"
     body:
       encoding: UTF-8
-      string: '{"data":{"claimId":"600397218","fileNumber":"796378782"}}'
+      string: '{"data":{"claimId":"600397218","participantId":"600045025"}}'
     headers:
       Authorization: Bearer <TOKEN>
       User-Agent:
@@ -154,7 +154,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Wed, 25 Mar 2026 15:40:26 GMT
+      - Mon, 30 Mar 2026 22:05:11 GMT
       Content-Type:
       - application/json
       Connection:
@@ -166,22 +166,22 @@ http_interactions:
       Ratelimit-Remaining:
       - '59'
       Ratelimit-Reset:
-      - '35'
+      - '49'
       Ratelimit-Limit:
       - '60'
       X-Oneagent-Js-Injection:
       - 'true'
       Server-Timing:
-      - dtRpid;desc="146272132", dtSInfo;desc="0"
+      - dtRpid;desc="-1617786747", dtSInfo;desc="0"
       X-Envoy-Upstream-Service-Time:
-      - '458'
+      - '349'
       Strict-Transport-Security:
       - max-age=16000000; includeSubDomains; preload;
       - max-age=31536000; includeSubDomains; preload
       Access-Control-Allow-Origin:
       - "*"
       Correlation-Id:
-      - 4fed0b82-cddf-4bff-be1e-6a49304de2df#291073
+      - f5246c5f-6e0c-4a86-ae65-bc041c06cfc9#1169987
       Cache-Control:
       - ''
       - no-cache, no-store
@@ -195,7 +195,7 @@ http_interactions:
       encoding: ASCII-8BIT
       string: '{"data":{"documents":[{"documentId":"{6A40E389-EB12-473C-8C23-D1D6C996C544}","documentUuid":"{29421740-dc43-4634-be42-17dfabf3502e}","currentVersionUuid":"{6A40E389-EB12-473C-8C23-D1D6C996C544}","originalFileName":"RALPH_LEE_600397218_526.pdf","documentTypeLabel":"VA
         21-526EZ, Fully Developed Claim (Compensation)","uploadedDateTime":"2023-04-14T13:55:00Z"}]}}'
-  recorded_at: Wed, 25 Mar 2026 15:40:26 GMT
+  recorded_at: Mon, 30 Mar 2026 22:05:11 GMT
 - request:
     method: post
     uri: "<BGS_BASE_URL>/TrackedItemService/TrackedItemService"
@@ -213,8 +213,8 @@ http_interactions:
               <vaws:CLIENT_MACHINE>127.0.0.1</vaws:CLIENT_MACHINE>
               <vaws:STN_ID>281</vaws:STN_ID>
               <vaws:applicationName>VAGOVAPI</vaws:applicationName>
-              <vaws:ExternalUid>9358943618</vaws:ExternalUid>
-              <vaws:ExternalKey>9358943618</vaws:ExternalKey>
+              <vaws:ExternalUid>600045025</vaws:ExternalUid>
+              <vaws:ExternalKey>600045025</vaws:ExternalKey>
             </vaws:VaServiceHeaders>
           </wsse:Security>
         </env:Header>
@@ -243,13 +243,13 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Wed, 25 Mar 2026 15:40:26 GMT
+      - Mon, 30 Mar 2026 22:05:12 GMT
       Server:
       - Apache/2.4.37 (Red Hat Enterprise Linux) OpenSSL/1.1.1k
       X-Oneagent-Js-Injection:
       - 'true'
       Server-Timing:
-      - dtSInfo;desc="0", dtRpid;desc="155028546"
+      - dtSInfo;desc="0", dtRpid;desc="2135159752"
       Transfer-Encoding:
       - chunked
       Content-Type:
@@ -262,5 +262,5 @@ http_interactions:
         xmlns:S="http://schemas.xmlsoap.org/soap/envelope/"><env:Header><work:WorkContext
         xmlns:work="http://oracle.com/weblogic/soap/workarea/">rO0ABXdJABF3ZWJsb2dpYy5hcHAubWFwZAAAANYAAAAjd2VibG9naWMud29ya2FyZWEuU3RyaW5nV29ya0NvbnRleHQABzEuMTcuODgAAA==</work:WorkContext></env:Header><S:Body><ns0:findTrackedItemsResponse
         xmlns:ns0="http://services.mapd.benefits.vba.va.gov/"><BenefitClaim><name>BenefitClaim</name></BenefitClaim></ns0:findTrackedItemsResponse></S:Body></S:Envelope>
-  recorded_at: Wed, 25 Mar 2026 15:40:26 GMT
+  recorded_at: Mon, 30 Mar 2026 22:05:11 GMT
 recorded_with: VCR 6.4.0

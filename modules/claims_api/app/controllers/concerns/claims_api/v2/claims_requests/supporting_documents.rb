@@ -10,13 +10,16 @@ module ClaimsApi
           return [] if bgs_claim.nil?
 
           @supporting_documents = []
-          file_number = get_file_number(ssn)
-          return [] if file_number.nil?
+
+          identifier = determine_veteran_identifier(ssn)
+
+          return [] if identifier.nil?
 
           claims_v2_logging('benefits_documents',
                             message: "calling benefits documents api for claim_id #{params[:id]} " \
-                                     'in claims controller v2')
-          docs = benefits_doc_api.search(params[:id], file_number)&.dig(:data)
+                                     "with #{identifier.keys.first}")
+
+          docs = benefits_doc_api.search(params[:id], **identifier)&.dig(:data)
 
           return [] if docs.nil? || docs&.dig(:documents).blank?
 
@@ -81,6 +84,17 @@ module ClaimsApi
             external_key: target_veteran.participant_id
           ).find_by_ssn(ssn)
           # rubocop:enable Rails/DynamicFindBy
+        end
+
+        def determine_veteran_identifier(ssn)
+          participant_id = target_veteran.participant_id
+          file_number = get_file_number(ssn) if participant_id.blank?
+
+          if participant_id.present?
+            { participant_id: }
+          elsif file_number.present?
+            { file_number: }
+          end
         end
       end
     end

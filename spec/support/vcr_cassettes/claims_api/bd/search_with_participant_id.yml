@@ -1,0 +1,128 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: "<CLAIMS_API_BD_URL>/oauth2/benefits-documents/system/v1/token"
+    body:
+      encoding: US-ASCII
+      string: grant_type=client_credentials&client_assertion_type=urn%3Aietf%3Aparams%3Aoauth%3Aclient-assertion-type%3Ajwt-bearer&client_assertion=<ASSERTION>&scope=documents.read+documents.write
+    headers:
+      Accept:
+      - application/json
+      Content-Type:
+      - application/x-www-form-urlencoded
+      User-Agent:
+      - Vets.gov Agent
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 30 Mar 2026 20:09:27 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Connection:
+      - keep-alive
+      Ratelimit-Reset:
+      - '34'
+      X-Ratelimit-Limit-Minute:
+      - '240'
+      X-Ratelimit-Remaining-Minute:
+      - '239'
+      Ratelimit-Limit:
+      - '240'
+      Ratelimit-Remaining:
+      - '239'
+      Vary:
+      - Origin
+      Cache-Control:
+      - no-cache, no-store
+      Pragma:
+      - no-cache
+      Etag:
+      - W/"409-50U4ZaoR0y6rNQSirA8Fyj90fRM:dtagent10331260218130851XRmU"
+      Server-Timing:
+      - dtSInfo;desc="0", dtRpid;desc="-1693858201"
+      X-Envoy-Upstream-Service-Time:
+      - '351'
+      Strict-Transport-Security:
+      - max-age=16000000; includeSubDomains; preload;
+      Access-Control-Allow-Origin:
+      - "*"
+      Correlation-Id:
+      - db3f6f2f-d816-474e-bff9-dd73f87f35b9#1194517
+      Transfer-Encoding:
+      - chunked
+    body:
+      encoding: ASCII-8BIT
+      string: '{"access_token":"<ACCESS_TOKEN>","token_type":"Bearer","scope":"documents.write
+        documents.read","expires_in":600,"state":null}'
+  recorded_at: Mon, 30 Mar 2026 20:09:26 GMT
+- request:
+    method: post
+    uri: "<CLAIMS_API_BD_URL>/services/benefits-documents/v1/documents/search"
+    body:
+      encoding: UTF-8
+      string: '{"data":{"claimId":"600397218","participantId":"600045025"}}'
+    headers:
+      Authorization: Bearer <TOKEN>
+      User-Agent:
+      - "<FARADAY_VERSION>"
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 30 Mar 2026 20:09:27 GMT
+      Content-Type:
+      - application/json
+      Connection:
+      - keep-alive
+      X-Ratelimit-Limit-Minute:
+      - '60'
+      Ratelimit-Remaining:
+      - '59'
+      Ratelimit-Reset:
+      - '33'
+      Ratelimit-Limit:
+      - '60'
+      X-Ratelimit-Remaining-Minute:
+      - '59'
+      X-Oneagent-Js-Injection:
+      - 'true'
+      Server-Timing:
+      - dtRpid;desc="-160484884", dtSInfo;desc="0"
+      X-Envoy-Upstream-Service-Time:
+      - '260'
+      Strict-Transport-Security:
+      - max-age=16000000; includeSubDomains; preload;
+      - max-age=31536000; includeSubDomains; preload
+      Access-Control-Allow-Origin:
+      - "*"
+      Correlation-Id:
+      - 79bf036f-a825-4789-ad1e-789c39ccdd7a#1207519
+      Cache-Control:
+      - ''
+      - no-cache, no-store
+      X-Frame-Options:
+      - SAMEORIGIN
+      Pragma:
+      - no-cache
+      Transfer-Encoding:
+      - chunked
+    body:
+      encoding: ASCII-8BIT
+      string: '{"data":{"documents":[{"documentId":"{6A40E389-EB12-473C-8C23-D1D6C996C544}","documentUuid":"{29421740-dc43-4634-be42-17dfabf3502e}","currentVersionUuid":"{6A40E389-EB12-473C-8C23-D1D6C996C544}","originalFileName":"RALPH_LEE_600397218_526.pdf","documentTypeLabel":"VA
+        21-526EZ, Fully Developed Claim (Compensation)","uploadedDateTime":"2023-04-14T13:55:00Z"}]}}'
+  recorded_at: Mon, 30 Mar 2026 20:09:27 GMT
+recorded_with: VCR 6.4.0
