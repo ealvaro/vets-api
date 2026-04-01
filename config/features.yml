@@ -1130,17 +1130,13 @@ features:
     actor_type: cookie_id
     description: Enables Find a Representative frontend
     enable_in_development: true
-  find_a_representative_flag_results_enabled:
-    actor_type: user
-    description: Enables flagging feature for Find a Representative frontend
-    enable_in_development: true
   find_a_representative_use_accredited_models:
     actor_type: user
     description: Enables Find A Representative APIs using AccreditedX models
     enable_in_development: true
   representative_status_enabled:
     actor_type: cookie_id
-    description: Enables flagging feature for Find a Representative frontend
+    description: Enables Representative Status widget on Find a Representative frontend
     enable_in_development: true
   form526_include_document_upload_list_in_overflow_text:
     actor_type: user
