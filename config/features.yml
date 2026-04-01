@@ -646,6 +646,10 @@ features:
     actor_type: user
     description: When enabled, CST overrides RV1 - Reserve Records Request tracked items to be NEEDED_FROM_OTHERS on mobile app
     enable_in_development: true
+  cst_intents_to_file:
+    actor_type: user
+    description: Gates the intents to file endpoint and frontend functionality for retrieving all ITFs from Lighthouse Benefits Claims API v2.
+    enable_in_development: true
   cst_filter_ep_290:
     actor_type: user
     description: When enabled, benefits_claims/get_claims service filters 290 EP code claims from the response

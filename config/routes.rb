@@ -228,6 +228,8 @@ Rails.application.routes.draw do
     get 'intent_to_file(/:itf_type)', to: 'intent_to_files#index'
     post 'intent_to_file/:itf_type', to: 'intent_to_files#submit'
 
+    get 'intents_to_file', to: 'intents_to_file#index'
+
     get 'welcome', to: 'example#welcome', as: :welcome
     get 'limited', to: 'example#limited', as: :limited
     get 'status', to: 'admin#status'

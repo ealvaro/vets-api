@@ -1376,6 +1376,26 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
       end
     end
 
+    describe 'intents to file' do
+      let(:mhv_user) { create(:user, :loa3, :legacy_icn) }
+
+      before do
+        allow_any_instance_of(Auth::ClientCredentials::Service).to receive(:get_token).and_return('fake_token')
+        allow(Flipper).to receive(:enabled?).with(:cst_intents_to_file, anything).and_return(true)
+      end
+
+      it 'supports getting all intents to file' do
+        expect(subject).to validate(:get, '/v0/intents_to_file', 401)
+        VCR.use_cassettes([
+                            { name: 'lighthouse/benefits_claims/intent_to_file/200_response' },
+                            { name: 'lighthouse/benefits_claims/intent_to_file/200_response_pension' },
+                            { name: 'lighthouse/benefits_claims/intent_to_file/200_response_survivor' }
+                          ]) do
+          expect(subject).to validate(:get, '/v0/intents_to_file', 200, headers)
+        end
+      end
+    end
+
     describe 'MVI Users' do
       context 'when user is correct' do
         let(:mhv_user) { build(:user_with_no_ids) }

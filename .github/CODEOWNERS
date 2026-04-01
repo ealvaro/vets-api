@@ -105,6 +105,7 @@ app/controllers/v0/id_card_announcement_subscription_controller.rb @department-o
 app/controllers/v0/id_card_attributes_controller.rb @department-of-veterans-affairs/backend-review-group
 app/controllers/v0/in_progress_forms_controller.rb @department-of-veterans-affairs/vfs-authenticated-experience-backend @department-of-veterans-affairs/backend-review-group @department-of-veterans-affairs/benefits-dependents-management
 app/controllers/v0/intent_to_files_controller.rb @department-of-veterans-affairs/disability-benefits @department-of-veterans-affairs/benefits-lifestage @department-of-veterans-affairs/pensions @department-of-veterans-affairs/backend-review-group
+app/controllers/v0/intents_to_file_controller.rb @department-of-veterans-affairs/benefits-management-tools-be @department-of-veterans-affairs/backend-review-group
 app/controllers/v0/letters_discrepancy_controller.rb @department-of-veterans-affairs/benefits-management-tools-be @department-of-veterans-affairs/backend-review-group
 app/controllers/v0/letters_generator_controller.rb @department-of-veterans-affairs/benefits-management-tools-be @department-of-veterans-affairs/backend-review-group
 app/controllers/v0/maintenance_windows_controller.rb @department-of-veterans-affairs/backend-review-group
@@ -625,6 +626,7 @@ app/swagger/swagger/requests/hca_attachments.rb @department-of-veterans-affairs/
 app/swagger/swagger/requests/health_care_applications.rb @department-of-veterans-affairs/health-apps-backend @department-of-veterans-affairs/backend-review-group
 app/swagger/swagger/requests/in_progress_forms.rb @department-of-veterans-affairs/backend-review-group
 app/swagger/swagger/requests/intent_to_file.rb @department-of-veterans-affairs/backend-review-group @department-of-veterans-affairs/disability-benefits
+app/swagger/swagger/requests/intents_to_file.rb @department-of-veterans-affairs/benefits-management-tools-be @department-of-veterans-affairs/backend-review-group
 app/swagger/swagger/requests/maintenance_windows.rb @department-of-veterans-affairs/backend-review-group
 app/swagger/swagger/requests/mdot @department-of-veterans-affairs/va-cto-health-products @department-of-veterans-affairs/backend-review-group
 app/swagger/swagger/requests/medical_copays.rb @department-of-veterans-affairs/vsa-debt-resolution @department-of-veterans-affairs/backend-review-group
@@ -1989,6 +1991,7 @@ spec/requests/v0/id_card/attributes_spec.rb @department-of-veterans-affairs/back
 spec/requests/v0/in_progress_forms_controller_spec.rb @department-of-veterans-affairs/vfs-authenticated-experience-backend @department-of-veterans-affairs/backend-review-group
 spec/requests/v0/in_progress_forms/5655_spec.rb @department-of-veterans-affairs/vsa-debt-resolution @department-of-veterans-affairs/backend-review-group
 spec/requests/v0/intent_to_file_spec.rb @department-of-veterans-affairs/disability-benefits @department-of-veterans-affairs/benefits-lifestage @department-of-veterans-affairs/pensions @department-of-veterans-affairs/backend-review-group
+spec/requests/v0/intents_to_file_spec.rb @department-of-veterans-affairs/benefits-management-tools-be @department-of-veterans-affairs/backend-review-group
 spec/requests/v0/maintenance_windows_spec.rb @department-of-veterans-affairs/backend-review-group
 spec/requests/v0/map_services_spec.rb @department-of-veterans-affairs/octo-identity
 spec/requests/v0/medical_copays_spec.rb @department-of-veterans-affairs/vsa-debt-resolution @department-of-veterans-affairs/backend-review-group
