@@ -2,6 +2,7 @@
 
 TravelPay::Engine.routes.draw do
   namespace :v0 do
+    resource :contact, only: %i[show]
     resources :claims, only: %i[index show create]
 
     scope '/claims/:claim_id', constraints: { claim_id: %r{[^/]+} } do
