@@ -16,7 +16,8 @@ module Mobile
                  :suggested_name_display,
                  :health_care_system_name,
                  :oh_triage_group,
-                 :migrating_to_oh
+                 :migrating_to_oh,
+                 :signature_required
 
       attribute :name do |object|
         object.suggested_name_display.presence || object.name

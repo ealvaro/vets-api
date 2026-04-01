@@ -23,4 +23,18 @@ RSpec.describe TriageTeam do
       expect(other <=> subject).to eq(1)
     end
   end
+
+  describe 'SignatureRequired concern' do
+    subject { described_class.new(params) }
+
+    let(:params) { attributes_for(:triage_team, triage_team_id: 100) }
+
+    it 'includes SignatureRequired module' do
+      expect(described_class.included_modules).to include(SignatureRequired)
+    end
+
+    it 'responds to signature_required' do
+      expect(subject).to respond_to(:signature_required)
+    end
+  end
 end

@@ -45,4 +45,14 @@ RSpec.describe AllTriageTeams, type: :model do
       expect(described_class.included_modules).to include(Vets::Model)
     end
   end
+
+  describe 'SignatureRequired concern' do
+    it 'includes SignatureRequired module' do
+      expect(described_class.included_modules).to include(SignatureRequired)
+    end
+
+    it 'responds to signature_required' do
+      expect(subject).to respond_to(:signature_required)
+    end
+  end
 end

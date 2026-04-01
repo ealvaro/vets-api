@@ -6,6 +6,7 @@ require 'vets/model'
 class AllTriageTeams
   include Vets::Model
   include RedisCaching
+  include SignatureRequired
 
   redis_config REDIS_CONFIG[:secure_messaging_store]
 

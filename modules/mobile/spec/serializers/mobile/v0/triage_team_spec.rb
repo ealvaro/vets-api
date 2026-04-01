@@ -28,4 +28,8 @@ describe Mobile::V0::TriageTeamSerializer, type: :serializer do
   it 'includes :preferred_team' do
     expect(attributes['preferred_team']).to eq triage_team.preferred_team
   end
+
+  it 'includes :signature_required' do
+    expect(attributes['signature_required']).to eq triage_team.signature_required
+  end
 end

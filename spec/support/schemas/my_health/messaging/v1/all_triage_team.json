@@ -71,6 +71,9 @@
     },
     "migrating_to_oh": {
       "type": "boolean"
+    },
+    "signature_required": {
+      "type": "boolean"
     }
   }
 }

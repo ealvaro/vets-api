@@ -8,7 +8,7 @@ module Mobile
       set_type :triage_teams
       set_id(&:triage_team_id)
 
-      attributes :triage_team_id, :name, :relation_type, :preferred_team
+      attributes :triage_team_id, :name, :relation_type, :preferred_team, :signature_required
     end
   end
 end

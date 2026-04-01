@@ -1,5 +1,5 @@
 ---
-applyTo: "modules/my_health/app/controllers/my_health/sm_controller.rb,modules/my_health/app/controllers/my_health/v1/messages_controller.rb,modules/my_health/app/controllers/my_health/v1/message_drafts_controller.rb,modules/my_health/app/controllers/my_health/v1/folders_controller.rb,modules/my_health/app/controllers/my_health/v1/threads_controller.rb,modules/my_health/app/controllers/my_health/v1/triage_teams_controller.rb,modules/my_health/app/controllers/my_health/v1/all_triage_teams_controller.rb,modules/my_health/app/controllers/my_health/v1/attachments_controller.rb,modules/my_health/app/controllers/my_health/v1/messaging_preferences_controller.rb,modules/my_health/app/serializers/my_health/v1/message_serializer.rb,modules/my_health/app/serializers/my_health/v1/messages_serializer.rb,modules/my_health/app/serializers/my_health/v1/message_details_serializer.rb,modules/my_health/app/serializers/my_health/v1/message_draft_serializer.rb,modules/my_health/app/serializers/my_health/v1/folder_serializer.rb,modules/my_health/app/serializers/my_health/v1/triage_team_serializer.rb,modules/my_health/app/serializers/my_health/v1/all_triage_teams_serializer.rb,modules/my_health/app/serializers/my_health/v1/attachment_serializer.rb,modules/my_health/app/serializers/my_health/v1/category_serializer.rb,modules/my_health/app/serializers/my_health/v1/messaging_preference_serializer.rb,modules/my_health/app/serializers/my_health/v1/message_signature_serializer.rb,modules/my_health/app/serializers/my_health/v1/threads_serializer.rb,modules/my_health/config/routes.rb,modules/my_health/spec/requests/my_health/v1/messaging/**/*,lib/sm/**/*,app/models/message.rb,app/models/message_draft.rb,app/models/folder.rb,app/models/attachment.rb,app/models/triage_team.rb,app/models/message_search.rb,app/models/messaging_preference.rb,app/models/messaging_signature.rb,app/policies/mhv_messaging_policy.rb,spec/models/message*,spec/lib/sm/**/*"
+applyTo: "modules/my_health/app/controllers/my_health/sm_controller.rb,modules/my_health/app/controllers/my_health/v1/messages_controller.rb,modules/my_health/app/controllers/my_health/v1/message_drafts_controller.rb,modules/my_health/app/controllers/my_health/v1/folders_controller.rb,modules/my_health/app/controllers/my_health/v1/threads_controller.rb,modules/my_health/app/controllers/my_health/v1/triage_teams_controller.rb,modules/my_health/app/controllers/my_health/v1/all_triage_teams_controller.rb,modules/my_health/app/controllers/my_health/v1/attachments_controller.rb,modules/my_health/app/controllers/my_health/v1/messaging_preferences_controller.rb,modules/my_health/app/serializers/my_health/v1/message_serializer.rb,modules/my_health/app/serializers/my_health/v1/messages_serializer.rb,modules/my_health/app/serializers/my_health/v1/message_details_serializer.rb,modules/my_health/app/serializers/my_health/v1/message_draft_serializer.rb,modules/my_health/app/serializers/my_health/v1/folder_serializer.rb,modules/my_health/app/serializers/my_health/v1/triage_team_serializer.rb,modules/my_health/app/serializers/my_health/v1/all_triage_teams_serializer.rb,modules/my_health/app/serializers/my_health/v1/attachment_serializer.rb,modules/my_health/app/serializers/my_health/v1/category_serializer.rb,modules/my_health/app/serializers/my_health/v1/messaging_preference_serializer.rb,modules/my_health/app/serializers/my_health/v1/message_signature_serializer.rb,modules/my_health/app/serializers/my_health/v1/threads_serializer.rb,modules/my_health/config/routes.rb,modules/my_health/spec/requests/my_health/v1/messaging/**/*,lib/sm/**/*,app/models/message.rb,app/models/message_draft.rb,app/models/folder.rb,app/models/attachment.rb,app/models/triage_team.rb,app/models/all_triage_teams.rb,app/models/concerns/signature_required.rb,app/models/message_search.rb,app/models/messaging_preference.rb,app/models/messaging_signature.rb,app/policies/mhv_messaging_policy.rb,spec/models/message*,spec/models/triage_team*,spec/models/all_triage_teams*,spec/models/concerns/signature_required*,spec/lib/sm/**/*,modules/mobile/app/serializers/mobile/v0/triage_team_serializer.rb,modules/mobile/app/serializers/mobile/v0/all_triage_teams_serializer.rb"
 ---
 
 # Copilot Instructions for My Health / Secure Messaging
@@ -786,6 +786,59 @@ The SM::Client automatically tracks:
 
 ### Issue: OH triage group timeouts
 **Solution:** Use `extend_timeout` before_action for create/reply actions when `oh_triage_group?` is true.
+
+---
+
+## ⚠️ Adding Attributes to Triage Team Models
+
+### Cross-Module Impact
+Triage team models (`TriageTeam`, `AllTriageTeams`) are shared between the **My Health** and **Mobile** modules. Each module has its own serializers, JSON schemas, and OpenAPI docs. Adding a new attribute requires updating files in **both** modules.
+
+### Checklist
+When adding a new attribute to triage team API responses, update **all** of the following:
+
+**Models (shared):**
+- `app/models/triage_team.rb` — add attribute or concern
+- `app/models/all_triage_teams.rb` — add attribute or concern
+
+**MyHealth Serializers:**
+- `modules/my_health/app/serializers/my_health/v1/triage_team_serializer.rb`
+- `modules/my_health/app/serializers/my_health/v1/all_triage_teams_serializer.rb`
+
+**Mobile Serializers:**
+- `modules/mobile/app/serializers/mobile/v0/triage_team_serializer.rb`
+- `modules/mobile/app/serializers/mobile/v0/all_triage_teams_serializer.rb`
+
+**JSON Schemas (snake_case) — used by `match_response_schema` with `strict: true`:**
+- `spec/support/schemas/triage_team.json` (singular — attributes definition)
+- `spec/support/schemas/all_triage_team.json` (singular — attributes definition)
+- `spec/support/schemas/my_health/messaging/v1/triage_team.json`
+- `spec/support/schemas/my_health/messaging/v1/all_triage_team.json`
+
+**JSON Schemas (camelized) — used by `match_camelized_response_schema`:**
+- `spec/support/schemas_camelized/triage_team.json`
+- `spec/support/schemas_camelized/all_triage_team.json`
+- `spec/support/schemas_camelized/my_health/messaging/v1/triage_team.json`
+- `spec/support/schemas_camelized/my_health/messaging/v1/all_triage_team.json`
+
+**OpenAPI Docs:**
+- `modules/mobile/docs/schemas/SecureMessagingRecipients.yml`
+- `modules/mobile/docs/schemas/SecureMessagingAllRecipients.yml`
+- `modules/my_health/docs/schemas/TriageGroup.yml`
+
+**Specs:**
+- `spec/models/triage_team_spec.rb`
+- `spec/models/all_triage_teams_spec.rb`
+- `modules/my_health/spec/serializer/v1/triage_teams_serializer_spec.rb`
+- `modules/my_health/spec/serializer/v1/all_triage_teams_serializer_spec.rb`
+- `modules/mobile/spec/serializers/mobile/v0/triage_team_spec.rb`
+
+**Plural wrapper schemas** (`triage_teams.json`, `all_triage_teams.json`) use `$ref` to the singular schemas, so they don't need direct updates.
+
+### Camelized Schema Warning
+**Do NOT blindly run `rake camelize_file:schema` on `all_triage_team`.** The top-level `all_triage_team.json` schemas have **different field sets** between snake_case and camelized versions because the mobile serializer exposes fewer fields than the my_health serializer. The rake task regenerates from the snake_case source and will **corrupt** the camelized schema by adding/removing fields. Instead, manually add the new camelized property to the camelized schema files.
+
+The `triage_team.json` schemas (singular, for the simpler TriageTeam model) are safe to regenerate with the rake task since both versions have the same fields.
 
 ---
 

@@ -81,4 +81,8 @@ describe MyHealth::V1::AllTriageTeamsSerializer, type: :serializer do
   it 'includes :migrating_to_oh' do
     expect(attributes['migrating_to_oh']).to eq triage_team.migrating_to_oh
   end
+
+  it 'includes :signature_required' do
+    expect(attributes['signature_required']).to eq triage_team.signature_required
+  end
 end

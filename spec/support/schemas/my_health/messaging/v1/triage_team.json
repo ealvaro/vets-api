@@ -19,6 +19,9 @@
     },
     "preferred_team": {
       "type": "boolean"
+    },
+    "signature_required": {
+      "type": "boolean"
     }
   }
 }

@@ -24579,6 +24579,11 @@
                         "PATIENT"
                       ],
                       "example": "PATIENT"
+                    },
+                    "signatureRequired": {
+                      "type": "boolean",
+                      "description": "Computed flag indicating whether a message signature is required, derived from triage team name patterns.",
+                      "example": false
                     }
                   }
                 }
@@ -24686,6 +24691,11 @@
                     "ohTriageGroup": {
                       "type": "boolean",
                       "example": true
+                    },
+                    "signatureRequired": {
+                      "type": "boolean",
+                      "description": "Computed flag indicating whether a message signature is required, derived from triage team name patterns.",
+                      "example": false
                     }
                   }
                 }

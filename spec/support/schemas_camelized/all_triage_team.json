@@ -43,6 +43,9 @@
     },
     "migratingToOh": {
       "type": "boolean"
+    },
+    "signatureRequired": {
+      "type": "boolean"
     }
   }
 }
