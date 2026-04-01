@@ -378,8 +378,8 @@ digital_forms_api:
   base_url: <%= ENV['digital_forms_api__base_url'] %>
   breakers_error_threshold: 80
   cache_ttl:
-    schema: 1440 # minutes == 24 hours
-    template: 1440 # minutes == 24 hours
+    schema: 60
+    template: 1
   include_request: false
   jwt_secret: <%= ENV['digital_forms_api__jwt_secret'] %>
   mock: false
