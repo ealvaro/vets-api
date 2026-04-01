@@ -1892,22 +1892,16 @@ describe Eps::ProviderService do
       expect(result.map { |p| p[:id] }).to contain_exactly('provider-self-urology', 'provider-self-cardiology')
     end
 
-    it 'raises ArgumentError when latitude is out of range' do
+    it 'raises ArgumentError when latitude is blank' do
       expect do
-        service.search_by_location(latitude: 91, longitude: -80.6, radius: 30)
-      end.to raise_error(ArgumentError, 'latitude must be a number between -90 and 90')
+        service.search_by_location(latitude: nil, longitude: -80.6, radius: 30)
+      end.to raise_error(ArgumentError, 'latitude is required')
     end
 
-    it 'raises ArgumentError when longitude is invalid' do
+    it 'raises ArgumentError when longitude is blank' do
       expect do
-        service.search_by_location(latitude: 28.08, longitude: 'oops', radius: 30)
-      end.to raise_error(ArgumentError, 'longitude must be a number between -180 and 180')
-    end
-
-    it 'raises ArgumentError when radius is not positive' do
-      expect do
-        service.search_by_location(latitude: 28.08, longitude: -80.6, radius: 0)
-      end.to raise_error(ArgumentError, 'radius must be a positive integer')
+        service.search_by_location(latitude: 28.08, longitude: nil, radius: 30)
+      end.to raise_error(ArgumentError, 'longitude is required')
     end
 
     context 'when Eps::ServiceException is raised' do

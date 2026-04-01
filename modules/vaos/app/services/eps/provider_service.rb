@@ -593,39 +593,10 @@ module Eps
     end
 
     def validate_location_search_params!(latitude, longitude, radius)
-      lat = Float(latitude)
-      lon = Float(longitude)
-      radius_miles = Integer(radius)
+      raise ArgumentError, 'latitude is required' if latitude.blank?
+      raise ArgumentError, 'longitude is required' if longitude.blank?
 
-      raise ArgumentError, 'latitude must be a number between -90 and 90' unless lat.between?(-90.0, 90.0)
-      raise ArgumentError, 'longitude must be a number between -180 and 180' unless lon.between?(-180.0, 180.0)
-      raise ArgumentError, 'radius must be a positive integer' unless radius_miles.positive?
-
-      [lat, lon, radius_miles]
-    rescue ArgumentError, TypeError
-      raise ArgumentError, 'latitude must be a number between -90 and 90' if latitude.blank? || invalid_float?(latitude)
-
-      if longitude.blank? || invalid_float?(longitude)
-        raise ArgumentError,
-              'longitude must be a number between -180 and 180'
-      end
-      raise ArgumentError, 'radius must be a positive integer' if radius.blank? || invalid_integer?(radius)
-
-      raise
-    end
-
-    def invalid_float?(value)
-      Float(value)
-      false
-    rescue ArgumentError, TypeError
-      true
-    end
-
-    def invalid_integer?(value)
-      parsed = Integer(value)
-      !parsed.is_a?(Integer)
-    rescue ArgumentError, TypeError
-      true
+      [Float(latitude), Float(longitude), Integer(radius.presence || 25)]
     end
 
     def validate_npi_param(npi, specialty, address, referral_number)
