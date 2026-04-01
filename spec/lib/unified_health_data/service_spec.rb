@@ -1483,6 +1483,12 @@ describe UnifiedHealthData::Service, type: :service do
       before do
         allow(Rails.logger).to receive(:info)
         allow(StatsD).to receive(:gauge)
+        allow(Flipper).to receive(:enabled?)
+          .with(:mhv_medical_records_clinical_notes_diagnostic, user)
+          .and_return(true)
+        allow(Flipper).to receive(:enabled?)
+          .with(:mhv_medical_records_diagnostic_logging, user)
+          .and_return(true)
       end
 
       it 'logs source breakdown for the index response' do
@@ -1770,6 +1776,114 @@ describe UnifiedHealthData::Service, type: :service do
   end
 
   # After Visit Summaries
+  describe '#get_all_avs_metadata' do
+    let(:all_avs_response) do
+      {
+        'entry' => [
+          {
+            'resource' => {
+              'resourceType' => 'Bundle',
+              'entry' => [
+                {
+                  'resource' => {
+                    'resourceType' => 'DocumentReference',
+                    'id' => 'doc-1',
+                    'type' => {
+                      'coding' => [
+                        {
+                          'system' => 'https://fhir.cerner.com/codeSet/72',
+                          'code' => '4189669',
+                          'display' => 'Ambulatory Patient Summary',
+                          'userSelected' => true
+                        },
+                        {
+                          'system' => 'http://loinc.org',
+                          'code' => '96345-4',
+                          'display' => 'Ambulatory Patient Summary',
+                          'userSelected' => false
+                        }
+                      ]
+                    },
+                    'context' => {
+                      'encounter' => [
+                        { 'reference' => 'Encounter/enc-1' }
+                      ]
+                    }
+                  }
+                },
+                {
+                  'resource' => {
+                    'resourceType' => 'DocumentReference',
+                    'id' => 'doc-2',
+                    'type' => {
+                      'coding' => [
+                        {
+                          'system' => 'https://fhir.cerner.com/codeSet/72',
+                          'code' => '2820526',
+                          'display' => 'Primary Care Note',
+                          'userSelected' => true
+                        }
+                      ]
+                    },
+                    'context' => {
+                      'encounter' => [
+                        { 'reference' => 'Encounter/enc-2' }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            'resource' => {
+              'resourceType' => 'Bundle',
+              'entry' => [
+                {
+                  'resource' => {
+                    'resourceType' => 'Encounter',
+                    'id' => 'enc-1',
+                    'appointment' => [
+                      { 'reference' => 'Appointment/4818609' }
+                    ]
+                  }
+                },
+                {
+                  'resource' => {
+                    'resourceType' => 'Encounter',
+                    'id' => 'enc-2',
+                    'appointment' => [
+                      { 'reference' => 'Appointment/4818609' },
+                      { 'reference' => 'Appointment/9990001' }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    end
+
+    before do
+      allow_any_instance_of(UnifiedHealthData::Client)
+        .to receive(:get_all_avs)
+        .and_return(Faraday::Response.new(body: all_avs_response))
+    end
+
+    it 'returns extracted document references and encounters' do
+      result = service.get_all_avs_metadata(start_date: '2025-01-01', end_date: '2025-12-31')
+
+      doc_refs, encounters = result
+      expect(doc_refs.size).to eq(2)
+      expect(doc_refs.first['id']).to eq('doc-1')
+      expect(doc_refs.last['id']).to eq('doc-2')
+      expect(encounters.size).to eq(2)
+      expect(encounters.first['id']).to eq('enc-1')
+      expect(encounters.last['id']).to eq('enc-2')
+    end
+  end
+
   describe '#get_appt_avs' do
     let(:avs_sample_response) do
       JSON.parse(Rails.root.join(

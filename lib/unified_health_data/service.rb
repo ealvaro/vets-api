@@ -280,6 +280,24 @@ module UnifiedHealthData
       end
     end
 
+    # Use of this is behind va_online_scheduling_uhd_avs_metadata flipper
+    def get_all_avs_metadata(start_date:, end_date:)
+      with_monitoring do
+        response = uhd_client.get_all_avs(patient_id: @user.icn, start_date:, end_date:)
+        # SCDF returns a bundle of bundles: DocumentReference bundle, Encounter bundle (and possibly a third).
+        document_reference_bundle, encounter_bundle = response.body&.dig('entry')
+        doc_ref_entries = extract_all_entries(document_reference_bundle)
+        encounter_entries = extract_all_entries(encounter_bundle)
+        if doc_ref_entries.empty? || encounter_entries.empty?
+          user_uuid = @user.user_account_uuid
+          to_log = "DocumentReference entries: #{doc_ref_entries.size}, Encounter entries: #{encounter_entries.size}"
+          Rails.logger.info("UHD: Missing expected bundles in AVS metadata response for user #{user_uuid}. #{to_log}")
+          return [[], []]
+        end
+        [doc_ref_entries, encounter_entries]
+      end
+    end
+
     # Retrieves the After Visit Summary for the given appointment ID from unified health data sources
     #
     # @param appt_id [String] The ID of the appointment to retrieve the summary for
@@ -373,6 +391,17 @@ module UnifiedHealthData
     end
 
     private
+
+    # Extracts all resource hashes from a FHIR Bundle's entry array.
+    def extract_all_entries(bundle)
+      return [] unless bundle.is_a?(Hash)
+
+      inner = bundle['resource'] || bundle
+      entries = inner['entry']
+      return [] unless entries.is_a?(Array)
+
+      entries.filter_map { |entry| entry['resource'] }
+    end
 
     # Extracts and removes warning metadata injected by the client's OperationOutcome detection.
     # Returns an empty array if no warnings are present.
@@ -578,18 +607,22 @@ module UnifiedHealthData
       parse_single_note(record)
     end
 
-    # Extracts the DocumentReference resource from a FHIR Bundle response.
-    # The SCDF API always returns a Bundle, so we only look for entries within it.
-    def extract_document_reference(body)
+    # SCDF always returns Bundles from Oracle Health
+    def extract_bundle(body, resource_type)
       return nil unless body.is_a?(Hash)
 
       entries = body['entry']
       return nil unless entries.is_a?(Array)
 
-      doc_entry = entries.find do |entry|
-        entry.dig('resource', 'resourceType') == 'DocumentReference'
+      resource_entry = entries.find do |entry|
+        entry.dig('resource', 'resourceType') == resource_type
       end
-      doc_entry&.dig('resource')
+      resource_entry&.dig('resource')
+    end
+
+    # Extracts the DocumentReference resource from a FHIR Bundle response.
+    def extract_document_reference(body)
+      extract_bundle(body, 'DocumentReference')
     end
 
     def uhd_client

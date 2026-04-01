@@ -102,6 +102,38 @@ module UnifiedHealthData
         UnifiedHealthData::BinaryData.new(avs_binary_data)
       end
 
+      # Builds a hash indexed by appointment ID, where each value is an array of
+      # UnifiedHealthData::AfterVisitSummary objects derived from encounters and document references.
+      #
+      # @param encounters [Array<Hash>] FHIR Encounter resources
+      # @param doc_refs [Array<Hash>] FHIR DocumentReference resources
+      # @return [Hash{String => Array<UnifiedHealthData::AfterVisitSummary>}]
+      def build_avs_metadata_by_appointment(encounters, doc_refs)
+        doc_ref_info_by_encounter_id = build_encounter_keyed_hash_from_doc_refs(doc_refs)
+
+        encounters.each_with_object(Hash.new { |h, k| h[k] = [] }) do |encounter, memo|
+          next unless encounter.is_a?(Hash) && encounter['id'].present?
+
+          enc_id = encounter['id']
+          meta = doc_ref_info_by_encounter_id[enc_id] || {}
+
+          Array(encounter['appointment']).each do |appt_ref|
+            appt_id = extract_reference_id(appt_ref['reference'], 'Appointment')
+            next if appt_id.blank?
+
+            memo[appt_id] << UnifiedHealthData::AfterVisitSummary.new(
+              id: enc_id,
+              appt_id:,
+              name: meta[:title] || 'other',
+              note_type: meta[:note_type],
+              loinc_codes: meta[:loinc],
+              content_type: meta[:content_types]&.first,
+              binary: nil
+            )
+          end
+        end
+      end
+
       private
 
       def build_clinical_note_attributes(record, note_content, source: nil)
@@ -305,6 +337,38 @@ module UnifiedHealthData
 
       def get_loinc_codes(record)
         record['type']['coding']&.map { |coding| coding['code'] if coding['code'] }
+      end
+
+      def build_encounter_keyed_hash_from_doc_refs(document_references)
+        document_references.each_with_object({}) do |doc_ref, memo|
+          codes = get_loinc_codes(doc_ref)
+          content_types = Array(doc_ref['content'])
+                          .filter_map { |c| c.dig('attachment', 'contentType') if c.is_a?(Hash) }
+                          .select { |ct| AVS_CONTENT_TYPES.include?(ct) }
+          record_type = get_avs_record_type(doc_ref)
+          title = get_title(doc_ref)
+          next if codes.blank? && content_types.blank?
+
+          Array(doc_ref.dig('context', 'encounter')).each do |enc_ref|
+            enc_id = extract_reference_id(enc_ref['reference'], 'Encounter')
+            next if enc_id.blank?
+
+            memo[enc_id] ||= { loinc: [], content_types: [], note_type: nil, title: nil }
+            memo[enc_id][:loinc] |= codes.compact if codes.present?
+            memo[enc_id][:content_types] |= Array(content_types) if content_types.present?
+            memo[enc_id][:note_type] ||= record_type if record_type.present?
+            memo[enc_id][:title] ||= title if title.present?
+          end
+        end
+      end
+
+      def extract_reference_id(reference, expected_resource_type)
+        return nil unless reference.is_a?(String)
+
+        resource_prefix = "#{expected_resource_type}/"
+        return nil unless reference.start_with?(resource_prefix)
+
+        reference.delete_prefix(resource_prefix).presence
       end
 
       def array_and_has_items(item)

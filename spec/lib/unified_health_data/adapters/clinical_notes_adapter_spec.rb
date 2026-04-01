@@ -658,4 +658,106 @@ RSpec.describe 'ClinicalNotesAdapter' do
       end
     end
   end
+
+  describe '#build_avs_metadata_by_appointment' do
+    let(:doc_ref) do
+      {
+        'type' => {
+          'coding' => [
+            { 'system' => 'http://loinc.org', 'code' => '96345-4' }
+          ]
+        },
+        'content' => [
+          { 'attachment' => { 'contentType' => 'application/pdf' } },
+          { 'attachment' => { 'contentType' => 'application/xml' } }
+        ],
+        'context' => {
+          'encounter' => [{ 'reference' => 'Encounter/enc-1' }]
+        }
+      }
+    end
+
+    let(:encounter) do
+      {
+        'id' => 'enc-1',
+        'appointment' => [{ 'reference' => 'Appointment/appt-123' }]
+      }
+    end
+
+    it 'returns a hash of AfterVisitSummary objects indexed by appointment id' do
+      result = adapter.build_avs_metadata_by_appointment([encounter], [doc_ref])
+      expect(result['appt-123']).to be_an(Array)
+      avs = result['appt-123'].first
+      expect(avs).to be_a(UnifiedHealthData::AfterVisitSummary)
+      expect(avs.id).to eq('enc-1')
+      expect(avs.appt_id).to eq('appt-123')
+      expect(avs.loinc_codes).to include('96345-4')
+      expect(avs.content_type).to eq('application/pdf')
+      expect(avs.binary).to be_nil
+    end
+
+    it 'filters out non-AVS content types (xml, html) from content_type' do
+      doc_ref_xml_only = doc_ref.deep_dup
+      doc_ref_xml_only['content'] = [
+        { 'attachment' => { 'contentType' => 'application/xml' } },
+        { 'attachment' => { 'contentType' => 'text/html' } }
+      ]
+      result = adapter.build_avs_metadata_by_appointment([encounter], [doc_ref_xml_only])
+      avs = result['appt-123'].first
+      expect(avs.content_type).to be_nil
+    end
+
+    it 'maps one encounter to multiple appointments' do
+      enc = encounter.deep_dup
+      enc['appointment'] << { 'reference' => 'Appointment/appt-456' }
+      result = adapter.build_avs_metadata_by_appointment([enc], [doc_ref])
+      expect(result.keys).to contain_exactly('appt-123', 'appt-456')
+      expect(result['appt-456'].first.appt_id).to eq('appt-456')
+    end
+
+    it 'skips non-hash encounters' do
+      result = adapter.build_avs_metadata_by_appointment(['not-a-hash', nil], [doc_ref])
+      expect(result).to be_empty
+    end
+
+    it 'skips encounters with a blank id' do
+      enc = encounter.merge('id' => '')
+      result = adapter.build_avs_metadata_by_appointment([enc], [doc_ref])
+      expect(result).to be_empty
+    end
+
+    it 'skips encounters with no appointment references' do
+      enc = encounter.merge('appointment' => [])
+      result = adapter.build_avs_metadata_by_appointment([enc], [doc_ref])
+      expect(result).to be_empty
+    end
+
+    it 'returns empty hash when given empty arrays' do
+      result = adapter.build_avs_metadata_by_appointment([], [])
+      expect(result).to be_empty
+    end
+
+    it 'sets note_type from AVS loinc code mapping' do
+      result = adapter.build_avs_metadata_by_appointment([encounter], [doc_ref])
+      avs = result['appt-123'].first
+      expect(avs.note_type).to eq('ambulatory_patient_summary')
+    end
+
+    it 'unions loinc codes across multiple doc refs for the same encounter' do
+      doc_ref2 = doc_ref.deep_dup
+      doc_ref2['type']['coding'] = [{ 'code' => '68834-1' }]
+      doc_ref2['content'] = [{ 'attachment' => { 'contentType' => 'text/plain' } }]
+      result = adapter.build_avs_metadata_by_appointment([encounter], [doc_ref, doc_ref2])
+      avs = result['appt-123'].first
+      expect(avs.loinc_codes).to contain_exactly('96345-4', '68834-1')
+    end
+
+    it 'handles encounters with no matching doc refs' do
+      result = adapter.build_avs_metadata_by_appointment([encounter], [])
+      avs = result['appt-123'].first
+      expect(avs.loinc_codes).to be_nil
+      expect(avs.content_type).to be_nil
+      expect(avs.note_type).to be_nil
+    end
+  end
 end

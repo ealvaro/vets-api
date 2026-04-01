@@ -112,9 +112,10 @@ module VAOS
         return response if response.dig(:meta, :failures)
 
         appointments = response.body[:data]
-
+        # We may want to include this as part of the parallel requests later
+        avs_metadata = fetch_all_avs_metadata(start_date, appointments, include_avs: include[:avs])
         appointments.each do |appt|
-          prepare_appointment(appt, include)
+          prepare_appointment(appt, include, avs_metadata)
           cnp_count += 1 if cnp?(appt)
         end
 
@@ -251,7 +252,6 @@ module VAOS
         }
       end
 
-      # rubocop:enable Metrics/MethodLength
       def get_appointment(appointment_id, include = {}, tp_client = 'vagov')
         raise ArgumentError, 'no ICN passed in for VAOS::V2::GetAppointment request' if user.icn.blank?
 
@@ -268,7 +268,9 @@ module VAOS
           include[:facilities] = true
           include[:clinics] = true
 
-          prepare_appointment(appointment, include)
+          avs_metadata = fetch_all_avs_metadata(appointment[:start]&.to_datetime, [appointment],
+                                                include_avs: include[:avs])
+          prepare_appointment(appointment, include, avs_metadata)
 
           check_appointments_migration_override([appointment])
 
@@ -279,6 +281,7 @@ module VAOS
           OpenStruct.new(appointment)
         end
       end
+      # rubocop:enable Metrics/MethodLength
 
       # rubocop:disable Metrics/MethodLength
       def post_appointment(request_object_body)
@@ -488,6 +491,29 @@ module VAOS
             location_id ? "facility #{location_id}" : 'unknown facility'
           end
         end
+      end
+
+      # Fetches AVS metadata for all ENCOUNTERS after start_date up to today.
+      # Only used when flipper va_online_scheduling_uhd_avs_metadata enabled.
+      # Returns a hash indexed by appointment id (without any prefix like CERNER)
+      #
+      # @return [Hash{String => Array<UnifiedHealthData::AfterVisitSummary>}]
+      def fetch_all_avs_metadata(start_date, appointments = [], include_avs: false)
+        return {} unless include_avs
+        return {} unless Flipper.enabled?(:va_online_scheduling_uhd_avs_metadata, user) &&
+                         Flipper.enabled?(APPOINTMENTS_FETCH_OH_AVS, user) &&
+                         appointments.any? { |appt| VAOS::AppointmentsHelper.cerner?(appt) }
+        return {} if user.icn.nil? || !start_date.respond_to?(:to_datetime)
+
+        start_date_dt = start_date.to_datetime
+        end_date = DateTime.current.end_of_day
+        doc_refs, encounters = unified_health_data_service.get_all_avs_metadata(start_date: start_date_dt, end_date:)
+        clinical_notes_adapter.build_avs_metadata_by_appointment(encounters, doc_refs)
+      rescue => e
+        err_stack = e.backtrace.reject { |line| line.include?('gems') }.compact.join("\n   ")
+        Rails.logger.error("VAOS: Error retrieving AVS metadata for user #{user.user_account_uuid}:" \
+                           "#{e.class}, #{e.message} \n   #{err_stack}")
+        {}
       end
 
       def fetch_avs_binaries(appt_id, doc_ids)
@@ -832,7 +858,7 @@ module VAOS
       end
 
       # rubocop:disable Metrics/MethodLength
-      def prepare_appointment(appointment, include = {})
+      def prepare_appointment(appointment, include = {}, avs_metadata = {})
         # for CnP, covid, CC and telehealth appointments set cancellable to false per GH#57824, GH#58690, ZH#326
         set_cancellable_false(appointment) if cannot_be_cancelled?(appointment)
 
@@ -852,8 +878,8 @@ module VAOS
 
         extract_appointment_fields(appointment)
 
-        fetch_avs_and_update_appt_body(appointment) if avs_applicable?(appointment,
-                                                                       include[:avs])
+        fetch_avs_and_update_appt_body(appointment, avs_metadata) if avs_applicable?(appointment,
+                                                                                     include[:avs])
 
         if cc?(appointment) && %w[proposed cancelled].include?(appointment[:status])
           find_and_merge_provider_name(appointment)
@@ -935,6 +961,10 @@ module VAOS
 
       def unified_health_data_service
         @unified_health_data_service ||= UnifiedHealthData::Service.new(user)
+      end
+
+      def clinical_notes_adapter
+        @clinical_notes_adapter ||= UnifiedHealthData::Adapters::ClinicalNotesAdapter.new(user:)
       end
 
       def log_cnp_appt_count(cnp_count)
@@ -1023,18 +1053,6 @@ module VAOS
         avs_path(data[:sid])
       end
 
-      def get_avs_pdf(appt)
-        cerner_system_id = extract_cerner_identifier(appt)
-
-        return nil if cerner_system_id.nil?
-
-        avs_resp = unified_health_data_service.get_appt_avs(appt_id: cerner_system_id)
-
-        return nil if avs_resp.empty? || avs_resp.nil?
-
-        avs_resp
-      end
-
       def get_avs_pdf_binary(doc_id, appt_id)
         return nil if doc_id.nil? || appt_id.nil?
 
@@ -1051,14 +1069,20 @@ module VAOS
       #
       # @param [Hash] appt The object representing the appointment. Must be an object that allows hash-like access
       #
+      # @param [Hash, {}] metadata Optional metadata that may be used in the process of fetching the AVS binaries
+      # in details pages. If metadata is nil, will fetch the AVS for an appt
+      #
       # @return [nil] This method does not explicitly return a value. It modifies the `appt`.
-      def fetch_avs_and_update_appt_body(appt)
+      def fetch_avs_and_update_appt_body(appt, avs_metadata = {})
         if appt[:id].nil?
           appt[:avs_path] = nil
         elsif VAOS::AppointmentsHelper.cerner?(appt)
           if Flipper.enabled?(APPOINTMENTS_FETCH_OH_AVS, user)
-            avs_pdf = get_avs_pdf(appt)
-            appt[:avs_pdf] = avs_pdf
+            meta = avs_metadata_for_appointment(appt, avs_metadata)
+            Rails.logger.debug do
+              "VAOS: AVS metadata for appointment #{appt[:id]} empty? #{meta.empty?}"
+            end
+            appt[:avs_pdf] = meta.presence
           end
         else
           avs_link = get_avs_link(appt)
@@ -1068,6 +1092,15 @@ module VAOS
         err_stack = e.backtrace.reject { |line| line.include?('gems') }.compact.join("\n   ")
         Rails.logger.error("VAOS: Error retrieving AVS info: #{e.class}, #{e.message} \n   #{err_stack}")
         appt[:avs_error] = AVS_ERROR_MESSAGE
+      end
+
+      def avs_metadata_for_appointment(appt, avs_metadata)
+        return [] unless avs_metadata.is_a?(Hash)
+
+        cerner_id = extract_cerner_identifier(appt)
+        return [] if cerner_id.nil?
+
+        avs_metadata[cerner_id] || []
       end
 
       # Determines if the appointment cannot be cancelled.

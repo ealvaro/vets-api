@@ -2687,18 +2687,6 @@ describe VAOS::V2::AppointmentsService do
   describe '#fetch_avs_and_update_appt_body' do
     let(:avs_resp) { double(body: [{ icn: '1012846043V576341', sid: '12345' }], status: 200) }
     let(:avs_link) { '/my-health/medical-records/summaries-and-notes/visit-summary/12345' }
-    let(:avs_pdf) do
-      [
-        {
-          'appt_id' => '12345',
-          'id' => '15249638961',
-          'name' => 'Ambulatory Visit Summary',
-          'loinc_codes' => %w[4189669 96345-4],
-          'note_type' => 'ambulatory_patient_summary',
-          'content_type' => 'application/pdf'
-        }
-      ]
-    end
     let(:appt_cerner) do
       { id: '12345', identifier: [{ system: 'urn:va.gov:masv2:cerner:appointment', value: 'Appointment/1234567' }],
         ien: '12345678', station: '983' }
@@ -2711,35 +2699,41 @@ describe VAOS::V2::AppointmentsService do
 
     context 'OH AVS PDF' do
       before do
-        allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_add_OH_avs).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_add_OH_avs, user).and_return(true)
       end
 
-      context 'when UHD Service successfully retrieved the AVS PDF' do
-        it 'fetches the AVS PDF and updates the appt hash' do
-          allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_appt_avs).and_return(avs_pdf)
-          subject.send(:fetch_avs_and_update_appt_body, appt_cerner)
-          expect(appt_cerner[:avs_pdf]).to eq(avs_pdf)
+      context 'when metadata contains matching AVS data' do
+        it 'sets avs_pdf from matching metadata' do
+          avs_metadata = {
+            '1234567' => [
+              UnifiedHealthData::AfterVisitSummary.new(
+                id: 'enc-1',
+                appt_id: '1234567',
+                name: 'Ambulatory Patient Summary',
+                note_type: 'ambulatory_patient_summary',
+                loinc_codes: %w[4189669 96345-4],
+                content_type: 'application/pdf'
+              )
+            ]
+          }
+
+          subject.send(:fetch_avs_and_update_appt_body, appt_cerner, avs_metadata)
+
+          expect(appt_cerner[:avs_pdf]).to eq(avs_metadata['1234567'])
         end
       end
 
-      context 'when an error occurs while retrieving AVS PDF' do
-        it 'logs the error and sets the avs_error field to an error message' do
-          allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_appt_avs)
-            .and_raise(Common::Exceptions::BackendServiceException)
-          expect(Rails.logger).to receive(:error)
+      context 'when no metadata is provided' do
+        it 'sets avs_pdf to nil' do
           subject.send(:fetch_avs_and_update_appt_body, appt_cerner)
-          expect(appt_cerner[:avs_error]).to eq(avs_error)
           expect(appt_cerner[:avs_pdf]).to be_nil
-          expect(appt_cerner[:avs_path]).to be_nil
         end
       end
 
-      context 'when there is no available after visit summary pdf for the appointment' do
-        let(:user) { build(:user, :vaos) }
-
-        it 'returns an avs error message field in the appointment response' do
-          allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_appt_avs).and_return([])
-          subject.send(:fetch_avs_and_update_appt_body, appt_cerner)
+      context 'when metadata does not contain the appointment' do
+        it 'sets avs_pdf to nil' do
+          non_matching_metadata = { 'other_id' => [UnifiedHealthData::AfterVisitSummary.new(id: 'x')] }
+          subject.send(:fetch_avs_and_update_appt_body, appt_cerner, non_matching_metadata)
           expect(appt_cerner[:avs_pdf]).to be_nil
         end
       end
@@ -3591,6 +3585,130 @@ describe VAOS::V2::AppointmentsService do
       expect(Rails.logger).to have_received(:warn).with(
         "VAOS appointment id #{appt[:id]} type of care cannot be determined", any_args
       ).at_least(:once)
+    end
+  end
+
+  describe '#fetch_all_avs_metadata' do
+    let(:start_date_dt) { DateTime.parse('2024-01-01T00:00:00Z') }
+    let(:cerner_appt) do
+      { id: 'appt-123', identifier: [{ system: 'urn:va.gov:masv2:cerner:appointment',
+                                       value: 'Appointment/appt-123' }] }
+    end
+    let(:vista_appt) do
+      { id: 'appt-456', identifier: [{ system: '/Terminology/VistADefinedTerms/409_84',
+                                       value: '983:12345678' }] }
+    end
+    let(:document_reference) do
+      {
+        'type' => { 'coding' => [{ 'code' => '96345-4' }] },
+        'content' => [{ 'attachment' => { 'contentType' => 'application/pdf' } }],
+        'meta' => { 'lastUpdated' => '2024-01-15T10:00:00Z' },
+        'context' => { 'encounter' => [{ 'reference' => 'Encounter/enc-1' }] }
+      }
+    end
+    let(:encounter) do
+      { 'id' => 'enc-1', 'appointment' => [{ 'reference' => 'Appointment/appt-123' }] }
+    end
+
+    context 'when include_avs is false' do
+      it 'returns an empty hash without checking flippers or calling UHD service' do
+        expect_any_instance_of(UnifiedHealthData::Service).not_to receive(:get_all_avs_metadata)
+        result = subject.send(:fetch_all_avs_metadata, start_date_dt, [cerner_appt], include_avs: false)
+        expect(result).to eq({})
+      end
+    end
+
+    context 'when va_online_scheduling_uhd_avs_metadata flipper is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_uhd_avs_metadata, user).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_add_OH_avs, user).and_return(true)
+      end
+
+      it 'returns an empty hash without calling UHD service' do
+        expect_any_instance_of(UnifiedHealthData::Service).not_to receive(:get_all_avs_metadata)
+        result = subject.send(:fetch_all_avs_metadata, start_date_dt, [cerner_appt], include_avs: true)
+        expect(result).to eq({})
+      end
+    end
+
+    context 'when va_online_scheduling_add_OH_avs flipper is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_uhd_avs_metadata, user).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_add_OH_avs, user).and_return(false)
+      end
+
+      it 'returns an empty hash without calling UHD service' do
+        expect_any_instance_of(UnifiedHealthData::Service).not_to receive(:get_all_avs_metadata)
+        result = subject.send(:fetch_all_avs_metadata, start_date_dt, [cerner_appt], include_avs: true)
+        expect(result).to eq({})
+      end
+    end
+
+    context 'when appointments contain no Cerner appointments' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_uhd_avs_metadata, user).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_add_OH_avs, user).and_return(true)
+      end
+
+      it 'returns an empty hash for VistA-only appointments' do
+        expect_any_instance_of(UnifiedHealthData::Service).not_to receive(:get_all_avs_metadata)
+        result = subject.send(:fetch_all_avs_metadata, start_date_dt, [vista_appt], include_avs: true)
+        expect(result).to eq({})
+      end
+
+      it 'returns an empty hash for an empty appointments list' do
+        expect_any_instance_of(UnifiedHealthData::Service).not_to receive(:get_all_avs_metadata)
+        result = subject.send(:fetch_all_avs_metadata, start_date_dt, [], include_avs: true)
+        expect(result).to eq({})
+      end
+    end
+
+    context 'when flippers are enabled and appointments include a Cerner appointment' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_uhd_avs_metadata, user).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_add_OH_avs, user).and_return(true)
+      end
+
+      context 'when user has no ICN' do
+        before { subject } # force instantiation before icn is stubbed to nil
+
+        it 'returns an empty hash' do
+          allow(user).to receive(:icn).and_return(nil)
+          result = subject.send(:fetch_all_avs_metadata, start_date_dt, [cerner_appt], include_avs: true)
+          expect(result).to eq({})
+        end
+      end
+
+      context 'when start_date is not a DateTime' do
+        it 'returns an empty hash' do
+          result = subject.send(:fetch_all_avs_metadata, '2024-01-01', [cerner_appt], include_avs: true)
+          expect(result).to eq({})
+        end
+      end
+
+      context 'when the UHD service returns data' do
+        it 'builds and returns the appointment-indexed hash of AfterVisitSummary objects' do
+          allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_all_avs_metadata)
+            .and_return([[document_reference], [encounter]])
+          result = subject.send(:fetch_all_avs_metadata, start_date_dt, [cerner_appt], include_avs: true)
+          expect(result['appt-123']).to be_an(Array)
+          avs = result['appt-123'].first
+          expect(avs).to be_a(UnifiedHealthData::AfterVisitSummary)
+          expect(avs.id).to eq('enc-1')
+          expect(avs.appt_id).to eq('appt-123')
+          expect(avs.loinc_codes).to include('96345-4')
+        end
+      end
+
+      context 'when the UHD service raises an error' do
+        it 'logs the error and returns an empty hash' do
+          allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_all_avs_metadata)
+            .and_raise(Common::Exceptions::BackendServiceException)
+          expect(Rails.logger).to receive(:error).with(a_string_including('Error retrieving AVS metadata'))
+          result = subject.send(:fetch_all_avs_metadata, start_date_dt, [cerner_appt], include_avs: true)
+          expect(result).to eq({})
+        end
+      end
     end
   end
 end

@@ -68,6 +68,13 @@ module UnifiedHealthData
       perform(:get, path, nil, request_headers)
     end
 
+    # use of this is behind va_online_scheduling_uhd_avs_metadata
+    def get_all_avs(patient_id:, start_date:, end_date:)
+      path = "#{config.base_path}avs/oracle-health"
+      params = { patientId: patient_id, startDate: start_date, endDate: end_date }
+      perform(:get, path, params, request_headers)
+    end
+
     def generate_ccd(patient_id:, start_date:, end_date:)
       path = "#{config.base_path}ccd/#{SourceConstants::ORACLE_HEALTH}"
       params = { patientId: patient_id, startDate: start_date, endDate: end_date }
