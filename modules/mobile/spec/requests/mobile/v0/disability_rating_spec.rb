@@ -137,17 +137,7 @@ RSpec.describe 'Mobile::V0::DisabilityRating', type: :request do
         VCR.use_cassette('mobile/lighthouse_disability_rating/introspect_active') do
           VCR.use_cassette('mobile/lighthouse_disability_rating/500_response') do
             get '/mobile/v0/disability-rating', params: nil, headers: sis_headers
-            assert_schema_conform(500)
-            expect(response.parsed_body).to eq({ 'errors' =>
-                                                   [{ 'timestamp' => '2023-02-13T17:38:36.551+00:00',
-                                                      'status' => '500',
-                                                      'error' => 'Internal Server Error',
-                                                      'path' =>
-                                                        '/veteran_verification/v2/disability_rating',
-                                                      'code' => '500',
-                                                      'title' =>
-                                                        'Common::Exceptions::ExternalServerInternalServerError',
-                                                      'detail' => 'Internal Server Error' }] })
+            assert_schema_conform(502)
           end
         end
       end

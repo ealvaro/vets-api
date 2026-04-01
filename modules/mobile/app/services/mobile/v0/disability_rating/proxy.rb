@@ -26,6 +26,9 @@ module Mobile
           end
 
           response['data']['attributes']
+        rescue Common::Exceptions::ExternalServerInternalServerError => e
+          detail = e.try(:detail)
+          raise Common::Exceptions::BadGateway.new(detail:)
         rescue Common::Exceptions::BaseError
           raise
         rescue Faraday::ConnectionFailed, Faraday::TimeoutError
