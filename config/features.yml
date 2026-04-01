@@ -3223,12 +3223,15 @@ features:
   vre_form_submission_tracking:
     actor_type: user
     description: If enabled, track form submissions for VR&E application Form 28-1900
-  discover_your_benefits_results_page_update:
-    actor_type: cookie_id
-    description: "If enabled, displays new results page features and designs"
+  cve_onboarding_modal:
+    actor_type: user
+    description: If enabled, displays onboarding modal to users
   cve_veteran_status_new_service:
     actor_type: user
     description: "If enabled, displays new veteran status page"
+  discover_your_benefits_results_page_update:
+    actor_type: cookie_id
+    description: "If enabled, displays new results page features and designs"
   va_online_scheduling_log_mobile:
     actor_type: user
     description: If enabled, logs additional information about mobile appointments for debugging purposes
