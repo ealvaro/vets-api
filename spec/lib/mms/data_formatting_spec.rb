@@ -339,23 +339,6 @@ RSpec.describe Mms::DataFormatting do
     end
   end
 
-  describe '#sanitize_phone' do
-    it 'strips non-digit characters from a phone number' do
-      result = subject.sanitize_phone('(555) 123-4567')
-      expect(result).to eq('5551234567')
-    end
-
-    it 'returns nil when given nil' do
-      result = subject.sanitize_phone(nil)
-      expect(result).to be_nil
-    end
-
-    it 'returns an empty string when given an empty string' do
-      result = subject.sanitize_phone('')
-      expect(result).to eq('')
-    end
-  end
-
   describe '#y_n_pair' do
     it 'returns an empty hash when the field is nil' do
       result = subject.y_n_pair(nil, 'YES_FIELD', 'NO_FIELD')
@@ -370,6 +353,22 @@ RSpec.describe Mms::DataFormatting do
     it 'returns a hash with the no field set to true when the field is false' do
       result = subject.y_n_pair(false, 'YES_FIELD', 'NO_FIELD')
       expect(result).to eq({ 'YES_FIELD' => false, 'NO_FIELD' => true })
+    end
+  end
+
+  describe '#transform_nils_to_empty_strings' do
+    it 'transforms nil values in the fields hash to empty strings and leaves non-nil values unchanged' do
+      fields = { 'FIELD1' => nil, 'FIELD2' => 'value', 'FIELD3' => nil }
+      subject.transform_nils_to_empty_strings(fields)
+      expect(fields).to eq({ 'FIELD1' => '', 'FIELD2' => 'value', 'FIELD3' => '' })
+    end
+  end
+
+  describe '#transform_booleans' do
+    it 'transforms boolean values in the fields hash to 1/0 and leaves non-boolean values unchanged' do
+      fields = { 'FIELD1' => true, 'FIELD2' => false, 'FIELD3' => 'value', 'FIELD4' => nil }
+      subject.transform_booleans(fields)
+      expect(fields).to eq({ 'FIELD1' => 1, 'FIELD2' => 0, 'FIELD3' => 'value', 'FIELD4' => nil })
     end
   end
 end

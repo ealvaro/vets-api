@@ -152,13 +152,16 @@ module MedicalExpenseReports
       reporting_period = form['reportingPeriod'] || {}
       use_va_rcvd_date = use_va_rcvd_date?(form)
 
-      build_claimant_fields(form, claimant_name, primary_phone)
-        .merge(build_veteran_fields(veteran_name, form['veteranSocialSecurityNumber']))
-        .merge(build_reporting_fields(form, reporting_period, use_va_rcvd_date))
-        .merge(build_in_home_fields(form))
-        .merge(build_medical_expense_fields(form))
-        .merge(build_travel_fields(form))
-        .merge(build_witness_fields)
+      payload = build_claimant_fields(form, claimant_name, primary_phone)
+                .merge(build_veteran_fields(veteran_name, form['veteranSocialSecurityNumber']))
+                .merge(build_reporting_fields(form, reporting_period, use_va_rcvd_date))
+                .merge(build_in_home_fields(form))
+                .merge(build_medical_expense_fields(form))
+                .merge(build_travel_fields(form))
+                .merge(build_witness_fields)
+      transform_booleans(payload)
+      transform_nils_to_empty_strings(payload)
+      payload
     end
 
     ##

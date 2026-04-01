@@ -13,11 +13,7 @@ module Mms
       suffix = name_hash&.fetch('suffix', nil)
 
       {
-        first:,
-        last:,
-        middle:,
-        middle_initial: middle&.slice(0, 1),
-        suffix:,
+        first:, last:, middle:, middle_initial: middle&.slice(0, 1), suffix:,
         full: [first, middle, last, suffix].compact.join(' ').presence
       }
     end
@@ -40,8 +36,7 @@ module Mms
     # @param form [Hash]
     # @return [String, nil]
     def claimant_address_block(form)
-      address = form['claimantAddress'] || fallback_claimant_address(form)
-      build_address_block(address)
+      build_address_block(form['claimantAddress'] || fallback_claimant_address(form))
     end
 
     # Provide a fallback claimant address using the veteran address data.
@@ -49,16 +44,13 @@ module Mms
     # @param form [Hash]
     # @return [Hash, nil]
     def fallback_claimant_address(form)
-      veteran_address = form['veteranAddress']
-      return unless veteran_address
+      vet_address = form['veteranAddress']
+      return unless vet_address
 
       {
-        'street' => veteran_address['street'],
-        'street2' => veteran_address['street2'],
-        'city' => veteran_address['city'],
-        'state' => veteran_address['state'],
-        'postalCode' => veteran_address['postalCode'],
-        'country' => veteran_address['country']
+        'street' => vet_address['street'], 'street2' => vet_address['street2'],
+        'city' => vet_address['city'], 'state' => vet_address['state'],
+        'postalCode' => vet_address['postalCode'], 'country' => vet_address['country']
       }
     end
 
@@ -91,7 +83,9 @@ module Mms
     # @param value [String, nil]
     # @return [String, nil]
     def format_phone(value)
-      sanitize_phone(value)
+      return unless value
+
+      value.to_s.gsub(/\D/, '')
     end
 
     # Format the signature date for IBM consumption.
@@ -100,16 +94,6 @@ module Mms
     # @return [String, nil]
     def claim_date_signed(form)
       format_date(form['dateSigned'] || form['signatureDate'])
-    end
-
-    # Strip all non-digit characters from a phone string.
-    #
-    # @param phone [String, nil]
-    # @return [String, nil]
-    def sanitize_phone(phone)
-      return unless phone
-
-      phone.to_s.gsub(/\D/, '')
     end
 
     # Determine if the IAM payload should use VA received date.
@@ -163,8 +147,7 @@ module Mms
     def format_date(value)
       return unless value
 
-      parsed = Date.parse(value.to_s)
-      parsed.strftime('%m/%d/%Y')
+      Date.parse(value.to_s).strftime('%m/%d/%Y')
     rescue ArgumentError
       nil
     end
@@ -189,10 +172,32 @@ module Mms
     def y_n_pair(field, yes, no)
       return {} if field.nil?
 
-      {
-        yes => field == true,
-        no => field == false
-      }
+      { yes => field == true, no => field == false }
+    end
+
+    # Transform all nil values in the fields hash to empty strings for IBM compatibility.
+    #
+    # @param fields [Hash]
+    # @return [void]  The fields hash is modified in place.
+    def transform_nils_to_empty_strings(fields)
+      fields.transform_values! { |value| value.nil? ? '' : value }
+    end
+
+    # Transform all boolean values in the fields hash to 1/0 for IBM compatibility.
+    #
+    # @param fields [Hash]
+    # @return [void]  The fields hash is modified in place.
+    def transform_booleans(fields)
+      fields.transform_values! do |value|
+        case value
+        when true
+          1
+        when false
+          0
+        else
+          value
+        end
+      end
     end
   end
 end

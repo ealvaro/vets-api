@@ -66,7 +66,7 @@ module SurvivorsBenefits::StructuredData::Section10
   # @return [Hash] A hash with keys :full, :thousands, :hundreds, and :cents mapping to the corresponding IBM fields
   def care_expense_currency_keys(expense_num)
     {
-      full: "AMNT_YOU_PAY#{expense_num}",
+      full: "AMNT_YOU_PAY_#{expense_num}",
       thousands: "AMNT_YOU_PAY_#{expense_num}_THSNDS",
       hundreds: "AMNT_YOU_PAY_#{expense_num}_HNDRDS",
       cents: "AMNT_YOU_PAY_#{expense_num}_CENTS"

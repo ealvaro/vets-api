@@ -339,16 +339,6 @@ RSpec.describe MedicalExpenseReports::BenefitsIntake::SubmitClaimJob, :uploader_
       end
     end
 
-    describe '#sanitize_phone' do
-      it 'returns nil when phone is nil' do
-        expect(job.send(:sanitize_phone, nil)).to be_nil
-      end
-
-      it 'strips non digits' do
-        expect(job.send(:sanitize_phone, '(555) 123-4567')).to eq('5551234567')
-      end
-    end
-
     describe '#international_phone_number' do
       it 'prioritizes the explicit internationalPhone field' do
         form = { 'internationalPhone' => '+52 1 234 567 890' }

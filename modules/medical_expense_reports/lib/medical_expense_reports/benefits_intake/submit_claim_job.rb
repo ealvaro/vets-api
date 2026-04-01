@@ -148,7 +148,7 @@ module MedicalExpenseReports
           form['vaFileNumber'] || form['veteranSocialSecurityNumber'],
           address['postalCode'],
           'va_gov_bio_huntridge',
-          @claim.form_id,
+          "StructuredData:#{@claim.form_id}",
           @claim.business_line
         )
       end

@@ -32,6 +32,15 @@ module SurvivorsBenefits
         'fields.yaml'
       ).freeze
 
+      IRREGULAR_FIELD_TRANSFORMS = {
+        'CB_CL_MARR2_ENDED_OTHEREXPLAIN' => 'CL_MARR2_ENDED_OTHEREXPLAIN',
+        'AMNT_YOU_PAY_1' => 'AMNT_YOU_PAY1',
+        'MONTHLY_GROSS_1' => 'MONTHLY_GROSS_1_'
+      }.freeze
+
+      AMNT_YOU_PAY_COUNT = 3
+      MEDAMNT_YOU_PAY_COUNT = 6
+
       def initialize(form)
         @form = form
         @fields = YAML.load_file(FIELDS_PATH)
@@ -50,7 +59,11 @@ module SurvivorsBenefits
         build_section10
         build_section11(form['bankAccount'])
         build_section12
-        transform_checkboxes
+        fill_veteran_ssn_reference_fields
+        add_amounts_with_separation
+        transform_booleans(fields)
+        transform_nils_to_empty_strings(fields)
+        transform_irregular_fields
         fields
       end
 
@@ -73,20 +86,22 @@ module SurvivorsBenefits
         end
       end
 
-      def transform_checkboxes
-        @checkboxes = YAML.load_file(
-          Rails.root.join(
-            'modules',
-            'survivors_benefits',
-            'app',
-            'services',
-            'survivors_benefits',
-            'structured_data',
-            'checkboxes.yml'
-          )
-        )
-        @checkboxes['KEY_LIST'].each do |key|
-          fields[key] = fields[key] ? 1 : 0
+      def fill_veteran_ssn_reference_fields
+        ssn = form['veteranSocialSecurityNumber']
+        (1..9).each { |i| fields["VETERAN_SSN_#{i}"] = ssn }
+      end
+
+      def transform_irregular_fields
+        fields.transform_keys!(IRREGULAR_FIELD_TRANSFORMS)
+      end
+
+      def add_amounts_with_separation
+        (1..AMNT_YOU_PAY_COUNT).each do |i|
+          fields["AMNT_YOU_PAY_#{i}_WITH_SEPARATION"] = fields["AMNT_YOU_PAY_#{i}"]
+        end
+
+        (1..MEDAMNT_YOU_PAY_COUNT).each do |i|
+          fields["MEDAMNT_YOU_PAY#{i}_WITH_SEPARATION"] = fields["MEDAMNT_YOU_PAY#{i}"]
         end
       end
     end

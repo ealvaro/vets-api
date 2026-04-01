@@ -72,7 +72,7 @@ RSpec.describe SurvivorsBenefits::StructuredData::StructuredDataService do
       end
     end
 
-    describe 'When some name fields are missing' do
+    context 'When some name fields are missing' do
       it 'merges available name fields and leaves missing fields nil' do
         form = {}
         service = SurvivorsBenefits::StructuredData::StructuredDataService.new(form)
@@ -89,7 +89,7 @@ RSpec.describe SurvivorsBenefits::StructuredData::StructuredDataService do
       end
     end
 
-    describe 'When name is nil' do
+    context 'When name is nil' do
       it 'does not merge any fields' do
         form = {}
         service = SurvivorsBenefits::StructuredData::StructuredDataService.new(form)

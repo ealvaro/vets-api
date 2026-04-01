@@ -120,7 +120,7 @@ module SurvivorsBenefits
           form['veteranFullName']['last'],
           form['vaFileNumber'] || form['veteranSocialSecurityNumber'],
           self.class.to_s,
-          @claim.form_id,
+          "StructuredData:#{@claim.form_id}",
           @claim.business_line
         )
       end
