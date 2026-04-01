@@ -36,6 +36,8 @@ module AccreditedRepresentativePortal
         membership.present? or
           return nil
 
+        return nil unless allowed_for_claimant?(membership)
+
         ClaimantRepresentative.new(
           claimant_id: @claimant.id,
           accredited_individual_registration_number:
@@ -43,12 +45,44 @@ module AccreditedRepresentativePortal
           power_of_attorney_holder:
             membership.power_of_attorney_holder
         )
-      rescue
-        raise Error
+      rescue => e
+        raise Error, e.message, e.backtrace
+      end
+
+      private
+
+      def allowed_for_claimant?(membership)
+        return true unless individual_accept_enabled?
+
+        org_rep_membership = Veteran::Service::OrganizationRepresentative.active.find_by(
+          organization_poa: membership.power_of_attorney_holder.poa_code,
+          representative_id: membership.registration_number
+        )
+
+        return false if org_rep_membership.blank?
+        return false if org_rep_membership.no_acceptance?
+        return true if org_rep_membership.any_request?
+
+        allowed_self_only_for_claimant?(membership)
+      end
+
+      def allowed_self_only_for_claimant?(membership)
+        PowerOfAttorneyRequest
+          .joins(:claimant)
+          .not_withdrawn
+          .exists?(claimant: { icn: @claimant.icn },
+                   power_of_attorney_holder_poa_code: membership.power_of_attorney_holder.poa_code,
+                   accredited_individual_registration_number: membership.registration_number)
+      end
+
+      def individual_accept_enabled?
+        Flipper.enabled?(:accredited_representative_portal_individual_accept)
       end
     end
 
     class Claimant
+      attr_reader :icn
+
       def initialize(id: nil, icn: nil)
         unless [id, icn].one?(&:present?)
           raise ArgumentError, <<~MSG.squish
