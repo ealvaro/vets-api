@@ -35,8 +35,8 @@ production:
   email:
     default_template: 'b5830306-3339-49ea-a80a-4b5105263aaf'
     pension_claims_template: 'b600ae50-07e3-4e2e-81e5-05be8157f714'
-    mobile_link_template: ''
-    pension_mobile_link_template: ''
+    mobile_link_template: 'ce326bf3-44cf-467d-95cd-b449607483d7'
+    pension_mobile_link_template: 'b89f3198-34e5-4668-8dea-4c1e43d11ea7'
   push:
     default_template: '5D7D1E2BE5C149B0918E30F7116EC1CA'
   sms:
