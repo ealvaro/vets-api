@@ -55,6 +55,7 @@ module BenefitsDocuments
     def claim_letters_search(doc_type_ids: nil, participant_id: nil, file_number: nil)
       config.claim_letters_search(doc_type_ids:, participant_id:, file_number:)
     rescue Faraday::ClientError, Faraday::ServerError => e
+      log_claim_letters_search_failure(e, doc_type_ids, participant_id, file_number)
       handle_error(e, nil, 'services/benefits-documents/v1/claim-letters/search')
     end
 
@@ -106,6 +107,24 @@ module BenefitsDocuments
     end
 
     private
+
+    def log_claim_letters_search_failure(error, doc_type_ids, participant_id, file_number)
+      return unless Flipper.enabled?(:cst_claim_letters_log_failure, @user)
+
+      ::Rails.logger.info('Claim letters failure for user', {
+                            message_type: 'cst.claim_letters.search_failure',
+                            user_uuid: @user.uuid,
+                            user_account_uuid: @user.user_account_uuid,
+                            doc_type_ids:,
+                            participant_id_present: participant_id.present?,
+                            file_number_present: file_number.present?,
+                            is_veteran: @user.veteran?,
+                            served_in_military: @user.served_in_military?,
+                            error_type: error.class.to_s,
+                            error_message: error.message,
+                            status_code: error.try(:response)&.dig(:status)
+                          })
+    end
 
     def submit_document(file, file_params, lighthouse_client_id = nil) # rubocop:disable Metrics/MethodLength
       user_icn = @user.icn

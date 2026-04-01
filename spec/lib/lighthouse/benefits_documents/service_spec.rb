@@ -221,6 +221,66 @@ RSpec.describe BenefitsDocuments::Service do
       end
     end
 
+    describe '#claim_letters_search failure logging' do
+      let(:faraday_error) { Faraday::ClientError.new('Bad Request') }
+
+      before do
+        allow_any_instance_of(BenefitsDocuments::Configuration)
+          .to receive(:claim_letters_search).and_raise(faraday_error)
+        allow(Rails.logger).to receive(:info)
+        allow(user).to receive_messages(veteran?: true, served_in_military?: true)
+      end
+
+      context 'when cst_claim_letters_log_failure is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:cst_claim_letters_log_failure, user).and_return(true)
+        end
+
+        it 'logs the failure with doc_type_ids and presence of participant_id and file_number' do
+          expect(Rails.logger).to receive(:info).with(
+            'Claim letters failure for user',
+            hash_including(
+              message_type: 'cst.claim_letters.search_failure',
+              doc_type_ids: ['184'],
+              participant_id_present: false,
+              file_number_present: true,
+              error_type: 'Faraday::ClientError',
+              error_message: 'Bad Request'
+            )
+          )
+
+          expect { subject.claim_letters_search(doc_type_ids: ['184'], file_number: user.ssn) }
+            .to raise_error(Common::Exceptions::ServiceError)
+        end
+
+        it 'logs participant_id_present as true when provided' do
+          expect(Rails.logger).to receive(:info).with(
+            'Claim letters failure for user',
+            hash_including(
+              participant_id_present: true,
+              file_number_present: false
+            )
+          )
+
+          expect { subject.claim_letters_search(doc_type_ids: ['184'], participant_id: '12345') }
+            .to raise_error(Common::Exceptions::ServiceError)
+        end
+      end
+
+      context 'when cst_claim_letters_log_failure is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:cst_claim_letters_log_failure, user).and_return(false)
+        end
+
+        it 'does not log the failure' do
+          expect(Rails.logger).not_to receive(:info).with('Claim letters failure for user', anything)
+
+          expect { subject.claim_letters_search(file_number: user.ssn) }
+            .to raise_error(Common::Exceptions::ServiceError)
+        end
+      end
+    end
+
     describe '#claim_letter_download' do
       it 'receives content of a claim letter pdf' do
         response_body = 'claim letter pdf file content'
