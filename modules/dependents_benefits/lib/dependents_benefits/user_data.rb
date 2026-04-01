@@ -11,7 +11,8 @@ module DependentsBenefits
   # and handles VA Profile email lookup with fallback to form email.
   #
   class UserData
-    include DependentsBenefits::DependentsHelper
+    include DependentsBenefits::Helper
+
     attr_reader :first_name,
                 :middle_name,
                 :last_name,
@@ -193,13 +194,6 @@ module DependentsBenefits
       monitor.track_warning_event('DependentsBenefits::UserData#get_user_email failed to get va_profile_email',
                                   action: 'get_va_profile_email.failure', component:, error: e.message)
       nil
-    end
-
-    # Returns a memoized instance of the DependentsBenefits monitor
-    #
-    # @return [DependentsBenefits::Monitor] Monitor instance for tracking events and errors
-    def monitor
-      @monitor ||= DependentsBenefits::Monitor.new
     end
   end
 end

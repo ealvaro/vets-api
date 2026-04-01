@@ -2,11 +2,11 @@
 
 require 'rails_helper'
 
-RSpec.describe DependentsBenefits::DependentsHelper do
+RSpec.describe DependentsBenefits::Helper do
   # Create a test class that includes the module to test instance methods
   let(:test_class) do
     Class.new do
-      include DependentsBenefits::DependentsHelper
+      include DependentsBenefits::Helper
     end
   end
   let(:helper) { test_class.new }
@@ -561,8 +561,7 @@ RSpec.describe DependentsBenefits::DependentsHelper do
 
         expect(monitor).to receive(:track_error_event)
           .with('Diaries is not a hash! Diaries type: String',
-                action: 'invalid_diaries_type',
-                component: 'DependentsBenefits::DependentsHelper')
+                action: 'invalid_diaries_type')
 
         helper.dependency_decisions('not a hash')
       end

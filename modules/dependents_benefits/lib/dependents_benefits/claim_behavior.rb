@@ -35,6 +35,11 @@ module DependentsBenefits
       parsed_form.merge!({ 'signatureDate' => created_at.strftime('%Y-%m-%d') })
     end
 
+    # retrieve the parent_claim_id for _this_ claim
+    def parent_claim_id
+      child_of_groups&.last&.parent_claim_id
+    end
+
     private
 
     # Returns a memoized instance of the DependentsBenefits monitor

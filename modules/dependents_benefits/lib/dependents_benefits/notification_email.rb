@@ -8,10 +8,7 @@ module DependentsBenefits
   # @see VeteranFacingServices::NotificationEmail::SavedClaim
   class NotificationEmail < ::VeteranFacingServices::NotificationEmail::SavedClaim
     # @see VeteranFacingServices::NotificationEmail::SavedClaim#new
-    def initialize(saved_claim_id, user = nil)
-      @va_profile_email = user&.va_profile_email
-      @user_first_name = user&.first_name
-
+    def initialize(saved_claim_id)
       super(saved_claim_id, service_name: 'dependents_benefits')
     end
 
@@ -101,8 +98,18 @@ module DependentsBenefits
 
     # retrieve the email from the _claim_ or _user_
     def email
-      @va_profile_email || claim.parsed_form.dig('dependents_application', 'veteran_contact_information',
-                                                 'email_address')
+      va_profile_email = claim.user_data&.dig('veteran_information', 'va_profile_email')
+      vet_contact_info = claim.parsed_form.dig('dependents_application', 'veteran_contact_information', 'email_address')
+
+      va_profile_email || vet_contact_info
+    end
+
+    # retrieve the first name to be used
+    def user_first_name
+      vet_first_name = claim.user_data&.dig('veteran_information', 'full_name', 'first')
+      form_signature = claim.parsed_form['statement_of_truth_signature']&.split&.first
+
+      vet_first_name || form_signature
     end
 
     # assemble details for personalization in the emails
@@ -110,11 +117,8 @@ module DependentsBenefits
       default = super
 
       submission_date = claim.submitted_at || Time.zone.today
-      vet_info = claim.parsed_form.dig('dependents_application', 'veteran_information') ||
-                 claim.parsed_form['veteran_information']
-      first_name = @user_first_name || vet_info&.dig('full_name', 'first')
       dependents = {
-        'first_name' => first_name&.upcase&.presence,
+        'first_name' => user_first_name&.upcase,
         'date_submitted' => submission_date.strftime('%B %d, %Y'),
         'confirmation_number' => claim.confirmation_number
       }

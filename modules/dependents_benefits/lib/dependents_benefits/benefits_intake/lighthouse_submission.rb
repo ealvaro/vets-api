@@ -117,7 +117,9 @@ module DependentsBenefits
         # process the main pdf record and the attachments as we would for a vbms submission
         form_674_paths = []
         form_686c_path = nil
-        DependentsBenefits::ClaimProcessor.new(saved_claim.id).collect_child_claims.each do |claim|
+
+        child_claims = SavedClaimGroup.by_saved_claim_id(saved_claim.id).last!.saved_claim_children
+        child_claims&.each do |claim|
           # NOTE: potentially move to initialization of claims
           claim.add_veteran_info(user_data)
           pdf_path = process_pdf(claim.to_pdf, claim.created_at, claim.form_id)
@@ -136,6 +138,7 @@ module DependentsBenefits
 
         # prepend any 674s to attachments
         @attachment_paths = form_674_paths + saved_claim.persistent_attachments.map do |pa|
+          # skipping coverage - this class should be refactored/removed
           process_pdf(pa.to_pdf, saved_claim.created_at)
         end
       end

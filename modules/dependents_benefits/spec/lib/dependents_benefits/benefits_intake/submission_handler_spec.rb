@@ -68,13 +68,13 @@ Rspec.describe DependentsBenefits::BenefitsIntake::SubmissionHandler do
         allow(DependentsBenefits::NotificationEmail).to receive(:new).with(claim.id).and_return(notification_email)
       end
 
-      it 'returns an instance of Dependents::NotificationEmail' do
+      it 'returns an instance of DependentsBenefits::NotificationEmail' do
         expect(instance.send(:notification_email)).to eq(notification_email)
       end
     end
 
     describe '#on_failure' do
-      let(:notification_email) { double('Dependents::NotificationEmail') }
+      let(:notification_email) { double('DependentsBenefits::NotificationEmail') }
 
       before do
         allow(DependentsBenefits::NotificationEmail).to receive(:new).with(claim.id).and_return(notification_email)
@@ -89,7 +89,7 @@ Rspec.describe DependentsBenefits::BenefitsIntake::SubmissionHandler do
     end
 
     describe '#on_success' do
-      let(:notification_email) { double('Dependents::NotificationEmail') }
+      let(:notification_email) { double('DependentsBenefits::NotificationEmail') }
 
       before do
         allow(DependentsBenefits::NotificationEmail).to receive(:new).with(claim.id).and_return(notification_email)

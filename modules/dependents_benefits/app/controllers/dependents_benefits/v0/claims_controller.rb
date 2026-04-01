@@ -81,6 +81,7 @@ module DependentsBenefits
               response = SavedClaimSerializer.new(claim).serializable_hash
               response[:data][:digital_forms_api] = { submission: }
 
+              clear_saved_form(claim.form_id)
               return render json: response
             end
           rescue => e
@@ -113,7 +114,8 @@ module DependentsBenefits
       def submit_via_forms_api(claim, claim_label, participant_id)
         digital_forms_api_submission_service ||= DigitalFormsApi::Service::Submissions.new
 
-        payload = claim.deep_camelize_keys(claim.parsed_form)
+        payload = claim.parsed_form.deep_dup
+        payload = claim.deep_camelize_keys(payload.merge(payload.delete('dependents_application')))
         metadata = {
           formId: claim.claim_form_type,
           veteranId: participant_id,

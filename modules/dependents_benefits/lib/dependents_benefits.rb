@@ -31,22 +31,24 @@ module DependentsBenefits
   FORM_SCHEMA_BASE = "#{MODULE_PATH}/schema".freeze
 
   # API Version 0
-  module V0
-  end
+  module V0; end
 
   # BenefitsIntake
   # @see lib/lighthouse/benefits_intake
-  module BenefitsIntake
-  end
+  module BenefitsIntake; end
 
   # PdfFill
   # @see lib/pdf_fill
-  module PdfFill
-  end
+  module PdfFill; end
 
   # ZeroSilentFailures
   # @see lib/zero_silent_failures
-  module ZeroSilentFailures
+  module ZeroSilentFailures; end
+
+  # Background jobs for dependent benefits claim processing
+  module Sidekiq
+    # job functions
+    module Include; end
   end
 
   # Custom error class for missing veteran information in a claim

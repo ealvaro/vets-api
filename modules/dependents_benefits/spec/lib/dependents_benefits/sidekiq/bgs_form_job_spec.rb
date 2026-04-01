@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'dependents_benefits/sidekiq/bgs/bgs_form_job'
+require 'dependents_benefits/sidekiq/bgs_form_job'
 require 'bgs/service'
 
-RSpec.describe DependentsBenefits::Sidekiq::BGS::BGSFormJob, type: :job do
+RSpec.describe DependentsBenefits::Sidekiq::BGSFormJob, type: :job do
   before do
     allow(DependentsBenefits::PdfFill::Filler).to receive(:fill_form).and_return('tmp/pdfs/mock_form_final.pdf')
     # Initialize job with current claim context
-    job.instance_variable_set(:@claim_id, parent_claim.id)
+    job.instance_variable_set(:@parent_claim_id, parent_claim.id)
   end
 
   let(:user) { create(:evss_user) }
@@ -26,7 +26,7 @@ RSpec.describe DependentsBenefits::Sidekiq::BGS::BGSFormJob, type: :job do
                                      submit_claim_to_service: DependentsBenefits::ServiceResponse.new(status: true),
                                      generate_proc_id: 'test-proc-id-123')
 
-      job.submit_claims_to_service
+      job.send(:submit_claims_to_service)
 
       expect(job.instance_variable_get(:@proc_id)).to eq('test-proc-id-123')
     end
@@ -40,7 +40,7 @@ RSpec.describe DependentsBenefits::Sidekiq::BGS::BGSFormJob, type: :job do
       )
 
       expect do
-        job.submit_claims_to_service
+        job.send(:submit_claims_to_service)
       end.to raise_error(DependentsBenefits::Sidekiq::DependentSubmissionError, 'Submission failed')
     end
 
@@ -49,7 +49,7 @@ RSpec.describe DependentsBenefits::Sidekiq::BGS::BGSFormJob, type: :job do
                                      submit_claim_to_service: DependentsBenefits::ServiceResponse.new(status: true),
                                      generate_proc_id: 'test-proc-id-123')
 
-      response = job.submit_claims_to_service
+      response = job.send(:submit_claims_to_service)
 
       expect(response).to be_a(DependentsBenefits::ServiceResponse)
       expect(response.success?).to be true
@@ -59,12 +59,10 @@ RSpec.describe DependentsBenefits::Sidekiq::BGS::BGSFormJob, type: :job do
   describe '#submit_686c_form' do
     let(:claim_data) { { 'veteran' => { 'first_name' => ' john ', 'last_name' => ' doe ' } } }
     let(:normalized_data) { { 'veteran' => { 'first_name' => 'JOHN', 'last_name' => 'DOE' } } }
-    let(:user_struct) { { user_key: 'value' } }
     let(:proc_id) { 'test-proc-id-123' }
 
     before do
       allow(saved_claim).to receive(:parsed_form).and_return(claim_data)
-      allow(job).to receive(:generate_user_struct).and_return(user_struct)
       job.instance_variable_set(:@proc_id, proc_id)
     end
 
@@ -74,22 +72,21 @@ RSpec.describe DependentsBenefits::Sidekiq::BGS::BGSFormJob, type: :job do
       expect(bgs_job).to receive(:normalize_names_and_addresses!).with(claim_data).and_return(normalized_data)
 
       form_instance = instance_double(BGS::Form686c, submit: nil)
+      user_struct = have_attributes(first_name: be_a(String), last_name: be_a(String)) # #generate_user_struct
       expect(BGS::Form686c).to receive(:new).with(user_struct, saved_claim, { proc_id: }).and_return(form_instance)
       expect(form_instance).to receive(:submit).with(normalized_data)
 
-      job.submit_686c_form(saved_claim)
+      job.send(:submit_686c_form, saved_claim)
     end
   end
 
   describe '#submit_674_form' do
     let(:claim_data) { { 'veteran' => { 'first_name' => ' jane ', 'last_name' => ' smith ' } } }
     let(:normalized_data) { { 'veteran' => { 'first_name' => 'JANE', 'last_name' => 'SMITH' } } }
-    let(:user_struct) { { user_key: 'value' } }
     let(:proc_id) { 'test-proc-id-456' }
 
     before do
       allow(saved_claim).to receive(:parsed_form).and_return(claim_data)
-      allow(job).to receive(:generate_user_struct).and_return(user_struct)
       job.instance_variable_set(:@proc_id, proc_id)
     end
 
@@ -99,10 +96,11 @@ RSpec.describe DependentsBenefits::Sidekiq::BGS::BGSFormJob, type: :job do
       expect(bgs_job).to receive(:normalize_names_and_addresses!).with(claim_data).and_return(normalized_data)
 
       form_instance = instance_double(BGS::Form674, submit: nil)
+      user_struct = have_attributes(first_name: be_a(String), last_name: be_a(String)) # #generate_user_struct
       expect(BGS::Form674).to receive(:new).with(user_struct, saved_claim, { proc_id: }).and_return(form_instance)
       expect(form_instance).to receive(:submit).with(normalized_data)
 
-      job.submit_674_form(saved_claim)
+      job.send(:submit_674_form, saved_claim)
     end
   end
 
@@ -255,7 +253,7 @@ RSpec.describe DependentsBenefits::Sidekiq::BGS::BGSFormJob, type: :job do
 
     before do
       allow(BGS::Service).to receive(:new).and_return(bgs_service)
-      allow(job).to receive_messages(monitor:, generate_user_struct: {}, saved_claim:)
+      allow(job).to receive_messages(monitor:, generate_user_struct: {}, parent_claim:)
     end
 
     context 'when proc ID generation succeeds' do

@@ -2,7 +2,7 @@
 
 require 'vets/model'
 require 'bid/awards/service'
-require 'dependents_benefits/monitor'
+require 'dependents_benefits/helper'
 
 module DependentsBenefits
   ##
@@ -11,7 +11,7 @@ module DependentsBenefits
   # extends app/models/form_profile.rb, which handles form prefill
   class FormProfiles::VA686c674 < FormProfile
     include PensionAwardHelper
-    include DependentsBenefits::DependentsHelper
+    include DependentsBenefits::Helper
     ##
     # Model representing dependent information for the 686c-674 form
     # Contains personal details and relationship data for each dependent
@@ -189,15 +189,6 @@ module DependentsBenefits
     # @return [BID::Awards::Service] Service for retrieving pension award data
     def pension_award_service
       @pension_award_service ||= BID::Awards::Service.new(user)
-    end
-
-    ##
-    # Returns a monitoring service instance for tracking events
-    # Used for logging errors and tracking form prefill events
-    #
-    # @return [DependentsBenefits::Monitor] Monitoring service for dependents module
-    def monitor
-      @monitor ||= DependentsBenefits::Monitor.new
     end
 
     ##

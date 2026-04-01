@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'dependents_benefits/helper'
+
 module DependentsBenefits
   ##
   # Serializer for dependent information retrieved from BGS.
@@ -9,7 +11,7 @@ module DependentsBenefits
   # Uses JSONAPI::Serializer for JSON API compliant output.
   #
   class DependentsSerializer
-    extend DependentsHelper
+    extend DependentsBenefits::Helper
     include JSONAPI::Serializer
 
     set_id { '' }

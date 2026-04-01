@@ -183,8 +183,8 @@ lighthouse_submission.upload_to_lh
 
 | Job | Purpose | Parameters |
 |-----|---------|------------|
-| `DependentsBenefits::Sidekiq::BGS::BGSFormJob` | Submit to BGS (primary) | `parent_claim_id` |
-| `DependentsBenefits::Sidekiq::ClaimsEvidence::ClaimsEvidenceFormJob` | Upload documents to Claims Evidence | `parent_claim_id` |
+| `DependentsBenefits::Sidekiq::BGSFormJob` | Submit to BGS (primary) | `parent_claim_id` |
+| `DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob` | Upload documents to Claims Evidence | `parent_claim_id` |
 | `DependentsBenefits::Sidekiq::BenefitsIntakeJob` | Submit to Lighthouse Benefits Intake (backup) | `parent_claim_id` |
 | `DependentsBenefits::Sidekiq::DependentSubmissionJob` | Base job for dependent submissions | `claim_id` |
 

@@ -200,7 +200,7 @@ module DependentsBenefits
     ##
     # Normalize a user-like object into something Flipper can accept as an actor (based on User#flipper_id)
     # This can either be current_user from the claims controller or what's
-    # generated in DependentSubmissionJob#generate_user_struct
+    #
     # @param user [Object] the user-like object to normalize
     # @return [Object] the normalized actor for Flipper checks
     def actor_for_flipper(user)
@@ -220,6 +220,7 @@ module DependentsBenefits
       # The code below is really just for spec purposes, since in prod the claim.parsed_form should always be present
       # and return a Hash object. If for some reason it doesn't, we don't want the entire monitor to fail,
       # so we rescue and return false.
+      # skipping coverage - should refactor/remove once v3 (picklist) is stable
       begin
         parsed_form = claim.parsed_form
       rescue

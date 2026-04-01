@@ -67,7 +67,7 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
       end
 
       it 'validates successfully' do
-        response = post(:create, params: test_form, as: :json)
+        post(:create, params: test_form, as: :json)
         expect(response).to have_http_status(:ok)
       end
 
@@ -148,6 +148,18 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
       end
     end
 
+    context 'with no submittable form' do
+      it 'returns backend service exception' do
+        allow(DependentsBenefits::PrimaryDependencyClaim).to receive(:new).and_return(claim)
+        expect(claim).to receive(:submittable_686?).and_return(false)
+        expect(claim).to receive(:submittable_674?).and_return(false)
+
+        post(:create, params: test_form, as: :json)
+
+        expect(response).to have_http_status(:bad_request)
+      end
+    end
+
     context 'with flipper disabled' do
       before do
         allow(Flipper).to receive(:enabled?).with(:dependents_module_enabled, instance_of(User)).and_return(false)
@@ -196,6 +208,7 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
 
         expect_any_instance_of(DependentsBenefits::Monitor).to receive(:track_create_success)
         expect_any_instance_of(DependentsBenefits::NotificationEmail).to receive(:send_submitted_notification)
+        expect_any_instance_of(DependentsBenefits::V0::ClaimsController).to receive(:clear_saved_form)
 
         post(:create, params: test_form, as: :json)
       end

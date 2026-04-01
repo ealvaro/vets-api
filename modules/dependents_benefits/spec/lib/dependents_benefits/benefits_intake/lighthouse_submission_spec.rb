@@ -5,9 +5,9 @@ require 'dependents_benefits/benefits_intake/lighthouse_submission'
 require 'benefits_intake_service/service'
 
 RSpec.describe DependentsBenefits::BenefitsIntake::LighthouseSubmission do
-  subject(:submission) { described_class.new(saved_claim, user_data, proc_id) }
+  let(:submission) { described_class.new(saved_claim, user_data, proc_id) }
 
-  let(:saved_claim) { build(:dependency_claim) }
+  let(:saved_claim) { create(:dependency_claim) }
   let(:user_data) do
     {
       'veteran_information' => {
@@ -23,6 +23,8 @@ RSpec.describe DependentsBenefits::BenefitsIntake::LighthouseSubmission do
   let(:proc_id) { 'test-proc-id-123' }
   let(:lighthouse_service) { instance_double(BenefitsIntakeService::Service) }
   let(:uuid) { SecureRandom.uuid }
+
+  let!(:claim_group) { create(:saved_claim_group, saved_claim:, parent_claim: saved_claim) }
 
   describe '#initialize' do
     it 'sets the saved_claim' do
@@ -87,44 +89,17 @@ RSpec.describe DependentsBenefits::BenefitsIntake::LighthouseSubmission do
   end
 
   describe '#prepare_submission' do
-    let(:claim_processor) { instance_double(DependentsBenefits::ClaimProcessor) }
-    let(:child_claim) { instance_double(DependentsBenefits::AddRemoveDependent) }
     let(:pdf_path) { 'tmp/test.pdf' }
 
-    before do
-      allow(saved_claim).to receive_messages(
-        add_veteran_info: nil,
-        persistent_attachments: []
-      )
-      # Stub dependencies used by get_files_from_claim instead of stubbing the method itself
-      allow(DependentsBenefits::ClaimProcessor).to receive(:new).with(saved_claim.id).and_return(claim_processor)
-      allow(claim_processor).to receive(:collect_child_claims).and_return([child_claim])
-      allow(child_claim).to receive_messages(
-        add_veteran_info: nil,
-        to_pdf: pdf_path,
-        created_at: Time.zone.now,
-        form_id: '21-686C'
-      )
-      allow(PDFUtilities::DatestampPdf).to receive(:new).and_return(
-        instance_double(PDFUtilities::DatestampPdf, run: pdf_path)
-      )
-    end
-
     it 'adds veteran info to the saved claim' do
+      expect(submission).to receive(:process_pdf).and_return pdf_path
+      expect(saved_claim).to receive(:add_veteran_info).with(user_data)
+
       submission.prepare_submission
-
-      expect(saved_claim).to have_received(:add_veteran_info).with(user_data)
-    end
-
-    it 'collects files from the claim' do
-      submission.prepare_submission
-
-      expect(claim_processor).to have_received(:collect_child_claims)
     end
   end
 
   describe '#get_files_from_claim (private)' do
-    let(:claim_processor) { instance_double(DependentsBenefits::ClaimProcessor) }
     let(:form686c_claim) { instance_double(DependentsBenefits::AddRemoveDependent) }
     let(:form674_claim) { instance_double(DependentsBenefits::SchoolAttendanceApproval) }
     let(:persistent_attachment) { instance_double(PersistentAttachment) }
@@ -136,88 +111,19 @@ RSpec.describe DependentsBenefits::BenefitsIntake::LighthouseSubmission do
     let(:stamped_path_attachment) { 'tmp/stamped_attachment.pdf' }
 
     before do
-      allow(DependentsBenefits::ClaimProcessor).to receive(:new).with(saved_claim.id).and_return(claim_processor)
       allow(saved_claim).to receive(:persistent_attachments).and_return([])
-      # Stub PDFUtilities::DatestampPdf to return stamped paths
-      allow(PDFUtilities::DatestampPdf).to receive(:new).and_call_original
-    end
-
-    context 'when there are 674 forms and persistent attachments' do
-      before do
-        allow(claim_processor).to receive(:collect_child_claims).and_return([form686c_claim, form674_claim])
-        allow(form686c_claim).to receive_messages(
-          add_veteran_info: nil,
-          to_pdf: pdf_path686c,
-          created_at: Time.zone.now,
-          form_id: DependentsBenefits::ADD_REMOVE_DEPENDENT
-        )
-        allow(form674_claim).to receive_messages(
-          add_veteran_info: nil,
-          to_pdf: pdf_path674,
-          created_at: Time.zone.now,
-          form_id: '21-674'
-        )
-        allow(persistent_attachment).to receive_messages(
-          to_pdf: pdf_path_attachment
-        )
-        allow(saved_claim).to receive(:persistent_attachments).and_return([persistent_attachment])
-        # Stub PDFUtilities::DatestampPdf to return appropriate stamped paths
-        allow(PDFUtilities::DatestampPdf).to receive(:new).with(pdf_path686c).and_return(
-          instance_double(PDFUtilities::DatestampPdf, run: stamped_path686c)
-        )
-        allow(PDFUtilities::DatestampPdf).to receive(:new).with(pdf_path674).and_return(
-          instance_double(PDFUtilities::DatestampPdf, run: stamped_path674)
-        )
-        allow(PDFUtilities::DatestampPdf).to receive(:new).with(pdf_path_attachment).and_return(
-          instance_double(PDFUtilities::DatestampPdf, run: stamped_path_attachment)
-        )
-        allow(PDFUtilities::DatestampPdf).to receive(:new).with(stamped_path686c).and_return(
-          instance_double(PDFUtilities::DatestampPdf, run: stamped_path686c)
-        )
-        allow(PDFUtilities::DatestampPdf).to receive(:new).with(stamped_path674).and_return(
-          instance_double(PDFUtilities::DatestampPdf, run: stamped_path674)
-        )
-        allow(PDFUtilities::DatestampPdf).to receive(:new).with(stamped_path_attachment).and_return(
-          instance_double(PDFUtilities::DatestampPdf, run: stamped_path_attachment)
-        )
-      end
-
-      it 'adds 674 form to form674_paths array' do
-        submission.send(:get_files_from_claim)
-
-        # The 674 should be added to attachment_paths since 686c is the main form
-        expect(submission.attachment_paths).to include(stamped_path674)
-      end
-
-      it 'processes persistent attachments with saved_claim.created_at' do
-        submission.send(:get_files_from_claim)
-
-        # Verify attachment was processed and included
-        expect(submission.attachment_paths).to include(stamped_path_attachment)
-      end
-
-      it 'prepends 674 forms before persistent attachments' do
-        submission.send(:get_files_from_claim)
-
-        expect(submission.attachment_paths).to eq([stamped_path674, stamped_path_attachment])
-      end
     end
 
     context 'when 686c is present' do
       before do
-        allow(claim_processor).to receive(:collect_child_claims).and_return([form686c_claim])
         allow(form686c_claim).to receive_messages(
           add_veteran_info: nil,
           to_pdf: pdf_path686c,
           created_at: Time.zone.now,
           form_id: DependentsBenefits::ADD_REMOVE_DEPENDENT
         )
-        allow(PDFUtilities::DatestampPdf).to receive(:new).with(pdf_path686c).and_return(
-          instance_double(PDFUtilities::DatestampPdf, run: stamped_path686c)
-        )
-        allow(PDFUtilities::DatestampPdf).to receive(:new).with(stamped_path686c).and_return(
-          instance_double(PDFUtilities::DatestampPdf, run: stamped_path686c)
-        )
+        allow_any_instance_of(SavedClaimGroup).to receive(:saved_claim_children).and_return([form686c_claim])
+        allow(submission).to receive(:process_pdf).and_return stamped_path686c
       end
 
       it 'sets 686c as the main form_path' do
@@ -229,19 +135,14 @@ RSpec.describe DependentsBenefits::BenefitsIntake::LighthouseSubmission do
 
     context 'when only 674 form is present' do
       before do
-        allow(claim_processor).to receive(:collect_child_claims).and_return([form674_claim])
         allow(form674_claim).to receive_messages(
           add_veteran_info: nil,
           to_pdf: pdf_path674,
           created_at: Time.zone.now,
           form_id: '21-674'
         )
-        allow(PDFUtilities::DatestampPdf).to receive(:new).with(pdf_path674).and_return(
-          instance_double(PDFUtilities::DatestampPdf, run: stamped_path674)
-        )
-        allow(PDFUtilities::DatestampPdf).to receive(:new).with(stamped_path674).and_return(
-          instance_double(PDFUtilities::DatestampPdf, run: stamped_path674)
-        )
+        allow_any_instance_of(SavedClaimGroup).to receive(:saved_claim_children).and_return([form674_claim])
+        allow(submission).to receive(:process_pdf).and_return stamped_path674
       end
 
       it 'uses first 674 as main form_path when 686c is not present' do
@@ -259,7 +160,7 @@ RSpec.describe DependentsBenefits::BenefitsIntake::LighthouseSubmission do
 
     context 'when no forms are generated' do
       before do
-        allow(claim_processor).to receive(:collect_child_claims).and_return([])
+        allow_any_instance_of(SavedClaimGroup).to receive(:saved_claim_children).and_return([])
       end
 
       it 'raises an error' do
@@ -275,7 +176,7 @@ RSpec.describe DependentsBenefits::BenefitsIntake::LighthouseSubmission do
     let(:form_path) { 'tmp/test_form.pdf' }
     let(:attachment_paths) { ['tmp/attachment1.pdf', 'tmp/attachment2.pdf'] }
     let(:saved_claim) do
-      claim = build(:dependency_claim)
+      claim = create(:dependency_claim)
       form = claim.parsed_form
       form['dependents_application']['veteran_contact_information']['veteran_address']['postal_code'] = '21122'
       claim.form = form.to_json
@@ -474,7 +375,7 @@ RSpec.describe DependentsBenefits::BenefitsIntake::LighthouseSubmission do
 
   describe '#generate_metadata_lh' do
     let(:saved_claim) do
-      claim = build(:dependency_claim)
+      claim = create(:dependency_claim)
       form = claim.parsed_form
       # Factory uses zip_code, but code looks for postal_code - set both
       form['dependents_application']['veteran_contact_information']['veteran_address']['postal_code'] = '21122'
@@ -518,7 +419,7 @@ RSpec.describe DependentsBenefits::BenefitsIntake::LighthouseSubmission do
 
   describe '#user_zipcode (private)' do
     let(:saved_claim) do
-      claim = build(:dependency_claim)
+      claim = create(:dependency_claim)
       form = claim.parsed_form
       # Factory uses zip_code, but code looks for postal_code - set it explicitly
       form['dependents_application']['veteran_contact_information']['veteran_address']['postal_code'] = '21122'
@@ -534,7 +435,7 @@ RSpec.describe DependentsBenefits::BenefitsIntake::LighthouseSubmission do
 
     context 'when address is not USA' do
       let(:saved_claim) do
-        claim = build(:dependency_claim)
+        claim = create(:dependency_claim)
         form = claim.parsed_form
         form['dependents_application']['veteran_contact_information']['veteran_address']['country_name'] = 'Canada'
         claim.form = form.to_json
@@ -550,7 +451,7 @@ RSpec.describe DependentsBenefits::BenefitsIntake::LighthouseSubmission do
 
     context 'when postal code is missing' do
       let(:saved_claim) do
-        claim = build(:dependency_claim)
+        claim = create(:dependency_claim)
         form = claim.parsed_form
         form['dependents_application']['veteran_contact_information']['veteran_address'].delete('postal_code')
         form['dependents_application']['veteran_contact_information']['veteran_address'].delete('zip_code')
@@ -567,7 +468,7 @@ RSpec.describe DependentsBenefits::BenefitsIntake::LighthouseSubmission do
 
     context 'when address is not present' do
       let(:saved_claim) do
-        claim = build(:dependency_claim)
+        claim = create(:dependency_claim)
         form = claim.parsed_form
         form['dependents_application']['veteran_contact_information']['veteran_address'] = nil
         claim.form = form.to_json

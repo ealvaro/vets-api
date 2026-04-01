@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'dependents_benefits/helper'
+
 module DependentsBenefits
   module ClaimBehavior
     ##
@@ -7,7 +9,7 @@ module DependentsBenefits
     #
     module VeteranInformation
       extend ActiveSupport::Concern
-      include DependentsBenefits::DependentsHelper
+      include DependentsBenefits::Helper
 
       # Adds veteran information to the parsed form
       #

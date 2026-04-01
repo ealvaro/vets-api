@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require 'dependents_benefits/sidekiq/bgs/bgs_form_job'
-require 'dependents_benefits/sidekiq/claims_evidence/claims_evidence_form_job'
-require 'dependents_benefits/monitor'
+require 'dependents_benefits/sidekiq/bgs_form_job'
+require 'dependents_benefits/sidekiq/claims_evidence_form_job'
+require 'dependents_benefits/helper'
 
 module DependentsBenefits
   ##
@@ -13,9 +13,7 @@ module DependentsBenefits
   # Tracks submission status and handles failures during the enqueueing process.
   #
   class ClaimProcessor
-    include DependentsBenefits::DependentsHelper
-
-    attr_reader :parent_claim_id
+    include DependentsBenefits::Helper
 
     # Synchronously enqueues all (async) submission jobs for 686c and 674 claims
     #
@@ -48,35 +46,21 @@ module DependentsBenefits
       monitor.track_info_event('Starting claim submission processing', action: 'start', component:, parent_claim_id:)
 
       track_submission_special_claim_types
+
       mark_in_progress_form_pending
+
       enqueue_background_jobs
-      complete_enqueue_process
+      # Records successful enqueueing by updating claim group status
+      mark_parent_group_enqueued
+      # notify user that processing has started
+      notification_email.send_submitted_notification
     rescue => e
-      handle_enqueue_failure(e)
+      monitor.track_error_event('Failed to enqueue submission jobs',
+                                action: 'enqueue_failure', component:, parent_claim_id:, error: e.message)
+      mark_parent_group_failed
 
       # Re-raise the original error after handling to return to user
       raise e
-    end
-
-    # Collects all child claims associated with the parent claim
-    #
-    # Retrieves child claim IDs from SavedClaimGroup and loads the corresponding
-    # SavedClaim records. Raises error if no child claims are found.
-    #
-    # @return [ActiveRecord::Relation<SavedClaim>] Collection of child claims
-    # @raise [StandardError] if no child claims found for parent claim
-    def collect_child_claims
-      return @child_claims if @child_claims
-
-      claim_ids = SavedClaimGroup.child_claims_for(parent_claim_id).pluck(:saved_claim_id)
-      @child_claims = ::SavedClaim.where(id: claim_ids)
-      raise StandardError, "No child claims found for parent claim #{parent_claim_id}" if child_claims.empty?
-
-      monitor.track_info_event('Collected child claims for processing',
-                               action: 'collect_children', component:,
-                               parent_claim_id:, child_claims_count: child_claims.count)
-
-      @child_claims
     end
 
     # Handle permanent submission failure
@@ -84,18 +68,31 @@ module DependentsBenefits
     # Marks parent group as failed and enqueues backup job if not already completed.
     # Sends error notification if transaction fails.
     #
-    # @param exception [Exception] The exception that caused the failure
+    # @param error [Exception] The error that caused the failure
     # @return [void]
-    def handle_permanent_failure(exception)
+    def handle_permanent_failure(error)
       monitor.track_error_event("Error submitting #{self.class}",
-                                action: 'error.permanent', component:, error: exception, parent_claim_id:)
+                                action: 'error.permanent', component:, error:, parent_claim_id:)
       ActiveRecord::Base.transaction do
-        parent_claim_group.with_lock do
-          process_failure unless parent_claim_group&.completed?
+        parent_group.with_lock do
+          unless parent_group&.completed?
+            mark_parent_group_failed
+
+            DependentsBenefits::Sidekiq::BenefitsIntakeJob.perform_async(parent_claim_id)
+
+            destroy_in_progress_form
+          end
         end
       end
     rescue => e
-      handle_failure_notification_recovery(e)
+      begin
+        notification_email.send_error_notification
+        mark_in_progress_form_pending
+        monitor.log_silent_failure_avoided({ parent_claim_id:, error: e })
+      rescue => e
+        # Last resort notification fails
+        monitor.log_silent_failure({ parent_claim_id:, error: e })
+      end
     end
 
     # Handle successful submission of all child claims
@@ -109,8 +106,14 @@ module DependentsBenefits
                                action: 'success_check', component:, parent_claim_id:)
 
       ActiveRecord::Base.transaction do
-        parent_claim_group.with_lock do
-          process_successful_claims if all_claims_succeeded?
+        parent_group.with_lock do
+          if all_claims_succeeded?
+            monitor.track_info_event('All claim submissions succeeded', action: 'success', component:, parent_claim_id:)
+            mark_parent_group_succeeded
+            notification_email.send_received_notification
+            track_successful_special_claim_types
+            destroy_in_progress_form
+          end
         end
       end
     rescue => e
@@ -120,114 +123,42 @@ module DependentsBenefits
 
     private
 
-    # Handles failures during submission job enqueueing
-    #
-    # Logs the error and marks the parent claim group as FAILURE. If updating
-    # the claim group status also fails, logs that error as well.
-    #
-    # @param error [Exception] The error that occurred during enqueueing
+    attr_reader :parent_claim_id
+
+    # Enqueues background jobs for BGS and Claims Evidence
+    # @return [Integer] Number of jobs enqueued
+    def enqueue_background_jobs
+      jobs = {
+        DependentsBenefits::Sidekiq::BGSFormJob => [parent_claim_id],
+        DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob => [parent_claim_id]
+      }
+
+      jobs.each { |job, args| job.perform_async(*args) }
+
+      monitor.track_info_event('Successfully enqueued all submission jobs',
+                               action: 'enqueue_success',
+                               component:,
+                               parent_claim_id:,
+                               jobs_count: jobs.length,
+                               jobs_list: jobs.keys.map(&:name))
+    end
+
+    # Tracks special claim types (pension-related and no-SSN claims)
     # @return [void]
-    def handle_enqueue_failure(error)
-      monitor.track_error_event('Failed to enqueue submission jobs',
-                                action: 'enqueue_failure', component:, parent_claim_id:, error: error.message)
-
-      parent_claim_group.update!(status: SavedClaimGroup::STATUSES[:FAILURE])
-    rescue => e
-      monitor.track_error_event('Failed to update ClaimGroup status',
-                                action: 'status_update', component:, parent_claim_id:, error: e.message)
+    def track_successful_special_claim_types
+      if child_claims.any?(&:pension_related_submission?)
+        track_pension_related_submission('Successful pension-related claim submission')
+      end
+      track_no_ssn_claim_submission('Successful no-SSN claim submission') if child_claims.any?(&:no_ssn_claim?)
     end
 
-    # Records successful enqueueing by updating claim group status
-    #
-    # Marks the claim group as ACCEPTED after jobs are successfully enqueued.
-    # Currently unused but available for future implementation.
-    #
-    # @return [Boolean, nil] Result of the update, or nil if claim group not found
-    def record_enqueue_completion
-      parent_claim_group&.update!(status: SavedClaimGroup::STATUSES[:ACCEPTED])
-    end
-
-    # Returns a memoized instance of the DependentsBenefits monitor
-    #
-    # @return [DependentsBenefits::Monitor] Monitor instance for tracking events and errors
-    def monitor
-      @monitor ||= DependentsBenefits::Monitor.new
-    end
-
-    # Enqueues a backup submission job for the parent claim
-    #
-    # @return [String] Sidekiq job ID
-    def send_backup_job
-      DependentsBenefits::Sidekiq::BenefitsIntakeJob.perform_async(parent_claim_id)
-    end
-
-    # Returns a notification email handler for the claim
-    #
-    # @return [DependentsBenefits::NotificationEmail] Notification email instance
-    def notification_email
-      @notification_email ||= DependentsBenefits::NotificationEmail.new(parent_claim_id)
-    end
-
-    # Returns the parent claim group
-    #
-    # @return [SavedClaimGroup, nil] The parent claim group record
-    def parent_claim_group
-      @parent_claim_group ||= SavedClaimGroup.find_by(parent_claim_id:, saved_claim_id: parent_claim_id)
-    end
-
-    # Returns the parent claim
-    #
-    # @return [SavedClaim, nil] The parent SavedClaim record
-    def parent_claim
-      @parent_claim ||= ::SavedClaim.find_by(id: parent_claim_id)
-    end
-
-    # Marks the parent claim group as succeeded
-    #
-    # @return [Boolean] result of the update operation
-    def mark_parent_claim_group_succeeded
-      parent_claim_group&.update!(status: SavedClaimGroup::STATUSES[:SUCCESS])
-    end
-
-    # Marks the parent claim group as failed
-    #
-    # @return [Boolean] result of the update operation
-    def mark_parent_claim_group_failed
-      parent_claim_group&.update!(status: SavedClaimGroup::STATUSES[:FAILURE])
-    end
-
-    # Collects a memoized list of child claims
-    # @return [Array<DependentClaim>]
-    def child_claims
-      @child_claims ||= collect_child_claims
-    end
-
-    # Resolves InProgressForm lookup attributes for the parent claim
-    # @return [Hash, nil] Attributes with :form_id and :user_uuid, or nil when unavailable
-    def in_progress_form_lookup_attributes
-      user_uuid = parent_claim.user_data&.dig('veteran_information', 'uuid')
-      form_id = parent_claim&.form_id
-      return if user_uuid.blank? || form_id.blank?
-
-      { form_id:, user_uuid: }
-    end
-
-    # Marks in-progress form as pending after an error
+    # Tracks special claim types during submission
     # @return [void]
-    def mark_in_progress_form_pending
-      attributes = in_progress_form_lookup_attributes
-      return unless attributes
-
-      InProgressForm.find_by(**attributes)&.submission_pending!
-    end
-
-    # Removes in-progress form after completion/failure handling
-    # @return [void]
-    def destroy_in_progress_form
-      attributes = in_progress_form_lookup_attributes
-      return unless attributes
-
-      InProgressForm.destroy_by(**attributes)
+    def track_submission_special_claim_types
+      if child_claims.any?(&:pension_related_submission?)
+        track_pension_related_submission('Submitted pension-related claim')
+      end
+      track_no_ssn_claim_submission('Submitted no-SSN claim') if child_claims.any?(&:no_ssn_claim?)
     end
 
     # Tracks pension-related claim submission
@@ -254,88 +185,6 @@ module DependentsBenefits
                                parent_claim_id:,
                                form_type:,
                                module_stats_key: DependentsBenefits::Monitor::NO_SSN_SUBMISSION_STATS_KEY)
-    end
-
-    # Checks if all child claims have succeeded and parent group is not yet completed
-    # @return [Boolean]
-    def all_claims_succeeded?
-      child_claims.all?(&:submissions_succeeded?) && !parent_claim_group.completed?
-    end
-
-    # Processes claims after all submissions have succeeded
-    # @return [void]
-    def process_successful_claims
-      monitor.track_info_event('All claim submissions succeeded', action: 'success', component:, parent_claim_id:)
-      mark_parent_claim_group_succeeded
-      notification_email.send_received_notification
-      track_successful_special_claim_types
-      destroy_in_progress_form
-    end
-
-    # Tracks special claim types (pension-related and no-SSN claims)
-    # @return [void]
-    def track_successful_special_claim_types
-      if child_claims.any?(&:pension_related_submission?)
-        track_pension_related_submission('Successful pension-related claim submission')
-      end
-      track_no_ssn_claim_submission('Successful no-SSN claim submission') if child_claims.any?(&:no_ssn_claim?)
-    end
-
-    # Tracks special claim types during submission
-    # @return [void]
-    def track_submission_special_claim_types
-      if child_claims.any?(&:pension_related_submission?)
-        track_pension_related_submission('Submitted pension-related claim')
-      end
-      track_no_ssn_claim_submission('Submitted no-SSN claim') if child_claims.any?(&:no_ssn_claim?)
-    end
-
-    # Enqueues background jobs for BGS and Claims Evidence
-    # @return [Integer] Number of jobs enqueued
-    def enqueue_background_jobs
-      jobs = {
-        DependentsBenefits::Sidekiq::BGS::BGSFormJob => [parent_claim_id],
-        DependentsBenefits::Sidekiq::ClaimsEvidence::ClaimsEvidenceFormJob => [parent_claim_id]
-      }
-
-      jobs.each { |job, args| job.perform_async(*args) }
-
-      monitor.track_info_event('Successfully enqueued all submission jobs',
-                               action: 'enqueue_success',
-                               component:,
-                               parent_claim_id:,
-                               jobs_count: jobs.length,
-                               jobs_list: jobs.keys.map(&:name))
-    end
-
-    # Completes the enqueue process by recording status and sending notification
-    # @return [void]
-    def complete_enqueue_process
-      # Records successful enqueueing by updating claim group status
-      record_enqueue_completion
-
-      # notify user that processing has started
-      notification_email.send_submitted_notification
-    end
-
-    # Processes failure by marking claim group failed, sending backup job, and destroying form
-    # @return [void]
-    def process_failure
-      mark_parent_claim_group_failed
-      send_backup_job
-      destroy_in_progress_form
-    end
-
-    # Handles notification recovery when failure processing itself fails
-    # @param error [Exception] The error that occurred during failure processing
-    # @return [void]
-    def handle_failure_notification_recovery(error)
-      notification_email.send_error_notification
-      mark_in_progress_form_pending
-      monitor.log_silent_failure_avoided({ parent_claim_id:, error: })
-    rescue => e
-      # Last resort if notification fails
-      monitor.log_silent_failure({ parent_claim_id:, error: e })
     end
   end
 end

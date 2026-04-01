@@ -435,4 +435,13 @@ RSpec.describe DependentsBenefits::ClaimBehavior do
       claim.user_data
     end
   end
+
+  describe '#parent_claim_id' do
+    it 'returns the parent claim id' do
+      expect(claim).to receive(:child_of_groups).and_return([claim_group])
+      pid = claim.parent_claim_id
+
+      expect(pid).to eq(claim.id)
+    end
+  end
 end

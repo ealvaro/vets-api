@@ -135,7 +135,7 @@ RSpec.describe DependentsBenefits::Sidekiq::BenefitsIntakeJob, type: :job do
         expect(job).to receive(:mark_parent_group_processing)
         expect(ActiveRecord::Base).to receive(:transaction).and_yield
         expect(failed_parent_group).to receive(:with_lock).and_yield
-        job.handle_job_success
+        job.send(:handle_job_success)
       end
     end
 
@@ -145,7 +145,7 @@ RSpec.describe DependentsBenefits::Sidekiq::BenefitsIntakeJob, type: :job do
       before do
         allow(job).to receive(:monitor).and_return(monitor_instance)
         allow(job).to receive(:mark_parent_group_processing).and_raise(test_error)
-        job.instance_variable_set(:@claim_id, parent_claim.id)
+        job.instance_variable_set(:@parent_claim_id, parent_claim.id)
       end
 
       it 'tracks the error without re-raising' do
@@ -155,7 +155,7 @@ RSpec.describe DependentsBenefits::Sidekiq::BenefitsIntakeJob, type: :job do
                 component: anything,
                 error: test_error,
                 parent_claim_id: parent_claim.id)
-        expect { job.handle_job_success }.not_to raise_error
+        expect { job.send(:handle_job_success) }.not_to raise_error
       end
     end
   end
@@ -172,7 +172,7 @@ RSpec.describe DependentsBenefits::Sidekiq::BenefitsIntakeJob, type: :job do
       expect(notification_email).to receive(:deliver).with(:error_686c_674) # rubocop:disable Naming/VariableNumber
       expect(monitor_instance).to receive(:log_silent_failure_avoided)
         .with({ claim_id: parent_claim.id, error: test_error })
-      job.handle_permanent_failure(parent_claim.id, test_error)
+      job.send(:handle_permanent_failure, parent_claim.id, test_error)
     end
 
     context 'when notification sending fails' do
@@ -182,7 +182,7 @@ RSpec.describe DependentsBenefits::Sidekiq::BenefitsIntakeJob, type: :job do
         allow(notification_email).to receive(:deliver).and_raise(notification_error)
         expect(monitor_instance).to receive(:log_silent_failure)
           .with({ claim_id: parent_claim.id, error: notification_error })
-        job.handle_permanent_failure(parent_claim.id, notification_error)
+        job.send(:handle_permanent_failure, parent_claim.id, notification_error)
       end
     end
   end
@@ -204,7 +204,7 @@ RSpec.describe DependentsBenefits::Sidekiq::BenefitsIntakeJob, type: :job do
       allow(lh_submission).to receive(:prepare_submission)
       allow(lh_submission).to receive(:upload_to_lh)
       allow(lh_submission).to receive(:cleanup_file_paths)
-      job.instance_variable_set(:@claim_id, parent_claim.id)
+      job.instance_variable_set(:@parent_claim_id, parent_claim.id)
     end
 
     it 'runs successfully' do
@@ -222,22 +222,12 @@ RSpec.describe DependentsBenefits::Sidekiq::BenefitsIntakeJob, type: :job do
     end
   end
 
-  describe '.trigger_failure_events' do
-    let(:msg) { { 'args' => [parent_claim.id, StandardError.new('Test error')] } }
-
-    it 'handles failure events and sends failure email to veteran' do
-      expect { described_class.new.handle_permanent_failure(parent_claim.id, StandardError.new('Test error')) }
-        .not_to raise_error
-    end
-  end
-
   describe 'sidekiq_retries_exhausted callback' do
     it 'calls handle_permanent_failure' do
       msg = { 'args' => [parent_claim.id, 'proc_id'], 'class' => job.class.name }
       exception = StandardError.new('Service failed')
 
-      expect_any_instance_of(described_class).to receive(:handle_permanent_failure)
-        .with(parent_claim.id, exception).and_call_original
+      expect(claim_processor).to receive(:handle_permanent_failure).with(exception)
 
       described_class.sidekiq_retries_exhausted_block.call(msg, exception)
     end

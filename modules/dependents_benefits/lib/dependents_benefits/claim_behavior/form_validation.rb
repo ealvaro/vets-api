@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'dependents_benefits/helper'
+
 module DependentsBenefits
   module ClaimBehavior
     ##
@@ -7,7 +9,7 @@ module DependentsBenefits
     #
     module FormValidation
       extend ActiveSupport::Concern
-      include DependentsBenefits::DependentsHelper
+      include DependentsBenefits::Helper
 
       # @see ::SavedClaim#form_schema
       def form_schema(form_id)

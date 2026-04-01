@@ -2,10 +2,11 @@
 
 require 'rails_helper'
 require 'claims_evidence_api/uploader'
+require 'dependents_benefits/sidekiq/claims_evidence_form_job'
 require 'dependents_benefits/user_data'
 require 'pdf_utilities/pdf_stamper'
 
-RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidence::ClaimsEvidenceFormJob, type: :job do
+RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob, type: :job do
   before do
     allow(DependentsBenefits::PdfFill::Filler).to receive(:fill_form).and_return('tmp/pdfs/mock_form_final.pdf')
   end
@@ -29,7 +30,7 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidence::ClaimsEvidenceFormJo
         DependentsBenefits::ServiceResponse.new(status: true)
       )
       allow(job).to receive(:claims_evidence_uploader).with(parent_claim).and_return(claims_evidence_uploader)
-      allow(job).to receive_messages(child_claims:, saved_claim: parent_claim)
+      allow(job).to receive_messages(child_claims:, parent_claim:)
 
       allow(PDFUtilities::PDFStamper).to receive(:new).and_return(stamper)
     end
@@ -40,7 +41,7 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidence::ClaimsEvidenceFormJo
       expect(stamper).to receive(:run).twice
       expect(claims_evidence_uploader).to receive(:upload_evidence).twice
 
-      response = job.submit_claims_to_service
+      response = job.send(:submit_claims_to_service)
       expect(response).to be_a(DependentsBenefits::ServiceResponse)
       expect(response.success?).to be true
     end
@@ -50,7 +51,7 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidence::ClaimsEvidenceFormJo
         DependentsBenefits::ServiceResponse.new(status: false, error: 'Submission failed')
       )
       expect do
-        job.submit_claims_to_service
+        job.send(:submit_claims_to_service)
       end.to raise_error(DependentsBenefits::Sidekiq::DependentSubmissionError, 'Submission failed')
     end
   end
@@ -79,14 +80,14 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidence::ClaimsEvidenceFormJo
         doctype: saved_claim.document_type
       )
 
-      job.submit_to_claims_evidence_api(saved_claim)
+      job.send(:submit_to_claims_evidence_api, saved_claim)
     end
 
     it 'raises exception when error occurs' do
       error = StandardError.new('Test error')
       allow(lighthouse_submission).to receive(:process_pdf).and_raise(error)
 
-      expect { job.submit_to_claims_evidence_api(saved_claim) }.to raise_error(StandardError, 'Test error')
+      expect { job.send(:submit_to_claims_evidence_api, saved_claim) }.to raise_error(StandardError, 'Test error')
     end
   end
 
@@ -97,7 +98,7 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidence::ClaimsEvidenceFormJo
 
     it 'calls submit_to_claims_evidence_api with the claim' do
       expect(job).to receive(:submit_to_claims_evidence_api).with(saved_claim)
-      job.submit_686c_form(saved_claim)
+      job.send(:submit_686c_form, saved_claim)
     end
   end
 
@@ -108,7 +109,7 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidence::ClaimsEvidenceFormJo
 
     it 'calls submit_to_claims_evidence_api with the claim' do
       expect(job).to receive(:submit_to_claims_evidence_api).with(saved_claim)
-      job.submit_674_form(saved_claim)
+      job.send(:submit_674_form, saved_claim)
     end
   end
 
@@ -118,7 +119,7 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidence::ClaimsEvidenceFormJo
         form_id: '21-674',
         saved_claim_id: saved_claim.id
       )
-      job.find_or_create_form_submission(saved_claim)
+      job.send(:find_or_create_form_submission, saved_claim)
     end
   end
 
@@ -201,14 +202,14 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidence::ClaimsEvidenceFormJo
   describe '#permanent_failure?' do
     context 'with nil error' do
       it 'returns false' do
-        expect(job.permanent_failure?(nil)).to be false
+        expect(job.send(:permanent_failure?, nil)).to be false
       end
     end
 
     context 'with non-VEFS error' do
       it 'returns false' do
         error = StandardError.new('Regular error')
-        expect(job.permanent_failure?(error)).to be false
+        expect(job.send(:permanent_failure?, error)).to be false
       end
     end
 
@@ -216,12 +217,12 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidence::ClaimsEvidenceFormJo
       let(:vefs_error) { ClaimsEvidenceApi::Exceptions::VefsError.new(ClaimsEvidenceApi::Exceptions::VefsError::INVALID_JWT) }
 
       it 'returns true for permanent error codes' do
-        expect(job.permanent_failure?(vefs_error)).to be true
+        expect(job.send(:permanent_failure?, vefs_error)).to be true
       end
 
       it 'returns false for non-permanent error codes' do
         transient_error = ClaimsEvidenceApi::Exceptions::VefsError.new('TEMPORARY_FAILURE')
-        expect(job.permanent_failure?(transient_error)).to be false
+        expect(job.send(:permanent_failure?, transient_error)).to be false
       end
     end
 
@@ -235,28 +236,23 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidence::ClaimsEvidenceFormJo
       end
 
       it 'returns true for permanent error codes in cause' do
-        expect(job.permanent_failure?(wrapper_error)).to be true
+        expect(job.send(:permanent_failure?, wrapper_error)).to be true
       end
     end
   end
 
-  describe 'private methods' do
-    before do
-      allow(job).to receive(:user_data).and_return(user_data)
+  describe '#claims_evidence_uploader' do
+    it 'creates uploader with folder identifier' do
+      expect(ClaimsEvidenceApi::Uploader).to receive(:new).with(saved_claim.folder_identifier)
+      job.send(:claims_evidence_uploader, saved_claim)
     end
+  end
 
-    describe '#claims_evidence_uploader' do
-      it 'creates uploader with folder identifier' do
-        expect(ClaimsEvidenceApi::Uploader).to receive(:new).with(saved_claim.folder_identifier)
-        job.send(:claims_evidence_uploader, saved_claim)
-      end
-    end
-
-    describe '#lighthouse_submission' do
-      it 'creates lighthouse submission with claim and user data' do
-        expect(DependentsBenefits::BenefitsIntake::LighthouseSubmission).to receive(:new).with(saved_claim, user_data)
-        job.send(:lighthouse_submission, saved_claim)
-      end
+  describe '#lighthouse_submission' do
+    it 'creates lighthouse submission with claim and user data' do
+      expect(saved_claim).to receive(:user_data).and_return user_data
+      expect(DependentsBenefits::BenefitsIntake::LighthouseSubmission).to receive(:new).with(saved_claim, user_data)
+      job.send(:lighthouse_submission, saved_claim)
     end
   end
 end

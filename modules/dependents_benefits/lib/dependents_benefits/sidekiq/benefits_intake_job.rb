@@ -16,13 +16,15 @@ module DependentsBenefits::Sidekiq
   # and marks parent as PROCESSING rather than SUCCESS to indicate VBMS pending.
   #
   class BenefitsIntakeJob < DependentSubmissionJob
+    private
+
     # Submit a claim to Lighthouse Benefits Intake as backup
     # @return [ServiceResponse]
     def submit_claims_to_service
       find_or_create_form_submission
       create_form_submission_attempt
 
-      saved_claim.add_veteran_info(user_data)
+      parent_claim.user_data
       raise Invalid686cClaim unless saved_claim.valid?(:run_686_form_jobs)
 
       submit_to_service
@@ -32,7 +34,8 @@ module DependentsBenefits::Sidekiq
     # Service-specific submission logic for Lighthouse upload
     # @return [ServiceResponse] Must respond to success? and error methods
     def submit_to_service
-      lighthouse_submission = DependentsBenefits::BenefitsIntake::LighthouseSubmission.new(saved_claim, user_data)
+      lighthouse_submission = DependentsBenefits::BenefitsIntake::LighthouseSubmission.new(parent_claim,
+                                                                                           parent_claim.user_data)
       @uuid = lighthouse_submission.initialize_service
       update_submission_attempt_uuid
       lighthouse_submission.prepare_submission
@@ -44,17 +47,10 @@ module DependentsBenefits::Sidekiq
       lighthouse_submission&.cleanup_file_paths
     end
 
-    # Handles job failure by determining if error is permanent or transient
-    # @param error [Exception] The error that caused the job to fail
-    # @return [void]
-    # @raise [::Sidekiq::JobRetry::Skip] for permanent failures to skip retries
-    # @raise [DependentSubmissionError] for transient failures to trigger retries
+    # @see DependentsBenefits::Sidekiq::Include::HandleResults#handle_job_failure
     def handle_job_failure(error)
-      monitor.track_error_event("Error submitting #{self.class}", action: 'error', component:, error:, claim_id:)
       mark_submission_attempt_failed(error)
-
-      # raise other errors to trigger Sidekiq retry mechanism
-      raise DependentSubmissionError, error
+      super(error)
     end
 
     # Handles permanent failure for backup job
@@ -67,7 +63,6 @@ module DependentsBenefits::Sidekiq
     # @param error [Exception] The error that caused the permanent failure
     # @return [void]
     def handle_permanent_failure(claim_id, error)
-      @claim_id = claim_id
       notification_email.send_error_notification
       monitor.log_silent_failure_avoided({ claim_id:, error: })
     rescue => e
@@ -94,21 +89,23 @@ module DependentsBenefits::Sidekiq
       end
     rescue => e
       monitor.track_error_event('Error handling job success',
-                                action: 'success_failure', component:, error: e, parent_claim_id: claim_id)
+                                action: 'success_failure', component:, error: e, parent_claim_id:)
     end
-
-    private
 
     # Returns the memoized SavedClaim for the current claim ID
     #
     # @return [SavedClaim] The saved claim record
     # @raise [ActiveRecord::RecordNotFound] if claim not found
-    def saved_claim = @saved_claim ||= ::SavedClaim.find(claim_id)
+    def saved_claim
+      @saved_claim ||= ::SavedClaim.find(parent_claim_id)
+    end
 
     # Returns the Lighthouse Benefits Intake UUID for this submission
     #
     # @return [String, nil] The benefits intake UUID, or nil if not yet initialized
-    def uuid = @uuid || nil
+    def uuid
+      @uuid || nil
+    end
 
     # Finds or creates a Lighthouse form submission record
     #
@@ -117,8 +114,8 @@ module DependentsBenefits::Sidekiq
     #
     # @return [Lighthouse::Submission] The submission record
     def find_or_create_form_submission
-      @submission = Lighthouse::Submission.find_or_create_by!(saved_claim_id: saved_claim.id) do |submission|
-        submission.assign_attributes({ form_id: saved_claim.form_id, reference_data: saved_claim.to_json })
+      @submission = Lighthouse::Submission.find_or_create_by!(saved_claim_id: parent_claim_id) do |submission|
+        submission.assign_attributes({ form_id: parent_claim.form_id, reference_data: parent_claim.to_json })
       end
     end
 
@@ -137,7 +134,7 @@ module DependentsBenefits::Sidekiq
     #
     # @return [Boolean, nil] Result of the update, or nil if attempt doesn't exist
     def update_submission_attempt_uuid
-      submission_attempt&.update(benefits_intake_uuid: @uuid)
+      submission_attempt&.update(benefits_intake_uuid: uuid)
     end
 
     # Marks the submission attempt as failed
@@ -146,7 +143,9 @@ module DependentsBenefits::Sidekiq
     #
     # @param _exception [Exception] The exception that caused the failure (unused)
     # @return [Boolean, nil] Result of status update, or nil if attempt doesn't exist
-    def mark_submission_attempt_failed(_exception) = submission_attempt&.fail!
+    def mark_submission_attempt_failed(_exception)
+      submission_attempt&.fail!
+    end
 
     # No-op for Lighthouse submissions
     #
@@ -154,7 +153,9 @@ module DependentsBenefits::Sidekiq
     #
     # @param _exception [Exception] The exception that caused the failure (unused)
     # @return [nil]
-    def mark_submission_failed(_exception) = nil
+    def mark_submission_failed(_exception)
+      nil
+    end
 
     # Always returns false for backup jobs
     #
@@ -162,6 +163,8 @@ module DependentsBenefits::Sidekiq
     # regardless of previous failures, since they're the fallback mechanism.
     #
     # @return [Boolean] Always false
-    def parent_group_failed? = false
+    def parent_group_failed?
+      false
+    end
   end
 end
