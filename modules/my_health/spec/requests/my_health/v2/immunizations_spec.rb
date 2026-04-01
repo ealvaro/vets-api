@@ -200,6 +200,7 @@ RSpec.describe 'MyHealth::V2::ImmunizationsController', :skip_json_api_validatio
 
         it 'returns a successful response' do
           expect(response).to be_successful
+          expect(response).to have_http_status(:ok)
           json_response = JSON.parse(response.body)
           expect(json_response['data'].count).to eq(4)
           expect(json_response['data']).to be_an(Array)
@@ -275,6 +276,49 @@ RSpec.describe 'MyHealth::V2::ImmunizationsController', :skip_json_api_validatio
 
           # Verify the location name for the first immunization
           expect(json_response['data'][0]['attributes']['location']).to eq('TEST')
+        end
+      end
+
+      context 'partial failures' do
+        it 'returns a successful partial response when one source fails' do
+          allow(UniqueUserEvents).to receive(:log_events)
+          VCR.use_cassette('unified_health_data/get_immunizations_206', match_requests_on: %i[method path]) do
+            get path, headers: { 'X-Key-Inflection' => 'camel' }
+          end
+          expect(response).to be_successful
+          expect(response).to have_http_status(:partial_content)
+          json_response = JSON.parse(response.body)
+          expect(json_response['meta']).to include('warnings')
+          expect(json_response['meta']['warnings'][0]).to eq(
+            {
+              'severity' => 'warning',
+              'code' => 'informational',
+              'diagnostics' => 'Partial failure',
+              'source' => 'oracle-health'
+            }
+          )
+          expect(json_response['data']).to be_an(Array)
+          expect(json_response['data'].first['type']).to eq('immunization')
+          expect(json_response['data'].first).to include(
+            'id',
+            'type',
+            'attributes'
+          )
+          expect(json_response['data'].first['attributes']).to include(
+            'cvxCode',
+            'date',
+            'doseNumber',
+            'doseSeries',
+            'groupName',
+            'location',
+            'manufacturer',
+            'note',
+            'reaction',
+            'shortDescription',
+            'administrationSite',
+            'lotNumber',
+            'status'
+          )
         end
       end
 

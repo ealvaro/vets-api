@@ -76,12 +76,13 @@ module UnifiedHealthData
 
         response = uhd_client.get_conditions_by_date(patient_id: @user.icn, start_date:, end_date:)
         body = response.body
+        warnings = extract_warnings(body)
 
         log_conditions_raw_source_counts(body)
         combined_records = fetch_combined_records(body)
         parsed_conditions = conditions_adapter.parse(combined_records)
         log_conditions_metrics(combined_records, parsed_conditions)
-        parsed_conditions
+        { records: parsed_conditions, warnings: }
       rescue Common::Exceptions::BackendServiceException,
              Common::Client::Errors::ClientError,
              Faraday::Error => e
@@ -196,13 +197,14 @@ module UnifiedHealthData
 
         response = uhd_client.get_vitals_by_date(patient_id: @user.icn, start_date:, end_date:)
         body = response.body
+        warnings = extract_warnings(body)
 
         log_vitals_raw_source_counts(body)
         combined_records = fetch_combined_records(body)
 
         parsed_vitals = vitals_adapter.parse(combined_records)
         log_vitals_metrics(combined_records, parsed_vitals)
-        parsed_vitals
+        { records: parsed_vitals, warnings: }
       rescue Common::Exceptions::BackendServiceException,
              Common::Client::Errors::ClientError,
              Faraday::Error => e
@@ -220,6 +222,7 @@ module UnifiedHealthData
 
         response = uhd_client.get_allergies_by_date(patient_id: @user.icn, start_date:, end_date:)
         body = response.body
+        warnings = extract_warnings(body)
 
         log_allergies_raw_source_counts(body)
         remap_vista_identifier(body)
@@ -227,7 +230,7 @@ module UnifiedHealthData
 
         parsed_allergies = allergy_adapter.parse(combined_records)
         log_allergies_metrics(combined_records, parsed_allergies)
-        parsed_allergies
+        { records: parsed_allergies, warnings: }
       rescue Common::Exceptions::BackendServiceException,
              Common::Client::Errors::ClientError,
              Faraday::Error => e
@@ -265,13 +268,14 @@ module UnifiedHealthData
 
         response = uhd_client.get_immunizations_by_date(patient_id: @user.icn, start_date:, end_date:)
         body = response.body
+        warnings = extract_warnings(body)
 
         log_vaccines_raw_source_counts(body)
         combined_records = fetch_combined_records(body)
 
         parsed_immunizations = immunization_adapter.parse(combined_records)
         log_vaccines_metrics(combined_records, parsed_immunizations)
-        parsed_immunizations
+        { records: parsed_immunizations, warnings: }
       rescue Common::Exceptions::BackendServiceException,
              Common::Client::Errors::ClientError,
              Faraday::Error => e

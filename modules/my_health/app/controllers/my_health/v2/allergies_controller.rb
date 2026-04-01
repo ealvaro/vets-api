@@ -12,8 +12,10 @@ module MyHealth
       service_tag 'mhv-medical-records'
 
       def index
-        allergies = sort_records(service.get_allergies, params[:sort])
-        serialized_allergies = UnifiedHealthData::AllergySerializer.new(allergies)
+        @result = service.get_allergies
+        allergies = sort_records(@result[:records], params[:sort])
+        opts = warnings_present? ? { meta: { warnings: @result[:warnings] } } : {}
+        serialized_allergies = UnifiedHealthData::AllergySerializer.new(allergies, opts)
 
         # Log unique user events for allergies accessed
         UniqueUserEvents.log_events(
@@ -25,11 +27,11 @@ module MyHealth
         )
 
         render json: serialized_allergies,
-               status: :ok
+               status: warnings_present? ? :partial_content : :ok
       rescue Common::Client::Errors::ClientError,
              Common::Exceptions::BackendServiceException,
              StandardError => e
-        handle_error(e, resource_name: 'allergies', api_type: 'FHIR')
+        handle_error(e, resource_name: 'allergies', api_type: 'SCDF')
       end
 
       def show
@@ -50,6 +52,10 @@ module MyHealth
       end
 
       private
+
+      def warnings_present?
+        @warnings_present ||= @result[:warnings].present?
+      end
 
       def service
         @service ||= UnifiedHealthData::Service.new(@current_user)

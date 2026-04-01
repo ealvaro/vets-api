@@ -15,9 +15,9 @@ module MyHealth
       def index
         start_date = params[:start_date]
         end_date = params[:end_date]
-        result = service.get_care_summaries_and_notes(start_date:, end_date:)
-        care_notes = sort_records(result[:records], params[:sort])
-        serialized_notes = UnifiedHealthData::ClinicalNotesSerializer.new(care_notes).serializable_hash[:data]
+        @result = service.get_care_summaries_and_notes(start_date:, end_date:)
+        care_notes = sort_records(@result[:records], params[:sort])
+        opts = warnings_present? ? { meta: { warnings: @result[:warnings] } } : {}
 
         UniqueUserEvents.log_events(
           user: @current_user,
@@ -27,14 +27,14 @@ module MyHealth
           ]
         )
 
-        render json: build_response(serialized_notes, result[:warnings]),
-               status: :ok
+        render json: UnifiedHealthData::ClinicalNotesSerializer.new(care_notes, opts),
+               status: warnings_present? ? :partial_content : :ok
       rescue ArgumentError => e
         render_error('Invalid Parameter', e.message, '400', 400, :bad_request)
       rescue Common::Client::Errors::ClientError,
              Common::Exceptions::BackendServiceException,
              StandardError => e
-        handle_error(e, resource_name: 'clinical notes', api_type: 'FHIR')
+        handle_error(e, resource_name: 'clinical notes', api_type: 'SCDF')
       end
 
       def show
@@ -56,14 +56,12 @@ module MyHealth
 
       private
 
-      def build_response(data, warnings)
-        response = { data: }
-        response[:meta] = { warnings: } if warnings.present?
-        response
-      end
-
       def service
         @service ||= UnifiedHealthData::Service.new(@current_user)
+      end
+
+      def warnings_present?
+        @warnings_present ||= @result[:warnings].present?
       end
 
       def valid_sources

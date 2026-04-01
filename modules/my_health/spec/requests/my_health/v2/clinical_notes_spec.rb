@@ -43,7 +43,9 @@ RSpec.describe 'MyHealth::V2::ClinicalNotesController', :skip_json_api_validatio
               params: default_params
         end
         expect(response).to be_successful
+        expect(response).to have_http_status(:ok)
         json_response = JSON.parse(response.body)
+
         expect(json_response['data'].count).to eq(2)
         expect(json_response['data']).to be_an(Array)
         expect(json_response['data'].first['type']).to eq('clinical_note')
@@ -118,6 +120,53 @@ RSpec.describe 'MyHealth::V2::ClinicalNotesController', :skip_json_api_validatio
         json_response = JSON.parse(response.body)
         expect(json_response['data'].count).to eq(2)
         expect(json_response['data']).to be_an(Array)
+      end
+    end
+
+    context 'partial failures' do
+      it 'returns a successful partial response when one call fails' do
+        allow(UniqueUserEvents).to receive(:log_events)
+        VCR.use_cassette('unified_health_data/get_clinical_notes_206', match_requests_on: %i[method path]) do
+          get '/my_health/v2/medical_records/clinical_notes',
+              headers: { 'X-Key-Inflection' => 'camel' },
+              params: default_params
+        end
+        expect(response).to be_successful
+        expect(response).to have_http_status(:partial_content)
+        json_response = JSON.parse(response.body)
+        expect(json_response['meta']).to include('warnings')
+        expect(json_response['meta']['warnings'][0]).to eq(
+          {
+            'severity' => 'warning',
+            'code' => 'informational',
+            'diagnostics' => 'Partial failure',
+            'source' => 'oracle-health'
+          }
+        )
+        expect(json_response['data'].count).to eq(1)
+        expect(json_response['data']).to be_an(Array)
+        expect(json_response['data'].first['type']).to eq('clinical_note')
+        expect(json_response['data'].first).to include(
+          'id',
+          'type',
+          'attributes'
+        )
+        expect(json_response['data'].first['attributes']).to include(
+          'id',
+          'name',
+          'noteType',
+          'loincCodes',
+          'date',
+          'dateSigned',
+          'writtenBy',
+          'signedBy',
+          'admissionDate',
+          'dischargeDate',
+          'location',
+          'note',
+          'addenda',
+          'source'
+        )
       end
     end
 

@@ -12,9 +12,12 @@ module Mobile
       before_action :validate_feature_flag
 
       def index
-        allergies = service.get_allergies
-        paged, page_meta = paginate_allergies(allergies)
-        serialized_allergies = UnifiedHealthData::AllergySerializer.new(paged, meta: page_meta[:meta])
+        result = service.get_allergies
+        # Warnings (e.g., Partial Failure responses from SCDF) are not surfaced to the mobile app.
+        # Mobile has its own release cycle; warning support can be added separately if needed.
+        # For now, just grab the records and return them
+        paged, page_meta = paginate_allergies(result[:records])
+        serialized_allergies = UnifiedHealthData::AllergySerializer.new(paged, page_meta)
         render json: serialized_allergies,
                status: :ok
       rescue Common::Exceptions::BackendServiceException => e

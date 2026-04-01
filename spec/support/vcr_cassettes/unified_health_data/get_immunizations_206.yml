@@ -1,0 +1,146 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: "<MHV_UHD_SECURITY_HOST>/mhvapi/security/v1/login"
+    body:
+      encoding: UTF-8
+      string: '{"appId":"test-app","appToken":"test-token","subject":"test-subject","userType":"test-user-type"}'
+    headers:
+      Content-Type:
+      - application/json
+      User-Agent:
+      - Faraday v2.13.4
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer test-access-token-12345
+    body:
+      encoding: UTF-8
+      string: '{"access_token":"test-access-token-12345","token_type":"Bearer","expires_in":3600}'
+  recorded_at: Wed, 07 Jan 2026 19:00:00 GMT
+- request:
+    method: get
+    uri: "<MHV_UHD_HOST>/v1/medicalrecords/immunizations?endDate=2026-01-07&patientId=1000123456V123456&startDate=1900-01-01"
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Authorization:
+      - Bearer test-access-token-12345
+      X-Api-Key:
+      - test-api-key
+      User-Agent:
+      - Faraday v2.13.4
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+    body:
+      encoding: UTF-8
+      string: |
+        {
+          "vista": {
+            "resourceType": "Bundle",
+            "type": "searchset",
+            "total": 2,
+            "entry": [
+              {
+                "resource": {
+                  "resourceType": "Immunization",
+                  "id": "4d4547fb-01f9-4c5e-b0e6-61d805ae6218",
+                  "status": "completed",
+                  "vaccineCode": {
+                    "coding": [
+                      { "code": "90662", "display": "IIV NO PRSV INCREASED AG IM" }
+                    ],
+                    "text": "INFLUENZA, HIGH-DOSE, QUADRIVALENT, PF"
+                  },
+                  "patient": { "reference": "Patient/24643801" },
+                  "occurrenceDateTime": "2023",
+                  "location": {
+                    "reference": "EVENING PRIMARY CARE",
+                    "display": "EVENING PRIMARY CARE"
+                  },
+                  "manufacturer": { "display": "SANOFI PASTEUR" },
+                  "site": { "coding": [{ "code": "LD", "display": "LEFT DELTOID" }] },
+                  "route": { "coding": [{ "code": "IM", "display": "INTRAMUSCULAR" }] },
+                  "performer": [
+                    {
+                      "actor": {
+                        "identifier": { "value": "520650352" },
+                        "display": "BORLAND,VICTORIA A"
+                      }
+                    }
+                  ],
+                  "note": [{ "text": "PATTY TEST" }],
+                  "protocolApplied": [{ "series": "BOOSTER" }]
+                }
+              },
+              {
+                "resource": {
+                  "resourceType": "Immunization",
+                  "id": "cde96bc7-fcc0-4bee-bcc0-c7f99515a83f",
+                  "status": "completed",
+                  "vaccineCode": {
+                    "coding": [
+                      { "code": "90750", "display": "HZV VACC RECOMBINANT IM" }
+                    ],
+                    "text": "ZOSTER RECOMBINANT"
+                  },
+                  "patient": { "reference": "Patient/24643801" },
+                  "occurrenceDateTime": "2025-12-12T18:00:00Z",
+                  "location": { "reference": "TEST", "display": "TEST" },
+                  "manufacturer": { "display": "GLAXOSMITHKLINE" },
+                  "site": { "coding": [{ "code": "RD", "display": "RIGHT DELTOID" }] },
+                  "route": { "coding": [{ "code": "IM", "display": "INTRAMUSCULAR" }] },
+                  "performer": [
+                    {
+                      "actor": {
+                        "identifier": { "value": "520650339" },
+                        "display": "MCGUIRE,MARCI P"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "oracle-health": {
+            "resourceType": "Bundle",
+            "type": "collection",
+            "entry": [
+              {
+                "resource": {
+                "resourceType": "OperationOutcome",
+                "id": "13c42d08-f992-4585-b8e4-cd60b04d9071",
+                "issue": [
+                    {
+                    "severity": "warning",
+                    "code": "informational",
+                    "diagnostics": "Partial failure"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+  recorded_at: Wed, 07 Jan 2026 19:00:00 GMT
+recorded_with: VCR 6.3.1

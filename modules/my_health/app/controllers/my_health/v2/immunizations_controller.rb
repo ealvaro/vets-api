@@ -23,9 +23,12 @@ module MyHealth
         tag_datadog_span(data_source)
 
         if uhd_enabled?
-          immunizations = sort_records(uhd_service.get_immunizations, params[:sort])
+          @result = uhd_service.get_immunizations
+          immunizations = sort_records(@result[:records], params[:sort])
+          opts = warnings_present? ? { meta: { warnings: @result[:warnings] } } : {}
           log_vaccines(immunizations.length)
-          render json: UnifiedHealthData::ImmunizationSerializer.new(immunizations)
+          render json: UnifiedHealthData::ImmunizationSerializer.new(immunizations, opts),
+                 status: warnings_present? ? :partial_content : :ok
         else
           response = client.get_immunizations
           immunizations = Lighthouse::VeteransHealth::Serializers::ImmunizationSerializer
@@ -100,6 +103,10 @@ module MyHealth
 
       def uhd_service
         @uhd_service ||= UnifiedHealthData::Service.new(current_user)
+      end
+
+      def warnings_present?
+        @warnings_present ||= @result[:warnings].present?
       end
     end
   end

@@ -37,6 +37,7 @@ RSpec.describe 'MyHealth::V2::LabsAndTestsController', :skip_json_api_validation
 
       it 'returns a successful response' do
         expect(response).to be_successful
+        expect(response).to have_http_status(:ok)
       end
 
       it 'logs unique user events for labs accessed' do
@@ -82,6 +83,40 @@ RSpec.describe 'MyHealth::V2::LabsAndTestsController', :skip_json_api_validation
 
       include_examples 'labs and tests response structure validation', ['data']
       include_examples 'labs and tests specific data validation', ['data']
+    end
+
+    context 'partial failures' do
+      it 'returns a successful partial response when one source fails' do
+        allow(Flipper).to receive(:enabled?).with(uhd_flipper, instance_of(User)).and_return(true)
+        allow(UniqueUserEvents).to receive(:log_events)
+        VCR.use_cassette('unified_health_data/get_labs_206', match_requests_on: %i[method path]) do
+          get path, headers: { 'X-Key-Inflection' => 'camel' }, params: default_params
+        end
+        expect(response).to be_successful
+        expect(response).to have_http_status(:partial_content)
+        json_response = JSON.parse(response.body)
+        expect(json_response['meta']).to include('warnings')
+        expect(json_response['meta']['warnings'][0]).to eq(
+          {
+            'severity' => 'warning',
+            'code' => 'informational',
+            'diagnostics' => 'Partial failure',
+            'source' => 'oracle-health'
+          }
+        )
+        expect(json_response['data']).to be_an(Array)
+        expect(json_response['data'].first['type']).to eq('DiagnosticReport')
+        expect(json_response['data'].first).to include(
+          'id',
+          'type',
+          'attributes'
+        )
+        expect(json_response['data'].first['attributes']).to include(
+          'status',
+          'dateCompleted',
+          'testCode'
+        )
+      end
     end
 
     context 'errors' do

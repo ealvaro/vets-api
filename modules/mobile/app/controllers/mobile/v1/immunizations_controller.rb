@@ -15,14 +15,24 @@ module Mobile
         data_source = uhd_enabled? ? 'uhd' : 'lighthouse'
         tag_datadog_span(data_source)
 
-        immunizations = uhd_enabled? ? uhd_service.get_immunizations : lh_immunizations
+        if uhd_enabled?
+          result = uhd_service.get_immunizations
+          # Warnings (e.g., Partial Failure responses from SCDF) are not surfaced to the mobile app.
+          # Mobile has its own release cycle; warning support can be added separately if needed.
+          # For now, just grab the records and return them
+          records = result[:records]
+        else
+          records = lh_immunizations
+        end
+
         log_immunization_access
 
         # Sort in ascending order to send to the FE
         # Handle nil dates by sorting at the end of the list
-        sorted = immunizations.sort_by { |item| item.date || FUTURE_DATE }
+        sorted = records.sort_by { |item| item.date || FUTURE_DATE }
 
-        render json: serialize_immunizations(sorted)
+        render json: serialize_immunizations(sorted),
+               status: :ok
       end
 
       private

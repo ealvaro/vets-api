@@ -1,0 +1,2027 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: "<MHV_UHD_SECURITY_HOST>/mhvapi/security/v1/login"
+    body:
+      encoding: UTF-8
+      string: '{"appId":1000,"appToken":"example token","subject":"VA.gov SCDF Proxy Client","userType":"SYSTEM"}'
+    headers:
+      User-Agent:
+      - "<FARADAY_VERSION>"
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: ''
+    headers:
+      Date:
+      - Mon, 02 Jun 2025 15:11:25 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      X-Oneagent-Js-Injection:
+      - 'true'
+      Server-Timing:
+      - dtRpid;desc="-974331846", dtSInfo;desc="0"
+      Vary:
+      - Access-Control-Request-Headers
+      - Access-Control-Request-Method
+      - Origin
+      Authorization: Bearer <TOKEN>
+      X-Content-Type-Options:
+      - nosniff
+      X-Xss-Protection:
+      - '0'
+      Cache-Control:
+      - no-cache, no-store, max-age=0, must-revalidate
+      Pragma:
+      - no-cache
+      Expires:
+      - '0'
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      X-Frame-Options:
+      - DENY
+    body:
+      encoding: UTF-8
+      string: '{"id":702,"name":"VA.gov SCDF Proxy Client","permissions":["system/Practitioner.read","system/Condition.read","system/ServiceRequest.read","Patient","system/Immunization.read","system/Person.read","system/Location.read","system/Procedure.read","System","system/DiagnosticReport.read","system/AllergyIntolerance.read","system/Patient.read","system/Organization.read","system/RelatedPerson.read","system/DocumentReference.read","system/Observation.read","system/Binary.read","system/Encounter.read"]}'
+  recorded_at: Mon, 02 Jun 2025 15:11:24 GMT
+- request:
+    method: get
+    uri: "<MHV_UHD_HOST>/v1/medicalrecords/labs?endDate=2025-09-30&patientId=1000123456V123456&startDate=2025-01-01"
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      User-Agent:
+      - "<FARADAY_VERSION>"
+      Authorization: Bearer <TOKEN>
+      X-Api-Key:
+      - fakeapikey
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 02 Jun 2025 15:11:26 GMT
+      Content-Type:
+      - application/json
+      Content-Length:
+      - '81542'
+      Connection:
+      - keep-alive
+      X-Amzn-Requestid:
+      - 70384c50-e1ab-4e0f-a9c0-acbfeb8c133d
+      X-Xss-Protection:
+      - '0'
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      X-Amzn-Remapped-Content-Length:
+      - '81542'
+      X-Frame-Options:
+      - DENY
+      X-Oneagent-Js-Injection:
+      - 'true'
+      X-Amzn-Remapped-Connection:
+      - keep-alive
+      X-Amz-Apigw-Id:
+      - LirMyGJLPHMFVmw=
+      Cache-Control:
+      - no-cache, no-store, max-age=0, must-revalidate
+      Expires:
+      - '0'
+      Server-Timing:
+      - dtRpid;desc="-141260006", dtSInfo;desc="0"
+      X-Content-Type-Options:
+      - nosniff
+      Pragma:
+      - no-cache
+      X-Amzn-Remapped-Date:
+      - Mon, 02 Jun 2025 15:11:26 GMT
+    body:
+      encoding: ASCII-8BIT
+      string: '{
+        "vista": {
+            "resourceType": "Bundle",
+            "entry": [
+                {
+                    "resource": {
+                    "resourceType": "DiagnosticReport",
+                    "id": "df64e7c7-d354-43a1-ab57-445844b59b52",
+                    "contained": [
+                        {
+                        "resourceType": "Practitioner",
+                        "id": "327c2edb-e0d6-47db-89f0-c89b35577831",
+                        "identifier": [
+                            { "system": "provider-code", "value": "520650339" },
+                            { "system": "taxonomy-code", "value": "2081P0004X" }
+                        ],
+                        "name": [{ "family": "MCGUIRE", "given": ["MARCI", "P"] }]
+                        },
+                        {
+                        "resourceType": "Organization",
+                        "id": "807f2bc6-e2c4-42eb-9a35-902dbb712f31",
+                        "meta": {
+                            "profile": [
+                            "https://department-of-veterans-affairs.github.io/mhv-fhir-phr-mapping/StructureDefinition/VA.MHV.PHR.organization"
+                            ]
+                        },
+                        "identifier": [
+                            { "use": "usual", "system": "989", "value": "989" },
+                            { "system": "facility-code", "value": "983" }
+                        ],
+                        "active": true,
+                        "name": "CHYSHR TEST LAB"
+                        },
+                        {
+                        "resourceType": "Organization",
+                        "id": "eef4c3a3-532d-4633-908e-a8fd21fa926b",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749875.829848)"
+                            }
+                        ],
+                        "active": true,
+                        "name": "OIFO BAYPINES TEST LAB "
+                        },
+                        {
+                        "resourceType": "ServiceRequest",
+                        "id": "d36cbc4f-9af7-460d-aa16-960a16852a9a",
+                        "status": "unknown",
+                        "intent": "order",
+                        "category": [
+                            {
+                            "coding": [
+                                {
+                                "system": "https://snomed.info/sct",
+                                "code": "108252007",
+                                "display": "Laboratory procedure"
+                                }
+                            ]
+                            }
+                        ],
+                        "subject": { "reference": "Patient/24643801" },
+                        "requester": {
+                            "reference": "Practitioner/327c2edb-e0d6-47db-89f0-c89b35577831"
+                        },
+                        "performer": [
+                            {
+                            "reference": "Organization/eef4c3a3-532d-4633-908e-a8fd21fa926b"
+                            }
+                        ],
+                        "bodySite": [
+                            {
+                            "coding": [
+                                {
+                                "system": "http://terminology.hl7.org/CodeSystem/v2-0070",
+                                "display": "SERUM"
+                                }
+                            ]
+                            }
+                        ]
+                        },
+                        {
+                        "resourceType": "Specimen",
+                        "id": "43190ef7-8e7e-4bc1-a267-b1e55b9a53ba",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749875.829848)"
+                            }
+                        ],
+                        "status": "available",
+                        "type": { "text": "SERUM" },
+                        "request": [
+                            {
+                            "reference": "ServiceRequest/d36cbc4f-9af7-460d-aa16-960a16852a9a"
+                            }
+                        ],
+                        "collection": { "collectedDateTime": "2025-01-23T22:01:52+00:00" }
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "cd6b1dc4-303c-4ed2-ada9-7806862a3f3f",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749875.829848)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "d36cbc4f-9af7-460d-aa16-960a16852a9a" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "2345-7"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4665460"
+                            }
+                            ],
+                            "text": "GLUCOSE"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-01-26T20:37:00+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/eef4c3a3-532d-4633-908e-a8fd21fa926b"
+                            }
+                        ],
+                        "valueQuantity": {
+                            "value": 99.0,
+                            "unit": "mg/dL",
+                            "system": "http://unitsofmeasure.org"
+                        },
+                        "note": [
+                            {
+                            "text": "TEST COMMENT - RESULTS CONTAIN CRITICAL HIGH AND CRITICAL LOW VALU Ordering Provider: Marci P Mcguire Report Released Date/Time: Jan 26, 2025@15:37\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "43190ef7-8e7e-4bc1-a267-b1e55b9a53ba"
+                        },
+                        "referenceRange": [{ "text": "70 - 110" }]
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "af86f092-3bff-41e1-a574-cd9bb7983d4b",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749875.829848)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "d36cbc4f-9af7-460d-aa16-960a16852a9a" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "3094-0"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4673484"
+                            }
+                            ],
+                            "text": "UREA NITROGEN"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-01-26T20:37:00+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/eef4c3a3-532d-4633-908e-a8fd21fa926b"
+                            }
+                        ],
+                        "valueQuantity": {
+                            "value": 30.0,
+                            "unit": "mg/dL",
+                            "system": "http://unitsofmeasure.org"
+                        },
+                        "note": [
+                            {
+                            "text": "TEST COMMENT - RESULTS CONTAIN CRITICAL HIGH AND CRITICAL LOW VALU Ordering Provider: Marci P Mcguire Report Released Date/Time: Jan 26, 2025@15:37\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "43190ef7-8e7e-4bc1-a267-b1e55b9a53ba"
+                        },
+                        "referenceRange": [{ "text": "7 - 18" }]
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "1f668393-317f-4fdf-8d3b-455a030838ff",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749875.829848)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "d36cbc4f-9af7-460d-aa16-960a16852a9a" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "2160-0"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4663483"
+                            }
+                            ],
+                            "text": "CREATININE"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-01-26T20:37:00+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/eef4c3a3-532d-4633-908e-a8fd21fa926b"
+                            }
+                        ],
+                        "valueQuantity": {
+                            "value": 20.0,
+                            "unit": "mg/dL",
+                            "system": "http://unitsofmeasure.org"
+                        },
+                        "note": [
+                            {
+                            "text": "TEST COMMENT - RESULTS CONTAIN CRITICAL HIGH AND CRITICAL LOW VALU Ordering Provider: Marci P Mcguire Report Released Date/Time: Jan 26, 2025@15:37\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "43190ef7-8e7e-4bc1-a267-b1e55b9a53ba"
+                        },
+                        "referenceRange": [{ "text": "0.6 - 1.3" }]
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "ac317861-8fb0-4dfe-9924-3d13eed03dc1",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749875.829848)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "d36cbc4f-9af7-460d-aa16-960a16852a9a" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "2951-2"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4671912"
+                            }
+                            ],
+                            "text": "SODIUM"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-01-26T20:37:00+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/eef4c3a3-532d-4633-908e-a8fd21fa926b"
+                            }
+                        ],
+                        "valueQuantity": {
+                            "value": 24.0,
+                            "unit": "meq/L",
+                            "system": "http://unitsofmeasure.org"
+                        },
+                        "note": [
+                            {
+                            "text": "TEST COMMENT - RESULTS CONTAIN CRITICAL HIGH AND CRITICAL LOW VALU Ordering Provider: Marci P Mcguire Report Released Date/Time: Jan 26, 2025@15:37\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "43190ef7-8e7e-4bc1-a267-b1e55b9a53ba"
+                        },
+                        "referenceRange": [{ "text": "136 - 145" }]
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "1cc7e73b-7666-4f6c-97c4-2ccd26dd04db",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749875.829848)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "d36cbc4f-9af7-460d-aa16-960a16852a9a" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "2823-3"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4670505"
+                            }
+                            ],
+                            "text": "POTASSIUM"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-01-26T20:37:00+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/eef4c3a3-532d-4633-908e-a8fd21fa926b"
+                            }
+                        ],
+                        "valueQuantity": {
+                            "value": 200.0,
+                            "unit": "meq/L",
+                            "system": "http://unitsofmeasure.org"
+                        },
+                        "note": [
+                            {
+                            "text": "TEST COMMENT - RESULTS CONTAIN CRITICAL HIGH AND CRITICAL LOW VALU Ordering Provider: Marci P Mcguire Report Released Date/Time: Jan 26, 2025@15:37\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "43190ef7-8e7e-4bc1-a267-b1e55b9a53ba"
+                        },
+                        "referenceRange": [{ "text": "3.5 - 5.1" }]
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "d0781ed8-5775-4829-b5eb-663dacc0244d",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749875.829848)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "d36cbc4f-9af7-460d-aa16-960a16852a9a" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "2075-0"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4662584"
+                            }
+                            ],
+                            "text": "CHLORIDE"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-01-26T20:37:00+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/eef4c3a3-532d-4633-908e-a8fd21fa926b"
+                            }
+                        ],
+                        "valueQuantity": {
+                            "value": 10.0,
+                            "unit": "meq/L",
+                            "system": "http://unitsofmeasure.org"
+                        },
+                        "note": [
+                            {
+                            "text": "TEST COMMENT - RESULTS CONTAIN CRITICAL HIGH AND CRITICAL LOW VALU Ordering Provider: Marci P Mcguire Report Released Date/Time: Jan 26, 2025@15:37\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "43190ef7-8e7e-4bc1-a267-b1e55b9a53ba"
+                        },
+                        "referenceRange": [{ "text": "98 - 107" }]
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "081469ad-c431-4c18-9423-53dd39874d6b",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749875.829848)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "d36cbc4f-9af7-460d-aa16-960a16852a9a" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "2028-9"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4662085"
+                            }
+                            ],
+                            "text": "CO2"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-01-26T20:37:00+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/eef4c3a3-532d-4633-908e-a8fd21fa926b"
+                            }
+                        ],
+                        "valueQuantity": {
+                            "value": 1.0,
+                            "unit": "meq/L",
+                            "system": "http://unitsofmeasure.org"
+                        },
+                        "note": [
+                            {
+                            "text": "TEST COMMENT - RESULTS CONTAIN CRITICAL HIGH AND CRITICAL LOW VALU Ordering Provider: Marci P Mcguire Report Released Date/Time: Jan 26, 2025@15:37\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "43190ef7-8e7e-4bc1-a267-b1e55b9a53ba"
+                        },
+                        "referenceRange": [{ "text": "22 - 29" }]
+                        }
+                    ],
+                    "extension": [
+                        {
+                        "url": "https://department-of-veterans-affairs.github.io/mhv-fhir-phr-mapping/StructureDefinition/labComment",
+                        "valueString": "TEST COMMENT - RESULTS CONTAIN CRITICAL HIGH AND CRITICAL LOW VALU Ordering Provider: Marci P Mcguire Report Released Date/Time: Jan 26, 2025@15:37\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                        }
+                    ],
+                    "identifier": [
+                        { "system": "vista-uid", "value": "CH;6749875.829848" }
+                    ],
+                    "status": "final",
+                    "category": [
+                        {
+                        "coding": [
+                            {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                            "code": "LAB",
+                            "display": "LAB"
+                            }
+                        ]
+                        },
+                        {
+                        "coding": [
+                            {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                            "code": "CH",
+                            "display": "CH"
+                            }
+                        ]
+                        }
+                    ],
+                    "code": { "text": "CHEM 7" },
+                    "subject": { "reference": "Patient/24643801" },
+                    "effectiveDateTime": "2025-01-23T22:01:52+00:00",
+                    "issued": "2025-01-26T20:37:00.000+00:00",
+                    "performer": [
+                        { "reference": "Organization/807f2bc6-e2c4-42eb-9a35-902dbb712f31" }
+                    ],
+                    "specimen": [
+                        { "reference": "Specimen/43190ef7-8e7e-4bc1-a267-b1e55b9a53ba" }
+                    ],
+                    "result": [
+                        { "reference": "Observation/cd6b1dc4-303c-4ed2-ada9-7806862a3f3f" },
+                        { "reference": "Observation/af86f092-3bff-41e1-a574-cd9bb7983d4b" },
+                        { "reference": "Observation/1f668393-317f-4fdf-8d3b-455a030838ff" },
+                        { "reference": "Observation/ac317861-8fb0-4dfe-9924-3d13eed03dc1" },
+                        { "reference": "Observation/1cc7e73b-7666-4f6c-97c4-2ccd26dd04db" },
+                        { "reference": "Observation/d0781ed8-5775-4829-b5eb-663dacc0244d" },
+                        { "reference": "Observation/081469ad-c431-4c18-9423-53dd39874d6b" }
+                    ]
+                    }
+                },
+                {
+                    "resource": {
+                    "resourceType": "DiagnosticReport",
+                    "id": "c3dd22a1-809d-4edc-b0e8-0a0fe02e1e66",
+                    "contained": [
+                        {
+                        "resourceType": "Practitioner",
+                        "id": "31298f3b-e830-4cb0-8c61-b5895df8d26b",
+                        "identifier": [
+                            { "system": "provider-code", "value": "520650339" },
+                            { "system": "taxonomy-code", "value": "2081P0004X" }
+                        ],
+                        "name": [{ "family": "MCGUIRE", "given": ["MARCI", "P"] }]
+                        },
+                        {
+                        "resourceType": "Organization",
+                        "id": "715ef836-02c0-412a-88f7-cb81bc6e0691",
+                        "meta": {
+                            "profile": [
+                            "https://department-of-veterans-affairs.github.io/mhv-fhir-phr-mapping/StructureDefinition/VA.MHV.PHR.organization"
+                            ]
+                        },
+                        "identifier": [
+                            { "use": "usual", "system": "989", "value": "989" },
+                            { "system": "facility-code", "value": "983" }
+                        ],
+                        "active": true,
+                        "name": "CHYSHR TEST LAB"
+                        },
+                        {
+                        "resourceType": "Organization",
+                        "id": "f26124ac-5364-4c93-8088-9ac358a651fa",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749875.82938)"
+                            }
+                        ],
+                        "active": true,
+                        "name": "OIFO BAYPINES TEST LAB "
+                        },
+                        {
+                        "resourceType": "ServiceRequest",
+                        "id": "52974a2b-5645-4e9a-845c-bf82749d8fb9",
+                        "status": "unknown",
+                        "intent": "order",
+                        "category": [
+                            {
+                            "coding": [
+                                {
+                                "system": "https://snomed.info/sct",
+                                "code": "108252007",
+                                "display": "Laboratory procedure"
+                                }
+                            ]
+                            }
+                        ],
+                        "subject": { "reference": "Patient/24643801" },
+                        "requester": {
+                            "reference": "Practitioner/31298f3b-e830-4cb0-8c61-b5895df8d26b"
+                        },
+                        "performer": [
+                            {
+                            "reference": "Organization/f26124ac-5364-4c93-8088-9ac358a651fa"
+                            }
+                        ],
+                        "bodySite": [
+                            {
+                            "coding": [
+                                {
+                                "system": "http://terminology.hl7.org/CodeSystem/v2-0070",
+                                "display": "SERUM"
+                                }
+                            ]
+                            }
+                        ]
+                        },
+                        {
+                        "resourceType": "Specimen",
+                        "id": "e326e4ec-ca5a-4c10-a1a1-4b57f0cecc06",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749875.82938)"
+                            }
+                        ],
+                        "status": "available",
+                        "type": { "text": "SERUM" },
+                        "request": [
+                            {
+                            "reference": "ServiceRequest/52974a2b-5645-4e9a-845c-bf82749d8fb9"
+                            }
+                        ],
+                        "collection": { "collectedDateTime": "2025-01-23T22:06:20+00:00" }
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "4bdf0d68-adf0-40f1-8f2e-c3e6923f97ae",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749875.82938)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "52974a2b-5645-4e9a-845c-bf82749d8fb9" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "2345-7"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4665460"
+                            }
+                            ],
+                            "text": "GLUCOSE"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-01-26T20:37:14+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/f26124ac-5364-4c93-8088-9ac358a651fa"
+                            }
+                        ],
+                        "valueQuantity": {
+                            "value": 99.0,
+                            "unit": "mg/dL",
+                            "system": "http://unitsofmeasure.org"
+                        },
+                        "note": [
+                            {
+                            "text": "**TEST COMMENT** RESULTS CONTAIN CRITICAL HIGH AND LOW VALUES Ordering Provider: Marci P Mcguire Report Released Date/Time: Jan 26, 2025@15:37\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "e326e4ec-ca5a-4c10-a1a1-4b57f0cecc06"
+                        },
+                        "referenceRange": [{ "text": "70 - 110" }]
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "3a7aa433-3f75-4aec-9ba2-6b1633e01728",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749875.82938)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "52974a2b-5645-4e9a-845c-bf82749d8fb9" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "3094-0"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4673484"
+                            }
+                            ],
+                            "text": "UREA NITROGEN"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-01-26T20:37:14+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/f26124ac-5364-4c93-8088-9ac358a651fa"
+                            }
+                        ],
+                        "valueQuantity": {
+                            "value": 200.0,
+                            "unit": "mg/dL",
+                            "system": "http://unitsofmeasure.org"
+                        },
+                        "note": [
+                            {
+                            "text": "**TEST COMMENT** RESULTS CONTAIN CRITICAL HIGH AND LOW VALUES Ordering Provider: Marci P Mcguire Report Released Date/Time: Jan 26, 2025@15:37\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "e326e4ec-ca5a-4c10-a1a1-4b57f0cecc06"
+                        },
+                        "referenceRange": [{ "text": "7 - 18" }]
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "5464dfc5-f7eb-44bc-8ee2-704547c69b2b",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749875.82938)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "52974a2b-5645-4e9a-845c-bf82749d8fb9" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "2160-0"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4663483"
+                            }
+                            ],
+                            "text": "CREATININE"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-01-26T20:37:14+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/f26124ac-5364-4c93-8088-9ac358a651fa"
+                            }
+                        ],
+                        "valueQuantity": {
+                            "value": 5.0,
+                            "unit": "mg/dL",
+                            "system": "http://unitsofmeasure.org"
+                        },
+                        "note": [
+                            {
+                            "text": "**TEST COMMENT** RESULTS CONTAIN CRITICAL HIGH AND LOW VALUES Ordering Provider: Marci P Mcguire Report Released Date/Time: Jan 26, 2025@15:37\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "e326e4ec-ca5a-4c10-a1a1-4b57f0cecc06"
+                        },
+                        "referenceRange": [{ "text": "0.6 - 1.3" }]
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "5e83699b-dc43-4b06-ba0c-c0a267d11196",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749875.82938)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "52974a2b-5645-4e9a-845c-bf82749d8fb9" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "2951-2"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4671912"
+                            }
+                            ],
+                            "text": "SODIUM"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-01-26T20:37:14+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/f26124ac-5364-4c93-8088-9ac358a651fa"
+                            }
+                        ],
+                        "valueQuantity": {
+                            "value": 8.0,
+                            "unit": "meq/L",
+                            "system": "http://unitsofmeasure.org"
+                        },
+                        "note": [
+                            {
+                            "text": "**TEST COMMENT** RESULTS CONTAIN CRITICAL HIGH AND LOW VALUES Ordering Provider: Marci P Mcguire Report Released Date/Time: Jan 26, 2025@15:37\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "e326e4ec-ca5a-4c10-a1a1-4b57f0cecc06"
+                        },
+                        "referenceRange": [{ "text": "136 - 145" }]
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "1604cb59-9b7e-41a8-becf-a433095bca48",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749875.82938)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "52974a2b-5645-4e9a-845c-bf82749d8fb9" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "2823-3"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4670505"
+                            }
+                            ],
+                            "text": "POTASSIUM"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-01-26T20:37:14+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/f26124ac-5364-4c93-8088-9ac358a651fa"
+                            }
+                        ],
+                        "valueQuantity": {
+                            "value": 24.0,
+                            "unit": "meq/L",
+                            "system": "http://unitsofmeasure.org"
+                        },
+                        "note": [
+                            {
+                            "text": "**TEST COMMENT** RESULTS CONTAIN CRITICAL HIGH AND LOW VALUES Ordering Provider: Marci P Mcguire Report Released Date/Time: Jan 26, 2025@15:37\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "e326e4ec-ca5a-4c10-a1a1-4b57f0cecc06"
+                        },
+                        "referenceRange": [{ "text": "3.5 - 5.1" }]
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "d29ae2f6-3f4e-4ce9-8063-8cfaa79087ff",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749875.82938)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "52974a2b-5645-4e9a-845c-bf82749d8fb9" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "2075-0"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4662584"
+                            }
+                            ],
+                            "text": "CHLORIDE"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-01-26T20:37:14+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/f26124ac-5364-4c93-8088-9ac358a651fa"
+                            }
+                        ],
+                        "valueQuantity": {
+                            "value": 2.0,
+                            "unit": "meq/L",
+                            "system": "http://unitsofmeasure.org"
+                        },
+                        "note": [
+                            {
+                            "text": "**TEST COMMENT** RESULTS CONTAIN CRITICAL HIGH AND LOW VALUES Ordering Provider: Marci P Mcguire Report Released Date/Time: Jan 26, 2025@15:37\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "e326e4ec-ca5a-4c10-a1a1-4b57f0cecc06"
+                        },
+                        "referenceRange": [{ "text": "98 - 107" }]
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "4e30d207-08dc-45e2-9bf9-9a62ea6bbdd6",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749875.82938)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "52974a2b-5645-4e9a-845c-bf82749d8fb9" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "2028-9"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4662085"
+                            }
+                            ],
+                            "text": "CO2"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-01-26T20:37:14+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/f26124ac-5364-4c93-8088-9ac358a651fa"
+                            }
+                        ],
+                        "valueQuantity": {
+                            "value": 2.0,
+                            "unit": "meq/L",
+                            "system": "http://unitsofmeasure.org"
+                        },
+                        "note": [
+                            {
+                            "text": "**TEST COMMENT** RESULTS CONTAIN CRITICAL HIGH AND LOW VALUES Ordering Provider: Marci P Mcguire Report Released Date/Time: Jan 26, 2025@15:37\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "e326e4ec-ca5a-4c10-a1a1-4b57f0cecc06"
+                        },
+                        "referenceRange": [{ "text": "22 - 29" }]
+                        }
+                    ],
+                    "extension": [
+                        {
+                        "url": "https://department-of-veterans-affairs.github.io/mhv-fhir-phr-mapping/StructureDefinition/labComment",
+                        "valueString": "**TEST COMMENT** RESULTS CONTAIN CRITICAL HIGH AND LOW VALUES Ordering Provider: Marci P Mcguire Report Released Date/Time: Jan 26, 2025@15:37\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                        }
+                    ],
+                    "identifier": [
+                        { "system": "vista-uid", "value": "CH;6749875.82938" }
+                    ],
+                    "status": "final",
+                    "category": [
+                        {
+                        "coding": [
+                            {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                            "code": "LAB",
+                            "display": "LAB"
+                            }
+                        ]
+                        },
+                        {
+                        "coding": [
+                            {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                            "code": "CH",
+                            "display": "CH"
+                            }
+                        ]
+                        }
+                    ],
+                    "code": { "text": "CHEM 7" },
+                    "subject": { "reference": "Patient/24643801" },
+                    "effectiveDateTime": "2025-01-23T22:06:20+00:00",
+                    "issued": "2025-01-26T20:37:14.000+00:00",
+                    "performer": [
+                        { "reference": "Organization/715ef836-02c0-412a-88f7-cb81bc6e0691" }
+                    ],
+                    "specimen": [
+                        { "reference": "Specimen/e326e4ec-ca5a-4c10-a1a1-4b57f0cecc06" }
+                    ],
+                    "result": [
+                        { "reference": "Observation/4bdf0d68-adf0-40f1-8f2e-c3e6923f97ae" },
+                        { "reference": "Observation/3a7aa433-3f75-4aec-9ba2-6b1633e01728" },
+                        { "reference": "Observation/5464dfc5-f7eb-44bc-8ee2-704547c69b2b" },
+                        { "reference": "Observation/5e83699b-dc43-4b06-ba0c-c0a267d11196" },
+                        { "reference": "Observation/1604cb59-9b7e-41a8-becf-a433095bca48" },
+                        { "reference": "Observation/d29ae2f6-3f4e-4ce9-8063-8cfaa79087ff" },
+                        { "reference": "Observation/4e30d207-08dc-45e2-9bf9-9a62ea6bbdd6" }
+                    ]
+                    }
+                },
+                {
+                    "resource": {
+                    "resourceType": "DiagnosticReport",
+                    "id": "afa415c7-14eb-45ba-83c4-394580436957",
+                    "contained": [
+                        {
+                        "resourceType": "Practitioner",
+                        "id": "4c8340d0-77ff-4809-8865-e797040928a6",
+                        "identifier": [
+                            { "system": "provider-code", "value": "520650352" },
+                            { "system": "taxonomy-code", "value": "2081P0004X" }
+                        ],
+                        "name": [{ "family": "BORLAND", "given": ["VICTORIA", "A"] }]
+                        },
+                        {
+                        "resourceType": "Organization",
+                        "id": "6f32347c-3c4c-4170-b042-6b3c32486037",
+                        "meta": {
+                            "profile": [
+                            "https://department-of-veterans-affairs.github.io/mhv-fhir-phr-mapping/StructureDefinition/VA.MHV.PHR.organization"
+                            ]
+                        },
+                        "identifier": [
+                            { "use": "usual", "system": "989", "value": "989" },
+                            { "system": "facility-code", "value": "983" }
+                        ],
+                        "active": true,
+                        "name": "CHYSHR TEST LAB"
+                        },
+                        {
+                        "resourceType": "Organization",
+                        "id": "7c4eef91-27ce-406f-8b83-7f35e39377bc",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749485.797042)"
+                            }
+                        ],
+                        "active": true,
+                        "name": "OIFO BAYPINES TEST LAB "
+                        },
+                        {
+                        "resourceType": "ServiceRequest",
+                        "id": "97442d92-859a-4587-95b3-056a81898542",
+                        "status": "unknown",
+                        "intent": "order",
+                        "category": [
+                            {
+                            "coding": [
+                                {
+                                "system": "https://snomed.info/sct",
+                                "code": "108252007",
+                                "display": "Laboratory procedure"
+                                }
+                            ]
+                            }
+                        ],
+                        "subject": { "reference": "Patient/24643801" },
+                        "requester": {
+                            "reference": "Practitioner/4c8340d0-77ff-4809-8865-e797040928a6"
+                        },
+                        "performer": [
+                            {
+                            "reference": "Organization/7c4eef91-27ce-406f-8b83-7f35e39377bc"
+                            }
+                        ],
+                        "bodySite": [
+                            {
+                            "coding": [
+                                {
+                                "system": "http://terminology.hl7.org/CodeSystem/v2-0070",
+                                "display": "URINE"
+                                }
+                            ]
+                            }
+                        ]
+                        },
+                        {
+                        "resourceType": "Specimen",
+                        "id": "47a653e6-1976-4600-934c-0a85b6db4af1",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749485.797042)"
+                            }
+                        ],
+                        "status": "available",
+                        "type": { "text": "URINE" },
+                        "request": [
+                            {
+                            "reference": "ServiceRequest/97442d92-859a-4587-95b3-056a81898542"
+                            }
+                        ],
+                        "collection": { "collectedDateTime": "2025-05-14T01:29:58+00:00" }
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "37efc829-d03f-4e04-b2b8-31051d1c2ee8",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749485.797042)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "97442d92-859a-4587-95b3-056a81898542" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "5778-6"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4684023"
+                            }
+                            ],
+                            "text": "URINE COLOR"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-05-14T01:34:53+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/7c4eef91-27ce-406f-8b83-7f35e39377bc"
+                            }
+                        ],
+                        "valueString": "clear",
+                        "note": [
+                            {
+                            "text": "first comment for troubleshooting second comment for troubleshooting third comment for troubleshooting fourth comment for troubleshooting, entered separately fifth comment? Ordering Provider: Victoria A Borland Report Released Date/Time: May 13, 2025@20:34\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "47a653e6-1976-4600-934c-0a85b6db4af1"
+                        }
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "303718b4-8cc3-4d9f-adbc-28eff96f0cd4",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749485.797042)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "97442d92-859a-4587-95b3-056a81898542" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "5767-9"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4684011"
+                            }
+                            ],
+                            "text": "APPEARANCE"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-05-14T01:34:53+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/7c4eef91-27ce-406f-8b83-7f35e39377bc"
+                            }
+                        ],
+                        "valueString": "normal",
+                        "note": [
+                            {
+                            "text": "first comment for troubleshooting second comment for troubleshooting third comment for troubleshooting fourth comment for troubleshooting, entered separately fifth comment? Ordering Provider: Victoria A Borland Report Released Date/Time: May 13, 2025@20:34\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "47a653e6-1976-4600-934c-0a85b6db4af1"
+                        }
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "adf7381d-15bf-4a9f-9365-0b7e12fc3b10",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749485.797042)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "97442d92-859a-4587-95b3-056a81898542" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "5811-5"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4684061"
+                            }
+                            ],
+                            "text": "SPECIFIC GRAVITY"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-05-14T01:34:53+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/7c4eef91-27ce-406f-8b83-7f35e39377bc"
+                            }
+                        ],
+                        "valueQuantity": {
+                            "value": 1.005,
+                            "system": "http://unitsofmeasure.org"
+                        },
+                        "note": [
+                            {
+                            "text": "first comment for troubleshooting second comment for troubleshooting third comment for troubleshooting fourth comment for troubleshooting, entered separately fifth comment? Ordering Provider: Victoria A Borland Report Released Date/Time: May 13, 2025@20:34\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "47a653e6-1976-4600-934c-0a85b6db4af1"
+                        },
+                        "referenceRange": [{ "text": "1.005 - 1.03" }]
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "0e798d0c-b2ef-45a9-9313-9443bb4e2692",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749485.797042)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "97442d92-859a-4587-95b3-056a81898542" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "19161-9"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4660914"
+                            }
+                            ],
+                            "text": "UROBILINOGEN"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-05-14T01:34:53+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/7c4eef91-27ce-406f-8b83-7f35e39377bc"
+                            }
+                        ],
+                        "valueQuantity": {
+                            "value": 0.2,
+                            "unit": "EU/DL",
+                            "system": "http://unitsofmeasure.org"
+                        },
+                        "note": [
+                            {
+                            "text": "first comment for troubleshooting second comment for troubleshooting third comment for troubleshooting fourth comment for troubleshooting, entered separately fifth comment? Ordering Provider: Victoria A Borland Report Released Date/Time: May 13, 2025@20:34\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "47a653e6-1976-4600-934c-0a85b6db4af1"
+                        },
+                        "referenceRange": [{ "text": ".1 - 1" }]
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "9ab18201-3e25-417b-817f-c75031c0b3b1",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749485.797042)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "97442d92-859a-4587-95b3-056a81898542" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "20409-9"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4662227"
+                            }
+                            ],
+                            "text": "URINE BLOOD"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-05-14T01:34:53+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/7c4eef91-27ce-406f-8b83-7f35e39377bc"
+                            }
+                        ],
+                        "valueString": "NEG",
+                        "note": [
+                            {
+                            "text": "first comment for troubleshooting second comment for troubleshooting third comment for troubleshooting fourth comment for troubleshooting, entered separately fifth comment? Ordering Provider: Victoria A Borland Report Released Date/Time: May 13, 2025@20:34\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "47a653e6-1976-4600-934c-0a85b6db4af1"
+                        }
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "267254a3-0abd-45fb-8bb5-2fc19eb84634",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749485.797042)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "97442d92-859a-4587-95b3-056a81898542" }
+                        ],
+                        "status": "final",
+                        "code": { "text": "URINE BILIRUBIN" },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-05-14T01:34:53+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/7c4eef91-27ce-406f-8b83-7f35e39377bc"
+                            }
+                        ],
+                        "valueString": "NEG",
+                        "note": [
+                            {
+                            "text": "first comment for troubleshooting second comment for troubleshooting third comment for troubleshooting fourth comment for troubleshooting, entered separately fifth comment? Ordering Provider: Victoria A Borland Report Released Date/Time: May 13, 2025@20:34\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "47a653e6-1976-4600-934c-0a85b6db4af1"
+                        }
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "ac5ba6f3-76bf-45cf-9200-99deac089cb0",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749485.797042)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "97442d92-859a-4587-95b3-056a81898542" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "5797-6"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4684044"
+                            }
+                            ],
+                            "text": "URINE KETONES"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-05-14T01:34:53+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/7c4eef91-27ce-406f-8b83-7f35e39377bc"
+                            }
+                        ],
+                        "valueString": "NEGATIVE",
+                        "note": [
+                            {
+                            "text": "first comment for troubleshooting second comment for troubleshooting third comment for troubleshooting fourth comment for troubleshooting, entered separately fifth comment? Ordering Provider: Victoria A Borland Report Released Date/Time: May 13, 2025@20:34\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "47a653e6-1976-4600-934c-0a85b6db4af1"
+                        }
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "dca5dd10-2af4-4a88-afe4-13a42ef23ce4",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749485.797042)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "97442d92-859a-4587-95b3-056a81898542" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "5792-7"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4684039"
+                            }
+                            ],
+                            "text": "URINE GLUCOSE"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-05-14T01:34:53+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/7c4eef91-27ce-406f-8b83-7f35e39377bc"
+                            }
+                        ],
+                        "valueQuantity": {
+                            "value": 100.0,
+                            "unit": "MG/DL",
+                            "system": "http://unitsofmeasure.org"
+                        },
+                        "note": [
+                            {
+                            "text": "first comment for troubleshooting second comment for troubleshooting third comment for troubleshooting fourth comment for troubleshooting, entered separately fifth comment? Ordering Provider: Victoria A Borland Report Released Date/Time: May 13, 2025@20:34\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "47a653e6-1976-4600-934c-0a85b6db4af1"
+                        }
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "e0b551cf-8da5-413d-b2b6-bbbdd4bb0b8a",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749485.797042)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "97442d92-859a-4587-95b3-056a81898542" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "5804-0"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4684053"
+                            }
+                            ],
+                            "text": "URINE PROTEIN"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-05-14T01:34:53+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/7c4eef91-27ce-406f-8b83-7f35e39377bc"
+                            }
+                        ],
+                        "valueString": "TRACE",
+                        "note": [
+                            {
+                            "text": "first comment for troubleshooting second comment for troubleshooting third comment for troubleshooting fourth comment for troubleshooting, entered separately fifth comment? Ordering Provider: Victoria A Borland Report Released Date/Time: May 13, 2025@20:34\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "47a653e6-1976-4600-934c-0a85b6db4af1"
+                        }
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "df0ac200-3ea1-4702-b2a7-96cfc82cdbd7",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749485.797042)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "97442d92-859a-4587-95b3-056a81898542" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "5803-2"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4684052"
+                            }
+                            ],
+                            "text": "URINE PH"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-05-14T01:34:53+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/7c4eef91-27ce-406f-8b83-7f35e39377bc"
+                            }
+                        ],
+                        "valueQuantity": {
+                            "value": 4.7,
+                            "system": "http://unitsofmeasure.org"
+                        },
+                        "note": [
+                            {
+                            "text": "first comment for troubleshooting second comment for troubleshooting third comment for troubleshooting fourth comment for troubleshooting, entered separately fifth comment? Ordering Provider: Victoria A Borland Report Released Date/Time: May 13, 2025@20:34\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "47a653e6-1976-4600-934c-0a85b6db4af1"
+                        },
+                        "referenceRange": [{ "text": "5 - 8" }]
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "c457ba92-9c0b-4cfd-afb4-0163857f7864",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749485.797042)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "97442d92-859a-4587-95b3-056a81898542" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "5802-4"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4684051"
+                            }
+                            ],
+                            "text": "NITRITE, URINE"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-05-14T01:34:53+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/7c4eef91-27ce-406f-8b83-7f35e39377bc"
+                            }
+                        ],
+                        "valueString": "NEG",
+                        "note": [
+                            {
+                            "text": "first comment for troubleshooting second comment for troubleshooting third comment for troubleshooting fourth comment for troubleshooting, entered separately fifth comment? Ordering Provider: Victoria A Borland Report Released Date/Time: May 13, 2025@20:34\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "47a653e6-1976-4600-934c-0a85b6db4af1"
+                        }
+                        },
+                        {
+                        "resourceType": "Observation",
+                        "id": "6f4b1294-93f5-4eae-97e6-ca87761eca34",
+                        "identifier": [
+                            {
+                            "system": "vista-uid",
+                            "value": "Value(valueString=CH;6749485.797042)"
+                            }
+                        ],
+                        "basedOn": [
+                            { "reference": "97442d92-859a-4587-95b3-056a81898542" }
+                        ],
+                        "status": "final",
+                        "code": {
+                            "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "version": "2.68",
+                                "code": "20408-1"
+                            },
+                            {
+                                "system": "http://va.gov/terminology/vistaDefinedTerms/95.3",
+                                "code": "4662226"
+                            }
+                            ],
+                            "text": "LEUKOCYTE ESTERASE, URINE"
+                        },
+                        "subject": { "reference": "Patient/24643801" },
+                        "effectiveDateTime": "2025-05-14T01:34:53+00:00",
+                        "performer": [
+                            {
+                            "reference": "Organization/7c4eef91-27ce-406f-8b83-7f35e39377bc"
+                            }
+                        ],
+                        "valueString": "NEG",
+                        "note": [
+                            {
+                            "text": "first comment for troubleshooting second comment for troubleshooting third comment for troubleshooting fourth comment for troubleshooting, entered separately fifth comment? Ordering Provider: Victoria A Borland Report Released Date/Time: May 13, 2025@20:34\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                            }
+                        ],
+                        "specimen": {
+                            "reference": "47a653e6-1976-4600-934c-0a85b6db4af1"
+                        },
+                        "referenceRange": [{ "text": "NEG - POS" }]
+                        }
+                    ],
+                    "extension": [
+                        {
+                        "url": "https://department-of-veterans-affairs.github.io/mhv-fhir-phr-mapping/StructureDefinition/labComment",
+                        "valueString": "first comment for troubleshooting second comment for troubleshooting third comment for troubleshooting fourth comment for troubleshooting, entered separately fifth comment? Ordering Provider: Victoria A Borland Report Released Date/Time: May 13, 2025@20:34\r\n Performing Lab: CHYSHR TEST LAB\r\n                2360 E PERSHING BLVD CHEYENNE, FL 82001-5356"
+                        }
+                    ],
+                    "identifier": [
+                        { "system": "vista-uid", "value": "CH;6749485.797042" }
+                    ],
+                    "status": "final",
+                    "category": [
+                        {
+                        "coding": [
+                            {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                            "code": "LAB",
+                            "display": "LAB"
+                            }
+                        ]
+                        },
+                        {
+                        "coding": [
+                            {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                            "code": "CH",
+                            "display": "CH"
+                            }
+                        ]
+                        }
+                    ],
+                    "code": { "text": "URINALYSIS" },
+                    "subject": { "reference": "Patient/24643801" },
+                    "effectiveDateTime": "2025-05-14T01:29:58+00:00",
+                    "issued": "2025-05-14T01:34:53.000+00:00",
+                    "performer": [
+                        { "reference": "Organization/6f32347c-3c4c-4170-b042-6b3c32486037" }
+                    ],
+                    "specimen": [
+                        { "reference": "Specimen/47a653e6-1976-4600-934c-0a85b6db4af1" }
+                    ],
+                    "result": [
+                        { "reference": "Observation/37efc829-d03f-4e04-b2b8-31051d1c2ee8" },
+                        { "reference": "Observation/303718b4-8cc3-4d9f-adbc-28eff96f0cd4" },
+                        { "reference": "Observation/adf7381d-15bf-4a9f-9365-0b7e12fc3b10" },
+                        { "reference": "Observation/0e798d0c-b2ef-45a9-9313-9443bb4e2692" },
+                        { "reference": "Observation/9ab18201-3e25-417b-817f-c75031c0b3b1" },
+                        { "reference": "Observation/267254a3-0abd-45fb-8bb5-2fc19eb84634" },
+                        { "reference": "Observation/ac5ba6f3-76bf-45cf-9200-99deac089cb0" },
+                        { "reference": "Observation/dca5dd10-2af4-4a88-afe4-13a42ef23ce4" },
+                        { "reference": "Observation/e0b551cf-8da5-413d-b2b6-bbbdd4bb0b8a" },
+                        { "reference": "Observation/df0ac200-3ea1-4702-b2a7-96cfc82cdbd7" },
+                        { "reference": "Observation/c457ba92-9c0b-4cfd-afb4-0163857f7864" },
+                        { "reference": "Observation/6f4b1294-93f5-4eae-97e6-ca87761eca34" }
+                    ]
+                    }
+                },
+                {
+                    "resource": {
+                    "resourceType": "DiagnosticReport",
+                    "id": "137aa5a4-4ebe-48ab-9068-5ee1524cd971",
+                    "contained": [
+                        {
+                        "resourceType": "Practitioner",
+                        "id": "7572695f-adb4-404b-87a1-05fd63c28857",
+                        "identifier": [
+                            { "system": "vista-uid", "value": "urn:va:user:F253:520647644" }
+                        ],
+                        "name": [{ "family": "BARRS", "given": ["STEPHEN"] }]
+                        },
+                        {
+                        "resourceType": "Practitioner",
+                        "id": "9227adb9-9652-4e91-bec1-a793dae97dfa",
+                        "identifier": [
+                            { "system": "vista-uid", "value": "urn:va:user:F253:520650352" }
+                        ],
+                        "name": [{ "family": "BORLAND", "given": ["VICTORIA", "A"] }]
+                        },
+                        {
+                        "resourceType": "Organization",
+                        "id": "13f979f9-f4d3-4157-a218-8d4f74c47f85",
+                        "meta": {
+                            "profile": [
+                            "https://department-of-veterans-affairs.github.io/mhv-fhir-phr-mapping/StructureDefinition/VA.MHV.PHR.organization"
+                            ]
+                        },
+                        "identifier": [
+                            { "use": "usual", "system": "989", "value": "989" },
+                            { "system": "facility-code", "value": "983" }
+                        ],
+                        "active": true,
+                        "name": "CHYSHR TEST LAB"
+                        },
+                        {
+                        "resourceType": "Specimen",
+                        "id": "b4ff0bdd-016b-40b5-8891-e0d414000532",
+                        "accessionIdentifier": {
+                            "use": "usual",
+                            "system": "urn:oid:2.16.840.1.113883.4.349.4.989",
+                            "value": "SP 25 3"
+                        },
+                        "status": "available",
+                        "type": { "text": "skin" },
+                        "collection": { "collectedDateTime": "2025-02-20T21:34:00+00:00" }
+                        }
+                    ],
+                    "identifier": [
+                        {
+                        "system": "vista-uid",
+                        "value": "urn:va:lab:F253:7227761:SP;6749778.7866"
+                        }
+                    ],
+                    "status": "final",
+                    "category": [
+                        {
+                        "coding": [
+                            {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                            "code": "LAB",
+                            "display": "LAB"
+                            }
+                        ]
+                        },
+                        {
+                        "coding": [
+                            {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                            "code": "urn:va:lab-category:SP",
+                            "display": "SP"
+                            }
+                        ]
+                        }
+                    ],
+                    "code": {
+                        "coding": [
+                        {
+                            "system": "http://loinc.org",
+                            "code": "27898-6",
+                            "display": "Pathology studies (set)"
+                        }
+                        ],
+                        "text": "Surgical Pathology"
+                    },
+                    "subject": { "reference": "Patient/24643801" },
+                    "effectiveDateTime": "2025-02-20T21:34:00+00:00",
+                    "issued": "2025-02-20T21:48:00.000+00:00",
+                    "performer": [
+                        {
+                        "reference": "Practitioner/7572695f-adb4-404b-87a1-05fd63c28857"
+                        },
+                        { "reference": "Organization/13f979f9-f4d3-4157-a218-8d4f74c47f85" }
+                    ],
+                    "resultsInterpreter": [
+                        { "reference": "Practitioner/9227adb9-9652-4e91-bec1-a793dae97dfa" }
+                    ],
+                    "specimen": [
+                        { "reference": "Specimen/b4ff0bdd-016b-40b5-8891-e0d414000532" }
+                    ],
+                    "presentedForm": [
+                        {
+                        "contentType": "text/plain",
+                        "data": "RGF0ZSBTcGVjIHRha2VuOiBGZWIgMjAsIDIwMjUgMjE6MzQgIFBhdGhvbG9naXN0OlNURVBIRU4gQkFSUlMNCkRhdGUgU3BlYyByZWMnZDogRmViIDIwLCAyMDI1IDIxOjM1ICBSZXNpZGVudDogTUFSQ0kgUCBNQ0dVSVJFDQpEYXRlICBjb21wbGV0ZWQ6IEZlYiAyMCwgMjAyNSAgICAgICAgQWNjZXNzaW9uICM6IFNQIDI1IDMNClN1Ym1pdHRlZCBieTog Ym9ybGFuZCAgICAgICAgICAgICAgICBQcmFjdGl0aW9uZXI6VklDVE9SSUEgQSBCT1JMQU5EDQotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NClNwZWNpbWVuOiANClNraW4NCkJyaWVmIENsaW5pY2FsIEhpc3Rvcnk6DQpBbGV4YW5kZXIgcHJlc2VudGVkIHRvIHBoeXNpY2lhbidzIG9mZmljZSB3IGNvbmNlcm5zIGFyb3VuZCBhIG1vbGVib3V0IGEgZGFya2VuaW5nIG1vbGUgb24gaGlzIGJhY2suDQpQcmVvcGVyYXRpdmUgRGlhZ25vc2lzOg0KcG90ZW50aWFsIG1hbGlnbmFudCBuZW9wbGFzbSBvZiB0aGUgc2tpbg0KT3BlcmF0aXZlIEZpbmRpbmdzOg0KQ2xlYW4gbWFyZ2lucyBvZiBhZmZlY3RlZCB0aXNzdWUgZXh0cmFjdGVkIHZpYSBwdW5jaCBiaW9wc3kNClBvc3RvcGVyYXRpdmUgRGlhZ25vc2lzOg0KQWN0aW5pYyBrZXJhdG9zaXMgKHByZWNhbmNlcm91cyBsZXNpb24pDQoNCm5vDQpHcm9zcyBkZXNjcmlwdGlvbjoNClNjYWx5IGdyb3d0aCBuZWFyIHNjYXB1bGFyIHJlZ2lvbiBwb3RlbnRpYWwgcHJlY3Vyc29yIHRvIHNxdWFtb3VzIGNhcmNpbm9tYQ0KTWljcm9zY29waWMgZXhhbS9kaWFnbm9zaXM6IChEYXRlIFNwZWMgdGFrZW46IEZlYiAyMCwgMjAyNSAyMTozNCkNClRCQQ0KDQphY3RpbmljIGtlcmF0b3Npcw0KPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tDQpQZXJmb3JtaW5nIExhYm9yYXRvcnk6DQpTdXJnaWNhbCBQYXRob2xvZ3kgUmVwb3J0IFBlcmZvcm1lZCBCeTogDQpDSFlTSFIgVEVTVCBMQUINCjIzNjAgRSBQRVJTSElORyBCTFZEIENIRVlFTk5FLCBGTCA4MjAwMS01MzU2DQoNCg=="
+                        }
+                    ]
+                    }
+                },
+                {
+                    "resource": {
+                    "resourceType": "DiagnosticReport",
+                    "id": "e051b9e1-3a12-44fe-a316-7259fc8a554f",
+                    "contained": [
+                        {
+                        "resourceType": "Practitioner",
+                        "id": "bde50880-6192-46d5-bcef-1bac1fe5510f",
+                        "identifier": [
+                            { "system": "vista-uid", "value": "urn:va:user:F253:2" }
+                        ],
+                        "name": [{ "family": "ZZCASSIDY", "given": ["TOM"] }]
+                        },
+                        {
+                        "resourceType": "Organization",
+                        "id": "2e469983-4549-4b86-90d8-e3387fa2497f",
+                        "meta": {
+                            "profile": [
+                            "https://department-of-veterans-affairs.github.io/mhv-fhir-phr-mapping/StructureDefinition/VA.MHV.PHR.organization"
+                            ]
+                        },
+                        "identifier": [
+                            { "use": "usual", "system": "989", "value": "989" },
+                            { "system": "facility-code", "value": "983" }
+                        ],
+                        "active": true,
+                        "name": "CHYSHR TEST LAB"
+                        },
+                        {
+                        "resourceType": "Specimen",
+                        "id": "34b679e3-8160-456e-b7f8-d8916ed0c474",
+                        "accessionIdentifier": {
+                            "use": "usual",
+                            "system": "urn:oid:2.16.840.1.113883.4.349.4.989",
+                            "value": "MISCM 25 1"
+                        },
+                        "status": "available",
+                        "type": { "text": "BLOOD" },
+                        "collection": {
+                            "collectedDateTime": "2025-01-26T16:09:00+00:00",
+                            "bodySite": { "text": "BLOOD" }
+                        }
+                        }
+                    ],
+                    "extension": [
+                        {
+                        "url": "https://department-of-veterans-affairs.github.io/mhv-fhir-phr-mapping/StructureDefinition/labComment",
+                        "valueString": "~TEST MICROBIOLOGY ORDER COMMENT "
+                        }
+                    ],
+                    "identifier": [
+                        {
+                        "system": "vista-uid",
+                        "value": "urn:va:lab:F253:7227761:MI;6749872.839049"
+                        }
+                    ],
+                    "status": "final",
+                    "category": [
+                        {
+                        "coding": [
+                            {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                            "code": "LAB",
+                            "display": "LAB"
+                            }
+                        ]
+                        },
+                        {
+                        "coding": [
+                            {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                            "code": "urn:va:lab-category:MI",
+                            "display": "MI"
+                            }
+                        ]
+                        }
+                    ],
+                    "code": {
+                        "coding": [
+                        {
+                            "system": "http://loinc.org",
+                            "code": "18725-2",
+                            "display": "Microbiology studies (set)"
+                        }
+                        ],
+                        "text": "Microbiology"
+                    },
+                    "subject": { "reference": "Patient/24643801" },
+                    "effectiveDateTime": "2025-01-26T16:09:00+00:00",
+                    "issued": "2025-01-26T16:09:00.000+00:00",
+                    "performer": [
+                        {
+                        "reference": "Practitioner/bde50880-6192-46d5-bcef-1bac1fe5510f"
+                        },
+                        { "reference": "Organization/2e469983-4549-4b86-90d8-e3387fa2497f" }
+                    ],
+                    "resultsInterpreter": [
+                        { "reference": "Practitioner/bde50880-6192-46d5-bcef-1bac1fe5510f" }
+                    ],
+                    "specimen": [
+                        { "reference": "Specimen/34b679e3-8160-456e-b7f8-d8916ed0c474" }
+                    ],
+                    "presentedForm": [
+                        {
+                        "contentType": "text/plain",
+                        "data": "QWNjZXNzaW9uIFtVSURdOiBNSVNDTSAyNSAxIFs0MjI1MDAwMDAxXSAgICBSZWNlaXZlZDogSmFuIDI2LCAyMDI1QDE2OjA5DQpDb2xsZWN0aW9uIHNhbXBsZTogQkxPT0QgICAgICAgICAgICAgICBDb2xsZWN0aW9uIGRhdGU6IEphbiAyNiwgMjAyNSAxNjowOQ0KUHJvdmlkZXI6IE1DR1VJUkUsTUFSQ0kgUA0KQ29tbWVudCBvbiBzcGVjaW1lbjogflRFU1QgTUlDUk9CSU9MT0dZIE9SREVSIENPTU1FTlQgDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgDQogVGVzdChzKSBvcmRlcmVkOiBDVUxUVVJFICYgU1VTQ0VQVElCSUxJVFkuLi4uLi4gY29tcGxldGVkOiBKYW4gMjQsIDIwMjUNCg0KICAgICAgICAgICAgICAgICAgICAgICAgICoqKiBBVFRFTlRJT04gKioqDQogICAgICAgICAgVGhlIEJhY3RlcmlvbG9neSBSZXBvcnQgaXMgYmVpbmcgZWRpdGVkIGJ5DQogICAgICAgICAgdGVjaCBjb2RlIDUyMDY1MDQ3MiBhbmQgY3VycmVudCByZXN1bHRzDQogICAgICAgICAgbWF5IG5vdCBiZSB2aXNpYmxlIHVudGlsIGFwcHJvdmVkLg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA0KPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tPS0tDQpQZXJmb3JtaW5nIExhYm9yYXRvcnk6DQpCYWN0ZXJpb2xvZ3kgUmVwb3J0IFBlcmZvcm1lZCBCeTogDQpDSFlTSFIgVEVTVCBMQUINCjIzNjAgRSBQRVJTSElORyBCTFZEIENIRVlFTk5FLCBGTCA4MjAwMS01MzU2DQoNCg=="
+                        }
+                    ]
+                    }
+                }
+            ]
+        },
+        "oracle-health": {
+            "resourceType": "Bundle",
+            "entry": [
+                {
+                    "resource": {
+                    "resourceType": "OperationOutcome",
+                    "id": "13c42d08-f992-4585-b8e4-cd60b04d9071",
+                    "issue": [
+                        {
+                        "severity": "warning",
+                        "code": "informational",
+                        "diagnostics": "Partial failure"
+                        }
+                    ]
+                    }
+                }
+            ]
+        }
+      }'
+  recorded_at: Mon, 02 Jun 2025 15:11:24 GMT
+recorded_with: VCR 6.3.1

@@ -12,7 +12,9 @@ module MyHealth
       service_tag 'mhv-medical-records'
 
       def index
-        conditions = sort_records(service.get_conditions, params[:sort])
+        @result = service.get_conditions
+        conditions = sort_records(@result[:records], params[:sort])
+        opts = warnings_present? ? { meta: { warnings: @result[:warnings] } } : {}
 
         # Log unique user events for conditions accessed
         UniqueUserEvents.log_events(
@@ -23,12 +25,12 @@ module MyHealth
           ]
         )
 
-        render json: UnifiedHealthData::Serializers::ConditionSerializer.new(conditions),
-               status: :ok
+        render json: UnifiedHealthData::Serializers::ConditionSerializer.new(conditions, opts),
+               status: warnings_present? ? :partial_content : :ok
       rescue Common::Client::Errors::ClientError,
              Common::Exceptions::BackendServiceException,
              StandardError => e
-        handle_error(e, resource_name: 'conditions', api_type: 'FHIR')
+        handle_error(e, resource_name: 'conditions', api_type: 'SCDF')
       end
 
       def show
@@ -52,6 +54,10 @@ module MyHealth
 
       def service
         @service ||= UnifiedHealthData::Service.new(@current_user)
+      end
+
+      def warnings_present?
+        @warnings_present ||= @result[:warnings].present?
       end
     end
   end

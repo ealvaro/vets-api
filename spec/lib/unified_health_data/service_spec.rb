@@ -339,7 +339,7 @@ describe UnifiedHealthData::Service, type: :service do
             .to receive(:get_allergies_by_date)
             .and_return(sample_client_response)
 
-          allergies = service.get_allergies
+          allergies = service.get_allergies[:records]
           # 13 total AllergyIntolerance resources, only 10 have active clinicalStatus
           expect(allergies.size).to eq(10)
           expect(allergies.map(&:categories)).to contain_exactly(
@@ -389,7 +389,7 @@ describe UnifiedHealthData::Service, type: :service do
             .to receive(:get_allergies_by_date)
             .and_return(sample_client_response)
 
-          allergies = service.get_allergies.sort
+          allergies = service.get_allergies[:records].sort
 
           allergies_with_dates = allergies.select { |allergy| allergy.date.present? }
           # Use sort_date for comparison since that's what's used for sorting
@@ -412,7 +412,7 @@ describe UnifiedHealthData::Service, type: :service do
             .and_return(Faraday::Response.new(
                           body: modified_response
                         ))
-          allergies = service.get_allergies
+          allergies = service.get_allergies[:records]
           # 5 AllergyIntolerance resources, only 4 have active clinicalStatus
           expect(allergies.size).to eq(4)
           expect(allergies.map(&:categories)).to contain_exactly(
@@ -444,7 +444,7 @@ describe UnifiedHealthData::Service, type: :service do
             .and_return(Faraday::Response.new(
                           body: modified_response
                         ))
-          allergies = service.get_allergies
+          allergies = service.get_allergies[:records]
           # 8 AllergyIntolerance resources, only 6 have active clinicalStatus
           expect(allergies.size).to eq(6)
           expect(allergies.map(&:categories)).to contain_exactly(
@@ -478,7 +478,7 @@ describe UnifiedHealthData::Service, type: :service do
             .and_return(Faraday::Response.new(
                           body: { 'vista' => {}, 'oracle-health' => {} }
                         ))
-          allergies = service.get_allergies
+          allergies = service.get_allergies[:records]
           expect(allergies.size).to eq(0)
         end
       end
@@ -656,7 +656,7 @@ describe UnifiedHealthData::Service, type: :service do
               service: 'unified_health_data'
             )
 
-          vitals = service.get_vitals
+          vitals = service.get_vitals[:records]
           expect(vitals.size).to eq(18)
           expect(vitals.map(&:type)).to contain_exactly(
             'WEIGHT',
@@ -722,7 +722,7 @@ describe UnifiedHealthData::Service, type: :service do
             .to receive(:get_vitals_by_date)
             .and_return(sample_client_response)
 
-          vitals = service.get_vitals.sort
+          vitals = service.get_vitals[:records].sort
 
           vitals_with_dates = vitals.select { |v| v.date.present? }
           # Use sort_date for comparison since that's what's used for sorting
@@ -743,7 +743,7 @@ describe UnifiedHealthData::Service, type: :service do
             .and_return(Faraday::Response.new(
                           body: modified_response
                         ))
-          vitals = service.get_vitals
+          vitals = service.get_vitals[:records]
           expect(vitals.size).to eq(10)
           expect(vitals.map(&:type)).to contain_exactly(
             'WEIGHT',
@@ -779,7 +779,7 @@ describe UnifiedHealthData::Service, type: :service do
             .and_return(Faraday::Response.new(
                           body: modified_response
                         ))
-          vitals = service.get_vitals
+          vitals = service.get_vitals[:records]
           expect(vitals.size).to eq(8)
           expect(vitals.map(&:type)).to contain_exactly(
             'PULSE_OXIMETRY',
@@ -812,7 +812,7 @@ describe UnifiedHealthData::Service, type: :service do
             .and_return(Faraday::Response.new(
                           body: { 'vista' => {}, 'oracle-health' => {} }
                         ))
-          vitals = service.get_vitals
+          vitals = service.get_vitals[:records]
           expect(vitals.size).to eq(0)
         end
       end
@@ -2923,14 +2923,14 @@ describe UnifiedHealthData::Service, type: :service do
     end
 
     it 'returns conditions from both VistA and Oracle Health' do
-      conditions = service.get_conditions
+      conditions = service.get_conditions[:records]
       expect(conditions.size).to eq(18)
       expect(conditions).to all(be_a(UnifiedHealthData::Condition))
       expect(conditions).to all(have_attributes(condition_attributes))
     end
 
     it 'returns conditions sorted by date in descending order' do
-      conditions = service.get_conditions.sort
+      conditions = service.get_conditions[:records].sort
 
       conditions_with_dates = conditions.select { |condition| condition.date.present? }
       dates = conditions_with_dates.map { |condition| Time.zone.parse(condition.date) }
@@ -2943,7 +2943,7 @@ describe UnifiedHealthData::Service, type: :service do
     end
 
     it 'returns conditions from both VistA and Oracle Health with real sample data' do
-      conditions = service.get_conditions
+      conditions = service.get_conditions[:records]
       expect(conditions.size).to eq(18)
       expect(conditions).to all(be_a(UnifiedHealthData::Condition))
       expect(conditions).to all(have_attributes(condition_attributes))
@@ -2976,7 +2976,7 @@ describe UnifiedHealthData::Service, type: :service do
                       body: conditions_empty_response
                     ))
 
-      conditions = service.get_conditions
+      conditions = service.get_conditions[:records]
       expect(conditions).to eq([])
     end
 
@@ -2987,7 +2987,7 @@ describe UnifiedHealthData::Service, type: :service do
                       body: conditions_empty_vista_response
                     ))
 
-      conditions = service.get_conditions
+      conditions = service.get_conditions[:records]
       expect(conditions.size).to eq(2)
       expect(conditions).to all(be_a(UnifiedHealthData::Condition))
       covid_condition = conditions.find { |c| c.id == 'p1533314061' }
@@ -3001,7 +3001,7 @@ describe UnifiedHealthData::Service, type: :service do
                       body: conditions_empty_oh_response
                     ))
 
-      conditions = service.get_conditions
+      conditions = service.get_conditions[:records]
       expect(conditions.size).to eq(16)
       expect(conditions).to all(be_a(UnifiedHealthData::Condition))
       first_condition = conditions.find { |c| c.id == '2afda724-55ca-4a78-b815-3e6d9c35cd15' }
@@ -3033,7 +3033,7 @@ describe UnifiedHealthData::Service, type: :service do
                     ))
 
       expect { service.get_conditions }.not_to raise_error
-      expect(service.get_conditions).to be_an(Array)
+      expect(service.get_conditions[:records]).to be_an(Array)
     end
 
     describe '#get_single_condition' do
@@ -3141,7 +3141,7 @@ describe UnifiedHealthData::Service, type: :service do
             .to receive(:get_immunizations_by_date)
             .and_return(sample_client_response)
 
-          vaccines = service.get_immunizations
+          vaccines = service.get_immunizations[:records]
           expect(vaccines.size).to eq(24)
 
           # Verify specific vaccines exist:
@@ -3213,7 +3213,7 @@ describe UnifiedHealthData::Service, type: :service do
             .to receive(:get_immunizations_by_date)
             .and_return(sample_client_response)
 
-          vaccines = service.get_immunizations.sort
+          vaccines = service.get_immunizations[:records].sort
 
           vaccines_with_dates = vaccines.select { |vaccine| vaccine.date.present? }
           # Use sort_date for comparison since that's what's used for sorting
@@ -3236,7 +3236,7 @@ describe UnifiedHealthData::Service, type: :service do
             .and_return(Faraday::Response.new(
                           body: modified_response
                         ))
-          vaccines = service.get_immunizations
+          vaccines = service.get_immunizations[:records]
           expect(vaccines.size).to eq(15)
 
           expect(vaccines).to all(have_attributes(
@@ -3267,7 +3267,7 @@ describe UnifiedHealthData::Service, type: :service do
             .and_return(Faraday::Response.new(
                           body: modified_response
                         ))
-          vaccines = service.get_immunizations
+          vaccines = service.get_immunizations[:records]
           expect(vaccines.size).to eq(9)
 
           expect(vaccines).to all(have_attributes(
@@ -3298,7 +3298,7 @@ describe UnifiedHealthData::Service, type: :service do
             .and_return(Faraday::Response.new(
                           body: { 'vista' => {}, 'oracle-health' => {} }
                         ))
-          vaccines = service.get_immunizations
+          vaccines = service.get_immunizations[:records]
           expect(vaccines.size).to eq(0)
         end
       end

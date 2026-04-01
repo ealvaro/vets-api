@@ -13,9 +13,10 @@ module MyHealth
       def index
         start_date = params[:start_date]
         end_date = params[:end_date]
-        result = service.get_labs(start_date:, end_date:, caller: 'web_v2')
-        labs = sort_records(result[:records], params[:sort])
-        serialized_labs = UnifiedHealthData::LabOrTestSerializer.new(labs).serializable_hash[:data]
+        @result = service.get_labs(start_date:, end_date:, caller: 'web_v2')
+        labs = sort_records(@result[:records], params[:sort])
+        opts = warnings_present? ? { meta: { warnings: @result[:warnings] } } : {}
+        serialized_labs = UnifiedHealthData::LabOrTestSerializer.new(labs, opts)
 
         UniqueUserEvents.log_events(
           user: @current_user,
@@ -25,20 +26,18 @@ module MyHealth
           ]
         )
 
-        render json: build_response(serialized_labs, result[:warnings]),
-               status: :ok
+        render json: serialized_labs,
+               status: warnings_present? ? :partial_content : :ok
       end
 
       private
 
-      def build_response(data, warnings)
-        response = { data: }
-        response[:meta] = { warnings: } if warnings.present?
-        response
-      end
-
       def service
         @service ||= UnifiedHealthData::Service.new(@current_user)
+      end
+
+      def warnings_present?
+        @warnings_present ||= @result[:warnings].present?
       end
     end
   end
