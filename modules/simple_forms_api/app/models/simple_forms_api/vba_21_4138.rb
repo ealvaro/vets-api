@@ -92,7 +92,7 @@ module SimpleFormsApi
     end
 
     def notification_email_address
-      data['email_address']
+      veteran_email
     end
 
     def zip_code_is_us_based

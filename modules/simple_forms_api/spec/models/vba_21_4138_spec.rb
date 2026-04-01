@@ -388,10 +388,29 @@ RSpec.describe SimpleFormsApi::VBA214138 do
   end
 
   describe '#notification_email_address' do
-    let(:data) { { 'email_address' => 'john@example.com' } }
+    context 'when the veteran is filing' do
+      it 'returns email from the nested veteran object' do
+        data = { 'claimant_type' => 'self', 'veteran' => { 'email' => { 'email_address' => 'veteran@example.com' } } }
+        expect(described_class.new(data).notification_email_address).to eq('veteran@example.com')
+      end
 
-    it 'returns the email address' do
-      expect(described_class.new(data).notification_email_address).to eq('john@example.com')
+      it 'returns veteran_email_address when nested veteran email is absent' do
+        data = { 'claimant_type' => 'self', 'veteran_email_address' => 'veteran@example.com' }
+        expect(described_class.new(data).notification_email_address).to eq('veteran@example.com')
+      end
+    end
+
+    context 'when a non-veteran claimant is filing' do
+      it 'returns veteran_email_address' do
+        data = { 'claimant_type' => 'forVeteran', 'veteran_email_address' => 'veteran@example.com' }
+        expect(described_class.new(data).notification_email_address).to eq('veteran@example.com')
+      end
+    end
+
+    context 'when no email is present' do
+      it 'returns nil' do
+        expect(described_class.new({}).notification_email_address).to be_nil
+      end
     end
   end
 

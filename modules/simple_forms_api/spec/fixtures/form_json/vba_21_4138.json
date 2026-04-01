@@ -6,7 +6,11 @@
     "last": "Veteran"
   },
   "date_of_birth": "1980-01-01",
-  "email_address": "john.veteran@captainsparkles.net",
+  "veteran": {
+  "email": {
+    "email_address": "john.veteran@captainsparkles.net"
+    }
+  },
   "id_number": {
     "ssn": "321540987",
     "va_file_number": "12345678"
