@@ -192,9 +192,15 @@ module UnifiedHealthData
     end
 
     def request_headers(include_content_type: false)
+      request_id = RequestStore.store['request_id']
+      unless request_id
+        request_id = SecureRandom.uuid
+        Rails.logger.info('UHD Client: Generated fallback X-Request-Id for non-HTTP context', request_id:)
+      end
       headers = {
         'Authorization' => fetch_access_token,
-        'x-api-key' => config.x_api_key
+        'x-api-key' => config.x_api_key,
+        'X-Request-Id' => request_id
       }
       headers['Content-Type'] = 'application/json' if include_content_type
       headers

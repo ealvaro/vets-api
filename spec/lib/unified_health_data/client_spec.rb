@@ -322,6 +322,77 @@ RSpec.describe UnifiedHealthData::Client do
     end
   end
 
+  describe '#request_headers' do
+    let(:host) { Settings.mhv.uhd.host }
+    let(:security_host) { Settings.mhv.uhd.security_host }
+
+    before do
+      allow(Flipper).to receive(:enabled?).with(:mhv_uhd_api_gateway_security_endpoint).and_return(false)
+      stub_request(:post, "#{security_host}/mhvapi/security/v1/login")
+        .to_return(status: 200, headers: { 'authorization' => 'Bearer test-token' })
+      stub_request(:get, %r{#{Regexp.escape(host)}/v1/medicalrecords/})
+        .to_return(status: 200, body: '{}', headers: { 'Content-Type' => 'application/json' })
+    end
+
+    context 'when RequestStore has a request_id' do
+      before do
+        RequestStore.store['request_id'] = 'rails-request-abc-123'
+      end
+
+      after do
+        RequestStore.store['request_id'] = nil
+      end
+
+      it 'sends the RequestStore request_id as X-Request-Id' do
+        client.get_allergies_by_date(patient_id: '123', start_date: '2024-01-01', end_date: '2025-01-01')
+
+        expect(WebMock).to have_requested(:get, %r{#{Regexp.escape(host)}/v1/medicalrecords/allergies})
+          .with(headers: { 'X-Request-Id' => 'rails-request-abc-123' })
+      end
+
+      it 'does not log a fallback message' do
+        allow(Rails.logger).to receive(:info)
+
+        client.get_allergies_by_date(patient_id: '123', start_date: '2024-01-01', end_date: '2025-01-01')
+
+        expect(Rails.logger).not_to have_received(:info)
+          .with('UHD Client: Generated fallback X-Request-Id for non-HTTP context', anything)
+      end
+    end
+
+    context 'when RequestStore has no request_id (e.g. Sidekiq job)' do
+      before do
+        RequestStore.store['request_id'] = nil
+        allow(SecureRandom).to receive(:uuid).and_return('fallback-uuid-456')
+        allow(Rails.logger).to receive(:info)
+      end
+
+      it 'generates a fallback UUID and sends it as X-Request-Id' do
+        client.get_allergies_by_date(patient_id: '123', start_date: '2024-01-01', end_date: '2025-01-01')
+
+        expect(WebMock).to have_requested(:get, %r{#{Regexp.escape(host)}/v1/medicalrecords/allergies})
+          .with(headers: { 'X-Request-Id' => 'fallback-uuid-456' })
+      end
+
+      it 'logs the fallback request_id' do
+        client.get_allergies_by_date(patient_id: '123', start_date: '2024-01-01', end_date: '2025-01-01')
+
+        expect(Rails.logger).to have_received(:info)
+          .with('UHD Client: Generated fallback X-Request-Id for non-HTTP context', request_id: 'fallback-uuid-456')
+      end
+    end
+
+    it 'includes Content-Type when include_content_type is true' do
+      stub_request(:post, %r{#{Regexp.escape(host)}/v1/medicalrecords/})
+        .to_return(status: 200, body: '{}', headers: { 'Content-Type' => 'application/json' })
+
+      client.refill_prescription_orders({ orders: [] })
+
+      expect(WebMock).to have_requested(:post, %r{#{Regexp.escape(host)}/v1/medicalrecords/medications/rx/refill})
+        .with(headers: { 'Content-Type' => 'application/json' })
+    end
+  end
+
   describe '#extract_resource_type' do
     it 'extracts allergies from path' do
       path = '/uhd/v1/allergies?patientId=123'
