@@ -949,6 +949,10 @@ RSpec.describe V1::SessionsController, type: :controller do
       end
 
       context 'when cerner eligibility is checked' do
+        let(:user) { build(:user, :loa3, cerner_id:, cerner_facility_ids:) }
+        let(:correlation_mpi_record) { build(:mpi_profile, ssn: correlation_mpi_ssn, cerner_id:, cerner_facility_ids:) }
+        let(:cerner_id) { 'some-cerner-id' }
+        let(:cerner_facility_ids) { %w[123 555] }
         let(:cerner_eligible_cookie) { 'CERNER_ELIGIBLE' }
         let(:expected_log_message) { '[SessionsController] Cerner Eligibility' }
         let(:previous_value) { nil }
@@ -957,12 +961,11 @@ RSpec.describe V1::SessionsController, type: :controller do
         before do
           SAMLRequestTracker.create(uuid: login_uuid, payload: { type: 'idme', application: 'some-applicaton' })
           allow(Rails.logger).to receive(:info)
-          allow(IdentitySettings.sign_in).to receive(:info_cookie_domain).and_return('some-domain')
         end
 
         context 'when the cerner eligible cookie is not present' do
           before do
-            allow_any_instance_of(User).to receive(:cerner_full?).and_return(eligible)
+            allow(IdentitySettings.sign_in).to receive(:info_cookie_domain).and_return('some-domain')
           end
 
           context 'when the user is cerner eligible' do
@@ -978,6 +981,7 @@ RSpec.describe V1::SessionsController, type: :controller do
           end
 
           context 'when the user is not cerner eligible' do
+            let(:cerner_id) { nil }
             let(:eligible) { false }
 
             it 'sets the cookie and logs the cerner eligibility' do
@@ -994,7 +998,6 @@ RSpec.describe V1::SessionsController, type: :controller do
           let(:previous_value) { true }
 
           before do
-            allow_any_instance_of(User).to receive(:cerner_full?).and_return(eligible)
             cookies[cerner_eligible_cookie] = true
           end
 

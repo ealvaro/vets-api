@@ -61,9 +61,11 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
     end
 
     it 'includes properly set meta flags for user not at pretransitioned oh facility' do
-      Settings.mhv.oh_facility_checks.pretransitioned_oh_facilities = '612, 357'
-      Settings.mhv.oh_facility_checks.facilities_ready_for_info_alert = '456, 789'
-      Settings.mhv.oh_facility_checks.oh_migrations_list = ''
+      allow(Settings.mhv.oh_facility_checks).to receive_messages(
+        pretransitioned_oh_facilities: '612, 357',
+        facilities_ready_for_info_alert: '456, 789',
+        oh_migrations_list: ''
+      )
       get '/mobile/v0/user/authorized-services', headers: sis_headers,
                                                  params: { 'appointmentIEN' => '123', 'locationId' => '123' }
       assert_schema_conform(200)
@@ -74,9 +76,11 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
     end
 
     it 'includes properly set meta flags for user at pretransitioned oh facility but not ready for info alert' do
-      Settings.mhv.oh_facility_checks.pretransitioned_oh_facilities = '612, 357, 555'
-      Settings.mhv.oh_facility_checks.facilities_ready_for_info_alert = '456, 789'
-      Settings.mhv.oh_facility_checks.oh_migrations_list = ''
+      allow(Settings.mhv.oh_facility_checks).to receive_messages(
+        pretransitioned_oh_facilities: '612, 357, 555',
+        facilities_ready_for_info_alert: '456, 789',
+        oh_migrations_list: ''
+      )
       get '/mobile/v0/user/authorized-services', headers: sis_headers,
                                                  params: { 'appointmentIEN' => '123', 'locationId' => '123' }
       assert_schema_conform(200)
@@ -90,9 +94,11 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
     end
 
     it 'includes properly set meta flags for user at pretransitioned oh facility and ready for info alert' do
-      Settings.mhv.oh_facility_checks.pretransitioned_oh_facilities = '612, 357, 555'
-      Settings.mhv.oh_facility_checks.facilities_ready_for_info_alert = '555'
-      Settings.mhv.oh_facility_checks.oh_migrations_list = ''
+      allow(Settings.mhv.oh_facility_checks).to receive_messages(
+        pretransitioned_oh_facilities: '612, 357, 555',
+        facilities_ready_for_info_alert: '555',
+        oh_migrations_list: ''
+      )
       get '/mobile/v0/user/authorized-services', headers: sis_headers,
                                                  params: { 'appointmentIEN' => '123', 'locationId' => '123' }
       assert_schema_conform(200)
@@ -106,9 +112,12 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
     end
 
     it 'includes properly set meta flags for actively migrating facility' do
-      Settings.mhv.oh_facility_checks.pretransitioned_oh_facilities = '612, 357'
-      Settings.mhv.oh_facility_checks.facilities_ready_for_info_alert = '612'
-      Settings.mhv.oh_facility_checks.oh_migrations_list = '2026-10-01:[555,Facility A],[612,Facility B]'
+      migrations_list = '2026-10-01:[555,Facility A],[612,Facility B]'
+      allow(Settings.mhv.oh_facility_checks).to receive_messages(
+        pretransitioned_oh_facilities: '612, 357',
+        facilities_ready_for_info_alert: '612',
+        oh_migrations_list: migrations_list
+      )
       get '/mobile/v0/user/authorized-services', headers: sis_headers,
                                                  params: { 'appointmentIEN' => '123', 'locationId' => '123' }
       assert_schema_conform(200)
@@ -372,9 +381,12 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
     end
 
     it 'includes properly sets migratingFacilitiesList when user does not have a migrating facility' do
-      Settings.mhv.oh_facility_checks.pretransitioned_oh_facilities = '612, 357'
-      Settings.mhv.oh_facility_checks.facilities_ready_for_info_alert = '612'
-      Settings.mhv.oh_facility_checks.oh_migrations_list = '2026-10-01:[999,Facility A],[888,Facility B]'
+      migrations_list = '2026-10-01:[999,Facility A],[888,Facility B]'
+      allow(Settings.mhv.oh_facility_checks).to receive_messages(
+        pretransitioned_oh_facilities: '612, 357',
+        facilities_ready_for_info_alert: '612',
+        oh_migrations_list: migrations_list
+      )
       get '/mobile/v0/user/authorized-services', headers: sis_headers,
                                                  params: { 'appointmentIEN' => '123', 'locationId' => '123' }
       assert_schema_conform(200)
@@ -384,9 +396,12 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
     end
 
     it 'includes properly sets migratingFacilitiesList when user does have a migrating facility' do
-      Settings.mhv.oh_facility_checks.pretransitioned_oh_facilities = '612, 357'
-      Settings.mhv.oh_facility_checks.facilities_ready_for_info_alert = '612'
-      Settings.mhv.oh_facility_checks.oh_migrations_list = '2026-10-01:[555,Facility A],[555,Facility B]'
+      migrations_list = '2026-10-01:[555,Facility A],[555,Facility B]'
+      allow(Settings.mhv.oh_facility_checks).to receive_messages(
+        pretransitioned_oh_facilities: '612, 357',
+        facilities_ready_for_info_alert: '612',
+        oh_migrations_list: migrations_list
+      )
       get '/mobile/v0/user/authorized-services', headers: sis_headers,
                                                  params: { 'appointmentIEN' => '123', 'locationId' => '123' }
       assert_schema_conform(200)
