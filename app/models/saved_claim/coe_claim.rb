@@ -14,7 +14,7 @@ class SavedClaim::CoeClaim < SavedClaim
     else
       Rails.logger.info('Begin COE claim submission to LGY API', guid:)
       response = lgy_service.put_application(payload: prepare_form_data)
-      Rails.logger.info('COE claim submitted to LGY API', guid:)
+      Rails.logger.info('COE claim submitted to LGY API', guid:, reference_number: response['reference_number'])
 
       process_attachments!
       response['reference_number']
