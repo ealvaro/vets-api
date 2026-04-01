@@ -503,11 +503,12 @@ module VAOS
         return {} unless Flipper.enabled?(:va_online_scheduling_uhd_avs_metadata, user) &&
                          Flipper.enabled?(APPOINTMENTS_FETCH_OH_AVS, user) &&
                          appointments.any? { |appt| VAOS::AppointmentsHelper.cerner?(appt) }
-        return {} if user.icn.nil? || !start_date.respond_to?(:to_datetime)
+        return {} if user.icn.nil? || !start_date.respond_to?(:to_date)
 
-        start_date_dt = start_date.to_datetime
-        end_date = DateTime.current.end_of_day
-        doc_refs, encounters = unified_health_data_service.get_all_avs_metadata(start_date: start_date_dt, end_date:)
+        start_date_str = start_date.to_date.to_s
+        end_date_str = Time.zone.today.to_s
+        doc_refs, encounters = unified_health_data_service.get_all_avs_metadata(start_date: start_date_str,
+                                                                                end_date: end_date_str)
         clinical_notes_adapter.build_avs_metadata_by_appointment(encounters, doc_refs)
       rescue => e
         err_stack = e.backtrace.reject { |line| line.include?('gems') }.compact.join("\n   ")
