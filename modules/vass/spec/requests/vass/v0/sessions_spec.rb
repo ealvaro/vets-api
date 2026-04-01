@@ -176,7 +176,7 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
         # Rate limit check happens before any API calls, so no cassettes needed
         allow(Rails.logger).to receive(:warn).and_call_original
         expect(Rails.logger).to receive(:warn)
-          .with(a_string_including('"service":"vass"', '"action":"rate_limit_exceeded"', "\"vass_uuid\":\"#{uuid}"))
+          .with(a_string_including('"service":"vass"', '"error_code":"rate_limit_exceeded"', "\"vass_uuid\":\"#{uuid}"))
           .and_call_original
 
         post '/vass/v0/request-otp', params:, as: :json
@@ -280,7 +280,7 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
       it 'logs jwt_issued event with jti for audit trail' do
         allow(Rails.logger).to receive(:info).and_call_original
         expect(Rails.logger).to receive(:info).with(
-          a_string_including('"service":"vass"', '"action":"jwt_issued"', "\"vass_uuid\":\"#{uuid}\"", '"jti":')
+          a_string_including('"service":"vass"', '"event":"jwt_issued"', "\"vass_uuid\":\"#{uuid}\"", '"jti":')
         ).and_call_original
 
         post '/vass/v0/authenticate-otp', params:, as: :json
@@ -299,7 +299,7 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
       it 'returns unauthorized status' do
         allow(Rails.logger).to receive(:warn).and_call_original
         expect(Rails.logger).to receive(:warn).with(
-          a_string_including('"service":"vass"', '"action":"otp_validation_failed"', %("vass_uuid":"#{uuid}"),
+          a_string_including('"service":"vass"', '"error_code":"otp_validation_failed"', %("vass_uuid":"#{uuid}"),
                              '"attempt_number":', '"failure_type":"invalid_otp_code"')
         ).and_call_original
 
@@ -340,7 +340,7 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
     context 'with expired OTP' do
       it 'returns unauthorized status' do
         allow(Rails.logger).to receive(:warn).and_call_original
-        expect(Rails.logger).to receive(:warn).with(a_string_including('"service":"vass"', '"action":"otp_expired"',
+        expect(Rails.logger).to receive(:warn).with(a_string_including('"service":"vass"', '"error_code":"otp_expired"',
                                                                        %("vass_uuid":"#{uuid}"))).and_call_original
 
         post '/vass/v0/authenticate-otp', params:, as: :json
@@ -364,7 +364,7 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
       it 'returns too many requests status with account_locked code' do
         allow(Rails.logger).to receive(:warn).and_call_original
         expect(Rails.logger).to receive(:warn)
-          .with(a_string_including('"service":"vass"', '"action":"validation_rate_limit_exceeded"'))
+          .with(a_string_including('"service":"vass"', '"error_code":"validation_rate_limit_exceeded"'))
           .and_call_original
 
         post '/vass/v0/authenticate-otp', params:, as: :json
@@ -416,7 +416,7 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
         expect(json_response).not_to have_key('data')
       end
 
-      it 'returns 500 with audit_log_error code when log_vass_event raises JSON::GeneratorError' do
+      it 'returns 500 with audit_log_error code when logging raises JSON::GeneratorError' do
         call_count = 0
         allow(Rails.logger).to receive(:info) do
           call_count += 1
@@ -430,7 +430,7 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
         expect(json_response['errors'].first['code']).to eq('audit_log_error')
       end
 
-      it 'returns 500 with audit_log_error code when log_vass_event raises Encoding::UndefinedConversionError' do
+      it 'returns 500 with audit_log_error code when logging raises Encoding::UndefinedConversionError' do
         call_count = 0
         allow(Rails.logger).to receive(:info) do
           call_count += 1
@@ -535,7 +535,7 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
 
       it 'logs token revocation' do
         expect(Rails.logger).to receive(:info)
-          .with(a_string_including('"action":"token_revoked"', "\"vass_uuid\":\"#{uuid}\"", "\"jti\":\"#{jti}\""))
+          .with(a_string_including('"event":"token_revoked"', "\"vass_uuid\":\"#{uuid}\"", "\"jti\":\"#{jti}\""))
 
         post '/vass/v0/revoke-token',
              headers: { 'Authorization' => "Bearer #{jwt_token}" },
@@ -579,7 +579,7 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
 
       it 'logs decode error' do
         expect(Rails.logger).to receive(:warn)
-          .with(a_string_including('"action":"auth_failure"', '"reason":"revocation_decode_error"'))
+          .with(a_string_including('"error_code":"auth_failure"', '"reason":"revocation_decode_error"'))
 
         post '/vass/v0/revoke-token',
              headers: { 'Authorization' => 'Bearer invalid-token' },

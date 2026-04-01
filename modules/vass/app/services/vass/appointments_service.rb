@@ -410,7 +410,7 @@ module Vass
     # @param method_name [String] Name of the method that raised the error
     #
     def log_error(error, method_name)
-      metadata = { action: method_name, level: :error, error_class: error.class.name, correlation_id: }
+      metadata = { method_name:, error_class: error.class.name, correlation_id: }
       metadata[:backend_status] = error.original_status if error.respond_to?(:original_status) && error.original_status
       if error.respond_to?(:original_body) && error.original_body.is_a?(Hash)
         body = error.original_body
@@ -422,65 +422,13 @@ module Vass
           end
         end
       end
-      log_vass_event(**metadata)
+      log_vass_error('service_error', **metadata)
     end
 
     def redact_for_log(value)
       return value unless value.is_a?(String)
 
       ::Logging::Helper::DataScrubber.scrub(value)
-    end
-
-    ##
-    # Validates veteran identity by comparing request data with VASS response.
-    #
-    # @param veteran_data [Hash] Veteran data from VASS API
-    # @param last_name [String] User-provided last name
-    # @param date_of_birth [String] User-provided date of birth
-    # @return [Boolean] true if identity matches
-    #
-    def validate_veteran_identity(veteran_data, last_name, date_of_birth)
-      return false unless veteran_data
-
-      data = veteran_data['data']
-      return false unless data
-
-      last_name_match = normalize_name(data['last_name']) == normalize_name(last_name)
-      dob_match = normalize_vass_date(data['date_of_birth']) == Date.parse(date_of_birth)
-
-      last_name_match && dob_match
-    end
-
-    ##
-    # Validates veteran identity and enriches data with contact info.
-    #
-    # @param veteran_data [Hash] Veteran data from VASS API
-    # @param last_name [String] Veteran's last name for validation
-    # @param date_of_birth [String] Veteran's date of birth for validation
-    # @return [Hash] Enriched veteran data with contact_method and contact_value
-    # @raise [Vass::Errors::VassApiError] if data is invalid
-    # @raise [Vass::Errors::IdentityValidationError] if identity doesn't match
-    # @raise [Vass::Errors::MissingContactInfoError] if no contact info available
-    #
-    def validate_and_enrich_veteran_data(veteran_data, last_name, date_of_birth)
-      unless veteran_data && veteran_data['success'] && veteran_data['data']
-        raise Vass::Errors::VassApiError,
-              veteran_data&.dig('message') || 'Unable to retrieve veteran information'
-      end
-
-      unless validate_veteran_identity(veteran_data, last_name, date_of_birth)
-        raise Vass::Errors::IdentityValidationError, 'Veteran identity could not be verified'
-      end
-
-      contact_method, contact_value = extract_contact_info(veteran_data)
-      unless contact_method && contact_value
-        raise Vass::Errors::MissingContactInfoError, 'Veteran contact information not found'
-      end
-
-      veteran_data.merge(
-        'contact_method' => contact_method,
-        'contact_value' => contact_value
-      )
     end
 
     ##
@@ -529,7 +477,7 @@ module Vass
     def normalize_vass_date(date)
       Date.strptime(date, '%m/%d/%Y')
     rescue ArgumentError, TypeError
-      log_vass_event(action: 'date_parse_failed', level: :error, correlation_id:)
+      log_vass_error('date_parse_failed', correlation_id:)
       raise Vass::Errors::ValidationError, 'Invalid date format from VASS API'
     end
 

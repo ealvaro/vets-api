@@ -133,7 +133,7 @@ RSpec.describe 'Vass::V0::Appointments - Create Appointment', type: :request do
           # No booking session setup - redis_client.get_booking_session will return nil
           allow(Rails.logger).to receive(:warn).and_call_original
           expect(Rails.logger).to receive(:warn)
-            .with(a_string_including('"service":"vass"', '"action":"missing_booking_session"',
+            .with(a_string_including('"service":"vass"', '"error_code":"missing_booking_session"',
                                      "\"vass_uuid\":\"#{veteran_id}"))
             .and_call_original
 

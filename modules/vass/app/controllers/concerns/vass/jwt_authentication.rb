@@ -95,10 +95,9 @@ module Vass
     #
     def track_session_timeout
       StatsD.increment(SESSION_JWT_EXPIRED, tags: [SERVICE_TAG])
-      log_vass_event(
-        action: 'session_timeout',
+      log_vass_error(
+        'session_timeout',
         level: :warn,
-        component: 'jwt_authentication',
         failure_type: 'jwt_expired'
       )
     end
@@ -186,10 +185,10 @@ module Vass
     # @param error_class [String, nil] Optional error class name
     #
     def log_auth_failure(reason, error_class: nil)
-      metadata = { component: 'jwt_authentication', reason: }
+      metadata = { reason: }
       metadata[:error_class] = error_class if error_class
 
-      log_vass_event(action: 'auth_failure', level: :warn, **metadata)
+      log_vass_error('auth_failure', level: :warn, **metadata)
     end
   end
 end

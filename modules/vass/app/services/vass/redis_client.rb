@@ -122,7 +122,7 @@ module Vass
       begin
         Oj.load(cached, symbol_keys: true)
       rescue Oj::ParseError
-        log_vass_event(action: 'json_parse_failed', level: :error, key_type: 'otp_data')
+        log_vass_error('json_parse_failed', key_type: 'otp_data')
         nil
       end
     end
@@ -188,7 +188,7 @@ module Vass
       begin
         Oj.load(cached).with_indifferent_access
       rescue Oj::ParseError
-        log_vass_event(action: 'json_parse_failed', level: :error, key_type: 'veteran_metadata')
+        log_vass_error('json_parse_failed', key_type: 'veteran_metadata')
         nil
       end
     end
@@ -309,7 +309,7 @@ module Vass
       begin
         Oj.load(cached).with_indifferent_access
       rescue Oj::ParseError
-        log_vass_event(action: 'json_parse_failed', level: :error, key_type: 'session_data')
+        log_vass_error('json_parse_failed', key_type: 'session_data')
         nil
       end
     end

@@ -106,7 +106,7 @@ module Vass
         return render_invalid_token_response unless uuid && redis_client.session_exists?(uuid:)
 
         redis_client.delete_session(uuid:)
-        log_vass_event(action: 'token_revoked', vass_uuid: uuid, jti: payload['jti'])
+        log_vass_event('token_revoked', vass_uuid: uuid, jti: payload['jti'])
         track_success(SESSIONS_REVOKE_TOKEN)
         render_camelized_json({ data: { message: 'Token successfully revoked' } })
       rescue Vass::Errors::RedisError => e
@@ -215,7 +215,7 @@ module Vass
       #
       def complete_otp_creation(session)
         increment_rate_limit(session.uuid)
-        log_vass_event(action: 'otp_generated', vass_uuid: session.uuid)
+        log_vass_event('otp_generated', vass_uuid: session.uuid)
       end
 
       ##
@@ -264,8 +264,8 @@ module Vass
           AUTH_IDENTITY_VALIDATION_FAILURE,
           additional_tags: { attempt: attempt_number }
         )
-        log_vass_event(
-          action: 'identity_validation_failed',
+        log_vass_error(
+          'identity_validation_failed',
           vass_uuid: uuid,
           level: :warn,
           attempt_number:,
@@ -280,7 +280,7 @@ module Vass
       # @param error [Vass::Errors::MissingContactInfoError] Error
       #
       def handle_missing_contact_info_error(session, _error)
-        log_vass_event(action: 'missing_contact_info', vass_uuid: session.uuid, level: :error)
+        log_vass_error('missing_contact_info', vass_uuid: session.uuid)
         render_session_error_response(
           code: 'missing_contact_info',
           detail: 'No contact information available for this veteran.',
@@ -295,9 +295,9 @@ module Vass
       # @param error [Exception] Error
       #
       def handle_vass_api_error(session, error)
-        log_vass_event(action: 'vass_api_error', vass_uuid: session.uuid, level: :error,
-                       error_class: error.class.name,
-                       error_message: ::Logging::Helper::DataScrubber.scrub(error.message))
+        log_vass_error('vass_api_error', vass_uuid: session.uuid,
+                                         error_class: error.class.name,
+                                         error_message: ::Logging::Helper::DataScrubber.scrub(error.message))
         render_session_error_response(
           code: 'service_error',
           detail: 'VASS service error',
@@ -314,7 +314,7 @@ module Vass
       #
       def handle_successful_authentication(session, jwt_token, jti)
         reset_validation_rate_limit(session.uuid)
-        log_vass_event(action: 'jwt_issued', vass_uuid: session.uuid, jti:)
+        log_vass_event('jwt_issued', vass_uuid: session.uuid, jti:)
         expires_in = redis_client.redis_session_expiry.to_i
         response_data = camelize_keys({
                                         data: {
@@ -334,10 +334,9 @@ module Vass
       # @param error [VANotify::Error] VANotify error
       #
       def handle_vanotify_error(session, error)
-        log_vass_event(
-          action: 'vanotify_error',
+        log_vass_error(
+          'vanotify_error',
           vass_uuid: session.uuid,
-          level: :error,
           error_class: error.class.name,
           status_code: error.status_code,
           contact_method: session.contact_method
@@ -383,9 +382,9 @@ module Vass
         when :rate_limit then handle_validation_rate_limit_error(session, error)
         when :authentication then handle_invalid_otp(session)
         when :vass_api
-          log_vass_event(action: 'vass_api_error', vass_uuid: session.uuid, level: :error,
-                         error_class: error.class.name,
-                         error_message: ::Logging::Helper::DataScrubber.scrub(error.message))
+          log_vass_error('vass_api_error', vass_uuid: session.uuid,
+                                           error_class: error.class.name,
+                                           error_message: ::Logging::Helper::DataScrubber.scrub(error.message))
           render_session_error_response(code: 'service_error', detail: 'VASS service error', status: :bad_gateway)
         end
       end
@@ -489,7 +488,7 @@ module Vass
       # @return [Boolean] false
       #
       def handle_expired_otp(session)
-        log_vass_event(action: 'otp_expired', vass_uuid: session.uuid, level: :warn)
+        log_vass_error('otp_expired', vass_uuid: session.uuid, level: :warn)
         track_infrastructure_metric(SESSION_OTP_EXPIRED)
         render_session_error_response(
           code: 'otp_expired',
@@ -532,8 +531,8 @@ module Vass
           SESSION_OTP_INVALID,
           additional_tags: { attempt: attempt_number }
         )
-        log_vass_event(
-          action: 'otp_validation_failed',
+        log_vass_error(
+          'otp_validation_failed',
           vass_uuid: uuid,
           level: :warn,
           attempt_number:,
@@ -545,7 +544,7 @@ module Vass
       # Logs validation error (no PHI).
       #
       def log_validation_error
-        log_vass_event(action: 'validation_error', level: :warn)
+        log_vass_error('validation_error', level: :warn)
       end
 
       ##
@@ -571,7 +570,7 @@ module Vass
       # @param identifier [String] Identifier (UUID) for the rate limit
       #
       def log_rate_limit_exceeded(identifier)
-        log_vass_event(action: 'rate_limit_exceeded', vass_uuid: identifier, level: :warn)
+        log_vass_error('rate_limit_exceeded', vass_uuid: identifier, level: :warn)
       end
 
       ##
@@ -660,7 +659,7 @@ module Vass
       # @param identifier [String] Identifier (UUID) for the rate limit
       #
       def log_validation_rate_limit_exceeded(identifier)
-        log_vass_event(action: 'validation_rate_limit_exceeded', vass_uuid: identifier, level: :warn)
+        log_vass_error('validation_rate_limit_exceeded', vass_uuid: identifier, level: :warn)
       end
 
       ##

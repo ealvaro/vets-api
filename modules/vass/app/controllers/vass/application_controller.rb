@@ -117,22 +117,16 @@ module Vass
     end
 
     def handle_unexpected_error(exception)
-      log_vass_event(
-        action: action_name,
-        level: :error,
-        error_type: 'unexpected_error',
+      log_vass_error(
+        'unexpected_error',
         error_class: exception.class.name
       )
-      raise exception # Re-raise so global handler still processes the error
+      raise exception
     end
 
-    # Logs error information without PHI
-    # Only logs: error type, exception class, controller, action, status, timestamp
     def log_safe_error(error_type, exception_class)
-      log_vass_event(
-        action: action_name,
-        level: :error,
-        error_type:,
+      log_vass_error(
+        error_type,
         exception_class:
       )
     end

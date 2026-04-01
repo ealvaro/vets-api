@@ -541,7 +541,9 @@ RSpec.describe Vass::V0::Session, type: :model do
 
       allow(Rails.logger).to receive(:error).and_call_original
       expect(Rails.logger).to receive(:error)
-        .with(a_string_including('"service":"vass"', '"component":"session"', '"action":"metadata_not_found"'))
+        .with(a_string_including('"service":"vass"',
+                                 '"class_name":"Vass::V0::Session"',
+                                 '"error_code":"metadata_not_found"'))
         .and_call_original
 
       expect(redis_client).not_to receive(:save_session)

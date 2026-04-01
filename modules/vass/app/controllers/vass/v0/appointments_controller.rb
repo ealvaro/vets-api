@@ -235,7 +235,9 @@ module Vass
         appointment_id = session_data&.fetch(:appointment_id, nil)
 
         unless appointment_id
-          log_vass_event(action: 'missing_booking_session', vass_uuid: @current_veteran_id, level: :warn,
+          log_vass_error('missing_booking_session',
+                         vass_uuid: @current_veteran_id,
+                         level: :warn,
                          **audit_metadata)
           render_error(
             'missing_session_data',
@@ -284,7 +286,7 @@ module Vass
         edipi = session_data&.fetch(:edipi, nil)
 
         unless edipi
-          log_vass_event(action: 'missing_edipi', vass_uuid: @current_veteran_id, level: :error, **audit_metadata)
+          log_vass_error('missing_edipi', vass_uuid: @current_veteran_id, **audit_metadata)
           return render_error('missing_edipi', 'Veteran EDIPI not found. Please re-authenticate.', :unauthorized)
         end
 
@@ -339,7 +341,8 @@ module Vass
           error_code = status == :no_cohorts ? 'not_within_cohort' : 'no_slots_available'
           render_error(error_code, message, :unprocessable_content)
         else
-          log_vass_event(action: 'unexpected_availability_status', level: :error, status: status.to_s, **audit_metadata)
+          log_vass_error('unexpected_availability_status',
+                         status: status.to_s, **audit_metadata)
           render_error('internal_error', 'An unexpected error occurred', :internal_server_error)
         end
       end

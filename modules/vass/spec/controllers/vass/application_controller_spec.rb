@@ -150,8 +150,7 @@ RSpec.describe Vass::ApplicationController, type: :controller do
           expect(Rails.logger).to receive(:error) do |log_message|
             log_data = JSON.parse(log_message)
             expect(log_data['service']).to eq('vass')
-            expect(log_data['action']).to eq('test_action')
-            expect(log_data['error_type']).to eq('authentication_error')
+            expect(log_data['error_code']).to eq('authentication_error')
             expect(log_data['exception_class']).to eq('Vass::Errors::AuthenticationError')
             expect(log_data['controller']).to eq('test_controller')
             expect(log_data['timestamp']).to be_present
@@ -186,8 +185,7 @@ RSpec.describe Vass::ApplicationController, type: :controller do
         expect(Rails.logger).to receive(:error) do |log_message|
           log_data = JSON.parse(log_message)
           expect(log_data['service']).to eq('vass')
-          expect(log_data['action']).to eq('test_action')
-          expect(log_data['error_type']).to eq('authentication_error')
+          expect(log_data['error_code']).to eq('authentication_error')
           expect(log_data['exception_class']).to eq('Vass::Errors::AuthenticationError')
           expect(log_data['controller']).to eq('test_controller')
           expect(log_data['timestamp']).to be_present
@@ -379,12 +377,14 @@ RSpec.describe Vass::ApplicationController, type: :controller do
     end
 
     describe '#log_safe_error' do
-      it 'logs error metadata without PHI using log_vass_event' do
+      before { allow(controller).to receive(:action_name).and_return('test_action') }
+
+      it 'logs error metadata without PHI using log_vass_error' do
         expect(Rails.logger).to receive(:error) do |log_message|
           log_data = JSON.parse(log_message)
           expect(log_data['service']).to eq('vass')
           expect(log_data['action']).to eq('test_action')
-          expect(log_data['error_type']).to eq('test_error')
+          expect(log_data['error_code']).to eq('test_error')
           expect(log_data['exception_class']).to eq('TestException')
           expect(log_data['controller']).to eq('test_controller')
           expect(log_data['timestamp']).to be_present
@@ -449,8 +449,7 @@ RSpec.describe Vass::ApplicationController, type: :controller do
         expect(Rails.logger).to receive(:error) do |log_message|
           log_data = JSON.parse(log_message)
           expect(log_data['service']).to eq('vass')
-          expect(log_data['action']).to eq('test_action')
-          expect(log_data['error_type']).to eq('unexpected_error')
+          expect(log_data['error_code']).to eq('unexpected_error')
           expect(log_data['error_class']).to eq('StandardError')
           expect(log_data['controller']).to eq('test_controller')
         end

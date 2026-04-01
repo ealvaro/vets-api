@@ -299,7 +299,7 @@ RSpec.describe 'Vass::V0::Appointments - Appointment Availability', type: :reque
         it 'returns unauthorized status with revoked token error' do
           allow(Rails.logger).to receive(:warn).and_call_original
           expect(Rails.logger).to receive(:warn)
-            .with(a_string_including('"service":"vass"', '"action":"auth_failure"', '"reason":"revoked_token"'))
+            .with(a_string_including('"service":"vass"', '"error_code":"auth_failure"', '"reason":"revoked_token"'))
             .and_call_original
 
           get('/vass/v0/appointment-availability', headers:)
@@ -351,7 +351,7 @@ RSpec.describe 'Vass::V0::Appointments - Appointment Availability', type: :reque
             a_string_including(
               '"service":"vass"',
               '"controller":"appointments"',
-              '"action":"unexpected_availability_status"',
+              '"error_code":"unexpected_availability_status"',
               '"status":"unexpected_status"'
             )
           )

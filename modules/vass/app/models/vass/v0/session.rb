@@ -304,7 +304,7 @@ module Vass
         metadata = redis_client.veteran_metadata(uuid:)
 
         unless metadata
-          log_vass_event(action: 'metadata_not_found', level: :error)
+          log_vass_error('metadata_not_found')
           return false
         end
 

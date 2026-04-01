@@ -392,8 +392,8 @@ describe Vass::RedisClient do
       it 'logs the parse error without PHI' do
         allow(Rails.logger).to receive(:error).and_call_original
         expect(Rails.logger).to receive(:error)
-          .with(a_string_including('"service":"vass"', '"component":"redis_client"',
-                                   '"action":"json_parse_failed"', '"key_type":"session_data"'))
+          .with(a_string_including('"service":"vass"', '"class_name":"Vass::RedisClient"',
+                                   '"error_code":"json_parse_failed"', '"key_type":"session_data"'))
           .and_call_original
         redis_client.session(uuid:)
       end

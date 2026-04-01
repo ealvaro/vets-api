@@ -46,7 +46,7 @@ module Vass
         # Let configuration errors propagate
         raise
       rescue => e
-        log_vass_event(action: 'token_encryption_failed', level: :error, error_class: e.class.name)
+        log_vass_error('token_encryption_failed', error_class: e.class.name)
         raise Vass::Errors::EncryptionError, "Failed to encrypt token: #{e.message}"
       end
     end
@@ -76,14 +76,14 @@ module Vass
       rescue ActiveSupport::MessageVerifier::InvalidSignature, ActiveSupport::MessageEncryptor::InvalidMessage => e
         # Token might be plaintext from before encryption was enabled - allow backward compatibility
         log_vass_event(
-          action: 'token_decryption_backward_compat',
+          'token_decryption_backward_compat',
           level: :warn,
           error_class: e.class.name,
           message: 'Attempting to decrypt potentially plaintext token - returning as-is for backward compatibility'
         )
         encrypted_token
       rescue => e
-        log_vass_event(action: 'token_decryption_failed', level: :error, error_class: e.class.name)
+        log_vass_error('token_decryption_failed', error_class: e.class.name)
         raise Vass::Errors::DecryptionError, "Failed to decrypt token: #{e.message}"
       end
     end

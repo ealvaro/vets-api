@@ -336,7 +336,7 @@ RSpec.describe Vass::V0::SessionsController, type: :controller do
       it 'logs VANotify error' do
         expect(Rails.logger).to receive(:error).with(
           a_string_including(
-            '"service":"vass"', '"action":"vanotify_error"', "\"vass_uuid\":\"#{uuid}\"",
+            '"service":"vass"', '"error_code":"vanotify_error"', "\"vass_uuid\":\"#{uuid}\"",
             '"error_class":"VANotify::Error"', '"status_code":500', '"contact_method":"email"'
           )
         )

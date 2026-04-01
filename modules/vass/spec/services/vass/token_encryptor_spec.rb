@@ -72,7 +72,7 @@ describe Vass::TokenEncryptor do
       it 'logs the encryption failure' do
         allow(Rails.logger).to receive(:error).and_call_original
         expect(Rails.logger).to receive(:error)
-          .with(a_string_including('"service":"vass"', '"action":"token_encryption_failed"'))
+          .with(a_string_including('"service":"vass"', '"error_code":"token_encryption_failed"'))
           .and_call_original
 
         expect { token_encryptor.encrypt(oauth_token) }.to raise_error(Vass::Errors::EncryptionError)
@@ -126,7 +126,7 @@ describe Vass::TokenEncryptor do
       it 'logs a warning about backward compatibility' do
         allow(Rails.logger).to receive(:warn).and_call_original
         expect(Rails.logger).to receive(:warn)
-          .with(a_string_including('"service":"vass"', '"action":"token_decryption_backward_compat"'))
+          .with(a_string_including('"service":"vass"', '"event":"token_decryption_backward_compat"'))
           .and_call_original
 
         token_encryptor.decrypt(plaintext_token)
@@ -158,7 +158,7 @@ describe Vass::TokenEncryptor do
       it 'logs the decryption failure' do
         allow(Rails.logger).to receive(:error).and_call_original
         expect(Rails.logger).to receive(:error)
-          .with(a_string_including('"service":"vass"', '"action":"token_decryption_failed"'))
+          .with(a_string_including('"service":"vass"', '"error_code":"token_decryption_failed"'))
           .and_call_original
 
         expect do
