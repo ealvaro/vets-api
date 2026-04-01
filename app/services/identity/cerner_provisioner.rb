@@ -32,16 +32,16 @@ module Identity
       response = update_provisioning
 
       if response[:agreement_signed].blank?
-        Rails.logger.error('[Identity] [CernerProvisioner] update_provisioning error', { icn:, response:, source: })
+        Rails.logger.info('[Identity] [CernerProvisioner] update_provisioning error', { icn:, response:, source: })
         raise(Errors::CernerProvisionerError, 'Agreement not accepted')
       end
       if response[:cerner_provisioned].blank?
-        Rails.logger.error('[Identity] [CernerProvisioner] update_provisioning error', { icn:, response:, source: })
+        Rails.logger.info('[Identity] [CernerProvisioner] update_provisioning error', { icn:, response:, source: })
         raise(Errors::CernerProvisionerError, 'Account not Provisioned')
       end
 
       Rails.logger.info('[Identity] [CernerProvisioner] update_provisioning success',
-                        { icn:, messaging_only:, source: })
+                        { icn:, messaging_only:, response:, source: })
     rescue Common::Client::Errors::ClientError => e
       log_provisioner_error(e)
       raise Errors::CernerProvisionerError, e.message

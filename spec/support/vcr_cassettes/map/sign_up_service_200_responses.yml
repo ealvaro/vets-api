@@ -67,7 +67,7 @@ http_interactions:
       - origin; dur=46
     body:
       encoding: UTF-8
-      string: '{"agreementSigned":true,"optOut":false,"cernerProvisioned":false,"bypassEligible":false,"messagingOnly":false}'
+      string: '{"agreementSigned":true,"optOut":false,"cernerProvisioned":false,"bypassEligible":false,"messagingEnabled":false}'
   recorded_at: Wed, 26 Oct 2022 18:30:02 GMT
 - request:
     method: post
@@ -274,6 +274,6 @@ http_interactions:
       - origin; dur=46
     body:
       encoding: UTF-8
-      string: '{"agreementSigned":true,"optOut":false,"cernerProvisioned":false,"bypassEligible":false,"messagingOnly":false}'
+      string: '{"agreementSigned":true,"optOut":false,"cernerProvisioned":false,"bypassEligible":false,"messagingEnabled":false}'
   recorded_at: Wed, 26 Oct 2022 18:30:02 GMT
 recorded_with: VCR 6.1.0

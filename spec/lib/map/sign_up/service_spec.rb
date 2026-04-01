@@ -73,7 +73,7 @@ describe MAP::SignUp::Service do
           opt_out: false,
           cerner_provisioned: false,
           bypass_eligible: false,
-          messaging_only: false
+          messaging_enabled: false
         }
       end
 
@@ -227,7 +227,7 @@ describe MAP::SignUp::Service do
           opt_out: false,
           cerner_provisioned: false,
           bypass_eligible: false,
-          messaging_only: false
+          messaging_enabled: false
         }
       end
 
@@ -253,7 +253,7 @@ describe MAP::SignUp::Service do
           opt_out: false,
           cerner_provisioned: false,
           bypass_eligible: false,
-          messaging_only: false
+          messaging_enabled: false
         }
       end
 
@@ -279,7 +279,7 @@ describe MAP::SignUp::Service do
           opt_out: false,
           cerner_provisioned: false,
           bypass_eligible: false,
-          messaging_only: false
+          messaging_enabled: false
         }
       end
 

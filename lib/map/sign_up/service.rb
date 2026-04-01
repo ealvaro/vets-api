@@ -119,7 +119,7 @@ module MAP
           opt_out: response_body['optOut'],
           cerner_provisioned: response_body['cernerProvisioned'],
           bypass_eligible: response_body['bypassEligible'],
-          messaging_only: response_body['messagingOnly']
+          messaging_enabled: response_body['messagingEnabled']
         }
       end
 

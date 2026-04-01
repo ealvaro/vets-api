@@ -43,6 +43,16 @@ RSpec.describe Identity::CernerProvisioner do
             family_name: last_name)
     end
 
+    let(:service_response) do
+      {
+        agreement_signed:,
+        cerner_provisioned:,
+        opt_out: false,
+        bypass_eligible: false,
+        messaging_enabled: messaging_only
+      }
+    end
+
     before do
       allow(MAP::SignUp::Service).to receive(:new).and_return(service)
       allow_any_instance_of(MPI::Service).to receive(:find_profile_by_identifier).and_return(find_profile_response)
@@ -53,7 +63,7 @@ RSpec.describe Identity::CernerProvisioner do
       let(:cerner_provisioned) { true }
 
       before do
-        allow(service).to receive(:update_provisioning).and_return({ agreement_signed:, cerner_provisioned: })
+        allow(service).to receive(:update_provisioning).and_return(service_response)
       end
 
       context 'and account is not cerner provisionable' do
@@ -63,14 +73,23 @@ RSpec.describe Identity::CernerProvisioner do
 
         it 'raises and logs an error' do
           expect { provisioner.perform }.to raise_error(Identity::Errors::CernerProvisionerError)
-          expect(Rails.logger).to have_received(:error).with(expected_log,
-                                                             { icn:, response: service_response, source: })
+          expect(Rails.logger).to have_received(:info).with(expected_log,
+                                                            { icn:, response: service_response, source: })
         end
       end
 
       context 'and account is cerner provisionable' do
         let(:cerner_provisioned) { true }
         let(:expected_log) { '[Identity] [CernerProvisioner] update_provisioning success' }
+        let(:service_response) do
+          {
+            agreement_signed:,
+            cerner_provisioned:,
+            opt_out: false,
+            bypass_eligible: false,
+            messaging_enabled: messaging_only
+          }
+        end
 
         it 'does not return error' do
           expect { provisioner.perform }.not_to raise_error
@@ -80,7 +99,7 @@ RSpec.describe Identity::CernerProvisioner do
           provisioner.perform
           expect(Rails.logger).to have_received(:info).with(
             expected_log,
-            { icn:, messaging_only:, source: }
+            { icn:, messaging_only:, source:, response: service_response }
           )
         end
       end
@@ -96,7 +115,7 @@ RSpec.describe Identity::CernerProvisioner do
 
       it 'raises and logs an error' do
         expect { provisioner.perform }.to raise_error(Identity::Errors::CernerProvisionerError)
-        expect(Rails.logger).to have_received(:error).with(expected_log, { icn:, response: service_response, source: })
+        expect(Rails.logger).to have_received(:info).with(expected_log, { icn:, response: service_response, source: })
       end
     end
 

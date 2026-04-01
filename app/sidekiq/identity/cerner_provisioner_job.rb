@@ -6,7 +6,6 @@ module Identity
 
     sidekiq_options retry: false, unique_for: 5.minutes
 
-    # remove 'source' argument from unique check
     def self.sidekiq_unique_context(job)
       icn, messaging_only = job['args']
 
@@ -16,7 +15,7 @@ module Identity
     def perform(icn, messaging_only, source = nil)
       CernerProvisioner.new(icn:, messaging_only:, source:).perform
     rescue Errors::CernerProvisionerError => e
-      Rails.logger.error('[Identity] [CernerProvisionerJob] error', { icn:, error_message: e.message, source: })
+      Rails.logger.info('[Identity] [CernerProvisionerJob] error', { icn:, error_message: e.message, source: })
       raise if source.to_s == 'tou'
     end
   end
