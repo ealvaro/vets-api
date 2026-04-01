@@ -20,10 +20,6 @@ module ClaimsApi
       DISABILITY_COUNT_MAX = 150
       BDD_UPPER_LIMIT = 180
 
-      CLAIM_DATE = Time.find_zone!('Central Time (US & Canada)').today.freeze
-      YYYY_YYYYMM_REGEX = '^(?:19|20)[0-9][0-9]$|^(?:19|20)[0-9][0-9]-(0[1-9]|1[0-2])$'.freeze
-      YYYY_MM_DD_REGEX = '^(?:[0-9]{4})-(?:0[1-9]|1[0-2])-(?:0[1-9]|[1-2][0-9]|3[0-1])$'.freeze
-
       def alt_rev_validate_form_526_submission_values
         return if form_attributes.empty?
 
@@ -628,7 +624,7 @@ module ClaimsApi
 
       def duty_end_date_check(max_period)
         Date.strptime(max_period['activeDutyEndDate'],
-                      '%Y-%m-%d') > Date.strptime(CLAIM_DATE.to_s, '%Y-%m-%d') + 180.days
+                      '%Y-%m-%d') > claim_date + 180.days
       end
 
       def alt_rev_validate_service_periods(service_information)
@@ -918,7 +914,6 @@ module ClaimsApi
       end
 
       def alt_rev_validate_claim_process_type_bdd
-        claim_date = Date.parse(CLAIM_DATE.to_s)
         service_information = form_attributes['serviceInformation']
         return unless service_periods_present?(service_information)
 
@@ -1006,43 +1001,8 @@ module ClaimsApi
         date_regex_groups(begin_date) > date_regex_groups(end_date)
       end
 
-      # Will check for a real date including leap year
-      def date_is_valid?(date, property, is_full_date = false) # rubocop:disable Style/OptionalBooleanParameter
-        return false if date.blank?
-
-        collect_date_error(date, property) unless /^[\d-]+$/ =~ date # check for something like 'July 2017'
-
-        return false if is_full_date && !date.match(YYYY_MM_DD_REGEX)
-
-        return true if date.match(YYYY_YYYYMM_REGEX) # valid YYYY or YYYY-MM date
-
-        date_y, date_m, date_d = date.split('-').map(&:to_i)
-
-        return true if Date.valid_date?(date_y, date_m, date_d)
-
-        collect_date_error(date, property)
-
-        false
-      end
-
       def service_periods_present?(service_information)
         service_information&.dig('servicePeriods').present?
-      end
-
-      def collect_date_error(date, property = '/')
-        collect_error_messages(
-          detail: "#{date} is not a valid date.",
-          source: "data/attributes/#{property}"
-        )
-      end
-
-      def errors_array
-        @errors ||= []
-      end
-
-      def collect_error_messages(detail: 'Missing or invalid attribute', source: '/',
-                                 title: 'Unprocessable Entity', status: '422')
-        errors_array.push({ detail:, source:, title:, status: })
       end
 
       def error_collection

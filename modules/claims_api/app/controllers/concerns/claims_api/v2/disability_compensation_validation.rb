@@ -18,7 +18,6 @@ module ClaimsApi
       BDD_LOWER_LIMIT = 90
       BDD_UPPER_LIMIT = 180
 
-      CLAIM_DATE = Time.find_zone!('Central Time (US & Canada)').today.freeze
       YYYY_YYYYMM_REGEX = '^(?:19|20)[0-9][0-9]$|^(?:19|20)[0-9][0-9]-(0[1-9]|1[0-2])$'.freeze
       YYYY_MM_DD_REGEX = '^(?:[0-9]{4})-(?:0[1-9]|1[0-2])-(?:0[1-9]|[1-2][0-9]|3[0-1])$'.freeze
 
@@ -51,6 +50,14 @@ module ClaimsApi
       end
 
       private
+
+      def claim_date
+        @claim_date = if date_is_valid?(form_attributes['claimDate'], 'claimDate', true)
+                        Date.parse(form_attributes['claimDate'])
+                      else
+                        Time.zone.today
+                      end
+      end
 
       def validate_form_526_change_of_address
         return if form_attributes['changeOfAddress'].blank?
@@ -713,9 +720,7 @@ module ClaimsApi
 
         if ant_sep_date.present? && max_active_duty_end_date.present? && max_date_valid && ((Date.strptime(
           max_period['activeDutyEndDate'], '%Y-%m-%d'
-        ) > Date.strptime(CLAIM_DATE.to_s, '%Y-%m-%d') +
-           180.days) || (Date.strptime(ant_sep_date,
-                                       '%Y-%m-%d') > Date.strptime(CLAIM_DATE.to_s, '%Y-%m-%d') + 180.days))
+        ) > claim_date + 180.days) || (Date.strptime(ant_sep_date, '%Y-%m-%d') > claim_date + 180.days))
 
           collect_error_messages(
             detail: 'Service members cannot submit a claim until they are within 180 days of their separation date.'
@@ -1143,7 +1148,6 @@ module ClaimsApi
       end
 
       def validate_claim_process_type_bdd
-        claim_date = Date.parse(CLAIM_DATE.to_s)
         service_information = form_attributes['serviceInformation']
         active_dates = service_information['servicePeriods']&.pluck('activeDutyEndDate')
         active_dates << service_information&.dig('federalActivation', 'anticipatedSeparationDate')
@@ -1255,7 +1259,8 @@ module ClaimsApi
       def date_is_valid?(date, property, is_full_date = false) # rubocop:disable Style/OptionalBooleanParameter
         return false if date.blank?
 
-        collect_date_error(date, property) unless /^[\d-]+$/ =~ date # check for something like 'July 2017'
+        # check for something like 'July 2017'
+        collect_date_error(date, property) unless /^[\d-]+$/ =~ date || property == 'claimDate'
 
         return false if is_full_date && !date.match(YYYY_MM_DD_REGEX)
 
@@ -1265,7 +1270,9 @@ module ClaimsApi
 
         return true if Date.valid_date?(date_y, date_m, date_d)
 
-        collect_date_error(date, property)
+        # due to claimDate being an optional field with a fallback, this is the only date
+        # we allow to be invalid/nil without an error
+        collect_date_error(date, property) unless property == 'claimDate'
 
         false
       end

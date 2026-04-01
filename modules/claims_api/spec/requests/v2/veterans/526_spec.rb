@@ -5,7 +5,6 @@ require_relative '../../../rails_helper'
 
 RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
   let(:scopes) { %w[claim.write claim.read] }
-  let(:claim_date) { Time.find_zone!('Central Time (US & Canada)').today }
   let(:target_veteran) do
     OpenStruct.new(
       icn: '1012832025V743496',

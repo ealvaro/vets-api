@@ -48,8 +48,7 @@ module ClaimsApi
     end
 
     def validate_form_526_submission_claim_date!
-      return if form_attributes['claimDate'].blank?
-      return if DateTime.parse(form_attributes['claimDate']) <= Time.zone.now
+      return if claim_date <= Date.current
 
       raise ::Common::Exceptions::InvalidFieldValue.new('claimDate', form_attributes['claimDate'])
     end
@@ -57,13 +56,13 @@ module ClaimsApi
     def validate_form_526_location_codes!
       # only retrieve separation locations if we'll need them
       need_locations = form_attributes['serviceInformation']['servicePeriods'].detect do |service_period|
-        Date.parse(service_period['activeDutyEndDate']) > Time.zone.today &&
+        Date.parse(service_period['activeDutyEndDate']) > Date.current &&
           service_period['separationLocationCode'].present?
       end
       separation_locations = retrieve_separation_locations if need_locations
 
       form_attributes['serviceInformation']['servicePeriods'].each do |service_period|
-        next if Date.parse(service_period['activeDutyEndDate']) <= Time.zone.today
+        next if Date.parse(service_period['activeDutyEndDate']) <= Date.current
 
         sep_loc_code = service_period['separationLocationCode']
         next if sep_loc_code.blank?
@@ -171,7 +170,7 @@ module ClaimsApi
       end
 
       return if Date.parse(title10_activation_date) > begin_dates.min &&
-                Date.parse(title10_activation_date) <= Time.zone.now
+                Date.parse(title10_activation_date) <= Date.current
 
       raise ::Common::Exceptions::InvalidFieldValue.new('title10ActivationDate', title10_activation_date)
     end
@@ -229,7 +228,7 @@ module ClaimsApi
 
       beginning_date = change_of_address['beginningDate']
       # if 'TEMPORARY' address, 'beginningDate' is required and must be in the future.
-      if beginning_date.blank? || (Date.parse(beginning_date) <= Time.zone.now)
+      if beginning_date.blank? || (Date.parse(beginning_date) <= Date.current)
         raise ::Common::Exceptions::InvalidFieldValue.new('beginningDate', beginning_date)
       end
     end

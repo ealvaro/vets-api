@@ -33,7 +33,7 @@ end
 describe AltTestDisabilityCompensationValidationClass, vcr: 'brd/countries' do
   subject(:test_526_validation_instance) { described_class.new }
 
-  let(:created_at) { Timecop.freeze(Time.zone.now) }
+  let(:created_at) { Timecop.freeze(Date.current) }
 
   let(:valid_countries) do
     ['USA']
@@ -390,31 +390,45 @@ describe AltTestDisabilityCompensationValidationClass, vcr: 'brd/countries' do
       end
     end
 
-    context 'when the active duty end date is beyond 180 days from the claim date' do
-      it 'collects an error message' do
-        invalid_attributes = form_attributes.deep_dup
-        invalid_attributes['serviceInformation']['servicePeriods'].first['activeDutyEndDate'] =
-          200.days.from_now.to_date.iso8601
+    context 'when the claim date is not on the form' do
+      context 'and the active duty end date is beyond 180 days from the current date' do
+        it 'collects an error message' do
+          invalid_attributes = form_attributes.deep_dup
+          invalid_attributes['serviceInformation']['servicePeriods'].first['activeDutyEndDate'] =
+            200.days.from_now.to_date.iso8601
 
-        subject.send(:alt_rev_validate_claim_date_to_active_duty_end_date, invalid_attributes['serviceInformation'])
+          subject.send(:alt_rev_validate_claim_date_to_active_duty_end_date, invalid_attributes['serviceInformation'])
 
-        expect(current_error_array.count).to eq(1)
-        expect(current_error_array[0][:detail]).to eq(
-          'Service members cannot submit a claim until they are within 180 days of their separation date.'
-        )
+          expect(current_error_array.count).to eq(1)
+          expect(current_error_array[0][:detail]).to eq(
+            'Service members cannot submit a claim until they are within 180 days of their separation date.'
+          )
+        end
       end
-    end
 
-    context 'when the active duty end date is beyond 180 days from the claim date, but current branch is reserves' do
-      it 'does not raise a 422' do
-        valid_attributes = form_attributes.deep_dup
-        valid_attributes['serviceInformation']['servicePeriods'].last['serviceBranch'] = 'Air National Guard'
-        valid_attributes['serviceInformation']['servicePeriods'].last['activeDutyEndDate'] =
-          200.days.from_now.to_date.iso8601
+      context 'when the active duty end date is beyond 180 days from the current date and current branch is reserves' do
+        it 'does not raise a 422' do
+          valid_attributes = form_attributes.deep_dup
+          valid_attributes['serviceInformation']['servicePeriods'].last['serviceBranch'] = 'Air National Guard'
+          valid_attributes['serviceInformation']['servicePeriods'].last['activeDutyEndDate'] =
+            200.days.from_now.to_date.iso8601
 
-        subject.send(:alt_rev_validate_claim_date_to_active_duty_end_date, valid_attributes['serviceInformation'])
+          subject.send(:alt_rev_validate_claim_date_to_active_duty_end_date, valid_attributes['serviceInformation'])
 
-        expect(current_error_array).to be_nil
+          expect(current_error_array).to be_nil
+        end
+      end
+
+      context 'and the active duty end date is within 180 days from the current date' do
+        it 'does not collect an error message' do
+          valid_attributes = form_attributes.deep_dup
+          valid_attributes['serviceInformation']['servicePeriods'].first['activeDutyEndDate'] =
+            90.days.from_now.to_date.iso8601
+
+          subject.send(:alt_rev_validate_claim_date_to_active_duty_end_date, valid_attributes['serviceInformation'])
+
+          expect(current_error_array).to be_nil
+        end
       end
     end
   end
@@ -1456,6 +1470,21 @@ describe AltTestDisabilityCompensationValidationClass, vcr: 'brd/countries' do
           expect(result.length).to eq(3)
           expect(result.map { |d| d['name'] }).to contain_exactly('Primary1', 'Secondary1', 'Secondary2')
         end
+      end
+    end
+  end
+
+  describe '#claim_date' do
+    context 'when claimDate is not present in form_attributes' do
+      it "returns today's date and doesn't raise an error" do
+        # Ensure claimDate is not set
+        expect(subject.form_attributes).not_to have_key('claimDate')
+
+        expect(subject.send(:claim_date)).to eq(Date.current)
+
+        errors = test_526_validation_instance.send(:error_collection)
+
+        expect(errors).to be_empty
       end
     end
   end

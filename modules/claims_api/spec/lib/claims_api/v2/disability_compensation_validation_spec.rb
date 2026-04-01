@@ -571,4 +571,31 @@ describe TestDisabilityCompensationValidationClass, vcr: 'brd/countries' do
       # rubocop:enable RSpec/NoExpectationExample
     end
   end
+
+  describe '#claim_date' do
+    context 'when claimDate is not present in form_attributes' do
+      it 'returns today\'s date and doesn\'t raise an error' do
+        # Ensure claimDate is not set
+        expect(subject.form_attributes).not_to have_key('claimDate')
+
+        expect(subject.send(:claim_date)).to eq(Time.zone.today)
+
+        errors = test_526_validation_instance.send(:error_collection)
+
+        expect(errors).to be_empty
+      end
+    end
+
+    context 'when claimDate is invalid' do
+      it 'returns today\'s date and doesn\'t raise an error' do
+        subject.form_attributes['claimDate'] = 'invalid-date'
+        subject.instance_variable_set(:@claim_date, nil)
+
+        expect(subject.send(:claim_date)).to eq(Time.zone.today)
+        errors = test_526_validation_instance.send(:error_collection)
+
+        expect(errors).to be_empty
+      end
+    end
+  end
 end
