@@ -3,7 +3,7 @@
 require 'rails_helper'
 require 'bd/bd'
 
-class FakeController
+class ClaimValidationTestController
   include ClaimsApi::V2::ClaimsRequests::ClaimValidation
 
   def target_veteran
@@ -56,7 +56,7 @@ describe ClaimsApi::V2::ClaimsRequests::ClaimValidation do
     )
   end
 
-  let(:controller) { FakeController.new }
+  let(:controller) { ClaimValidationTestController.new }
 
   let(:vet_request_icn) { target_veteran.icn }
   let(:claimant_request_icn) { target_veteran.icn }
