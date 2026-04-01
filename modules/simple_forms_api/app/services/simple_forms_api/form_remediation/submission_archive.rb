@@ -148,12 +148,9 @@ module SimpleFormsApi
       end
 
       def submission_file_name
-        if Flipper.enabled?(:vff_force_unique_file_name_date_property)
-          return @submission_file_name ||= unique_file_name(form_number, id,
-                                                            submission.created_at)
-        end
-
-        @submission_file_name ||= unique_file_name(form_number, id)
+        @submission_file_name ||= unique_file_name(
+          form_number, id, submission.created_at
+        )
       end
 
       def form_number
