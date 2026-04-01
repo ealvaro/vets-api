@@ -8,6 +8,17 @@ module ClaimsApi
       ARMY_NATIONAL_GUARD
     ].freeze
 
+    VALID_NEW_DISABILITY_NAME_REGEX = %r{^(?!.* {2})[a-zA-Z0-9',. /()-]+$}
+
+    # Validates disability name format for NEW disabilities
+    # Regex pattern from FES: ^(?!.* {2})[a-zA-Z0-9',. /()-]+$
+    def valid_disability_name_for_new_action?(name, action_type)
+      return true unless action_type == 'NEW'
+      return false if name.blank?
+
+      name.match?(VALID_NEW_DISABILITY_NAME_REGEX)
+    end
+
     def eligible_for_future_end_date?(max_period, service_periods)
       most_recent_service_branch_is_reserves_or_guard?(max_period) && past_service_period?(service_periods)
     end

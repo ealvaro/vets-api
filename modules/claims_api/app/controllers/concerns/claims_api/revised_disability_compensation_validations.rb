@@ -259,6 +259,7 @@ module ClaimsApi
 
     def validate_form_526_disabilities!
       validate_form_526_fewer_than_150_disabilities!
+      validate_form_526_disability_name!
       validate_form_526_disability_classification_code!
       validate_form_526_disability_approximate_begin_date!
       validate_form_526_special_issues!
@@ -272,6 +273,26 @@ module ClaimsApi
 
       raise ::Common::Exceptions::InvalidFieldValue.new('disabilities',
                                                         "A maximum of #{DISABILITY_COUNT_MAX} disabilities allowed")
+    end
+
+    def validate_form_526_disability_name!
+      form_attributes['disabilities'].each_with_index do |disability, index|
+        disability_name = disability['name']
+        disability_action_type = disability['disabilityActionType']
+
+        if disability_name.blank?
+          raise ::Common::Exceptions::InvalidFieldValue.new(
+            "disabilities.#{index}.name",
+            'Disability name is required'
+          )
+        end
+
+        unless valid_disability_name_for_new_action?(disability_name, disability_action_type)
+          raise ::Common::Exceptions::UnprocessableEntity.new(
+            detail: "disabilities[#{index}].name must match pattern: #{VALID_NEW_DISABILITY_NAME_REGEX.source}"
+          )
+        end
+      end
     end
 
     def contention_classification_type_code_list

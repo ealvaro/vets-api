@@ -155,6 +155,77 @@ describe AltTestDisabilityCompensationValidationClass, vcr: 'brd/countries' do
         end
       end
     end
+
+    describe '#alt_rev_validate_disability_name' do
+      context 'when disability name is blank' do
+        it 'collects an error' do
+          test_526_validation_instance.form_attributes['disabilities'] = [
+            { 'name' => '', 'disabilityActionType' => 'NEW' }
+          ]
+
+          subject.send(:alt_rev_validate_disability_name)
+
+          expect(current_error_array.count).to eq(1)
+          expect(current_error_array[0][:detail]).to eq('disabilities[0].name is required')
+        end
+      end
+
+      context 'when disabilityActionType is NEW' do
+        context 'with valid characters' do
+          it 'does not collect an error' do
+            test_526_validation_instance.form_attributes['disabilities'] = [
+              { 'name' => "PTSD (post-traumatic stress)', period.", 'disabilityActionType' => 'NEW' }
+            ]
+
+            subject.send(:alt_rev_validate_disability_name)
+
+            expect(current_error_array).to be_nil
+          end
+        end
+
+        context 'with consecutive spaces' do
+          it 'collects an error' do
+            test_526_validation_instance.form_attributes['disabilities'] = [
+              { 'name' => 'PTSD  double space', 'disabilityActionType' => 'NEW' }
+            ]
+
+            subject.send(:alt_rev_validate_disability_name)
+
+            expect(current_error_array.count).to eq(1)
+            expect(current_error_array[0][:detail])
+              .to eq("disabilities[0].name must match pattern: ^(?!.* {2})[a-zA-Z0-9',. /()-]+$")
+          end
+        end
+
+        context 'with invalid special characters' do
+          it 'collects an error' do
+            test_526_validation_instance.form_attributes['disabilities'] = [
+              { 'name' => 'PTSD@invalid', 'disabilityActionType' => 'NEW' }
+            ]
+
+            subject.send(:alt_rev_validate_disability_name)
+
+            expect(current_error_array.count).to eq(1)
+            expect(current_error_array[0][:detail])
+              .to eq("disabilities[0].name must match pattern: ^(?!.* {2})[a-zA-Z0-9',. /()-]+$")
+          end
+        end
+      end
+
+      context 'when disabilityActionType is INCREASE' do
+        context 'with invalid characters' do
+          it 'does not validate pattern for non-NEW disability' do
+            test_526_validation_instance.form_attributes['disabilities'] = [
+              { 'name' => 'PTSD@invalid', 'disabilityActionType' => 'INCREASE' }
+            ]
+
+            subject.send(:alt_rev_validate_disability_name)
+
+            expect(current_error_array).to be_nil
+          end
+        end
+      end
+    end
   end
 
   describe '#alt_rev_validate_form_526_submission_values' do

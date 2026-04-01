@@ -278,7 +278,15 @@ module ClaimsApi
           disability_name = disability&.dig('name')
           if disability_name.blank?
             collect_error_messages(source: "/disabilities/#{idx}/name",
-                                   detail: "The disability name (#{idx}) is required.")
+                                   detail: "disabilities[#{idx}].name is required")
+          else
+            disability_action_type = disability&.dig('disabilityActionType')
+            unless valid_disability_name_for_new_action?(disability_name, disability_action_type)
+              collect_error_messages(
+                source: "/disabilities/#{idx}/name",
+                detail: "disabilities[#{idx}].name must match pattern: #{VALID_NEW_DISABILITY_NAME_REGEX.source}"
+              )
+            end
           end
         end
       end
