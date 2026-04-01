@@ -4,7 +4,8 @@ module AccreditedRepresentativePortal
   class PowerOfAttorneyHolder <
     Data.define(
       :type, :poa_code, :name,
-      :can_accept_digital_poa_requests
+      :can_accept_digital_poa_requests,
+      :acceptance_mode
     )
     module Types
       ALL = [
@@ -18,6 +19,10 @@ module AccreditedRepresentativePortal
       type
       poa_code
     ].freeze
+
+    def initialize(type:, poa_code:, name:, can_accept_digital_poa_requests:, acceptance_mode: nil)
+      super
+    end
 
     def accepts_digital_power_of_attorney_requests?
       can_accept_digital_poa_requests

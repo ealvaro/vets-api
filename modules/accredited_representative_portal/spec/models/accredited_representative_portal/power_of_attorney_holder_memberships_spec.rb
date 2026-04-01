@@ -72,7 +72,8 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
                     type: 'attorney',
                     name: 'Bob Law',
                     poa_code: 'P10',
-                    can_accept_digital_poa_requests: false
+                    can_accept_digital_poa_requests: false,
+                    acceptance_mode: nil
                   )
               ),
               described_class::Membership.new(
@@ -82,7 +83,8 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
                     type: 'claims_agent',
                     name: 'Bob Law',
                     poa_code: 'P11',
-                    can_accept_digital_poa_requests: false
+                    can_accept_digital_poa_requests: false,
+                    acceptance_mode: nil
                   )
               )
             ]
@@ -188,7 +190,8 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
                         type: 'attorney',
                         name: 'Bob Law',
                         poa_code: 'P10',
-                        can_accept_digital_poa_requests: false
+                        can_accept_digital_poa_requests: false,
+                        acceptance_mode: nil
                       )
                   ),
                   described_class::Membership.new(
@@ -198,7 +201,8 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
                         type: 'claims_agent',
                         name: 'Bob Law',
                         poa_code: 'P11',
-                        can_accept_digital_poa_requests: false
+                        can_accept_digital_poa_requests: false,
+                        acceptance_mode: nil
                       )
                   ),
                   described_class::Membership.new(
@@ -208,7 +212,8 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
                         type: 'veteran_service_organization',
                         name: 'Org A',
                         poa_code: 'P12',
-                        can_accept_digital_poa_requests: false
+                        can_accept_digital_poa_requests: false,
+                        acceptance_mode: 'no_acceptance'
                       )
                   ),
                   described_class::Membership.new(
@@ -218,7 +223,8 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
                         type: 'veteran_service_organization',
                         name: 'Org B',
                         poa_code: 'P13',
-                        can_accept_digital_poa_requests: true
+                        can_accept_digital_poa_requests: true,
+                        acceptance_mode: 'no_acceptance'
                       )
                   )
                 ]
@@ -311,25 +317,29 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
                 type: 'attorney',
                 name: 'Bob Law',
                 poa_code: 'P10',
-                can_accept_digital_poa_requests: false
+                can_accept_digital_poa_requests: false,
+                acceptance_mode: nil
               ),
               PowerOfAttorneyHolder.new(
                 type: 'claims_agent',
                 name: 'Bob Law',
                 poa_code: 'P11',
-                can_accept_digital_poa_requests: false
+                can_accept_digital_poa_requests: false,
+                acceptance_mode: nil
               ),
               PowerOfAttorneyHolder.new(
                 type: 'veteran_service_organization',
                 name: 'Org A',
                 poa_code: 'P12',
-                can_accept_digital_poa_requests: false
+                can_accept_digital_poa_requests: false,
+                acceptance_mode: 'no_acceptance'
               ),
               PowerOfAttorneyHolder.new(
                 type: 'veteran_service_organization',
                 name: 'Org B',
                 poa_code: 'P13',
-                can_accept_digital_poa_requests: true
+                can_accept_digital_poa_requests: true,
+                acceptance_mode: 'no_acceptance'
               )
             ]
           )
@@ -351,10 +361,80 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
                   poa_code: 'P13',
                   type: 'veteran_service_organization',
                   name: 'Org B',
-                  can_accept_digital_poa_requests: true
+                  can_accept_digital_poa_requests: true,
+                  acceptance_mode: 'no_acceptance'
                 )
             )
           )
+        end
+      end
+
+      describe 'acceptance_mode from OrganizationRepresentative' do
+        let(:vso_rep) do
+          Veteran::Service::Representative.find_by(representative_id: 'R1002')
+        end
+
+        let(:org_b) { Veteran::Service::Organization.find_by(poa: 'P13') }
+
+        context 'when OrganizationRepresentative record exists with any_request' do
+          before do
+            create(:veteran_organization_representative,
+                   representative: vso_rep, organization: org_b, acceptance_mode: 'any_request')
+          end
+
+          it 'sets acceptance_mode to any_request' do
+            memberships = described_class.new(icn: 'some_icn', emails:)
+            holder = memberships.find('P13').power_of_attorney_holder
+            expect(holder.acceptance_mode).to eq('any_request')
+          end
+        end
+
+        context 'when OrganizationRepresentative record exists with self_only' do
+          before do
+            create(:veteran_organization_representative,
+                   representative: vso_rep, organization: org_b, acceptance_mode: 'self_only')
+          end
+
+          it 'sets acceptance_mode to self_only' do
+            memberships = described_class.new(icn: 'some_icn', emails:)
+            holder = memberships.find('P13').power_of_attorney_holder
+            expect(holder.acceptance_mode).to eq('self_only')
+          end
+        end
+
+        context 'when OrganizationRepresentative record exists with no_acceptance' do
+          before do
+            create(:veteran_organization_representative,
+                   representative: vso_rep, organization: org_b, acceptance_mode: 'no_acceptance')
+          end
+
+          it 'sets acceptance_mode to no_acceptance' do
+            memberships = described_class.new(icn: 'some_icn', emails:)
+            holder = memberships.find('P13').power_of_attorney_holder
+            expect(holder.acceptance_mode).to eq('no_acceptance')
+          end
+        end
+
+        context 'when no OrganizationRepresentative record exists' do
+          it 'defaults acceptance_mode to no_acceptance' do
+            memberships = described_class.new(icn: 'some_icn', emails:)
+            holder = memberships.find('P13').power_of_attorney_holder
+            expect(holder.acceptance_mode).to eq('no_acceptance')
+          end
+        end
+
+        context 'when OrganizationRepresentative record is deactivated' do
+          before do
+            create(:veteran_organization_representative,
+                   representative: vso_rep, organization: org_b,
+                   acceptance_mode: 'any_request', deactivated_at: Time.current)
+          end
+
+          it 'defaults acceptance_mode to no_acceptance' do
+            memberships = described_class.new(icn: 'some_icn', emails:)
+            holder = memberships.find('P13').power_of_attorney_holder
+            expect(holder.acceptance_mode).to eq('no_acceptance')
+          end
         end
       end
     end

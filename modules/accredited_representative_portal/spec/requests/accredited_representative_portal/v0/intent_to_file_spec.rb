@@ -30,6 +30,10 @@ RSpec.describe AccreditedRepresentativePortal::V0::IntentToFileController, type:
   before do
     Flipper.disable :accredited_representative_portal_skip_itf_check
     Flipper.disable :accredited_representative_portal_itf_confirmation_email
+    allow(Flipper).to receive(:enabled?).and_call_original
+    allow(Flipper).to receive(:enabled?)
+      .with(:accredited_representative_portal_individual_accept)
+      .and_return(false)
     VCR.configure do |c|
       c.debug_logger = File.open('record.log', 'w')
     end

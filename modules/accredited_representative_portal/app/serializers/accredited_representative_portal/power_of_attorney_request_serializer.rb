@@ -80,5 +80,12 @@ module AccreditedRepresentativePortal
       claimant = poa_request.claimant
       IcnTemporaryIdentifier.save_icn(claimant.icn).id if claimant
     end
+
+    attribute :can_accept do |poa_request, params|
+      current_user = params[:current_user]
+      next false unless current_user
+
+      PowerOfAttorneyRequestPolicy.new(current_user, poa_request).can_accept?
+    end
   end
 end

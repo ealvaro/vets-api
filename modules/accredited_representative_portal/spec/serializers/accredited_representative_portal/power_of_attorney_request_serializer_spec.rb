@@ -117,6 +117,41 @@ RSpec.describe AccreditedRepresentativePortal::PowerOfAttorneyRequestSerializer,
       end
     end
 
+    describe ':can_accept' do
+      let(:poa_request) { pending_individual_poa_request }
+
+      context 'when current_user is not provided in params' do
+        let(:data) { described_class.new(poa_request).serializable_hash }
+
+        it 'returns false' do
+          expect(data[:canAccept]).to be false
+        end
+      end
+
+      context 'when current_user is provided in params' do
+        let(:current_user) { instance_double(AccreditedRepresentativePortal::RepresentativeUser) }
+        let(:data) { described_class.new(poa_request, params: { current_user: }).serializable_hash }
+
+        it 'delegates to PowerOfAttorneyRequestPolicy#can_accept?' do
+          policy = instance_double(AccreditedRepresentativePortal::PowerOfAttorneyRequestPolicy)
+          allow(AccreditedRepresentativePortal::PowerOfAttorneyRequestPolicy)
+            .to receive(:new).with(current_user, poa_request).and_return(policy)
+          allow(policy).to receive(:can_accept?).and_return(true)
+
+          expect(data[:canAccept]).to be true
+        end
+
+        it 'returns false when the policy denies access' do
+          policy = instance_double(AccreditedRepresentativePortal::PowerOfAttorneyRequestPolicy)
+          allow(AccreditedRepresentativePortal::PowerOfAttorneyRequestPolicy)
+            .to receive(:new).with(current_user, poa_request).and_return(policy)
+          allow(policy).to receive(:can_accept?).and_return(false)
+
+          expect(data[:canAccept]).to be false
+        end
+      end
+    end
+
     describe ':power_of_attorney_holder' do
       context 'when the holder is an AccreditedOrganization' do
         it 'serializes the accredited organization' do

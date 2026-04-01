@@ -8,6 +8,8 @@ module AccreditedRepresentativePortal
         :power_of_attorney_holder
       )
 
+    DEFAULT_ACCEPTANCE_MODE = 'no_acceptance'
+
     Error = Class.new(RuntimeError)
     InvalidRegistrationsError = Class.new(Error)
 
@@ -56,7 +58,18 @@ module AccreditedRepresentativePortal
                 poa: registration.poa_codes
               )
 
+            rep_id = registration.representative_id
+            org_reps = Veteran::Service::OrganizationRepresentative
+                       .active
+                       .where(
+                         organization_poa: registration.poa_codes,
+                         representative_id: rep_id
+                       )
+                       .index_by(&:organization_poa)
+
             organizations.map do |organization|
+              org_rep = org_reps[organization.poa]
+
               Membership.new(
                 registration_number:
                   registration.representative_id,
@@ -67,7 +80,9 @@ module AccreditedRepresentativePortal
                     name: organization.name,
                     poa_code: organization.poa,
                     can_accept_digital_poa_requests:
-                      organization.can_accept_digital_poa_requests
+                      organization.can_accept_digital_poa_requests,
+                    acceptance_mode:
+                      org_rep&.acceptance_mode || DEFAULT_ACCEPTANCE_MODE
                   )
               )
             end
@@ -81,8 +96,8 @@ module AccreditedRepresentativePortal
                   type: PowerOfAttorneyHolder::Types::CLAIMS_AGENT,
                   name: "#{registration.first_name} #{registration.last_name}",
                   poa_code: registration.poa_codes.first,
-                  can_accept_digital_poa_requests:
-                    false
+                  can_accept_digital_poa_requests: false,
+                  acceptance_mode: nil
                 )
             )
           when 'attorney'
@@ -95,8 +110,8 @@ module AccreditedRepresentativePortal
                   type: PowerOfAttorneyHolder::Types::ATTORNEY,
                   name: "#{registration.first_name} #{registration.last_name}",
                   poa_code: registration.poa_codes.first,
-                  can_accept_digital_poa_requests:
-                    false
+                  can_accept_digital_poa_requests: false,
+                  acceptance_mode: nil
                 )
             )
           else

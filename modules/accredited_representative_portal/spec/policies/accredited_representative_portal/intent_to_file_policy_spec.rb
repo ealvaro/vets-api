@@ -14,6 +14,10 @@ module AccreditedRepresentativePortal
       allow_any_instance_of(PowerOfAttorneyHolderMemberships).to(
         receive(:all).and_return(power_of_attorney_holder_memberships)
       )
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:accredited_representative_portal_individual_accept)
+        .and_return(false)
     end
 
     around do |example|

@@ -126,7 +126,8 @@ RSpec.describe AccreditedRepresentativePortal::ClaimantRepresentative, type: :mo
             poa_code:,
             type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
             name: 'Org Name',
-            can_accept_digital_poa_requests: false
+            can_accept_digital_poa_requests: false,
+            acceptance_mode: 'no_acceptance'
           )
         )
       end

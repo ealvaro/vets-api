@@ -37,6 +37,10 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
   before do
     VCR.eject_cassette("#{arp_vcr_path}mpi/valid_icn_full")
     login_as(representative_user)
+    allow(Flipper).to receive(:enabled?).and_call_original
+    allow(Flipper).to receive(:enabled?)
+      .with(:accredited_representative_portal_individual_accept)
+      .and_return(false)
   end
 
   describe '#submit' do

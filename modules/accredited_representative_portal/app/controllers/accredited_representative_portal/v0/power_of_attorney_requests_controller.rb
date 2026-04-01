@@ -6,21 +6,25 @@ module AccreditedRepresentativePortal
       include PowerOfAttorneyRequests
       include AccreditedRepresentativePortal::V0::WithdrawalGuard
 
-      before_action do
+      before_action only: :index do
         authorize PowerOfAttorneyRequest
       end
-      with_options only: :show do
-        before_action do
-          id = params[:id]
-          set_poa_request(id)
-          render_404_if_withdrawn!(@poa_request)
-        end
+
+      before_action only: :show do
+        set_poa_request(params[:id])
+        return if render_404_if_withdrawn?(@poa_request)
+
+        authorize @poa_request
       end
 
       def index
-        ar_monitoring.trace('ar.power_of_attorney_requests.index',
-                            tags: { 'poa_request.poa_codes' => poa_codes(poa_requests) }) do |_span|
-          serializer = PowerOfAttorneyRequestSerializer.new(poa_requests)
+        ar_monitoring.trace(
+          'ar.power_of_attorney_requests.index',
+          tags: { 'poa_request.poa_codes' => poa_codes(poa_requests) }
+        ) do |_span|
+          serializer = PowerOfAttorneyRequestSerializer.new(
+            poa_requests, params: { current_user: }
+          )
           render json: {
             data: serializer.serializable_hash,
             meta: pagination_meta(poa_requests)
@@ -29,10 +33,14 @@ module AccreditedRepresentativePortal
       end
 
       def show
-        ar_monitoring.trace('ar.power_of_attorney_requests.show',
-                            tags: { 'poa_request.poa_code' => poa_code },
-                            root_tags: { 'poa_request.poa_code' => poa_code }) do |_span|
-          serializer = PowerOfAttorneyRequestSerializer.new(@poa_request)
+        ar_monitoring.trace(
+          'ar.power_of_attorney_requests.show',
+          tags: { 'poa_request.poa_code' => poa_code },
+          root_tags: { 'poa_request.poa_code' => poa_code }
+        ) do |_span|
+          serializer = PowerOfAttorneyRequestSerializer.new(
+            @poa_request, params: { current_user: }
+          )
           render json: serializer.serializable_hash, status: :ok
         end
       end
@@ -74,7 +82,7 @@ module AccreditedRepresentativePortal
         else
           raise ActionController::BadRequest, <<~MSG.squish
             Invalid status parameter.
-            Must be one of (#{Statuses::ALL.join(', ')})
+            Must be one of (#{params_schema::Statuses::ALL.join(', ')})
           MSG
         end
       end
