@@ -31,7 +31,13 @@ module IncreaseCompensation
             question_text: 'Signature of Witness 1',
             key: 'form1[0].#subform[4].Signature[0]'
           },
-          'address1' => { key: 'form1[0].#subform[4].ADDRESS_OF_WITNESS[0]' },
+          'address1' => {
+            key: 'form1[0].#subform[4].ADDRESS_OF_WITNESS[0]',
+            limit: 17,
+            question_num: 29,
+            question_suffix: 'B',
+            question_text: 'Address of Witness 1'
+          },
           'address2' => { key: 'form1[0].#subform[4].ADDRESS_OF_WITNESS[1]' }
         },
         'witnessSignature2' => {
@@ -43,7 +49,13 @@ module IncreaseCompensation
             question_text: 'Signature of Witness 2',
             key: 'form1[0].#subform[4].Signature[1]'
           },
-          'address1' => { key: 'form1[0].#subform[4].ADDRESS_OF_WITNESS[2]' },
+          'address1' => {
+            key: 'form1[0].#subform[4].ADDRESS_OF_WITNESS[2]',
+            limit: 17,
+            question_num: 30,
+            question_suffix: 'B',
+            question_text: 'Address of Witness 2'
+          },
           'address2' => { key: 'form1[0].#subform[4].ADDRESS_OF_WITNESS[3]' }
         }
       }.freeze
@@ -53,21 +65,26 @@ module IncreaseCompensation
           Date.current.in_time_zone('America/Chicago').strftime('%Y-%m-%d')
         )
         form_data['signature'] = form_data['signature'] || veteran_full_name(form_data)
-
-        if form_data['witnessSignature1'].present? && form_data['witnessSignature1']['address'].length > 1
-          form_data['witnessSignature1'].merge!(
-            two_line_overflow(form_data['witnessSignature1']['address'], 'address', 17)
-          )
-        end
-        if form_data['witnessSignature2'].present? && form_data['witnessSignature2']['address'].length > 1
-          form_data['witnessSignature2'].merge!(
-            two_line_overflow(form_data['witnessSignature2']['address'], 'address', 17)
-          )
-        end
+        form_data['witnessSignature1'] = handle_witnesses(form_data, 'witnessSignature1')
+        form_data['witnessSignature2'] = handle_witnesses(form_data, 'witnessSignature2')
       end
 
       def veteran_full_name(form_data)
         "#{form_data['veteranFullName']['first']} #{form_data['veteranFullName']['last']}"
+      end
+
+      def handle_witnesses(form_data, witness_key)
+        witness = form_data[witness_key]
+        return {} if witness.nil?
+
+        if witness['address'].length > 34
+          witness['address1'] = witness['address']
+        else
+          witness.merge!(
+            two_line_overflow(witness['address'], 'address', 17)
+          )
+        end
+        witness
       end
     end
   end

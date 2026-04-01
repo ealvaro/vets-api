@@ -45,12 +45,15 @@ module IncreaseCompensation
           }
         },
         'mostEarningsInAYear' => {
-          question_num: 17,
-          question_suffix: 'A',
           'firstThree' => {
+            question_num: 17,
+            question_suffix: 'A',
+            question_text: 'Most Earnings in a Year',
+            limit: 3,
             key: 'form1[0].#subform[0].ValueOfYourPortionOfProperty2_10b3[0]'
           },
           'lastThree' => {
+            limit: 3,
             key: 'form1[0].#subform[0].ValueOfYourPortionOfProperty3_10b3[0]'
           }
         },
@@ -92,11 +95,15 @@ module IncreaseCompensation
             iterator_offset: ->(iterator) { iterator + 1 },
             limit: 3,
             question_num: 18,
-            question_label: 'Previous Employer Hours per week',
-            question_text: 'Previous Employer Hours per week',
+            question_label: 'Previous Employer Work Hours Per-Week',
+            question_text: 'Previous Employer Work Hours Per-Week',
             key: "form1[0].#subform[1].HOURSPERWEEK#{ITERATOR}[0]"
           },
           'datesOfEmployment' => {
+            question_num: 18,
+            question_text: 'Dates of Previous Employment',
+            question_label: 'Dates of Previous Employment',
+            question_suffix: '',
             'from' => {
               'month' => {
                 iterator_offset: ->(iterator) { iterator + 1 },
@@ -127,11 +134,19 @@ module IncreaseCompensation
             }
           },
           'timeLostFromIllness' => {
+            limit: 3,
+            question_num: 18,
+            question_label: 'Time Lost From Illness',
+            question_text: 'Time Lost From Illness',
             iterator_offset: ->(iterator) { iterator + 1 },
             key: "form1[0].#subform[1].TIMELOSTFROMILLNESS#{ITERATOR}[0]"
           },
           'mostEarningsInAMonth' => {
             'firstThree' => {
+              limit: 3,
+              question_num: 18,
+              question_label: 'Most Earnings in a Month',
+              question_text: 'Most Earnings in a Month',
               iterator_offset: ->(iterator) { iterator + 1 },
               key: "form1[0].#subform[1].HIGHESTGROSSEARNINGSPERMONTH18#{ITERATOR}_1[0]"
             },
@@ -146,9 +161,11 @@ module IncreaseCompensation
           key: 'form1[0].#subform[2].RadioButtonList[1]'
         },
         'past12MonthsEarnedIncome' => {
-          question_num: 20,
-          question_suffix: 'A',
           'firstThree' => {
+            question_num: 20,
+            question_suffix: 'A',
+            limit: 6,
+            question_text: 'Total Earned Income Form Past 12 Months',
             key: 'form1[0].#subform[2].totalearnedincome20a_1[0]'
           },
           'lastThree' => {
@@ -156,9 +173,11 @@ module IncreaseCompensation
           }
         },
         'currentMonthlyEarnedIncome' => {
-          question_num: 20,
-          question_suffix: 'B',
           'firstThree' => {
+            question_num: 20,
+            question_suffix: 'B',
+            limit: 6,
+            question_text: 'Current Monthly Income',
             key: 'form1[0].#subform[2].CURRENTMONTHLYEARNEDINCOME_1[0]'
           },
           'lastThree' => {

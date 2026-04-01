@@ -56,7 +56,8 @@ module IncreaseCompensation
     # @param amount [Integer, nil]
     # @return [Hash]
     def split_currency_amount_thousands(amount)
-      return {} if amount.nil? || amount.negative? || amount >= 1_000_000
+      return {} if amount.nil? || amount.negative?
+      return { 'firstThree' => amount } if amount >= 1_000_000
 
       if amount > 999
         thousands = amount.to_s[..-4]

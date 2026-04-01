@@ -11,7 +11,9 @@ RSpec.describe IncreaseCompensation::Helpers do
     it 'returns empty hash for zero, nil, negative, or too large amounts' do
       expect(subject.split_currency_amount_thousands(nil)).to eq({})
       expect(subject.split_currency_amount_thousands(-1)).to eq({})
-      expect(subject.split_currency_amount_thousands(1_000_000)).to eq({})
+      expect(subject.split_currency_amount_thousands(1_000_000)).to eq({
+                                                                         'firstThree' => 1_000_000
+                                                                       })
     end
 
     it 'returns hash with 2 left spaced values if greater than 999' do

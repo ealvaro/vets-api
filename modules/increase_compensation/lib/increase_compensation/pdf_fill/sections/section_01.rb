@@ -113,6 +113,7 @@ module IncreaseCompensation
           },
           'street2' => {
             question_num: 5,
+            limit: 5,
             question_label: 'Mailing Address Apt/Unit',
             question_text: 'MAILING ADDRESS APT/UNIT',
             key: 'form1[0].#subform[0].CurrentMailingAddress_ApartmentOrUnitNumber[0]'
@@ -127,10 +128,13 @@ module IncreaseCompensation
           'state' => {
             question_num: 5,
             limit: 2,
+            question_text: 'Mailing Address State',
             key: 'form1[0].#subform[0].CurrentMailingAddress_StateOrProvince[0]'
           },
           'country' => {
             question_num: 5,
+            limit: 2,
+            question_text: 'Mailing Address Country',
             key: 'form1[0].#subform[0].CurrentMailingAddress_Country[0]'
           },
           'postalCode' => {
@@ -138,6 +142,8 @@ module IncreaseCompensation
             'firstFive' => {
               question_num: 5,
               limit: 5,
+              question_label: 'Postal Code - First Five',
+              question_text: 'POSTAL CODE - First Five',
               key: 'form1[0].#subform[0].CurrentMailingAddress_ZIPOrPostalCode_FirstFiveNumbers[0]'
             },
             'lastFour' => {
