@@ -122,7 +122,7 @@ module UnifiedHealthData
             next if appt_id.blank?
 
             memo[appt_id] << UnifiedHealthData::AfterVisitSummary.new(
-              id: enc_id,
+              id: meta[:doc_ref_id],
               appt_id:,
               name: meta[:title] || 'other',
               note_type: meta[:note_type],
@@ -353,11 +353,12 @@ module UnifiedHealthData
             enc_id = extract_reference_id(enc_ref['reference'], 'Encounter')
             next if enc_id.blank?
 
-            memo[enc_id] ||= { loinc: [], content_types: [], note_type: nil, title: nil }
+            memo[enc_id] ||= { loinc: [], content_types: [], note_type: nil, title: nil, doc_ref_id: nil }
             memo[enc_id][:loinc] |= codes.compact if codes.present?
             memo[enc_id][:content_types] |= Array(content_types) if content_types.present?
             memo[enc_id][:note_type] ||= record_type if record_type.present?
             memo[enc_id][:title] ||= title if title.present?
+            memo[enc_id][:doc_ref_id] ||= doc_ref['id'] if doc_ref['id'].present?
           end
         end
       end

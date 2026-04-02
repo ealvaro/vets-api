@@ -3600,6 +3600,7 @@ describe VAOS::V2::AppointmentsService do
     end
     let(:document_reference) do
       {
+        'id' => 'doc-ref-1',
         'type' => { 'coding' => [{ 'code' => '96345-4' }] },
         'content' => [{ 'attachment' => { 'contentType' => 'application/pdf' } }],
         'meta' => { 'lastUpdated' => '2024-01-15T10:00:00Z' },
@@ -3694,7 +3695,7 @@ describe VAOS::V2::AppointmentsService do
           expect(result['appt-123']).to be_an(Array)
           avs = result['appt-123'].first
           expect(avs).to be_a(UnifiedHealthData::AfterVisitSummary)
-          expect(avs.id).to eq('enc-1')
+          expect(avs.id).to eq('doc-ref-1')
           expect(avs.appt_id).to eq('appt-123')
           expect(avs.loinc_codes).to include('96345-4')
         end

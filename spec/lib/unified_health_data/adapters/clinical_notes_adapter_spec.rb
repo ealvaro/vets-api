@@ -662,6 +662,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
   describe '#build_avs_metadata_by_appointment' do
     let(:doc_ref) do
       {
+        'id' => 'doc-ref-1',
         'type' => {
           'coding' => [
             { 'system' => 'http://loinc.org', 'code' => '96345-4' }
@@ -689,7 +690,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
       expect(result['appt-123']).to be_an(Array)
       avs = result['appt-123'].first
       expect(avs).to be_a(UnifiedHealthData::AfterVisitSummary)
-      expect(avs.id).to eq('enc-1')
+      expect(avs.id).to eq('doc-ref-1')
       expect(avs.appt_id).to eq('appt-123')
       expect(avs.loinc_codes).to include('96345-4')
       expect(avs.content_type).to eq('application/pdf')
