@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_03_30_223111) do
+ActiveRecord::Schema[7.2].define(version: 2026_04_01_195926) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -400,6 +400,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_30_223111) do
     t.string "inquiry_number"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "request_id", null: false
     t.index ["crm_message_id"], name: "index_ask_va_inquiry_submissions_on_crm_message_id"
     t.index ["inquiry_number"], name: "index_ask_va_inquiry_submissions_on_inquiry_number"
   end
