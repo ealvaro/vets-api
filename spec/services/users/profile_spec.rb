@@ -294,6 +294,7 @@ RSpec.describe Users::Profile do
               facilities_ready_for_info_alert: '555, 500',
               oh_migrations_list: '2026-03-03:[321,Test VA],[654,Another VA],[777,Third VA]'
             )
+            allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass, user).and_return(false)
           end
 
           context 'when user has pre-transitioned OH facility' do
@@ -411,6 +412,20 @@ RSpec.describe Users::Profile do
               expect(va_profile[:user_at_pretransitioned_oh_facility]).to be false
               expect(va_profile[:user_facility_ready_for_info_alert]).to be false
               expect(va_profile[:oh_migration_info][:user_facility_migrating_to_oh]).to be true
+            end
+          end
+
+          context 'when mhv_oh_migration_trusted_user_bypass is enabled' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass, user).and_return(true)
+              allow(user).to receive(:va_treatment_facility_ids).and_return(%w[612 555 321 999])
+            end
+
+            it 'neutralizes all OH migration flags even when user has matching facilities' do
+              expect(va_profile[:user_at_pretransitioned_oh_facility]).to be false
+              expect(va_profile[:user_facility_ready_for_info_alert]).to be false
+              expect(va_profile[:oh_migration_info][:user_facility_migrating_to_oh]).to be false
+              expect(va_profile[:oh_migration_info][:migration_schedules]).to eq([])
             end
           end
         end
@@ -902,6 +917,7 @@ RSpec.describe Users::Profile do
           mhv_account_state: 'OK',
           active_mhv_ids: ['12345']
         )
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass, user).and_return(false)
       end
 
       context 'when user has facilities in oh_migrations_list' do

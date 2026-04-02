@@ -35,6 +35,7 @@ module MHV
       }.freeze
 
       def user_at_pretransitioned_oh_facility?
+        return false if trusted_user_bypass_enabled?
         return false if @current_user.va_treatment_facility_ids.blank?
 
         @current_user.va_treatment_facility_ids.any? do |facility|
@@ -43,6 +44,7 @@ module MHV
       end
 
       def user_facility_ready_for_info_alert?
+        return false if trusted_user_bypass_enabled?
         return false if @current_user.va_treatment_facility_ids.blank?
 
         return false unless @current_user.va_treatment_facility_ids.any? do |facility|
@@ -59,6 +61,8 @@ module MHV
       # Response includes migration dates, facilities, current phase, and migration status.
       # @return [Array<Hash>] Array of migration schedule objects, empty array on error or no matches
       def get_migration_schedules
+        return [] if trusted_user_bypass_enabled?
+
         build_migration_response
       rescue => e
         Rails.logger.error(
@@ -76,6 +80,7 @@ module MHV
       # @param station_number [String] the facility station number
       # @return [String, nil] the current phase (e.g., "p1") or nil if not in migration
       def get_phase_for_station_number(station_number)
+        return nil if trusted_user_bypass_enabled?
         return nil if station_number.blank?
 
         get_phases_for_station_numbers([station_number])[station_number.to_s]
@@ -86,6 +91,7 @@ module MHV
       # @param station_numbers [Array<String>] array of facility station numbers
       # @return [Hash<String, String>] hash mapping station_number to phase (e.g., "p1") or nil
       def get_phases_for_station_numbers(station_numbers)
+        return {} if trusted_user_bypass_enabled?
         return {} if station_numbers.blank?
 
         build_station_phases_map(station_numbers.to_set(&:to_s))
@@ -100,6 +106,8 @@ module MHV
       # Gets the current phase of the soonest migration window
       # @return [String, nil] the current phase (e.g., "p3") or nil if no migration windows exist
       def get_soonest_migration_phase
+        return nil if trusted_user_bypass_enabled?
+
         raw_value = Settings.mhv.oh_facility_checks.oh_migrations_list
         return nil if raw_value.to_s.strip.blank?
 
@@ -116,6 +124,12 @@ module MHV
       end
 
       private
+
+      # Checks if the trusted user bypass flag is enabled for the current user
+      # @return [Boolean] true if the bypass is enabled
+      def trusted_user_bypass_enabled?
+        Flipper.enabled?(:mhv_oh_migration_trusted_user_bypass, @current_user)
+      end
 
       # Builds a hash mapping station numbers to their current migration phase
       # @param station_numbers_set [Set<String>] set of station numbers to look up

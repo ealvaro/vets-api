@@ -26,6 +26,8 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
                                                 instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_schedules,
                                                 instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass,
+                                                instance_of(User)).and_return(false)
     end
 
     it 'includes a hash with all available services and a boolean value of if the user has access' do
@@ -143,6 +145,8 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
                                                 instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_enabled,
                                                 instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass,
+                                                instance_of(User)).and_return(false)
     end
 
     it 'includes benefitsPushNotification when user has ICN' do
@@ -177,6 +181,8 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_labs_and_tests_enabled,
                                                 instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_enabled,
+                                                instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass,
                                                 instance_of(User)).and_return(false)
     end
 
@@ -216,6 +222,8 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
                                                 instance_of(User)).and_return(true)
       allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_schedules,
                                                 instance_of(User)).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass,
+                                                instance_of(User)).and_return(false)
     end
 
     it 'includes a hash with only some OH services enabled if app version matches' do
@@ -410,6 +418,29 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       expect(meta['migratingFacilitiesList'].length).to eq(1)
       expect(meta.dig('migratingFacilitiesList', 0, 'migrationDate')).to eq('October 1, 2026')
       expect(meta.dig('migratingFacilitiesList', 0, 'facilities').length).to eq(2)
+    end
+
+    context 'when mhv_oh_migration_trusted_user_bypass is enabled for the user' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass,
+                                                  instance_of(User)).and_return(true)
+        allow(Settings.mhv.oh_facility_checks).to receive_messages(
+          pretransitioned_oh_facilities: '402, 555',
+          facilities_ready_for_info_alert: '402',
+          oh_migrations_list: '2026-10-01:[555,Facility A],[402,Facility B]'
+        )
+      end
+
+      it 'neutralizes all OH migration meta flags' do
+        get '/mobile/v0/user/authorized-services', headers: sis_headers,
+                                                   params: { 'appointmentIEN' => '123', 'locationId' => '123' }
+        assert_schema_conform(200)
+        expect(response.body).to match_json_schema('authorized_services')
+
+        expect(meta['isUserAtPretransitionedOhFacility']).to be false
+        expect(meta['isUserFacilityReadyForInfoAlert']).to be false
+        expect(meta['migratingFacilitiesList']).to eq([])
+      end
     end
   end
 end

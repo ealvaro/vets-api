@@ -1350,6 +1350,9 @@ describe VAOS::V2::AppointmentsService do
               allow(Flipper).to receive(:enabled?)
                 .with(:va_online_scheduling_backend_oh_migration_check, instance_of(User))
                 .and_return(true)
+              allow(Flipper).to receive(:enabled?)
+                .with(:mhv_oh_migration_trusted_user_bypass, instance_of(User))
+                .and_return(false)
             end
 
             it 'returns an uncancellable proposed appointment' do

@@ -25,6 +25,8 @@ module VAOS
     #   }
     # }
     def self.get_migrations(user: nil)
+      return {} if user && Flipper.enabled?(:mhv_oh_migration_trusted_user_bypass, user)
+
       raw_value = Settings.mhv.oh_facility_checks.oh_migrations_list
 
       return {} if raw_value.to_s.strip.blank?

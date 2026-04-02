@@ -20,7 +20,8 @@ RSpec.describe MHV::OhFacilitiesHelper::Service do
       pretransitioned_oh_facilities:,
       facilities_ready_for_info_alert:
     )
-    allow(Flipper).to receive(:enabled?).with(:portal_notice_interstitial_enabled).and_return(true)
+    allow(Flipper).to receive(:enabled?).with(:portal_notice_interstitial_enabled, user).and_return(true)
+    allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass, user).and_return(false)
   end
 
   describe '#user_at_pretransitioned_oh_facility?' do
@@ -61,6 +62,18 @@ RSpec.describe MHV::OhFacilitiesHelper::Service do
 
       it 'returns true' do
         expect(service.user_at_pretransitioned_oh_facility?).to be true
+      end
+    end
+
+    context 'when mhv_oh_migration_trusted_user_bypass is enabled' do
+      let(:va_treatment_facility_ids) { %w[516 999] }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass, user).and_return(true)
+      end
+
+      it 'returns false even when user has a matching facility' do
+        expect(service.user_at_pretransitioned_oh_facility?).to be false
       end
     end
   end
@@ -130,6 +143,18 @@ RSpec.describe MHV::OhFacilitiesHelper::Service do
 
       it 'returns true when user has a matching facility' do
         expect(service.user_facility_ready_for_info_alert?).to be true
+      end
+    end
+
+    context 'when mhv_oh_migration_trusted_user_bypass is enabled' do
+      let(:va_treatment_facility_ids) { %w[553 999] }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass, user).and_return(true)
+      end
+
+      it 'returns false even when user has a matching facility' do
+        expect(service.user_facility_ready_for_info_alert?).to be false
       end
     end
   end
@@ -206,6 +231,18 @@ RSpec.describe MHV::OhFacilitiesHelper::Service do
       allow(Settings.mhv.oh_facility_checks).to receive(:oh_migrations_list).and_return(oh_migrations_list)
       allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_dark_deploy_sm_rx, user).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_dark_deploy_appointments, user).and_return(false)
+    end
+
+    context 'when mhv_oh_migration_trusted_user_bypass is enabled' do
+      let(:oh_migrations_list) { '2026-03-03:[516,Columbus VA],[517,Toledo VA]' }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass, user).and_return(true)
+      end
+
+      it 'returns an empty array without consulting the migrations list' do
+        expect(service.get_migration_schedules).to eq([])
+      end
     end
 
     context 'Parsing' do
@@ -718,6 +755,19 @@ RSpec.describe MHV::OhFacilitiesHelper::Service do
       allow(Settings.mhv.oh_facility_checks).to receive(:oh_migrations_list).and_return(oh_migrations_list)
     end
 
+    context 'when mhv_oh_migration_trusted_user_bypass is enabled' do
+      let(:migration_date) { eastern_today + 30 }
+      let(:oh_migrations_list) { "#{migration_date.strftime('%Y-%m-%d')}:[516,Columbus VA]" }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass, user).and_return(true)
+      end
+
+      it 'returns nil without consulting the migrations list' do
+        expect(service.get_phase_for_station_number('516')).to be_nil
+      end
+    end
+
     context 'when station_number is blank' do
       it 'returns nil for nil station_number' do
         expect(service.get_phase_for_station_number(nil)).to be_nil
@@ -950,6 +1000,19 @@ RSpec.describe MHV::OhFacilitiesHelper::Service do
       allow(Settings.mhv.oh_facility_checks).to receive(:oh_migrations_list).and_return(oh_migrations_list)
     end
 
+    context 'when mhv_oh_migration_trusted_user_bypass is enabled' do
+      let(:migration_date) { eastern_today + 30 }
+      let(:oh_migrations_list) { "#{migration_date.strftime('%Y-%m-%d')}:[516,Columbus VA],[517,Other VA]" }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass, user).and_return(true)
+      end
+
+      it 'returns an empty hash without consulting the migrations list' do
+        expect(service.get_phases_for_station_numbers(%w[516 517])).to eq({})
+      end
+    end
+
     context 'when station_numbers is blank' do
       it 'returns empty hash for nil' do
         expect(service.get_phases_for_station_numbers(nil)).to eq({})
@@ -1075,6 +1138,18 @@ RSpec.describe MHV::OhFacilitiesHelper::Service do
 
     before do
       allow(Settings.mhv.oh_facility_checks).to receive(:oh_migrations_list).and_return(oh_migrations_list)
+    end
+
+    context 'when mhv_oh_migration_trusted_user_bypass is enabled' do
+      let(:oh_migrations_list) { "#{(eastern_today + 5.days).strftime('%Y-%m-%d')}:[516,Columbus VA]" }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass, user).and_return(true)
+      end
+
+      it 'returns nil without consulting the migrations list' do
+        expect(service.get_soonest_migration_phase).to be_nil
+      end
     end
 
     context 'when oh_migrations_list is blank' do

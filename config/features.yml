@@ -1654,6 +1654,13 @@ features:
     actor_type: user
     description: Enables fetching Oracle Health migration schedules for VAHB mobile users
     enable_in_development: true
+  mhv_oh_migration_trusted_user_bypass:
+    actor_type: user
+    enable_in_development: true
+    description: >-
+      Pre-cutover bypass for trusted user validation.
+      When enabled for a user, enables the full post-cutover experience, removing
+      any cutover banners, and turning on previously suppressed functionality.
   mhv_oh_migration_extended_phases:
     actor_type: user
     description: Enables extended migration phases (p8, p9) for Oracle Health facility migration tracking

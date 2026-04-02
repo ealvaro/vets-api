@@ -183,10 +183,32 @@ RSpec.describe VAOS::OhMigrationsHelper do
     end
   end
 
+  context 'when mhv_oh_migration_trusted_user_bypass is enabled' do
+    let(:user) { build(:user, :loa3) }
+
+    before do
+      go_live_date = today + 7.days
+      Settings.mhv.oh_facility_checks.oh_migrations_list = "#{go_live_date}:[123,Test 1]"
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass, user).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_dark_deploy_appointments, nil).and_return(false)
+    end
+
+    it 'returns an empty hash without consulting the migrations list' do
+      migrations = VAOS::OhMigrationsHelper.get_migrations(user:)
+      expect(migrations).to be_empty
+    end
+
+    it 'does not affect calls without a user' do
+      migrations = VAOS::OhMigrationsHelper.get_migrations
+      expect(migrations).not_to be_empty
+    end
+  end
+
   context 'dark deploy (mhv_oh_migration_dark_deploy_appointments)' do
     let(:user) { build(:user, :loa3) }
 
     before do
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass, user).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_dark_deploy_appointments, user).and_return(true)
     end
 
