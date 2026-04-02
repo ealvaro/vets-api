@@ -30,6 +30,9 @@ module MyHealth
       UNKNOWN_STATUS_V1 = 'Unknown'
       UNKNOWN_STATUS_V2 = 'Status not available'
 
+      # Submits prescription refill orders to the upstream service.
+      # Orders blocked by OH transition rules are partitioned out before submission.
+      # Renders a merged result of successful, failed, and blocked refills.
       def refill
         return unless validate_feature_flag
 
@@ -88,6 +91,10 @@ module MyHealth
         render json: MyHealth::V2::PrescriptionDetailsSerializer.new(records, options)
       end
 
+      # Retrieves a single prescription by ID and station number.
+      #
+      # @param id [String] the prescription ID (path param)
+      # @param station_number [String] the station number (query param, required)
       def show
         return unless validate_feature_flag
 
@@ -104,6 +111,8 @@ module MyHealth
         render json: MyHealth::V2::PrescriptionDetailsSerializer.new(prescription)
       end
 
+      # Returns prescriptions that are eligible for refill or renewal.
+      # Includes recently requested prescriptions in response metadata.
       def list_refillable_prescriptions
         return unless validate_feature_flag
 

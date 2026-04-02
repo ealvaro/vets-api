@@ -77,7 +77,7 @@ module MyHealth
         null_comparison = (a_date.nil? ? -1 : 0) <=> (b_date.nil? ? -1 : 0)
         return null_comparison if null_comparison != 0
 
-        b_date <=> a_date
+        (b_date.to_s <=> a_date.to_s)
       end
 
       def last_fill_date_sort(resource)
