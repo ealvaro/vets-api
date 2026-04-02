@@ -18,9 +18,7 @@ module EventBusGateway
 
     sidekiq_options retry: Constants::SIDEKIQ_RETRY_COUNT_FIRST_NOTIFICATION
 
-    sidekiq_retries_exhausted do |msg, _ex|
-      cache_key = msg['args']&.first
-      Sidekiq::AttrPackage.delete(cache_key) if cache_key
+    sidekiq_retries_exhausted do |msg, _ex| # rubocop:disable Cop/AttrPackageDeleteAfterRetry
       job_id = msg['jid']
       error_class = msg['error_class']
       error_message = msg['error_message']
