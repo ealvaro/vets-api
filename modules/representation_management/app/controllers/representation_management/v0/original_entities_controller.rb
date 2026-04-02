@@ -9,11 +9,19 @@ module RepresentationManagement
 
       def index
         data = RepresentationManagement::OriginalEntityQuery.new(params[:query]).results
+        orgs = data.select { |r| r.is_a?(Veteran::Service::Organization) }
+        any_request_poas = if Flipper.enabled?(:accredited_representative_portal_individual_accept) && orgs.any?
+                             RepresentationManagement::OrganizationWithAcceptanceCheck.any_request_poas_for(orgs)
+                           else
+                             Set.new
+                           end
+
         json_response = data.map do |record|
           if record.is_a?(Veteran::Service::Representative)
             RepresentationManagement::OriginalEntities::RepresentativeSerializer.new(record).serializable_hash
           elsif record.is_a?(Veteran::Service::Organization)
-            RepresentationManagement::OriginalEntities::OrganizationSerializer.new(record).serializable_hash
+            org = RepresentationManagement::OrganizationWithAcceptanceCheck.new(record, any_request_poas:)
+            RepresentationManagement::OriginalEntities::OrganizationSerializer.new(org).serializable_hash
           end
         end
         render json: json_response

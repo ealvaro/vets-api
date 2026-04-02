@@ -2,8 +2,8 @@
 
 require 'rails_helper'
 
-describe RepresentationManagement::OriginalEntities::OrganizationSerializer, type: :serializer do
-  subject { described_class.new(wrapped_organization) }
+describe RepresentationManagement::OriginalEntities::RepresentativeOrganizationSerializer, type: :serializer do
+  subject { described_class.new(organization) }
 
   let(:organization) do
     create(:organization,
@@ -25,10 +25,6 @@ describe RepresentationManagement::OriginalEntities::OrganizationSerializer, typ
            lat: '39',
            long: '-75',
            can_accept_digital_poa_requests: true)
-  end
-  let(:any_request_poas) { Set['XYZ'] }
-  let(:wrapped_organization) do
-    RepresentationManagement::OrganizationWithAcceptanceCheck.new(organization, any_request_poas:)
   end
   let(:data) { subject.serializable_hash.with_indifferent_access['data'] }
   let(:attributes) { data['attributes'] }
@@ -109,7 +105,7 @@ describe RepresentationManagement::OriginalEntities::OrganizationSerializer, typ
     expect(attributes['can_accept_digital_poa_requests']).to be true
   end
 
-  it 'includes reps_can_accept_any_request' do
-    expect(attributes['reps_can_accept_any_request']).to be true
+  it 'does not include reps_can_accept_any_request' do
+    expect(attributes).not_to have_key('reps_can_accept_any_request')
   end
 end

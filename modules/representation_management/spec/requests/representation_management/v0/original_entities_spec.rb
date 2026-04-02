@@ -63,7 +63,7 @@ RSpec.describe 'RepresentationManagement::V0::OriginalEntities', type: :request 
       end
     end
 
-    context 'when there are search results'  do
+    context 'when there are search results' do
       it 'returns a array of individuals and organizations' do
         get path, params: { query: 'Bob' }
 
@@ -75,6 +75,155 @@ RSpec.describe 'RepresentationManagement::V0::OriginalEntities', type: :request 
         expect(parsed_response[1]['data']['attributes']['full_name']).to eq('Bob Smith')
         expect(parsed_response[2]['data']['attributes']['name']).to eq('Bob Law Firm')
         expect(parsed_response[3]['data']['attributes']['name']).to eq('Bob Smith Firm')
+      end
+    end
+
+    describe 'org card acceptance fields' do
+      let!(:org) do
+        create(:organization, :with_address, poa: 'GHI', name: 'Test Org',
+                                             can_accept_digital_poa_requests: true)
+      end
+      let!(:rep) do
+        create(:representative, :with_address, representative_id: '00099',
+                                               first_name: 'Test', last_name: 'Rep', poa_codes: ['GHI'])
+      end
+
+      describe 'can_accept_digital_poa_requests returns the raw org column value' do
+        it 'for org cards' do
+          get path, params: { query: 'Test Org' }
+
+          parsed_response = JSON.parse(response.body)
+          org_card = parsed_response.find { |r| r.dig('data', 'attributes', 'name') == 'Test Org' }
+
+          expect(org_card.dig('data', 'attributes', 'can_accept_digital_poa_requests')).to be true
+        end
+      end
+
+      describe 'reps_can_accept_any_request' do
+        context 'when accredited_representative_portal_individual_accept is disabled' do
+          before do
+            allow(Flipper).to receive(:enabled?).and_call_original
+            allow(Flipper).to receive(:enabled?)
+              .with(:accredited_representative_portal_individual_accept).and_return(false)
+          end
+
+          it 'returns false for org cards' do
+            create(:veteran_organization_representative,
+                   representative: rep, organization: org, acceptance_mode: 'any_request')
+
+            get path, params: { query: 'Test Org' }
+
+            parsed_response = JSON.parse(response.body)
+            org_card = parsed_response.find { |r| r.dig('data', 'attributes', 'name') == 'Test Org' }
+
+            expect(org_card.dig('data', 'attributes', 'reps_can_accept_any_request')).to be false
+          end
+        end
+
+        context 'when accredited_representative_portal_individual_accept is enabled' do
+          before do
+            allow(Flipper).to receive(:enabled?).and_call_original
+            allow(Flipper).to receive(:enabled?)
+              .with(:accredited_representative_portal_individual_accept).and_return(true)
+          end
+
+          it 'returns true when an active any_request rep exists' do
+            create(:veteran_organization_representative,
+                   representative: rep, organization: org, acceptance_mode: 'any_request')
+
+            get path, params: { query: 'Test Org' }
+
+            parsed_response = JSON.parse(response.body)
+            org_card = parsed_response.find { |r| r.dig('data', 'attributes', 'name') == 'Test Org' }
+
+            expect(org_card.dig('data', 'attributes', 'reps_can_accept_any_request')).to be true
+          end
+
+          it 'returns false when only self_only reps exist' do
+            create(:veteran_organization_representative,
+                   representative: rep, organization: org, acceptance_mode: 'self_only')
+
+            get path, params: { query: 'Test Org' }
+
+            parsed_response = JSON.parse(response.body)
+            org_card = parsed_response.find { |r| r.dig('data', 'attributes', 'name') == 'Test Org' }
+
+            expect(org_card.dig('data', 'attributes', 'reps_can_accept_any_request')).to be false
+          end
+
+          it 'returns false when no organization_representative records exist' do
+            get path, params: { query: 'Test Org' }
+
+            parsed_response = JSON.parse(response.body)
+            org_card = parsed_response.find { |r| r.dig('data', 'attributes', 'name') == 'Test Org' }
+
+            expect(org_card.dig('data', 'attributes', 'reps_can_accept_any_request')).to be false
+          end
+        end
+      end
+
+      describe 'rep cards with nested org' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:accredited_representative_portal_individual_accept).and_return(true)
+        end
+
+        it 'returns true for can_accept_digital_poa_requests when acceptance_mode is any_request' do
+          create(:veteran_organization_representative,
+                 representative: rep, organization: org, acceptance_mode: 'any_request')
+
+          get path, params: { query: 'Test Rep' }
+
+          parsed_response = JSON.parse(response.body)
+          rep_card = parsed_response.find { |r| r.dig('data', 'attributes', 'full_name') == 'Test Rep' }
+          nested_orgs = rep_card.dig('data', 'attributes', 'accredited_organizations', 'data')
+          nested_org = nested_orgs.find { |o| o.dig('attributes', 'name') == 'Test Org' }
+
+          expect(nested_org.dig('attributes', 'can_accept_digital_poa_requests')).to be true
+        end
+
+        it 'returns true for can_accept_digital_poa_requests when acceptance_mode is self_only' do
+          create(:veteran_organization_representative,
+                 representative: rep, organization: org, acceptance_mode: 'self_only')
+
+          get path, params: { query: 'Test Rep' }
+
+          parsed_response = JSON.parse(response.body)
+          rep_card = parsed_response.find { |r| r.dig('data', 'attributes', 'full_name') == 'Test Rep' }
+          nested_orgs = rep_card.dig('data', 'attributes', 'accredited_organizations', 'data')
+          nested_org = nested_orgs.find { |o| o.dig('attributes', 'name') == 'Test Org' }
+
+          expect(nested_org.dig('attributes', 'can_accept_digital_poa_requests')).to be true
+        end
+
+        it 'returns false for can_accept_digital_poa_requests when acceptance_mode is no_acceptance' do
+          create(:veteran_organization_representative,
+                 representative: rep, organization: org, acceptance_mode: 'no_acceptance')
+
+          get path, params: { query: 'Test Rep' }
+
+          parsed_response = JSON.parse(response.body)
+          rep_card = parsed_response.find { |r| r.dig('data', 'attributes', 'full_name') == 'Test Rep' }
+          nested_orgs = rep_card.dig('data', 'attributes', 'accredited_organizations', 'data')
+          nested_org = nested_orgs.find { |o| o.dig('attributes', 'name') == 'Test Org' }
+
+          expect(nested_org.dig('attributes', 'can_accept_digital_poa_requests')).to be false
+        end
+
+        it 'does not include reps_can_accept_any_request' do
+          create(:veteran_organization_representative,
+                 representative: rep, organization: org, acceptance_mode: 'any_request')
+
+          get path, params: { query: 'Test Rep' }
+
+          parsed_response = JSON.parse(response.body)
+          rep_card = parsed_response.find { |r| r.dig('data', 'attributes', 'full_name') == 'Test Rep' }
+          nested_orgs = rep_card.dig('data', 'attributes', 'accredited_organizations', 'data')
+          nested_org = nested_orgs.find { |o| o.dig('attributes', 'name') == 'Test Org' }
+
+          expect(nested_org['attributes']).not_to have_key('reps_can_accept_any_request')
+        end
       end
     end
   end
