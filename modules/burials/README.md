@@ -10,11 +10,24 @@ Key features include automated PDF form filling, Benefits Intake API integration
 
 ## Table of Contents
 
+- [Feature Flags](#feature-flags)
 - [Prerequisites](#prerequisites)
 - [Configuration](#configuration)
 - [Usage Examples](#usage-examples)
 - [API Reference](#api-reference)
 - [Testing](#testing)
+
+## Feature Flags
+
+| Name                                   | Description                            |
+| -------------------------------------- | -------------------------------------- |
+| `burial_bpds_service_enabled` | Enables the BPDS service for Burial |
+| `burial_received_email_notification` | Toggle sending of the Received email notification |
+| `burial_submitted_email_notification` | Toggle sending of the Burial Submission in Progress email notification |
+| `burial_error_email_notification` | Toggle sending of the Action Needed email notification |
+| `burial_persistent_attachment_error_email_notification` | Toggle sending of the Persistent Attachment Error email notification |
+| `burial_extras_redesign_enabled` | Enable the new overflow design |
+| `burial_pdf_form_alignment` | Align digital form with PDF form |
 
 ## Prerequisites
 
