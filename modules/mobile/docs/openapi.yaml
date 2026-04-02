@@ -4142,6 +4142,82 @@ paths:
       security:
         - Bearer: []
       summary: /v0/push/send
+  /v0/referrals:
+    get:
+      description: Returns a list of active community care referrals for the current user. Expired referrals are filtered out.
+      parameters:
+        - $ref: '#/components/parameters/InflectionHeader'
+        - description: Comma-separated list of referral status codes to filter by. Defaults to 'AP' (Approved) and 'C' (Sent to Care Team).
+          example: "'AP', 'C'"
+          in: query
+          name: status
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/Referrals.yml
+          description: OK
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '408':
+          $ref: '#/components/responses/408'
+        '500':
+          $ref: '#/components/responses/500'
+        '502':
+          $ref: '#/components/responses/502'
+        '503':
+          $ref: '#/components/responses/503'
+        '504':
+          $ref: '#/components/responses/504'
+      security:
+        - Bearer: []
+      summary: /v0/referrals
+  /v0/referrals/{id}:
+    get:
+      description: Returns details for a specific community care referral identified by its encrypted UUID, including associated appointment data.
+      parameters:
+        - $ref: '#/components/parameters/InflectionHeader'
+        - description: The encrypted UUID of the referral
+          example: 'abc123encrypted'
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/ReferralDetail.yml
+          description: OK
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '408':
+          $ref: '#/components/responses/408'
+        '500':
+          $ref: '#/components/responses/500'
+        '502':
+          $ref: '#/components/responses/502'
+        '503':
+          $ref: '#/components/responses/503'
+        '504':
+          $ref: '#/components/responses/504'
+      security:
+        - Bearer: []
+      summary: /v0/referrals/{id}
   /v0/tooltips:
     get:
       description: Retrieve tooltips settings

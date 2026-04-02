@@ -1,0 +1,174 @@
+type: object
+additionalProperties: false
+properties:
+  data:
+    type: object
+    additionalProperties: false
+    properties:
+      id:
+        type: string
+        description: Encrypted referral UUID
+        example: 'abc123encrypted'
+      type:
+        type: string
+        example: 'referrals'
+      attributes:
+        type: object
+        additionalProperties: false
+        properties:
+          categoryOfCare:
+            type: string
+            nullable: true
+            example: 'Podiatry'
+          expirationDate:
+            type: string
+            nullable: true
+            format: date
+            example: '2025-12-31'
+          referralNumber:
+            type: string
+            nullable: true
+            example: 'REF123456'
+          referralConsultId:
+            type: string
+            nullable: true
+            example: '789012'
+          uuid:
+            type: string
+            nullable: true
+            description: Encrypted referral UUID for use in URLs
+            example: 'abc123encrypted'
+          hasAppointments:
+            type: boolean
+            nullable: true
+            description: True if the referral has at least one active appointment
+            example: true
+          referralDate:
+            type: string
+            nullable: true
+            format: date
+            example: '2025-01-15'
+          stationId:
+            type: string
+            nullable: true
+            example: '983'
+          appointments:
+            type: object
+            nullable: true
+            properties:
+              EPS:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: 'appt-id-1'
+                        status:
+                          type: string
+                          example: 'active'
+                        start:
+                          type: string
+                          format: date-time
+                          example: '2025-06-01T09:00:00Z'
+              VAOS:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: 'appt-id-2'
+                        status:
+                          type: string
+                          example: 'active'
+                        start:
+                          type: string
+                          format: date-time
+                          example: '2025-06-10T14:00:00Z'
+          provider:
+            type: object
+            nullable: true
+            properties:
+              name:
+                type: string
+                nullable: true
+                example: 'Dr. Jane Smith'
+              facilityName:
+                type: string
+                nullable: true
+                example: 'VA Community Care Clinic'
+              npi:
+                type: string
+                nullable: true
+                example: '1234567890'
+              phone:
+                type: string
+                nullable: true
+                example: '555-867-5309'
+              specialty:
+                type: string
+                nullable: true
+                example: 'Podiatry'
+              address:
+                type: object
+                nullable: true
+                properties:
+                  street1:
+                    type: string
+                    nullable: true
+                    example: '123 Main St'
+                  city:
+                    type: string
+                    nullable: true
+                    example: 'Denver'
+                  state:
+                    type: string
+                    nullable: true
+                    example: 'CO'
+                  zip:
+                    type: string
+                    nullable: true
+                    example: '80202'
+          referringFacility:
+            type: object
+            nullable: true
+            properties:
+              name:
+                type: string
+                nullable: true
+                example: 'Cheyenne VA Medical Center'
+              phone:
+                type: string
+                nullable: true
+                example: '555-123-4567'
+              code:
+                type: string
+                nullable: true
+                example: '442'
+              address:
+                type: object
+                nullable: true
+                properties:
+                  street1:
+                    type: string
+                    nullable: true
+                    example: '2360 E Pershing Blvd'
+                  city:
+                    type: string
+                    nullable: true
+                    example: 'Cheyenne'
+                  state:
+                    type: string
+                    nullable: true
+                    example: 'WY'
+                  zip:
+                    type: string
+                    nullable: true
+                    example: '82001'

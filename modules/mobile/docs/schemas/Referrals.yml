@@ -1,0 +1,47 @@
+type: object
+additionalProperties: false
+properties:
+  data:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          description: Encrypted referral UUID
+          example: 'abc123encrypted'
+        type:
+          type: string
+          example: 'referrals'
+        attributes:
+          type: object
+          additionalProperties: false
+          properties:
+            categoryOfCare:
+              type: string
+              nullable: true
+              example: 'Podiatry'
+            referralNumber:
+              type: string
+              nullable: true
+              example: 'REF123456'
+            referralConsultId:
+              type: string
+              nullable: true
+              example: '789012'
+            uuid:
+              type: string
+              nullable: true
+              description: Encrypted referral UUID for use in URLs
+              example: 'abc123encrypted'
+            stationId:
+              type: string
+              nullable: true
+              example: '983'
+            expirationDate:
+              type: string
+              nullable: true
+              format: date
+              description: Expiration date in YYYY-MM-DD format
+              example: '2025-12-31'

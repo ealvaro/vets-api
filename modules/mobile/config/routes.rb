@@ -5,6 +5,8 @@ Mobile::Engine.routes.draw do
 
   namespace :v0 do
     get '/feature-toggles', to: 'feature_toggles#index'
+    get '/referrals', to: 'referrals#index'
+    get '/referrals/:id', to: 'referrals#show'
     get '/appeal/:id', to: 'claims_and_appeals#get_appeal'
     get '/appointments', to: 'appointments#index'
     get '/appointments/avs_binaries/:appointment_id', to: 'appointments#get_avs_binaries'
