@@ -21,7 +21,8 @@ module Mobile
                  :sorted_dispensed_date,
                  :station_number,
                  :is_refillable,
-                 :is_trackable
+                 :is_trackable,
+                 :renewal_submitted_timestamp
 
       attribute :instructions, &:sig
       attribute :facility_phone_number, &:cmop_division_phone

@@ -102,6 +102,12 @@
         },
         "pharmacyPhoneNumber": {
           "type": ["string", "null"]
+        },
+        "renewalSubmittedTimestamp": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       }
     },

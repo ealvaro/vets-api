@@ -40,6 +40,7 @@ module MyHealth
       attribute :is_renewable
       attribute :is_trackable
       attribute :source_ehr
+      attribute :renewal_submitted_timestamp
     end
   end
 end

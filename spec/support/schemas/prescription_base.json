@@ -41,7 +41,8 @@
         "station_number": { "type": "string" },
         "is_refillable": { "type": "boolean" },
         "is_trackable": { "type": "boolean" },
-        "pharmacy_phone_number": { "type": ["string", "null"] }
+        "pharmacy_phone_number": { "type": ["string", "null"] },
+        "renewal_submitted_timestamp": { "type": ["integer", "null"] }
       }
     },
     "links": {

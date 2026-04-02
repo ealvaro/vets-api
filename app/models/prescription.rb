@@ -39,6 +39,8 @@ require 'vets/model'
 #   @return [Bool]
 # @!attribute metadata
 #   @return [Hash]
+# @!attribute renewal_submitted_timestamp
+#   @return [Integer]
 #
 class Prescription
   include Vets::Model
@@ -63,6 +65,7 @@ class Prescription
   attribute :is_trackable, Bool, filterable: %w[eq not_eq]
   attribute :cmop_division_phone, String
   attribute :metadata, Hash, default: -> { {} }
+  attribute :renewal_submitted_timestamp, Integer
 
   default_sort_by prescription_name: :asc
 

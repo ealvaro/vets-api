@@ -52,6 +52,7 @@
         "orderable_item",
         "sorted_dispensed_date",
         "prescription_image",
+        "renewal_submitted_timestamp",
         "color",
         "shape",
         "back_imprint",
@@ -178,6 +179,7 @@
         "orderable_item": { "type": ["string", "null"] },
         "sorted_dispensed_date": { "type": ["string", "null"], "format": "date" },
         "prescription_image": { "type": ["string", "null"] },
+        "renewal_submitted_timestamp": { "type": ["integer", "null"] },
         "grouped_medications": {
           "type": ["array", "null"],
           "properties": {
@@ -302,6 +304,7 @@
         "orderable_item": { "type": ["string", "null"] },
         "sorted_dispensed_date": { "type": ["string", "null"], "format": "date" },
         "prescription_image": { "type": ["string", "null"] },
+        "renewal_submitted_timestamp": { "type": ["integer", "null"] },
         "grouped_medications": {
           "type": "array",
           "properties": {
@@ -424,6 +427,7 @@
             "orderable_item": { "type": ["string", "null"] },
             "sorted_dispensed_date": { "type": ["string", "null"], "format": "date" },
             "prescription_image": { "type": ["string", "null"] },
+            "renewal_submitted_timestamp": { "type": ["integer", "null"] },
             "grouped_medications": {
               "type": ["array", "null"],
               "properties": {}

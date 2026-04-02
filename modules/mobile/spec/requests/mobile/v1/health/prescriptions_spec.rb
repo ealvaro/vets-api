@@ -100,6 +100,20 @@ RSpec.describe 'Mobile::V1::Health::Prescriptions', type: :request do
             end
           end
 
+          it 'includes renewalSubmittedTimestamp in prescription attributes' do
+            VCR.use_cassette('unified_health_data/get_prescriptions_success') do
+              get '/mobile/v1/health/rx/prescriptions', headers: sis_headers
+
+              expect(response).to have_http_status(:ok)
+              data = response.parsed_body['data']
+              expect(data).not_to be_empty
+
+              data.each do |rx|
+                expect(rx['attributes']).to have_key('renewalSubmittedTimestamp')
+              end
+            end
+          end
+
           it 'includes sortedDispensedDate for Oracle Health prescriptions with dispenses' do
             VCR.use_cassette('unified_health_data/get_prescriptions_success') do
               get '/mobile/v1/health/rx/prescriptions',

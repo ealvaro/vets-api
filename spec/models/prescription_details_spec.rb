@@ -22,7 +22,7 @@ describe PrescriptionDetails do
                                          reason: nil, prescription_number_index: 'RX', prescription_source: 'RX',
                                          disclaimer: nil, indication_for_use: nil, indication_for_use_flag: nil,
                                          category: 'Rx Medication', tracking: false, color: nil, shape: nil,
-                                         back_imprint: nil, front_imprint: nil)
+                                         back_imprint: nil, front_imprint: nil, renewal_submitted_timestamp: nil)
     end
 
     it 'has additional aliased rubyesque methods' do
@@ -197,6 +197,39 @@ describe PrescriptionDetails do
       it 'returns nil' do
         expect(subject.pharmacy_phone_number).to be_nil
       end
+    end
+  end
+
+  describe 'renewal_submitted_timestamp accuracy' do
+    let(:known_timestamp) { 1_700_000_000_000 } # 2023-11-14T22:13:20Z in milliseconds
+
+    it 'stores and returns the exact millisecond epoch value' do
+      prescription = described_class.new(renewal_submitted_timestamp: known_timestamp)
+      expect(prescription.renewal_submitted_timestamp).to eq(known_timestamp)
+    end
+
+    it 'converts to the correct UTC time' do
+      prescription = described_class.new(renewal_submitted_timestamp: known_timestamp)
+      time = Time.zone.at(prescription.renewal_submitted_timestamp / 1000.0).utc
+      expect(time).to eq(Time.utc(2023, 11, 14, 22, 13, 20))
+    end
+
+    it 'preserves precision for recent timestamps' do
+      # 2025-03-01T12:00:00.000Z
+      recent_timestamp = 1_740_830_400_000
+      prescription = described_class.new(renewal_submitted_timestamp: recent_timestamp)
+      expect(prescription.renewal_submitted_timestamp).to eq(recent_timestamp)
+
+      time = Time.zone.at(prescription.renewal_submitted_timestamp / 1000.0).utc
+      expect(time.year).to eq(2025)
+      expect(time.month).to eq(3)
+      expect(time.day).to eq(1)
+      expect(time.hour).to eq(12)
+    end
+
+    it 'handles nil gracefully' do
+      prescription = described_class.new(renewal_submitted_timestamp: nil)
+      expect(prescription.renewal_submitted_timestamp).to be_nil
     end
   end
 end

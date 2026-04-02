@@ -17,6 +17,7 @@ FactoryBot.define do
     station_number        { '23' }
     is_refillable         { true }
     is_trackable          { false }
+    renewal_submitted_timestamp { nil }
 
     trait :with_api_name do
       facility_api_name { 'Dayton Medical Center' }

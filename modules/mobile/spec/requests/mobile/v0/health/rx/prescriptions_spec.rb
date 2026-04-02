@@ -162,6 +162,19 @@ RSpec.describe 'health/rx/prescriptions', type: :request do
         prescriptions_with_dates = data.select { |rx| rx.dig('attributes', 'sortedDispensedDate').present? }
         expect(prescriptions_with_dates).not_to be_empty
       end
+
+      it 'includes renewalSubmittedTimestamp field' do
+        VCR.use_cassette('rx_client/prescriptions/gets_a_list_of_all_prescriptions_v1') do
+          get '/mobile/v0/health/rx/prescriptions', headers: sis_headers
+        end
+
+        expect(response).to have_http_status(:ok)
+        data = response.parsed_body['data']
+        expect(data).not_to be_empty
+        data.each do |rx|
+          expect(rx['attributes']).to have_key('renewalSubmittedTimestamp')
+        end
+      end
     end
 
     context 'when user does not have mhv access' do

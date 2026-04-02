@@ -42,6 +42,7 @@ module UnifiedHealthData
     attribute :grouped_medications, Array, default: nil
     attribute :disp_status, String
     attribute :source_ehr, String
+    attribute :renewal_submitted_timestamp, Integer
 
     attribute :sorted_dispensed_date, String
 

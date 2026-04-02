@@ -666,6 +666,21 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
         end
       end
 
+      it 'includes renewal_submitted_timestamp attribute in prescription data' do
+        VCR.use_cassette('unified_health_data/get_prescriptions_success', match_requests_on: %i[method path]) do
+          get('/my_health/v2/prescriptions', headers:)
+
+          json_response = JSON.parse(response.body)
+          prescriptions = json_response['data']
+
+          expect(prescriptions).not_to be_empty
+
+          prescriptions.each do |prescription|
+            expect(prescription['attributes']).to have_key('renewal_submitted_timestamp')
+          end
+        end
+      end
+
       it 'returns camelCase when X-Key-Inflection: camel header is provided' do
         VCR.use_cassette('unified_health_data/get_prescriptions_success', match_requests_on: %i[method path]) do
           camel_headers = headers.merge('X-Key-Inflection' => 'camel')

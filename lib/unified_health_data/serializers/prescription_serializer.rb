@@ -33,7 +33,8 @@ module UnifiedHealthData
                  :cmop_ndc_number,
                  :remarks,
                  :disp_status,
-                 :source_ehr
+                 :source_ehr,
+                 :renewal_submitted_timestamp
     end
   end
 end

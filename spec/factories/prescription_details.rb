@@ -39,6 +39,7 @@ FactoryBot.define do
     indication_for_use_flag         { nil }
     category                        { 'Rx Medication' }
     tracking                        { false }
+    renewal_submitted_timestamp     { nil }
     rx_rf_records {
       [
         [

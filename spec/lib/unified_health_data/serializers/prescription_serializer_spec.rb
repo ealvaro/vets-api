@@ -42,7 +42,8 @@ RSpec.describe UnifiedHealthData::Serializers::PrescriptionSerializer do
       remarks: 'Patient should monitor blood sugar levels',
       cmop_ndc_number: '00093721410',
       disp_status: 'Active',
-      source_ehr: 'OH'
+      source_ehr: 'OH',
+      renewal_submitted_timestamp: 1_700_000_000_000
     )
   end
 
@@ -87,6 +88,9 @@ RSpec.describe UnifiedHealthData::Serializers::PrescriptionSerializer do
 
       # source_ehr
       expect(attributes[:source_ehr]).to eq('OH')
+
+      # renewal_submitted_timestamp
+      expect(attributes[:renewal_submitted_timestamp]).to eq(1_700_000_000_000)
     end
   end
 
@@ -128,6 +132,28 @@ RSpec.describe UnifiedHealthData::Serializers::PrescriptionSerializer do
         attributes = result[:data][:attributes]
 
         expect(attributes[:disp_status]).to be_nil
+      end
+    end
+  end
+
+  describe 'renewal_submitted_timestamp serialization' do
+    context 'when prescription has nil renewal_submitted_timestamp' do
+      let(:prescription_without_timestamp) do
+        UnifiedHealthData::Prescription.new(
+          id: '99999',
+          type: 'Prescription',
+          refill_status: 'active',
+          prescription_source: 'VA',
+          renewal_submitted_timestamp: nil
+        )
+      end
+
+      it 'includes renewal_submitted_timestamp as nil in serialized output' do
+        serializer = described_class.new(prescription_without_timestamp)
+        result = serializer.serializable_hash
+        attributes = result[:data][:attributes]
+
+        expect(attributes[:renewal_submitted_timestamp]).to be_nil
       end
     end
   end

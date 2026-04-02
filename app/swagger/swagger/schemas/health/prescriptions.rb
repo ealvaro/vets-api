@@ -65,6 +65,7 @@ module Swagger
             property :station_number, type: :string
             property :is_refillable, type: :boolean
             property :is_trackable, type: :boolean
+            property :renewal_submitted_timestamp, type: %i[integer null]
           end
           property :links do
             key :$ref, :LinksSelf

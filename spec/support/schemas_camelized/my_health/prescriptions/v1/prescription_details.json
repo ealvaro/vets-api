@@ -55,7 +55,8 @@
         "color",
         "shape",
         "backImprint",
-        "frontImprint"
+        "frontImprint",
+        "renewalSubmittedTimestamp"
       ],
       "properties": {
         "prescriptionId": { "type": ["integer", "null"] },
@@ -179,6 +180,7 @@
         "orderableItem": { "type": ["string", "null"] },
         "sortedDispensedDate": { "type": ["string", "null"], "format": "date" },
         "prescriptionImage": { "type": ["string", "null"] },
+        "renewalSubmittedTimestamp": { "type": ["integer", "null"] },
         "groupedMedications": {
           "type": ["array", "null"],
           "properties": {
@@ -302,6 +304,7 @@
             "orderableItem": { "type": ["string", "null"] },
             "sortedDispensedDate": { "type": ["string", "null"], "format": "date" },
             "prescriptionImage": { "type": ["string", "null"] },
+            "renewalSubmittedTimestamp": { "type": ["integer", "null"] },
             "groupedMedications": {
               "type": ["array", "null"],
               "properties": {}

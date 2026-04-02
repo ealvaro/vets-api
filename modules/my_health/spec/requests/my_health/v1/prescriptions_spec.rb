@@ -75,6 +75,16 @@ RSpec.describe 'MyHealth::V1::Prescriptions', type: :request do
       expect(response).to be_successful
       expect(response.body).to be_a(String)
       expect(response).to match_camelized_response_schema('my_health/prescriptions/v1/prescription_single')
+
+      # Verify renewal_submitted_timestamp is present in camelCase
+      attributes = JSON.parse(response.body)['data']['attributes']
+      expect(attributes).to have_key('renewalSubmittedTimestamp')
+
+      timestamp = attributes['renewalSubmittedTimestamp']
+      if timestamp.present?
+        expect(timestamp).to be_a(Integer)
+        expect(timestamp).to be_positive
+      end
     end
 
     it 'responds to GET #index with no parameters' do
@@ -704,6 +714,60 @@ RSpec.describe 'MyHealth::V1::Prescriptions', type: :request do
         expect(prescription_attributes).to include('color')
         expect(prescription_attributes).to include('back_imprint')
         expect(prescription_attributes).to include('front_imprint')
+      end
+    end
+
+    it 'includes renewal_submitted_timestamp in prescription attributes' do
+      VCR.use_cassette('rx_client/prescriptions/gets_a_single_grouped_prescription') do
+        get '/my_health/v1/prescriptions/24891624'
+      end
+
+      expect(response).to be_successful
+      response_data = JSON.parse(response.body)['data']
+      expect(response_data['attributes']).to have_key('renewal_submitted_timestamp')
+    end
+
+    context 'renewal_submitted_timestamp accuracy' do
+      it 'serializes a known renewal_submitted_timestamp value accurately' do
+        known_timestamp = 1_700_000_000_000 # 2023-11-14T22:13:20Z
+
+        prescription = PrescriptionDetails.new(
+          prescription_id: 24_891_624,
+          prescription_name: 'Test Rx',
+          renewal_submitted_timestamp: known_timestamp
+        )
+
+        serialized = MyHealth::V1::PrescriptionDetailsSerializer.new(prescription).serializable_hash
+        serialized_timestamp = serialized[:data][:attributes][:renewal_submitted_timestamp]
+
+        expect(serialized_timestamp).to eq(known_timestamp)
+
+        # Verify the serialized value converts to the expected time
+        time = Time.zone.at(serialized_timestamp / 1000.0).utc
+        expect(time).to eq(Time.utc(2023, 11, 14, 22, 13, 20))
+      end
+
+      context 'with a single prescription response' do
+        before do
+          VCR.use_cassette('rx_client/prescriptions/gets_a_single_grouped_prescription') do
+            get '/my_health/v1/prescriptions/24891624'
+          end
+        end
+
+        let(:attributes) { JSON.parse(response.body)['data']['attributes'] }
+
+        it 'includes renewal_submitted_timestamp as nil or valid integer' do
+          expect(response).to be_successful
+          expect(attributes).to have_key('renewal_submitted_timestamp')
+          timestamp = attributes['renewal_submitted_timestamp']
+
+          if timestamp.nil?
+            expect(timestamp).to be_nil
+          else
+            expect(timestamp).to be_a(Integer)
+            expect(timestamp).to be_positive
+          end
+        end
       end
     end
   end
