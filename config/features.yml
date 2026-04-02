@@ -1704,10 +1704,6 @@ features:
     actor_type: user
     description: Disables/Enables Secure Messaging read receipts
     enable_in_development: true
-  mhv_secure_messaging_milestone_2_aal:
-    actor_type: user
-    description: Disables/Enables Secure Messaging AAL Milestone 2
-    enable_in_development: true
   mhv_secure_messaging_policy_va_patient:
     actor_type: user
     description: Disables/Enables Secure Messaging policy check for VA patient
