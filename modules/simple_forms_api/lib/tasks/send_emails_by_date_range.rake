@@ -47,7 +47,7 @@ namespace :simple_forms_api do
     error_notifications_sent << confirmation_number if notification_type == :error
 
     SimpleFormsApi::Notification::Email.new(
-      config(form_submission_attempt, form_submission, confirmation_number),
+      build_email_config(form_submission_attempt, form_submission, confirmation_number),
       notification_type:,
       user_account: form_submission.user_account
     ).send(at: time_to_send)
@@ -86,7 +86,7 @@ namespace :simple_forms_api do
     end
   end
 
-  def config(form_submission_attempt, form_submission, confirmation_number)
+  def build_email_config(form_submission_attempt, form_submission, confirmation_number)
     form_number = SimpleFormsApi::V1::UploadsController::FORM_NUMBER_MAP[form_submission.form_type]
     {
       form_data: JSON.parse(form_submission.form_data),
