@@ -4,9 +4,8 @@ require 'rails_helper'
 require_relative '../../support/vass_settings_helper'
 
 RSpec.describe Vass::Configuration do
-  # Use `vass_config` instead of `configuration` to avoid collision with
-  # CopHelper#configuration (from rubocop/rspec/support) which returns RuboCop::Config.
-  let(:vass_config) { described_class.instance }
+  subject(:vass_config) { described_class.instance }
+
   let(:oauth_url) { 'https://login.microsoftonline.example/oauth2/token' }
 
   before do
