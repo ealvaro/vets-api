@@ -3,6 +3,7 @@
 require_relative '../models/lab_or_test'
 require_relative '../reference_range_formatter'
 require_relative '../facility_service'
+require_relative '../source_constants'
 require_relative 'date_normalizer'
 require_relative 'fhir_helpers'
 require_relative 'facility_name_resolver'
@@ -35,8 +36,10 @@ module UnifiedHealthData
         'LP29684-5' => 'Radiology'
       }.freeze
 
-      def parse_labs(records)
+      def parse_labs(records, use_oh_display: false)
         return [] if records.blank?
+
+        @use_oh_display = use_oh_display
 
         filtered = records.select do |record|
           record['resource'] && record['resource']['resourceType'] == 'DiagnosticReport'
@@ -50,6 +53,20 @@ module UnifiedHealthData
           nil
         end
       end
+
+      # Public method to extract station number from a record's contained resources.
+      # Used by Service layer for cache pre-warming.
+      #
+      # @param record [Hash] A UHD record with 'resource' > 'contained'
+      # @return [String, nil] Station number or nil if not found
+      def extract_station_number_from_record(record)
+        return nil if record.nil?
+
+        contained = record.dig('resource', 'contained')
+        extract_station_number(contained)
+      end
+
+      private
 
       def parse_single_record(record)
         return nil if record.nil? || record['resource'].nil?
@@ -77,20 +94,6 @@ module UnifiedHealthData
         build_lab_or_test(record, code, encoded_data, observations, contained)
       end
 
-      # Public method to extract station number from a record's contained resources.
-      # Used by Service layer for cache pre-warming.
-      #
-      # @param record [Hash] A UHD record with 'resource' > 'contained'
-      # @return [String, nil] Station number or nil if not found
-      def extract_station_number_from_record(record)
-        return nil if record.nil?
-
-        contained = record.dig('resource', 'contained')
-        extract_station_number(contained)
-      end
-
-      private
-
       def allowed_status?(status)
         ALLOWED_STATUSES.include?(status)
       end
@@ -111,7 +114,7 @@ module UnifiedHealthData
         UnifiedHealthData::LabOrTest.new(
           id: resource['id'],
           type: resource['resourceType'],
-          display: format_display(resource),
+          display: format_display(resource, record['source']),
           test_code: code,
           test_code_display: get_test_code_display(record, code),
           date_completed: date_completed_value,
@@ -545,13 +548,42 @@ module UnifiedHealthData
         reference.split('/').last
       end
 
-      def format_display(resource)
-        # Check presentedForm title first (e.g., radiology reports)
+      def format_display(resource, source = nil)
+        # Check presentedForm title first (e.g., radiology reports) — applies to all sources
         title = resource['presentedForm']
                 &.find { |form| form['contentType'] == 'text/plain' }
                 &.dig('title')
         return title if title.present?
 
+        if @use_oh_display && source == UnifiedHealthData::SourceConstants::ORACLE_HEALTH
+          format_display_oracle_health(resource)
+        else
+          # Currently this is the default for all Labs
+          # Need to differentiate it for to use with feature toggle
+          format_display_vista(resource)
+        end
+      end
+
+      def format_display_oracle_health(resource)
+        # 1. ServiceRequest.code.text
+        service_request = resource['contained']&.find { |r| r['resourceType'] == 'ServiceRequest' }
+        service_request_code_text = service_request&.dig('code', 'text')
+        return service_request_code_text if service_request_code_text.present?
+
+        # 2. First category.coding.display
+        resource['category']&.each do |cat|
+          coding_display = first_coding_display(cat)
+          return coding_display if coding_display.present?
+        end
+
+        # 3. Fall back to code.text
+        code_display = extract_codeable_concept_display(resource['code'])
+        return code_display if code_display.present?
+
+        ''
+      end
+
+      def format_display_vista(resource)
         # Top-level code.text, then first found code.coding.display
         code_display = extract_codeable_concept_display(resource['code'])
         return code_display if code_display.present?

@@ -1649,7 +1649,7 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
 
   describe '#format_display' do
     context 'when presentedForm has a title on the text/plain entry' do
-      it 'returns the title' do
+      it 'returns the title regardless of source' do
         resource = {
           'presentedForm' => [
             { 'contentType' => 'text/plain', 'title' => 'CT ABDOMEN W/CONTRAST', 'data' => 'encoded' }
@@ -1663,18 +1663,217 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
           'code' => { 'text' => 'Resource Code Name' }
         }
 
-        result = adapter.send(:format_display, resource)
-
-        expect(result).to eq('CT ABDOMEN W/CONTRAST')
+        expect(adapter.send(:format_display, resource, 'vista')).to eq('CT ABDOMEN W/CONTRAST')
+        expect(adapter.send(:format_display, resource, 'oracle-health')).to eq('CT ABDOMEN W/CONTRAST')
+        expect(adapter.send(:format_display, resource)).to eq('CT ABDOMEN W/CONTRAST')
       end
     end
 
-    context 'when presentedForm has title on non-text/plain entry only' do
-      it 'falls back to ServiceRequest code text' do
+    context 'when source is vista (default)' do
+      context 'when presentedForm has title on non-text/plain entry only' do
+        it 'falls back to code.text then ServiceRequest' do
+          resource = {
+            'presentedForm' => [
+              { 'contentType' => 'application/pdf', 'title' => 'PDF Title' }
+            ],
+            'contained' => [
+              {
+                'resourceType' => 'ServiceRequest',
+                'code' => { 'text' => 'ServiceRequest Name' }
+              }
+            ]
+          }
+
+          result = adapter.send(:format_display, resource)
+
+          expect(result).to eq('ServiceRequest Name')
+        end
+      end
+
+      context 'when no presentedForm title exists' do
+        it 'falls back to ServiceRequest code text' do
+          resource = {
+            'presentedForm' => [
+              { 'contentType' => 'text/plain', 'data' => 'encoded' }
+            ],
+            'contained' => [
+              {
+                'resourceType' => 'ServiceRequest',
+                'code' => { 'text' => 'HEPATIC FUNCTION PANEL' }
+              }
+            ]
+          }
+
+          result = adapter.send(:format_display, resource)
+
+          expect(result).to eq('HEPATIC FUNCTION PANEL')
+        end
+      end
+
+      context 'when code.text exists' do
+        it 'returns code.text before checking ServiceRequest' do
+          resource = {
+            'code' => { 'text' => 'Blood Panel' },
+            'contained' => [
+              {
+                'resourceType' => 'ServiceRequest',
+                'code' => { 'text' => 'ServiceRequest Name' }
+              }
+            ]
+          }
+
+          result = adapter.send(:format_display, resource, 'vista')
+
+          expect(result).to eq('Blood Panel')
+        end
+      end
+
+      context 'when ServiceRequest has no code text but has category coding display' do
+        it 'falls back to category coding display' do
+          resource = {
+            'contained' => [
+              {
+                'resourceType' => 'ServiceRequest',
+                'category' => [{ 'coding' => [{ 'display' => 'Chemistry' }] }]
+              }
+            ]
+          }
+
+          result = adapter.send(:format_display, resource)
+
+          expect(result).to eq('Chemistry')
+        end
+      end
+
+      context 'when no ServiceRequest exists' do
+        it 'falls back to resource code text' do
+          resource = {
+            'contained' => [],
+            'code' => { 'text' => 'Blood Panel' }
+          }
+
+          result = adapter.send(:format_display, resource)
+
+          expect(result).to eq('Blood Panel')
+        end
+      end
+
+      context 'when no display information is available at all' do
+        it 'returns an empty string' do
+          resource = {
+            'contained' => []
+          }
+
+          result = adapter.send(:format_display, resource)
+
+          expect(result).to eq('')
+        end
+      end
+
+      context 'when presentedForm is nil and contained is nil' do
+        it 'returns an empty string' do
+          resource = {}
+
+          result = adapter.send(:format_display, resource)
+
+          expect(result).to eq('')
+        end
+      end
+    end
+
+    context 'when source is oracle-health and use_oh_display is true' do
+      let(:oh_source) { UnifiedHealthData::SourceConstants::ORACLE_HEALTH }
+
+      before do
+        adapter.instance_variable_set(:@use_oh_display, true)
+      end
+
+      context 'when ServiceRequest.code.text exists' do
+        it 'returns ServiceRequest.code.text' do
+          resource = {
+            'code' => { 'text' => 'Resource Code Name' },
+            'category' => [{ 'coding' => [{ 'display' => 'Category Display' }] }],
+            'contained' => [
+              {
+                'resourceType' => 'ServiceRequest',
+                'code' => { 'text' => 'ServiceRequest Name' }
+              }
+            ]
+          }
+
+          result = adapter.send(:format_display, resource, oh_source)
+
+          expect(result).to eq('ServiceRequest Name')
+        end
+      end
+
+      context 'when ServiceRequest.code.text is missing but category.coding.display exists' do
+        it 'returns the first category coding display' do
+          resource = {
+            'code' => { 'text' => 'Resource Code Name' },
+            'category' => [
+              { 'coding' => [{ 'display' => 'Chemistry' }] },
+              { 'coding' => [{ 'display' => 'Hematology' }] }
+            ],
+            'contained' => [
+              {
+                'resourceType' => 'ServiceRequest'
+              }
+            ]
+          }
+
+          result = adapter.send(:format_display, resource, oh_source)
+
+          expect(result).to eq('Chemistry')
+        end
+      end
+
+      context 'when ServiceRequest and category are missing but code.text exists' do
+        it 'falls back to code.text' do
+          resource = {
+            'code' => { 'text' => 'Blood Panel' },
+            'contained' => []
+          }
+
+          result = adapter.send(:format_display, resource, oh_source)
+
+          expect(result).to eq('Blood Panel')
+        end
+      end
+
+      context 'when no display information is available' do
+        it 'returns an empty string' do
+          resource = {
+            'contained' => []
+          }
+
+          result = adapter.send(:format_display, resource, oh_source)
+
+          expect(result).to eq('')
+        end
+      end
+
+      context 'when category has no coding display but has text' do
+        it 'falls back to code.text instead of category.text' do
+          resource = {
+            'code' => { 'text' => 'Fallback Code' },
+            'category' => [{ 'text' => 'Category Text Only' }],
+            'contained' => []
+          }
+
+          result = adapter.send(:format_display, resource, oh_source)
+
+          expect(result).to eq('Fallback Code')
+        end
+      end
+    end
+
+    context 'when source is oracle-health but use_oh_display is false' do
+      let(:oh_source) { UnifiedHealthData::SourceConstants::ORACLE_HEALTH }
+
+      it 'uses the vista display logic' do
         resource = {
-          'presentedForm' => [
-            { 'contentType' => 'application/pdf', 'title' => 'PDF Title' }
-          ],
+          'code' => { 'text' => 'Resource Code Name' },
           'contained' => [
             {
               'resourceType' => 'ServiceRequest',
@@ -1683,81 +1882,9 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
           ]
         }
 
-        result = adapter.send(:format_display, resource)
+        result = adapter.send(:format_display, resource, oh_source)
 
-        expect(result).to eq('ServiceRequest Name')
-      end
-    end
-
-    context 'when no presentedForm title exists' do
-      it 'falls back to ServiceRequest code text' do
-        resource = {
-          'presentedForm' => [
-            { 'contentType' => 'text/plain', 'data' => 'encoded' }
-          ],
-          'contained' => [
-            {
-              'resourceType' => 'ServiceRequest',
-              'code' => { 'text' => 'HEPATIC FUNCTION PANEL' }
-            }
-          ]
-        }
-
-        result = adapter.send(:format_display, resource)
-
-        expect(result).to eq('HEPATIC FUNCTION PANEL')
-      end
-    end
-
-    context 'when ServiceRequest has no code text but has category coding display' do
-      it 'falls back to category coding display' do
-        resource = {
-          'contained' => [
-            {
-              'resourceType' => 'ServiceRequest',
-              'category' => [{ 'coding' => [{ 'display' => 'Chemistry' }] }]
-            }
-          ]
-        }
-
-        result = adapter.send(:format_display, resource)
-
-        expect(result).to eq('Chemistry')
-      end
-    end
-
-    context 'when no ServiceRequest exists' do
-      it 'falls back to resource code text' do
-        resource = {
-          'contained' => [],
-          'code' => { 'text' => 'Blood Panel' }
-        }
-
-        result = adapter.send(:format_display, resource)
-
-        expect(result).to eq('Blood Panel')
-      end
-    end
-
-    context 'when no display information is available at all' do
-      it 'returns an empty string' do
-        resource = {
-          'contained' => []
-        }
-
-        result = adapter.send(:format_display, resource)
-
-        expect(result).to eq('')
-      end
-    end
-
-    context 'when presentedForm is nil and contained is nil' do
-      it 'returns an empty string' do
-        resource = {}
-
-        result = adapter.send(:format_display, resource)
-
-        expect(result).to eq('')
+        expect(result).to eq('Resource Code Name')
       end
     end
   end
