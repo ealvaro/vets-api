@@ -675,6 +675,17 @@ RSpec.describe 'Mobile::V0::TravelPayClaims', type: :request do
         end
       end
     end
+
+    it 'returns an error when facility_name is missing' do
+      params = { 'appointment_date_time' => '2024-01-01T16:45:34.465',
+                 'facility_station_number' => '123',
+                 'appointment_type' => 'Other',
+                 'is_complete' => false }
+
+      post('/mobile/v0/travel-pay/claims', headers: sis_headers, params:)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
   end
 
   describe '#download_document' do

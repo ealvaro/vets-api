@@ -56,6 +56,7 @@ module Mobile
         appt_params = {
           'appointment_date_time' => validated_params[:appointment_date_time],
           'facility_station_number' => validated_params[:facility_station_number],
+          'facility_name' => validated_params[:facility_name],
           'appointment_type' => validated_params[:appointment_type],
           'is_complete' => validated_params[:is_complete]
         }

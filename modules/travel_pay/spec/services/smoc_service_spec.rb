@@ -53,6 +53,7 @@ describe TravelPay::SmocService do
 
       @params = { 'appointment_date_time' => '2024-01-01T16:45:34',
                   'facility_station_number' => '123',
+                  'facility_name' => 'Cheyenne VA Medical Center',
                   'appointment_type' => 'Other',
                   'is_complete' => false }
     end
@@ -196,6 +197,7 @@ describe TravelPay::SmocService do
 
       @params = { 'appointment_date_time' => '2024-01-01T16:45:34',
                   'facility_station_number' => '123',
+                  'facility_name' => 'Cheyenne VA Medical Center',
                   'appointment_type' => 'Other',
                   'is_complete' => false }
 
