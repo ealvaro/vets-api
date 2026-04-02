@@ -8,8 +8,8 @@ require 'search/configuration'
 require 'search/pii_redactor'
 
 module Search
-  # This class builds a wrapper around Search.gov web results API. Creating a new instance of class
-  # will and calling #results will return a ResultsResponse upon success or an exception upon failure.
+  # Wrapper around the Search.gov web results API.
+  # Calling {#results} returns a {Search::ResultsResponse} on success or raises an exception on failure.
   #
   # @see https://search.usa.gov/sites/7378/api_instructions
   #
@@ -27,8 +27,10 @@ module Search
       @page = page.to_i
     end
 
-    # GETs a list of search results from Search.gov web results API
+    # Fetches a page of search results from the Search.gov API.
+    #
     # @return [Search::ResultsResponse] wrapper around results data
+    # @raise [Common::Exceptions::BackendServiceException] on upstream errors
     #
     def results
       with_monitoring do
@@ -104,7 +106,7 @@ module Search
     end
 
     def parse_messages(error)
-      error.body&.dig('errors')
+      error.body.is_a?(Hash) ? error.body['errors'] : [error.body.to_s]
     end
 
     def save_error_details(error_message)

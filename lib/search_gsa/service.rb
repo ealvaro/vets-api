@@ -8,8 +8,8 @@ require 'search_gsa/configuration'
 require 'search/pii_redactor'
 
 module SearchGsa
-  # This class builds a wrapper around api.gsa.gov web results API. Creating a new instance of class
-  # will and calling #results will return a ResultsResponse upon success or an exception upon failure.
+  # Wrapper around the api.gsa.gov web results API.
+  # Calling {#results} returns a {Search::ResultsResponse} on success or raises an exception on failure.
   #
   # @see https://open.gsa.gov/api/searchgov-results/
   #
@@ -27,8 +27,10 @@ module SearchGsa
       @page = page.to_i
     end
 
-    # GETs a list of search results from api.gsa,gov API @return
-    # [Search::ResultsResponse] wrapper around results data
+    # Fetches a page of search results from the api.gsa.gov API.
+    #
+    # @return [Search::ResultsResponse] wrapper around results data
+    # @raise [Common::Exceptions::BackendServiceException] on upstream errors
     #
     def results
       with_monitoring do
@@ -104,7 +106,7 @@ module SearchGsa
     end
 
     def parse_messages(error)
-      error.body&.dig('errors')
+      error.body.is_a?(Hash) ? error.body['errors'] : [error.body.to_s]
     end
 
     def save_error_details(error_message)

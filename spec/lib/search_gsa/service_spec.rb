@@ -103,6 +103,41 @@ describe SearchGsa::Service do
       end
     end
 
+    context 'when the upstream API returns a non-JSON (string) error body' do
+      let(:string_body_error) do
+        Common::Client::Errors::ClientError.new('upstream error', 400, 'Bad Request')
+      end
+
+      before do
+        allow_any_instance_of(described_class).to receive(:perform).and_raise(string_body_error)
+      end
+
+      it 'raises a BackendServiceException without a NoMethodError', :aggregate_failures do
+        expect { subject.results }.to raise_error do |e|
+          expect(e).to be_a(Common::Exceptions::BackendServiceException)
+          expect(e.status_code).to eq(400)
+        end
+      end
+    end
+
+    context 'when the upstream API returns a 503 with a string body' do
+      let(:string_body_error) do
+        Common::Client::Errors::ClientError.new('upstream error', 503, '<html>Service Unavailable</html>')
+      end
+
+      before do
+        allow_any_instance_of(described_class).to receive(:perform).and_raise(string_body_error)
+      end
+
+      it 'raises a BackendServiceException without a NoMethodError', :aggregate_failures do
+        expect { subject.results }.to raise_error do |e|
+          expect(e).to be_a(Common::Exceptions::BackendServiceException)
+          expect(e.status_code).to eq(503)
+          expect(e.errors.first.code).to eq('SEARCH_GSA_503')
+        end
+      end
+    end
+
     context 'when exceeding the API rate limit' do
       it 'raises an exception', :aggregate_failures do
         VCR.use_cassette('search/exceeds_rate_limit', VCR::MATCH_EVERYTHING) do
