@@ -25,7 +25,11 @@ module V0
     private
 
     def user_account
-      @user_account ||= UserAccount.find_by(icn: current_user.icn) if current_user.icn.present?
+      unless @user_account_retrieved
+        @user_account = current_user.icn.present? ? UserAccount.find_by(icn: current_user.icn) : nil
+        @user_account_retrieved = true
+      end
+      @user_account
     end
 
     def claim

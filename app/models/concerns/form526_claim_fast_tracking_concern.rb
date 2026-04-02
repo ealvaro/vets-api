@@ -256,7 +256,9 @@ module Form526ClaimFastTrackingConcern
   end
 
   def in_progress_form
-    @in_progress_form ||= InProgressForm.find_by(form_id: '21-526EZ', user_uuid:)
+    return @in_progress_form if defined?(@in_progress_form)
+
+    @in_progress_form = InProgressForm.find_by(form_id: '21-526EZ', user_uuid:)
   end
 
   def max_rated_disabilities_from_ipf
