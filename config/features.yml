@@ -3108,6 +3108,9 @@ features:
     actor_type: user
     enable_in_development: true
     description: Enables form 21-0779 on vets-website
+  form_0779_submission_email_notification:
+    actor_type: user
+    description: Enables VA Notify confirmation email sending for Form 21-0779 submissions
   form_21_0779_govcio_mms:
     actor_type: cookie_id
     enable_in_development: true

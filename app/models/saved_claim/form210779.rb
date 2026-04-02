@@ -24,13 +24,23 @@ class SavedClaim::Form210779 < SavedClaim
   end
 
   def send_confirmation_email
-    # Email functionality not included in MVP
+    return unless id
 
-    # VANotify::EmailJob.perform_async(
-    #   employer_email,
-    #   Settings.vanotify.services.va_gov.template_id.form210779_confirmation,
-    #   {}
-    # )
+    unless Flipper.enabled?(:form_0779_submission_email_notification)
+      StatsD.increment('api.form210779.email.skipped_feature_flag')
+      return
+    end
+
+    Form210779SubmissionEmailJob.perform_async(id)
+    StatsD.increment('api.form210779.email.queued')
+  rescue => e
+    StatsD.increment('api.form210779.email.queue_failure')
+    Rails.logger.error(
+      'SavedClaim::Form210779 failed to queue confirmation email',
+      saved_claim_id: id,
+      error: e.class.name,
+      message: e.message
+    )
   end
 
   # Override to_pdf to add nursing home official signature stamp

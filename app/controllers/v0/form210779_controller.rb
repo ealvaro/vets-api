@@ -16,6 +16,7 @@ module V0
 
       if claim.save
         claim.process_attachments!
+        claim.send_confirmation_email
         monitor.track_submission_success(claim, user_uuid: current_user&.uuid)
         clear_saved_form(claim.form_id)
         render json: SavedClaimSerializer.new(claim)
