@@ -2740,9 +2740,6 @@ features:
     actor_type: user
     description: Implement multiple page response pattern
     enable_in_development: true
-  pension_form_profile_module_enabled:
-    actor_type: user
-    description: Use the module version of the FormProfile
   pension_extras_redesign_enabled:
     actor_type: user
     description: Enable the new overflow design

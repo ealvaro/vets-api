@@ -8,6 +8,17 @@ The module operates as an isolated Rails Engine within vets-api, providing pensi
 
 Key features include automated PDF form filling with overflow page generation, Benefits Intake API integration for document submission, BPDS (Benefits Processing Data Service) integration for structured data submission, comprehensive monitoring and error handling, email notifications via VA Notify, and support for multiple submission pathways including direct API submission and traditional mail processing workflows.
 
+### Feature Flags
+
+| Name                                   | Description                            |
+| -------------------------------------- | -------------------------------------- |
+| `pension_submitted_email_notification` | Toggle sending of the Submission in Progress email  notification |
+| `pension_received_email_notification`  | Toggle sending of the Received email notification |
+| `pension_persistent_attachment_error_email_notification`  | Toggle sending of the Persistent Attachment Error email notification |
+| `pension_itf_validate_data_logger`     | Toggle sending of the ITF Validate Data to Rails Logger | 
+| `pension_error_email_notification`     | Toggle sending of the Action Needed email notification  | 
+| `pension_extras_redesign_enabled`      | Enable the new overflow design |
+
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
