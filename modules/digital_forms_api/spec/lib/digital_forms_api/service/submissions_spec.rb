@@ -8,6 +8,7 @@ require_relative 'shared/service'
 
 RSpec.describe DigitalFormsApi::Service::Submissions do
   let(:service) { described_class.new }
+  let(:openapi) { File.read("#{DigitalFormsApi::MODULE_PATH}/schema/openapi.json") }
 
   let(:payload) do
     { data: 'TEST' }
@@ -34,6 +35,8 @@ RSpec.describe DigitalFormsApi::Service::Submissions do
 
       expected = { envelope: expected.merge({ payload: }) }
 
+      response = double(Faraday::Env, body: openapi)
+      expect(service).to receive(:perform).with(:get, /openapi.json$/, {}, {}).and_return(response)
       expect(service).to receive(:perform).with(:post, 'submissions?dry-run=false', expected, {})
       service.submit(payload, metadata)
     end

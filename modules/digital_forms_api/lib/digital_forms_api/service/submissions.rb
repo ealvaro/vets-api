@@ -8,23 +8,13 @@ module DigitalFormsApi
     class Submissions < Base
       # POST submit form structured data
       #
-      # @param payload [Hash] the validated form data; @see SavedClaim.parsed_form
-      # @param metadata [Hash] required fields in addition to payload
-      # @option metadata [String] :formId the form identifier, eg. '21-686c'; required
-      # @option metadata [String] :veteranId the participant id of the veteran; required
-      # @option metadata [String] :claimantId the participant id of the claimant; default to veteranId
-      # @option metadata [String] :epCode the ep code; required
-      # @option metadata [String] :claimLabel the claim label; required
+      # @see DigitalFormsApi::Validation#validate_submission_request
+      #
+      # @param payload [Hash] validated form data
+      # @param metadata [Hash] fields in addition to the payload
       # @param dry_run [Boolean] perform a dry run in which no action is taken except validation by the endpoint
       def submit(payload, metadata, dry_run: false)
-        transformed = {
-          claimantId: { identifierType: 'PARTICIPANTID', value: metadata[:claimantId] || metadata[:veteranId] },
-          veteranId: { identifierType: 'PARTICIPANTID', value: metadata[:veteranId] },
-          payload:
-        }
-
-        # TODO: validate the request structure (future)
-        request = { envelope: metadata.merge(transformed) }
+        request = validate_submission_request(payload, metadata)
 
         headers = {}
 

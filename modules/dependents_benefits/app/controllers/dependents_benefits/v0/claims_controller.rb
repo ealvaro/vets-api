@@ -117,6 +117,7 @@ module DependentsBenefits
         payload = claim.parsed_form.deep_dup
         payload = claim.deep_camelize_keys(payload.merge(payload.delete('dependents_application')))
         metadata = {
+          sourceRequestId: claim.guid,
           formId: claim.claim_form_type,
           veteranId: participant_id,
           claimantId: participant_id,

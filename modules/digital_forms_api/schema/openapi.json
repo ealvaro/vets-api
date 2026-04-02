@@ -1,0 +1,1429 @@
+{
+  "openapi" : "3.0.1",
+  "info" : {
+    "description" : "An OpenAPI 3.0 specification for VefsFormsApi Service. This API provides functionality for digital form submission.",
+    "license" : {
+      "name" : "Apache 2.0",
+      "url" : "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    "termsOfService" : "https://developer.va.gov/terms-of-service",
+    "title" : "BIP VefsFormsApi Service",
+    "version" : "1.1.0"
+  },
+  "servers" : [ {
+    "url" : "/"
+  } ],
+  "security" : [ {
+    "bearerAuth" : [ ]
+  } ],
+  "tags" : [ {
+    "description" : "Endpoints related to forms / form metadata",
+    "name" : "Forms"
+  }, {
+    "description" : "Endpoints related to form submissions",
+    "name" : "Submissions"
+  }, {
+    "description" : "Endpoints related to form schemas",
+    "name" : "Schemas"
+  }, {
+    "description" : "Endpoints related to form templates",
+    "name" : "Templates"
+  }, {
+    "description" : "Token Resource",
+    "name" : "token-resource"
+  } ],
+  "paths" : {
+    "/api/v1/forms/{form-id}/schema" : {
+      "get" : {
+        "description" : "Returns the schema for the specified form.",
+        "operationId" : "getFormSchema",
+        "parameters" : [ {
+          "description" : "The identifier of the form to retrieve",
+          "example" : "21-686c",
+          "in" : "path",
+          "name" : "form-id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/schema-response"
+                }
+              }
+            },
+            "description" : "The schema for the form is returned"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.global.validator.method.argument.not.valid",
+                    "severity" : "ERROR",
+                    "status" : 400,
+                    "text" : "Argument not valid.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "There was an error encountered processing the Request.  Response will contain a  \"messages\" element that will provide further information on the error.  This request shouldn't be retried until corrected."
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "UNAUTHORIZED",
+                    "severity" : "ERROR",
+                    "status" : 401,
+                    "text" : "No JWT Token in Header.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "The authentication mechanism failed and hence access is forbidden."
+          },
+          "403" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.not.authorized.exception",
+                    "severity" : "ERROR",
+                    "status" : 403,
+                    "text" : "Access denied.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "The request is not authorized.  Please verify credentials used in the request."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/error"
+                }
+              }
+            },
+            "description" : "The specified schema for the form was not found."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.global.general.exception",
+                    "severity" : "ERROR",
+                    "status" : 500,
+                    "text" : "Unexpected exception.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "There was an error encountered processing the Request.  Response will contain a  \"messages\" element that will provide further information on the error.  Please retry.  If problem persists, please contact support with a copy of the Response."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "summary" : "Returns the schema for the specified form.",
+        "tags" : [ "Schemas" ]
+      }
+    },
+    "/api/v1/forms/{form-id}/template" : {
+      "get" : {
+        "description" : "Returns the form template for the specified form.",
+        "operationId" : "getFormTemplate",
+        "parameters" : [ {
+          "description" : "The identifier of the form to retrieve",
+          "example" : "21-686c",
+          "in" : "path",
+          "name" : "form-id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/template-response"
+                }
+              }
+            },
+            "description" : "The template for the form is returned"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.global.validator.method.argument.not.valid",
+                    "severity" : "ERROR",
+                    "status" : 400,
+                    "text" : "Argument not valid.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "There was an error encountered processing the Request.  Response will contain a  \"messages\" element that will provide further information on the error.  This request shouldn't be retried until corrected."
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "UNAUTHORIZED",
+                    "severity" : "ERROR",
+                    "status" : 401,
+                    "text" : "No JWT Token in Header.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "The authentication mechanism failed and hence access is forbidden."
+          },
+          "403" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.not.authorized.exception",
+                    "severity" : "ERROR",
+                    "status" : 403,
+                    "text" : "Access denied.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "The request is not authorized.  Please verify credentials used in the request."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/error"
+                }
+              }
+            },
+            "description" : "The specified template for the form was not found."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.global.general.exception",
+                    "severity" : "ERROR",
+                    "status" : 500,
+                    "text" : "Unexpected exception.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "There was an error encountered processing the Request.  Response will contain a  \"messages\" element that will provide further information on the error.  Please retry.  If problem persists, please contact support with a copy of the Response."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "summary" : "Returns the form template for the the specified form.",
+        "tags" : [ "Templates" ]
+      }
+    },
+    "/api/v1/submissions" : {
+      "post" : {
+        "description" : "Submit form data for processing and claim creation",
+        "operationId" : "submitForm",
+        "parameters" : [ {
+          "description" : "If true, the endpoint will perform a dry run in which no action is taken. That is, no claim is created and the form is not persisted. Validation is still performed and the EP Code and Claim Label are returned.",
+          "in" : "query",
+          "name" : "dry-run",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "description" : "JWT for this request.",
+          "in" : "header",
+          "name" : "token",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/submit-form-request"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/submission-response"
+                }
+              }
+            },
+            "description" : "Submission created - Information pertaining to the created claim is returned"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.global.validator.method.argument.not.valid",
+                    "severity" : "ERROR",
+                    "status" : 400,
+                    "text" : "Argument not valid.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "There was an error encountered processing the Request.  Response will contain a  \"messages\" element that will provide further information on the error.  This request shouldn't be retried until corrected."
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "UNAUTHORIZED",
+                    "severity" : "ERROR",
+                    "status" : 401,
+                    "text" : "No JWT Token in Header.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "The authentication mechanism failed and hence access is forbidden."
+          },
+          "403" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.not.authorized.exception",
+                    "severity" : "ERROR",
+                    "status" : 403,
+                    "text" : "Access denied.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "The request is not authorized.  Please verify credentials used in the request."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.resource.not.found",
+                    "severity" : "ERROR",
+                    "status" : 404,
+                    "text" : "Form not found.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "The request is not authorized.  Please verify credentials used in the request."
+          },
+          "422" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.unprocessable.entity",
+                    "severity" : "ERROR",
+                    "status" : 422,
+                    "text" : "Unprocessable entity.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "There was an error encountered processing the Request.  Response will contain a  \"messages\" element that will provide further information on the error.  This request shouldn't be retried until corrected."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.global.general.exception",
+                    "severity" : "ERROR",
+                    "status" : 500,
+                    "text" : "Unexpected exception.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "There was an error encountered processing the Request.  Response will contain a  \"messages\" element that will provide further information on the error.  Please retry.  If problem persists, please contact support with a copy of the Response."
+          },
+          "503" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.service.unavailable",
+                    "severity" : "ERROR",
+                    "status" : 503,
+                    "text" : "Service unavailable.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "There was an error encountered processing the Request.  Response will contain a  \"messages\" element that will provide further information on the error.  This request shouldn't be retried until corrected."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "summary" : "Submit data against a form version",
+        "tags" : [ "Submission" ]
+      }
+    },
+    "/api/v1/submissions/{submission-id}" : {
+      "get" : {
+        "description" : "Retrieve details for a previously submitted form",
+        "operationId" : "getFormSubmission",
+        "parameters" : [ {
+          "description" : "The unique identifier for the form submission",
+          "example" : "a1ba50e4-e689-4852-bec7-2a66519f0ed3",
+          "in" : "path",
+          "name" : "submission-id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/submission-details"
+                }
+              }
+            },
+            "description" : "Details for the specified form submission are returned"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.global.validator.method.argument.not.valid",
+                    "severity" : "ERROR",
+                    "status" : 400,
+                    "text" : "Argument not valid.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "There was an error encountered processing the Request.  Response will contain a  \"messages\" element that will provide further information on the error.  This request shouldn't be retried until corrected."
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "UNAUTHORIZED",
+                    "severity" : "ERROR",
+                    "status" : 401,
+                    "text" : "No JWT Token in Header.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "The authentication mechanism failed and hence access is forbidden."
+          },
+          "403" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.not.authorized.exception",
+                    "severity" : "ERROR",
+                    "status" : 403,
+                    "text" : "Access denied.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "The request is not authorized.  Please verify credentials used in the request."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/error"
+                }
+              }
+            },
+            "description" : "The specified submission was not found."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.global.general.exception",
+                    "severity" : "ERROR",
+                    "status" : 500,
+                    "text" : "Unexpected exception.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "There was an error encountered processing the Request.  Response will contain a  \"messages\" element that will provide further information on the error.  Please retry.  If problem persists, please contact support with a copy of the Response."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "summary" : "Get details for a specific form submission",
+        "tags" : [ "Submission" ]
+      }
+    },
+    "/api/v1/submissions/by-document-id/{document-id}" : {
+      "get" : {
+        "description" : "Retrieve details for a previously submitted form using the associated CE document ID",
+        "operationId" : "getFormSubmissionByDocumentId",
+        "parameters" : [ {
+          "description" : "The unique document identifier for the form submission",
+          "example" : "a1ba50e4-e689-4852-bec7-2a66519f0ed3",
+          "in" : "path",
+          "name" : "document-id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/submission-details"
+                }
+              }
+            },
+            "description" : "Details for the specified form submission are returned"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.global.validator.method.argument.not.valid",
+                    "severity" : "ERROR",
+                    "status" : 400,
+                    "text" : "Argument not valid.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "There was an error encountered processing the Request.  Response will contain a  \"messages\" element that will provide further information on the error.  This request shouldn't be retried until corrected."
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "UNAUTHORIZED",
+                    "severity" : "ERROR",
+                    "status" : 401,
+                    "text" : "No JWT Token in Header.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "The authentication mechanism failed and hence access is forbidden."
+          },
+          "403" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.not.authorized.exception",
+                    "severity" : "ERROR",
+                    "status" : 403,
+                    "text" : "Access denied.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "The request is not authorized.  Please verify credentials used in the request."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/error"
+                }
+              }
+            },
+            "description" : "The specified submission was not found."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.global.general.exception",
+                    "severity" : "ERROR",
+                    "status" : 500,
+                    "text" : "Unexpected exception.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "There was an error encountered processing the Request.  Response will contain a  \"messages\" element that will provide further information on the error.  Please retry.  If problem persists, please contact support with a copy of the Response."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "summary" : "Get details for a specific form submission using the associated CE document ID",
+        "tags" : [ "Submission" ]
+      }
+    },
+    "/api/v1/token" : {
+      "post" : {
+        "deprecated" : false,
+        "description" : "Get a JWT bearer token with 'person' data.",
+        "operationId" : "getTokenUsingPOST",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/person"
+              }
+            }
+          },
+          "description" : "The JWT includes four important pieces of information: the application ID making the request, the CSUM User ID using the application to make the request, the station ID associated to the CSUM User ID, and lastly, the logged-in user of the application.",
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "text/plain" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "A Response which indicates a successful Request.  The Response may contain \"messages\" that could describe warnings or further information."
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.global.validator.method.argument.not.valid",
+                    "severity" : "ERROR",
+                    "status" : 400,
+                    "text" : "Argument not valid.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "There was an error encountered processing the Request.  Response will contain a  \"messages\" element that will provide further information on the error.  This request shouldn't be retried until corrected."
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "UNAUTHORIZED",
+                    "severity" : "ERROR",
+                    "status" : 401,
+                    "text" : "No JWT Token in Header.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "The authentication mechanism failed and hence access is forbidden."
+          },
+          "403" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.not.authorized.exception",
+                    "severity" : "ERROR",
+                    "status" : 403,
+                    "text" : "Access denied.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "The request is not authorized.  Please verify credentials used in the request."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "example" : {
+                  "messages" : [ {
+                    "key" : "bip.framework.global.general.exception",
+                    "severity" : "ERROR",
+                    "status" : 500,
+                    "text" : "Unexpected exception.",
+                    "timestamp" : "2019-08-29T18:40:22.766Z"
+                  } ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/provider-response"
+                }
+              }
+            },
+            "description" : "There was an error encountered processing the Request.  Response will contain a  \"messages\" element that will provide further information on the error.  Please retry.  If problem persists, please contact support with a copy of the Response."
+          }
+        },
+        "security" : [ ],
+        "summary" : "Get JWT Token",
+        "tags" : [ "token-resource" ]
+      }
+    }
+  },
+  "components" : {
+    "parameters" : {
+      "token" : {
+        "description" : "JWT for this request.",
+        "in" : "header",
+        "name" : "token",
+        "required" : false,
+        "schema" : {
+          "type" : "string"
+        }
+      }
+    },
+    "responses" : {
+      "400" : {
+        "content" : {
+          "application/problem+json" : {
+            "example" : {
+              "messages" : [ {
+                "key" : "bip.framework.global.validator.method.argument.not.valid",
+                "severity" : "ERROR",
+                "status" : 400,
+                "text" : "Argument not valid.",
+                "timestamp" : "2019-08-29T18:40:22.766Z"
+              } ]
+            },
+            "schema" : {
+              "$ref" : "#/components/schemas/provider-response"
+            }
+          }
+        },
+        "description" : "There was an error encountered processing the Request.  Response will contain a  \"messages\" element that will provide further information on the error.  This request shouldn't be retried until corrected."
+      },
+      "401" : {
+        "content" : {
+          "application/problem+json" : {
+            "example" : {
+              "messages" : [ {
+                "key" : "UNAUTHORIZED",
+                "severity" : "ERROR",
+                "status" : 401,
+                "text" : "No JWT Token in Header.",
+                "timestamp" : "2019-08-29T18:40:22.766Z"
+              } ]
+            },
+            "schema" : {
+              "$ref" : "#/components/schemas/provider-response"
+            }
+          }
+        },
+        "description" : "The authentication mechanism failed and hence access is forbidden."
+      },
+      "403" : {
+        "content" : {
+          "application/problem+json" : {
+            "example" : {
+              "messages" : [ {
+                "key" : "bip.framework.not.authorized.exception",
+                "severity" : "ERROR",
+                "status" : 403,
+                "text" : "Access denied.",
+                "timestamp" : "2019-08-29T18:40:22.766Z"
+              } ]
+            },
+            "schema" : {
+              "$ref" : "#/components/schemas/provider-response"
+            }
+          }
+        },
+        "description" : "The request is not authorized.  Please verify credentials used in the request."
+      },
+      "500" : {
+        "content" : {
+          "application/problem+json" : {
+            "example" : {
+              "messages" : [ {
+                "key" : "bip.framework.global.general.exception",
+                "severity" : "ERROR",
+                "status" : 500,
+                "text" : "Unexpected exception.",
+                "timestamp" : "2019-08-29T18:40:22.766Z"
+              } ]
+            },
+            "schema" : {
+              "$ref" : "#/components/schemas/provider-response"
+            }
+          }
+        },
+        "description" : "There was an error encountered processing the Request.  Response will contain a  \"messages\" element that will provide further information on the error.  Please retry.  If problem persists, please contact support with a copy of the Response."
+      },
+      "404" : {
+        "content" : {
+          "application/problem+json" : {
+            "example" : {
+              "messages" : [ {
+                "key" : "bip.framework.resource.not.found",
+                "severity" : "ERROR",
+                "status" : 404,
+                "text" : "Form not found.",
+                "timestamp" : "2019-08-29T18:40:22.766Z"
+              } ]
+            },
+            "schema" : {
+              "$ref" : "#/components/schemas/provider-response"
+            }
+          }
+        },
+        "description" : "The request is not authorized.  Please verify credentials used in the request."
+      },
+      "422" : {
+        "content" : {
+          "application/problem+json" : {
+            "example" : {
+              "messages" : [ {
+                "key" : "bip.framework.unprocessable.entity",
+                "severity" : "ERROR",
+                "status" : 422,
+                "text" : "Unprocessable entity.",
+                "timestamp" : "2019-08-29T18:40:22.766Z"
+              } ]
+            },
+            "schema" : {
+              "$ref" : "#/components/schemas/provider-response"
+            }
+          }
+        },
+        "description" : "There was an error encountered processing the Request.  Response will contain a  \"messages\" element that will provide further information on the error.  This request shouldn't be retried until corrected."
+      },
+      "503" : {
+        "content" : {
+          "application/problem+json" : {
+            "example" : {
+              "messages" : [ {
+                "key" : "bip.framework.service.unavailable",
+                "severity" : "ERROR",
+                "status" : 503,
+                "text" : "Service unavailable.",
+                "timestamp" : "2019-08-29T18:40:22.766Z"
+              } ]
+            },
+            "schema" : {
+              "$ref" : "#/components/schemas/provider-response"
+            }
+          }
+        },
+        "description" : "There was an error encountered processing the Request.  Response will contain a  \"messages\" element that will provide further information on the error.  This request shouldn't be retried until corrected."
+      }
+    },
+    "schemas" : {
+      "SampleRequest" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/provider-request"
+        }, {
+          "properties" : {
+            "participantID" : {
+              "description" : "The Participant ID of the person for whom to retrieve sample data",
+              "example" : 32651268,
+              "exclusiveMinimum" : false,
+              "format" : "int64",
+              "minimum" : 1,
+              "type" : "integer"
+            }
+          },
+          "required" : [ "participantID" ],
+          "type" : "object"
+        } ],
+        "description" : "Model for data to request sample information from the Service",
+        "title" : "SampleRequest"
+      },
+      "SampleResponse" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/provider-response"
+        }, {
+          "properties" : {
+            "sampleInfo" : {
+              "$ref" : "#/components/schemas/sample-info"
+            }
+          },
+          "type" : "object"
+        } ],
+        "description" : "Model for the sample response from the Service",
+        "title" : "SampleResponse"
+      },
+      "schema-response" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/provider-response"
+        }, {
+          "properties" : {
+            "schemaResponse" : {
+              "$ref" : "#/components/schemas/form-schema-response"
+            }
+          },
+          "type" : "object"
+        } ],
+        "title" : "SchemaResponse"
+      },
+      "provider-response" : {
+        "allOf" : [ ],
+        "discriminator" : {
+          "propertyName" : "@type"
+        },
+        "properties" : {
+          "messages" : {
+            "items" : {
+              "$ref" : "#/components/schemas/message"
+            },
+            "type" : "array"
+          }
+        },
+        "title" : "ProviderResponse",
+        "type" : "object"
+      },
+      "error" : {
+        "properties" : {
+          "message" : {
+            "description" : "The message describing the error",
+            "example" : "Form not found",
+            "type" : "string"
+          }
+        },
+        "title" : "Error",
+        "type" : "object"
+      },
+      "template-response" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/provider-response"
+        }, {
+          "properties" : {
+            "formTemplate" : {
+              "$ref" : "#/components/schemas/form-template-response"
+            }
+          },
+          "type" : "object"
+        } ],
+        "title" : "TemplateResponse"
+      },
+      "submit-form-request" : {
+        "description" : "Request body containing envelope and payload data for form submission",
+        "properties" : {
+          "envelope" : {
+            "$ref" : "#/components/schemas/submit_form_request_envelope"
+          }
+        },
+        "required" : [ "envelope" ],
+        "title" : "Submit Form Request",
+        "type" : "object"
+      },
+      "submission-response" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/provider-response"
+        }, {
+          "properties" : {
+            "submission" : {
+              "$ref" : "#/components/schemas/submission"
+            }
+          },
+          "type" : "object"
+        } ],
+        "title" : "SubmissionResponse"
+      },
+      "submission-details" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/provider-response"
+        }, {
+          "properties" : {
+            "submission" : {
+              "$ref" : "#/components/schemas/submission"
+            },
+            "envelope" : {
+              "$ref" : "#/components/schemas/submission-retrieval-payload"
+            }
+          },
+          "type" : "object"
+        } ],
+        "title" : "SubmissionDetails"
+      },
+      "person" : {
+        "description" : "Model that identifies a single individual used in the security context",
+        "properties" : {
+          "applicationID" : {
+            "description" : "The application issuing the request to Forms API",
+            "example" : "vets-api",
+            "type" : "string"
+          },
+          "stationID" : {
+            "description" : "The number representing the Regional Office associated to the person issuing a request to Forms API. The pair userID+stationID must be present in CSUM",
+            "example" : "319",
+            "type" : "string"
+          },
+          "userID" : {
+            "description" : "The name associated with the person using the application to issue a request to Forms API. The pair userID+stationID must be present in CSUM",
+            "example" : "DROBIN_FAROLES",
+            "type" : "string"
+          }
+        },
+        "title" : "Person",
+        "type" : "object"
+      },
+      "provider-request" : {
+        "allOf" : [ ],
+        "discriminator" : {
+          "propertyName" : "@type"
+        },
+        "required" : [ "@type" ],
+        "title" : "ProviderRequest",
+        "type" : "object"
+      },
+      "sample-info" : {
+        "description" : "Model for sample data contained in the response from the Service",
+        "properties" : {
+          "name" : {
+            "description" : "The persons first name, middle initial, and last name",
+            "example" : "JANE M DOE",
+            "type" : "string"
+          },
+          "participantId" : {
+            "description" : "The persons participant ID",
+            "example" : 32651268,
+            "format" : "int64",
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        },
+        "title" : "SampleInfo",
+        "type" : "object"
+      },
+      "form-schema-response" : {
+        "description" : "Returns the schema for the specified form version",
+        "properties" : {
+          "schema" : {
+            "additionalProperties" : true,
+            "description" : "The JSON schema for the form version",
+            "example" : {
+              "$schema" : "http://json-schema.org/draft-04/schema#",
+              "title" : "DEPENDENTS MANAGEMENT FORM (21-686C)",
+              "type" : "object",
+              "required" : [ "veteranFullName", "veteranDateOfBirth" ],
+              "additionalProperties" : false
+            },
+            "type" : "object"
+          }
+        },
+        "title" : "Form Schema Response",
+        "type" : "object"
+      },
+      "message" : {
+        "description" : "Model that identifies a single message added to the response. Property keys are enumerated in  the MessageKeys object.",
+        "properties" : {
+          "key" : {
+            "type" : "string"
+          },
+          "severity" : {
+            "enum" : [ "INFO", "WARN", "ERROR" ],
+            "type" : "string"
+          },
+          "status" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "text" : {
+            "type" : "string"
+          },
+          "timestamp" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "key", "severity" ],
+        "title" : "Message",
+        "type" : "object"
+      },
+      "form-template-response" : {
+        "description" : "Returns the form template for the specified form version",
+        "properties" : {
+          "formTemplate" : {
+            "additionalProperties" : true,
+            "description" : "The JSON template for the form version",
+            "type" : "object"
+          }
+        },
+        "title" : "Form Template Response",
+        "type" : "object"
+      },
+      "VeteranIdentifier" : {
+        "description" : "Schema for a Veteran's identifier value.",
+        "example" : {
+          "identifierType" : "PARTICIPANTID",
+          "value" : 32314022
+        },
+        "properties" : {
+          "identifierType" : {
+            "description" : "The identifier type of the associated value.\n* PARTICIPANTID - The Veteran's Corporate Identifier\n",
+            "enum" : [ "PARTICIPANTID" ],
+            "type" : "string"
+          },
+          "value" : {
+            "description" : "Identifier value for the identifier type.",
+            "title" : "IdentifierValue",
+            "type" : "string"
+          }
+        },
+        "required" : [ "identifierType", "value" ],
+        "title" : "VeteranIdentifier",
+        "type" : "object"
+      },
+      "submit-form-payload" : {
+        "additionalProperties" : true,
+        "description" : "The form data payload matching the schema for the specified form version",
+        "example" : {
+          "veteranInformation" : {
+            "fullName" : {
+              "first" : "John",
+              "last" : "Doe"
+            },
+            "birthDate" : "1970-01-01",
+            "ssnLastFour" : "1234"
+          },
+          "veteranContactInformation" : {
+            "veteranAddress" : {
+              "street" : "1 Main St",
+              "city" : "Anytown",
+              "state" : "CA",
+              "country" : "USA",
+              "postalCode" : "90001"
+            },
+            "phoneNumber" : "5551234567",
+            "emailAddress" : "john.doe@example.com"
+          },
+          "statementOfTruthSignature" : "John Doe",
+          "statementOfTruthCertified" : true,
+          "spouseInformation" : {
+            "fullName" : {
+              "first" : "Jane",
+              "last" : "Doe"
+            },
+            "birthDate" : "1972-02-02",
+            "isVeteran" : false
+          },
+          "currentMarriageInformation" : {
+            "outsideUsa" : false,
+            "location" : {
+              "city" : "Anytown",
+              "state" : "CA"
+            },
+            "typeOfMarriage" : "Civil",
+            "date" : "2000-01-01"
+          },
+          "doesLiveWithSpouse" : {
+            "spouseDoesLiveWithVeteran" : true
+          },
+          "spouseMarriageHistory" : [ ],
+          "veteranMarriageHistory" : [ ],
+          "childrenToAdd" : [ ]
+        },
+        "title" : "Form Submission Payload",
+        "type" : "object"
+      },
+      "submission" : {
+        "properties" : {
+          "submissionId" : {
+            "description" : "The unique identifier for the form submission",
+            "example" : "a1ba50e4-e689-4852-bec7-2a66519f0ed3",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "claim" : {
+            "$ref" : "#/components/schemas/Claim"
+          },
+          "document" : {
+            "$ref" : "#/components/schemas/submission-document"
+          }
+        },
+        "title" : "Submission",
+        "type" : "object"
+      },
+      "submission-retrieval-payload" : {
+        "additionalProperties" : true,
+        "description" : "The submitted form data payload",
+        "example" : {
+          "formId" : "21-686c",
+          "veteranId" : {
+            "identifierType" : "PARTICIPANTID",
+            "value" : "32314022"
+          },
+          "claimantId" : {
+            "identifierType" : "PARTICIPANTID",
+            "value" : "32314022"
+          },
+          "epCode" : "130",
+          "claimLabel" : "130DPEBNAJRE",
+          "sourceRequestId" : "550e8400-e29b-41d4-a716-446655440000",
+          "payload" : {
+            "veteranInformation" : {
+              "fullName" : {
+                "first" : "John",
+                "last" : "Doe"
+              },
+              "birthDate" : "1970-01-01",
+              "ssnLastFour" : "1234"
+            },
+            "veteranContactInformation" : {
+              "veteranAddress" : {
+                "street" : "1 Main St",
+                "city" : "Anytown",
+                "state" : "CA",
+                "country" : "USA",
+                "postalCode" : "90001"
+              },
+              "phoneNumber" : "5551234567",
+              "emailAddress" : "john.doe@example.com"
+            },
+            "statementOfTruthSignature" : "John Doe",
+            "statementOfTruthCertified" : true,
+            "spouseInformation" : {
+              "fullName" : {
+                "first" : "Jane",
+                "last" : "Doe"
+              },
+              "birthDate" : "1972-02-02",
+              "isVeteran" : false
+            },
+            "currentMarriageInformation" : {
+              "outsideUsa" : false,
+              "location" : {
+                "city" : "Anytown",
+                "state" : "CA"
+              },
+              "typeOfMarriage" : "Civil",
+              "date" : "2000-01-01"
+            },
+            "doesLiveWithSpouse" : {
+              "spouseDoesLiveWithVeteran" : true
+            },
+            "spouseMarriageHistory" : [ ],
+            "veteranMarriageHistory" : [ ],
+            "childrenToAdd" : [ ]
+          }
+        },
+        "title" : "Form Submission Retrieval Payload",
+        "type" : "object"
+      },
+      "Claim" : {
+        "description" : "The claim associated with this form submission",
+        "properties" : {
+          "claimId" : {
+            "description" : "The unique identifier for the claim",
+            "example" : "123456789",
+            "type" : "string"
+          },
+          "epCode" : {
+            "description" : "The EP Code for the claim (i.e. 130, 020)",
+            "example" : "130",
+            "type" : "string"
+          },
+          "claimLabel" : {
+            "description" : "The Claim Label (i.e. 130DPEBNAJRE, 130DAEBNPMCR)",
+            "example" : "130DPEBNAJRE",
+            "type" : "string"
+          }
+        },
+        "title" : "Claim",
+        "type" : "object"
+      },
+      "submission-document" : {
+        "description" : "The document information stored in Claim Evidence",
+        "properties" : {
+          "documentId" : {
+            "description" : "The unique identifier for the document within Claim Evidence",
+            "example" : "58249d9e-ffed-4b3f-9582-3cc7bc2b7f72",
+            "type" : "string"
+          },
+          "seriesId" : {
+            "description" : "The unique identifier for the document version within Claim Evidence",
+            "example" : "8afb53dd-032c-4ec6-9fec-233d13ff9d30",
+            "type" : "string"
+          }
+        },
+        "title" : "Submission Document",
+        "type" : "object"
+      },
+      "submit_form_request_envelope" : {
+        "description" : "Metadata about the form being submitted",
+        "properties" : {
+          "formId" : {
+            "description" : "The identifier of the form",
+            "example" : "21-686c",
+            "type" : "string"
+          },
+          "veteranId" : {
+            "$ref" : "#/components/schemas/VeteranIdentifier"
+          },
+          "claimantId" : {
+            "$ref" : "#/components/schemas/VeteranIdentifier"
+          },
+          "epCode" : {
+            "description" : "The EP Code for the claim (i.e. 130, 020)",
+            "example" : "130",
+            "type" : "string"
+          },
+          "claimLabel" : {
+            "description" : "The Claim Label (i.e. 130DPEBNAJRE, 130DAEBNPMCR)",
+            "example" : "130DPEBNAJRE",
+            "type" : "string"
+          },
+          "sourceRequestId" : {
+            "description" : "An optional identifier provided by the client to track the submission request in their own system. This should be unique in the client's context.",
+            "example" : "550e8400-e29b-41d4-a716-446655440000",
+            "type" : "string"
+          },
+          "payload" : {
+            "$ref" : "#/components/schemas/submit-form-payload"
+          }
+        },
+        "required" : [ "claimLabel", "claimantId", "epCode", "formId", "payload", "veteranId" ],
+        "type" : "object"
+      }
+    },
+    "securitySchemes" : {
+      "bearerAuth" : {
+        "bearerFormat" : "JWT",
+        "scheme" : "bearer",
+        "type" : "http"
+      }
+    }
+  }
+}

@@ -378,6 +378,7 @@ digital_forms_api:
   base_url: https://digital-forms-api-fake.fake.bip.va.gov/api/v1/rest/
   breakers_error_threshold: 80
   cache_ttl:
+    openapi: 1
     schema: 1
     template: 1
   include_request: false

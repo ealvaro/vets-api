@@ -377,7 +377,8 @@ dhp:
 digital_forms_api:
   base_url: <%= ENV['digital_forms_api__base_url'] %>
   breakers_error_threshold: 80
-  cache_ttl:
+  cache_ttl: # minutes
+    openapi: 60
     schema: 60
     template: 1
   include_request: false

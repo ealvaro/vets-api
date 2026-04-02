@@ -3,6 +3,7 @@
 require 'digital_forms_api/configuration'
 require 'digital_forms_api/jwt_generator'
 require 'digital_forms_api/monitor'
+require 'digital_forms_api/validation'
 require 'common/client/base'
 
 module DigitalFormsApi
@@ -10,6 +11,8 @@ module DigitalFormsApi
     # Base service class for API
     class Base < ::Common::Client::Base
       configuration DigitalFormsApi::Configuration
+
+      include DigitalFormsApi::Validation
 
       def initialize
         # assigning configuration here so subclass will inherit
@@ -42,6 +45,14 @@ module DigitalFormsApi
         @context = {} # reset the request context so later tracking is not polluted
       end
 
+      # GET retrieve the openapi.json for FormsAPI
+      # @return [Hash] the parsed JSON
+      def openapi
+        perform(:get, "#{root}/openapi.json", {}, {}).body
+      rescue
+        JSON.parse(File.read("#{DigitalFormsApi::MODULE_PATH}/schema/openapi.json"))
+      end
+
       private
 
       # create the monitor to be used for _this_ instance
@@ -69,6 +80,13 @@ module DigitalFormsApi
       # @see DigitalFormsApi::Monitor::Service#track_api_request
       def context
         @context.is_a?(Hash) ? @context : {}
+      end
+
+      # extract the root (shema://host) from the api base url
+      def root
+        api = URI.parse(Settings.digital_forms_api.base_url)
+        api.path = '' # reduce the url to the true root
+        api.to_s
       end
 
       # parse the request error
