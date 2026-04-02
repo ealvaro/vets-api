@@ -295,6 +295,7 @@ describe VaNotify::Service do
         allow(notification).to receive(:save).and_return(false)
         allow(VANotify::Notification).to receive(:new).and_return(notification)
 
+        allow(Rails.logger).to receive(:error) # absorb unrelated background errors
         expect(Rails.logger).to receive(:error).with(
           'VANotify notification record failed to save',
           { error_messages: notification.errors.full_messages, template_id: '1234' }
@@ -440,6 +441,7 @@ describe VaNotify::Service do
           )
           allow_any_instance_of(Notifications::Client).to receive(:secret_token).and_return(test_api_key_secret_token)
 
+          allow(Rails.logger).to receive(:error) # absorb unrelated background errors
           expect(Rails.logger).to receive(:error).with(
             'VANotify notification record failed to save',
             { error_messages: notification.errors.full_messages, template_id: '1234' }
