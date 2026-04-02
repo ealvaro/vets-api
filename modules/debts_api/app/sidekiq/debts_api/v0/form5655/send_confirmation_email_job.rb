@@ -50,6 +50,8 @@ module DebtsApi
       options = should_use_cache ? { id_type: 'email', cache_key: vanotify_cache_key } : {}
 
       send_vanotify_email(identifier, args['template_id'], personalisation, options, args['user_uuid'])
+      Sidekiq::AttrPackage.delete(is_retry) if is_retry
+      Sidekiq::AttrPackage.delete(vanotify_cache_key) if vanotify_cache_key
     rescue Sidekiq::AttrPackageError => e
       # Log AttrPackage errors as application logic errors (no retries)
       Rails.logger.error('V0::Form5655::SendConfirmationEmailJob', { error: e.message })
@@ -64,10 +66,13 @@ module DebtsApi
     def resolve_vanotify_cache_key(job_cache_key, pii, personalisation, should_use_cache)
       return unless should_use_cache
 
+      # TODO: Sidekiq::AttrPackage should be created at the entry point and the cache key passed to this job.
+      # rubocop:disable Cop/NoAttrPackageCreationInJob
       job_cache_key.presence || Sidekiq::AttrPackage.create(
         email: pii&.dig(:email),
         personalisation:
       )
+      # rubocop:enable Cop/NoAttrPackageCreationInJob
     end
 
     def no_submissions_abort?(submission_type, user_uuid, args, submissions_data)

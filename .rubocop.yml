@@ -11,6 +11,22 @@ plugins:
   - rubocop-rspec_rails
   - rubocop-thread_safety
 
+Cop/AmsSerializer:
+  Enabled: true
+Cop/DangerousExceptionLogging:
+  Enabled: true
+Cop/AttrPackageDeleteAfterRetry:
+  Enabled: true
+Cop/AttrPackageDeleteOnSuccess:
+  Enabled: true
+  Exclude:
+    - 'modules/va_notify/app/sidekiq/va_notify/v2/queue_email_job.rb'
+    - 'modules/va_notify/app/sidekiq/va_notify/v2/queue_user_account_job.rb'
+Cop/NoAttrPackageCreationInJob:
+  Enabled: true
+  Exclude:
+    - 'modules/va_notify/app/sidekiq/va_notify/v2/queue_email_job.rb'
+    - 'modules/va_notify/app/sidekiq/va_notify/v2/queue_user_account_job.rb'
 
 AllCops:
   NewCops: disable

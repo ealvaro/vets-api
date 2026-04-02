@@ -9,6 +9,8 @@ module VANotify
       sidekiq_options retry: 14
 
       sidekiq_retries_exhausted do |msg, _ex|
+        attr_package_key = msg['args']&.third
+        Sidekiq::AttrPackage.delete(attr_package_key) if attr_package_key
         job_id = msg['jid']
         job_class = msg['class']
         error_class = msg['error_class']

@@ -8,6 +8,11 @@ module Identity
 
     sidekiq_options retry: 3, queue: :default
 
+    sidekiq_retries_exhausted do |msg, _ex|
+      cache_key = msg['args']&.first
+      Sidekiq::AttrPackage.delete(cache_key) if cache_key
+    end
+
     def perform(cache_key, credential_method, credential_id)
       attributes = Sidekiq::AttrPackage.find(cache_key)
 

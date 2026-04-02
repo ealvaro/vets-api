@@ -1,9 +1,7 @@
 require:
-  - './cop/ams_serializer.rb'
-  - './cop/dangerous_exception_logging.rb'
-
-Cop/AmsSerializer:
-  Enabled: true
-
-Cop/DangerousExceptionLogging:
-  Enabled: true
+  - ./cop/ams_serializer.rb
+  - ./cop/dangerous_exception_logging.rb
+  - ./cop/attr_package_helpers.rb
+  - ./cop/attr_package_delete_on_success.rb
+  - ./cop/attr_package_delete_after_retry.rb
+  - ./cop/no_attr_package_creation_in_job.rb

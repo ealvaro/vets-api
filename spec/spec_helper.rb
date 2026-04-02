@@ -127,10 +127,10 @@ RSpec.configure do |config|
   end
 
   config.after do
-    Timecop.return
+    Timecop.return if defined?(Timecop)
   end
 
   config.before do
-    $redis.flushdb
+    $redis&.flushdb
   end
 end
