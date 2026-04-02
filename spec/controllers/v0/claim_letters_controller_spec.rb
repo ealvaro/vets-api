@@ -172,6 +172,8 @@ RSpec.describe V0::ClaimLettersController, type: :controller do
     end
 
     context 'DDL Logging' do
+      let(:monitor) { instance_double(Logging::Monitor) }
+
       before do
         allow(Flipper).to receive(:enabled?)
           .with(:cst_include_ddl_5103_letters, anything)
@@ -182,16 +184,16 @@ RSpec.describe V0::ClaimLettersController, type: :controller do
         allow(Flipper).to receive(:enabled?)
           .with(:cst_include_ddl_sqd_letters, anything)
           .and_return(true)
-        allow(Rails.logger).to receive(:info)
+        allow(Logging::Monitor).to receive(:new).and_return(monitor)
+        allow(monitor).to receive(:track_request)
       end
 
-      it 'logs metadata of document types to DataDog' do
+      it 'logs metadata of document types via monitor' do
         get(:index)
-        expect(Rails.logger)
-          .to have_received(:info)
-          .with('DDL Document Types Metadata',
-                message_type: 'ddl.doctypes_metadata',
-                document_type_metadata: contain_exactly(
+        expect(monitor)
+          .to have_received(:track_request)
+          .with(:info, 'DDL Document Types Metadata', 'claim_letters.doctypes_metadata',
+                message_type: 'ddl.doctypes_metadata', document_type_metadata: contain_exactly(
                   { doc_type: '27',
                     type_description: 'Board decision' },
                   { doc_type: '864',
@@ -228,48 +230,34 @@ RSpec.describe V0::ClaimLettersController, type: :controller do
       end
     end
 
-    context 'failure logging' do
+    context 'when VBMS returns a 500 internal server error' do
       before do
         allow_any_instance_of(ClaimStatusTool::ClaimLetterDownloader)
-          .to receive(:get_letters).and_raise(Common::Exceptions::BackendServiceException)
-        allow(Rails.logger).to receive(:info)
+          .to receive(:get_letters)
+          .and_raise(Common::Exceptions::ExternalServerInternalServerError)
+        allow_any_instance_of(ClaimStatusTool::ClaimLetterDownloader)
+          .to receive(:get_letter)
+          .and_raise(Common::Exceptions::ExternalServerInternalServerError)
       end
 
-      context 'when cst_claim_letters_log_failure is disabled' do
-        before do
-          allow(Flipper).to receive(:enabled?)
-            .with(:cst_claim_letters_log_failure, anything)
-            .and_return(false)
-        end
+      it 'returns a 502 bad gateway for index' do
+        get(:index)
 
-        it 'does not log failure user details' do
-          expect(Rails.logger).not_to receive(:info)
-            .with('Claim letters failure for user', hash_including(message_type: 'cst.claim_letters.failure'))
-          get(:index)
-        end
+        expect(response).to have_http_status(:bad_gateway)
+        error = JSON.parse(response.body)['errors'].first
+        expect(error['title']).to eq('Bad Gateway')
+        expect(error['detail']).to include('Upstream service')
+        expect(error['status']).to eq('502')
       end
 
-      context 'when cst_claim_letters_log_failure is enabled' do
-        before do
-          allow(Flipper).to receive(:enabled?)
-            .with(:cst_claim_letters_log_failure, anything)
-            .and_return(true)
-        end
+      it 'returns a 502 bad gateway for show' do
+        get(:show, params: { document_id: })
 
-        it 'logs user details and status code on failure' do
-          expect(Rails.logger).to receive(:info)
-            .with('Claim letters failure for user',
-                  hash_including(message_type: 'cst.claim_letters.failure',
-                                 error_type: 'Common::Exceptions::BackendServiceException',
-                                 status_code: 400))
-          get(:index)
-        end
-
-        it 'does not include icn in the log payload' do
-          expect(Rails.logger).to receive(:info)
-            .with('Claim letters failure for user', hash_not_including(:icn))
-          get(:index)
-        end
+        expect(response).to have_http_status(:bad_gateway)
+        error = JSON.parse(response.body)['errors'].first
+        expect(error['title']).to eq('Bad Gateway')
+        expect(error['detail']).to include('VBMS')
+        expect(error['status']).to eq('502')
       end
     end
 
@@ -516,6 +504,8 @@ RSpec.describe V0::ClaimLettersController, type: :controller do
     end
 
     context 'DDL Logging' do
+      let(:monitor) { instance_double(Logging::Monitor) }
+
       before do
         allow(Flipper).to receive(:enabled?)
           .with(:cst_include_ddl_5103_letters, anything)
@@ -526,16 +516,16 @@ RSpec.describe V0::ClaimLettersController, type: :controller do
         allow(Flipper).to receive(:enabled?)
           .with(:cst_include_ddl_sqd_letters, anything)
           .and_return(true)
-        allow(Rails.logger).to receive(:info)
+        allow(Logging::Monitor).to receive(:new).and_return(monitor)
+        allow(monitor).to receive(:track_request)
       end
 
-      it 'logs metadata of document types to DataDog' do
+      it 'logs metadata of document types via monitor' do
         get(:index)
-        expect(Rails.logger)
-          .to have_received(:info)
-          .with('DDL Document Types Metadata',
-                message_type: 'ddl.doctypes_metadata',
-                document_type_metadata: contain_exactly(
+        expect(monitor)
+          .to have_received(:track_request)
+          .with(:info, 'DDL Document Types Metadata', 'claim_letters.doctypes_metadata',
+                message_type: 'ddl.doctypes_metadata', document_type_metadata: contain_exactly(
                   { doc_type: '27',
                     type_description: 'Board decision' },
                   { doc_type: '864',
@@ -569,6 +559,86 @@ RSpec.describe V0::ClaimLettersController, type: :controller do
                   { doc_type: '184',
                     type_description: 'Claim decision (or other notification, like Intent to File)' }
                 ))
+      end
+    end
+
+    context 'when Lighthouse returns a 500 internal server error' do
+      before do
+        mock_provider = instance_double(LighthouseClaimLettersProvider)
+        allow(LighthouseClaimLettersProvider).to receive(:new).and_return(mock_provider)
+        allow(mock_provider).to receive(:get_letters)
+          .and_raise(Common::Exceptions::ExternalServerInternalServerError)
+        allow(mock_provider).to receive(:get_letter)
+          .and_raise(Common::Exceptions::ExternalServerInternalServerError)
+      end
+
+      it 'returns a 502 bad gateway for index instead of a 500' do
+        get(:index)
+
+        expect(response).to have_http_status(:bad_gateway)
+        error = JSON.parse(response.body)['errors'].first
+        expect(error['title']).to eq('Bad Gateway')
+        expect(error['detail']).to include('Upstream service')
+        expect(error['status']).to eq('502')
+      end
+
+      it 'returns a 502 bad gateway for show instead of a 500' do
+        get(:show, params: { document_id: })
+
+        expect(response).to have_http_status(:bad_gateway)
+        error = JSON.parse(response.body)['errors'].first
+        expect(error['title']).to eq('Bad Gateway')
+        expect(error['detail']).to include('Upstream service')
+        expect(error['status']).to eq('502')
+      end
+    end
+
+    context 'when an unexpected application error occurs' do
+      let(:monitor) { instance_double(Logging::Monitor) }
+
+      before do
+        mock_provider = instance_double(LighthouseClaimLettersProvider)
+        allow(LighthouseClaimLettersProvider).to receive(:new).and_return(mock_provider)
+        allow(mock_provider).to receive(:get_letters).and_raise(StandardError, 'boom')
+        allow(mock_provider).to receive(:get_letter).and_raise(StandardError, 'boom')
+
+        allow(Logging::Monitor).to receive(:new).and_return(monitor)
+        allow(monitor).to receive(:track_request)
+      end
+
+      it 'logs as an application error for index' do
+        get(:index)
+
+        expect(response).to have_http_status(:internal_server_error)
+        expect(monitor).to have_received(:track_request)
+          .with(:error, 'boom', 'claim_letters.application_error.index', action: 'index')
+        expect(monitor).not_to have_received(:track_request)
+          .with(:error, anything, /vbms_lighthouse_claim_letters_provider_error/, anything)
+      end
+
+      it 'logs as an application error for show' do
+        get(:show, params: { document_id: })
+
+        expect(response).to have_http_status(:internal_server_error)
+        expect(monitor).to have_received(:track_request)
+          .with(:error, 'boom', 'claim_letters.application_error.show', action: 'show')
+        expect(monitor).not_to have_received(:track_request)
+          .with(:error, anything, /vbms_lighthouse_claim_letters_provider_error/, anything)
+      end
+    end
+
+    context 'when a non-500 BaseError is raised' do
+      before do
+        mock_provider = instance_double(LighthouseClaimLettersProvider)
+        allow(LighthouseClaimLettersProvider).to receive(:new).and_return(mock_provider)
+        allow(mock_provider).to receive(:get_letters)
+          .and_raise(Common::Exceptions::Forbidden.new)
+      end
+
+      it 'passes through with the original status for index' do
+        get(:index)
+
+        expect(response).to have_http_status(:forbidden)
       end
     end
   end

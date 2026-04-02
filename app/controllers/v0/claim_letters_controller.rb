@@ -2,6 +2,7 @@
 
 require 'claim_letters/claim_letter_downloader'
 require 'claim_letters/providers/claim_letters/lighthouse_claim_letters_provider'
+require 'logging/monitor'
 
 module V0
   class ClaimLettersController < ApplicationController
@@ -12,27 +13,40 @@ module V0
 
     VBMS_LIGHTHOUSE_MIGRATION_STATSD_KEY_PREFIX = 'vbms_lighthouse_claim_letters_provider_error'
 
+    # GET /v0/claim_letters
+    # Returns claim decision letters for the current user.
     def index
       docs = service.get_letters
       log_metadata_to_datadog(docs)
       log_stale_or_empty_letters(docs)
 
       render json: docs
-    rescue => e
+    rescue Common::Exceptions::ExternalServerInternalServerError => e
       log_api_provider_error(e)
-      log_claim_letters_failure(e)
-      raise e
+      raise_upstream_bad_gateway
+    rescue Common::Exceptions::BaseError
+      raise
+    rescue => e
+      log_application_error(e)
+      raise
     end
 
+    # GET /v0/claim_letters/:document_id
+    # Streams PDF content for a single claim letter.
     def show
       document_id = CGI.unescape(params[:document_id])
 
       service.get_letter(document_id) do |data, mime_type, disposition, filename|
         send_data(data, type: mime_type, disposition:, filename:)
       end
-    rescue => e
+    rescue Common::Exceptions::ExternalServerInternalServerError => e
       log_api_provider_error(e)
-      raise e
+      raise_upstream_bad_gateway
+    rescue Common::Exceptions::BaseError
+      raise
+    rescue => e
+      log_application_error(e)
+      raise
     end
 
     private
@@ -43,10 +57,10 @@ module V0
     end
 
     def service
-      ::Rails.logger.info('Choosing Claim Letters API Provider via cst_claim_letters_use_lighthouse_api_provider',
-                          { message_type: 'cst.api_provider',
-                            api_provider: @api_provider,
-                            action: action_name })
+      monitor.track_request(:info,
+                            'Choosing Claim Letters API Provider via cst_claim_letters_use_lighthouse_api_provider',
+                            'claim_letters.api_provider',
+                            message_type: 'cst.api_provider', api_provider: @api_provider, action: action_name)
       Datadog::Tracing.active_trace&.set_tag('api_provider', @api_provider)
       if @use_lighthouse
         LighthouseClaimLettersProvider.new(@current_user)
@@ -56,27 +70,9 @@ module V0
     end
 
     def log_metadata_to_datadog(docs)
-      docs_metadata = []
-      docs&.each do |d|
-        docs_metadata << { doc_type: d[:doc_type], type_description: d[:type_description] }
-      end
-      ::Rails.logger.info('DDL Document Types Metadata',
-                          { message_type: 'ddl.doctypes_metadata',
-                            document_type_metadata: docs_metadata })
-    end
-
-    def log_claim_letters_failure(error)
-      return unless Flipper.enabled?(:cst_claim_letters_log_failure, @current_user)
-
-      ::Rails.logger.info('Claim letters failure for user', {
-                            message_type: 'cst.claim_letters.failure',
-                            user_uuid: @current_user.uuid,
-                            user_account_uuid: @current_user.user_account_uuid,
-                            api_provider: @api_provider,
-                            error_type: error.class.to_s,
-                            error_message: error.message,
-                            status_code: error.try(:status_code) || error.try(:code)
-                          })
+      docs_metadata = docs.map { |d| { doc_type: d[:doc_type], type_description: d[:type_description] } }
+      monitor.track_request(:info, 'DDL Document Types Metadata', 'claim_letters.doctypes_metadata',
+                            message_type: 'ddl.doctypes_metadata', document_type_metadata: docs_metadata)
     end
 
     def log_stale_or_empty_letters(docs)
@@ -100,15 +96,34 @@ module V0
     end
 
     def log_api_provider_error(error)
-      metric_key = "#{VBMS_LIGHTHOUSE_MIGRATION_STATSD_KEY_PREFIX}.#{action_name}.#{@api_provider}"
-      StatsD.increment(metric_key)
-      ::Rails.logger.info("#{metric_key} error", {
-                            message_type: 'cst.api_provider.error',
-                            error_type: error.class.to_s,
-                            error_backtrace: error.backtrace&.first(3),
-                            api_provider: @api_provider,
-                            action: action_name
-                          })
+      monitor.track_request(:warn, error.message,
+                            "#{VBMS_LIGHTHOUSE_MIGRATION_STATSD_KEY_PREFIX}.#{action_name}.#{@api_provider}",
+                            message_type: 'cst.api_provider.error', api_provider: @api_provider, action: action_name)
+    end
+
+    def log_application_error(error)
+      monitor.track_request(:error,
+                            error.message,
+                            "claim_letters.application_error.#{action_name}",
+                            action: action_name)
+    end
+
+    # Maps upstream server errors (Lighthouse/VBMS 500s) to 502 Bad Gateway so they don't
+    # surface as application-level 500s in Datadog. The upstream service failed, not our app.
+    def raise_upstream_bad_gateway
+      error = Common::Exceptions::SerializableError.new(
+        status: '502',
+        title: 'Bad Gateway',
+        detail: "Upstream service (#{@api_provider}) returned an internal server error",
+        code: '502'
+      )
+      raise Common::Exceptions::BadGateway.new(errors: [error])
+    end
+
+    def monitor
+      @monitor ||= Logging::Monitor.new('claim-letters', allowlist: %i[
+                                          api_provider action document_type_metadata message_type
+                                        ])
     end
   end
 end
