@@ -256,7 +256,7 @@ RSpec.describe FormIntake::Mappers::VBA21p601Mapper do
       expect(payload).to have_key('WITNESS_1_SIGNATURE')
       expect(payload).to have_key('WITNESS_2_SIGNATURE')
 
-      expect(payload['ESTATE_ADMIN_YES']).to eq('')
+      expect(payload['ESTATE_ADMIN_YES']).to eq(0)
       expect(payload['WITNESS_1_SIGNATURE']).to eq('')
     end
 

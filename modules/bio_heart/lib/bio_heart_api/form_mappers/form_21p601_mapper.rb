@@ -83,8 +83,8 @@ module BioHeartApi
           # These additional keys are not currently provided by the frontend, but
           # must be present in the object sent to MMS. The FE doesn't provide these
           # because they involve 3rd party signatures which is currently not supported.
-          'ESTATE_ADMIN_YES' => nil,
-          'ESTATE_ADMIN_NO' => nil,
+          'ESTATE_ADMIN_YES' => 0,
+          'ESTATE_ADMIN_NO' => 0,
           'OTHER_DEBT_CREDITOR_1' => nil,
           'OTHER_DEBT_CREDITOR_ADDRESS_1' => nil,
           'OTHER_DEBT_CREDITOR_SIGN_1' => nil,
