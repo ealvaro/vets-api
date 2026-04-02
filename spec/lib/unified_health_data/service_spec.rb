@@ -1779,86 +1779,87 @@ describe UnifiedHealthData::Service, type: :service do
   describe '#get_all_avs_metadata' do
     let(:all_avs_response) do
       {
+        'resourceType' => 'Bundle',
+        'type' => 'collection',
         'entry' => [
           {
             'resource' => {
-              'resourceType' => 'Bundle',
-              'entry' => [
-                {
-                  'resource' => {
-                    'resourceType' => 'DocumentReference',
-                    'id' => 'doc-1',
-                    'type' => {
-                      'coding' => [
-                        {
-                          'system' => 'https://fhir.cerner.com/codeSet/72',
-                          'code' => '4189669',
-                          'display' => 'Ambulatory Patient Summary',
-                          'userSelected' => true
-                        },
-                        {
-                          'system' => 'http://loinc.org',
-                          'code' => '96345-4',
-                          'display' => 'Ambulatory Patient Summary',
-                          'userSelected' => false
-                        }
-                      ]
-                    },
-                    'context' => {
-                      'encounter' => [
-                        { 'reference' => 'Encounter/enc-1' }
-                      ]
-                    }
+              'resourceType' => 'DocumentReference',
+              'id' => 'doc-1',
+              'type' => {
+                'coding' => [
+                  {
+                    'system' => 'https://fhir.cerner.com/codeSet/72',
+                    'code' => '4189669',
+                    'display' => 'Ambulatory Patient Summary',
+                    'userSelected' => true
+                  },
+                  {
+                    'system' => 'http://loinc.org',
+                    'code' => '96345-4',
+                    'display' => 'Ambulatory Patient Summary',
+                    'userSelected' => false
                   }
-                },
-                {
-                  'resource' => {
-                    'resourceType' => 'DocumentReference',
-                    'id' => 'doc-2',
-                    'type' => {
-                      'coding' => [
-                        {
-                          'system' => 'https://fhir.cerner.com/codeSet/72',
-                          'code' => '2820526',
-                          'display' => 'Primary Care Note',
-                          'userSelected' => true
-                        }
-                      ]
-                    },
-                    'context' => {
-                      'encounter' => [
-                        { 'reference' => 'Encounter/enc-2' }
-                      ]
-                    }
+                ]
+              },
+              'context' => {
+                'encounter' => [
+                  { 'reference' => 'Encounter/enc-1' }
+                ]
+              }
+            }
+          },
+          {
+            'resource' => {
+              'resourceType' => 'DocumentReference',
+              'id' => 'doc-2',
+              'type' => {
+                'coding' => [
+                  {
+                    'system' => 'https://fhir.cerner.com/codeSet/72',
+                    'code' => '2820526',
+                    'display' => 'Primary Care Note',
+                    'userSelected' => true
                   }
-                }
+                ]
+              },
+              'context' => {
+                'encounter' => [
+                  { 'reference' => 'Encounter/enc-2' }
+                ]
+              }
+            }
+          },
+          {
+            'resource' => {
+              'resourceType' => 'Encounter',
+              'id' => 'enc-1',
+              'appointment' => [
+                { 'reference' => 'Appointment/4818609' }
               ]
             }
           },
           {
             'resource' => {
-              'resourceType' => 'Bundle',
-              'entry' => [
-                {
-                  'resource' => {
-                    'resourceType' => 'Encounter',
-                    'id' => 'enc-1',
-                    'appointment' => [
-                      { 'reference' => 'Appointment/4818609' }
-                    ]
-                  }
-                },
-                {
-                  'resource' => {
-                    'resourceType' => 'Encounter',
-                    'id' => 'enc-2',
-                    'appointment' => [
-                      { 'reference' => 'Appointment/4818609' },
-                      { 'reference' => 'Appointment/9990001' }
-                    ]
-                  }
-                }
+              'resourceType' => 'Encounter',
+              'id' => 'enc-2',
+              'appointment' => [
+                { 'reference' => 'Appointment/4818609' },
+                { 'reference' => 'Appointment/9990001' }
               ]
+            }
+          },
+          {
+            'resource' => {
+              'resourceType' => 'OperationOutcome',
+              'id' => 'oo-1',
+              'issue' => [{ 'severity' => 'information', 'code' => 'informational' }]
+            }
+          },
+          {
+            'resource' => {
+              'resourceType' => 'Appointment',
+              'id' => 'appt-1'
             }
           }
         ]
@@ -1881,6 +1882,15 @@ describe UnifiedHealthData::Service, type: :service do
       expect(encounters.size).to eq(2)
       expect(encounters.first['id']).to eq('enc-1')
       expect(encounters.last['id']).to eq('enc-2')
+    end
+
+    it 'excludes non-DocumentReference and non-Encounter resource types' do
+      result = service.get_all_avs_metadata(start_date: '2025-01-01', end_date: '2025-12-31')
+
+      doc_refs, encounters = result
+      all_returned = doc_refs + encounters
+      returned_types = all_returned.map { |entry| entry['resourceType'] }.uniq
+      expect(returned_types).to contain_exactly('DocumentReference', 'Encounter')
     end
   end
 

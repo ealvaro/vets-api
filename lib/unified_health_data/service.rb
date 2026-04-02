@@ -285,17 +285,25 @@ module UnifiedHealthData
     end
 
     # Use of this is behind va_online_scheduling_uhd_avs_metadata flipper
-    def get_all_avs_metadata(start_date:, end_date:)
+    def get_all_avs_metadata(start_date:, end_date:) # rubocop:disable Metrics/MethodLength
+      validate_icn!
       with_monitoring do
         response = uhd_client.get_all_avs(patient_id: @user.icn, start_date:, end_date:)
-        # SCDF returns a bundle of bundles: DocumentReference bundle, Encounter bundle (and possibly a third).
-        document_reference_bundle, encounter_bundle = response.body&.dig('entry')
-        doc_ref_entries = extract_all_entries(document_reference_bundle)
-        encounter_entries = extract_all_entries(encounter_bundle)
+        # SCDF returns a bundle: DocumentReference, Encounter, and other types.
+        body = response.body
+        if body.nil? || !body.is_a?(Hash) || body['entry'].blank?
+          user_uuid = @user.user_account_uuid
+          Rails.logger.debug { "UHD: Missing or invalid response for AVS metadata request for user #{user_uuid}." }
+          return [[], []]
+        end
+        entries = extract_all_entries(body)
+        grouped = entries.group_by { |entry| entry['resourceType'] }
+        doc_ref_entries = grouped['DocumentReference'] || []
+        encounter_entries = grouped['Encounter'] || []
         if doc_ref_entries.empty? || encounter_entries.empty?
           user_uuid = @user.user_account_uuid
           to_log = "DocumentReference entries: #{doc_ref_entries.size}, Encounter entries: #{encounter_entries.size}"
-          Rails.logger.info("UHD: Missing expected bundles in AVS metadata response for user #{user_uuid}. #{to_log}")
+          Rails.logger.debug { "UHD: Missing data in AVS metadata response for user #{user_uuid}. #{to_log}" }
           return [[], []]
         end
         [doc_ref_entries, encounter_entries]
