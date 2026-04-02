@@ -112,6 +112,8 @@ module MedicalCopays
           last_raw_bundle = raw
 
           entries = raw['entry'] || []
+
+          # we are more relying on the next_link presence, this is a safe fallback
           break if entries.empty?
 
           entries.each do |entry|
@@ -124,6 +126,9 @@ module MedicalCopays
 
             collected_entries << entry
           end
+
+          next_link = raw['link']&.find { |l| l['relation'] == 'next' }
+          break if next_link.blank?
 
           page += 1
         end

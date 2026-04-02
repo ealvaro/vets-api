@@ -1,0 +1,350 @@
+{
+  "resourceType": "Bundle",
+  "type": "searchset",
+  "total": 4,
+  "link": [],
+  "entry": [
+    {
+      "fullUrl": "https://sandbox-api.va.gov/services/health-care-costs-coverage/v0/r4/Invoice/4-1abZUKu7xIv1t4",
+      "resource": {
+      "resourceType": "Invoice",
+      "id": "4-1abZUKu7xIv1t4",
+      "identifier": [
+        {
+          "type": {
+            "text": "Bill Number"
+          },
+          "value": "675-K3FD983"
+        }
+      ],
+      "status": "balanced",
+      "_status": {
+        "url": "http://hl7.org/fhir/StructureDefinition/alternate-codes",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://va.gov/terminology/vistaDefinedTerms/430.3",
+              "code": "22",
+              "display": "COLLECTED/CLOSED"
+            }
+          ],
+          "text": "COLLECTED/CLOSED"
+        }
+      },
+      "subject": {
+        "reference": "https://sandbox-api.va.gov/services/health-care-costs-coverage/v0/r4/Patient/1012845638V677813",
+        "display": "Jaskolski867, Janessa317"
+      },
+      "issuer": {
+        "reference": "https://sandbox-api.va.gov/services/health-care-costs-coverage/v0/r4/Organization/ORG-VAMC",
+        "display": "James A. Haley Veterans Hospital"
+      },
+      "account": {
+        "reference": "https://sandbox-api.va.gov/services/health-care-costs-coverage/v0/r4/Account/4-Nsb4Vwsulhk8"
+      },
+      "date": "2026-02-22T10:30:00Z",
+      "lineItem": [
+        {
+          "chargeItemReference": {
+            "reference": "https://sandbox-api.va.gov/services/health-care-costs-coverage/v0/r4/ChargeItem/4-6c9ZE23XQjkA9CC",
+            "display": "DG OPT COPAY NEW"
+          },
+          "priceComponent": [
+            {
+              "type": "base",
+              "code": { "text": "Total Charge" },
+              "amount": { "value": 76.19 }
+            }
+          ]
+        },
+        {
+          "chargeItemReference": {
+            "reference": "https://sandbox-api.va.gov/services/health-care-costs-coverage/v0/r4/ChargeItem/4-6c9ZE23XQm5UhWz",
+            "display": "INTEREST/ADM. CHARGE"
+          },
+          "priceComponent": [
+            {
+              "type": "surcharge",
+              "code": { "text": "Interest Charged" },
+              "amount": { "value": 0.99 }
+            },
+            {
+              "type": "surcharge",
+              "code": { "text": "Administrative Charged" },
+              "amount": { "value": 0.59 }
+            },
+            {
+              "type": "informational",
+              "code": { "text": "Total Charge" },
+              "amount": { "value": 1.58 }
+            }
+          ]
+        },
+        {
+          "chargeItemReference": {
+            "reference": "https://sandbox-api.va.gov/services/health-care-costs-coverage/v0/r4/ChargeItem/4-6c9ZE23XQjkALyz",
+            "display": "INTEREST/ADM. CHARGE"
+          },
+          "priceComponent": [
+            {
+              "type": "surcharge",
+              "code": { "text": "Interest Charged" },
+              "amount": { "value": 0.99 }
+            },
+            {
+              "type": "surcharge",
+              "code": { "text": "Administrative Charged" },
+              "amount": { "value": 0.59 }
+            },
+            {
+              "type": "informational",
+              "code": { "text": "Total Charge" },
+              "amount": { "value": 1.58 }
+            }
+          ]
+        },
+        {
+          "chargeItemReference": {
+            "reference": "https://sandbox-api.va.gov/services/health-care-costs-coverage/v0/r4/ChargeItem/4-6c9ZE23XQm5Uya1",
+            "display": "INTEREST/ADM. CHARGE"
+          },
+          "priceComponent": [
+            {
+              "type": "surcharge",
+              "code": { "text": "Interest Charged" },
+              "amount": { "value": 0.99 }
+            },
+            {
+              "type": "surcharge",
+              "code": { "text": "Administrative Charged" },
+              "amount": { "value": 0.59 }
+            },
+            {
+              "type": "informational",
+              "code": { "text": "Total Charge" },
+              "amount": { "value": 1.58 }
+            }
+          ]
+        },
+        {
+          "chargeItemReference": {
+            "reference": "https://sandbox-api.va.gov/services/health-care-costs-coverage/v0/r4/ChargeItem/4-6c9ZE23XQjkAd21",
+            "display": "INTEREST/ADM. CHARGE"
+          },
+          "priceComponent": [
+            {
+              "type": "surcharge",
+              "code": { "text": "Interest Charged" },
+              "amount": { "value": 0.99 }
+            },
+            {
+              "type": "surcharge",
+              "code": { "text": "Administrative Charged" },
+              "amount": { "value": 0.59 }
+            },
+            {
+              "type": "informational",
+              "code": { "text": "Total Charge" },
+              "amount": { "value": 1.58 }
+            }
+          ]
+        },
+        {
+          "chargeItemReference": {
+            "reference": "https://sandbox-api.va.gov/services/health-care-costs-coverage/v0/r4/ChargeItem/4-6c9ZE23XQm5VFd3",
+            "display": "INTEREST/ADM. CHARGE"
+          },
+          "priceComponent": [
+            {
+              "type": "surcharge",
+              "code": { "text": "Interest Charged" },
+              "amount": { "value": 0.99 }
+            },
+            {
+              "type": "surcharge",
+              "code": { "text": "Administrative Charged" },
+              "amount": { "value": 0.59 }
+            },
+            {
+              "type": "informational",
+              "code": { "text": "Total Charge" },
+              "amount": { "value": 1.58 }
+            }
+          ]
+        },
+        {
+          "chargeItemReference": {
+            "reference": "https://sandbox-api.va.gov/services/health-care-costs-coverage/v0/r4/ChargeItem/4-6c9ZE23XQjkAu53",
+            "display": "INTEREST/ADM. CHARGE"
+          },
+          "priceComponent": [
+            {
+              "type": "surcharge",
+              "code": { "text": "Interest Charged" },
+              "amount": { "value": 0.99 }
+            },
+            {
+              "type": "surcharge",
+              "code": { "text": "Administrative Charged" },
+              "amount": { "value": 0.59 }
+            },
+            {
+              "type": "informational",
+              "code": { "text": "Total Charge" },
+              "amount": { "value": 1.58 }
+            }
+          ]
+        }
+      ],
+      "totalPriceComponent": [
+        {
+          "type": "informational",
+          "code": { "text": "Original Amount" },
+          "amount": { "value": 76.19 }
+        },
+        {
+          "type": "base",
+          "code": { "text": "Principal Balance" },
+          "amount": { "value": 0.0 }
+        },
+        {
+          "type": "surcharge",
+          "code": { "text": "Interest Balance" },
+          "amount": { "value": 0.0 }
+        },
+        {
+          "type": "surcharge",
+          "code": { "text": "Administrative Cost Balance" },
+          "amount": { "value": 0.0 }
+        },
+        {
+          "type": "base",
+          "code": { "text": "Principal Paid" },
+          "amount": { "value": 76.19 }
+        },
+        {
+          "type": "surcharge",
+          "code": { "text": "Interest Paid" },
+          "amount": { "value": 5.94 }
+        },
+        {
+          "type": "surcharge",
+          "code": { "text": "Administrative Cost Paid" },
+          "amount": { "value": 3.54 }
+        }
+      ]
+    },
+    "search": { "mode": "match" }
+    },
+    {
+      "fullUrl": "https://sandbox-api.va.gov/services/health-care-costs-coverage/v0/r4/Invoice/4-1abZUKu7xGfL2g",
+      "resource": {
+        "resourceType": "Invoice",
+        "id": "4-1abZUKu7xGfL2g",
+        "meta": { "lastUpdated": "2025-08-29T00:00:00Z" },
+        "identifier": [
+          {
+            "type": {
+              "text": "Bill Number"
+            },
+            "value": "675-K3FE860"
+          }
+        ],
+        "status": "issued",
+        "_status": {
+          "url": "http://hl7.org/fhir/StructureDefinition/alternate-codes",
+          "valueCodeableConcept": {
+            "coding": [
+              {
+                "system": "http://va.gov/terminology/vistaDefinedTerms/430.3",
+                "code": "16",
+                "display": "ACTIVE"
+              }
+            ],
+            "text": "ACTIVE"
+          }
+        },
+        "subject": {
+          "reference": "https://sandbox-api.va.gov/services/health-care-costs-coverage/v0/r4/Patient/43000199",
+          "display": "Jaskolski867, Janessa317"
+        },
+        "date": "2025-12-30T20:29:47Z",
+        "issuer": {
+          "reference": "https://sandbox-api.va.gov/services/health-care-costs-coverage/v0/r4/Organization/4-O3d8XKf8jCQm",
+          "display": "TEST VAMC"
+        },
+        "account": {
+          "reference": "https://sandbox-api.va.gov/services/health-care-costs-coverage/v0/r4/Account/4-Nsb4Vwsulhk8"
+        },
+        "lineItem": [
+          {
+            "chargeItemReference": {
+              "reference": "https://sandbox-api.va.gov/services/health-care-costs-coverage/v0/r4/ChargeItem/4-6c9ZE23XQm3Ento",
+              "display": "PSO NSC RX COPAY NEW"
+            },
+            "priceComponent": [
+              {
+                "type": "base",
+                "code": {
+                  "text": "Total Charge"
+                },
+                "amount": { "value": 284.59 }
+              }
+            ]
+          }
+        ],
+        "totalPriceComponent": [
+          {
+            "type": "informational",
+            "code": {
+              "text": "Original Amount"
+            },
+            "amount": { "value": 284.59 }
+          },
+          {
+            "type": "base",
+            "code": {
+              "text": "Principal Balance"
+            },
+            "amount": { "value": 284.59 }
+          },
+          {
+            "type": "surcharge",
+            "code": {
+              "text": "Interest Balance"
+            },
+            "amount": { "value": 0.0 }
+          },
+          {
+            "type": "surcharge",
+            "code": {
+              "text": "Administrative Cost Balance"
+            },
+            "amount": { "value": 0.0 }
+          },
+          {
+            "type": "base",
+            "code": {
+              "text": "Principal Paid"
+            },
+            "amount": { "value": 0.0 }
+          },
+          {
+            "type": "surcharge",
+            "code": {
+              "text": "Interest Paid"
+            },
+            "amount": { "value": 0.0 }
+          },
+          {
+            "type": "surcharge",
+            "code": {
+              "text": "Administrative Cost Paid"
+            },
+            "amount": { "value": 0.0 }
+          }
+        ]
+      }
+    }
+  ]
+}

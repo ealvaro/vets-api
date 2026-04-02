@@ -1580,6 +1580,7 @@ spec/fixtures/va_profile @department-of-veterans-affairs/vfs-authenticated-exper
 spec/fixtures/vba_documents @department-of-veterans-affairs/lighthouse-banana-peels @department-of-veterans-affairs/backend-review-group
 spec/fixtures/vbms @department-of-veterans-affairs/benefits-dependents-management @department-of-veterans-affairs/backend-review-group
 spec/fixtures/veteran_enrollment_system @department-of-veterans-affairs/health-apps-backend @department-of-veterans-affairs/backend-review-group
+spec/fixtures/lighthouse/hcc/bundle.json @department-of-veterans-affairs/vsa-debt-resolution @department-of-veterans-affairs/backend-review-group
 spec/helpers/parameter_filter_helper_spec.rb @department-of-veterans-affairs/backend-review-group
 spec/initializers/rails_semantic_logger_patch_spec.rb @department-of-veterans-affairs/backend-review-group
 spec/lib/apps @department-of-veterans-affairs/lighthouse-pivot
