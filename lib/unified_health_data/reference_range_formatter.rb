@@ -14,9 +14,9 @@ module UnifiedHealthData
 
           # Use the text directly if available, otherwise format it
           if range['text'].is_a?(String) && !range['text'].empty?
-            range['text']
+            ensure_unit_in_text(range['text'], obs)
           else
-            format_reference_range(range)
+            format_reference_range(range, obs)
           end
         end
 
@@ -28,13 +28,13 @@ module UnifiedHealthData
       end
     end
 
-    private_class_method def self.format_reference_range(range)
+    private_class_method def self.format_reference_range(range, obs = nil)
       return '' unless range.is_a?(Hash)
 
       begin
-        return range['text'] if range['text'].is_a?(String) && !range['text'].empty?
+        return ensure_unit_in_text(range['text'], obs) if range['text'].is_a?(String) && !range['text'].empty?
 
-        return format_numeric_range(range) if range['low'].is_a?(Hash) || range['high'].is_a?(Hash)
+        return format_numeric_range(range, obs) if range['low'].is_a?(Hash) || range['high'].is_a?(Hash)
 
         ''
       rescue => e
@@ -43,15 +43,82 @@ module UnifiedHealthData
       end
     end
 
-    # Extract numeric value and unit from range component
-    private_class_method def self.extract_range_component(component)
+    # Extract numeric value and unit from range component.
+    # Fallback chain when the component itself has no unit:
+    #   1. obs['valueQuantity']['unit'] (structured FHIR field)
+    #   2. Unit parsed from obs['valueString'] text (e.g. "99 mg/dL" → "mg/dL")
+    #   3. Unit parsed from obs['valueQuantity'] formatted text when unit key is absent
+    private_class_method def self.extract_range_component(component, obs = nil)
       # Handle the case where component is not a hash
       return [nil, ''] unless component.is_a?(Hash)
 
       value = component&.dig('value')
       value = nil unless value.is_a?(Numeric)
       unit = component&.dig('unit').is_a?(String) ? component&.dig('unit') : ''
+
+      # Fall back to observation-level unit when the reference range component has no unit
+      unit = extract_unit_from_observation(obs) if unit.empty? && obs.is_a?(Hash)
+
       [value, unit]
+    end
+
+    # Extracts a unit string from the observation using a fallback chain.
+    # Returns an empty string if no unit can be determined.
+    private_class_method def self.extract_unit_from_observation(obs)
+      return '' unless obs.is_a?(Hash)
+
+      # 1. Structured valueQuantity.unit
+      vq_unit = obs.dig('valueQuantity', 'unit')
+      return vq_unit if vq_unit.is_a?(String) && !vq_unit.empty?
+
+      # 2. Parse unit from valueString text (e.g. "99 mg/dL" → "mg/dL")
+      value_string = obs['valueString']
+      parsed = extract_unit_from_text(value_string)
+      return parsed unless parsed.empty?
+
+      # 3. Parse unit from valueQuantity.value when it arrives as a String instead of Numeric
+      #    (handles malformed data, e.g. 'value' => 'Negative mIU/mL' or 'value' => '99 mg/dL')
+      vq_value = obs.dig('valueQuantity', 'value')
+      if vq_value.is_a?(String)
+        parsed = extract_unit_from_text(vq_value)
+        return parsed unless parsed.empty?
+      end
+
+      ''
+    end
+
+    # Extracts the unit portion from a value string like "99 mg/dL" → "mg/dL".
+    # Everything after the first whitespace-delimited token is treated as the unit.
+    # Returns an empty string when no unit can be parsed.
+    private_class_method def self.extract_unit_from_text(text)
+      return '' unless text.is_a?(String) && !text.strip.empty?
+
+      parts = text.strip.split(/\s+/)
+      parts.length > 1 ? parts[1..].join(' ') : ''
+    end
+
+    # Ensures that a reference range text string includes a unit.
+    # If the text is missing the observation-level unit, appends it.
+    # If the text already contains the unit, returns it unchanged.
+    #
+    # Examples:
+    #   ensure_unit_in_text("<=3", obs_with_unit_mg_dL)  → "<=3 mg/dL"
+    #   ensure_unit_in_text("70-110 mg/dL", obs_with_unit_mg_dL)  → "70-110 mg/dL"
+    #   ensure_unit_in_text("Normal", obs_with_unit_mg_dL)  → "Normal" (no numeric content)
+    private_class_method def self.ensure_unit_in_text(text, obs = nil)
+      return text unless obs.is_a?(Hash)
+
+      unit = extract_unit_from_observation(obs)
+      return text if unit.empty?
+
+      # Only append unit if the text doesn't already end with it (case-insensitive)
+      return text if text.strip.downcase.end_with?(unit.downcase)
+
+      # Only append if the text contains numeric content (digits), indicating a value that
+      # could benefit from a unit. Pure text like "Normal" or "YELLOW" should be left alone.
+      return text unless text.match?(/\d/)
+
+      "#{text.strip} #{unit}"
     end
 
     # Determine range type prefix
@@ -72,10 +139,10 @@ module UnifiedHealthData
     end
 
     # Format a numeric reference range
-    private_class_method def self.format_numeric_range(range)
+    private_class_method def self.format_numeric_range(range, obs = nil)
       # Extract values safely
-      low_value, low_unit = extract_range_component(range['low'])
-      high_value, high_unit = extract_range_component(range['high'])
+      low_value, low_unit = extract_range_component(range['low'], obs)
+      high_value, high_unit = extract_range_component(range['high'], obs)
 
       # Get range type prefix
       range_type = get_range_type_prefix(range)

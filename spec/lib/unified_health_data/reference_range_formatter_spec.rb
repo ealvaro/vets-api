@@ -213,5 +213,345 @@ RSpec.describe UnifiedHealthData::ReferenceRangeFormatter do
       result = described_class.format(obs)
       expect(result).to eq('Normal Range: <= 20, Critical Range: <= 2000')
     end
+
+    context 'when reference range component has no unit but valueQuantity does' do
+      it 'falls back to valueQuantity unit for low-high range' do
+        obs = {
+          'valueQuantity' => { 'value' => 5, 'unit' => 'mg/dL' },
+          'referenceRange' => [
+            {
+              'low' => { 'value' => 3.5 },
+              'high' => { 'value' => 10.0 }
+            }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('3.5 - 10.0 mg/dL')
+      end
+
+      it 'falls back to valueQuantity unit for low-only range' do
+        obs = {
+          'valueQuantity' => { 'value' => 100, 'unit' => 'mL' },
+          'referenceRange' => [
+            {
+              'low' => { 'value' => 50 }
+            }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('>= 50 mL')
+      end
+
+      it 'falls back to valueQuantity unit for high-only range' do
+        obs = {
+          'valueQuantity' => { 'value' => 8, 'unit' => 'mmol/L' },
+          'referenceRange' => [
+            {
+              'high' => { 'value' => 10 }
+            }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('<= 10 mmol/L')
+      end
+
+      it 'prefers reference range unit over valueQuantity unit' do
+        obs = {
+          'valueQuantity' => { 'value' => 5, 'unit' => 'mg/dL' },
+          'referenceRange' => [
+            {
+              'low' => { 'value' => 3.5, 'unit' => 'g/dL' },
+              'high' => { 'value' => 10.0, 'unit' => 'g/dL' }
+            }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('3.5 - 10.0 g/dL')
+      end
+
+      it 'does not use valueQuantity unit when it is nil' do
+        obs = {
+          'valueQuantity' => { 'value' => 5 },
+          'referenceRange' => [
+            {
+              'low' => { 'value' => 3.5 },
+              'high' => { 'value' => 10.0 }
+            }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('3.5 - 10.0')
+      end
+
+      it 'does not use valueQuantity unit when valueQuantity is absent' do
+        obs = {
+          'referenceRange' => [
+            {
+              'low' => { 'value' => 3.5 },
+              'high' => { 'value' => 10.0 }
+            }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('3.5 - 10.0')
+      end
+    end
+
+    context 'when unit is extracted from valueString text' do
+      it 'parses unit from valueString like "99 mg/dL"' do
+        obs = {
+          'valueString' => '99 mg/dL',
+          'referenceRange' => [
+            {
+              'low' => { 'value' => 70 },
+              'high' => { 'value' => 110 }
+            }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('70 - 110 mg/dL')
+      end
+
+      it 'parses multi-word unit from valueString like "5.0 10*3/uL"' do
+        obs = {
+          'valueString' => '5.0 10*3/uL',
+          'referenceRange' => [
+            {
+              'low' => { 'value' => 4.0 },
+              'high' => { 'value' => 11.0 }
+            }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('4.0 - 11.0 10*3/uL')
+      end
+
+      it 'handles valueString with comparator like ">10 mg/dL"' do
+        obs = {
+          'valueString' => '>10 mg/dL',
+          'referenceRange' => [
+            {
+              'high' => { 'value' => 20 }
+            }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('<= 20 mg/dL')
+      end
+
+      it 'does not extract unit from valueString with no spaces' do
+        obs = {
+          'valueString' => 'POSITIVE',
+          'referenceRange' => [
+            {
+              'low' => { 'value' => 0 },
+              'high' => { 'value' => 1 }
+            }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('0 - 1')
+      end
+
+      it 'does not extract unit from empty valueString' do
+        obs = {
+          'valueString' => '',
+          'referenceRange' => [
+            {
+              'low' => { 'value' => 3.5 },
+              'high' => { 'value' => 10.0 }
+            }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('3.5 - 10.0')
+      end
+
+      it 'does not extract unit from whitespace-only valueString' do
+        obs = {
+          'valueString' => '   ',
+          'referenceRange' => [
+            {
+              'low' => { 'value' => 3.5 },
+              'high' => { 'value' => 10.0 }
+            }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('3.5 - 10.0')
+      end
+
+      it 'prefers valueQuantity.unit over valueString parsing' do
+        obs = {
+          'valueQuantity' => { 'value' => 99, 'unit' => 'mg/dL' },
+          'valueString' => '99 mmol/L',
+          'referenceRange' => [
+            {
+              'low' => { 'value' => 70 },
+              'high' => { 'value' => 110 }
+            }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('70 - 110 mg/dL')
+      end
+
+      it 'falls through to valueString when valueQuantity has no unit' do
+        obs = {
+          'valueQuantity' => { 'value' => 99 },
+          'valueString' => '99 mmol/L',
+          'referenceRange' => [
+            {
+              'low' => { 'value' => 70 },
+              'high' => { 'value' => 110 }
+            }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('70 - 110 mmol/L')
+      end
+    end
+
+    context 'when valueQuantity.value is a string containing a unit (malformed data)' do
+      it 'extracts unit from numeric string-typed valueQuantity value' do
+        obs = {
+          'valueQuantity' => { 'value' => '99 mg/dL' },
+          'referenceRange' => [
+            {
+              'low' => { 'value' => 70 },
+              'high' => { 'value' => 110 }
+            }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('70 - 110 mg/dL')
+      end
+
+      it 'extracts unit from alpha string-typed valueQuantity value' do
+        obs = {
+          'valueQuantity' => { 'value' => 'Negative mIU/mL' },
+          'referenceRange' => [
+            {
+              'low' => { 'value' => 0.3 },
+              'high' => { 'value' => 5.0 }
+            }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('0.3 - 5.0 mIU/mL')
+      end
+    end
+
+    context 'when reference range has text but is missing units' do
+      it 'appends unit to numeric text like "<=3" when observation has a unit' do
+        obs = {
+          'valueQuantity' => { 'value' => 2.5, 'unit' => 'mg/dL' },
+          'referenceRange' => [
+            { 'text' => '<=3' }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('<=3 mg/dL')
+      end
+
+      it 'appends unit to range text like "70-110" when observation has a unit' do
+        obs = {
+          'valueQuantity' => { 'value' => 95, 'unit' => 'mg/dL' },
+          'referenceRange' => [
+            { 'text' => '70-110' }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('70-110 mg/dL')
+      end
+
+      it 'does not duplicate unit when text already ends with it' do
+        obs = {
+          'valueQuantity' => { 'value' => 95, 'unit' => 'mg/dL' },
+          'referenceRange' => [
+            { 'text' => '70-110 mg/dL' }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('70-110 mg/dL')
+      end
+
+      it 'does not append unit to purely alphabetic text like "YELLOW"' do
+        obs = {
+          'valueQuantity' => { 'value' => 5, 'unit' => 'units' },
+          'referenceRange' => [
+            { 'text' => 'YELLOW' }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('YELLOW')
+      end
+
+      it 'does not append unit to descriptive text like "Normal"' do
+        obs = {
+          'valueQuantity' => { 'value' => 5, 'unit' => 'mg/dL' },
+          'referenceRange' => [
+            { 'text' => 'Normal' }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('Normal')
+      end
+
+      it 'appends unit to text with comparator like ">5"' do
+        obs = {
+          'valueQuantity' => { 'value' => 8, 'unit' => 'mmol/L' },
+          'referenceRange' => [
+            { 'text' => '>5' }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('>5 mmol/L')
+      end
+
+      it 'appends unit to descriptive text containing digits like "Normal: <100"' do
+        obs = {
+          'valueQuantity' => { 'value' => 80, 'unit' => 'mg/dL' },
+          'referenceRange' => [
+            { 'text' => 'Normal: <100' }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('Normal: <100 mg/dL')
+      end
+
+      it 'does not append unit when observation has no unit available' do
+        obs = {
+          'referenceRange' => [
+            { 'text' => '<=3' }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('<=3')
+      end
+
+      it 'handles multiple text ranges, appending unit only where needed' do
+        obs = {
+          'valueQuantity' => { 'value' => 95, 'unit' => 'mg/dL' },
+          'referenceRange' => [
+            { 'text' => '70-110 mg/dL' },
+            { 'text' => '<=3' }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('70-110 mg/dL, <=3 mg/dL')
+      end
+
+      it 'appends unit parsed from valueString to text range' do
+        obs = {
+          'valueString' => '99 mg/dL',
+          'referenceRange' => [
+            { 'text' => '70-110' }
+          ]
+        }
+        result = described_class.format(obs)
+        expect(result).to eq('70-110 mg/dL')
+      end
+    end
   end
 end

@@ -1027,7 +1027,7 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
         }
         result = adapter.send(:get_observations, record)
         expect(result.size).to eq(1)
-        expect(result.first.reference_range).to eq('YELLOW, <= 10, >= 1, >= 2, <= 8')
+        expect(result.first.reference_range).to eq('YELLOW, <= 10 units, >= 1 units, >= 2 units, <= 8 units')
       end
     end
 
