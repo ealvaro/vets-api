@@ -88,8 +88,15 @@ module V0
         @lighthouse_proxy ||= V0::LighthouseClaims::Proxy.new(@current_user)
       end
 
+      def provider_platform
+        :web
+      end
+
       def provider_registry
-        @provider_registry ||= BenefitsClaims::Providers::ProviderRegistry.enabled_providers(@current_user)
+        @provider_registry ||= BenefitsClaims::Providers::ProviderRegistry.enabled_providers(
+          @current_user,
+          platform: provider_platform
+        )
       end
 
       def provider_class_for_type(type)

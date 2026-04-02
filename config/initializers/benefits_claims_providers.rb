@@ -7,13 +7,19 @@ BenefitsClaims::Providers::ProviderRegistry.register(
   :lighthouse,
   BenefitsClaims::Providers::Lighthouse::LighthouseBenefitsClaimsProvider,
   feature_flag: 'benefits_claims_lighthouse_provider',
-  enabled_by_default: false
+  platform_flags: {
+    web: 'benefits_claims_lighthouse_provider_web',
+    mobile: 'benefits_claims_lighthouse_provider_mobile'
+  }
 )
 
-# Future providers can be registered here:
+# CHAMPVA is web-only at this time — mobile flag should remain disabled.
 # BenefitsClaims::Providers::ProviderRegistry.register(
 #   :champva,
 #   BenefitsClaims::Providers::Champva::ChampvaBenefitsClaimsProvider,
 #   feature_flag: 'benefits_claims_champva_provider',
-#   enabled_by_default: false
+#   platform_flags: {
+#     web: 'benefits_claims_champva_provider_web',
+#     mobile: 'benefits_claims_champva_provider_mobile'
+#   }
 # )

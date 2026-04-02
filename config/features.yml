@@ -155,7 +155,15 @@ features:
     enable_in_development: true
   benefits_claims_lighthouse_provider:
     actor_type: user
-    description: (multi-claim provider) Enables the Lighthouse provider for benefits claims
+    description: Master flag — enables the Lighthouse provider for benefits claims
+    enable_in_development: true
+  benefits_claims_lighthouse_provider_web:
+    actor_type: user
+    description: Enables the Lighthouse provider on the web platform
+    enable_in_development: true
+  benefits_claims_lighthouse_provider_mobile:
+    actor_type: user
+    description: Enables the Lighthouse provider on the mobile platform
     enable_in_development: true
   benefits_claims_ivc_champva_provider:
     actor_type: user

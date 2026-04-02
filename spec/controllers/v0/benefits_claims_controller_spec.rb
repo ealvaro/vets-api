@@ -46,11 +46,11 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
     # Mock provider registry to return Lighthouse provider by default for backward compatibility
     allow(BenefitsClaims::Providers::ProviderRegistry)
       .to receive(:enabled_provider_classes)
-      .with(an_instance_of(User))
+      .with(an_instance_of(User), platform: :web)
       .and_return([BenefitsClaims::Providers::Lighthouse::LighthouseBenefitsClaimsProvider])
     allow(BenefitsClaims::Providers::ProviderRegistry)
       .to receive(:enabled_providers)
-      .with(an_instance_of(User))
+      .with(an_instance_of(User), platform: :web)
       .and_return([{ name: :lighthouse,
                      class: BenefitsClaims::Providers::Lighthouse::LighthouseBenefitsClaimsProvider }])
   end
@@ -602,11 +602,11 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
       before do
         allow(BenefitsClaims::Providers::ProviderRegistry)
           .to receive(:enabled_provider_classes)
-          .with(an_instance_of(User))
+          .with(an_instance_of(User), platform: :web)
           .and_return([mock_provider_class_one, mock_provider_class_two])
         allow(BenefitsClaims::Providers::ProviderRegistry)
           .to receive(:enabled_providers)
-          .with(an_instance_of(User))
+          .with(an_instance_of(User), platform: :web)
           .and_return([{ name: :mockproviderone, class: mock_provider_class_one },
                        { name: :mockprovidertwo, class: mock_provider_class_two }])
       end
@@ -656,7 +656,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
 
         allow(BenefitsClaims::Providers::ProviderRegistry)
           .to receive(:enabled_provider_classes)
-          .with(an_instance_of(User))
+          .with(an_instance_of(User), platform: :web)
           .and_return([mock_provider_class_one, failing_provider])
 
         get(:index)
@@ -683,7 +683,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
 
         allow(BenefitsClaims::Providers::ProviderRegistry)
           .to receive(:enabled_provider_classes)
-          .with(an_instance_of(User))
+          .with(an_instance_of(User), platform: :web)
           .and_return([failing_provider, mock_provider_class_one])
 
         expect(Rails.logger).to receive(:warn).with(
@@ -721,7 +721,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
 
         allow(BenefitsClaims::Providers::ProviderRegistry)
           .to receive(:enabled_provider_classes)
-          .with(an_instance_of(User))
+          .with(an_instance_of(User), platform: :web)
           .and_return([failing_provider_one, failing_provider_two])
 
         get(:index)
@@ -751,7 +751,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
 
           allow(BenefitsClaims::Providers::ProviderRegistry)
             .to receive(:enabled_provider_classes)
-            .with(an_instance_of(User))
+            .with(an_instance_of(User), platform: :web)
             .and_return([timeout_provider, mock_provider_class_one])
 
           get(:index)
@@ -779,7 +779,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
 
           allow(BenefitsClaims::Providers::ProviderRegistry)
             .to receive(:enabled_provider_classes)
-            .with(an_instance_of(User))
+            .with(an_instance_of(User), platform: :web)
             .and_return([unavailable_provider, mock_provider_class_one])
 
           get(:index)
@@ -807,7 +807,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
 
           allow(BenefitsClaims::Providers::ProviderRegistry)
             .to receive(:enabled_provider_classes)
-            .with(an_instance_of(User))
+            .with(an_instance_of(User), platform: :web)
             .and_return([not_found_provider, mock_provider_class_one])
 
           get(:index)
@@ -837,7 +837,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
 
           allow(BenefitsClaims::Providers::ProviderRegistry)
             .to receive(:enabled_provider_classes)
-            .with(an_instance_of(User))
+            .with(an_instance_of(User), platform: :web)
             .and_return([unauthorized_provider, mock_provider_class_one])
 
           get(:index)
@@ -861,7 +861,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
 
           allow(BenefitsClaims::Providers::ProviderRegistry)
             .to receive(:enabled_provider_classes)
-            .with(an_instance_of(User))
+            .with(an_instance_of(User), platform: :web)
             .and_return([forbidden_provider, mock_provider_class_one])
 
           get(:index)
@@ -2125,11 +2125,11 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
       controller.instance_variable_set(:@current_user, user)
       allow(BenefitsClaims::Providers::ProviderRegistry)
         .to receive(:enabled_provider_classes)
-        .with(user)
+        .with(user, platform: :web)
         .and_return(providers)
       allow(BenefitsClaims::Providers::ProviderRegistry)
         .to receive(:enabled_providers)
-        .with(user)
+        .with(user, platform: :web)
         .and_return([{ name: :mockprovider, class: mock_provider_class },
                      { name: :secondprovider, class: second_provider_class }])
     end
@@ -2349,7 +2349,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
       controller.instance_variable_set(:@current_user, user)
       allow(BenefitsClaims::Providers::ProviderRegistry)
         .to receive(:enabled_provider_classes)
-        .with(user)
+        .with(user, platform: :web)
         .and_return(providers)
     end
 

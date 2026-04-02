@@ -22,10 +22,10 @@ RSpec.describe Mobile::V0::Concerns::MultiProviderSupport do
   before do
     allow(provider_class).to receive(:new).with(user).and_return(provider_instance)
     allow(BenefitsClaims::Providers::ProviderRegistry).to receive(:enabled_provider_classes)
-      .with(user)
+      .with(user, platform: :mobile)
       .and_return([provider_class])
     allow(BenefitsClaims::Providers::ProviderRegistry).to receive(:enabled_providers)
-      .with(user)
+      .with(user, platform: :mobile)
       .and_return([{ name: :testprovider, class: provider_class }])
   end
 
@@ -140,10 +140,10 @@ RSpec.describe Mobile::V0::Concerns::MultiProviderSupport do
         provider_instance2 = double('Provider2')
         allow(provider_class2).to receive(:new).with(user).and_return(provider_instance2)
         allow(BenefitsClaims::Providers::ProviderRegistry).to receive(:enabled_provider_classes)
-          .with(user)
+          .with(user, platform: :mobile)
           .and_return([provider_class, provider_class2])
         allow(BenefitsClaims::Providers::ProviderRegistry).to receive(:enabled_providers)
-          .with(user)
+          .with(user, platform: :mobile)
           .and_return([{ name: :testprovider, class: provider_class },
                        { name: :testprovider2, class: provider_class2 }])
         allow(provider_instance).to receive(:get_claims).and_return({
@@ -168,7 +168,7 @@ RSpec.describe Mobile::V0::Concerns::MultiProviderSupport do
 
       before do
         allow(BenefitsClaims::Providers::ProviderRegistry).to receive(:enabled_providers)
-          .with(user)
+          .with(user, platform: :mobile)
           .and_return([{ name: :lighthouse, class: lighthouse_provider_class }])
       end
 
@@ -201,7 +201,7 @@ RSpec.describe Mobile::V0::Concerns::MultiProviderSupport do
 
         allow(provider_class2).to receive(:new).with(user).and_return(provider_instance2)
         allow(BenefitsClaims::Providers::ProviderRegistry).to receive(:enabled_provider_classes)
-          .with(user)
+          .with(user, platform: :mobile)
           .and_return([lighthouse_class, provider_class2])
 
         proxy = double('LighthouseProxy')
@@ -217,7 +217,7 @@ RSpec.describe Mobile::V0::Concerns::MultiProviderSupport do
       it 'routes lighthouse to proxy when type parameter specified' do
         lighthouse_class = BenefitsClaims::Providers::Lighthouse::LighthouseBenefitsClaimsProvider
         allow(BenefitsClaims::Providers::ProviderRegistry).to receive(:enabled_providers)
-          .with(user)
+          .with(user, platform: :mobile)
           .and_return([{ name: :lighthouse, class: lighthouse_class }])
 
         proxy = double('LighthouseProxy')

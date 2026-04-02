@@ -18,7 +18,13 @@ module BenefitsClaims
       private
 
       def configured_providers
-        BenefitsClaims::Providers::ProviderRegistry.enabled_provider_classes(@current_user)
+        BenefitsClaims::Providers::ProviderRegistry.enabled_provider_classes(@current_user, platform: provider_platform)
+      end
+
+      # Override in platform-specific concerns to filter providers by platform.
+      # Return nil to skip platform filtering (backward-compatible default).
+      def provider_platform
+        nil
       end
 
       def get_claims_from_providers

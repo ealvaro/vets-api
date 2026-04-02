@@ -78,8 +78,15 @@ module Mobile
           raise
         end
 
+        def provider_platform
+          :mobile
+        end
+
         def provider_registry
-          @provider_registry ||= BenefitsClaims::Providers::ProviderRegistry.enabled_providers(@current_user)
+          @provider_registry ||= BenefitsClaims::Providers::ProviderRegistry.enabled_providers(
+            @current_user,
+            platform: provider_platform
+          )
         end
 
         def provider_class_for_type(type)

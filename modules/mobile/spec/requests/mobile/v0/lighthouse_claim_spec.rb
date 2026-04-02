@@ -254,6 +254,8 @@ RSpec.describe 'Mobile::V0::Claim', type: :request do
           allow(Flipper).to receive(:enabled?).and_return(false)
           allow(Flipper).to receive(:enabled?).with(:cst_multi_claim_provider_mobile, anything).and_return(true)
           allow(Flipper).to receive(:enabled?).with('benefits_claims_lighthouse_provider', anything).and_return(true)
+          allow(Flipper).to receive(:enabled?).with('benefits_claims_lighthouse_provider_mobile',
+                                                    anything).and_return(true)
         end
 
         context 'when no type parameter is provided' do
