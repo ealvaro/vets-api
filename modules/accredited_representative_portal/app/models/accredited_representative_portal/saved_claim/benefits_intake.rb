@@ -93,7 +93,18 @@ module AccreditedRepresentativePortal
 
         has_many(
           :persistent_attachments,
-          -> { where(type: 'PersistentAttachments::VAFormDocumentation') }
+          lambda {
+            where(type: [
+                    'PersistentAttachments::VAFormDocumentation',
+                    'AccreditedRepresentativePortal::PersistentAttachments::SeparationHealthAssessment'
+                  ])
+          }
+        )
+
+        has_one(
+          :separation_health_assessment,
+          -> { where(type: 'AccreditedRepresentativePortal::PersistentAttachments::SeparationHealthAssessment') },
+          class_name: 'PersistentAttachment'
         )
       end
 

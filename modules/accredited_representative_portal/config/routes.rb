@@ -37,6 +37,7 @@ AccreditedRepresentativePortal::Engine.routes.draw do
     post '/submit_representative_form', to: 'representative_form_upload#submit'
     post '/representative_form_upload', to: 'representative_form_upload#upload_scanned_form'
     post '/upload_supporting_documents', to: 'representative_form_upload#upload_supporting_documents'
+    post '/upload_bdd_sha_documents', to: 'representative_form_upload#upload_bdd_sha_documents'
 
     resources :claim_submissions, only: :index
     resources :claimant_claim_submissions, only: :show

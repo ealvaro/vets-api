@@ -15,6 +15,7 @@ module AccreditedRepresentativePortal
           guids += submit_params[:supportingDocuments].pluck(:confirmationCode).compact
         end
 
+        guids << submit_params[:bddConfirmationCode] if submit_params[:bddConfirmationCode].present?
         guids
       end
 
@@ -82,6 +83,7 @@ module AccreditedRepresentativePortal
                   }
                 }
               end
+            memo[:benefitsDeliveryDischarge] = (form_data[:selectBddClaim].to_s == 'true') if form_data[:selectBddClaim]
           end
       end
 
@@ -89,11 +91,11 @@ module AccreditedRepresentativePortal
         @submit_params ||=
           params.require(:representative_form_upload).permit(
             [
-              :formName, :confirmationCode,
+              :formName, :confirmationCode, :bddConfirmationCode,
               { supportingDocuments: %i[name confirmationCode size isEncrypted] },
               { formData: [
                 :veteranSsn, :postalCode, :veteranDateOfBirth, :formNumber,
-                :email, :claimantDateOfBirth, :claimantSsn, :vaFileNumber,
+                :email, :claimantDateOfBirth, :claimantSsn, :vaFileNumber, :selectBddClaim,
                 { claimantFullName: %i[first last] },
                 { veteranFullName: %i[first last] }
               ] }

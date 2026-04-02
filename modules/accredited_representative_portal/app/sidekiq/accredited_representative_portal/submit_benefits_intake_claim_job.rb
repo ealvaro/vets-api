@@ -69,7 +69,7 @@ module AccreditedRepresentativePortal
     #
     def stamp_pdf(record)
       case record
-      when PersistentAttachments::VAFormDocumentation
+      when ::PersistentAttachments::VAFormDocumentation
         time = "#{Time.current.utc.strftime('%H:%M:%S  %Y-%m-%d %I:%M %p')} UTC"
         text = "Submitted via VA.gov at #{time}. Signed in and submitted with an identity-verified account."
         pdf_path = record.to_pdf

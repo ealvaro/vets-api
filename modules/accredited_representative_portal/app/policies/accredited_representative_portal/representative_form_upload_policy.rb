@@ -15,5 +15,9 @@ module AccreditedRepresentativePortal
     def upload_supporting_documents?
       @user.representative?
     end
+
+    def upload_bdd_sha_documents?
+      @user.representative?
+    end
   end
 end

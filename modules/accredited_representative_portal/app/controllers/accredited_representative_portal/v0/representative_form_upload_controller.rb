@@ -13,6 +13,7 @@ module AccreditedRepresentativePortal
       before_action :authorize_attachment_upload, only: %i[
         upload_scanned_form
         upload_supporting_documents
+        upload_bdd_sha_documents
       ]
       before_action only: %i[submit upload_scanned_form upload_supporting_documents] do
         deny_access_unless_form_enabled(form_id)
@@ -45,6 +46,7 @@ module AccreditedRepresentativePortal
 
           span.set_tag('form_submission.status', '200')
           span.set_tag('form_submission.confirmation_number', confirmation_number)
+          span.set_tag('form_submission.bdd_status', bdd_status(saved_claim))
           trace_key_tags(span, form_id:, org: organization)
 
           monitoring.track_count(
@@ -93,7 +95,7 @@ module AccreditedRepresentativePortal
       def upload_scanned_form
         ar_monitoring(with_organization: false).trace('ar.claims.form_upload.upload_scanned_form') do |_span|
           handle_attachment_upload(
-            PersistentAttachments::VAForm,
+            ::PersistentAttachments::VAForm,
             PersistentAttachmentVAFormSerializer
           )
         end
@@ -102,13 +104,30 @@ module AccreditedRepresentativePortal
       def upload_supporting_documents
         ar_monitoring(with_organization: false).trace('ar.claims.form_upload.upload_supporting_documents') do |_span|
           handle_attachment_upload(
-            PersistentAttachments::VAFormDocumentation,
+            ::PersistentAttachments::VAFormDocumentation,
+            PersistentAttachmentSerializer
+          )
+        end
+      end
+
+      def upload_bdd_sha_documents
+        ar_monitoring(with_organization: false).trace('ar.claims.form_upload.upload_bdd_sha_documents') do |_span|
+          handle_attachment_upload(
+            AccreditedRepresentativePortal::PersistentAttachments::SeparationHealthAssessment,
             PersistentAttachmentSerializer
           )
         end
       end
 
       private
+
+      def bdd_status(saved_claim)
+        if metadata[:selectBddClaim]
+          saved_claim.separation_health_assessment.present? ? :bdd_with_sha : :bdd_without_sha
+        else
+          :non_bdd
+        end
+      end
 
       def form_id
         if params[:form_id].present?

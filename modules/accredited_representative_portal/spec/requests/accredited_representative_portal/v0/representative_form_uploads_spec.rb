@@ -46,9 +46,15 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
   describe '#submit' do
     let(:attachment_guid) { '743a0ec2-6eeb-49b9-bd70-0a195b74e9f3' }
     let(:supporting_attachment_guid) { '743a0ec2-6eeb-49b9-bd70-0a195b74e9f2' }
+    let(:sha_bdd_guid) { '0bdd91fb-ded2-4bb1-96b3-9bb62b84482a' }
     let!(:attachment) { PersistentAttachments::VAForm.create!(guid: attachment_guid, form_id: '21-686c') }
     let!(:supporting_attachment) do
       PersistentAttachments::VAFormDocumentation.create!(guid: supporting_attachment_guid, form_id: '21-686c')
+    end
+    let!(:bdd_attachment) do
+      AccreditedRepresentativePortal::PersistentAttachments::SeparationHealthAssessment.create!(
+        guid: sha_bdd_guid, form_id: '21-526EZ'
+      )
     end
     let(:representative_fixture_path) do
       Rails.root.join(
@@ -72,6 +78,21 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
             'size' => 12_345
           }
         ]
+      end
+    end
+
+    let(:bdd_form_veteran_params) do
+      JSON.parse(representative_fixture_path.read).tap do |memo|
+        memo['representative_form_upload']['confirmationCode'] = attachment_guid
+        memo['representative_form_upload']['supportingDocuments'] = [
+          {
+            'confirmationCode' => supporting_attachment_guid,
+            'name' => 'supporting_document.pdf',
+            'size' => 12_345
+          }
+        ]
+        memo['representative_form_upload']['bddConfirmationCode'] = sha_bdd_guid
+        memo['representative_form_upload']['formData']['selectBddClaim'] = true
       end
     end
 
@@ -281,6 +302,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
 
           expect(span_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'form_id' }, form_number)
           expect(span_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'org' }, '067')
+          expect(span_double).to have_received(:set_tag).with('form_submission.bdd_status', :non_bdd)
 
           expect(trace_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'form_id' }, form_number)
           expect(trace_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'org' }, '067')
@@ -363,6 +385,20 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
               'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
             }
           )
+        end
+
+        context 'bdd checkbox is checked' do
+          it 'makes the veteran request with multiple attachments' do
+            post('/accredited_representative_portal/v0/submit_representative_form', params: bdd_form_veteran_params)
+            expect(response).to have_http_status(:ok)
+            expect(parsed_response).to eq(
+              {
+                'confirmationNumber' => FormSubmissionAttempt.order(created_at: :desc).first.benefits_intake_uuid,
+                'status' => '200',
+                'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
+              }
+            )
+          end
         end
       end
     end
@@ -781,6 +817,87 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
         expect do
           post '/accredited_representative_portal/v0/upload_supporting_documents', params:
         end.to change(PersistentAttachments::VAFormDocumentation, :count).by(1)
+
+        expect(response).to have_http_status(:ok)
+      end
+    end
+  end
+
+  describe '#upload_bdd_sha_documents' do
+    it 'renders the attachment as json' do
+      clamscan = double(safe?: true)
+      allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
+      file = fixture_file_upload('doctors-note.gif')
+
+      params = { form_id: form_number, file: }
+
+      allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?).and_return(pdf_path)
+
+      expect do
+        post '/accredited_representative_portal/v0/upload_bdd_sha_documents', params:
+      end.to change(
+        AccreditedRepresentativePortal::PersistentAttachments::SeparationHealthAssessment, :count
+      ).by(1)
+      attachment = PersistentAttachment.last
+
+      expect(response).to have_http_status(:ok)
+      expect(parsed_response).to eq({
+                                      'data' => {
+                                        'id' => attachment.id.to_s,
+                                        'type' => 'persistent_attachment',
+                                        'attributes' => {
+                                          'confirmationCode' => attachment.guid,
+                                          'name' => 'doctors-note.gif',
+                                          'size' => 83_403
+                                        }
+                                      }
+                                    })
+      expect(PersistentAttachment.last).to be_a(
+        AccreditedRepresentativePortal::PersistentAttachments::SeparationHealthAssessment
+      )
+    end
+
+    it 'returns an error if the document is invalid' do
+      clamscan = double(safe?: true)
+      allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
+      file = fixture_file_upload('doctors-note.gif')
+
+      params = { form_id: form_number, file: }
+
+      allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?)
+        .and_raise(BenefitsIntakeService::Service::InvalidDocumentError.new('Invalid form'))
+
+      expect do
+        post '/accredited_representative_portal/v0/upload_bdd_sha_documents', params:
+      end.not_to change(
+        AccreditedRepresentativePortal::PersistentAttachments::SeparationHealthAssessment, :count
+      )
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(parsed_response).to eq({
+                                      'errors' => [{
+                                        'title' => 'Unprocessable Entity',
+                                        'detail' => 'Invalid form',
+                                        'code' => '422',
+                                        'status' => '422'
+                                      }]
+                                    })
+    end
+
+    context 'when form_id includes -UPLOAD suffix' do
+      it 'strips the suffix and processes upload' do
+        clamscan = double(safe?: true)
+        allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
+        file = fixture_file_upload('doctors-note.gif')
+
+        params = { form_id: "#{form_number}-UPLOAD", file: }
+        allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?).and_return(pdf_path)
+
+        expect do
+          post '/accredited_representative_portal/v0/upload_bdd_sha_documents', params:
+        end.to change(
+          AccreditedRepresentativePortal::PersistentAttachments::SeparationHealthAssessment, :count
+        ).by(1)
 
         expect(response).to have_http_status(:ok)
       end
