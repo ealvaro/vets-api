@@ -9,7 +9,7 @@
 #       BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
 #     steps:
 #       - name: Check out code
-#         uses: actions/checkout@v6
+#         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 #         with:
 #           ref: ${{ github.head_ref }}
 #           fetch-depth: 0 # max depth
@@ -17,24 +17,24 @@
 #         run: echo "VETS_API_USER_ID=$(id -u)" >> $GITHUB_ENV
 #       - name: Git Version
 #         id: version
-#         uses: codacy/git-version@2.8.6
+#         uses: codacy/git-version@877bb11b7a2ee44dcd7c0a03882c7037356e64e9 # 2.8.6
 #         with:
 #           release-branch: master
 #       - name: Echo the version
 #         run: |
 #           echo ${{ steps.version.outputs.version }}
 #       - name: Configure AWS Credentials
-#         uses: aws-actions/configure-aws-credentials@v6
+#         uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6
 #         with:
 #           aws-region: us-gov-west-1
 #           role-to-assume: arn:aws-us-gov:iam::008577686731:role/prt-gha-oidc-role
 #       - name: Login to Amazon ECR
 #         id: ecr-login
-#         uses: aws-actions/amazon-ecr-login@v2.0.1
+#         uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
 #         with:
 #           mask-password: true
 #       - name: Build vets-api Docker Image
-#         uses: docker/build-push-action@v6
+#         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
 #         env:
 #           DOCKER_BUILD_SUMMARY: false
 #         with:
@@ -65,7 +65,7 @@
 #           helm push vets-api-${{ steps.version.outputs.version }}.tgz oci://008577686731.dkr.ecr.us-gov-west-1.amazonaws.com/dsva/helm
 
 #       - name: Add Failure label
-#         uses: actions-ecosystem/action-add-labels@v1
+#         uses: actions-ecosystem/action-add-labels@18f1af5e3544586314bbe15c0273249c770b2daf # v1
 #         if: ${{ github.event_name == 'pull_request' && failure() }}
 #         with:
 #           number: ${{ github.event.pull_request.number }}
@@ -73,7 +73,7 @@
 #             pe-failure
 
 #       - name: Remove Failure label
-#         uses: actions-ecosystem/action-remove-labels@v1
+#         uses: actions-ecosystem/action-remove-labels@2ce5d41b4b6aa8503e285553f75ed56e0a40bae0 # v1
 #         if: ${{ github.event_name == 'pull_request' && success() }}
 #         with:
 #           number: ${{ github.event.pull_request.number }}

@@ -34,7 +34,7 @@ jobs:
       BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           ref: ${{ github.event.workflow_run.head_commit.id }}
 
@@ -42,16 +42,16 @@ jobs:
         run: echo "VETS_API_USER_ID=$(id -u)" >> $GITHUB_ENV
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6
         with:
           role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
           aws-region: us-gov-west-1
 
       - name: Login to ECR
         id: ecr-login
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
       - name: Build Postman Docker Image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
         env:
           DOCKER_BUILD_SUMMARY: false
         with:
@@ -61,7 +61,7 @@ jobs:
           tags: |
             ${{ steps.ecr-login.outputs.registry }}/dsva/vets-api-postman:${{ github.event.workflow_run.head_commit.id }}
       - name: Build vets-api Docker Image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
         env:
           DOCKER_BUILD_SUMMARY: false
         with:

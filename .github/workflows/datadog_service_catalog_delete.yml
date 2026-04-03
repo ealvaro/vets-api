@@ -19,7 +19,7 @@ jobs:
       files: ${{steps.one.outputs.files}}
     steps:
       - name: 'Checkout repo'
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
       - id: one
@@ -41,19 +41,19 @@ jobs:
         file: ${{fromJSON(needs.get_deleted_services.outputs.files)}}
     steps:
       - name: 'Checkout master branch'
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
           ref: master
           token: ${{github.token}}
       - name: 'Get service name from file'
         id: parse_service_name
-        uses: mikefarah/yq@master
+        uses: mikefarah/yq@17f66dc6c6a177fafd8b71a6abea6d6340aa1e16 # master
         with:
           cmd: yq -o=json '.dd-service' ${{matrix.file}}
       - name: 'Get schema version from file'
         id: parse_schema_version
-        uses: mikefarah/yq@master
+        uses: mikefarah/yq@17f66dc6c6a177fafd8b71a6abea6d6340aa1e16 # master
         with:
           cmd: yq -o=json '.schema-version' ${{matrix.file}}
       - name: 'Delete service'

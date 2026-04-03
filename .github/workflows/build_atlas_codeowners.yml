@@ -14,30 +14,30 @@ jobs:
   copy-codeowners:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6
         with:
           role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
           aws-region: "us-gov-west-1"
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Get bot token from Parameter Store
-        uses: department-of-veterans-affairs/action-inject-ssm-secrets@latest
+        uses: department-of-veterans-affairs/action-inject-ssm-secrets@32c55d942e380d6819aef96bc01b0eabb2159715 # latest
         with:
           ssm_parameter: /devops/VA_VSP_BOT_GITHUB_TOKEN
           env_variable_name: VA_VSP_BOT_GITHUB_TOKEN
 
       - name:  Check codeowner changes
         id: check-codeowner-changes
-        uses: tj-actions/changed-files@v47.0.4 # v46 has a CVE
+        uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
         with:
           files: |
             .github/CODEOWNERS
 
       - name: Pushes CODEOWNERS updates to Atlas
         if: steps.check-codeowner-changes.outputs.any_changed == 'true'
-        uses: dmnemec/copy_file_to_another_repo_action@main
+        uses: dmnemec/copy_file_to_another_repo_action@bbebd3da22e4a37d04dca5f782edd5201cb97083 # main
         env:
           API_TOKEN_GITHUB: ${{ env.VA_VSP_BOT_GITHUB_TOKEN }}
         with:

@@ -20,7 +20,7 @@ jobs:
       files: ${{steps.one.outputs.files}}
     steps:
       - name: 'Checkout repo'
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
       - id: one
@@ -40,10 +40,10 @@ jobs:
         file: ${{fromJSON(needs.get_files.outputs.files)}}
     steps:
       - name: 'Checkout repo'
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - id: read_yaml
         name: 'Read in the Service Catalog data'
-        uses: mikefarah/yq@master
+        uses: mikefarah/yq@17f66dc6c6a177fafd8b71a6abea6d6340aa1e16 # master
         with:
           cmd: yq '.' ${{matrix.file}}
       - name: 'Update Service Catalog in DataDog'
