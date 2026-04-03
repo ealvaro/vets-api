@@ -15,7 +15,8 @@ module Mobile
       end
 
       def all_recipients
-        resource = client.get_all_triage_teams(@current_user.uuid)
+        filter_vtgs = !Flipper.enabled?(:mhv_secure_messaging_show_vtgs_mobile, @current_user)
+        resource = client.get_all_triage_teams(@current_user.uuid, filter_virtual_groups: filter_vtgs)
         raise Common::Exceptions::ResourceNotFound if resource.blank?
 
         resource.records = resource.records.reject(&:blocked_status)

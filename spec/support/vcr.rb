@@ -44,6 +44,7 @@ VCR.configure do |c|
   c.filter_sensitive_data('<MHV_MR_X_API_KEY_V2>') { Settings.mhv.medical_records.x_api_key_v2 }
   c.filter_sensitive_data('<MHV_SM_APP_TOKEN>') { Settings.mhv.sm.app_token }
   c.filter_sensitive_data('<MHV_SM_HOST>') { Settings.mhv.api_gateway.hosts.sm_patient }
+  c.filter_sensitive_data('<MHV_SM_X_API_KEY>') { Settings.mhv.sm.x_api_key }
   c.filter_sensitive_data('<MPI_URL>') { IdentitySettings.mvi.url }
   c.filter_sensitive_data('<PD_TOKEN>') { Settings.maintenance.pagerduty_api_token }
   c.filter_sensitive_data('<OGC_ATTORNEY_EXCEL_LIST_URI>') do

@@ -145,4 +145,66 @@ RSpec.describe 'MyHealth::V1::Messaging::Allrecipients', type: :request do
       expect(response).to match_response_schema('my_health/messaging/v1/all_triage_teams')
     end
   end
+
+  context 'VTG filtering' do
+    before do
+      sign_in_as(current_user)
+      VCR.insert_cassette('sm_client/session')
+      allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_show_vtgs_web, anything).and_return(false)
+    end
+
+    after do
+      VCR.eject_cassette
+    end
+
+    it 'filters VTGs by default when toggle is off' do
+      expect_any_instance_of(SM::Client).to receive(:get_all_triage_teams)
+        .with(anything, filter_virtual_groups: true)
+        .and_call_original
+
+      VCR.use_cassette('sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients') do
+        get '/my_health/v1/messaging/allrecipients'
+      end
+
+      expect(response).to be_successful
+    end
+
+    it 'excludes VTGs from the response when toggle is off' do
+      VCR.use_cassette('sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups') do
+        get '/my_health/v1/messaging/allrecipients'
+      end
+
+      expect(response).to be_successful
+      resp_body = JSON.parse(response.body)
+      returned_ids = resp_body['data'].map { |t| t['attributes']['triage_team_id'] }
+
+      # Known VTG triage team IDs should NOT be present (filtered out)
+      expect(returned_ids).not_to include(6_725_162) # SM668 CANCER CARE (VTG at 668)
+      expect(returned_ids).not_to include(6_692_633) # Columbus VTG at 757
+
+      # Known non-VTG triage team IDs SHOULD be present
+      expect(returned_ids).to include(6_238_822) # VHA SPO ALS (non-VTG at 668)
+      expect(returned_ids).to include(6_238_639) # VHA COS Allergy (non-VTG at 757)
+
+      # Both stations should still have teams in the response
+      stations = resp_body['data'].map { |t| t['attributes']['station_number'] }.uniq.sort
+      expect(stations).to eq(%w[668 757])
+    end
+
+    it 'includes VTGs when show_vtgs_web toggle is enabled' do
+      allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_show_vtgs_web, anything).and_return(true)
+
+      VCR.use_cassette('sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups') do
+        get '/my_health/v1/messaging/allrecipients'
+      end
+
+      expect(response).to be_successful
+      resp_body = JSON.parse(response.body)
+      returned_ids = resp_body['data'].map { |t| t['attributes']['triage_team_id'] }
+
+      # Known VTG triage team IDs SHOULD now be present (not filtered)
+      expect(returned_ids).to include(6_725_162) # SM668 CANCER CARE (VTG at 668)
+      expect(returned_ids).to include(6_692_633) # Columbus VTG at 757
+    end
+  end
 end

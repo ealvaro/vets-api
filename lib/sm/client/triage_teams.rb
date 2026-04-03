@@ -29,13 +29,14 @@ module SM
       # @note Only triage_team_id and station_number are cached via TriageTeamCache model
       # @return [Common::Collection[AllTriageTeams]]
       #
-      def get_all_triage_teams(user_uuid)
+      def get_all_triage_teams(user_uuid, filter_virtual_groups: true)
         path = append_requires_oh_messages_query('alltriageteams', 'requiresOHTriageGroup')
         json = perform(:get, path, nil, token_headers).body
 
         # Instantiate teams and filter out those migrating to OH
         teams = json[:data].map { |data| AllTriageTeams.new(data) }
         filtered_teams = exclude_migrating_teams(teams)
+        filtered_teams = exclude_non_pretransitioned_virtual_groups(filtered_teams) if filter_virtual_groups
 
         # Compute metadata with excluded teams count
         associated_blocked_triage_groups = filtered_teams.count(&:blocked_status)
@@ -80,6 +81,16 @@ module SM
       end
 
       private
+
+      # Filters out VTGs whose station is not in the pretransitioned OH facilities list
+      def exclude_non_pretransitioned_virtual_groups(teams)
+        pretransitioned = MHV::OhFacilitiesHelper::Service.parse_facility_setting(
+          Settings.mhv.oh_facility_checks.pretransitioned_oh_facilities
+        )
+        teams.reject do |team|
+          team.virtual_group && pretransitioned.exclude?(team.station_number.to_s)
+        end
+      end
 
       # Filters out teams in p3-p5 migration phases (returns only non-migrating teams)
       def exclude_migrating_teams(teams)

@@ -28,6 +28,7 @@ class AllTriageTeams
   attribute :sub_group_type_patient_display, String
   attribute :oh_triage_group, Bool, default: false
   attribute :migrating_to_oh, Bool, default: false
+  attribute :virtual_group, Bool, default: false
 
   default_sort_by name: :asc
 end

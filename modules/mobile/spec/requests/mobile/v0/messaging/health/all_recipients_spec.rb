@@ -257,5 +257,70 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
         # rubocop:enable Layout/LineLength
       end
     end
+
+    context 'VTG filtering' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_show_vtgs_mobile, anything).and_return(false)
+      end
+
+      it 'filters VTGs by default when toggle is off' do
+        expect_any_instance_of(SM::Client).to receive(:get_all_triage_teams)
+          .with(anything, filter_virtual_groups: true)
+          .and_call_original
+
+        allow_any_instance_of(Mobile::V0::RecipientsController).to receive(:get_unique_care_systems).and_return(
+          care_systems_stub
+        )
+        VCR.use_cassette('sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients') do
+          get '/mobile/v0/messaging/health/allrecipients', headers: sis_headers
+        end
+
+        expect(response).to be_successful
+      end
+
+      it 'excludes VTGs from the response when toggle is off' do
+        allow_any_instance_of(Mobile::V0::RecipientsController).to receive(:get_unique_care_systems).and_return(
+          care_systems_stub
+        )
+        VCR.use_cassette('sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups') do
+          get '/mobile/v0/messaging/health/allrecipients', headers: sis_headers
+        end
+
+        expect(response).to be_successful
+        resp_body = response.parsed_body
+        returned_ids = resp_body['data'].map { |t| t['attributes']['triageTeamId'] }
+
+        # Known VTG triage team IDs should NOT be present (filtered out)
+        expect(returned_ids).not_to include(6_725_162) # SM668 CANCER CARE (VTG at 668)
+        expect(returned_ids).not_to include(6_692_633) # Columbus VTG at 757
+
+        # Known non-VTG triage team IDs SHOULD be present
+        expect(returned_ids).to include(6_238_822) # VHA SPO ALS (non-VTG at 668)
+        expect(returned_ids).to include(6_238_639) # VHA COS Allergy (non-VTG at 757)
+
+        # Both stations should still have teams in the response
+        stations = resp_body['data'].map { |t| t['attributes']['stationNumber'] }.uniq.sort
+        expect(stations).to eq(%w[668 757])
+      end
+
+      it 'includes VTGs when show_vtgs_mobile toggle is enabled' do
+        allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_show_vtgs_mobile, anything).and_return(true)
+        allow_any_instance_of(Mobile::V0::RecipientsController).to receive(:get_unique_care_systems).and_return(
+          care_systems_stub
+        )
+
+        VCR.use_cassette('sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups') do
+          get '/mobile/v0/messaging/health/allrecipients', headers: sis_headers
+        end
+
+        expect(response).to be_successful
+        resp_body = response.parsed_body
+        returned_ids = resp_body['data'].map { |t| t['attributes']['triageTeamId'] }
+
+        # Known VTG triage team IDs SHOULD now be present (not filtered)
+        expect(returned_ids).to include(6_725_162) # SM668 CANCER CARE (VTG at 668)
+        expect(returned_ids).to include(6_692_633) # Columbus VTG at 757
+      end
+    end
   end
 end

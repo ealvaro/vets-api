@@ -3,6 +3,14 @@
 module MHV
   module OhFacilitiesHelper
     class Service
+      # Parses a Settings facility value (CSV string from Parameter Store) into an array of station IDs.
+      # Safely handles nil, false, 0, empty strings, and unexpected types via ActiveModel boolean cast.
+      def self.parse_facility_setting(value)
+        return [] unless ActiveModel::Type::Boolean.new.cast(value)
+
+        value.to_s.split(',').map(&:strip).compact_blank
+      end
+
       def initialize(user)
         super()
         @current_user = user
@@ -174,9 +182,7 @@ module MHV
       end
 
       def parse_facility_setting(value)
-        return [] unless ActiveModel::Type::Boolean.new.cast(value)
-
-        value.to_s.split(',').map(&:strip).compact_blank
+        self.class.parse_facility_setting(value)
       end
 
       # Builds the migration response array for user's matching facilities

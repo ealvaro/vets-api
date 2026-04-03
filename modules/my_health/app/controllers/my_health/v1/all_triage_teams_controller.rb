@@ -8,7 +8,8 @@ module MyHealth
       STATSD_KEY_PREFIX = 'api.my_health.all_triage_teams'
 
       def index
-        resource = client.get_all_triage_teams(@current_user.uuid)
+        filter_vtgs = !Flipper.enabled?(:mhv_secure_messaging_show_vtgs_web, @current_user)
+        resource = client.get_all_triage_teams(@current_user.uuid, filter_virtual_groups: filter_vtgs)
         if resource.blank?
           raise Common::Exceptions::RecordNotFound,
                 "Triage teams for user ID #{@current_user.uuid} not found"
