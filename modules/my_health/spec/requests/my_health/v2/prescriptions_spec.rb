@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require 'unified_health_data/service'
+require 'mhv/prescriptions/refill_request_tracker'
 require 'unique_user_events'
 require 'support/shared_contexts/uhd_security_endpoint'
 
@@ -11,6 +12,25 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
   let(:current_user) { build(:user, :mhv) }
   let(:headers) { { 'Content-Type' => 'application/json', 'Accept' => 'application/json' } }
   let(:refill_path) { '/my_health/v2/prescriptions/refill' }
+
+  def build_prescription(attrs = {})
+    UnifiedHealthData::Prescription.new(
+      {
+        id: '15220389459',
+        prescription_number: '1234567',
+        prescription_name: 'glucose test strip',
+        refill_status: 'active',
+        refill_remaining: 3,
+        station_number: '556',
+        is_refillable: true,
+        is_renewable: false,
+        is_trackable: false,
+        prescription_source: 'VA',
+        source_ehr: 'OH',
+        disp_status: 'Active'
+      }.merge(attrs)
+    )
+  end
 
   before do
     sign_in_as(current_user)
@@ -278,6 +298,121 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
 
           expect(response).to have_http_status(:ok)
           expect(response.parsed_body['data']['attributes']['failed_prescription_ids'].length).to eq(3)
+        end
+      end
+
+      context 'duplicate refill suppression' do
+        let(:mock_service) { instance_double(UnifiedHealthData::Service) }
+        let(:cache_store) { ActiveSupport::Cache::MemoryStore.new }
+
+        before do
+          allow(Rails).to receive(:cache).and_return(cache_store)
+          allow(UnifiedHealthData::Service).to receive(:new).and_return(mock_service)
+          allow(mock_service).to receive(:get_prescriptions).and_return(
+            {
+              prescriptions: [build_prescription],
+              metadata: { has_failed_stations: false }
+            }
+          )
+        end
+
+        it 'blocks immediate duplicate refill submission for the same order' do
+          allow(mock_service).to receive(:refill_prescription).and_return(
+            {
+              success: [{ id: '15220389459', status: 'submitted', station_number: '556' }],
+              failed: []
+            }
+          )
+
+          request_body = [{ stationNumber: '556', id: '15220389459' }].to_json
+
+          post(refill_path, params: request_body, headers:)
+          expect(response).to have_http_status(:ok)
+
+          post(refill_path, params: request_body, headers:)
+          expect(response).to have_http_status(:ok)
+
+          attrs = response.parsed_body.dig('data', 'attributes')
+          expect(attrs['failed_prescription_ids']).to eq(['15220389459'])
+          expect(attrs['errors']).to include(
+            include(
+              'prescription_id' => '15220389459',
+              'station_number' => '556',
+              'developer_message' => MHV::Prescriptions::RefillRequestTracker::DUPLICATE_REFILL_ERROR
+            )
+          )
+          expect(mock_service).to have_received(:refill_prescription).once
+        end
+
+        it 'marks submitted prescriptions in-progress and excludes them from refillable list' do
+          allow(mock_service).to receive(:refill_prescription).and_return(
+            {
+              success: [{ id: '15220389459', status: 'submitted', station_number: '556' }],
+              failed: []
+            }
+          )
+          allow(mock_service).to receive(:get_prescriptions) do
+            {
+              prescriptions: [build_prescription],
+              metadata: { has_failed_stations: false }
+            }
+          end
+
+          post(
+            refill_path,
+            params: [{ stationNumber: '556', id: '15220389459' }].to_json,
+            headers:
+          )
+
+          get('/my_health/v2/prescriptions', headers:)
+          expect(response).to have_http_status(:ok)
+
+          attributes = response.parsed_body.dig('data', 0, 'attributes')
+          expect(attributes['is_refillable']).to be(false)
+          expect(attributes['refill_remaining']).to eq(2)
+          expect(attributes['disp_status']).to be_in(['Active: Submitted', 'In progress'])
+
+          get(
+            '/my_health/v2/prescriptions/list_refillable_prescriptions',
+            headers:
+          )
+          expect(response).to have_http_status(:ok)
+          expect(response.parsed_body['data']).to eq([])
+        end
+
+        it 'retains claims when service returns generic service unavailable failures for all orders' do
+          allow(mock_service).to receive(:refill_prescription).and_return(
+            {
+              success: [],
+              failed: [{ id: '15220389459', error: 'Service unavailable', station_number: '556' }]
+            }
+          )
+
+          request_body = [{ stationNumber: '556', id: '15220389459' }].to_json
+
+          post(refill_path, params: request_body, headers:)
+          expect(response).to have_http_status(:ok)
+
+          post(refill_path, params: request_body, headers:)
+          expect(response).to have_http_status(:ok)
+
+          attrs = response.parsed_body.dig('data', 'attributes')
+          expect(attrs['errors']).to include(
+            include('developer_message' => MHV::Prescriptions::RefillRequestTracker::DUPLICATE_REFILL_ERROR)
+          )
+          expect(mock_service).to have_received(:refill_prescription).once
+        end
+
+        it 'releases claims when upstream raises so immediate retry is allowed' do
+          error = Common::Exceptions::BackendServiceException.new('VA900', {}, 500, 'upstream failure')
+          allow(mock_service).to receive(:refill_prescription).and_raise(error)
+
+          request_body = [{ stationNumber: '556', id: '15220389459' }].to_json
+
+          post(refill_path, params: request_body, headers:)
+          post(refill_path, params: request_body, headers:)
+
+          expect(mock_service).to have_received(:refill_prescription).twice
         end
       end
 

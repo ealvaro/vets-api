@@ -3,6 +3,7 @@
 require 'unified_health_data/service'
 require 'unified_health_data/serializers/prescriptions_refills_serializer'
 require 'mhv/prescriptions/oh_transition_refill_filter'
+require 'mhv/prescriptions/refill_request_tracker'
 require 'securerandom'
 require 'unique_user_events'
 require 'vets/collection'
@@ -39,29 +40,21 @@ module MyHealth
         parsed_orders = orders
         track_refills_requested_by_station(parsed_orders)
         allowed_orders, blocked_failures = oh_transition_filter.partition_orders(parsed_orders)
+        claimed_orders, duplicate_failures = refill_request_tracker.claim_orders(allowed_orders)
 
-        # Only call upstream service if there are non-blocked orders
-        api_result = if allowed_orders.present?
-                       service.refill_prescription(allowed_orders)
-                     else
-                       { success: [], failed: [] }
-                     end
+        begin
+          # Only call upstream service if there are non-blocked and non-duplicate orders
+          api_result = refill_api_result(claimed_orders)
+          release_failed_claims_for(api_result, claimed_orders)
+        rescue Common::Exceptions::BackendServiceException
+          # Upstream failed before returning a structured refill result, so release claims to allow retry.
+          release_failed_claims(claimed_orders)
+          raise
+        end
 
         increment_uhd_refill(api_result[:success].size) if api_result[:success].present?
-
-        merged_result = MHV::Prescriptions::OhTransitionRefillFilter.merge_results(api_result, blocked_failures)
-        response = UnifiedHealthData::Serializers::PrescriptionsRefillsSerializer.new(SecureRandom.uuid, merged_result)
-
-        # Log unique user event for prescription refill requested
-        # Also logs OH-specific events if any facility IDs match tracked OH facilities
-        event_facility_ids = parsed_orders.map { |order| order['stationNumber'] }.compact.uniq
-        UniqueUserEvents.log_event(
-          user: @current_user,
-          event_name: UniqueUserEvents::EventRegistry::PRESCRIPTIONS_REFILL_REQUESTED,
-          event_facility_ids:
-        )
-
-        render json: response.serializable_hash
+        render_refill_response(api_result, duplicate_failures, blocked_failures)
+        log_refill_requested_event(parsed_orders)
       end
 
       # This index action supports various parameters described below, all are optional
@@ -74,7 +67,7 @@ module MyHealth
         return unless validate_feature_flag
 
         result = service.get_prescriptions(current_only: false)
-        prescriptions = result[:prescriptions].compact
+        prescriptions = apply_recent_submission_overrides(result[:prescriptions].compact)
         source_metadata = result[:metadata]
 
         recently_requested = get_recently_requested_prescriptions(prescriptions)
@@ -100,7 +93,9 @@ module MyHealth
 
         raise Common::Exceptions::ParameterMissing, 'station_number' if params[:station_number].blank?
 
-        prescriptions = service.get_prescriptions(current_only: false)[:prescriptions].compact
+        prescriptions = apply_recent_submission_overrides(
+          service.get_prescriptions(current_only: false)[:prescriptions].compact
+        )
         prescription = prescriptions.find do |p|
           p.prescription_id.to_s == params[:id].to_s &&
             p.station_number.to_s == params[:station_number].to_s
@@ -116,7 +111,9 @@ module MyHealth
       def list_refillable_prescriptions
         return unless validate_feature_flag
 
-        prescriptions = service.get_prescriptions(current_only: false)[:prescriptions].compact
+        prescriptions = apply_recent_submission_overrides(
+          service.get_prescriptions(current_only: false)[:prescriptions].compact
+        )
         recently_requested = get_recently_requested_prescriptions(prescriptions)
         refillable_prescriptions = filter_data_by_refill_and_renew(prescriptions)
 
@@ -147,6 +144,10 @@ module MyHealth
         @oh_transition_filter ||= MHV::Prescriptions::OhTransitionRefillFilter.new(
           @current_user, source_app: request.env['SOURCE_APP']
         )
+      end
+
+      def refill_request_tracker
+        @refill_request_tracker ||= MHV::Prescriptions::RefillRequestTracker.new(@current_user)
       end
 
       def validate_feature_flag
@@ -365,6 +366,66 @@ module MyHealth
 
       def v2_status_mapping_enabled?
         Flipper.enabled?(:mhv_medications_v2_status_mapping, @current_user)
+      end
+
+      def in_progress_display_status
+        v2_status_mapping_enabled? ? IN_PROGRESS_STATUSES_V2.first : IN_PROGRESS_STATUSES_V1.last
+      end
+
+      def apply_recent_submission_overrides(prescriptions)
+        refill_request_tracker.apply_submitted_state!(
+          prescriptions,
+          in_progress_status: in_progress_display_status
+        )
+        prescriptions
+      end
+
+      def refill_api_result(claimed_orders)
+        return { success: [], failed: [] } if claimed_orders.blank?
+
+        service.refill_prescription(claimed_orders)
+      end
+
+      def release_failed_claims_for(api_result, claimed_orders)
+        return if retain_claims_after_service_response?(api_result, claimed_orders)
+
+        release_failed_claims(api_result[:failed])
+      end
+
+      def release_failed_claims(failed_orders)
+        refill_request_tracker.release_orders(failed_orders)
+      end
+
+      def render_refill_response(api_result, duplicate_failures, blocked_failures)
+        merged_result = MHV::Prescriptions::OhTransitionRefillFilter.merge_results(api_result, duplicate_failures)
+        merged_result = MHV::Prescriptions::OhTransitionRefillFilter.merge_results(merged_result, blocked_failures)
+        response = UnifiedHealthData::Serializers::PrescriptionsRefillsSerializer.new(SecureRandom.uuid, merged_result)
+
+        render json: response.serializable_hash
+      end
+
+      def log_refill_requested_event(parsed_orders)
+        # Also logs OH-specific events if any facility IDs match tracked OH facilities.
+        event_facility_ids = parsed_orders.map { |order| order['stationNumber'] }.compact.uniq
+        UniqueUserEvents.log_event(
+          user: @current_user,
+          event_name: UniqueUserEvents::EventRegistry::PRESCRIPTIONS_REFILL_REQUESTED,
+          event_facility_ids:
+        )
+      end
+
+      # Keep claims when the entire request failed with generic service-unavailable errors.
+      # In that scenario we cannot safely infer whether upstream accepted any orders.
+      def retain_claims_after_service_response?(api_result, claimed_orders)
+        successes = Array(api_result[:success])
+        failures = Array(api_result[:failed])
+
+        return false unless successes.empty?
+        return false unless claimed_orders.present? && failures.length == claimed_orders.length
+
+        failures.all? do |failure|
+          failure[:error].to_s == MHV::Prescriptions::RefillRequestTracker::SERVICE_UNAVAILABLE_ERROR
+        end
       end
 
       def remove_pf_pd(data)
