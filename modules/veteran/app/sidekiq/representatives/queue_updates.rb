@@ -8,6 +8,10 @@ module Representatives
     include Sidekiq::Job
     include GCLAWSXlsxDownloader
 
+    # Keep retries low — this job runs daily and Sidekiq's exponential backoff with 10 retries
+    # could stretch ~21 hours, risking overlap with the next day's scheduled run.
+    sidekiq_options retry: 3
+
     SLICE_SIZE = 30
 
     attr_accessor :rows, :slices, :slack_messages
@@ -25,6 +29,7 @@ module Representatives
       end
     rescue => e
       log_error("Error in file fetching process: #{e.message}")
+      raise
     ensure
       if @slack_messages.any? # Only report if we have errors
         @slack_messages.unshift("Processed #{@rows} rows in #{@slices} slices")

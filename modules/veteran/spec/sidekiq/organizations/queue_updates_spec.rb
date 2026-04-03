@@ -54,8 +54,8 @@ RSpec.describe Organizations::QueueUpdates, type: :job do
           .and_yield({ success: false, error: 'timeout', status: :request_timeout })
       end
 
-      it 'does not process the file or queue updates' do
-        expect { subject.perform }.not_to raise_error
+      it 'raises so Sidekiq can retry and does not queue updates' do
+        expect { subject.perform }.to raise_error(StandardError, /GCLAWS download failed/)
         expect(Organizations::Update.jobs).to be_empty
       end
     end
@@ -67,8 +67,8 @@ RSpec.describe Organizations::QueueUpdates, type: :job do
         allow_any_instance_of(described_class).to receive(:log_error)
       end
 
-      it 'logs the error' do
-        expect { subject.perform }.not_to raise_error
+      it 'logs the error and re-raises for Sidekiq retry' do
+        expect { subject.perform }.to raise_error(StandardError, 'test error')
         expect(subject).to have_received(:log_error).with('Error in file fetching process: test error') # rubocop:disable RSpec/SubjectStub
       end
     end

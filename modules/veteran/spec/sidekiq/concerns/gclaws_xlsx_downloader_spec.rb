@@ -59,12 +59,17 @@ RSpec.describe GCLAWSXlsxDownloader do
 
       it 'does not yield to the block' do
         yielded = false
-        instance.with_xlsx_file_content { yielded = true }
+        begin
+          instance.with_xlsx_file_content { yielded = true }
+        rescue RuntimeError
+          # expected
+        end
         expect(yielded).to be false
       end
 
-      it 'logs the error' do
-        instance.with_xlsx_file_content { |_| }
+      it 'logs the error and raises for Sidekiq retry' do
+        expect { instance.with_xlsx_file_content { |_| } }
+          .to raise_error(StandardError, /GCLAWS download failed: timeout/)
         expect(instance.errors).to include('GCLAWS download failed: timeout (status: request_timeout)')
       end
     end
