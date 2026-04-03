@@ -26,6 +26,14 @@ RSpec.describe LighthouseRatedDisabilitiesProvider do
     end
   end
 
+  it 'returns an empty list when individual_ratings is nil' do
+    allow_any_instance_of(VeteranVerification::Service).to receive(:get_rated_disabilities).and_return(
+      { 'data' => { 'attributes' => { 'individual_ratings' => nil } } }
+    )
+    response = @provider.get_rated_disabilities('', '')
+    expect(response.rated_disabilities).to eq([])
+  end
+
   it 'returns the proper error through the Timeout class' do
     allow_any_instance_of(Faraday::Connection).to receive(:get).and_raise(Faraday::TimeoutError)
     expect do
