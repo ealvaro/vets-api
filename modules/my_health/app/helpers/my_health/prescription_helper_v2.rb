@@ -122,7 +122,7 @@ module MyHealth
       end
 
       def partition_meds_by_date(records)
-        records.partition { |med| empty_field?(get_sorted_dispensed_date(med)) }.reverse
+        records.partition { |med| empty_field?(get_sorted_dispensed_date(med)) }
       end
 
       def get_sorted_dispensed_date(med)

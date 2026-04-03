@@ -641,5 +641,241 @@ RSpec.describe MyHealth::PrescriptionHelperV2 do
         end
       end
     end
+
+    describe 'sort ordering verification' do
+      # Shared test data covering all sort-relevant dimensions:
+      # - Multiple disp_status values (for default sort grouping)
+      # - Multiple names (for alphabetical + secondary sorts)
+      # - Mix of dated / nil-dated / non-VA (for last-fill-date partitioning)
+      # - Same-name meds with different dates (for within-group date sort)
+      let(:active_zoloft_june) do
+        build_prescription(
+          prescription_name: 'Zoloft', disp_status: 'Active',
+          dispensed_date: Date.new(2024, 6, 1), prescription_source: 'VA'
+        )
+      end
+      let(:active_aspirin_jan) do
+        build_prescription(
+          prescription_name: 'Aspirin', disp_status: 'Active',
+          dispensed_date: Date.new(2024, 1, 15), prescription_source: 'VA'
+        )
+      end
+      let(:active_aspirin_mar) do
+        build_prescription(
+          prescription_name: 'Aspirin', disp_status: 'Active',
+          dispensed_date: Date.new(2024, 3, 10), prescription_source: 'VA'
+        )
+      end
+      let(:active_lisinopril_no_date) do
+        build_prescription(
+          prescription_name: 'Lisinopril', disp_status: 'Active',
+          dispensed_date: nil, prescription_source: 'VA'
+        )
+      end
+      let(:discontinued_metformin_feb) do
+        build_prescription(
+          prescription_name: 'Metformin', disp_status: 'Discontinued',
+          dispensed_date: Date.new(2024, 2, 20), prescription_source: 'VA'
+        )
+      end
+      let(:non_va_fish_oil) do
+        build_prescription(
+          prescription_name: 'Fish Oil', disp_status: 'Active: Non-VA',
+          dispensed_date: nil, prescription_source: 'NV'
+        )
+      end
+      let(:non_va_vitamin_d) do
+        build_prescription(
+          prescription_name: 'Vitamin D', disp_status: 'Active: Non-VA',
+          dispensed_date: nil, prescription_source: 'NV'
+        )
+      end
+
+      let(:all_meds) do
+        [non_va_vitamin_d, active_lisinopril_no_date, active_aspirin_jan,
+         discontinued_metformin_feb, non_va_fish_oil, active_zoloft_june, active_aspirin_mar]
+      end
+
+      describe '#default_sort ordering' do
+        it 'sorts by disp_status ASC, then name ASC (case-insensitive), then date DESC' do
+          resource = build_resource(all_meds.shuffle)
+          result = helper.apply_sorting(resource, nil)
+          tuples = result.records.map { |m| [m.disp_status, m.prescription_name, m.dispensed_date] }
+
+          # Active < Active: Non-VA < Discontinued (string ASC)
+          # Within Active: Aspirin(Mar) Aspirin(Jan) Lisinopril(nil) Zoloft(Jun)
+          #   - Aspirin x2: same name, so date DESC → Mar before Jan
+          #   - Lisinopril follows the Aspirin entries because name ASC is applied before fill date
+          # Within Active: Non-VA: Fish Oil < Vitamin D
+          # Within Discontinued: Metformin
+          expect(tuples).to eq([
+                                 ['Active', 'Aspirin', Date.new(2024, 3, 10)],
+                                 ['Active', 'Aspirin', Date.new(2024, 1, 15)],
+                                 ['Active', 'Lisinopril', nil],
+                                 ['Active', 'Zoloft', Date.new(2024, 6, 1)],
+                                 ['Active: Non-VA', 'Fish Oil', nil],
+                                 ['Active: Non-VA', 'Vitamin D', nil],
+                                 ['Discontinued', 'Metformin', Date.new(2024, 2, 20)]
+                               ])
+        end
+
+        it 'sorts same-name meds by date descending (newest first)' do
+          resource = build_resource([active_aspirin_jan, active_aspirin_mar])
+          result = helper.apply_sorting(resource, nil)
+          dates = result.records.map(&:dispensed_date)
+
+          expect(dates).to eq([Date.new(2024, 3, 10), Date.new(2024, 1, 15)])
+        end
+
+        it 'places nil-date meds before dated meds with the same name and status' do
+          aspirin_no_date = build_prescription(
+            prescription_name: 'Aspirin', disp_status: 'Active',
+            dispensed_date: nil, prescription_source: 'VA'
+          )
+          resource = build_resource([aspirin_no_date, active_aspirin_mar])
+          result = helper.apply_sorting(resource, nil)
+          dates = result.records.map(&:dispensed_date)
+
+          # compare_by_fill_date maps nil to -1, so nil sorts before dated entries
+          expect(dates).to eq([nil, Date.new(2024, 3, 10)])
+        end
+      end
+
+      describe '#last_fill_date_sort ordering' do
+        it 'places filled meds first, VA no-date meds second, non-VA no-date meds last' do
+          resource = build_resource(all_meds.shuffle)
+          result = helper.apply_sorting(resource, 'last-fill-date')
+          tuples = result.records.map { |m| [m.prescription_name, m.dispensed_date] }
+
+          # Filled (date DESC, name ASC): Zoloft(Jun) > Aspirin(Mar) > Metformin(Feb) > Aspirin(Jan)
+          # VA no-date (name ASC): Lisinopril
+          # Non-VA no-date (name ASC): Fish Oil, Vitamin D
+          expect(tuples).to eq([
+                                 ['Zoloft', Date.new(2024, 6, 1)],
+                                 ['Aspirin', Date.new(2024, 3, 10)],
+                                 ['Metformin', Date.new(2024, 2, 20)],
+                                 ['Aspirin', Date.new(2024, 1, 15)],
+                                 ['Lisinopril', nil],
+                                 ['Fish Oil', nil],
+                                 ['Vitamin D', nil]
+                               ])
+        end
+
+        it 'sorts filled meds by date descending with name as tiebreaker' do
+          med_a = build_prescription(
+            prescription_name: 'Atorvastatin', disp_status: 'Active',
+            dispensed_date: Date.new(2024, 5, 1), prescription_source: 'VA'
+          )
+          med_b = build_prescription(
+            prescription_name: 'Buspirone', disp_status: 'Active',
+            dispensed_date: Date.new(2024, 5, 1), prescription_source: 'VA'
+          )
+          resource = build_resource([med_b, med_a])
+          result = helper.apply_sorting(resource, 'last-fill-date')
+          names = result.records.map(&:prescription_name)
+
+          expect(names).to eq(%w[Atorvastatin Buspirone])
+        end
+
+        it 'sorts VA no-date meds alphabetically' do
+          va_z = build_prescription(prescription_name: 'Zolpidem', dispensed_date: nil, prescription_source: 'VA')
+          va_a = build_prescription(prescription_name: 'Amlodipine', dispensed_date: nil, prescription_source: 'VA')
+          resource = build_resource([va_z, va_a])
+          result = helper.apply_sorting(resource, 'last-fill-date')
+
+          expect(result.records.map(&:prescription_name)).to eq(%w[Amlodipine Zolpidem])
+        end
+
+        it 'sorts non-VA no-date meds alphabetically' do
+          nv_z = build_prescription(
+            prescription_name: 'Zinc', dispensed_date: nil,
+            prescription_source: 'NV', disp_status: 'Active: Non-VA'
+          )
+          nv_a = build_prescription(
+            prescription_name: 'Alpha-lipoic acid', dispensed_date: nil,
+            prescription_source: 'NV', disp_status: 'Active: Non-VA'
+          )
+          resource = build_resource([nv_z, nv_a])
+          result = helper.apply_sorting(resource, 'last-fill-date')
+
+          expect(result.records.map(&:prescription_name)).to eq(['Alpha-lipoic acid', 'Zinc'])
+        end
+
+        it 'uses dispenses refill_date over dispensed_date when present' do
+          med_with_dispenses = build_prescription(
+            prescription_name: 'Metoprolol', disp_status: 'Active',
+            dispensed_date: Date.new(2024, 1, 1), prescription_source: 'VA',
+            dispenses: [{ refill_date: Date.new(2024, 7, 15) }]
+          )
+          resource = build_resource([active_zoloft_june, med_with_dispenses])
+          result = helper.apply_sorting(resource, 'last-fill-date')
+
+          # Metoprolol's refill_date (Jul 15) > Zoloft's dispensed_date (Jun 1)
+          expect(result.records.map(&:prescription_name)).to eq(%w[Metoprolol Zoloft])
+        end
+      end
+
+      describe '#alphabetical_sort ordering' do
+        it 'sorts by name ASC (case-insensitive) with date DESC within same name' do
+          resource = build_resource(all_meds.shuffle)
+          result = helper.apply_sorting(resource, 'alphabetical-rx-name')
+          tuples = result.records.map { |m| [m.prescription_name, m.dispensed_date] }
+
+          # Alphabetical (case-insensitive): Aspirin x2, Fish Oil, Lisinopril, Metformin, Vitamin D, Zoloft
+          # Within Aspirin group: date DESC → Mar before Jan
+          expect(tuples).to eq([
+                                 ['Aspirin', Date.new(2024, 3, 10)],
+                                 ['Aspirin', Date.new(2024, 1, 15)],
+                                 ['Fish Oil', nil],
+                                 ['Lisinopril', nil],
+                                 ['Metformin', Date.new(2024, 2, 20)],
+                                 ['Vitamin D', nil],
+                                 ['Zoloft', Date.new(2024, 6, 1)]
+                               ])
+        end
+
+        it 'sorts same-name meds by date descending within group' do
+          resource = build_resource([active_aspirin_jan, active_aspirin_mar])
+          result = helper.apply_sorting(resource, 'alphabetical-rx-name')
+          dates = result.records.map(&:dispensed_date)
+
+          expect(dates).to eq([Date.new(2024, 3, 10), Date.new(2024, 1, 15)])
+        end
+
+        it 'places nil-date meds before dated meds within the same name group' do
+          aspirin_no_date = build_prescription(
+            prescription_name: 'Aspirin', disp_status: 'Active',
+            dispensed_date: nil, prescription_source: 'VA'
+          )
+          resource = build_resource([active_aspirin_mar, aspirin_no_date, active_aspirin_jan])
+          result = helper.apply_sorting(resource, 'alphabetical-rx-name')
+          dates = result.records.map(&:dispensed_date)
+
+          # sort_meds_by_date_within_group: empty_dates first, then with_dates (date DESC)
+          expect(dates).to eq([nil, Date.new(2024, 3, 10), Date.new(2024, 1, 15)])
+        end
+
+        it 'uses orderable_item for Non-VA meds with nil prescription_name' do
+          nv_doc = build_prescription(
+            prescription_name: nil, disp_status: 'Active: Non-VA',
+            dispensed_date: nil, prescription_source: 'NV', orderable_item: 'DOCUSATE'
+          )
+          nv_asp = build_prescription(
+            prescription_name: nil, disp_status: 'Active: Non-VA',
+            dispensed_date: nil, prescription_source: 'NV', orderable_item: 'aspirin'
+          )
+          va_med = build_prescription(
+            prescription_name: 'Buspirone', disp_status: 'Active',
+            dispensed_date: Date.new(2024, 1, 1), prescription_source: 'VA'
+          )
+          resource = build_resource([nv_doc, va_med, nv_asp])
+          result = helper.apply_sorting(resource, 'alphabetical-rx-name')
+
+          # aspirin (orderable_item) < Buspirone (prescription_name) < DOCUSATE (orderable_item)
+          expect(result.records.map { |m| m.prescription_name || m.orderable_item })
+            .to eq(%w[aspirin Buspirone DOCUSATE])
+        end
+      end
+    end
   end
 end
