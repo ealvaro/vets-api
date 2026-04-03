@@ -1700,6 +1700,10 @@ features:
   mhv_secure_messaging_cerner_pilot_system_maintenance_banner:
     actor_type: user
     description: Enables/disables system maintenance banner for Secure Messaging Oracle Health Transition on VA.gov
+  mhv_secure_messaging_ehr_crosswalk:
+    actor_type: user
+    description: Enables/disables the EHR transition crosswalk banner showing VistA to Oracle Health triage group name mappings
+    enable_in_development: false
   mhv_secure_messaging_filter_accordion:
     actor_type: user
     description: Enables/disables Secure Messaging Filter Accordion re-design updates on VA.gov
