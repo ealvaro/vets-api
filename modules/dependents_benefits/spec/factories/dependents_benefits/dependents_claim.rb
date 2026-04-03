@@ -1,7 +1,145 @@
 # frozen_string_literal: true
 
 FactoryBot.define do
+  factory :dependents_claim_combined_form, class: Hash do
+    initialize_with do
+      {
+        'veteran_information' => {
+          'birth_date' => '1980-01-01',
+          'full_name' => {
+            'first' => 'Mark',
+            'last' => 'Webb'
+          },
+          'ssn' => '000000000',
+          'va_file_number' => '000000000'
+        },
+        'statement_of_truth_signature' => 'Mark Webb',
+        'statement_of_truth_certified' => true,
+        'view:selectable686_options' => {
+          'add_spouse' => true,
+          'add_child' => true,
+          'report674' => true
+        },
+        'dependents_application' => {
+          'veteran_contact_information' => {
+            'phone_number' => '1112223333',
+            'international_phone_number' => '1234567890123',
+            'email_address' => 'vets.gov.user+228@gmail.com',
+            'electronic_correspondence' => true,
+            'veteran_address' => {
+              'country' => 'USA',
+              'street' => '123 Fake Street',
+              'city' => 'Portland',
+              'state' => 'ME',
+              'postal_code' => '04102'
+            }
+          },
+          'household_income' => true,
+          'spouse_information' => {
+            'ssn' => '987654321',
+            'birth_date' => '1980-01-01',
+            'is_veteran' => false,
+            'full_name' => {
+              'first' => 'Firstname',
+              'last' => 'Lastname'
+            }
+          },
+          'current_marriage_information' => {
+            'type_of_marriage' => 'CEREMONIAL',
+            'location' => {
+              'city' => 'Washington',
+              'state' => 'DC'
+            },
+            'date' => '2024-01-04'
+          },
+          'does_live_with_spouse' => {
+            'spouse_income' => 'Y',
+            'spouse_does_live_with_veteran' => true
+          },
+          'view:selectable686_options' => {
+            'report674' => true
+          },
+          'student_information' => [
+            {
+              'student_networth_information' => {
+                'savings' => '1.00',
+                'securities' => '10000.00',
+                'real_estate' => '1000.00',
+                'other_assets' => '100000.09',
+                'total_value' => '1000000.00'
+              },
+              'student_expected_earnings_next_year' => {
+                'earnings_from_all_employment' => '100.99',
+                'annual_social_security_payments' => '1000.00',
+                'other_annuities_income' => '10.00',
+                'all_other_income' => '1.00'
+              },
+              'student_earnings_from_school_year' => {
+                'earnings_from_all_employment' => '0.99',
+                'annual_social_security_payments' => '100.00',
+                'other_annuities_income' => '100.00',
+                'all_other_income' => '11100.00'
+              },
+              'school_information' => {
+                'isSchoolAccredited' => true,
+                'student_is_enrolled_full_time' => false,
+                'date_full_time_ended' => '2024-05-05',
+                'student_did_attend_school_last_term' => false,
+                'current_term_dates' => {
+                  'official_school_start_date' => '2024-09-25',
+                  'expected_student_start_date' => '2024-09-12',
+                  'expected_graduation_date' => '2028-05-18'
+                },
+                'last_term_school_information' => {
+                  'term_begin' => '2025-01-12',
+                  'date_term_ended' => '2025-05-22'
+                },
+                'name' => 'Name of School'
+              },
+              'was_married' => true,
+              'marriage_date' => '2023-07-04',
+              'view:program_examples' => {},
+              'address' => {
+                'view:military_base_description' => {},
+                'country' => 'USA',
+                'street' => '123 Fake St',
+                'city' => 'Fakesville',
+                'state' => 'AL',
+                'postal_code' => '12345'
+              },
+              'student_income' => 'N',
+              'no_ssn' => true,
+              'no_ssn_reason' => 'Nonresident Alien',
+              'claims_or_receives_pension' => false,
+              'other_program_or_benefit' => '',
+              'is_parent' => false,
+              'full_name' => {
+                'first' => 'Student',
+                'middle' => '',
+                'last' => 'Doe'
+              },
+              'birth_date' => '2001-04-12',
+              'tuition_is_paid_by_gov_agency' => true,
+              'benefit_payment_date' => '2001-06-19',
+              'type_of_program_or_benefit' => {
+                'ch35' => true,
+                'fry' => true,
+                'feca' => false,
+                'other' => false
+              },
+              'ssn' => '000000000'
+            }
+          ],
+          'days_till_expires' => 365,
+          'privacy_agreement_accepted' => true
+        }
+      }
+    end
+  end
+
   factory :dependents_claim, class: 'DependentsBenefits::PrimaryDependencyClaim' do
+    to_create { |instance| instance.save!(validate: false) }
+
     form_id { '686C-674-V2' }
 
     form do
@@ -496,6 +634,8 @@ FactoryBot.define do
   end
 
   factory :student_claim, class: 'DependentsBenefits::SchoolAttendanceApproval' do
+    to_create { |instance| instance.save!(validate: false) }
+
     form_id { '21-674' }
 
     form do
@@ -619,6 +759,8 @@ FactoryBot.define do
   end
 
   factory :add_remove_dependents_claim, class: 'DependentsBenefits::AddRemoveDependent' do
+    to_create { |instance| instance.save!(validate: false) }
+
     form_id { '21-686C' }
 
     form do

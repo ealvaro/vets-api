@@ -1006,10 +1006,16 @@ FactoryBot.define do
           'children_to_add' => [{
             'income_in_last_year' => 'N',
             'marriage_end_date' => '2024-06-01',
-            'marriage_end_reason' => 'annulment',
+            'marriage_end_reason' => 'Annulment',
             'marriage_end_description' => 'description of annulment',
             'does_child_live_with_you' => true,
             'has_child_ever_been_married' => true,
+            'does_child_have_disability' => false,
+            'is_biological_child_of_spouse' => false,
+            'date_entered_household' => '2005-01-01',
+            'biological_parent_name' => { 'first' => 'bio', 'middle' => 'logical', 'last' => 'parent' },
+            'biological_parent_ssn' => '123456789',
+            'biological_parent_dob' => '1980-01-01',
             'birth_location' => { 'location' => { 'state' => 'NH', 'city' => 'Concord', 'postal_code' => '03301' } },
             'ssn' => '987654321',
             'full_name' => { 'first' => 'first', 'middle' => 'middle', 'last' => 'child' },
@@ -1135,7 +1141,7 @@ FactoryBot.define do
             'full_name' => {
               'first' => 'Wesley',
               'last' => 'Ford',
-              'middle' => nil
+              'middle' => ''
             },
             'ssn' => '987654321',
             'va_file_number' => '987654321'

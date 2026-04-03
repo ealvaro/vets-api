@@ -318,7 +318,10 @@ class SavedClaim::DependencyClaim < CentralMailClaim
   end
 
   def validate_form(schema)
-    camelized_data = deep_camelize_keys(parsed_form)
+    form_data = parsed_form.deep_dup
+    dependents_application = form_data.delete('dependents_application') || {}
+    flattened_form = form_data.merge(dependents_application)
+    camelized_data = deep_camelize_keys(flattened_form)
 
     errors = JSONSchemer.schema(schema).validate(camelized_data).to_a
     return [] if errors.empty?

@@ -49,12 +49,7 @@ RSpec.shared_examples 'a form filler' do |options|
             VetsJsonSchema::EXAMPLES.fetch(schema)
           end
 
-          let(:saved_claim) do
-            claim = create(factory)
-            claim.update(form: form_data.to_json)
-            # refresh claim to reset instance methods like parsed_form
-            SavedClaim.find(claim.id)
-          end
+          let(:saved_claim) { create(factory, form: form_data.to_json) }
 
           before do
             allow(Flipper).to receive(:enabled?).with(anything).and_call_original

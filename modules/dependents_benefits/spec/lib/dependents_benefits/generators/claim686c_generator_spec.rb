@@ -9,7 +9,9 @@ RSpec.describe DependentsBenefits::Generators::Claim686cGenerator, type: :model 
     allow_any_instance_of(SavedClaim).to receive(:pdf_overflow_tracking)
   end
 
-  let(:parent_claim) { create(:dependents_claim) }
+  let(:combined_form_data) { build(:dependents_claim_combined_form) }
+
+  let(:parent_claim) { create(:dependents_claim, form: combined_form_data.to_json) }
   let(:form_data) { parent_claim.parsed_form }
   let(:parent_id) { parent_claim.id }
   let(:generator) { described_class.new(form_data, parent_id) }

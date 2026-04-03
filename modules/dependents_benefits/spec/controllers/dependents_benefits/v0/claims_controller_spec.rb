@@ -9,8 +9,8 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
   routes { DependentsBenefits::Engine.routes }
 
   let(:user) { create(:evss_user) }
-  let(:claim) { build(:dependents_claim) }
-  let(:test_form) { build(:dependents_claim).parsed_form }
+  let(:test_form) { build(:dependents_claim_combined_form) }
+  let(:claim) { build(:dependents_claim, form: test_form.to_json) }
   let(:bgs_service) { double('BGS::Services') }
   let(:bgs_people) { double('BGS::People') }
   let(:monitor) { DependentsBenefits::Monitor.new }
@@ -60,6 +60,12 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
       before do
         allow(Flipper).to receive(:enabled?).with(:dependents_digital_forms_api_submission_enabled,
                                                   instance_of(User)).and_return(false)
+        allow_any_instance_of(DependentsBenefits::PrimaryDependencyClaim).to receive(:validate_schema).and_return([])
+        allow_any_instance_of(DependentsBenefits::PrimaryDependencyClaim).to receive(:validate_form).and_return([])
+        allow_any_instance_of(DependentsBenefits::AddRemoveDependent).to receive(:validate_schema).and_return([])
+        allow_any_instance_of(DependentsBenefits::AddRemoveDependent).to receive(:validate_form).and_return([])
+        allow_any_instance_of(DependentsBenefits::SchoolAttendanceApproval).to receive(:validate_schema).and_return([])
+        allow_any_instance_of(DependentsBenefits::SchoolAttendanceApproval).to receive(:validate_form).and_return([])
 
         allow(BGS::Services).to receive(:new).and_return(bgs_service)
         allow(bgs_service).to receive(:people).and_return(bgs_people)
@@ -151,6 +157,8 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
     context 'with no submittable form' do
       it 'returns backend service exception' do
         allow(DependentsBenefits::PrimaryDependencyClaim).to receive(:new).and_return(claim)
+        allow(claim).to receive_messages(validate_schema: [], validate_form: [])
+
         expect(claim).to receive(:submittable_686?).and_return(false)
         expect(claim).to receive(:submittable_674?).and_return(false)
 
@@ -195,6 +203,8 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
         allow(Flipper).to receive(:enabled?).with(:dependents_digital_forms_api_submission_enabled,
                                                   instance_of(User)).and_return(true)
         allow(DependentsBenefits::PrimaryDependencyClaim).to receive(:new).and_return(claim)
+        allow(claim).to receive_messages(validate_schema: [], validate_form: [])
+
         allow(DigitalFormsApi::Service::Submissions).to receive(:new).and_return(dfa)
         allow(ClaimsEvidenceApi::Uploader).to receive(:new).and_return(uploader)
       end

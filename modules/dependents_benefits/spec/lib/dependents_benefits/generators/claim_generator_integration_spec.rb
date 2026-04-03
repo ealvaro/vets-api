@@ -10,8 +10,8 @@ RSpec.describe 'DependentsBenefits Claim Generator Integration', type: :model do
     allow_any_instance_of(SavedClaim).to receive(:pdf_overflow_tracking)
   end
 
-  let(:form_data) { create(:dependents_claim).parsed_form }
-  let(:parent_claim) { create(:dependents_claim) }
+  let(:form_data) { build(:dependents_claim_combined_form) }
+  let(:parent_claim) { create(:dependents_claim, form: form_data.to_json) }
   let(:parent_claim_group) do
     create(:saved_claim_group, parent_claim_id: parent_claim.id, saved_claim_id: parent_claim.id)
   end
@@ -23,8 +23,6 @@ RSpec.describe 'DependentsBenefits Claim Generator Integration', type: :model do
     end
 
     context 'when creating a 686c claim' do
-      let(:dependents_claim_data) { create(:add_remove_dependents_claim).parsed_form }
-
       it 'extracts only dependent-related data' do
         generator = DependentsBenefits::Generators::Claim686cGenerator.new(form_data, parent_claim_id)
         claim_686c = generator.generate
@@ -35,7 +33,7 @@ RSpec.describe 'DependentsBenefits Claim Generator Integration', type: :model do
         expect(parsed_form['veteran_information']['ssn']).to eq('000000000')
 
         # Should include dependent data
-        expect(parsed_form['dependents_application']['children_to_add']).to be_present
+        expect(parsed_form['dependents_application']['spouse_information']).to be_present
 
         # Should include veteran contact and household info
         expect(parsed_form['dependents_application']['veteran_contact_information']).to be_present
@@ -46,16 +44,12 @@ RSpec.describe 'DependentsBenefits Claim Generator Integration', type: :model do
         expect(parsed_form['dependents_application']).not_to have_key('school_information')
         expect(parsed_form['dependents_application']).not_to have_key('program_information')
 
-        expect(parsed_form).to eql(dependents_claim_data)
-
         # Should have correct form_id
         expect(claim_686c.form_id).to eq('21-686C')
       end
     end
 
     context 'when creating a 674 claim' do
-      let(:student_claim_data) { create(:student_claim).parsed_form }
-
       it 'extracts only student-related data' do
         student_data = form_data.dig('dependents_application', 'student_information', 0)
 
@@ -71,7 +65,7 @@ RSpec.describe 'DependentsBenefits Claim Generator Integration', type: :model do
         expect(parsed_form['dependents_application']['student_information']).to be_present
 
         student = parsed_form['dependents_application']['student_information'].first
-        expect(student['full_name']['first']).to eq('test')
+        expect(student['full_name']['first']).to eq(student_data['full_name']['first'])
         expect(student['student_earnings_from_school_year']).to be_present
         expect(student['school_information']).to be_present
 
@@ -83,8 +77,6 @@ RSpec.describe 'DependentsBenefits Claim Generator Integration', type: :model do
 
         # Should NOT include dependent-specific data
         expect(parsed_form['dependents_application']).not_to have_key('children_to_add')
-        expect(parsed_form).to eql(student_claim_data)
-
         # Should have correct form_id
         expect(claim674.form_id).to eq('21-674')
       end

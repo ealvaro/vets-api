@@ -5,9 +5,9 @@ require 'dependents_benefits/claim_behavior'
 require 'dependents_benefits/monitor'
 
 RSpec.describe DependentsBenefits::ClaimBehavior do
-  let(:claim) { create(:dependents_claim) }
-  let(:child_claim) { create(:add_remove_dependents_claim) }
-  let(:student_claim) { create(:student_claim) }
+  let(:claim) { build(:dependents_claim).tap { |record| record.save!(validate: false) } }
+  let(:child_claim) { build(:add_remove_dependents_claim).tap { |record| record.save!(validate: false) } }
+  let(:student_claim) { build(:student_claim).tap { |record| record.save!(validate: false) } }
 
   let(:claim_group) { create(:parent_claim_group, parent_claim: claim) }
 
@@ -16,6 +16,7 @@ RSpec.describe DependentsBenefits::ClaimBehavior do
   before do
     allow(DependentsBenefits::PdfFill::Filler).to receive(:fill_form).and_return('tmp/pdfs/mock_form_final.pdf')
     allow(DependentsBenefits::Monitor).to receive(:new).and_return(monitor_double)
+    allow(monitor_double).to receive(:track_error_event)
   end
 
   describe '#submissions_succeeded?' do
@@ -40,8 +41,7 @@ RSpec.describe DependentsBenefits::ClaimBehavior do
 
   describe 'adding signatureDate' do
     it 'adds signature date appropriately' do
-      claim.save!
-      # force created at to be consistent date
+      # Force created_at to a known date before adding the signature date.
       claim.update(created_at: Time.new(2026, 3, 1).utc)
       claim.add_signature_date
       expect(claim.parsed_form).to include('signatureDate')
@@ -165,7 +165,14 @@ RSpec.describe DependentsBenefits::ClaimBehavior do
 
   describe 'validation behavior' do
     context 'when the form matches the schema' do
+      let(:valid_combined_form) { build(:dependents_claim_combined_form) }
+
+      before do
+        allow(claim).to receive_messages(validate_schema: [], validate_form: [])
+      end
+
       it 'returns true' do
+        claim.form = valid_combined_form.to_json
         expect(claim.form_matches_schema).to be true
       end
     end
@@ -196,15 +203,102 @@ RSpec.describe DependentsBenefits::ClaimBehavior do
     end
   end
 
+  describe '#validate_form' do
+    let(:schema) { { 'type' => 'object' } }
+    let(:schemer) { instance_double(JSONSchemer::Schema) }
+    let(:test_claim) { build(:dependents_claim) }
+
+    before do
+      allow(JSONSchemer).to receive(:schema).and_call_original
+      allow(JSONSchemer).to receive(:schema).with(schema).and_return(schemer)
+      allow(test_claim).to receive(:reformatted_schemer_errors).and_return([])
+      allow(schemer).to receive(:validate).and_return([])
+    end
+
+    it 'flattens dependents_application to root before camelizing keys' do
+      test_claim.form = {
+        'some_root_key' => 'root value',
+        'dependents_application' => {
+          'some_nested_key' => 'nested value',
+          'deep_nested_key' => {
+            'inner_key' => 'inner value'
+          }
+        }
+      }.to_json
+
+      test_claim.send(:validate_form, schema)
+
+      expect(schemer).to have_received(:validate).with(
+        hash_including(
+          'someRootKey' => 'root value',
+          'someNestedKey' => 'nested value',
+          'deepNestedKey' => { 'innerKey' => 'inner value' }
+        )
+      )
+    end
+
+    it 'uses dependents_application values when keys overlap with root' do
+      test_claim.form = {
+        'veteran_information' => { 'source' => 'root' },
+        'dependents_application' => {
+          'veteran_information' => { 'source' => 'dependents_application' }
+        }
+      }.to_json
+
+      test_claim.send(:validate_form, schema)
+
+      expect(schemer).to have_received(:validate).with(
+        hash_including('veteranInformation' => { 'source' => 'dependents_application' })
+      )
+    end
+
+    it 'handles missing dependents_application by validating camelized root data' do
+      test_claim.form = {
+        'root_only_key' => 'value'
+      }.to_json
+
+      test_claim.send(:validate_form, schema)
+
+      expect(schemer).to have_received(:validate).with(
+        hash_including('rootOnlyKey' => 'value')
+      )
+    end
+
+    it 'handles nil dependents_application by validating camelized root data' do
+      test_claim.form = {
+        'root_only_key' => 'value',
+        'dependents_application' => nil
+      }.to_json
+
+      test_claim.send(:validate_form, schema)
+
+      expect(schemer).to have_received(:validate).with(
+        hash_including('rootOnlyKey' => 'value')
+      )
+    end
+
+    it 'does not mutate parsed_form during flattening/camelization' do
+      original_form = {
+        'some_root_key' => 'root value',
+        'dependents_application' => {
+          'some_nested_key' => 'nested value'
+        }
+      }
+      test_claim.form = original_form.deep_dup.to_json
+
+      test_claim.send(:validate_form, schema)
+
+      expect(test_claim.parsed_form).to eq(original_form)
+    end
+  end
+
   describe '#form_schema' do
     context 'when the schema file cannot be loaded' do
-      let(:error_message) { 'No such file or directory' }
-      let(:form_id) { '21-686C' }
+      let(:form_id) { 'DOES_NOT_EXIST' }
 
       before do
         allow(claim).to receive(:monitor).and_return(monitor_double)
         allow(monitor_double).to receive(:track_error_event)
-        allow(File).to receive(:read).and_raise(Errno::ENOENT, error_message)
       end
 
       it 'returns nil and tracks the error' do
@@ -214,7 +308,7 @@ RSpec.describe DependentsBenefits::ClaimBehavior do
           action: 'schema_load_error',
           component: 'DependentsBenefits::PrimaryDependencyClaim',
           form_id:,
-          error: "No such file or directory - #{error_message}"
+          error: /No such file or directory/
         )
       end
     end

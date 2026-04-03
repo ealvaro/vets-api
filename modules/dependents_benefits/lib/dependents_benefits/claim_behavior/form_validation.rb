@@ -13,9 +13,10 @@ module DependentsBenefits
 
       # @see ::SavedClaim#form_schema
       def form_schema(form_id)
-        # Remove V2 tag (handle for backwards compatibility)
-        path = "#{DependentsBenefits::FORM_SCHEMA_BASE}/#{form_id.sub('-V2', '')}.json"
-        MultiJson.load(File.read(path))
+        # we want to normalize the legacy identifier then append version to match what may be in vets-json-schema
+        # TODO: eliminate the appended version number in all places (future)
+        fid = "#{form_id.sub('-V2', '')}-V2"
+        VetsJsonSchema::SCHEMAS[fid] || VetsJsonSchema::SCHEMAS[form_id] || raise(Errno::ENOENT, fid)
       rescue => e
         monitor.track_error_event('Dependents Benefits form schema could not be loaded.',
                                   action: 'schema_load_error', component:, form_id:, error: e.message)
@@ -63,7 +64,10 @@ module DependentsBenefits
       # @param schema [Hash] The JSON schema to validate against
       # @return [Array<Hash>] Array of validation errors, empty if validation succeeds
       def validate_form(schema)
-        camelized_data = deep_camelize_keys(parsed_form)
+        form_data = parsed_form.deep_dup
+        dependents_application = form_data.delete('dependents_application') || {}
+        flattened_form = form_data.merge(dependents_application)
+        camelized_data = deep_camelize_keys(flattened_form)
 
         errors = JSONSchemer.schema(schema).validate(camelized_data).to_a
         return [] if errors.empty?

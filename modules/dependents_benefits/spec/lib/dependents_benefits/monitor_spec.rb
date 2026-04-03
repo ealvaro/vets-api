@@ -347,6 +347,7 @@ RSpec.describe DependentsBenefits::Monitor do
 
         context 'when removal flow flag is on' do
           before do
+            allow(SavedClaim).to receive(:find).with(claim.id).and_return(claim)
             claim.update(form: { 'is_v3_removal_flow' => true }.to_json)
           end
 
@@ -463,6 +464,8 @@ RSpec.describe DependentsBenefits::Monitor do
       before do
         allow(Flipper).to receive(:enabled?).with(:dependents_v3_removal_picklist_logging).and_return(true)
         allow(Flipper).to receive(:enabled?).with(:va_dependents_v3, anything).and_return(true)
+
+        allow(SavedClaim).to receive(:find).with(claim.id).and_return(claim)
         claim.update(form: { 'is_v3_removal_flow' => true }.to_json)
       end
 

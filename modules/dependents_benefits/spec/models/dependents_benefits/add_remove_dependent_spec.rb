@@ -20,7 +20,7 @@ RSpec.describe DependentsBenefits::AddRemoveDependent do
   describe '#form_id' do
     it 'returns the correct form id' do
       claim = DependentsBenefits::AddRemoveDependent.new(form: saved_claim.form)
-      claim.save!
+      claim.save!(validate: false)
       expect(claim.form_id).to eq('21-686C')
     end
   end

@@ -9,7 +9,9 @@ RSpec.describe DependentsBenefits::Generators::Claim674Generator, type: :model d
     allow_any_instance_of(SavedClaim).to receive(:pdf_overflow_tracking)
   end
 
-  let(:parent_claim) { create(:dependents_claim) }
+  let(:combined_form_data) { build(:dependents_claim_combined_form) }
+
+  let(:parent_claim) { create(:dependents_claim, form: combined_form_data.to_json) }
   let(:form_data) { parent_claim.parsed_form }
   let(:student_data) do
     form_data['dependents_application']['student_information'][0]
@@ -41,10 +43,9 @@ RSpec.describe DependentsBenefits::Generators::Claim674Generator, type: :model d
 
       # Verify the student data structure
       student = extracted_data['dependents_application']['student_information'].first
-      expect(student['full_name']['first']).to eq('test')
-      expect(student['full_name']['last']).to eq('student')
-      expect(student['ssn']).to eq('987654321')
-      expect(student['school_information']['name']).to eq('name of trade program')
+      expect(student['full_name']).to eq(student_data['full_name'])
+      expect(student['ssn']).to eq(student_data['ssn'])
+      expect(student['school_information']).to eq(student_data['school_information'])
     end
 
     it 'includes veteran data' do

@@ -269,6 +269,7 @@ RSpec.describe DependentsBenefits::Sidekiq::DependentSubmissionJob, type: :job d
 
         before do
           allow(claim).to receive(:form_id).and_return(DependentsBenefits::ADD_REMOVE_DEPENDENT)
+          allow(claim).to receive(:valid?).with(:run_686_form_jobs).and_return(true)
           allow(job).to receive(:submit_686c_form).with(claim).and_raise(error)
         end
 
