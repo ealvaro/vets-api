@@ -14,8 +14,9 @@ module Crm
                    :e_subscription_key,
                    :s_subscription_key
 
-    def crm_env
+    def self.crm_env
       env = {
+        'localhost' => 'betamocks',
         'test' => 'iris-dev',
         'development' => 'ava-qa',
         'staging' => 'ava-qa',
@@ -41,7 +42,7 @@ module Crm
 
     # Calls the CRM API with given method, endpoint, and optional payload
     def call(endpoint:, method: :get, payload: {})
-      organization = crm_env[vsp_environment]
+      organization = self.class.crm_env[vsp_environment]
 
       uri = build_uri(endpoint, method, organization)
       response = conn(url: base_url).public_send(method, uri, request_body(method, payload, organization)) do |req|

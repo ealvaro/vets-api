@@ -119,6 +119,10 @@ class Rack::Attack
                      Settings.vsp_environment.eql?('production')
   end
 
+  throttle('ask_va_api/diagnostics', limit: 30, period: 1.minute) do |req|
+    req.remote_ip if req.path == '/ask_va_api/v0/diagnostics' && req.get?
+  end
+
   # Multi-Party Forms throttling by IP address
   # Rate limit: 60 requests per minute per IP
   # Applies to all Primary Party and Secondary Party endpoints
