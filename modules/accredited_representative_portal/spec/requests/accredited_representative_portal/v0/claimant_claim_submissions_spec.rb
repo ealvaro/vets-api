@@ -56,7 +56,8 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantClaimSubmissionsContr
     end
 
     before do
-      Flipper.enable :accredited_representative_portal_claimant_details
+      allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_claimant_details)
+                                          .and_return(true)
     end
 
     around do |example|
@@ -187,7 +188,8 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantClaimSubmissionsContr
 
       context 'claimant details feature flag is off' do
         before do
-          Flipper.disable :accredited_representative_portal_claimant_details
+          allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_claimant_details)
+                                              .and_return(false)
         end
 
         it 'returns a 400 error' do

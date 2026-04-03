@@ -8,7 +8,9 @@ Rspec.describe 'DhpConnectedDevices::VeteranDeviceRecords', type: :request do
 
   describe 'veteran_device_record#record' do
     context 'unauthenticated user' do
-      before { Flipper.enable(:dhp_connected_devices_fitbit) }
+      before do
+        allow(Flipper).to receive(:enabled?).with(:dhp_connected_devices_fitbit, instance_of(User)).and_return(true)
+      end
 
       it 'returns unauthenticated error' do
         get '/dhp_connected_devices/veteran-device-records'

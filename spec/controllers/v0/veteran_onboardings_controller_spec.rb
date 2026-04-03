@@ -7,7 +7,7 @@ RSpec.describe V0::VeteranOnboardingsController, type: :controller do
   let(:veteran_onboarding) { create(:veteran_onboarding, user_account: user.user_account) }
 
   before do
-    Flipper.enable(:veteran_onboarding_beta_flow, user)
+    allow(Flipper).to receive(:enabled?).with(:veteran_onboarding_beta_flow, instance_of(User)).and_return(true)
     sign_in_as(user)
   end
 

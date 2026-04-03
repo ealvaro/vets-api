@@ -123,7 +123,7 @@ RSpec.describe Lighthouse::SubmitCareerCounselingJob do
 
   describe 'sidekiq_retries_exhausted block with flipper on' do
     before do
-      Flipper.enable(:form27_8832_action_needed_email)
+      allow(Flipper).to receive(:enabled?).with(:form27_8832_action_needed_email).and_return(true)
       allow(PCPG::Monitor).to receive(:new).and_return(monitor)
       allow(monitor).to receive :track_submission_exhaustion
     end

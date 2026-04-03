@@ -28,9 +28,10 @@ RSpec.describe AccreditedRepresentativePortal::V0::IntentToFileController, type:
   end
 
   before do
-    Flipper.disable :accredited_representative_portal_skip_itf_check
-    Flipper.disable :accredited_representative_portal_itf_confirmation_email
     allow(Flipper).to receive(:enabled?).and_call_original
+    allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_skip_itf_check).and_return(false)
+    allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_itf_confirmation_email)
+                                        .and_return(false)
     allow(Flipper).to receive(:enabled?)
       .with(:accredited_representative_portal_individual_accept)
       .and_return(false)
@@ -76,7 +77,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::IntentToFileController, type:
 
       context 'itf check skipped' do
         it 'returns 404' do
-          Flipper.enable :accredited_representative_portal_skip_itf_check
+          allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_skip_itf_check).and_return(true)
           get("/accredited_representative_portal/v0/intent_to_file/?benefitType=compensation&#{veteran_query_params}")
           expect(response).to have_http_status(:not_found)
         end
@@ -186,7 +187,8 @@ RSpec.describe AccreditedRepresentativePortal::V0::IntentToFileController, type:
 
       context 'when confirmation email flag is enabled' do
         before do
-          Flipper.enable(:accredited_representative_portal_itf_confirmation_email)
+          allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_itf_confirmation_email)
+                                              .and_return(true)
         end
 
         context 'when email sending succeeds' do
@@ -220,7 +222,8 @@ RSpec.describe AccreditedRepresentativePortal::V0::IntentToFileController, type:
 
       context 'when confirmation email flag is disabled' do
         before do
-          Flipper.disable(:accredited_representative_portal_itf_confirmation_email)
+          allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_itf_confirmation_email)
+                                              .and_return(false)
         end
 
         it 'does not send confirmation email' do

@@ -13,13 +13,19 @@ RSpec.describe 'DhpConnectedDevices::Fitbit', type: :request do
     )
   end
 
+  before do
+    allow(Flipper).to receive(:enabled?).and_call_original
+  end
+
   describe 'fitbit#connect' do
     def fitbit_connect
       get '/dhp_connected_devices/fitbit'
     end
 
     context 'fitbit feature enabled and un-authenticated user' do
-      before { Flipper.enable(:dhp_connected_devices_fitbit) }
+      before do
+        allow(Flipper).to receive(:enabled?).with(:dhp_connected_devices_fitbit, instance_of(User)).and_return(true)
+      end
 
       it 'returns unauthenticated' do
         expect(fitbit_connect).to be 401
@@ -28,7 +34,7 @@ RSpec.describe 'DhpConnectedDevices::Fitbit', type: :request do
 
     context 'fitbit feature enabled and un-verified user' do
       before do
-        Flipper.enable(:dhp_connected_devices_fitbit)
+        allow(Flipper).to receive(:enabled?).with(:dhp_connected_devices_fitbit, instance_of(User)).and_return(true)
         sign_in_as(user_without_icn)
       end
 
@@ -40,7 +46,7 @@ RSpec.describe 'DhpConnectedDevices::Fitbit', type: :request do
     context 'fitbit feature disabled and authenticated user' do
       before do
         sign_in_as(current_user)
-        Flipper.disable(:dhp_connected_devices_fitbit)
+        allow(Flipper).to receive(:enabled?).with(:dhp_connected_devices_fitbit, instance_of(User)).and_return(false)
       end
 
       it 'returns not found' do
@@ -51,7 +57,7 @@ RSpec.describe 'DhpConnectedDevices::Fitbit', type: :request do
     context 'fitbit feature enabled and authenticated user' do
       before do
         sign_in_as(current_user)
-        Flipper.enable(:dhp_connected_devices_fitbit)
+        allow(Flipper).to receive(:enabled?).with(:dhp_connected_devices_fitbit, instance_of(User)).and_return(true)
       end
 
       let(:client) { DhpConnectedDevices::Fitbit::Client.new }
@@ -70,21 +76,21 @@ RSpec.describe 'DhpConnectedDevices::Fitbit', type: :request do
 
     context 'fitbit feature enabled and user unauthenticated' do
       it 'navigating to /fitbit-callback returns error' do
-        Flipper.enable(:dhp_connected_devices_fitbit)
+        allow(Flipper).to receive(:enabled?).with(:dhp_connected_devices_fitbit, instance_of(User)).and_return(true)
         expect(fitbit_callback).to be 401
       end
     end
 
     context 'fitbit feature not enabled and user unauthenticated' do
       it 'navigating to /fitbit-callback returns error' do
-        Flipper.disable(:dhp_connected_devices_fitbit)
+        allow(Flipper).to receive(:enabled?).with(:dhp_connected_devices_fitbit, instance_of(User)).and_return(false)
         expect(fitbit_callback).to be 401
       end
     end
 
     context 'fitbit feature enabled and user unverified' do
       before do
-        Flipper.enable(:dhp_connected_devices_fitbit)
+        allow(Flipper).to receive(:enabled?).with(:dhp_connected_devices_fitbit, instance_of(User)).and_return(true)
         sign_in_as(user_without_icn)
       end
 
@@ -96,7 +102,7 @@ RSpec.describe 'DhpConnectedDevices::Fitbit', type: :request do
     context 'fitbit feature not enabled and user authenticated' do
       before do
         sign_in_as(current_user)
-        Flipper.disable(:dhp_connected_devices_fitbit)
+        allow(Flipper).to receive(:enabled?).with(:dhp_connected_devices_fitbit, instance_of(User)).and_return(false)
       end
 
       it 'navigating to /fitbit-callback returns error' do
@@ -115,7 +121,7 @@ RSpec.describe 'DhpConnectedDevices::Fitbit', type: :request do
 
       before do
         sign_in_as(current_user)
-        Flipper.enable(:dhp_connected_devices_fitbit)
+        allow(Flipper).to receive(:enabled?).with(:dhp_connected_devices_fitbit, instance_of(User)).and_return(true)
         create(:device, :fitbit)
       end
 
@@ -253,14 +259,14 @@ RSpec.describe 'DhpConnectedDevices::Fitbit', type: :request do
 
     context 'fitbit feature enabled and user unauthenticated' do
       it 'navigating to /fitbit/disconnect returns error' do
-        Flipper.enable(:dhp_connected_devices_fitbit)
+        allow(Flipper).to receive(:enabled?).with(:dhp_connected_devices_fitbit, instance_of(User)).and_return(true)
         expect(fitbit_disconnect).to be 401
       end
     end
 
     context 'fitbit feature enabled and user unverified' do
       before do
-        Flipper.enable(:dhp_connected_devices_fitbit)
+        allow(Flipper).to receive(:enabled?).with(:dhp_connected_devices_fitbit, instance_of(User)).and_return(true)
         sign_in_as(user_without_icn)
       end
 

@@ -18,7 +18,7 @@ RSpec.describe FormIntake do
       end
 
       it 'returns false even if flag would be enabled' do
-        Flipper.enable(:some_other_flag)
+        allow(Flipper).to receive(:enabled?).with(:some_other_flag, any_args).and_return(true)
         expect(described_class.enabled_for_form?('UNKNOWN')).to be false
       end
     end
@@ -35,7 +35,7 @@ RSpec.describe FormIntake do
 
     context 'when feature flag is disabled' do
       before do
-        Flipper.disable(:form_intake_integration_601)
+        allow(Flipper).to receive(:enabled?).with(:form_intake_integration_601, any_args).and_return(false)
       end
 
       it 'returns false' do
@@ -49,7 +49,7 @@ RSpec.describe FormIntake do
 
     context 'when feature flag is enabled' do
       before do
-        Flipper.enable(:form_intake_integration_601)
+        allow(Flipper).to receive(:enabled?).with(:form_intake_integration_601, any_args).and_return(true)
       end
 
       it 'returns true' do
@@ -141,25 +141,25 @@ RSpec.describe FormIntake do
     end
 
     it 'returns only forms with enabled flags' do
-      Flipper.enable(:form_intake_integration_601)
-      Flipper.disable(:form_intake_integration_0966)
-      Flipper.disable(:form_intake_integration_4138)
+      allow(Flipper).to receive(:enabled?).with(:form_intake_integration_601, any_args).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:form_intake_integration_0966).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:form_intake_integration_4138).and_return(false)
 
       expect(described_class.enabled_forms).to eq(['21P-601'])
     end
 
     it 'returns multiple forms when multiple flags enabled' do
-      Flipper.enable(:form_intake_integration_601)
-      Flipper.enable(:form_intake_integration_0966)
-      Flipper.disable(:form_intake_integration_4138)
+      allow(Flipper).to receive(:enabled?).with(:form_intake_integration_601, any_args).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:form_intake_integration_0966).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:form_intake_integration_4138).and_return(false)
 
       expect(described_class.enabled_forms).to match_array(%w[21P-601 21-0966])
     end
 
     it 'returns empty array when no flags enabled' do
-      Flipper.disable(:form_intake_integration_601)
-      Flipper.disable(:form_intake_integration_0966)
-      Flipper.disable(:form_intake_integration_4138)
+      allow(Flipper).to receive(:enabled?).with(:form_intake_integration_601).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:form_intake_integration_0966).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:form_intake_integration_4138).and_return(false)
 
       expect(described_class.enabled_forms).to eq([])
     end
@@ -170,7 +170,7 @@ RSpec.describe FormIntake do
                    # 21-0966 missing from hash
                  })
 
-      Flipper.enable(:form_intake_integration_601)
+      allow(Flipper).to receive(:enabled?).with(:form_intake_integration_601, any_args).and_return(true)
 
       expect(described_class.enabled_forms).to eq(['21P-601'])
     end

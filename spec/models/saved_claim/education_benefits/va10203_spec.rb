@@ -93,23 +93,23 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
         context 'sending the confirmation email' do
           context 'when the form21_10203_confirmation_email feature flag is disabled' do
             before do
-              Flipper.disable(:form21_10203_confirmation_email)
+              allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(false)
               expect(FeatureFlipper).to receive(:send_email?).once.and_return(false)
             end
 
             it 'does not call SendSchoolCertifyingOfficialsEmail' do
               expect { instance.after_submit(user) }
                 .not_to change(EducationForm::SendSchoolCertifyingOfficialsEmail.jobs, :size)
-              Flipper.enable(:form21_10203_confirmation_email)
+              allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
             end
           end
 
           context 'when the form21_10203_confirmation_email feature flag is enabled' do
-            before { Flipper.enable(:form21_10203_confirmation_email) }
+            before { allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true) }
 
             context 'when there is no form email' do
               it 'does not send a confirmation email' do
-                Flipper.enable(:form21_10203_confirmation_email)
+                allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
                 allow(VANotify::EmailJob).to receive(:perform_async)
 
                 subject = instance
@@ -124,7 +124,10 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
 
             context 'when there is a form email' do
               context 'when the form1995_confirmation_email_with_silent_failure_processing feature flag is disabled' do
-                before { Flipper.disable(:form1995_confirmation_email_with_silent_failure_processing) }
+                before do
+                  allow(Flipper).to receive(:enabled?).with(:form1995_confirmation_email_with_silent_failure_processing)
+                                                      .and_return(false)
+                end
 
                 it 'sends the confirmation email without the callback parameters' do
                   allow(VANotify::EmailJob).to receive(:perform_async)
@@ -141,7 +144,7 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
                       'regional_office_address' => "P.O. Box 4616\nBuffalo, NY 14240-4616"
                     }
                   )
-                  Flipper.enable(:form21_10203_confirmation_email)
+                  allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
                 end
               end
 
@@ -158,10 +161,13 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
                   }
                 end
 
-                before { Flipper.enable(:form1995_confirmation_email_with_silent_failure_processing) }
+                before do
+                  allow(Flipper).to receive(:enabled?).with(:form1995_confirmation_email_with_silent_failure_processing)
+                                                      .and_return(true)
+                end
 
                 it 'sends the confirmation email with the form email with the callback paarameters' do
-                  Flipper.enable(:form21_10203_confirmation_email)
+                  allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
                   allow(VANotify::EmailJob).to receive(:perform_async)
 
                   subject = instance
@@ -222,7 +228,7 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
                 mail = double('mail')
                 allow(mail).to receive(:deliver_now)
                 allow(StemApplicantConfirmationMailer).to receive(:build).with(instance, nil).and_return(mail)
-                Flipper.disable(:form21_10203_confirmation_email)
+                allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(false)
               end
 
               it 'increments the SendSchoolCertifyingOfficialsEmail job queue (calls the job)' do
@@ -290,7 +296,7 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
 
         context 'when there is no form email' do
           it 'does not send a confirmation email' do
-            Flipper.enable(:form21_10203_confirmation_email)
+            allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
             allow(VANotify::EmailJob).to receive(:perform_async)
 
             subject = instance
@@ -305,7 +311,10 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
 
         context 'when there is a form email' do
           context 'when the form1995_confirmation_email_with_silent_failure_processing feature flag is disabled' do
-            before { Flipper.disable(:form1995_confirmation_email_with_silent_failure_processing) }
+            before do
+              allow(Flipper).to receive(:enabled?).with(:form1995_confirmation_email_with_silent_failure_processing)
+                                                  .and_return(false)
+            end
 
             it 'sends the confirmation email without the callback parameters' do
               allow(VANotify::EmailJob).to receive(:perform_async)
@@ -322,7 +331,7 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
                   'regional_office_address' => "P.O. Box 4616\nBuffalo, NY 14240-4616"
                 }
               )
-              Flipper.enable(:form21_10203_confirmation_email)
+              allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
             end
           end
 
@@ -338,10 +347,13 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
               }
             end
 
-            before { Flipper.enable(:form1995_confirmation_email_with_silent_failure_processing) }
+            before do
+              allow(Flipper).to receive(:enabled?).with(:form1995_confirmation_email_with_silent_failure_processing)
+                                                  .and_return(true)
+            end
 
             it 'sends the confirmation email with the form email with the callback paarameters' do
-              Flipper.enable(:form21_10203_confirmation_email)
+              allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
               allow(VANotify::EmailJob).to receive(:perform_async)
 
               subject = instance
@@ -443,23 +455,23 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
         context 'sending the confirmation email' do
           context 'when the form21_10203_confirmation_email feature flag is disabled' do
             before do
-              Flipper.disable(:form21_10203_confirmation_email)
+              allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(false)
               expect(FeatureFlipper).to receive(:send_email?).once.and_return(false)
             end
 
             it 'does not call SendSchoolCertifyingOfficialsEmail' do
               expect { instance.after_submit(user) }
                 .not_to change(EducationForm::SendSchoolCertifyingOfficialsEmail.jobs, :size)
-              Flipper.enable(:form21_10203_confirmation_email)
+              allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
             end
           end
 
           context 'when the form21_10203_confirmation_email feature flag is enabled' do
-            before { Flipper.enable(:form21_10203_confirmation_email) }
+            before { allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true) }
 
             context 'when there is no form email' do
               it 'does not send a confirmation email' do
-                Flipper.enable(:form21_10203_confirmation_email)
+                allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
                 allow(VANotify::EmailJob).to receive(:perform_async)
 
                 subject = instance
@@ -474,7 +486,10 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
 
             context 'when there is a form email' do
               context 'when the form1995_confirmation_email_with_silent_failure_processing feature flag is disabled' do
-                before { Flipper.disable(:form1995_confirmation_email_with_silent_failure_processing) }
+                before do
+                  allow(Flipper).to receive(:enabled?).with(:form1995_confirmation_email_with_silent_failure_processing)
+                                                      .and_return(false)
+                end
 
                 it 'sends the confirmation email without the callback parameters' do
                   allow(VANotify::EmailJob).to receive(:perform_async)
@@ -491,7 +506,7 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
                       'regional_office_address' => "P.O. Box 4616\nBuffalo, NY 14240-4616"
                     }
                   )
-                  Flipper.enable(:form21_10203_confirmation_email)
+                  allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
                 end
               end
 
@@ -508,10 +523,13 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
                   }
                 end
 
-                before { Flipper.enable(:form1995_confirmation_email_with_silent_failure_processing) }
+                before do
+                  allow(Flipper).to receive(:enabled?).with(:form1995_confirmation_email_with_silent_failure_processing)
+                                                      .and_return(true)
+                end
 
                 it 'sends the confirmation email with the form email with the callback paarameters' do
-                  Flipper.enable(:form21_10203_confirmation_email)
+                  allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
                   allow(VANotify::EmailJob).to receive(:perform_async)
 
                   subject = instance
@@ -573,7 +591,7 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
                 mail = double('mail')
                 allow(mail).to receive(:deliver_now)
                 allow(StemApplicantConfirmationMailer).to receive(:build).with(instance, nil).and_return(mail)
-                Flipper.disable(:form21_10203_confirmation_email)
+                allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(false)
               end
 
               it 'increments the SendSchoolCertifyingOfficialsEmail job queue (calls the job)' do
@@ -671,7 +689,7 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
 
         context 'when there is no form email' do
           it 'does not send a confirmation email' do
-            Flipper.enable(:form21_10203_confirmation_email)
+            allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
             allow(VANotify::EmailJob).to receive(:perform_async)
 
             subject = instance
@@ -686,7 +704,10 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
 
         context 'when there is a form email' do
           context 'when the form1995_confirmation_email_with_silent_failure_processing feature flag is disabled' do
-            before { Flipper.disable(:form1995_confirmation_email_with_silent_failure_processing) }
+            before do
+              allow(Flipper).to receive(:enabled?).with(:form1995_confirmation_email_with_silent_failure_processing)
+                                                  .and_return(false)
+            end
 
             it 'sends the confirmation email without the callback parameters' do
               allow(VANotify::EmailJob).to receive(:perform_async)
@@ -703,7 +724,7 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
                   'regional_office_address' => "P.O. Box 4616\nBuffalo, NY 14240-4616"
                 }
               )
-              Flipper.enable(:form21_10203_confirmation_email)
+              allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
             end
           end
 
@@ -719,10 +740,13 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
               }
             end
 
-            before { Flipper.enable(:form1995_confirmation_email_with_silent_failure_processing) }
+            before do
+              allow(Flipper).to receive(:enabled?).with(:form1995_confirmation_email_with_silent_failure_processing)
+                                                  .and_return(true)
+            end
 
             it 'sends the confirmation email with the form email with the callback paarameters' do
-              Flipper.enable(:form21_10203_confirmation_email)
+              allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
               allow(VANotify::EmailJob).to receive(:perform_async)
 
               subject = instance

@@ -14,7 +14,7 @@ RSpec.describe FormIntake::SubmitFormDataJob, type: :job do
 
   before do
     # rubocop:disable Naming/VariableNumber
-    Flipper.enable(:form_intake_integration_601)
+    allow(Flipper).to receive(:enabled?).with(:form_intake_integration_601, any_args).and_return(true)
     # rubocop:enable Naming/VariableNumber
     allow(StatsD).to receive(:increment)
   end
@@ -84,7 +84,7 @@ RSpec.describe FormIntake::SubmitFormDataJob, type: :job do
     context 'when form not eligible' do
       before do
         # rubocop:disable Naming/VariableNumber
-        Flipper.disable(:form_intake_integration_601)
+        allow(Flipper).to receive(:enabled?).with(:form_intake_integration_601, any_args).and_return(false)
         # rubocop:enable Naming/VariableNumber
       end
 
@@ -119,7 +119,7 @@ RSpec.describe FormIntake::SubmitFormDataJob, type: :job do
       before do
         stub_const('FormIntake::ELIGIBLE_FORMS', ['UNMAPPED'])
         stub_const('FormIntake::FORM_FEATURE_FLAGS', { 'UNMAPPED' => :test_flag })
-        Flipper.enable(:test_flag)
+        allow(Flipper).to receive(:enabled?).with(:test_flag, any_args).and_return(true)
       end
 
       it 'skips submission' do

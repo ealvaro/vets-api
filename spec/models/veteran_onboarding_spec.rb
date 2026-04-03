@@ -22,14 +22,14 @@ RSpec.describe VeteranOnboarding, type: :model do
   end
 
   it 'creates a VeteranOnboarding object if toggle is enabled' do
-    Flipper.enable(:veteran_onboarding_beta_flow, user)
+    allow(Flipper).to receive(:enabled?).with(:veteran_onboarding_beta_flow, instance_of(User)).and_return(true)
     expect { VeteranOnboarding.for_user(user) }.to change(VeteranOnboarding, :count).by(1)
   end
 
   describe '#show_onboarding_flow_on_login' do
     it 'returns the value of display_onboarding_flow' do
       subject = described_class.for_user(user)
-      Flipper.enable(:veteran_onboarding_beta_flow, user)
+      allow(Flipper).to receive(:enabled?).with(:veteran_onboarding_beta_flow, instance_of(User)).and_return(true)
       expect(subject.show_onboarding_flow_on_login).to be_truthy
     end
 
