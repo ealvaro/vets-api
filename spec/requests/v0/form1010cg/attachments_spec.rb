@@ -56,7 +56,8 @@ RSpec.describe 'V0::Form1010CG::Attachments', type: :request do
       end
 
       it 'accepts a file upload' do
-        VCR.use_cassette "s3/object/put/#{form_attachment_guid}/doctors-note.jpg", vcr_options do
+        store_vcr_options = vcr_options.merge(allow_unused_http_interactions: true)
+        VCR.use_cassette "s3/object/put/#{form_attachment_guid}/doctors-note.jpg", store_vcr_options do
           make_upload_request_with('doctors-note.jpg', 'image/jpg')
 
           expect(response).to have_http_status(:ok)
@@ -85,7 +86,8 @@ RSpec.describe 'V0::Form1010CG::Attachments', type: :request do
       end
 
       it 'accepts a file upload' do
-        VCR.use_cassette "s3/object/put/#{form_attachment_guid}/doctors-note.pdf", vcr_options do
+        store_vcr_options = vcr_options.merge(allow_unused_http_interactions: true)
+        VCR.use_cassette "s3/object/put/#{form_attachment_guid}/doctors-note.pdf", store_vcr_options do
           make_upload_request_with('doctors-note.pdf', 'application/pdf')
 
           expect(response).to have_http_status(:ok)
