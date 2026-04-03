@@ -1781,12 +1781,8 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
       end
     end
 
-    context 'when source is oracle-health and use_oh_display is true' do
+    context 'when source is oracle-health' do
       let(:oh_source) { UnifiedHealthData::SourceConstants::ORACLE_HEALTH }
-
-      before do
-        adapter.instance_variable_set(:@use_oh_display, true)
-      end
 
       context 'when ServiceRequest.code.text exists' do
         it 'returns ServiceRequest.code.text' do
@@ -1865,26 +1861,6 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
 
           expect(result).to eq('Fallback Code')
         end
-      end
-    end
-
-    context 'when source is oracle-health but use_oh_display is false' do
-      let(:oh_source) { UnifiedHealthData::SourceConstants::ORACLE_HEALTH }
-
-      it 'uses the vista display logic' do
-        resource = {
-          'code' => { 'text' => 'Resource Code Name' },
-          'contained' => [
-            {
-              'resourceType' => 'ServiceRequest',
-              'code' => { 'text' => 'ServiceRequest Name' }
-            }
-          ]
-        }
-
-        result = adapter.send(:format_display, resource, oh_source)
-
-        expect(result).to eq('Resource Code Name')
       end
     end
   end

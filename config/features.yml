@@ -1681,10 +1681,6 @@ features:
     actor_type: user
     description: Gradually re-enables Secure Messaging and Medications for flagged users at T+1 instead of T+2 during Oracle Health migration cutover
     enable_in_development: true
-  mhv_oh_specific_test_names:
-    actor_type: user
-    description: Enables Oracle Health-specific display name resolution for labs and tests. When enabled, Oracle Health records use ServiceRequest.code.text as the primary display name instead of the VistA fallback chain.
-    enable_in_development: true
   mhv_medications_management_improvements:
     actor_type: user
     description: Enables improvements to medication management functionality

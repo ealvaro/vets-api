@@ -54,8 +54,7 @@ module UnifiedHealthData
         # Each unique station number is fetched once and cached for 12 hours
         prewarm_facility_cache(combined_records)
 
-        use_oh_display = Flipper.enabled?(:mhv_oh_specific_test_names, @user)
-        parsed_records = lab_or_test_adapter.parse_labs(combined_records, use_oh_display:)
+        parsed_records = lab_or_test_adapter.parse_labs(combined_records)
 
         log_test_code_distribution(parsed_records)
         log_labs_metrics(combined_records, parsed_records, start_date, end_date)

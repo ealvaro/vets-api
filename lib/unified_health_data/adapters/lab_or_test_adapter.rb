@@ -36,10 +36,8 @@ module UnifiedHealthData
         'LP29684-5' => 'Radiology'
       }.freeze
 
-      def parse_labs(records, use_oh_display: false)
+      def parse_labs(records)
         return [] if records.blank?
-
-        @use_oh_display = use_oh_display
 
         filtered = records.select do |record|
           record['resource'] && record['resource']['resourceType'] == 'DiagnosticReport'
@@ -555,11 +553,9 @@ module UnifiedHealthData
                 &.dig('title')
         return title if title.present?
 
-        if @use_oh_display && source == UnifiedHealthData::SourceConstants::ORACLE_HEALTH
+        if source == UnifiedHealthData::SourceConstants::ORACLE_HEALTH
           format_display_oracle_health(resource)
         else
-          # Currently this is the default for all Labs
-          # Need to differentiate it for to use with feature toggle
           format_display_vista(resource)
         end
       end

@@ -35,7 +35,6 @@ describe UnifiedHealthData::Service, type: :service do
     before do
       allow(Rails.logger).to receive(:info)
       allow(Rails.logger).to receive(:warn)
-      allow(Flipper).to receive(:enabled?).with(:mhv_oh_specific_test_names, user).and_return(true)
       allow_any_instance_of(UnifiedHealthData::Client)
         .to receive(:get_labs_by_date)
         .and_return(sample_client_response)
@@ -76,6 +75,7 @@ describe UnifiedHealthData::Service, type: :service do
             'id' => 'df64e7c7-d354-43a1-ab57-445844b59b52',
             'display' => 'CHEM 7',
             'test_code' => 'CH',
+            'test_code_display' => 'Chemistry and hematology',
             'date_completed' => '2025-01-23T22:01:52+00:00',
             'location' => 'CHYSHR TEST LAB',
             'source' => 'vista',
@@ -115,24 +115,6 @@ describe UnifiedHealthData::Service, type: :service do
             'comments' => ['Comment on the ORDER (not on the result) for testing']
           )
           expect(oh_lab_with_note.observations.size).to eq(1)
-        end
-
-        context 'when mhv_oh_specific_test_names is disabled' do
-          before do
-            allow(Flipper).to receive(:enabled?).with(:mhv_oh_specific_test_names, user).and_return(false)
-          end
-
-          it 'uses the vista display logic for Oracle Health labs' do
-            labs = service.get_labs(start_date: '2025-01-01', end_date: '2025-12-31')[:records]
-
-            oh_lab = labs.find { |lab| lab.id == '15248982124' }
-            oh_lab_with_note = labs.find { |lab| lab.id == 'a21b3621-4f42-4504-b41c-6598c8537212' }
-
-            # With the toggle disabled, OH labs fall back to vista display logic:
-            # code.text is used instead of ServiceRequest.code.text
-            expect(oh_lab.display).to eq('Blood Culture')
-            expect(oh_lab_with_note.display).to eq('CH')
-          end
         end
 
         it 'returns labs with expected attribute types' do
