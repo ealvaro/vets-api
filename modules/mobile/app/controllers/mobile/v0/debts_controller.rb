@@ -39,7 +39,7 @@ module Mobile
       end
 
       def service
-        @service ||= DebtManagementCenter::DebtsService.new(@current_user)
+        @service ||= ::Mobile::V0::DebtManagementCenter::DebtsService.new(@current_user)
       end
     end
   end

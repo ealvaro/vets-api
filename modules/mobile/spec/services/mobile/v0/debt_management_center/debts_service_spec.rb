@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'debt_management_center/debts_service'
+require 'mobile/v0/debt_management_center/debts_service'
 require 'debt_management_center/models/debt_store'
 require_relative 'shared_examples/debt_service_examples'
 
-RSpec.describe DebtManagementCenter::DebtsService do
+RSpec.describe Mobile::V0::DebtManagementCenter::DebtsService do
   let(:file_number) { '796043735' }
   let(:user) { build(:user, :loa3, ssn: file_number) }
   let(:user_no_ssn) { build(:user, :loa3, ssn: '') }

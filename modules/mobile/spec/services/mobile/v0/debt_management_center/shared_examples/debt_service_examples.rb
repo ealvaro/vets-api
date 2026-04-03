@@ -37,14 +37,14 @@ RSpec.shared_examples 'debt service behavior' do
             end
 
             # Verify metrics were recorded
-            expect(StatsD).to have_received(:increment).with('api.dmc.init_cached_debts.fired')
+            expect(StatsD).to have_received(:increment).with('api.dmc.mobile.init_cached_debts.fired')
             expect(StatsD).to have_received(:increment).with(
-              'api.dmc.fetch_debts_from_dmc.fail',
+              'api.dmc.mobile.fetch_debts_from_dmc.fail',
               tags: ['error:CommonClientErrorsClientError', 'status:400']
             )
-            expect(StatsD).to have_received(:increment).with('api.dmc.get_debts.total')
-            expect(StatsD).to have_received(:increment).with('api.dmc.get_debts.failure')
-            expect(StatsD).to have_received(:increment).with('api.dmc.fetch_debts_from_dmc.total')
+            expect(StatsD).to have_received(:increment).with('api.dmc.mobile.get_debts.total')
+            expect(StatsD).to have_received(:increment).with('api.dmc.mobile.get_debts.failure')
+            expect(StatsD).to have_received(:increment).with('api.dmc.mobile.fetch_debts_from_dmc.total')
           end
         end
       end
@@ -78,11 +78,11 @@ RSpec.shared_examples 'debt service behavior' do
 
             expect(response).to be_a(Hash)
             expect(response).to have_key('debtsCount')
-            expect(response['debtsCount']).to be > 0
+            expect(response['debtsCount']).to be_positive
 
-            expect(StatsD).to have_received(:increment).with('api.dmc.fetch_debts_from_dmc.total')
-            expect(StatsD).to have_received(:increment).with('api.dmc.get_debts.total')
-            expect(StatsD).to have_received(:increment).with('api.dmc.get_debts_count.success')
+            expect(StatsD).to have_received(:increment).with('api.dmc.mobile.fetch_debts_from_dmc.total')
+            expect(StatsD).to have_received(:increment).with('api.dmc.mobile.get_debts.total')
+            expect(StatsD).to have_received(:increment).with('api.dmc.mobile.get_debts_count.success')
           end
         end
       end
@@ -97,9 +97,9 @@ RSpec.shared_examples 'debt service behavior' do
             expect(response[:debts]).to be_an(Array)
             expect(response[:debts]).not_to be_empty
 
-            expect(StatsD).to have_received(:increment).with('api.dmc.fetch_debts_from_dmc.total')
-            expect(StatsD).to have_received(:increment).with('api.dmc.get_debts.total')
-            expect(StatsD).to have_received(:increment).with('api.dmc.get_debts.success')
+            expect(StatsD).to have_received(:increment).with('api.dmc.mobile.fetch_debts_from_dmc.total')
+            expect(StatsD).to have_received(:increment).with('api.dmc.mobile.get_debts.total')
+            expect(StatsD).to have_received(:increment).with('api.dmc.mobile.get_debts.success')
           end
         end
       end
@@ -116,7 +116,7 @@ RSpec.shared_examples 'debt service behavior' do
             expect(debts.map do |d|
               d['deductionCode']
             end).to all(be_in(DebtManagementCenter::Constants::APPROVED_DEDUCTION_CODES.keys))
-            expect(debts.map { |d| d['currentAR'].to_f }).to all(be > 0)
+            expect(debts.map { |d| d['currentAR'].to_f }).to all(be_positive)
             expect(debts.map { |d| d['payeeNumber'] }).to all(eq('00'))
           end
         end

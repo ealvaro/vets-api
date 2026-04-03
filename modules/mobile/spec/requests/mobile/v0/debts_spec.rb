@@ -210,7 +210,7 @@ RSpec.describe 'Mobile::V0::Debts', type: :request do
             assert_schema_conform(400)
             expect(error_response).to eq({ 'title' => 'Bad Request',
                                            'detail' => 'Received a bad request response from the upstream server',
-                                           'code' => 'DMC400', 'source' => 'DebtManagementCenter::DebtsService',
+                                           'code' => 'DMC400', 'source' => 'Mobile::V0::DebtManagementCenter::DebtsService',
                                            'status' => '400' })
           end
         end
@@ -377,7 +377,7 @@ RSpec.describe 'Mobile::V0::Debts', type: :request do
             assert_schema_conform(400)
             expect(error_response).to eq({ 'title' => 'Bad Request',
                                            'detail' => 'Received a bad request response from the upstream server',
-                                           'code' => 'DMC400', 'source' => 'DebtManagementCenter::DebtsService',
+                                           'code' => 'DMC400', 'source' => 'Mobile::V0::DebtManagementCenter::DebtsService',
                                            'status' => '400' })
           end
         end

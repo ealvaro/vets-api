@@ -27,26 +27,29 @@ module DebtManagementCenter
       if count_only
         with_monitoring_and_error_handling do
           response = fetch_debts_from_dmc(count_only: true)
-          StatsD.increment("#{STATSD_KEY_PREFIX}.get_debts_count.success")
+          StatsD.increment("#{statsd_key_prefix}.get_debts_count.success")
           return response
         end
       end
+
+      StatsD.increment("#{statsd_key_prefix}.get_debts.total")
 
       load_debts unless @debts
 
       has_dependent_debts = veteran_has_dependent_debts?
       debts = sorted_debts_with_cdids
-      StatsD.increment("#{STATSD_KEY_PREFIX}.get_debts.success")
+      StatsD.increment("#{statsd_key_prefix}.get_debts.success")
       {
         has_dependent_debts:,
         debts:
       }
     rescue => e
-      StatsD.increment("#{STATSD_KEY_PREFIX}.get_debts.failure")
+      StatsD.increment("#{statsd_key_prefix}.get_debts.failure")
       raise e
     end
 
     def get_debt_by_id(id)
+      StatsD.increment("#{statsd_key_prefix}.get_debt.total")
       load_debts unless @debts
 
       debt_store = DebtManagementCenter::DebtStore.find(@user.uuid)
@@ -54,10 +57,10 @@ module DebtManagementCenter
       raise DebtNotFound if debt_store.blank?
 
       debt = debt_store.get_debt(id)
-      StatsD.increment("#{STATSD_KEY_PREFIX}.get_debt.success")
+      StatsD.increment("#{statsd_key_prefix}.get_debt.success")
       debt
     rescue => e
-      StatsD.increment("#{STATSD_KEY_PREFIX}.get_debt.failure")
+      StatsD.increment("#{statsd_key_prefix}.get_debt.failure")
       raise e
     end
 
@@ -86,15 +89,15 @@ module DebtManagementCenter
             found_count: requested_debts.length
           }
         )
-        StatsD.increment("#{STATSD_KEY_PREFIX}.get_debts_by_ids.missing_ids", tags: [
+        StatsD.increment("#{statsd_key_prefix}.get_debts_by_ids.missing_ids", tags: [
                            "missing_count:#{missing_ids.length}"
                          ])
       end
 
-      StatsD.increment("#{STATSD_KEY_PREFIX}.get_debt.success")
+      StatsD.increment("#{statsd_key_prefix}.get_debt.success")
       requested_debts
     rescue => e
-      StatsD.increment("#{STATSD_KEY_PREFIX}.get_debt.failure")
+      StatsD.increment("#{statsd_key_prefix}.get_debt.failure")
       raise e
     end
 
@@ -108,6 +111,10 @@ module DebtManagementCenter
     end
 
     private
+
+    def statsd_key_prefix
+      self.class::STATSD_KEY_PREFIX
+    end
 
     def sorted_debts_with_cdids
       return @sorted_debts_with_cdids if @sorted_debts_with_cdids.present?
@@ -136,13 +143,13 @@ module DebtManagementCenter
     end
 
     def init_cached_debts
-      StatsD.increment("#{STATSD_KEY_PREFIX}.init_cached_debts.fired")
+      StatsD.increment("#{statsd_key_prefix}.init_cached_debts.fired")
 
       cache_key = "debts_data_#{@user.uuid}"
       cached_response = Rails.cache.read(cache_key)
 
       if cached_response
-        StatsD.increment("#{STATSD_KEY_PREFIX}.init_cached_debts.cached_response_returned")
+        StatsD.increment("#{statsd_key_prefix}.init_cached_debts.cached_response_returned")
         return DebtManagementCenter::DebtsResponse.new(cached_response).debts
       end
 
@@ -151,7 +158,7 @@ module DebtManagementCenter
       if response.is_a?(Array) && response.empty?
         # DMC refreshes DB at 5am every morning
         Rails.cache.write(cache_key, response, expires_in: self.class.time_until_5am_utc)
-        StatsD.increment("#{STATSD_KEY_PREFIX}.init_cached_debts.empty_response_cached")
+        StatsD.increment("#{statsd_key_prefix}.init_cached_debts.empty_response_cached")
       end
 
       response
@@ -169,7 +176,7 @@ module DebtManagementCenter
 
         DebtManagementCenter::DebtsResponse.new(response).debts
       rescue => e
-        StatsD.increment("#{STATSD_KEY_PREFIX}.fetch_debts_from_dmc.fail", tags: [
+        StatsD.increment("#{statsd_key_prefix}.fetch_debts_from_dmc.fail", tags: [
                            "error:#{e.class.name}",
                            "status:#{e.respond_to?(:status) ? e.status : 'unknown'}"
                          ])
