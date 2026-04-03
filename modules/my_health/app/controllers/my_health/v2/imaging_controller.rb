@@ -177,12 +177,18 @@ module MyHealth
         Time.zone.today.strftime('%Y-%m-%d')
       end
 
-      # Combines the user's VistA treatment facility IDs and Cerner (Oracle Health)
-      # facility IDs to build the full list of sites for SCDF imaging queries.
+      # Combines the user's VistA treatment facility IDs and Oracle Health indicator
+      # to build the full list of sites for SCDF imaging queries.
+      # SCDF expects the sentinel value '200CRNR' when a user has any Cerner-transitioned
+      # facilities, rather than individual Cerner station numbers.
+      ORACLE_HEALTH_SITE_ID = '200CRNR'
+
       def user_site_ids
         vista_ids = @current_user.va_treatment_facility_ids || []
         cerner_ids = @current_user.cerner_facility_ids || []
-        site_ids = (vista_ids + cerner_ids).map(&:to_s).uniq
+        site_ids = vista_ids.map(&:to_s)
+        site_ids << ORACLE_HEALTH_SITE_ID if cerner_ids.present?
+        site_ids.uniq!
 
         if site_ids.empty?
           Rails.logger.warn(

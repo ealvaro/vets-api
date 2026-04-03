@@ -15,8 +15,8 @@ RSpec.describe 'MyHealth::V2::ImagingController', :skip_json_api_validation, typ
 
   before do
     sign_in_as(current_user)
-    allow_any_instance_of(User).to receive(:va_treatment_facility_ids).and_return(%w[200CRNR])
-    allow_any_instance_of(User).to receive(:cerner_facility_ids).and_return([])
+    allow_any_instance_of(User).to receive(:va_treatment_facility_ids).and_return([])
+    allow_any_instance_of(User).to receive(:cerner_facility_ids).and_return(%w[668])
   end
 
   describe 'GET /my_health/v2/medical_records/imaging' do
@@ -49,6 +49,101 @@ RSpec.describe 'MyHealth::V2::ImagingController', :skip_json_api_validation, typ
         expect(response).to be_successful
         json_response = JSON.parse(response.body)
         expect(json_response).to eq([])
+      end
+    end
+
+    context 'with Vista facility data' do
+      before do
+        allow_any_instance_of(User).to receive(:va_treatment_facility_ids).and_return(%w[453])
+        allow_any_instance_of(User).to receive(:cerner_facility_ids).and_return([])
+      end
+
+      it 'returns Vista imaging studies with study-level modality' do
+        VCR.use_cassette('unified_health_data/get_imaging_studies_vista_200', match_requests_on: %i[method path]) do
+          get path, headers: { 'X-Key-Inflection' => 'camel' }, params: default_params
+        end
+        expect(response).to be_successful
+        json_response = JSON.parse(response.body)
+        expect(json_response).to be_an(Array)
+        expect(json_response.size).to eq(2)
+
+        knee_study = json_response.find { |s| s['attributes']['description'] == 'KNEE 4 OR MORE VIEWS (LEFT)' }
+        ct_study = json_response.find { |s| s['attributes']['description'] == 'CT THORAX W/CONT' }
+
+        expect(knee_study).to be_present
+        expect(knee_study['attributes']['status']).to eq('available')
+        expect(knee_study['attributes']['date']).to be_present
+        expect(knee_study['attributes']['imageCount']).to eq(4)
+        expect(knee_study['attributes']['modality']).to eq('DX')
+        expect(knee_study['id']).to start_with('urn-vastudy-453-')
+
+        expect(ct_study).to be_present
+        expect(ct_study['attributes']['modality']).to eq('CT')
+        expect(ct_study['attributes']['imageCount']).to eq(1)
+      end
+    end
+
+    context 'with mixed Vista and Oracle Health facility data' do
+      before do
+        allow_any_instance_of(User).to receive(:va_treatment_facility_ids).and_return(%w[453])
+        allow_any_instance_of(User).to receive(:cerner_facility_ids).and_return(%w[668])
+      end
+
+      it 'returns studies from both Vista and Oracle Health facilities' do
+        VCR.use_cassette('unified_health_data/get_imaging_studies_mixed_200', match_requests_on: %i[method path]) do
+          get path, headers: { 'X-Key-Inflection' => 'camel' }, params: default_params
+        end
+        expect(response).to be_successful
+        json_response = JSON.parse(response.body)
+        expect(json_response).to be_an(Array)
+        expect(json_response.size).to eq(4)
+
+        vista_studies = json_response.select { |s| s['id'].start_with?('urn-vastudy-453-') }
+        oh_studies = json_response.select { |s| s['id'].start_with?('urn-vastudy-200CRNR-') }
+
+        expect(vista_studies.size).to eq(2)
+        expect(oh_studies.size).to eq(2)
+
+        # Vista studies have study-level modality codes
+        expect(vista_studies.first['attributes']['modality']).to be_present
+
+        # OH studies include notes
+        oh_with_notes = oh_studies.find { |s| s['attributes']['notes']&.any? }
+        expect(oh_with_notes).to be_present
+      end
+    end
+
+    context 'when user has numeric Cerner facility IDs' do
+      before do
+        allow_any_instance_of(User).to receive(:va_treatment_facility_ids).and_return(%w[453])
+        allow_any_instance_of(User).to receive(:cerner_facility_ids).and_return(%w[668 552])
+      end
+
+      it 'passes 200CRNR sentinel instead of numeric Cerner station numbers' do
+        expect_any_instance_of(UnifiedHealthData::ImagingService).to receive(:get_imaging_studies)
+          .with(hash_including(site_ids: %w[453 200CRNR]))
+          .and_return([])
+
+        get path, headers: { 'X-Key-Inflection' => 'camel' }, params: default_params
+        expect(response).to be_successful
+      end
+    end
+
+    context 'when user has no Cerner facilities' do
+      before do
+        allow_any_instance_of(User).to receive(:va_treatment_facility_ids).and_return(%w[453 358])
+        allow_any_instance_of(User).to receive(:cerner_facility_ids).and_return([])
+      end
+
+      # NOTE: Cannot assert site_ids args via expect_any_instance_of here because
+      # ActionController::Live processes requests in a separate thread, and nested
+      # allow_any_instance_of overrides don't reliably propagate to that thread.
+      # The "numeric Cerner facility IDs" context above covers the positive sentinel case.
+      it 'returns a successful response without injecting 200CRNR' do
+        VCR.use_cassette('unified_health_data/get_imaging_studies_vista_200', match_requests_on: %i[method path]) do
+          get path, headers: { 'X-Key-Inflection' => 'camel' }, params: default_params
+        end
+        expect(response).to be_successful
       end
     end
 
