@@ -1217,6 +1217,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_02_160555) do
     t.datetime "updated_at", null: false
     t.jsonb "form_data_ciphertext"
     t.boolean "needs_kms_rotation", default: false, null: false
+    t.datetime "expiration_email_sent_at"
     t.index ["needs_kms_rotation"], name: "index_form_submissions_on_needs_kms_rotation"
     t.index ["saved_claim_id"], name: "index_form_submissions_on_saved_claim_id"
     t.index ["user_account_id"], name: "index_form_submissions_on_user_account_id"
