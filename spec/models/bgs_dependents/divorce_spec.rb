@@ -80,4 +80,71 @@ RSpec.describe BGSDependents::Divorce do
       end
     end
   end
+
+  describe '#divorce_city' do
+    context 'when city does not exceed limit' do
+      it 'returns the city' do
+        divorce = described_class.new(divorce_info_v2)
+        expect(divorce.divorce_city).to eq('Tampa')
+      end
+    end
+
+    context 'when divorce location is missing' do
+      it 'returns nil for the city' do
+        no_location = divorce_info_v2.except('divorce_location')
+        divorce = described_class.new(no_location)
+        expect(divorce.divorce_city).to be_nil
+      end
+    end
+
+    context 'when city exceeds the limit' do
+      it 'returns split value' do
+        split = divorce_info_v2.merge(
+          'divorce_location' => {
+            'location' => {
+              'state' => 'NA',
+              'city' => 'Balneario Barra do Sul / Santa Catarina',
+              'country' => 'Brazil'
+            }
+          }
+        )
+
+        divorce = described_class.new(split)
+        expect(divorce.divorce_city).to eq('Balneario Barra do Sul')
+      end
+
+      it 'returns truncated value' do
+        long = divorce_info_v2.merge(
+          'divorce_location' => {
+            'location' => {
+              'state' => 'NA',
+              'city' => 'Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch / Wales', # this is a real place
+              'country' => 'United Kingdom'
+            }
+          }
+        )
+
+        divorce = described_class.new(long)
+        expect(divorce.divorce_city).to eq('Llanfairpwllgwyngyllgogerychwy')
+      end
+    end
+  end
+
+  describe '#marriage_termination_type_code' do
+    context 'when reason_marriage_ended is an accepted value' do
+      it 'returns the value' do
+        divorce = described_class.new(divorce_info_v2)
+        expect(divorce.marriage_termination_type_code).to eq('Divorce')
+      end
+    end
+
+    context 'when reason_marriage_ended is NOT accepted' do
+      it 'returns Other' do
+        other = divorce_info_v2.merge({ 'reason_marriage_ended' => 'Annulment' })
+
+        divorce = described_class.new(other)
+        expect(divorce.marriage_termination_type_code).to eq('Other')
+      end
+    end
+  end
 end
