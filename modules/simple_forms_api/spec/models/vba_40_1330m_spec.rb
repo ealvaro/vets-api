@@ -367,6 +367,84 @@ RSpec.describe SimpleFormsApi::VBA401330m do
     end
   end
 
+  describe '#cemetery_notification_email_address' do
+    let(:data) do
+      { 'cemetery_contact_email' => 'cemetery@example.com' }
+    end
+
+    it 'returns the cemetery contact email address' do
+      expect(described_class.new(data).cemetery_notification_email_address).to eq 'cemetery@example.com'
+    end
+
+    context 'when cemetery contact email is not provided' do
+      let(:data) { {} }
+
+      it 'returns nil' do
+        expect(described_class.new(data).cemetery_notification_email_address).to be_nil
+      end
+    end
+  end
+
+  describe '#cemetery_notification_first_name' do
+    let(:data) do
+      { 'cemetery_contact_first_name' => 'Robert' }
+    end
+
+    it 'returns the cemetery contact first name' do
+      expect(described_class.new(data).cemetery_notification_first_name).to eq 'Robert'
+    end
+
+    context 'when cemetery contact first name is not provided' do
+      let(:data) { {} }
+
+      it 'returns nil' do
+        expect(described_class.new(data).cemetery_notification_first_name).to be_nil
+      end
+    end
+  end
+
+  describe '#veteran_full_name_for_notification' do
+    let(:data) do
+      {
+        'veteran_full_name' => {
+          'first' => 'John',
+          'last' => 'Smith'
+        }
+      }
+    end
+
+    it 'returns the veteran full name as a single string' do
+      expect(described_class.new(data).veteran_full_name_for_notification).to eq 'John Smith'
+    end
+
+    context 'when last name is missing' do
+      let(:data) { { 'veteran_full_name' => { 'first' => 'John' } } }
+
+      it 'returns just the first name' do
+        expect(described_class.new(data).veteran_full_name_for_notification).to eq 'John'
+      end
+    end
+  end
+
+  describe '#notification_personalization' do
+    let(:data) do
+      {
+        'veteran_full_name' => {
+          'first' => 'John',
+          'last' => 'Smith'
+        }
+      }
+    end
+
+    it 'returns veteran_name and date_expires' do
+      result = described_class.new(data).notification_personalization
+      expect(result).to include(
+        'veteran_name' => 'John Smith',
+        'date_expires' => 1.year.from_now.strftime('%B %d, %Y')
+      )
+    end
+  end
+
   describe '#track_user_identity' do
     let(:data) { { 'form_number' => '40-1330M' } }
 

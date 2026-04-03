@@ -60,6 +60,9 @@
   "medallion_count": "1",
   "medal_of_honor": true,
   "cemetery_location": "Private Cemetery",
+  "cemetery_contact_first_name": "Robert",
+  "cemetery_contact_last_name": "Johnson",
+  "cemetery_contact_email": "robert.johnson@privatecemetery.org",
   "statement_of_truth_signature": "Jane Smith",
   "statement_of_truth_certified": true
 }

@@ -764,6 +764,138 @@ describe SimpleFormsApi::Notification::Email do
       end
     end
 
+    describe '40_1330m' do
+      let(:date_submitted) { Time.zone.today.strftime('%B %d, %Y') }
+      let(:config) do
+        { form_data: data, form_number: 'vba_40_1330m',
+          confirmation_number: 'confirmation_number', date_submitted:, lighthouse_updated_at: }
+      end
+
+      context 'applicant submission confirmation', if: notification_type == :confirmation do
+        context 'when applicant email is entered' do
+          let(:data) do
+            fixture_path = Rails.root.join(
+              'modules', 'simple_forms_api', 'spec', 'fixtures', 'form_json', 'vba_40_1330m.json'
+            )
+            JSON.parse(fixture_path.read)
+          end
+
+          it 'sends the confirmation email to the applicant' do
+            allow(VANotify::EmailJob).to receive(:perform_async)
+
+            subject = described_class.new(config, notification_type:)
+
+            subject.send
+
+            expect(VANotify::EmailJob).to have_received(:perform_async).with(
+              'jane.smith@example.com',
+              'form40_1330m_confirmation_email_template_id',
+              {
+                'first_name' => 'Jane',
+                'date_submitted' => date_submitted,
+                'confirmation_number' => 'confirmation_number',
+                'lighthouse_updated_at' => lighthouse_updated_at,
+                'veteran_name' => 'John Smith',
+                'date_expires' => 1.year.from_now.strftime('%B %d, %Y')
+              },
+              a_string_matching(/\S+/),
+              a_hash_including(:callback_metadata)
+            )
+          end
+        end
+
+        context 'when applicant email is omitted' do
+          let(:data) do
+            fixture_path = Rails.root.join(
+              'modules', 'simple_forms_api', 'spec', 'fixtures', 'form_json', 'vba_40_1330m-min.json'
+            )
+            JSON.parse(fixture_path.read)
+          end
+
+          before { data.delete('applicant_email') }
+
+          it 'does not send the confirmation email' do
+            allow(VANotify::EmailJob).to receive(:perform_async)
+            expect(data['applicant_email']).to be_nil
+
+            subject = described_class.new(config, notification_type:)
+
+            subject.send
+
+            expect(VANotify::EmailJob).not_to have_received(:perform_async)
+          end
+        end
+      end
+
+      context 'cemetery notification', if: notification_type == :confirmation do
+        let(:data) do
+          fixture_path = Rails.root.join(
+            'modules', 'simple_forms_api', 'spec', 'fixtures', 'form_json', 'vba_40_1330m.json'
+          )
+          JSON.parse(fixture_path.read)
+        end
+
+        context 'when cemetery contact email is entered' do
+          it 'sends the cemetery notification email to the cemetery contact' do
+            allow(VANotify::EmailJob).to receive(:perform_async)
+
+            subject = described_class.new(config, notification_type: :cemetery_notification)
+
+            subject.send
+
+            expect(VANotify::EmailJob).to have_received(:perform_async).with(
+              'robert.johnson@privatecemetery.org',
+              'form40_1330m_cemetery_notification_email_template_id',
+              {
+                'first_name' => 'Robert',
+                'date_submitted' => date_submitted,
+                'confirmation_number' => 'confirmation_number',
+                'lighthouse_updated_at' => lighthouse_updated_at,
+                'veteran_name' => 'John Smith',
+                'date_expires' => 1.year.from_now.strftime('%B %d, %Y')
+              },
+              a_string_matching(/\S+/),
+              a_hash_including(:callback_metadata)
+            )
+          end
+        end
+
+        context 'when cemetery contact email is omitted' do
+          before { data.delete('cemetery_contact_email') }
+
+          it 'does not send the cemetery notification email' do
+            allow(VANotify::EmailJob).to receive(:perform_async)
+            expect(data['cemetery_contact_email']).to be_nil
+
+            subject = described_class.new(config, notification_type: :cemetery_notification)
+
+            subject.send
+
+            expect(VANotify::EmailJob).not_to have_received(:perform_async)
+          end
+        end
+      end
+
+      context 'template_id is missing', if: notification_type == :received do
+        let(:data) do
+          fixture_path = Rails.root.join(
+            'modules', 'simple_forms_api', 'spec', 'fixtures', 'form_json', 'vba_40_1330m.json'
+          )
+          JSON.parse(fixture_path.read)
+        end
+        let(:user) { create(:user, :loa3) }
+
+        it 'sends nothing' do
+          allow(VANotify::EmailJob).to receive(:perform_async)
+          subject = described_class.new(config, notification_type:, user:)
+
+          subject.send
+
+          expect(VANotify::EmailJob).not_to have_received(:perform_async)
+        end
+      end
+    end
+
     describe '40_10007 email' do
       let(:date_submitted) { Time.zone.today.strftime('%B %d, %Y') }
       let(:config) do

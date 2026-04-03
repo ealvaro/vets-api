@@ -1301,6 +1301,10 @@ features:
     actor_type: user
     description: Enables form 22-10297 VET TEC 2.0 status-based confirmation emails via MEB path (VaNotify)
     enable_in_development: true
+  form40_1330m_confirmation_email:
+    actor_type: user
+    description: Enables form 40-1330M email submission confirmation (VaNotify)
+    enable_in_development: true
   form1990meb_confirmation_email:
     actor_type: user
     description: Enables form 1990 MEB email submission confirmation (VaNotify)

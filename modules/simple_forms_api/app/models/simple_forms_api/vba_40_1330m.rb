@@ -22,6 +22,27 @@ module SimpleFormsApi
       data['applicant_email']
     end
 
+    def cemetery_notification_email_address
+      data['cemetery_contact_email']
+    end
+
+    def cemetery_notification_first_name
+      data['cemetery_contact_first_name']
+    end
+
+    def veteran_full_name_for_notification
+      first = data.dig('veteran_full_name', 'first')
+      last = data.dig('veteran_full_name', 'last')
+      [first, last].compact.join(' ')
+    end
+
+    def notification_personalization
+      {
+        'veteran_name' => veteran_full_name_for_notification,
+        'date_expires' => 1.year.from_now.strftime('%B %d, %Y')
+      }
+    end
+
     def zip_code_is_us_based
       @data.dig('applicant_address', 'country') == 'USA'
     end

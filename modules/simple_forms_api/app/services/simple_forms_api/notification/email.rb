@@ -99,7 +99,7 @@ module SimpleFormsApi
       end
 
       def enqueue_email(at, template_id)
-        email_from_form_data = form.notification_email_address
+        email_from_form_data = resolve_notification_email
 
         # async job and form data includes email
         if email_from_form_data
@@ -135,7 +135,7 @@ module SimpleFormsApi
       end
 
       def send_email_now(template_id)
-        email_address = form.notification_email_address || user&.email
+        email_address = resolve_notification_email || user&.email
         personalization = get_personalization
 
         if email_address && personalization
@@ -151,7 +151,29 @@ module SimpleFormsApi
       def get_personalization
         config = { date_submitted:, confirmation_number:, lighthouse_updated_at: }
         personalization = SimpleFormsApi::Notification::Personalization.new(form:, config:, expiration_date:)
-        personalization.to_hash
+        result = personalization.to_hash
+
+        # Override first_name for notification-type-specific first name (e.g., cemetery contact),
+        # but only when a non-blank value is provided so we don't erase an existing first_name.
+        type_specific_first_name_method = :"#{notification_type}_first_name"
+        if result && form.respond_to?(type_specific_first_name_method)
+          type_specific_first_name = form.public_send(type_specific_first_name_method)
+          result['first_name'] = type_specific_first_name.titleize if type_specific_first_name.present?
+        end
+
+        result
+      end
+
+      # Resolves the email address to send to based on the notification type.
+      # If the form model defines a type-specific email method (e.g., `cemetery_notification_email_address`),
+      # that method is used; otherwise, falls back to the default `notification_email_address`.
+      def resolve_notification_email
+        type_specific_method = :"#{notification_type}_email_address"
+        if form.respond_to?(type_specific_method)
+          form.public_send(type_specific_method).presence
+        else
+          form.notification_email_address.presence
+        end
       end
 
       def get_first_name_from_user_account

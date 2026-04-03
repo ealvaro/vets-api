@@ -174,18 +174,31 @@ module SimpleFormsApi
         )
 
         if status == 200
-          send_confirmation_email_safely(parsed_form_data, confirmation_number)
-
-          presigned_s3_url = upload_pdf_to_s3(confirmation_number, file_path, metadata, submission, form)
-
-          add_vsi_flash_safely(form, submission)
-          submit_to_mms_if_applicable(form, confirmation_number)
+          send_submission_emails(parsed_form_data, confirmation_number)
+          presigned_s3_url = process_successful_upload(confirmation_number, file_path, metadata, submission, form)
         end
 
         build_response(confirmation_number, presigned_s3_url, status)
       rescue SimpleFormsApi::FormRemediation::Error => e
         Rails.logger.error('Simple forms api - error uploading form submission to S3 bucket', error: e)
         build_response(confirmation_number, presigned_s3_url, status)
+      end
+
+      def send_submission_emails(parsed_form_data, confirmation_number)
+        send_confirmation_email_safely(parsed_form_data, confirmation_number)
+        if form_id == 'vba_40_1330m' &&
+           parsed_form_data['cemetery_contact_email'].present?
+          send_cemetery_notification_safely(parsed_form_data, confirmation_number)
+        end
+      end
+
+      def process_successful_upload(confirmation_number, file_path, metadata, submission, form)
+        presigned_s3_url = upload_pdf_to_s3(confirmation_number, file_path, metadata, submission, form)
+
+        add_vsi_flash_safely(form, submission)
+        submit_to_mms_if_applicable(form, confirmation_number)
+
+        presigned_s3_url
       end
 
       def build_response(confirmation_number, presigned_s3_url, status)
@@ -382,6 +395,27 @@ module SimpleFormsApi
         send_confirmation_email(parsed_form_data, confirmation_number)
       rescue => e
         Rails.logger.error('Simple forms api - error sending confirmation email', error: e)
+      end
+
+      def send_cemetery_notification(parsed_form_data, confirmation_number)
+        config = {
+          form_data: parsed_form_data,
+          form_number: form_id,
+          confirmation_number:,
+          date_submitted: Time.zone.today.strftime('%B %d, %Y')
+        }
+        notification_email = SimpleFormsApi::Notification::Email.new(
+          config,
+          notification_type: :cemetery_notification,
+          user: @current_user
+        )
+        notification_email.send
+      end
+
+      def send_cemetery_notification_safely(parsed_form_data, confirmation_number)
+        send_cemetery_notification(parsed_form_data, confirmation_number)
+      rescue => e
+        Rails.logger.error('Simple forms api - error sending cemetery notification email', error: e)
       end
 
       def add_vsi_flash_safely(form, submission)

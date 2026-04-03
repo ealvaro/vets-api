@@ -23,6 +23,7 @@ module SimpleFormsApi
             personalization['lighthouse_updated_at'] = lighthouse_updated_at if lighthouse_updated_at
             personalization['confirmation_number'] = confirmation_number if confirmation_number
             personalization.merge!(form21_0966_personalization) if form.instance_of? SimpleFormsApi::VBA210966
+            personalization.merge!(form.notification_personalization) if form.respond_to?(:notification_personalization)
 
             if form.should_send_to_point_of_contact?
               personalization.merge!(

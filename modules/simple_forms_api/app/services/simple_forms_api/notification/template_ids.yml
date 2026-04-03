@@ -60,3 +60,7 @@ vba_40_10007:
   confirmation:
   error: form40_10007_error_email
   received:
+vba_40_1330m:
+  confirmation: form40_1330m_confirmation_email
+  cemetery_notification: form40_1330m_cemetery_notification_email
+  received:
