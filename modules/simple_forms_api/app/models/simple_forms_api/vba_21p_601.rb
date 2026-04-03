@@ -16,7 +16,7 @@ module SimpleFormsApi
         'fileNumber' => @data.dig('veteran', 'va_file_number').presence || format_ssn_for_file_number,
         'zipCode' => @data.dig('claimant', 'address', 'zip_code', 'first5'),
         'source' => 'VA Platform Digital Forms',
-        'docType' => @data['form_number'],
+        'docType' => "StructuredData:#{@data['form_number']}",
         'businessLine' => 'CMP'
       }
     end
