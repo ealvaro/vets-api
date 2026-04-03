@@ -80,6 +80,7 @@ Mobile::Engine.routes.draw do
     patch '/messaging/health/message_drafts/:id', to: 'message_drafts#update'
     put '/messaging/health/message_drafts/:id', to: 'message_drafts#update'
     get '/messaging/health/recipients', to: 'recipients#recipients'
+    get '/messaging/health/recipients/crosswalk', to: 'recipients#crosswalk'
     get '/messaging/health/allrecipients', to: 'recipients#all_recipients'
     get '/military-service-history', to: 'military_information#get_service_history'
     get '/payment-history', to: 'payment_history#index'

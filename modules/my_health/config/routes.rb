@@ -95,7 +95,9 @@ MyHealth::Engine.routes.draw do
     end
 
     scope :messaging do
-      resources :triage_teams, only: [:index], defaults: { format: :json }, path: 'recipients'
+      resources :triage_teams, only: [:index], defaults: { format: :json }, path: 'recipients' do
+        get :crosswalk, on: :collection, to: 'ehr_crosswalk#index'
+      end
       resources :all_triage_teams, only: [:index], defaults: { format: :json }, path: 'allrecipients'
 
       resources :folders, only: %i[index show create update destroy], defaults: { format: :json } do

@@ -22,6 +22,16 @@ module SM
       end
 
       ##
+      # Get EHR transition crosswalk entries mapping VistA to Oracle Health triage groups
+      #
+      # @return [Array<Hash>] array of crosswalk entries
+      #
+      def get_crosswalk
+        json = perform(:get, 'triageteam/crosswalk', nil, token_headers).body
+        json[:data] || []
+      end
+
+      ##
       # Get a collection of all triage team recipients, including blocked
       # with detailed attributes per each team
       # including a total tally of associated and locked teams

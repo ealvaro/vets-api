@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": [
+    "vista_triage_group_id",
+    "vista_triage_group_name",
+    "oh_triage_group_id",
+    "oh_triage_group_name"
+  ],
+  "properties": {
+    "vista_triage_group_id": {
+      "type": "integer"
+    },
+    "vista_triage_group_name": {
+      "type": "string"
+    },
+    "oh_triage_group_id": {
+      "type": "integer"
+    },
+    "oh_triage_group_name": {
+      "type": "string"
+    }
+  }
+}

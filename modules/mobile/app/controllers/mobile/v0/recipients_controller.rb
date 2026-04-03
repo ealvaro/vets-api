@@ -34,6 +34,12 @@ module Mobile
         render json: AllTriageTeamsSerializer.new(resource.data, options)
       end
 
+      def crosswalk
+        entries = client.get_crosswalk
+        resource = entries.map { |entry| OpenStruct.new(entry) }
+        render json: MyHealth::V1::EhrCrosswalkSerializer.new(resource)
+      end
+
       private
 
       def get_unique_care_systems(all_recipients)

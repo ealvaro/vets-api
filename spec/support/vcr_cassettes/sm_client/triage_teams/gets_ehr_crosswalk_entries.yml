@@ -1,0 +1,45 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: "<MHV_SM_HOST>/v1/sm/patient/triageteam/crosswalk"
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Accept:
+      - application/json
+      Content-Type:
+      - application/json
+      User-Agent:
+      - Vets.gov Agent
+      Token: "<SESSION_TOKEN>"
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      date:
+      - Thu, 02 Apr 2026 18:52:55 GMT
+      content-type:
+      - application/json
+      x-xss-protection:
+      - '0'
+      x-frame-options:
+      - DENY
+      cache-control:
+      - no-cache, no-store, max-age=0, must-revalidate
+      x-content-type-options:
+      - nosniff
+      pragma:
+      - no-cache
+      strict-transport-security:
+      - max-age=16000000; includeSubDomains; preload;
+    body:
+      encoding: UTF-8
+      string: '[{"vistaTriageGroupId":6723584,"vistaTriageGroupName":"SM668 AUDIOLOGY","ohTriageGroupId":6238971,"ohTriageGroupName":"VHA SPO Audiology  - Admin"},{"vistaTriageGroupId":6723590,"vistaTriageGroupName":"SM668 CANCER CARE","ohTriageGroupId":6238903,"ohTriageGroupName":"VHA SPO Cancer Care Navigation Team - Clinical"},{"vistaTriageGroupId":6723563,"vistaTriageGroupName":"SM668 CARDIOLOGY","ohTriageGroupId":6239030,"ohTriageGroupName":"VHA SPO Cardiology/Pacemaker - Clinical"},{"vistaTriageGroupId":6723566,"vistaTriageGroupName":"SM668 CARDIOLOGY ADMIN","ohTriageGroupId":6238774,"ohTriageGroupName":"VHA SPO Cardiology/Pacemaker - Admin"},{"vistaTriageGroupId":6723593,"vistaTriageGroupName":"SM668 CHAPLAIN SERVICE","ohTriageGroupId":6239378,"ohTriageGroupName":"VHA SPO Chaplain - Clinical"},{"vistaTriageGroupId":6723596,"vistaTriageGroupName":"SM668 CHIROPRACTIC","ohTriageGroupId":6239438,"ohTriageGroupName":"VHA SPO Chiropractor - Clinical"},{"vistaTriageGroupId":6723587,"vistaTriageGroupName":"SM668 COMMUNITY CARE","ohTriageGroupId":6238685,"ohTriageGroupName":"VHA SPO Community Care - Admin"},{"vistaTriageGroupId":6723569,"vistaTriageGroupName":"SM668 MENTAL HEALTH TEAM A","ohTriageGroupId":6239044,"ohTriageGroupName":"VHA SPO Clinical Resource Hub EHRM Primary Care"},{"vistaTriageGroupId":6723572,"vistaTriageGroupName":"SM668 MENTAL HEALTH TEAM B","ohTriageGroupId":6239992,"ohTriageGroupName":"VHA SPO BHS Home Team 3 - Clinical"},{"vistaTriageGroupId":6723575,"vistaTriageGroupName":"SM668 MENTAL HEALTH TEAM C","ohTriageGroupId":6240022,"ohTriageGroupName":"VHA SPO BHS Home Team 2 - Clinical"},{"vistaTriageGroupId":6723578,"vistaTriageGroupName":"SM668 MENTAL HEALTH TEAM D","ohTriageGroupId":6240052,"ohTriageGroupName":"VHA SPO BHS Home Team 4 - Clinical"},{"vistaTriageGroupId":6723581,"vistaTriageGroupName":"SM668 PHARMACY","ohTriageGroupId":6238524,"ohTriageGroupName":"VHA SPO Ask a Pharmacist - Clinical"},{"vistaTriageGroupId":6723554,"vistaTriageGroupName":"SM668 PRIMARY CARE BLUE","ohTriageGroupId":6238822,"ohTriageGroupName":"VHA SPO ALS - Clinical"},{"vistaTriageGroupId":6723557,"vistaTriageGroupName":"SM668 PRIMARY CARE GREEN","ohTriageGroupId":6239150,"ohTriageGroupName":"VHA SPO Audiology - Clinical"},{"vistaTriageGroupId":6723560,"vistaTriageGroupName":"SM668 PRIMARY CARE RED","ohTriageGroupId":6238751,"ohTriageGroupName":"VHA SPO Anticoagulation - Clinical"}]'
+    http_version:
+  recorded_at: Thu, 02 Apr 2026 18:52:55 GMT
+recorded_with: VCR 6.4.0

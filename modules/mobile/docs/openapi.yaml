@@ -3794,6 +3794,31 @@ paths:
       security:
         - Bearer: []
       summary: /v0/messaging/health/allrecipients
+  /v0/messaging/health/recipients/crosswalk:
+    get:
+      description: Returns EHR transition crosswalk entries mapping VistA triage groups to Oracle Health triage groups
+      parameters:
+        - $ref: '#/components/parameters/InflectionHeader'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/SecureMessagingEhrCrosswalk.yml
+          description: OK
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '500':
+          $ref: '#/components/responses/500'
+        '502':
+          $ref: '#/components/responses/502'
+        '503':
+          $ref: '#/components/responses/503'
+      security:
+        - Bearer: []
+      summary: /v0/messaging/health/recipients/crosswalk
   /v0/military-service-history:
     get:
       description: Returns user's service history

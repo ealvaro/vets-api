@@ -25,23 +25,26 @@ module SM
           @meta_attributes = split_meta_fields!
           @errors = @parsed_json.is_a?(Hash) ? @parsed_json.delete(:errors) : {}
 
-          data =  parsed_threads_object ||
-                  parsed_presigned_s3_url ||
-                  parsed_aws_s3_attachment_meta ||
-                  parsed_all_triage ||
-                  parsed_triage   ||
-                  preferences     ||
-                  parsed_folders  ||
-                  normalize_message(parsed_messages) ||
-                  parsed_categories ||
-                  parsed_signature ||
-                  parsed_status
           @parsed_json = {
-            data:,
+            data: detect_response_type,
             errors: @errors,
             metadata: @meta_attributes
           }
-          @parsed_json
+        end
+
+        def detect_response_type
+          parsed_threads_object ||
+            parsed_presigned_s3_url ||
+            parsed_aws_s3_attachment_meta ||
+            parsed_crosswalk ||
+            parsed_all_triage ||
+            parsed_triage   ||
+            preferences     ||
+            parsed_folders  ||
+            normalize_message(parsed_messages) ||
+            parsed_categories ||
+            parsed_signature ||
+            parsed_status
         end
 
         def parsed_presigned_s3_url
@@ -53,6 +56,13 @@ module SM
              @parsed_json.key?(:mime_type) && @parsed_json.key?(:name)
             @parsed_json
           end
+        end
+
+        def parsed_crosswalk
+          return unless @parsed_json.is_a?(Array)
+          return unless @parsed_json.any? { |entry| entry.is_a?(Hash) && entry.key?(:vista_triage_group_id) }
+
+          @parsed_json
         end
 
         def parsed_threads

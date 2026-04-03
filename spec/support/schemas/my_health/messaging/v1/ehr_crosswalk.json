@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": ["data"],
+  "properties": {
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "attributes"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "enum": ["ehr_crosswalk_entries"] },
+          "attributes": {
+            "type": "object",
+            "$ref": "ehr_crosswalk_entry.json"
+          }
+        }
+      }
+    }
+  }
+}

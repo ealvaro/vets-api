@@ -1,0 +1,47 @@
+type: object
+additionalProperties: false
+required:
+  - data
+properties:
+  data:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - type
+        - attributes
+      properties:
+        id:
+          type: string
+          example: "12345"
+          description: VistA triage group ID used as the resource identifier
+        type:
+          type: string
+          example: "ehr_crosswalk_entries"
+        attributes:
+          type: object
+          additionalProperties: false
+          required:
+            - vistaTriageGroupId
+            - vistaTriageGroupName
+            - ohTriageGroupId
+            - ohTriageGroupName
+          properties:
+            vistaTriageGroupId:
+              type: integer
+              example: 12345
+              description: The triage group ID in the VistA system
+            vistaTriageGroupName:
+              type: string
+              example: "VA STATION_TEAM A"
+              description: The triage group name in the VistA system
+            ohTriageGroupId:
+              type: integer
+              example: 67890
+              description: The corresponding triage group ID in Oracle Health
+            ohTriageGroupName:
+              type: string
+              example: "OH STATION_TEAM A"
+              description: The corresponding triage group name in Oracle Health
