@@ -75,7 +75,6 @@ module Mobile
 
       def validated_params
         @validated_params ||= begin
-          use_cache = params[:useCache] || true
           start_date = params[:startDate] || DateTime.now.utc.to_datetime
           end_date = params[:endDate] || 1.month.from_now.end_of_day.to_datetime
           reverse_sort = !(params[:sort] =~ /-startDateUtc/).nil?
@@ -85,7 +84,6 @@ module Mobile
             end_date:,
             page_number: params.dig(:page, :number),
             page_size: params.dig(:page, :size),
-            use_cache:,
             reverse_sort:,
             included: params[:included],
             include: params[:include]

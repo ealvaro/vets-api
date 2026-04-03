@@ -361,15 +361,6 @@
             }
           },
           {
-            "description": "Whether or not to use this API's cache or fetch records from the upstream service",
-            "example": true,
-            "in": "query",
-            "name": "useCache",
-            "schema": {
-              "type": "boolean"
-            }
-          },
-          {
             "description": "Field to sort the appointments list by. Currently only supports `startDateUtc`. Prefixing `-` reverses the sort.",
             "example": "-startDateUtc",
             "in": "query",

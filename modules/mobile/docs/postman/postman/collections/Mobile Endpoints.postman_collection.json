@@ -61,7 +61,7 @@
               }
             ],
             "url": {
-              "raw": "{{BaseUrl}}/mobile/v0/appointments?include[]=pending&page[size]=900&useCache=false",
+              "raw": "{{BaseUrl}}/mobile/v0/appointments?include[]=pending&page[size]=900",
               "host": [
                 "{{BaseUrl}}"
               ],
@@ -78,10 +78,6 @@
                 {
                   "key": "page[size]",
                   "value": "900"
-                },
-                {
-                  "key": "useCache",
-                  "value": "false"
                 },
                 {
                   "key": "startDate",
