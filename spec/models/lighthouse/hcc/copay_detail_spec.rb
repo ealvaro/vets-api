@@ -43,7 +43,25 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
               'issuer' => {
                 'reference' => 'https://api.gov/services/health-care-costs-coverage/v0/r4/Organization/4-5pFm5Av0PHt',
                 'display' => 'TEST VAMC'
-              }
+              },
+              'charge_items' => [
+                {
+                  'id' => '4-6c9ZE23XQjkALyz',
+                  'last_updated_at' => '2025-01-30T00:00:00Z',
+                  'status' => 'billed',
+                  'code' => 'INTEREST/ADM. CHARGE',
+                  'occurrence_date_time' => '2025-01-29T17:10:47Z',
+                  'entered_date' => '2025-01-30T17:10:47Z'
+                },
+                {
+                  'id' => '4-6c9ZE23XQm5UhWz',
+                  'last_updated_at' => '2024-12-30T00:00:00Z',
+                  'status' => 'billed',
+                  'code' => 'INTEREST/ADM. CHARGE',
+                  'occurrence_date_time' => '2024-12-29T17:10:47Z',
+                  'entered_date' => '2024-12-30T17:10:47Z'
+                }
+              ]
             }
           },
           {
@@ -52,7 +70,8 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
               'issuer' => {
                 'reference' => 'https://api.gov/services/health-care-costs-coverage/v0/r4/Organization/4-5pFm5Av0PHt',
                 'display' => 'TEST VAMC'
-              }
+              },
+              'charge_items' => []
             }
           }
         ]
@@ -102,34 +121,38 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
       end
 
       it 'creates associated_statements' do
-        expect(subject.associated_statements).to eq(
+        expect(subject.associated_statements).to match(
           [
             {
               'id' => '123',
               'composite_id' => '4-5pFm5Av0PHt-2-2026',
-              'date' => 'February 1, 2026'
+              'date' => 'February 1, 2026',
+              'charge_items' => []
             },
             {
               'id' => '123',
               'composite_id' => '4-5pFm5Av0PHt-1-2026',
-              'date' => 'January 1, 2026'
+              'date' => 'January 1, 2026',
+              'charge_items' => array_including(a_hash_including('id' => '4-6c9ZE23XQjkALyz'))
             }
           ]
         )
       end
 
       it 'creates associated_invoices' do
-        expect(subject.associated_invoices).to eq(
+        expect(subject.associated_invoices).to match(
           [
             {
               'id' => '123',
               'composite_id' => '4-5pFm5Av0PHt-2-2026',
-              'date' => 'February 1, 2026'
+              'date' => 'February 1, 2026',
+              'charge_items' => an_instance_of(Array)
             },
             {
               'id' => '123',
               'composite_id' => '4-5pFm5Av0PHt-1-2026',
-              'date' => 'January 1, 2026'
+              'date' => 'January 1, 2026',
+              'charge_items' => array_including(a_hash_including('id' => '4-6c9ZE23XQjkALyz'))
             }
           ]
         )

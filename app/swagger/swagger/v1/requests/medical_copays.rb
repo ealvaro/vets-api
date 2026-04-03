@@ -282,6 +282,17 @@ class Swagger::V1::Requests::MedicalCopays
                   property :id, type: :string, example: '4-1abZUKu7LncRZi'
                   property :date, type: :string, example: 'April 30, 2025'
                   property :compositeId, type: :string, example: 'composite_id'
+
+                  property :chargeItems, type: :array do
+                    items type: :object do
+                      property :id, type: :string, example: '4-6c9ZE23XQjkAu53'
+                      property :lastUpdatedAt, type: :string, example: '2025-05-30T00:00:00Z'
+                      property :status, type: :string, example: 'billed'
+                      property :code, type: :string, example: 'INTEREST/ADM. CHARGE'
+                      property :occurrenceDateTime, type: :string, example: '2025-05-29T17:10:47Z'
+                      property :enteredDate, type: :string, example: '2025-05-30T17:10:47Z'
+                    end
+                  end
                 end
               end
 

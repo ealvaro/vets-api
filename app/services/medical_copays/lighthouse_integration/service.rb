@@ -169,13 +169,34 @@ module MedicalCopays
 
       def invoices_for_organization(month_count, count, organization_id, current_invoice_id)
         result = collect_invoices_in_range(month_count, count)
-        result['entries'].select do |entry|
-          next if entry.dig('resource', 'id') == current_invoice_id # do not return the current invoice data
+
+        filtered_invoices = result['entries'].select do |entry|
+          next if entry.dig('resource', 'id') == current_invoice_id
 
           issuer_ref = entry.dig('resource', 'issuer', 'reference')
           entry_org_id = issuer_ref.split('/').last
           entry_org_id == organization_id
         end
+
+        # filtered_invoices = result['entries']
+        filtered_invoices.map do |entry|
+          invoice_data = entry['resource']
+          charge_items = fetch_charge_items(invoice_data)
+
+          invoice_data['charge_items'] = charge_items.values.map { |ci| map_charge_item(ci) }
+          entry
+        end
+      end
+
+      def map_charge_item(resource)
+        {
+          id: resource['id'],
+          last_updated_at: resource.dig('meta', 'lastUpdated'),
+          status: resource['status'],
+          code: resource.dig('code', 'text'),
+          occurrence_date_time: resource['occurrenceDateTime'],
+          entered_date: resource['enteredDate']
+        }
       end
 
       def build_invoice_entries(raw_invoices)
