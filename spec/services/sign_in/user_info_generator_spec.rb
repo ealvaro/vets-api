@@ -91,6 +91,117 @@ RSpec.describe SignIn::UserInfoGenerator do
         expect(user_info.npi_id).to eq(user.npi_id)
       end
 
+      context 'when user already has a valid address' do
+        let(:user_address) do
+          {
+            street: '123 Main St',
+            street2: 'Apt 1',
+            city: 'Dallas',
+            state: 'TX',
+            country: 'USA',
+            postal_code: '75001'
+          }
+        end
+
+        before do
+          allow(user).to receive(:address).and_return(user_address)
+        end
+
+        it 'does not call MPI and uses user address' do
+          expect_any_instance_of(MPI::Service)
+            .not_to receive(:find_profile_by_identifier)
+
+          user_info = generator.perform
+
+          expect(user_info.address_street1).to eq(user_address[:street])
+          expect(user_info.address_street2).to eq(user_address[:street2])
+          expect(user_info.address_city).to eq(user_address[:city])
+          expect(user_info.address_state).to eq(user_address[:state])
+          expect(user_info.address_country).to eq(user_address[:country])
+          expect(user_info.address_postal_code).to eq(user_address[:postal_code])
+        end
+      end
+
+      context 'when user address is blank and fallback is MPI' do
+        let(:user_address) { {} }
+        let(:mpi_address) do
+          {
+            street: '456 Main St',
+            street2: 'Unit 9',
+            city: 'Austin',
+            state: 'TX',
+            country: 'USA',
+            postal_code: '75001'
+          }
+        end
+
+        let(:mpi_profile) { build(:mpi_profile, address: mpi_address) }
+        let(:status) { MPI::Responses::FindProfileResponse::OK }
+        let(:find_profile_response) { build(:find_profile_response, profile: mpi_profile, status:) }
+
+        before do
+          allow(user).to receive(:address).and_return(user_address)
+          allow_any_instance_of(MPI::Service)
+            .to receive(:find_profile_by_identifier)
+            .and_return(find_profile_response)
+        end
+
+        context 'when MPI response is ok' do
+          it 'returns the MPI address' do
+            user_info = generator.perform
+
+            expect(user_info.address_street1).to eq(mpi_address[:street])
+            expect(user_info.address_street2).to eq(mpi_address[:street2])
+            expect(user_info.address_city).to eq(mpi_address[:city])
+            expect(user_info.address_state).to eq(mpi_address[:state])
+            expect(user_info.address_country).to eq(mpi_address[:country])
+            expect(user_info.address_postal_code).to eq(mpi_address[:postal_code])
+          end
+
+          it 'calls MPI with correct parameters' do
+            expect_any_instance_of(MPI::Service)
+              .to receive(:find_profile_by_identifier)
+              .with(
+                identifier: credential_uuid,
+                identifier_type: user_verification.credential_type,
+                view_type: MPI::Constants::CORRELATION_VIEW
+              )
+
+            generator.perform
+          end
+        end
+
+        context 'when MPI response is not ok' do
+          let(:status) { MPI::Responses::FindProfileResponse::SERVER_ERROR }
+
+          it 'returns empty address' do
+            user_info = generator.perform
+
+            expect(user_info.address_street1).to be_nil
+            expect(user_info.address_street2).to be_nil
+            expect(user_info.address_city).to be_nil
+            expect(user_info.address_state).to be_nil
+            expect(user_info.address_country).to be_nil
+            expect(user_info.address_postal_code).to be_nil
+          end
+        end
+
+        context 'when MPI correlation profile has no address' do
+          let(:mpi_profile) { build(:mpi_profile, address: {}) }
+
+          it 'returns empty address' do
+            user_info = generator.perform
+
+            expect(user_info.address_street1).to be_nil
+            expect(user_info.address_street2).to be_nil
+            expect(user_info.address_city).to be_nil
+            expect(user_info.address_state).to be_nil
+            expect(user_info.address_country).to be_nil
+            expect(user_info.address_postal_code).to be_nil
+          end
+        end
+      end
+
       context 'when the gcids are valid' do
         let(:expected_gcids) do
           '1000123456V123456^NI^200M^USVHA^P|12345^PI^516^USVHA^PCE|2^PI^553^USVHA^PCE'

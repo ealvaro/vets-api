@@ -30,12 +30,12 @@ module SignIn
     def birth_date          = user.birth_date
     def ssn                 = user.ssn
     def gender              = user.gender
-    def address_street1     = user.address[:street]
-    def address_street2     = user.address[:street2]
-    def address_city        = user.address[:city]
-    def address_state       = user.address[:state]
-    def address_country     = user.address[:country]
-    def address_postal_code = user.address[:postal_code]
+    def address_street1     = address[:street]
+    def address_street2     = address[:street2]
+    def address_city        = address[:city]
+    def address_state       = address[:state]
+    def address_country     = address[:country]
+    def address_postal_code = address[:postal_code]
     def phone_number        = user.home_phone
     def person_types        = user.person_types&.join('|') || ''
     def icn                 = user.icn
@@ -60,6 +60,22 @@ module SignIn
       when 'logingov'
         MPI::Constants::LOGINGOV_IDENTIFIER
       end
+    end
+
+    def address
+      @address ||= user.address.compact_blank.presence || mpi_correlation_address
+    end
+
+    def mpi_correlation_address
+      response = MPI::Service.new.find_profile_by_identifier(
+        identifier: csp_uuid,
+        identifier_type: user_verification.credential_type,
+        view_type: MPI::Constants::CORRELATION_VIEW
+      )
+
+      return {} unless response.ok?
+
+      response.profile.address.attributes.symbolize_keys
     end
 
     def filter_gcids
