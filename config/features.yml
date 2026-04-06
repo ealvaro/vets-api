@@ -1201,6 +1201,10 @@ features:
     actor_type: user
     description: Enables enqueuing of a Form4142DocumentUploadFailureEmail if a SubmitForm4142Job job exhausts its retries
     enable_in_development: true
+  form526_0781_automate_mst_consent:
+    actor_type: user
+    description: Enables mst consent to send automatically when the 0781 form is submitted in the 526 flow, when the veteran given consent
+    enable_in_development: true
   form526_send_0781_failure_notification:
     actor_type: user
     description: Enables enqueuing a Form0781DocumentUploadFailureEmail if a SubmitForm0781Job job exhausts its retries
