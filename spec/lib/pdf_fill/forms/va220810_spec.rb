@@ -41,13 +41,16 @@ describe PdfFill::Forms::Va220810 do
       expect(mobile).to eq(form_data['mobilePhone'])
     end
 
-    it 'formats ssn' do
+    it 'formats va file number as ssn if not chapter 35' do
       formatted_snn = form_data['ssn'].gsub(/(\d{3})(\d{2})(\d{4})/, '\1-\2-\3')
-      expect(merged_fields['ssn']).to eq(formatted_snn)
+      expect(form_data['vaBenefitProgram']).not_to eq('chapter35')
+      expect(merged_fields['vaFileNumber']).to eq(formatted_snn)
     end
 
-    it 'formats va file number' do
-      expect(merged_fields['vaFileNumber']).to eq('999-00-1234')
+    it 'appends payee number to va file number if chapter 35' do
+      form_data['vaBenefitProgram'] = 'chapter35'
+      formatted_file_number = form_data['vaFileNumber'].gsub(/(\d{3})(\d{2})(\d{4})/, '\1-\2-\3')
+      expect(merged_fields['vaFileNumber']).to eq("#{formatted_file_number} #{form_data['payeeNumber']}")
     end
 
     it 'converts hasPreviouslyApplied boolean to Yes/Off' do
@@ -75,14 +78,6 @@ describe PdfFill::Forms::Va220810 do
     it 'formats dates to MM/DD/YYYY' do
       %w[examDate dateSigned].each do |field|
         expect(merged_fields[field]).to match(%r{^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/\d{4}$})
-      end
-    end
-
-    context 'with a chapter 35 benefit' do
-      let(:form_data) { get_fixture('pdf_fill/22-0810/chapter_35') }
-
-      it 'uses the full va file number and payee suffix' do
-        expect(merged_fields['vaFileNumber']).to eq('123-45-6789 AB')
       end
     end
   end

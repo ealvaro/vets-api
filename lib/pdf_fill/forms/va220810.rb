@@ -8,80 +8,18 @@ module PdfFill
 
       BENEFIT_PROGRAMS = %w[chapter30 chapter33 chapter35 chapter1606].freeze
 
+      # rubocop:disable Layout/LineLength
       KEY = {
-        'applicantName' => {
-          key: 'applicantName',
-          question_text: 'APPLICANT\'S NAME (First, Middle Initial, Last Name)',
-          question_num: 1,
-          limit: 100
-        },
-        'mailingAddress' => {
-          key: 'mailingAddress',
-          question_text: 'APPLICANT\'S ADDRESS (Number and street or rural route, P.O. Box, City, State, Zip Code)',
-          question_num: 2,
-          question_suffix: 'A',
-          limit: 120,
-          multiline_limit: 2
-        },
-        'emailAddress' => {
-          key: 'emailAddress',
-          question_text: 'APPLICANT\'S EMAIL ADDRESS',
-          question_num: 2,
-          question_suffix: 'B',
-          limit: 100
-        },
-        'phone' => {
-          question_text: 'TELEPHONE NUMBER (Include Area Code)',
-          question_num: 3,
-          'mobilePhone' => {
-            key: 'mobilePhone',
-            question_text: 'DAYTIME',
-            question_suffix: 'A',
-            limit: 27
-          },
-          'homePhone' => {
-            key: 'homePhone',
-            question_text: 'EVENING',
-            question_suffix: 'B',
-            limit: 27
-          }
-        },
-        'ssn' => {
-          key: 'ssn',
-          question_text: 'SOCIAL SECURITY NUMBER OF APPLICANT',
-          question_num: 4,
-          limit: 50
-        },
-        'vaFileNumber' => {
-          key: 'vaFileNumber',
-          question_text: 'VA FILE NUMBER (For chapter 35, enter the veteran\'s file number and include your suffix indicator. For Chapter 30 dependent\'s case, enter the file number of the person who transferred entitlement to you)', # rubocop:disable Layout/LineLength
-          question_num: 5,
-          limit: 100
-        },
-        'hasPreviouslyApplied' => {
-          question_text: 'HAVE YOU PREVIOUSLY APPLIED FOR VA EDUCATION BENEFITS?',
-          question_num: 6,
-          question_suffix: 'A',
-          'yes' => {
-            key: 'hasPreviouslyAppliedYes',
-            question_text: 'YES (If "Yes," show the specific benefit you previously applied for in Item 6B)'
-          },
-          'no' => {
-            key: 'hasPreviouslyAppliedNo',
-            question_text: 'NO (If "No," you must also complete an Application for VA Education Benefits, VA Form 22-1990)' # rubocop:disable Layout/LineLength
-          }
-        },
         'vaBenefitProgram' => {
-          question_text: 'UNDER WHAT EDUCATION BENEFIT ARE YOU NOW APPLYING FOR EXAM FEE REIMBURSEMENT?',
-          question_num: 6,
-          question_suffix: 'C',
+          question_text: 'Select the education benefit under which you are requesting National Exam fee reimbursement',
+          question_num: 0,
           'chapter30' => {
             key: 'chapter30',
             question_text: 'Montgomery GI Bill - Active Duty Educational Assistance Program (MGIB) (Chapter 30)'
           },
           'chapter33' => {
             key: 'chapter33',
-            question_text: 'Post-9/11 GI Bill (Chapter 33)'
+            question_text: 'Post-9/11 GI Bill Including Transfer of Entitlement and Fry Scholarship Recipients (Chapter 33)'
           },
           'chapter35' => {
             key: 'chapter35',
@@ -89,44 +27,97 @@ module PdfFill
           },
           'chapter1606' => {
             key: 'chapter1606',
-            question_text: 'Montgomery GI Bill - Selected Reserve Educational Assistance Program (MGIB-SR) (Chapter 1606)' # rubocop:disable Layout/LineLength
+            question_text: 'Montgomery GI Bill - Selected Reserve Educational Assistance Program (MGIB-SR) (Chapter 1606)'
+          }
+        },
+        'applicantName' => {
+          key: 'applicantName',
+          question_text: 'APPLICANT\'S NAME (First, Middle Initial, Last Name)',
+          question_num: 1,
+          limit: 107
+        },
+        'mailingAddress' => {
+          key: 'mailingAddress',
+          question_text: 'APPLICANT\'S ADDRESS (Number and street or rural route, P.O. Box, City, State, Zip Code)',
+          question_num: 2,
+          limit: 180,
+          multiline_limit: 2
+        },
+        'emailAddress' => {
+          key: 'emailAddress',
+          question_text: 'APPLICANT\'S EMAIL ADDRESS',
+          question_num: 3,
+          limit: 107
+        },
+        'phone' => {
+          question_text: 'TELEPHONE NUMBER (Include Area Code)',
+          question_num: 4,
+          'mobilePhone' => {
+            key: 'mobilePhone',
+            question_text: 'MOBILE',
+            question_suffix: 'A',
+            limit: 28
+          },
+          'homePhone' => {
+            key: 'homePhone',
+            question_text: 'HOME',
+            question_suffix: 'B',
+            limit: 29
+          }
+        },
+        'vaFileNumber' => {
+          key: 'vaFileNumber',
+          question_text: 'VA FILE NUMBER (For chapter 35, enter the veteran\'s file number and include your suffix indicator. For Chapter 30 dependent\'s case, enter the file number of the person who transferred entitlement to you)',
+          question_num: 5,
+          limit: 107
+        },
+        'hasPreviouslyApplied' => {
+          question_text: 'HAVE YOU PREVIOUSLY APPLIED FOR VA EDUCATION BENEFITS?',
+          question_num: 6,
+          'yes' => {
+            key: 'hasPreviouslyAppliedYes',
+            question_text: 'YES (If "Yes," show the specific benefit you previously applied for in Item 6B)'
+          },
+          'no' => {
+            key: 'hasPreviouslyAppliedNo',
+            question_text: 'NO (If "No," you must also complete an Application for VA Education Benefits, as indicated in "Important" paragraph instructions above)'
           }
         },
         'examName' => {
           key: 'examName',
-          question_text: 'NAME OF EXAM',
+          question_text: 'NAME OF EXAM (Use this form for one exam only)',
           question_num: 7,
-          limit: 50
+          limit: 107
         },
         'organization' => {
           key: 'organization',
-          question_text: 'ORGANIZATION GIVING EXAM (Indicate if taken online)',
+          question_text: 'NAME AND ADDRESS OF ORGANIZATION GIVING EXAM',
           question_num: 8,
-          limit: 50
+          limit: 107,
+          multiline_limit: 1
         },
         'examDate' => {
           key: 'examDate',
           question_text: 'DATE EXAM TAKEN (MM/DD/YYYY) (Attach a copy of exam results)',
           question_num: 9,
-          limit: 50
+          limit: 107
         },
         'examCost' => {
           key: 'examCost',
-          question_text: 'ITEMIZE EXAM COST INCLUDING FEES (Attach exam receipt)',
+          question_text: 'TOTAL COST OF EXAM INCLUDING MANDATORY FEES (Attach exam receipt)',
           question_num: 10,
-          limit: 265,
-          multiline_limit: 6
+          limit: 107
         },
         'remarks' => {
           key: 'remarks',
           question_text: 'REMARKS (Optional)',
           question_num: 11,
-          limit: 635,
-          multiline_limit: 7
+          limit: 456,
+          multiline_limit: 5
         },
         'statementOfTruthSignature' => {
           key: 'statementOfTruthSignature',
-          question_text: 'SIGNATURE OF APPLICANT (Sign in ink)',
+          question_text: 'SIGNATURE OF APPLICANT',
           question_num: 12,
           limit: 78
         },
@@ -137,6 +128,7 @@ module PdfFill
           limit: 28
         }
       }.freeze
+      # rubocop:enable Layout/LineLength
 
       def merge_fields(_options = {})
         merge_identification_helpers
@@ -153,13 +145,8 @@ module PdfFill
         format_applicant_name(@form_data['applicantName'])
         format_address(@form_data['mailingAddress'])
         format_phone
-        @form_data['ssn'] = split_ssn(@form_data['ssn']).values.join('-')
-        if @form_data['vaFileNumber'].present? && @form_data['vaBenefitProgram'] == 'chapter35'
-          @form_data['vaFileNumber'] =
-            split_ssn(@form_data['vaFileNumber']).values.join('-') + " #{@form_data['payeeNumber']}"
-        else
-          @form_data['vaFileNumber'] = @form_data['ssn']
-        end
+        append_payee_number = @form_data['vaFileNumber'].present? && @form_data['vaBenefitProgram'] == 'chapter35'
+        format_va_file_number(append_payee_number:)
       end
 
       def format_applicant_name(name)
@@ -177,6 +164,18 @@ module PdfFill
       def format_phone
         @form_data['phone'] = @form_data.slice('homePhone', 'mobilePhone')
         @form_data['phone'].transform_values!(&method(:format_us_phone)) if domestic?(@country)
+      end
+
+      def format_va_file_number(append_payee_number: false)
+        @form_data['vaFileNumber'] = if append_payee_number
+                                       "#{format_ssn(@form_data['vaFileNumber'])} #{@form_data['payeeNumber']}"
+                                     else
+                                       format_ssn(@form_data['ssn'])
+                                     end
+      end
+
+      def format_ssn(ssn)
+        split_ssn(ssn).values.join('-')
       end
 
       def merge_benefit_program_helpers
