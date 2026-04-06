@@ -101,6 +101,9 @@ RSpec.shared_examples 'letter ready job sidekiq retries exhausted' do |job_type|
         .with("#{described_class::STATSD_METRIC_PREFIX}.exhausted",
               tags: EventBusGateway::Constants::DD_TAGS + ["function: #{error_message}"])
 
+      expect(StatsD).to receive(:increment)
+        .with('silent_failure', tags: EventBusGateway::Constants::DD_TAGS + ["function: #{error_message}"])
+
       retries_exhausted_callback.call(msg, exception)
     end
   end

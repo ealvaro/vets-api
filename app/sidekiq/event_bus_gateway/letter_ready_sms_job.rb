@@ -30,6 +30,7 @@ module EventBusGateway
                            { job_id:, timestamp:, error_class:, error_message: })
       tags = Constants::DD_TAGS + ["function: #{error_message}"]
       StatsD.increment("#{STATSD_METRIC_PREFIX}.exhausted", tags:)
+      StatsD.increment('silent_failure', tags:)
       Sidekiq::AttrPackage.delete(cache_key) if cache_key
     end
 

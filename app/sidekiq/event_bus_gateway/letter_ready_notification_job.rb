@@ -28,6 +28,7 @@ module EventBusGateway
                            { job_id:, timestamp:, error_class:, error_message: })
       tags = Constants::DD_TAGS + ["function: #{error_message}"]
       StatsD.increment("#{STATSD_METRIC_PREFIX}.exhausted", tags:)
+      StatsD.increment('silent_failure', tags:)
     end
 
     def perform(participant_id, email_template_id = nil, push_template_id = nil, sms_template_id = nil) # rubocop:disable Cop/AttrPackageDeleteOnSuccess

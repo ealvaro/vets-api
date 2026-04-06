@@ -449,6 +449,17 @@ RSpec.describe EventBusGateway::LetterReadySmsJob, type: :job do
       described_class.sidekiq_retries_exhausted_block.call(msg, exception)
     end
 
+    it 'increments silent_failure metric' do
+      expected_tags = EventBusGateway::Constants::DD_TAGS + ['function: Test error']
+
+      expect(StatsD).to receive(:increment).with(
+        'silent_failure',
+        tags: expected_tags
+      )
+
+      described_class.sidekiq_retries_exhausted_block.call(msg, exception)
+    end
+
     it 'deletes cache_key from AttrPackage if present' do
       expect(Sidekiq::AttrPackage).to receive(:delete).with('test_cache_key')
 
