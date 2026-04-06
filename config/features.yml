@@ -1785,10 +1785,6 @@ features:
     actor_type: user
     description: Enables fetching imaging studies from SCDF for Medical Records
     enable_in_development: false
-  mhv_medical_records_hold_time_messaging_update:
-    actor_type: user
-    description: Enables updated hold time messaging
-    enable_in_development: true
   mhv_medical_records_images_domain:
     actor_type: user
     description: Pulls images out of Labs & Tests into its own top-level domain
