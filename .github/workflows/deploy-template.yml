@@ -76,42 +76,38 @@ jobs:
           path: vsp-infra-application-manifests
           ref: refs/heads/main
 
-      - name: Update vets-api image and version name in Manifest repo for vets-api-parent charts
+      - name: Update vets-api image and version name in Manifest repo
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           ECR_REPOSITORY: dsva/${{inputs.ecr_repository}}
         run: |
           cd vsp-infra-application-manifests/apps/${{inputs.manifests_directory}}
-          envs=(dev staging)
-          for env in ${envs[*]};
-          do
-            yq e -i '(."vets-api-parent".image.tag) |= "${{ inputs.commit_sha }}"' $env/values.yaml
-            yq e -i '(."vets-api-parent".web.envSecrets[] | select(.name=="DD_VERSION").value) |= "${{ inputs.commit_sha }}"' $env/values.yaml
-            yq e -i '(."vets-api-parent".web.dbMigrate.envSecrets[] | select(.name=="DD_VERSION").value) |= "${{ inputs.commit_sha }}"' $env/values.yaml
-            yq e -i '(."vets-api-parent".worker.envSecrets[] | select(.name=="DD_VERSION").value) |= "${{ inputs.commit_sha }}"' $env/values.yaml
-            yq e -i '(."vets-api-parent".web.envSecrets[] | select(.name=="DD_GIT_COMMIT_SHA").value) |= "${{ inputs.commit_sha }}"' $env/values.yaml
-            yq e -i '(."vets-api-parent".web.dbMigrate.envSecrets[] | select(.name=="DD_GIT_COMMIT_SHA").value) |= "${{ inputs.commit_sha }}"' $env/values.yaml
-            yq e -i '(."vets-api-parent".worker.envSecrets[] | select(.name=="DD_GIT_COMMIT_SHA").value) |= "${{ inputs.commit_sha }}"' $env/values.yaml
-          done
-          git diff
 
-      - name: Update vets-api image and version name in Manifest repo for parent helm
-        env:
-          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
-          ECR_REPOSITORY: dsva/${{inputs.ecr_repository}}
-        run: |
-          cd vsp-infra-application-manifests/apps/${{inputs.manifests_directory}}
-          envs=(prod sandbox)
-          for env in ${envs[*]};
-          do
-            yq e -i '(."vets-api".image.tag) |= "${{ inputs.commit_sha }}"' $env/values.yaml
-            yq e -i '(."vets-api".web.envSecrets[] | select(.name=="DD_VERSION").value) |= "${{ inputs.commit_sha }}"' $env/values.yaml
-            yq e -i '(."vets-api".web.dbMigrate.envSecrets[] | select(.name=="DD_VERSION").value) |= "${{ inputs.commit_sha }}"' $env/values.yaml
-            yq e -i '(."vets-api".worker.envSecrets[] | select(.name=="DD_VERSION").value) |= "${{ inputs.commit_sha }}"' $env/values.yaml
-            yq e -i '(."vets-api".web.envSecrets[] | select(.name=="DD_GIT_COMMIT_SHA").value) |= "${{ inputs.commit_sha }}"' $env/values.yaml
-            yq e -i '(."vets-api".web.dbMigrate.envSecrets[] | select(.name=="DD_GIT_COMMIT_SHA").value) |= "${{ inputs.commit_sha }}"' $env/values.yaml
-            yq e -i '(."vets-api".worker.envSecrets[] | select(.name=="DD_GIT_COMMIT_SHA").value) |= "${{ inputs.commit_sha }}"' $env/values.yaml
+          for env in dev staging prod sandbox; do
+            has_parent=$(yq e 'has("vets-api-parent")' "$env/values.yaml")
+            has_vets=$(yq e 'has("vets-api")' "$env/values.yaml")
+
+            if [[ "$has_parent" == "true" ]]; then
+              chart_key="vets-api-parent"
+            elif [[ "$has_vets" == "true" ]]; then
+              chart_key="vets-api"
+            else
+              echo "Image tag failure. No known chart key found in $env/values.yaml."
+              exit 1
+            fi
+
+            echo "$env -> $chart_key"
+            export chart_key
+
+            yq e -i '(.[env(chart_key)].image.tag) |= "${{ inputs.commit_sha }}"' "$env/values.yaml"
+            yq e -i '(.[env(chart_key)].web.envSecrets[] | select(.name=="DD_VERSION").value) |= "${{ inputs.commit_sha }}"' "$env/values.yaml"
+            yq e -i '(.[env(chart_key)].web.dbMigrate.envSecrets[] | select(.name=="DD_VERSION").value) |= "${{ inputs.commit_sha }}"' "$env/values.yaml"
+            yq e -i '(.[env(chart_key)].worker.envSecrets[] | select(.name=="DD_VERSION").value) |= "${{ inputs.commit_sha }}"' "$env/values.yaml"
+            yq e -i '(.[env(chart_key)].web.envSecrets[] | select(.name=="DD_GIT_COMMIT_SHA").value) |= "${{ inputs.commit_sha }}"' "$env/values.yaml"
+            yq e -i '(.[env(chart_key)].web.dbMigrate.envSecrets[] | select(.name=="DD_GIT_COMMIT_SHA").value) |= "${{ inputs.commit_sha }}"' "$env/values.yaml"
+            yq e -i '(.[env(chart_key)].worker.envSecrets[] | select(.name=="DD_GIT_COMMIT_SHA").value) |= "${{ inputs.commit_sha }}"' "$env/values.yaml"
           done
+
           git diff
 
       - name: Add and Commit file
