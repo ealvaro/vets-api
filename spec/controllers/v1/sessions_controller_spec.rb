@@ -956,11 +956,16 @@ RSpec.describe V1::SessionsController, type: :controller do
         let(:cerner_eligible_cookie) { 'CERNER_ELIGIBLE' }
         let(:expected_log_message) { '[SessionsController] Cerner Eligibility' }
         let(:previous_value) { nil }
-        let(:expected_log_payload) { { eligible:, previous_value:, cookie_action: :set, icn: user.icn } }
+        let(:cerner_limited) { false }
+        let(:expected_log_payload) do
+          { eligible:, previous_value:, cookie_action: :set, icn: user.icn, cerner_limited: }
+        end
 
         before do
           SAMLRequestTracker.create(uuid: login_uuid, payload: { type: 'idme', application: 'some-applicaton' })
           allow(Rails.logger).to receive(:info)
+          allow(IdentitySettings.sign_in).to receive(:info_cookie_domain).and_return('some-domain')
+          allow_any_instance_of(User).to receive(:cerner_limited?).and_return(cerner_limited)
         end
 
         context 'when the cerner eligible cookie is not present' do
@@ -971,12 +976,28 @@ RSpec.describe V1::SessionsController, type: :controller do
           context 'when the user is cerner eligible' do
             let(:eligible) { true }
 
-            it 'sets the cookie and logs the cerner eligibility' do
-              call_endpoint
+            context 'and user is cerner_limited' do
+              let(:cerner_limited) { true }
 
-              expect(response.headers['set-cookie']).to include('domain=some-domain')
-              expect(cookies[cerner_eligible_cookie]).to eq(eligible.to_s)
-              expect(Rails.logger).to have_received(:info).with(expected_log_message, expected_log_payload)
+              it 'sets the cookie and logs the cerner eligibility' do
+                call_endpoint
+
+                expect(response.headers['set-cookie']).to include('domain=some-domain')
+                expect(cookies[cerner_eligible_cookie]).to eq(eligible.to_s)
+                expect(Rails.logger).to have_received(:info).with(expected_log_message, expected_log_payload)
+              end
+            end
+
+            context 'and user is not cerner_limited' do
+              let(:cerner_limited) { false }
+
+              it 'sets the cookie and logs the cerner eligibility' do
+                call_endpoint
+
+                expect(response.headers['set-cookie']).to include('domain=some-domain')
+                expect(cookies[cerner_eligible_cookie]).to eq(eligible.to_s)
+                expect(Rails.logger).to have_received(:info).with(expected_log_message, expected_log_payload)
+              end
             end
           end
 
@@ -1001,10 +1022,22 @@ RSpec.describe V1::SessionsController, type: :controller do
             cookies[cerner_eligible_cookie] = true
           end
 
-          it 'logs the cerner eligibility with the previous value' do
-            call_endpoint
+          context 'and user is cerner_limited' do
+            let(:cerner_limited) { true }
 
-            expect(Rails.logger).to have_received(:info).with(expected_log_message, expected_log_payload)
+            it 'logs the cerner eligibility with the previous value' do
+              call_endpoint
+
+              expect(Rails.logger).to have_received(:info).with(expected_log_message, expected_log_payload)
+            end
+          end
+
+          context 'and user is not cerner_limited' do
+            it 'logs the cerner eligibility with the previous value' do
+              call_endpoint
+
+              expect(Rails.logger).to have_received(:info).with(expected_log_message, expected_log_payload)
+            end
           end
         end
 

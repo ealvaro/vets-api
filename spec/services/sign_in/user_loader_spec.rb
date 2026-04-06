@@ -10,6 +10,7 @@ RSpec.describe SignIn::UserLoader do
     let(:cookies) do
       hash = {}
       def hash.permanent = self
+      def hash.signed = self
       hash
     end
 
@@ -208,6 +209,7 @@ RSpec.describe SignIn::UserLoader do
             allow(Settings.mhv.oh_facility_checks)
               .to receive(:pretransitioned_oh_facilities)
               .and_return(stub_cerner_facility_ids)
+            allow(Rails.logger).to receive(:info)
           end
 
           context 'fully eligible user' do
@@ -229,6 +231,15 @@ RSpec.describe SignIn::UserLoader do
               expect(Identity::CernerProvisionerJob).to have_received(:perform_async)
                 .with(user_icn, false, :sis)
             end
+
+            it 'logs the cerner eligibility with cerner_limited: false' do
+              subject
+
+              expect(Rails.logger).to have_received(:info).with(
+                '[SignIn][UserLoader] Cerner Eligibility',
+                { eligible: true, previous_value: nil, cookie_action: :set, icn: user_icn, cerner_limited: false }
+              )
+            end
           end
 
           context 'messaging-only user' do
@@ -247,6 +258,15 @@ RSpec.describe SignIn::UserLoader do
 
               expect(Identity::CernerProvisionerJob).to have_received(:perform_async)
                 .with(user_icn, true, :sis)
+            end
+
+            it 'logs the cerner eligibility with cerner_limited: true' do
+              subject
+
+              expect(Rails.logger).to have_received(:info).with(
+                '[SignIn][UserLoader] Cerner Eligibility',
+                { eligible: false, previous_value: nil, cookie_action: :set, icn: user_icn, cerner_limited: true }
+              )
             end
           end
         end
