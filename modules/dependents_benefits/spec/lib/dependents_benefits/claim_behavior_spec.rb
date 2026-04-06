@@ -163,6 +163,35 @@ RSpec.describe DependentsBenefits::ClaimBehavior do
     end
   end
 
+  describe '#fdf_submission_payload' do
+    it 'returns expected format for FDF' do
+      claim.update(created_at: Time.new(2026, 3, 1).utc)
+
+      full_name = { 'first' => 'Roy', 'middle' => 'G', 'last' => 'Biv' }
+      veteran_information = { 'veteran_information' => {
+        'full_name' => full_name,
+        'common_name' => 'Roy',
+        'va_profile_email' => 'va@gov',
+        'email' => 'foo@bar.com',
+        'participant_id' => 'TEST',
+        'ssn' => '123456789',
+        'va_file_number' => 'FOOBAR',
+        'birth_date' => '1776-07-04',
+        'uuid' => SecureRandom.uuid,
+        'icn' => 'SOMETHING'
+      } }.to_json
+      claim.add_veteran_info(JSON.parse(veteran_information))
+
+      payload = claim.fdf_submission_payload
+
+      expect(payload).not_to include('dependents_application')
+      expect(payload).not_to include('dependentsApplication')
+      expect(payload).to include('signatureDate')
+      expect(payload.dig('veteranInformation', 'vaFileNumber')).to eq('FOOBAR')
+      expect(payload.dig('veteranInformation', 'fullName', 'last')).to eq('Webb') # retain what was submitted
+    end
+  end
+
   describe 'validation behavior' do
     context 'when the form matches the schema' do
       let(:valid_combined_form) { build(:dependents_claim_combined_form) }

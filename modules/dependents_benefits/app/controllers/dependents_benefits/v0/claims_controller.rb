@@ -71,7 +71,6 @@ module DependentsBenefits
             claim_info = claim.get_claim_information(current_user)
             if claim_info[:proc_state] == 'MANUAL_VAGOV' && claim_info[:participant_id].present?
               claim.add_veteran_info(JSON.parse(user_data.get_user_json))
-              claim.add_signature_date
 
               submission = submit_via_forms_api(claim, claim_info[:claim_label], claim_info[:participant_id])
 
@@ -114,8 +113,7 @@ module DependentsBenefits
       def submit_via_forms_api(claim, claim_label, participant_id)
         digital_forms_api_submission_service ||= DigitalFormsApi::Service::Submissions.new
 
-        payload = claim.parsed_form.deep_dup
-        payload = claim.deep_camelize_keys(payload.merge(payload.delete('dependents_application')))
+        payload = claim.fdf_submission_payload
         metadata = {
           sourceRequestId: claim.guid,
           formId: claim.claim_form_type,

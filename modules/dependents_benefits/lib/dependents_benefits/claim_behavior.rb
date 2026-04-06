@@ -40,6 +40,17 @@ module DependentsBenefits
       child_of_groups&.last&.parent_claim_id
     end
 
+    # Format the claim data for submission to fdf
+    # TODO: refactor so this is no longer needed after FDF pilot; future
+    def fdf_submission_payload
+      add_signature_date
+      payload = parsed_form.deep_dup
+      dependents_app = payload.delete('dependents_application') || {}
+
+      payload = payload.deep_merge(dependents_app) # combine nested hashes
+      deep_camelize_keys(payload) # convert snake_case to camelCase
+    end
+
     private
 
     # Returns a memoized instance of the DependentsBenefits monitor

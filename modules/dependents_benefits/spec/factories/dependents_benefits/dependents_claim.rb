@@ -21,6 +21,16 @@ FactoryBot.define do
           'report674' => true
         },
         'dependents_application' => {
+          'veteran_information' => {
+            'birth_date' => '1980-01-01',
+            'full_name' => {
+              'first' => 'Mark',
+              'last' => 'Webb'
+            },
+            'ssn' => '000000000',
+            'ssn_last_four' => '5309',
+            'va_file_last_four' => '5309'
+          },
           'veteran_contact_information' => {
             'phone_number' => '1112223333',
             'international_phone_number' => '1234567890123',
@@ -158,6 +168,16 @@ FactoryBot.define do
           report_child18_or_older_is_not_attending_school: true
         },
         dependents_application: {
+          veteran_information: {
+            birth_date: '1980-01-01',
+            full_name: {
+              first: 'Mark',
+              last: 'Webb'
+            },
+            ssn: '000000000',
+            ssn_last_four: '5309',
+            va_file_last_four: '5309'
+          },
           household_income: true,
           'view:completed_child_stopped_attending_school': false,
           'view:completed_married_child': false,
