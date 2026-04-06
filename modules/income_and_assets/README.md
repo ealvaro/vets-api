@@ -10,11 +10,23 @@ Key features include automated PDF form filling with comprehensive section mappi
 
 ## Table of Contents
 
+- [Feature Flags](#feature-flags)
 - [Prerequisites](#prerequisites)
 - [Configuration](#configuration)
 - [Usage Examples](#usage-examples)
 - [API Reference](#api-reference)
 - [Testing](#testing)
+
+## Feature Flags
+
+| Name                                   | Description                            |
+| -------------------------------------- | -------------------------------------- |
+| `income_and_assets_bpds_service_enabled` | Enables the BPDS service for Income and Assets |
+| `income_and_assets_received_email_notification` | Toggle sending of the Received email notification |
+| `income_and_assets_submitted_email_notification` | Toggle sending of the Burial Submission in Progress email notification |
+| `income_and_assets_error_email_notification` | Toggle sending of the Action Needed email notification |
+| `income_and_assets_persistent_attachment_error_email_notification` | Toggle sending of the Persistent Attachment Error email notification |
+
 
 ## Prerequisites
 
