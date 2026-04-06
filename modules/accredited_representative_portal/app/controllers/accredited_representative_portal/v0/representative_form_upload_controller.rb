@@ -122,7 +122,7 @@ module AccreditedRepresentativePortal
       private
 
       def bdd_status(saved_claim)
-        if metadata[:selectBddClaim]
+        if metadata[:benefitsDeliveryDischarge]
           saved_claim.separation_health_assessment.present? ? :bdd_with_sha : :bdd_without_sha
         else
           :non_bdd
