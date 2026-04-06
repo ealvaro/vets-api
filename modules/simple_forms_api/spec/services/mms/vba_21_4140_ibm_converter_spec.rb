@@ -7,8 +7,12 @@ require SimpleFormsApi::Engine.root.join('spec', 'spec_helper.rb')
 
 RSpec.describe SimpleFormsApi::Mms::VBA214140IbmConverter do
   let(:fixture_file) { 'vba_21_4140.json' }
+  let(:min_file) { 'vba_21_4140-min.json' }
   let(:fixture_path) do
     Rails.root.join('modules', 'simple_forms_api', 'spec', 'fixtures', 'form_json', fixture_file)
+  end
+  let(:min_example_path) do
+    Rails.root.join('modules', 'simple_forms_api', 'spec', 'fixtures', 'form_json', min_file)
   end
   let(:data) { JSON.parse(File.read(fixture_path)) }
   let(:form) { SimpleFormsApi::VBA214140.new(data) }
@@ -19,7 +23,7 @@ RSpec.describe SimpleFormsApi::Mms::VBA214140IbmConverter do
   end
   let(:ibm_payload) { JSON.parse(File.read(ibm_fixture_path)) }
 
-  describe '.convert' do
+  describe '#convert' do
     subject(:payload) { described_class.convert(form) }
 
     it 'converts a parsed form to the keys and formats expected by IBM' do
@@ -28,6 +32,21 @@ RSpec.describe SimpleFormsApi::Mms::VBA214140IbmConverter do
 
         expect(payload).to eq(ibm_payload)
       end
+    end
+
+    it 'uses blank string for missing data' do
+      min_form = JSON.parse(File.read(min_example_path))
+      form = SimpleFormsApi::VBA214140.new(min_form)
+      ibm_payload = described_class.convert(form)
+      expect(ibm_payload['EMPLOYER_NAME_ADDRESS']).to eq('')
+      expect(ibm_payload['EMPLOYER_NAME_ADDRESS1']).to eq('')
+      expect(ibm_payload['EMPLOYER_NAME_ADDRESS2']).to eq('')
+      expect(ibm_payload['EMPLOYER_NAME_ADDRESS3']).to eq('')
+      expect(ibm_payload['PHONE_NUMBER']).to eq('')
+      expect(ibm_payload['VA_FILE_NUMBER']).to eq('')
+      expect(ibm_payload['VETERAN_ADDRESS_LINE2']).to eq('')
+      expect(ibm_payload['VETERAN_DOB']).to eq('')
+      expect(ibm_payload['VETERAN_SSN']).to eq('')
     end
 
     it 'normalizes SSN' do

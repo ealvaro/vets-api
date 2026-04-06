@@ -1,0 +1,99 @@
+{
+  "id_number": {
+    "ssn": "",
+    "va_file_number": ""
+  },
+  "service_number": "",
+  "phone_number": "",
+  "mobile_phone_number": "",
+  "email_address": "",
+  "address": {
+    "country": "",
+    "street": "",
+    "street2": "",
+    "street3": "",
+    "city": "",
+    "state": "",
+    "postal_code": ""
+  },
+  "full_name": {
+    "first": "",
+    "middle": "",
+    "last": ""
+  },
+  "date_of_birth": "",
+  "employers": [
+    {
+      "type_of_work": "",
+      "hours_per_week": "",
+      "lost_time_from_illness": "",
+      "highest_gross_income_per_month": "",
+      "employment_dates": {
+        "from": "",
+        "to": ""
+      },
+      "employer_name": "",
+      "employer_address": {
+        "country": "",
+        "street": "",
+        "city": "",
+        "state": "",
+        "postal_code": ""
+      }
+    },
+    {
+      "type_of_work": "",
+      "hours_per_week": "",
+      "lost_time_from_illness": "",
+      "highest_gross_income_per_month": "",
+      "employment_dates": {
+        "from": "",
+        "to": ""
+      },
+      "employer_name": "",
+      "employer_address": {
+        "country": "",
+        "street": "",
+        "city": "",
+        "state": "",
+        "postal_code": ""
+      }
+    },
+    {
+      "type_of_work": "",
+      "hours_per_week": "",
+      "lost_time_from_illness": "",
+      "highest_gross_income_per_month": "",
+      "employment_dates": {
+        "from": "",
+        "to": ""
+      },
+      "employer_name": "",
+      "employer_address": {
+        "country": "",
+        "street": "",
+        "city": "",
+        "state": "",
+        "postal_code": ""
+      }
+    },
+    {}
+  ],
+  "supporting_evidence": [
+    {
+      "name": "",
+      "size": "",
+      "type": "",
+      "confirmation_code": ""
+    },
+    {
+      "name": "",
+      "size": "",
+      "type": "",
+      "confirmation_code": ""
+    }
+  ],
+  "statement_of_truth_signature": "",
+  "statement_of_truth_certified": "",
+  "form_number": "21-4140"
+}
