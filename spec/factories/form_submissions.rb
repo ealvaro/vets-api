@@ -71,6 +71,16 @@ FactoryBot.define do
       end
     end
 
+    trait :with_form214138 do
+      user_account_id { '' }
+      form_type { '21-4138' }
+      updated_at { 1.day.ago }
+      created_at { 2.days.ago }
+      form_submission_attempts do
+        create_list(:form_submission_attempt, 1, benefits_intake_uuid: 'c7e1f2a3-b4d5-4e6f-9a0b-1c2d3e4f5a6b')
+      end
+    end
+
     trait :with_form_blocked do
       user_account_id { '' }
       form_type { 'NOT-WHITELISTED' }

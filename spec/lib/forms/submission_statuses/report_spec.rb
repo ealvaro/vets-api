@@ -9,7 +9,7 @@ describe Forms::SubmissionStatuses::Report, feature: :form_submission,
   subject { described_class.new(user_account:, allowed_forms:) }
 
   let(:user_account) { create(:user_account) }
-  let(:allowed_forms) { %w[20-10207 21-0845 21-0972 21-10210 21-4142 21-4142a 21P-0847 21-4140 21P-530EZ] }
+  let(:allowed_forms) { %w[20-10207 21-0845 21-0972 21-10210 21-4138 21-4142 21-4142a 21P-0847 21-4140 21P-530EZ] }
   let(:benefits_intake_service) { instance_double(BenefitsIntake::Service) }
   let(:benefits_intake_gateway) { Forms::SubmissionStatuses::Gateways::BenefitsIntakeGateway }
 
@@ -290,6 +290,48 @@ describe Forms::SubmissionStatuses::Report, feature: :form_submission,
       expect(result.submission_statuses.size).to eq(1)
       expect(result.submission_statuses.first.form_type).to eq('10-10D')
       expect(result.submission_statuses.first.status).to eq('vbms')
+    end
+  end
+
+  context 'when user has a 21-4138 submission' do
+    before do
+      create(:form_submission, :with_form214138, user_account_id: user_account.id)
+
+      allow_any_instance_of(benefits_intake_gateway).to receive(:lighthouse_submissions).and_return([])
+      allow(BenefitsIntake::Service).to receive(:new).and_return(benefits_intake_service)
+      allow(benefits_intake_service).to receive(:bulk_status).and_return(
+        double(body: {
+                 'data' => [
+                   {
+                     'id' => 'c7e1f2a3-b4d5-4e6f-9a0b-1c2d3e4f5a6b',
+                     'attributes' => {
+                       'detail' => 'detail',
+                       'guid' => 'c7e1f2a3-b4d5-4e6f-9a0b-1c2d3e4f5a6b',
+                       'message' => 'message',
+                       'status' => 'received',
+                       'updated_at' => 1.day.ago
+                     }
+                   }
+                 ]
+               })
+      )
+    end
+
+    it 'includes the 21-4138 submission in the results' do
+      result = subject.run
+
+      form_types = result.submission_statuses.map(&:form_type)
+      expect(form_types).to include('21-4138')
+    end
+
+    it 'returns the correct values for a 21-4138 submission' do
+      result = subject.run
+
+      submission_status = result.submission_statuses.find { |s| s.form_type == '21-4138' }
+      expect(submission_status).not_to be_nil
+      expect(submission_status.id).to eq('c7e1f2a3-b4d5-4e6f-9a0b-1c2d3e4f5a6b')
+      expect(submission_status.status).to eq('received')
+      expect(submission_status.pdf_support).to be(true)
     end
   end
 

@@ -203,7 +203,7 @@ RSpec.describe V0::MyVA::SubmissionStatusesController, type: :controller do
       it 'includes multi-party form IDs in the restricted benefits intake forms' do
         forms = controller.send(:restricted_benefits_intake_forms)
 
-        expect(forms).to include('21-2680', '21-0779', '21-4192', '21P-530a')
+        expect(forms).to include('21-2680', '21-0779', '21-4192', '21P-530a', '21-4138')
       end
     end
 
