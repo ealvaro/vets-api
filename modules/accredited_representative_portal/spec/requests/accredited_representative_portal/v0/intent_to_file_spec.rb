@@ -393,6 +393,89 @@ RSpec.describe AccreditedRepresentativePortal::V0::IntentToFileController, type:
           end
         end
 
+        context 'confirmation email monitoring' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_itf_confirmation_email)
+                                                .and_return(true)
+          end
+
+          context 'when email sends successfully' do
+            before do
+              notification_double = double('notification')
+              allow(AccreditedRepresentativePortal::NotificationEmail)
+                .to receive(:new).and_return(notification_double)
+              allow(notification_double).to receive(:deliver).with(:confirmation)
+            end
+
+            it 'tracks the email success metric' do
+              VCR.use_cassette('lighthouse/benefits_claims/intent_to_file/create_compensation_200_response') do
+                post('/accredited_representative_portal/v0/intent_to_file', params:)
+              end
+
+              expect(datadog_instance).to have_received(:track_count).with(
+                'ar.itf.va_notify.confirmation_email.success',
+                tags: array_including('benefit_type:compensation')
+              )
+              expect(datadog_instance).not_to have_received(:track_count).with(
+                'ar.itf.va_notify.confirmation_email.error',
+                tags: anything
+              )
+            end
+          end
+
+          context 'when email sending fails' do
+            before do
+              allow(AccreditedRepresentativePortal::NotificationEmail)
+                .to receive(:new).and_raise(StandardError.new('email service down'))
+            end
+
+            it 'tracks the email error metric with reason tag' do
+              VCR.use_cassette('lighthouse/benefits_claims/intent_to_file/create_compensation_200_response') do
+                post('/accredited_representative_portal/v0/intent_to_file', params:)
+              end
+
+              expect(datadog_instance).to have_received(:track_count).with(
+                'ar.itf.va_notify.confirmation_email.error',
+                tags: array_including('benefit_type:compensation', 'reason:standard_error')
+              )
+              expect(datadog_instance).not_to have_received(:track_count).with(
+                'ar.itf.va_notify.confirmation_email.success',
+                tags: anything
+              )
+            end
+
+            it 'still returns a successful ITF response' do
+              VCR.use_cassette('lighthouse/benefits_claims/intent_to_file/create_compensation_200_response') do
+                post('/accredited_representative_portal/v0/intent_to_file', params:)
+              end
+
+              expect(response).to have_http_status(:created)
+            end
+          end
+
+          context 'when confirmation email flag is disabled' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_itf_confirmation_email)
+                                                  .and_return(false)
+            end
+
+            it 'does not track any email metrics' do
+              VCR.use_cassette('lighthouse/benefits_claims/intent_to_file/create_compensation_200_response') do
+                post('/accredited_representative_portal/v0/intent_to_file', params:)
+              end
+
+              expect(datadog_instance).not_to have_received(:track_count).with(
+                'ar.itf.va_notify.confirmation_email.success',
+                tags: anything
+              )
+              expect(datadog_instance).not_to have_received(:track_count).with(
+                'ar.itf.va_notify.confirmation_email.error',
+                tags: anything
+              )
+            end
+          end
+        end
+
         context 'when poa_code lookup fails' do
           before do
             # only affect Datadog tags
