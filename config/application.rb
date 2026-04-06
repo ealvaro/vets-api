@@ -18,7 +18,7 @@ require 'rails/test_unit/railtie'
 # Require the gems listed in Gemfile, including any gems
 # you've limited to :test, :development, or :production.
 Bundler.require(*Rails.groups)
-
+require_relative '../lib/semantic_logger/safe_json_formatter'
 require_relative '../lib/olive_branch_patch'
 
 module VetsAPI

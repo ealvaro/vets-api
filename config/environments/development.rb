@@ -90,6 +90,6 @@ Rails.application.configure do
   config.semantic_logger.add_appender(
     io: $stdout,
     level: :info, # For debug, see log/development.log
-    formatter: config.rails_semantic_logger.format
+    formatter: SafeJsonFormatter.new
   )
 end
