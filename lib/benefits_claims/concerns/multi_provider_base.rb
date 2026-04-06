@@ -85,7 +85,7 @@ module BenefitsClaims
         configured_providers.each do |provider_class|
           provider = provider_class.new(@current_user)
           response = provider.get_claim(claim_id)
-          return response if validate_claim_response(response)
+          return response if validate_claim_response(response, claim_id)
         rescue Common::Exceptions::RecordNotFound
           log_claim_not_found(provider_class)
         rescue Common::Exceptions::Unauthorized, Common::Exceptions::Forbidden => e
@@ -97,8 +97,11 @@ module BenefitsClaims
         raise Common::Exceptions::RecordNotFound, claim_id
       end
 
-      def validate_claim_response(response)
-        response && response['data']
+      def validate_claim_response(response, requested_claim_id)
+        data = response&.dig('data')
+        return false unless data
+
+        data['id'].to_s == requested_claim_id.to_s
       end
 
       def log_claim_not_found(provider_class)

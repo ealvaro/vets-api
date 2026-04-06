@@ -44,6 +44,8 @@ module BenefitsClaims
         end
 
         def self.add_optional_attributes(attributes, dto)
+          attributes['claimStatusMeta'] = dto.claim_status_meta if dto.claim_status_meta.present?
+
           if dto.claim_phase_dates
             attributes['claimPhaseDates'] =
               Serializers::PhaseDatesSerializer.serialize(dto.claim_phase_dates)

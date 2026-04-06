@@ -700,6 +700,10 @@ features:
     actor_type: user
     description: When enabled, use the multi-provider registry to fetch claims from configured providers.
     enable_in_development: true
+  cst_champva_custom_content:
+    actor_type: user
+    description: When enabled, include CHAMPVA-specific claim status metadata content in benefits claims responses.
+    enable_in_development: true
   cst_multi_claim_provider_mobile:
     actor_type: user
     description: For mobile app, when enabled, use the multi-provider registry to fetch claims from configured providers

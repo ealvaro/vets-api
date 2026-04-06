@@ -7,6 +7,7 @@ require_relative 'builders/contentions_builder'
 require_relative 'builders/events_builder'
 require_relative 'builders/issues_builder'
 require_relative 'builders/evidence_builder'
+require_relative 'builders/claim_status_meta_builder'
 
 module BenefitsClaims
   module Providers
@@ -39,7 +40,8 @@ module BenefitsClaims
             end_product_code: attrs['endProductCode'],
             evidence_waiver_submitted5103: attrs['evidenceWaiverSubmitted5103'],
             lighthouse_id: attrs['lighthouseId'],
-            status: attrs['status']
+            status: attrs['status'],
+            claim_status_meta: Builders::ClaimStatusMetaBuilder.build
           }
         end
 

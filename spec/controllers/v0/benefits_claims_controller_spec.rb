@@ -42,6 +42,8 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
     allow(Flipper).to receive(:enabled?)
       .with(V0::BenefitsClaimsController::FEATURE_MULTI_CLAIM_PROVIDER, user)
       .and_return(true)
+    allow(Flipper).to receive(:enabled?).with(:cst_use_claim_title_generator_web).and_return(true)
+    allow(Flipper).to receive(:enabled?).with(:cst_suppress_evidence_requests_website).and_return(true)
 
     # Mock provider registry to return Lighthouse provider by default for backward compatibility
     allow(BenefitsClaims::Providers::ProviderRegistry)
@@ -2384,6 +2386,24 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
     context 'with multiple providers' do
       let(:providers) { [mock_provider_class, second_provider_class] }
 
+      before do
+        allow(BenefitsClaims::Providers::ProviderRegistry)
+          .to receive(:enabled_providers)
+          .with(user, platform: :web)
+          .and_return(
+            [
+              {
+                name: :lighthouse,
+                class: BenefitsClaims::Providers::Lighthouse::LighthouseBenefitsClaimsProvider
+              },
+              {
+                name: :ivc_champva,
+                class: BenefitsClaims::Providers::IvcChampva::IvcChampvaBenefitsClaimsProvider
+              }
+            ]
+          )
+      end
+
       it 'defaults to lighthouse when no provider_type specified (preserves bookmarks)' do
         proxy = double('LighthouseProxy')
         allow(V0::LighthouseClaims::Proxy).to receive(:new).with(user).and_return(proxy)
@@ -2397,7 +2417,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
 
       it 'returns list of supported provider types' do
         supported_types = controller.send(:supported_provider_types)
-        expect(supported_types).to eq(['lighthouse'])
+        expect(supported_types).to eq(%w[lighthouse ivc_champva])
       end
 
       context 'when provider_type parameter is specified' do

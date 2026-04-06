@@ -91,6 +91,23 @@ RSpec.describe V0::Concerns::MultiProviderSupport do
         controller.send(:provider_class_for_type, 'unknown_provider')
       end.to raise_error(Common::Exceptions::InvalidFieldValue)
     end
+
+    it 'maps legacy ivcchampvabenefitsclaimsprovider alias to IVC CHAMPVA provider' do
+      allow(BenefitsClaims::Providers::ProviderRegistry).to receive(:enabled_providers)
+        .with(user, platform: :web)
+        .and_return(
+          [
+            {
+              name: :ivc_champva,
+              class: BenefitsClaims::Providers::IvcChampva::IvcChampvaBenefitsClaimsProvider
+            }
+          ]
+        )
+
+      result = controller.send(:provider_class_for_type, 'ivcchampvabenefitsclaimsprovider')
+
+      expect(result).to eq(BenefitsClaims::Providers::IvcChampva::IvcChampvaBenefitsClaimsProvider)
+    end
   end
 
   describe '#provider_type_from_class' do

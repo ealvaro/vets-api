@@ -137,6 +137,7 @@ module BenefitsClaims
       attribute :evidence_waiver_submitted5103, Bool
       attribute :lighthouse_id, String
       attribute :status, String
+      attribute :claim_status_meta, Hash
       attribute :supporting_documents, SupportingDocument, array: true, default: -> { [] }
       attribute :evidence_submissions, EvidenceSubmission, array: true, default: -> { [] }
       attribute :contentions, Contention, array: true, default: -> { [] }

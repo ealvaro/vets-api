@@ -14,6 +14,10 @@ module V0
       extend ActiveSupport::Concern
       include BenefitsClaims::Concerns::MultiProviderBase
 
+      LEGACY_PROVIDER_TYPE_ALIASES = {
+        'ivcchampvabenefitsclaimsprovider' => 'ivc_champva'
+      }.freeze
+
       private
 
       def format_error_entry(provider_name, message)
@@ -100,8 +104,8 @@ module V0
       end
 
       def provider_class_for_type(type)
-        normalized_type = type.to_s.downcase
-        provider = provider_registry.find { |p| p[:name].to_s == normalized_type }
+        provider_type = normalized_provider_type(type)
+        provider = provider_registry.find { |p| p[:name].to_s == provider_type }
 
         raise Common::Exceptions::InvalidFieldValue.new('type', type) if provider.nil?
 
@@ -135,6 +139,11 @@ module V0
         raise Common::Exceptions::InvalidFieldValue.new('provider_class', provider_class.to_s) if provider.nil?
 
         provider[:name].to_s
+      end
+
+      def normalized_provider_type(type)
+        normalized_type = type.to_s.downcase
+        LEGACY_PROVIDER_TYPE_ALIASES.fetch(normalized_type, normalized_type)
       end
     end
   end
