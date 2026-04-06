@@ -12,7 +12,9 @@ module UnifiedHealthData
     #
     #   Requires these methods from other modules (via include):
     #   - categorize_medication(resource) - From OracleHealthCategorizer
+    #   - non_va_med?(resource) - From OracleHealthCategorizer
     #   - medication_dispenses(resource) - From FhirHelpers
+    #   - completed_dispense_exists?(resource) - From FhirHelpers
     #   - parse_expiration_date_utc(resource) - From FhirHelpers
     #   - prescription_expired?(resource) - From FhirHelpers
     module OracleHealthRenewabilityHelper
@@ -23,7 +25,7 @@ module UnifiedHealthData
       #
       # Gate 1: MedicationRequest.status == 'active'
       # Gate 2: Category must be VA Prescription
-      # Gate 3: At least one dispense exists
+      # Gate 3: At least one completed dispense exists
       # Gate 4: Validity period end date exists
       # Gate 5: Within 120 days of validity period end
       # Gate 6: Refills exhausted OR prescription expired
@@ -35,7 +37,7 @@ module UnifiedHealthData
         return false if resource.nil? || !resource.is_a?(Hash)
         return false unless resource['status'] == 'active'
         return false if non_va_med?(resource)
-        return false if medication_dispenses(resource).empty?
+        return false unless completed_dispense_exists?(resource)
         return false unless validity_period_end_exists?(resource)
         return false unless within_renewal_window?(resource)
         return false unless refills_exhausted_or_expired?(resource)

@@ -180,6 +180,42 @@ RSpec.describe UnifiedHealthData::Adapters::OracleHealthRenewabilityHelper do
         expect(subject.send(:renewable?, resource)).to be false
       end
 
+      it 'returns false when only entered-in-error dispense exists for active expired prescription' do
+        resource = fhir_resource(
+          status: 'active',
+          refills: 0,
+          expiration: 30.days.ago,
+          source: 'VA'
+        ).merge(
+          'contained' => [
+            {
+              'resourceType' => 'MedicationDispense',
+              'id' => 'dispense-1',
+              'status' => 'entered-in-error'
+            }
+          ]
+        )
+        expect(subject.send(:renewable?, resource)).to be false
+      end
+
+      it 'returns false with entered-in-error dispense for active non-expired prescription with no repeats' do
+        resource = fhir_resource(
+          status: 'active',
+          refills: 0,
+          expiration: 30.days.from_now,
+          source: 'VA'
+        ).merge(
+          'contained' => [
+            {
+              'resourceType' => 'MedicationDispense',
+              'id' => 'dispense-1',
+              'status' => 'entered-in-error'
+            }
+          ]
+        )
+        expect(subject.send(:renewable?, resource)).to be false
+      end
+
       it 'returns true with one completed dispense' do
         resource = fhir_resource(
           status: 'active',

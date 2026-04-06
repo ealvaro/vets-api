@@ -127,6 +127,42 @@ describe UnifiedHealthData::Adapters::OracleHealthRefillHelper do
       end
     end
 
+    context 'when only an entered-in-error dispense exists' do
+      let(:entered_in_error_dispense) do
+        {
+          'resourceType' => 'MedicationDispense',
+          'status' => 'entered-in-error',
+          'whenHandedOver' => '2025-01-01T10:00:00Z'
+        }
+      end
+
+      let(:entered_in_error_resource) do
+        refillable_resource.merge('contained' => [entered_in_error_dispense])
+      end
+
+      it 'returns false' do
+        expect(subject.refillable?(entered_in_error_resource, nil)).to be false
+      end
+    end
+
+    context 'when entered-in-error and completed dispenses both exist' do
+      let(:entered_in_error_dispense) do
+        {
+          'resourceType' => 'MedicationDispense',
+          'status' => 'entered-in-error',
+          'whenHandedOver' => '2025-01-01T10:00:00Z'
+        }
+      end
+
+      let(:mixed_dispense_resource) do
+        refillable_resource.merge('contained' => [entered_in_error_dispense, completed_dispense])
+      end
+
+      it 'returns true' do
+        expect(subject.refillable?(mixed_dispense_resource, nil)).to be true
+      end
+    end
+
     context 'when most recent dispense is in progress' do
       let(:in_progress_dispense) do
         {

@@ -81,6 +81,16 @@ module UnifiedHealthData
         end
       end
 
+      # Checks for at least one successfully completed dispense.
+      # Dispenses with status 'entered-in-error' represent voided records and
+      # do not count as evidence that the initial fill was processed.
+      #
+      # @param resource [Hash] FHIR MedicationRequest resource
+      # @return [Boolean] true when a completed MedicationDispense exists
+      def completed_dispense_exists?(resource)
+        medication_dispenses(resource).any? { |dispense| dispense['status'] == 'completed' }
+      end
+
       # Builds instruction text from FHIR dosageInstruction components
       #
       # @param instruction [Hash] FHIR dosageInstruction object
