@@ -135,6 +135,10 @@ module SimpleFormsApi
       PersistentAttachment.where(guid: attachment_guids).map(&:to_pdf)
     end
 
+    def notification_email_address
+      data['email'].presence || data['email_address']
+    end
+
     private
 
     def signature
@@ -150,7 +154,7 @@ module SimpleFormsApi
     end
 
     def contact_info
-      [data['phone_number'], data['mobile_phone_number'], data['email_address']].compact
+      [data['phone_number'], data['mobile_phone_number'], notification_email_address].compact
     end
 
     def format_phone(phone)
