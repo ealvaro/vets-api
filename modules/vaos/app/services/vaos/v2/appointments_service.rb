@@ -268,9 +268,10 @@ module VAOS
           # We always fetch facility and clinic information when getting a single appointment
           include[:facilities] = true
           include[:clinics] = true
+          start_dt = appointment[:start]&.to_datetime
+          should_fetch_avs = include[:avs] && start_dt&.past?
 
-          avs_metadata = fetch_all_avs_metadata(appointment[:start]&.to_datetime, [appointment],
-                                                include_avs: include[:avs])
+          avs_metadata = fetch_all_avs_metadata(start_dt, [appointment], include_avs: should_fetch_avs)
           prepare_appointment(appointment, include, avs_metadata)
 
           check_appointments_migration_override([appointment])
@@ -519,22 +520,30 @@ module VAOS
       # Returns a hash indexed by appointment id (without any prefix like CERNER)
       #
       # @return [Hash{String => Array<UnifiedHealthData::AfterVisitSummary>}]
-      def fetch_all_avs_metadata(start_date, appointments = [], include_avs: false)
+      def fetch_all_avs_metadata(start_date, appointments = [], include_avs: false) # rubocop:disable Metrics/MethodLength
         return {} unless include_avs
         return {} unless Flipper.enabled?(:va_online_scheduling_uhd_avs_metadata, user) &&
                          Flipper.enabled?(APPOINTMENTS_FETCH_OH_AVS, user) &&
                          appointments.any? { |appt| VAOS::AppointmentsHelper.cerner?(appt) }
         return {} if user.icn.nil? || !start_date.respond_to?(:to_date)
 
-        start_date_str = start_date.to_date.to_s
-        end_date_str = Time.zone.today.to_s
-        doc_refs, encounters = unified_health_data_service.get_all_avs_metadata(start_date: start_date_str,
-                                                                                end_date: end_date_str)
+        start_date = start_date.to_date
+        end_date = Time.zone.today
+
+        return {} if start_date > end_date
+
+        doc_refs, encounters = unified_health_data_service.get_all_avs_metadata(start_date:, end_date:)
         clinical_notes_adapter.build_avs_metadata_by_appointment(encounters, doc_refs)
       rescue => e
         err_stack = e.backtrace.reject { |line| line.include?('gems') }.compact.join("\n   ")
-        Rails.logger.error("VAOS: Error retrieving AVS metadata for user #{user.user_account_uuid}:" \
-                           "#{e.class}, #{e.message} \n   #{err_stack}")
+        original_status = e.respond_to?(:original_status) ? e.original_status : nil
+        Rails.logger.error(
+          "VAOS: Error retrieving AVS metadata for user #{user.user_account_uuid}:" \
+          "#{e.class}, #{e.message}" \
+          " | start_date: #{start_date}, end_date: #{end_date}" \
+          " | upstream_status: #{original_status}" \
+          " \n   #{err_stack}"
+        )
         {}
       end
 

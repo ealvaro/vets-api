@@ -1895,6 +1895,27 @@ describe UnifiedHealthData::Service, type: :service do
       returned_types = all_returned.map { |entry| entry['resourceType'] }.uniq
       expect(returned_types).to contain_exactly('DocumentReference', 'Encounter')
     end
+
+    it 'returns empty arrays when start_date is after end_date' do
+      expect_any_instance_of(UnifiedHealthData::Client).not_to receive(:get_all_avs)
+      result = service.get_all_avs_metadata(start_date: '2025-12-31', end_date: '2025-01-01')
+      expect(result).to eq([[], []])
+    end
+
+    it 'does not short-circuit when start_date equals end_date' do
+      result = service.get_all_avs_metadata(start_date: '2025-06-15', end_date: '2025-06-15')
+      doc_refs, encounters = result
+      expect(doc_refs.size).to eq(2)
+      expect(encounters.size).to eq(2)
+    end
+
+    it 'accepts Date objects for start_date and end_date' do
+      result = service.get_all_avs_metadata(start_date: Date.new(2025, 1, 1), end_date: Date.new(2025, 12, 31))
+
+      doc_refs, encounters = result
+      expect(doc_refs.size).to eq(2)
+      expect(encounters.size).to eq(2)
+    end
   end
 
   describe '#get_avs_binary_data' do

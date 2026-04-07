@@ -893,6 +893,24 @@ RSpec.describe 'VAOS::V2::Appointments', :skip_mvi, type: :request do
           end
         end
 
+        it 'does not fetch avs when OH appointment is in the future even if avs is requested' do
+          Timecop.freeze(DateTime.parse('2023-09-01T12:00:00Z')) do
+            VCR.use_cassette('vaos/v2/appointments/get_appointment_200_with_facility_200_with_avs_cerner',
+                             match_requests_on: %i[method path query]) do
+              allow(Rails.logger).to receive(:info).at_least(:once)
+              expect_any_instance_of(VAOS::V2::AppointmentsService).to receive(:fetch_all_avs_metadata)
+                .with(anything, anything, include_avs: false).and_call_original
+
+              get '/vaos/v2/appointments/70060?_include=avs', headers: inflection_header
+              expect(response).to have_http_status(:ok)
+              data = JSON.parse(response.body)['data']
+
+              expect(data['id']).to eq('70060')
+              expect(data['attributes']['avsPdf']).to be_nil
+            end
+          end
+        end
+
         it 'has access and returns appointment with OH avs' do
           avs_show_metadata = {
             '523938333130383130' => [
