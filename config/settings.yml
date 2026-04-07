@@ -940,6 +940,7 @@ maintenance:
     tc: <%= ENV['maintenance__services__tc'] %>
     tims: <%= ENV['maintenance__services__tims'] %>
     travel_pay: <%= ENV['maintenance__services__travel_pay'] %>
+    travel_pay_warning: <%= ENV['maintenance__services__travel_pay_warning'] %>
     vaos: <%= ENV['maintenance__services__vaos'] %>
     vaosWarning: <%= ENV['maintenance__services__vaoswarning'] %>
     vapro_contact_info: <%= ENV['maintenance__services__vapro_contact_info'] %>
