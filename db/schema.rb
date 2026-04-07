@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_04_02_160555) do
+ActiveRecord::Schema[7.2].define(version: 2026_04_07_160933) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -1910,7 +1910,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_02_160555) do
     t.string "icn"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "locked", default: false, null: false
     t.index ["icn"], name: "index_user_accounts_on_icn", unique: true
+    t.index ["locked"], name: "index_user_accounts_on_locked", where: "(locked = true)"
   end
 
   create_table "user_action_events", force: :cascade do |t|
