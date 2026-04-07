@@ -93,7 +93,7 @@ module PdfFill
         }
       }.freeze
 
-      def merge_fields(_)
+      def merge_fields(_options = {})
         form_data = @form_data
 
         # Combine first and last name into fullName
@@ -101,8 +101,21 @@ module PdfFill
           official = form_data['certifyingOfficial']
           official['fullName'] = "#{official['first']} #{official['last']}" if official['first'] && official['last']
         end
+        merge_date_helpers
 
         form_data
+      end
+
+      def merge_date_helpers
+        @form_data['institutionDetails']['termStartDate'] =
+          format_date(@form_data['institutionDetails']['termStartDate'])
+        @form_data['studentRatioCalcChapter']['dateOfCalculation'] =
+          format_date(@form_data['studentRatioCalcChapter']['dateOfCalculation'])
+        @form_data['dateSigned'] = format_date(@form_data['dateSigned'])
+      end
+
+      def format_date(str)
+        str.to_date.strftime(self.class.date_strftime)
       end
     end
   end
