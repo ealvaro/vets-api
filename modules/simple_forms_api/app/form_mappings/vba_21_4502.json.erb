@@ -80,5 +80,8 @@
   "form1[0].#subform[0].DOBday[5]": "<%= form.date_part('signature_date',"day")%>",
   "form1[0].#subform[0].DOBmonth[5]": "<%= form.date_part('signature_date',"month")%>",
   "form1[0].#subform[0].DOByear[5]": "<%= form.date_part('signature_date',"year")%>",
-  "form1[0].#subform[0].SignatureField11[0]": "<%= form.data.dig("statement_of_truth_signature") %>"
+  "form1[0].#subform[0].SignatureField11[0]": "<%= form.data.dig("statement_of_truth_signature") %>",
+  "form1[0].#subform[1].ClaimantsSocialSecurityNumber_FirstThreeNumbers[1]": "<%= form.data['ssn']&.slice(0, 3) %>",
+  "form1[0].#subform[1].ClaimantsSocialSecurityNumber_SecondTwoNumbers[1]": "<%= form.data['ssn']&.slice(3, 2) %>",
+  "form1[0].#subform[1].ClaimantsSocialSecurityNumber_LastFourNumbers[1]": "<%= form.data['ssn']&.slice(5, 4) %>"
 }
