@@ -4,7 +4,7 @@ module UnifiedHealthData
   module Adapters
     # Generic FHIR resource parsing and utility methods
     # Shared across different FHIR adapters (MedicationRequest, etc.)
-    module FhirHelpers
+    module FhirHelpers # rubocop:disable Metrics/ModuleLength
       # Parses a date string or returns epoch if invalid/missing
       #
       # @param date_string [String, nil] Date string to parse
