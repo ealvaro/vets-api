@@ -108,7 +108,7 @@ features:
   ask_va_datadog_rum:
     actor_type: cookie_id
     description: Enables DataDog Rum integration for tracing user sessions
-    enable_in_development: true
+    enable_in_development: false
   ask_va_enhanced_inbox:
     actor_type: cookie_id
     description: Enables the enhanced Ask VA inbox experience
