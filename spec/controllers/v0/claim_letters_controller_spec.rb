@@ -641,6 +641,62 @@ RSpec.describe V0::ClaimLettersController, type: :controller do
         expect(response).to have_http_status(:forbidden)
       end
     end
+
+    context 'when VAProfile VeteranStatus raises VAProfileError' do
+      let(:monitor) { instance_double(Logging::Monitor) }
+
+      before do
+        mock_provider = instance_double(LighthouseClaimLettersProvider)
+        allow(LighthouseClaimLettersProvider).to receive(:new).and_return(mock_provider)
+        allow(mock_provider).to receive(:get_letters)
+          .and_raise(VAProfile::VeteranStatus::VAProfileError.new(status: 400))
+        allow(mock_provider).to receive(:get_letter)
+          .and_raise(VAProfile::VeteranStatus::VAProfileError.new(status: 400))
+
+        allow(Logging::Monitor).to receive(:new).and_return(monitor)
+        allow(monitor).to receive(:track_request)
+      end
+
+      it 'returns a 502 bad gateway for index' do
+        get(:index)
+
+        expect(response).to have_http_status(:bad_gateway)
+        error = JSON.parse(response.body)['errors'].first
+        expect(error['title']).to eq('Bad Gateway')
+        expect(error['status']).to eq('502')
+      end
+
+      it 'returns a 502 bad gateway for show' do
+        get(:show, params: { document_id: })
+
+        expect(response).to have_http_status(:bad_gateway)
+        error = JSON.parse(response.body)['errors'].first
+        expect(error['title']).to eq('Bad Gateway')
+        expect(error['status']).to eq('502')
+      end
+
+      it 'logs the VAProfile error for index' do
+        get(:index)
+
+        expect(monitor).to have_received(:track_request)
+          .with(:warn,
+                'VAProfile VeteranStatus error during claim letters request',
+                'claim_letters.va_profile_error.index',
+                action: 'index',
+                va_profile_status: 400)
+      end
+
+      it 'logs the VAProfile error for show' do
+        get(:show, params: { document_id: })
+
+        expect(monitor).to have_received(:track_request)
+          .with(:warn,
+                'VAProfile VeteranStatus error during claim letters request',
+                'claim_letters.va_profile_error.show',
+                action: 'show',
+                va_profile_status: 400)
+      end
+    end
   end
 
   def mock_lighthouse_provider(current_user)

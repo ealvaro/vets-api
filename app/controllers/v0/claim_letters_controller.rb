@@ -3,6 +3,7 @@
 require 'claim_letters/claim_letter_downloader'
 require 'claim_letters/providers/claim_letters/lighthouse_claim_letters_provider'
 require 'logging/monitor'
+require 'va_profile/veteran_status/va_profile_error'
 
 module V0
   class ClaimLettersController < ApplicationController
@@ -24,6 +25,9 @@ module V0
     rescue Common::Exceptions::ExternalServerInternalServerError => e
       log_api_provider_error(e)
       raise_upstream_bad_gateway
+    rescue VAProfile::VeteranStatus::VAProfileError => e
+      log_upstream_va_profile_error(e)
+      raise_upstream_bad_gateway
     rescue Common::Exceptions::BaseError
       raise
     rescue => e
@@ -41,6 +45,9 @@ module V0
       end
     rescue Common::Exceptions::ExternalServerInternalServerError => e
       log_api_provider_error(e)
+      raise_upstream_bad_gateway
+    rescue VAProfile::VeteranStatus::VAProfileError => e
+      log_upstream_va_profile_error(e)
       raise_upstream_bad_gateway
     rescue Common::Exceptions::BaseError
       raise
@@ -108,6 +115,14 @@ module V0
                             action: action_name)
     end
 
+    def log_upstream_va_profile_error(error)
+      monitor.track_request(:warn,
+                            'VAProfile VeteranStatus error during claim letters request',
+                            "claim_letters.va_profile_error.#{action_name}",
+                            action: action_name,
+                            va_profile_status: error.status)
+    end
+
     # Maps upstream server errors (Lighthouse/VBMS 500s) to 502 Bad Gateway so they don't
     # surface as application-level 500s in Datadog. The upstream service failed, not our app.
     def raise_upstream_bad_gateway
@@ -122,7 +137,7 @@ module V0
 
     def monitor
       @monitor ||= Logging::Monitor.new('claim-letters', allowlist: %i[
-                                          api_provider action document_type_metadata message_type
+                                          api_provider action document_type_metadata message_type va_profile_status
                                         ])
     end
   end

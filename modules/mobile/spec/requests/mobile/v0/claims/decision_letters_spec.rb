@@ -197,6 +197,19 @@ RSpec.describe 'Mobile::V0::Claims::DecisionLetters', type: :request do
             expect(response.parsed_body.dig('errors', 0, 'source')).to eq('DecisionLettersController#index')
           end
         end
+
+        context 'when VAProfile VeteranStatus raises VAProfileError' do
+          it 'translates to 502 (Bad Gateway)' do
+            lighthouse_provider_double = double
+            allow(lighthouse_provider_double).to receive(:get_letters)
+              .and_raise(VAProfile::VeteranStatus::VAProfileError.new(status: 400))
+            allow(LighthouseClaimLettersProvider).to receive(:new).and_return(lighthouse_provider_double)
+            get '/mobile/v0/claims/decision-letters', headers: sis_headers
+            assert_schema_conform(502)
+            expect(response.parsed_body.dig('errors', 0, 'title')).to eq('Bad Gateway')
+            expect(response.parsed_body.dig('errors', 0, 'source')).to eq('DecisionLettersController#index')
+          end
+        end
       end
     end
 

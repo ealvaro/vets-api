@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'claim_letters/claim_letter_downloader'
+require 'va_profile/veteran_status/va_profile_error'
 
 module Mobile
   module V0
@@ -28,7 +29,8 @@ module Mobile
         Common::Exceptions::BadGateway,                        # LH 502
         Common::Exceptions::ServiceUnavailable,                # LH 503
         Common::Exceptions::GatewayTimeout,                    # LH 504
-        Breakers::OutageException                              # Breakers circuit open
+        Breakers::OutageException,                             # Breakers circuit open
+        VAProfile::VeteranStatus::VAProfileError               # VA Profile failure during error logging
       ].freeze
 
       # Returns a list of decision letters for the authenticated veteran.
