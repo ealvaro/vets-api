@@ -86,6 +86,30 @@ RSpec.describe V0::BenefitsDocumentsController, type: :controller do
         end
       end
 
+      context 'and the document has an incorrect password' do
+        before do
+          allow_any_instance_of(LighthouseDocument).to receive(:convert_to_unlocked_pdf) do |doc|
+            doc.errors.add(:base, I18n.t('errors.messages.uploads.pdf.incorrect_password'))
+          end
+        end
+
+        it 'returns a 422' do
+          file = Rack::Test::UploadedFile.new(Tempfile.new('banana.pdf'))
+
+          post(:create, params: { file:, benefits_claim_id: 1, document_type: 'L015' })
+
+          expect(response).to have_http_status(:unprocessable_entity)
+
+          json_response = JSON.parse(response.body)['errors'].first
+
+          expect(json_response['title']).to eq('Unprocessable Entity')
+          expect(json_response['code']).to eq('422')
+          expect(json_response['status']).to eq('422')
+          expect(json_response['source']).to eq('BenefitsDocuments::Service')
+          expect(json_response['detail']).to eq('DOC_UPLOAD_INCORRECT_PASSWORD')
+        end
+      end
+
       context 'and the claimant cannot be validated to upload' do
         before do
           allow_any_instance_of(BenefitsDocuments::Service).to receive(:validate_claimant_can_upload)

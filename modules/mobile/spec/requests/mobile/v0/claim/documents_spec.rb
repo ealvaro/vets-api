@@ -55,8 +55,12 @@ RSpec.describe 'Mobile::V0::Claim::Document', :skip_json_api_validation, type: :
                  documentType: document_type, password: 'bad' }
       post '/mobile/v0/claim/600117255/documents', params:, headers: sis_headers
       expect(response).to have_http_status(:unprocessable_entity)
-      expect(response.parsed_body['errors'].first['title'])
-        .to eq(I18n.t('errors.messages.uploads.pdf.incorrect_password'))
+      json_response = response.parsed_body['errors'].first
+      expect(json_response['title']).to eq('Unprocessable Entity')
+      expect(json_response['code']).to eq('422')
+      expect(json_response['status']).to eq('422')
+      expect(json_response['source']).to eq('BenefitsDocuments::Service')
+      expect(json_response['detail']).to eq('DOC_UPLOAD_INCORRECT_PASSWORD')
       expect(EvidenceSubmission.count).to eq(0)
     end
   end

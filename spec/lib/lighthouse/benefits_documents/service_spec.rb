@@ -186,6 +186,57 @@ RSpec.describe BenefitsDocuments::Service do
           end.to raise_error(Common::Exceptions::UnprocessableEntity)
         end
       end
+
+      context 'when the document being uploaded has an incorrect password' do
+        let(:upload_file) do
+          f = Tempfile.new(['test_document', '.pdf'])
+          f.write('%PDF-1.4 test content')
+          f.rewind
+          rack_file = Rack::Test::UploadedFile.new(f.path, 'application/pdf')
+          ActionDispatch::Http::UploadedFile.new(
+            tempfile: rack_file.tempfile,
+            filename: rack_file.original_filename,
+            type: rack_file.content_type
+          )
+        end
+
+        shared_examples 'incorrect password error' do
+          it 'raises an UnprocessableEntity exception' do
+            expect do
+              subject.queue_document_upload(params)
+            end.to raise_error(Common::Exceptions::UnprocessableEntity) { |error|
+              expect(error.errors.first.detail).to eq('DOC_UPLOAD_INCORRECT_PASSWORD')
+              expect(error.errors.first.source).to eq('BenefitsDocuments::Service')
+            }
+          end
+        end
+
+        context "when the 'lighthouse_document_convert_to_unlocked_pdf_use_hexapdf' flipper is disabled" do
+          before do
+            allow(Flipper).to receive(:enabled?)
+              .with(:lighthouse_document_convert_to_unlocked_pdf_use_hexapdf)
+              .and_return(false)
+            allow_any_instance_of(LighthouseDocument).to receive(:unlock_with_pdftk) do |doc, _tempfile|
+              doc.errors.add(:base, I18n.t('errors.messages.uploads.pdf.incorrect_password'))
+            end
+          end
+
+          include_examples 'incorrect password error'
+        end
+
+        context "when the 'lighthouse_document_convert_to_unlocked_pdf_use_hexapdf' flipper is enabled" do
+          before do
+            allow(Flipper).to receive(:enabled?)
+              .with(:lighthouse_document_convert_to_unlocked_pdf_use_hexapdf)
+              .and_return(true)
+            allow_any_instance_of(LighthouseDocument).to receive(:unlock_with_hexapdf) do |doc, _tempfile|
+              doc.errors.add(:base, I18n.t('errors.messages.uploads.pdf.incorrect_password'))
+            end
+          end
+
+          include_examples 'incorrect password error'
+        end
+      end
     end
   end
 

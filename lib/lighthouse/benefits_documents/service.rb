@@ -169,6 +169,17 @@ module BenefitsDocuments
     rescue CarrierWave::IntegrityError => e
       handle_error(e, lighthouse_client_id, uploader.store_dir)
       raise e
+    rescue Common::Exceptions::ValidationErrors => e
+      msg = I18n.t('errors.messages.uploads.pdf.incorrect_password')
+
+      if e.errors.any? { |err| err[:detail].to_s.include?(msg) }
+        raise Common::Exceptions::UnprocessableEntity.new(
+          detail: 'DOC_UPLOAD_INCORRECT_PASSWORD',
+          source: self.class.name
+        )
+      else
+        raise e
+      end
     end
 
     def document_upload(user_icn, document_hash, evidence_submission_id)
