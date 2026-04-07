@@ -56,6 +56,9 @@ module MyHealth
       if Flipper.enabled?(:mhv_accelerated_delivery_uhd_oh_lab_type_logging_enabled, @current_user)
         UnifiedHealthData::LabsRefreshJob.perform_async(current_user.uuid)
       end
+      if Flipper.enabled?(:mhv_accelerated_delivery_uhd_oh_imaging_logging_enabled, @current_user)
+        UnifiedHealthData::ImagingRefreshJob.perform_async(current_user.uuid)
+      end
       lighthouse_client
     end
 
@@ -67,6 +70,9 @@ module MyHealth
       )
       if Flipper.enabled?(:mhv_accelerated_delivery_uhd_vista_lab_type_logging_enabled, @current_user)
         UnifiedHealthData::LabsRefreshJob.perform_async(current_user.uuid)
+      end
+      if Flipper.enabled?(:mhv_accelerated_delivery_uhd_vista_imaging_logging_enabled, @current_user)
+        UnifiedHealthData::ImagingRefreshJob.perform_async(current_user.uuid)
       end
       medical_records_client
     end

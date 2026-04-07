@@ -1035,6 +1035,7 @@ mhv:
     app_id: <%= ENV['mhv__uhd__app_id'] %>
     app_token: <%= ENV['mhv__uhd__app_token']&.dump %>
     host: <%= ENV['mhv__uhd__host'] %>
+    imaging_logging_date_range_days: <%= ENV['mhv__uhd__imaging_logging_date_range_days'] %>
     labs_logging_date_range_days: <%= ENV['mhv__uhd__labs_logging_date_range_days'] %>
     medication_filtered_statuses: <%= ENV['mhv__uhd__medication_filtered_statuses'] %>
     mock: false
