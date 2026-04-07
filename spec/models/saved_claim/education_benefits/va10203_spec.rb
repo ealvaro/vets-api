@@ -168,6 +168,8 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
 
                 it 'sends the confirmation email with the form email with the callback paarameters' do
                   allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
+                  allow(Flipper).to receive(:enabled?).with(:va_notify_v2_edu_benefits_confirmation_email)
+                                                      .and_return(false)
                   allow(VANotify::EmailJob).to receive(:perform_async)
 
                   subject = instance
@@ -354,6 +356,7 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
 
             it 'sends the confirmation email with the form email with the callback paarameters' do
               allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
+              allow(Flipper).to receive(:enabled?).with(:va_notify_v2_edu_benefits_confirmation_email).and_return(false)
               allow(VANotify::EmailJob).to receive(:perform_async)
 
               subject = instance
@@ -530,6 +533,8 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
 
                 it 'sends the confirmation email with the form email with the callback paarameters' do
                   allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
+                  allow(Flipper).to receive(:enabled?).with(:va_notify_v2_edu_benefits_confirmation_email)
+                                                      .and_return(false)
                   allow(VANotify::EmailJob).to receive(:perform_async)
 
                   subject = instance
@@ -747,6 +752,7 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
 
             it 'sends the confirmation email with the form email with the callback paarameters' do
               allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
+              allow(Flipper).to receive(:enabled?).with(:va_notify_v2_edu_benefits_confirmation_email).and_return(false)
               allow(VANotify::EmailJob).to receive(:perform_async)
 
               subject = instance

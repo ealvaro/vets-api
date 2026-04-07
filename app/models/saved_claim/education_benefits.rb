@@ -65,13 +65,24 @@ class SavedClaim::EducationBenefits < SavedClaim
     callback_options = build_callback_options(form_number)
 
     begin
-      VANotify::EmailJob.perform_async(
-        email,
-        template_id,
-        all_params,
-        Settings.vanotify.services.va_gov.api_key,
-        callback_options
-      )
+      if Flipper.enabled?(:va_notify_v2_edu_benefits_confirmation_email)
+        api_key_path = 'Settings.vanotify.services.va_gov.api_key'
+        VANotify::V2::QueueEmailJob.enqueue(
+          email,
+          template_id,
+          all_params,
+          api_key_path,
+          callback_options
+        )
+      else
+        VANotify::EmailJob.perform_async(
+          email,
+          template_id,
+          all_params,
+          Settings.vanotify.services.va_gov.api_key,
+          callback_options
+        )
+      end
     rescue => e
       method_name = 'send_confirmation_email'
       Rails.logger.error "#{self.class.name}##{method_name}: Failed to queue confirmation email: #{e.message}"
