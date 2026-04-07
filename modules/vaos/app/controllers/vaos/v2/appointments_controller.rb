@@ -211,7 +211,15 @@ module VAOS
 
       def updated_appointment
         @updated_appointment ||=
-          appointments_service.update_appointment(update_appt_id, status_update)
+          appointments_service.update_appointment(
+            update_appt_id,
+            status_update,
+            kind: cancel_params[:kind],
+            system_type: cancel_params[:system_type],
+            service_type: cancel_params[:service_type],
+            facility_id: cancel_params[:facility_id],
+            type: cancel_params[:type]
+          )
       end
 
       def avs_binaries
@@ -270,6 +278,10 @@ module VAOS
 
       def status_update
         params.require(:status)
+      end
+
+      def cancel_params
+        params.permit(:kind, :system_type, :service_type, :facility_id, :type)
       end
 
       def appointment_index_params

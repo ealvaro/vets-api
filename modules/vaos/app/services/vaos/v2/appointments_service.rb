@@ -17,7 +17,8 @@ module VAOS
       AVS_BINARY_EMPTY_MESSAGE = 'Retrieved empty AVS binary'
       MANILA_PHILIPPINES_FACILITY_ID = '358'
       POST_APPOINTMENT_METRIC = 'api.vaos.post_appointment'
-      VALID_SYSTEM_TYPES = %w[vista cerner hsrm].freeze
+      CANCEL_APPOINTMENT_METRIC = 'api.vaos.cancel_appointment'
+      VALID_SYSTEM_TYPES = %w[vista cerner hsrm eps].freeze
 
       APPOINTMENTS_USE_VPG = :va_online_scheduling_use_vpg
       APPOINTMENTS_FETCH_OH_AVS = :va_online_scheduling_add_OH_avs
@@ -350,13 +351,27 @@ module VAOS
         end
       end
 
-      def update_appointment(appt_id, status)
+      # rubocop:disable Metrics/ParameterLists
+      def update_appointment(appt_id, status, kind: nil, system_type: nil, service_type: nil, facility_id: nil,
+                             type: nil)
         raise ArgumentError, 'no ICN passed in for VAOS::V2::UpdateAppointment request' if user.icn.blank?
+
+        cancel_request_details = {
+          status:,
+          kind:,
+          system_type:,
+          service_type:,
+          location_id: facility_id,
+          type:
+        }
+        appt_context = build_appointment_context(cancel_request_details)
 
         with_monitoring do
           if Flipper.enabled?(APPOINTMENTS_USE_VPG, user)
             update_appointment_vpg(appt_id, status)
-            get_appointment(appt_id)
+            updated_appt = get_appointment(appt_id)
+            log_update_appointment_success(appt_context)
+            updated_appt
           else
             appointment = update_appointment_vaos(appt_id, status).body
             convert_appointment_time(appointment)
@@ -371,10 +386,16 @@ module VAOS
             # Remove covid service type per GH#128004
             remove_service_type(appointment) if covid?(appointment)
             set_type_of_care(appointment)
+            log_update_appointment_success(appt_context)
+
             OpenStruct.new(appointment)
           end
+        rescue Common::Exceptions::BackendServiceException => e
+          log_update_appointment_failure(appt_context, e)
+          raise e
         end
       end
+      # rubocop:enable Metrics/ParameterLists
       # rubocop:enable Metrics/MethodLength
 
       # Retrieves the most recent clinic appointment within the last year.
@@ -1931,7 +1952,8 @@ module VAOS
           kind: body[:kind] || 'unknown',
           system_type: normalize_system_type(body[:system_type]),
           service_type: body[:service_type] || 'unknown',
-          facility_id: body[:location_id] || 'unknown'
+          facility_id: body[:location_id] || 'unknown',
+          type: body[:type] || 'unknown'
         }
       end
 
@@ -1939,7 +1961,7 @@ module VAOS
       # Normalizes system_type to an allowlisted value to prevent high-cardinality tags.
       #
       # @param value [String, nil] the raw system_type value from the request
-      # @return [String] normalized value: 'vista', 'cerner', 'hsrm', or 'unknown'
+      # @return [String] normalized value: 'vista', 'cerner', 'hsrm', 'eps', or 'unknown'
       #
       def normalize_system_type(value)
         normalized = value.to_s.downcase.strip.presence
@@ -1969,6 +1991,28 @@ module VAOS
       end
 
       ##
+      # Records metrics for successful appointment cancellation.
+      #
+      # @param context [Hash] the appointment context
+      #
+      def log_update_appointment_success(context)
+        tags = build_metric_tags(context)
+        StatsD.increment("#{CANCEL_APPOINTMENT_METRIC}.success", tags:)
+      end
+
+      ##
+      # Records metrics for failed appointment cancellation.
+      #
+      # @param appt_id [Hash] the appointment id
+      # @param error [Exception] the error that occurred
+      #
+      def log_update_appointment_failure(cancel_context, error)
+        tags = build_metric_tags(cancel_context)
+        tags << "error_type:#{error.class.name.demodulize.underscore}"
+        StatsD.increment("#{CANCEL_APPOINTMENT_METRIC}.failure", tags:)
+      end
+
+      ##
       # Builds StatsD tags from appointment context.
       #
       # @param context [Hash] the appointment context
@@ -1980,7 +2024,8 @@ module VAOS
           "kind:#{context[:kind]}",
           "system_type:#{context[:system_type]}",
           "service_type:#{context[:service_type]}",
-          "facility_id:#{context[:facility_id]}"
+          "facility_id:#{context[:facility_id]}",
+          "type:#{context[:type]}"
         ]
       end
     end

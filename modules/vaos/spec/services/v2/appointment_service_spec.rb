@@ -1537,6 +1537,34 @@ describe VAOS::V2::AppointmentsService do
             end
           end
 
+          it 'passes cancellation details into contextual logging' do
+            VCR.use_cassette('vaos/v2/appointments/cancel_appointments_vpg_204',
+                             match_requests_on: %i[method path query body_as_json]) do
+              VCR.use_cassette('vaos/v2/appointments/get_appointment_200_cancelled_vpg',
+                               match_requests_on: %i[method path query body_as_json]) do
+                VCR.use_cassette('vaos/v2/mobile_facility_service/get_facility_200',
+                                 match_requests_on: %i[method path query]) do
+                  allow(StatsD).to receive(:increment)
+                  expect(StatsD).to receive(:increment).with(
+                    'api.vaos.cancel_appointment.success',
+                    tags: array_including(
+                      'scheduling_type:request',
+                      'kind:clinic',
+                      'system_type:cerner',
+                      'service_type:audiology',
+                      'facility_id:983',
+                      'type:REQUEST'
+                    )
+                  )
+                  subject.update_appointment('70060', 'cancelled', kind: 'clinic',
+                                                                   system_type: 'cerner',
+                                                                   service_type: 'audiology',
+                                                                   facility_id: '983', type: 'REQUEST')
+                end
+              end
+            end
+          end
+
           it 'returns a 400 when the appointment is not cancellable' do
             VCR.use_cassette('vaos/v2/appointments/cancel_appointment_vpg_400',
                              match_requests_on: %i[method path query]) do
@@ -1625,6 +1653,37 @@ describe VAOS::V2::AppointmentsService do
           end
         end
       end
+
+      # rubocop:disable Style/MultilineBlockChain
+      it 'logs appointment cancellation context on failure' do
+        VCR.use_cassette('vaos/v2/appointments/cancel_appointment_500', match_requests_on: %i[method path query]) do
+          allow(StatsD).to receive(:increment)
+          expect(StatsD).to receive(:increment).with(
+            'api.vaos.cancel_appointment.failure',
+            tags: array_including(
+              'scheduling_type:request',
+              'kind:clinic',
+              'system_type:cerner',
+              'service_type:audiology',
+              'facility_id:983',
+              'type:REQUEST',
+              'error_type:service_exception'
+            )
+          )
+
+          expect do
+            subject.update_appointment('35952', 'cancelled', kind: 'clinic',
+                                                             system_type: 'cerner',
+                                                             service_type: 'audiology',
+                                                             facility_id: '983', type: 'REQUEST')
+          end
+          .to raise_error do |error|
+            expect(error).to be_a(Common::Exceptions::BackendServiceException)
+            expect(error.status_code).to eq(502)
+          end
+        end
+      end
+      # rubocop:enable Style/MultilineBlockChain
     end
   end
 
