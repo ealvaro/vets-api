@@ -1595,6 +1595,31 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_02_160555) do
     t.index ["created_at"], name: "idx_on_created_at_5b6fb39541"
   end
 
+  create_table "remediation_batch_upload_items", force: :cascade do |t|
+    t.string "submission_id", null: false
+    t.string "s3_bucket", null: false
+    t.text "s3_key", null: false
+    t.integer "document_type_id", null: false
+    t.datetime "submission_datetime"
+    t.string "form_type"
+    t.string "subject"
+    t.string "status", default: "pending", null: false
+    t.string "error_class"
+    t.text "error_message"
+    t.integer "retry_count", default: 0, null: false
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.string "claims_evidence_file_uuid"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["claims_evidence_file_uuid"], name: "idx_unique_claims_evidence_file_uuid", unique: true, where: "(claims_evidence_file_uuid IS NOT NULL)"
+    t.index ["status", "retry_count"], name: "index_remediation_batch_upload_items_on_status_and_retry_count"
+    t.index ["status", "started_at"], name: "index_remediation_batch_upload_items_on_status_and_started_at"
+    t.index ["submission_id"], name: "index_remediation_batch_upload_items_on_submission_id", unique: true
+    t.check_constraint "retry_count >= 0 AND retry_count <= 3", name: "chk_retry_count"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'downloading'::character varying, 'uploading'::character varying, 'completed'::character varying, 'failed'::character varying]::text[])", name: "chk_status"
+  end
+
   create_table "saved_claim_groups", force: :cascade do |t|
     t.uuid "claim_group_guid", null: false
     t.integer "parent_claim_id", null: false, comment: "ID of the saved claim in vets-api"
