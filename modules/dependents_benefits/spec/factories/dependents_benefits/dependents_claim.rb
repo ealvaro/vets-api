@@ -121,7 +121,6 @@ FactoryBot.define do
               'no_ssn' => true,
               'no_ssn_reason' => 'Nonresident Alien',
               'claims_or_receives_pension' => false,
-              'other_program_or_benefit' => '',
               'is_parent' => false,
               'full_name' => {
                 'first' => 'Student',
@@ -135,7 +134,7 @@ FactoryBot.define do
                 'ch35' => true,
                 'fry' => true,
                 'feca' => false,
-                'other' => false
+                'none' => false
               },
               'ssn' => '000000000'
             }
@@ -511,8 +510,7 @@ FactoryBot.define do
               name: 'name of trade program'
             },
             benefit_payment_date: '2024-03-01',
-            type_of_program_or_benefit: { ch35: true, fry: true, feca: true, other: true },
-            other_program_or_benefit: 'all the programs!',
+            type_of_program_or_benefit: { ch35: true, fry: true, feca: true, none: false },
             tuition_is_paid_by_gov_agency: true,
             marriage_date: '2024-03-03',
             was_married: true,
@@ -748,8 +746,7 @@ FactoryBot.define do
                 'name' => 'name of trade program'
               },
               'benefit_payment_date' => '2024-03-01',
-              'type_of_program_or_benefit' => { 'ch35' => true, 'fry' => true, 'feca' => true, 'other' => true },
-              'other_program_or_benefit' => 'all the programs!',
+              'type_of_program_or_benefit' => { 'ch35' => true, 'fry' => true, 'feca' => true, 'none' => false },
               'tuition_is_paid_by_gov_agency' => true,
               'marriage_date' => '2024-03-03',
               'was_married' => true,
