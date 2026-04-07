@@ -3,6 +3,7 @@
 require_relative 'facility_name_resolver'
 require_relative 'fhir_helpers'
 require_relative 'oracle_health_categorizer'
+require_relative 'oracle_health_expiration_helper'
 require_relative 'oracle_health_refill_helper'
 require_relative 'oracle_health_renewability_helper'
 require_relative 'oracle_health_tracking_helper'
@@ -12,6 +13,7 @@ module UnifiedHealthData
     class OracleHealthPrescriptionAdapter
       include FhirHelpers
       include OracleHealthCategorizer
+      include OracleHealthExpirationHelper
       include OracleHealthRefillHelper
       include OracleHealthRenewabilityHelper
       include OracleHealthTrackingHelper
@@ -456,27 +458,6 @@ module UnifiedHealthData
         end
       end
 
-      # Parses validityPeriod.end to UTC Time object for comparison
-      #
-      # @param resource [Hash] FHIR MedicationRequest resource
-      # @return [Time, nil] Parsed UTC time or nil if not available/invalid
-      def parse_expiration_date_utc(resource)
-        expiration_string = resource.dig('dispenseRequest', 'validityPeriod', 'end')
-        return nil if expiration_string.blank?
-
-        # Oracle Health dates are in Zulu time (UTC)
-        parsed_time = Time.zone.parse(expiration_string)
-        if parsed_time.nil?
-          Rails.logger.warn("Failed to parse expiration date '#{expiration_string}': invalid date format")
-          return nil
-        end
-
-        parsed_time.utc
-      rescue ArgumentError => e
-        Rails.logger.warn("Failed to parse expiration date '#{expiration_string}': #{e.message}")
-        nil
-      end
-
       def extract_facility_name(resource)
         dispense = find_most_recent_medication_dispense(resource)
         facility_resolver.resolve_facility_name(dispense)
@@ -492,10 +473,6 @@ module UnifiedHealthData
         return dispense.dig('quantity', 'value') if dispense
 
         nil
-      end
-
-      def extract_expiration_date(resource)
-        resource.dig('dispenseRequest', 'validityPeriod', 'end')
       end
 
       def extract_prescription_number(resource)
@@ -604,6 +581,10 @@ module UnifiedHealthData
 
       def facility_resolver
         @facility_resolver ||= FacilityNameResolver.new
+      end
+
+      def facility_timezone_service
+        @facility_timezone_service ||= UnifiedHealthData::FacilityService.new
       end
     end
   end

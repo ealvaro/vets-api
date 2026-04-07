@@ -40,8 +40,7 @@ module UnifiedHealthData
       # @param type_text [String] The type.text value to search for
       # @return [String, nil] The identifier value or nil if not found
       def find_identifier_value(identifiers, type_text)
-        identifier = identifiers.find { |id| id.dig('type', 'text') == type_text }
-        identifier&.dig('value')
+        identifiers.find { |id| id.dig('type', 'text') == type_text }&.dig('value')
       end
 
       # Extracts NDC (National Drug Code) from FHIR MedicationDispense
@@ -61,9 +60,7 @@ module UnifiedHealthData
       def medication_dispenses(medication_request)
         return [] if medication_request.nil?
 
-        (medication_request['contained'] || []).select do |contained_resource|
-          contained_resource['resourceType'] == 'MedicationDispense'
-        end
+        (medication_request['contained'] || []).select { |r| r['resourceType'] == 'MedicationDispense' }
       end
 
       # Finds the most recent MedicationDispense from contained resources
@@ -110,14 +107,6 @@ module UnifiedHealthData
         parts.join(' ')
       end
 
-      # Logs warning for invalid expiration date
-      #
-      # @param resource [Hash] FHIR MedicationRequest resource
-      # @param expiration_date [String] Invalid expiration date string
-      def log_invalid_expiration_date(resource, expiration_date)
-        Rails.logger.warn("Invalid expiration date for prescription #{resource['id']}: #{expiration_date}")
-      end
-
       # Parses expiration date from FHIR MedicationRequest to UTC Time
       # Oracle Health dates are in Zulu time (UTC)
       #
@@ -128,8 +117,8 @@ module UnifiedHealthData
         return nil if expiration_string.blank?
 
         parsed_time = Time.zone.parse(expiration_string)
-        if parsed_time.nil?
-          log_invalid_expiration_date(resource, expiration_string)
+        unless parsed_time
+          Rails.logger.warn("Invalid expiration date for prescription #{resource['id']}: #{expiration_string}")
           return nil
         end
 
@@ -144,10 +133,7 @@ module UnifiedHealthData
       # @param resource [Hash] FHIR MedicationRequest resource
       # @return [Boolean] true if expired (validity period end is in the past)
       def prescription_expired?(resource)
-        expiration_date = parse_expiration_date_utc(resource)
-        return false if expiration_date.nil?
-
-        expiration_date < Time.current.utc
+        (expiration = parse_expiration_date_utc(resource)) ? expiration < Time.current.utc : false
       end
 
       # Extracts SIG (dosage instructions) from FHIR MedicationDispense
@@ -159,12 +145,8 @@ module UnifiedHealthData
         dosage_instructions = dispense['dosageInstruction'] || []
         return nil if dosage_instructions.empty?
 
-        # Concatenate all dosage instruction texts
-        texts = dosage_instructions.filter_map do |instruction|
-          instruction['text'] if instruction.is_a?(Hash)
-        end
-
-        texts.empty? ? nil : texts.join(' ')
+        texts = dosage_instructions.filter_map { |i| i['text'] if i.is_a?(Hash) }
+        texts.presence&.join(' ')
       end
 
       # Extracts a display string from a FHIR CodeableConcept.
@@ -188,12 +170,40 @@ module UnifiedHealthData
         end
       end
 
+      # Normalizes a date to noon UTC of the intended calendar date.
+      # VistA encodes expiration as midnight Eastern (start of day) and Oracle Health
+      # as 23:59:59 local→UTC — both can produce a UTC date that differs from the
+      # intended local date. Noon UTC falls on the same calendar date in every US
+      # timezone (UTC-11 Samoa through UTC+10 Guam), preventing off-by-one errors.
+      #
+      # @param date_string [String] ISO 8601 or RFC 2822 date string
+      # @param timezone [String] IANA timezone for interpreting the date
+      # @return [String, nil] "YYYY-MM-DDT12:00:00.000Z" or nil if invalid
+      def normalize_date_to_noon_utc(date_string, timezone)
+        return nil if date_string.blank? || timezone.blank?
+
+        zone = Time.find_zone(timezone)
+        return log_unknown_timezone(date_string, timezone) unless zone
+
+        parsed = zone.parse(date_string)
+        return nil unless parsed
+
+        local_date = parsed.to_date
+        Time.utc(local_date.year, local_date.month, local_date.day, 12, 0, 0).iso8601(3)
+      rescue ArgumentError => e
+        Rails.logger.warn("Failed to normalize date '#{date_string}' in timezone '#{timezone}': #{e.message}")
+        nil
+      end
+
+      # @api private
+      def log_unknown_timezone(date_string, timezone)
+        Rails.logger.warn("Unknown timezone '#{timezone}' when normalizing date '#{date_string}'")
+        nil
+      end
+
       # @api private
       def first_coding_display(codeable_concept)
-        codeable_concept['coding']&.each do |coding|
-          return coding['display'] if coding['display'].present?
-        end
-        nil
+        codeable_concept['coding']&.find { |c| c['display'].present? }&.dig('display')
       end
     end
   end

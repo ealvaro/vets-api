@@ -3,6 +3,7 @@
 require 'rails_helper'
 require 'unified_health_data/models/prescription'
 require 'unified_health_data/adapters/prescriptions_adapter'
+require 'unified_health_data/facility_service'
 
 describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
   subject { described_class.new(user) }
@@ -122,6 +123,18 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
 
   before do
     allow(Rails.cache).to receive(:exist?).and_return(false)
+
+    # Stub facility timezone service for OH expiration date normalization
+    facility_tz_service = instance_double(UnifiedHealthData::FacilityService)
+    allow(UnifiedHealthData::FacilityService).to receive(:new).and_return(facility_tz_service)
+    allow(facility_tz_service).to receive(:get_facility_timezone) do |station_number|
+      expect(station_number).to match(/^\d{3}$/)
+      'America/Los_Angeles'
+    end
+
+    # Stub HealthFacility for facility name resolution
+    facility = instance_double(HealthFacility, name: 'Portland VA Medical Center')
+    allow(HealthFacility).to receive(:find_by).and_return(facility)
   end
 
   describe '#parse' do
@@ -331,15 +344,16 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
             }
           end
 
-          it 'logs warning and does not exclude based on date' do
+          it 'logs warning from adapter and does not exclude based on date' do
             allow(Rails.logger).to receive(:warn)
             allow(Rails.logger).to receive(:info)
 
             prescriptions = subject.parse(response_with_invalid_date, current_only: true)[:prescriptions]
 
             expect(prescriptions.size).to eq(1)
+            # The VistA adapter logs the warning during normalization
             expect(Rails.logger).to have_received(:warn).with(
-              /Invalid expiration date for rx ending in \d{4}: invalid-date/
+              /Failed to normalize expiration date 'invalid-date'/
             )
           end
         end

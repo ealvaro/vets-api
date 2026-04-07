@@ -1959,6 +1959,11 @@ describe UnifiedHealthData::Service, type: :service do
           allow(Rails.cache).to receive(:read).with("uhd:facility_names:#{station}").and_return('Ambulatory Pharmacy')
           allow(Rails.cache).to receive(:exist?).with("uhd:facility_names:#{station}").and_return(true)
         end
+
+        # Stub facility timezone service for expiration date normalization
+        facility_tz_service = instance_double(UnifiedHealthData::FacilityService)
+        allow(UnifiedHealthData::FacilityService).to receive(:new).and_return(facility_tz_service)
+        allow(facility_tz_service).to receive(:get_facility_timezone).and_return('America/Los_Angeles')
       end
 
       it 'returns prescriptions from both VistA and Oracle Health' do
@@ -2028,7 +2033,8 @@ describe UnifiedHealthData::Service, type: :service do
           expect(oracle_prescription.facility_name).to eq('Ambulatory Pharmacy')
           expect(oracle_prescription.ordered_date).to eq('2025-11-17T21:21:48Z')
           expect(oracle_prescription.quantity).to eq('18.0')
-          expect(oracle_prescription.expiration_date).to eq('2026-11-17T07:59:59Z')
+          expect(oracle_prescription.expiration_date).to eq('2026-11-16T12:00:00.000Z')
+          expect(oracle_prescription.prescription_number).to be_nil # No prescription identifier exists
           expect(oracle_prescription.prescription_name).to eq('albuterol (albuterol 90 mcg inhaler [18g])')
           expect(oracle_prescription.station_number).to eq('668')
           expect(oracle_prescription.is_trackable).to be true

@@ -44,7 +44,7 @@ module UnifiedHealthData
           facility_name: medication['facilityApiName'].presence || medication['facilityName'],
           ordered_date: convert_to_iso8601(medication['orderedDate'], field_name: 'ordered_date'),
           quantity: medication['quantity'],
-          expiration_date: convert_to_iso8601(medication['expirationDate'], field_name: 'expiration_date'),
+          expiration_date: normalize_expiration_date(medication['expirationDate']),
           prescription_number: medication['prescriptionNumber'],
           prescription_name: medication['prescriptionName'].presence || medication['orderableItem'],
           dispensed_date: convert_to_iso8601(medication['dispensedDate'], field_name: 'dispensed_date'),
@@ -172,6 +172,25 @@ module UnifiedHealthData
         nil
       end
 
+      # Normalizes VistA expiration dates to noon UTC of the intended calendar date.
+      # VistA dates include timezone (EDT/EST), so we parse to extract the local date,
+      # then return noon UTC. This prevents off-by-one display errors in western timezones.
+      #
+      # @param date_string [String] VistA date string, e.g. "Wed, 15 Jul 2026 00:00:00 EDT"
+      # @return [String, nil] ISO 8601 noon UTC string, e.g. "2026-07-15T12:00:00.000Z"
+      def normalize_expiration_date(date_string)
+        return nil if date_string.blank?
+
+        # Time.parse handles RFC 2822 timezone abbreviations (EDT, EST, etc.)
+        # Time.zone.parse would ignore these abbreviations, giving wrong results.
+        parsed = Time.parse(date_string.to_s) # rubocop:disable Rails/TimeZone
+        local_date = parsed.to_date
+        Time.utc(local_date.year, local_date.month, local_date.day, 12, 0, 0).iso8601(3)
+      rescue ArgumentError => e
+        Rails.logger.warn("Failed to normalize expiration date '#{date_string}': #{e.message}")
+        nil
+      end
+
       def build_provider_name(medication)
         last_name = medication['providerLastName']
         first_name = medication['providerFirstName']
@@ -204,7 +223,9 @@ module UnifiedHealthData
       def parse_expiration_time(date_string)
         return nil if date_string.blank?
 
-        Time.zone.parse(date_string.to_s)
+        # Time.parse handles RFC 2822 timezone abbreviations (EDT, EST, etc.)
+        # Time.zone.parse would ignore these, causing incorrect renewability calculations.
+        Time.parse(date_string.to_s).in_time_zone
       rescue ArgumentError
         nil
       end

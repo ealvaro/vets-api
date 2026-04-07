@@ -303,14 +303,20 @@ describe UnifiedHealthData::Adapters::VistaPrescriptionAdapter do
     end
 
     context 'when medication includes RFC1123 date fields' do
-      it 'converts them to ISO 8601 strings' do
+      it 'converts non-expiration dates to ISO 8601 strings' do
         result = subject.parse(vista_medication_with_tracking)
 
         expect(result.refill_submit_date).to be_nil
         expect(result.refill_date).to eq('2025-07-14T04:00:00.000Z')
         expect(result.ordered_date).to eq('2025-07-14T04:00:00.000Z')
-        expect(result.expiration_date).to eq('2026-07-15T04:00:00.000Z')
         expect(result.dispensed_date).to eq('2025-07-15T04:00:00.000Z')
+      end
+
+      it 'normalizes expiration_date to noon UTC of the Eastern calendar date' do
+        result = subject.parse(vista_medication_with_tracking)
+
+        # 'Wed, 15 Jul 2026 00:00:00 EDT' → Jul 15 in Eastern → noon UTC Jul 15
+        expect(result.expiration_date).to eq('2026-07-15T12:00:00.000Z')
       end
     end
 

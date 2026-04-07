@@ -326,19 +326,6 @@ describe UnifiedHealthData::Adapters::FhirHelpers do
     end
   end
 
-  describe '#log_invalid_expiration_date' do
-    before do
-      allow(Rails.logger).to receive(:warn)
-    end
-
-    it 'logs warning with prescription id and expiration date' do
-      resource = { 'id' => '12345' }
-      subject.log_invalid_expiration_date(resource, 'invalid-date')
-      expect(Rails.logger).to have_received(:warn)
-        .with('Invalid expiration date for prescription 12345: invalid-date')
-    end
-  end
-
   describe '#extract_sig_from_dispense' do
     it 'extracts and concatenates dosage instruction texts' do
       dispense = {
@@ -559,6 +546,93 @@ describe UnifiedHealthData::Adapters::FhirHelpers do
 
     it 'returns nil when coding is empty' do
       expect(subject.first_coding_display({ 'coding' => [] })).to be_nil
+    end
+  end
+
+  describe '#normalize_date_to_noon_utc' do
+    it 'normalizes an Eastern midnight date to noon UTC of the same day' do
+      # VistA-style: midnight Eastern = 04:00 UTC
+      result = subject.normalize_date_to_noon_utc('2025-09-25T04:00:00.000Z', 'America/New_York')
+      expect(result).to eq('2025-09-25T12:00:00.000Z')
+    end
+
+    it 'normalizes an EDT-encoded VistA date to noon UTC' do
+      result = subject.normalize_date_to_noon_utc('Thu, 25 Sep 2025 00:00:00 EDT', 'America/New_York')
+      expect(result).to eq('2025-09-25T12:00:00.000Z')
+    end
+
+    it 'normalizes an EST-encoded VistA date to noon UTC' do
+      result = subject.normalize_date_to_noon_utc('Mon, 15 Jan 2026 00:00:00 EST', 'America/New_York')
+      expect(result).to eq('2026-01-15T12:00:00.000Z')
+    end
+
+    it 'normalizes an Oracle Health Pacific facility date correctly' do
+      # OH: 23:59:59 PST Nov 16 = 07:59:59 UTC Nov 17
+      result = subject.normalize_date_to_noon_utc('2026-11-17T07:59:59Z', 'America/Los_Angeles')
+      expect(result).to eq('2026-11-16T12:00:00.000Z')
+    end
+
+    it 'normalizes an Oracle Health Central facility date correctly' do
+      # OH: 23:59:59 CST Dec 31 = 05:59:59 UTC Jan 1
+      result = subject.normalize_date_to_noon_utc('2027-01-01T05:59:59Z', 'America/Chicago')
+      expect(result).to eq('2026-12-31T12:00:00.000Z')
+    end
+
+    it 'normalizes an Oracle Health Mountain facility date correctly' do
+      # OH: 23:59:59 MST Nov 16 = 06:59:59 UTC Nov 17
+      result = subject.normalize_date_to_noon_utc('2026-11-17T06:59:59Z', 'America/Denver')
+      expect(result).to eq('2026-11-16T12:00:00.000Z')
+    end
+
+    it 'normalizes an Oracle Health Eastern facility date correctly' do
+      # OH: 23:59:59 EST Nov 16 = 04:59:59 UTC Nov 17
+      result = subject.normalize_date_to_noon_utc('2026-11-17T04:59:59Z', 'America/New_York')
+      expect(result).to eq('2026-11-16T12:00:00.000Z')
+    end
+
+    it 'normalizes a Hawaii facility date correctly' do
+      # OH: 23:59:59 HST Nov 16 = 09:59:59 UTC Nov 17
+      result = subject.normalize_date_to_noon_utc('2026-11-17T09:59:59Z', 'Pacific/Honolulu')
+      expect(result).to eq('2026-11-16T12:00:00.000Z')
+    end
+
+    it 'normalizes a Guam facility date correctly' do
+      # OH: 23:59:59 ChST Nov 16 = 13:59:59 UTC Nov 16 (same UTC day)
+      result = subject.normalize_date_to_noon_utc('2026-11-16T13:59:59Z', 'Pacific/Guam')
+      expect(result).to eq('2026-11-16T12:00:00.000Z')
+    end
+
+    it 'normalizes a Manila facility date correctly' do
+      # OH: 23:59:59 PST(+8) Nov 16 = 15:59:59 UTC Nov 16
+      result = subject.normalize_date_to_noon_utc('2026-11-16T15:59:59Z', 'Asia/Manila')
+      expect(result).to eq('2026-11-16T12:00:00.000Z')
+    end
+
+    it 'normalizes an American Samoa facility date correctly' do
+      # OH: 23:59:59 SST Nov 16 = 10:59:59 UTC Nov 17
+      result = subject.normalize_date_to_noon_utc('2026-11-17T10:59:59Z', 'Pacific/Pago_Pago')
+      expect(result).to eq('2026-11-16T12:00:00.000Z')
+    end
+
+    it 'returns nil for blank date_string' do
+      expect(subject.normalize_date_to_noon_utc(nil, 'America/New_York')).to be_nil
+      expect(subject.normalize_date_to_noon_utc('', 'America/New_York')).to be_nil
+    end
+
+    it 'returns nil for blank timezone' do
+      expect(subject.normalize_date_to_noon_utc('2025-09-25T04:00:00Z', nil)).to be_nil
+      expect(subject.normalize_date_to_noon_utc('2025-09-25T04:00:00Z', '')).to be_nil
+    end
+
+    it 'returns nil for an invalid date string' do
+      allow(Rails.logger).to receive(:warn)
+      result = subject.normalize_date_to_noon_utc('not-a-date', 'America/New_York')
+      expect(result).to be_nil
+    end
+
+    it 'handles date-only strings correctly' do
+      result = subject.normalize_date_to_noon_utc('2025-09-25', 'America/New_York')
+      expect(result).to eq('2025-09-25T12:00:00.000Z')
     end
   end
 end

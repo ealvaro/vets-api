@@ -3,6 +3,7 @@
 require 'rails_helper'
 require 'unified_health_data/models/prescription'
 require 'unified_health_data/adapters/oracle_health_prescription_adapter'
+require 'unified_health_data/facility_service'
 require 'lighthouse/facilities/v1/client'
 
 describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
@@ -19,6 +20,14 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
     allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_medications_renewal_request, nil).and_return(false)
     facility = instance_double(HealthFacility, name: 'Portland VA Medical Center')
     allow(HealthFacility).to receive(:find_by).and_return(facility)
+
+    # Stub facility timezone service for expiration date normalization
+    facility_tz_service = instance_double(UnifiedHealthData::FacilityService)
+    allow(UnifiedHealthData::FacilityService).to receive(:new).and_return(facility_tz_service)
+    allow(facility_tz_service).to receive(:get_facility_timezone) do |station_number|
+      expect(station_number).to match(/^\d{3}$/)
+      'America/Los_Angeles'
+    end
   end
 
   describe '#parse' do
@@ -766,6 +775,77 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
 
         result = subject.parse(resource)
         expect(result.sorted_dispensed_date).to eq('2025-03-06')
+      end
+    end
+
+    context 'with expiration date normalization' do
+      it 'infers correct local date from Pacific offset UTC timestamp' do
+        # Simulate Oracle Health: 23:59:59 PST Nov 16 = 07:59:59 UTC Nov 17
+        resource = fhir_resource(expiration: Time.utc(2026, 11, 17, 7, 59, 59))
+        result = subject.parse(resource)
+
+        # Subtracting 12h from 07:59:59Z → Nov 16, noon UTC
+        expect(result.expiration_date).to eq('2026-11-16T12:00:00.000Z')
+      end
+
+      it 'infers correct local date from Eastern offset UTC timestamp' do
+        # 23:59:59 EST Nov 16 = 04:59:59 UTC Nov 17
+        resource = fhir_resource(expiration: Time.utc(2026, 11, 17, 4, 59, 59))
+        result = subject.parse(resource)
+
+        expect(result.expiration_date).to eq('2026-11-16T12:00:00.000Z')
+      end
+
+      it 'infers correct local date from Guam offset UTC timestamp' do
+        # 23:59:59 ChST(+10) Nov 16 = 13:59:59 UTC Nov 16 — same UTC date, still correct
+        resource = fhir_resource(expiration: Time.utc(2026, 11, 16, 13, 59, 59))
+        result = subject.parse(resource)
+
+        expect(result.expiration_date).to eq('2026-11-16T12:00:00.000Z')
+      end
+
+      it 'does not warn when inferred date matches facility timezone' do
+        facility_tz_service = instance_double(UnifiedHealthData::FacilityService)
+        allow(UnifiedHealthData::FacilityService).to receive(:new).and_return(facility_tz_service)
+        allow(facility_tz_service).to receive(:get_facility_timezone).and_return('America/Los_Angeles')
+
+        resource = fhir_resource(expiration: Time.utc(2026, 11, 17, 7, 59, 59))
+
+        expect(Rails.logger).not_to receive(:warn).with(
+          hash_including(
+            message: 'Expiration date mismatch between inferred and facility timezone'
+          )
+        )
+
+        subject.parse(resource)
+      end
+
+      it 'logs a warning when inferred date differs from facility timezone date' do
+        facility_tz_service = instance_double(UnifiedHealthData::FacilityService)
+        allow(UnifiedHealthData::FacilityService).to receive(:new).and_return(facility_tz_service)
+        # Facility says Guam (+10) but the timestamp is clearly Pacific (-8)
+        allow(facility_tz_service).to receive(:get_facility_timezone).and_return('Pacific/Guam')
+
+        # 07:59:59Z = 23:59:59 PST Nov 16. In Guam time, 07:59:59Z = Nov 17 17:59:59 → Nov 17.
+        resource = fhir_resource(expiration: Time.utc(2026, 11, 17, 7, 59, 59))
+
+        expect(Rails.logger).to receive(:warn).with(
+          hash_including(
+            message: 'Expiration date mismatch between inferred and facility timezone'
+          )
+        )
+
+        result = subject.parse(resource)
+        # Inference is always used as the return value
+        expect(result.expiration_date).to eq('2026-11-16T12:00:00.000Z')
+      end
+
+      it 'returns nil when no expiration date exists' do
+        resource = fhir_resource(status: 'active', refills: 5)
+        resource['dispenseRequest'].delete('validityPeriod')
+
+        result = subject.parse(resource)
+        expect(result.expiration_date).to be_nil
       end
     end
   end
