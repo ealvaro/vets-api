@@ -77,6 +77,11 @@ http_interactions:
                               "reference": "Patient/1234567890V012345"
                           },
                           "started": "2026-01-07T19:56:24+00:00",
+                              "reasonReference": [
+                                    {
+                                        "reference": "DiagnosticReport/12345"
+                                    }
+                                ],
                           "note": [
                               {
                                   "text": "CCIA P3721 EDIPI Ingest test 1-7-26"
@@ -147,6 +152,11 @@ http_interactions:
                               "reference": "Patient/1234567890V012345"
                           },
                           "started": "2026-01-07T18:45:04+00:00",
+                              "reasonReference": [
+                                    {
+                                        "reference": "DiagnosticReport/45678"
+                                    }
+                                ],
                           "note": [
                               {
                                   "text": "CCIA P3721 EDIPI Ingest test 1-7-26"
@@ -215,6 +225,11 @@ http_interactions:
                               "reference": "Patient/1234567890V012345"
                           },
                           "started": "2026-01-07T18:16:26+00:00",
+                              "reasonReference": [
+                                    {
+                                        "reference": "DiagnosticReport/234567"
+                                    }
+                                ],
                           "note": [
                               {
                                   "text": "CCIA P3721 EDIPI Ingest test 1-7-26"
@@ -262,6 +277,11 @@ http_interactions:
                               "reference": "Patient/1234567890V012345"
                           },
                           "started": "2026-01-07T18:35:47+00:00",
+                              "reasonReference": [
+                                    {
+                                        "reference": "DiagnosticReport/987654"
+                                    }
+                                ],
                           "note": [
                               {
                                   "text": "CCIA P3721 EDIPI Ingest test 1-7-26"
@@ -309,6 +329,11 @@ http_interactions:
                               "reference": "Patient/1234567890V012345"
                           },
                           "started": "2026-01-07T18:33:21+00:00",
+                              "reasonReference": [
+                                    {
+                                        "reference": "DiagnosticReport/654321"
+                                    }
+                                ],
                           "note": [
                               {
                                   "text": "CCIA P3721 EDIPI Ingest test 1-7-26"
@@ -362,6 +387,11 @@ http_interactions:
                               "reference": "Patient/1234567890V012345"
                           },
                           "started": "2026-01-07T18:05:50+00:00",
+                              "reasonReference": [
+                                    {
+                                        "reference": "DiagnosticReport/43210"
+                                    }
+                                ],
                           "description": "CONT MONITORING >48 HR TO 7 DAY W HOOKUP",
                           "series": [
                               {
@@ -409,6 +439,11 @@ http_interactions:
                               "reference": "Patient/1234567890V012345"
                           },
                           "started": "2026-01-07T18:09:54+00:00",
+                              "reasonReference": [
+                                    {
+                                        "reference": "DiagnosticReport/87354"
+                                    }
+                                ],
                           "note": [
                               {
                                   "text": "CCIA P3721 EDIPI Ingest test 1-7-26"
@@ -456,6 +491,11 @@ http_interactions:
                               "reference": "Patient/1234567890V012345"
                           },
                           "started": "2026-01-07T18:00:47+00:00",
+                              "reasonReference": [
+                                    {
+                                        "reference": "DiagnosticReport/268722"
+                                    }
+                                ],
                           "note": [
                               {
                                   "text": "CCIA P3721 EDIPI Ingest test 1-7-26"
@@ -503,6 +543,11 @@ http_interactions:
                               "reference": "Patient/1234567890V012345"
                           },
                           "started": "2026-01-07T21:34:01+00:00",
+                              "reasonReference": [
+                                    {
+                                        "reference": "DiagnosticReport/7825168"
+                                    }
+                                ],
                           "note": [
                               {
                                   "text": "Document# 8"
@@ -571,6 +616,11 @@ http_interactions:
                               "reference": "Patient/1234567890V012345"
                           },
                           "started": "2026-01-13T15:41:24+00:00",
+                          "reasonReference": [
+                                {
+                                    "reference": "DiagnosticReport/8721358"
+                                }
+                            ],
                           "note": [
                               {
                                   "text": "CCIA P3721 EDIPI Ingest test 1-7-26"

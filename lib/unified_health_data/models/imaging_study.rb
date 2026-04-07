@@ -7,6 +7,7 @@ module UnifiedHealthData
     include Vets::Model
 
     attribute :id, String
+    attribute :event_id, String # The ID of the associated event (i.e. Lab)
     attribute :identifier, String # The full FHIR identifier value
     attribute :status, String
     attribute :modality, String # Primary modality code (e.g., 'ECG', 'CT')

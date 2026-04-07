@@ -8,6 +8,7 @@ RSpec.describe UnifiedHealthData::Serializers::ImagingStudySerializer do
   let(:imaging_study) do
     UnifiedHealthData::ImagingStudy.new(
       id: 'imaging-study-123',
+      event_id: '15249557843',
       identifier: 'urn:oid:1.2.840.113619.2.123',
       status: 'available',
       modality: 'CT',
@@ -32,6 +33,7 @@ RSpec.describe UnifiedHealthData::Serializers::ImagingStudySerializer do
       expect(result[:type]).to eq(:imaging_study)
       expect(result[:attributes]).to include(
         id: 'imaging-study-123',
+        event_id: '15249557843',
         identifier: 'urn:oid:1.2.840.113619.2.123',
         status: 'available',
         modality: 'CT',

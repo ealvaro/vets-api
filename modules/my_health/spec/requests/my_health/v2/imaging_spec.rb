@@ -28,6 +28,7 @@ RSpec.describe 'MyHealth::V2::ImagingController', :skip_json_api_validation, typ
         expect(response).to be_successful
         json_response = JSON.parse(response.body)
         expect(json_response).to be_an(Array)
+        expect(json_response.size).to eq(10)
         expect(json_response.first['type']).to eq('imaging_study')
         expect(json_response.first).to include(
           'id',
@@ -36,9 +37,18 @@ RSpec.describe 'MyHealth::V2::ImagingController', :skip_json_api_validation, typ
         )
         expect(json_response.first['attributes']).to include(
           'id',
+          'eventId',
           'status',
           'date',
-          'description'
+          'description',
+          'identifier',
+          'modality',
+          'notes',
+          'patientId',
+          'seriesCount',
+          'imageCount',
+          'series',
+          'dicomZipUrl'
         )
       end
 
@@ -188,6 +198,7 @@ RSpec.describe 'MyHealth::V2::ImagingController', :skip_json_api_validation, typ
         )
         expect(json_response.first['attributes']).to include(
           'id',
+          'eventId',
           'status',
           'date',
           'description',
@@ -239,6 +250,7 @@ RSpec.describe 'MyHealth::V2::ImagingController', :skip_json_api_validation, typ
         expect(json_response.first['type']).to eq('imaging_study')
         expect(json_response.first['attributes']).to include(
           'id',
+          'eventId',
           'status',
           'date',
           'description'

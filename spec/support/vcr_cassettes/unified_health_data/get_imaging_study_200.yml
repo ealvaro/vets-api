@@ -98,6 +98,11 @@ http_interactions:
                               "reference": "Patient/21"
                           },
                           "started": "2025-10-28T15:04:44+00:00",
+                          "reasonReference": [
+                                {
+                                    "reference": "DiagnosticReport/8721358"
+                                }
+                            ],
                           "note": [
                               {
                                   "text": "Multum.SDK.Image.Error.jpg"

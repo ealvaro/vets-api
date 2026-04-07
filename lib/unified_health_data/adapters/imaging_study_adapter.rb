@@ -19,25 +19,23 @@ module UnifiedHealthData
           entry.dig('resource', 'resourceType') == 'ImagingStudy'
         end
 
-        parsed = filtered.map { |record| parse_single_study(record) }
+        parsed = filtered.map { |entry| parse_single_study(entry['resource']) }
         parsed.compact
       end
 
       # Parses a single imaging study record from a FHIR ImagingStudy resource
       #
-      # @param record [Hash] A single FHIR entry record
+      # @param resource [Hash] A FHIR ImagingStudy resource hash
       # @return [UnifiedHealthData::ImagingStudy, nil] Parsed imaging study object or nil if invalid
-      def parse_single_study(record)
-        return nil if record.nil? || record['resource'].nil?
-
-        resource = record['resource']
-        return nil unless resource['resourceType'] == 'ImagingStudy'
+      def parse_single_study(resource)
+        return nil if resource.nil? || resource['resourceType'] != 'ImagingStudy'
 
         date_value = resource['started']
         series_data = resource['series'] || []
 
         UnifiedHealthData::ImagingStudy.new(
           id: resource['id'],
+          event_id: extract_event_id(resource),
           identifier: extract_identifier(resource),
           status: resource['status'],
           modality: extract_primary_modality(resource),
@@ -54,6 +52,27 @@ module UnifiedHealthData
       end
 
       private
+
+      # Extracts the event ID from the reasonReference field.
+      # The reasonReference contains a reference to a DiagnosticReport
+      # (e.g., "DiagnosticReport/15249557843").
+      #
+      # @param resource [Hash] FHIR ImagingStudy resource
+      # @return [String, nil] the DiagnosticReport ID or nil
+      def extract_event_id(resource)
+        reference = resource.dig('reasonReference', 0, 'reference')
+        extract_id_from_reference(reference)
+      end
+
+      # Extracts the ID portion from a FHIR reference string (e.g., "Patient/123" => "123")
+      #
+      # @param reference [String, nil] A FHIR reference string
+      # @return [String, nil] the extracted ID or nil
+      def extract_id_from_reference(reference)
+        return nil unless reference
+
+        reference.split('/').last
+      end
 
       # Extracts a presigned URL from the extensions of any FHIR element
       # (study-level for DICOM zip, instance-level for thumbnails).
@@ -106,10 +125,7 @@ module UnifiedHealthData
       # @return [String, nil] the patient ID or nil
       def extract_patient_id(resource)
         reference = resource.dig('subject', 'reference')
-        return nil unless reference
-
-        # Extract ID from "Patient/1234567890V012345" format
-        reference.split('/').last
+        extract_id_from_reference(reference)
       end
 
       # Counts total images across all series

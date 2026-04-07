@@ -205,6 +205,6 @@ module UnifiedHealthData
       def first_coding_display(codeable_concept)
         codeable_concept['coding']&.find { |c| c['display'].present? }&.dig('display')
       end
-    end
+    end # rubocop:enable Metrics/ModuleLength
   end
 end

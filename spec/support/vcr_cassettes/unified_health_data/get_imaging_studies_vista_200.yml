@@ -87,6 +87,11 @@ http_interactions:
                               "reference": "Patient/1234567890V012345"
                           },
                           "started": "2024-04-04T21:03:00+00:00",
+                          "reasonReference": [
+                                {
+                                    "reference": "DiagnosticReport/6749875.829848"
+                                }
+                            ],
                           "numberOfSeries": 4,
                           "numberOfInstances": 4,
                           "description": "KNEE 4 OR MORE VIEWS (LEFT)",
@@ -142,6 +147,11 @@ http_interactions:
                               "reference": "Patient/1234567890V012345"
                           },
                           "started": "2024-04-04T20:54:00+00:00",
+                          "reasonReference": [
+                                {
+                                    "reference": "DiagnosticReport/6749875.358724"
+                                }
+                            ],
                           "numberOfSeries": 1,
                           "numberOfInstances": 1,
                           "description": "CT THORAX W/CONT",

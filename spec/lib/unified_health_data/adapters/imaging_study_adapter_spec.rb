@@ -19,6 +19,11 @@ RSpec.describe UnifiedHealthData::Adapters::ImagingStudyAdapter do
           'status' => 'available',
           'modality' => [{ 'code' => 'CT' }],
           'started' => '2025-01-15T10:30:00Z',
+          'reasonReference' => [
+            {
+              'reference' => 'DiagnosticReport/15249557843'
+            }
+          ],
           'description' => 'CT Scan of Chest',
           'subject' => { 'reference' => 'Patient/1234567890V012345' },
           'note' => [
@@ -62,6 +67,7 @@ RSpec.describe UnifiedHealthData::Adapters::ImagingStudyAdapter do
         result = adapter.parse(imaging_study_response).first
 
         expect(result.id).to eq('imaging-study-123')
+        expect(result.event_id).to eq('15249557843')
         expect(result.status).to eq('available')
         expect(result.modality).to eq('CT')
         expect(result.date).to eq('2025-01-15T10:30:00Z')
@@ -252,6 +258,7 @@ RSpec.describe UnifiedHealthData::Adapters::ImagingStudyAdapter do
         result = adapter.parse(minimal_response).first
 
         expect(result.id).to eq('minimal-study')
+        expect(result.event_id).to be_nil
         expect(result.identifier).to be_nil
         expect(result.modality).to be_nil
         expect(result.date).to be_nil
@@ -261,6 +268,27 @@ RSpec.describe UnifiedHealthData::Adapters::ImagingStudyAdapter do
         expect(result.series_count).to eq(0)
         expect(result.image_count).to eq(0)
         expect(result.series).to eq([])
+      end
+    end
+
+    context 'with reasonReference (event_id extraction)' do
+      let(:response_without_reason_reference) do
+        [
+          {
+            'resource' => {
+              'resourceType' => 'ImagingStudy',
+              'id' => 'study-with-event',
+              'status' => 'available',
+              'series' => []
+            }
+          }
+        ]
+      end
+
+      it 'returns nil event_id when reasonReference is absent' do
+        result = adapter.parse(response_without_reason_reference).first
+
+        expect(result.event_id).to be_nil
       end
     end
 
@@ -289,17 +317,13 @@ RSpec.describe UnifiedHealthData::Adapters::ImagingStudyAdapter do
   end
 
   describe '#parse_single_study' do
-    it 'returns nil for nil record' do
+    it 'returns nil for nil resource' do
       expect(adapter.parse_single_study(nil)).to be_nil
     end
 
-    it 'returns nil for record with nil resource' do
-      expect(adapter.parse_single_study({ 'resource' => nil })).to be_nil
-    end
-
     it 'returns nil for non-ImagingStudy resource' do
-      record = { 'resource' => { 'resourceType' => 'Patient', 'id' => '123' } }
-      expect(adapter.parse_single_study(record)).to be_nil
+      resource = { 'resourceType' => 'Patient', 'id' => '123' }
+      expect(adapter.parse_single_study(resource)).to be_nil
     end
   end
 end

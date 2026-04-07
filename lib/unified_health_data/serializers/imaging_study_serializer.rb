@@ -9,6 +9,7 @@ module UnifiedHealthData
       set_type :imaging_study
 
       attributes :id,
+                 :event_id,
                  :identifier,
                  :status,
                  :modality,
