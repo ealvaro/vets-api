@@ -1370,6 +1370,10 @@ features:
     actor_type: user
     description: If enabled enforces validation to ensure an email address is provided for Form 21-4140.
     enable_in_development: true
+  form_21_4140_minimal_header:
+    actor_type: user
+    description: If enabled toggles on the minimal header for Form 21-4140.
+    enable_in_development: true
   vba_21_4140_ibm_mms_connection:
     actor_type: user
     description: If enabled performs MMS IBM Upload for 21-4140.
