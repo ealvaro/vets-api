@@ -311,19 +311,19 @@ class HealthCareApplication < ApplicationRecord
   def send_failure_email
     first_name = parsed_form.dig('veteranFullName', 'first')
     template_id = Settings.vanotify.services.health_apps_1010.template_id.form1010_ez_failure_email
-    api_key = Settings.vanotify.services.health_apps_1010.api_key
+    personalisation = { 'salutation' => first_name ? "Dear #{first_name}," : '' }
+    metadata = { callback_metadata: { notification_type: 'error', form_number: FORM_ID, statsd_tags: DD_ZSF_TAGS } }
 
-    salutation = first_name ? "Dear #{first_name}," : ''
-    metadata =
-      {
-        callback_metadata: {
-          notification_type: 'error',
-          form_number: FORM_ID,
-          statsd_tags: DD_ZSF_TAGS
-        }
-      }
+    if Flipper.enabled?(:va_notify_v2_health_care_application_model_send_failure_email)
+      VANotify::V2::QueueEmailJob.enqueue(
+        email, template_id, personalisation,
+        'Settings.vanotify.services.health_apps_1010.api_key', metadata
+      )
+    else
+      api_key = Settings.vanotify.services.health_apps_1010.api_key
+      VANotify::EmailJob.perform_async(email, template_id, personalisation, api_key, metadata)
+    end
 
-    VANotify::EmailJob.perform_async(email, template_id, { 'salutation' => salutation }, api_key, metadata)
     StatsD.increment("#{HCA::Service::STATSD_KEY_PREFIX}.submission_failure_email_sent")
   rescue => e
     Rails.logger.error('[10-10EZ] - Failure sending Submission Failure Email', { exception: e })

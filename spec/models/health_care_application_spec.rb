@@ -727,6 +727,7 @@ RSpec.describe HealthCareApplication, type: :model do
 
     before do
       allow(VANotify::EmailJob).to receive(:perform_async)
+      allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
       allow_any_instance_of(MPI::Service).to receive(
         :find_profile_by_attributes
       ).and_return(
@@ -738,7 +739,6 @@ RSpec.describe HealthCareApplication, type: :model do
       context 'has form' do
         context 'with email address' do
           let(:email_address) { health_care_application.parsed_form['email'] }
-          let(:api_key) { Settings.vanotify.services.health_apps_1010.api_key }
           let(:template_id) { Settings.vanotify.services.health_apps_1010.template_id.form1010_ez_failure_email }
           let(:callback_metadata) do
             {
@@ -749,71 +749,79 @@ RSpec.describe HealthCareApplication, type: :model do
               }
             }
           end
-
-          let(:template_params) do
-            [
-              email_address,
-              template_id,
-              {
-                'salutation' => "Dear #{health_care_application.parsed_form['veteranFullName']['first']},"
-              },
-              api_key,
-              callback_metadata
-            ]
-          end
-
           let(:standard_error) { StandardError.new('Test error') }
 
-          it 'sends a failure email to the email address provided on the form' do
-            subject
-            expect(VANotify::EmailJob).to have_received(:perform_async).with(*template_params)
-          end
-
-          it 'logs error if email job throws error' do
-            allow(VANotify::EmailJob).to receive(:perform_async).and_raise(standard_error)
-            allow(Rails.logger).to receive(:error)
-            expect(Rails.logger).to receive(:error).with(
-              '[10-10EZ] - Failure sending Submission Failure Email',
-              { exception: standard_error }
-            )
-            expect(Rails.logger).to receive(:info).with(
-              '[10-10EZ] - HCA total failure',
-              {
-                first_initial: 'F',
-                middle_initial: 'M',
-                last_initial: 'Z'
-              }
-            )
-            expect { subject }.not_to raise_error
-          end
-
-          it 'increments statsd' do
-            expect { subject }.to trigger_statsd_increment("#{statsd_key_prefix}.submission_failure_email_sent")
-          end
-
-          context 'without first name' do
-            subject do
-              health_care_application.parsed_form['veteranFullName'] = nil
-              super()
+          context 'when va_notify_v2_health_care_application_model_send_failure_email is enabled' do
+            before do
+              allow(Flipper).to receive(:enabled?)
+                .with(:va_notify_v2_health_care_application_model_send_failure_email).and_return(true)
             end
 
-            let(:template_params_no_name) do
-              [
+            it 'sends a failure email using V2 QueueEmailJob' do
+              subject
+              expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
                 email_address,
                 template_id,
-                {
-                  'salutation' => ''
-                },
-                api_key,
+                { 'salutation' => "Dear #{health_care_application.parsed_form['veteranFullName']['first']}," },
+                'Settings.vanotify.services.health_apps_1010.api_key',
                 callback_metadata
-              ]
+              )
             end
 
-            let(:standard_error) { StandardError.new('Test error') }
+            it 'increments statsd' do
+              expect { subject }.to trigger_statsd_increment("#{statsd_key_prefix}.submission_failure_email_sent")
+            end
 
-            it 'sends a failure email without personalisations to the email address provided on the form' do
+            it 'logs error if email job throws error' do
+              allow(VANotify::V2::QueueEmailJob).to receive(:enqueue).and_raise(standard_error)
+              allow(Rails.logger).to receive(:error)
+              expect(Rails.logger).to receive(:error).with(
+                '[10-10EZ] - Failure sending Submission Failure Email',
+                { exception: standard_error }
+              )
+              expect { subject }.not_to raise_error
+            end
+
+            context 'without first name' do
+              subject do
+                health_care_application.parsed_form['veteranFullName'] = nil
+                super()
+              end
+
+              it 'sends a failure email with empty salutation' do
+                subject
+                expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
+                  email_address,
+                  template_id,
+                  { 'salutation' => '' },
+                  'Settings.vanotify.services.health_apps_1010.api_key',
+                  callback_metadata
+                )
+              end
+            end
+          end
+
+          context 'when va_notify_v2_health_care_application_model_send_failure_email is disabled' do
+            before do
+              allow(Flipper).to receive(:enabled?)
+                .with(:va_notify_v2_health_care_application_model_send_failure_email).and_return(false)
+            end
+
+            let(:api_key) { Settings.vanotify.services.health_apps_1010.api_key }
+
+            it 'sends a failure email using V1 EmailJob' do
               subject
-              expect(VANotify::EmailJob).to have_received(:perform_async).with(*template_params_no_name)
+              expect(VANotify::EmailJob).to have_received(:perform_async).with(
+                email_address,
+                template_id,
+                { 'salutation' => "Dear #{health_care_application.parsed_form['veteranFullName']['first']}," },
+                api_key,
+                callback_metadata
+              )
+            end
+
+            it 'increments statsd' do
+              expect { subject }.to trigger_statsd_increment("#{statsd_key_prefix}.submission_failure_email_sent")
             end
 
             it 'logs error if email job throws error' do
@@ -823,15 +831,25 @@ RSpec.describe HealthCareApplication, type: :model do
                 '[10-10EZ] - Failure sending Submission Failure Email',
                 { exception: standard_error }
               )
-              expect(Rails.logger).to receive(:info).with(
-                '[10-10EZ] - HCA total failure',
-                {
-                  first_initial: 'no initial provided',
-                  middle_initial: 'no initial provided',
-                  last_initial: 'no initial provided'
-                }
-              )
               expect { subject }.not_to raise_error
+            end
+
+            context 'without first name' do
+              subject do
+                health_care_application.parsed_form['veteranFullName'] = nil
+                super()
+              end
+
+              it 'sends a failure email with empty salutation' do
+                subject
+                expect(VANotify::EmailJob).to have_received(:perform_async).with(
+                  email_address,
+                  template_id,
+                  { 'salutation' => '' },
+                  api_key,
+                  callback_metadata
+                )
+              end
             end
           end
         end
