@@ -89,16 +89,32 @@ module SimpleFormsApi
     end
 
     def veteran_name_line
-      first  = @data.dig('full_name', 'first').to_s
-      middle = @data.dig('full_name', 'middle').to_s
-      last   = @data.dig('full_name', 'last').to_s
+      name = if veteran_is_filing?
+               first  = @data['first'].to_s
+               middle = @data['middle'].to_s
+               last   = @data['last'].to_s
+               full   = [first, middle, last].compact_blank.join(' ')
+               full.present? ? { 'first' => first, 'middle' => middle, 'last' => last } : @data['full_name'] || {}
+             else
+               @data['veteran_full_name'].presence || {}
+             end
+
+      first  = name['first'].to_s
+      middle = name['middle'].to_s
+      last   = name['last'].to_s
       full   = [first, middle, last].compact_blank.join(' ')
       "Name: #{full.presence || 'Not provided'}"
     end
 
     def id_line
-      va_file = @data.dig('id_number', 'va_file_number').to_s.presence
-      ssn     = @data.dig('id_number', 'ssn').to_s
+      id_data = if veteran_is_filing?
+                  @data['id_number'] || {}
+                else
+                  @data['veteran_id_number'].presence || @data['id_number'] || {}
+                end
+
+      va_file = id_data['va_file_number'].to_s.presence
+      ssn     = id_data['ssn'].to_s
 
       if va_file.present?
         "VA File Number: #{va_file}"
@@ -107,6 +123,10 @@ module SimpleFormsApi
       else
         'ID: Not provided'
       end
+    end
+
+    def veteran_is_filing?
+      @data['claimant_type'] == SimpleFormsApi::VBA214138::CLAIMANT_TYPE_VETERAN
     end
 
     def format_ssn(ssn)
