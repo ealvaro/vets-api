@@ -2,6 +2,67 @@
 http_interactions:
 - request:
     method: post
+    uri: "<CLAIMS_API_BD_URL>/oauth2/benefits-documents/system/v1/token"
+    body:
+      encoding: US-ASCII
+      string: grant_type=client_credentials&client_assertion_type=urn%3Aietf%3Aparams%3Aoauth%3Aclient-assertion-type%3Ajwt-bearer&client_assertion=<TOKEN>&scope=documents.read+documents.write
+    headers:
+      Accept:
+      - application/json
+      Content-Type:
+      - application/x-www-form-urlencoded
+      User-Agent:
+      - Vets.gov Agent
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Thu, 02 Apr 2026 19:01:54 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Connection:
+      - keep-alive
+      Ratelimit-Reset:
+      - '6'
+      X-Ratelimit-Remaining-Minute:
+      - '239'
+      X-Ratelimit-Limit-Minute:
+      - '240'
+      Ratelimit-Remaining:
+      - '239'
+      Ratelimit-Limit:
+      - '240'
+      Vary:
+      - Origin
+      Cache-Control:
+      - no-cache, no-store
+      Pragma:
+      - no-cache
+      Etag:
+      - <ETAG>
+      Server-Timing:
+      - dtSInfo;desc="0", dtRpid;desc="186008108"
+      X-Envoy-Upstream-Service-Time:
+      - '385'
+      Strict-Transport-Security:
+      - max-age=16000000; includeSubDomains; preload;
+      Access-Control-Allow-Origin:
+      - "*"
+      Correlation-Id:
+      - 74f25806-73cf-4cec-b518-39bf3cf39999#78844
+      Transfer-Encoding:
+      - chunked
+    body:
+      encoding: ASCII-8BIT
+      string: '{"access_token":"<TOKEN>","token_type":"Bearer","scope":"documents.write
+        documents.read","expires_in":600,"state":null}'
+  recorded_at: Thu, 02 Apr 2026 19:01:54 GMT
+- request:
+    method: post
     uri: "<CLAIMS_API_BD_URL>/services/benefits-documents/v1/claim-letters/search"
     body:
       encoding: UTF-8
@@ -22,34 +83,34 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 19 Mar 2026 19:21:15 GMT
+      - Thu, 02 Apr 2026 19:01:57 GMT
       Content-Type:
       - application/json
       Connection:
       - keep-alive
+      Ratelimit-Reset:
+      - '5'
+      X-Ratelimit-Remaining-Minute:
+      - '59'
       X-Ratelimit-Limit-Minute:
       - '60'
       Ratelimit-Remaining:
       - '59'
-      Ratelimit-Reset:
-      - '50'
       Ratelimit-Limit:
       - '60'
-      X-Ratelimit-Remaining-Minute:
-      - '59'
       X-Oneagent-Js-Injection:
       - 'true'
       Server-Timing:
-      - dtRpid;desc="-1696479518", dtSInfo;desc="0"
+      - dtRpid;desc="1091298581", dtSInfo;desc="0"
       X-Envoy-Upstream-Service-Time:
-      - '5148'
+      - '1876'
       Strict-Transport-Security:
       - max-age=16000000; includeSubDomains; preload;
       - max-age=31536000; includeSubDomains; preload
       Access-Control-Allow-Origin:
       - "*"
       Correlation-Id:
-      - 3d804d08-a60a-4fd5-84d5-0b7b4d193259#190933
+      - 74f25806-73cf-4cec-b518-39bf3cf39999#78845
       Cache-Control:
       - ''
       - no-cache, no-store
@@ -64,5 +125,5 @@ http_interactions:
       string: '{"data":{"documents":[{"docTypeId":34,"subject":null,"documentUuid":"42819128-0aff-4b23-ab46-1a9445a209d7","currentVersionUuid":"596fb9ce-5a6d-41d1-b54c-9cacd2f6a516","originalFileName":"9dc6cfbb-6b52-4984-a8a0-1085f0eef918_2122akasp.pdf","documentTypeLabel":"Correspondence","trackedItemId":null,"uploadedDateTime":"2019-11-07T17:14:21Z","receivedAt":"2018-12-29"},{"docTypeId":859,"subject":null,"documentUuid":"5c415b15-a068-4e03-ae85-18027f21dcee","currentVersionUuid":"59d035a8-ca72-4bfd-b006-b3d2744bd34b","originalFileName":"SUBSEQUENT_DEVELOPMENT-600896182-28857726","documentTypeLabel":"Subsequent
         Development Letter","trackedItemId":null,"uploadedDateTime":"2026-02-13T19:54:25Z","receivedAt":"2026-02-17"},{"docTypeId":184,"subject":null,"documentUuid":"f03b6611-fbaa-4366-a94d-e5f802f7207e","currentVersionUuid":"cc443c27-0725-4988-87f3-fa473e7cc5af","originalFileName":"20211130143609_letter.pdf","documentTypeLabel":"Notification
         Letter (e.g. VA 20-8993, VA 21-0290, PCGL)","trackedItemId":null,"uploadedDateTime":"2021-11-30T19:36:09Z","receivedAt":"2021-12-01"},{"docTypeId":34,"subject":null,"documentUuid":"8116b5a3-ab99-4935-acb9-996906710068","currentVersionUuid":"836e4923-7794-4fe2-aa34-e4820b4b9d23","originalFileName":"3d0146a4-2580-436a-9233-bd217a66ee28_2122Aks6.pdf","documentTypeLabel":"Correspondence","trackedItemId":null,"uploadedDateTime":"2019-11-12T18:26:26Z","receivedAt":"2018-12-29"},{"docTypeId":34,"subject":null,"documentUuid":"aab809d4-f14a-4807-80af-3f8a22458343","currentVersionUuid":"b2add62a-afa9-4698-aab8-5c2b0f9abf8d","originalFileName":"3d0146a4-2580-436a-9233-bd217a66ee28_2122Aks4.pdf","documentTypeLabel":"Correspondence","trackedItemId":null,"uploadedDateTime":"2019-11-12T18:03:13Z","receivedAt":"2018-12-29"}]}}'
-  recorded_at: Thu, 19 Mar 2026 19:21:15 GMT
+  recorded_at: Thu, 02 Apr 2026 19:01:57 GMT
 recorded_with: VCR 6.4.0

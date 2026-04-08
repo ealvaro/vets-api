@@ -107,48 +107,62 @@ describe ClaimsApi::BD do
 
     # To re-record VCR cassettes: change :stub_bd_auth to stub_bd_auth: false
     describe '#claim_letters_search', :stub_bd_auth do
-      let(:file_number) { '796378782' }
       let(:doc_type_ids) { [34, 859, 184] }
 
-      it 'returns documents matching the requested docTypeIds', vcr: 'claims_api/bd/claim_letters_search_with_ids' do
-        result = subject.claim_letters_search(file_number, doc_type_ids)
-        documents = result[:data][:documents]
+      [
+        { file_number: '796378782' },
+        { participant_id: '600045025' }
+      ].each do |identifier|
+        identifier_type = identifier.keys.first
 
-        expect(documents).not_to be_empty
-        returned_doc_type_ids = documents.map { |doc| doc[:docType] }.uniq.compact
-        expect(returned_doc_type_ids).to all(be_in(doc_type_ids))
-      end
+        it "returns documents matching the requested docTypeIds when provided a #{identifier_type}" do
+          VCR.use_cassette("claims_api/bd/claim_letters_search_#{identifier_type}_with_ids") do
+            result = subject.claim_letters_search(**identifier, doc_type_ids:)
+            documents = result[:data][:documents]
 
-      it 'returns documents without specifying docTypeIds', vcr: 'claims_api/bd/claim_letters_search_without_ids' do
-        result = subject.claim_letters_search(file_number, [])
-        documents = result[:data][:documents]
-        expect(documents).to be_a Array
-        expect(documents).not_to be_empty
-      end
+            expect(documents).not_to be_empty
+            returned_doc_type_ids = documents.map { |doc| doc[:docTypeId] }.uniq.compact
+            expect(returned_doc_type_ids).to all(be_in(doc_type_ids))
+          end
+        end
 
-      it 'returns documents with all expected fields', vcr: 'claims_api/bd/claim_letters_search_with_ids' do
-        result = subject.claim_letters_search(file_number, doc_type_ids)
-        documents = result[:data][:documents]
+        it 'returns documents without specifying docTypeIds' do
+          VCR.use_cassette("claims_api/bd/claim_letters_search_#{identifier_type}_without_ids") do
+            result = subject.claim_letters_search(**identifier, doc_type_ids: [])
+            documents = result[:data][:documents]
+            expect(documents).to be_a Array
+            expect(documents).not_to be_empty
+          end
+        end
 
-        expect(documents).not_to be_empty
-        first_doc = documents.first
-        expect(first_doc).to have_key(:docTypeId)
-        expect(first_doc).to have_key(:subject)
-        expect(first_doc).to have_key(:documentUuid)
-        expect(first_doc).to have_key(:currentVersionUuid)
-        expect(first_doc).to have_key(:originalFileName)
-        expect(first_doc).to have_key(:documentTypeLabel)
-        expect(first_doc).to have_key(:trackedItemId)
-        expect(first_doc).to have_key(:uploadedDateTime)
-        expect(first_doc).to have_key(:receivedAt)
-      end
+        it 'returns documents with all expected fields' do
+          VCR.use_cassette("claims_api/bd/claim_letters_search_#{identifier_type}_with_ids") do
+            result = subject.claim_letters_search(**identifier, doc_type_ids:)
+            documents = result[:data][:documents]
 
-      it 'handles errors gracefully', vcr: 'claims_api/bd/claim_letters_search_with_ids' do
-        allow_any_instance_of(Faraday::Connection).to receive(:post).and_raise(StandardError.new('API Error'))
+            expect(documents).not_to be_empty
+            first_doc = documents.first
+            expect(first_doc).to have_key(:docTypeId)
+            expect(first_doc).to have_key(:subject)
+            expect(first_doc).to have_key(:documentUuid)
+            expect(first_doc).to have_key(:currentVersionUuid)
+            expect(first_doc).to have_key(:originalFileName)
+            expect(first_doc).to have_key(:documentTypeLabel)
+            expect(first_doc).to have_key(:trackedItemId)
+            expect(first_doc).to have_key(:uploadedDateTime)
+            expect(first_doc).to have_key(:receivedAt)
+          end
+        end
 
-        result = subject.claim_letters_search(file_number, doc_type_ids)
+        it 'handles errors gracefully' do
+          VCR.use_cassette("claims_api/bd/claim_letters_search_#{identifier_type}_with_ids") do
+            allow_any_instance_of(Faraday::Connection).to receive(:post).and_raise(StandardError.new('API Error'))
 
-        expect(result).to eq({})
+            result = subject.claim_letters_search(**identifier, doc_type_ids:)
+
+            expect(result).to eq({})
+          end
+        end
       end
     end
 

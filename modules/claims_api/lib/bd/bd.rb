@@ -22,16 +22,12 @@ module ClaimsApi
     # @return Documents list
     def search(claim_id, participant_id: nil, file_number: nil)
       @multipart = false
-      if participant_id.blank? && file_number.blank?
-        raise ArgumentError, 'Either participant_id or file_number must be provided'
-      end
 
-      identifier = participant_id.present? ? { participantId: participant_id } : { fileNumber: file_number }
-      body = { data: { claimId: claim_id }.merge(identifier) }
+      body = { data: { claimId: claim_id }.merge(get_identifier(participant_id:, file_number:)) }
 
       ClaimsApi::Logger.log('benefits_documents',
                             detail: "calling benefits documents search for claimId #{claim_id} " \
-                                    "with #{identifier.keys.first}")
+                                    "with #{participant_id.present? ? 'participantId' : 'fileNumber'}")
       res = client.post('documents/search', body)&.body
 
       raise ::Common::Exceptions::GatewayTimeout.new(detail: 'Upstream service error.') unless res.is_a?(Hash)
@@ -44,13 +40,17 @@ module ClaimsApi
     end
 
     ##
-    # Search documents by docTypeIds and file number
-    # Used to get document uuids
-    #
+    # Search documents (VA generated) by file number or participant ID, and optionally filter by document type IDs
+    # @param file_number [String, nil] The file number
+    # @param participant_id [String, nil] The participant ID
+    # @param doc_type_ids [Array<String, Integer>] Optional array of document type IDs to filter;
+    # accepts string or numeric IDs
     # @return Documents list
-    def claim_letters_search(file_number, doc_type_ids = [])
+    def claim_letters_search(file_number: nil, participant_id: nil, doc_type_ids: [])
       @multipart = false
-      body = { data: { docTypeIds: doc_type_ids, fileNumber: file_number } }
+
+      body = { data: { docTypeIds: doc_type_ids }.merge(get_identifier(participant_id:, file_number:)) }
+
       ClaimsApi::Logger.log('benefits_documents',
                             detail: 'calling benefits documents claim-letters search ' \
                                     "#{doc_type_ids.present? ? "for docTypeIds #{doc_type_ids}" : ''}")
@@ -260,6 +260,14 @@ module ClaimsApi
       data[:participantId] = options[:participant_id] unless options[:participant_id].nil?
       data[:fileNumber] = options[:file_number] unless options[:file_number].nil?
       { data: }
+    end
+
+    def get_identifier(participant_id:, file_number:)
+      if participant_id.blank? && file_number.blank?
+        raise ArgumentError, 'Either participant_id or file_number must be provided'
+      end
+
+      participant_id.present? ? { participantId: participant_id } : { fileNumber: file_number }
     end
   end
 end
