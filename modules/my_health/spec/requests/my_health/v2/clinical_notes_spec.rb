@@ -13,7 +13,7 @@ RSpec.describe 'MyHealth::V2::ClinicalNotesController', :skip_json_api_validatio
   include_context 'uhd legacy security endpoint'
 
   let(:user_id) { '11898795' }
-  let(:default_params) { { start_date: '2024-01-01', end_date: '2025-05-31' } }
+  let(:default_params) { { start_date: '2024-01-01', end_date: '2025-08-31' } }
   let(:path) { '/my_health/v2/medical_records/clinical_notes' }
 
   let(:uhd_flipper) { :mhv_accelerated_delivery_uhd_enabled }
@@ -23,7 +23,7 @@ RSpec.describe 'MyHealth::V2::ClinicalNotesController', :skip_json_api_validatio
   let(:current_user) { build(:user, :mhv) }
 
   before do
-    Timecop.freeze('2025-06-02T08:00:00Z')
+    Timecop.freeze('2025-09-01T08:00:00Z')
     sign_in_as(current_user)
     allow(Flipper).to receive(:enabled?).with(uhd_flipper, instance_of(User)).and_return(true)
     allow(Flipper).to receive(:enabled?).with(notes_flipper, instance_of(User)).and_return(true)
@@ -199,7 +199,7 @@ RSpec.describe 'MyHealth::V2::ClinicalNotesController', :skip_json_api_validatio
         VCR.use_cassette('unified_health_data/get_clinical_notes_200') do
           get '/my_health/v2/medical_records/clinical_notes',
               headers: { 'X-Key-Inflection' => 'camel' },
-              params: { start_date: 'invalid-date', end_date: '2025-05-31' }
+              params: { start_date: 'invalid-date', end_date: '2025-08-31' }
         end
         expect(response).to have_http_status(:bad_request)
         json_response = JSON.parse(response.body)

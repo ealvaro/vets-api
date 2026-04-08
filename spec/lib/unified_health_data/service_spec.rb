@@ -1600,7 +1600,7 @@ describe UnifiedHealthData::Service, type: :service do
       it 'parses the DocumentReference fields correctly' do
         note = service.get_single_summary_or_note('20875576613', source: 'oracle-health')
         expect(note.name).to eq('Abbreviated Visit Summary')
-        expect(note.date).to eq('2026-02-02T21:13:27Z')
+        expect(note.date).to eq('2026-02-02T21:13:10Z') # encounter-derived from context.period.end
         expect(note.signed_by).to eq('Victoria A Borland')
         expect(note.location).to eq('668 Mann-Grandstaff WA VA Medical Center')
         expect(note.note).to be_present

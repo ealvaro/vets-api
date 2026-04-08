@@ -82,7 +82,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
           'name' => 'Clinical Summary',
           'note_type' => 'discharge_summary',
           'loinc_codes' => %w[4189665 18842-5],
-          'date' => '2025-05-15T17:48:51Z',
+          'date' => '2025-07-29T17:48:41Z', # encounter-derived from context.period.end
           'date_signed' => nil, # OH records do not have a date signed field
           'written_by' => 'Victoria A Borland',
           'signed_by' => 'Victoria A Borland',
@@ -96,7 +96,9 @@ RSpec.describe 'ClinicalNotesAdapter' do
     end
 
     it 'returns the expected fields with alternate fallbacks for all fields' do
-      parsed_note = adapter.parse(notes_methods_fallback_response['oracle-health']['entry'][0])
+      parsed_note = adapter.parse(
+        notes_methods_fallback_response['oracle-health']['entry'][0].merge('source' => 'oracle-health')
+      )
 
       expect(parsed_note).to have_attributes(
         {
@@ -104,7 +106,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
           'name' => 'Inpatient Clinical Summary', # type['text'] fallback
           'note_type' => 'discharge_summary', # based on LOINC code
           'loinc_codes' => %w[4189665 18842-5],
-          'date' => '2025-07-29T17:48:51Z',
+          'date' => '2025-07-29T17:48:41Z', # encounter-derived from context.period.end
           'date_signed' => nil,
           # name['text'] fallback (OH has a space after the , in name['text'], vista does not))
           'written_by' => ' Victoria A Borland',
@@ -460,6 +462,131 @@ RSpec.describe 'ClinicalNotesAdapter' do
 
         adapter.parse(note)
       end
+    end
+
+    context 'OH encounter-based date derivation' do
+      it 'uses context.period.end as date when present for OH standard note' do
+        note = find_oh_entry(oh_note_id).deep_dup.merge('source' => 'oracle-health')
+        parsed_note = adapter.parse(note)
+
+        # context.period.end is '2025-07-29T17:48:41Z', DocumentReference.date is '2025-05-15T17:48:51Z'
+        expect(parsed_note.date).to eq('2025-07-29T17:48:41Z')
+      end
+
+      it 'prefers context.period.start over context.period.end when both exist' do
+        note = find_oh_entry(oh_note_id).deep_dup.merge('source' => 'oracle-health')
+        note['resource']['context']['period']['start'] = '2025-07-28T10:00:00Z'
+
+        parsed_note = adapter.parse(note)
+
+        expect(parsed_note.date).to eq('2025-07-28T10:00:00Z')
+      end
+
+      it 'falls back to DocumentReference.date when context.period is absent and author is not TIU system' do
+        note = find_oh_entry(oh_note_id).deep_dup.merge('source' => 'oracle-health')
+        note['resource']['context'].delete('period')
+
+        parsed_note = adapter.parse(note)
+
+        expect(parsed_note.date).to eq('2025-05-15T17:48:51Z')
+      end
+
+      it 'does not fall back to DocumentReference.date when author is HX_VA_TIU_SYS' do
+        note = find_oh_entry(oh_note_id).deep_dup.merge('source' => 'oracle-health')
+        note['resource']['context'].delete('period')
+        note['resource']['author'] = [
+          { 'reference' => 'Practitioner/14883417', 'display' => 'Contributor_system, HX_VA_TIU_SYS' }
+        ]
+
+        parsed_note = adapter.parse(note)
+
+        expect(parsed_note.date).to be_nil
+      end
+
+      it 'uses encounter date even when author is HX_VA_TIU_SYS if context.period is present' do
+        note = find_oh_entry(oh_note_id).deep_dup.merge('source' => 'oracle-health')
+        note['resource']['author'] = [
+          { 'reference' => 'Practitioner/14883417', 'display' => 'Contributor_system, HX_VA_TIU_SYS' }
+        ]
+
+        parsed_note = adapter.parse(note)
+
+        # context.period.end should still be used
+        expect(parsed_note.date).to eq('2025-07-29T17:48:41Z')
+      end
+
+      it 'does not change VistA note date behavior' do
+        note = find_vista_entry(vista_standard_note_id).merge('source' => 'vista')
+        parsed_note = adapter.parse(note)
+
+        # VistA notes should continue using DocumentReference.date
+        expect(parsed_note.date).to eq('2025-01-14T09:18:00.000+00:00')
+      end
+
+      it 'sets sort_date from the encounter-derived date' do
+        note = find_oh_entry(oh_note_id).deep_dup.merge('source' => 'oracle-health')
+        parsed_note = adapter.parse(note)
+
+        # sort_date should be normalized from the encounter-derived date, not DocRef.date
+        expect(parsed_note.sort_date).to eq(adapter.send(:normalize_date_for_sorting, '2025-07-29T17:48:41Z'))
+      end
+    end
+  end
+
+  describe 'derive_oh_date fallback_record behavior' do
+    # Test the private method directly to cover addendum scenarios where the contained doc
+    # (original_doc) may lack context.period but the outer record has it.
+
+    it 'uses fallback_record context.period.end when record has no context.period' do
+      record = { 'date' => '2026-01-01T00:00:00Z' }
+      fallback = { 'context' => { 'period' => { 'end' => '2026-02-15T10:00:00Z' } } }
+
+      result = adapter.send(:derive_oh_date, record, fallback_record: fallback)
+      expect(result).to eq('2026-02-15T10:00:00Z')
+    end
+
+    it 'uses fallback_record context.period.start when record has no context.period' do
+      record = { 'date' => '2026-01-01T00:00:00Z' }
+      fallback = {
+        'context' => { 'period' => { 'start' => '2026-02-14T08:00:00Z', 'end' => '2026-02-15T10:00:00Z' } }
+      }
+
+      result = adapter.send(:derive_oh_date, record, fallback_record: fallback)
+      expect(result).to eq('2026-02-14T08:00:00Z')
+    end
+
+    it 'prefers record context.period.start over fallback context.period.start' do
+      record = { 'context' => { 'period' => { 'start' => '2026-03-01T09:00:00Z' } } }
+      fallback = { 'context' => { 'period' => { 'start' => '2026-02-14T08:00:00Z' } } }
+
+      result = adapter.send(:derive_oh_date, record, fallback_record: fallback)
+      expect(result).to eq('2026-03-01T09:00:00Z')
+    end
+
+    it 'prefers fallback start over record end (start always beats end)' do
+      record = { 'context' => { 'period' => { 'end' => '2026-03-02T17:00:00Z' } },
+                 'date' => '2026-01-01T00:00:00Z' }
+      fallback = { 'context' => { 'period' => { 'start' => '2026-02-28T08:00:00Z' } } }
+
+      result = adapter.send(:derive_oh_date, record, fallback_record: fallback)
+      expect(result).to eq('2026-02-28T08:00:00Z')
+    end
+
+    it 'falls back to record date when neither record nor fallback has context.period' do
+      record = { 'date' => '2026-01-01T00:00:00Z', 'author' => [] }
+      fallback = { 'context' => {} }
+
+      result = adapter.send(:derive_oh_date, record, fallback_record: fallback)
+      expect(result).to eq('2026-01-01T00:00:00Z')
+    end
+
+    it 'returns nil when no context.period and author is TIU system' do
+      record = { 'date' => '2026-01-01T00:00:00Z',
+                 'author' => [{ 'display' => 'Contributor_system, HX_VA_TIU_SYS' }] }
+      fallback = {}
+
+      result = adapter.send(:derive_oh_date, record, fallback_record: fallback)
+      expect(result).to be_nil
     end
   end
 

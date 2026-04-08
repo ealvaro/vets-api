@@ -4,6 +4,7 @@ require 'medical_records/medical_records_log'
 require_relative '../models/clinical_notes'
 require_relative '../models/avs'
 require_relative '../models/binary_data'
+require_relative '../source_constants'
 require_relative 'date_normalizer'
 
 module UnifiedHealthData
@@ -146,7 +147,7 @@ module UnifiedHealthData
 
       # Builds attributes for a standard (non-addendum) note.
       def build_standard_attributes(record, note_content, source: nil)
-        date_value = record['date']
+        date_value = source == SourceConstants::ORACLE_HEALTH ? derive_oh_date(record) : record['date']
 
         {
           id: record['id'],
@@ -195,7 +196,11 @@ module UnifiedHealthData
         intermediate_docs = sorted_docs.drop(1)
 
         original_content = get_note(original_doc)
-        date_value = original_doc['date'] || record['date']
+        date_value = if source == SourceConstants::ORACLE_HEALTH
+                       derive_oh_date(original_doc, fallback_record: record)
+                     else
+                       original_doc['date'] || record['date']
+                     end
 
         # Build addenda: intermediate contained docs (oldest first), then the outer record (newest).
         addenda = intermediate_docs.filter_map { |doc| build_addendum_entry(doc, parent_contained:) }
@@ -222,6 +227,32 @@ module UnifiedHealthData
 
       def allowed_doc_status?(doc_status)
         ALLOWED_DOC_STATUSES.include?(doc_status&.downcase)
+      end
+
+      # For Oracle Health notes, derive date from context.period (encounter timing) rather than
+      # DocumentReference.date. Falls back to DocumentReference.date only when the author is NOT
+      # the TIU system contributor (HX_VA_TIU_SYS), whose DocumentReference.date is unreliable.
+      #
+      # Precedence: context.period.start > context.period.end > DocumentReference.date (if non-TIU)
+      #
+      # @param record [Hash] FHIR DocumentReference resource
+      # @param fallback_record [Hash, nil] outer record to check for context.period (for addenda)
+      # @return [String, nil] the derived date, or nil if no usable date is available
+      def derive_oh_date(record, fallback_record: nil)
+        start_date = record.dig('context', 'period', 'start') ||
+                     fallback_record&.dig('context', 'period', 'start')
+        end_date = record.dig('context', 'period', 'end') ||
+                   fallback_record&.dig('context', 'period', 'end')
+        encounter_date = start_date || end_date
+        return encounter_date if encounter_date.present?
+
+        # No encounter date available — only fall back to DocumentReference.date
+        # if the author is NOT the TIU system contributor.
+        tiu_system_author?(record) ? nil : record['date']
+      end
+
+      def tiu_system_author?(record)
+        Array(record['author']).any? { |a| a['display']&.include?('HX_VA_TIU_SYS') }
       end
 
       # Builds a slim hash for entries in the `addenda` array of an addendum record.
