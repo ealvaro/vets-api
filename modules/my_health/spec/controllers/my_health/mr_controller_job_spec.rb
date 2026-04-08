@@ -18,8 +18,6 @@ RSpec.describe MyHealth::MRController, type: :controller do
         allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_enabled, user).and_return(true)
         allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_oh_lab_type_logging_enabled,
                                                   user).and_return(true)
-        allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_oh_imaging_logging_enabled,
-                                                  user).and_return(false)
         allow(controller).to receive(:params).and_return({ use_oh_data_path: '1' })
       end
 
@@ -27,23 +25,6 @@ RSpec.describe MyHealth::MRController, type: :controller do
         expect(UnifiedHealthData::LabsRefreshJob).to receive(:perform_async).with(user.uuid)
 
         # This will trigger the client method which should enqueue the job
-        controller.send(:client)
-      end
-    end
-
-    context 'when using OH data path with imaging enabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_enabled, user).and_return(true)
-        allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_oh_lab_type_logging_enabled,
-                                                  user).and_return(false)
-        allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_oh_imaging_logging_enabled,
-                                                  user).and_return(true)
-        allow(controller).to receive(:params).and_return({ use_oh_data_path: '1' })
-      end
-
-      it 'enqueues the UnifiedHealthData::ImagingRefreshJob when accessing client' do
-        expect(UnifiedHealthData::ImagingRefreshJob).to receive(:perform_async).with(user.uuid)
-
         controller.send(:client)
       end
     end
@@ -53,8 +34,6 @@ RSpec.describe MyHealth::MRController, type: :controller do
         allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_enabled, user).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_vista_lab_type_logging_enabled,
                                                   user).and_return(true)
-        allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_vista_imaging_logging_enabled,
-                                                  user).and_return(false)
         allow(controller).to receive(:params).and_return({ use_oh_data_path: '0' })
       end
 
@@ -62,23 +41,6 @@ RSpec.describe MyHealth::MRController, type: :controller do
         expect(UnifiedHealthData::LabsRefreshJob).to receive(:perform_async).with(user.uuid)
 
         # This will trigger the client method which should enqueue the job
-        controller.send(:client)
-      end
-    end
-
-    context 'when using Vista data path with imaging enabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_enabled, user).and_return(false)
-        allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_vista_lab_type_logging_enabled,
-                                                  user).and_return(false)
-        allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_vista_imaging_logging_enabled,
-                                                  user).and_return(true)
-        allow(controller).to receive(:params).and_return({ use_oh_data_path: '0' })
-      end
-
-      it 'enqueues the UnifiedHealthData::ImagingRefreshJob when accessing client' do
-        expect(UnifiedHealthData::ImagingRefreshJob).to receive(:perform_async).with(user.uuid)
-
         controller.send(:client)
       end
     end
@@ -90,22 +52,12 @@ RSpec.describe MyHealth::MRController, type: :controller do
                                                   user).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_vista_lab_type_logging_enabled,
                                                   user).and_return(false)
-        allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_oh_imaging_logging_enabled,
-                                                  user).and_return(false)
-        allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_vista_imaging_logging_enabled,
-                                                  user).and_return(false)
       end
 
       it 'does not enqueue the UnifiedHealthData::LabsRefreshJob' do
         expect(UnifiedHealthData::LabsRefreshJob).not_to receive(:perform_async)
 
         # This will trigger the client method which should not enqueue the job
-        controller.send(:client)
-      end
-
-      it 'does not enqueue the UnifiedHealthData::ImagingRefreshJob' do
-        expect(UnifiedHealthData::ImagingRefreshJob).not_to receive(:perform_async)
-
         controller.send(:client)
       end
     end

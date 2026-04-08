@@ -2,6 +2,7 @@
 
 require 'unified_health_data/imaging_service'
 require 'unified_health_data/serializers/imaging_study_serializer'
+require 'sidekiq/api'
 
 module MyHealth
   module V2
@@ -10,6 +11,7 @@ module MyHealth
       include MyHealth::V2::Concerns::ErrorHandler
       include SortableRecords
       service_tag 'mhv-medical-records'
+      before_action :enqueue_imaging_refresh_job, only: :index
 
       def index
         start_date = params[:start_date]
@@ -198,6 +200,13 @@ module MyHealth
         end
 
         site_ids
+      end
+
+      def enqueue_imaging_refresh_job
+        if Flipper.enabled?(:mhv_accelerated_delivery_uhd_oh_imaging_logging_enabled, @current_user) ||
+           Flipper.enabled?(:mhv_accelerated_delivery_uhd_vista_imaging_logging_enabled, @current_user)
+          UnifiedHealthData::ImagingRefreshJob.perform_async(@current_user.uuid)
+        end
       end
     end
   end
