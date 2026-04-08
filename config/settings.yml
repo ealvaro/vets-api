@@ -1675,6 +1675,8 @@ vanotify:
           template_id: <%= ENV['vanotify__services__accredited_representative_portal__email__confirmation__template_id'] %>
         error:
           template_id: <%= ENV['vanotify__services__accredited_representative_portal__email__error__template_id'] %>
+        itf_confirmation:
+          template_id: <%= ENV['vanotify__services__accredited_representative_portal__email__itf_confirmation__template_id'] %>
         received:
           template_id: <%= ENV['vanotify__services__accredited_representative_portal__email__received__template_id'] %>
     benefits_decision_review:

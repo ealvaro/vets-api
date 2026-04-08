@@ -5,6 +5,12 @@ require 'veteran_facing_services/notification_email/saved_claim'
 
 module AccreditedRepresentativePortal
   class NotificationEmail < ::VeteranFacingServices::NotificationEmail::SavedClaim
+    BENEFIT_TYPE_LABELS = {
+      'compensation' => 'Disability compensation (VA Form 21-526EZ)',
+      'pension' => 'Pension (VA Form 21P-527EZ)',
+      'survivor' => 'Survivor benefits'
+    }.freeze
+
     def initialize(saved_claim_id)
       super(saved_claim_id, service_name: 'accredited_representative_portal')
     end
@@ -44,8 +50,15 @@ module AccreditedRepresentativePortal
         'form_id' => form_id,
         'confirmation_number' => claim&.latest_submission_attempt&.benefits_intake_uuid || claim&.confirmation_number,
         'first_name' => representative&.first_name || 'Representative',
-        'submission_date' => claim&.created_at&.strftime('%B %-d, %Y')
-      }.reverse_merge(default)
+        'submission_date' => claim&.created_at&.strftime('%B %-d, %Y'),
+        'benefit_type' => BENEFIT_TYPE_LABELS[parsed_form['benefitType']]
+      }.compact.reverse_merge(default)
+    end
+
+    def parsed_form
+      @parsed_form ||= JSON.parse(claim.form)
+    rescue JSON::ParserError
+      {}
     end
 
     def email

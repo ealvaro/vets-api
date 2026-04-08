@@ -1694,6 +1694,8 @@ vanotify:
           template_id: accredited_representative_portal_confirmation_email_template_id
         error:
           template_id: accredited_representative_portal_error_email_template_id
+        itf_confirmation:
+          template_id: accredited_representative_portal_itf_confirmation_email_template_id
         received:
           template_id: accredited_representative_portal_received_email_template_id
     benefits_decision_review:

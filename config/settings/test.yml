@@ -1693,6 +1693,8 @@ vanotify:
           template_id: arp_confirmation_email_template_id
         error:
           template_id: arp_error_email_template_id
+        itf_confirmation:
+          template_id: arp_itf_confirmation_email_template_id
         received:
           template_id: arp_received_email_template_id
     benefits_decision_review:

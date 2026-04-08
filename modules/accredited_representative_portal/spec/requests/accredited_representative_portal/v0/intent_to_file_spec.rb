@@ -196,7 +196,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::IntentToFileController, type:
             @notification_double = double('notification')
             allow(AccreditedRepresentativePortal::NotificationEmail)
               .to receive(:new).and_return(@notification_double)
-            expect(@notification_double).to receive(:deliver).with(:confirmation)
+            expect(@notification_double).to receive(:deliver).with(:itf_confirmation)
           end
 
           it 'sends a VA Notify confirmation email' do
@@ -404,7 +404,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::IntentToFileController, type:
               notification_double = double('notification')
               allow(AccreditedRepresentativePortal::NotificationEmail)
                 .to receive(:new).and_return(notification_double)
-              allow(notification_double).to receive(:deliver).with(:confirmation)
+              allow(notification_double).to receive(:deliver).with(:itf_confirmation)
             end
 
             it 'tracks the email success metric' do
