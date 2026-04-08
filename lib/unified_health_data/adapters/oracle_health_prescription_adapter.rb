@@ -2,6 +2,7 @@
 
 require_relative 'facility_name_resolver'
 require_relative 'fhir_helpers'
+require_relative 'medication_dispense_helpers'
 require_relative 'oracle_health_categorizer'
 require_relative 'oracle_health_expiration_helper'
 require_relative 'oracle_health_refill_helper'
@@ -12,6 +13,7 @@ module UnifiedHealthData
   module Adapters
     class OracleHealthPrescriptionAdapter
       include FhirHelpers
+      include MedicationDispenseHelpers
       include OracleHealthCategorizer
       include OracleHealthExpirationHelper
       include OracleHealthRefillHelper

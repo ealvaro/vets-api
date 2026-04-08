@@ -3,12 +3,12 @@
 require 'rails_helper'
 require 'unified_health_data/adapters/oracle_health_tracking_helper'
 require 'unified_health_data/adapters/oracle_health_prescription_adapter'
-require 'unified_health_data/adapters/fhir_helpers'
+require 'unified_health_data/adapters/medication_dispense_helpers'
 
 # Test class that includes the tracking helper for testing
 class TrackingHelperTestClass
   include UnifiedHealthData::Adapters::OracleHealthTrackingHelper
-  include UnifiedHealthData::Adapters::FhirHelpers
+  include UnifiedHealthData::Adapters::MedicationDispenseHelpers
 
   # Stub methods that the helper depends on
   def extract_prescription_name(resource)

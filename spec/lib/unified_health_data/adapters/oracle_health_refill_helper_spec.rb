@@ -3,7 +3,7 @@
 require 'rails_helper'
 require 'unified_health_data/adapters/oracle_health_refill_helper'
 require 'unified_health_data/adapters/oracle_health_categorizer'
-require 'unified_health_data/adapters/fhir_helpers'
+require 'unified_health_data/adapters/medication_dispense_helpers'
 
 describe UnifiedHealthData::Adapters::OracleHealthRefillHelper do
   subject { helper_class.new }
@@ -12,7 +12,7 @@ describe UnifiedHealthData::Adapters::OracleHealthRefillHelper do
     Class.new do
       include UnifiedHealthData::Adapters::OracleHealthRefillHelper
       include UnifiedHealthData::Adapters::OracleHealthCategorizer
-      include UnifiedHealthData::Adapters::FhirHelpers
+      include UnifiedHealthData::Adapters::MedicationDispenseHelpers
     end
   end
 
