@@ -3013,6 +3013,11 @@ features:
     description: >-
       If enabled, education benefits confirmation emails will use VANotify::V2::QueueEmailJob
       instead of VANotify::EmailJob
+  va_notify_v2_edu_career_counseling_failure_email:
+    actor_type: user
+    description: >-
+      If enabled, EducationCareerCounselingClaim#send_failure_email will use
+      VANotify::V2::QueueEmailJob instead of VANotify::EmailJob
   va_notify_v2_preneeds_burial_form_job:
     actor_type: user
     description: >-

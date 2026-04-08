@@ -43,15 +43,19 @@ class SavedClaim::EducationCareerCounselingClaim < CentralMailClaim
   # https://github.com/department-of-veterans-affairs/vets-api/blob/master/lib/veteran_facing_services/notification_email.rb
   def send_failure_email(email)
     if email.present?
-      VANotify::EmailJob.perform_async(
-        email,
-        Settings.vanotify.services.va_gov.template_id.form27_8832_action_needed_email,
-        {
-          'first_name' => parsed_form.dig('claimantInformation', 'fullName', 'first')&.upcase.presence,
-          'date_submitted' => Time.zone.today.strftime('%B %d, %Y'),
-          'confirmation_number' => confirmation_number
-        }
-      )
+      template_id = Settings.vanotify.services.va_gov.template_id.form27_8832_action_needed_email
+      personalisation = {
+        'first_name' => parsed_form.dig('claimantInformation', 'fullName', 'first')&.upcase.presence,
+        'date_submitted' => Time.zone.today.strftime('%B %d, %Y'),
+        'confirmation_number' => confirmation_number
+      }
+      api_key_path = 'Settings.vanotify.services.va_gov.api_key'
+
+      if Flipper.enabled?(:va_notify_v2_edu_career_counseling_failure_email)
+        VANotify::V2::QueueEmailJob.enqueue(email, template_id, personalisation, api_key_path)
+      else
+        VANotify::EmailJob.perform_async(email, template_id, personalisation)
+      end
     end
   end
 end
