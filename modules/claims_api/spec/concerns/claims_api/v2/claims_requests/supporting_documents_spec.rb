@@ -5,57 +5,59 @@ require_relative '../../../../rails_helper'
 require 'bd/bd'
 require 'bgs_service/person_web_service'
 
-class FakeController
-  include ClaimsApi::V2::ClaimsRequests::SupportingDocuments
+describe ClaimsApi::V2::ClaimsRequests::SupportingDocuments do
+  let(:fake_documents_controller_class) do
+    Class.new do
+      include ClaimsApi::V2::ClaimsRequests::SupportingDocuments
 
-  def local_bgs_service
-    if Flipper.enabled? :claims_api_use_person_web_service
-      ClaimsApi::PersonWebService.new(
-        external_uid: target_veteran.participant_id,
-        external_key: target_veteran.participant_id
-      )
-    else
-      ClaimsApi::LocalBGS.new(
-        external_uid: target_veteran.participant_id,
-        external_key: target_veteran.participant_id
-      )
+      def local_bgs_service
+        id = target_veteran.participant_id
+        if Flipper.enabled? :claims_api_use_person_web_service
+          ClaimsApi::PersonWebService.new(
+            external_uid: id,
+            external_key: id
+          )
+        else
+          ClaimsApi::LocalBGS.new(
+            external_uid: id,
+            external_key: id
+          )
+        end
+      end
+
+      def target_veteran
+        OpenStruct.new(
+          icn: '1012667169V030190',
+          first_name: 'Ralph',
+          last_name: 'Lee',
+          loa: { current: 3, highest: 3 },
+          ssn: '796378782',
+          edipi: '8040545646',
+          participant_id: '600045025',
+          mpi: OpenStruct.new(
+            icn: '1012667169V030190',
+            profile: OpenStruct.new(ssn: '796378782')
+          )
+        )
+      end
+
+      def request
+        { request_id: '222222222' }
+      end
+
+      def benefits_doc_api
+        @benefits_doc_api ||= ClaimsApi::BD.new
+      end
+
+      def claims_v2_logging(*)
+        true
+      end
+
+      def params
+        { id: '600397218' }
+      end
     end
   end
-
-  def target_veteran
-    OpenStruct.new(
-      icn: '1012667169V030190',
-      first_name: 'Ralph',
-      last_name: 'Lee',
-      loa: { current: 3, highest: 3 },
-      ssn: '796378782',
-      edipi: '8040545646',
-      participant_id: '600045025',
-      mpi: OpenStruct.new(
-        icn: '1012667169V030190',
-        profile: OpenStruct.new(ssn: '796378782')
-      )
-    )
-  end
-
-  def request
-    { request_id: '222222222' }
-  end
-
-  def benefits_doc_api
-    @benefits_doc_api ||= ClaimsApi::BD.new
-  end
-
-  def claims_v2_logging(*)
-    true
-  end
-
-  def params
-    { id: '600397218' }
-  end
-end
-
-describe ClaimsApi::V2::ClaimsRequests::SupportingDocuments do
   let(:bgs_claim) do
     {
       benefit_claim_details_dto: {
@@ -65,9 +67,7 @@ describe ClaimsApi::V2::ClaimsRequests::SupportingDocuments do
   end
   let(:ssn) { '796378782' }
 
-  let(:dummy_class) { Class.new { include ClaimsApi::V2::ClaimsRequests::SupportingDocuments } }
-
-  let(:controller) { FakeController.new }
+  let(:controller) { fake_documents_controller_class.new }
 
   before do
     allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_use_birls_id).and_return(false)

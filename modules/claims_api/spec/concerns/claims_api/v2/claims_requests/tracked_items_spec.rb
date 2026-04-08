@@ -3,35 +3,39 @@
 require 'rails_helper'
 require 'bgs_service/tracked_item_service'
 
-class FakeController
-  include ClaimsApi::V2::ClaimsRequests::TrackedItems
-  include ClaimsApi::V2::ClaimsRequests::TrackedItemsAssistance
+describe ClaimsApi::V2::ClaimsRequests::TrackedItems do
+  subject { fake_tracked_items_controller_class.new }
 
-  def tracked_item_service
-    @tracked_item_service ||= ClaimsApi::TrackedItemService.new(
-      external_uid: target_veteran.participant_id,
-      external_key: target_veteran.participant_id
-    )
+  let(:fake_tracked_items_controller_class) do
+    Class.new do
+      include ClaimsApi::V2::ClaimsRequests::TrackedItems
+      include ClaimsApi::V2::ClaimsRequests::TrackedItemsAssistance
+
+      def tracked_item_service
+        @tracked_item_service ||= ClaimsApi::TrackedItemService.new(
+          external_uid: target_veteran.participant_id,
+          external_key: target_veteran.participant_id
+        )
+      end
+
+      def target_veteran
+        OpenStruct.new(
+          icn: '1013062086V794840',
+          first_name: 'abraham',
+          last_name: 'lincoln',
+          loa: { current: 3, highest: 3 },
+          ssn: '796111863',
+          edipi: '8040545646',
+          participant_id: '600061742',
+          mpi: OpenStruct.new(
+            icn: '1013062086V794840',
+            profile: OpenStruct.new(ssn: '796111863')
+          )
+        )
+      end
+    end
   end
 
-  def target_veteran
-    OpenStruct.new(
-      icn: '1013062086V794840',
-      first_name: 'abraham',
-      last_name: 'lincoln',
-      loa: { current: 3, highest: 3 },
-      ssn: '796111863',
-      edipi: '8040545646',
-      participant_id: '600061742',
-      mpi: OpenStruct.new(
-        icn: '1013062086V794840',
-        profile: OpenStruct.new(ssn: '796111863')
-      )
-    )
-  end
-end
-
-describe FakeController do
   context 'when the claims controller calls the tracked_items module' do
     let(:claim_id) { '600118544' }
     let(:bgs_claim) do

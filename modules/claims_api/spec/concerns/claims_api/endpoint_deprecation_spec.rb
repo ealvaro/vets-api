@@ -2,11 +2,15 @@
 
 require 'rails_helper'
 
-class FakeController < ApplicationController
-  include ClaimsApi::EndpointDeprecation
-end
+describe ClaimsApi::EndpointDeprecation do
+  subject { fake_endpoint_deprecation_controller_class.new }
 
-describe FakeController do
+  let(:fake_endpoint_deprecation_controller_class) do
+    Class.new do
+      include ClaimsApi::EndpointDeprecation
+    end
+  end
+
   context "adding a 'Deprecation' header to the response" do
     context "when a 'Response' object is not provided" do
       it "An 'ArgumentError' is raised" do

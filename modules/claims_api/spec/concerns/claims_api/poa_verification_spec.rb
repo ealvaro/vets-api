@@ -2,27 +2,30 @@
 
 require 'rails_helper'
 
-class FakeController < ApplicationController
-  include ClaimsApi::PoaVerification
+describe ClaimsApi::PoaVerification do
+  subject { fake_poa_verification_controller_class.new }
 
-  def initialize
-    super
-    @current_user = ClaimsApi::ClaimsUser.new('test')
-    @current_user.first_name_last_name('John', 'Doe')
-    @current_user.middle_name = 'Alexander'
-    @current_user.suffix = 'III'
+  let(:fake_poa_verification_controller_class) do
+    Class.new do
+      include ClaimsApi::PoaVerification
+      def initialize
+        super
+        @current_user = ClaimsApi::ClaimsUser.new('test')
+        @current_user.first_name_last_name('John', 'Doe')
+        @current_user.middle_name = 'Alexander'
+        @current_user.suffix = 'III'
+      end
+
+      def token
+        @token ||= double('Token', client_credentials_token?: false)
+      end
+
+      def target_veteran
+        @target_veteran ||= {}
+      end
+    end
   end
 
-  def token
-    @token ||= double('Token', client_credentials_token?: false)
-  end
-
-  def target_veteran
-    @target_veteran ||= {}
-  end
-end
-
-describe FakeController do
   context 'validating poa_code for current_user' do
     let(:poa_code) { '091' }
     let(:first_name) { 'John' }
@@ -125,14 +128,16 @@ describe FakeController do
 
     describe '#verify_power_of_attorney!' do
       before do
-        allow_any_instance_of(FakeController).to receive(:token).and_return(double(client_credentials_token?: false))
+        allow_any_instance_of(subject.class).to receive(
+          :token
+        ).and_return(double(client_credentials_token?: false))
         veteran_user = double('Veteran::User')
         allow(Veteran::User).to receive(:new).and_return(veteran_user)
         allow(veteran_user).to receive(:power_of_attorney).and_return(double(try: 'some_code'))
       end
 
       it 'handles an Unauthorized error' do
-        allow_any_instance_of(FakeController).to receive(:valid_poa_code_for_current_user?).and_raise(Common::Exceptions::Unauthorized)
+        allow_any_instance_of(subject.class).to receive(:valid_poa_code_for_current_user?).and_raise(Common::Exceptions::Unauthorized)
 
         expect do
           subject.verify_power_of_attorney!
@@ -157,7 +162,9 @@ describe FakeController do
         let(:mock_exception) { Breakers::OutageException.new(mock_outage, mock_service) }
 
         it 'handles an Breakers Outage error' do
-          allow_any_instance_of(FakeController).to receive(:valid_poa_code_for_current_user?).and_raise(mock_exception)
+          allow_any_instance_of(subject.class).to receive(
+            :valid_poa_code_for_current_user?
+          ).and_raise(mock_exception)
 
           expect do
             subject.verify_power_of_attorney!

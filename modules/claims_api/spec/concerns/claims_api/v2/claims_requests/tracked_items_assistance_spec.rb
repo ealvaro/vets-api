@@ -2,11 +2,15 @@
 
 require 'rails_helper'
 
-class FakeController
-  include ClaimsApi::V2::ClaimsRequests::TrackedItemsAssistance
-end
+describe ClaimsApi::V2::ClaimsRequests::TrackedItemsAssistance do
+  subject { fake_tracked_items_assistance_controller_class.new }
 
-describe FakeController do
+  let(:fake_tracked_items_assistance_controller_class) do
+    Class.new do
+      include ClaimsApi::V2::ClaimsRequests::TrackedItemsAssistance
+    end
+  end
+
   context 'when the claims controller calls the TrackedItemsAssistance module' do
     let(:claim_date) { Date.parse('2024-08-22 07:36:25 -0600') }
     let(:status) { 'Complete' }
