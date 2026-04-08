@@ -49,7 +49,8 @@ module DigitalFormsApi
       # @return [Hash] the parsed JSON
       def openapi
         perform(:get, "#{root}/openapi.json", {}, {}).body
-      rescue
+      rescue => e
+        Rails.logger.warn("DigitalFormsApi::Service::Base#openapi fallback to local schema: #{e.message}")
         JSON.parse(File.read("#{DigitalFormsApi::MODULE_PATH}/schema/openapi.json"))
       end
 
@@ -82,6 +83,13 @@ module DigitalFormsApi
         @context.is_a?(Hash) ? @context : {}
       end
 
+      # Build a request context with StatsD tags derived from the given keys
+      # @param tags [Hash] key-value pairs to use as both context and StatsD tags
+      # @return [Hash] context hash with a nested :tags key for StatsD
+      def build_context(**tags)
+        tags.merge(tags:)
+      end
+
       # extract the root (shema://host) from the api base url
       def root
         api = URI.parse(Settings.digital_forms_api.base_url)
@@ -92,11 +100,12 @@ module DigitalFormsApi
       # parse the request error
       def parse_error(error)
         body = error.try(:body)
-        messages = body&.dig('messages')&.pluck('text')
-        reason = messages&.first || body&.dig('message') || error.message
+        messages = if body.is_a?(Hash) && body['messages'].is_a?(Array)
+                     body['messages'].filter_map { |message| message.is_a?(Hash) ? message['text'] : nil }
+                   end
+        reason = messages&.first || (body.is_a?(Hash) && body['message']) || error.message
 
-        @context = context
-        @context[:error] = messages || reason
+        @context = context.merge(error: messages || reason)
 
         reason
       end

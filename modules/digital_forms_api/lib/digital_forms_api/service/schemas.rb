@@ -7,7 +7,12 @@ module DigitalFormsApi
     # Schemas API
     class Schemas < Base
       # Cache TTL values for form schemas
-      CACHE_TTL = (Settings.digital_forms_api.cache_ttl.schema.to_i || 5).minutes
+      CACHE_TTL_MINUTES = begin
+        ttl_minutes = Settings.digital_forms_api.cache_ttl.schema.to_i
+        ttl_minutes.positive? ? ttl_minutes : 5
+      end
+      # Cache TTL duration for form schemas
+      CACHE_TTL = CACHE_TTL_MINUTES.minutes
 
       # Build the cache key for a given form template.
       def self.cache_key(form_id)
@@ -25,13 +30,19 @@ module DigitalFormsApi
       def schema(form_id)
         cache_key = self.class.cache_key(form_id)
 
+        cache_status = 'hit'
+
         # @see DigitalFormsApi::Service::Base#context
         tags = { form_id: }
-        @context = tags.merge(tags:)
+        @context = build_context(**tags)
 
-        Rails.cache.fetch(cache_key, expires_in: CACHE_TTL, race_condition_ttl: 10.seconds) do
+        schema = Rails.cache.fetch(cache_key, expires_in: CACHE_TTL, race_condition_ttl: 10.seconds) do
+          cache_status = 'miss'
           perform(:get, "forms/#{form_id}/schema", {}, {}).body
         end
+
+        monitor.track_schema_cache(form_id, cache_status)
+        schema
       end
 
       private

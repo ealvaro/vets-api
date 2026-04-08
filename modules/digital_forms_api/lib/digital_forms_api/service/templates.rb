@@ -7,7 +7,12 @@ module DigitalFormsApi
     # Templates API
     class Templates < Base
       # Cache TTL values for form templates
-      CACHE_TTL = (Settings.digital_forms_api.cache_ttl.template.to_i || 5).minutes
+      CACHE_TTL_MINUTES = begin
+        ttl_minutes = Settings.digital_forms_api.cache_ttl.template.to_i
+        ttl_minutes.positive? ? ttl_minutes : 5
+      end
+      # Cache TTL duration for form templates
+      CACHE_TTL = CACHE_TTL_MINUTES.minutes
 
       # Build the cache key for a given form template.
       def self.cache_key(form_id)
@@ -24,14 +29,19 @@ module DigitalFormsApi
       # request metadata (e.g., Authorization headers) from the Faraday::Env.
       def template(form_id)
         cache_key = self.class.cache_key(form_id)
+        cache_status = 'hit'
 
         # @see DigitalFormsApi::Service::Base#context
         tags = { form_id: }
-        @context = tags.merge(tags:)
+        @context = build_context(**tags)
 
-        Rails.cache.fetch(cache_key, expires_in: CACHE_TTL, race_condition_ttl: 10.seconds) do
+        template = Rails.cache.fetch(cache_key, expires_in: CACHE_TTL, race_condition_ttl: 10.seconds) do
+          cache_status = 'miss'
           perform(:get, "forms/#{form_id}/template", {}, {}).body
         end
+
+        monitor.track_template_cache(form_id, cache_status)
+        template
       end
 
       private

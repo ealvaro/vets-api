@@ -11,12 +11,14 @@ RSpec.describe DigitalFormsApi::Service::Schemas do
   let(:form_id) { '21-686c' }
   let(:schema_cache_key) { described_class.cache_key(form_id) }
   let(:memory_store) { ActiveSupport::Cache.lookup_store(:memory_store) }
+  let(:monitor) { instance_double(DigitalFormsApi::Monitor::Service, track_schema_cache: true) }
 
   let(:schema_body) { { 'schema' => 'data' } }
   let(:faraday_env) { instance_double(Faraday::Env, body: schema_body, status: 200) }
 
   before do
     allow(Rails).to receive(:cache).and_return(memory_store)
+    allow(service).to receive(:monitor).and_return(monitor)
     Rails.cache.clear
   end
 
@@ -36,6 +38,7 @@ RSpec.describe DigitalFormsApi::Service::Schemas do
     context 'when schema is not cached' do
       it 'performs a GET request to the forms endpoint' do
         expect(service).to receive(:perform).with(:get, "forms/#{form_id}/schema", {}, {}).and_return(faraday_env)
+        expect(monitor).to receive(:track_schema_cache).with(form_id, 'miss')
         service.schema(form_id)
       end
 
@@ -77,6 +80,7 @@ RSpec.describe DigitalFormsApi::Service::Schemas do
         Rails.cache.write(schema_cache_key, schema_body)
 
         expect(service).not_to receive(:perform)
+        expect(monitor).to receive(:track_schema_cache).with(form_id, 'hit')
 
         result = service.schema(form_id)
 

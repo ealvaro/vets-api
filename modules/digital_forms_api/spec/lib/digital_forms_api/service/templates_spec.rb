@@ -11,12 +11,14 @@ RSpec.describe DigitalFormsApi::Service::Templates do
   let(:form_id) { '21-686c' }
   let(:template_cache_key) { described_class.cache_key(form_id) }
   let(:memory_store) { ActiveSupport::Cache.lookup_store(:memory_store) }
+  let(:monitor) { instance_double(DigitalFormsApi::Monitor::Service, track_template_cache: true) }
 
   let(:template_body) { { 'template' => 'data' } }
   let(:faraday_env) { instance_double(Faraday::Env, body: template_body, status: 200) }
 
   before do
     allow(Rails).to receive(:cache).and_return(memory_store)
+    allow(service).to receive(:monitor).and_return(monitor)
     Rails.cache.clear
   end
 
@@ -36,6 +38,7 @@ RSpec.describe DigitalFormsApi::Service::Templates do
     context 'when template is not cached' do
       it 'performs a GET request to the forms endpoint' do
         expect(service).to receive(:perform).with(:get, "forms/#{form_id}/template", {}, {}).and_return(faraday_env)
+        expect(monitor).to receive(:track_template_cache).with(form_id, 'miss')
         service.template(form_id)
       end
 
@@ -77,6 +80,7 @@ RSpec.describe DigitalFormsApi::Service::Templates do
         Rails.cache.write(template_cache_key, template_body)
 
         expect(service).not_to receive(:perform)
+        expect(monitor).to receive(:track_template_cache).with(form_id, 'hit')
 
         result = service.template(form_id)
 

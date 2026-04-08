@@ -45,14 +45,26 @@ RSpec.describe DigitalFormsApi::Service::Submissions do
   describe 'retrieve' do
     it 'performs a GET' do
       expect(service).to receive(:perform).with(:get, "submissions/#{uuid}", {}, {})
-      service.retrieve(uuid)
+      service.retrieve(uuid, form_id: '21-686c')
+    end
+
+    it 'adds context tags when form_id is provided' do
+      allow(service).to receive(:perform)
+
+      service.retrieve(uuid, form_id: '21-686c')
+
+      expect(service.instance_variable_get(:@context)).to eq(
+        submission_id: uuid,
+        form_id: '21-686c',
+        tags: { submission_id: uuid, form_id: '21-686c' }
+      )
     end
   end
 
   describe 'by-document-id' do
     it 'performs a GET' do
       expect(service).to receive(:perform).with(:get, "submissions/by-document-id/#{uuid}", {}, {})
-      service.by_document_id(uuid)
+      service.by_document_id(uuid, form_id: '21-686c')
     end
   end
 end

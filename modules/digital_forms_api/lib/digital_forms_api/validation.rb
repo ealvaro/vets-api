@@ -8,7 +8,9 @@ module DigitalFormsApi
     # retrieve and cache the openapi json from FormsAPI
     def openapi
       key = 'digital_forms_api:openapi'
-      ttl = (Settings.digital_forms_api.cache_ttl.openapi.to_i || 5).minutes
+      ttl_minutes = Settings.digital_forms_api.cache_ttl.openapi.to_i
+      ttl_minutes = 5 unless ttl_minutes.positive?
+      ttl = ttl_minutes.minutes
       Rails.cache.fetch(key, expires_in: ttl, race_condition_ttl: 10.seconds) do
         require 'digital_forms_api/service/base'
         DigitalFormsApi::Service::Base.new.openapi
