@@ -259,8 +259,9 @@ module UnifiedHealthData
 
         return name if name.present?
 
-        # Fallback: first Organization
-        contained.find { |r| r['resourceType'] == 'Organization' }&.dig('name')
+        # Fallback: first Organization or Location in contained order.
+        # VistA records typically use Organization; OH records use Location.
+        contained.find { |r| %w[Organization Location].include?(r['resourceType']) }&.dig('name')
       end
 
       def resolve_hostname_location(organization)

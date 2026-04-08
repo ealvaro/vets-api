@@ -97,6 +97,38 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
       expect(adapter.send(:get_location, record)).to eq('Fallback Lab')
     end
 
+    it 'falls back to first Location when no performer matches and no Organization exists (OH data)' do
+      record = { 'resource' => {
+        'performer' => [{ 'reference' => 'Practitioner/prac-1' }],
+        'contained' => [
+          { 'resourceType' => 'Practitioner', 'id' => 'prac-1', 'name' => [{ 'family' => 'Smith' }] },
+          { 'resourceType' => 'Location', 'id' => 'loc-1', 'name' => 'Primary Care Blue' }
+        ]
+      } }
+      expect(adapter.send(:get_location, record)).to eq('Primary Care Blue')
+    end
+
+    it 'uses whichever Organization or Location appears first in contained for fallback' do
+      record = { 'resource' => {
+        'performer' => [{ 'reference' => 'Practitioner/prac-1' }],
+        'contained' => [
+          { 'resourceType' => 'Practitioner', 'id' => 'prac-1', 'name' => [{ 'family' => 'Smith' }] },
+          { 'resourceType' => 'Location', 'id' => 'loc-1', 'name' => 'Location Clinic' },
+          { 'resourceType' => 'Organization', 'id' => 'org-1', 'name' => 'Organization Lab' }
+        ]
+      } }
+      expect(adapter.send(:get_location, record)).to eq('Location Clinic')
+    end
+
+    it 'falls back to first Location when no performer references exist and no Organization exists' do
+      record = { 'resource' => {
+        'contained' => [
+          { 'resourceType' => 'Location', 'id' => 'loc-1', 'name' => 'OH Clinic' }
+        ]
+      } }
+      expect(adapter.send(:get_location, record)).to eq('OH Clinic')
+    end
+
     context 'when Organization name is a VistA hostname' do
       let(:resolver) { instance_double(UnifiedHealthData::Adapters::FacilityNameResolver) }
 
