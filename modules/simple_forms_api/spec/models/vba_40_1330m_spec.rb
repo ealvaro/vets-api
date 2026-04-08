@@ -343,27 +343,56 @@ RSpec.describe SimpleFormsApi::VBA401330m do
   end
 
   describe '#notification_first_name' do
-    let(:data) do
-      {
-        'applicant_full_name' => {
-          'first' => 'Jane',
-          'last' => 'Doe'
+    context 'when applicant_full_name is present' do
+      let(:data) do
+        {
+          'applicant_full_name' => {
+            'first' => 'Jane',
+            'last' => 'Doe'
+          }
         }
-      }
+      end
+
+      it 'returns the first name to be used in notifications' do
+        expect(described_class.new(data).notification_first_name).to eq 'Jane'
+      end
     end
 
-    it 'returns the first name to be used in notifications' do
-      expect(described_class.new(data).notification_first_name).to eq 'Jane'
+    context 'when first_last_name is present (frontend payload)' do
+      let(:data) do
+        {
+          'first_last_name' => {
+            'first' => 'Jane',
+            'last' => 'Doe'
+          }
+        }
+      end
+
+      it 'returns the first name to be used in notifications' do
+        expect(described_class.new(data).notification_first_name).to eq 'Jane'
+      end
     end
   end
 
   describe '#notification_email_address' do
-    let(:data) do
-      { 'applicant_email' => 'jane.doe@example.com' }
+    context 'when applicant_email is present' do
+      let(:data) do
+        { 'applicant_email' => 'jane.doe@example.com' }
+      end
+
+      it 'returns the email address to be used in notifications' do
+        expect(described_class.new(data).notification_email_address).to eq 'jane.doe@example.com'
+      end
     end
 
-    it 'returns the email address to be used in notifications' do
-      expect(described_class.new(data).notification_email_address).to eq 'jane.doe@example.com'
+    context 'when email is present (frontend payload)' do
+      let(:data) do
+        { 'email' => 'jane.doe@example.com' }
+      end
+
+      it 'returns the email address to be used in notifications' do
+        expect(described_class.new(data).notification_email_address).to eq 'jane.doe@example.com'
+      end
     end
   end
 

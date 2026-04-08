@@ -15,11 +15,11 @@ module SimpleFormsApi
     end
 
     def notification_first_name
-      data.dig('applicant_full_name', 'first')
+      data.dig('applicant_full_name', 'first') || data.dig('first_last_name', 'first')
     end
 
     def notification_email_address
-      data['applicant_email']
+      data['applicant_email'] || data['email']
     end
 
     def cemetery_notification_email_address
