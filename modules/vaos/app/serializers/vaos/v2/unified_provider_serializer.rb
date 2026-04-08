@@ -10,6 +10,7 @@ module VAOS
             type: 'unified_provider',
             attributes: {
               name: provider.name,
+              facilityName: provider.facility_name,
               providerType: provider.provider_type,
               isReferralProvider: referral_provider?(provider, referral_npi),
               address: serialize_address(provider.address),
@@ -17,7 +18,6 @@ module VAOS
               latitude: provider.latitude,
               longitude: provider.longitude,
               distanceInMiles: provider.distance_from_user&.round(1),
-              schedulableServices: provider.schedulable_services || [],
               sortOrder: index
             }
           }

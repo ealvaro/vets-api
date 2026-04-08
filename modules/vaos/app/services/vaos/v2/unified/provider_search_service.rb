@@ -16,9 +16,9 @@ module VAOS
         end
 
         ##
-        # Searches for both VA facilities and EPS CC providers near the user's address,
-        # filtered by the referral's category of care. Pins the referral's matched CC
-        # provider at the top, then sorts remaining results by distance.
+        # Searches for VA clinics (via Lighthouse facilities + VAOS clinics) and EPS CC providers
+        # near the user's address, filtered by the referral's category of care. Pins the referral's
+        # matched CC provider at the top, then sorts remaining results by distance.
         #
         # @param referral [Object] A CCRA referral object with category_of_care, provider NPI, etc.
         # @param radius [Integer] Search radius in miles (default: 25)
@@ -69,9 +69,7 @@ module VAOS
             per_page: 50
           )
 
-          providers = facilities.map { |f| VAOS::V2::Unified::VAProvider.from_lighthouse_facility(f) }
-          providers.each { |p| assign_distance(p, user_address) }
-          filter_va_by_category_of_care(providers, referral.category_of_care)
+          fetch_providers_for_facilities(facilities, referral, user_address)
         rescue => e
           Rails.logger.error("#{log_prefix}: VA facility search failed",
                              {
@@ -82,6 +80,19 @@ module VAOS
                              }.compact)
           StatsD.increment("#{STATSD_KEY_PREFIX}.va_search.failure")
           []
+        end
+
+        def fetch_providers_for_facilities(facilities, referral, user_address)
+          matching_facilities = filter_supported_facilities(facilities, referral.category_of_care)
+          clinical_service = ServiceTypeMapper.to_vaos(referral.category_of_care)
+
+          matching_facilities.flat_map do |facility|
+            fetch_clinics_for_facility(facility, clinical_service).map do |clinic|
+              provider = VAProvider.from_facility_and_clinic(facility, clinic)
+              assign_distance(provider, user_address)
+              provider
+            end
+          end
         end
 
         def fetch_eps_providers(user_address, referral, radius, eps_client:)
@@ -127,16 +138,43 @@ module VAOS
           )
         end
 
-        def filter_va_by_category_of_care(providers, category_of_care)
-          return providers if category_of_care.blank?
+        def filter_supported_facilities(facilities, category_of_care)
+          return facilities if category_of_care.blank?
 
-          normalized = category_of_care.to_s.downcase.gsub(/[\s_-]+/, '')
+          vaos_service_type = ServiceTypeMapper.to_vaos(category_of_care)
+          return facilities if vaos_service_type.nil?
 
-          providers.select do |provider|
-            provider.schedulable_services.any? do |svc|
-              svc.to_s.downcase.gsub(/[\s_-]+/, '') == normalized
-            end
+          facilities.select do |facility|
+            eligibility_service.check_eligibility(
+              facility_id: facility.unique_id,
+              category_of_care:
+            )[:direct_eligible]
           end
+        end
+
+        def fetch_clinics_for_facility(facility, clinical_service)
+          systems_service.get_facility_clinics(
+            location_id: facility.unique_id,
+            clinical_service:
+          )
+        rescue => e
+          Rails.logger.warn(
+            "#{log_prefix}: Clinic fetch failed for facility #{facility.unique_id}",
+            {
+              error_class: e.class.name,
+              clinical_service:,
+              user_uuid: @cached_user_uuid
+            }.compact
+          )
+          []
+        end
+
+        def systems_service
+          @systems_service ||= VAOS::V2::SystemsService.new(current_user)
+        end
+
+        def eligibility_service
+          @eligibility_service ||= EligibilityService.new(current_user)
         end
 
         def combine_and_sort(va_providers, eps_providers, referral)

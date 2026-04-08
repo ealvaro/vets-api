@@ -12,20 +12,12 @@ RSpec.describe VAOS::V2::Unified::EligibilityService do
     allow(VAOS::V2::PatientsService).to receive(:new).and_return(patients_service)
   end
 
-  def build_va_provider(location_id:)
-    VAOS::V2::Unified::VAProvider.new(
-      id: location_id,
-      location_id:,
-      name: "Test Facility #{location_id}"
-    )
-  end
-
   def eligibility_result(eligible:)
     OpenStruct.new(eligible:)
   end
 
   describe '#check_eligibility' do
-    let(:va_provider) { build_va_provider(location_id: '983') }
+    let(:facility_id) { '983' }
 
     context 'when the patient is eligible for direct scheduling' do
       before do
@@ -34,7 +26,7 @@ RSpec.describe VAOS::V2::Unified::EligibilityService do
       end
 
       it 'returns eligible with the mapped VAOS service type' do
-        result = service.check_eligibility(va_provider, 'primaryCare')
+        result = service.check_eligibility(facility_id:, category_of_care: 'primaryCare')
 
         expect(result[:facility_id]).to eq('983')
         expect(result[:vaos_service_type]).to eq('primaryCare')
@@ -42,7 +34,7 @@ RSpec.describe VAOS::V2::Unified::EligibilityService do
       end
 
       it 'checks direct eligibility' do
-        service.check_eligibility(va_provider, 'primaryCare')
+        service.check_eligibility(facility_id:, category_of_care: 'primaryCare')
 
         expect(patients_service).to have_received(:get_patient_appointment_metadata)
           .with('primaryCare', '983', 'direct')
@@ -56,7 +48,7 @@ RSpec.describe VAOS::V2::Unified::EligibilityService do
       end
 
       it 'returns direct as ineligible' do
-        result = service.check_eligibility(va_provider, 'primaryCare')
+        result = service.check_eligibility(facility_id:, category_of_care: 'primaryCare')
 
         expect(result[:direct_eligible]).to be false
       end
@@ -70,7 +62,7 @@ RSpec.describe VAOS::V2::Unified::EligibilityService do
       end
 
       it 'marks direct as ineligible' do
-        result = service.check_eligibility(va_provider, 'primaryCare')
+        result = service.check_eligibility(facility_id:, category_of_care: 'primaryCare')
 
         expect(result[:direct_eligible]).to be false
       end
@@ -78,7 +70,7 @@ RSpec.describe VAOS::V2::Unified::EligibilityService do
 
     context 'when the category of care is unmappable' do
       it 'returns nil for vaos_service_type and false for direct_eligible' do
-        result = service.check_eligibility(va_provider, 'unknownServiceType')
+        result = service.check_eligibility(facility_id:, category_of_care: 'unknownServiceType')
 
         expect(result[:facility_id]).to eq('983')
         expect(result[:vaos_service_type]).to be_nil

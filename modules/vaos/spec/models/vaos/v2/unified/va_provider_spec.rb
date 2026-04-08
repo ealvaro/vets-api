@@ -10,18 +10,15 @@ RSpec.describe VAOS::V2::Unified::VAProvider do
     end
   end
 
-  describe '.from_lighthouse_facility' do
+  describe '.from_facility_and_clinic' do
     let(:facility) do
       double(
         'FacilitiesApi::V2::Lighthouse::Facility',
-        id: 'vha_983',
         unique_id: '983',
         name: 'Cheyenne VA Medical Center',
         address: {
           'physical' => {
             'address1' => '2360 East Pershing Boulevard',
-            'address2' => 'Suite 100',
-            'address3' => 'Building A',
             'city' => 'Cheyenne',
             'state' => 'WY',
             'zip' => '82001'
@@ -40,41 +37,59 @@ RSpec.describe VAOS::V2::Unified::VAProvider do
       )
     end
 
-    it 'maps Lighthouse facility fields to VaProvider' do
-      provider = described_class.from_lighthouse_facility(facility)
+    let(:clinic) do
+      {
+        id: '1014',
+        station_id: '983',
+        service_name: 'CHY AUDIOLOGY',
+        physical_location: 'Main building'
+      }
+    end
 
-      expect(provider.id).to eq('983')
+    it 'sets id and name from the clinic payload and location_id from the facility' do
+      provider = described_class.from_facility_and_clinic(facility, clinic)
+
+      expect(provider.id).to eq('1014')
       expect(provider.location_id).to eq('983')
-      expect(provider.name).to eq('Cheyenne VA Medical Center')
+      expect(provider.facility_name).to eq('Cheyenne VA Medical Center')
+      expect(provider.name).to eq('CHY AUDIOLOGY')
       expect(provider.provider_type).to eq('va')
-      expect(provider.latitude).to eq(41.1456)
-      expect(provider.longitude).to eq(-104.7892)
-      expect(provider.phone).to eq('307-778-7550')
-      expect(provider.distance_from_user).to be_nil
-      expect(provider.facility_type).to eq('va_health_facility')
-      expect(provider.schedulable_services).to eq(%w[primaryCare audiology])
-      expect(provider.address).to eq({
-                                       street1: '2360 East Pershing Boulevard',
-                                       street2: 'Suite 100',
-                                       street3: 'Building A',
-                                       city: 'Cheyenne',
-                                       state: 'WY',
-                                       zip: '82001'
-                                     })
     end
 
-    it 'handles nil services gracefully' do
+    it 'uses service_name for name' do
+      provider = described_class.from_facility_and_clinic(
+        facility,
+        clinic.merge(service_name: 'PODIATRY CLINIC')
+      )
+
+      expect(provider.name).to eq('PODIATRY CLINIC')
+    end
+
+    it 'uses facility unique_id as location_id regardless of clinic station_id' do
+      satellite_clinic = clinic.merge(station_id: '983GC', id: '945')
+
+      provider = described_class.from_facility_and_clinic(facility, satellite_clinic)
+
+      expect(provider.location_id).to eq('983')
+      expect(provider.id).to eq('945')
+    end
+
+    it 'accepts OpenStruct clinic payloads' do
+      provider = described_class.from_facility_and_clinic(
+        facility,
+        OpenStruct.new(clinic)
+      )
+
+      expect(provider.id).to eq('1014')
+      expect(provider.name).to eq('CHY AUDIOLOGY')
+    end
+
+    it 'handles nil facility services gracefully' do
       allow(facility).to receive(:services).and_return(nil)
-      provider = described_class.from_lighthouse_facility(facility)
 
-      expect(provider.schedulable_services).to eq([])
-    end
+      provider = described_class.from_facility_and_clinic(facility, clinic)
 
-    it 'handles nil address gracefully' do
-      allow(facility).to receive(:address).and_return(nil)
-      provider = described_class.from_lighthouse_facility(facility)
-
-      expect(provider.address).to be_nil
+      expect(provider.facility_name).to eq('Cheyenne VA Medical Center')
     end
   end
 end

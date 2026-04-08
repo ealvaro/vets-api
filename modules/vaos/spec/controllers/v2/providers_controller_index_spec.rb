@@ -18,15 +18,15 @@ RSpec.describe VAOS::V2::ProvidersController, type: :request do
 
     let(:va_provider) do
       VAOS::V2::Unified::VAProvider.new(
-        id: '983',
+        id: '455',
         location_id: '983',
-        name: 'Cheyenne VA Medical Center',
+        facility_name: 'Cheyenne VA Medical Center',
+        name: 'CHY UROLOGY',
         address: { street1: '2360 E Pershing Blvd', city: 'Cheyenne', state: 'WY', zip: '82001' },
         phone: '307-778-7550',
         latitude: 41.1456,
         longitude: -104.7892,
-        distance_from_user: 3.2,
-        schedulable_services: %w[primaryCare urology]
+        distance_from_user: 3.2
       )
     end
 
@@ -40,8 +40,7 @@ RSpec.describe VAOS::V2::ProvidersController, type: :request do
         latitude: 28.08061,
         longitude: -80.60322,
         npi: '91560381x',
-        distance_from_user: 2.1,
-        schedulable_services: ['Urology']
+        distance_from_user: 2.1
       )
     end
 

@@ -52,6 +52,18 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
     }
   end
 
+  let(:urology_clinic) do
+    OpenStruct.new(
+      id: '455',
+      station_id: '983',
+      service_name: 'CHY UROLOGY',
+      physical_location: nil
+    )
+  end
+
+  let(:systems_service) { instance_double(VAOS::V2::SystemsService) }
+  let(:eligibility_service) { instance_double(VAOS::V2::Unified::EligibilityService) }
+
   before do
     allow(user).to receive(:vet360_contact_info).and_return(vet360_contact_info)
   end
@@ -63,17 +75,24 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
     before do
       allow(FacilitiesApi::V2::Lighthouse::Client).to receive(:new).and_return(lighthouse_client)
       allow(Eps::ProviderService).to receive(:new).and_return(eps_provider_service)
+      allow(VAOS::V2::SystemsService).to receive(:new).with(user).and_return(systems_service)
+      allow(VAOS::V2::Unified::EligibilityService).to receive(:new).with(user).and_return(eligibility_service)
+      allow(eligibility_service).to receive(:check_eligibility).and_return({ direct_eligible: true })
 
       allow(lighthouse_client).to receive(:get_facilities).and_return([lighthouse_facility])
       allow(eps_provider_service).to receive(:search_by_location).and_return([eps_provider_hash])
+      allow(systems_service).to receive(:get_facility_clinics).and_return([urology_clinic])
     end
 
-    it 'returns a combined list of VA and EPS providers' do
+    it 'returns a combined list of VA clinics and EPS providers' do
       results = service.search(referral:)
 
       expect(results.size).to eq(2)
       provider_types = results.map(&:provider_type)
       expect(provider_types).to include('va', 'community_care')
+      va = results.find { |p| p.provider_type == 'va' }
+      expect(va.id).to eq('455')
+      expect(va.location_id).to eq('983')
     end
 
     it 'pins the referral matched provider at the top' do
@@ -132,6 +151,27 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
       )
     end
 
+    it 'fetches VAOS clinics using ServiceTypeMapper.to_vaos(category_of_care)' do
+      service.search(referral:)
+
+      # UROLOGY is not in LIGHTHOUSE_TO_VAOS; mapper returns nil
+      expect(systems_service).to have_received(:get_facility_clinics).with(
+        location_id: '983',
+        clinical_service: nil
+      )
+    end
+
+    it 'passes mapped clinical service when category_of_care maps to VAOS' do
+      audio_referral = double('Referral', category_of_care: 'audiology', provider_npi: '91560381x')
+
+      service.search(referral: audio_referral)
+
+      expect(systems_service).to have_received(:get_facility_clinics).with(
+        location_id: '983',
+        clinical_service: 'audiology'
+      )
+    end
+
     it 'raises error when user has no residential address' do
       allow(vet360_contact_info).to receive(:residential_address).and_return(nil)
 
@@ -162,7 +202,7 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
       expect(results.first.provider_type).to eq('va')
     end
 
-    it 'filters VA facilities by category of care' do
+    it 'includes all facilities when category_of_care does not map to a VAOS service (no eligibility filter)' do
       non_matching_facility = double(
         'Facility',
         id: 'vha_984', unique_id: '984', name: 'Other VA',
@@ -177,8 +217,47 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
       results = service.search(referral:)
 
       va_providers = results.select { |p| p.provider_type == 'va' }
-      expect(va_providers.size).to eq(1)
-      expect(va_providers.first.id).to eq('983')
+      expect(va_providers.size).to eq(2)
+      expect(va_providers.map(&:location_id).sort).to eq(%w[983 984])
+      expect(systems_service).to have_received(:get_facility_clinics).twice
+      expect(eligibility_service).not_to have_received(:check_eligibility)
+    end
+
+    it 'excludes VA facilities that fail direct-scheduling eligibility when category maps to VAOS' do
+      non_matching_facility = double(
+        'Facility',
+        id: 'vha_984', unique_id: '984', name: 'Other VA',
+        address: nil, phone: nil, lat: 28.12, long: -80.65,
+        facility_type: 'va_health_facility',
+        services: { 'health' => [{ 'serviceId' => 'audiology' }] }
+      )
+      allow(lighthouse_client).to receive(:get_facilities).and_return(
+        [lighthouse_facility, non_matching_facility]
+      )
+      audio_referral = double('Referral', category_of_care: 'audiology', provider_npi: '91560381x')
+
+      allow(eligibility_service).to receive(:check_eligibility) do |facility_id:, category_of_care:|
+        expect(category_of_care).to eq('audiology')
+        {
+          facility_id:,
+          vaos_service_type: 'audiology',
+          direct_eligible: facility_id == '983'
+        }
+      end
+
+      results = service.search(referral: audio_referral)
+
+      va_providers = results.select { |p| p.provider_type == 'va' }
+      expect(va_providers.map(&:location_id)).to eq(['983'])
+      expect(systems_service).to have_received(:get_facility_clinics).once
+    end
+
+    it 'returns no VA providers when get_facility_clinics returns no clinics' do
+      allow(systems_service).to receive(:get_facility_clinics).and_return([])
+
+      results = service.search(referral:)
+
+      expect(results.map(&:provider_type)).to eq(['community_care'])
     end
 
     it 'uses the default 25-mile radius' do

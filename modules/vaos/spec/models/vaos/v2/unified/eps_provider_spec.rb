@@ -36,7 +36,10 @@ RSpec.describe VAOS::V2::Unified::EpsProvider do
         features: {
           is_digital: true,
           direct_booking: { is_enabled: true }
-        }
+        },
+        appointment_types: [
+          { id: 'ov', is_self_schedulable: true }
+        ]
       }
     end
 
@@ -53,7 +56,8 @@ RSpec.describe VAOS::V2::Unified::EpsProvider do
       expect(provider.npi).to eq('91560381x')
       expect(provider.network_id).to eq('sandboxnetwork-5vuTac8v')
       expect(provider.specialties).to eq([{ id: '208800000X', name: 'Urology' }])
-      expect(provider.schedulable_services).to eq(['Urology'])
+      expect(provider.facility_name).to eq('FHA South Melbourne Medical Complex')
+      expect(provider.appointment_types).to eq([{ id: 'ov', is_self_schedulable: true }])
       expect(provider.address).to eq({
                                        street1: '1105 Palmetto Ave',
                                        city: 'Melbourne',
@@ -81,6 +85,49 @@ RSpec.describe VAOS::V2::Unified::EpsProvider do
       provider = described_class.from_eps_provider_service(eps_provider)
 
       expect(provider.npi).to be_nil
+    end
+
+    it 'uses provider name as facility_name when location has no name' do
+      eps_provider[:location] = eps_provider[:location].except(:name)
+      provider = described_class.from_eps_provider_service(eps_provider)
+
+      expect(provider.facility_name).to eq('Dr. Bones @ FHA South Melbourne Medical Complex')
+    end
+
+    it 'defaults appointment_types to empty when omitted' do
+      eps_provider.delete(:appointment_types)
+      provider = described_class.from_eps_provider_service(eps_provider)
+
+      expect(provider.appointment_types).to eq([])
+    end
+  end
+
+  describe '#first_self_schedulable_appointment_type_id!' do
+    it 'returns the first self-schedulable type id' do
+      provider = described_class.new(
+        appointment_types: [
+          { id: 'phone', is_self_schedulable: false },
+          { id: 'ov', is_self_schedulable: true }
+        ]
+      )
+
+      expect(provider.first_self_schedulable_appointment_type_id!).to eq('ov')
+    end
+
+    it 'raises when appointment_types is blank' do
+      provider = described_class.new(appointment_types: [])
+
+      expect { provider.first_self_schedulable_appointment_type_id! }
+        .to raise_error(Common::Exceptions::BackendServiceException)
+    end
+
+    it 'raises when no self-schedulable types exist' do
+      provider = described_class.new(
+        appointment_types: [{ id: 'phone', is_self_schedulable: false }]
+      )
+
+      expect { provider.first_self_schedulable_appointment_type_id! }
+        .to raise_error(Common::Exceptions::BackendServiceException)
     end
   end
 end

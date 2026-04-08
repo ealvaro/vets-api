@@ -13,17 +13,15 @@ module VAOS
         end
 
         ##
-        # Checks patient eligibility for a specific service type at a VA facility
-        # selected from the unified provider list. Maps the referral's category of care
-        # from Lighthouse format to VAOS format, then checks whether the patient is
-        # eligible for direct scheduling.
+        # Checks patient eligibility for a specific service type at a VA facility.
+        # Maps the referral's category of care from Lighthouse format to VAOS format,
+        # then checks whether the patient is eligible for direct scheduling.
         #
-        # @param va_provider [VAOS::V2::Unified::VAProvider] selected VA facility from provider search
+        # @param facility_id [String] VA facility identifier (Lighthouse +unique_id+, same as VAOS location)
         # @param category_of_care [String] Lighthouse service type from the referral (e.g., 'primaryCare')
         # @return [Hash] with :facility_id, :vaos_service_type, and :direct_eligible
         #
-        def check_eligibility(va_provider, category_of_care)
-          facility_id = va_provider.location_id
+        def check_eligibility(facility_id:, category_of_care:)
           vaos_service_type = ServiceTypeMapper.to_vaos(category_of_care)
 
           if vaos_service_type.nil?

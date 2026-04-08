@@ -7,14 +7,15 @@ RSpec.describe VAOS::V2::UnifiedProviderSerializer do
 
   let(:va_provider) do
     VAOS::V2::Unified::VAProvider.new(
-      id: '983',
-      name: 'Cheyenne VA Medical Center',
+      id: '1081',
+      location_id: '983',
+      name: 'CHY AUDIOLOGY',
+      facility_name: 'Cheyenne VA Medical Center',
       address: { street1: '2360 E Pershing Blvd', city: 'Cheyenne', state: 'WY', zip: '82001' },
       phone: '307-778-7550',
       latitude: 41.1456,
       longitude: -104.7892,
-      distance_from_user: 3.24,
-      schedulable_services: %w[primaryCare urology]
+      distance_from_user: 3.24
     )
   end
 
@@ -22,13 +23,13 @@ RSpec.describe VAOS::V2::UnifiedProviderSerializer do
     VAOS::V2::Unified::EpsProvider.new(
       id: '9mN718pH',
       name: 'Dr. Bones @ Melbourne Medical',
+      facility_name: 'Melbourne Medical',
       address: { street1: '1105 Palmetto Ave', city: 'Melbourne', state: 'FL', zip: '32901' },
       phone: '555-555-0001',
       latitude: 28.08061,
       longitude: -80.60322,
       npi: '91560381x',
-      distance_from_user: 2.1,
-      schedulable_services: ['Urology']
+      distance_from_user: 2.1
     )
   end
 
@@ -44,11 +45,11 @@ RSpec.describe VAOS::V2::UnifiedProviderSerializer do
     it 'serializes VA provider attributes' do
       result = serializer.serialize([va_provider]).first
 
-      expect(result[:id]).to eq('983')
-      expect(result[:attributes][:name]).to eq('Cheyenne VA Medical Center')
+      expect(result[:id]).to eq('1081')
+      expect(result[:attributes][:name]).to eq('CHY AUDIOLOGY')
+      expect(result[:attributes][:facilityName]).to eq('Cheyenne VA Medical Center')
       expect(result[:attributes][:providerType]).to eq('va')
       expect(result[:attributes][:distanceInMiles]).to eq(3.2)
-      expect(result[:attributes][:schedulableServices]).to eq(%w[primaryCare urology])
     end
 
     it 'serializes EPS provider attributes' do
@@ -56,7 +57,10 @@ RSpec.describe VAOS::V2::UnifiedProviderSerializer do
 
       expect(result[:id]).to eq('9mN718pH')
       expect(result[:attributes][:name]).to eq('Dr. Bones @ Melbourne Medical')
+      expect(result[:attributes][:facilityName]).to eq('Melbourne Medical')
       expect(result[:attributes][:providerType]).to eq('community_care')
+      expect(result[:attributes]).not_to have_key(:locationId)
+      expect(result[:attributes]).not_to have_key(:clinicId)
     end
 
     it 'marks the referral provider correctly' do
