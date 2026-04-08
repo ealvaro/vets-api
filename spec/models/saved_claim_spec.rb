@@ -32,6 +32,7 @@ RSpec.describe TestSavedClaim, type: :model do # rubocop:disable RSpec/SpecFileP
     it { is_expected.to have_many(:persistent_attachments).dependent(:destroy) }
     it { is_expected.to have_many(:form_submissions).dependent(:nullify) }
     it { is_expected.to have_many(:claim_va_notifications).dependent(:destroy) }
+    it { is_expected.to have_many(:cave_submissions).dependent(:nullify) }
   end
 
   describe 'validations' do

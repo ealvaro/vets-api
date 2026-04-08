@@ -143,6 +143,16 @@ describe PdfFill::Forms::FormHelper do
     end
   end
 
+  describe 'when address uses symbol key :postalCode' do
+    let(:address) { { postalCode: '23220-1234' } }
+
+    it 'reads the symbol key' do
+      result = including_class.new.split_postal_code(address)
+      expect(result['firstFive']).to eq('23220')
+      expect(result['lastFour']).to eq('1234')
+    end
+  end
+
   describe '#split_date' do
     it 'returns nil with no date' do
       expect(including_class.new.split_date(nil)).to be_nil

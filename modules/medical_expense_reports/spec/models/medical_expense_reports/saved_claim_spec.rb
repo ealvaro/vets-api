@@ -27,7 +27,7 @@ RSpec.describe MedicalExpenseReports::SavedClaim do
 
   describe '#business_line' do
     it 'returns the correct business line' do
-      expect(subject.business_line).to eq('NCA')
+      expect(subject.business_line).to eq('VBA')
     end
   end
 

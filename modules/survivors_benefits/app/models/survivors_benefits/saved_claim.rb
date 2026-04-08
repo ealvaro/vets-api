@@ -2,6 +2,7 @@
 
 require 'survivors_benefits/benefits_intake/submit_claim_job'
 require 'pdf_fill/filler'
+require 'pdf_fill/forms/va214138'
 
 module SurvivorsBenefits
   ##
@@ -91,12 +92,68 @@ module SurvivorsBenefits
     # @return [String] Path to the generated PDF file
     #
     def to_pdf(file_name = nil, fill_options = {})
-      pdf_path = ::PdfFill::Filler.fill_form(self, file_name, fill_options)
+      filler = ::PdfFill::Filler
+
+      pdf_path = filler.fill_form(self, file_name, fill_options)
       return unless pdf_path
 
       form_data = form.present? ? parsed_form : {}
 
-      SurvivorsBenefits::PdfFill::Va21p534ez.stamp_signature(pdf_path, form_data)
+      if cave_submissions.exists?
+        statement_pdf_path = fill_ancillary_pdf(form_data)
+
+        folder = 'tmp/pdfs'
+        FileUtils.mkdir_p(folder)
+        combined_file_path = "#{folder}/#{SurvivorsBenefits::FORM_ID}_#{guid}_combined.pdf"
+        filler.merge_pdfs(pdf_path, statement_pdf_path, combined_file_path)
+
+        SurvivorsBenefits::PdfFill::Va21p534ez.stamp_signature(combined_file_path, form_data)
+      else
+        SurvivorsBenefits::PdfFill::Va21p534ez.stamp_signature(pdf_path, form_data)
+      end
+    end
+
+    ##
+    # Fills a Form 21-4138 with the raw JSON from CAVE if the Claim has a CaveSubmission
+    #
+    def fill_ancillary_pdf(form_data)
+      result = ::PdfFill::Forms::Va214138::PdfSchema.call(
+        {
+          claimantFullName: form_data['claimantFullName'] || form_data['veteranFullName'],
+          veteranSocialSecurityNumber: form_data['veteranSocialSecurityNumber'],
+          vaFileNumber: form_data['vaFileNumber'],
+          veteranDateOfBirth: form_data['veteranDateOfBirth'],
+          veteranServiceNumber: form_data['veteranServiceNumber'],
+          claimantPhone: claimant_phone(form_data),
+          claimantInternationalPhone: claimant_international_phone(form_data),
+          claimantEmailAddress: form_data['claimantEmail'] || form_data['veteranEmail'] || form_data['email'],
+          claimantAddress: form_data['claimantAddress'] || form_data['veteranAddress'],
+          remarks: cave_submissions&.last&.cave_response
+        }
+      )
+      filler.fill_ancillary_form(result.to_h, id, '21-4138', { extras_redesign: true })
+    end
+
+    ##
+    # Digs out the claimant's phone number
+    #
+    def claimant_phone(form_data)
+      if form_data['primaryPhone'].is_a?(Hash) && form_data['primaryPhone']['countryCode'] == 'US'
+        form_data['primaryPhone']['contact']
+      else
+        form_data['claimantPhone'] || form_data['veteranPhone']
+      end
+    end
+
+    ##
+    # Digs out the claimant's international phone number
+    #
+    def claimant_international_phone(form_data)
+      if form_data['primaryPhone'].is_a?(Hash) && !form_data['primaryPhone']['countryCode'] == 'US'
+        form_data['primaryPhone']['contact']
+      else
+        form_data['claimantInternationalPhone'] || form_data['veteranInternationalPhone']
+      end
     end
 
     ##

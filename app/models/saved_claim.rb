@@ -32,6 +32,7 @@ class SavedClaim < ApplicationRecord
   has_many :bpds_submissions, class_name: 'BPDS::Submission', dependent: :nullify
   has_many :lighthouse_submissions, class_name: 'Lighthouse::Submission', dependent: :nullify
   has_many :claims_evidence_api_submissions, class_name: 'ClaimsEvidenceApi::Submission', dependent: :nullify
+  has_many :cave_submissions, dependent: :nullify
 
   has_many :parent_of_groups, class_name: 'SavedClaimGroup', foreign_key: 'parent_claim_id',
                               dependent: :destroy, inverse_of: :parent
