@@ -18,14 +18,7 @@ module ClaimsApi
         ClaimsApi::Logger.log('lighthouse_claim_uploader',
                               detail: "evss id: #{auto_claim&.evss_id} was nil, for uuid: #{uuid}")
 
-        if auto_claim.status == errored_state_value
-          msg = build_failure_alert_msg(uuid, record_type, auto_claim.id)
-          ClaimsApi::Logger.log('lighthouse_claim_uploader',
-                                detail: msg)
-          slack_alert_on_failure('ClaimsApi::ClaimUploader', msg)
-        else
-          self.class.perform_in(30.minutes, uuid, record_type)
-        end
+        self.class.perform_in(30.minutes, uuid, record_type)
       else
         auth_headers = auto_claim.auth_headers
         uploader = claim_object.uploader

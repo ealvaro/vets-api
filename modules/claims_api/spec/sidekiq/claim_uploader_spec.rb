@@ -122,25 +122,11 @@ RSpec.describe ClaimsApi::ClaimUploader, type: :job do
     expect(pending_auto_claim.uploader.blank?).to be(false)
   end
 
-  it 'if an evss_id is nil, and claim is errored, it does not reschedule the sidekiq job to the future' do
-    expect_any_instance_of(subject).to receive(:slack_alert_on_failure)
-
+  it 'if an evss_id is nil, and claim is errored, it reschedules the sidekiq job to the future' do
     subject.new.perform(errored_auto_claim.id, 'claim')
-    expect(subject.jobs).to eq([])
-  end
 
-  it 'calls slack_alert_on_failure with appropriate message if claim of type "claim" is errored' do
-    msg = 'Claim Uploader job failed to upload 526EZ PDF to Benefits Documents ' \
-          "API due to claim submission error for claim #{errored_auto_claim.id}"
-    expect_any_instance_of(subject).to receive(:slack_alert_on_failure).with('ClaimsApi::ClaimUploader', msg)
-    subject.new.perform(errored_auto_claim.id, 'claim')
-  end
-
-  it 'calls slack_alert_on_failure with appropriate message if claim of type "document" is errored' do
-    msg = "Claim Uploader job failed to upload attachment #{errored_auto_claim.id} " \
-          "to Benefits Documents API due to claim submission error for claim #{errored_auto_claim.id}"
-    expect_any_instance_of(subject).to receive(:slack_alert_on_failure).with('ClaimsApi::ClaimUploader', msg)
-    subject.new.perform(errored_auto_claim.id, 'document')
+    expect(subject.jobs.count).to eq(1)
+    expect(subject.jobs.first['args']).to eq([errored_auto_claim.id, 'claim'])
   end
 
   it 'transforms a claim document to the right properties for EVSS' do
