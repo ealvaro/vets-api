@@ -26,7 +26,8 @@ RSpec.describe UnifiedHealthData::ImagingRefreshJob, type: :job do
 
         expect(imaging_service).to receive(:get_imaging_studies).with(
           start_date: start_date.strftime('%Y-%m-%d'),
-          end_date: end_date.strftime('%Y-%m-%d')
+          end_date: end_date.strftime('%Y-%m-%d'),
+          site_ids: []
         )
 
         described_class.new.perform(user.uuid)
@@ -40,10 +41,21 @@ RSpec.describe UnifiedHealthData::ImagingRefreshJob, type: :job do
 
         expect(imaging_service).to receive(:get_imaging_studies).with(
           start_date: start_date.strftime('%Y-%m-%d'),
-          end_date: end_date.strftime('%Y-%m-%d')
+          end_date: end_date.strftime('%Y-%m-%d'),
+          site_ids: []
         )
 
         described_class.new.perform(user.uuid)
+      end
+
+      it 'passes site_ids to the imaging service when provided' do
+        site_ids = %w[453 200CRNR]
+
+        expect(imaging_service).to receive(:get_imaging_studies).with(
+          hash_including(site_ids:)
+        )
+
+        described_class.new.perform(user.uuid, site_ids)
       end
 
       it 'falls back to 180 days when setting is nil' do
@@ -54,7 +66,8 @@ RSpec.describe UnifiedHealthData::ImagingRefreshJob, type: :job do
 
         expect(imaging_service).to receive(:get_imaging_studies).with(
           start_date: start_date.strftime('%Y-%m-%d'),
-          end_date: end_date.strftime('%Y-%m-%d')
+          end_date: end_date.strftime('%Y-%m-%d'),
+          site_ids: []
         )
 
         described_class.new.perform(user.uuid)
@@ -68,7 +81,8 @@ RSpec.describe UnifiedHealthData::ImagingRefreshJob, type: :job do
 
         expect(imaging_service).to receive(:get_imaging_studies).with(
           start_date: start_date.strftime('%Y-%m-%d'),
-          end_date: end_date.strftime('%Y-%m-%d')
+          end_date: end_date.strftime('%Y-%m-%d'),
+          site_ids: []
         )
 
         described_class.new.perform(user.uuid)
@@ -82,7 +96,8 @@ RSpec.describe UnifiedHealthData::ImagingRefreshJob, type: :job do
 
         expect(imaging_service).to receive(:get_imaging_studies).with(
           start_date: start_date.strftime('%Y-%m-%d'),
-          end_date: end_date.strftime('%Y-%m-%d')
+          end_date: end_date.strftime('%Y-%m-%d'),
+          site_ids: []
         )
 
         described_class.new.perform(user.uuid)

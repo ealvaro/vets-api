@@ -205,8 +205,13 @@ module MyHealth
       def enqueue_imaging_refresh_job
         if Flipper.enabled?(:mhv_accelerated_delivery_uhd_oh_imaging_logging_enabled, @current_user) ||
            Flipper.enabled?(:mhv_accelerated_delivery_uhd_vista_imaging_logging_enabled, @current_user)
-          UnifiedHealthData::ImagingRefreshJob.perform_async(@current_user.uuid)
+          Rails.logger.info('UHD ImagingRefreshJob enqueue attempt', user_uuid: @current_user&.uuid)
+          UnifiedHealthData::ImagingRefreshJob.perform_async(@current_user.uuid, user_site_ids)
+        else
+          Rails.logger.info('UHD ImagingRefreshJob skipped - toggles disabled', user_uuid: @current_user&.uuid)
         end
+      rescue => e
+        Rails.logger.error('UHD ImagingRefreshJob enqueue failed', error: e.message, class: e.class.name)
       end
     end
   end

@@ -11,12 +11,12 @@ module UnifiedHealthData
 
     sidekiq_options retry: 0, unique_for: 30.minutes
 
-    def perform(user_uuid)
+    def perform(user_uuid, site_ids = [])
       user = find_user(user_uuid)
       return unless user
 
       start_date, end_date = date_range
-      imaging_data = fetch_imaging_data(user, start_date, end_date)
+      imaging_data = fetch_imaging_data(user, start_date, end_date, site_ids)
       log_success(imaging_data, start_date, end_date)
       StatsD.gauge('unified_health_data.imaging_refresh_job.imaging_count', imaging_data.size)
       imaging_data.size
@@ -43,11 +43,12 @@ module UnifiedHealthData
       [start_date, end_date]
     end
 
-    def fetch_imaging_data(user, start_date, end_date)
+    def fetch_imaging_data(user, start_date, end_date, site_ids)
       imaging_service = UnifiedHealthData::ImagingService.new(user)
       imaging_service.get_imaging_studies(
         start_date: start_date.strftime('%Y-%m-%d'),
-        end_date: end_date.strftime('%Y-%m-%d')
+        end_date: end_date.strftime('%Y-%m-%d'),
+        site_ids:
       )
     end
 
