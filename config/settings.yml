@@ -1161,6 +1161,8 @@ redis:
   sidekiq:
     url: <%= ENV['redis__sidekiq__url'] %>
 relative_url_root: "/"
+remediation_batch_upload:
+  allowed_s3_buckets: <%= ENV['remediation_batch_upload__allowed_s3_buckets'] || '' %>
 reports:
   aws:
     access_key_id: <%= ENV['reports__aws__access_key_id'] %>

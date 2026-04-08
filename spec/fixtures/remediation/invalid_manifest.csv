@@ -1,0 +1,4 @@
+submission_id,s3_bucket,s3_key,file_number,document_type_id,submission_datetime,form_type,subject
+BAD-TRAVERSAL,dsva-vetsgov-remediation-prod,documents/../../../etc/passwd,123456789,131,2026-01-15T10:30:00Z,21-526EZ,Traversal attempt
+BAD-BUCKET,evil-exfiltration-bucket,documents/001/evidence.pdf,123456789,131,2026-01-15T10:30:00Z,21-526EZ,Wrong bucket
+BAD-FILENUMBER,dsva-vetsgov-remediation-prod,documents/002/evidence.pdf,NOTANUMBER,131,2026-01-15T10:30:00Z,21-526EZ,Bad file number

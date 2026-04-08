@@ -1176,6 +1176,8 @@ redis:
   sidekiq:
     url: redis://localhost:6379
 relative_url_root: "/"
+remediation_batch_upload:
+  allowed_s3_buckets: ''
 reports:
   aws:
     access_key_id: key
