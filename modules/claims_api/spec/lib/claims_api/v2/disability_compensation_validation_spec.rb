@@ -572,6 +572,140 @@ describe TestDisabilityCompensationValidationClass, vcr: 'brd/countries' do
     end
   end
 
+  describe '#validate_claim_date_to_active_duty_end_date' do
+    let(:error_message) do
+      'Service members cannot submit a claim until they are within 180 days of their separation date.'
+    end
+
+    context 'when the claim date is within 180 days of the active duty end date' do
+      let(:active_duty_end_date) { (Time.zone.today + 179.days).to_s }
+
+      it 'returns no errors' do
+        subject.form_attributes['serviceInformation']['servicePeriods'][0]['activeDutyEndDate'] = active_duty_end_date
+        test_526_validation_instance.send(
+          :validate_claim_date_to_active_duty_end_date, subject.form_attributes['serviceInformation']
+        )
+        errors = test_526_validation_instance.send(:error_collection)
+
+        expect(errors).to be_empty
+      end
+    end
+
+    context 'when the claim date is within 180 days of the anticipated separation date' do
+      let(:separation_date) { (Time.zone.today + 179.days).to_s }
+
+      it 'returns no errors' do
+        subject.form_attributes['serviceInformation']['federalActivation'] = {
+          'anticipatedSeparationDate' => separation_date
+        }
+        test_526_validation_instance.send(
+          :validate_claim_date_to_active_duty_end_date, subject.form_attributes['serviceInformation']
+        )
+        errors = test_526_validation_instance.send(:error_collection)
+
+        expect(errors).to be_empty
+      end
+    end
+
+    context 'when the claim date is beyond 180 days of the active duty end date' do
+      let(:active_duty_end_date) { (Time.zone.today + 200.days).to_s }
+      let(:separation_date) { (Time.zone.today + 100.days).to_s }
+
+      it 'returns an error message' do
+        subject.form_attributes['serviceInformation']['servicePeriods'][0]['activeDutyEndDate'] = active_duty_end_date
+        subject.form_attributes['serviceInformation']['federalActivation'] = {
+          'anticipatedSeparationDate' => separation_date
+        }
+        test_526_validation_instance.send(
+          :validate_claim_date_to_active_duty_end_date, subject.form_attributes['serviceInformation']
+        )
+        errors = test_526_validation_instance.send(:error_collection)
+
+        expect(errors[0][:detail]).to eq(error_message)
+      end
+    end
+
+    context 'when the claim date is beyond 180 days of the anticipated separation date' do
+      let(:active_duty_end_date) { (Time.zone.today + 100.days).to_s }
+      let(:separation_date) { (Time.zone.today + 200.days).to_s }
+
+      it 'returns an error message' do
+        subject.form_attributes['serviceInformation']['servicePeriods'][0]['activeDutyEndDate'] = active_duty_end_date
+        subject.form_attributes['serviceInformation']['federalActivation'] = {
+          'anticipatedSeparationDate' => separation_date
+        }
+        test_526_validation_instance.send(
+          :validate_claim_date_to_active_duty_end_date, subject.form_attributes['serviceInformation']
+        )
+        errors = test_526_validation_instance.send(:error_collection)
+
+        expect(errors[0][:detail]).to eq(error_message)
+      end
+    end
+
+    context 'when the claim date is beyond 180 days of both active duty end date and anticipated separation date' do
+      let(:active_duty_end_date) { (Time.zone.today + 200.days).to_s }
+      let(:separation_date) { (Time.zone.today + 200.days).to_s }
+
+      it 'returns an error message' do
+        subject.form_attributes['serviceInformation']['servicePeriods'][0]['activeDutyEndDate'] = active_duty_end_date
+        subject.form_attributes['serviceInformation']['federalActivation'] = {
+          'anticipatedSeparationDate' => separation_date
+        }
+        test_526_validation_instance.send(
+          :validate_claim_date_to_active_duty_end_date, subject.form_attributes['serviceInformation']
+        )
+        errors = test_526_validation_instance.send(:error_collection)
+
+        expect(errors[0][:detail]).to eq(error_message)
+      end
+    end
+
+    context 'when the active duty end date is invalid' do
+      let(:active_duty_end_date) { 'invalid-date' }
+      let(:separation_date) { (Time.zone.today + 200.days).to_s }
+
+      it 'returns a date validation error' do
+        subject.form_attributes['serviceInformation']['servicePeriods'][0]['activeDutyEndDate'] = active_duty_end_date
+        subject.form_attributes['serviceInformation']['federalActivation'] = {
+          'anticipatedSeparationDate' => separation_date
+        }
+        expect do
+          test_526_validation_instance.send(
+            :validate_claim_date_to_active_duty_end_date, subject.form_attributes['serviceInformation']
+          )
+        end.not_to raise_error
+        errors = test_526_validation_instance.send(:error_collection)
+
+        expect(errors[0][:detail]).to eq('invalid-date is not a valid date.')
+        expect(errors[0][:source]).to eq('data/attributes/serviceInformation/servicePeriods/activeDutyEndDate')
+      end
+    end
+
+    context 'when the anticipated separation date is invalid' do
+      let(:active_duty_end_date) { (Time.zone.today + 200.days).to_s }
+      let(:separation_date) { 'invalid-date' }
+
+      it 'returns a date validation error' do
+        subject.form_attributes['serviceInformation']['servicePeriods'][0]['activeDutyEndDate'] = active_duty_end_date
+        subject.form_attributes['serviceInformation']['federalActivation'] = {
+          'anticipatedSeparationDate' => separation_date
+        }
+        expect do
+          test_526_validation_instance.send(
+            :validate_claim_date_to_active_duty_end_date, subject.form_attributes['serviceInformation']
+          )
+        end.not_to raise_error
+        errors = test_526_validation_instance.send(:error_collection)
+
+        expect(errors[0][:detail]).to eq('invalid-date is not a valid date.')
+        expect(errors[0][:source]).to eq(
+          'data/attributes/serviceInformation/federalActivation/anticipatedSeparationDate'
+        )
+      end
+    end
+  end
+
   describe '#claim_date' do
     context 'when claimDate is not present in form_attributes' do
       it 'returns today\'s date and doesn\'t raise an error' do

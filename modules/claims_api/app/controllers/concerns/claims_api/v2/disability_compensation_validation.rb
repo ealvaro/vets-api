@@ -55,7 +55,7 @@ module ClaimsApi
         @claim_date = if date_is_valid?(form_attributes['claimDate'], 'claimDate', true)
                         Date.parse(form_attributes['claimDate'])
                       else
-                        Time.zone.today
+                        Date.current
                       end
       end
 
@@ -707,25 +707,45 @@ module ClaimsApi
       end
 
       def validate_claim_date_to_active_duty_end_date(service_information)
-        ant_sep_date = form_attributes&.dig('serviceInformation', 'federalActivation', 'anticipatedSeparationDate')
-        unless service_information['servicePeriods'].nil?
-          max_period = service_information['servicePeriods'].max_by { |sp| sp['activeDutyEndDate'] }
-        end
-        max_active_duty_end_date = max_period['activeDutyEndDate']
+        ant_sep_date, max_active_duty_end_date = max_service_end_dates(service_information)
 
         max_date_valid = date_is_valid?(max_active_duty_end_date,
-                                        'serviceInformation/servicePeriods/activeDutyBeginDate', true)
+                                        'serviceInformation/servicePeriods/activeDutyEndDate', true)
 
-        return if max_date_valid || max_period&.dig('activeDutyEndDate').nil? || ant_sep_date.nil?
+        # do not continue validations if the max date is not valid, or there is no end date to compare
+        return if !max_date_valid || (max_active_duty_end_date.nil? && ant_sep_date.nil?)
 
-        if ant_sep_date.present? && max_active_duty_end_date.present? && max_date_valid && ((Date.strptime(
-          max_period['activeDutyEndDate'], '%Y-%m-%d'
-        ) > claim_date + 180.days) || (Date.strptime(ant_sep_date, '%Y-%m-%d') > claim_date + 180.days))
+        # if the end date (separation or active duty end date) is present and beyond 180 days from the claim
+        # date, the claim is not yet eligible; service members must be within 180 days to submit a claim
+        if (ant_sep_date.present? && service_end_date_valid_and_beyond_180_days?(
+          ant_sep_date, 'serviceInformation/federalActivation/anticipatedSeparationDate'
+        )) ||
+           (max_active_duty_end_date.present? && service_end_date_valid_and_beyond_180_days?(
+             max_active_duty_end_date, 'serviceInformation/servicePeriods/activeDutyEndDate'
+           ))
 
           collect_error_messages(
             detail: 'Service members cannot submit a claim until they are within 180 days of their separation date.'
           )
         end
+      end
+
+      def max_service_end_dates(service_information)
+        ant_sep_date = service_information&.dig('federalActivation', 'anticipatedSeparationDate')
+        max_active_duty_end_date = nil
+
+        unless service_information['servicePeriods'].nil?
+          max_period = service_information['servicePeriods'].max_by { |sp| sp['activeDutyEndDate'] }
+          max_active_duty_end_date = max_period&.dig('activeDutyEndDate')
+        end
+
+        [ant_sep_date, max_active_duty_end_date]
+      end
+
+      def service_end_date_valid_and_beyond_180_days?(date, date_type)
+        return false unless date_is_valid?(date, date_type, true)
+
+        Date.strptime(date, '%Y-%m-%d') > claim_date + 180.days
       end
 
       def validate_service_periods(service_information, target_veteran)
@@ -740,7 +760,7 @@ module ClaimsApi
 
             if sp['activeDutyEndDate']
               next unless date_is_valid?(sp['activeDutyEndDate'],
-                                         'serviceInformation/servicePeriods/activeDutyBeginDate', true)
+                                         'serviceInformation/servicePeriods/activeDutyEndDate', true)
 
               if Date.strptime(sp['activeDutyBeginDate'], '%Y-%m-%d') > Date.strptime(
                 sp['activeDutyEndDate'], '%Y-%m-%d'
