@@ -771,5 +771,156 @@ RSpec.describe 'MyHealth::V1::Prescriptions', type: :request do
       end
     end
   end
+
+  # Isolated from "when user is authorized" so Rx::Client.new is not stubbed twice. Re-raised errors are
+  # still handled by ApplicationController's rescue_from Exception (mapped to 500), so examples assert
+  # internal_server_error plus structured Rails.logger.error — not raise_error on the request block.
+  context 'when Rx error logging is triggered' do
+    let(:va_patient) { true }
+    let(:current_user) do
+      build(:user, :mhv, authn_context: LOA::IDME_LOA3_VETS,
+                         va_patient:,
+                         sign_in: { service_name: SignIn::Constants::Auth::IDME })
+    end
+    let(:rx_client_instance) do
+      Rx::Client.new(
+        session: { user_id: 123,
+                   expires_at: Time.current + (60 * 60),
+                   token: Rx::ClientHelpers::TOKEN },
+        upstream_request: instance_double(ActionDispatch::Request, env: { 'SOURCE_APP' => 'myapp' })
+      )
+    end
+
+    before do
+      allow_any_instance_of(User).to receive(:mhv_user_account).and_return(OpenStruct.new(patient: va_patient))
+      allow_any_instance_of(User).to receive(:mhv_correlation_id).and_return('12345678901')
+      allow(Rx::Client).to receive(:new).and_return(rx_client_instance)
+      allow(Rails.logger).to receive(:error).and_call_original
+      sign_in_as(current_user)
+    end
+
+    it 'logs structured payload and surfaces InternalServerError on GET #index when get_all_rxs fails' do
+      allow(rx_client_instance).to receive(:get_all_rxs).and_raise(StandardError, 'upstream rx failure')
+
+      get '/my_health/v1/prescriptions'
+
+      expect(response).to have_http_status(:internal_server_error)
+      expect(JSON.parse(response.body)['errors']).to be_an(Array)
+
+      expect(Rails.logger).to have_received(:error).with(
+        'Rx prescriptions index failed',
+        hash_including(
+          error_class: 'StandardError',
+          error_message: 'upstream rx failure',
+          mhv_correlation_id: '12345678901',
+          sign_in_service: SignIn::Constants::Auth::IDME
+        )
+      )
+    end
+
+    it 'logs structured payload and surfaces InternalServerError on GET #show when get_all_rxs fails' do
+      allow(rx_client_instance).to receive(:get_all_rxs).and_raise(StandardError, 'collection failure')
+
+      get '/my_health/v1/prescriptions/24891624'
+
+      expect(response).to have_http_status(:internal_server_error)
+      expect(JSON.parse(response.body)['errors']).to be_an(Array)
+
+      expect(Rails.logger).to have_received(:error).with(
+        'Rx prescription show failed',
+        hash_including(
+          error_class: 'StandardError',
+          error_message: 'collection failure',
+          prescription_id: '24891624'
+        )
+      )
+    end
+
+    it 'logs structured payload and surfaces InternalServerError on GET #list_refillable_prescriptions when get_all_rxs fails' do
+      allow(rx_client_instance).to receive(:get_all_rxs).and_raise(StandardError, 'list refill failure')
+
+      get '/my_health/v1/prescriptions/list_refillable_prescriptions'
+
+      expect(response).to have_http_status(:internal_server_error)
+      expect(JSON.parse(response.body)['errors']).to be_an(Array)
+
+      expect(Rails.logger).to have_received(:error).with(
+        'Rx list refillable prescriptions failed',
+        hash_including(error_class: 'StandardError', error_message: 'list refill failure')
+      )
+    end
+
+    it 'logs structured payload and surfaces InternalServerError on PATCH #refill when post_refill_rx fails' do
+      allow(rx_client_instance).to receive(:post_refill_rx).and_raise(StandardError, 'refill failure')
+
+      patch '/my_health/v1/prescriptions/25567989/refill'
+
+      expect(response).to have_http_status(:internal_server_error)
+      expect(JSON.parse(response.body)['errors']).to be_an(Array)
+
+      expect(Rails.logger).to have_received(:error).with(
+        'Rx prescription refill failed',
+        hash_including(
+          error_class: 'StandardError',
+          error_message: 'refill failure',
+          prescription_id: '25567989'
+        )
+      )
+    end
+
+    it 'logs per-prescription errors without re-raising when batch refill fails for one id' do
+      allow(UniqueUserEvents).to receive(:log_event)
+      allow(rx_client_instance).to receive(:post_refill_rx) do |*args|
+        id = args.last
+        raise StandardError, 'single rx failure' if id.to_s == '25567990'
+      end
+
+      patch '/my_health/v1/prescriptions/refill_prescriptions', params: { ids: %w[25567989 25567990] }
+
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)
+      expect(body['successful_ids']).to eq(%w[25567989])
+      expect(body['failed_ids']).to eq(%w[25567990])
+      expect(Rails.logger).to have_received(:error).with(
+        'Rx batch refill failed for prescription',
+        hash_including(
+          error_class: 'StandardError',
+          error_message: 'single rx failure',
+          prescription_id: '25567990'
+        )
+      )
+    end
+
+    it 'logs structured payload and surfaces InternalServerError when UniqueUserEvents.log_event fails after the per-id loop' do
+      allow(rx_client_instance).to receive(:post_refill_rx)
+      allow(UniqueUserEvents).to receive(:log_event).and_raise(StandardError, 'event failure')
+
+      patch '/my_health/v1/prescriptions/refill_prescriptions', params: { ids: %w[25567989] }
+
+      expect(response).to have_http_status(:internal_server_error)
+      expect(JSON.parse(response.body)['errors']).to be_an(Array)
+
+      expect(Rails.logger).to have_received(:error).with(
+        'Rx refill_prescriptions failed',
+        hash_including(error_class: 'StandardError', error_message: 'event failure')
+      )
+    end
+
+    it 'logs structured payload and surfaces InternalServerError when UniqueUserEvents.log_event fails after VCR batch refills' do
+      allow(UniqueUserEvents).to receive(:log_event).and_raise(StandardError, 'event failure')
+
+      VCR.use_cassette('rx_client/prescriptions/refills_multiple_prescriptions') do
+        patch '/my_health/v1/prescriptions/refill_prescriptions', params: { ids: %w[25567989 25567990] }
+      end
+
+      expect(response).to have_http_status(:internal_server_error)
+      expect(JSON.parse(response.body)['errors']).to be_an(Array)
+
+      expect(Rails.logger).to have_received(:error).with(
+        'Rx refill_prescriptions failed',
+        hash_including(error_class: 'StandardError', error_message: 'event failure')
+      )
+    end
+  end
 end
 # rubocop:enable Layout/LineLength

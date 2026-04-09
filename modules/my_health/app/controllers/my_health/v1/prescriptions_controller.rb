@@ -21,7 +21,6 @@ module MyHealth
         recently_requested = get_recently_requested_prescriptions(resource.data)
         raw_data = resource.data.dup
         resource.records = resource_data_modifications(resource)
-
         filter_count = set_filter_metadata(resource.data, raw_data)
         resource = apply_filters(resource) if params[:filter].present?
         resource = apply_sorting(resource, params[:sort])
@@ -31,14 +30,12 @@ module MyHealth
         resource = resource.paginate(**pagination_params) if is_using_pagination
         options = { meta: resource.metadata.merge(filter_count).merge(recently_requested:) }
         options[:links] = pagination_links(resource) if is_using_pagination
-
-        # Log unique user event for prescriptions accessed
-        UniqueUserEvents.log_event(
-          user: current_user,
-          event_name: UniqueUserEvents::EventRegistry::PRESCRIPTIONS_ACCESSED
-        )
-
+        UniqueUserEvents.log_event(user: current_user,
+                                   event_name: UniqueUserEvents::EventRegistry::PRESCRIPTIONS_ACCESSED)
         render json: MyHealth::V1::PrescriptionDetailsSerializer.new(resource.records, options)
+      rescue => e
+        log_rx_controller_error('Rx prescriptions index failed', e)
+        raise
       end
 
       def show
@@ -48,6 +45,11 @@ module MyHealth
 
         options = { meta: client.get_rx_details(id).metadata }
         render json: MyHealth::V1::PrescriptionDetailsSerializer.new(resource, options)
+      rescue Common::Exceptions::RecordNotFound
+        raise
+      rescue => e
+        log_rx_controller_error('Rx prescription show failed', e, prescription_id: params[:id])
+        raise
       end
 
       def refill
@@ -60,6 +62,9 @@ module MyHealth
         )
 
         head :no_content
+      rescue => e
+        log_rx_controller_error('Rx prescription refill failed', e, prescription_id: params[:id])
+        raise
       end
 
       def filter_renewals(resource)
@@ -82,7 +87,7 @@ module MyHealth
           client.post_refill_rx(id)
           successful_ids << id
         rescue => e
-          Rails.logger.debug { "Error refilling prescription with ID #{id}: #{e.message}" }
+          log_rx_controller_error('Rx batch refill failed for prescription', e, prescription_id: id)
           failed_ids << id
         end
 
@@ -93,6 +98,9 @@ module MyHealth
         )
 
         render json: { successful_ids:, failed_ids: }
+      rescue => e
+        log_rx_controller_error('Rx refill_prescriptions failed', e)
+        raise
       end
 
       def list_refillable_prescriptions
@@ -102,6 +110,9 @@ module MyHealth
 
         options = { meta: resource.metadata.merge(recently_requested:) }
         render json: MyHealth::V1::PrescriptionDetailsSerializer.new(resource.data, options)
+      rescue => e
+        log_rx_controller_error('Rx list refillable prescriptions failed', e)
+        raise
       end
 
       def get_prescription_image
@@ -111,6 +122,31 @@ module MyHealth
       end
 
       private
+
+      def log_rx_controller_error(message, error, extra = {})
+        ids = Array.wrap(current_user.active_mhv_ids)
+        Rails.logger.error(message, rx_controller_error_log_payload(error, ids).merge(extra))
+      rescue => e
+        Rails.logger.error(
+          "#{message} (rx_controller_error_log_failed)",
+          log_failure_class: e.class.name,
+          log_failure_message: e.message.to_s,
+          original_error_class: error.class.name,
+          original_error_message: error.message.to_s
+        )
+      end
+
+      def rx_controller_error_log_payload(error, ids)
+        {
+          user_icn: current_user.icn,
+          mhv_correlation_id: current_user.mhv_correlation_id,
+          active_mhv_ids_count: ids.size,
+          multiple_active_mhv_ids: ids.size > 1,
+          sign_in_service: current_user.identity&.sign_in&.dig(:service_name),
+          error_class: error.class.name,
+          error_message: error.message.to_s
+        }
+      end
 
       def get_recently_requested_prescriptions(data)
         data.select do |item|
