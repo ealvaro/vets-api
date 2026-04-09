@@ -1,5 +1,7 @@
 {
   "veteranSocialSecurityNumber": "123456789",
+  "recognizedAsSpouse": true,
+  "hadPreviousMarriages": false,
   "veteranMarriages": [
     {
       "spouseFullName": {
