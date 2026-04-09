@@ -20,9 +20,6 @@ module AccreditedRepresentativePortal
       SUCCESS_METRIC = 'ar.itf.submit.success'
       ERROR_METRIC   = 'ar.itf.submit.error'
 
-      EMAIL_SUCCESS_METRIC = 'ar.itf.va_notify.confirmation_email.success'
-      EMAIL_ERROR_METRIC   = 'ar.itf.va_notify.confirmation_email.error'
-
       before_action :validate_file_type, only: %i[show create]
       before_action { authorize icn, policy_class: IntentToFilePolicy }
 
@@ -167,11 +164,7 @@ module AccreditedRepresentativePortal
 
       def send_confirmation_email(saved_claim)
         AccreditedRepresentativePortal::NotificationEmail.new(saved_claim.id).deliver(:itf_confirmation)
-        ar_monitoring.track_count(EMAIL_SUCCESS_METRIC, tags: default_tags)
-        Rails.logger.info('ARP ITF: Confirmation email sent successfully')
       rescue => e
-        ar_monitoring.track_count(EMAIL_ERROR_METRIC, tags: default_tags +
-         ["reason:#{e.class.name.demodulize.underscore}"])
         Rails.logger.error("ARP ITF: Failed to send confirmation email - #{e.class}: #{e.message.truncate(100)}")
       end
 
