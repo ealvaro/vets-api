@@ -35,12 +35,12 @@ RSpec.describe 'VO::TsaLetter', type: :request do
 
     context 'when upstream returns 403' do
       it 'logs and renders 200 without data' do
-        VCR.use_cassette('tsa_letters/show_not_found', { match_requests_on: %i[method uri body] }) do
+        VCR.use_cassette('tsa_letters/show_forbidden', { match_requests_on: %i[method uri body] }) do
           allow(Rails.logger).to receive(:info)
           get '/v0/tsa_letter'
           expect(response).to have_http_status(:ok)
           expect(response.body).to eq({ data: nil }.to_json)
-          expect(Rails.logger).to have_received(:info).with('TSA Letter Error',
+          expect(Rails.logger).to have_received(:info).with('TSA Letter Show Error',
                                                             error_status: 403,
                                                             user_account_id: user.user_account_uuid)
         end
@@ -54,7 +54,7 @@ RSpec.describe 'VO::TsaLetter', type: :request do
           get '/v0/tsa_letter'
           expect(response).to have_http_status(:ok)
           expect(response.body).to eq({ data: nil }.to_json)
-          expect(Rails.logger).to have_received(:info).with('TSA Letter Error',
+          expect(Rails.logger).to have_received(:info).with('TSA Letter Show Error',
                                                             error_status: 400,
                                                             user_account_id: user.user_account_uuid)
         end
@@ -140,6 +140,14 @@ RSpec.describe 'VO::TsaLetter', type: :request do
       end
     end
 
+    context 'when unknown error occurs' do
+      it 'renders 503' do
+        allow_any_instance_of(ClaimsEvidenceApi::Service::Search).to receive(:find).and_raise(Common::Client::Errors::ClientError)
+        get '/v0/tsa_letter'
+        expect(response).to have_http_status(:service_unavailable)
+      end
+    end
+
     context 'when user is not loa3 or does not have an icn' do
       let(:user) { build(:user, :loa1, icn: nil) }
 
@@ -151,29 +159,58 @@ RSpec.describe 'VO::TsaLetter', type: :request do
   end
 
   describe 'GET /v0/tsa_letter/:id/version/:version_id/download' do
-    let(:document_id) { '93631483-E9F9-44AA-BB55-3552376400D8' }
+    let(:document_id) { 'c75438b4-47f8-44d3-9e35-798158591456' }
     let(:version_id) { '920debba-cc65-479c-ab47-db9b2a5cd95f' }
 
     it 'renders 200 and sends the doc pdf' do
-      VCR.use_cassette('tsa_letters/download_success', { match_requests_on: %i[method uri] }) do
-        get "/v0/tsa_letter/#{document_id}/version/#{version_id}/download"
-        expect(response).to have_http_status(:ok)
-        expect(response.headers['Content-Type']).to eq('application/pdf')
-        expect(response.headers['Content-Disposition']).to include('attachment')
-        expect(response.headers['Content-Disposition']).to include('filename="VETS Safe Travel Outreach Letter.pdf"')
-        expect(response.body).to eq('%PDF-1.4 fake pdf content for testing purposes')
+      VCR.use_cassette('tsa_letters/show_success', { match_requests_on: %i[method uri body] }) do
+        VCR.use_cassette('tsa_letters/download_success', { match_requests_on: %i[method uri] }) do
+          get "/v0/tsa_letter/#{document_id}/version/#{version_id}/download"
+          expect(response).to have_http_status(:ok)
+          expect(response.headers['Content-Type']).to eq('application/pdf')
+          expect(response.headers['Content-Disposition']).to include('attachment')
+          expect(response.headers['Content-Disposition']).to include('filename="VETS Safe Travel Outreach Letter.pdf"')
+          expect(response.body).to eq('%PDF-1.4 fake pdf content for testing purposes')
+        end
       end
     end
 
-    context 'when upstream returns error status' do
-      let(:document_id) { 'nonexistent-uuid' }
-      let(:version_id) { 'nonexistent-version' }
-
-      it 'renders 503' do
-        VCR.use_cassette('tsa_letters/download_not_found', { match_requests_on: %i[method uri] }) do
+    context 'when requested letter does not belong to user' do
+      it 'renders not found' do
+        VCR.use_cassette('tsa_letters/show_success', { match_requests_on: %i[method uri body] }) do
+          document_id = 'fake'
+          version_id = 'phony'
           get "/v0/tsa_letter/#{document_id}/version/#{version_id}/download"
-          expect(response).to have_http_status(:service_unavailable)
+          expect(response).to have_http_status(:not_found)
         end
+      end
+    end
+
+    context 'when metadata fetch fails' do
+      it 'renders mapped error' do
+        VCR.use_cassette('tsa_letters/show_bad_request', { match_requests_on: %i[method uri body] }) do
+          get "/v0/tsa_letter/#{document_id}/version/#{version_id}/download"
+          expect(response).to have_http_status(:bad_request)
+        end
+      end
+    end
+
+    context 'when upstream returns error status and download fails' do
+      it 'renders mapped error' do
+        VCR.use_cassette('tsa_letters/show_success', { match_requests_on: %i[method uri body] }) do
+          VCR.use_cassette('tsa_letters/download_forbidden', { match_requests_on: %i[method uri] }) do
+            get "/v0/tsa_letter/#{document_id}/version/#{version_id}/download"
+            expect(response).to have_http_status(:forbidden)
+          end
+        end
+      end
+    end
+
+    context 'when unknown error occurs' do
+      it 'renders 503' do
+        allow_any_instance_of(ClaimsEvidenceApi::Service::Search).to receive(:find).and_raise(Common::Client::Errors::ClientError)
+        get "/v0/tsa_letter/#{document_id}/version/#{version_id}/download"
+        expect(response).to have_http_status(:service_unavailable)
       end
     end
 

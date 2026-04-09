@@ -9,30 +9,44 @@ module V0
     before_action { authorize :tsa_letter, :access? }
 
     ERROR_MAP = {
+      400 => Common::Exceptions::BadRequest,
       401 => Common::Exceptions::Unauthorized,
+      403 => Common::Exceptions::Forbidden,
       500 => Common::Exceptions::ExternalServerInternalServerError,
       501 => Common::Exceptions::NotImplemented
     }.freeze
-    # 400 is a bad request, but it's unclear why this happens
-    # 403 indicates that the API doesn't know the user.
-    NONBLOCKING_STATUSES = [400, 403].freeze
+    NONBLOCKING_ERRORS = [Common::Exceptions::BadRequest, Common::Exceptions::Forbidden].freeze
 
     def show
-      search_service = ClaimsEvidenceApi::Service::Search.new
-      filters = { subject: ['VETS Safe Travel Outreach Letter'] }
-      folder_identifier = "VETERAN:ICN:#{current_user.icn}"
-      search_service.folder_identifier = folder_identifier
-      response = search_service.find(filters:)
-      files = response.body['files']
-      serialized = most_recent_letter(files)
+      files_metadata = request_data_with_error_handling('TSA Letter Show Error') do
+        fetch_letter_metadata
+      end
+      serialized = most_recent_letter(files_metadata)
       render(json: serialized)
-    rescue Common::Client::Errors::ClientError => e
-      handle_error(e)
+    rescue *NONBLOCKING_ERRORS
+      # 400 is a bad request, but it's unclear why this happens
+      # 403 indicates that the API doesn't know the user.
+      render(json: { data: nil })
     end
 
     def download
+      files_metadata = request_data_with_error_handling('TSA Letter Metadata Error') do
+        fetch_letter_metadata
+      end
+
+      user_owns_file = files_metadata.any? do |file|
+        params[:id] == file['uuid'] && params[:version_id] == file['currentVersionUuid']
+      end
+      unless user_owns_file
+        raise Common::Exceptions::RecordNotFound.new(
+          nil, detail: "Requested TSA letter file id #{params[:id]}, version id #{params[:version_id]} was not found."
+        )
+      end
+
       download_service = ClaimsEvidenceApi::Service::Files.new
-      letter_response = download_service.download(params[:id], params[:version_id])
+      letter_response = request_data_with_error_handling('TSA Letter Download Error') do
+        download_service.download(params[:id], params[:version_id])
+      end
       send_data(
         letter_response.body,
         type: 'application/pdf',
@@ -41,6 +55,15 @@ module V0
     end
 
     private
+
+    def fetch_letter_metadata
+      search_service = ClaimsEvidenceApi::Service::Search.new
+      filters = { subject: ['VETS Safe Travel Outreach Letter'] }
+      folder_identifier = "VETERAN:ICN:#{current_user.icn}"
+      search_service.folder_identifier = folder_identifier
+      response = search_service.find(filters:)
+      response.body['files'] || []
+    end
 
     def most_recent_letter(files)
       return { data: nil } if files.blank?
@@ -62,19 +85,19 @@ module V0
             source: self.class.name
     end
 
-    def handle_error(error)
-      status = error.respond_to?(:status) && error.status
+    def request_data_with_error_handling(description, &data_request)
+      data_request.call
+    rescue Common::Client::Errors::ClientError => e
+      status = e.respond_to?(:status) && e.status
       case status
       when *ERROR_MAP.keys
-        error_class = ERROR_MAP[status]
-        raise error_class
-      when *NONBLOCKING_STATUSES
-        Rails.logger.info('TSA Letter Error',
+        Rails.logger.info(description,
                           error_status: status,
                           user_account_id: current_user.user_account_uuid)
-        render(json: { data: nil })
+        error_class = ERROR_MAP[status]
+        raise error_class
       else
-        raise error
+        raise e
       end
     end
   end
