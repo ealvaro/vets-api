@@ -15,7 +15,7 @@ describe AppealsApi::DailyErrorReport, type: :job do
          nathan.wright@oddball.io]
     end
 
-    before { Flipper.enable :decision_review_daily_error_report_enabled }
+    before { allow(Flipper).to receive(:enabled?).with(:decision_review_daily_error_report_enabled).and_return(true) }
 
     it 'sends mail' do
       allow(YAML).to receive(:load_file).and_return({ 'common' => recipients })
@@ -29,7 +29,7 @@ describe AppealsApi::DailyErrorReport, type: :job do
     end
 
     it 'does not send email if flipper setting is disabled' do
-      Flipper.disable :decision_review_daily_error_report_enabled
+      allow(Flipper).to receive(:enabled?).with(:decision_review_daily_error_report_enabled).and_return(false)
       allow(YAML).to receive(:load_file).and_return({ 'common' => recipients })
       expect(AppealsApi::DailyErrorReportMailer).not_to receive(:build)
       described_class.new.perform

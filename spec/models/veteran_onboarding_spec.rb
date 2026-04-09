@@ -34,7 +34,8 @@ RSpec.describe VeteranOnboarding, type: :model do
     end
 
     it 'returns false and updates the database when verification is past the threshold' do
-      Flipper.enable(:veteran_onboarding_show_to_newly_onboarded, user)
+      allow(Flipper).to receive(:enabled?).with(:veteran_onboarding_show_to_newly_onboarded,
+                                                instance_of(User)).and_return(true)
       Settings.veteran_onboarding = OpenStruct.new(onboarding_threshold_days: 10)
       verified_at_date = Time.zone.today - 11
       allow_any_instance_of(UserVerification).to receive(:verified_at).and_return(verified_at_date)
@@ -55,7 +56,8 @@ RSpec.describe VeteranOnboarding, type: :model do
       it "returns #{scenario[:expected]} when verified #{scenario[:days_ago]} days ago" do
         verified_at_date = Time.zone.today - scenario[:days_ago]
         allow_any_instance_of(UserVerification).to receive(:verified_at).and_return(verified_at_date)
-        Flipper.enable(:veteran_onboarding_show_to_newly_onboarded, user)
+        allow(Flipper).to receive(:enabled?).with(:veteran_onboarding_show_to_newly_onboarded,
+                                                  instance_of(User)).and_return(true)
         expect(user.onboarding&.show_onboarding_flow_on_login).to eq(scenario[:expected])
       end
     end

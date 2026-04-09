@@ -145,7 +145,7 @@ RSpec.describe 'MyHealth::V1::Prescriptions', type: :request do
 
     context 'Feature mhv_medications_display_pending_meds=true"' do
       before do
-        Flipper.enable_actor(:mhv_medications_display_pending_meds, current_user)
+        allow(Flipper).to receive(:enabled?).with(:mhv_medications_display_pending_meds, any_args).and_return(true)
       end
 
       it 'responds to GET #index with pending meds included in list' do
@@ -168,7 +168,7 @@ RSpec.describe 'MyHealth::V1::Prescriptions', type: :request do
 
     context 'Feature mhv_medications_display_pending_meds=false"' do
       before do
-        Flipper.disable(:mhv_medications_display_pending_meds)
+        allow(Flipper).to receive(:enabled?).with(:mhv_medications_display_pending_meds, any_args).and_return(false)
       end
 
       it 'responds to GET #index with pending meds not included in list' do

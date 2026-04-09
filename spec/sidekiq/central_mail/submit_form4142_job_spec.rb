@@ -41,7 +41,7 @@ RSpec.describe CentralMail::SubmitForm4142Job, type: :job do
   describe 'Test old CentralMail route' do
     before do
       # Make Job use old CentralMail route for all tests
-      Flipper.disable(:disability_compensation_form4142_supplemental)
+      allow(Flipper).to receive(:enabled?).with(:disability_compensation_form4142_supplemental).and_return(false)
     end
 
     let(:user_account) { user.user_account }
@@ -184,7 +184,7 @@ RSpec.describe CentralMail::SubmitForm4142Job, type: :job do
           let!(:failure_email) { EVSS::DisabilityCompensationForm::Form4142DocumentUploadFailureEmail }
 
           before do
-            Flipper.enable(:form526_send_4142_failure_notification)
+            allow(Flipper).to receive(:enabled?).with(:form526_send_4142_failure_notification).and_return(true)
             allow(ZeroSilentFailures::Monitor).to receive(:new).with(zsf_tag).and_return(zsf_monitor)
           end
 
@@ -265,7 +265,7 @@ RSpec.describe CentralMail::SubmitForm4142Job, type: :job do
         end
 
         it 'Creates a form 4142 submission polling record, when enabled' do
-          Flipper.enable(CentralMail::SubmitForm4142Job::POLLING_FLIPPER_KEY)
+          allow(Flipper).to receive(:enabled?).with(CentralMail::SubmitForm4142Job::POLLING_FLIPPER_KEY).and_return(true)
           expect do
             VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload_location') do
               VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload') do
@@ -282,7 +282,7 @@ RSpec.describe CentralMail::SubmitForm4142Job, type: :job do
         end
 
         it 'Returns successfully after creating polling record' do
-          Flipper.enable(CentralMail::SubmitForm4142Job::POLLING_FLIPPER_KEY)
+          allow(Flipper).to receive(:enabled?).with(CentralMail::SubmitForm4142Job::POLLING_FLIPPER_KEY).and_return(true)
           Sidekiq::Testing.inline! do
             VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload_location') do
               VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload') do
@@ -300,7 +300,7 @@ RSpec.describe CentralMail::SubmitForm4142Job, type: :job do
         end
 
         it 'Does not create a form 4142 submission polling record, when disabled' do
-          Flipper.disable(CentralMail::SubmitForm4142Job::POLLING_FLIPPER_KEY)
+          allow(Flipper).to receive(:enabled?).with(CentralMail::SubmitForm4142Job::POLLING_FLIPPER_KEY).and_return(false)
           expect do
             VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload_location') do
               VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload') do
@@ -413,7 +413,7 @@ RSpec.describe CentralMail::SubmitForm4142Job, type: :job do
 
         context 'when the form526_send_4142_failure_notification Flipper is enabled' do
           before do
-            Flipper.enable(:form526_send_4142_failure_notification)
+            allow(Flipper).to receive(:enabled?).with(:form526_send_4142_failure_notification).and_return(true)
           end
 
           it 'enqueues a failure notification mailer to send to the veteran' do
@@ -431,7 +431,7 @@ RSpec.describe CentralMail::SubmitForm4142Job, type: :job do
 
         context 'when the form526_send_4142_failure_notification Flipper is disabled' do
           before do
-            Flipper.disable(:form526_send_4142_failure_notification)
+            allow(Flipper).to receive(:enabled?).with(:form526_send_4142_failure_notification).and_return(false)
           end
 
           it 'does not enqueue a failure notification mailer to send to the veteran' do

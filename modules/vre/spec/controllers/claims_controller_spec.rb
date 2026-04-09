@@ -97,7 +97,7 @@ RSpec.describe VRE::V0::ClaimsController, type: :controller do
 
     context 'when vre_form_submission_tracking flipper is enabled' do
       before do
-        Flipper.enable(:vre_form_submission_tracking)
+        allow(Flipper).to receive(:enabled?).with(:vre_form_submission_tracking).and_return(true)
       end
 
       it 'creates a FormSubmission record' do
@@ -140,7 +140,7 @@ RSpec.describe VRE::V0::ClaimsController, type: :controller do
 
     context 'when vre_form_submission_tracking flipper is disabled' do
       before do
-        Flipper.disable(:vre_form_submission_tracking)
+        allow(Flipper).to receive(:enabled?).with(:vre_form_submission_tracking).and_return(false)
       end
 
       it 'does not create a FormSubmission record' do

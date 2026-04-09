@@ -16,7 +16,7 @@ describe AppealsApi::MonthlyStatsReport do
       let(:recipients) { %w[someone@somewhere.tld] }
 
       before do
-        Flipper.enable(:decision_review_monthly_stats_report_enabled)
+        allow(Flipper).to receive(:enabled?).with(:decision_review_monthly_stats_report_enabled).and_return(true)
       end
 
       it 'does not build a report without recipients' do
@@ -46,15 +46,14 @@ describe AppealsApi::MonthlyStatsReport do
 
     describe 'disabled' do
       it 'is disabled unless the dedicated flipper setting is enabled' do
-        Flipper.disable(:decision_review_monthly_stats_report_enabled)
-
+        allow(Flipper).to receive(:enabled?).with(:decision_review_monthly_stats_report_enabled).and_return(false)
         expect(AppealsApi::StatsReportMailer).not_to receive(:build)
 
         described_class.new.perform
       end
 
       it 'is disabled when emails are not configured to send' do
-        Flipper.enable(:decision_review_monthly_stats_report_enabled)
+        allow(Flipper).to receive(:enabled?).with(:decision_review_monthly_stats_report_enabled).and_return(true)
         allow(FeatureFlipper).to receive(:send_email?).and_return(false)
 
         expect(AppealsApi::StatsReportMailer).not_to receive(:build)

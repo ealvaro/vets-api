@@ -1058,7 +1058,9 @@ RSpec.describe Form526Submission do
       end
 
       context 'when feature enabled' do
-        before { Flipper.enable(:disability_compensation_flashes) }
+        before do
+          allow(Flipper).to receive(:enabled?).with(:disability_compensation_flashes, any_args).and_return(true)
+        end
 
         it 'queues flashes job' do
           expect do
@@ -1068,7 +1070,9 @@ RSpec.describe Form526Submission do
       end
 
       context 'when feature disabled' do
-        before { Flipper.disable(:disability_compensation_flashes) }
+        before do
+          allow(Flipper).to receive(:enabled?).with(:disability_compensation_flashes, any_args).and_return(false)
+        end
 
         it 'queues flashes job' do
           expect do
@@ -1351,14 +1355,16 @@ RSpec.describe Form526Submission do
         subject { create(:form526_submission, :with_multiple_succesful_jobs) }
 
         it 'does not trigger job when disability_526_call_received_email_from_polling enabled' do
-          Flipper.enable(:disability_526_call_received_email_from_polling)
+          allow(Flipper).to receive(:enabled?).with(:disability_526_call_received_email_from_polling,
+                                                    any_args).and_return(true)
           expect do
             subject.workflow_complete_handler(nil, 'submission_id' => subject.id)
           end.not_to change(Form526ConfirmationEmailJob.jobs, :size)
         end
 
         it 'returns one job triggered when disability_526_call_received_email_from_polling disabled' do
-          Flipper.disable(:disability_526_call_received_email_from_polling)
+          allow(Flipper).to receive(:enabled?).with(:disability_526_call_received_email_from_polling,
+                                                    any_args).and_return(false)
           expect do
             subject.workflow_complete_handler(nil, 'submission_id' => subject.id)
           end.to change(Form526ConfirmationEmailJob.jobs, :size).by(1)

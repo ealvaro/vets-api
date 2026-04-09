@@ -19,7 +19,7 @@ RSpec.describe 'V0::MyVA::SubmissionPdfUrls', feature: :form_submission,
 
   before do
     sign_in_as(user)
-    Flipper.enable('my_va_form_submission_pdf_link')
+    allow(Flipper).to receive(:enabled?).with(:my_va_form_submission_pdf_link, any_args).and_return(true)
   end
 
   describe 'POST /v0/my_va/submission_pdf_urls' do
@@ -177,7 +177,7 @@ RSpec.describe 'V0::MyVA::SubmissionPdfUrls', feature: :form_submission,
 
     context 'when feature toggle is disabled' do
       before do
-        Flipper.disable('my_va_form_submission_pdf_link')
+        allow(Flipper).to receive(:enabled?).with(:my_va_form_submission_pdf_link, any_args).and_return(false)
       end
 
       it 'raises Forbidden error' do

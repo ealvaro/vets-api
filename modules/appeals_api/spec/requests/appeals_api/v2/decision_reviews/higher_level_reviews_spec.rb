@@ -19,7 +19,7 @@ describe 'AppealsApi::V2::DecisionReviews::HigherLevelReviews', type: :request d
   let(:headers_invalid) { fixture_as_json 'decision_reviews/v2/invalid_200996_headers.json' }
   let(:parsed) { JSON.parse(response.body) }
 
-  before { Flipper.disable(:decision_review_hlr_form_v4_enabled) }
+  before { allow(Flipper).to receive(:enabled?).with(:decision_review_hlr_form_v4_enabled).and_return(false) }
 
   describe '#index' do
     let(:path) { base_path 'higher_level_reviews' }

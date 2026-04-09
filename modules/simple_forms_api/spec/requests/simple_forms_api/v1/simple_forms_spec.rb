@@ -129,7 +129,7 @@ RSpec.describe 'SimpleFormsApi::V1::SimpleForms', type: :request do
 
             context 'when flipper is enabled for IBM MMS connection' do
               before do
-                Flipper.enable("#{data['form_number']}_ibm_mms_connection")
+                allow(Flipper).to receive(:enabled?).with("#{data['form_number']}_ibm_mms_connection").and_return(true)
               end
 
               it 'queues an IBM MMS upload job with correct parameters' do
@@ -158,7 +158,7 @@ RSpec.describe 'SimpleFormsApi::V1::SimpleForms', type: :request do
 
             context 'when flipper is disabled for IBM MMS connection' do
               before do
-                Flipper.disable("#{data['form_number']}_ibm_mms_connection")
+                allow(Flipper).to receive(:enabled?).with("#{data['form_number']}_ibm_mms_connection").and_return(false)
               end
 
               it 'does not queue an IBM MMS upload job' do

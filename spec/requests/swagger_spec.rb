@@ -1183,8 +1183,10 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
     describe 'disability compensation' do
       before do
         create(:in_progress_form, form_id: FormProfiles::VA526ez::FORM_ID, user_uuid: mhv_user.uuid)
-        Flipper.disable('disability_compensation_prevent_submission_job')
-        Flipper.disable('disability_compensation_production_tester')
+        allow(Flipper).to receive(:enabled?).with(:disability_compensation_prevent_submission_job,
+                                                  any_args).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:disability_compensation_production_tester,
+                                                  any_args).and_return(false)
         allow_any_instance_of(Auth::ClientCredentials::Service).to receive(:get_token).and_return('fake_token')
         allow_any_instance_of(User).to receive(:icn).and_return('123498767V234859')
       end
@@ -1340,7 +1342,8 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
       let(:mhv_user) { create(:user, :loa3, :legacy_icn) }
 
       before do
-        Flipper.disable('disability_compensation_production_tester')
+        allow(Flipper).to receive(:enabled?).with(:disability_compensation_production_tester,
+                                                  any_args).and_return(false)
         allow_any_instance_of(Auth::ClientCredentials::Service).to receive(:get_token).and_return('fake_token')
       end
 
@@ -2393,7 +2396,7 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
 
     describe 'search' do
       before do
-        Flipper.disable(:search_use_v2_gsa)
+        allow(Flipper).to receive(:enabled?).with(:search_use_v2_gsa).and_return(false)
       end
 
       context 'when successful' do
@@ -3650,12 +3653,10 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
     end
 
     before do
-      Flipper.enable(:cave_idp)
       allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?).with(:cave_idp).and_return(true)
       allow(Idp).to receive(:client).and_return(idp_client)
     end
-
-    after { Flipper.disable(:cave_idp) }
 
     def expect_cave_forbidden(method, path, request_options = {})
       allow_any_instance_of(V0::CaveController).to receive(:idp_user_id).and_raise(

@@ -7,7 +7,8 @@ RSpec.describe EVSS::DisabilityCompensationForm::SubmitForm8940, type: :job do
 
   before do
     Sidekiq::Job.clear_all
-    Flipper.disable(:disability_compensation_lighthouse_document_service_provider)
+    allow(Flipper).to receive(:enabled?).with(:disability_compensation_lighthouse_document_service_provider,
+                                              any_args).and_return(false)
   end
 
   let(:user) { create(:user, :loa3) }

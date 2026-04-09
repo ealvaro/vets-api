@@ -135,7 +135,8 @@ RSpec.describe Users::Profile do
       describe 'form 526 required identifiers' do
         context 'when the user has the form_526_required_identifiers_in_user_object feature flag on' do
           before do
-            Flipper.enable(:form_526_required_identifiers_in_user_object)
+            allow(Flipper).to receive(:enabled?).with(:form_526_required_identifiers_in_user_object,
+                                                      any_args).and_return(true)
           end
 
           context 'when a user is missing an identifier required by the 526 form' do
@@ -159,7 +160,8 @@ RSpec.describe Users::Profile do
 
         context 'when the user has the form_526_required_identifiers_in_user_object feature flag off' do
           before do
-            Flipper.disable(:form_526_required_identifiers_in_user_object)
+            allow(Flipper).to receive(:enabled?).with(:form_526_required_identifiers_in_user_object,
+                                                      any_args).and_return(false)
           end
 
           it 'does not include the identifiers in the claims section of the user profile' do

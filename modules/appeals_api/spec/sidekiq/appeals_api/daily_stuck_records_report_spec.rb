@@ -26,7 +26,9 @@ describe AppealsApi::DailyStuckRecordsReport, type: :job do
     end
 
     context 'when enabled' do
-      before { Flipper.enable :decision_review_daily_stuck_records_report_enabled }
+      before do
+        allow(Flipper).to receive(:enabled?).with(:decision_review_daily_stuck_records_report_enabled).and_return(true)
+      end
 
       it_behaves_like 'a monitored worker'
 
@@ -69,7 +71,9 @@ describe AppealsApi::DailyStuckRecordsReport, type: :job do
     end
 
     context 'when disabled' do
-      before { Flipper.disable :decision_review_daily_stuck_records_report_enabled }
+      before do
+        allow(Flipper).to receive(:enabled?).with(:decision_review_daily_stuck_records_report_enabled).and_return(false)
+      end
 
       it 'does nothing' do
         expect(AppealsApi::Slack::Messager).not_to receive(:new)

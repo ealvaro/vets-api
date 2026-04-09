@@ -85,8 +85,8 @@ RSpec.describe FormSubmissionAttempt, type: :model do
           end
 
           it 'sends an 4142 error email when it is not a SimpleFormsApi form and flippers are on' do
-            Flipper.enable(CentralMail::SubmitForm4142Job::POLLING_FLIPPER_KEY)
-            Flipper.enable(CentralMail::SubmitForm4142Job::POLLED_FAILURE_EMAIL)
+            allow(Flipper).to receive(:enabled?).with(CentralMail::SubmitForm4142Job::POLLING_FLIPPER_KEY).and_return(true)
+            allow(Flipper).to receive(:enabled?).with(CentralMail::SubmitForm4142Job::POLLED_FAILURE_EMAIL).and_return(true)
 
             allow(VaNotify::Service).to receive(:new).and_return(vanotify_client)
             allow(vanotify_client).to receive(:send_email).and_return(OpenStruct.new(id: 'some_id'))
@@ -105,8 +105,8 @@ RSpec.describe FormSubmissionAttempt, type: :model do
           end
 
           it 'does not send an 4142 error email when it is not a SimpleFormsApi form and flippers are off' do
-            Flipper.disable(CentralMail::SubmitForm4142Job::POLLING_FLIPPER_KEY)
-            Flipper.disable(CentralMail::SubmitForm4142Job::POLLED_FAILURE_EMAIL)
+            allow(Flipper).to receive(:enabled?).with(CentralMail::SubmitForm4142Job::POLLING_FLIPPER_KEY).and_return(false)
+            allow(Flipper).to receive(:enabled?).with(CentralMail::SubmitForm4142Job::POLLED_FAILURE_EMAIL).and_return(false)
 
             with_settings(Settings.vanotify.services.benefits_disability, { api_key: 'test_service_api_key' }) do
               expect do

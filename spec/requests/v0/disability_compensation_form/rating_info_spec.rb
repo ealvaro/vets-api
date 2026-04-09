@@ -9,7 +9,7 @@ RSpec.describe 'V0::DisabilityCompensationForm::RatingInfo' do
 
   before do
     sign_in_as(user)
-    Flipper.disable('profile_lighthouse_rating_info')
+    allow(Flipper).to receive(:enabled?).with(:profile_lighthouse_rating_info, any_args).and_return(false)
   end
 
   describe 'GET /v0/disability_compensation_form/rating_info' do

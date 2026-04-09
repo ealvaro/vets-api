@@ -7,7 +7,7 @@ RSpec.describe EVSS::DisabilityCompensationForm::SubmitForm526, type: :job do
 
   before do
     Sidekiq::Job.clear_all
-    Flipper.disable(:disability_compensation_fail_submission)
+    allow(Flipper).to receive(:enabled?).with(:disability_compensation_fail_submission, any_args).and_return(false)
   end
 
   let(:user) { create(:user, :loa3) }

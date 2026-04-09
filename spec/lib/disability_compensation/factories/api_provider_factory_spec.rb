@@ -207,10 +207,12 @@ RSpec.describe ApiProviderFactory do
       end
 
       it 'provides a SupplementalDocumentUploadProvider based on a Flipper' do
-        Flipper.enable(ApiProviderFactory::FEATURE_TOGGLE_UPLOAD_0781)
+        allow(Flipper).to receive(:enabled?).with(ApiProviderFactory::FEATURE_TOGGLE_UPLOAD_0781,
+                                                  any_args).and_return(true)
         expect(provider.class).to equal(LighthouseSupplementalDocumentUploadProvider)
 
-        Flipper.disable(ApiProviderFactory::FEATURE_TOGGLE_UPLOAD_0781)
+        allow(Flipper).to receive(:enabled?).with(ApiProviderFactory::FEATURE_TOGGLE_UPLOAD_0781,
+                                                  any_args).and_return(false)
         expect(provider.class).to equal(EVSSSupplementalDocumentUploadProvider)
       end
     end

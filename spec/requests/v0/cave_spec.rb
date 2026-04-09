@@ -14,18 +14,16 @@ RSpec.describe 'CAVE API', type: :request do
   end
 
   before do
-    Flipper.enable(:cave_idp)
     allow(Flipper).to receive(:enabled?).and_call_original
+    allow(Flipper).to receive(:enabled?).with(:cave_idp).and_return(true)
     allow(Idp).to receive(:client).and_return(client)
   end
-
-  after { Flipper.disable(:cave_idp) }
 
   describe 'feature flags' do
     before { sign_in_as(user) }
 
     it 'returns 404 when cave_idp is disabled' do
-      Flipper.disable(:cave_idp)
+      allow(Flipper).to receive(:enabled?).with(:cave_idp).and_return(false)
 
       post '/v0/cave', params: { pdf_b64: 'ZmlsZQ==', file_name: 'test.pdf' }
 

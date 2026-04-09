@@ -23,7 +23,7 @@ describe AppealsApi::AddIcnUpdater, type: :job do
     end
 
     it 'does not update ICN if flipper is disabled', skip: 'TODO' do
-      Flipper.disable(:decision_review_icn_updater_enabled)
+      allow(Flipper).to receive(:enabled?).with(:decision_review_icn_updater_enabled).and_return(false)
       # ...
     end
 

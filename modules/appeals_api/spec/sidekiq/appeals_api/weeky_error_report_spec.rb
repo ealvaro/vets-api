@@ -7,22 +7,32 @@ describe AppealsApi::WeeklyErrorReport, type: :job do
   it_behaves_like 'a monitored worker'
 
   describe '#perform' do
-    it 'sends mail' do
-      Flipper.enable(:decision_review_weekly_error_report_enabled)
-      expect(AppealsApi::WeeklyErrorReportMailer).to receive(:build)
-        .once
-        .and_return(double.tap do |mailer|
-          expect(mailer).to receive(:deliver_now).once
-        end)
+    context 'if flipper is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:decision_review_weekly_error_report_enabled).and_return(true)
+      end
 
-      described_class.new.perform
+      it 'sends mail' do
+        expect(AppealsApi::WeeklyErrorReportMailer).to receive(:build)
+          .once
+          .and_return(double.tap do |mailer|
+            expect(mailer).to receive(:deliver_now).once
+          end)
+
+        described_class.new.perform
+      end
     end
 
-    it 'does not send report email if flipper disabled' do
-      Flipper.disable(:decision_review_weekly_error_report_enabled)
-      expect(AppealsApi::WeeklyErrorReportMailer).not_to receive(:build)
+    context 'if flipper disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:decision_review_weekly_error_report_enabled).and_return(false)
+      end
 
-      described_class.new.perform
+      it 'does not send report email' do
+        expect(AppealsApi::WeeklyErrorReportMailer).not_to receive(:build)
+
+        described_class.new.perform
+      end
     end
   end
 end
