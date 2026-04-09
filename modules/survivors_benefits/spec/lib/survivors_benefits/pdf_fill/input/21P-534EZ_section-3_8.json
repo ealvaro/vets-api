@@ -21,6 +21,8 @@
   "nationalGuardActivated": true,
   "nationalGuardActivationDate": "1999-01-01",
   "unitNameAndAddress": "3H Reserve or National Guard Unit",
+  "unitName": "3H Reserve or National Guard Unit",
+  "unitAddress": "This is the address of the unit",
   "unitPhone": {
     "callingCode": 1,
     "countryCode": "US",

@@ -21,6 +21,7 @@
   "nationalGuardActivated": true,
   "nationalGuardActivationDate": "1999-01-01",
   "unitNameAndAddress": "3H Reserve or National Guard Unit and very long address line that exceeds limits",
+  "unitName": "3H Reserve or National Guard Unit that is really long",
   "pow": true,
   "powDateRange": {
     "from": "1999-01-01",

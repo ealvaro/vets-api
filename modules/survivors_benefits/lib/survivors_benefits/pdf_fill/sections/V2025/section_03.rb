@@ -7,9 +7,296 @@ module SurvivorsBenefits
     module V2025
       # Section 3: Veteran's Service Information
       class Section3 < Section
-        KEY = {}.freeze
+        include ::PdfFill::Forms::FormHelper
+        include ::PdfFill::Forms::FormHelper::PhoneNumberFormatting
+        include Helpers
+
+        SERVICE_BRANCH_MAPPING = {
+          'army' => 'ARMY',
+          'navy' => 'NAVY',
+          'airForce' => 'AIR FORCE',
+          'coastGuard' => 'COAST GUARD',
+          'marineCorps' => 'MARINE CORPS',
+          'spaceForce' => 'SPACE FORCE',
+          'usphs' => 'USPHS',
+          'noaa' => 'NOAA'
+        }.freeze
+
+        KEY = {
+          'p11HeaderVeteranSocialSecurityNumber' => {
+            'first' => {
+              key: 'form1[0].#subform[153].VeteransSocialSecurityNumber_FirstThreeNumbers[1]'
+            },
+            'second' => {
+              key: 'form1[0].#subform[153].VeteransSocialSecurityNumber_SecondTwoNumbers[1]'
+            },
+            'third' => {
+              key: 'form1[0].#subform[153].VeteransSocialSecurityNumber_LastFourNumbers[1]'
+            }
+          },
+          'veteranHasPreviousNames' => {
+            key: 'form1[0].#subform[152].RadioButtonList[4]'
+          },
+          'veteranPreviousNameOne' => {
+            first_key: 'first',
+            'first' => {
+              limit: 12,
+              question_num: 3,
+              question_suffix: 'A',
+              question_label: '1st (addt\'l) Veteran\'s First Name',
+              question_text: '1ST (ADDT\'l) VETERAN\'S FIRST NAME',
+              key: 'form1[0].#subform[152].First_Name[0]'
+            },
+            'middle' => {
+              limit: 1,
+              question_num: 3,
+              question_suffix: 'A',
+              question_label: '1st (addt\'l) Veteran\'s MI',
+              question_text: '1ST (ADDT\'l) VETERAN\'S MI',
+              key: 'form1[0].#subform[152].Middle_Initial[0]'
+            },
+            'last' => {
+              limit: 18,
+              question_num: 3,
+              question_suffix: 'A',
+              question_label: '1st (addt\'l)Veteran\'s Last Name',
+              question_text: '1ST (ADDT\'l) VETERAN\'S LAST NAME',
+              key: 'form1[0].#subform[152].Last_Name[0]'
+            }
+          },
+          'veteranPreviousNameTwo' => {
+            first_key: 'first',
+            'first' => {
+              limit: 12,
+              question_num: 3,
+              question_suffix: 'A',
+              question_label: '2nd (addt\'l) Veteran\'s First Name',
+              question_text: '2ND (ADDT\'l) VETERAN\'S FIRST NAME',
+              key: 'form1[0].#subform[152].First_Name[1]'
+            },
+            'middle' => {
+              limit: 1,
+              question_num: 3,
+              question_suffix: 'A',
+              question_label: '2nd (addt\'l) Veteran\'s Middle Initial',
+              question_text: '2ND (ADDT\'l) VETERAN\'S MIDDLE INITIAL',
+              key: 'form1[0].#subform[152].Middle_Initial[1]'
+            },
+            'last' => {
+              limit: 18,
+              question_num: 3,
+              question_suffix: 'A',
+              question_label: '2nd (addt\'l) Veteran\'s Last Name',
+              question_text: '2ND (ADDT\'l) VETERAN\'S LAST NAME',
+              key: 'form1[0].#subform[152].Last_Name[1]'
+            }
+          },
+          'activeServiceDateRange' => {
+            'from' => {
+              'month' => {
+                key: 'form1[0].#subform[153].Date_Veteran_Entered_Active_Duty_Month[0]'
+              },
+              'day' => {
+                key: 'form1[0].#subform[153].Date_Veteran_Entered_Active_Duty_Day[0]'
+              },
+              'year' => {
+                key: 'form1[0].#subform[153].Date_Veteran_Entered_Active_Duty_Year[0]'
+              }
+            },
+            'to' => {
+              'month' => {
+                key: 'form1[0].#subform[153].Date_Veteran_Released_From_Active_Duty_Month[0]'
+              },
+              'day' => {
+                key: 'form1[0].#subform[153].Date_Veteran_Released_From_Active_Duty_Day[0]'
+              },
+              'year' => {
+                key: 'form1[0].#subform[153].Date_Veteran_Released_From_Active_Duty_Year[0]'
+              }
+            }
+          },
+          'serviceBranch' => {
+            key: 'form1[0].#subform[153].RadioButtonList[18]'
+          },
+          'placeOfSeparation' => {
+            limit: 32,
+            question_num: 3,
+            question_suffix: 'E',
+            question_label: 'Place of Last Separation',
+            question_text: 'PLACE OF LAST SEPARATION',
+            key: 'form1[0].#subform[153].Place_Of_Last_Separation[0]'
+          },
+          'nationalGuardActivated' => {
+            key: 'form1[0].#subform[153].RadioButtonList[5]'
+          },
+          'nationalGuardActivationDate' => {
+            'month' => {
+              key: 'form1[0].#subform[153].Date_Of_Activation_Month[0]'
+            },
+            'day' => {
+              key: 'form1[0].#subform[153].Date_Of_Activation_Day[0]'
+            },
+            'year' => {
+              key: 'form1[0].#subform[153].Date_Of_Activation_Year[0]'
+            }
+          },
+          'unitNameAndAddressLineOne' => {
+            limit: 20,
+            question_num: 3,
+            question_suffix: 'H',
+            question_label: 'Veteran\'s Reserve/National Guard Unit Name (Line 1)',
+            question_text: 'VETERAN\'S RESERVE/NATIONAL GUARD UNIT NAME (LINE 1)',
+            key: 'form1[0].#subform[153].Name_And_Address_Of_Veterans_Reserve_National_Guard_Unit[0]'
+          },
+          'unitNameAndAddressLineTwo' => {
+            limit: 20,
+            question_num: 3,
+            question_suffix: 'H',
+            question_label: 'Veteran\'s Reserve/National Guard Unit Name (Line 2)',
+            question_text: 'VETERAN\'S RESERVE/NATIONAL GUARD UNIT NAME (LINE 2)',
+            key: 'form1[0].#subform[153].Name_And_Address_Of_Veterans_Reserve_National_Guard_Unit[1]'
+          },
+          'unitNameAndAddressLineThree' => {
+            limit: 20,
+            question_num: 3,
+            question_suffix: 'H',
+            question_label: 'Veteran\'s Reserve/National Guard Unit Address (Line 1)',
+            question_text: 'VETERAN\'S RESERVE/NATIONAL GUARD UNIT ADDRESS (LINE 1)',
+            key: 'form1[0].#subform[153].Name_And_Address_Of_Veterans_Reserve_National_Guard_Unit[2]'
+          },
+          'unitNameAndAddressLineFour' => {
+            limit: 20,
+            question_num: 3,
+            question_suffix: 'H',
+            question_label: 'Veteran\'s Reserve/National Guard Unit Address (Line 2)',
+            question_text: 'VETERAN\'S RESERVE/NATIONAL GUARD UNIT ADDRESS (LINE 2)',
+            key: 'form1[0].#subform[153].Name_And_Address_Of_Veterans_Reserve_National_Guard_Unit[3]'
+          },
+          'unitPhone' => {
+            'phone_area_code' => {
+              key: 'form1[0].#subform[153].Telephone_Number_Area_Code[0]'
+            },
+            'phone_first_three_numbers' => {
+              key: 'form1[0].#subform[153].Telephone_Middle_Three_Numbers[0]'
+            },
+            'phone_last_four_numbers' => {
+              key: 'form1[0].#subform[153].Telephone_Last_Four_Numbers[0]'
+            }
+          },
+          'pow' => {
+            key: 'form1[0].#subform[153].RadioButtonList[6]'
+          },
+          'powDateRange' => {
+            'from' => {
+              'month' => {
+                key: 'form1[0].#subform[153].Date_Of_Confinement_Start_Month[0]'
+              },
+              'day' => {
+                key: 'form1[0].#subform[153].Date_Of_Confinement_Day[0]'
+              },
+              'year' => {
+                key: 'form1[0].#subform[153].Date_Of_Confinement_Year[0]'
+              }
+            },
+            'to' => {
+              'month' => {
+                key: 'form1[0].#subform[153].Date_Of_Confinement_End_Month[0]'
+              },
+              'day' => {
+                key: 'form1[0].#subform[153].Date_Of_Confinement_Day[1]'
+              },
+              'year' => {
+                key: 'form1[0].#subform[153].Date_Of_Confinement_Year[1]'
+              }
+            }
+          }
+        }.freeze
         def expand(form_data = {})
+          form_data['p11HeaderVeteranSocialSecurityNumber'] = split_ssn(form_data['veteranSocialSecurityNumber'])
+          expand_previous_names_data(form_data)
+          form_data['activeServiceDateRange'] = {
+            'from' => split_date(form_data.dig('activeServiceDateRange', 'from')),
+            'to' => split_date(form_data.dig('activeServiceDateRange', 'to'))
+          }
+          form_data['serviceBranch'] = service_to_radio(form_data['serviceBranch'])
+          expand_national_guard_data(form_data)
+          form_data['pow'] = to_radio_yes_no(form_data['pow'])
+          form_data['powDateRange'] = {
+            'from' => split_date(form_data.dig('powDateRange', 'from')),
+            'to' => split_date(form_data.dig('powDateRange', 'to'))
+          }
           form_data
+        end
+
+        def expand_national_guard_data(form_data)
+          form_data['nationalGuardActivated'] = to_radio_yes_no(form_data['nationalGuardActivated'])
+          form_data['nationalGuardActivationDate'] = split_date(form_data['nationalGuardActivationDate'])
+          unit_phone = form_data['unitPhone']
+          unit_phone = unit_phone['contact'] if unit_phone.is_a?(Hash)
+          form_data['unitPhone'] = expand_phone_number(unit_phone.to_s)
+          form_data.merge!(expand_unit_name_lines(form_data['unitName']))
+          form_data.merge!(expand_unit_address_lines(form_data['unitAddress']))
+        end
+
+        def expand_previous_names_data(form_data)
+          form_data['veteranPreviousNames'] ||= []
+          form_data['veteranHasPreviousNames'] = to_radio_yes_no(form_data['veteranPreviousNames'].length.positive?)
+          form_data.merge!(expand_previous_names(form_data))
+        end
+
+        def to_radio_yes_no(obj)
+          case obj
+          when true then 'YES'
+          when false then 'NO'
+          else 'Off'
+          end
+        end
+
+        def service_to_radio(service)
+          if SERVICE_BRANCH_MAPPING.keys.include?(service)
+            SERVICE_BRANCH_MAPPING[service]
+          else
+            'Off'
+          end
+        end
+
+        def expand_previous_names(form_data)
+          {
+            'veteranPreviousNameOne' => form_data['veteranPreviousNames']&.first || '',
+            'veteranPreviousNameTwo' => form_data['veteranPreviousNames']&.second || ''
+          }
+        end
+
+        def expand_unit_name_lines(unit_name)
+          if unit_name&.length.to_i <= 40
+            unit_name ||= ''
+            parts = unit_name.scan(/.{1,20}/)
+            {
+              'unitNameAndAddressLineOne' => parts[0] || '',
+              'unitNameAndAddressLineTwo' => parts[1] || ''
+            }
+          else
+            {
+              'unitNameAndAddressLineOne' => unit_name,
+              'unitNameAndAddressLineTwo' => ''
+            }
+          end
+        end
+
+        def expand_unit_address_lines(unit_address)
+          if unit_address&.length.to_i <= 40
+            unit_address ||= ''
+            parts = unit_address.scan(/.{1,20}/)
+            {
+              'unitNameAndAddressLineThree' => parts[0] || '',
+              'unitNameAndAddressLineFour' => parts[1] || ''
+            }
+          else
+            {
+              'unitNameAndAddressLineThree' => unit_address,
+              'unitNameAndAddressLineFour' => ''
+            }
+          end
         end
       end
     end
