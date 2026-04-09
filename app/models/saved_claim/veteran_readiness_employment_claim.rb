@@ -295,7 +295,7 @@ class SavedClaim::VeteranReadinessEmploymentClaim < SavedClaim
   end
 
   def flipper_id
-    email || guid
+    email&.downcase || guid
   end
 
   private

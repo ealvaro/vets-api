@@ -5,6 +5,7 @@ require 'flipper/adapters/active_record'
 require 'active_support/cache'
 require 'flipper/adapters/active_support_cache_store'
 require 'flipper/ui/action_patch'
+require 'flipper/ui/actors_value_normalizer'
 require 'flipper/instrumentation/event_subscriber'
 
 FLIPPER_FEATURE_CONFIG = YAML.safe_load(Rails.root.join('config', 'features.yml').read)
@@ -12,6 +13,7 @@ FLIPPER_FEATURE_CONFIG = YAML.safe_load(Rails.root.join('config', 'features.yml'
 Rails.application.configure do
   config.flipper.test_help = false
   config.flipper.log = false
+  config.middleware.insert_before ActionDispatch::Executor, Flipper::UI::ActorsValueNormalizer
 end
 
 Rails.application.reloader.to_prepare do
@@ -41,7 +43,7 @@ Rails.application.reloader.to_prepare do
     config.show_feature_description_in_list = true
     config.confirm_disable = true
     config.confirm_fully_enable = true
-    config.add_actor_placeholder = 'CASE SENSITIVE: lowercase email or UUID (comma-separated for multiple)'
+    config.add_actor_placeholder = 'Enter email or UUID (comma-separated for multiple)'
     config.descriptions_source = lambda do |_keys|
       FLIPPER_FEATURE_CONFIG['features'].transform_values { |value| value['description'] }
     end

@@ -368,6 +368,23 @@ RSpec.describe 'flipper', type: :request do
           end
         end
 
+        it 'can add actors with mixed-case email and still match' do
+          allow(user).to receive(:organization_member?).with(Settings.flipper.github_organization).and_return(true)
+          allow(user).to receive(:team_member?).with(Settings.flipper.github_team).and_return(true)
+          Flipper.disable(:this_is_only_a_test)
+          test_user = create(:user)
+          mixed_case_email = test_user.flipper_id.upcase
+
+          bypass_flipper_authenticity_token do
+            expect(Flipper.enabled?(:this_is_only_a_test)).to be false
+            post '/flipper/features/this_is_only_a_test/actors',
+                 params: { operation: 'enable', value: mixed_case_email }
+            follow_redirect!
+            assert_response :success
+            expect(Flipper.enabled?(:this_is_only_a_test, test_user)).to be true
+          end
+        end
+
         it 'can adjust percentage_of_actors' do
           allow(user).to receive(:organization_member?).with(Settings.flipper.github_organization).and_return(true)
           allow(user).to receive(:team_member?).with(Settings.flipper.github_team).and_return(true)
@@ -401,7 +418,7 @@ RSpec.describe 'flipper', type: :request do
       allow(user).to receive(:team_member?).with(Settings.flipper.github_team).and_return(true)
     end
 
-    it 'displays placeholder text indicating case sensitivity and comma-separated values are supported' do
+    it 'displays placeholder text indicating email or UUID and comma-separated values are supported' do
       feature = Flipper[:this_is_only_a_test]
       allow(feature).to receive_messages(boolean_value: false, actors_value: [])
 
@@ -409,10 +426,9 @@ RSpec.describe 'flipper', type: :request do
       assert_response :success
 
       body = Nokogiri::HTML(response.body)
-      actor_input = body.at_css('input[name="value"][placeholder*="CASE SENSITIVE"]')
+      actor_input = body.at_css('input[name="value"][placeholder*="email or UUID"]')
       expect(actor_input).not_to be_nil
-      expect(actor_input['placeholder']).to include('CASE SENSITIVE')
-      expect(actor_input['placeholder']).to include('lowercase email')
+      expect(actor_input['placeholder']).to include('email or UUID')
       expect(actor_input['placeholder']).to include('comma-separated')
     end
   end
