@@ -32,25 +32,30 @@ class SavedClaim::EducationBenefits::VA1990 < SavedClaim::EducationBenefits
   private
 
   def send_confirmation_email(parsed_form_data, email)
-    benefit_relinquished = if parsed_form_data['benefitsRelinquished'].present?
-                             "__Benefits Relinquished:__\n^" \
-                               "#{BENEFIT_RELINQUISHED_TITLE_FOR_1990[parsed_form_data['benefitsRelinquished']]}"
-                           else
-                             ''
-                           end
+    template_id = Settings.vanotify.services.va_gov.template_id.form1990_confirmation_email
+    personalisation = {
+      'first_name' => parsed_form.dig('veteranFullName', 'first')&.upcase.presence,
+      'benefits' => benefits_claimed(parsed_form_data),
+      'benefit_relinquished' => benefit_relinquished(parsed_form_data),
+      'date_submitted' => Time.zone.today.strftime('%B %d, %Y'),
+      'confirmation_number' => education_benefits_claim.confirmation_number,
+      'regional_office_address' => regional_office_address
+    }
 
-    VANotify::EmailJob.perform_async(
-      email,
-      Settings.vanotify.services.va_gov.template_id.form1990_confirmation_email,
-      {
-        'first_name' => parsed_form.dig('veteranFullName', 'first')&.upcase.presence,
-        'benefits' => benefits_claimed(parsed_form_data),
-        'benefit_relinquished' => benefit_relinquished,
-        'date_submitted' => Time.zone.today.strftime('%B %d, %Y'),
-        'confirmation_number' => education_benefits_claim.confirmation_number,
-        'regional_office_address' => regional_office_address
-      }
-    )
+    api_key_path = 'Settings.vanotify.services.va_gov.api_key'
+
+    if Flipper.enabled?(:va_notify_v2_form1990_confirmation_email)
+      VANotify::V2::QueueEmailJob.enqueue(email, template_id, personalisation, api_key_path)
+    else
+      VANotify::EmailJob.perform_async(email, template_id, personalisation)
+    end
+  end
+
+  def benefit_relinquished(parsed_form_data)
+    return '' if parsed_form_data['benefitsRelinquished'].blank?
+
+    "__Benefits Relinquished:__\n^" \
+      "#{BENEFIT_RELINQUISHED_TITLE_FOR_1990[parsed_form_data['benefitsRelinquished']]}"
   end
 
   def benefits_claimed(parsed_form_data)
