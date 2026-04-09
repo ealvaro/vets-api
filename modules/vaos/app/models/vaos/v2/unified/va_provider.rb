@@ -7,7 +7,7 @@ module VAOS
       # +id+ is the clinic IEN. +location_id+ is the parent facility +unique_id+ used with VAOS
       # clinics and slots APIs.
       class VAProvider < BaseProvider
-        attr_accessor :location_id, :facility_type
+        attr_accessor :location_id, :facility_type, :service_type
 
         def initialize(attrs = {})
           super
@@ -18,7 +18,7 @@ module VAOS
         # @param facility [FacilitiesApi::V2::Lighthouse::Facility] parent facility (address, geo, phone)
         # @param clinic [OpenStruct, Hash] VAOS clinic payload from SystemsService#get_facility_clinics
         #
-        def self.from_facility_and_clinic(facility, clinic)
+        def self.from_facility_and_clinic(facility, clinic, service_type: nil)
           clinic = clinic.to_h if clinic.is_a?(OpenStruct)
 
           new(
@@ -30,7 +30,8 @@ module VAOS
             phone: facility.phone&.dig('main'),
             latitude: facility.lat,
             longitude: facility.long,
-            facility_type: facility.facility_type
+            facility_type: facility.facility_type,
+            service_type:
           )
         end
 

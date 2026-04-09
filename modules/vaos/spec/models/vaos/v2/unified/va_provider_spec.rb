@@ -56,6 +56,18 @@ RSpec.describe VAOS::V2::Unified::VAProvider do
       expect(provider.provider_type).to eq('va')
     end
 
+    it 'sets service_type when provided' do
+      provider = described_class.from_facility_and_clinic(facility, clinic, service_type: 'audiology')
+
+      expect(provider.service_type).to eq('audiology')
+    end
+
+    it 'defaults service_type to nil when not provided' do
+      provider = described_class.from_facility_and_clinic(facility, clinic)
+
+      expect(provider.service_type).to be_nil
+    end
+
     it 'uses service_name for name' do
       provider = described_class.from_facility_and_clinic(
         facility,

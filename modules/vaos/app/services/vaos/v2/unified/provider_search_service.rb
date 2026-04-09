@@ -88,7 +88,7 @@ module VAOS
 
           matching_facilities.flat_map do |facility|
             fetch_clinics_for_facility(facility, clinical_service).map do |clinic|
-              provider = VAProvider.from_facility_and_clinic(facility, clinic)
+              provider = VAProvider.from_facility_and_clinic(facility, clinic, service_type: clinical_service)
               assign_distance(provider, user_address)
               provider
             end
