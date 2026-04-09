@@ -16,7 +16,9 @@
               "var jsonData = JSON.parse(responseBody)",
               "pm.globals.set(\"BEARER_TOKEN\", jsonData.access_token)"
             ],
-            "type": "text/javascript"
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
           }
         },
         {
@@ -26,11 +28,16 @@
             "exec": [
               ""
             ],
-            "type": "text/javascript"
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
           }
         }
       ],
       "id": "1ee71946-5f33-4c91-9fda-1d627094d42b",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
       "request": {
         "auth": {
           "type": "basic",
@@ -48,8 +55,10 @@
           ]
         },
         "method": "GET",
+        "header": [],
         "body": {
-          "mode": "urlencoded"
+          "mode": "urlencoded",
+          "urlencoded": []
         },
         "url": {
           "raw": "{{AuthUrl}}/auth/token/:email?environment={{Environment}}&ngrok_url={{NGROK_URL}}&requester={{REQUESTER}}",
@@ -64,15 +73,18 @@
           "query": [
             {
               "key": "environment",
-              "value": "{{Environment}}"
+              "value": "{{Environment}}",
+              "uuid": "6ca8dca2-dbec-45f7-8a5b-761e2f505b3b"
             },
             {
               "key": "ngrok_url",
-              "value": "{{NGROK_URL}}"
+              "value": "{{NGROK_URL}}",
+              "uuid": "53bf87dc-66e7-40b4-af53-795e43b9167f"
             },
             {
               "key": "requester",
-              "value": "{{REQUESTER}}"
+              "value": "{{REQUESTER}}",
+              "uuid": "7c383fe9-9583-4b57-83e1-a7c52d11e701"
             }
           ],
           "variable": [
@@ -83,10 +95,11 @@
             }
           ]
         }
-      }
+      },
+      "response": []
     },
     {
-      "name": "Get Local Token from Code (You probably don't need)",
+      "name": "Get Local Token from Code",
       "event": [
         {
           "listen": "test",
@@ -96,7 +109,9 @@
               "var jsonData = JSON.parse(responseBody)",
               "pm.globals.set(\"BEARER_TOKEN\", jsonData.data.access_token)"
             ],
-            "type": "text/javascript"
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
           }
         },
         {
@@ -106,7 +121,9 @@
             "exec": [
               ""
             ],
-            "type": "text/javascript"
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
           }
         }
       ],
@@ -116,6 +133,7 @@
           "type": "noauth"
         },
         "method": "POST",
+        "header": [],
         "body": {
           "mode": "formdata",
           "formdata": [
@@ -149,10 +167,11 @@
             "token"
           ]
         }
-      }
+      },
+      "response": []
     },
     {
-      "name": "Manual Refresh (don't use)",
+      "name": "{{BaseUrl}}/v0/sign_in/refresh",
       "id": "2ab5df99-1314-4a2e-8cb3-743697e914f3",
       "request": {
         "method": "POST",
@@ -185,7 +204,8 @@
             "refresh"
           ]
         }
-      }
+      },
+      "response": []
     }
   ]
 }
