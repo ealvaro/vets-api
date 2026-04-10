@@ -42,7 +42,10 @@ module VAOS
         log_referral_metrics(response)
         add_appointment_data_to_referral(response)
 
-        render json: Ccra::ReferralDetailSerializer.new(response)
+        render json: Ccra::ReferralDetailSerializer.new(
+          response,
+          meta: { veteran_address_present: user_has_residential_address? }
+        )
       end
 
       private
@@ -181,6 +184,16 @@ module VAOS
                              station_id:,
                              user_uuid: current_user.uuid
                            })
+      end
+
+      def user_has_residential_address?
+        address = current_user.vet360_contact_info&.residential_address
+        address.present? && address.latitude.present? && address.longitude.present?
+      rescue => e
+        Rails.logger.warn('Community Care Appointments: Failed to check veteran address',
+                          { error_class: e.class.name, user_uuid: current_user.uuid })
+        StatsD.increment("#{STATSD_PREFIX}.veteran_address_check.failure")
+        false
       end
     end
   end

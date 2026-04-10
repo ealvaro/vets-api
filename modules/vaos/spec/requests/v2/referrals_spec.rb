@@ -176,6 +176,104 @@ RSpec.describe 'VAOS V2 Referrals', type: :request do
         expect(response_data['data']['attributes']).to have_key('referralNumber')
         expect(response_data['data']['attributes']).to have_key('hasAppointments')
         expect(response_data['data']['attributes']).to have_key('appointments')
+
+        expect(response_data).to have_key('meta')
+        expect(response_data['meta']).to have_key('veteran_address_present')
+      end
+
+      context 'residential address check in meta' do
+        let(:empty_appointments) do
+          { EPS: { data: [] }, VAOS: { data: [] } }
+        end
+
+        before do
+          allow_any_instance_of(VAOS::V2::AppointmentsService)
+            .to receive(:get_active_appointments_for_referral)
+            .and_return(empty_appointments)
+        end
+
+        context 'when user has a residential address with coordinates' do
+          before do
+            address = double('Address', latitude: 39.7392, longitude: -104.9903)
+            contact_info = double('Vet360ContactInfo', residential_address: address)
+            allow_any_instance_of(User).to receive(:vet360_contact_info).and_return(contact_info)
+          end
+
+          it 'returns veteran_address_present as true' do
+            get "/vaos/v2/referrals/#{encrypted_uuid}"
+
+            response_data = JSON.parse(response.body)
+            expect(response_data['meta']['veteran_address_present']).to be(true)
+          end
+        end
+
+        context 'when user has no vet360 contact info' do
+          before do
+            allow_any_instance_of(User).to receive(:vet360_contact_info).and_return(nil)
+          end
+
+          it 'returns veteran_address_present as false' do
+            get "/vaos/v2/referrals/#{encrypted_uuid}"
+
+            response_data = JSON.parse(response.body)
+            expect(response_data['meta']['veteran_address_present']).to be(false)
+          end
+        end
+
+        context 'when user has no residential address' do
+          before do
+            contact_info = double('Vet360ContactInfo', residential_address: nil)
+            allow_any_instance_of(User).to receive(:vet360_contact_info).and_return(contact_info)
+          end
+
+          it 'returns veteran_address_present as false' do
+            get "/vaos/v2/referrals/#{encrypted_uuid}"
+
+            response_data = JSON.parse(response.body)
+            expect(response_data['meta']['veteran_address_present']).to be(false)
+          end
+        end
+
+        context 'when user has a residential address without coordinates' do
+          before do
+            address = double('Address', latitude: nil, longitude: nil)
+            contact_info = double('Vet360ContactInfo', residential_address: address)
+            allow_any_instance_of(User).to receive(:vet360_contact_info).and_return(contact_info)
+          end
+
+          it 'returns veteran_address_present as false' do
+            get "/vaos/v2/referrals/#{encrypted_uuid}"
+
+            response_data = JSON.parse(response.body)
+            expect(response_data['meta']['veteran_address_present']).to be(false)
+          end
+        end
+
+        context 'when vet360 contact info raises an error' do
+          before do
+            allow_any_instance_of(User).to receive(:vet360_contact_info)
+              .and_raise(Common::Exceptions::BackendServiceException.new('VET360_502'))
+          end
+
+          it 'returns veteranAddressPresent as false and does not 500' do
+            get "/vaos/v2/referrals/#{encrypted_uuid}"
+
+            expect(response).to have_http_status(:ok)
+            response_data = JSON.parse(response.body)
+            expect(response_data['meta']['veteran_address_present']).to be(false)
+          end
+
+          it 'logs a warning and increments the failure metric' do
+            expect(Rails.logger).to receive(:warn)
+              .with('Community Care Appointments: Failed to check veteran address',
+                    hash_including(:error_class, :user_uuid))
+            expect(StatsD).to receive(:increment)
+              .with('api.vaos.veteran_address_check.failure')
+            allow(StatsD).to receive(:increment)
+
+            get "/vaos/v2/referrals/#{encrypted_uuid}"
+          end
+        end
       end
 
       it 'increments the view metric' do
