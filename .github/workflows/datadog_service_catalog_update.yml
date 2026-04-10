@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - id: read_yaml
         name: 'Read in the Service Catalog data'
-        uses: mikefarah/yq@17f66dc6c6a177fafd8b71a6abea6d6340aa1e16 # master
+        uses: mikefarah/yq@22e609b2d941421ab4a918c8811631a3a1050a6d # master
         with:
           cmd: yq '.' ${{matrix.file}}
       - name: 'Update Service Catalog in DataDog'
