@@ -2002,43 +2002,6 @@ paths:
                 $ref: ./schemas/Errors.yml
           description: Not authorized for access to secure messages
       summary: /v1/prescriptions/refill_prescriptions
-  /v1/prescriptions/get_prescription_image/{cmopNdcNumber}:
-    get:
-      description: Get prescription image.
-      operationId: get_prescription_image
-      parameters:
-        - description: cmopNdcNumber
-          in: path
-          name: cmopNdcNumber
-          required: true
-          schema:
-            type: string
-        - $ref: "#/components/parameters/InflectionHeader"
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    description: base64-encoded file contents
-                    type: string
-                    format: byte
-          description: OK
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: ./schemas/Errors.yml
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: ./schemas/Errors.yml
-          description: Not authorized for access to secure messages
-      summary: /v1/prescriptions/list_refillable_prescriptions
   /v1/tooltips:
     get:
       description: Retrieve tooltips settings for mhv-medications In-Product Education (IPE)

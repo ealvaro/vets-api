@@ -131,18 +131,6 @@ RSpec.describe 'MyHealth::V1::Prescriptions', type: :request do
       )
     end
 
-    it 'responds to GET #index with images' do
-      VCR.use_cassette('rx_client/prescriptions/gets_a_list_of_all_prescriptions_with_images_v1') do
-        get '/my_health/v1/prescriptions?&sort[]=prescription_name&sort[]=dispensed_date&include_image=true'
-      end
-
-      expect(response).to be_successful
-      expect(response.body).to be_a(String)
-      expect(response).to match_response_schema('my_health/prescriptions/v1/prescriptions_list')
-      item_index = JSON.parse(response.body)['data'].find_index { |item| item['attributes']['prescription_image'] }
-      expect(item_index).not_to be_nil
-    end
-
     context 'Feature mhv_medications_display_pending_meds=true"' do
       before do
         allow(Flipper).to receive(:enabled?).with(:mhv_medications_display_pending_meds, any_args).and_return(true)
@@ -235,17 +223,6 @@ RSpec.describe 'MyHealth::V1::Prescriptions', type: :request do
         expect(errors).to be_truthy
         expect(errors['detail']).to eq("The record identified by #{prescription_id} could not be found")
       end
-    end
-
-    it 'responds to GET #get_prescription_image with image' do
-      VCR.use_cassette('rx_client/prescriptions/gets_a_prescription_image_v1') do
-        get '/my_health/v1/prescriptions?/prescriptions/get_prescription_image/00013264681'
-      end
-
-      expect(response).to be_successful
-      expect(response.body).to be_a(String)
-      expect(response).to match_response_schema('my_health/prescriptions/v1/prescriptions_list')
-      expect(JSON.parse(response.body)['data']).to be_truthy
     end
 
     it 'responds to GET #index with pagination parameters' do
