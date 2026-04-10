@@ -56,6 +56,7 @@ RSpec.describe Traceable, type: :controller do
         before { allow(mock_span).to receive(:service=).and_raise(StandardError, 'Mock Error') }
 
         it 'logs "Error setting trace tags" and does not interrupt the response' do
+          allow(Rails.logger).to receive(:error)
           expect(Rails.logger).to receive(:error).with('Error setting service tag',
                                                        { class: 'TestTraceableController', message: 'Mock Error' })
           get :index
