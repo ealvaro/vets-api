@@ -27,8 +27,8 @@ module BGS
       return nil if parent_object.blank?
 
       type_mapping = {
-        'ch35' => 'Chapter 35',
-        'fry' => 'Fry Scholarship',
+        'ch35' => 'Ch35',
+        'fry' => 'Fry',
         'feca' => 'FECA'
       }
       # sanitize object of false values
@@ -43,6 +43,7 @@ module BGS
       program = get_program(@student&.dig('type_of_program_or_benefit'))
       if program.present? && @student['school_information'].present?
         name = [program, @student&.dig('school_information', 'name')].compact_blank.join(', ')
+        name = name.truncate(80, omission: '') if name.present?
         @student['type_of_program_or_benefit'] = name.presence
         @student['school_information']['name'] = name.presence
         @student['tuition_is_paid_by_gov_agency'] = true

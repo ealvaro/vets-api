@@ -36,7 +36,7 @@ RSpec.describe BGS::StudentSchool do
       curnt_school_addrs_two_txt: nil,
       curnt_school_addrs_zip_nbr: nil,
       curnt_school_city_nm: nil,
-      curnt_school_nm: 'Chapter 35, Fry Scholarship, FECA, name of trade program',
+      curnt_school_nm: 'Ch35, Fry, FECA, name of trade program',
       curnt_school_postal_cd: nil,
       curnt_sessns_per_wk_num: nil,
       vnp_proc_id: '3829729',
@@ -68,7 +68,7 @@ RSpec.describe BGS::StudentSchool do
   end
   let(:student_params_v2) do
     {
-      agency_paying_tuitn_nm: 'Chapter 35, Fry Scholarship, FECA, name of trade program',
+      agency_paying_tuitn_nm: 'Ch35, Fry, FECA, name of trade program',
       govt_paid_tuitn_ind: 'Y',
       next_year_annty_income_amt: '145',
       next_year_emplmt_income_amt: '56000',
@@ -106,6 +106,34 @@ RSpec.describe BGS::StudentSchool do
           student: all_flows_v2_payload['dependents_application']['student_information'][0]
         ).create
       end
+    end
+
+    it 'truncates curnt_school_nm and agency_paying_tuitn_nm to 80 characters when school name is long' do
+      long_school_name = 'A' * 80
+      # "Ch35, Fry, FECA, " prefix is 17 chars; 17 + 80 = 97, which exceeds the 80 char DB column limit
+      expected_truncated = "Ch35, Fry, FECA, #{'A' * 63}"
+      payload = build(:form686c_674_v2)
+      student = payload['dependents_application']['student_information'][0]
+      student['school_information']['name'] = long_school_name
+
+      VCR.use_cassette('bgs/student_school/create') do
+        expect_any_instance_of(BGS::VnpChildSchoolService).to receive(:child_school_create).with(
+          hash_including(curnt_school_nm: expected_truncated)
+        )
+        expect_any_instance_of(BGS::VnpChildStudentService).to receive(:child_student_create).with(
+          hash_including(agency_paying_tuitn_nm: expected_truncated)
+        )
+
+        BGS::StudentSchool.new(
+          proc_id:,
+          vnp_participant_id:,
+          payload:,
+          user: user_object,
+          student:
+        ).create
+      end
+
+      expect(expected_truncated.length).to eq(80)
     end
   end
 end

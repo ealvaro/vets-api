@@ -198,7 +198,7 @@ RSpec.describe PdfFill::Forms::Formatters::Va21674v2 do
       }
 
       result = described_class.get_program(programs)
-      expect(result).to eq('Chapter 35, Fry Scholarship')
+      expect(result).to eq('Ch35, Fry')
     end
 
     it 'handles single program' do
@@ -217,7 +217,7 @@ RSpec.describe PdfFill::Forms::Formatters::Va21674v2 do
       }
 
       result = described_class.get_program(programs)
-      expect(result).to eq('Chapter 35, FECA')
+      expect(result).to eq('Ch35, FECA')
     end
   end
 

@@ -62,14 +62,14 @@ module PdfFill
           #
           # @example
           #   get_program({ 'ch35' => true, 'fry' => true })
-          #   # => "Chapter 35, Fry Scholarship"
+          #   # => "Ch35, Fry"
           #
           def get_program(parent_object)
             return nil if parent_object.blank?
 
             type_mapping = {
-              'ch35' => 'Chapter 35',
-              'fry' => 'Fry Scholarship',
+              'ch35' => 'Ch35',
+              'fry' => 'Fry',
               'feca' => 'FECA'
             }
             # sanitize object of false values
