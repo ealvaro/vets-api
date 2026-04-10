@@ -63,25 +63,31 @@ RSpec.describe DigitalFormsApi::SubmissionsController, type: :controller do
       let(:cassette) { 'retrieve_686c' }
       let(:participant_id) { '54321' }
 
-      it 'returns a 403 error', skip: 'Flaky test, needs investigation' do
-        expect(Rails.logger).to receive(:warn).with(
-          'Digital Form API - Veteran participant ID is forbidden to access this submission',
+      it 'returns a 403 error' do
+        allow(Rails.logger).to receive(:warn)
+        allow(monitor).to receive(:track_show)
+
+        retrieve_submission!
+
+        expect(response).to have_http_status(:forbidden)
+        expect(Rails.logger).to have_received(:warn).with(
+          'Digital Forms API - Veteran participant ID is forbidden to access this submission',
           hash_including(
             form_id: '21-686c',
             submission_id: 'abc123',
             user_participant_id_present: true
           )
-        )
-        expect(monitor).to receive(:track_show).with(hash_including(
-                                                       http_status: 403,
-                                                       submission_id: 'abc123',
-                                                       form_id: '21-686c',
-                                                       failure_stage: 'authorize_submission',
-                                                       auth_denial_reason: 'participant_id_mismatch',
-                                                       duration_ms: kind_of(Integer)
-                                                     ))
-        retrieve_submission!
-        expect(response).to have_http_status(:forbidden)
+        ).once
+        expect(monitor).to have_received(:track_show).with(
+          hash_including(
+            http_status: 403,
+            submission_id: 'abc123',
+            form_id: '21-686c',
+            failure_stage: 'authorize_submission',
+            auth_denial_reason: 'participant_id_mismatch',
+            duration_ms: kind_of(Integer)
+          )
+        ).once
       end
     end
 
@@ -89,25 +95,31 @@ RSpec.describe DigitalFormsApi::SubmissionsController, type: :controller do
       let(:cassette) { 'retrieve_686c' }
       let(:participant_id) { nil }
 
-      it 'returns a 403 error', skip: 'Flaky test, needs investigation' do
-        expect(Rails.logger).to receive(:warn).with(
-          'Digital Form API - Veteran participant ID is forbidden to access this submission',
+      it 'returns a 403 error' do
+        allow(Rails.logger).to receive(:warn)
+        allow(monitor).to receive(:track_show)
+
+        retrieve_submission!
+
+        expect(response).to have_http_status(:forbidden)
+        expect(Rails.logger).to have_received(:warn).with(
+          'Digital Forms API - Veteran participant ID is forbidden to access this submission',
           hash_including(
             form_id: '21-686c',
             submission_id: 'abc123',
             user_participant_id_present: false
           )
-        )
-        expect(monitor).to receive(:track_show).with(hash_including(
-                                                       http_status: 403,
-                                                       submission_id: 'abc123',
-                                                       form_id: '21-686c',
-                                                       failure_stage: 'authorize_submission',
-                                                       auth_denial_reason: 'missing_participant_id',
-                                                       duration_ms: kind_of(Integer)
-                                                     ))
-        retrieve_submission!
-        expect(response).to have_http_status(:forbidden)
+        ).once
+        expect(monitor).to have_received(:track_show).with(
+          hash_including(
+            http_status: 403,
+            submission_id: 'abc123',
+            form_id: '21-686c',
+            failure_stage: 'authorize_submission',
+            auth_denial_reason: 'missing_participant_id',
+            duration_ms: kind_of(Integer)
+          )
+        ).once
       end
     end
 
