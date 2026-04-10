@@ -45,7 +45,8 @@ RSpec.describe Form210779SubmissionEmailJob, type: :job do
           template_id: Settings.vanotify.services.bio_aquia.template_id.form_0779_submission_email,
           personalisation: {
             'first_name' => 'John',
-            'date_received' => kind_of(String)
+            'date_submitted' => kind_of(String),
+            'form_name' => '21-0779'
           }
         )
 

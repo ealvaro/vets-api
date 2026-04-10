@@ -151,9 +151,11 @@ class Form210779SubmissionEmailJob
   end
 
   def personalisation(claim)
+    date_str = claim.created_at.in_time_zone('America/New_York').strftime('%B %-d, %Y')
     {
       'first_name' => claim.parsed_form.dig('veteranInformation', 'fullName', 'first'),
-      'date_received' => claim.created_at.in_time_zone('America/New_York').strftime('%B %-d, %Y')
+      'date_submitted' => date_str,
+      'form_name' => '21-0779'
     }.compact
   end
 end
