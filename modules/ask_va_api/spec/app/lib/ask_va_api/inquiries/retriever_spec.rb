@@ -30,7 +30,7 @@ RSpec.describe AskVAApi::Inquiries::Retriever do
       CreatedOn: '8/5/2024 4:51:52 PM',
       Id: 'a6c3af1b-ec8c-ee11-8178-001dd804e106',
       InquiryLevelOfAuthentication: 'Personal',
-      InquiryNumber: 'A-123456',
+      InquiryNumber: 'A-12345678-123456',
       InquiryStatus: 'In Progress',
       InquiryTopic: 'Cemetery Debt',
       LastUpdate: '1/1/1900',
@@ -93,13 +93,13 @@ RSpec.describe AskVAApi::Inquiries::Retriever do
 
         expect(result).to all(be_a(AskVAApi::Inquiries::Entity))
         expect(result.size).to eq(1)
-        expect(result.first.inquiry_number).to eq('A-123456')
+        expect(result.first.inquiry_number).to eq('A-12345678-123456')
         expect(result.first.queue_name).to eq('Debt Management Center')
       end
     end
 
     context 'when ID is given and CRM returns a single inquiry' do
-      let(:id) { 'A-123456' }
+      let(:id) { 'A-12345678-123456' }
 
       before do
         stub_faraday(
@@ -113,7 +113,7 @@ RSpec.describe AskVAApi::Inquiries::Retriever do
         result = retriever.fetch_by_id(id:)
 
         expect(result).to be_a(AskVAApi::Inquiries::Entity)
-        expect(result.inquiry_number).to eq('A-123456')
+        expect(result.inquiry_number).to eq('A-12345678-123456')
         expect(result.queue_name).to eq('Debt Management Center')
       end
     end

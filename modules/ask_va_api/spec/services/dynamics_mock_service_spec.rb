@@ -40,7 +40,7 @@ RSpec.describe DynamicsMockService do
                   Id: '1',
                   CategoryId: '5c524deb-d864-eb11-bb24-000d3a579c45',
                   CreatedOn: '8/5/2024 4:51:52 PM',
-                  InquiryNumber: 'A-1',
+                  InquiryNumber: 'A-12345678-123456',
                   InquiryStatus: 'Replied',
                   SubmitterQuestion: 'What is my status?',
                   LastUpdate: '8/5/2024 4:51:52 PM',

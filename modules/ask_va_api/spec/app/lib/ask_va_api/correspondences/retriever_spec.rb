@@ -8,7 +8,7 @@ RSpec.describe AskVAApi::Correspondences::Retriever do
   end
 
   let(:service) { instance_double(Crm::Service) }
-  let(:inquiry_id) { 'A-1' }
+  let(:inquiry_id) { 'A-12345678-123456' }
   let(:icn) { '123' }
   let(:error_message) { 'Some error occurred' }
   let(:user_mock_data) { false }

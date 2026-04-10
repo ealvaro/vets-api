@@ -5,6 +5,7 @@ module AskVAApi
     class InquiriesController < ApplicationController
       around_action :handle_exceptions
       before_action :require_loa3!, except: %i[unauth_create status]
+      before_action :validate_inquiry_id_format, only: %i[show status create_reply]
       skip_before_action :authenticate, only: %i[unauth_create status]
 
       def index
@@ -105,6 +106,15 @@ module AskVAApi
 
       def require_loa3!
         raise Common::Exceptions::Unauthorized unless current_user&.loa&.fetch(:current, nil) == 3
+      end
+
+      INQUIRY_ID_FORMAT = /\AA-[0-9]{8}-[0-9]{6}\z/
+
+      # Validates that params[:id] follows the known inquiry ID format "A-YYYYMMDD-NNNNNN".
+      def validate_inquiry_id_format
+        unless params[:id].match?(INQUIRY_ID_FORMAT)
+          render json: { error: 'Invalid inquiry ID format. Expected format: A-YYYYMMDD-NNNNNN.' }, status: :bad_request
+        end
       end
 
       class InvalidAttachmentError < StandardError; end

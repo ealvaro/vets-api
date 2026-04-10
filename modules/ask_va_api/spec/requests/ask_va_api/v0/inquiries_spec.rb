@@ -16,7 +16,7 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
     JSON.parse(File.read('modules/ask_va_api/config/locales/get_inquiries_mock_data.json'))['Data']
   end
   let(:valid_id) { mock_inquiries.first['InquiryNumber'] }
-  let(:invalid_id) { 'A-20240423-30709' }
+  let(:unknown_id) { 'A-20240423-307090' }
   let(:static_data_mock) { File.read('modules/ask_va_api/config/locales/static_data.json') }
   let(:cache_data) { JSON.parse(static_data_mock, symbolize_names: true) }
   let(:patsr_facilities) do
@@ -106,7 +106,7 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
           { 'id' => '4',
             'type' => 'inquiry',
             'attributes' =>
-             { 'inquiry_number' => 'A-4',
+             { 'inquiry_number' => 'A-45678912-123456',
                'allow_attachments' => nil,
                'allow_replies' => nil,
                'has_attachments' => true,
@@ -192,7 +192,7 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
         { 'id' => '1',
           'type' => 'inquiry',
           'attributes' =>
-          { 'inquiry_number' => 'A-1',
+          { 'inquiry_number' => 'A-12345678-123456',
             'allow_attachments' => nil,
             'allow_replies' => nil,
             'has_attachments' => true,
@@ -248,7 +248,7 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
             CreatedOn: '8/5/2024 4:51:52 PM',
             Id: 'a6c3af1b-ec8c-ee11-8178-001dd804e106',
             InquiryLevelOfAuthentication: 'Personal',
-            InquiryNumber: 'A-123456',
+            InquiryNumber: 'A-12345678-123456',
             InquiryStatus: 'In Progress',
             InquiryTopic: 'Cemetery Debt',
             LastUpdate: '8/5/2024 4:51:52 PM',
@@ -270,7 +270,7 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
             { 'id' => 'a6c3af1b-ec8c-ee11-8178-001dd804e106',
               'type' => 'inquiry',
               'attributes' =>
-              { 'inquiry_number' => 'A-123456',
+              { 'inquiry_number' => 'A-12345678-123456',
                 'allow_attachments' => nil,
                 'allow_replies' => nil,
                 'has_attachments' => nil,
@@ -314,11 +314,11 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
         it { expect(JSON.parse(response.body)).to eq(expected_response) }
       end
 
-      context 'when the id is invalid' do
+      context 'when the id is not found' do
         let(:body) do
-          '{"Data":null,"Message":"Data Validation: No Inquiries found by ID A-20240423-30709"' \
+          '{"Data":null,"Message":"Data Validation: No Inquiries found by ID A-20240423-307090"' \
             ',"ExceptionOccurred":true,"ExceptionMessage":"Data Validation: No Inquiries found by ' \
-            'ID A-20240423-30709","MessageId":"ca5b990a-63fe-407d-a364-46caffce12c1"}'
+            'ID A-20240423-307090","MessageId":"ca5b990a-63fe-407d-a364-46caffce12c1"}'
         end
         let(:failure) { Faraday::Response.new(response_body: body, status: 400) }
         let(:service) { instance_double(Crm::Service) }
@@ -328,20 +328,39 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
           allow_any_instance_of(Crm::CrmToken).to receive(:call).and_return('Token')
           allow(service).to receive(:call).and_return(failure)
           sign_in(authorized_user)
-          get "#{inquiry_path}/#{invalid_id}"
+          get "#{inquiry_path}/#{unknown_id}"
         end
 
         it { expect(response).to have_http_status(:not_found) }
 
         it_behaves_like 'common error handling', :not_found, 'service_error',
                         'AskVAApi::Inquiries::InquiriesRetrieverError: ' \
-                        '{"Data":null,"Message":"Data Validation: No Inquiries found by ID A-20240423-30709"' \
+                        '{"Data":null,"Message":"Data Validation: No Inquiries found by ID A-20240423-307090"' \
                         ',"ExceptionOccurred":true,"ExceptionMessage":"Data Validation: No Inquiries found by ' \
-                        'ID A-20240423-30709","MessageId":"ca5b990a-63fe-407d-a364-46caffce12c1"}'
+                        'ID A-20240423-307090","MessageId":"ca5b990a-63fe-407d-a364-46caffce12c1"}'
+      end
+
+      context 'when the id format is invalid' do
+        before do
+          sign_in(authorized_user)
+        end
+
+        %w[invalid 12345 A-1234567-123456 A-12345678-12345 A12345678123456].each do |bad_id|
+          it "returns bad_request for '#{bad_id}'" do
+            get "#{inquiry_path}/#{bad_id}"
+            expect(response).to have_http_status(:bad_request)
+            expect(JSON.parse(response.body)['error']).to include('Invalid inquiry ID format')
+          end
+        end
+
+        it 'returns ok for a valid format' do
+          get "#{inquiry_path}/#{valid_id}", params: { user_mock_data: true }
+          expect(response).to have_http_status(:ok)
+        end
       end
     end
 
-    it_behaves_like 'an endpoint requiring loa3', :get, '/ask_va_api/v0/inquiries/A-1',
+    it_behaves_like 'an endpoint requiring loa3', :get, '/ask_va_api/v0/inquiries/A-12345678-123456',
                     { params: { user_mock_data: true } }
   end
 
@@ -469,7 +488,7 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
           '"MessageId":"28cda301-5977-4052-a391-9ab36d514919"}'
       end
       let(:failure) { Faraday::Response.new(response_body: body, status: 400) }
-      let(:payload) { { InquiryNumber: 'A-1' } }
+      let(:payload) { { InquiryNumber: 'A-12345678-123456' } }
 
       before do
         allow_any_instance_of(Crm::CrmToken).to receive(:call).and_return('Token')
@@ -488,6 +507,16 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
                       '"ExceptionOccurred":true,' \
                       '"ExceptionMessage":"Data Validation: No Inquiries found",' \
                       '"MessageId":"28cda301-5977-4052-a391-9ab36d514919"}'
+    end
+
+    context 'when the id format is invalid' do
+      %w[invalid 12345 A-1234567-123456 A-12345678-12345 A12345678123456].each do |bad_id|
+        it "returns bad_request for '#{bad_id}'" do
+          get "/ask_va_api/v0/inquiries/#{bad_id}/status"
+          expect(response).to have_http_status(:bad_request)
+          expect(JSON.parse(response.body)['error']).to include('Invalid inquiry ID format')
+        end
+      end
     end
   end
 
@@ -756,7 +785,7 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
       before do
         allow_any_instance_of(Crm::Service).to receive(:call).and_return({ Data: { Id: '123' } })
         sign_in(authorized_user)
-        post '/ask_va_api/v0/inquiries/123/reply/new', params: payload
+        post '/ask_va_api/v0/inquiries/A-12345678-123456/reply/new', params: payload
       end
 
       it 'returns status 200' do
@@ -766,7 +795,7 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
 
     context 'when crm api fail' do
       context 'when the API call fails' do
-        let(:endpoint) { 'inquiries/123/reply/new' }
+        let(:endpoint) { 'inquiries/A-12345678-123456/reply/new' }
         let(:body) do
           '{"Data":null,"Message":"Data Validation: Missing Reply"' \
             ',"ExceptionOccurred":true,"ExceptionMessage":"Data Validation: ' \
@@ -783,7 +812,7 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
                     Reply: 'this is my reply',
                     ListOfAttachments: nil
                   }).and_return(failure)
-          post '/ask_va_api/v0/inquiries/123/reply/new', params: payload
+          post '/ask_va_api/v0/inquiries/A-12345678-123456/reply/new', params: payload
         end
 
         it 'raise InquiriesCreatorError' do
@@ -795,6 +824,20 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
                         '{"Data":null,"Message":"Data Validation: Missing Reply"' \
                         ',"ExceptionOccurred":true,"ExceptionMessage":"Data Validation: ' \
                         'Missing Reply","MessageId":"e2cbe041-df91-41f4-8bd2-8b6d9dbb2e38"}'
+      end
+    end
+
+    context 'when the id format is invalid' do
+      before do
+        sign_in(authorized_user)
+      end
+
+      %w[invalid 12345 A-1234567-123456 A-12345678-12345 A12345678123456].each do |bad_id|
+        it "returns bad_request for '#{bad_id}'" do
+          post "/ask_va_api/v0/inquiries/#{bad_id}/reply/new", params: payload
+          expect(response).to have_http_status(:bad_request)
+          expect(JSON.parse(response.body)['error']).to include('Invalid inquiry ID format')
+        end
       end
     end
 

@@ -7,7 +7,7 @@ module AskVAApi
     module Status
       RSpec.describe Retriever do
         subject(:retriever) do
-          described_class.new(icn:, user_mock_data: nil, entity_class: Entity, inquiry_number: 'A-1')
+          described_class.new(icn:, user_mock_data: nil, entity_class: Entity, inquiry_number: 'A-12345678-123456')
         end
         let(:icn) { '1' }
 

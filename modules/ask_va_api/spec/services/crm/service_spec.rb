@@ -9,7 +9,7 @@ RSpec.describe Crm::Service do
       data: [
         {
           respond_reply_id: 'Original Question',
-          inquiryNumber: 'A-1',
+          inquiryNumber: 'A-12345678-123456',
           inquiryTopic: 'Topic',
           inquiryProcessingStatus: 'Close',
           lastUpdate: '08/07/23',
