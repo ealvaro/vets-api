@@ -144,6 +144,197 @@ RSpec.describe SavedClaim::Form214192, type: :model do
         expect(claim).not_to be_valid
         expect(claim.errors.full_messages.join).to include('missing required properties')
       end
+
+      # New validation rules added in schema alignment
+      context 'SSN or VA file number validation (anyOf)' do
+        it 'accepts form with only SSN' do
+          form['veteranInformation'].delete('vaFileNumber')
+          expect(claim).to be_valid
+        end
+
+        it 'accepts form with only VA file number' do
+          form['veteranInformation'].delete('ssn')
+          expect(claim).to be_valid
+        end
+
+        it 'accepts form with both SSN and VA file number' do
+          # Default fixture has both
+          expect(claim).to be_valid
+        end
+
+        it 'rejects form with neither SSN nor VA file number' do
+          form['veteranInformation'].delete('ssn')
+          form['veteranInformation'].delete('vaFileNumber')
+          expect(claim).not_to be_valid
+          expect(claim.errors.full_messages.join).to include('missing required properties')
+        end
+      end
+
+      context 'militaryDutyStatus validation' do
+        it 'accepts form without militaryDutyStatus (optional at top level)' do
+          form.delete('militaryDutyStatus')
+          expect(claim).to be_valid
+        end
+
+        it 'requires currentDutyStatus within militaryDutyStatus' do
+          form['militaryDutyStatus'].delete('currentDutyStatus')
+          expect(claim).not_to be_valid
+          expect(claim.errors.full_messages.join).to include('missing required properties')
+        end
+
+        it 'requires veteranDisabilitiesPreventMilitaryDuties' do
+          form['militaryDutyStatus'].delete('veteranDisabilitiesPreventMilitaryDuties')
+          expect(claim).not_to be_valid
+          expect(claim.errors.full_messages.join).to include('missing required properties')
+        end
+
+        it 'accepts valid militaryDutyStatus with all required fields' do
+          form['militaryDutyStatus'] = {
+            'currentDutyStatus' => 'Active Duty',
+            'veteranDisabilitiesPreventMilitaryDuties' => false
+          }
+          expect(claim).to be_valid
+        end
+      end
+
+      context 'employmentInformation required fields' do
+        it 'requires concessions' do
+          form['employmentInformation'].delete('concessions')
+          expect(claim).not_to be_valid
+          expect(claim.errors.full_messages.join).to include('missing required properties')
+        end
+
+        it 'requires timeLostLast12MonthsOfEmployment' do
+          form['employmentInformation'].delete('timeLostLast12MonthsOfEmployment')
+          expect(claim).not_to be_valid
+          expect(claim.errors.full_messages.join).to include('missing required properties')
+        end
+
+        it 'requires amountEarnedLast12MonthsOfEmployment' do
+          form['employmentInformation'].delete('amountEarnedLast12MonthsOfEmployment')
+          expect(claim).not_to be_valid
+          expect(claim.errors.full_messages.join).to include('missing required properties')
+        end
+
+        it 'requires hoursWorkedDaily' do
+          form['employmentInformation'].delete('hoursWorkedDaily')
+          expect(claim).not_to be_valid
+          expect(claim.errors.full_messages.join).to include('missing required properties')
+        end
+
+        it 'requires hoursWorkedWeekly' do
+          form['employmentInformation'].delete('hoursWorkedWeekly')
+          expect(claim).not_to be_valid
+          expect(claim.errors.full_messages.join).to include('missing required properties')
+        end
+      end
+
+      context 'numeric field validation (minimum/maximum)' do
+        it 'accepts amountEarnedLast12MonthsOfEmployment at minimum (0)' do
+          form['employmentInformation']['amountEarnedLast12MonthsOfEmployment'] = 0
+          expect(claim).to be_valid
+        end
+
+        it 'accepts amountEarnedLast12MonthsOfEmployment at maximum (999999999)' do
+          form['employmentInformation']['amountEarnedLast12MonthsOfEmployment'] = 999_999_999
+          expect(claim).to be_valid
+        end
+
+        it 'rejects negative amountEarnedLast12MonthsOfEmployment' do
+          form['employmentInformation']['amountEarnedLast12MonthsOfEmployment'] = -1
+          expect(claim).not_to be_valid
+          expect(claim.errors.full_messages.join).to match(/minimum|less than/)
+        end
+
+        it 'rejects amountEarnedLast12MonthsOfEmployment exceeding maximum' do
+          form['employmentInformation']['amountEarnedLast12MonthsOfEmployment'] = 1_000_000_000
+          expect(claim).not_to be_valid
+          expect(claim.errors.full_messages.join).to match(/maximum|greater than/)
+        end
+
+        it 'accepts hoursWorkedDaily at minimum (0)' do
+          form['employmentInformation']['hoursWorkedDaily'] = 0
+          expect(claim).to be_valid
+        end
+
+        it 'rejects negative hoursWorkedDaily' do
+          form['employmentInformation']['hoursWorkedDaily'] = -1
+          expect(claim).not_to be_valid
+          expect(claim.errors.full_messages.join).to match(/minimum|less than/)
+        end
+
+        it 'accepts hoursWorkedWeekly at minimum (0)' do
+          form['employmentInformation']['hoursWorkedWeekly'] = 0
+          expect(claim).to be_valid
+        end
+
+        it 'rejects negative hoursWorkedWeekly' do
+          form['employmentInformation']['hoursWorkedWeekly'] = -1
+          expect(claim).not_to be_valid
+          expect(claim.errors.full_messages.join).to match(/minimum|less than/)
+        end
+
+        it 'accepts grossMonthlyAmountOfBenefit within valid range' do
+          form['benefitEntitlementPayments'] = {
+            'sickRetirementOtherBenefits' => true,
+            'typeOfBenefit' => 'Retirement',
+            'grossMonthlyAmountOfBenefit' => 5000,
+            'dateBenefitBegan' => '2020-01-01',
+            'dateFirstPaymentIssued' => '2020-02-01'
+          }
+          expect(claim).to be_valid
+        end
+
+        it 'rejects negative grossMonthlyAmountOfBenefit' do
+          form['benefitEntitlementPayments'] = {
+            'sickRetirementOtherBenefits' => true,
+            'typeOfBenefit' => 'Retirement',
+            'grossMonthlyAmountOfBenefit' => -100,
+            'dateBenefitBegan' => '2020-01-01',
+            'dateFirstPaymentIssued' => '2020-02-01'
+          }
+          expect(claim).not_to be_valid
+          expect(claim.errors.full_messages.join).to match(/minimum|less than/)
+        end
+      end
+
+      context 'string maxLength validation' do
+        it 'accepts employerName at maxLength (100)' do
+          form['employmentInformation']['employerName'] = 'A' * 100
+          expect(claim).to be_valid
+        end
+
+        it 'rejects employerName exceeding maxLength (100)' do
+          form['employmentInformation']['employerName'] = 'A' * 101
+          expect(claim).not_to be_valid
+          expect(claim.errors.full_messages.join).to include('string length')
+          expect(claim.errors.full_messages.join).to include('is greater than: 100')
+        end
+
+        it 'accepts typeOfWorkPerformed at maxLength (1000)' do
+          form['employmentInformation']['typeOfWorkPerformed'] = 'A' * 1000
+          expect(claim).to be_valid
+        end
+
+        it 'rejects typeOfWorkPerformed exceeding maxLength (1000)' do
+          form['employmentInformation']['typeOfWorkPerformed'] = 'A' * 1001
+          expect(claim).not_to be_valid
+          expect(claim.errors.full_messages.join).to include('string length')
+          expect(claim.errors.full_messages.join).to include('is greater than: 1000')
+        end
+
+        it 'accepts currentDutyStatus at maxLength (500)' do
+          form['militaryDutyStatus']['currentDutyStatus'] = 'A' * 500
+          expect(claim).to be_valid
+        end
+
+        it 'rejects currentDutyStatus exceeding maxLength (500)' do
+          form['militaryDutyStatus']['currentDutyStatus'] = 'A' * 501
+          expect(claim).not_to be_valid
+          expect(claim.errors.full_messages.join).to include('string length')
+          expect(claim.errors.full_messages.join).to include('is greater than: 500')
+        end
+      end
     end
   end
 
