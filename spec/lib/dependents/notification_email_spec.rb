@@ -7,6 +7,8 @@ require 'dependents/notification_email'
 RSpec.describe Dependents::NotificationEmail do
   before { allow_any_instance_of(SavedClaim::DependencyClaim).to receive(:pdf_overflow_tracking) }
 
+  # NOTE: the factory in this case isn't truly representative of the shape of the parsed form
+  # We can always expect "dependents_application" to be present, but not other properties
   let(:saved_claim) { create(:dependency_claim) }
   let(:vanotify) { double(send_email: true) }
 
@@ -23,7 +25,11 @@ RSpec.describe Dependents::NotificationEmail do
         {
           email_address: 'vets.gov.user+228@gmail.com',
           template_id: Settings.vanotify.services['dependents'].email.submitted686.template_id,
-          personalisation: anything
+          personalisation: {
+            'first_name' => 'MARK',
+            'date_submitted' => Time.zone.today.strftime('%B %d, %Y'),
+            'confirmation_number' => saved_claim.confirmation_number
+          }
         }.compact
       )
 
