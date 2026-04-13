@@ -12,6 +12,7 @@ RSpec.describe BGS::Children do
   context 'adding children' do
     let(:adopted_payload) { build(:adopted_child_lives_with_veteran_v2) }
     let(:add_step_child_payload) { build(:step_child_lives_with_veteran_v2) }
+    let(:helpless_child_payload) { build(:helpless_child) }
 
     it 'returns a hash for biological child that does not live with veteran' do
       VCR.use_cassette('bgs/dependents/create') do
@@ -95,6 +96,24 @@ RSpec.describe BGS::Children do
             begin_date: '2021-09-02',
             type: 'stepchild_parent',
             ssn_nbr: '987654321'
+          )
+        )
+      end
+    end
+
+    it 'returns a hash for helpless child' do
+      VCR.use_cassette('bgs/dependents/create') do
+        children = BGS::Children.new(
+          proc_id:,
+          payload: helpless_child_payload,
+          user: user_object
+        ).create_all
+
+        expect(children[:dependents]).to include(
+          a_hash_including(
+            family_relationship_type_name: 'Biological',
+            participant_relationship_type_name: 'Child',
+            type: 'child'
           )
         )
       end

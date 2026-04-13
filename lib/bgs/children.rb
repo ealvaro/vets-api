@@ -14,7 +14,7 @@ module BGS
     end
 
     def create_all
-      report_children if @views['add_child']
+      report_children if @views['add_child'] || @views['add_disabled_child']
       report_stepchildren if @views['report_stepchild_not_in_household']
 
       report_child_event('child_marriage') if @views['report_marriage_of_child_under18']
