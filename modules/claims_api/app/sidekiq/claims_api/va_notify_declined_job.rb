@@ -43,6 +43,12 @@ module ClaimsApi
     end
 
     def send_organization_notification(ptcpnt_id:, first_name:)
+      template_id = if Flipper.enabled?(:claims_api_vanotify_service_migration)
+                      Settings.vanotify.services.lighthouse_benefits_claims.template_id.declined_service_organization
+                    else
+                      Settings.claims_api.vanotify.declined_service_organization_template_id
+                    end
+
       content = {
         recipient_identifier: {
           id_type: 'PID',
@@ -52,7 +58,7 @@ module ClaimsApi
           first_name: first_name || '',
           form_type: 'Appointment of Veterans Service Organization as Claimantʼs Representative (VA Form 21-22)'
         },
-        template_id: Settings.claims_api.vanotify.declined_service_organization_template_id
+        template_id:
       }
 
       vanotify_service.send_email(content)
@@ -60,6 +66,11 @@ module ClaimsApi
 
     def send_representative_notification(ptcpnt_id:, first_name:, representative_type:)
       representative_type_text = get_representative_type_text(representative_type:)
+      template_id = if Flipper.enabled?(:claims_api_vanotify_service_migration)
+                      Settings.vanotify.services.lighthouse_benefits_claims.template_id.declined_representative
+                    else
+                      Settings.claims_api.vanotify.declined_representative_template_id
+                    end
 
       content = {
         recipient_identifier: {
@@ -72,7 +83,7 @@ module ClaimsApi
           representative_type_abbreviated: representative_type_text || 'representative',
           form_type: 'Appointment of Individual as Claimantʼs Representative (VA Form 21-22a)'
         },
-        template_id: Settings.claims_api.vanotify.declined_representative_template_id
+        template_id:
       }
 
       vanotify_service.send_email(content)
@@ -88,7 +99,12 @@ module ClaimsApi
     end
 
     def vanotify_service
-      VaNotify::Service.new(Settings.claims_api.vanotify.services.lighthouse.api_key)
+      api_key = if Flipper.enabled?(:claims_api_vanotify_service_migration)
+                  Settings.vanotify.services.lighthouse_benefits_claims.api_key
+                else
+                  Settings.claims_api.vanotify.services.lighthouse.api_key
+                end
+      VaNotify::Service.new(api_key)
     end
   end
 end

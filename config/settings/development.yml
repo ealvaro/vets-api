@@ -1806,6 +1806,15 @@ vanotify:
         notice_of_disagreement_received_claimant: ~
         supplemental_claim_received: ~
         supplemental_claim_received_claimant: ~
+    lighthouse_benefits_claims:
+      api_key: fake-xxxxxx-zzzz-aaaa-bbbb-cccccccc-xxxxxx-zzzz-aaaa-bbbb-cccccccc
+      notification_client_secret: xxxxxxxx-zzzz-xxxx-yyyy-vvvvvvvvvvvv
+      notify_service_id: xxxxxxxx-aaaa-bbbb-cccc-dddddddddddd
+      template_id:
+        accepted_representative: accepted_representative_template_id
+        accepted_service_organization: accepted_service_organization_template_id
+        declined_representative: declined_representative_template_id
+        declined_service_organization: declined_service_organization_template_id
     medical_expense_reports: *vanotify_services_medical_expense_reports
     oracle_health:
       sms_sender_id: fake_secret

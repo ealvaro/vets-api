@@ -352,4 +352,70 @@ describe ClaimsApi::VANotifyAcceptedJob, type: :job do
       expect(res).to eq(expected)
     end
   end
+
+  describe '#vanotify_service' do
+    context 'when claims_api_vanotify_service_migration is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:claims_api_vanotify_service_migration).and_return(true)
+      end
+
+      it 'initializes VaNotify::Service with the new settings path' do
+        expect(VaNotify::Service).to receive(:new)
+          .with(Settings.vanotify.services.lighthouse_benefits_claims.api_key)
+        subject.send(:vanotify_service)
+      end
+    end
+
+    context 'when claims_api_vanotify_service_migration is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:claims_api_vanotify_service_migration).and_return(false)
+      end
+
+      it 'initializes VaNotify::Service with the legacy settings path' do
+        expect(VaNotify::Service).to receive(:new)
+          .with(Settings.claims_api.vanotify.services.lighthouse.api_key)
+        subject.send(:vanotify_service)
+      end
+    end
+  end
+
+  describe 'template_id selection' do
+    context 'when claims_api_vanotify_service_migration is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:claims_api_vanotify_service_migration).and_return(true)
+      end
+
+      it 'uses the new template_id for representative accepted email' do
+        res = subject.send(:individual_accepted_email_contents, rep_poa, va_notify_rep)
+        expect(res[:template_id])
+          .to eq(Settings.vanotify.services.lighthouse_benefits_claims.template_id.accepted_representative)
+      end
+
+      it 'uses the new template_id for organization accepted email' do
+        res = subject.send(:organization_accepted_email_contents, org_poa, va_notify_org)
+        expect(res[:template_id])
+          .to eq(Settings.vanotify.services.lighthouse_benefits_claims.template_id.accepted_service_organization)
+      end
+    end
+
+    context 'when claims_api_vanotify_service_migration is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:claims_api_vanotify_service_migration).and_return(false)
+      end
+
+      it 'uses the legacy template_id for representative accepted email' do
+        res = subject.send(:individual_accepted_email_contents, rep_poa, va_notify_rep)
+        expect(res[:template_id]).to eq(Settings.claims_api.vanotify.accepted_representative_template_id)
+      end
+
+      it 'uses the legacy template_id for organization accepted email' do
+        res = subject.send(:organization_accepted_email_contents, org_poa, va_notify_org)
+        expect(res[:template_id]).to eq(Settings.claims_api.vanotify.accepted_service_organization_template_id)
+      end
+    end
+  end
 end

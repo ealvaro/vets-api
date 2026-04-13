@@ -66,4 +66,91 @@ describe ClaimsApi::VANotifyDeclinedJob, type: :job do
       subject.perform(encrypted_ptcpnt_id, encrypted_first_name, representative_id)
     end
   end
+
+  describe '#vanotify_service' do
+    context 'when claims_api_vanotify_service_migration is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:claims_api_vanotify_service_migration).and_return(true)
+      end
+
+      it 'initializes VaNotify::Service with the new settings path' do
+        expect(VaNotify::Service).to receive(:new)
+          .with(Settings.vanotify.services.lighthouse_benefits_claims.api_key)
+        subject.send(:vanotify_service)
+      end
+    end
+
+    context 'when claims_api_vanotify_service_migration is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:claims_api_vanotify_service_migration).and_return(false)
+      end
+
+      it 'initializes VaNotify::Service with the legacy settings path' do
+        expect(VaNotify::Service).to receive(:new)
+          .with(Settings.claims_api.vanotify.services.lighthouse.api_key)
+        subject.send(:vanotify_service)
+      end
+    end
+  end
+
+  describe 'template_id selection' do
+    let(:vanotify_service) { instance_double(VaNotify::Service) }
+
+    before do
+      allow(VaNotify::Service).to receive(:new).with(anything).and_return(vanotify_service)
+      allow(vanotify_service).to receive(:send_email).and_return(nil)
+    end
+
+    context 'when claims_api_vanotify_service_migration is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:claims_api_vanotify_service_migration).and_return(true)
+      end
+
+      it 'uses the new template_id for organization declined email' do
+        expect(vanotify_service).to receive(:send_email).with(
+          hash_including(
+            template_id: Settings.vanotify.services.lighthouse_benefits_claims.template_id.declined_service_organization
+          )
+        )
+        subject.send(:send_organization_notification, ptcpnt_id:, first_name:)
+      end
+
+      it 'uses the new template_id for representative declined email' do
+        expect(vanotify_service).to receive(:send_email).with(
+          hash_including(
+            template_id: Settings.vanotify.services.lighthouse_benefits_claims.template_id.declined_representative
+          )
+        )
+        subject.send(:send_representative_notification, ptcpnt_id:, first_name:, representative_type: 'attorney')
+      end
+    end
+
+    context 'when claims_api_vanotify_service_migration is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:claims_api_vanotify_service_migration).and_return(false)
+      end
+
+      it 'uses the legacy template_id for organization declined email' do
+        expect(vanotify_service).to receive(:send_email).with(
+          hash_including(
+            template_id: Settings.claims_api.vanotify.declined_service_organization_template_id
+          )
+        )
+        subject.send(:send_organization_notification, ptcpnt_id:, first_name:)
+      end
+
+      it 'uses the legacy template_id for representative declined email' do
+        expect(vanotify_service).to receive(:send_email).with(
+          hash_including(
+            template_id: Settings.claims_api.vanotify.declined_representative_template_id
+          )
+        )
+        subject.send(:send_representative_notification, ptcpnt_id:, first_name:, representative_type: 'attorney')
+      end
+    end
+  end
 end

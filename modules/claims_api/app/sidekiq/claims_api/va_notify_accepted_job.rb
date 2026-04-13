@@ -62,11 +62,25 @@ module ClaimsApi
           email: value_or_default_for_field(rep.email),
           phone: rep_phone(rep)
         },
-        template_id: Settings.claims_api.vanotify.accepted_representative_template_id
+        template_id: individual_accepted_email_contents_template_id
       }
     end
 
+    def individual_accepted_email_contents_template_id
+      # had to extract to separate method for rubocop - will inline after the flipper is removed
+      if Flipper.enabled?(:claims_api_vanotify_service_migration)
+        Settings.vanotify.services.lighthouse_benefits_claims.template_id.accepted_representative
+      else
+        Settings.claims_api.vanotify.accepted_representative_template_id
+      end
+    end
+
     def organization_accepted_email_contents(poa, org)
+      template_id = if Flipper.enabled?(:claims_api_vanotify_service_migration)
+                      Settings.vanotify.services.lighthouse_benefits_claims.template_id.accepted_service_organization
+                    else
+                      Settings.claims_api.vanotify.accepted_service_organization_template_id
+                    end
       {
         recipient_identifier: {
           id_type: 'ICN',
@@ -79,7 +93,7 @@ module ClaimsApi
           location: value_or_default_for_field(org_location(org)),
           phone: value_or_default_for_field(org.phone)
         },
-        template_id: Settings.claims_api.vanotify.accepted_service_organization_template_id
+        template_id:
       }
     end
 
@@ -197,7 +211,12 @@ module ClaimsApi
     end
 
     def vanotify_service
-      @vanotify_service ||= VaNotify::Service.new(Settings.claims_api.vanotify.services.lighthouse.api_key)
+      api_key = if Flipper.enabled?(:claims_api_vanotify_service_migration)
+                  Settings.vanotify.services.lighthouse_benefits_claims.api_key
+                else
+                  Settings.claims_api.vanotify.services.lighthouse.api_key
+                end
+      @vanotify_service ||= VaNotify::Service.new(api_key)
     end
   end
 end

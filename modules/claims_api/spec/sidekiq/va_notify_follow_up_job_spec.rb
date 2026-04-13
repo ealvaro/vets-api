@@ -120,4 +120,30 @@ describe ClaimsApi::VANotifyFollowUpJob, type: :job do
       end
     end
   end
+
+  describe '#settings' do
+    context 'when claims_api_vanotify_service_migration is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:claims_api_vanotify_service_migration).and_return(true)
+      end
+
+      it 'returns the new settings path' do
+        result = subject.send(:settings)
+        expect(result).to eq(Settings.vanotify.services.lighthouse_benefits_claims)
+      end
+    end
+
+    context 'when claims_api_vanotify_service_migration is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:claims_api_vanotify_service_migration).and_return(false)
+      end
+
+      it 'returns the legacy settings path' do
+        result = subject.send(:settings)
+        expect(result).to eq(Settings.claims_api.vanotify.services.lighthouse)
+      end
+    end
+  end
 end

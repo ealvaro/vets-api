@@ -103,7 +103,11 @@ module ClaimsApi
     end
 
     def settings
-      Settings.claims_api.vanotify.services.lighthouse
+      if Flipper.enabled?(:claims_api_vanotify_service_migration)
+        Settings.vanotify.services.lighthouse_benefits_claims
+      else
+        Settings.claims_api.vanotify.services.lighthouse
+      end
     end
   end
 end

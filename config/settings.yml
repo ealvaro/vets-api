@@ -1787,6 +1787,15 @@ vanotify:
         notice_of_disagreement_received_claimant: <%= ENV['vanotify__services__lighthouse__template_id__notice_of_disagreement_received_claimant'] %>
         supplemental_claim_received: <%= ENV['vanotify__services__lighthouse__template_id__supplemental_claim_received'] %>
         supplemental_claim_received_claimant: <%= ENV['vanotify__services__lighthouse__template_id__supplemental_claim_received_claimant'] %>
+    lighthouse_benefits_claims:
+      api_key: <%= ENV['vanotify__services__lighthouse_benefits_claims__api_key'] %>
+      notification_client_secret: <%= ENV['vanotify__services__lighthouse_benefits_claims__notification_client_secret'] %>
+      notify_service_id: <%= ENV['vanotify__services__lighthouse_benefits_claims__notify_service_id'] %>
+      template_id:
+        accepted_representative: <%= ENV['vanotify__services__lighthouse_benefits_claims__template_id__accepted_representative'] %>
+        accepted_service_organization: <%= ENV['vanotify__services__lighthouse_benefits_claims__template_id__accepted_service_organization'] %>
+        declined_representative: <%= ENV['vanotify__services__lighthouse_benefits_claims__template_id__declined_representative'] %>
+        declined_service_organization: <%= ENV['vanotify__services__lighthouse_benefits_claims__template_id__declined_service_organization'] %>
     medical_expense_reports: *vanotify_services_medical_expense_reports
     oracle_health:
       sms_sender_id: <%= ENV['vanotify__services__oracle_health__sms_sender_id'] %>
