@@ -125,6 +125,11 @@ RSpec.describe EVSS::DisabilityCompensationForm::SubmitForm526, type: :job do
           # But make Form526Submission.find fail
           allow(Form526Submission).to receive(:find).and_raise(ActiveRecord::RecordNotFound)
 
+          expect(Rails.logger).to receive(:error).with(
+            'Form526 Exhausted or Errored (retryable-error-path)',
+            hash_including(submission_id: form526_submission.id, job_id: '123abc', job_class: 'SubmitForm526')
+          )
+
           expect(Rails.logger).to receive(:warn).with(
             'Submit Form 526 Retries exhausted',
             hash_including(job_id: '123abc')
@@ -157,6 +162,11 @@ RSpec.describe EVSS::DisabilityCompensationForm::SubmitForm526, type: :job do
           allow(form526_submission).to receive(:submit_with_birls_id_that_hasnt_been_tried_yet!).and_return(nil)
           allow(Flipper).to receive(:enabled?).with(:disability_compensation_pif_fail_notification).and_return(true)
           allow(form526_submission).to receive(:get_first_name).and_raise(StandardError.new('Email error'))
+
+          expect(Rails.logger).to receive(:error).with(
+            'Form526 Exhausted or Errored (retryable-error-path)',
+            hash_including(submission_id: form526_submission.id, job_id: '123abc', job_class: 'SubmitForm526')
+          )
 
           expect(Rails.logger).to receive(:warn).with(
             'Submit Form 526 Retries exhausted',

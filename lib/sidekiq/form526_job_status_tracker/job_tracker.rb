@@ -42,6 +42,10 @@ module Sidekiq
           JobTracker.send_backup_submission_if_enabled(form526_submission_id:, job_class:, job_id:,
                                                        error_message:, error_class:)
 
+          ::Rails.logger.error('Form526 Exhausted or Errored (retryable-error-path)',
+                               { submission_id: form526_submission_id, job_id:, job_class:,
+                                 error_class:, error_message: })
+
           form_job_status.update(
             status: Form526JobStatus::STATUS[:exhausted],
             bgjob_errors: bgjob_errors.merge(new_error)
@@ -122,7 +126,13 @@ module Sidekiq
       #
       def retryable_error_handler(error)
         upsert_job_status(Form526JobStatus::STATUS[:retryable_error], error)
-        log_error('retryable_error', error)
+        ::Rails.logger.error(@status_job_title,
+                             'saved_claim_id' => @status_saved_claim_id,
+                             'submission_id' => @status_submission_id,
+                             'service_provider' => @service_provider,
+                             'job_id' => jid,
+                             'status' => 'retryable_error',
+                             'error_message' => error)
         metrics.increment_retryable(error, @is_bdd, @service_provider)
       end
 
@@ -137,7 +147,9 @@ module Sidekiq
                                                      job_class: klass, job_id: jid,
                                                      error_class:, error_message:)
 
-        log_error('non_retryable_error', error)
+        ::Rails.logger.error('Form526 Exhausted or Errored (non-retryable-error-path)',
+                             'submission_id' => @status_submission_id, 'job_id' => jid, 'job_class' => klass,
+                             'error_class' => error_class, 'error_message' => error_message)
         metrics.increment_non_retryable(error, @is_bdd, @service_provider)
       end
 
@@ -200,16 +212,6 @@ module Sidekiq
                             'service_provider' => @service_provider,
                             'job_id' => jid,
                             'status' => status)
-      end
-
-      def log_error(status, error)
-        ::Rails.logger.error(@status_job_title,
-                             'saved_claim_id' => @status_saved_claim_id,
-                             'submission_id' => @status_submission_id,
-                             'service_provider' => @service_provider,
-                             'job_id' => jid,
-                             'status' => status,
-                             'error_message' => error)
       end
 
       def klass

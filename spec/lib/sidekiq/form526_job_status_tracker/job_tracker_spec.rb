@@ -37,6 +37,17 @@ describe Sidekiq::Form526JobStatusTracker::JobTracker do
 
     before { allow(Settings.form526_backup).to receive(:enabled).and_return(true) }
 
+    it 'logs with retryable-error-path for exhausted jobs' do
+      allow_any_instance_of(Form526Submission).to receive(:birls_ids_that_havent_been_tried_yet).and_return([])
+      form526_submission.auth_headers.delete('va_eauth_birlsfilenumber')
+      form526_submission.save!
+      expect_any_instance_of(Sidekiq::Form526JobStatusTracker::Metrics).to receive(:increment_exhausted)
+      allow(Rails.logger).to receive(:error)
+      expect(Rails.logger).to receive(:error)
+        .with('Form526 Exhausted or Errored (retryable-error-path)', hash_including(:submission_id))
+      worker_class.job_exhausted(msg, 'stats_key')
+    end
+
     it 'tracks an exhausted job, with no remaining birls ids' do
       allow_any_instance_of(Form526Submission).to receive(:birls_ids_that_havent_been_tried_yet).and_return([])
       form526_submission.auth_headers.delete('va_eauth_birlsfilenumber')
@@ -137,6 +148,28 @@ describe Sidekiq::Form526JobStatusTracker::JobTracker do
         end.to raise_exception(RuntimeError)
         expect(Form526JobStatus.last.status).to eq 'try'
       end
+    end
+  end
+
+  describe '#non_retryable_error_handler' do
+    let(:user_account) { create(:user_account, icn: '123498767V234859') }
+    let!(:form526_submission) { create(:form526_submission, user_account:) }
+    let(:worker) { worker_class.new }
+    let(:error) { StandardError.new('some non-retryable error') }
+
+    before do
+      allow(Settings.form526_backup).to receive(:enabled).and_return(true)
+      stub_const('DummyClass::STATSD_KEY_PREFIX', 'dummy.worker')
+      allow(worker_class).to receive(:name).and_return('WorkerClass')
+      allow(worker).to receive(:jid).and_return('0')
+      worker.instance_variable_set(:@status_submission_id, form526_submission.id)
+    end
+
+    it 'logs with non-retryable-error-path' do
+      allow(Rails.logger).to receive(:error)
+      expect(Rails.logger).to receive(:error)
+        .with('Form526 Exhausted or Errored (non-retryable-error-path)', hash_including('submission_id'))
+      worker.non_retryable_error_handler(error)
     end
   end
 end
