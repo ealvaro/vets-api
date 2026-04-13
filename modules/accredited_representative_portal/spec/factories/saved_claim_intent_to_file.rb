@@ -24,11 +24,11 @@ FactoryBot.define do
     delete_date { nil }
 
     trait :old do
-      delete_date { 61.days.ago }
+      delete_date { 1.day.ago }
     end
 
     trait :recent do
-      delete_date { 5.days.ago }
+      delete_date { 55.days.from_now }
     end
   end
 end

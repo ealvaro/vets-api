@@ -39,7 +39,7 @@ module AccreditedRepresentativePortal
       total = 0
 
       scope
-        .where('delete_date <= ?', 60.days.ago)
+        .where('delete_date <= ?', 0.days.ago)
         .find_each(batch_size: 1000) do |record|
           record.destroy
           total += 1
