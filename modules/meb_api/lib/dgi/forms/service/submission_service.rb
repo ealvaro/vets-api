@@ -36,7 +36,7 @@ module MebApi
             case form_type
             when 'Chapter35Submission'
               'Chapter35'
-            when 'vettec'
+            when 'vettec', 'VetTecSubmission'
               'vettec'
             else
               'toe'
