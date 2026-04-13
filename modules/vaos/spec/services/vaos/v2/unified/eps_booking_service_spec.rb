@@ -127,37 +127,37 @@ RSpec.describe VAOS::V2::Unified::EpsBookingService do
 
         expect do
           service.book(user:, provider:, slot:, params: base_params)
-        end.to raise_error(ArgumentError, /EpsProvider/)
+        end.to raise_error(VAOS::V2::Unified::BookingArgumentError, /EpsProvider/)
       end
     end
 
     context 'when referral is missing' do
-      it 'raises ArgumentError' do
+      it 'raises BookingArgumentError' do
         expect do
           service.book(user:, provider:, slot:, params: {})
-        end.to raise_error(ArgumentError, /referral/)
+        end.to raise_error(VAOS::V2::Unified::BookingArgumentError, /referral/)
       end
     end
 
     context 'when slot is nil' do
       let(:slot) { nil }
 
-      it 'raises ArgumentError before calling EPS' do
+      it 'raises BookingArgumentError before calling EPS' do
         expect(appointment_service).not_to receive(:create_draft_appointment)
 
         expect do
           service.book(user:, provider:, slot:, params: base_params)
-        end.to raise_error(ArgumentError, /slot is required/)
+        end.to raise_error(VAOS::V2::Unified::BookingArgumentError, /slot is required/)
       end
     end
 
     context 'when slot id is missing' do
       let(:slot) { VAOS::V2::Unified::EpsSlot.new(id: nil, start: '2026-04-10T15:00:00Z') }
 
-      it 'raises ArgumentError' do
+      it 'raises BookingArgumentError' do
         expect do
           service.book(user:, provider:, slot:, params: base_params)
-        end.to raise_error(ArgumentError, /slot id/)
+        end.to raise_error(VAOS::V2::Unified::BookingArgumentError, /slot id/)
       end
     end
 
@@ -166,10 +166,10 @@ RSpec.describe VAOS::V2::Unified::EpsBookingService do
         VAOS::V2::Unified::EpsProvider.new(id: 'ps-1', name: 'X', provider_service_id: 'p1', network_id: nil)
       end
 
-      it 'raises ArgumentError' do
+      it 'raises BookingArgumentError' do
         expect do
           service.book(user:, provider:, slot:, params: { referral_number: 'R1' })
-        end.to raise_error(ArgumentError, /network_id/)
+        end.to raise_error(VAOS::V2::Unified::BookingArgumentError, /network_id/)
       end
     end
 
@@ -179,30 +179,30 @@ RSpec.describe VAOS::V2::Unified::EpsBookingService do
       end
       let(:slot) { VAOS::V2::Unified::EpsSlot.new(id: 'slot-1', start: '2026-04-10T15:00:00Z') }
 
-      it 'raises ArgumentError' do
+      it 'raises BookingArgumentError' do
         expect do
           service.book(user:, provider:, slot:, params: { referral_number: 'R1' })
-        end.to raise_error(ArgumentError, /provider_service_id/)
+        end.to raise_error(VAOS::V2::Unified::BookingArgumentError, /provider_service_id/)
       end
     end
 
     context 'when draft response has no id' do
       let(:draft_response) { OpenStruct.new(state: 'draft') }
 
-      it 'raises ArgumentError' do
+      it 'raises BackendServiceException' do
         expect do
           service.book(user:, provider:, slot:, params: base_params)
-        end.to raise_error(ArgumentError, /draft response missing/)
+        end.to raise_error(VAOS::V2::Unified::BookingUpstreamContractError, /draft response missing/)
       end
     end
 
     context 'when submit response has no id' do
       let(:submit_response) { OpenStruct.new(state: 'booked') }
 
-      it 'raises ArgumentError' do
+      it 'raises BackendServiceException' do
         expect do
           service.book(user:, provider:, slot:, params: base_params)
-        end.to raise_error(ArgumentError, /submit response missing/)
+        end.to raise_error(VAOS::V2::Unified::BookingUpstreamContractError, /submit response missing/)
       end
     end
 

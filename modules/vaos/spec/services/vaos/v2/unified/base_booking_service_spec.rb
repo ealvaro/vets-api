@@ -124,7 +124,7 @@ RSpec.describe VAOS::V2::Unified::BaseBookingService do
         service.force_result = { appointment_id: '1' }
 
         expect { service.book(user:, provider:, slot:, params:) }
-          .to raise_error(ArgumentError, /missing keys/)
+          .to raise_error(VAOS::V2::Unified::BookingUpstreamContractError, /missing keys/)
 
         expect(Rails.logger).to have_received(:error).with(
           "#{described_class::STATSD_KEY_PREFIX}.argument_error",
@@ -140,26 +140,39 @@ RSpec.describe VAOS::V2::Unified::BaseBookingService do
         service.force_result = { appointment_id: '1', provider_type: '', status: 'booked' }
 
         expect { service.book(user:, provider:, slot:, params:) }
-          .to raise_error(ArgumentError, /blank required values/)
+          .to raise_error(VAOS::V2::Unified::BookingUpstreamContractError, /blank required values/)
       end
 
       it 'raises when confirmation is not a Hash' do
         service.force_result = nil
 
         expect { service.book(user:, provider:, slot:, params:) }
-          .to raise_error(ArgumentError, /must be a Hash/)
+          .to raise_error(VAOS::V2::Unified::BookingUpstreamContractError, /must be a Hash/)
       end
 
       it 'also logs a booking failure for validation errors' do
         service.force_result = { appointment_id: '1' }
 
         expect { service.book(user:, provider:, slot:, params:) }
-          .to raise_error(ArgumentError)
+          .to raise_error(VAOS::V2::Unified::BookingUpstreamContractError)
 
         expect(StatsD).to have_received(:increment).with(
           "#{described_class::STATSD_KEY_PREFIX}.failure",
-          tags: %w[provider_type:va error_type:argument_error]
+          tags: %w[provider_type:va error_type:booking_upstream_contract_error]
         )
+      end
+    end
+
+    context 'when an error is logged by the service' do
+      it 'tags the error with AlreadyLogged' do
+        service.force_error = StandardError.new('boom')
+        error = nil
+        begin
+          service.book(user:, provider:, slot:, params:)
+        rescue => e
+          error = e
+        end
+        expect(error).to be_a(described_class::AlreadyLogged)
       end
     end
   end

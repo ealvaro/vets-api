@@ -100,22 +100,22 @@ RSpec.describe VAOS::V2::Unified::VABookingService do
     context 'when the provider is not a VAProvider' do
       let(:provider) { VAOS::V2::Unified::EpsProvider.new(id: 'x', name: 'CC', provider_service_id: '1', network_id: 'n') }
 
-      it 'raises ArgumentError before calling post_appointment' do
+      it 'raises BookingArgumentError before calling post_appointment' do
         expect(appointments_service).not_to receive(:post_appointment)
 
         expect do
           service.book(user:, provider:, slot:, params: base_params)
-        end.to raise_error(ArgumentError, /VAProvider/)
+        end.to raise_error(VAOS::V2::Unified::BookingArgumentError, /VAProvider/)
       end
     end
 
     context 'when slot id is missing' do
       let(:slot) { VAOS::V2::Unified::VASlot.new(id: nil, start: '2022-11-30T20:45:00Z') }
 
-      it 'raises ArgumentError' do
+      it 'raises BookingArgumentError' do
         expect do
           service.book(user:, provider:, slot:, params: base_params)
-        end.to raise_error(ArgumentError, /slot id/)
+        end.to raise_error(VAOS::V2::Unified::BookingArgumentError, /slot id/)
       end
     end
 
@@ -124,10 +124,10 @@ RSpec.describe VAOS::V2::Unified::VABookingService do
         VAOS::V2::Unified::VAProvider.new(id: '455', name: 'Test VA', location_id: nil, service_type: 'primaryCare')
       end
 
-      it 'raises ArgumentError' do
+      it 'raises BookingArgumentError' do
         expect do
           service.book(user:, provider:, slot:, params: base_params)
-        end.to raise_error(ArgumentError, /location_id/)
+        end.to raise_error(VAOS::V2::Unified::BookingArgumentError, /location_id/)
       end
     end
 
@@ -136,10 +136,10 @@ RSpec.describe VAOS::V2::Unified::VABookingService do
         VAOS::V2::Unified::VAProvider.new(id: '455', name: 'Test VA', location_id: '983', service_type: nil)
       end
 
-      it 'raises ArgumentError' do
+      it 'raises BookingArgumentError' do
         expect do
           service.book(user:, provider:, slot:, params: base_params)
-        end.to raise_error(ArgumentError, /service_type/)
+        end.to raise_error(VAOS::V2::Unified::BookingArgumentError, /service_type/)
       end
     end
 
@@ -148,10 +148,10 @@ RSpec.describe VAOS::V2::Unified::VABookingService do
         allow(appointments_service).to receive(:post_appointment).and_return(OpenStruct.new(status: 'booked'))
       end
 
-      it 'raises ArgumentError' do
+      it 'raises BackendServiceException' do
         expect do
           service.book(user:, provider:, slot:, params: base_params)
-        end.to raise_error(ArgumentError, /missing appointment id/)
+        end.to raise_error(VAOS::V2::Unified::BookingUpstreamContractError, /missing appointment id/)
       end
     end
 

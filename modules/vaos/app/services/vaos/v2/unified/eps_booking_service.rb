@@ -24,7 +24,7 @@ module VAOS
 
         def perform_booking(user:, provider:, slot:, params:)
           validate_provider!(provider)
-          raise ArgumentError, 'slot is required' if slot.nil?
+          raise BookingArgumentError, 'slot is required' if slot.nil?
 
           p = params.with_indifferent_access
           referral_number = resolve_referral_number(p)
@@ -50,12 +50,12 @@ module VAOS
         def validate_provider!(provider)
           return if provider.is_a?(VAOS::V2::Unified::EpsProvider)
 
-          raise ArgumentError, "EpsBookingService requires an EpsProvider, got #{provider.class.name}"
+          raise BookingArgumentError, "EpsBookingService requires an EpsProvider, got #{provider.class.name}"
         end
 
         def resolve_referral_number(params)
           ref = params[:referral_number].presence || params[:referral_id].presence
-          raise ArgumentError, 'referral_number or referral_id is required for EPS booking' if ref.blank?
+          raise BookingArgumentError, 'referral_number or referral_id is required for EPS booking' if ref.blank?
 
           ref.to_s
         end
@@ -66,10 +66,10 @@ module VAOS
           provider_service_id ||= slot.provider_service_id
           slot_id = resolve_slot_id(slot, params)
 
-          raise ArgumentError, 'network_id is required (params or EpsProvider)' if network_id.blank?
+          raise BookingArgumentError, 'network_id is required (params or EpsProvider)' if network_id.blank?
 
           if provider_service_id.blank?
-            raise ArgumentError,
+            raise BookingArgumentError,
                   'provider_service_id is required (params, EpsProvider, or EpsSlot)'
           end
 
@@ -89,21 +89,21 @@ module VAOS
 
         def resolve_slot_id(slot, params)
           sid = params[:slot_id].presence || slot.id.presence
-          raise ArgumentError, 'slot id is required (params[:slot_id] or slot.id)' if sid.blank?
+          raise BookingArgumentError, 'slot id is required (params[:slot_id] or slot.id)' if sid.blank?
 
           sid
         end
 
         def extract_draft_appointment_id(draft)
           id = draft.id
-          raise ArgumentError, 'EPS draft response missing appointment id' if id.blank?
+          raise BookingUpstreamContractError, 'EPS draft response missing appointment id' if id.blank?
 
           id
         end
 
         def extract_appointment_id(result)
           id = result.id
-          raise ArgumentError, 'EPS submit response missing appointment id' if id.blank?
+          raise BookingUpstreamContractError, 'EPS submit response missing appointment id' if id.blank?
 
           id
         end

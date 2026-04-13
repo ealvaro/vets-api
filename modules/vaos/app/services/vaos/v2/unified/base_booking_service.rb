@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'common/exceptions'
+
 module VAOS
   module V2
     module Unified
@@ -20,6 +22,10 @@ module VAOS
         REQUIRED_CONFIRMATION_KEYS = %i[appointment_id provider_type status].freeze
         OPTIONAL_CONFIRMATION_KEYS = %i[start].freeze
 
+        # Mixed into errors after they have been logged by the service so that
+        # upstream callers (e.g. the controller) can skip duplicate logging.
+        module AlreadyLogged; end
+
         ##
         # Template method — calls {#perform_booking}, validates the result, logs metrics,
         # and returns the normalized confirmation. Subclasses override {#perform_booking}.
@@ -37,6 +43,7 @@ module VAOS
           confirmation
         rescue => e
           log_booking_failure(e, provider_type: provider&.provider_type)
+          e.extend(AlreadyLogged) unless e.frozen?
           raise
         end
 
@@ -83,22 +90,32 @@ module VAOS
         # returns +hash+ (symbolized) otherwise.
         #
         def validate_booking_confirmation!(hash)
-          unless hash.is_a?(Hash)
-            log_booking_argument_error(reason: 'invalid_confirmation_type')
-            raise ArgumentError, "Booking confirmation must be a Hash, got #{hash.class.name}"
-          end
-
+          assert_confirmation_is_hash!(hash)
           hash = hash.symbolize_keys if hash.respond_to?(:symbolize_keys)
+          assert_confirmation_keys_and_values!(hash)
+        end
+
+        def assert_confirmation_is_hash!(hash)
+          return if hash.is_a?(Hash)
+
+          log_booking_argument_error(reason: 'invalid_confirmation_type')
+          raise BookingUpstreamContractError,
+                "Booking confirmation must be a Hash, got #{hash.class.name}"
+        end
+
+        def assert_confirmation_keys_and_values!(hash)
           missing = REQUIRED_CONFIRMATION_KEYS - hash.keys
           if missing.any?
             log_booking_argument_error(reason: 'invalid_confirmation', missing_keys: missing.map(&:to_s))
-            raise ArgumentError, "Booking confirmation missing keys: #{missing.join(', ')}"
+            raise BookingUpstreamContractError,
+                  "Booking confirmation missing keys: #{missing.join(', ')}"
           end
 
           blank_required = REQUIRED_CONFIRMATION_KEYS.select { |key| hash[key].blank? }
           if blank_required.any?
             log_booking_argument_error(reason: 'invalid_confirmation', blank_keys: blank_required.map(&:to_s))
-            raise ArgumentError, "Booking confirmation has blank required values: #{blank_required.join(', ')}"
+            raise BookingUpstreamContractError,
+                  "Booking confirmation has blank required values: #{blank_required.join(', ')}"
           end
 
           hash

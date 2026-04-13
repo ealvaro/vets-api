@@ -32,7 +32,7 @@ module VAOS
         def validate_provider!(provider)
           return if provider.is_a?(VAOS::V2::Unified::VAProvider)
 
-          raise ArgumentError, "VABookingService requires a VAProvider, got #{provider.class.name}"
+          raise BookingArgumentError, "VABookingService requires a VAProvider, got #{provider.class.name}"
         end
 
         def build_post_appointment_request(provider:, slot:, params:)
@@ -56,26 +56,26 @@ module VAOS
         end
 
         def resolve_location_id(provider)
-          raise ArgumentError, 'location_id is required on VAProvider' if provider.location_id.blank?
+          raise BookingArgumentError, 'location_id is required on VAProvider' if provider.location_id.blank?
 
           provider.location_id.to_s
         end
 
         def resolve_clinic(provider)
-          raise ArgumentError, 'provider id (clinic) is required for VA direct scheduling' if provider.id.blank?
+          raise BookingArgumentError, 'provider id (clinic) is required for VA direct scheduling' if provider.id.blank?
 
           provider.id.to_s
         end
 
         def resolve_service_type(provider)
-          raise ArgumentError, 'service_type is required on VAProvider' if provider.service_type.blank?
+          raise BookingArgumentError, 'service_type is required on VAProvider' if provider.service_type.blank?
 
           provider.service_type.to_s
         end
 
         def build_slot_payload(slot)
-          raise ArgumentError, 'slot is required' if slot.nil?
-          raise ArgumentError, 'slot id is required for VA booking' if slot.id.blank?
+          raise BookingArgumentError, 'slot is required' if slot.nil?
+          raise BookingArgumentError, 'slot id is required for VA booking' if slot.id.blank?
 
           { id: slot.id.to_s }
         end
@@ -94,7 +94,7 @@ module VAOS
         end
 
         def extract_appointment_id(result)
-          raise ArgumentError, 'VA booking response missing appointment id' if result.id.blank?
+          raise BookingUpstreamContractError, 'VA booking response missing appointment id' if result.id.blank?
 
           result.id
         end

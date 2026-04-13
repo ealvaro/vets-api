@@ -24,6 +24,9 @@ VAOS::Engine.routes.draw do
     post '/appointments/draft', to: 'appointments#create_draft'
     post '/appointments/submit', to: 'appointments#submit_referral_appointment'
 
+    # Unified booking (CC Hybrid: VA + EPS via referral flow)
+    post '/unified_bookings', to: 'unified_bookings#create'
+
     # Referrals routes
     get '/referrals', to: 'referrals#index'
     get '/referrals/:id', to: 'referrals#show'
