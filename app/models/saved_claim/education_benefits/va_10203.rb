@@ -102,16 +102,26 @@ class SavedClaim::EducationBenefits::VA10203 < SavedClaim::EducationBenefits
       # this method is in the parent class
       send_education_benefits_confirmation_email(email, parsed_form, {})
     else
-      VANotify::EmailJob.perform_async(
-        email,
-        Settings.vanotify.services.va_gov.template_id.form21_10203_confirmation_email,
-        {
-          'first_name' => parsed_form.dig('veteranFullName', 'first')&.upcase.presence,
-          'date_submitted' => Time.zone.today.strftime('%B %d, %Y'),
-          'confirmation_number' => education_benefits_claim.confirmation_number,
-          'regional_office_address' => regional_office_address
-        }
+      send_10203_confirmation_email(email, parsed_form)
+    end
+  end
+
+  def send_10203_confirmation_email(email, parsed_form)
+    personalisation = {
+      'first_name' => parsed_form.dig('veteranFullName', 'first')&.upcase.presence,
+      'date_submitted' => Time.zone.today.strftime('%B %d, %Y'),
+      'confirmation_number' => education_benefits_claim.confirmation_number,
+      'regional_office_address' => regional_office_address
+    }
+
+    if Flipper.enabled?(:va_notify_v2_form10203_confirmation_email)
+      api_key_path = 'Settings.vanotify.services.va_gov.api_key'
+      VANotify::V2::QueueEmailJob.enqueue(
+        email, template_id, personalisation,
+        api_key_path
       )
+    else
+      VANotify::EmailJob.perform_async(email, template_id, personalisation)
     end
   end
 
