@@ -218,6 +218,7 @@ module Swagger
               L133
               L139
               L149
+              L1839
             ]
         end
 
