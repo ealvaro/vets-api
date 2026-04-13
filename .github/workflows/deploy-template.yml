@@ -52,7 +52,7 @@ jobs:
 
       - name: Log into ECR
         id: ecr-login
-        uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
+        uses: aws-actions/amazon-ecr-login@f2e9fc6c2b355c1890b65e6f6f0e2ac3e6e22f78 # v2
 
       - name: Get bot token from Parameter Store
         uses: marvinpinto/action-inject-ssm-secrets@40db08dfe313758837e611cac1679e3a89b35531 # latest
