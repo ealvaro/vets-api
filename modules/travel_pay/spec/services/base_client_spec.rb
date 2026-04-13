@@ -46,6 +46,32 @@ RSpec.describe TravelPay::BaseClient do
         expect(conn.options.timeout).to eq(120)
       end
     end
+
+    context 'when travel_pay_surface_btsss_errors flag is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:travel_pay_surface_btsss_errors).and_return(true)
+      end
+
+      it 'includes the btsss_errors middleware' do
+        conn = client.connection(server_url:)
+        handlers = conn.builder.handlers.map(&:name)
+
+        expect(handlers).to include('TravelPay::Middleware::BtsssErrors')
+      end
+    end
+
+    context 'when travel_pay_surface_btsss_errors flag is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:travel_pay_surface_btsss_errors).and_return(false)
+      end
+
+      it 'does not include the btsss_errors middleware' do
+        conn = client.connection(server_url:)
+        handlers = conn.builder.handlers.map(&:name)
+
+        expect(handlers).not_to include('TravelPay::Middleware::BtsssErrors')
+      end
+    end
   end
 
   describe '#mock_enabled?' do

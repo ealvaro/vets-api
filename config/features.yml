@@ -2929,6 +2929,14 @@ features:
       A switch that toggles the availability of community care features for Travel Pay.
       Enabled - Community care features are available to users.
       Disabled - Community care features are not available. Server returns a 503 (Service Unavailable) until re-enabled.
+  travel_pay_surface_btsss_errors:
+    actor_type: user
+    enable_in_development: true
+    description: >-
+      Gates the BTSSS error normalization middleware that surfaces upstream error messages
+      (e.g. validation errors) to API consumers instead of generic VA900 responses.
+      Enabled - BTSSS error messages are included in the detail field of error responses.
+      Disabled - Error responses are generic VA900 with no detail (legacy behavior).
   yellow_ribbon_automated_date_on_school_search:
     actor_type: user
     description: Enable the automated date displayed in the Find a Yellow Ribbon school search results
