@@ -5,7 +5,9 @@ module RepresentationManagement
   class AccreditedOrganizationAdapter
     attr_reader :organization
 
-    delegate :id, :name, :phone, :city, :state, :state_code, :zip_code, :zip_suffix, :can_accept_digital_poa_requests,
+    delegate :id, :name, :address_type, :address_line1, :address_line2, :address_line3, :phone, :city,
+             :state, :state_code, :province, :country_name, :country_code_iso3, :zip_code, :zip_suffix,
+             :international_postal_code, :lat, :long, :can_accept_digital_poa_requests,
              to: :organization
 
     def initialize(organization)
