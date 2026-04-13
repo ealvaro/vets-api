@@ -120,6 +120,55 @@ RSpec.describe IvcChampva::PegaApi::Client do
     end
   end
 
+  describe 'get_status_by_uuid' do
+    let(:uuid) { 'ea6ee9e7-1f56-4539-9c3c-173c43c4593c' }
+
+    let(:mock_status_body) do
+      '{"statusCode": 200, "body": "[{\"PEGA Case ID\": \"D-100018\", \"Status\": \"Open\", ' \
+        '\"Doctype\": \"OHI Certificate\", \"Deternimation Type\": \"Document Identification error\", ' \
+        '\"Eligibity Date\": null, \"UUID\": \"ea6ee9e7-1f56-4539-9c3c-173c43c4593c\"}, {\"PEGA Case ID\": ' \
+        '\"D-100017\", \"Status\": \"Open\", \"Doctype\": \"OHI Certificate\", \"Deternimation Type\": ' \
+        '\"Document Identification error\", \"Eligibity Date\": null, ' \
+        '\"UUID\": \"ea6ee9e7-1f56-4539-9c3c-173c43c4593c\"}, {\"PEGA Case ID\": \"D-99021\", \"Status\": \"Open\", ' \
+        '\"Doctype\": \"Application under 65\", \"Deternimation Type\": ' \
+        '\"Eligiblity denied/Additional information needed\", \"Eligibity Date\": \"20260226\", ' \
+        '\"UUID\": \"ea6ee9e7-1f56-4539-9c3c-173c43c4593c\"}]"}'
+    end
+
+    context 'when Pega returns a valid 200 envelope with stringified body array' do
+      let(:faraday_response) { double('Faraday::Response', status: 200, body: mock_status_body) }
+
+      before do
+        allow_any_instance_of(Faraday::Connection).to receive(:get).with(anything).and_return(faraday_response)
+      end
+
+      it 'returns parsed case rows with expected case IDs and statuses' do
+        result = subject.get_status_by_uuid(uuid)
+
+        expect(result.size).to eq(3)
+        expect(result.map { |row| row['PEGA Case ID'] }).to eq(%w[D-100018 D-100017 D-99021])
+        expect(result.map { |row| row['Deternimation Type'] }).to eq(
+          ['Document Identification error', 'Document Identification error',
+           'Eligiblity denied/Additional information needed']
+        )
+      end
+    end
+
+    context 'when Pega returns 200 HTTP but non-200 envelope statusCode' do
+      let(:faraday_response) do
+        double('Faraday::Response', status: 200, body: { 'statusCode' => 500, 'body' => 'boom' }.to_json)
+      end
+
+      before do
+        allow_any_instance_of(Faraday::Connection).to receive(:get).with(anything).and_return(faraday_response)
+      end
+
+      it 'raises a PegaApiError' do
+        expect { subject.get_status_by_uuid(uuid) }.to raise_error(IvcChampva::PegaApi::PegaApiError)
+      end
+    end
+  end
+
   # Temporary, delete me
   # This test is used to hit the production endpoint when running locally.
   # It can be removed once we have some real code that uses the Pega API client.

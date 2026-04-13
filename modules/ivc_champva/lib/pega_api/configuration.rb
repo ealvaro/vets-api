@@ -10,6 +10,10 @@ module IvcChampva
         Settings.ivc_champva.pega_api.base_path.to_s
       end
 
+      def status_path
+        Settings.ivc_champva.pega_api.status_path.to_s
+      end
+
       def service_name
         'PEGA_API'
       end

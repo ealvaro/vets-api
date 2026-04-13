@@ -675,8 +675,9 @@ intent_to_file:
   prefill: true
 ivc_champva:
   pega_api:
-    api_key: fake_api_key
-    base_path: fake_base_path
+    api_key: <%= ENV['ivc_champva__pega_api__api_key'] || 'fake_api_key' %>
+    base_path: <%= ENV['ivc_champva__pega_api__base_path'] || 'fake_base_path' %>
+    status_path: <%= ENV['ivc_champva__pega_api__status_path'] || 'fake_status_path' %>
   prefill: true
 ivc_champva_llm_processor_api:
   api_key: fake_llm_api_key

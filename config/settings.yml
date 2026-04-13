@@ -678,6 +678,7 @@ ivc_champva:
   pega_api:
     api_key: <%= ENV['ivc_champva__pega_api__api_key'] %>
     base_path: <%= ENV['ivc_champva__pega_api__base_path'] %>
+    status_path: <%= ENV['ivc_champva__pega_api__status_path'] %>
   prefill: true
 ivc_champva_llm_processor_api:
   api_key: <%= ENV['ivc_champva_llm_processor_api__api_key'] %>
