@@ -48,12 +48,12 @@ jobs:
           token: ${{github.token}}
       - name: 'Get service name from file'
         id: parse_service_name
-        uses: mikefarah/yq@22e609b2d941421ab4a918c8811631a3a1050a6d # master
+        uses: mikefarah/yq@44c55c8a54d1fa207dac0bf6e9084d6dd0adff30 # master
         with:
           cmd: yq -o=json '.dd-service' ${{matrix.file}}
       - name: 'Get schema version from file'
         id: parse_schema_version
-        uses: mikefarah/yq@22e609b2d941421ab4a918c8811631a3a1050a6d # master
+        uses: mikefarah/yq@44c55c8a54d1fa207dac0bf6e9084d6dd0adff30 # master
         with:
           cmd: yq -o=json '.schema-version' ${{matrix.file}}
       - name: 'Delete service'
