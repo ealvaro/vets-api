@@ -134,7 +134,6 @@ gem 'parallel'
 gem 'pdf-forms'
 gem 'pdf-reader'
 gem 'pg'
-gem 'pg_query'
 gem 'pg_search'
 gem 'pkce_challenge'
 gem 'prawn', '~> 2.4.0' # Pinned to version 2.4.0 to avoid embedded font issues (https://github.com/prawnpdf/ttfunk/issues/102)
