@@ -391,6 +391,54 @@ RSpec.describe UnifiedHealthData::Client do
       expect(WebMock).to have_requested(:post, %r{#{Regexp.escape(host)}/v1/medicalrecords/medications/rx/refill})
         .with(headers: { 'Content-Type' => 'application/json' })
     end
+
+    context 'x-mhv-client-application header' do
+      after do
+        RequestStore.store['additional_request_attributes'] = nil
+      end
+
+      it 'sends VAHB when source is va-health-benefits-app' do
+        RequestStore.store['additional_request_attributes'] = { 'source' => 'va-health-benefits-app' }
+
+        client.get_allergies_by_date(patient_id: '123', start_date: '2024-01-01', end_date: '2025-01-01')
+
+        expect(WebMock).to have_requested(:get, %r{#{Regexp.escape(host)}/v1/medicalrecords/allergies})
+          .with(headers: { 'x-mhv-client-application' => 'VAHB' })
+      end
+
+      it 'sends VAGOV when source is a web app name' do
+        RequestStore.store['additional_request_attributes'] = { 'source' => 'medications' }
+
+        client.get_allergies_by_date(patient_id: '123', start_date: '2024-01-01', end_date: '2025-01-01')
+
+        expect(WebMock).to have_requested(:get, %r{#{Regexp.escape(host)}/v1/medicalrecords/allergies})
+          .with(headers: { 'x-mhv-client-application' => 'VAGOV' })
+      end
+
+      it 'defaults to VAGOV when source is not set' do
+        RequestStore.store['additional_request_attributes'] = nil
+
+        client.get_allergies_by_date(patient_id: '123', start_date: '2024-01-01', end_date: '2025-01-01')
+
+        expect(WebMock).to have_requested(:get, %r{#{Regexp.escape(host)}/v1/medicalrecords/allergies})
+          .with(headers: { 'x-mhv-client-application' => 'VAGOV' })
+      end
+
+      it 'sends VAHB in a Sidekiq-like context when source is propagated from a mobile request' do
+        # SidekiqStatsInstrumentation::ServerMiddleware can propagate source into RequestStore;
+        # if the originating request was from the mobile app, VAHB attribution is intentional.
+        RequestStore.store['additional_request_attributes'] = { 'source' => 'va-health-benefits-app' }
+        RequestStore.store['request_id'] = nil
+
+        allow(SecureRandom).to receive(:uuid).and_return('sidekiq-fallback-uuid')
+        allow(Rails.logger).to receive(:info)
+
+        client.get_allergies_by_date(patient_id: '123', start_date: '2024-01-01', end_date: '2025-01-01')
+
+        expect(WebMock).to have_requested(:get, %r{#{Regexp.escape(host)}/v1/medicalrecords/allergies})
+          .with(headers: { 'x-mhv-client-application' => 'VAHB', 'X-Request-Id' => 'sidekiq-fallback-uuid' })
+      end
+    end
   end
 
   describe '#extract_resource_type' do

@@ -200,10 +200,21 @@ module UnifiedHealthData
       headers = {
         'Authorization' => fetch_access_token,
         'x-api-key' => config.x_api_key,
-        'X-Request-Id' => request_id
+        'X-Request-Id' => request_id,
+        'x-mhv-client-application' => client_application
       }
       headers['Content-Type'] = 'application/json' if include_content_type
       headers
+    end
+
+    # Resolves the client application identifier for the x-mhv-client-application header.
+    # Reads the source set by SourceAppMiddleware (controllers) or
+    # SidekiqStatsInstrumentation::ServerMiddleware (background jobs) in RequestStore.
+    # If a Sidekiq job propagates 'va-health-benefits-app' from an originating mobile
+    # request, attributing that job to VAHB is intentional.
+    def client_application
+      source = RequestStore.store.dig('additional_request_attributes', 'source')
+      source == 'va-health-benefits-app' ? SourceConstants::VAHB : SourceConstants::VAGOV
     end
   end
 end
