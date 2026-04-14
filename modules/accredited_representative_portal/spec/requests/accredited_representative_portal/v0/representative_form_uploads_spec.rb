@@ -39,8 +39,41 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
     login_as(representative_user)
     allow(Flipper).to receive(:enabled?).and_call_original
     allow(Flipper).to receive(:enabled?)
+      .with(:accredited_representative_portal_killswitch)
+      .and_return(false)
+    allow(Flipper).to receive(:enabled?)
       .with(:accredited_representative_portal_individual_accept)
       .and_return(false)
+  end
+
+  describe 'accredited_representative_portal_killswitch' do
+    let(:killswitch_params) { { form_id: 'invalid-form' } }
+
+    context 'when killswitch is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_killswitch).and_return(false)
+      end
+
+      it 'allows request to reach endpoint logic' do
+        post('/accredited_representative_portal/v0/representative_form_upload',
+             params: killswitch_params)
+        expect(response).not_to have_http_status(:service_unavailable)
+      end
+    end
+
+    context 'when killswitch is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_killswitch).and_return(true)
+      end
+
+      it 'denies access with service unavailable before reaching endpoint logic' do
+        post('/accredited_representative_portal/v0/representative_form_upload',
+             params: killswitch_params)
+        expect(response).to have_http_status(:service_unavailable)
+      end
+    end
   end
 
   describe '#submit' do

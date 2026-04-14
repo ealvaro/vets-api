@@ -20,6 +20,9 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
 
     allow(Flipper).to receive(:enabled?).and_call_original
     allow(Flipper).to receive(:enabled?)
+      .with(:accredited_representative_portal_killswitch)
+      .and_return(false)
+    allow(Flipper).to receive(:enabled?)
       .with(:accredited_representative_portal_individual_accept, anything)
       .and_return(false)
 
@@ -674,6 +677,9 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
       context 'when user is authorized' do
         before do
           allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:accredited_representative_portal_killswitch)
+            .and_return(false)
           allow(Flipper).to receive(:enabled?)
             .with(:accredited_representative_portal_individual_accept, anything)
             .and_return(false)

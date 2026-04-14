@@ -48,6 +48,13 @@ module AccreditedRepresentativePortal
 end
 
 RSpec.configure do |config|
+  # feature flags are enabled in test by default. This one is a global
+  # flag that we need to be set to false unless we are testing the
+  # functionality that disables ARP
+  config.before do
+    allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_killswitch).and_return(false)
+  end
+
   config.include AccreditedRepresentativePortal::AuthenticationHelper, type: :request
   config.include AccreditedRepresentativePortal::AuthenticationHelper, type: :controller
   config.include AccreditedRepresentativePortal::RequestHelper, type: :request

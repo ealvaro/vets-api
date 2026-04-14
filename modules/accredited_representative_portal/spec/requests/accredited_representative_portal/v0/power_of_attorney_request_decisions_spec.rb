@@ -56,6 +56,9 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestDecisio
 
     allow(Flipper).to receive(:enabled?).and_call_original
     allow(Flipper).to receive(:enabled?)
+      .with(:accredited_representative_portal_killswitch)
+      .and_return(false)
+    allow(Flipper).to receive(:enabled?)
       .with(:accredited_representative_portal_individual_accept, anything)
       .and_return(false)
 

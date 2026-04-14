@@ -29,6 +29,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::IntentToFileController, type:
 
   before do
     allow(Flipper).to receive(:enabled?).and_call_original
+    allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_killswitch).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_skip_itf_check).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_itf_confirmation_email)
                                         .and_return(false)
