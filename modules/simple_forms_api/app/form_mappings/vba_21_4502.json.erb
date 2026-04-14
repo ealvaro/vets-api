@@ -57,6 +57,7 @@
   "form1[0].#subform[0].DOBmonth[3]": "<%= form.date_part('date_applied_for_compensation', 'month') %>",
   "form1[0].#subform[0].DOBday[3]": "<%= form.date_part('date_applied_for_compensation', 'day') %>",
   "form1[0].#subform[0].Location_Of_VA_Office_That_Has_Your_File[0]": "<%= form.data['location_of_office'] %>",
+  "form1[0].#subform[0].IfYes_GivePlaceYouAppliedForDisabilityCompensation[0]": "<%= form.data['name_of_office'] %>",
   "form1[0].#subform[0].RadioButtonList[3]": "<%=
           vehicle_type = form.data['vehicle_type'].to_s.upcase
           {
