@@ -37,7 +37,7 @@ module MebApi
             when 'Chapter35Submission'
               'Chapter35'
             when 'vettec', 'VetTecSubmission'
-              'vettec'
+              'VetTec'
             else
               'toe'
             end
