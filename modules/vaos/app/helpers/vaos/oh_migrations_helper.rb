@@ -48,9 +48,11 @@ module VAOS
 
     module MigrationUtils
       ELIGIBILITY_START_DAYS = -30
+      ELIGIBILITY_END_DAYS = 47
+      ELIGIBILITY_DARK_DEPLOY_END_DAYS = 45
       CANCELLATION_START_DAYS = -10
-      DEFAULT_END_DAYS = 7
-      DARK_DEPLOY_END_DAYS = 5
+      CANCELLATION_END_DAYS = 7
+      CANCELLATION_DARK_DEPLOY_END_DAYS = 5
 
       def self.build_migrations(migrations, migration_entry, today, user)
         migration_entry[:facilities].each do |facility|
@@ -67,21 +69,29 @@ module VAOS
 
           migrations[parent_facility] = migration
         end
-        migrations = {}
       end
 
-      def self.migration_cutoff(user)
+      def self.cancellation_end_days(user)
         if user && Flipper.enabled?(:mhv_oh_migration_dark_deploy_appointments,
                                     user)
-          DARK_DEPLOY_END_DAYS
+          CANCELLATION_DARK_DEPLOY_END_DAYS
         else
-          DEFAULT_END_DAYS
+          CANCELLATION_END_DAYS
+        end
+      end
+
+      def self.eligibility_end_days(user)
+        if user && Flipper.enabled?(:mhv_oh_migration_dark_deploy_appointments,
+                                    user)
+          ELIGIBILITY_DARK_DEPLOY_END_DAYS
+        else
+          ELIGIBILITY_END_DAYS
         end
       end
 
       def self.check_eligibility_override(migration, migration_days, user)
         is_minus30 = migration_days >= ELIGIBILITY_START_DAYS
-        is_past_cutoff = migration_days >= migration_cutoff(user)
+        is_past_cutoff = migration_days >= eligibility_end_days(user)
 
         # eligibility is disabled from 30 days before migration until the cutoff
         migration[:disable_eligibility] = is_minus30 && !is_past_cutoff
@@ -89,7 +99,7 @@ module VAOS
 
       def self.check_cancellation_override(migration, migration_days, user)
         is_minus10 = migration_days >= CANCELLATION_START_DAYS
-        is_past_cutoff = migration_days >= migration_cutoff(user)
+        is_past_cutoff = migration_days >= cancellation_end_days(user)
 
         # appointment cancellation is disabled from 10 days before migration until the cutoff
         migration[:cancellation_disabled] = is_minus10 && !is_past_cutoff
