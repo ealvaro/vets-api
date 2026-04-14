@@ -23,7 +23,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
       .with(:accredited_representative_portal_killswitch)
       .and_return(false)
     allow(Flipper).to receive(:enabled?)
-      .with(:accredited_representative_portal_individual_accept, anything)
+      .with(:accredited_representative_portal_individual_accept_backend, anything)
       .and_return(false)
 
     test_user
@@ -75,7 +75,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
       context 'when individual accept feature flag is enabled (scope filtering)' do
         before do
           allow(Flipper).to receive(:enabled?)
-            .with(:accredited_representative_portal_individual_accept, anything)
+            .with(:accredited_representative_portal_individual_accept_backend, anything)
             .and_return(true)
 
           allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
@@ -681,7 +681,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
             .with(:accredited_representative_portal_killswitch)
             .and_return(false)
           allow(Flipper).to receive(:enabled?)
-            .with(:accredited_representative_portal_individual_accept, anything)
+            .with(:accredited_representative_portal_individual_accept_backend, anything)
             .and_return(false)
         end
 
@@ -696,7 +696,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
       context 'when individual accept feature flag is enabled (record authorization)' do
         before do
           allow(Flipper).to receive(:enabled?)
-            .with(:accredited_representative_portal_individual_accept, anything)
+            .with(:accredited_representative_portal_individual_accept_backend, anything)
             .and_return(true)
 
           allow(test_user).to receive(:registration_numbers).and_return([representative.representative_id])

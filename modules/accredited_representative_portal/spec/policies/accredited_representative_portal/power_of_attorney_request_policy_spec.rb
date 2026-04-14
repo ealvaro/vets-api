@@ -69,7 +69,7 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
       context 'when feature flag is disabled' do
         before do
           allow(Flipper).to receive(:enabled?)
-            .with(:accredited_representative_portal_individual_accept, user)
+            .with(:accredited_representative_portal_individual_accept_backend, user)
             .and_return(false)
         end
 
@@ -139,7 +139,7 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
 
         before do
           allow(Flipper).to receive(:enabled?)
-            .with(:accredited_representative_portal_individual_accept, user)
+            .with(:accredited_representative_portal_individual_accept_backend, user)
             .and_return(true)
 
           allow(user).to receive(:registration_numbers).and_return([vso_rep.representative_id])
@@ -299,7 +299,7 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
       context 'when feature flag is disabled' do
         before do
           allow(Flipper).to receive(:enabled?)
-            .with(:accredited_representative_portal_individual_accept, user)
+            .with(:accredited_representative_portal_individual_accept_backend, user)
             .and_return(false)
         end
 
@@ -324,7 +324,7 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
       context 'when feature flag is enabled' do
         before do
           allow(Flipper).to receive(:enabled?)
-            .with(:accredited_representative_portal_individual_accept, user)
+            .with(:accredited_representative_portal_individual_accept_backend, user)
             .and_return(true)
         end
 

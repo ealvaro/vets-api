@@ -114,7 +114,7 @@ RSpec.describe AccreditedRepresentativePortal::ClaimantRepresentative, type: :mo
       before do
         allow(Flipper).to receive(:enabled?).and_call_original
         allow(Flipper).to receive(:enabled?)
-          .with(:accredited_representative_portal_individual_accept)
+          .with(:accredited_representative_portal_individual_accept_backend)
           .and_return(false)
       end
 
@@ -137,7 +137,7 @@ RSpec.describe AccreditedRepresentativePortal::ClaimantRepresentative, type: :mo
       before do
         allow(Flipper).to receive(:enabled?).and_call_original
         allow(Flipper).to receive(:enabled?)
-          .with(:accredited_representative_portal_individual_accept)
+          .with(:accredited_representative_portal_individual_accept_backend)
           .and_return(true)
       end
 

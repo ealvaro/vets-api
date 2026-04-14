@@ -16,7 +16,7 @@ module AccreditedRepresentativePortal
       )
       allow(Flipper).to receive(:enabled?).and_call_original
       allow(Flipper).to receive(:enabled?)
-        .with(:accredited_representative_portal_individual_accept)
+        .with(:accredited_representative_portal_individual_accept_backend)
         .and_return(false)
     end
 

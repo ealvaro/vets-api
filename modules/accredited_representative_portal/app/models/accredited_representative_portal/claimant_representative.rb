@@ -76,7 +76,7 @@ module AccreditedRepresentativePortal
       end
 
       def individual_accept_enabled?
-        Flipper.enabled?(:accredited_representative_portal_individual_accept)
+        Flipper.enabled?(:accredited_representative_portal_individual_accept_backend)
       end
     end
 

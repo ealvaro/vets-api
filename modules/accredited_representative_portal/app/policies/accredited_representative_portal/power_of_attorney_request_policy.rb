@@ -50,7 +50,7 @@ module AccreditedRepresentativePortal
     end
 
     def individual_accept_enabled?
-      Flipper.enabled?(:accredited_representative_portal_individual_accept, @user)
+      Flipper.enabled?(:accredited_representative_portal_individual_accept_backend, @user)
     end
 
     def acceptance_mode_for_record_org

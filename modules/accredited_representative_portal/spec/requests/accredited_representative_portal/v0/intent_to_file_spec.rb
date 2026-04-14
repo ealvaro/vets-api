@@ -34,7 +34,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::IntentToFileController, type:
     allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_itf_confirmation_email)
                                         .and_return(false)
     allow(Flipper).to receive(:enabled?)
-      .with(:accredited_representative_portal_individual_accept)
+      .with(:accredited_representative_portal_individual_accept_backend)
       .and_return(false)
     VCR.configure do |c|
       c.debug_logger = File.open('record.log', 'w')
