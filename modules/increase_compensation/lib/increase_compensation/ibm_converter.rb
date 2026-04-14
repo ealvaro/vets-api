@@ -20,6 +20,7 @@ module IncreaseCompensation
       'VETERAN_ADDRESS_ZIP5' => ->(data) { data.dig('veteranAddress', 'postalCode') || '' },
       'SERVICE_CONNECTED_DISABILITY' => ->(data) { disability_to_s(data['listOfDisabilities']) },
       'VETERAN_SSN_1' => ->(data) { data['veteranSocialSecurityNumber'] || '' },
+      'DATE_LAST_WORKED' => ->(data) { format_date(data['lastWorkedFullTimeDate']) },
 
       # Employers Section
       # Employer From From #1
