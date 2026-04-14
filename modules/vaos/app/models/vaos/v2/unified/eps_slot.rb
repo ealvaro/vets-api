@@ -6,8 +6,6 @@ module VAOS
       class EpsSlot < BaseSlot
         DURATION_SEGMENT_PATTERN = /\A(?:(?<hours>\d+)h)?(?:(?<minutes>\d+)m)?(?:(?<seconds>\d+)s)?\z/
 
-        attr_accessor :provider_service_id
-
         def initialize(attrs = {})
           super
           self.provider_type = 'community_care'

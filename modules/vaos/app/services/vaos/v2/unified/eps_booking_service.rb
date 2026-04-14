@@ -29,8 +29,7 @@ module VAOS
           p = params.with_indifferent_access
           referral_number = resolve_referral_number(p)
           eps = appointment_service_for(user)
-          draft = eps.create_draft_appointment(referral_id: referral_number)
-          draft_id = extract_draft_appointment_id(draft)
+          draft_id = resolve_draft_id(p, eps, referral_number)
 
           submit_params = build_submit_params(provider:, slot:, params: p, referral_number:)
           result = eps.submit_appointment(draft_id, submit_params)
@@ -51,6 +50,14 @@ module VAOS
           return if provider.is_a?(VAOS::V2::Unified::EpsProvider)
 
           raise BookingArgumentError, "EpsBookingService requires an EpsProvider, got #{provider.class.name}"
+        end
+
+        def resolve_draft_id(params, eps, referral_number)
+          existing = params[:appointment_id].presence
+          return existing if existing
+
+          draft = eps.create_draft_appointment(referral_id: referral_number)
+          extract_draft_appointment_id(draft)
         end
 
         def resolve_referral_number(params)

@@ -72,6 +72,21 @@ RSpec.describe VAOS::V2::Unified::EpsBookingService do
       )
     end
 
+    context 'when appointment_id is provided (draft already exists from slots fetch)' do
+      let(:params_with_draft) { base_params.merge(appointment_id: 'existing-draft-99') }
+
+      it 'skips draft creation and uses the existing draft ID' do
+        expect(appointment_service).not_to receive(:create_draft_appointment)
+        expect(appointment_service).to receive(:submit_appointment).with(
+          'existing-draft-99',
+          hash_including(referral_number: 'REF-12345')
+        ).and_return(submit_response)
+
+        result = service.book(user:, provider:, slot:, params: params_with_draft)
+        expect(result[:appointment_id]).to eq('eps-draft-1')
+      end
+    end
+
     context 'when referral_id is used instead of referral_number' do
       let(:base_params) { { referral_id: 'VA0000001234' } }
 

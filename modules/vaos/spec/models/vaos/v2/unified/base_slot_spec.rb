@@ -28,6 +28,7 @@ RSpec.describe VAOS::V2::Unified::BaseSlot do
       expect(slot.end).to be_nil
       expect(slot.provider_id).to be_nil
       expect(slot.provider_type).to be_nil
+      expect(slot.provider_service_id).to be_nil
     end
 
     it 'ignores unknown attributes' do

@@ -5,26 +5,39 @@ module VAOS
     class UnifiedProviderSerializer
       def serialize(providers, referral_npi: nil)
         providers.map.with_index do |provider, index|
-          {
-            id: provider.id,
-            type: 'unified_provider',
-            attributes: {
-              name: provider.name,
-              facilityName: provider.facility_name,
-              providerType: provider.provider_type,
-              isReferralProvider: referral_provider?(provider, referral_npi),
-              address: serialize_address(provider.address),
-              phone: provider.phone,
-              latitude: provider.latitude,
-              longitude: provider.longitude,
-              distanceInMiles: provider.distance_from_user&.round(1),
-              sortOrder: index
-            }
-          }
+          attrs = {
+            name: provider.name,
+            facilityName: provider.facility_name,
+            providerType: provider.provider_type,
+            isReferralProvider: referral_provider?(provider, referral_npi),
+            address: serialize_address(provider.address),
+            phone: provider.phone,
+            latitude: provider.latitude,
+            longitude: provider.longitude,
+            distanceInMiles: provider.distance_from_user&.round(1),
+            sortOrder: index
+          }.merge(type_specific_attributes(provider))
+
+          { id: provider.id, type: 'unified_provider', attributes: attrs }
         end
       end
 
       private
+
+      def type_specific_attributes(provider)
+        case provider
+        when Unified::VAProvider
+          { locationId: provider.location_id, serviceType: provider.service_type }.compact
+        when Unified::EpsProvider
+          {
+            providerServiceId: provider.provider_service_id,
+            networkId: provider.network_id,
+            appointmentTypes: provider.appointment_types
+          }.compact
+        else
+          {}
+        end
+      end
 
       def referral_provider?(provider, referral_npi)
         return false if referral_npi.blank?

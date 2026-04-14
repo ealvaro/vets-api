@@ -68,7 +68,7 @@ module VAOS
         Unified::EpsProvider.new(
           id: params.require(:provider_service_id),
           provider_service_id: params[:provider_service_id],
-          network_id: params[:network_id]
+          network_id: params.require(:network_id)
         )
       end
 
@@ -99,6 +99,7 @@ module VAOS
           :network_id,
           :provider_service_id,
           :slot_id,
+          :appointment_id,
           :comment,
           additional_patient_attributes: [
             :phone, :email, :birth_date, :gender,
