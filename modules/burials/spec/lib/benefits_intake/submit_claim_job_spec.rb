@@ -118,6 +118,41 @@ RSpec.describe Burials::BenefitsIntake::SubmitClaimJob, :uploader_helpers do
       )
     end
 
+    context 'when a non-retryable error occurs' do
+      before do
+        allow(UserAccount).to receive(:find)
+        allow(job).to receive(:lighthouse_submission_pending_or_success).and_return(false)
+      end
+
+      it 'does not re-raise ArgumentError and triggers exhaustion immediately' do
+        allow(job).to receive(:generate_form_pdf).and_raise(ArgumentError, 'postalCode is missing')
+
+        expect(monitor).not_to receive(:track_submission_retry)
+        expect(monitor).to receive(:track_submission_exhaustion)
+
+        expect { job.perform(claim.id, user_account_uuid) }.not_to raise_error
+      end
+
+      it 'does not re-raise InvalidDocumentError and triggers exhaustion immediately' do
+        allow(job).to receive(:generate_form_pdf)
+          .and_raise(BenefitsIntake::Service::InvalidDocumentError, 'PDF too large')
+
+        expect(monitor).not_to receive(:track_submission_retry)
+        expect(monitor).to receive(:track_submission_exhaustion)
+
+        expect { job.perform(claim.id, user_account_uuid) }.not_to raise_error
+      end
+
+      it 'still re-raises transient errors for Sidekiq retry' do
+        allow(job).to receive(:generate_form_pdf).and_raise(StandardError, 'network timeout')
+
+        expect(monitor).to receive(:track_submission_retry)
+        expect(monitor).not_to receive(:track_submission_exhaustion)
+
+        expect { job.perform(claim.id, user_account_uuid) }.to raise_error(StandardError, 'network timeout')
+      end
+    end
+
     # perform
   end
 

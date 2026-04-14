@@ -16,6 +16,14 @@ module Burials
       # generic job processing error
       class BurialsBenefitIntakeError < StandardError; end
 
+      # Errors indicating permanent failures that will never succeed on retry.
+      # Retrying these wastes resources and delays exhaustion notification.
+      NON_RETRYABLE_ERRORS = [
+        ArgumentError,                                   # bad metadata (missing/invalid fields)
+        ::BenefitsIntake::Service::InvalidDocumentError, # PDF validation failure
+        ::BenefitsIntake::Service::UploadSizeExceeded    # upload exceeds size limit
+      ].freeze
+
       # retry for 2d 1h 47m 12s
       # https://github.com/sidekiq/sidekiq/wiki/Error-Handling
       sidekiq_options retry: 16, queue: 'low'
@@ -54,6 +62,8 @@ module Burials
         Flipper.enabled?(:burial_submitted_email_notification) ? send_submitted_email : send_confirmation_email
 
         @intake_service.uuid
+      rescue *NON_RETRYABLE_ERRORS => e
+        handle_permanent_failure(e, saved_claim_id, user_account_uuid)
       rescue => e
         monitor.track_submission_retry(@claim, @intake_service, @user_account_uuid, e)
         @lighthouse_submission_attempt&.fail!
@@ -85,6 +95,15 @@ module Burials
       # @see Burials::Monitor
       def monitor
         @monitor ||= Burials::Monitor.new
+      end
+
+      # Handles errors that will never succeed on retry (bad data, invalid documents, etc.).
+      # Logs the failure and immediately triggers exhaustion instead of burning through 16 retries.
+      def handle_permanent_failure(error, saved_claim_id, user_account_uuid)
+        @lighthouse_submission_attempt&.fail!
+        monitor.track_submission_exhaustion(
+          { 'args' => [saved_claim_id, user_account_uuid], 'error_message' => error.message }, @claim
+        )
       end
 
       # Check Lighthouse::SubmissionAttempts for record with 'pending' or 'success'
