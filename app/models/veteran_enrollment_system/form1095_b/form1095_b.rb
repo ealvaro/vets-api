@@ -83,7 +83,7 @@ module VeteranEnrollmentSystem
           new(prepared_data)
         end
 
-        def available_years(user, periods)
+        def available_years(periods)
           years = periods.each_with_object([]) do |period, array|
             start_date = period['startDate'].to_date.year
             # if no end date, the user is still enrolled
@@ -95,19 +95,15 @@ module VeteranEnrollmentSystem
               array.concat(intervening_years)
             end
           end.uniq.sort
-          years_range = available_years_range(user)
+          years_range = available_years_range
           years.filter { |year| year.between?(*years_range) }
         end
 
-        def available_years_range(user)
+        def available_years_range
           current_year = Date.current.year
           current_tax_year = current_year - 1
-          if Flipper.enabled?(:form1095b_multiple_years, user)
-            starting_year = (current_year - NUMBER_OF_YEARS_AVAILABLE)
-            [starting_year, current_tax_year]
-          else
-            [current_tax_year, current_tax_year]
-          end
+          starting_year = (current_year - NUMBER_OF_YEARS_AVAILABLE)
+          [starting_year, current_tax_year]
         end
 
         def pdf_template_path(year)

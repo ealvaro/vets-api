@@ -3240,9 +3240,6 @@ features:
     actor_type: cookie_id
     enable_in_development: true
     description: "Toggle the sending of data to IBM GOVCIO for form 21-2680 (Examination for Housebound Status or Permanent Need for Regular Aid and Attendance)"
-  form1095b_multiple_years:
-    actor_type: user
-    description: Enables access to multiple years of form 1095b
   meb_1995_instruction_page_update_v3:
     actor_type: user
     description: Updated verbiage for instruction page for 5490
