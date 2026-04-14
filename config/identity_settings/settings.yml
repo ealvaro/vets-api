@@ -88,6 +88,7 @@ sign_in:
     - okta_test
     - okta_stg
     - occ_localhost
+    - occ_staging
   usip_uri: http://localhost:3001/sign-in
   vaweb_client_id: vaweb
   vamobile_client_id: vamobile
