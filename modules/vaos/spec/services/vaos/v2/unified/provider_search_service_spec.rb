@@ -28,7 +28,7 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
           'state' => 'WY', 'zip' => '82001'
         }
       },
-      phone: { 'main' => '307-778-7550' },
+      phone: { 'main' => '307-778-7550', 'healthConnect' => '307-778-7550' },
       lat: 28.10,
       long: -80.62,
       facility_type: 'va_health_facility',

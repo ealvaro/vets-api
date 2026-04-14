@@ -24,7 +24,10 @@ RSpec.describe VAOS::V2::Unified::VAProvider do
             'zip' => '82001'
           }
         },
-        phone: { 'main' => '307-778-7550' },
+        phone: {
+          'main' => '999-999-9999',
+          'healthConnect' => '307-778-7550'
+        },
         lat: 41.1456,
         long: -104.7892,
         facility_type: 'va_health_facility',
@@ -54,6 +57,28 @@ RSpec.describe VAOS::V2::Unified::VAProvider do
       expect(provider.facility_name).to eq('Cheyenne VA Medical Center')
       expect(provider.name).to eq('CHY AUDIOLOGY')
       expect(provider.provider_type).to eq('va')
+    end
+
+    it 'sets phone from facility healthConnect (not main)' do
+      provider = described_class.from_facility_and_clinic(facility, clinic)
+
+      expect(provider.phone).to eq('307-778-7550')
+    end
+
+    it 'accepts health_connect as an alternate phone key' do
+      allow(facility).to receive(:phone).and_return({ 'health_connect' => '505-555-0100' })
+
+      provider = described_class.from_facility_and_clinic(facility, clinic)
+
+      expect(provider.phone).to eq('505-555-0100')
+    end
+
+    it 'sets phone to nil when neither healthConnect nor health_connect is present' do
+      allow(facility).to receive(:phone).and_return({ 'main' => '307-778-7550' })
+
+      provider = described_class.from_facility_and_clinic(facility, clinic)
+
+      expect(provider.phone).to be_nil
     end
 
     it 'sets service_type when provided' do

@@ -27,7 +27,7 @@ module VAOS
             name: clinic[:service_name],
             facility_name: facility.name,
             address: parse_lighthouse_address(facility.address),
-            phone: facility.phone&.dig('main'),
+            phone: facility.phone&.dig('healthConnect') || facility.phone&.dig('health_connect'),
             latitude: facility.lat,
             longitude: facility.long,
             facility_type: facility.facility_type,
