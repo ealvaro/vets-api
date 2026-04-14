@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../../../../../support/helpers/rails_helper'
+require_relative '../../../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::Appointments::Facility::Eligibility', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
 
   let!(:user) { sis_user(icn: '9000682') }
 
@@ -69,7 +70,7 @@ RSpec.describe 'Mobile::V0::Appointments::Facility::Eligibility', type: :request
         end
 
         it 'matches schema' do
-          expect(response.body).to match_json_schema('facility_eligibility')
+          assert_schema_conform(200)
         end
 
         it 'forms expected meta data with default pagination values' do
@@ -118,7 +119,7 @@ RSpec.describe 'Mobile::V0::Appointments::Facility::Eligibility', type: :request
         end
 
         it 'matches schema' do
-          expect(response.body).to match_json_schema('facility_eligibility')
+          assert_schema_conform(200)
         end
 
         it 'assumes facility exists but does not support requests' do

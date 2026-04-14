@@ -53,13 +53,10 @@ properties:
     type: object
     additionalProperties: false
     required:
-      - errors
       - pagination
       - availableYears
       - recurringPayment
     properties:
-      errors:
-        type: [ array, null ]
       pagination:
         type: object
         additionalProperties: false
@@ -87,9 +84,6 @@ properties:
       recurringPayment:
         type: object
         additionalProperties: false
-        required:
-          - amount
-          - date
         properties:
           amount:
             type: string

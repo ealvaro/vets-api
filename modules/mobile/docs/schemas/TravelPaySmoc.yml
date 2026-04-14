@@ -4,6 +4,4 @@ required:
   - data
 properties:
   data:
-    type: array
-    items:
-      $ref: "./FacilityClinic.yml"
+    $ref: ./TravelPayClaimSummary.yml

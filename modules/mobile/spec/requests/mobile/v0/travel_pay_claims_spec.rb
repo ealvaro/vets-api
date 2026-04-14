@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../../../support/helpers/rails_helper'
+require_relative '../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::TravelPayClaims', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
 
   let!(:user) { sis_user }
 
@@ -25,7 +26,7 @@ RSpec.describe 'Mobile::V0::TravelPayClaims', type: :request do
           get('/mobile/v0/travel-pay/claims', headers: sis_headers, params:)
 
           expect(response).to have_http_status(:ok)
-          expect(response.body).to match_json_schema('travel_pay_claims_response')
+          assert_schema_conform(200)
 
           json = response.parsed_body
           expect(json['meta']['status']).to eq(200)
@@ -44,7 +45,7 @@ RSpec.describe 'Mobile::V0::TravelPayClaims', type: :request do
           get('/mobile/v0/travel-pay/claims', headers: sis_headers, params:)
 
           expect(response).to have_http_status(:partial_content)
-          expect(response.body).to match_json_schema('travel_pay_claims_response')
+          assert_schema_conform(206)
 
           json = response.parsed_body
 
@@ -576,14 +577,14 @@ RSpec.describe 'Mobile::V0::TravelPayClaims', type: :request do
 
     it 'returns a successfully submitted claim response' do
       VCR.use_cassette('travel_pay/submit/success', match_requests_on: %i[method path]) do
-        params = { 'appointment_date_time' => '2024-01-01T16:45:34.465',
-                   'facility_station_number' => '123',
-                   'facility_name' => 'Some Facility',
-                   'appointment_type' => 'Other',
-                   'is_complete' => false }
+        params = { 'appointmentDateTime' => '2024-01-01T16:45:34.465',
+                   'facilityStationNumber' => '123',
+                   'facilityName' => 'Some Facility',
+                   'appointmentType' => 'Other',
+                   'isComplete' => false }.to_json
 
-        post('/mobile/v0/travel-pay/claims', headers: sis_headers, params:)
-        expect(response.body).to match_json_schema('travel_pay_smoc_response')
+        post('/mobile/v0/travel-pay/claims', headers: sis_headers(json: true), params:)
+        assert_schema_conform(201)
         expect(response).to have_http_status(:created)
         claim_response = response.parsed_body['data']['attributes']
         expect(claim_response['id']).to eq('3fa85f64-5717-4562-b3fc-2c963f66afa6')
@@ -595,13 +596,13 @@ RSpec.describe 'Mobile::V0::TravelPayClaims', type: :request do
 
     it 'returns a BadRequest response if an invalid appointment date time is given' do
       VCR.use_cassette('travel_pay/submit/success', match_requests_on: %i[method path], allow_playback_repeats: true) do
-        params = { 'appointment_date_time' => 'My birthday, 4 years ago',
-                   'facility_station_number' => '123',
-                   'facility_name' => 'Some Facility',
-                   'appointment_type' => 'Other',
-                   'is_complete' => false }
+        params = { 'appointmentDateTime' => 'My birthday, 4 years ago',
+                   'facilityStationNumber' => '123',
+                   'facilityName' => 'Some Facility',
+                   'appointmentType' => 'Other',
+                   'isComplete' => false }.to_json
 
-        post('/mobile/v0/travel-pay/claims', headers: sis_headers, params:)
+        post('/mobile/v0/travel-pay/claims', headers: sis_headers(json: true), params:)
 
         expect(response).to have_http_status(:bad_request)
       end
@@ -613,15 +614,15 @@ RSpec.describe 'Mobile::V0::TravelPayClaims', type: :request do
           VCR.use_cassette('travel_pay/submit/200_create_claim', match_requests_on: %i[method path]) do
             VCR.use_cassette('travel_pay/submit/200_add_expense', match_requests_on: %i[method path]) do
               VCR.use_cassette('travel_pay/submit/500_submit_claim', match_requests_on: %i[method path]) do
-                params = { 'appointment_date_time' => '2024-01-01T16:45:34.465Z',
-                           'facility_station_number' => '123',
-                           'facility_name' => 'Some Facility',
-                           'appointment_type' => 'Other',
-                           'is_complete' => false }
+                params = { 'appointmentDateTime' => '2024-01-01T16:45:34.465Z',
+                           'facilityStationNumber' => '123',
+                           'facilityName' => 'Some Facility',
+                           'appointmentType' => 'Other',
+                           'isComplete' => false }.to_json
 
-                post('/mobile/v0/travel-pay/claims', headers: sis_headers, params:)
+                post('/mobile/v0/travel-pay/claims', headers: sis_headers(json: true), params:)
 
-                expect(response.body).to match_json_schema('travel_pay_smoc_response')
+                assert_schema_conform(201)
                 submitted_claim = response.parsed_body['data']['attributes']
                 expect(response).to have_http_status(:created)
                 expect(submitted_claim['id']).to eq('3fa85f64-5717-4562-b3fc-2c963f66afa6')
@@ -638,15 +639,15 @@ RSpec.describe 'Mobile::V0::TravelPayClaims', type: :request do
         VCR.use_cassette('travel_pay/submit/200_find_or_create_appt', match_requests_on: %i[method path]) do
           VCR.use_cassette('travel_pay/submit/200_create_claim', match_requests_on: %i[method path]) do
             VCR.use_cassette('travel_pay/submit/500_add_expense', match_requests_on: %i[method path]) do
-              params = { 'appointment_date_time' => '2024-01-01T16:45:34.465Z',
-                         'facility_station_number' => '123',
-                         'facility_name' => 'Some Facility',
-                         'appointment_type' => 'Other',
-                         'is_complete' => false }
+              params = { 'appointmentDateTime' => '2024-01-01T16:45:34.465Z',
+                         'facilityStationNumber' => '123',
+                         'facilityName' => 'Some Facility',
+                         'appointmentType' => 'Other',
+                         'isComplete' => false }.to_json
 
-              post('/mobile/v0/travel-pay/claims', headers: sis_headers, params:)
+              post('/mobile/v0/travel-pay/claims', headers: sis_headers(json: true), params:)
 
-              expect(response.body).to match_json_schema('travel_pay_smoc_response')
+              assert_schema_conform(201)
               submitted_claim = response.parsed_body['data']['attributes']
               expect(response).to have_http_status(:created)
               expect(submitted_claim['id']).to eq('3fa85f64-5717-4562-b3fc-2c963f66afa6')
@@ -661,13 +662,13 @@ RSpec.describe 'Mobile::V0::TravelPayClaims', type: :request do
       VCR.use_cassette('travel_pay/submit/tokens_success', match_requests_on: %i[method path]) do
         VCR.use_cassette('travel_pay/submit/200_find_or_create_appt', match_requests_on: %i[method path]) do
           VCR.use_cassette('travel_pay/submit/500_create_claim', match_requests_on: %i[method path]) do
-            params = { 'appointment_date_time' => '2024-01-01T16:45:34.465Z',
-                       'facility_station_number' => '123',
-                       'facility_name' => 'Some Facility',
-                       'appointment_type' => 'Other',
-                       'is_complete' => false }
+            params = { 'appointmentDateTime' => '2024-01-01T16:45:34.465Z',
+                       'facilityStationNumber' => '123',
+                       'facilityName' => 'Some Facility',
+                       'appointmentType' => 'Other',
+                       'isComplete' => false }.to_json
 
-            post('/mobile/v0/travel-pay/claims', headers: sis_headers, params:)
+            post('/mobile/v0/travel-pay/claims', headers: sis_headers(json: true), params:)
             # TODO: This should be a 500 error, but the controller is returning a 400
             # expect(response).to have_http_status(:internal_server_error)
             expect(response).to have_http_status(:bad_request)
@@ -677,12 +678,12 @@ RSpec.describe 'Mobile::V0::TravelPayClaims', type: :request do
     end
 
     it 'returns an error when facility_name is missing' do
-      params = { 'appointment_date_time' => '2024-01-01T16:45:34.465',
-                 'facility_station_number' => '123',
-                 'appointment_type' => 'Other',
-                 'is_complete' => false }
+      params = { 'appointmentDateTime' => '2024-01-01T16:45:34.465',
+                 'facilityStationNumber' => '123',
+                 'appointmentType' => 'Other',
+                 'isComplete' => false }.to_json
 
-      post('/mobile/v0/travel-pay/claims', headers: sis_headers, params:)
+      post('/mobile/v0/travel-pay/claims', headers: sis_headers(json: true), params:)
 
       expect(response).to have_http_status(:unprocessable_entity)
     end

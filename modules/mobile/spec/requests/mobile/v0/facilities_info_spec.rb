@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../../../support/helpers/rails_helper'
+require_relative '../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::FacilitiesInfo', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
 
   let(:params) { { lat: 40.5, long: 100.1 } }
   let!(:user) do
@@ -32,7 +33,7 @@ RSpec.describe 'Mobile::V0::FacilitiesInfo', type: :request do
         facilities.each do |facility|
           expect(facility['miles']).to be_nil
         end
-        expect(response.body).to match_json_schema('facilities_info')
+        assert_schema_conform(200)
       end
     end
 
@@ -60,7 +61,7 @@ RSpec.describe 'Mobile::V0::FacilitiesInfo', type: :request do
             facilities.each do |facility|
               expect(facility['miles']).not_to be_nil
             end
-            expect(response.body).to match_json_schema('facilities_info')
+            assert_schema_conform(200)
           end
         end
 
@@ -72,7 +73,7 @@ RSpec.describe 'Mobile::V0::FacilitiesInfo', type: :request do
                              match_requests_on: %i[method uri]) do
               get('/mobile/v0/facilities-info/home', headers: sis_headers)
               expect(response).to have_http_status(:unprocessable_entity)
-              expect(response.body).to match_json_schema('errors')
+              assert_schema_conform(422)
             end
           end
         end
@@ -89,7 +90,7 @@ RSpec.describe 'Mobile::V0::FacilitiesInfo', type: :request do
             facilities.each do |facility|
               expect(facility['miles']).not_to be_nil
             end
-            expect(response.body).to match_json_schema('facilities_info')
+            assert_schema_conform(200)
           end
         end
 
@@ -99,7 +100,7 @@ RSpec.describe 'Mobile::V0::FacilitiesInfo', type: :request do
                              match_requests_on: %i[method uri]) do
               get '/mobile/v0/facilities-info/current', headers: sis_headers
               expect(response).to have_http_status(:bad_request)
-              expect(response.body).to match_json_schema('errors')
+              assert_schema_conform(400)
             end
           end
         end
@@ -116,7 +117,7 @@ RSpec.describe 'Mobile::V0::FacilitiesInfo', type: :request do
             facilities.each do |facility|
               expect(facility['miles']).to be_nil
             end
-            expect(response.body).to match_json_schema('facilities_info')
+            assert_schema_conform(200)
           end
         end
       end

@@ -7,8 +7,6 @@ properties:
   data:
     type: array
     items:
-      type: object
-      additionalProperties: false
       $ref: "./PrescriptionRecord.yml"
   meta:
     type: object
@@ -16,10 +14,31 @@ properties:
     required:
       - prescriptionStatusCount
       - hasNonVaMeds
+      - pagination
     properties:
-      prescriptionStatusCount:
+      pagination:
         type: object
         additionalProperties: false
+        required:
+          - currentPage
+          - perPage
+          - totalPages
+          - totalEntries
+        properties:
+          currentPage:
+            type: integer
+            example: 1
+          perPage:
+            type: integer
+            example: 10
+          totalPages:
+            type: integer
+            example: 5
+          totalEntries:
+            type: integer
+            example: 50
+      prescriptionStatusCount:
+        type: object
         description: |
           Count of different types of prescriptions. "active" contains prescriptions that have a `refillStatus` of active,
           submitted, providerHold, activeParked, refillinprocess, and/or prescriptions that have a tracking number 

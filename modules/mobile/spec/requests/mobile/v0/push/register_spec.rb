@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../../../../support/helpers/rails_helper'
+require_relative '../../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::Push::Register', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
 
   let!(:user) { sis_user }
   let(:headers) { sis_headers(json: true) }
@@ -15,14 +16,13 @@ RSpec.describe 'Mobile::V0::Push::Register', type: :request do
           appName: 'va_mobile_app',
           deviceToken: '09d5a13a03b64b669f5ac0c32a0db6ad',
           osName: 'ios',
-          osVersion: '13.1',
           deviceName: 'My Iphone',
-          debug: 'false'
+          debug: false
         }
         VCR.use_cassette('vetext/register_success') do
           put '/mobile/v0/push/register', headers:, params: params.to_json
           expect(response).to have_http_status(:ok)
-          expect(response.body).to match_json_schema('push_register')
+          assert_schema_conform(200)
         end
       end
 
@@ -31,13 +31,12 @@ RSpec.describe 'Mobile::V0::Push::Register', type: :request do
           appName: 'va_mobile_app',
           deviceToken: '09d5a13a03b64b669f5ac0c32a0db6ad',
           osName: 'ios',
-          osVersion: '13.1',
-          debug: 'false'
+          debug: false
         }
         VCR.use_cassette('vetext/register_success') do
           put '/mobile/v0/push/register', headers:, params: params.to_json
           expect(response).to have_http_status(:ok)
-          expect(response.body).to match_json_schema('push_register')
+          assert_schema_conform(200)
         end
       end
     end
@@ -48,14 +47,13 @@ RSpec.describe 'Mobile::V0::Push::Register', type: :request do
           appName: 'va_mobile_app',
           deviceToken: '09d5a13a03b64b669f5ac0c32a0db6ad',
           osName: 'ios',
-          osVersion: '13.1',
           deviceName: 'My Iphone',
-          debug: 'true'
+          debug: true
         }
         VCR.use_cassette('vetext/register_success') do
           put '/mobile/v0/push/register', headers:, params: params.to_json
           expect(response).to have_http_status(:ok)
-          expect(response.body).to match_json_schema('push_register')
+          assert_schema_conform(200)
         end
       end
     end
@@ -66,13 +64,12 @@ RSpec.describe 'Mobile::V0::Push::Register', type: :request do
           appName: 'bad_name',
           deviceToken: '09d5a13a03b64b669f5ac0c32a0db6ad',
           osName: 'ios',
-          osVersion: '13.1',
           deviceName: 'My Iphone',
           debug: 'false'
         }
         put '/mobile/v0/push/register', headers:, params: params.to_json
         expect(response).to have_http_status(:not_found)
-        expect(response.body).to match_json_schema('errors')
+        assert_schema_conform(404)
       end
     end
 
@@ -82,14 +79,13 @@ RSpec.describe 'Mobile::V0::Push::Register', type: :request do
           appName: 'va_mobile_app',
           deviceToken: '9bad7c63574f75f46944c6436a01b7c41c0776d6f061aa46b0884cdd93bb6959',
           osName: 'ios',
-          osVersion: '13.1',
           deviceName: 'My Iphone',
           debug: 'false'
         }
         VCR.use_cassette('vetext/register_bad_request') do
           put '/mobile/v0/push/register', headers:, params: params.to_json
           expect(response).to have_http_status(:bad_request)
-          expect(response.body).to match_json_schema('errors')
+          assert_schema_conform(400)
         end
       end
     end
@@ -100,14 +96,13 @@ RSpec.describe 'Mobile::V0::Push::Register', type: :request do
           appName: 'va_mobile_app',
           deviceToken: '9bad7c63574f75f46944c6436a01b7c41c0776d6f061aa46b0884cdd93bb6959',
           osName: 'ios',
-          osVersion: '13.1',
           deviceName: 'My Iphone',
           debug: 'false'
         }
         VCR.use_cassette('vetext/register_internal_server_error') do
           put '/mobile/v0/push/register', headers:, params: params.to_json
           expect(response).to have_http_status(:bad_gateway)
-          expect(response.body).to match_json_schema('errors')
+          assert_schema_conform(502)
         end
       end
     end

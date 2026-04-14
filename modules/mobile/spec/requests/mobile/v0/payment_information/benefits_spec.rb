@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../../../../support/helpers/rails_helper'
+require_relative '../../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::PaymentInformation::Benefits', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
   let(:rsa_key) { OpenSSL::PKey::RSA.generate(2048) }
   let(:get_payment_info_body) do
     {
@@ -57,7 +58,7 @@ RSpec.describe 'Mobile::V0::PaymentInformation::Benefits', type: :request do
           get '/mobile/v0/payment-information/benefits', headers: sis_headers
           expect(response).to have_http_status(:ok)
           expect(JSON.parse(response.body)).to eq(get_payment_info_body)
-          expect(response.body).to match_json_schema('payment_information')
+          assert_schema_conform(200)
         end
       end
     end
@@ -67,7 +68,7 @@ RSpec.describe 'Mobile::V0::PaymentInformation::Benefits', type: :request do
         VCR.use_cassette('mobile/direct_deposit/show/403_forbidden') do
           get '/mobile/v0/payment-information/benefits', headers: sis_headers
           expect(response).to have_http_status(:forbidden)
-          expect(response.body).to match_json_schema('lighthouse_errors')
+          assert_schema_conform(403)
         end
       end
     end
@@ -104,7 +105,7 @@ Payment account info missing for user #{user.uuid}",
         VCR.use_cassette('lighthouse/direct_deposit/show/errors/400_unspecified_error') do
           get '/mobile/v0/payment-information/benefits', headers: sis_headers
           expect(response).to have_http_status(:bad_request)
-          expect(response.body).to match_json_schema('lighthouse_errors')
+          assert_schema_conform(400)
         end
       end
     end
@@ -144,7 +145,7 @@ Payment account info missing for user #{user.uuid}",
           get '/mobile/v0/payment-information/benefits', headers: sis_headers
           expect(response).to have_http_status(:ok)
           expect(JSON.parse(response.body)).to eq(get_payment_info_body)
-          expect(response.body).to match_json_schema('payment_information')
+          assert_schema_conform(200)
         end
       end
     end
@@ -162,10 +163,10 @@ Payment account info missing for user #{user.uuid}",
   describe 'PUT /mobile/v0/payment-information' do
     let(:payment_info_request) do
       {
-        account_type: 'Checking',
-        financial_institution_name: 'Bank of Ad Hoc',
-        account_number: '12345678',
-        financial_institution_routing_number: '021000021'
+        accountType: 'Checking',
+        financialInstitutionName: 'Bank of Ad Hoc',
+        accountNumber: '12345678',
+        financialInstitutionRoutingNumber: '021000021'
       }.to_json
     end
     let(:post_payment_info_body) do
@@ -215,7 +216,7 @@ Payment account info missing for user #{user.uuid}",
                                                          headers: sis_headers(json: true)
           expect(response).to have_http_status(:ok)
           expect(JSON.parse(response.body)).to eq(post_payment_info_body)
-          expect(response.body).to match_json_schema('payment_information')
+          assert_schema_conform(200)
         end
       end
     end
@@ -252,9 +253,9 @@ Payment account info missing for user #{user.uuid}",
     context 'with an invalid request payload' do
       let(:payment_info_request) do
         {
-          'account_type' => 'Checking',
-          'financial_institution_name' => 'Bank of Ad Hoc',
-          'account_number' => '12345678'
+          'accountType' => 'Checking',
+          'financialInstitutionName' => 'Bank of Ad Hoc',
+          'accountNumber' => '12345678'
         }.to_json
       end
 
@@ -273,7 +274,7 @@ Payment account info missing for user #{user.uuid}",
           put '/mobile/v0/payment-information/benefits', params: payment_info_request,
                                                          headers: sis_headers(json: true)
           expect(response).to have_http_status(:forbidden)
-          expect(response.body).to match_json_schema('lighthouse_errors')
+          assert_schema_conform(403)
         end
       end
     end
@@ -284,7 +285,7 @@ Payment account info missing for user #{user.uuid}",
           put '/mobile/v0/payment-information/benefits', params: payment_info_request,
                                                          headers: sis_headers(json: true)
           expect(response).to have_http_status(:bad_request)
-          expect(response.body).to match_json_schema('lighthouse_errors')
+          assert_schema_conform(400)
         end
       end
     end
@@ -295,7 +296,7 @@ Payment account info missing for user #{user.uuid}",
           put '/mobile/v0/payment-information/benefits', params: payment_info_request,
                                                          headers: sis_headers(json: true)
           expect(response).to have_http_status(:bad_request)
-          expect(response.body).to match_json_schema('lighthouse_errors')
+          assert_schema_conform(400)
         end
       end
     end
@@ -306,7 +307,7 @@ Payment account info missing for user #{user.uuid}",
           put '/mobile/v0/payment-information/benefits', params: payment_info_request,
                                                          headers: sis_headers(json: true)
           expect(response).to have_http_status(:bad_request)
-          expect(response.body).to match_json_schema('lighthouse_errors')
+          assert_schema_conform(400)
         end
       end
     end
@@ -319,7 +320,7 @@ Payment account info missing for user #{user.uuid}",
         end
 
         expect(response).to have_http_status(:internal_server_error)
-        expect(response.body).to match_json_schema('lighthouse_errors')
+        assert_schema_conform(500)
 
         meta_error = response.parsed_body.dig('errors', 0, 'meta', 'messages', 0)
         expect(meta_error['key']).to match('payment.accountRoutingNumber.invalidCheckSum')

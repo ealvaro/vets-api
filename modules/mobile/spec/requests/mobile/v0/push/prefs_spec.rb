@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../../../../support/helpers/rails_helper'
+require_relative '../../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::Push::Prefs', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
   let!(:user) { sis_user }
 
   describe 'GET /mobile/v0/push/prefs/{endpointSid}' do
@@ -13,7 +14,7 @@ RSpec.describe 'Mobile::V0::Push::Prefs', type: :request do
           {
             auto_opt_in: false,
             endpoint_sid: '8c258cbe573c462f912e7dd74585a5a9',
-            preference_name: 'Appointment reminders',
+            preference_name: 'Appointment Reminders',
             preference_id: 'appointment_reminders',
             value: true
           },
@@ -47,7 +48,7 @@ RSpec.describe 'Mobile::V0::Push::Prefs', type: :request do
         it 'matches the get_prefs schema' do
           get '/mobile/v0/push/prefs/8c258cbe573c462f912e7dd74585a5a9', headers: sis_headers
           expect(response).to have_http_status(:ok)
-          expect(response.body).to match_json_schema('get_prefs')
+          assert_schema_conform(200)
           expect(response.body).to include('claim_status_updates')
         end
       end
@@ -61,7 +62,7 @@ RSpec.describe 'Mobile::V0::Push::Prefs', type: :request do
         it 'matches the get_prefs schema' do
           get '/mobile/v0/push/prefs/8c258cbe573c462f912e7dd74585a5a9', headers: sis_headers
           expect(response).to have_http_status(:ok)
-          expect(response.body).to match_json_schema('get_prefs')
+          assert_schema_conform(200)
           expect(response.body).not_to include('claim_status_updates')
         end
       end
@@ -72,7 +73,7 @@ RSpec.describe 'Mobile::V0::Push::Prefs', type: :request do
         VCR.use_cassette('vetext/get_preferences_bad_request') do
           get '/mobile/v0/push/prefs/8c258cbe573c462f912e7dd74585a5a9', headers: sis_headers
           expect(response).to have_http_status(:bad_request)
-          expect(response.body).to match_json_schema('errors')
+          assert_schema_conform(400)
         end
       end
     end
@@ -82,7 +83,7 @@ RSpec.describe 'Mobile::V0::Push::Prefs', type: :request do
         VCR.use_cassette('vetext/get_preferences_internal_server_error') do
           get '/mobile/v0/push/prefs/8c258cbe573c462f912e7dd74585a5a9', headers: sis_headers
           expect(response).to have_http_status(:bad_gateway)
-          expect(response.body).to match_json_schema('errors')
+          assert_schema_conform(502)
         end
       end
     end

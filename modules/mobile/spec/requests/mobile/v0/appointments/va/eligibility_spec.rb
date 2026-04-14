@@ -4,7 +4,6 @@ require_relative '../../../../../support/helpers/rails_helper'
 require_relative '../../../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::Appointments::VA::Eligibility', type: :request do
-  include JsonSchemaMatchers
   include CommitteeHelper
 
   let!(:user) { sis_user(icn: '9000682') }
@@ -79,7 +78,7 @@ RSpec.describe 'Mobile::V0::Appointments::VA::Eligibility', type: :request do
           end
 
           it 'matches schema' do
-            expect(response.body).to match_json_schema('service_eligibility')
+            assert_schema_conform(200)
           end
 
           it 'response properly assigns facilities to services' do
@@ -110,7 +109,7 @@ RSpec.describe 'Mobile::V0::Appointments::VA::Eligibility', type: :request do
           end
 
           it 'matches schema' do
-            expect(response.body).to match_json_schema('service_eligibility')
+            assert_schema_conform(200)
           end
 
           it 'response properly assigns facilities to services' do
@@ -189,7 +188,7 @@ RSpec.describe 'Mobile::V0::Appointments::VA::Eligibility', type: :request do
           end
 
           it 'matches schema' do
-            expect(response.body).to match_json_schema('service_eligibility')
+            assert_schema_conform(200)
           end
 
           it 'response properly assigns facilities to services' do
@@ -220,7 +219,7 @@ RSpec.describe 'Mobile::V0::Appointments::VA::Eligibility', type: :request do
           end
 
           it 'matches schema' do
-            expect(response.body).to match_json_schema('service_eligibility')
+            assert_schema_conform(200)
           end
 
           it 'response properly assigns facilities to services' do
@@ -301,7 +300,7 @@ RSpec.describe 'Mobile::V0::Appointments::VA::Eligibility', type: :request do
           end
 
           it 'matches schema' do
-            expect(response.body).to match_json_schema('service_eligibility')
+            assert_schema_conform(200)
           end
 
           it 'all service ids are hit when parsing upstream response except for covid request' do
@@ -328,7 +327,7 @@ RSpec.describe 'Mobile::V0::Appointments::VA::Eligibility', type: :request do
           end
 
           it 'matches schema' do
-            expect(response.body).to match_json_schema('service_eligibility')
+            assert_schema_conform(200)
           end
 
           it 'all service ids are hit when parsing upstream response except for covid request' do
@@ -403,7 +402,7 @@ RSpec.describe 'Mobile::V0::Appointments::VA::Eligibility', type: :request do
           end
 
           it 'matches schema' do
-            expect(response.body).to match_json_schema('service_eligibility')
+            assert_schema_conform(200)
           end
 
           it 'upstream service does not check for valid facility and returns no eligibility' do
@@ -434,7 +433,7 @@ RSpec.describe 'Mobile::V0::Appointments::VA::Eligibility', type: :request do
           end
 
           it 'matches schema' do
-            expect(response.body).to match_json_schema('service_eligibility')
+            assert_schema_conform(200)
           end
 
           it 'upstream service does not check for valid facility and returns no eligibility' do

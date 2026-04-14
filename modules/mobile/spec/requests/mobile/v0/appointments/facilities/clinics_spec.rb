@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../../../../../support/helpers/rails_helper'
+require_relative '../../../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::Appointments::Facilities::Clinics', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
 
   let!(:user) { sis_user(icn: '24811694708759028') }
 
@@ -27,7 +28,7 @@ RSpec.describe 'Mobile::V0::Appointments::Facilities::Clinics', type: :request d
             get "/mobile/v0/appointments/facilities/#{facility_id}/clinics", params:, headers: sis_headers
 
             expect(response).to have_http_status(:ok)
-            expect(response.body).to match_json_schema('clinic')
+            assert_schema_conform(200)
           end
         end
       end
@@ -79,7 +80,7 @@ RSpec.describe 'Mobile::V0::Appointments::Facilities::Clinics', type: :request d
             get "/mobile/v0/appointments/facilities/#{facility_id}/clinics", params:, headers: sis_headers
 
             expect(response).to have_http_status(:ok)
-            expect(response.body).to match_json_schema('clinic')
+            assert_schema_conform(200)
           end
         end
       end
@@ -138,7 +139,7 @@ RSpec.describe 'Mobile::V0::Appointments::Facilities::Clinics', type: :request d
           get "/mobile/v0/appointments/facilities/#{facility_id}/slots", params:,
                                                                          headers: sis_headers
           expect(response).to have_http_status(:ok)
-          expect(response.body).to match_json_schema('clinic_slot')
+          assert_schema_conform(200)
           slot = JSON.parse(response.body)['data'][1]
           expect(slot['id']).to eq('3230323131303236323133303A323032313130323632323030')
           expect(slot['type']).to eq('clinic_slot')
@@ -189,7 +190,7 @@ RSpec.describe 'Mobile::V0::Appointments::Facilities::Clinics', type: :request d
 
           expect(response).to have_http_status(:ok)
 
-          expect(response.body).to match_json_schema('clinic_slot')
+          assert_schema_conform(200)
 
           parsed_response = response.parsed_body['data']
           min_start_date = parsed_response.map { |x| x.dig('attributes', 'startDate') }.min
@@ -215,7 +216,7 @@ RSpec.describe 'Mobile::V0::Appointments::Facilities::Clinics', type: :request d
             get "/mobile/v0/appointments/facilities/#{facility_id}/clinics/#{clinic_id}/slots", params:,
                                                                                                 headers: sis_headers
             expect(response).to have_http_status(:bad_gateway)
-            expect(response.body).to match_json_schema('errors')
+            assert_schema_conform(502)
           end
         end
       end
@@ -230,7 +231,7 @@ RSpec.describe 'Mobile::V0::Appointments::Facilities::Clinics', type: :request d
             get "/mobile/v0/appointments/facilities/#{facility_id}/clinics/#{clinic_id}/slots", params:,
                                                                                                 headers: sis_headers
             expect(response).to have_http_status(:bad_gateway)
-            expect(response.body).to match_json_schema('errors')
+            assert_schema_conform(502)
           end
         end
       end
@@ -254,7 +255,7 @@ RSpec.describe 'Mobile::V0::Appointments::Facilities::Clinics', type: :request d
                                                                                                 headers: sis_headers
 
             expect(response).to have_http_status(:ok)
-            expect(response.body).to match_json_schema('clinic_slot')
+            assert_schema_conform(200)
             slot = JSON.parse(response.body)['data'][1]
             expect(slot['id']).to eq('3230323131303236323133303A323032313130323632323030')
             expect(slot['type']).to eq('clinic_slot')
@@ -275,7 +276,7 @@ RSpec.describe 'Mobile::V0::Appointments::Facilities::Clinics', type: :request d
             get "/mobile/v0/appointments/facilities/#{facility_id}/clinics/#{clinic_id}/slots", params:,
                                                                                                 headers: sis_headers
             expect(response).to have_http_status(:ok)
-            expect(response.body).to match_json_schema('clinic_slot')
+            assert_schema_conform(200)
 
             slot = JSON.parse(response.body)['data'][1]
             expect(slot['id']).to eq('3230323131303236323133303A323032313130323632323030')
@@ -308,7 +309,7 @@ RSpec.describe 'Mobile::V0::Appointments::Facilities::Clinics', type: :request d
           get "/mobile/v0/appointments/facilities/#{facility_id}/clinics/#{clinic_id}/slots", headers: sis_headers
 
           expect(response).to have_http_status(:ok)
-          expect(response.body).to match_json_schema('clinic_slot')
+          assert_schema_conform(200)
 
           parsed_response = response.parsed_body['data']
           min_start_date = parsed_response.map { |x| x.dig('attributes', 'startDate') }.min
@@ -334,7 +335,7 @@ RSpec.describe 'Mobile::V0::Appointments::Facilities::Clinics', type: :request d
             get "/mobile/v0/appointments/facilities/#{facility_id}/clinics/#{clinic_id}/slots", params:,
                                                                                                 headers: sis_headers
             expect(response).to have_http_status(:bad_gateway)
-            expect(response.body).to match_json_schema('errors')
+            assert_schema_conform(502)
           end
         end
       end
@@ -349,7 +350,7 @@ RSpec.describe 'Mobile::V0::Appointments::Facilities::Clinics', type: :request d
             get "/mobile/v0/appointments/facilities/#{facility_id}/clinics/#{clinic_id}/slots", params:,
                                                                                                 headers: sis_headers
             expect(response).to have_http_status(:bad_gateway)
-            expect(response.body).to match_json_schema('errors')
+            assert_schema_conform(502)
           end
         end
       end

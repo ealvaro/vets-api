@@ -6,7 +6,6 @@ require_relative '../../../support/helpers/committee_helper'
 require 'debt_management_center/models/debt_store'
 
 RSpec.describe 'Mobile::V0::Debts', type: :request do
-  include JsonSchemaMatchers
   include CommitteeHelper
 
   let!(:user) { sis_user }
@@ -178,7 +177,6 @@ RSpec.describe 'Mobile::V0::Debts', type: :request do
           VCR.use_cassette('debts/get_letters') do
             get '/mobile/v0/debts', headers: sis_headers
             assert_schema_conform(200)
-            expect(response.body).to match_json_schema('debts', strict: true)
             debt_data = response.parsed_body['data'].map { |d| d.except('id') }
             expect(debt_data).to include(debt1)
             expect(debt_data).to include(debt2)
@@ -258,7 +256,6 @@ RSpec.describe 'Mobile::V0::Debts', type: :request do
 
             get '/mobile/v0/debts', headers: sis_headers
             assert_schema_conform(200)
-            expect(response.body).to match_json_schema('debts', strict: true)
             debt_data = response.parsed_body['data'].first
             expect(debt_data['attributes']['fiscalTransactionData']).to eq([])
           end
@@ -294,7 +291,6 @@ RSpec.describe 'Mobile::V0::Debts', type: :request do
 
             get '/mobile/v0/debts', headers: sis_headers
             assert_schema_conform(200)
-            expect(response.body).to match_json_schema('debts', strict: true)
             debt_data = response.parsed_body['data'].first
             expect(debt_data['attributes']['fiscalTransactionData']).to eq([])
           end
@@ -358,7 +354,6 @@ RSpec.describe 'Mobile::V0::Debts', type: :request do
             get "/mobile/v0/debts/#{debt_id}", headers: sis_headers
 
             assert_schema_conform(200)
-            expect(response.body).to match_json_schema('debt', strict: true)
             debt_data = response.parsed_body['data'].except('id')
             expect(debt_data).to include(debt)
           end
@@ -436,7 +431,6 @@ RSpec.describe 'Mobile::V0::Debts', type: :request do
             get "/mobile/v0/debts/#{debt_id}", headers: sis_headers
 
             assert_schema_conform(200)
-            expect(response.body).to match_json_schema('debt', strict: true)
             debt_data = response.parsed_body['data'].except('id')
             expect(debt_data).to include(debt_without_fiscal_data)
             expect(debt_data['attributes']['fiscalTransactionData']).to eq([])
@@ -470,7 +464,6 @@ RSpec.describe 'Mobile::V0::Debts', type: :request do
             get "/mobile/v0/debts/#{debt_id}", headers: sis_headers
 
             assert_schema_conform(200)
-            expect(response.body).to match_json_schema('debt', strict: true)
             debt_data = response.parsed_body['data'].except('id')
             expect(debt_data).to include(debt_without_fiscal_data)
             expect(debt_data['attributes']['fiscalTransactionData']).to eq([])

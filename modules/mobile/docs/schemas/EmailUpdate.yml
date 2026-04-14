@@ -6,6 +6,7 @@ required:
 properties:
   id:
     type: integer
+    nullable: true
     example: 42
   emailAddress:
     type: string

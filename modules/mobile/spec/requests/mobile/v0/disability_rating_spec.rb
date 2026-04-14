@@ -4,7 +4,6 @@ require_relative '../../../support/helpers/rails_helper'
 require_relative '../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::DisabilityRating', type: :request do
-  include JsonSchemaMatchers
   include CommitteeHelper
 
   let!(:user) { sis_user(icn: '1008596379V859838') }

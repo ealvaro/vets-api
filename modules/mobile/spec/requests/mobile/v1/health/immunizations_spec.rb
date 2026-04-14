@@ -6,7 +6,6 @@ require 'unique_user_events'
 require 'support/shared_contexts/uhd_security_endpoint'
 
 RSpec.describe 'Mobile::V1::Health::Immunizations', :skip_json_api_validation, type: :request do
-  include JsonSchemaMatchers
   include CommitteeHelper
 
   describe 'GET /mobile/v1/health/immunizations' do
@@ -48,7 +47,6 @@ RSpec.describe 'Mobile::V1::Health::Immunizations', :skip_json_api_validation, t
         it 'returns a 200 that matches the expected schema' do
           expect(response).to have_http_status(:ok)
           assert_schema_conform(200)
-          expect(response.parsed_body).to match_json_schema('v1/immunizations_v1')
         end
 
         it 'logs unique user events for immunizations/vaccines accessed' do
@@ -116,7 +114,6 @@ RSpec.describe 'Mobile::V1::Health::Immunizations', :skip_json_api_validation, t
         it 'returns empty array and matches the expected schema' do
           expect(response).to have_http_status(:ok)
           assert_schema_conform(200)
-          expect(response.parsed_body).to match_json_schema('v1/immunizations_v1')
           expect(response.parsed_body['data']).to eq([])
         end
       end
@@ -132,7 +129,6 @@ RSpec.describe 'Mobile::V1::Health::Immunizations', :skip_json_api_validation, t
         it 'returns a 200 and matches the expected schema' do
           expect(response).to have_http_status(:ok)
           assert_schema_conform(200)
-          expect(response.parsed_body).to match_json_schema('v1/immunizations_v1')
         end
 
         it 'returns nil for blank notes' do
@@ -410,7 +406,6 @@ RSpec.describe 'Mobile::V1::Health::Immunizations', :skip_json_api_validation, t
 
           it 'matches expected schema' do
             assert_schema_conform(200)
-            expect(response.parsed_body).to match_json_schema('v1/immunizations_v1')
           end
 
           it 'returns missing date items at end of list' do
@@ -429,7 +424,6 @@ RSpec.describe 'Mobile::V1::Health::Immunizations', :skip_json_api_validation, t
 
           it 'matches expected schema' do
             assert_schema_conform(200)
-            expect(response.parsed_body).to match_json_schema('v1/immunizations_v1')
           end
 
           context '2 vaccine codes exists' do
@@ -509,7 +503,6 @@ RSpec.describe 'Mobile::V1::Health::Immunizations', :skip_json_api_validation, t
         it 'returns a 200 that matches the expected schema' do
           expect(response).to have_http_status(:ok)
           assert_schema_conform(200)
-          expect(response.parsed_body).to match_json_schema('v1/immunizations_v1')
         end
 
         it 'logs unique user events for immunizations/vaccines accessed' do
@@ -534,7 +527,6 @@ RSpec.describe 'Mobile::V1::Health::Immunizations', :skip_json_api_validation, t
         it 'returns empty array and matches the expected schema' do
           expect(response).to have_http_status(:ok)
           assert_schema_conform(200)
-          expect(response.parsed_body).to match_json_schema('v1/immunizations_v1')
           expect(response.parsed_body['data']).to eq([])
           expect(response.parsed_body['meta']['pagination']['totalEntries']).to eq(0)
         end

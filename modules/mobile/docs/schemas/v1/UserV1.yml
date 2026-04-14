@@ -28,10 +28,11 @@ properties:
           - preferredName
           - middleName
           - lastName
-          - email
+          - signinEmail
           - birthDate
           - genderIdentity
-          - addresses
+          - residentialAddress
+          - mailingAddress
           - signinService
         properties:
           firstName:
@@ -39,9 +40,11 @@ properties:
             example: "Johnny"
           preferredName:
             type: string
+            nullable: true
             example: "John"
           middleName:
             type: string
+            nullable: true
             example: "A"
           lastName:
             type: string
@@ -51,8 +54,13 @@ properties:
           signinEmail:
             type: string
             example: "john.a.smith@domain.com"
+          birthDate:
+            type: string
+            nullable: true
+            example: "1970-08-12"
           genderIdentity:
             type: string
+            nullable: true
             example: "M"
           residentialAddress:
             $ref: "../Address.yml"
@@ -67,10 +75,10 @@ properties:
           signinService:
             type: string
             enum:
-              - IDME
-              - DSL
-              - MHV
-              - LOGINGOV
+              - idme
+              - dslogon
+              - mhv
+              - logingov
       authorizedServices:
         description: Services the user is allowed to access. See availableServices for a list of all services available via the mobile API.
         type: array
@@ -88,7 +96,6 @@ properties:
         required:
           - isCernerPatient
           - facilities
-          - facilityName
         properties:
           isCernerPatient:
             type: boolean

@@ -7,7 +7,6 @@ require 'claim_letters/providers/claim_letters/lighthouse_claim_letters_provider
 require Rails.root.join('modules', 'claims_api', 'spec', 'support', 'fake_vbms.rb')
 
 RSpec.describe 'Mobile::V0::Claims::DecisionLetters', type: :request do
-  include JsonSchemaMatchers
   include CommitteeHelper
 
   let!(:user) { sis_user(icn: '24811694708759028') }
@@ -105,7 +104,7 @@ RSpec.describe 'Mobile::V0::Claims::DecisionLetters', type: :request do
           it 'returns expected decision letters' do
             get '/mobile/v0/claims/decision-letters', headers: sis_headers
             assert_schema_conform(200)
-            expect(response.body).to match_json_schema('decision_letter')
+
             expect(response.parsed_body).to eq(claim_letter_doc_response)
           end
         end
@@ -151,7 +150,7 @@ RSpec.describe 'Mobile::V0::Claims::DecisionLetters', type: :request do
           it 'returns expected decision letters' do
             get '/mobile/v0/claims/decision-letters', headers: sis_headers
             assert_schema_conform(200)
-            expect(response.body).to match_json_schema('decision_letter')
+
             expect(response.parsed_body).to eq(claim_letter_doc_response)
           end
         end
@@ -224,7 +223,6 @@ RSpec.describe 'Mobile::V0::Claims::DecisionLetters', type: :request do
           last_received_at = decision_letters.last.dig('attributes', 'receivedAt')
           expect(decision_letters.count).to eq(5)
           expect(first_received_at).to be >= last_received_at
-          expect(response.body).to match_json_schema('decision_letter')
           doc_types = decision_letters.map { |letter| letter.dig('attributes', 'docType') }.uniq
           expect(doc_types).to eq(%w[184])
         end
@@ -241,7 +239,6 @@ RSpec.describe 'Mobile::V0::Claims::DecisionLetters', type: :request do
           last_received_at = decision_letters.last.dig('attributes', 'receivedAt')
           expect(decision_letters.count).to eq(6)
           expect(first_received_at).to be >= last_received_at
-          expect(response.body).to match_json_schema('decision_letter')
           doc_types = decision_letters.map { |letter| letter.dig('attributes', 'docType') }.uniq
           expect(doc_types).to eq(%w[27 184])
         end

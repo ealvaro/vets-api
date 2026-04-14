@@ -2,6 +2,13 @@
 
 require 'rspec/expectations'
 
+# NOTE: This matcher is only for validating non-request/response JSON (e.g., log output).
+# For validating API request and response bodies in request specs, use `assert_schema_conform`
+# from CommitteeHelper, which validates against the OpenAPI spec (modules/mobile/docs/openapi.json).
+#
+# Usage:
+#   include JsonSchemaMatchers
+#   match_json_schema('schema_name')
 module JsonSchemaMatchers
   extend RSpec::Matchers::DSL
 

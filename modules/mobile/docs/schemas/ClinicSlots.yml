@@ -6,6 +6,4 @@ properties:
   data:
     type: array
     items:
-      type: object
-      additionalProperties: false
       $ref: "./Slot.yml"

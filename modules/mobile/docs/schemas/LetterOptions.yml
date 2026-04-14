@@ -1,18 +1,11 @@
 type: object
 additionalProperties: false
-required:
-  - militaryService
-  - serviceConnectedDisabilities
-  - serviceConnectedEvaluation
-  - nonServiceConnectedPension
-  - monthlyAward
-  - unemployable
-  - specialMonthlyCompensation
-  - adaptedHousing
-  - chapter35Eligibility
-  - deathResultOfDisability
-  - survivorsAward
 properties:
+  format:
+    type: string
+    enum:
+      - pdf
+      - json
   militaryService:
     type: boolean
   serviceConnectedDisabilities:

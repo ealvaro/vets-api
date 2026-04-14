@@ -23,6 +23,23 @@ properties:
         description: All services with a boolean value of whether or not the service has access to that service.
         type: object
         additionalProperties: false
+        required:
+          - appeals
+          - appointments
+          - claims
+          - decisionLetters
+          - directDepositBenefits
+          - directDepositBenefitsUpdate
+          - disabilityRating
+          - genderIdentity
+          - lettersAndDocuments
+          - militaryServiceHistory
+          - paymentHistory
+          - preferredName
+          - prescriptions
+          - scheduleAppointments
+          - secureMessaging
+          - userProfileUpdate
         example:
           allergiesOracleHealthEnabled: false
           appeals: true

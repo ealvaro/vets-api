@@ -1,19 +1,7 @@
 type: object
-additionalProperties: false
 required:
-  - id
-  - addressLine1
-  - addressLine2
-  - addressLine3
   - addressPou
   - addressType
-  - city
-  - countryCode
-  - internationalPostalCode
-  - province
-  - stateCode
-  - zipCode
-  - zipCodeSuffix
 properties:
   id:
     type: integer
@@ -38,9 +26,21 @@ properties:
   city:
     type: string
     example: "Fulton"
-  countryCode:
+  countryCodeIso3:
     type: string
     example: "US"
+  countryName:
+    type: string
+    nullable: true
+    example: "USA"
+  countyCode:
+    type: string
+    nullable: true
+    example: "21067"
+  countyName:
+    type: string
+    nullable: true
+    example: "Fayette County"
   internationalPostalCode:
     type: string
     nullable: true

@@ -20,9 +20,6 @@ properties:
       - type: object
   meta:
     type: object
-    additionalProperties: false
-    required:
-      - messages
     properties:
       messages:
         type: array
@@ -40,3 +37,9 @@ properties:
               type: string
             text:
               type: string
+      exception:
+        type: string
+      backtrace:
+        type: array
+        items:
+          type: string

@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
 require_relative '../../../../support/helpers/rails_helper'
+require_relative '../../../../support/helpers/committee_helper'
+require_relative '../../../../support/helpers/model_request_helper'
 
 RSpec.describe 'Mobile::V0::User::Phones', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
+  include ModelRequestHelper
 
   let!(:user) { sis_user(icn: '123498767V234859') }
 
@@ -27,7 +30,7 @@ RSpec.describe 'Mobile::V0::User::Phones', type: :request do
         VCR.use_cassette('va_profile/v2/contact_information/post_phone_status_complete') do
           VCR.use_cassette('va_profile/v2/contact_information/post_phone_status_incomplete') do
             VCR.use_cassette('va_profile/v2/contact_information/post_telephone_success') do
-              post('/mobile/v0/user/phones', params: telephone.to_json, headers:)
+              post('/mobile/v0/user/phones', params: model_to_request_json(telephone), headers:)
             end
           end
         end
@@ -38,7 +41,7 @@ RSpec.describe 'Mobile::V0::User::Phones', type: :request do
       end
 
       it 'matches the expected schema' do
-        expect(response.body).to match_json_schema('profile_update_response')
+        assert_schema_conform(200)
       end
 
       it 'includes a transaction id' do
@@ -50,7 +53,7 @@ RSpec.describe 'Mobile::V0::User::Phones', type: :request do
     context 'with missing params' do
       before do
         telephone.phone_number = ''
-        post('/mobile/v0/user/phones', params: telephone.to_json, headers:)
+        post('/mobile/v0/user/phones', params: model_to_request_json(telephone), headers:)
       end
 
       it 'returns a 422' do
@@ -58,7 +61,7 @@ RSpec.describe 'Mobile::V0::User::Phones', type: :request do
       end
 
       it 'matches the error schema' do
-        expect(response.body).to match_json_schema('errors')
+        assert_schema_conform(422)
       end
 
       it 'has a helpful error message' do
@@ -89,7 +92,7 @@ RSpec.describe 'Mobile::V0::User::Phones', type: :request do
           VCR.use_cassette('va_profile/v2/contact_information/put_telephone_status_incomplete',
                            VCR::MATCH_EVERYTHING) do
             VCR.use_cassette('va_profile/v2/contact_information/put_telephone_success', VCR::MATCH_EVERYTHING) do
-              put('/mobile/v0/user/phones', params: telephone.to_json, headers: sis_headers(json: true))
+              put('/mobile/v0/user/phones', params: model_to_request_json(telephone), headers:)
             end
           end
         end
@@ -100,7 +103,7 @@ RSpec.describe 'Mobile::V0::User::Phones', type: :request do
       end
 
       it 'matches the expected schema' do
-        expect(response.body).to match_json_schema('profile_update_response')
+        assert_schema_conform(200)
       end
 
       it 'includes a transaction id' do
@@ -112,7 +115,7 @@ RSpec.describe 'Mobile::V0::User::Phones', type: :request do
     context 'with missing params' do
       before do
         telephone.phone_number = ''
-        put('/mobile/v0/user/phones', params: telephone.to_json, headers:)
+        put('/mobile/v0/user/phones', params: model_to_request_json(telephone), headers:)
       end
 
       it 'returns a 422' do
@@ -120,7 +123,7 @@ RSpec.describe 'Mobile::V0::User::Phones', type: :request do
       end
 
       it 'matches the error schema' do
-        expect(response.body).to match_json_schema('errors')
+        assert_schema_conform(422)
       end
 
       it 'has a helpful error message' do
@@ -149,7 +152,7 @@ RSpec.describe 'Mobile::V0::User::Phones', type: :request do
           VCR.use_cassette('va_profile/v2/contact_information/delete_telephone_status_incomplete',
                            VCR::MATCH_EVERYTHING) do
             VCR.use_cassette('va_profile/v2/contact_information/delete_telephone_success', VCR::MATCH_EVERYTHING) do
-              delete '/mobile/v0/user/phones', params: telephone.to_json, headers:
+              delete '/mobile/v0/user/phones', params: model_to_request_json(telephone), headers:
             end
           end
         end
@@ -160,7 +163,7 @@ RSpec.describe 'Mobile::V0::User::Phones', type: :request do
       end
 
       it 'matches the expected schema' do
-        expect(response.body).to match_json_schema('profile_update_response')
+        assert_schema_conform(200)
       end
 
       it 'includes a transaction id' do
@@ -171,8 +174,9 @@ RSpec.describe 'Mobile::V0::User::Phones', type: :request do
 
     context 'with missing params' do
       before do
-        telephone.phone_number = ''
-        post('/mobile/v0/user/phones', params: telephone.to_json, headers:)
+        post('/mobile/v0/user/phones',
+             params: model_to_request_json(telephone.tap { |t| t.phone_number = '' }),
+             headers:)
       end
 
       it 'returns a 422' do
@@ -180,7 +184,7 @@ RSpec.describe 'Mobile::V0::User::Phones', type: :request do
       end
 
       it 'matches the error schema' do
-        expect(response.body).to match_json_schema('errors')
+        assert_schema_conform(422)
       end
 
       it 'has a helpful error message' do

@@ -25,6 +25,9 @@ properties:
       - signinService
       - edipi
     properties:
+      id:
+        type: string
+        example: "abe3f152-90b0-45cb-8776-4958bad0e0ef"
       firstName:
         type: string
         example: "John"
@@ -45,10 +48,10 @@ properties:
       signinService:
         type: string
         enum:
-          - IDME
-          - DSL
-          - MHV
-          - LOGINGOV
+          - idme
+          - dslogon
+          - mhv
+          - logingov
       hasFacilityTransitioningToCerner:
         type: boolean
         description: The user has a treatment facility that is currently transitioning to cerner. This is temporary.

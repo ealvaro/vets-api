@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../../../support/helpers/rails_helper'
+require_relative '../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
 
   def mw_uuid(service_name)
     Digest::UUID.uuid_v5(Mobile::V0::ServiceGraph::MAINTENANCE_WINDOW_NAMESPACE, service_name)
@@ -14,7 +15,7 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
       before { get '/mobile/v0/maintenance_windows', headers: { 'X-Key-Inflection' => 'camel' } }
 
       it 'matches the expected schema' do
-        expect(response.body).to match_json_schema('maintenance_windows')
+        assert_schema_conform(200)
       end
 
       it 'returns an empty array of affected services' do
@@ -33,7 +34,7 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
       after { Timecop.return }
 
       it 'matches the expected schema' do
-        expect(response.body).to match_json_schema('maintenance_windows')
+        assert_schema_conform(200)
       end
 
       it 'returns an empty array of affected services' do
@@ -54,7 +55,7 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
       after { Timecop.return }
 
       it 'matches the expected schema' do
-        expect(response.body).to match_json_schema('maintenance_windows')
+        assert_schema_conform(200)
       end
 
       it 'returns an array of the affected services' do
@@ -114,7 +115,7 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
       after { Timecop.return }
 
       it 'matches the expected schema' do
-        expect(response.body).to match_json_schema('maintenance_windows')
+        assert_schema_conform(200)
       end
 
       it 'includes payment history as an affected service' do
@@ -151,7 +152,7 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
         lighthouse_latest_start_time = latest_lighthouse_starting.start_time.iso8601
         lighthouse_latest_end_time = latest_lighthouse_starting.end_time.iso8601
 
-        expect(response.body).to match_json_schema('maintenance_windows')
+        assert_schema_conform(200)
         expect(attributes.pluck('service').uniq).to eq(%w[claims disability_rating letters_and_documents immunizations])
         expect(attributes.map { |w| Time.parse(w['startTime']).iso8601 }.uniq).to eq([lighthouse_earliest_start_time])
         expect(attributes.map { |w| Time.parse(w['endTime']).iso8601 }.uniq).to eq([lighthouse_earliest_end_time])
@@ -159,7 +160,7 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
         Timecop.freeze('2021-05-26T03:33:39Z')
         get '/mobile/v0/maintenance_windows', headers: { 'X-Key-Inflection' => 'camel' }
 
-        expect(response.body).to match_json_schema('maintenance_windows')
+        assert_schema_conform(200)
         attributes = response.parsed_body['data'].pluck('attributes')
         expect(attributes.pluck('service').uniq).to eq(%w[claims disability_rating letters_and_documents immunizations])
         expect(attributes.map { |w| Time.parse(w['startTime']).iso8601 }.uniq).to eq([lighthouse_middle_start_time])
@@ -168,7 +169,7 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
         Timecop.freeze('2021-05-27T03:33:39Z')
         get '/mobile/v0/maintenance_windows', headers: { 'X-Key-Inflection' => 'camel' }
 
-        expect(response.body).to match_json_schema('maintenance_windows')
+        assert_schema_conform(200)
         attributes = response.parsed_body['data'].pluck('attributes')
         expect(attributes.pluck('service').uniq).to eq(%w[claims disability_rating letters_and_documents immunizations])
 
@@ -199,7 +200,7 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
         bgs_earliest_start_time = earliest_bgs_starting.start_time.iso8601
         bgs_earliest_end_time = earliest_bgs_starting.end_time.iso8601
 
-        expect(response.body).to match_json_schema('maintenance_windows')
+        assert_schema_conform(200)
         expect(lighthouse_windows.pluck('service')).to eq(lighthouse_services)
         expect(lighthouse_windows.map do |w|
           Time.parse(w['startTime']).iso8601
@@ -222,7 +223,7 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
         bgs_latest_start_time = latest_bgs_starting.start_time.iso8601
         bgs_latest_end_time = latest_bgs_starting.end_time.iso8601
 
-        expect(response.body).to match_json_schema('maintenance_windows')
+        assert_schema_conform(200)
         expect(lighthouse_windows.pluck('service')).to eq(lighthouse_services)
         expect(lighthouse_windows.map do |w|
           Time.parse(w['startTime']).iso8601

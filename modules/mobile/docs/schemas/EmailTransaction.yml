@@ -8,7 +8,7 @@ properties:
     additionalProperties: false
     required:
       - id
-      - string
+      - type
     properties:
       id:
         type: string

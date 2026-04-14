@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
 require_relative '../../../../support/helpers/rails_helper'
+require_relative '../../../../support/helpers/committee_helper'
+require_relative '../../../../support/helpers/model_request_helper'
 
 RSpec.describe 'Mobile::V0::User::Address', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
+  include ModelRequestHelper
 
   let!(:user) { sis_user(icn: '123498767V234859') }
 
@@ -34,7 +37,8 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
                 VCR.use_cassette('va_profile/v2/contact_information/address_incomplete_status_3',
                                  VCR::MATCH_EVERYTHING) do
                   VCR.use_cassette('va_profile/v2/contact_information/post_address_success', VCR::MATCH_EVERYTHING) do
-                    post '/mobile/v0/user/addresses', params: address.to_json, headers: sis_headers(json: true)
+                    post '/mobile/v0/user/addresses', params: model_to_request_json(address),
+                                                      headers: sis_headers(json: true)
                   end
                 end
               end
@@ -47,7 +51,7 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
         end
 
         it 'matches the expected schema' do
-          expect(response.body).to match_json_schema('profile_update_response')
+          assert_schema_conform(200)
         end
 
         it 'includes a transaction id' do
@@ -66,7 +70,8 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
           VCR.use_cassette('va_profile/v2/contact_information/address_complete_status', VCR::MATCH_EVERYTHING) do
             VCR.use_cassette('va_profile/v2/contact_information/address_incomplete_status', VCR::MATCH_EVERYTHING) do
               VCR.use_cassette('va_profile/v2/contact_information/post_address_succes', VCR::MATCH_EVERYTHING) do
-                post '/mobile/v0/user/addresses', params: address.to_json, headers: sis_headers(json: true)
+                post '/mobile/v0/user/addresses', params: model_to_request_json(address),
+                                                  headers: sis_headers(json: true)
               end
             end
           end
@@ -80,8 +85,8 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
       context 'with missing address params' do
         before do
           address.address_line1 = ''
-
-          post('/mobile/v0/user/addresses', params: address.to_json, headers: sis_headers(json: true))
+          post('/mobile/v0/user/addresses', params: model_to_request_json(address),
+                                            headers: sis_headers(json: true))
         end
 
         it 'returns a 422' do
@@ -89,7 +94,7 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
         end
 
         it 'matches the error schema' do
-          expect(response.body).to match_json_schema('errors')
+          assert_schema_conform(422)
         end
 
         it 'has a helpful error message' do
@@ -119,7 +124,8 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
             VCR.use_cassette('va_profile/v2/contact_information/put_address_incomplete_status',
                              VCR::MATCH_EVERYTHING) do
               VCR.use_cassette('va_profile/v2/contact_information/put_address_success', VCR::MATCH_EVERYTHING) do
-                put '/mobile/v0/user/addresses', params: address.to_json, headers: sis_headers(json: true)
+                put '/mobile/v0/user/addresses', params: model_to_request_json(address),
+                                                 headers: sis_headers(json: true)
               end
             end
           end
@@ -134,7 +140,7 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
         end
 
         it 'matches the expected schema' do
-          expect(response.body).to match_json_schema('profile_update_response')
+          assert_schema_conform(200)
         end
 
         it 'includes a transaction id' do
@@ -155,7 +161,8 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
           VCR.use_cassette('va_profile/v2/contact_information/address_complete_status', VCR::MATCH_EVERYTHING) do
             VCR.use_cassette('va_profile/v2/contact_information/address_incomplete_status', VCR::MATCH_EVERYTHING) do
               VCR.use_cassette('va_profile/v2/contact_information/put_address_success', VCR::MATCH_EVERYTHING) do
-                put '/mobile/v0/user/addresses', params: address.to_json, headers: sis_headers(json: true)
+                put '/mobile/v0/user/addresses', params: model_to_request_json(address),
+                                                 headers: sis_headers(json: true)
               end
             end
           end
@@ -173,8 +180,8 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
       context 'with missing address params' do
         before do
           address.address_line1 = ''
-
-          put('/mobile/v0/user/addresses', params: address.to_json, headers: sis_headers(json: true))
+          put('/mobile/v0/user/addresses', params: model_to_request_json(address),
+                                           headers: sis_headers(json: true))
         end
 
         it 'returns a 422' do
@@ -182,7 +189,7 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
         end
 
         it 'matches the error schema' do
-          expect(response.body).to match_json_schema('errors')
+          assert_schema_conform(422)
         end
 
         it 'has a helpful error message' do
@@ -243,7 +250,8 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
             VCR.use_cassette('va_profile/v2/contact_information/delete_address_status_incomplete',
                              VCR::MATCH_EVERYTHING) do
               VCR.use_cassette('va_profile/v2/contact_information/delete_address_success', VCR::MATCH_EVERYTHING) do
-                delete '/mobile/v0/user/addresses', params: address.to_json, headers: sis_headers(json: true)
+                delete '/mobile/v0/user/addresses', params: model_to_request_json(address),
+                                                    headers: sis_headers(json: true)
               end
             end
           end
@@ -254,7 +262,7 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
         end
 
         it 'matches the expected schema' do
-          expect(response.body).to match_json_schema('profile_update_response')
+          assert_schema_conform(200)
         end
 
         it 'includes a transaction id' do
@@ -274,7 +282,8 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
             VCR.use_cassette('va_profile/v2/contact_information/delete_address_status_incomplete',
                              VCR::MATCH_EVERYTHING) do
               VCR.use_cassette('va_profile/v2/contact_information/delete_address_success', VCR::MATCH_EVERYTHING) do
-                delete '/mobile/v0/user/addresses', params: address.to_json, headers: sis_headers(json: true)
+                delete '/mobile/v0/user/addresses', params: model_to_request_json(address),
+                                                    headers: sis_headers(json: true)
               end
             end
           end
@@ -288,8 +297,8 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
       context 'with missing address params' do
         before do
           address['address_line1'] = ''
-
-          put('/mobile/v0/user/addresses', params: address.to_json, headers: sis_headers(json: true))
+          put('/mobile/v0/user/addresses', params: model_to_request_json(address),
+                                           headers: sis_headers(json: true))
         end
 
         it 'returns a 422' do
@@ -297,7 +306,7 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
         end
 
         it 'matches the error schema' do
-          expect(response.body).to match_json_schema('errors')
+          assert_schema_conform(422)
         end
 
         it 'has a helpful error message' do
@@ -332,7 +341,7 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
 
       before do
         post '/mobile/v0/user/addresses/validate',
-             params: invalid_address.to_json, headers: sis_headers(json: true)
+             params: model_to_request_json(invalid_address), headers: sis_headers(json: true)
       end
 
       it 'returns a 422' do
@@ -340,7 +349,7 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
       end
 
       it 'matches the expected schema' do
-        expect(response.body).to match_json_schema('errors')
+        assert_schema_conform(422)
       end
 
       it 'returns the error details' do
@@ -395,7 +404,7 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
           VCR::MATCH_EVERYTHING
         ) do
           post '/mobile/v0/user/addresses/validate',
-               params: multiple_match_address.to_json, headers: sis_headers(json: true)
+               params: model_to_request_json(multiple_match_address), headers: sis_headers(json: true)
         end
       end
 
@@ -404,7 +413,7 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
       end
 
       it 'matches the expected schema' do
-        expect(response.body).to match_json_schema('suggested_addresses')
+        assert_schema_conform(200)
       end
 
       it 'includes suggested correct addresses for a given address' do

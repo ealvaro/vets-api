@@ -53,6 +53,8 @@ properties:
           - activeParked
           - dateOfDeathEntered
           - transferred
+          - renew
+          - newOrder
       refillSubmitDate:
         type: string
         nullable: true
@@ -70,11 +72,11 @@ properties:
         nullable: true
         example: "DAYT29"
       isRefillable:
-        type: bool
+        type: boolean
         nullable: true
         example: false
       isTrackable:
-        type: bool
+        type: boolean
         nullable: true
         example: false
       orderedDate:
@@ -117,4 +119,10 @@ properties:
         type: string
         nullable: true
         example: "(217) 636-6712"
+      renewalSubmittedTimestamp:
+        type: string
+        nullable: true
+      pharmacyPhoneNumber:
+        type: string
+        nullable: true
 

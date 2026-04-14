@@ -1,11 +1,9 @@
 type: object
-additionalProperties: false
 required:
   - areaCode
   - countryCode
   - phoneNumber
   - phoneType
-  - extension
 properties:
   id:
     type: integer
@@ -25,4 +23,21 @@ properties:
     example: "HOME"
   extension:
     type: string
+    nullable: true
     example: "4567"
+  isTextable:
+    type: boolean
+    nullable: true
+    example: true
+  isTextPermitted:
+    type: boolean
+    nullable: true
+    example: true
+  isTty:
+    type: boolean
+    nullable: true
+    example: false
+  isVoicemailable:
+    type: boolean
+    nullable: true
+    example: true

@@ -1,74 +1,74 @@
 type: object
-additionalProperties: false
 required:
-  - data
+  - addressLine1
+  - addressPou
+  - addressType
+  - city
+  - countryCodeIso3
 properties:
-  data:
+  addressMetaData:
     type: object
     additionalProperties: false
-    required:
-      - addressLine1
-      - addressPou
-      - addressType
-      - city
-      - countryCodeIso3
     properties:
-      addressMetaData:
-        type: object
-        additionalProperties: false
-        properties:
-          confidenceScore:
-            type: integer
-            example: 100
-          addressType:
-            type: string
-            example: "Domestic"
-          deliveryPointValidation:
-            type: string
-            example: "CONFIRMED"
-          residentialDeliveryIndicator:
-            type: string
-            example: "RESIDENTIAL"
-      addressLine1:
-        type: string
-        example: "1493 Martin Luther King Rd"
-      addressLine2:
-        type: string
-        nullable: true
-      addressLine3:
-        type: string
-        nullable: true
-      addressPou:
-        type: string
-        enum: [ "RESIDENCE", "CORRESPONDENCE" ]
-        example: "RESIDENCE"
+      confidenceScore:
+        type: integer
+        example: 100
       addressType:
         type: string
-        enum: [ "DOMESTIC", "INTERNATIONAL", "MILITARY" ]
-        example: "DOMESTIC"
-      city:
+        example: "Domestic"
+      deliveryPointValidation:
         type: string
-        example: "Fulton"
-      countryCodeIso3:
+        example: "CONFIRMED"
+      residentialDeliveryIndicator:
         type: string
-        example: "USA"
-      internationalPostalCode:
-        type: string
-        nullable: true
-        example: null
-      province:
-        type: string
-        nullable: true
-        example: null
-      stateCode:
-        type: string
-        nullable: true
-        example: "NY"
-      zipCode:
-        type: string
-        nullable: true
-        example: "97062"
-      zipCodeSuffix:
-        type: string
-        nullable: true
-        example: "1234"
+        example: "RESIDENTIAL"
+  addressLine1:
+    type: string
+    example: "1493 Martin Luther King Rd"
+  addressLine2:
+    type: string
+    nullable: true
+  addressLine3:
+    type: string
+    nullable: true
+  addressPou:
+    type: string
+    enum: [ "RESIDENCE", "CORRESPONDENCE" ]
+    example: "RESIDENCE"
+  addressType:
+    type: string
+    enum: [ "DOMESTIC", "INTERNATIONAL", "MILITARY" ]
+    example: "DOMESTIC"
+  city:
+    type: string
+    example: "Fulton"
+  countryCodeIso3:
+    type: string
+    example: "USA"
+  countryName:
+    type: string
+    nullable: true
+    example: "USA"
+  internationalPostalCode:
+    type: string
+    nullable: true
+    example: null
+  province:
+    type: string
+    nullable: true
+    example: null
+  stateCode:
+    type: string
+    nullable: true
+    example: "MS"
+  zipCode:
+    type: string
+    nullable: true
+    example: "38843"
+  zipCodeSuffix:
+    type: string
+    nullable: true
+    example: "1234"
+  validationKey:
+    type: string
+    nullable: true

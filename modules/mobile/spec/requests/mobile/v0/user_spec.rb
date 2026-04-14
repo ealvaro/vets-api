@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../../../support/helpers/rails_helper'
+require_relative '../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::User', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
 
   let(:attributes) { response.parsed_body.dig('data', 'attributes') }
   let(:contact_information_service) do
@@ -61,7 +62,7 @@ RSpec.describe 'Mobile::V0::User', type: :request do
       end
 
       it 'returns a user profile response with the expected schema' do
-        expect(response.body).to match_json_schema('user')
+        assert_schema_conform(200)
       end
 
       it 'includes the users names' do
@@ -394,7 +395,7 @@ RSpec.describe 'Mobile::V0::User', type: :request do
         end
 
         expect(response).to have_http_status(:bad_gateway)
-        expect(response.body).to match_json_schema('errors')
+        assert_schema_conform(502)
       end
     end
 
@@ -413,7 +414,7 @@ RSpec.describe 'Mobile::V0::User', type: :request do
         end
 
         expect(response).to have_http_status(:not_found)
-        expect(response.body).to match_json_schema('errors')
+        assert_schema_conform(404)
         expect(response.parsed_body).to eq(
           {
             'errors' => [
@@ -440,7 +441,7 @@ RSpec.describe 'Mobile::V0::User', type: :request do
         get '/mobile/v0/user', headers: sis_headers
 
         expect(response).to have_http_status(:internal_server_error)
-        expect(response.body).to match_json_schema('errors')
+        assert_schema_conform(500)
       end
     end
 
@@ -457,7 +458,7 @@ RSpec.describe 'Mobile::V0::User', type: :request do
         end
 
         expect(response).to have_http_status(:service_unavailable)
-        expect(response.body).to match_json_schema('errors')
+        assert_schema_conform(503)
       end
     end
 

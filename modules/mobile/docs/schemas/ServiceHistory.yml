@@ -40,7 +40,7 @@ properties:
     example: Honorable
     enum:
       - Honorable
-      - Under honorable conditions (general)'
+      - Under honorable conditions (general)
       - Bad conduct
       - Under other than honorable conditions
       - Dishonorable

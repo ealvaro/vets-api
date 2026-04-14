@@ -1,5 +1,13 @@
 # frozen_string_literal: true
 
+# Use this helper in request specs to validate API request and response bodies against
+# the OpenAPI spec (modules/mobile/docs/openapi.json).
+#
+# Usage:
+#   include CommitteeHelper
+#   assert_schema_conform(200)
+#
+# This replaces the legacy match_json_schema matcher for all API request/response validation.
 module CommitteeHelper
   include Committee::Rails::Test::Methods
 

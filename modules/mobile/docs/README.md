@@ -74,6 +74,31 @@ When you add a new route to `config/routes.rb`:
 2. Create a PR - the GitHub Action will validate and generate docs automatically
 3. If routes are missing from the OpenAPI spec, the action will fail and list them
 
+## Schema Validation in Tests
+
+Use `assert_schema_conform` from `CommitteeHelper` to validate API request and response bodies
+against the OpenAPI spec (`openapi.json`) in request specs:
+
+```ruby
+require_relative '../../../support/helpers/committee_helper'
+
+RSpec.describe 'Mobile::V0::MyEndpoint', type: :request do
+  include CommitteeHelper
+
+  it 'returns a valid response' do
+    get '/mobile/v0/my-endpoint', headers: sis_headers
+    assert_schema_conform(200)
+  end
+end
+```
+
+This validates both the request and response against the OpenAPI spec, ensuring the documentation
+stays in sync with the actual API behavior.
+
+Do **not** use `match_json_schema` for API request/response validation — it validates against
+standalone JSON schema files and does not verify OpenAPI spec accuracy. `match_json_schema` is
+reserved for validating non-response JSON (e.g., log output structure).
+
 ## Viewing Documentation
 
 `index.html` is gitignored and not committed to the repo. To view the documentation locally, generate it first using `./generate_static_docs.sh`, then either right-click the file and open it in a browser, or copy the absolute file path and paste it into the browser.

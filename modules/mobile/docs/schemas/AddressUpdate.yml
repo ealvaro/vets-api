@@ -1,16 +1,15 @@
 type: object
-additionalProperties: false
 required:
   - id
   - addressLine1
   - addressPou
   - addressType
   - city
-  - countryCode
+  - countryCodeIso3
 properties:
   id:
-    type: string
-    example: "23fe358d-6e82-4541-804c-ce7562ba28f4"
+    type: integer
+    example: 577127
   addressMetaData:
     type: object
     additionalProperties: false
@@ -27,9 +26,6 @@ properties:
       residentialDeliveryIndicator:
         type: string
         example: "RESIDENTIAL"
-  validationKey:
-    type: integer
-    example: 0
   addressLine1:
     type: string
     example: "1493 Martin Luther King Rd"
@@ -50,24 +46,37 @@ properties:
   city:
     type: string
     example: "Fulton"
-  countryCode:
+  countryCodeIso3:
     type: string
-    example: "US"
+    example: "USA"
+  countryName:
+    type: string
+    nullable: true
+    example: "USA"
   internationalPostalCode:
     type: string
     nullable: true
     example: null
+  overrideValidationKey:
+    type: integer
+    nullable: true
+    example: 713117306
   province:
     type: string
     nullable: true
     example: null
   stateCode:
     type: string
-    example: "NY"
+    nullable: true
+    example: "MS"
   zipCode:
     type: string
-    example: "97062"
+    nullable: true
+    example: "38843"
   zipCodeSuffix:
     type: string
     nullable: true
     example: "1234"
+  validationKey:
+    type: string
+    nullable: true

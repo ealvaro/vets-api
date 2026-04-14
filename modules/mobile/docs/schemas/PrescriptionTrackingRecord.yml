@@ -67,7 +67,7 @@ properties:
               type: string
               example: 'ETHAMBUTOL HCL 100MG TAB'
             prescriptionNumber:
-              type: '2719553'
+              type: string
 
 
 

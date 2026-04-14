@@ -8,7 +8,6 @@ require_relative '../../../../support/helpers/rails_helper'
 require_relative '../../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V1::AllergyIntolerances', :skip_json_api_validation, type: :request do
-  include JsonSchemaMatchers
   include CommitteeHelper
   include_context 'uhd legacy security endpoint'
 
@@ -40,8 +39,6 @@ RSpec.describe 'Mobile::V1::AllergyIntolerances', :skip_json_api_validation, typ
         assert_schema_conform(200)
         json_response = JSON.parse(response.body)
 
-        expect(json_response).to match_json_schema('v1/allergy_v1')
-
         # default params are page[number]=1 and page[size]=10
         # Only 10 allergies are returned after filtering by clinicalStatus: active
         expect(json_response['meta']['pagination']).to eq({
@@ -61,7 +58,6 @@ RSpec.describe 'Mobile::V1::AllergyIntolerances', :skip_json_api_validation, typ
         end
         expect(response).to be_successful
         json_response = JSON.parse(response.body)
-        expect(json_response).to match_json_schema('v1/allergy_v1')
 
         # Only 10 allergies are returned after filtering by clinicalStatus: active
         expect(json_response['meta']['pagination']).to eq({
@@ -81,7 +77,6 @@ RSpec.describe 'Mobile::V1::AllergyIntolerances', :skip_json_api_validation, typ
         end
         expect(response).to be_successful
         json_response = JSON.parse(response.body)
-        expect(json_response).to match_json_schema('v1/allergy_v1')
 
         expect(json_response['data']).to eq([])
       end

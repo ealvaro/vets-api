@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 require_relative '../../../support/helpers/rails_helper'
+require_relative '../../../support/helpers/committee_helper'
 
 require 'lighthouse/letters_generator/configuration'
 
 RSpec.describe 'Mobile::V0::Letters', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
 
   let(:letter_json) do
     {
@@ -187,7 +188,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
             get '/mobile/v0/letters', headers: sis_headers
             expect(response).to have_http_status(:ok)
             expect(JSON.parse(response.body)).to eq(no_service_verification_body)
-            expect(response.body).to match_json_schema('letters')
+            assert_schema_conform(200)
           end
         end
 
@@ -197,7 +198,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
             get '/mobile/v0/letters', headers: sis_headers
             expect(response).to have_http_status(:ok)
             expect(JSON.parse(response.body)).to eq(no_service_verification_body)
-            expect(response.body).to match_json_schema('letters')
+            assert_schema_conform(200)
           end
         end
       end
@@ -213,7 +214,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
             get '/mobile/v0/letters', headers: sis_headers
             expect(response).to have_http_status(:ok)
             expect(JSON.parse(response.body)).to eq(letters_body)
-            expect(response.body).to match_json_schema('letters')
+            assert_schema_conform(200)
           end
         end
 
@@ -223,7 +224,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
             get '/mobile/v0/letters', headers: sis_headers
             expect(response).to have_http_status(:ok)
             expect(JSON.parse(response.body)).to eq(letters_body)
-            expect(response.body).to match_json_schema('letters')
+            assert_schema_conform(200)
           end
         end
       end
@@ -249,7 +250,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                         'referenceNumber' => '16934344',
                         'coeStatus' => 'AVAILABLE' }
                     )
-                    expect(response.body).to match_json_schema('letters')
+                    assert_schema_conform(200)
                   end
                 end
               end
@@ -284,7 +285,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                         'referenceNumber' => '16934344',
                         'coeStatus' => 'ELIGIBLE' }
                     )
-                    expect(response.body).to match_json_schema('letters')
+                    assert_schema_conform(200)
                   end
                 end
               end
@@ -315,7 +316,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                   get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => '2.58.0' })
                   expect(response).to have_http_status(:ok)
                   expect(JSON.parse(response.body)).to eq(no_service_verification_body)
-                  expect(response.body).to match_json_schema('letters')
+                  assert_schema_conform(200)
                 end
               end
             end
@@ -330,7 +331,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                   get '/mobile/v0/letters', headers: sis_headers
                   expect(response).to have_http_status(:ok)
                   expect(JSON.parse(response.body)).to eq(no_service_verification_body)
-                  expect(response.body).to match_json_schema('letters')
+                  assert_schema_conform(200)
                 end
               end
             end
@@ -345,7 +346,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                   get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => 'foobar' })
                   expect(response).to have_http_status(:ok)
                   expect(JSON.parse(response.body)).to eq(no_service_verification_body)
-                  expect(response.body).to match_json_schema('letters')
+                  assert_schema_conform(200)
                 end
               end
             end
@@ -361,7 +362,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                 get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => '2.59.0' })
                 expect(response).to have_http_status(:ok)
                 expect(JSON.parse(response.body)).to eq(no_service_verification_body)
-                expect(response.body).to match_json_schema('letters')
+                assert_schema_conform(200)
                 expect(StatsD).to have_received(:increment).with('mobile.letters.coe_status.total')
                 expect(StatsD).to have_received(:increment).with('mobile.letters.coe_status.failure')
               end
@@ -376,7 +377,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                 get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => '2.59.0' })
                 expect(response).to have_http_status(:ok)
                 expect(JSON.parse(response.body)).to eq(no_service_verification_body)
-                expect(response.body).to match_json_schema('letters')
+                assert_schema_conform(200)
               end
             end
           end
@@ -401,7 +402,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
           get '/mobile/v0/letters/beneficiary', headers: sis_headers
           expect(response).to have_http_status(:ok)
           expect(JSON.parse(response.body)).to eq(beneficiary_body)
-          expect(response.body).to match_json_schema('letter_beneficiary')
+          assert_schema_conform(200)
         end
       end
     end
@@ -448,7 +449,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
             expect(response).to have_http_status(:ok)
             expect(response.media_type).to eq('application/json')
             expect(JSON.parse(response.body)).to eq(letter_json)
-            expect(response.body).to match_json_schema('letter')
+            assert_schema_conform(200)
           end
         end
       end
@@ -499,7 +500,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
           expect(response).to have_http_status(:ok)
           expect(response.media_type).to eq('application/json')
           expect(JSON.parse(response.body)).to eq(letter_json)
-          expect(response.body).to match_json_schema('letter')
+          assert_schema_conform(200)
         end
       end
     end

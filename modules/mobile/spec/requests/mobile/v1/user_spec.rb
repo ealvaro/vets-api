@@ -1,10 +1,11 @@
 # frozen_string_literal: true
 
 require_relative '../../../support/helpers/rails_helper'
+require_relative '../../../support/helpers/committee_helper'
 require 'common/client/errors'
 
 RSpec.describe 'Mobile::V1::User', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
 
   before do
     allow(Flipper).to receive(:enabled?).with(:event_bus_gateway_letter_ready_push_notifications, instance_of(Flipper::Actor)).and_return(false)
@@ -52,7 +53,7 @@ RSpec.describe 'Mobile::V1::User', type: :request do
       end
 
       it 'returns a user profile response with the expected schema' do
-        expect(response.body).to match_json_schema('v1/user')
+        assert_schema_conform(200)
       end
 
       it 'includes the users names' do
@@ -379,7 +380,7 @@ RSpec.describe 'Mobile::V1::User', type: :request do
         end
 
         expect(response).to have_http_status(:bad_gateway)
-        expect(response.body).to match_json_schema('errors')
+        assert_schema_conform(502)
       end
     end
 
@@ -398,7 +399,7 @@ RSpec.describe 'Mobile::V1::User', type: :request do
         end
 
         expect(response).to have_http_status(:not_found)
-        expect(response.body).to match_json_schema('errors')
+        assert_schema_conform(404)
         expect(response.parsed_body).to eq(
           {
             'errors' => [
@@ -425,7 +426,7 @@ RSpec.describe 'Mobile::V1::User', type: :request do
         get '/mobile/v1/user', headers: sis_headers
 
         expect(response).to have_http_status(:internal_server_error)
-        expect(response.body).to match_json_schema('errors')
+        assert_schema_conform(500)
       end
     end
 
@@ -442,7 +443,7 @@ RSpec.describe 'Mobile::V1::User', type: :request do
         end
 
         expect(response).to have_http_status(:bad_gateway)
-        expect(response.body).to match_json_schema('errors')
+        assert_schema_conform(502)
       end
     end
 

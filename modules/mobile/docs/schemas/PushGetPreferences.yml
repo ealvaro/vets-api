@@ -36,11 +36,11 @@ properties:
               properties:
                 preferenceId:
                   type: string
-                  enum: [ "appointment_reminders", "secure_message_alerts" ]
+                  enum: [ "appointment_reminders", "secure_message_alerts", "claim_status_updates" ]
                   example: "appointment_reminders"
                 preferenceName:
                   type: string
-                  enum: ["Appointment Reminders", "Secure Message Alerts"]
+                  enum: ["Appointment Reminders", "Secure Message Alerts", "Benefits claims and decision reviews"]
                   example: "Appointment Reminders"
                 value:
                   type: boolean

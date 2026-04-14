@@ -4,7 +4,6 @@ require_relative '../../../../../support/helpers/rails_helper'
 require_relative '../../../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::Appointments::CommunityCare::Eligibility', type: :request do
-  include JsonSchemaMatchers
   include CommitteeHelper
 
   let!(:user) { sis_user(icn: '9000682') }
@@ -33,10 +32,6 @@ RSpec.describe 'Mobile::V0::Appointments::CommunityCare::Eligibility', type: :re
         it 'returns true eligibility' do
           eligibility = response.parsed_body.dig('data', 'attributes', 'eligible')
           expect(eligibility).to be(true)
-        end
-
-        it 'returns expected schema' do
-          expect(response.body).to match_json_schema('cc_eligibility')
         end
       end
 

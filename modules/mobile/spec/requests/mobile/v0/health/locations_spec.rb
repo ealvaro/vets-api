@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../../../../support/helpers/rails_helper'
+require_relative '../../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::Health::Locations', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
 
   let!(:user) { sis_user(icn: '9000682') }
   let(:rsa_key) { OpenSSL::PKey::RSA.generate(2048) }
@@ -40,7 +41,7 @@ RSpec.describe 'Mobile::V0::Health::Locations', type: :request do
         end
 
         it 'matches json schema' do
-          # expect(response.parsed_body).to match_json_schema('immunization_location')
+          assert_schema_conform(200)
           expect(response.parsed_body).to eq({ 'data' =>
                                                  { 'id' => 'I2-3JYDMXC6RXTU4H25KRVXATSEJQ000000',
                                                    'type' => 'location',

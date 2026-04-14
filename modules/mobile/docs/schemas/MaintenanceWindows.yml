@@ -21,8 +21,8 @@ properties:
           additionalProperties: false
           required:
             - service
-            - start_time
-            - end_time
+            - startTime
+            - endTime
           properties:
             service:
               type: string
@@ -36,6 +36,7 @@ properties:
                 - direct_deposit_benefits
                 - disability_rating
                 - letters_and_documents
+                - immunizations
                 - secure_messaging
                 - appointments
                 - user_profile_update
@@ -47,9 +48,9 @@ properties:
                 - user_contact_update
                 - user_demographics
               example: "claims"
-            start_time:
-              type: datetime
-              example: 2019-04-20T14:15:00.000-04:00
-            end_time:
-              type: datetime
-              example: 2019-04-20T18:15:00.000Z
+            startTime:
+              type: string
+              example: "2019-04-20T14:15:00.000-04:00"
+            endTime:
+              type: string
+              example: "2019-04-20T18:15:00.000Z"

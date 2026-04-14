@@ -1485,7 +1485,7 @@
         "parameters": [
           {
             "description": "Type of service to check eligibility for.",
-            "in": "path",
+            "in": "query",
             "name": "serviceType",
             "required": true,
             "schema": {
@@ -1509,8 +1509,8 @@
           },
           {
             "description": "List of facility ids",
-            "in": "path",
-            "name": "FacilityIds[]",
+            "in": "query",
+            "name": "facilityIds",
             "required": true,
             "schema": {
               "type": "array",
@@ -1521,7 +1521,7 @@
           },
           {
             "description": "type of appointment. Can either be 'request' or 'direct' but only request will be used until direct scheduling functionality is built out",
-            "in": "path",
+            "in": "query",
             "name": "type",
             "required": true,
             "schema": {
@@ -1789,7 +1789,7 @@
             "description": "The facility division ID",
             "in": "path",
             "required": true,
-            "name": "location_id",
+            "name": "facility_id",
             "schema": {
               "type": "string"
             }
@@ -1870,7 +1870,7 @@
           {
             "description": "Array of facilities to be checked for service eligibility",
             "in": "query",
-            "name": "FacilityIds[]",
+            "name": "facilityIds",
             "required": true,
             "schema": {
               "type": "array"
@@ -1890,6 +1890,9 @@
               }
             },
             "description": "OK"
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
           },
           "401": {
             "$ref": "#/components/responses/401"
@@ -4385,8 +4388,10 @@
             "in": "query",
             "name": "filter",
             "required": false,
+            "style": "deepObject",
+            "explode": true,
             "schema": {
-              "type": "string"
+              "type": "object"
             }
           },
           {
@@ -4552,7 +4557,7 @@
             "name": "id",
             "required": true,
             "schema": {
-              "type": "object"
+              "type": "string"
             }
           },
           {
@@ -6908,11 +6913,28 @@
             },
             "description": "OK"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LighthouseErrors"
+                }
+              }
+            },
+            "description": "Bad request."
+          },
           "401": {
             "$ref": "#/components/responses/401"
           },
           "403": {
-            "$ref": "#/components/responses/403"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LighthouseErrors"
+                }
+              }
+            },
+            "description": "Client was forbidden from upstream resource."
           },
           "404": {
             "$ref": "#/components/responses/404"
@@ -6924,7 +6946,14 @@
             "$ref": "#/components/responses/422"
           },
           "500": {
-            "$ref": "#/components/responses/500"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LighthouseErrors"
+                }
+              }
+            },
+            "description": "An internal API error occurred."
           },
           "502": {
             "$ref": "#/components/responses/502"
@@ -6972,11 +7001,28 @@
             },
             "description": "OK"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LighthouseErrors"
+                }
+              }
+            },
+            "description": "Bad request."
+          },
           "401": {
             "$ref": "#/components/responses/401"
           },
           "403": {
-            "$ref": "#/components/responses/403"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LighthouseErrors"
+                }
+              }
+            },
+            "description": "Client was forbidden from upstream resource."
           },
           "404": {
             "$ref": "#/components/responses/404"
@@ -6988,7 +7034,14 @@
             "$ref": "#/components/responses/422"
           },
           "500": {
-            "$ref": "#/components/responses/500"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LighthouseErrors"
+                }
+              }
+            },
+            "description": "An internal API error occurred."
           },
           "502": {
             "$ref": "#/components/responses/502"
@@ -7086,6 +7139,9 @@
             },
             "description": "OK"
           },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
           "401": {
             "$ref": "#/components/responses/401"
           },
@@ -7152,6 +7208,9 @@
           "200": {
             "description": "OK"
           },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
           "401": {
             "$ref": "#/components/responses/401"
           },
@@ -7208,7 +7267,7 @@
           "required": true
         },
         "responses": {
-          "201": {
+          "200": {
             "content": {
               "application/json": {
                 "schema": {
@@ -7217,6 +7276,9 @@
               }
             },
             "description": "OK"
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
           },
           "401": {
             "$ref": "#/components/responses/401"
@@ -7276,6 +7338,9 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
           },
           "401": {
             "$ref": "#/components/responses/401"
@@ -7714,8 +7779,7 @@
             "name": "start_date",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "date-time"
+              "type": "string"
             }
           },
           {
@@ -7725,8 +7789,7 @@
             "name": "end_date",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "date-time"
+              "type": "string"
             }
           },
           {
@@ -7823,7 +7886,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TravelPayClaimSummary"
+                  "$ref": "#/components/schemas/TravelPaySmoc"
                 }
               }
             }
@@ -10229,10 +10292,6 @@
           },
           "meta": {
             "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "messages"
-            ],
             "properties": {
               "messages": {
                 "type": "array",
@@ -10255,6 +10314,15 @@
                       "type": "string"
                     }
                   }
+                }
+              },
+              "exception": {
+                "type": "string"
+              },
+              "backtrace": {
+                "type": "array",
+                "items": {
+                  "type": "string"
                 }
               }
             }
@@ -11886,7 +11954,7 @@
                 ],
                 "properties": {
                   "eligible": {
-                    "type": "bool",
+                    "type": "boolean",
                     "example": true
                   }
                 }
@@ -11917,7 +11985,7 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
-              "facility_id",
+              "facilityId",
               "eligible",
               "reason"
             ],
@@ -11932,6 +12000,7 @@
               },
               "reason": {
                 "type": "string",
+                "nullable": true,
                 "example": "Non-primary facility with no visit within 12-24 months"
               }
             }
@@ -11942,15 +12011,47 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "data"
+          "data",
+          "meta"
         ],
         "properties": {
           "data": {
             "type": "array",
             "items": {
-              "type": "object",
-              "additionalProperties": false,
               "$ref": "#/components/schemas/FacilityEligibility"
+            }
+          },
+          "meta": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pagination"
+            ],
+            "properties": {
+              "pagination": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "currentPage",
+                  "perPage",
+                  "totalPages",
+                  "totalEntries"
+                ],
+                "properties": {
+                  "currentPage": {
+                    "type": "integer"
+                  },
+                  "perPage": {
+                    "type": "integer"
+                  },
+                  "totalPages": {
+                    "type": "integer"
+                  },
+                  "totalEntries": {
+                    "type": "integer"
+                  }
+                }
+              }
             }
           }
         }
@@ -11998,8 +12099,6 @@
           "data": {
             "type": "array",
             "items": {
-              "type": "object",
-              "additionalProperties": false,
               "$ref": "#/components/schemas/FacilityClinic"
             }
           }
@@ -12027,28 +12126,31 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
-              "start_date",
-              "end_date"
+              "startDate",
+              "endDate"
             ],
             "properties": {
-              "start_date": {
+              "startDate": {
                 "type": "string",
                 "example": "2022-08-05T12:00:00Z"
               },
-              "end_date": {
+              "endDate": {
                 "type": "string",
                 "example": "2022-08-5T12:30:00Z"
               },
               "locationId": {
                 "type": "string",
+                "nullable": true,
                 "example": "757GC"
               },
               "practitionerName": {
                 "type": "string",
+                "nullable": true,
                 "example": "Doe, John D, MD"
               },
               "clinicIen": {
                 "type": "string",
+                "nullable": true,
                 "example": "32216049"
               }
             }
@@ -12065,8 +12167,6 @@
           "data": {
             "type": "array",
             "items": {
-              "type": "object",
-              "additionalProperties": false,
               "$ref": "#/components/schemas/Slot"
             }
           }
@@ -20477,9 +20577,35 @@
                 "timestamp": {
                   "type": "string"
                 },
+                "source": {
+                  "type": "string",
+                  "nullable": true
+                },
                 "message": {
                   "type": "string",
                   "nullable": true
+                },
+                "meta": {
+                  "type": "object",
+                  "properties": {
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "severity": {
+                            "type": "string"
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -20592,8 +20718,7 @@
           "name",
           "city",
           "state",
-          "cerner",
-          "clinics"
+          "cerner"
         ],
         "properties": {
           "id": {
@@ -20659,8 +20784,6 @@
                   "facilities": {
                     "type": "array",
                     "items": {
-                      "type": "object",
-                      "additionalProperties": false,
                       "$ref": "#/components/schemas/FacilityInfo"
                     }
                   }
@@ -21723,7 +21846,9 @@
                   "unknown",
                   "activeParked",
                   "dateOfDeathEntered",
-                  "transferred"
+                  "transferred",
+                  "renew",
+                  "newOrder"
                 ]
               },
               "refillSubmitDate": {
@@ -21747,12 +21872,12 @@
                 "example": "DAYT29"
               },
               "isRefillable": {
-                "type": "bool",
+                "type": "boolean",
                 "nullable": true,
                 "example": false
               },
               "isTrackable": {
-                "type": "bool",
+                "type": "boolean",
                 "nullable": true,
                 "example": false
               },
@@ -21805,6 +21930,14 @@
                 "type": "string",
                 "nullable": true,
                 "example": "(217) 636-6712"
+              },
+              "renewalSubmittedTimestamp": {
+                "type": "string",
+                "nullable": true
+              },
+              "pharmacyPhoneNumber": {
+                "type": "string",
+                "nullable": true
               }
             }
           }
@@ -21821,8 +21954,6 @@
           "data": {
             "type": "array",
             "items": {
-              "type": "object",
-              "additionalProperties": false,
               "$ref": "#/components/schemas/PrescriptionRecord"
             }
           },
@@ -21831,12 +21962,40 @@
             "additionalProperties": false,
             "required": [
               "prescriptionStatusCount",
-              "hasNonVaMeds"
+              "hasNonVaMeds",
+              "pagination"
             ],
             "properties": {
-              "prescriptionStatusCount": {
+              "pagination": {
                 "type": "object",
                 "additionalProperties": false,
+                "required": [
+                  "currentPage",
+                  "perPage",
+                  "totalPages",
+                  "totalEntries"
+                ],
+                "properties": {
+                  "currentPage": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "perPage": {
+                    "type": "integer",
+                    "example": 10
+                  },
+                  "totalPages": {
+                    "type": "integer",
+                    "example": 5
+                  },
+                  "totalEntries": {
+                    "type": "integer",
+                    "example": 50
+                  }
+                }
+              },
+              "prescriptionStatusCount": {
+                "type": "object",
                 "description": "Count of different types of prescriptions. \"active\" contains prescriptions that have a `refillStatus` of active,\nsubmitted, providerHold, activeParked, refillinprocess, and/or prescriptions that have a tracking number \nassociated with them. If a prescriptions does not meet the criteria for \"active\", it appends it's `refillStatus` to the list. \nIf a refillStatus is not present in any prescription, it will not be included in this list.\nSee `refillStatus` enum for all possible values. \"isRefillable\" is a separate count of prescriptions with `isRefillable` set to true. \nA prescription can be counted in both `isRefillable` and any other status count.\n",
                 "example": {
                   "active": 1,
@@ -22042,7 +22201,7 @@
                       "example": "ETHAMBUTOL HCL 100MG TAB"
                     },
                     "prescriptionNumber": {
-                      "type": "2719553"
+                      "type": "string"
                     }
                   }
                 }
@@ -22061,8 +22220,6 @@
           "data": {
             "type": "array",
             "items": {
-              "type": "object",
-              "additionalProperties": false,
               "$ref": "#/components/schemas/PrescriptionTrackingRecord"
             }
           }
@@ -22086,6 +22243,7 @@
               "Service Verification Letter",
               "Civil Service Preference Letter",
               "Benefit Summary Letter",
+              "Benefit Summary and Service Verification Letter",
               "Dependent Benefit Summary Letter",
               "Benefit Verification Letter",
               "Certificate of Eligibility for Home Loan Letter",
@@ -22196,7 +22354,6 @@
                 "type": "object",
                 "additionalProperties": false,
                 "required": [
-                  "letters",
                   "benefitInformation"
                 ],
                 "properties": {
@@ -22308,20 +22465,14 @@
       "LetterOptions": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "militaryService",
-          "serviceConnectedDisabilities",
-          "serviceConnectedEvaluation",
-          "nonServiceConnectedPension",
-          "monthlyAward",
-          "unemployable",
-          "specialMonthlyCompensation",
-          "adaptedHousing",
-          "chapter35Eligibility",
-          "deathResultOfDisability",
-          "survivorsAward"
-        ],
         "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "pdf",
+              "json"
+            ]
+          },
           "militaryService": {
             "type": "boolean"
           },
@@ -22461,8 +22612,8 @@
                   "additionalProperties": false,
                   "required": [
                     "service",
-                    "start_time",
-                    "end_time"
+                    "startTime",
+                    "endTime"
                   ],
                   "properties": {
                     "service": {
@@ -22477,6 +22628,7 @@
                         "direct_deposit_benefits",
                         "disability_rating",
                         "letters_and_documents",
+                        "immunizations",
                         "secure_messaging",
                         "appointments",
                         "user_profile_update",
@@ -22490,12 +22642,12 @@
                       ],
                       "example": "claims"
                     },
-                    "start_time": {
-                      "type": "datetime",
+                    "startTime": {
+                      "type": "string",
                       "example": "2019-04-20T14:15:00.000-04:00"
                     },
-                    "end_time": {
-                      "type": "datetime",
+                    "endTime": {
+                      "type": "string",
                       "example": "2019-04-20T18:15:00.000Z"
                     }
                   }
@@ -25033,7 +25185,7 @@
             "example": "Honorable",
             "enum": [
               "Honorable",
-              "Under honorable conditions (general)'",
+              "Under honorable conditions (general)",
               "Bad conduct",
               "Under other than honorable conditions",
               "Dishonorable",
@@ -25095,8 +25247,6 @@
                   "serviceHistory": {
                     "type": "array",
                     "items": {
-                      "type": "object",
-                      "additionalProperties": false,
                       "$ref": "#/components/schemas/ServiceHistory"
                     }
                   }
@@ -25178,18 +25328,11 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
-              "errors",
               "pagination",
               "availableYears",
               "recurringPayment"
             ],
             "properties": {
-              "errors": {
-                "type": [
-                  "array",
-                  null
-                ]
-              },
               "pagination": {
                 "type": "object",
                 "additionalProperties": false,
@@ -25234,10 +25377,6 @@
               "recurringPayment": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": [
-                  "amount",
-                  "date"
-                ],
                 "properties": {
                   "amount": {
                     "type": "string",
@@ -25257,103 +25396,108 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "id",
-          "type",
-          "attibutes"
+          "data"
         ],
         "properties": {
-          "type": {
-            "type": "string",
-            "example": "paymentInformation"
-          },
-          "id": {
-            "type": "string",
-            "example": "abe3f152-90b0-45cb-8776-4958bad0e0ef",
-            "description": "user UUID"
-          },
-          "attributes": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
             "required": [
-              "paymentAccount",
-              "accountControl"
+              "id",
+              "type",
+              "attributes"
             ],
             "properties": {
-              "accountControl": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "canUpdateAddress",
-                  "corpAvailIndicator",
-                  "corpRecFoundIndicator",
-                  "hasNoBdnPaymentsIndicator",
-                  "identityIndicator",
-                  "indexIndicator",
-                  "isCompetentIndicator",
-                  "noFiduciaryAssignedIndicator",
-                  "notDeceasedIndicato",
-                  "canUpdatePayment"
-                ],
-                "properties": {
-                  "canUpdateAddress": {
-                    "type": "boolean"
-                  },
-                  "corpAvailIndicator": {
-                    "type": "boolean"
-                  },
-                  "corpRecFoundIndicator": {
-                    "type": "boolean"
-                  },
-                  "hasNoBdnPaymentsIndicator": {
-                    "type": "boolean"
-                  },
-                  "identityIndicator": {
-                    "type": "boolean"
-                  },
-                  "indexIndicator": {
-                    "type": "boolean"
-                  },
-                  "isCompetentIndicator": {
-                    "type": "boolean"
-                  },
-                  "noFiduciaryAssignedIndicator": {
-                    "type": "boolean"
-                  },
-                  "notDeceasedIndicator": {
-                    "type": "boolean"
-                  },
-                  "canUpdatePayment": {
-                    "type": "boolean"
-                  }
-                }
+              "type": {
+                "type": "string",
+                "example": "paymentInformation"
               },
-              "paymentAccount": {
+              "id": {
+                "type": "string",
+                "example": "abe3f152-90b0-45cb-8776-4958bad0e0ef",
+                "description": "user UUID"
+              },
+              "attributes": {
                 "type": "object",
                 "additionalProperties": false,
                 "required": [
-                  "accountNumber",
-                  "accountType",
-                  "financialInstitutionName",
-                  "financialInstitutionRoutingNumber"
+                  "paymentAccount",
+                  "accountControl"
                 ],
                 "properties": {
-                  "accountNumber": {
-                    "type": "string",
-                    "example": "************6464"
+                  "accountControl": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "canUpdateAddress",
+                      "corpAvailIndicator",
+                      "corpRecFoundIndicator",
+                      "hasNoBdnPaymentsIndicator",
+                      "identityIndicator",
+                      "indexIndicator",
+                      "isCompetentIndicator",
+                      "noFiduciaryAssignedIndicator",
+                      "notDeceasedIndicator",
+                      "canUpdatePayment"
+                    ],
+                    "properties": {
+                      "canUpdateAddress": {
+                        "type": "boolean"
+                      },
+                      "corpAvailIndicator": {
+                        "type": "boolean"
+                      },
+                      "corpRecFoundIndicator": {
+                        "type": "boolean"
+                      },
+                      "hasNoBdnPaymentsIndicator": {
+                        "type": "boolean"
+                      },
+                      "identityIndicator": {
+                        "type": "boolean"
+                      },
+                      "indexIndicator": {
+                        "type": "boolean"
+                      },
+                      "isCompetentIndicator": {
+                        "type": "boolean"
+                      },
+                      "noFiduciaryAssignedIndicator": {
+                        "type": "boolean"
+                      },
+                      "notDeceasedIndicator": {
+                        "type": "boolean"
+                      },
+                      "canUpdatePayment": {
+                        "type": "boolean"
+                      }
+                    }
                   },
-                  "accountType": {
-                    "type": "string",
-                    "example": "Savings",
-                    "enum": [
-                      "Savings",
-                      "Checking"
-                    ]
-                  },
-                  "financialInstitutionName": {
-                    "type": "string",
-                    "example": "PACIFIC PREMIER BANK"
-                  },
-                  "financialInstitutionRoutingNumber": {
-                    "type": "string",
-                    "example": "948529982"
+                  "paymentAccount": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "accountNumber": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "************6464"
+                      },
+                      "accountType": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "Savings"
+                      },
+                      "financialInstitutionName": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "PACIFIC PREMIER BANK"
+                      },
+                      "financialInstitutionRoutingNumber": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "948529982"
+                      }
+                    }
                   }
                 }
               }
@@ -25492,7 +25636,8 @@
                           "type": "string",
                           "enum": [
                             "appointment_reminders",
-                            "secure_message_alerts"
+                            "secure_message_alerts",
+                            "claim_status_updates"
                           ],
                           "example": "appointment_reminders"
                         },
@@ -25500,7 +25645,8 @@
                           "type": "string",
                           "enum": [
                             "Appointment Reminders",
-                            "Secure Message Alerts"
+                            "Secure Message Alerts",
+                            "Benefits claims and decision reviews"
                           ],
                           "example": "Appointment Reminders"
                         },
@@ -26011,62 +26157,64 @@
         "additionalProperties": false,
         "required": [
           "id",
-          "claimStatus",
-          "appointmentDateTime",
-          "facilityId",
-          "createdOn",
-          "modifiedOn"
+          "type",
+          "attributes"
         ],
         "properties": {
           "id": {
+            "type": "string"
+          },
+          "type": {
             "type": "string",
-            "nullable": false,
-            "example": "16cbc3d0-56de-4d86-abf3-ed0f6908ee53"
+            "enum": [
+              "travelPayClaimSummary"
+            ]
           },
-          "claimNumber": {
-            "type": "string",
-            "nullable": true,
-            "example": "TC00000000001"
-          },
-          "claimStatus": {
-            "type": "string",
-            "nullable": false,
-            "example": "In process"
-          },
-          "appointmentDateTime": {
-            "type": "string",
-            "nullable": false,
-            "example": "2023-02-23T22:22:52.549Z"
-          },
-          "facilityId": {
-            "type": "string",
-            "nullable": true,
-            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
-          },
-          "facilityName": {
-            "type": "string",
-            "nullable": true,
-            "example": "Tomah VA Medical Center"
-          },
-          "totalCostRequested": {
-            "type": "float",
-            "nullable": true,
-            "example": 4.52
-          },
-          "reimbursementAmount": {
-            "type": "float",
-            "nullable": true,
-            "example": 0
-          },
-          "createdOn": {
-            "type": "string",
-            "nullable": false,
-            "example": "2023-02-24T22:22:52.549Z"
-          },
-          "modifiedOn": {
-            "type": "string",
-            "nullable": false,
-            "example": "2023-02-26T22:22:52.549Z"
+          "attributes": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "nullable": false
+              },
+              "claimNumber": {
+                "type": "string",
+                "nullable": true
+              },
+              "claimStatus": {
+                "type": "string",
+                "nullable": false
+              },
+              "appointmentDateTime": {
+                "type": "string",
+                "nullable": true
+              },
+              "facilityId": {
+                "type": "string",
+                "nullable": true
+              },
+              "facilityName": {
+                "type": "string",
+                "nullable": true
+              },
+              "totalCostRequested": {
+                "type": "number",
+                "nullable": true
+              },
+              "reimbursementAmount": {
+                "type": "number",
+                "nullable": true
+              },
+              "createdOn": {
+                "type": "string",
+                "nullable": false
+              },
+              "modifiedOn": {
+                "type": "string",
+                "nullable": false
+              }
+            }
           }
         }
       },
@@ -26161,6 +26309,18 @@
             "type": "string",
             "description": "The name of the appointment. Optional, but if provided cannot be an empty string.",
             "example": "Primary care appointment with Dr. Smith"
+          }
+        }
+      },
+      "TravelPaySmoc": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TravelPayClaimSummary"
           }
         }
       },
@@ -26404,6 +26564,7 @@
         "properties": {
           "id": {
             "type": "integer",
+            "nullable": true,
             "example": 42
           },
           "emailAddress": {
@@ -26420,21 +26581,9 @@
       },
       "Address": {
         "type": "object",
-        "additionalProperties": false,
         "required": [
-          "id",
-          "addressLine1",
-          "addressLine2",
-          "addressLine3",
           "addressPou",
-          "addressType",
-          "city",
-          "countryCode",
-          "internationalPostalCode",
-          "province",
-          "stateCode",
-          "zipCode",
-          "zipCodeSuffix"
+          "addressType"
         ],
         "properties": {
           "id": {
@@ -26474,9 +26623,24 @@
             "type": "string",
             "example": "Fulton"
           },
-          "countryCode": {
+          "countryCodeIso3": {
             "type": "string",
             "example": "US"
+          },
+          "countryName": {
+            "type": "string",
+            "nullable": true,
+            "example": "USA"
+          },
+          "countyCode": {
+            "type": "string",
+            "nullable": true,
+            "example": "21067"
+          },
+          "countyName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Fayette County"
           },
           "internationalPostalCode": {
             "type": "string",
@@ -26505,14 +26669,12 @@
       },
       "PhoneUpdate": {
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "id",
           "areaCode",
           "countryCode",
           "phoneNumber",
-          "phoneType",
-          "extension"
+          "phoneType"
         ],
         "properties": {
           "id": {
@@ -26543,7 +26705,28 @@
           },
           "extension": {
             "type": "string",
+            "nullable": true,
             "example": "4567"
+          },
+          "isTextable": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          },
+          "isTextPermitted": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          },
+          "isTty": {
+            "type": "boolean",
+            "nullable": true,
+            "example": false
+          },
+          "isVoicemailable": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
           }
         }
       },
@@ -26581,10 +26764,6 @@
                   "firstName",
                   "middleName",
                   "lastName",
-                  "email",
-                  "birthDate",
-                  "gender",
-                  "addresses",
                   "signinService"
                 ],
                 "properties": {
@@ -26607,6 +26786,14 @@
                     "type": "string",
                     "example": "john.a.smith@domain.com"
                   },
+                  "birthDate": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "gender": {
+                    "type": "string",
+                    "nullable": true
+                  },
                   "residentialAddress": {
                     "$ref": "#/components/schemas/Address"
                   },
@@ -26622,16 +26809,11 @@
                   "workPhoneNumber": {
                     "$ref": "#/components/schemas/PhoneUpdate"
                   },
-                  "faxPhoneNumber": {
+                  "faxNumber": {
                     "$ref": "#/components/schemas/PhoneUpdate"
                   },
                   "signinService": {
-                    "type": "string",
-                    "enum": [
-                      "IDME",
-                      "DSL",
-                      "MHV"
-                    ]
+                    "type": "string"
                   }
                 }
               },
@@ -26654,8 +26836,7 @@
                 "additionalProperties": false,
                 "required": [
                   "isCernerPatient",
-                  "facilities",
-                  "facilityName"
+                  "facilities"
                 ],
                 "properties": {
                   "isCernerPatient": {
@@ -26718,6 +26899,24 @@
                 "description": "All services with a boolean value of whether or not the service has access to that service.",
                 "type": "object",
                 "additionalProperties": false,
+                "required": [
+                  "appeals",
+                  "appointments",
+                  "claims",
+                  "decisionLetters",
+                  "directDepositBenefits",
+                  "directDepositBenefitsUpdate",
+                  "disabilityRating",
+                  "genderIdentity",
+                  "lettersAndDocuments",
+                  "militaryServiceHistory",
+                  "paymentHistory",
+                  "preferredName",
+                  "prescriptions",
+                  "scheduleAppointments",
+                  "secureMessaging",
+                  "userProfileUpdate"
+                ],
                 "example": {
                   "allergiesOracleHealthEnabled": false,
                   "appeals": true,
@@ -27120,10 +27319,11 @@
                   "preferredName",
                   "middleName",
                   "lastName",
-                  "email",
+                  "signinEmail",
                   "birthDate",
                   "genderIdentity",
-                  "addresses",
+                  "residentialAddress",
+                  "mailingAddress",
                   "signinService"
                 ],
                 "properties": {
@@ -27133,10 +27333,12 @@
                   },
                   "preferredName": {
                     "type": "string",
+                    "nullable": true,
                     "example": "John"
                   },
                   "middleName": {
                     "type": "string",
+                    "nullable": true,
                     "example": "A"
                   },
                   "lastName": {
@@ -27150,8 +27352,14 @@
                     "type": "string",
                     "example": "john.a.smith@domain.com"
                   },
+                  "birthDate": {
+                    "type": "string",
+                    "nullable": true,
+                    "example": "1970-08-12"
+                  },
                   "genderIdentity": {
                     "type": "string",
+                    "nullable": true,
                     "example": "M"
                   },
                   "residentialAddress": {
@@ -27172,10 +27380,10 @@
                   "signinService": {
                     "type": "string",
                     "enum": [
-                      "IDME",
-                      "DSL",
-                      "MHV",
-                      "LOGINGOV"
+                      "idme",
+                      "dslogon",
+                      "mhv",
+                      "logingov"
                     ]
                   }
                 }
@@ -27199,8 +27407,7 @@
                 "additionalProperties": false,
                 "required": [
                   "isCernerPatient",
-                  "facilities",
-                  "facilityName"
+                  "facilities"
                 ],
                 "properties": {
                   "isCernerPatient": {
@@ -27265,6 +27472,10 @@
               "edipi"
             ],
             "properties": {
+              "id": {
+                "type": "string",
+                "example": "abe3f152-90b0-45cb-8776-4958bad0e0ef"
+              },
               "firstName": {
                 "type": "string",
                 "example": "John"
@@ -27290,10 +27501,10 @@
               "signinService": {
                 "type": "string",
                 "enum": [
-                  "IDME",
-                  "DSL",
-                  "MHV",
-                  "LOGINGOV"
+                  "idme",
+                  "dslogon",
+                  "mhv",
+                  "logingov"
                 ]
               },
               "hasFacilityTransitioningToCerner": {
@@ -27310,19 +27521,18 @@
       },
       "AddressUpdate": {
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "id",
           "addressLine1",
           "addressPou",
           "addressType",
           "city",
-          "countryCode"
+          "countryCodeIso3"
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "example": "23fe358d-6e82-4541-804c-ce7562ba28f4"
+            "type": "integer",
+            "example": 577127
           },
           "addressMetaData": {
             "type": "object",
@@ -27345,10 +27555,6 @@
                 "example": "RESIDENTIAL"
               }
             }
-          },
-          "validationKey": {
-            "type": "integer",
-            "example": 0
           },
           "addressLine1": {
             "type": "string",
@@ -27383,14 +27589,24 @@
             "type": "string",
             "example": "Fulton"
           },
-          "countryCode": {
+          "countryCodeIso3": {
             "type": "string",
-            "example": "US"
+            "example": "USA"
+          },
+          "countryName": {
+            "type": "string",
+            "nullable": true,
+            "example": "USA"
           },
           "internationalPostalCode": {
             "type": "string",
             "nullable": true,
             "example": null
+          },
+          "overrideValidationKey": {
+            "type": "integer",
+            "nullable": true,
+            "example": 713117306
           },
           "province": {
             "type": "string",
@@ -27399,16 +27615,22 @@
           },
           "stateCode": {
             "type": "string",
-            "example": "NY"
+            "nullable": true,
+            "example": "MS"
           },
           "zipCode": {
             "type": "string",
-            "example": "97062"
+            "nullable": true,
+            "example": "38843"
           },
           "zipCodeSuffix": {
             "type": "string",
             "nullable": true,
             "example": "1234"
+          },
+          "validationKey": {
+            "type": "string",
+            "nullable": true
           }
         }
       },
@@ -27476,107 +27698,106 @@
       },
       "AddressCreate": {
         "type": "object",
-        "additionalProperties": false,
         "required": [
-          "data"
+          "addressLine1",
+          "addressPou",
+          "addressType",
+          "city",
+          "countryCodeIso3"
         ],
         "properties": {
-          "data": {
+          "addressMetaData": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "addressLine1",
-              "addressPou",
-              "addressType",
-              "city",
-              "countryCodeIso3"
-            ],
             "properties": {
-              "addressMetaData": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "confidenceScore": {
-                    "type": "integer",
-                    "example": 100
-                  },
-                  "addressType": {
-                    "type": "string",
-                    "example": "Domestic"
-                  },
-                  "deliveryPointValidation": {
-                    "type": "string",
-                    "example": "CONFIRMED"
-                  },
-                  "residentialDeliveryIndicator": {
-                    "type": "string",
-                    "example": "RESIDENTIAL"
-                  }
-                }
-              },
-              "addressLine1": {
-                "type": "string",
-                "example": "1493 Martin Luther King Rd"
-              },
-              "addressLine2": {
-                "type": "string",
-                "nullable": true
-              },
-              "addressLine3": {
-                "type": "string",
-                "nullable": true
-              },
-              "addressPou": {
-                "type": "string",
-                "enum": [
-                  "RESIDENCE",
-                  "CORRESPONDENCE"
-                ],
-                "example": "RESIDENCE"
+              "confidenceScore": {
+                "type": "integer",
+                "example": 100
               },
               "addressType": {
                 "type": "string",
-                "enum": [
-                  "DOMESTIC",
-                  "INTERNATIONAL",
-                  "MILITARY"
-                ],
-                "example": "DOMESTIC"
+                "example": "Domestic"
               },
-              "city": {
+              "deliveryPointValidation": {
                 "type": "string",
-                "example": "Fulton"
+                "example": "CONFIRMED"
               },
-              "countryCodeIso3": {
+              "residentialDeliveryIndicator": {
                 "type": "string",
-                "example": "USA"
-              },
-              "internationalPostalCode": {
-                "type": "string",
-                "nullable": true,
-                "example": null
-              },
-              "province": {
-                "type": "string",
-                "nullable": true,
-                "example": null
-              },
-              "stateCode": {
-                "type": "string",
-                "nullable": true,
-                "example": "NY"
-              },
-              "zipCode": {
-                "type": "string",
-                "nullable": true,
-                "example": "97062"
-              },
-              "zipCodeSuffix": {
-                "type": "string",
-                "nullable": true,
-                "example": "1234"
+                "example": "RESIDENTIAL"
               }
             }
+          },
+          "addressLine1": {
+            "type": "string",
+            "example": "1493 Martin Luther King Rd"
+          },
+          "addressLine2": {
+            "type": "string",
+            "nullable": true
+          },
+          "addressLine3": {
+            "type": "string",
+            "nullable": true
+          },
+          "addressPou": {
+            "type": "string",
+            "enum": [
+              "RESIDENCE",
+              "CORRESPONDENCE"
+            ],
+            "example": "RESIDENCE"
+          },
+          "addressType": {
+            "type": "string",
+            "enum": [
+              "DOMESTIC",
+              "INTERNATIONAL",
+              "MILITARY"
+            ],
+            "example": "DOMESTIC"
+          },
+          "city": {
+            "type": "string",
+            "example": "Fulton"
+          },
+          "countryCodeIso3": {
+            "type": "string",
+            "example": "USA"
+          },
+          "countryName": {
+            "type": "string",
+            "nullable": true,
+            "example": "USA"
+          },
+          "internationalPostalCode": {
+            "type": "string",
+            "nullable": true,
+            "example": null
+          },
+          "province": {
+            "type": "string",
+            "nullable": true,
+            "example": null
+          },
+          "stateCode": {
+            "type": "string",
+            "nullable": true,
+            "example": "MS"
+          },
+          "zipCode": {
+            "type": "string",
+            "nullable": true,
+            "example": "38843"
+          },
+          "zipCodeSuffix": {
+            "type": "string",
+            "nullable": true,
+            "example": "1234"
+          },
+          "validationKey": {
+            "type": "string",
+            "nullable": true
           }
         }
       },
@@ -27588,120 +27809,138 @@
         ],
         "properties": {
           "data": {
-            "required": [
-              "id",
-              "string"
-            ],
-            "properties": {
-              "id": {
-                "type": "string",
-                "example": "3be0c7de-bfe1-4101-a326-5567bcd98b63",
-                "description": "Randomly generated UUID"
-              },
-              "type": {
-                "type": "string",
-                "example": "suggested_address"
-              },
-              "attributes": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "transactionId",
-                  "transactionStatus",
-                  "type"
-                ],
-                "properties": {
-                  "addressLine1": {
-                    "type": "string",
-                    "example": "51 W Weber Rd"
-                  },
-                  "addressLine2": {
-                    "type": [
-                      "string",
-                      null
-                    ],
-                    "example": null
-                  },
-                  "addressLine3": {
-                    "type": [
-                      "string",
-                      null
-                    ],
-                    "example": null
-                  },
-                  "addressPou": {
-                    "type": "string",
-                    "example": "RESIDENCE"
-                  },
-                  "addressType": {
-                    "type": "string",
-                    "example": "DOMESTIC"
-                  },
-                  "city": {
-                    "type": "string",
-                    "example": "Columbus"
-                  },
-                  "countryCodeIso3": {
-                    "type": "string",
-                    "example": "USA"
-                  },
-                  "internationalPostalCode": {
-                    "type": [
-                      "string",
-                      null
-                    ],
-                    "example": null
-                  },
-                  "province": {
-                    "type": [
-                      "string",
-                      null
-                    ],
-                    "example": null
-                  },
-                  "stateCode": {
-                    "type": "string",
-                    "example": "OH"
-                  },
-                  "zipCode": {
-                    "type": "string",
-                    "example": "43202"
-                  },
-                  "zipCodeSuffix": {
-                    "type": "string",
-                    "example": "1922"
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "type",
+                "attributes",
+                "meta"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "example": "3be0c7de-bfe1-4101-a326-5567bcd98b63",
+                  "description": "Randomly generated UUID"
+                },
+                "type": {
+                  "type": "string",
+                  "example": "suggested_address"
+                },
+                "attributes": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "addressLine1",
+                    "addressLine2",
+                    "addressLine3",
+                    "addressPou",
+                    "addressType",
+                    "city",
+                    "countryCodeIso3",
+                    "internationalPostalCode",
+                    "province",
+                    "stateCode",
+                    "zipCode",
+                    "zipCodeSuffix"
+                  ],
+                  "properties": {
+                    "addressLine1": {
+                      "type": "string",
+                      "example": "51 W Weber Rd"
+                    },
+                    "addressLine2": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "addressLine3": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "addressPou": {
+                      "type": "string",
+                      "example": "RESIDENCE"
+                    },
+                    "addressType": {
+                      "type": "string",
+                      "example": "DOMESTIC"
+                    },
+                    "city": {
+                      "type": "string",
+                      "example": "Columbus"
+                    },
+                    "countryCodeIso3": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "USA"
+                    },
+                    "internationalPostalCode": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "province": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "stateCode": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "OH"
+                    },
+                    "zipCode": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "43202"
+                    },
+                    "zipCodeSuffix": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "1922"
+                    }
                   }
-                }
-              },
-              "meta": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "address": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "properties": {
-                      "confidenceScore": {
-                        "type": "float",
-                        "example": 100,
+                },
+                "meta": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "address",
+                    "validationKey"
+                  ],
+                  "properties": {
+                    "address": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "confidenceScore",
+                        "addressType",
+                        "deliveryPointValidation"
+                      ],
+                      "properties": {
+                        "confidenceScore": {
+                          "type": "number",
+                          "example": 100
+                        },
                         "addressType": {
                           "type": "string",
                           "example": "Domestic"
                         },
                         "deliveryPointValidation": {
                           "type": "string",
-                          "example": "CONFIRMED"
+                          "example": "UNDELIVERABLE"
                         },
                         "residentialDeliveryIndicator": {
                           "type": "string",
                           "example": "RESIDENTIAL"
                         }
                       }
+                    },
+                    "validationKey": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "-646932106"
                     }
-                  },
-                  "validationKey": {
-                    "type": "integer",
-                    "example": -1398777841
                   }
                 }
               }
@@ -27759,7 +27998,7 @@
             "additionalProperties": false,
             "required": [
               "id",
-              "string"
+              "type"
             ],
             "properties": {
               "id": {
@@ -27911,7 +28150,7 @@
             "additionalProperties": false,
             "required": [
               "id",
-              "string"
+              "type"
             ],
             "properties": {
               "id": {
@@ -27962,13 +28201,11 @@
       },
       "Phone": {
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "areaCode",
           "countryCode",
           "phoneNumber",
-          "phoneType",
-          "extension"
+          "phoneType"
         ],
         "properties": {
           "id": {
@@ -27999,7 +28236,28 @@
           },
           "extension": {
             "type": "string",
+            "nullable": true,
             "example": "4567"
+          },
+          "isTextable": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          },
+          "isTextPermitted": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          },
+          "isTty": {
+            "type": "boolean",
+            "nullable": true,
+            "example": false
+          },
+          "isVoicemailable": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
           }
         }
       },

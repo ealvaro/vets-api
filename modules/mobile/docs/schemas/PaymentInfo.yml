@@ -1,79 +1,82 @@
 type: object
 additionalProperties: false
 required:
-  - id
-  - type
-  - attibutes
+  - data
 properties:
-  type:
-    type: string
-    example: "paymentInformation"
-  id:
-    type: string
-    example: "abe3f152-90b0-45cb-8776-4958bad0e0ef"
-    description: user UUID
-  attributes:
+  data:
+    type: object
+    additionalProperties: false
     required:
-      - paymentAccount
-      - accountControl
+      - id
+      - type
+      - attributes
     properties:
-      accountControl:
+      type:
+        type: string
+        example: "paymentInformation"
+      id:
+        type: string
+        example: "abe3f152-90b0-45cb-8776-4958bad0e0ef"
+        description: user UUID
+      attributes:
         type: object
         additionalProperties: false
         required:
-          - canUpdateAddress
-          - corpAvailIndicator
-          - corpRecFoundIndicator
-          - hasNoBdnPaymentsIndicator
-          - identityIndicator
-          - indexIndicator
-          - isCompetentIndicator
-          - noFiduciaryAssignedIndicator
-          - notDeceasedIndicato
-          - canUpdatePayment
+          - paymentAccount
+          - accountControl
         properties:
-          canUpdateAddress:
-            type: boolean
-          corpAvailIndicator:
-            type: boolean
-          corpRecFoundIndicator:
-            type: boolean
-          hasNoBdnPaymentsIndicator:
-            type: boolean
-          identityIndicator:
-            type: boolean
-          indexIndicator:
-            type: boolean
-          isCompetentIndicator:
-            type: boolean
-          noFiduciaryAssignedIndicator:
-            type: boolean
-          notDeceasedIndicator:
-            type: boolean
-          canUpdatePayment:
-            type: boolean
-      paymentAccount:
-        type: object
-        additionalProperties: false
-        required:
-          - accountNumber
-          - accountType
-          - financialInstitutionName
-          - financialInstitutionRoutingNumber
-        properties:
-          accountNumber:
-            type: string
-            example: "************6464"
-          accountType:
-            type: string
-            example: "Savings"
-            enum:
-              - Savings
-              - Checking
-          financialInstitutionName:
-            type: string
-            example: "PACIFIC PREMIER BANK"
-          financialInstitutionRoutingNumber:
-            type: string
-            example: "948529982"
-
+          accountControl:
+            type: object
+            additionalProperties: false
+            required:
+              - canUpdateAddress
+              - corpAvailIndicator
+              - corpRecFoundIndicator
+              - hasNoBdnPaymentsIndicator
+              - identityIndicator
+              - indexIndicator
+              - isCompetentIndicator
+              - noFiduciaryAssignedIndicator
+              - notDeceasedIndicator
+              - canUpdatePayment
+            properties:
+              canUpdateAddress:
+                type: boolean
+              corpAvailIndicator:
+                type: boolean
+              corpRecFoundIndicator:
+                type: boolean
+              hasNoBdnPaymentsIndicator:
+                type: boolean
+              identityIndicator:
+                type: boolean
+              indexIndicator:
+                type: boolean
+              isCompetentIndicator:
+                type: boolean
+              noFiduciaryAssignedIndicator:
+                type: boolean
+              notDeceasedIndicator:
+                type: boolean
+              canUpdatePayment:
+                type: boolean
+          paymentAccount:
+            type: object
+            additionalProperties: false
+            properties:
+              accountNumber:
+                type: string
+                nullable: true
+                example: "************6464"
+              accountType:
+                type: string
+                nullable: true
+                example: "Savings"
+              financialInstitutionName:
+                type: string
+                nullable: true
+                example: "PACIFIC PREMIER BANK"
+              financialInstitutionRoutingNumber:
+                type: string
+                nullable: true
+                example: "948529982"

@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../../../../support/helpers/rails_helper'
+require_relative '../../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::User::Email', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
 
   let!(:user) { sis_user(icn: '123498767V234859') }
 
@@ -16,15 +17,14 @@ RSpec.describe 'Mobile::V0::User::Email', type: :request do
   end
 
   describe 'POST /mobile/v0/user/emails' do
-    let(:email) { build(:email, email_address: 'person42@example.com') }
-
     context 'with a valid email that takes two tries to complete' do
       before do
         VCR.use_cassette('va_profile/v2/contact_information/post_email_status_complete', VCR::MATCH_EVERYTHING) do
           VCR.use_cassette('va_profile/v2/contact_information/post_email_status_incomplete', VCR::MATCH_EVERYTHING) do
             VCR.use_cassette('va_profile/v2/contact_information/post_email_success', VCR::MATCH_EVERYTHING) do
-              puts email.to_json
-              post '/mobile/v0/user/emails', params: email.to_json, headers: sis_headers(json: true)
+              post '/mobile/v0/user/emails',
+                   params: { emailAddress: 'person42@example.com' }.to_json,
+                   headers: sis_headers(json: true)
             end
           end
         end
@@ -35,7 +35,7 @@ RSpec.describe 'Mobile::V0::User::Email', type: :request do
       end
 
       it 'matches the expected schema' do
-        expect(response.body).to match_json_schema('profile_update_response')
+        assert_schema_conform(200)
       end
 
       it 'includes a transaction id' do
@@ -46,8 +46,8 @@ RSpec.describe 'Mobile::V0::User::Email', type: :request do
 
     context 'with email missing from params' do
       before do
-        put('/mobile/v0/user/emails', params: { email_address: '' }.to_json,
-                                      headers: sis_headers(json: true))
+        post('/mobile/v0/user/emails', params: { emailAddress: '' }.to_json,
+                                       headers: sis_headers(json: true))
       end
 
       it 'returns a 422' do
@@ -55,7 +55,7 @@ RSpec.describe 'Mobile::V0::User::Email', type: :request do
       end
 
       it 'matches the error schema' do
-        expect(response.body).to match_json_schema('errors')
+        assert_schema_conform(422)
       end
 
       it 'has a helpful error message' do
@@ -76,17 +76,14 @@ RSpec.describe 'Mobile::V0::User::Email', type: :request do
   end
 
   describe 'PUT /mobile/v0/user/emails' do
-    let(:email) do
-      build(:email, id: 318_927, email_address: 'person43@example.com',
-                    source_system_user: user.icn)
-    end
-
     context 'with a valid email that takes two tries to complete' do
       before do
         VCR.use_cassette('va_profile/v2/contact_information/put_email_status_complete', VCR::MATCH_EVERYTHING) do
           VCR.use_cassette('va_profile/v2/contact_information/put_email_status_incomplete', VCR::MATCH_EVERYTHING) do
             VCR.use_cassette('va_profile/v2/contact_information/put_email_success', VCR::MATCH_EVERYTHING) do
-              put '/mobile/v0/user/emails', params: email.to_json, headers: sis_headers(json: true)
+              put '/mobile/v0/user/emails',
+                  params: { id: 318_927, emailAddress: 'person43@example.com' }.to_json,
+                  headers: sis_headers(json: true)
             end
           end
         end
@@ -97,7 +94,7 @@ RSpec.describe 'Mobile::V0::User::Email', type: :request do
       end
 
       it 'matches the expected schema' do
-        expect(response.body).to match_json_schema('profile_update_response')
+        assert_schema_conform(200)
       end
 
       it 'includes a transaction id' do
@@ -108,7 +105,7 @@ RSpec.describe 'Mobile::V0::User::Email', type: :request do
 
     context 'with email missing from params' do
       before do
-        put('/mobile/v0/user/emails', params: { email_address: '' }.to_json,
+        put('/mobile/v0/user/emails', params: { id: nil, emailAddress: '' }.to_json,
                                       headers: sis_headers(json: true))
       end
 
@@ -117,7 +114,7 @@ RSpec.describe 'Mobile::V0::User::Email', type: :request do
       end
 
       it 'matches the error schema' do
-        expect(response.body).to match_json_schema('errors')
+        assert_schema_conform(422)
       end
 
       it 'has a helpful error message' do
@@ -139,17 +136,15 @@ RSpec.describe 'Mobile::V0::User::Email', type: :request do
 
   describe 'DELETE /mobile/v0/user/emails' do
     context 'with a valid email' do
-      let(:email) do
-        build(:email, email_address: 'person42@example.com')
-      end
-
       before do
         Timecop.freeze(Time.zone.local(2018, 6, 6, 15, 35, 55))
         VCR.use_cassette('va_profile/v2/contact_information/delete_email_status_complete', VCR::MATCH_EVERYTHING) do
           VCR.use_cassette('va_profile/v2/contact_information/delete_email_status_incomplete',
                            VCR::MATCH_EVERYTHING) do
             VCR.use_cassette('va_profile/v2/contact_information/delete_email_success', VCR::MATCH_EVERYTHING) do
-              delete '/mobile/v0/user/emails', params: email.to_json, headers: sis_headers(json: true)
+              delete '/mobile/v0/user/emails',
+                     params: { id: nil, emailAddress: 'person42@example.com' }.to_json,
+                     headers: sis_headers(json: true)
             end
           end
         end
@@ -164,7 +159,7 @@ RSpec.describe 'Mobile::V0::User::Email', type: :request do
       end
 
       it 'matches the expected schema' do
-        expect(response.body).to match_json_schema('profile_update_response')
+        assert_schema_conform(200)
       end
 
       it 'includes a transaction id' do
@@ -176,7 +171,7 @@ RSpec.describe 'Mobile::V0::User::Email', type: :request do
     context 'with email missing from params' do
       before do
         delete '/mobile/v0/user/emails',
-               params: { id: 42, email_address: '' }.to_json,
+               params: { id: 42, emailAddress: '' }.to_json,
                headers: sis_headers(json: true)
       end
 
@@ -185,7 +180,7 @@ RSpec.describe 'Mobile::V0::User::Email', type: :request do
       end
 
       it 'matches the error schema' do
-        expect(response.body).to match_json_schema('errors')
+        assert_schema_conform(422)
       end
 
       it 'has a helpful error message' do

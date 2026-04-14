@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../../../support/helpers/rails_helper'
+require_relative '../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::MilitaryInformation', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
 
   describe 'GET /mobile/v0/military-service-history' do
     let!(:user) { sis_user(edipi: '1005079124') }
@@ -179,7 +180,7 @@ RSpec.describe 'Mobile::V0::MilitaryInformation', type: :request do
             get '/mobile/v0/military-service-history', headers: sis_headers
             expect(response).to have_http_status(:ok)
             expect(JSON.parse(response.body)).to eq(expected_body_multi)
-            expect(response.body).to match_json_schema('mobile_service_history_response')
+            assert_schema_conform(200)
           end
         end
       end
@@ -190,7 +191,7 @@ RSpec.describe 'Mobile::V0::MilitaryInformation', type: :request do
             get '/mobile/v0/military-service-history', headers: sis_headers
             expect(response).to have_http_status(:ok)
             expect(JSON.parse(response.body)).to eq(expected_body_single)
-            expect(response.body).to match_json_schema('mobile_service_history_response')
+            assert_schema_conform(200)
           end
         end
       end
@@ -201,7 +202,7 @@ RSpec.describe 'Mobile::V0::MilitaryInformation', type: :request do
             get '/mobile/v0/military-service-history', headers: sis_headers
             expect(response).to have_http_status(:ok)
             expect(JSON.parse(response.body)).to eq(expected_body_no_end_date)
-            expect(response.body).to match_json_schema('mobile_service_history_response')
+            assert_schema_conform(200)
           end
         end
       end
@@ -212,7 +213,7 @@ RSpec.describe 'Mobile::V0::MilitaryInformation', type: :request do
             get '/mobile/v0/military-service-history', headers: sis_headers
             expect(response).to have_http_status(:ok)
             expect(JSON.parse(response.body)).to eq(expected_body_empty)
-            expect(response.body).to match_json_schema('mobile_service_history_response')
+            assert_schema_conform(200)
           end
         end
       end
@@ -223,7 +224,7 @@ RSpec.describe 'Mobile::V0::MilitaryInformation', type: :request do
             get '/mobile/v0/military-service-history', headers: sis_headers
             expect(response).to have_http_status(:ok)
             expect(JSON.parse(response.body)).to eq(expected_no_discharge)
-            expect(response.body).to match_json_schema('mobile_service_history_response')
+            assert_schema_conform(200)
           end
         end
       end
@@ -234,7 +235,7 @@ RSpec.describe 'Mobile::V0::MilitaryInformation', type: :request do
             get '/mobile/v0/military-service-history', headers: sis_headers
             expect(response).to have_http_status(:ok)
             expect(JSON.parse(response.body)).to eq(expected_unknown_discharge)
-            expect(response.body).to match_json_schema('mobile_service_history_response')
+            assert_schema_conform(200)
           end
         end
       end

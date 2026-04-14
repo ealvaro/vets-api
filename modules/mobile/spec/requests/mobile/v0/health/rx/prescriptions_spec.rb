@@ -1,12 +1,13 @@
 # frozen_string_literal: true
 
 require_relative '../../../../../support/helpers/rails_helper'
+require_relative '../../../../../support/helpers/committee_helper'
 require 'support/rx_client_helpers'
 require 'support/shared_examples_for_mhv'
 require 'vets/collection'
 
 RSpec.describe 'health/rx/prescriptions', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
   include Rx::ClientHelpers
 
   let!(:user) { sis_user(:mhv, mhv_account_type:) }
@@ -148,7 +149,7 @@ RSpec.describe 'health/rx/prescriptions', type: :request do
           get '/mobile/v0/health/rx/prescriptions', headers: sis_headers
         end
         expect(response).to have_http_status(:ok)
-        expect(response.body).to match_json_schema('prescription')
+        assert_schema_conform(200)
       end
 
       it 'includes sortedDispensedDate field' do
@@ -206,7 +207,7 @@ RSpec.describe 'health/rx/prescriptions', type: :request do
         end
 
         expect(response).to have_http_status(:ok)
-        expect(response.body).to match_json_schema('prescription')
+        assert_schema_conform(200)
 
         expect(response.parsed_body['meta']['pagination']['totalEntries']).to eq(104)
 
@@ -226,7 +227,7 @@ RSpec.describe 'health/rx/prescriptions', type: :request do
           get '/mobile/v0/health/rx/prescriptions', params:, headers: sis_headers
         end
         expect(response).to have_http_status(:ok)
-        expect(response.body).to match_json_schema('prescription')
+        assert_schema_conform(200)
 
         expect(response.parsed_body['meta']['pagination']['totalEntries']).to eq(2)
 
@@ -252,7 +253,7 @@ RSpec.describe 'health/rx/prescriptions', type: :request do
 
           expect(response).to be_successful
           expect(response.body).to be_a(String)
-          expect(response.body).to match_json_schema('prescription')
+          assert_schema_conform(200)
           expect(JSON.parse(response.body)['data']).to be_truthy
 
           expect(response.parsed_body['meta']['pagination']['totalEntries']).to eq(146)
@@ -271,7 +272,7 @@ RSpec.describe 'health/rx/prescriptions', type: :request do
 
           expect(response).to be_successful
           expect(response.body).to be_a(String)
-          expect(response.body).to match_json_schema('prescription')
+          assert_schema_conform(200)
           expect(JSON.parse(response.body)['data']).to be_truthy
 
           expect(response.parsed_body['meta']['pagination']['totalEntries']).to eq(135)
@@ -296,7 +297,7 @@ RSpec.describe 'health/rx/prescriptions', type: :request do
           get '/mobile/v0/health/rx/prescriptions', params:, headers: sis_headers
         end
         expect(response).to have_http_status(:ok)
-        expect(response.body).to match_json_schema('prescription')
+        assert_schema_conform(200)
         expect(response.parsed_body['meta']['pagination']).to eq({ 'currentPage' => 2,
                                                                    'perPage' => 3,
                                                                    'totalPages' => 49,
@@ -313,7 +314,7 @@ RSpec.describe 'health/rx/prescriptions', type: :request do
             get '/mobile/v0/health/rx/prescriptions', params:, headers: sis_headers
           end
           expect(response).to have_http_status(:ok)
-          expect(response.body).to match_json_schema('prescription')
+          assert_schema_conform(200)
 
           refill_statuses = response.parsed_body['data'].map { |d| d.dig('attributes', 'refillStatus') }.uniq
           expect(refill_statuses).to eq(['refillinprocess'])
@@ -328,7 +329,7 @@ RSpec.describe 'health/rx/prescriptions', type: :request do
             get '/mobile/v0/health/rx/prescriptions', params:, headers: sis_headers
           end
           expect(response).to have_http_status(:ok)
-          expect(response.body).to match_json_schema('prescription')
+          assert_schema_conform(200)
           expect(response.parsed_body['data'].size).to eq(1)
           expect(response.parsed_body.dig('data', 0, 'attributes', 'isTrackable')).to be(true)
           expect(response.parsed_body.dig('data', 0, 'attributes', 'isRefillable')).to be(false)
@@ -345,7 +346,7 @@ RSpec.describe 'health/rx/prescriptions', type: :request do
             get '/mobile/v0/health/rx/prescriptions', params:, headers: sis_headers
           end
           expect(response).to have_http_status(:ok)
-          expect(response.body).to match_json_schema('prescription')
+          assert_schema_conform(200)
           refill_statuses = response.parsed_body['data'].map { |d| d.dig('attributes', 'refillStatus') }.uniq
 
           expect(refill_statuses).to eq(%w[refillinprocess active])
@@ -360,7 +361,7 @@ RSpec.describe 'health/rx/prescriptions', type: :request do
             get '/mobile/v0/health/rx/prescriptions', params:, headers: sis_headers
           end
           expect(response).to have_http_status(:ok)
-          expect(response.body).to match_json_schema('prescription')
+          assert_schema_conform(200)
 
           refill_statuses = response.parsed_body['data'].map { |d| d.dig('attributes', 'refillStatus') }.uniq
 
@@ -397,7 +398,7 @@ RSpec.describe 'health/rx/prescriptions', type: :request do
           end
 
           expect(response).to have_http_status(:ok)
-          expect(response.body).to match_json_schema('prescription')
+          assert_schema_conform(200)
           expect(response.parsed_body['data'].map { |d| d.dig('attributes', 'refillStatus') }).to eq(
             %w[active active activeParked discontinued discontinued discontinued discontinued discontinued discontinued
                discontinued]
@@ -414,7 +415,7 @@ RSpec.describe 'health/rx/prescriptions', type: :request do
           end
 
           expect(response).to have_http_status(:ok)
-          expect(response.body).to match_json_schema('prescription')
+          assert_schema_conform(200)
           expect(response.parsed_body['data'].map do |d|
             d.dig('attributes',
                   'refillStatus')
@@ -452,7 +453,7 @@ RSpec.describe 'health/rx/prescriptions', type: :request do
           get '/mobile/v0/health/rx/prescriptions', params:, headers: sis_headers
         end
         expect(response).to have_http_status(:ok)
-        expect(response.body).to match_json_schema('prescription')
+        assert_schema_conform(200)
         expect(response.parsed_body['meta']['pagination']).to eq({ 'currentPage' => 2,
                                                                    'perPage' => 3,
                                                                    'totalPages' => 5,
@@ -511,7 +512,7 @@ RSpec.describe 'health/rx/prescriptions', type: :request do
           get '/mobile/v0/health/rx/prescriptions/13650541/tracking', headers: sis_headers
         end
         expect(response).to have_http_status(:ok)
-        expect(response.body).to match_json_schema('prescription_tracking')
+        assert_schema_conform(200)
       end
     end
 
@@ -532,7 +533,7 @@ RSpec.describe 'health/rx/prescriptions', type: :request do
         end
 
         expect(response).to have_http_status(:ok)
-        expect(response.body).to match_json_schema('prescription_tracking')
+        assert_schema_conform(200)
         expect(response.parsed_body['data'].map { |p| p.dig('attributes', 'otherPrescriptions') }.uniq).to eq([[]])
       end
     end

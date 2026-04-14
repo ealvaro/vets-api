@@ -1,10 +1,11 @@
 # frozen_string_literal: true
 
 require_relative '../../../support/helpers/rails_helper'
+require_relative '../../../support/helpers/committee_helper'
 require 'common/client/errors'
 
 RSpec.describe 'Mobile::V2::User', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
 
   describe 'GET /mobile/v2/user' do
     let!(:user) { sis_user(idme_uuid: 'b2fab2b5-6af0-45e1-a9e2-394347af91ef') }
@@ -18,7 +19,7 @@ RSpec.describe 'Mobile::V2::User', type: :request do
 
     it 'returns a user profile response with the expected schema' do
       get_user
-      expect(response.body).to match_json_schema('v2/user')
+      assert_schema_conform(200)
     end
 
     it 'includes the users names' do

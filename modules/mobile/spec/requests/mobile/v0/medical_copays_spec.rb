@@ -4,7 +4,7 @@ require_relative '../../../support/helpers/rails_helper'
 require_relative '../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::MedicalCopays', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
 
   let!(:user) { sis_user }
 
@@ -47,7 +47,7 @@ RSpec.describe 'Mobile::V0::MedicalCopays', type: :request do
 
       get '/mobile/v0/medical_copays', headers: sis_headers
 
-      expect(response.body).to match_json_schema('medical_copays')
+      assert_schema_conform(200)
     end
   end
 
@@ -59,7 +59,7 @@ RSpec.describe 'Mobile::V0::MedicalCopays', type: :request do
 
       get '/mobile/v0/medical_copays/abc123', headers: sis_headers
 
-      expect(response.body).to match_json_schema('medical_copay')
+      assert_schema_conform(200)
     end
   end
 

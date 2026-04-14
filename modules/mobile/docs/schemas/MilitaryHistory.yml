@@ -27,6 +27,4 @@ properties:
           serviceHistory:
             type: array
             items:
-              type: object
-              additionalProperties: false
               $ref: "./ServiceHistory.yml"

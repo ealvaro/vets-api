@@ -27,6 +27,4 @@ properties:
           facilities:
             type: array
             items:
-              type: object
-              additionalProperties: false
               $ref: "./FacilityInfo.yml"

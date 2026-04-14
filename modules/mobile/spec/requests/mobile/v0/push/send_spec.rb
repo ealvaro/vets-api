@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../../../../support/helpers/rails_helper'
+require_relative '../../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::Push::Send', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
 
   let!(:user) { sis_user(icn: '1008596379V859838') }
 
@@ -45,7 +46,7 @@ RSpec.describe 'Mobile::V0::Push::Send', type: :request do
         VCR.use_cassette('vetext/send_bad_request') do
           post '/mobile/v0/push/send', headers: sis_headers(json: true), params: params.to_json
           expect(response).to have_http_status(:bad_request)
-          expect(response.body).to match_json_schema('errors')
+          assert_schema_conform(400)
         end
       end
     end
@@ -66,7 +67,7 @@ RSpec.describe 'Mobile::V0::Push::Send', type: :request do
         VCR.use_cassette('vetext/send_internal_server_error') do
           post '/mobile/v0/push/send', headers: sis_headers(json: true), params: params.to_json
           expect(response).to have_http_status(:bad_gateway)
-          expect(response.body).to match_json_schema('errors')
+          assert_schema_conform(502)
         end
       end
     end
@@ -86,7 +87,7 @@ RSpec.describe 'Mobile::V0::Push::Send', type: :request do
       it 'returns not found and error' do
         post '/mobile/v0/push/send', headers: sis_headers(json: true), params: params.to_json
         expect(response).to have_http_status(:not_found)
-        expect(response.body).to match_json_schema('errors')
+        assert_schema_conform(404)
       end
     end
   end

@@ -25,5 +25,5 @@ properties:
           - eligible
         properties:
           eligible:
-            type: bool
+            type: boolean
             example: true

@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../../../support/helpers/rails_helper'
+require_relative '../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::PaymentHistory', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
 
   let!(:user) { sis_user(email: nil) }
 
@@ -118,7 +119,7 @@ RSpec.describe 'Mobile::V0::PaymentHistory', type: :request do
       end
 
       it 'matches expected schema' do
-        expect(response.body).to match_json_schema('payment_history')
+        assert_schema_conform(200)
       end
 
       it 'includes the expected properties for payment history' do
@@ -287,7 +288,7 @@ RSpec.describe 'Mobile::V0::PaymentHistory', type: :request do
       end
 
       it 'matches expected schema' do
-        expect(response.body).to match_json_schema('payment_history')
+        assert_schema_conform(200)
       end
 
       it 'only paginates and returns payments for that year' do
@@ -324,7 +325,7 @@ RSpec.describe 'Mobile::V0::PaymentHistory', type: :request do
       end
 
       it 'matches expected schema' do
-        expect(response.body).to match_json_schema('payment_history')
+        assert_schema_conform(200)
       end
 
       it 'returns an empty list' do
@@ -368,7 +369,7 @@ RSpec.describe 'Mobile::V0::PaymentHistory', type: :request do
       end
 
       it 'matches expected schema' do
-        expect(response.body).to match_json_schema('payment_history')
+        assert_schema_conform(200)
       end
 
       it 'returns an empty list' do

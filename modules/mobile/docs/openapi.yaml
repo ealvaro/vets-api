@@ -525,7 +525,7 @@ paths:
       description: Checks if a list of facilities if they are eligible to create a appointment request to provide the given type of service at the facility.
       parameters:
         - description: Type of service to check eligibility for.
-          in: path
+          in: query
           name: serviceType
           required: true
           schema:
@@ -545,15 +545,15 @@ paths:
               - cpap
               - ophthalmology
         - description: List of facility ids
-          in: path
-          name: FacilityIds[]
+          in: query
+          name: facilityIds
           required: true
           schema:
             type: array
             items:
               type: string
         - description: type of appointment. Can either be 'request' or 'direct' but only request will be used until direct scheduling functionality is built out
-          in: path
+          in: query
           name: type
           required: true
           schema:
@@ -731,7 +731,7 @@ paths:
         - description: The facility division ID
           in: path
           required: true
-          name: location_id
+          name: facility_id
           schema:
             type: string
         - description: The clinic IEN. Required if clinical_service not provided.
@@ -781,7 +781,7 @@ paths:
       parameters:
         - description: Array of facilities to be checked for service eligibility
           in: query
-          name: FacilityIds[]
+          name: facilityIds
           required: true
           schema:
             type: array
@@ -793,6 +793,8 @@ paths:
               schema:
                 $ref: ./schemas/ServiceEligibilities.yml
           description: OK
+        '400':
+          $ref: '#/components/responses/400'
         '401':
           $ref: '#/components/responses/401'
         '403':
@@ -2312,8 +2314,10 @@ paths:
           in: query
           name: filter
           required: false
+          style: deepObject
+          explode: true
           schema:
-            type: string
+            type: object
         - description: The page number requested. Defaults to 1.
           example: 1
           in: query
@@ -2415,7 +2419,7 @@ paths:
           name: id
           required: true
           schema:
-            type: object
+            type: string
         - $ref: '#/components/parameters/InflectionHeader'
       responses:
         '200':
@@ -3912,10 +3916,20 @@ paths:
               schema:
                 $ref: ./schemas/PaymentInfo.yml
           description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/LighthouseErrors.yml
+          description: Bad request.
         '401':
           $ref: '#/components/responses/401'
         '403':
-          $ref: '#/components/responses/403'
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/LighthouseErrors.yml
+          description: Client was forbidden from upstream resource.
         '404':
           $ref: '#/components/responses/404'
         '408':
@@ -3923,7 +3937,11 @@ paths:
         '422':
           $ref: '#/components/responses/422'
         '500':
-          $ref: '#/components/responses/500'
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/LighthouseErrors.yml
+          description: An internal API error occurred.
         '502':
           $ref: '#/components/responses/502'
         '503':
@@ -3951,10 +3969,20 @@ paths:
               schema:
                 $ref: ./schemas/PaymentInfo.yml
           description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/LighthouseErrors.yml
+          description: Bad request.
         '401':
           $ref: '#/components/responses/401'
         '403':
-          $ref: '#/components/responses/403'
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/LighthouseErrors.yml
+          description: Client was forbidden from upstream resource.
         '404':
           $ref: '#/components/responses/404'
         '408':
@@ -3962,7 +3990,11 @@ paths:
         '422':
           $ref: '#/components/responses/422'
         '500':
-          $ref: '#/components/responses/500'
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/LighthouseErrors.yml
+          description: An internal API error occurred.
         '502':
           $ref: '#/components/responses/502'
         '503':
@@ -4021,6 +4053,8 @@ paths:
               schema:
                 $ref: ./schemas/PushGetPreferences.yml
           description: OK
+        '400':
+          $ref: '#/components/responses/400'
         '401':
           $ref: '#/components/responses/401'
         '403':
@@ -4062,6 +4096,8 @@ paths:
       responses:
         '200':
           description: OK
+        '400':
+          $ref: '#/components/responses/400'
         '401':
           $ref: '#/components/responses/401'
         '403':
@@ -4096,12 +4132,14 @@ paths:
         description: Device information
         required: true
       responses:
-        '201':
+        '200':
           content:
             application/json:
               schema:
                 $ref: ./schemas/PushRegistrationResponse.yml
           description: OK
+        '400':
+          $ref: '#/components/responses/400'
         '401':
           $ref: '#/components/responses/401'
         '403':
@@ -4139,6 +4177,8 @@ paths:
       responses:
         '200':
           description: OK
+        '400':
+          $ref: '#/components/responses/400'
         '401':
           $ref: '#/components/responses/401'
         '403':
@@ -4412,7 +4452,6 @@ paths:
         required: true
         schema:
           type: string
-          format: date-time
       - description: The end date for the range of claims in ISO 8601 date-time format (YYYY-MM-DDTHH:MM:SS)
         example: '2024-03-31T23:59:59'
         in: query
@@ -4420,7 +4459,6 @@ paths:
         required: true
         schema:
           type: string
-          format: date-time
       - description: The page number requested. Defaults to 1.
         example: 1
         in: query
@@ -4479,7 +4517,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./schemas/TravelPayClaimSummary.yml
+                $ref: ./schemas/TravelPaySmoc.yml
         '400':
           $ref: '#/components/responses/400'
         '401':

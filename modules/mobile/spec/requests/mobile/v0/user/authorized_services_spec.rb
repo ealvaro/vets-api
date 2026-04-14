@@ -5,7 +5,6 @@ require_relative '../../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
   include CommitteeHelper
-  include JsonSchemaMatchers
 
   let!(:user) { sis_user(vha_facility_ids: [402, 555]) }
   let(:attributes) { response.parsed_body.dig('data', 'attributes') }
@@ -34,7 +33,6 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       get '/mobile/v0/user/authorized-services', headers: sis_headers,
                                                  params: { 'appointmentIEN' => '123', 'locationId' => '123' }
       assert_schema_conform(200)
-      expect(response.body).to match_json_schema('authorized_services')
 
       expect(attributes['authorizedServices']).to eq(
         { 'allergiesOracleHealthEnabled' => false,
@@ -71,7 +69,6 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       get '/mobile/v0/user/authorized-services', headers: sis_headers,
                                                  params: { 'appointmentIEN' => '123', 'locationId' => '123' }
       assert_schema_conform(200)
-      expect(response.body).to match_json_schema('authorized_services')
       expect(meta).to eq({ 'isUserAtPretransitionedOhFacility' => false,
                            'isUserFacilityReadyForInfoAlert' => false,
                            'migratingFacilitiesList' => [] })
@@ -86,7 +83,6 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       get '/mobile/v0/user/authorized-services', headers: sis_headers,
                                                  params: { 'appointmentIEN' => '123', 'locationId' => '123' }
       assert_schema_conform(200)
-      expect(response.body).to match_json_schema('authorized_services')
 
       expect(meta).to eq({
                            'isUserAtPretransitionedOhFacility' => true,
@@ -104,7 +100,6 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       get '/mobile/v0/user/authorized-services', headers: sis_headers,
                                                  params: { 'appointmentIEN' => '123', 'locationId' => '123' }
       assert_schema_conform(200)
-      expect(response.body).to match_json_schema('authorized_services')
 
       expect(meta).to eq({
                            'isUserAtPretransitionedOhFacility' => true,
@@ -123,7 +118,6 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       get '/mobile/v0/user/authorized-services', headers: sis_headers,
                                                  params: { 'appointmentIEN' => '123', 'locationId' => '123' }
       assert_schema_conform(200)
-      expect(response.body).to match_json_schema('authorized_services')
 
       expect(meta).to eq({
                            'isUserAtPretransitionedOhFacility' => false,
@@ -230,7 +224,6 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       get '/mobile/v0/user/authorized-services', headers: sis_headers({ 'App-Version' => '2.99.99' }),
                                                  params: { 'appointmentIEN' => '123', 'locationId' => '123' }
       assert_schema_conform(200)
-      expect(response.body).to match_json_schema('authorized_services')
 
       expect(attributes['authorizedServices']).to eq(
         { 'allergiesOracleHealthEnabled' => false,
@@ -262,7 +255,6 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       get '/mobile/v0/user/authorized-services', headers: sis_headers({ 'App-Version' => '3.0.0' }),
                                                  params: { 'appointmentIEN' => '123', 'locationId' => '123' }
       assert_schema_conform(200)
-      expect(response.body).to match_json_schema('authorized_services')
 
       expect(attributes['authorizedServices']).to eq(
         { 'allergiesOracleHealthEnabled' => true,
@@ -296,7 +288,6 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       get '/mobile/v0/user/authorized-services', headers: sis_headers({ 'App-Version' => '3.0.0' }),
                                                  params: { 'appointmentIEN' => '123', 'locationId' => '123' }
       assert_schema_conform(200)
-      expect(response.body).to match_json_schema('authorized_services')
 
       expect(attributes['authorizedServices']).to eq(
         { 'allergiesOracleHealthEnabled' => false,
@@ -328,7 +319,6 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       get '/mobile/v0/user/authorized-services', headers: sis_headers({ 'App-Version' => '2.0.0' }),
                                                  params: { 'appointmentIEN' => '123', 'locationId' => '123' }
       assert_schema_conform(200)
-      expect(response.body).to match_json_schema('authorized_services')
 
       expect(attributes['authorizedServices']).to eq(
         { 'allergiesOracleHealthEnabled' => false,
@@ -360,7 +350,6 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       get '/mobile/v0/user/authorized-services', headers: sis_headers,
                                                  params: { 'appointmentIEN' => '123', 'locationId' => '123' }
       assert_schema_conform(200)
-      expect(response.body).to match_json_schema('authorized_services')
 
       expect(attributes['authorizedServices']).to eq(
         { 'allergiesOracleHealthEnabled' => false,
@@ -398,7 +387,6 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       get '/mobile/v0/user/authorized-services', headers: sis_headers,
                                                  params: { 'appointmentIEN' => '123', 'locationId' => '123' }
       assert_schema_conform(200)
-      expect(response.body).to match_json_schema('authorized_services')
 
       expect(meta['migratingFacilitiesList']).to eq([])
     end
@@ -413,7 +401,6 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       get '/mobile/v0/user/authorized-services', headers: sis_headers,
                                                  params: { 'appointmentIEN' => '123', 'locationId' => '123' }
       assert_schema_conform(200)
-      expect(response.body).to match_json_schema('authorized_services')
 
       expect(meta['migratingFacilitiesList'].length).to eq(1)
       expect(meta.dig('migratingFacilitiesList', 0, 'migrationDate')).to eq('October 1, 2026')
@@ -435,7 +422,6 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
         get '/mobile/v0/user/authorized-services', headers: sis_headers,
                                                    params: { 'appointmentIEN' => '123', 'locationId' => '123' }
         assert_schema_conform(200)
-        expect(response.body).to match_json_schema('authorized_services')
 
         expect(meta['isUserAtPretransitionedOhFacility']).to be false
         expect(meta['isUserFacilityReadyForInfoAlert']).to be false

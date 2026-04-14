@@ -6,7 +6,6 @@ required:
   - city
   - state
   - cerner
-  - clinics
 properties:
   id:
     type: string

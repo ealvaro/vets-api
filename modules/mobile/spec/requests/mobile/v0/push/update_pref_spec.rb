@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../../../../support/helpers/rails_helper'
+require_relative '../../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::Push::UpdatePref', type: :request do
-  include JsonSchemaMatchers
+  include CommitteeHelper
   let!(:user) { sis_user }
 
   describe 'PUT /mobile/v0/push/send' do
@@ -36,7 +37,7 @@ RSpec.describe 'Mobile::V0::Push::UpdatePref', type: :request do
         VCR.use_cassette('vetext/set_preferences_bad_request') do
           put('/mobile/v0/push/prefs/bad_id', headers: sis_headers, params:)
           expect(response).to have_http_status(:bad_request)
-          expect(response.body).to match_json_schema('errors')
+          assert_schema_conform(400)
         end
       end
     end
@@ -53,7 +54,7 @@ RSpec.describe 'Mobile::V0::Push::UpdatePref', type: :request do
         VCR.use_cassette('vetext/set_preferences_internal_server_error') do
           put('/mobile/v0/push/prefs/bad_id', headers: sis_headers, params:)
           expect(response).to have_http_status(:bad_gateway)
-          expect(response.body).to match_json_schema('errors')
+          assert_schema_conform(502)
         end
       end
     end

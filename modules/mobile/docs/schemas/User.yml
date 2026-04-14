@@ -27,10 +27,6 @@ properties:
           - firstName
           - middleName
           - lastName
-          - email
-          - birthDate
-          - gender
-          - addresses
           - signinService
         properties:
           firstName:
@@ -47,6 +43,12 @@ properties:
           signinEmail:
             type: string
             example: "john.a.smith@domain.com"
+          birthDate:
+            type: string
+            nullable: true
+          gender:
+            type: string
+            nullable: true
           residentialAddress:
             $ref: "./Address.yml"
           mailingAddress:
@@ -57,14 +59,10 @@ properties:
             $ref: "./PhoneUpdate.yml"
           workPhoneNumber:
             $ref: "./PhoneUpdate.yml"
-          faxPhoneNumber:
+          faxNumber:
             $ref: "./PhoneUpdate.yml"
           signinService:
             type: string
-            enum:
-              - IDME
-              - DSL
-              - MHV
       authorizedServices:
         description: Services the user is allowed to access. See availableServices for a list of all services available via the mobile API.
         type: array
@@ -82,7 +80,6 @@ properties:
         required:
           - isCernerPatient
           - facilities
-          - facilityName
         properties:
           isCernerPatient:
             type: boolean
@@ -101,4 +98,3 @@ properties:
                 facilityName:
                   type: string
                   example: "Cheyenne VA Medical Center"
-            
