@@ -13,6 +13,7 @@ require_relative '../lib/http_method_not_allowed'
 require_relative '../lib/source_app_middleware'
 require_relative '../lib/statsd_middleware'
 require_relative '../lib/faraday_adapter_socks/faraday_adapter_socks'
+require_relative '../lib/request_context_middleware'
 require 'rails/test_unit/railtie'
 
 # Require the gems listed in Gemfile, including any gems
@@ -150,6 +151,9 @@ module VetsAPI
                                    key: 'api_session',
                                    secure: IdentitySettings.session_cookie.secure,
                                    http_only: true
+    config.middleware.insert_before Rails::Rack::Logger, RequestContextMiddleware,
+                                    signing_key: IdentitySettings.request_context.signing_key,
+                                    rotated_signing_keys: IdentitySettings.request_context.rotated_signing_keys
 
     # These files do not contain auto-loaded ruby classes,
     #   they are loaded through app/sidekiq/education_form/forms/base.rb

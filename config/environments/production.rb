@@ -59,6 +59,8 @@ Rails.application.configure do
   config.log_tags = {
     request_id: :request_id,
     remote_ip: :remote_ip,
+    visit_id: :visit_id,
+    device_id: :device_id,
     user_agent: ->(request) { request.user_agent },
     fingerprint: ->(request) { "#{request.remote_ip} #{request.user_agent}" },
     ref: ->(_request) { AppInfo::GIT_REVISION },
