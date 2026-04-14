@@ -251,15 +251,32 @@ module VAOS
 
         if Flipper.enabled?(:va_online_scheduling_use_vpg, user)
           configuration_list.map do |configuration|
+            facility_id = configuration[:facility_id]
+
             OpenStruct.new({
                              facility_id: configuration[:facility_id],
                              va_services: configuration[:va_clinical_services],
                              cc_services: configuration[:cc_clinical_services],
-                             community_care: configuration[:community_care]
+                             community_care: override_community_care_for_migration(facility_id,
+                                                                                   configuration[:community_care])
                            })
           end
         else
           configuration_list.map { |configuration| OpenStruct.new(configuration) }
+        end
+      end
+
+      def override_community_care_for_migration(facility_id, current_value)
+        return current_value unless Flipper.enabled?(:va_online_scheduling_backend_oh_migration_check, user)
+        return current_value if facility_id.blank?
+
+        migrations = VAOS::OhMigrationsHelper.get_migrations(user:)
+        parent_facility_id = facility_id[0, 3]
+
+        if migrations.key?(parent_facility_id) && migrations[parent_facility_id][:disable_eligibility]
+          false
+        else
+          current_value
         end
       end
 

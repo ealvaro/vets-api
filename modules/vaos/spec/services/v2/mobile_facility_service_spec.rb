@@ -150,6 +150,10 @@ describe VAOS::V2::MobileFacilityService do
       before do
         allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_cscs_migration,
                                                   instance_of(User)).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_use_vpg,
+                                                  instance_of(User)).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_backend_oh_migration_check,
+                                                  instance_of(User)).and_return(false)
       end
 
       context 'with a single facility id arg' do
@@ -691,6 +695,114 @@ describe VAOS::V2::MobileFacilityService do
         result = subject.send(:page_params, pagination_params)
 
         expect(result).to eq({ pageSize: 0 })
+      end
+    end
+  end
+
+  describe '#deserialized_configurations' do
+    let(:configuration_list) do
+      [
+        {
+          facility_id: '983',
+          va_clinical_services: %w[primaryCare],
+          cc_clinical_services: %w[primaryCare],
+          community_care: true
+        }
+      ]
+    end
+
+    before do
+      allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_use_vpg,
+                                                instance_of(User)).and_return(true)
+    end
+
+    context 'when backend OH migration check is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_backend_oh_migration_check,
+                                                  instance_of(User)).and_return(false)
+      end
+
+      it 'preserves the original community_care value' do
+        result = subject.send(:deserialized_configurations, configuration_list)
+
+        expect(result.first[:community_care]).to be(true)
+      end
+    end
+
+    context 'when backend OH migration check is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_backend_oh_migration_check,
+                                                  instance_of(User)).and_return(true)
+      end
+
+      context 'when the site is affected by migration' do
+        before do
+          allow(VAOS::OhMigrationsHelper).to receive(:get_migrations).with(user:).and_return(
+            {
+              '983' => { disable_eligibility: true }
+            }
+          )
+        end
+
+        it 'forces community_care to false' do
+          result = subject.send(:deserialized_configurations, configuration_list)
+
+          expect(result.first[:community_care]).to be(false)
+        end
+      end
+
+      context 'when the site is not affected by migration' do
+        before do
+          allow(VAOS::OhMigrationsHelper).to receive(:get_migrations).with(user:).and_return(
+            {
+              '984' => { disable_eligibility: true }
+            }
+          )
+        end
+
+        it 'preserves the original community_care value' do
+          result = subject.send(:deserialized_configurations, configuration_list)
+
+          expect(result.first[:community_care]).to be(true)
+        end
+      end
+
+      context 'when facility_id is blank' do
+        let(:configuration_list) do
+          [
+            {
+              facility_id: nil,
+              va_clinical_services: [],
+              cc_clinical_services: [],
+              community_care: true
+            }
+          ]
+        end
+
+        it 'preserves the original community_care value' do
+          result = subject.send(:deserialized_configurations, configuration_list)
+
+          expect(result.first[:community_care]).to be(true)
+        end
+      end
+    end
+  end
+
+  describe '#override_community_care_for_migration' do
+    context 'when migration flag is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_backend_oh_migration_check,
+                                                  instance_of(User)).and_return(true)
+      end
+
+      it 'returns false unchanged for an unaffected site when current_value is false' do
+        allow(VAOS::OhMigrationsHelper).to receive(:get_migrations).with(user:).and_return(
+          { '984' => { disable_eligibility: true } }
+        )
+
+        result = subject.send(:override_community_care_for_migration, '983GC', false)
+
+        expect(result).to be(false)
       end
     end
   end
