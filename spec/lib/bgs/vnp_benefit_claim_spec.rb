@@ -63,7 +63,9 @@ RSpec.describe BGS::VnpBenefitClaim do
               status_type_cd: 'CURR',
               svc_type_cd: 'CP',
               vnp_proc_id: '3828033',
-              vnp_ptcpnt_vet_id: '146189'
+              vnp_ptcpnt_vet_id: '146189',
+              submtr_applcn_type_cd: 'VA.GOV',
+              submtr_role_type_cd: 'VET'
             )
           )
           .and_call_original
@@ -105,7 +107,9 @@ RSpec.describe BGS::VnpBenefitClaim do
               bnft_claim_id: '600196508',
               ptcpnt_clmant_id: '146189',
               vnp_bnft_claim_id: '425718',
-              vnp_proc_id: '3828033'
+              vnp_proc_id: '3828033',
+              submtr_applcn_type_cd: 'VA.GOV',
+              submtr_role_type_cd: 'VET'
             )
           )
           .and_call_original

@@ -2,13 +2,18 @@
 
 module BGSDependents
   class VnpBenefitClaim
-    VNP_BENEFIT_CREATE_PARAMS = {
+    VNP_BENEFIT_SUBMITTER_PARAMS = {
+      submtr_applcn_type_cd: 'VA.GOV',
+      submtr_role_type_cd: 'VET'
+    }.freeze
+
+    VNP_BENEFIT_CREATE_PARAMS = VNP_BENEFIT_SUBMITTER_PARAMS.merge(
       status_type_cd: 'CURR',
       svc_type_cd: 'CP',
       pgm_type_cd: 'COMP',
       bnft_claim_type_cd: '130DPNEBNADJ',
       atchms_ind: 'N'
-    }.freeze
+    ).freeze
 
     def initialize(proc_id, veteran)
       @veteran = veteran
@@ -44,7 +49,8 @@ module BGSDependents
         status_type_cd: benefit_claim_record[:status_type_code],
         svc_type_cd: 'CP',
         net_worth_over_limit_ind: @veteran[:net_worth_over_limit_ind]
-      }.merge
+
+      }.merge(VNP_BENEFIT_SUBMITTER_PARAMS)
     end
 
     def vnp_benefit_claim_response(vnp_benefit_claim)

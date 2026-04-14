@@ -68,7 +68,9 @@ RSpec.describe BGS::BenefitClaim do
                 end_product_name: '130 - Automated Dependency 686c',
                 first_name: 'WESLEY',
                 last_name: 'FORD',
-                payee: '00'
+                payee: '00',
+                submtr_applcn_type_cd: 'VA.GOV',
+                submtr_role_type_cd: 'VET'
               }
             )
           )

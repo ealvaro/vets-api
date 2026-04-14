@@ -14,7 +14,9 @@ module BGS
       disposition: 'M',
       section_unit_no: '555',
       folder_with_claim: 'N',
-      pre_discharge_indicator: 'N'
+      pre_discharge_indicator: 'N',
+      submtr_applcn_type_cd: 'VA.GOV',
+      submtr_role_type_cd: 'VET'
     }.freeze
 
     def initialize(args:)
