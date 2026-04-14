@@ -65,6 +65,17 @@ RSpec.describe AccreditedRepresentativePortal::PowerOfAttorneyRequestService::Cr
     let(:poa_code) { organization.poa }
     let(:representative) { create(:representative, representative_id: '86753') }
     let(:registration_number) { representative.representative_id }
+    let(:monitoring) do
+      instance_double(
+        AccreditedRepresentativePortal::Monitoring,
+        track_count: true
+      )
+    end
+
+    before do
+      allow(monitoring).to receive(:trace).and_yield(nil)
+      allow(AccreditedRepresentativePortal::Monitoring).to receive(:new).and_return(monitoring)
+    end
 
     it 'creates a new AccreditedRepresentativePortal::PowerOfAttorneyRequest' do
       expect { subject.call }.to change(AccreditedRepresentativePortal::PowerOfAttorneyRequest, :count).by(1)
@@ -96,6 +107,18 @@ RSpec.describe AccreditedRepresentativePortal::PowerOfAttorneyRequestService::Cr
       result = subject.call
 
       expect(result[:request].power_of_attorney_holder_type).to eq('veteran_service_organization')
+    end
+
+    it 'tracks the overall request count' do
+      subject.call
+
+      expect(monitoring).to have_received(:track_count).with('ar.poa.request.count')
+    end
+
+    it 'tracks the rep_first pathway count when registration_number is present' do
+      subject.call
+
+      expect(monitoring).to have_received(:track_count).with('ar.poa.request.pathway.rep_first')
     end
 
     context 'unresolved PowerOfAttorneyRequests' do
@@ -155,6 +178,12 @@ RSpec.describe AccreditedRepresentativePortal::PowerOfAttorneyRequestService::Cr
         result = subject.call
 
         expect(result[:request].accredited_individual).to be_nil
+      end
+
+      it 'tracks the org_first pathway count' do
+        subject.call
+
+        expect(monitoring).to have_received(:track_count).with('ar.poa.request.pathway.org_first')
       end
     end
 

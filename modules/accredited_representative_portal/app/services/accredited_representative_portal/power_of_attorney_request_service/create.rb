@@ -65,8 +65,12 @@ module AccreditedRepresentativePortal
             end
 
             request.save!
-            Monitoring.new.track_count('ar.poa.request.count')
           end
+
+          pathway = @registration_number.present? ? 'rep_first' : 'org_first'
+
+          Monitoring.new.track_count('ar.poa.request.count')
+          Monitoring.new.track_count("ar.poa.request.pathway.#{pathway}")
 
           request
         end
