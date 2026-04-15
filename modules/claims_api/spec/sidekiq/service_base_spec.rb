@@ -41,6 +41,15 @@ RSpec.describe ClaimsApi::ServiceBase do
     poa
   end
 
+  let(:process) do
+    process = ClaimsApi::Process.create!(
+      processable: poa,
+      step_type: 'PDF_SUBMISSION',
+      step_status: 'IN_PROGRESS'
+    )
+    process
+  end
+
   let(:service) { described_class.new }
 
   describe '#set_established_state_on_claim' do
@@ -230,6 +239,31 @@ RSpec.describe ClaimsApi::ServiceBase do
 
       expect(detail).to eq(
         "Updating Access. recordConsent: true, consentLimits included for representative #{poa_code}"
+      )
+    end
+  end
+
+  describe '#rescue_file_not_found' do
+    it 'updates the Process when called' do
+      expect(process.step_status).to eq('IN_PROGRESS')
+      expect(process.error_messages).to eq([])
+
+      service.send(:rescue_file_not_found, poa, process)
+      process.reload
+
+      expect(process.step_status).to eq('FAILED')
+      expect(process.error_messages&.first&.[]('detail')).to eq(
+        described_class::FILE_NOT_FOUND_ERROR_MESSAGE
+      )
+    end
+
+    it 'handles the error without a process' do
+      service.send(:rescue_file_not_found, poa)
+      poa.reload
+
+      expect(poa.status).to eq('errored')
+      expect(poa.vbms_error_message).to eq(
+        described_class::FILE_NOT_FOUND_ERROR_MESSAGE
       )
     end
   end

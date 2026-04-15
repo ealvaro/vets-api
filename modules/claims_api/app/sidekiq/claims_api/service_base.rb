@@ -16,6 +16,8 @@ module ClaimsApi
 
     LOG_TAG = 'claims_api_sidekiq_service_base'
 
+    FILE_NOT_FOUND_ERROR_MESSAGE = 'File could not be retrieved from AWS'
+
     sidekiq_retries_exhausted do |message|
       ClaimsApi::Logger.log('claims_api_retries_exhausted',
                             record_id: message['args']&.first,
@@ -271,6 +273,18 @@ module ClaimsApi
       power_of_attorney.vbms_error_message = e&.message || e&.original_body
       power_of_attorney.save
       ClaimsApi::Logger.log('ServiceBase', message: "In generic rescue, the error is: #{e}")
+    end
+
+    def rescue_file_not_found(power_of_attorney, process = nil)
+      power_of_attorney.update(
+        status: ClaimsApi::PowerOfAttorney::ERRORED,
+        vbms_error_message: FILE_NOT_FOUND_ERROR_MESSAGE
+      )
+      if process.present?
+        process.update!(step_status: 'FAILED',
+                        error_messages: [{ title: "#{self.class.name} Error",
+                                           detail: FILE_NOT_FOUND_ERROR_MESSAGE }])
+      end
     end
   end
 end

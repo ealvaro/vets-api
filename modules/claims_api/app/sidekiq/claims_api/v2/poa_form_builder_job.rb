@@ -47,7 +47,7 @@ module ClaimsApi
       rescue VBMS::Unknown
         rescue_vbms_error(power_of_attorney, process:)
       rescue Errno::ENOENT
-        rescue_file_not_found(power_of_attorney, process:)
+        rescue_file_not_found(power_of_attorney, process)
       end
 
       private
