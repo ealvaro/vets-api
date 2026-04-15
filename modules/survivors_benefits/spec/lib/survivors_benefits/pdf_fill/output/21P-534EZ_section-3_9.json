@@ -29,5 +29,6 @@
   "form1[0].#subform[208].Date_Of_Confinement_Year[1]": "1999",
   "form1[0].#subform[208].VeteransSocialSecurityNumber_FirstThreeNumbers[1]": "123",
   "form1[0].#subform[208].VeteransSocialSecurityNumber_SecondTwoNumbers[1]": "45",
-  "form1[0].#subform[208].VeteransSocialSecurityNumber_LastFourNumbers[1]": "6789"
+  "form1[0].#subform[208].VeteransSocialSecurityNumber_LastFourNumbers[1]": "6789",
+  "form1[0].#subform[207].RadioButtonList[4]": "YES"
 }

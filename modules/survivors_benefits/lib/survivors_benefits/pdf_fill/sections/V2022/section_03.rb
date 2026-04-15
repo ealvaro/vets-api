@@ -207,17 +207,18 @@ module SurvivorsBenefits
       def expand(form_data = {})
         form_data['p11HeaderVeteranSocialSecurityNumber'] = split_ssn(form_data['veteranSocialSecurityNumber'])
         form_data['veteranPreviousNames'] ||= []
-        form_data['veteranHasPreviousNames'] = to_radio_yes_no(form_data['veteranPreviousNames'].length.positive?)
+
+        form_data['veteranHasPreviousNames'] = if form_data['receivedBenefits']
+                                                 'Off'
+                                               else
+                                                 to_radio_yes_no(form_data['veteranPreviousNames'].length.positive?)
+                                               end
         form_data['activeServiceDateRange'] = {
           'from' => split_date(form_data.dig('activeServiceDateRange', 'from')),
           'to' => split_date(form_data.dig('activeServiceDateRange', 'to'))
         }
         form_data['serviceBranch'] = service_to_radio(form_data['serviceBranch'])
-        form_data['nationalGuardActivated'] = to_radio_yes_no(form_data['nationalGuardActivated'])
-        form_data['nationalGuardActivationDate'] = split_date(form_data['nationalGuardActivationDate'])
-        unit_phone = form_data['unitPhone']
-        unit_phone = unit_phone['contact'] if unit_phone.is_a?(Hash)
-        form_data['unitPhone'] = expand_phone_number(unit_phone.to_s)
+        expand_national_guard_data(form_data)
         form_data['pow'] = to_radio_yes_no(form_data['pow'])
         form_data['powDateRange'] = {
           'from' => split_date(form_data.dig('powDateRange', 'from')),
@@ -241,6 +242,14 @@ module SurvivorsBenefits
         else
           'Off'
         end
+      end
+
+      def expand_national_guard_data(form_data)
+        form_data['nationalGuardActivated'] = to_radio_yes_no(form_data['nationalGuardActivated'])
+        form_data['nationalGuardActivationDate'] = split_date(form_data['nationalGuardActivationDate'])
+        unit_phone = form_data['unitPhone']
+        unit_phone = unit_phone['contact'] if unit_phone.is_a?(Hash)
+        form_data['unitPhone'] = expand_phone_number(unit_phone.to_s)
       end
 
       def expand_previous_names(form_data)

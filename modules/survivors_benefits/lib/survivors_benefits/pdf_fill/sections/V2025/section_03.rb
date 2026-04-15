@@ -240,7 +240,11 @@ module SurvivorsBenefits
 
         def expand_previous_names_data(form_data)
           form_data['veteranPreviousNames'] ||= []
-          form_data['veteranHasPreviousNames'] = to_radio_yes_no(form_data['veteranPreviousNames'].length.positive?)
+          form_data['veteranHasPreviousNames'] = if form_data['receivedBenefits']
+                                                   'Off'
+                                                 else
+                                                   to_radio_yes_no(form_data['veteranPreviousNames'].length.positive?)
+                                                 end
           form_data.merge!(expand_previous_names(form_data))
         end
 

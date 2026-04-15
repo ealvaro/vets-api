@@ -1,5 +1,18 @@
 {
   "serviceBranch": "navy",
   "nationalGuardActivated": false,
-  "pow": false
+  "pow": false,
+  "receivedBenefits": true,
+  "veteranPreviousNames": [
+    {
+      "first": "3A First",
+      "middle": "A",
+      "last": "3A FIRST"
+    },
+    {
+      "first": "3A Second",
+      "middle": "Z",
+      "last": "3A SECOND"
+    }
+  ]
 }

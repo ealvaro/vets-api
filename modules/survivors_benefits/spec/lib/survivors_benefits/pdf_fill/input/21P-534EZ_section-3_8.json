@@ -1,5 +1,6 @@
 {
   "veteranSocialSecurityNumber": "123456789",
+  "receivedBenefits": false,
   "veteranPreviousNames": [
     {
       "first": "3A First",
