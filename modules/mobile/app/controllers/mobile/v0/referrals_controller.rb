@@ -3,7 +3,7 @@
 module Mobile
   module V0
     class ReferralsController < ApplicationController
-      SUPPORTED_CATEGORIES_OF_CARE = %w[optometry].freeze
+      SUPPORTED_CATEGORIES_OF_CARE = ['primary care'].freeze
 
       def index
         StatsD.increment('mobile.referrals.index.total')

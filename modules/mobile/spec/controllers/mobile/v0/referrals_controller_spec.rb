@@ -6,13 +6,13 @@ RSpec.describe Mobile::V0::ReferralsController, type: :controller do
   let(:controller) { described_class.new }
 
   describe '#filter_by_category_of_care' do
-    let(:optometry_referral) { build(:ccra_referral_list_entry, category_of_care: 'optometry') }
+    let(:primary_care_referral) { build(:ccra_referral_list_entry, category_of_care: 'primary care') }
     let(:cardiology_referral) { build(:ccra_referral_list_entry, category_of_care: 'cardiology') }
     let(:nil_category_referral) { build(:ccra_referral_list_entry, category_of_care: nil) }
 
-    it 'keeps optometry referrals' do
-      result = controller.send(:filter_by_category_of_care, [optometry_referral, cardiology_referral])
-      expect(result).to contain_exactly(optometry_referral)
+    it 'keeps primary care referrals' do
+      result = controller.send(:filter_by_category_of_care, [primary_care_referral, cardiology_referral])
+      expect(result).to contain_exactly(primary_care_referral)
     end
 
     it 'filters out unsupported categories' do
@@ -26,7 +26,7 @@ RSpec.describe Mobile::V0::ReferralsController, type: :controller do
     end
 
     it 'is case insensitive' do
-      upcased = build(:ccra_referral_list_entry, category_of_care: 'OPTOMETRY')
+      upcased = build(:ccra_referral_list_entry, category_of_care: 'PRIMARY CARE')
       result = controller.send(:filter_by_category_of_care, [upcased])
       expect(result).to contain_exactly(upcased)
     end
