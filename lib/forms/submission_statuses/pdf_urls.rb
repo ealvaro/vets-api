@@ -13,8 +13,6 @@ module Forms
         @submission_guid = submission_guid
       end
 
-      attr_reader :submission_guid
-
       def fetch_url
         config = determine_config
         SimpleFormsApi::FormRemediation::S3Client.fetch_presigned_url(@submission_guid, config:)

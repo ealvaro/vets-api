@@ -343,11 +343,6 @@ describe Forms::SubmissionStatuses::Report, feature: :form_submission,
         # Create submissions so the gateway has data to process
         create(:form_submission, :with_form214142, user_account_id: user_account.id)
 
-        # Stub PdfUrls to prevent actual S3/PDF generation during formatter execution,
-        # which would otherwise log unexpected errors via Rails.logger.error.
-        allow_any_instance_of(Forms::SubmissionStatuses::PdfUrls)
-          .to receive(:fetch_url).and_return(nil)
-
         # Mock service error response
         error_response = double(status: 500, body: { 'errors' => [{ 'detail' => 'Service unavailable' }] })
         allow(BenefitsIntake::Service).to receive(:new).and_return(benefits_intake_service)
