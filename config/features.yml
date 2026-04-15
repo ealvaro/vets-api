@@ -1422,13 +1422,16 @@ features:
   form400247:
     actor_type: user
     description: If enabled shows the digital form experience for form 40-0247
+  form1010d_browser_monitoring_enabled:
+    actor_type: user
+    description: Datadog RUM monitoring for form 10-10d (IVC CHAMPVA)
+  form1010d_enhanced_flow_enabled:
+    actor_type: user
+    description: Enabled enhanced flow for form 10-10d (IVC CHAMPVA)
   form1010d_extended:
     actor_type: user
     description: If enabled shows the digital form experience for form 10-10d merged with form 10-7959c
     enable_in_development: true
-  form1010d_browser_monitoring_enabled:
-    actor_type: user
-    description: Datadog RUM monitoring for form 10-10d (IVC CHAMPVA)
   form107959a_browser_monitoring_enabled:
     actor_type: user
     description: Datadog RUM monitoring for form 10-7959a (IVC CHAMPVA)
