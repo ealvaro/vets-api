@@ -712,7 +712,7 @@ describe TestDisabilityCompensationValidationClass, vcr: 'brd/countries' do
         # Ensure claimDate is not set
         expect(subject.form_attributes).not_to have_key('claimDate')
 
-        expect(subject.send(:claim_date)).to eq(Time.zone.today)
+        expect(subject.send(:claim_date)).to eq(Date.current)
 
         errors = test_526_validation_instance.send(:error_collection)
 
@@ -725,10 +725,25 @@ describe TestDisabilityCompensationValidationClass, vcr: 'brd/countries' do
         subject.form_attributes['claimDate'] = 'invalid-date'
         subject.instance_variable_set(:@claim_date, nil)
 
-        expect(subject.send(:claim_date)).to eq(Time.zone.today)
+        expect(subject.send(:claim_date)).to eq(Date.current)
         errors = test_526_validation_instance.send(:error_collection)
 
         expect(errors).to be_empty
+      end
+    end
+
+    context 'when claimDate is in the future' do
+      it 'collects an error with the correct message' do
+        future_date = (Date.current + 1.day).iso8601
+        subject.form_attributes['claimDate'] = future_date
+        subject.instance_variable_set(:@claim_date, nil)
+
+        test_526_validation_instance.send(:validate_form_526_claim_date)
+        errors = test_526_validation_instance.send(:error_collection)
+
+        expect(errors).not_to be_empty
+        expect(errors[0][:detail]).to eq('claimDate must not be in the future.')
+        expect(errors[0][:source]).to eq('/claimDate')
       end
     end
   end

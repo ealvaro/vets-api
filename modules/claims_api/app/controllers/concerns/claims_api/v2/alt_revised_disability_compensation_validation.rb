@@ -24,6 +24,8 @@ module ClaimsApi
         return if form_attributes.empty?
 
         alt_rev_validate_claim_process_type_bdd if bdd_claim?
+        # ensure 'claimDate', if provided, is not in the future
+        alt_rev_validate_form_526_claim_date
         # ensure mailing address country is valid
         alt_rev_validate_form_526_identification
         # ensure disabilities are valid
@@ -41,6 +43,15 @@ module ClaimsApi
       end
 
       private
+
+      def alt_rev_validate_form_526_claim_date
+        return if claim_date <= Date.current
+
+        collect_error_messages(
+          source: '/claimDate',
+          detail: 'claimDate must not be in the future.'
+        )
+      end
 
       def alt_rev_validate_form_526_change_of_address
         return if form_attributes['changeOfAddress'].blank?

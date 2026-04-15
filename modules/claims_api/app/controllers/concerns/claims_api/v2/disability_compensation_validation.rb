@@ -2,11 +2,13 @@
 
 require 'claims_api/v2/disability_compensation_shared_service_module'
 require 'claims_api/lighthouse_military_address_validator'
+require 'claims_api/disability_compensation_validations_helper'
 
 module ClaimsApi
   module V2
     module DisabilityCompensationValidation # rubocop:disable Metrics/ModuleLength
       include DisabilityCompensationSharedServiceModule
+      include ClaimsApi::DisabilityCompensationValidationsHelper
       include LighthouseMilitaryAddressValidator
 
       DATE_FORMATS = {
@@ -18,13 +20,12 @@ module ClaimsApi
       BDD_LOWER_LIMIT = 90
       BDD_UPPER_LIMIT = 180
 
-      YYYY_YYYYMM_REGEX = '^(?:19|20)[0-9][0-9]$|^(?:19|20)[0-9][0-9]-(0[1-9]|1[0-2])$'.freeze
-      YYYY_MM_DD_REGEX = '^(?:[0-9]{4})-(?:0[1-9]|1[0-2])-(?:0[1-9]|[1-2][0-9]|3[0-1])$'.freeze
-
       def validate_form_526_submission_values(target_veteran)
         return if form_attributes.empty?
 
         validate_claim_process_type_bdd if bdd_claim?
+        # ensure 'claimDate', if provided, is not in the future
+        validate_form_526_claim_date
         # ensure 'claimantCertification' is true
         validate_form_526_claimant_certification
         # ensure mailing address country is valid
@@ -51,12 +52,13 @@ module ClaimsApi
 
       private
 
-      def claim_date
-        @claim_date = if date_is_valid?(form_attributes['claimDate'], 'claimDate', true)
-                        Date.parse(form_attributes['claimDate'])
-                      else
-                        Date.current
-                      end
+      def validate_form_526_claim_date
+        return if claim_date <= Date.current
+
+        collect_error_messages(
+          source: '/claimDate',
+          detail: 'claimDate must not be in the future.'
+        )
       end
 
       def validate_form_526_change_of_address
@@ -1273,44 +1275,6 @@ module ClaimsApi
         return if range_one.last.nil? || range_one.first.nil? || range_two.last.nil? || range_two.first.nil?
 
         (range_one&.last&.> range_two&.first) || (range_two&.last&.< range_one&.first)
-      end
-
-      # Will check for a real date including leap year
-      def date_is_valid?(date, property, is_full_date = false) # rubocop:disable Style/OptionalBooleanParameter
-        return false if date.blank?
-
-        # check for something like 'July 2017'
-        collect_date_error(date, property) unless /^[\d-]+$/ =~ date || property == 'claimDate'
-
-        return false if is_full_date && !date.match(YYYY_MM_DD_REGEX)
-
-        return true if date.match(YYYY_YYYYMM_REGEX) # valid YYYY or YYYY-MM date
-
-        date_y, date_m, date_d = date.split('-').map(&:to_i)
-
-        return true if Date.valid_date?(date_y, date_m, date_d)
-
-        # due to claimDate being an optional field with a fallback, this is the only date
-        # we allow to be invalid/nil without an error
-        collect_date_error(date, property) unless property == 'claimDate'
-
-        false
-      end
-
-      def collect_date_error(date, property = '/')
-        collect_error_messages(
-          detail: "#{date} is not a valid date.",
-          source: "data/attributes/#{property}"
-        )
-      end
-
-      def errors_array
-        @errors ||= []
-      end
-
-      def collect_error_messages(detail: 'Missing or invalid attribute', source: '/',
-                                 title: 'Unprocessable Entity', status: '422')
-        errors_array.push({ detail:, source:, title:, status: })
       end
 
       def error_collection
