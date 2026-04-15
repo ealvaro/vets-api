@@ -31,8 +31,17 @@ module Dependents
 
     # allowed logging params
     ALLOWLIST = %w[
+      claim_id
+      claim_label
+      confirmation_number
+      error
+      form_id
+      form_type
+      parent_claim_id
       proc_id
       response
+      saved_claim_id
+      submission_id
       tags
     ].freeze
 

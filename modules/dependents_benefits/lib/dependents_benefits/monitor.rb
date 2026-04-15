@@ -27,12 +27,18 @@ module DependentsBenefits
 
     # Allowed context keys for logging
     ALLOWLIST = %w[
-      tags
-      submission_id
-      parent_claim_id
+      claim_id
+      claim_label
+      confirmation_number
+      error
+      form_id
       form_type
-      from_state
-      to_state
+      parent_claim_id
+      proc_id
+      response
+      saved_claim_id
+      submission_id
+      tags
     ].freeze
 
     # Additional safe keys specific to dependents_benefits

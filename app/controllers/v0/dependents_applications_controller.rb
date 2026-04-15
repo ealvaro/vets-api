@@ -48,10 +48,13 @@ module V0
             claim.add_veteran_info(JSON.parse(user_data.get_user_json))
 
             submission = submit_via_forms_api(claim, claim_info[:claim_label], claim_info[:participant_id])
+            upload_evidence_documents(claim, claim_info[:participant_id])
 
+            # retain standard workflow functions
             log_submitted(in_progress_form, claim)
             claim.send_submitted_email(current_user)
 
+            # serialize and add FDF submission information
             response = SavedClaimSerializer.new(claim).serializable_hash
             response[:data][:digital_forms_api] = { submission: }
 
@@ -59,7 +62,14 @@ module V0
             return render json: response
           end
         rescue => e
-          @monitor.track_event(:error, e.message, 'dependents_controller.forms_api_submission', { error: e })
+          context = {
+            form_id: claim.form_id,
+            saved_claim_id: claim.id,
+            confirmation_number: claim.guid,
+            error: e.message,
+            tags: ['status:error']
+          }
+          @monitor.track_request(:error, e.message, 'dependents_controller.forms_api_submission', **context)
         end
       end
 
@@ -84,7 +94,7 @@ module V0
     private
 
     # submit claim to forms api - temp for FDF pilot
-    def submit_via_forms_api(claim, claim_label, participant_id)
+    def submit_via_forms_api(claim, claim_label, participant_id) # rubocop:disable Metrics/MethodLength
       digital_forms_api_submission_service ||= DigitalFormsApi::Service::Submissions.new
 
       payload = claim.fdf_submission_payload
@@ -100,11 +110,19 @@ module V0
       response = digital_forms_api_submission_service.submit(payload, metadata)
       raise response.to_s unless response.success?
 
-      @monitor.track_event(:info, 'success', 'dependents_controller.forms_api_submission', { claim:, response: })
+      submission = response.body['submission'].presence || {}
+      context = {
+        form_id: claim.form_id,
+        saved_claim_id: claim.id,
+        confirmation_number: claim.guid,
+        submission_id: submission['submissionId'],
+        claim_id: submission.dig('claim', 'claimId'),
+        claim_label: submission.dig('claim', 'claimLabel'),
+        tags: ['status:success']
+      }
+      @monitor.track_request(:info, 'success', 'dependents_controller.forms_api_submission', **context)
 
-      upload_evidence_documents(claim, participant_id)
-
-      response.body['submission'] || {}
+      submission
     end
 
     # upload evidence documents - temp for FDF pilot

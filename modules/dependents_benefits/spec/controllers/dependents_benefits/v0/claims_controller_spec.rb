@@ -10,10 +10,29 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
 
   let(:user) { create(:evss_user) }
   let(:test_form) { build(:dependents_claim_combined_form) }
-  let(:claim) { build(:dependents_claim, form: test_form.to_json) }
+  let(:claim) { create(:dependents_claim, form: test_form.to_json) }
   let(:bgs_service) { double('BGS::Services') }
   let(:bgs_people) { double('BGS::People') }
   let(:monitor) { DependentsBenefits::Monitor.new }
+
+  let(:user_json) do
+    { 'veteran_information' => {
+      'full_name' => {
+        'first' => user.first_name,
+        'last' => user.last_name
+      },
+      'common_name' => user.common_name,
+      'va_profile_email' => user.va_profile_email,
+      'email' => user.email,
+      'participant_id' => user.participant_id,
+      'ssn' => user.ssn,
+      'va_file_number' => '987654321',
+      'birth_date' => user.birth_date,
+      'uuid' => user.uuid,
+      'icn' => user.icn
+    } }
+  end
+  let(:user_data) { double('DependentsBenefits::UserData', get_user_json: user_json.to_json) }
 
   before do
     allow(DependentsBenefits::PdfFill::Filler).to receive(:fill_form).and_return('tmp/pdfs/mock_form_final.pdf')
@@ -22,6 +41,7 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
     allow(Flipper).to receive(:enabled?).with(:va_dependents_v3, instance_of(User)).and_return(false)
     allow_any_instance_of(SavedClaim).to receive(:pdf_overflow_tracking)
     allow(DependentsBenefits::Monitor).to receive(:new).and_return(monitor)
+    allow(DependentsBenefits::UserData).to receive(:new).and_return(user_data)
   end
 
   describe '#show' do
@@ -103,19 +123,8 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
         post(:create, params: test_form, as: :json)
 
         parent_group = SavedClaimGroup.last.parent_claim_group_for_child
-        expected_user = { 'veteran_information' => { 'full_name' => { 'first' => user.first_name,
-                                                                      'last' => user.last_name },
-                                                     'common_name' => user.common_name,
-                                                     'va_profile_email' => user.va_profile_email,
-                                                     'email' => user.email,
-                                                     'participant_id' => user.participant_id,
-                                                     'ssn' => user.ssn,
-                                                     'va_file_number' => '987654321',
-                                                     'birth_date' => user.birth_date,
-                                                     'uuid' => user.uuid,
-                                                     'icn' => user.icn } }
         user_hash = JSON.parse(parent_group.user_data)
-        expect(user_hash).to eq(expected_user)
+        expect(user_hash).to eq(user_json)
       end
 
       it 'calls ClaimProcessor with correct parameters' do
@@ -197,7 +206,7 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
       end
       let(:dfa) { double(DigitalFormsApi::Service::Submissions) }
       let(:uploader) { double(ClaimsEvidenceApi::Uploader) }
-      let(:response) { double('response', success?: true, body: { 'submission' => 'TEST' }) }
+      let(:response) { double('response', success?: true, body: { 'submission' => { foobar: 'TEST' } }) }
 
       before do
         allow(Flipper).to receive(:enabled?).with(:dependents_digital_forms_api_submission_enabled,
@@ -207,18 +216,29 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
 
         allow(DigitalFormsApi::Service::Submissions).to receive(:new).and_return(dfa)
         allow(ClaimsEvidenceApi::Uploader).to receive(:new).and_return(uploader)
+
+        allow(claim).to receive(:claim_form_type).and_return('21-686c')
       end
 
       it 'submits to forms api and uploads evidence' do
-        allow(claim).to receive(:claim_form_type).and_return('21-686c')
-
         expect(claim).to receive(:get_claim_information).and_return(claim_information)
         expect(dfa).to receive(:submit).and_return(response)
+        expect(monitor).to receive(:track_request).with(:info, 'success', 'dependents_controller.forms_api_submission',
+                                                        hash_including(saved_claim_id: claim.id))
         expect(uploader).to receive(:upload_evidence)
+        expect(monitor).to receive(:track_create_success)
 
-        expect_any_instance_of(DependentsBenefits::Monitor).to receive(:track_create_success)
         expect_any_instance_of(DependentsBenefits::NotificationEmail).to receive(:send_submitted_notification)
         expect_any_instance_of(DependentsBenefits::V0::ClaimsController).to receive(:clear_saved_form)
+
+        post(:create, params: test_form, as: :json)
+      end
+
+      it 'tracks an error' do
+        expect(claim).to receive(:get_claim_information).and_raise StandardError, 'TEST'
+        expect(dfa).not_to receive(:submit)
+        expect(monitor).to receive(:track_request).with(:error, 'TEST', 'dependents_controller.forms_api_submission',
+                                                        hash_including(error: 'TEST'))
 
         post(:create, params: test_form, as: :json)
       end
