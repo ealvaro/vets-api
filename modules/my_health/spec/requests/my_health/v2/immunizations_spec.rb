@@ -100,14 +100,18 @@ RSpec.describe 'MyHealth::V2::ImmunizationsController', :skip_json_api_validatio
             allow(mock_client).to receive(:get_immunizations)
               .and_raise(Common::Client::Errors::ClientError.new('FHIR API Error', 500))
 
-            # Expect logger to receive error
-            expect(Rails.logger).to receive(:error).with(/immunization records FHIR API error/)
+            allow(Rails.logger).to receive(:error)
 
             get path, headers: { 'X-Key-Inflection' => 'camel' }
           end
 
           it 'returns bad_gateway status code' do
             expect(response).to have_http_status(:bad_gateway)
+          end
+
+          it 'logs the error with api type and status' do
+            expect(Rails.logger).to have_received(:error)
+              .with(/immunization records FHIR API error \(500\)/, anything)
           end
 
           it 'returns formatted error details' do
@@ -127,14 +131,18 @@ RSpec.describe 'MyHealth::V2::ImmunizationsController', :skip_json_api_validatio
               .and_raise(Common::Exceptions::BackendServiceException.new('VA900',
                                                                          detail: 'Backend Service Unavailable'))
 
-            # Expect logger to receive error
-            expect(Rails.logger).to receive(:error).with(/Backend service exception/)
+            allow(Rails.logger).to receive(:error)
 
             get path, headers: { 'X-Key-Inflection' => 'camel' }
           end
 
           it 'returns bad_gateway status code' do
             expect(response).to have_http_status(:bad_gateway)
+          end
+
+          it 'logs the error with api type' do
+            expect(Rails.logger).to have_received(:error)
+              .with(/immunization records FHIR backend error/, anything)
           end
 
           it 'includes error details in the response' do
@@ -357,14 +365,18 @@ RSpec.describe 'MyHealth::V2::ImmunizationsController', :skip_json_api_validatio
                            'Internal server error', 500
                          ))
 
-            # Expect logger to receive error
-            expect(Rails.logger).to receive(:error).with(/immunization records SCDF API error/)
+            allow(Rails.logger).to receive(:error)
 
             get path, headers: { 'X-Key-Inflection' => 'camel' }
           end
 
           it 'returns bad_gateway status code' do
             expect(response).to have_http_status(:bad_gateway)
+          end
+
+          it 'logs the error with api type and status' do
+            expect(Rails.logger).to have_received(:error)
+              .with(/immunization records SCDF API error \(500\)/, anything)
           end
 
           it 'returns formatted error details' do
@@ -384,14 +396,18 @@ RSpec.describe 'MyHealth::V2::ImmunizationsController', :skip_json_api_validatio
               .and_raise(Common::Exceptions::BackendServiceException.new('VA900',
                                                                          detail: 'Backend Service Unavailable'))
 
-            # Expect logger to receive error
-            expect(Rails.logger).to receive(:error).with(/Backend service exception/)
+            allow(Rails.logger).to receive(:error)
 
             get path, headers: { 'X-Key-Inflection' => 'camel' }
           end
 
           it 'returns bad_gateway status code' do
             expect(response).to have_http_status(:bad_gateway)
+          end
+
+          it 'logs the error with api type' do
+            expect(Rails.logger).to have_received(:error)
+              .with(/immunization records SCDF backend error/, anything)
           end
 
           it 'includes error details in the response' do
@@ -443,14 +459,18 @@ RSpec.describe 'MyHealth::V2::ImmunizationsController', :skip_json_api_validatio
           allow(mock_client).to receive(:get_immunizations)
             .and_raise(Common::Client::Errors::ClientError.new('FHIR API Error', 500))
 
-          # Expect logger to receive error
-          expect(Rails.logger).to receive(:error).with(/immunization records FHIR API error/)
+          allow(Rails.logger).to receive(:error)
 
           get show_path, headers: { 'X-Key-Inflection' => 'camel' }
         end
 
         it 'returns bad_gateway status code' do
           expect(response).to have_http_status(:bad_gateway)
+        end
+
+        it 'logs the error with api type and status' do
+          expect(Rails.logger).to have_received(:error)
+            .with(/immunization records FHIR API error \(500\)/, anything)
         end
 
         it 'returns formatted error details' do
@@ -469,14 +489,18 @@ RSpec.describe 'MyHealth::V2::ImmunizationsController', :skip_json_api_validatio
           allow(mock_client).to receive(:get_immunizations)
             .and_raise(Common::Exceptions::BackendServiceException.new('VA900', detail: 'Backend Service Unavailable'))
 
-          # Expect logger to receive error
-          expect(Rails.logger).to receive(:error).with(/Backend service exception/)
+          allow(Rails.logger).to receive(:error)
 
           get show_path, headers: { 'X-Key-Inflection' => 'camel' }
         end
 
         it 'returns bad_gateway status code' do
           expect(response).to have_http_status(:bad_gateway)
+        end
+
+        it 'logs the error with api type' do
+          expect(Rails.logger).to have_received(:error)
+            .with(/immunization records FHIR backend error/, anything)
         end
 
         it 'includes error details in the response' do
@@ -490,8 +514,7 @@ RSpec.describe 'MyHealth::V2::ImmunizationsController', :skip_json_api_validatio
           allow(mock_client).to receive(:get_immunizations)
             .and_raise(Common::Client::Errors::ClientError.new('Not Found', 404))
 
-          # Expect logger to receive error
-          expect(Rails.logger).to receive(:error).with(/Immunization not found/)
+          allow(Rails.logger).to receive(:error)
         end
       end
     end

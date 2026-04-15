@@ -13,9 +13,7 @@ module MyHealth
       before_action :validate_source_param, only: :show
 
       def index
-        start_date = params[:start_date]
-        end_date = params[:end_date]
-        @result = service.get_care_summaries_and_notes(start_date:, end_date:)
+        @result = service.get_care_summaries_and_notes(start_date: params[:start_date], end_date: params[:end_date])
         care_notes = sort_records(@result[:records], params[:sort])
         opts = warnings_present? ? { meta: { warnings: @result[:warnings] } } : {}
 
@@ -31,7 +29,8 @@ module MyHealth
                status: warnings_present? ? :partial_content : :ok
       rescue ArgumentError => e
         render_error('Invalid Parameter', e.message, '400', 400, :bad_request)
-      rescue Common::Client::Errors::ClientError,
+      rescue Common::Exceptions::GatewayTimeout,
+             Common::Client::Errors::ClientError,
              Common::Exceptions::BackendServiceException,
              StandardError => e
         handle_error(e, resource_name: 'clinical notes', api_type: 'SCDF')
@@ -48,7 +47,8 @@ module MyHealth
         serialized_note = UnifiedHealthData::ClinicalNotesSerializer.new(care_note)
         render json: serialized_note,
                status: :ok
-      rescue Common::Client::Errors::ClientError,
+      rescue Common::Exceptions::GatewayTimeout,
+             Common::Client::Errors::ClientError,
              Common::Exceptions::BackendServiceException,
              StandardError => e
         handle_error(e, resource_name: 'clinical notes', api_type: 'FHIR')

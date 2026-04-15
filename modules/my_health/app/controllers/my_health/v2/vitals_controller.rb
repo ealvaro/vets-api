@@ -18,7 +18,8 @@ module MyHealth
         serialized_vitals = UnifiedHealthData::VitalSerializer.new(vitals, opts)
         render json: serialized_vitals,
                status: warnings_present? ? :partial_content : :ok
-      rescue Common::Client::Errors::ClientError,
+      rescue Common::Exceptions::GatewayTimeout,
+             Common::Client::Errors::ClientError,
              Common::Exceptions::BackendServiceException,
              StandardError => e
         handle_error(e, resource_name: 'vitals', api_type: 'SCDF')

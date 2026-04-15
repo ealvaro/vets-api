@@ -57,10 +57,10 @@ RSpec.describe 'MyHealth::V2::CcdController', type: :request do
         allow(service_double).to receive(:initiate_ccd).and_raise(client_error)
       end
 
-      it 'returns correct HTTP status based on error status' do
+      it 'returns 502 bad gateway for upstream 5xx errors' do
         get generate_path
 
-        expect(response).to have_http_status(:service_unavailable)
+        expect(response).to have_http_status(:bad_gateway)
         json_response = JSON.parse(response.body)
         expect(json_response['errors'].first['title']).to eq('SCDF API Error')
       end
@@ -165,10 +165,10 @@ RSpec.describe 'MyHealth::V2::CcdController', type: :request do
         allow(service_double).to receive(:get_ccd_status).and_raise(client_error)
       end
 
-      it 'returns correct HTTP status based on error status' do
+      it 'returns 502 bad gateway for upstream 5xx errors' do
         get status_path
 
-        expect(response).to have_http_status(:service_unavailable)
+        expect(response).to have_http_status(:bad_gateway)
         json_response = JSON.parse(response.body)
         expect(json_response['errors'].first['title']).to eq('SCDF API Error')
       end
@@ -327,14 +327,14 @@ RSpec.describe 'MyHealth::V2::CcdController', type: :request do
     end
 
     context 'when S3 returns an error' do
-      it 'returns a backend service error' do
+      it 'passes through the upstream 403 status' do
         VCR.use_cassette(success_cassette, match_requests_on: %i[method path]) do
           stub_request(:get, s3_host_pattern)
             .to_return(status: 403, body: 'Access Denied')
 
           get download_path
 
-          expect(response).to have_http_status(:bad_gateway)
+          expect(response).to have_http_status(:forbidden)
         end
       end
     end
@@ -350,10 +350,10 @@ RSpec.describe 'MyHealth::V2::CcdController', type: :request do
         allow(service_double).to receive(:get_ccd_url).and_raise(client_error)
       end
 
-      it 'returns correct HTTP status based on error status' do
+      it 'returns 502 bad gateway for upstream 5xx errors' do
         get download_path
 
-        expect(response).to have_http_status(:service_unavailable)
+        expect(response).to have_http_status(:bad_gateway)
         json_response = JSON.parse(response.body)
         expect(json_response['errors'].first['title']).to eq('S3 API Error')
       end

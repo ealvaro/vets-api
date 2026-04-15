@@ -13,10 +13,11 @@ module MyHealth
         ccd = service.initiate_ccd
         http_status = ccd.http_status == 200 ? :ok : :accepted
         render json: UnifiedHealthData::CcdSerializer.new(ccd).serializable_hash, status: http_status
-      rescue Common::Client::Errors::ClientError,
+      rescue Common::Exceptions::GatewayTimeout,
+             Common::Client::Errors::ClientError,
              Common::Exceptions::BackendServiceException,
              StandardError => e
-        handle_error(e, resource_name: 'CCD', api_type: 'SCDF', use_dynamic_status: true, include_backtrace: true)
+        handle_error(e, resource_name: 'CCD', api_type: 'SCDF')
       end
 
       def status
@@ -24,10 +25,11 @@ module MyHealth
         ccd = service.get_ccd_status(job_id:)
         http_status = ccd.http_status == 200 ? :ok : :accepted
         render json: UnifiedHealthData::CcdSerializer.new(ccd).serializable_hash, status: http_status
-      rescue Common::Client::Errors::ClientError,
+      rescue Common::Exceptions::GatewayTimeout,
+             Common::Client::Errors::ClientError,
              Common::Exceptions::BackendServiceException,
              StandardError => e
-        handle_error(e, resource_name: 'CCD', api_type: 'SCDF', use_dynamic_status: true, include_backtrace: true)
+        handle_error(e, resource_name: 'CCD', api_type: 'SCDF')
       end
 
       def download
@@ -47,10 +49,11 @@ module MyHealth
       rescue SecurityError => e
         Rails.logger.warn("CCD download SSRF blocked: #{e.message}")
         render_error('Forbidden', 'URL not allowed', '403', 403, :forbidden)
-      rescue Common::Client::Errors::ClientError,
+      rescue Common::Exceptions::GatewayTimeout,
+             Common::Client::Errors::ClientError,
              Common::Exceptions::BackendServiceException,
              StandardError => e
-        handle_error(e, resource_name: 'CCD', api_type: 'S3', use_dynamic_status: true, include_backtrace: true)
+        handle_error(e, resource_name: 'CCD', api_type: 'S3')
       end
 
       private

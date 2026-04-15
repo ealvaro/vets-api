@@ -175,6 +175,17 @@ RSpec.describe 'MyHealth::V2::ImagingController', :skip_json_api_validation, typ
         end
         expect(response).to have_http_status(:bad_gateway)
       end
+
+      it 'returns a 504 response when upstream times out' do
+        allow_any_instance_of(UnifiedHealthData::ImagingService).to receive(:get_imaging_studies)
+          .and_raise(Common::Exceptions::GatewayTimeout.new)
+        VCR.use_cassette('unified_health_data/get_imaging_studies_200', match_requests_on: %i[method path]) do
+          get path, headers: { 'X-Key-Inflection' => 'camel' }, params: default_params
+        end
+        expect(response).to have_http_status(:gateway_timeout)
+        json = JSON.parse(response.body)
+        expect(json['errors'].first['code']).to eq('504')
+      end
     end
   end
 
@@ -338,10 +349,34 @@ RSpec.describe 'MyHealth::V2::ImagingController', :skip_json_api_validation, typ
       end
     end
 
+    context 'when S3 returns a 404' do
+      it 'passes through the 404 status' do
+        stub_request(:get, /mhv-sysb-cvix-thumbnails\.s3\.us-gov-west-1\.amazonaws\.com/)
+          .to_return(status: 404, body: 'Not Found')
+
+        get proxy_path, params: { url: valid_s3_url }
+
+        expect(response).to have_http_status(:not_found)
+        json = JSON.parse(response.body)
+        expect(json).to have_key('errors')
+      end
+    end
+
     context 'when S3 returns an error' do
-      it 'returns a 502 bad gateway with error payload' do
+      it 'passes through the upstream 403 status' do
         stub_request(:get, /mhv-sysb-cvix-thumbnails\.s3\.us-gov-west-1\.amazonaws\.com/)
           .to_return(status: 403, body: 'Access Denied')
+
+        get proxy_path, params: { url: valid_s3_url }
+
+        expect(response).to have_http_status(:forbidden)
+        json = JSON.parse(response.body)
+        expect(json).to have_key('errors')
+      end
+
+      it 'returns a 502 bad gateway when S3 returns a 500' do
+        stub_request(:get, /mhv-sysb-cvix-thumbnails\.s3\.us-gov-west-1\.amazonaws\.com/)
+          .to_return(status: 500, body: 'Internal Server Error')
 
         get proxy_path, params: { url: valid_s3_url }
 

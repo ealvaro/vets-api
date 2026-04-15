@@ -14,25 +14,21 @@ module MyHealth
       before_action :enqueue_imaging_refresh_job, only: :index
 
       def index
-        start_date = params[:start_date]
-        end_date = params[:end_date]
-        imaging_study_type = params[:imaging_study_type].presence || 'ALL'
-        site_ids = user_site_ids
-
         imaging_studies = sort_records(
           service.get_imaging_studies(
-            start_date:,
-            end_date:,
-            imaging_study_type:,
-            site_ids:
+            start_date: params[:start_date],
+            end_date: params[:end_date],
+            imaging_study_type: params[:imaging_study_type].presence || 'ALL',
+            site_ids: user_site_ids
           ),
           params[:sort]
         )
-        serialized_studies = UnifiedHealthData::Serializers::ImagingStudySerializer.new(imaging_studies).serializable_hash[:data]
+        serialized_studies = UnifiedHealthData::Serializers::ImagingStudySerializer
+                             .new(imaging_studies).serializable_hash[:data]
 
-        render json: serialized_studies,
-               status: :ok
-      rescue Common::Client::Errors::ClientError,
+        render json: serialized_studies, status: :ok
+      rescue Common::Exceptions::GatewayTimeout,
+             Common::Client::Errors::ClientError,
              Common::Exceptions::BackendServiceException,
              StandardError => e
         handle_error(e, resource_name: 'imaging studies', api_type: 'FHIR')
@@ -51,7 +47,8 @@ module MyHealth
 
         render json: serialized_studies,
                status: :ok
-      rescue Common::Client::Errors::ClientError,
+      rescue Common::Exceptions::GatewayTimeout,
+             Common::Client::Errors::ClientError,
              Common::Exceptions::BackendServiceException,
              StandardError => e
         handle_error(e, resource_name: 'imaging study', api_type: 'FHIR')
@@ -70,7 +67,8 @@ module MyHealth
 
         render json: serialized_studies,
                status: :ok
-      rescue Common::Client::Errors::ClientError,
+      rescue Common::Exceptions::GatewayTimeout,
+             Common::Client::Errors::ClientError,
              Common::Exceptions::BackendServiceException,
              StandardError => e
         handle_error(e, resource_name: 'DICOM zip', api_type: 'FHIR')

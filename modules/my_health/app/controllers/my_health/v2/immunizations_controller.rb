@@ -19,8 +19,7 @@ module MyHealth
       STATSD_KEY_PREFIX = 'api.my_health.immunizations'
 
       def index
-        data_source = uhd_enabled? ? 'uhd' : 'lighthouse'
-        tag_datadog_span(data_source)
+        tag_datadog_data_source(uhd_enabled? ? 'uhd' : 'lighthouse')
 
         if uhd_enabled?
           @result = uhd_service.get_immunizations
@@ -37,7 +36,8 @@ module MyHealth
           log_vaccines(immunizations.length)
           render json: { data: immunizations }
         end
-      rescue Common::Client::Errors::ClientError,
+      rescue Common::Exceptions::GatewayTimeout,
+             Common::Client::Errors::ClientError,
              Common::Exceptions::BackendServiceException,
              StandardError => e
         handle_error(e, resource_name: 'immunization records', api_type: uhd_enabled? ? 'SCDF' : 'FHIR')
@@ -61,7 +61,8 @@ module MyHealth
                          .from_fhir(immunization['resource'])
 
           render json: { data: return_value }
-        rescue Common::Client::Errors::ClientError,
+        rescue Common::Exceptions::GatewayTimeout,
+               Common::Client::Errors::ClientError,
                Common::Exceptions::BackendServiceException,
                StandardError => e
           handle_error(e, resource_name: 'immunization records', api_type: 'FHIR')
@@ -72,7 +73,7 @@ module MyHealth
 
       # Grab the active Datadog APM span and
       # set a custom tag medical_records.data_source to either "uhd" or "lighthouse".
-      def tag_datadog_span(data_source)
+      def tag_datadog_data_source(data_source)
         span = Datadog::Tracing.active_span
         span&.set_tag('medical_records.data_source', data_source)
       end

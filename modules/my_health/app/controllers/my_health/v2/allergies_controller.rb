@@ -28,7 +28,8 @@ module MyHealth
 
         render json: serialized_allergies,
                status: warnings_present? ? :partial_content : :ok
-      rescue Common::Client::Errors::ClientError,
+      rescue Common::Exceptions::GatewayTimeout,
+             Common::Client::Errors::ClientError,
              Common::Exceptions::BackendServiceException,
              StandardError => e
         handle_error(e, resource_name: 'allergies', api_type: 'SCDF')
@@ -45,7 +46,8 @@ module MyHealth
         serialized_allergy = UnifiedHealthData::AllergySerializer.new(allergy)
         render json: serialized_allergy,
                status: :ok
-      rescue Common::Client::Errors::ClientError,
+      rescue Common::Exceptions::GatewayTimeout,
+             Common::Client::Errors::ClientError,
              Common::Exceptions::BackendServiceException,
              StandardError => e
         handle_error(e, resource_name: 'allergies', api_type: 'FHIR')
