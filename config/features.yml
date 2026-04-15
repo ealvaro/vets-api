@@ -852,7 +852,7 @@ features:
   decision_review_form4142_validate_schema:
     actor_type: user
     description: Enables the use of schema validation for form 4142 in decision review applications
-    enable_in_development: true
+    enable_in_development: false
   decision_review_final_status_polling:
     actor_type: user
     description: Enables enhanced polling for secondary forms in decision review applications with final status

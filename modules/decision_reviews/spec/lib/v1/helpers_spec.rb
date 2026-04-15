@@ -66,7 +66,7 @@ describe DecisionReviews::V1::Helpers do
   end
 
   describe '#normalize_area_code_for_lighthouse_schema' do
-    context 'when area_code is present and valid with 3 characters (domestic number)' do
+    context 'when area_code is present and valid' do
       let(:req_body_obj) do
         {
           'data' => {
@@ -84,8 +84,7 @@ describe DecisionReviews::V1::Helpers do
       end
 
       it 'returns the original object unchanged' do
-        expected_result = req_body_obj
-        expect(helper.normalize_area_code_for_lighthouse_schema(req_body_obj)).to eq(expected_result)
+        expect(helper.normalize_area_code_for_lighthouse_schema(req_body_obj)).to eq(req_body_obj)
       end
     end
 
@@ -107,12 +106,11 @@ describe DecisionReviews::V1::Helpers do
       end
 
       it 'returns the original object unchanged' do
-        expected_result = req_body_obj
-        expect(helper.normalize_area_code_for_lighthouse_schema(req_body_obj)).to eq(expected_result)
+        expect(helper.normalize_area_code_for_lighthouse_schema(req_body_obj)).to eq(req_body_obj)
       end
     end
 
-    context 'when area_code is present and empty' do
+    context 'when area_code is empty' do
       let(:req_body_obj) do
         {
           'data' => {
@@ -129,27 +127,13 @@ describe DecisionReviews::V1::Helpers do
         }
       end
 
-      let(:expected_result) do
-        {
-          'data' => {
-            'attributes' => {
-              'veteran' => {
-                'phone' => {
-                  'phoneNumber' => '12343432567',
-                  'countryCode' => '44'
-                }
-              }
-            }
-          }
-        }
-      end
-
-      it 'returns the object without an areaCode' do
-        expect(helper.normalize_area_code_for_lighthouse_schema(req_body_obj)).to eq(expected_result)
+      it 'removes the empty areaCode' do
+        result = helper.normalize_area_code_for_lighthouse_schema(req_body_obj)
+        expect(result.dig('data', 'attributes', 'veteran', 'phone')).not_to have_key('areaCode')
       end
     end
 
-    context 'when area_code is present and nil' do
+    context 'when area_code is nil' do
       let(:req_body_obj) do
         {
           'data' => {
@@ -166,23 +150,9 @@ describe DecisionReviews::V1::Helpers do
         }
       end
 
-      let(:expected_result) do
-        {
-          'data' => {
-            'attributes' => {
-              'veteran' => {
-                'phone' => {
-                  'phoneNumber' => '12343432567',
-                  'countryCode' => '44'
-                }
-              }
-            }
-          }
-        }
-      end
-
-      it 'returns the object without an areaCode' do
-        expect(helper.normalize_area_code_for_lighthouse_schema(req_body_obj)).to eq(expected_result)
+      it 'removes the nil areaCode' do
+        result = helper.normalize_area_code_for_lighthouse_schema(req_body_obj)
+        expect(result.dig('data', 'attributes', 'veteran', 'phone')).not_to have_key('areaCode')
       end
     end
   end

@@ -114,6 +114,7 @@ module DecisionReviews
         headers
       end
 
+      # Used by NOD and HLR controllers - shared across form types
       def normalize_area_code_for_lighthouse_schema(req_body_obj)
         phone = req_body_obj.dig('data', 'attributes', 'veteran', 'phone')
         area_code = phone&.dig('areaCode')
