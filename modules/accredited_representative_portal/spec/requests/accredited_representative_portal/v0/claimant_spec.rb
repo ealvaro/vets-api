@@ -217,7 +217,9 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantController, type: :re
       allow(AccreditedRepresentativePortal::ClaimantDetailsService).to receive(:new).with(
         icn:,
         representative_name: 'Space Force Cadets',
-        benefit_type_param: benefit_type
+        benefit_type_param: benefit_type,
+        power_of_attorney_requests: kind_of(ActiveRecord::Relation),
+        is_representative: true
       ).and_return(claimant_details_service)
 
       allow(claimant_details_service).to receive(:call).and_return(
@@ -227,6 +229,8 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantController, type: :re
             last_name: 'Smith',
             birth_date: '1980-01-01',
             ssn: '6666', # NEW: masked
+            poa_requests: [],
+            is_representative: true,
             itf: [{ 'status' => 'ok' }]
           }
         }
@@ -283,6 +287,40 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantController, type: :re
 
         expect(response).to have_http_status(:ok)
         expect(parsed_response.dig('data', 'itf')).to be_present
+      end
+
+      it 'includes pending poa requests in the payload' do
+        allow(claimant_details_service).to receive(:call).and_return(
+          {
+            data: {
+              first_name: 'John',
+              last_name: 'Smith',
+              birth_date: '1980-01-01',
+              ssn: '6666',
+              poa_requests: [
+                {
+                  id: poa_request.id,
+                  resolution: nil
+                }
+              ],
+              is_representative: true,
+              itf: [{ 'status' => 'ok' }]
+            }
+          }
+        )
+
+        get(path, params: { benefitType: benefit_type }, headers: json_headers)
+
+        expect(response).to have_http_status(:ok)
+        expect(parsed_response.dig('data', 'poa_requests')).to eq(
+          [
+            {
+              'id' => poa_request.id,
+              'resolution' => nil
+            }
+          ]
+        )
+        expect(parsed_response.dig('data', 'is_representative')).to be true
       end
     end
 

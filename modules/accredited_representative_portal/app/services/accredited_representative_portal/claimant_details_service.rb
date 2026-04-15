@@ -6,10 +6,13 @@ module AccreditedRepresentativePortal
   class ClaimantDetailsService
     attr_reader :profile, :icn
 
-    def initialize(icn:, representative_name:, benefit_type_param: nil)
+    def initialize(icn:, representative_name:, benefit_type_param: nil, power_of_attorney_requests: [],
+                   is_representative: false)
       @icn = icn
       @representative_name = representative_name
       @benefit_type_param = benefit_type_param
+      @power_of_attorney_requests = power_of_attorney_requests
+      @is_representative = is_representative
     end
 
     def call
@@ -53,18 +56,23 @@ module AccreditedRepresentativePortal
     end
 
     def claimant_payload
-      {
-        data: {
-          first_name: profile.given_names&.first,
-          last_name: profile.family_name,
-          birth_date: profile.birth_date,
-          ssn: profile.ssn&.last(4),
-          phone: profile.home_phone,
-          address: claimant_address,
-          representative_name: @representative_name,
-          email: claimant_email
-        }
+      data = {
+        first_name: profile.given_names&.first,
+        last_name: profile.family_name,
+        birth_date: profile.birth_date,
+        ssn: profile.ssn&.last(4),
+        phone: profile.home_phone,
+        address: claimant_address,
+        representative_name: @representative_name,
+        email: claimant_email
       }
+
+      if Flipper.enabled?(:accredited_representative_portal_cd_pending_notice)
+        data[:is_representative] = @is_representative
+        data[:poa_requests] = serialized_poa_requests
+      end
+
+      { data: }
     end
 
     def claimant_address
@@ -82,6 +90,22 @@ module AccreditedRepresentativePortal
       # In VA Profile, a user can have only one email address.
       # See app/models/va_profile_redis/v2/contact_information.rb#L44
       va_profile&.person&.emails&.first&.email_address
+    end
+
+    def serialized_poa_requests
+      @power_of_attorney_requests.map do |request|
+        {
+          id: request.id,
+          resolution: serialized_resolution(request)
+        }
+      end
+    end
+
+    def serialized_resolution(request)
+      return nil if request.resolution.blank?
+
+      serialized = PowerOfAttorneyRequestSerializer.new(request).serializable_hash
+      serialized[:resolution] || serialized['resolution']
     end
 
     def va_profile

@@ -3,11 +3,22 @@
 require 'rails_helper'
 
 RSpec.describe AccreditedRepresentativePortal::ClaimantDetailsService do
-  subject(:service_call) { described_class.new(icn:, representative_name:, benefit_type_param:).call }
+  subject(:service_call) do
+    described_class.new(
+      icn:,
+      representative_name:,
+      benefit_type_param:,
+      power_of_attorney_requests:,
+      is_representative:
+    ).call
+  end
 
   let(:icn) { '1008714701V416111' }
   let(:benefit_type_param) { 'compensation' }
   let(:representative_name) { 'Space Force Cadets' }
+  let(:power_of_attorney_requests) { [] }
+  let(:is_representative) { false }
+  let(:pending_notice_enabled) { false }
 
   let(:mpi_profile) do
     build(
@@ -44,11 +55,12 @@ RSpec.describe AccreditedRepresentativePortal::ClaimantDetailsService do
   end
 
   before do
+    allow(Flipper).to receive(:enabled?)
+      .with(:accredited_representative_portal_cd_pending_notice)
+      .and_return(pending_notice_enabled)
     allow(MPI::Service).to receive(:new).and_return(mpi_service)
     allow(mpi_service).to receive(:find_profile_by_identifier).and_return(mpi_profile_response)
 
-    # The service instantiates a new BenefitsClaims::Service per ITF call; returning
-    # a fresh double each time keeps the spec aligned with that behavior.
     allow(BenefitsClaims::Service).to receive(:new).with(icn).and_return(itf_service)
 
     allow(mpi_profile).to receive(:address).and_return(mpi_address)
@@ -82,12 +94,97 @@ RSpec.describe AccreditedRepresentativePortal::ClaimantDetailsService do
           zip: '12345'
         )
         expect(data[:representative_name]).to eq('Space Force Cadets')
+        expect(data).not_to have_key(:is_representative)
+        expect(data).not_to have_key(:poa_requests)
         expect(data[:email]).to eq('person100@example.com')
       end
 
       it 'returns itf as an array' do
         payload = service_call
         expect(payload.dig(:data, :itf)).to eq([{ 'status' => 'ok' }])
+      end
+
+      context 'when there are pending poa requests' do
+        let(:pending_notice_enabled) { true }
+        let(:is_representative) { true }
+        let(:resolution) { double(blank?: false) }
+        let(:request_with_resolution) do
+          double(
+            id: 123,
+            resolution:,
+            created_at: Time.zone.parse('2024-01-01 00:00:00')
+          )
+        end
+        let(:request_without_resolution) do
+          double(
+            id: 456,
+            resolution: nil,
+            created_at: Time.zone.parse('2024-01-02 00:00:00')
+          )
+        end
+        let(:power_of_attorney_requests) { [request_with_resolution, request_without_resolution] }
+        let(:serializer_class) do
+          Class.new do
+            def initialize(*); end
+
+            def serializable_hash
+              {
+                resolution: {
+                  type: 'decision',
+                  decisionType: 'acceptance'
+                }
+              }
+            end
+          end
+        end
+
+        before do
+          stub_const('AccreditedRepresentativePortal::PowerOfAttorneyRequestSerializer', serializer_class)
+        end
+
+        it 'includes serialized poa requests and representative flag' do
+          payload = service_call
+          data = payload.fetch(:data)
+
+          expect(data[:is_representative]).to be(true)
+          expect(data[:poa_requests]).to eq(
+            [
+              {
+                id: 123,
+                resolution: {
+                  type: 'decision',
+                  decisionType: 'acceptance'
+                }
+              },
+              {
+                id: 456,
+                resolution: nil
+              }
+            ]
+          )
+        end
+      end
+
+      context 'when there are pending poa requests but the feature flag is off' do
+        let(:pending_notice_enabled) { false }
+        let(:is_representative) { true }
+        let(:resolution) { double(blank?: false) }
+        let(:request_with_resolution) do
+          double(
+            id: 123,
+            resolution:,
+            created_at: Time.zone.parse('2024-01-01 00:00:00')
+          )
+        end
+        let(:power_of_attorney_requests) { [request_with_resolution] }
+
+        it 'does not include representative or poa_requests in the payload' do
+          payload = service_call
+          data = payload.fetch(:data)
+
+          expect(data).not_to have_key(:is_representative)
+          expect(data).not_to have_key(:poa_requests)
+        end
       end
 
       context 'VA profile returns errors' do

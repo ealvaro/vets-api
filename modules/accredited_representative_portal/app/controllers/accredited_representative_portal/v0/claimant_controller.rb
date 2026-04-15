@@ -26,10 +26,7 @@ module AccreditedRepresentativePortal
 
         @icn = claimant_profile.icn
 
-        power_of_attorney_requests =
-          policy_scope(PowerOfAttorneyRequest).joins(:claimant).not_withdrawn.where(
-            claimant: { icn: claimant_profile.icn }
-          )
+        power_of_attorney_requests = claimant_poa_requests(claimant_profile.icn)
 
         (claimant_representative.present? || power_of_attorney_requests.any?) or
           raise Common::Exceptions::RecordNotFound, 'Claimant not found'
@@ -56,26 +53,51 @@ module AccreditedRepresentativePortal
         @icn = IcnTemporaryIdentifier.lookup_icn(params[:id])
         claimant_representative.present? or raise Pundit::NotAuthorizedError
 
-        payload = AccreditedRepresentativePortal::ClaimantDetailsService.new(
-          icn: @icn,
-          representative_name: claimant_representative.power_of_attorney_holder.name,
-          benefit_type_param: params[:benefitType]
-        ).call
-
-        render json: payload
+        render json: claimant_details_payload(claimant_details_poa_requests)
         monitoring.track_count(SUCCESS_METRIC, tags: default_tags)
       rescue ActiveRecord::RecordNotFound
         monitoring.track_count(ERROR_METRIC, tags: default_tags + ['reason:RecordNotFound'])
         raise Common::Exceptions::RecordNotFound, 'Claimant not found'
       rescue => e
-        # Avoid logging e.message to reduce the risk of unintentionally exposing
-        # sensitive data from upstream services (e.g., identifiers in error text).
         normalized_reason = e.class.name.split('::').last
         monitoring.track_count(ERROR_METRIC, tags: default_tags + ["reason:#{normalized_reason}"])
         raise
       end
 
       private
+
+      def claimant_details_payload(power_of_attorney_requests)
+        service_args = {
+          icn: @icn,
+          representative_name: claimant_representative.power_of_attorney_holder.name,
+          benefit_type_param: params[:benefitType]
+        }
+
+        if pending_notice_enabled?
+          service_args[:power_of_attorney_requests] = power_of_attorney_requests
+          service_args[:is_representative] = claimant_representative.present?
+        end
+
+        AccreditedRepresentativePortal::ClaimantDetailsService.new(**service_args).call
+      end
+
+      def claimant_details_poa_requests
+        return [] unless pending_notice_enabled?
+
+        claimant_poa_requests(@icn)
+      end
+
+      def pending_notice_enabled?
+        Flipper.enabled?(:accredited_representative_portal_cd_pending_notice)
+      end
+
+      def claimant_poa_requests(icn)
+        policy_scope(PowerOfAttorneyRequest)
+          .joins(:claimant)
+          .includes(:resolution, resolution: :resolving)
+          .not_withdrawn
+          .where(claimant: { icn: })
+      end
 
       def ensure_claimant_details_enabled!
         return if Flipper.enabled?(:accredited_representative_portal_claimant_details, current_user)
