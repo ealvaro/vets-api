@@ -5,7 +5,11 @@ module AccreditedRepresentativePortal
     MILITARY_STATE_CODES = %w[AE AP AA].freeze
 
     set_id do |object|
-      object[:claimant_representative].claimant_id
+      if object[:claimant_representative]
+        object[:claimant_representative].claimant_id
+      else
+        IcnTemporaryIdentifier.save_icn(object[:claimant_profile].icn).id
+      end
     end
 
     attribute :first_name do |object|
@@ -25,7 +29,7 @@ module AccreditedRepresentativePortal
     end
 
     attribute :representative do |object|
-      object[:claimant_representative].power_of_attorney_holder.name
+      object[:claimant_representative]&.power_of_attorney_holder&.name
     end
 
     attribute :city do |object|

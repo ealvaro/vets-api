@@ -72,6 +72,20 @@ RSpec.describe AccreditedRepresentativePortal::ClaimantSerializer, type: :serial
     end
   end
 
+  describe 'when claimant_representative is nil' do
+    let(:claimant_representative) { nil }
+
+    it 'uses IcnTemporaryIdentifier for the id' do
+      id = subject.dig('data', 'id')
+      expect(id).to be_present
+      expect(AccreditedRepresentativePortal::IcnTemporaryIdentifier.find(id).icn).to eq('123498767V234859')
+    end
+
+    it 'returns nil for representative' do
+      expect(subject.dig('data', 'attributes', 'representative')).to be_nil
+    end
+  end
+
   describe '#city' do
     it 'returns the city name capitalized' do
       expect(subject.dig('data', 'attributes', 'city')).to eq 'New Haven'
