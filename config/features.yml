@@ -2361,10 +2361,6 @@ features:
     actor_type: cookie_id
     description: Enables the ability to use OAuth authentication via the Sign in Service (Identity)
     enable_in_development: true
-  sign_in_disable_user_interaction:
-    actor_type: user
-    description: Disables user interaction during Authentication flow
-    enable_in_development: true
   mhv_credential_button_disabled:
     actor_type: user
     description: Enables the ability to hide the My HealtheVet sign in button (Identity)
