@@ -299,9 +299,18 @@ describe VBADocuments::UploadSubmission, type: :model do
       expect(client_stub).to receive(:status).and_return(faraday_response)
       expect(faraday_response).to receive(:success?).and_return(true)
       expect(faraday_response).to receive(:body).at_least(:once).and_return(success_body)
+      allow(Rails.logger).to receive(:info)
       upload_processing.refresh_status!
       updated = VBADocuments::UploadSubmission.find_by(guid: upload_processing.guid)
       expect(updated.status).to eq('success')
+      expect(Rails.logger).to have_received(:info).with(
+        'Benefits Intake Status Change',
+        { guid: upload_processing.guid, from_status: 'processing', to_status: 'success' }
+      )
+      expect(Rails.logger).to have_received(:info).with(
+        'Benefits Intake Status Change',
+        { guid: upload_processing.guid, from_status: 'pending', to_status: 'processing' }
+      )
     end
 
     it 'updates error status from upstream' do

@@ -89,6 +89,22 @@ describe AppealsApi::NoticeOfDisagreement, type: :model do
     end
   end
 
+  describe '#status_update logging' do
+    let(:nod) do
+      bro = form_data['data']['attributes']['boardReviewOption']
+      create(:notice_of_disagreement, form_data:, auth_headers:, board_review_option: bro)
+    end
+
+    it 'logs the status change' do
+      allow(Rails.logger).to receive(:info)
+      nod.update_status(status: 'error')
+      expect(Rails.logger).to have_received(:info).with(
+        'AppealsAPI NOD status change',
+        { id: nod.id, from_status: 'pending', to_status: 'error' }
+      )
+    end
+  end
+
   describe 'callbacks' do
     describe 'before_update' do
       before { allow(notice_of_disagreement).to receive(:submit_evidence_to_central_mail!) }

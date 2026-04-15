@@ -524,6 +524,19 @@ describe AppealsApi::HigherLevelReview, type: :model do
     end
   end
 
+  describe '#status_update logging' do
+    let(:hlr) { create(:higher_level_review_v2) }
+
+    it 'logs the status change' do
+      allow(Rails.logger).to receive(:info)
+      hlr.update_status(status: 'error')
+      expect(Rails.logger).to have_received(:info).with(
+        'AppealsAPI HLR status change',
+        { id: hlr.id, from_status: 'pending', to_status: 'error' }
+      )
+    end
+  end
+
   context 'HlrStatus concern' do
     let(:hlr_v1) { create(:higher_level_review_v1) }
     let(:hlr_v2) { create(:higher_level_review_v2) }

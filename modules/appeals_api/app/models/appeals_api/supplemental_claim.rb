@@ -279,6 +279,7 @@ module AppealsApi
       )
 
       if status != current_status || code != current_code || detail != current_detail
+        Rails.logger.info('AppealsAPI SC status change', { id:, from_status: current_status, to_status: status.to_s })
         AppealsApi::StatusUpdatedJob.perform_async(
           {
             status_event: 'sc_status_updated',

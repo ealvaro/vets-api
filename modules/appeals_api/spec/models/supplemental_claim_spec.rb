@@ -511,4 +511,17 @@ describe AppealsApi::SupplementalClaim, type: :model do
       end
     end
   end
+
+  describe '#status_update logging' do
+    let(:sc) { create(:supplemental_claim, status: 'submitted') }
+
+    it 'logs the status change' do
+      allow(Rails.logger).to receive(:info)
+      sc.update_status(status: 'error')
+      expect(Rails.logger).to have_received(:info).with(
+        'AppealsAPI SC status change',
+        { id: sc.id, from_status: 'submitted', to_status: 'error' }
+      )
+    end
+  end
 end
