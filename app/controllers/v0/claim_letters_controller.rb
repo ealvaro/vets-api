@@ -19,6 +19,7 @@ module V0
     def index
       docs = service.get_letters
       log_metadata_to_datadog(docs)
+      log_letter_count(docs)
       log_stale_or_empty_letters(docs)
 
       render json: docs
@@ -80,6 +81,14 @@ module V0
       docs_metadata = docs.map { |d| { doc_type: d[:doc_type], type_description: d[:type_description] } }
       monitor.track_request(:info, 'DDL Document Types Metadata', 'claim_letters.doctypes_metadata',
                             message_type: 'ddl.doctypes_metadata', document_type_metadata: docs_metadata)
+    end
+
+    def log_letter_count(docs)
+      ::Rails.logger.info('Claim letters count', {
+                            message_type: 'cst.claim_letters.count',
+                            letter_count: docs.size,
+                            api_provider: @api_provider
+                          })
     end
 
     def log_stale_or_empty_letters(docs)

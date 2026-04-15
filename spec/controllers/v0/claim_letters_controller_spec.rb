@@ -334,6 +334,28 @@ RSpec.describe V0::ClaimLettersController, type: :controller do
         end
       end
     end
+
+    context 'letter count logging' do
+      before do
+        allow(Rails.logger).to receive(:info)
+      end
+
+      it 'logs the count of claim letters returned' do
+        get(:index)
+        expect(Rails.logger).to have_received(:info)
+          .with('Claim letters count',
+                hash_including(message_type: 'cst.claim_letters.count',
+                               letter_count: be_a(Integer),
+                               api_provider: be_a(String)))
+      end
+
+      it 'does not include PII in the log payload' do
+        get(:index)
+        expect(Rails.logger).to have_received(:info)
+          .with('Claim letters count',
+                hash_not_including(:icn, :user_uuid, :user_account_uuid))
+      end
+    end
   end
 
   # VBMS to Lighthouse migration. Retain these tests to ensure the LighthouseClaimLettersProvider
