@@ -39,7 +39,7 @@ jobs:
           echo "environments=${{ env.environments }}" >> $GITHUB_OUTPUT
   release:
     needs: [prepare-values]
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/production-bypass'
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -76,24 +76,14 @@ jobs:
           path: vsp-infra-application-manifests
           ref: refs/heads/main
 
-      - name: Determine environments to update
-        id: determine-envs
-        run: |
-          if [[ "${{ github.ref }}" == "refs/heads/master" ]]; then
-            echo "environments=dev staging" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref }}" == "refs/heads/production-bypass" ]]; then
-            echo "environments=prod sandbox" >> $GITHUB_OUTPUT
-          fi
-
       - name: Update vets-api image and version name in Manifest repo
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           ECR_REPOSITORY: dsva/${{inputs.ecr_repository}}
-          ENVIRONMENTS: ${{ steps.determine-envs.outputs.environments }}
         run: |
           cd vsp-infra-application-manifests/apps/${{inputs.manifests_directory}}
 
-          for env in $ENVIRONMENTS; do
+          for env in dev staging prod sandbox; do
             has_parent=$(yq e 'has("vets-api-parent")' "$env/values.yaml")
             has_vets=$(yq e 'has("vets-api")' "$env/values.yaml")
 
