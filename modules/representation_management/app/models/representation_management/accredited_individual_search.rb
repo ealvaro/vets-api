@@ -7,13 +7,9 @@ module RepresentationManagement
     PERMITTED_MAX_DISTANCES = %w[5 10 25 50 100 200].freeze # in miles, no distance provided will default to "all"
     PERMITTED_MODEL_CLASSES = [AccreditedIndividual, Veteran::Service::Representative].freeze
     PERMITTED_SORTS = %w[distance_asc first_name_asc first_name_desc last_name_asc last_name_desc].freeze
-    # claim_agents and veteran_service_officer are types leftover from the old Veteran::Service::Representative model
-    # and are not used in AccreditedIndividual. They are included here for backwards compatibility.
-    # They will be mapped to the individual_type used in AccreditedIndividual.
-    # They can be removed once the frontend is updated to use the new types.
-    PERMITTED_TYPES = %w[attorney claims_agent representative claim_agents veteran_service_officer].freeze
+    PERMITTED_TYPES = %w[attorney claims_agent representative].freeze
 
-    attr_accessor :distance, :lat, :long, :model_class, :name, :page, :per_page, :sort, :type
+    attr_accessor :distance, :lat, :long, :model_class, :name, :org_name, :page, :per_page, :sort, :type
 
     validates :distance, inclusion: { in: PERMITTED_MAX_DISTANCES }, allow_nil: true
     validates :lat, presence: true, numericality: { greater_than_or_equal_to: -90, less_than_or_equal_to: 90 }
@@ -32,6 +28,7 @@ module RepresentationManagement
                 query.where.not(location: nil)
               end
       query = find_with_name(query) if name.present?
+      query = find_with_org_name(query) if org_name.present? && type == 'representative'
 
       query
     end
@@ -42,14 +39,14 @@ module RepresentationManagement
       if model_class == AccreditedIndividual
         model_class
           .includes(:accredited_organizations)
-          .select("accredited_individuals.*, #{distance_query_string}") # config/brakeman.ignore exclusion rule in place
-          .where(individual_type: mapped_type)
+          .select('accredited_individuals.*', distance_query_string)
+          .where(individual_type: type)
           .order(sort_query_string)
       else
         model_class
           .joins('JOIN LATERAL UNNEST(veteran_representatives.poa_codes) AS UnnestedPoaCode ON true')
-          .joins('JOIN veteran_organizations ON UnnestedPoaCode = veteran_organizations.poa')
-          .select("veteran_representatives.*, #{distance_query_string}")
+          .joins('LEFT JOIN veteran_organizations ON UnnestedPoaCode = veteran_organizations.poa')
+          .select('veteran_representatives.*', distance_query_string)
           .where(where_clause_for_veteran_type)
           .group(model_class.column_names.map { |col| "veteran_representatives.#{col}" })
           .order(sort_query_string)
@@ -97,40 +94,35 @@ module RepresentationManagement
       end
     end
 
+    def find_with_org_name(query)
+      if model_class == AccreditedIndividual
+        query.left_joins(:accredited_organizations)
+             .group('accredited_individuals.id')
+             .having('? = ANY(ARRAY_AGG(accredited_organizations.name))', org_name)
+      else
+        query.having('? = ANY(ARRAY_AGG(veteran_organizations.name))', org_name)
+      end
+    end
+
     def max_distance
       AccreditedRepresentation::Constants::METERS_PER_MILE * Integer(distance)
     end
 
-    def mapped_type
-      case type
-      when 'claims_agent', 'claim_agents'
-        'claims_agent'
-      when 'representative', 'veteran_service_officer'
-        'representative'
-      when 'attorney'
-        'attorney'
-      else
-        raise ArgumentError, "Invalid type: #{type}"
-      end
-    end
-
     # Veteran::Service::Representative-specific query methods
     def find_veteran_with_name_similar_to(query)
-      wrapped_query = Veteran::Service::Representative.from("(#{query.to_sql}) as veteran_representatives")
-      wrapped_query.where('word_similarity(?, veteran_representatives.full_name) >= ?',
-                          name,
-                          Veteran::Service::Constants::FUZZY_SEARCH_THRESHOLD)
+      query.where('word_similarity(?, veteran_representatives.full_name) >= ?',
+                  name,
+                  Veteran::Service::Constants::FUZZY_SEARCH_THRESHOLD)
     end
 
     def where_clause_for_veteran_type
-      veteran_type = case mapped_type
-                     when 'attorney' then 'attorney'
-                     when 'claims_agent' then 'claim_agents'
-                     when 'representative' then 'veteran_service_officer'
-                     else mapped_type
-                     end
+      type_mappings = {
+        'attorney' => 'attorney',
+        'claims_agent' => 'claim_agents',
+        'representative' => 'veteran_service_officer'
+      }
 
-      ['? = ANY(veteran_representatives.user_types)', veteran_type]
+      ['? = ANY(veteran_representatives.user_types)', type_mappings[type]]
     end
   end
 end

@@ -6,13 +6,14 @@ RSpec.shared_examples 'search behavior' do |model_class|
   subject { described_class.new(params).perform }
 
   let(:id) { model_class.primary_key }
-  let(:params) { { model_class:, type:, distance:, lat:, long:, sort:, name: } }
+  let(:params) { { model_class:, type:, distance:, lat:, long:, sort:, name:, org_name: } }
   let(:type) { 'representative' }
   let(:distance) { 50 }
   let(:lat) { 38.9072 }
   let(:long) { -77.0369 }
   let(:sort) { 'distance_asc' }
   let(:name) { nil }
+  let(:org_name) { nil }
 
   context 'when distance is not provided' do
     let(:distance) { nil }
@@ -84,6 +85,24 @@ RSpec.shared_examples 'search behavior' do |model_class|
     end
   end
 
+  context 'when org_name is provided' do
+    let(:org_name) { 'Org Name' }
+
+    context 'when type is representative' do
+      it 'returns records where there is an exact match on the organization name' do
+        expect(subject.pluck(id)).to eq([ind1.id, ind3.id])
+      end
+    end
+
+    context 'when type is not representative' do
+      let(:type) { 'attorney' }
+
+      it 'ignores the org_name param' do
+        expect(subject.pluck(id)).to contain_exactly(ind8.id)
+      end
+    end
+  end
+
   context 'when type is attorney' do
     let(:type) { 'attorney' }
 
@@ -95,24 +114,8 @@ RSpec.shared_examples 'search behavior' do |model_class|
   context 'when type is claims_agent' do
     let(:type) { 'claims_agent' }
 
-    it 'returns claims_agents' do
+    it 'returns claims agents' do
       expect(subject.pluck(id)).to contain_exactly(ind9.id)
-    end
-  end
-
-  context 'when type is claim_agents' do
-    let(:type) { 'claim_agents' }
-
-    it 'returns claims_agents' do
-      expect(subject.pluck(id)).to contain_exactly(ind9.id)
-    end
-  end
-
-  context 'when type is veteran_service_officer' do
-    let(:type) { 'veteran_service_officer' }
-
-    it 'returns representatives' do
-      expect(subject.pluck(id)).to contain_exactly(ind1.id, ind2.id, ind3.id, ind4.id)
     end
   end
 end
@@ -141,43 +144,43 @@ RSpec.describe RepresentationManagement::AccreditedIndividualSearch, type: :mode
     context 'when the model_class is AccreditedIndividual' do
       let!(:ind1) do
         create(:accredited_individual, :with_organizations,
-               registration_number: '12300', individual_type: 'representative',
+               org_name: 'Org Name', registration_number: '12300', individual_type: 'representative',
                long: -77.050552, lat: 38.820450, location: 'POINT(-77.050552 38.820450)',
                first_name: 'Bob', last_name: 'Law') # ~6 miles from Washington, D.C.
       end
       let!(:ind2) do
         create(:accredited_individual, :with_organizations,
-               registration_number: '23400', individual_type: 'representative',
+               org_name: 'Another Org Name', registration_number: '23400', individual_type: 'representative',
                long: -77.436649, lat: 39.101481, location: 'POINT(-77.436649 39.101481)',
                first_name: 'Eliseo', last_name: 'Schroeder') # ~25 miles from Washington, D.C.
       end
       let!(:ind3) do
         create(:accredited_individual, :with_organizations,
-               registration_number: '34500', individual_type: 'representative',
+               org_name: 'Org Name', registration_number: '34500', individual_type: 'representative',
                long: -76.609383, lat: 39.299236, location: 'POINT(-76.609383 39.299236)',
                first_name: 'Marci', last_name: 'Weissnat') # ~35 miles from Washington, D.C.
       end
       let!(:ind4) do
         create(:accredited_individual, :with_organizations,
-               registration_number: '45600', individual_type: 'representative',
+               org_name: 'Another Org Name', registration_number: '45600', individual_type: 'representative',
                long: -77.466316, lat: 38.309875, location: 'POINT(-77.466316 38.309875)',
                first_name: 'Gerard', last_name: 'Ortiz') # ~47 miles from Washington, D.C.
       end
       let!(:ind5) do
         create(:accredited_individual, :with_organizations,
-               registration_number: '56700', individual_type: 'representative',
+               org_name: 'Org Name', registration_number: '56700', individual_type: 'representative',
                long: -76.3483, lat: 39.5359, location: 'POINT(-76.3483 39.5359)',
                first_name: 'Adriane', last_name: 'Crona') # ~57 miles from Washington, D.C.
       end
       let!(:ind6) do
         create(:accredited_individual, :with_organizations,
-               registration_number: '67800', individual_type: 'representative',
+               org_name: 'Org Name', registration_number: '67800', individual_type: 'representative',
                long: -76.3483, lat: 39.5359, location: 'POINT(-76.3483 39.5359)',
                first_name: 'Bob', last_name: 'Lawperson') # ~57 miles from Washington, D.C.
       end
       let!(:ind7) do
         create(:accredited_individual, :with_organizations,
-               registration_number: '78900', individual_type: 'representative',
+               org_name: 'Org Name', registration_number: '78900', individual_type: 'representative',
                first_name: 'No', last_name: 'Location') # no location
       end
       let!(:ind8) do
@@ -197,49 +200,50 @@ RSpec.describe RepresentationManagement::AccreditedIndividualSearch, type: :mode
     end
 
     context 'when the model_class is Veteran::Service::Representative' do
-      let!(:org) { create(:veteran_organization, poa: 'A1Q') }
+      let!(:org1) { create(:veteran_organization, poa: 'A1Q', name: 'Org Name') }
+      let!(:org2) { create(:veteran_organization, poa: 'H4L', name: 'Another Org Name') }
       let!(:ind1) do
         create(:veteran_representative, :vso,
-               long: -77.050552, lat: 38.820450, location: 'POINT(-77.050552 38.820450)',
+               poa_codes: ['A1Q'], long: -77.050552, lat: 38.820450, location: 'POINT(-77.050552 38.820450)',
                first_name: 'Bob', last_name: 'Law') # ~6 miles from Washington, D.C.
       end
       let!(:ind2) do
         create(:veteran_representative, :vso,
-               long: -77.436649, lat: 39.101481, location: 'POINT(-77.436649 39.101481)',
+               poa_codes: ['H4L'], long: -77.436649, lat: 39.101481, location: 'POINT(-77.436649 39.101481)',
                first_name: 'Eliseo', last_name: 'Schroeder') # ~25 miles from Washington, D.C.
       end
       let!(:ind3) do
         create(:veteran_representative, :vso,
-               long: -76.609383, lat: 39.299236, location: 'POINT(-76.609383 39.299236)',
+               poa_codes: ['A1Q'], long: -76.609383, lat: 39.299236, location: 'POINT(-76.609383 39.299236)',
                first_name: 'Marci', last_name: 'Weissnat') # ~35 miles from Washington, D.C.
       end
       let!(:ind4) do
         create(:veteran_representative, :vso,
-               long: -77.466316, lat: 38.309875, location: 'POINT(-77.466316 38.309875)',
+               poa_codes: ['H4L'], long: -77.466316, lat: 38.309875, location: 'POINT(-77.466316 38.309875)',
                first_name: 'Gerard', last_name: 'Ortiz') # ~47 miles from Washington, D.C.
       end
       let!(:ind5) do
         create(:veteran_representative, :vso,
-               long: -76.3483, lat: 39.5359, location: 'POINT(-76.3483 39.5359)',
+               poa_codes: ['A1Q'], long: -76.3483, lat: 39.5359, location: 'POINT(-76.3483 39.5359)',
                first_name: 'Adriane', last_name: 'Crona') # ~57 miles from Washington, D.C.
       end
       let!(:ind6) do
         create(:veteran_representative, :vso,
-               long: -76.3483, lat: 39.5359, location: 'POINT(-76.3483 39.5359)',
+               poa_codes: ['A1Q'], long: -76.3483, lat: 39.5359, location: 'POINT(-76.3483 39.5359)',
                first_name: 'Bob', last_name: 'Lawperson') # ~57 miles from Washington, D.C.
       end
       let!(:ind7) do
         create(:veteran_representative, :vso,
-               first_name: 'No', last_name: 'Location') # no location
+               poa_codes: ['A1Q'], first_name: 'No', last_name: 'Location') # no location
       end
       let!(:ind8) do
         create(:veteran_representative, # attorney
-               long: -77.050552, lat: 38.820450, location: 'POINT(-77.050552 38.820450)',
+               poa_codes: ['Z9M'], long: -77.050552, lat: 38.820450, location: 'POINT(-77.050552 38.820450)',
                first_name: 'Joe', last_name: 'Lawyer') # ~6 miles from Washington, D.C.
       end
       let!(:ind9) do
-        create(:veteran_representative, :claim_agents,
-               long: -77.050552, lat: 38.820450, location: 'POINT(-77.050552 38.820450)',
+        create(:veteran_representative, :claim_agents, # claims agent
+               poa_codes: ['B2P'], long: -77.050552, lat: 38.820450, location: 'POINT(-77.050552 38.820450)',
                first_name: 'Jane', last_name: 'Agent') # ~6 miles from Washington, D.C.
       end
 

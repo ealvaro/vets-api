@@ -805,23 +805,23 @@
           {
             "name": "lat",
             "in": "query",
-            "format": "float",
+            "example": 40.7128,
             "required": true,
             "description": "Latitude coordinate",
-            "example": 40.7128,
             "schema": {
-              "type": "number"
+              "type": "number",
+              "format": "float"
             }
           },
           {
             "name": "long",
             "in": "query",
-            "format": "float",
+            "example": -74.006,
             "required": true,
             "description": "Longitude coordinate",
-            "example": -74.006,
             "schema": {
-              "type": "number"
+              "type": "number",
+              "format": "float"
             }
           },
           {
@@ -829,30 +829,49 @@
             "in": "query",
             "required": true,
             "description": "Type of accredited individual",
-            "enum": [
-              "attorney",
-              "claims_agent",
-              "vso_representative"
-            ],
-            "example": "attorney",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "attorney",
+                "claims_agent",
+                "representative"
+              ]
             }
           },
           {
             "name": "distance",
             "in": "query",
-            "description": "Maximum distance in miles",
             "example": 50,
+            "required": false,
+            "description": "Maximum distance in miles. If not provided, accredited individuals will not be filtered by distance.",
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "enum": [
+                5,
+                10,
+                25,
+                50,
+                100,
+                200
+              ]
             }
           },
           {
             "name": "name",
             "in": "query",
-            "description": "Name to search for",
-            "example": "Bob Law",
+            "example": "John Doe",
+            "required": false,
+            "description": "Name to search for. A fuzzy match is performed. If not provided, accredited individuals will not be filtered by name.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "org_name",
+            "in": "query",
+            "example": "Organization Name",
+            "required": false,
+            "description": "Name of the Veterans Service Organization (VSO). Must be an exact match. If not provided, individuals will not be filtered by organization affiliation. Parameter is ignored if the \"type\" parameter value is not \"representative.\"",
             "schema": {
               "type": "string"
             }
@@ -860,35 +879,38 @@
           {
             "name": "page",
             "in": "query",
+            "required": false,
             "description": "Page number",
-            "example": 1,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "default": 1
             }
           },
           {
             "name": "per_page",
             "in": "query",
+            "required": false,
             "description": "Number of results per page",
-            "example": 10,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "default": 10
             }
           },
           {
             "name": "sort",
             "in": "query",
+            "required": false,
             "description": "Sort order",
-            "enum": [
-              "distance_asc",
-              "first_name_asc",
-              "first_name_desc",
-              "last_name_asc",
-              "last_name_desc"
-            ],
-            "example": "distance_asc",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "distance_asc",
+                "first_name_asc",
+                "first_name_desc",
+                "last_name_asc",
+                "last_name_desc"
+              ],
+              "default": "distance_asc"
             }
           }
         ],
@@ -970,7 +992,7 @@
             }
           },
           "422": {
-            "description": "unprocessable entity response",
+            "description": "unprocessable content response",
             "content": {
               "application/json": {
                 "schema": {

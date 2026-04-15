@@ -36,26 +36,63 @@ RSpec.describe 'Accredited Individuals',
       operationId 'searchAccreditedIndividuals'
       description 'Returns accredited individuals based on search criteria including location and type'
 
-      parameter name: :lat, in: :query, type: :number, format: :float, required: true,
-                description: 'Latitude coordinate', example: 40.7128
-      parameter name: :long, in: :query, type: :number, format: :float, required: true,
-                description: 'Longitude coordinate', example: -74.0060
-      parameter name: :type, in: :query, type: :string, required: true,
+      parameter name: :lat, in: :query, example: 40.7128, required: true,
+                description: 'Latitude coordinate',
+                schema: {
+                  type: :number,
+                  format: :float
+                }
+      parameter name: :long, in: :query, example: -74.0060, required: true,
+                description: 'Longitude coordinate',
+                schema: {
+                  type: :number,
+                  format: :float
+                }
+      parameter name: :type, in: :query, required: true,
                 description: 'Type of accredited individual',
-                enum: %w[attorney claims_agent vso_representative],
-                example: 'attorney'
-      parameter name: :distance, in: :query, type: :integer,
-                description: 'Maximum distance in miles', example: 50
-      parameter name: :name, in: :query, type: :string,
-                description: 'Name to search for', example: 'Bob Law'
-      parameter name: :page, in: :query, type: :integer,
-                description: 'Page number', example: 1
-      parameter name: :per_page, in: :query, type: :integer,
-                description: 'Number of results per page', example: 10
-      parameter name: :sort, in: :query, type: :string,
+                schema: {
+                  type: :string,
+                  enum: %w[attorney claims_agent representative]
+                }
+      parameter name: :distance, in: :query, example: 50, required: false,
+                description: 'Maximum distance in miles. If not provided, accredited individuals will not be ' \
+                             'filtered by distance.',
+                schema: {
+                  type: :integer,
+                  enum: [5, 10, 25, 50, 100, 200]
+                }
+      parameter name: :name, in: :query, example: 'John Doe', required: false,
+                description: 'Name to search for. A fuzzy match is performed. If not provided, accredited ' \
+                             'individuals will not be filtered by name.',
+                schema: {
+                  type: :string
+                }
+      parameter name: :org_name, in: :query, example: 'Organization Name', required: false,
+                description: 'Name of the Veterans Service Organization (VSO). Must be an exact match. If not ' \
+                             'provided, individuals will not be filtered by organization affiliation. Parameter ' \
+                             'is ignored if the "type" parameter value is not "representative."',
+                schema: {
+                  type: :string
+                }
+      parameter name: :page, in: :query, required: false,
+                description: 'Page number',
+                schema: {
+                  type: :integer,
+                  default: 1
+                }
+      parameter name: :per_page, in: :query, required: false,
+                description: 'Number of results per page',
+                schema: {
+                  type: :integer,
+                  default: 10
+                }
+      parameter name: :sort, in: :query, required: false,
                 description: 'Sort order',
-                enum: %w[distance_asc first_name_asc first_name_desc last_name_asc last_name_desc],
-                example: 'distance_asc'
+                schema: {
+                  type: :string,
+                  enum: %w[distance_asc first_name_asc first_name_desc last_name_asc last_name_desc],
+                  default: 'distance_asc'
+                }
 
       response '200', 'OK' do
         let(:lat) { 40.7128 }
@@ -119,7 +156,7 @@ RSpec.describe 'Accredited Individuals',
         run_test!
       end
 
-      response '422', 'unprocessable entity response' do
+      response '422', 'unprocessable content response' do
         let(:lat) { 40.7128 }
         let(:long) { -74.0060 }
         let(:type) { 'invalid_type' }

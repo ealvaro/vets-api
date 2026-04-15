@@ -14,8 +14,14 @@ FactoryBot.define do
     full_name { "#{first_name} #{last_name}" }
 
     trait :with_organizations do
+      transient do
+        org_name { Faker::Company.name }
+      end
+
       after(:create) do |individual, evaluator|
-        individual.accredited_organizations << create_list(:accredited_organization, evaluator.org_count)
+        individual.accredited_organizations << create_list(:accredited_organization,
+                                                           evaluator.org_count,
+                                                           name: evaluator.org_name)
 
         individual.reload
       end

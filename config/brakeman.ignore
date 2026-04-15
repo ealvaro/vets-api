@@ -187,29 +187,6 @@
     {
       "warning_type": "SQL Injection",
       "warning_code": 0,
-      "fingerprint": "bda791f57d00e1ae8e479792c7e9e588b00d21868cccc54cc58c8de07d11b93b",
-      "check_name": "SQL",
-      "message": "Possible SQL injection",
-      "file": "modules/representation_management/app/models/representation_management/accredited_individual_search.rb",
-      "line": 45,
-      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
-      "code": "AccreditedIndividual.includes(:accredited_organizations).select(\"accredited_individuals.*, #{distance_query_string}\")",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "RepresentationManagement::AccreditedIndividualSearch",
-        "method": "base_query"
-      },
-      "user_input": "distance_query_string",
-      "confidence": "Medium",
-      "cwe_id": [
-        89
-      ],
-      "note": "False positive for possible SQL injection; input is sanitized; tried several iterations of the query to resolve, but Brakeman kept reporting"
-    },
-    {
-      "warning_type": "SQL Injection",
-      "warning_code": 0,
       "fingerprint": "c6be575b25f7d0b6a3a83da81c1680f867bc8262b47ae4edd92b93b0bd770667",
       "check_name": "SQL",
       "message": "Possible SQL injection",

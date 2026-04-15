@@ -37,7 +37,7 @@ module RepresentationManagement
       def search_params
         @search_params ||= begin
           params.require(%i[lat long type])
-          params.permit(:distance, :lat, :long, :name, :page, :per_page, :sort, :type)
+          params.permit(:distance, :lat, :long, :name, :org_name, :page, :per_page, :sort, :type)
         end
       end
 
