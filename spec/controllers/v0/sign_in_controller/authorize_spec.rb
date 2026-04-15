@@ -29,7 +29,7 @@ RSpec.describe V0::SignInController, '#authorize', type: :controller do
     let(:pkce) { true }
     let(:scope) { { scope: 'some-scope' } }
     let(:shared_sessions) { false }
-    let(:credential_service_providers) { %w[idme logingov dslogon mhv] }
+    let(:credential_service_providers) { %w[idme logingov mhv] }
     let(:service_levels) { %w[loa1 loa3 ial1 ial2 min] }
     let(:client_id_value) { client_config.client_id }
     let(:authentication) { SignIn::Constants::Auth::COOKIE }
@@ -563,13 +563,6 @@ RSpec.describe V0::SignInController, '#authorize', type: :controller do
       context 'when type param is idme' do
         let(:type_value) { SignIn::Constants::Auth::IDME }
         let(:expected_type_value) { SignIn::Constants::Auth::IDME }
-
-        it_behaves_like 'an idme authentication service interface'
-      end
-
-      context 'when type param is dslogon' do
-        let(:type_value) { SignIn::Constants::Auth::DSLOGON }
-        let(:expected_type_value) { SignIn::Constants::Auth::DSLOGON }
 
         it_behaves_like 'an idme authentication service interface'
       end

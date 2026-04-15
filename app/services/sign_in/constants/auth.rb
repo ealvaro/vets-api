@@ -37,7 +37,8 @@ module SignIn
       BROKER_CODE = 'sis'
       CLIENT_STATE_MINIMUM_LENGTH = 22
       CODE_CHALLENGE_METHOD = 'S256'
-      CSP_TYPES = [IDME = 'idme', LOGINGOV = 'logingov', DSLOGON = 'dslogon', MHV = 'mhv'].freeze
+      CSP_TYPES = [IDME = 'idme', LOGINGOV = 'logingov', MHV = 'mhv'].freeze
+      DSLOGON = 'dslogon'
       OPERATION_TYPES = [SIGN_UP = 'sign_up',
                          AUTHORIZE = 'authorize',
                          AUTHORIZE_SSO = 'authorize_sso',

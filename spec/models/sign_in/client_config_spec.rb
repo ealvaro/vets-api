@@ -35,7 +35,7 @@ RSpec.describe SignIn::ClientConfig, type: :model do
   let(:enforced_terms) { SignIn::Constants::Auth::VA_TERMS }
   let(:terms_of_use_url) { 'some-terms-of-use-url' }
   let(:service_levels) { %w[loa1 loa3 ial1 ial2 min] }
-  let(:credential_service_providers) { %w[idme logingov dslogon mhv] }
+  let(:credential_service_providers) { %w[idme logingov mhv] }
 
   describe 'associations' do
     it { is_expected.to have_many(:config_certificates).dependent(:destroy) }
@@ -250,7 +250,7 @@ RSpec.describe SignIn::ClientConfig, type: :model do
       end
 
       context 'when credential_service_providers contain values not included in CSP_TYPES constant' do
-        let(:credential_service_providers) { %w[idme logingov dslogon mhv bad_csp] }
+        let(:credential_service_providers) { %w[idme logingov mhv bad_csp] }
         let(:expected_error_message) { 'Validation failed: Credential service providers is not included in the list' }
         let(:expected_error) { ActiveRecord::RecordInvalid }
 
