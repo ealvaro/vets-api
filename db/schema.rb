@@ -403,6 +403,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_07_160933) do
     t.string "request_id", null: false
     t.index ["crm_message_id"], name: "index_ask_va_inquiry_submissions_on_crm_message_id"
     t.index ["inquiry_number"], name: "index_ask_va_inquiry_submissions_on_inquiry_number"
+    t.index ["request_id"], name: "index_ask_va_inquiry_submissions_on_request_id", unique: true
   end
 
   create_table "async_transactions", id: :serial, force: :cascade do |t|
