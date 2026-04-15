@@ -30,7 +30,11 @@ module PdfFill
           key: 'applicant_name'
         },
         'remarks' => {
-          key: 'remarks'
+          key: 'remarks',
+          question_text: 'REMARKS (Optional)',
+          question_num: 11,
+          limit: 456,
+          multiline_limit: 6
         },
         'mailingAddress' => {
           key: 'applicant_address'
@@ -77,7 +81,7 @@ module PdfFill
         form_data = JSON.parse(JSON.generate(@form_data))
 
         form_data['applicantName'] = combine_full_name(form_data['applicantName'])
-        form_data['mailingAddress'] = combine_full_address_extras(form_data['mailingAddress'])
+        form_data['mailingAddress'] = format_address(form_data['mailingAddress'])
         format_bill_type(form_data)
         format_file_number(form_data)
         format_previously_applied(form_data)
@@ -121,7 +125,7 @@ module PdfFill
       def format_organization_info(form_data)
         form_data['organizationInfo'] = <<~ORGINFO
           #{form_data['organizationName']}
-          #{combine_full_address_extras(form_data['organizationAddress'])}
+          #{format_address(form_data['organizationAddress'])}
         ORGINFO
       end
 
@@ -149,6 +153,20 @@ module PdfFill
         [ssn_str[0..2],
          ssn_str[3..4],
          ssn_str[5..]].join('-')
+      end
+
+      def format_address(address)
+        return if address.blank?
+
+        postal_code = address['postalCode']
+        postal_code = combine_postal_code(postal_code) if postal_code.is_a?(Hash)
+
+        [
+          address['street'],
+          address['street2'],
+          address['street3'],
+          [address['city'], address['state'], postal_code, address['country']].compact_blank.join(', ')
+        ].compact_blank.join("\n")
       end
     end
   end

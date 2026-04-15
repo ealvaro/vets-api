@@ -22,7 +22,7 @@ describe PdfFill::Forms::Va220803 do
     it 'formats the mailing address correctly' do
       merged_data = subject.merge_fields
 
-      expect(merged_data['mailingAddress']).to eq("123 Maple Ln\nUnit B\nHamilton, IA, 12345\nUSA")
+      expect(merged_data['mailingAddress']).to eq("123 Maple Ln\nUnit B\nHamilton, IA, 12345, USA")
     end
 
     it 'formats the bill type correctly' do
@@ -49,7 +49,7 @@ describe PdfFill::Forms::Va220803 do
     it 'formats the file organization info correctly' do
       merged_data = subject.merge_fields
 
-      expect(merged_data['organizationInfo']).to eq("Acme Co.\n123 Fake St\nTulsa, OK, 23456\nUSA\n")
+      expect(merged_data['organizationInfo']).to eq("Acme Co.\n123 Fake St\nTulsa, OK, 23456, USA\n")
     end
 
     it 'formats the signature and date correctly' do
