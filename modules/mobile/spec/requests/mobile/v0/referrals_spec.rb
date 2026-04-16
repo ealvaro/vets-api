@@ -17,7 +17,7 @@ RSpec.describe 'Mobile::V0::Referrals', type: :request do
   end
 
   describe 'GET /mobile/v0/referrals' do
-    let(:referrals) { build_list(:ccra_referral_list_entry, 3, category_of_care: 'primary care') }
+    let(:referrals) { build_list(:ccra_referral_list_entry, 3, category_of_care: 'primary care', station_id: '984') }
 
     before do
       allow(referral_service_double).to receive(:get_vaos_referral_list).and_return(referrals)
@@ -70,11 +70,11 @@ RSpec.describe 'Mobile::V0::Referrals', type: :request do
 
       context 'when there are expired referrals' do
         let(:active_referral) do
-          build(:ccra_referral_list_entry, category_of_care: 'primary care',
+          build(:ccra_referral_list_entry, category_of_care: 'primary care', station_id: '984',
                                            referral_expiration_date: (Date.current + 30.days).to_s)
         end
         let(:expired_referral) do
-          build(:ccra_referral_list_entry, category_of_care: 'primary care',
+          build(:ccra_referral_list_entry, category_of_care: 'primary care', station_id: '984',
                                            referral_expiration_date: (Date.current - 1.day).to_s)
         end
 
@@ -93,8 +93,12 @@ RSpec.describe 'Mobile::V0::Referrals', type: :request do
       end
 
       context 'when there are referrals with unsupported categories of care' do
-        let(:supported_referral) { build(:ccra_referral_list_entry, category_of_care: 'primary care') }
-        let(:unsupported_referral) { build(:ccra_referral_list_entry, category_of_care: 'cardiology') }
+        let(:supported_referral) do
+          build(:ccra_referral_list_entry, category_of_care: 'primary care', station_id: '984')
+        end
+        let(:unsupported_referral) do
+          build(:ccra_referral_list_entry, category_of_care: 'cardiology', station_id: '984')
+        end
 
         before do
           allow(referral_service_double).to receive(:get_vaos_referral_list)
@@ -103,6 +107,28 @@ RSpec.describe 'Mobile::V0::Referrals', type: :request do
         end
 
         it 'only returns referrals with supported categories of care' do
+          get '/mobile/v0/referrals', headers: sis_headers
+
+          json = response.parsed_body
+          expect(json['data'].length).to eq(1)
+        end
+      end
+
+      context 'when there are referrals with unsupported station IDs' do
+        let(:supported_referral) do
+          build(:ccra_referral_list_entry, category_of_care: 'primary care', station_id: '984')
+        end
+        let(:unsupported_referral) do
+          build(:ccra_referral_list_entry, category_of_care: 'primary care', station_id: '999')
+        end
+
+        before do
+          allow(referral_service_double).to receive(:get_vaos_referral_list)
+            .and_return([supported_referral, unsupported_referral])
+          allow(VAOS::ReferralEncryptionService).to receive(:encrypt).and_return('encrypted-id')
+        end
+
+        it 'only returns referrals with supported station IDs' do
           get '/mobile/v0/referrals', headers: sis_headers
 
           json = response.parsed_body

@@ -62,6 +62,43 @@ RSpec.describe Mobile::V0::ReferralsController, type: :controller do
     end
   end
 
+  describe '#filter_by_station_id' do
+    let(:supported_referral) { build(:ccra_referral_list_entry, station_id: '534') }
+    let(:unsupported_referral) { build(:ccra_referral_list_entry, station_id: '999') }
+    let(:dev_only_referral) { build(:ccra_referral_list_entry, station_id: '984') }
+
+    it 'keeps referrals with supported station IDs' do
+      result = controller.send(:filter_by_station_id, [supported_referral, unsupported_referral])
+      expect(result).to contain_exactly(supported_referral)
+    end
+
+    it 'filters out referrals with unsupported station IDs' do
+      result = controller.send(:filter_by_station_id, [unsupported_referral])
+      expect(result).to be_empty
+    end
+
+    it 'includes non-production station IDs in non-production environments' do
+      result = controller.send(:filter_by_station_id, [dev_only_referral])
+      expect(result).to contain_exactly(dev_only_referral)
+    end
+
+    context 'in production' do
+      before do
+        allow(Settings).to receive(:vsp_environment).and_return('production')
+      end
+
+      it 'excludes non-production station IDs' do
+        result = controller.send(:filter_by_station_id, [dev_only_referral])
+        expect(result).to be_empty
+      end
+
+      it 'keeps production station IDs' do
+        result = controller.send(:filter_by_station_id, [supported_referral])
+        expect(result).to contain_exactly(supported_referral)
+      end
+    end
+  end
+
   describe '#add_referral_uuids' do
     let(:referrals) { build_list(:ccra_referral_list_entry, 2) }
 
