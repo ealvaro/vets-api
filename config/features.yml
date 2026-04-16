@@ -1860,6 +1860,10 @@ features:
     actor_type: user
     description: Enables/disables with_retries when getting the next page
     enable_in_development: true
+  mhv_medical_records_scdf_last_updated_date:
+    actor_type: user
+    description: Add last updated card for SCDF data
+    enable_in_development: true
   mhv_medical_records_show_missing_alert:
     actor_type: user
     description: Show alert to users when they have missing medical records data in MHV
