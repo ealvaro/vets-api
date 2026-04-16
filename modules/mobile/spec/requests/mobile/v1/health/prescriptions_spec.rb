@@ -285,6 +285,62 @@ RSpec.describe 'Mobile::V1::Health::Prescriptions', type: :request do
             end
           end
         end
+
+        context 'when upstream identity resolution raises TypeError' do
+          before do
+            allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_prescriptions)
+              .and_raise(TypeError, 'Unsupported command argument type: NilClass')
+            allow(StatsD).to receive(:increment).and_call_original
+          end
+
+          it 'returns 502 upstream error instead of 500' do
+            get '/mobile/v1/health/rx/prescriptions', headers: sis_headers
+
+            expect(response).to have_http_status(:bad_gateway)
+            error = response.parsed_body['errors']&.first
+            expect(error['code']).to eq('MOBL_502_upstream_error')
+            expect(error['title']).to eq('Bad Gateway')
+          end
+
+          it 'increments the upstream_type_error StatsD metric' do
+            get '/mobile/v1/health/rx/prescriptions', headers: sis_headers
+
+            expect(StatsD).to have_received(:increment).with(
+              'mobile.prescriptions.upstream_type_error',
+              tags: array_including('service:mobile-prescriptions')
+            )
+          end
+        end
+
+        context 'when an unrelated TypeError occurs' do
+          before do
+            allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_prescriptions)
+              .and_raise(TypeError, 'no implicit conversion of Symbol into Integer')
+          end
+
+          it 'returns 502 upstream error since any TypeError in fetch is upstream-related' do
+            get '/mobile/v1/health/rx/prescriptions', headers: sis_headers
+
+            expect(response).to have_http_status(:bad_gateway)
+            error = response.parsed_body['errors']&.first
+            expect(error['code']).to eq('MOBL_502_upstream_error')
+          end
+        end
+
+        context 'when UHD service raises BackendServiceException' do
+          before do
+            allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_prescriptions)
+              .and_raise(Common::Exceptions::BackendServiceException, 'MOBL_502_upstream_error')
+          end
+
+          it 'returns 502 upstream error' do
+            get '/mobile/v1/health/rx/prescriptions', headers: sis_headers
+
+            expect(response).to have_http_status(:bad_gateway)
+            error = response.parsed_body['errors']&.first
+            expect(error['code']).to eq('MOBL_502_upstream_error')
+          end
+        end
       end
     end
   end

@@ -13,6 +13,8 @@ module Mobile
       before_action { authorize :mhv_prescriptions, :access? }
       before_action :validate_feature_flag
 
+      # Returns paginated, filtered prescriptions for the authenticated user.
+      # Excludes Non-VA (NV) meds from the response data but reports their presence in meta.
       def index
         all_prescriptions = fetch_prescriptions
         pruned = filtered_prescriptions(all_prescriptions)
@@ -31,6 +33,8 @@ module Mobile
         raise Common::Exceptions::BackendServiceException, 'MOBL_502_upstream_error'
       end
 
+      # Submits a batch refill request for the given prescription orders.
+      # Orders targeting OH-transition-blocked facilities are partitioned out and reported as failures.
       def refill
         parsed_orders = orders
         track_refills_requested_by_station(parsed_orders)
@@ -66,6 +70,25 @@ module Mobile
         @unified_health_service ||= UnifiedHealthData::Service.new(@current_user)
       end
 
+      def log_upstream_type_error(action, error)
+        monitor.track_request(
+          :error,
+          'TypeError from upstream identity resolution',
+          'mobile.prescriptions.upstream_type_error',
+          call_location: error.backtrace_locations&.first,
+          action:,
+          error_class: error.class.name,
+          error_message: error.message
+        )
+      end
+
+      def monitor
+        @monitor ||= Logging::Monitor.new(
+          'mobile-prescriptions',
+          allowlist: %i[action error_class error_message]
+        )
+      end
+
       def increment_uhd_refill(count)
         StatsD.increment("#{UnifiedHealthData::Service::STATSD_KEY_PREFIX}.refills.requested", count,
                          tags: ["source_app:#{request.env['SOURCE_APP']}"])
@@ -87,6 +110,9 @@ module Mobile
 
       def fetch_prescriptions
         unified_health_service.get_prescriptions(current_only: true)[:prescriptions]
+      rescue TypeError => e
+        log_upstream_type_error('fetch_prescriptions', e)
+        raise Common::Exceptions::BackendServiceException, 'MOBL_502_upstream_error'
       end
 
       def filtered_prescriptions(list)
