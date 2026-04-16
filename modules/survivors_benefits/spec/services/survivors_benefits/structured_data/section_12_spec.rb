@@ -7,7 +7,7 @@ RSpec.describe SurvivorsBenefits::StructuredData::Section12 do
   describe '#build_section12' do
     it 'merges the correct fields for claim certification with a signed date' do
       form = {
-        'claimantSignature' => 'John Doe',
+        'claimantFullName' => { 'first' => 'John', 'last' => 'Doe' },
         'dateSigned' => '2024-01-01'
       }
       service = SurvivorsBenefits::StructuredData::StructuredDataService.new(form)
@@ -23,7 +23,7 @@ RSpec.describe SurvivorsBenefits::StructuredData::Section12 do
 
     it 'merges the correct fields for claim certification without a signed date' do
       form = {
-        'claimantSignature' => 'John Doe'
+        'claimantFullName' => { 'first' => 'John', 'last' => 'Doe' }
       }
       service = SurvivorsBenefits::StructuredData::StructuredDataService.new(form)
       service.build_section12
