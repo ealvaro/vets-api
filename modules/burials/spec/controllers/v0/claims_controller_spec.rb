@@ -105,18 +105,18 @@ RSpec.describe Burials::V0::ClaimsController, type: :request do
           let(:user) { create(:user, :loa3) }
           let(:mpi_profile) { build(:mpi_profile) }
           let(:mpi_response) { build(:find_profile_response, profile: mpi_profile) }
-          let(:participant_id) { mpi_profile.participant_id }
-          let(:encrypted_payload) { KmsEncrypted::Box.new.encrypt({ participant_id: }.to_json) }
+          let(:mpi_service) { MPI::Service.new }
 
           before do
             sign_in_as(user)
-            allow_any_instance_of(MPI::Service).to receive(:find_profile_by_identifier)
-              .with(identifier: user.icn, identifier_type: MPI::Constants::ICN)
-              .and_return(mpi_response)
+            allow(MPI::Service).to receive(:new).and_return(mpi_service)
           end
 
           it 'submits to BPDS with participant_id from MPI' do
-            expect(BPDS::Sidekiq::SubmitToBPDSJob).to receive(:perform_async).with(claim.id, encrypted_payload)
+            expect(mpi_service).to receive(:find_profile_by_identifier)
+              .with(identifier: user.icn, identifier_type: MPI::Constants::ICN)
+              .and_return(mpi_response)
+            expect(BPDS::Sidekiq::SubmitToBPDSJob).to receive(:perform_async).with(claim.id, /^v1:insecure\+data\+.+/)
 
             post '/burials/v0/claims', params: { param_name => { form: form_data.to_json } }
 
@@ -143,7 +143,7 @@ RSpec.describe Burials::V0::ClaimsController, type: :request do
 
         post '/burials/v0/claims', params: { param_name => { form: form_data.to_json } }
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
 
       it 'does not process attachments' do

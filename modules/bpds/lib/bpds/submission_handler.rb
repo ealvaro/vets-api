@@ -8,7 +8,7 @@ module BPDS
   # Provides BPDS integration for claim submissions.
   #
   # This concern handles:
-  # - User identifier lookup (participant_id or file_number) via MPI or BGS
+  # - User identifier lookup via MPI or BGS
   # - Encrypted payload creation for BPDS submissions
   # - Asynchronous job queueing for BPDS processing
   # - Comprehensive monitoring and logging of the submission process
@@ -19,7 +19,7 @@ module BPDS
   #
   #     def create
   #       claim = create_claim(params)
-  #       submit_claim_to_bpds(claim) if claim.save
+  #       submit_claim_to_bpds(claim.id, current_user) if claim.save
   #     end
   #   end
   #
@@ -35,17 +35,25 @@ module BPDS
     # 3. Encrypts the payload for secure transmission
     # 4. Queues the BPDS submission job
     #
-    # @param claim [SavedClaim] The saved claim to submit to BPDS
+    # @param claim_id [Integer] The saved claim id to submit to BPDS
+    # @param target_user [User] the user whose identifiers should be sent; default `current_user`
+    #
     # @return [Boolean] true if submission was queued, false otherwise
-    def submit_claim_to_bpds(claim)
+    def submit_claim_to_bpds(claim_id, target_user = nil)
       return false unless Flipper.enabled?(:bpds_service_enabled)
 
-      claim_id = claim.id
       bpds_monitor.track_service_begun(claim_id)
 
-      payload = retrieve_user_identifier_for_bpds
+      @user = target_user || current_user
+      payload = {
+        participant_id: user.try(:participant_id),
+        file_number: user.try(:ssn),
+        ssn: user.try(:ssn),
+        icn: user.try(:icn),
+        edipi: user.try(:edipi)
+      }.merge(retrieve_user_identifier_for_bpds || {}).compact_blank
 
-      if payload.nil? || (payload[:participant_id].blank? && payload[:file_number].blank?)
+      if payload.blank? # no identifiers could be found from any source
         bpds_monitor.track_skip_bpds_job(claim_id)
         return false
       end
@@ -59,6 +67,13 @@ module BPDS
 
     private
 
+    # retrieve the `user` for this instance, assigned when calling `submit_claim_to_bpds`
+    # or using the `current_user` of the controller
+    # @see SignIn::UserLoader app/services/sign_in/user_loader.rb
+    def user
+      @user ||= current_user
+    end
+
     ##
     # Retrieves user identifier (participant_id or file_number) for BPDS submission.
     #
@@ -70,9 +85,9 @@ module BPDS
     # @return [Hash, nil] Hash with :participant_id or :file_number key, or nil if not found
     #
     def retrieve_user_identifier_for_bpds
-      if current_user&.loa3?
+      if user&.loa3?
         retrieve_identifier_from_mpi
-      elsif current_user&.loa&.dig(:current).try(:to_i) == LOA::ONE
+      elsif user&.loa&.dig(:current).try(:to_i) == LOA::ONE
         bpds_monitor.track_get_user_identifier('loa1')
         retrieve_identifier_from_bgs
       else
@@ -87,17 +102,19 @@ module BPDS
     # @return [Hash, nil] Hash with :participant_id key or nil
     #
     def retrieve_identifier_from_mpi
+      return nil if user.nil?
+
       bpds_monitor.track_get_user_identifier('loa3')
 
       response = MPI::Service.new.find_profile_by_identifier(
-        identifier: current_user.icn,
+        identifier: user&.icn,
         identifier_type: MPI::Constants::ICN
       )
 
       participant_id = response.profile&.participant_id
       bpds_monitor.track_get_user_identifier_result('mpi', participant_id.present?)
 
-      participant_id.present? ? { participant_id: } : nil
+      { participant_id:, ssn: response.profile&.ssn, edipi: response.profile&.edipi }.compact_blank
     end
 
     ##
@@ -110,17 +127,17 @@ module BPDS
     # @return [Hash, nil] Hash with :participant_id or :file_number key, or nil if not found
     #
     def retrieve_identifier_from_bgs
-      return nil if current_user.nil?
+      return nil if user.nil?
 
-      response = BGS::People::Request.new.find_person_by_participant_id(user: current_user)
+      response = BGS::People::Request.new.find_person_by_participant_id(user:)
+
+      participant_id = response.participant_id
       bpds_monitor.track_get_user_identifier_result('bgs', response.participant_id.present?)
-
-      return { participant_id: response.participant_id } if response.participant_id.present?
 
       file_number = response.file_number
       bpds_monitor.track_get_user_identifier_file_number_result(file_number.present?)
 
-      file_number.present? ? { file_number: } : nil
+      { participant_id:, file_number:, ssn: response.ssn_number }.compact_blank
     end
 
     ##

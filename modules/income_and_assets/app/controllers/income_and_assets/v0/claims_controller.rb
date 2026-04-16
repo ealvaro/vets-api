@@ -53,7 +53,7 @@ module IncomeAndAssets
         end
 
         # See BPDS::SubmissionHandler
-        submit_claim_to_bpds(claim) if Flipper.enabled?(:income_and_assets_bpds_service_enabled)
+        submit_claim_to_bpds(claim.id, current_user) if Flipper.enabled?(:income_and_assets_bpds_service_enabled)
 
         process_attachments(in_progress_form, claim)
 

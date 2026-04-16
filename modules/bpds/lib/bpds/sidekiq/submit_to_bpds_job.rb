@@ -42,7 +42,7 @@ module BPDS
       # Submits a saved claim to the BPDS service if the feature is enabled.
       #
       # @param saved_claim_id [Integer] The ID of the saved claim to be submitted.
-      # @param encrypted_payload [String] The encrypted JSON payload containing participant and file information.
+      # @param encrypted_payload [String] The encrypted JSON payload containing user identifiers.
       # @return [nil] Returns nil if the BPDS service feature is disabled.
       #
       # The method performs the following steps:
@@ -63,9 +63,9 @@ module BPDS
 
         begin
           # Submit the BPDS submission to the BPDS service
-          payload = JSON.parse(KmsEncrypted::Box.new.decrypt(encrypted_payload))
-          response = BPDS::Service.new.submit_json(format_claim_form(@saved_claim), @saved_claim.form_id,
-                                                   payload['participant_id'], payload['file_number'])
+          identifiers = JSON.parse(KmsEncrypted::Box.new.decrypt(encrypted_payload))
+
+          response = BPDS::Service.new.submit_json(format_claim_form(@saved_claim), @saved_claim.form_id, identifiers)
           bpds_uuid = response['uuid']
           @bpds_submission.submission_attempts.create(status: 'submitted', response: response.to_json,
                                                       bpds_id: bpds_uuid)

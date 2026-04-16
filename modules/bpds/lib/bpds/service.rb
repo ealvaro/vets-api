@@ -31,12 +31,11 @@ module BPDS
     #
     # @param formatted_claim_form [Hash] The formatted claim form data to be submitted.
     # @param form_id [String] The form ID associated with the claim.
-    # @param participant_id [String, nil] The participant ID to be included in the payload (optional).
-    # @param file_number [String, nil] The file number to be included in the payload (optional).
+    # @param identifiers [Hash] The user identifiers to be included in the payload.
     # @return [String] The response body from the submission
     # @raise [StandardError] If an error occurs during submission.
-    def submit_json(formatted_claim_form, form_id, participant_id = nil, file_number = nil)
-      payload = default_payload(formatted_claim_form, form_id, participant_id, file_number)
+    def submit_json(formatted_claim_form, form_id, identifiers)
+      payload = default_payload(formatted_claim_form, form_id, identifiers)
       response = perform(:post, '', payload.to_json, headers)
 
       response.body
@@ -89,17 +88,20 @@ module BPDS
     # - 'payloadNamespace' is determined by the bpds_namespace method using the claim's form_id.
     # - 'participantId' is included if provided, representing the user's participant ID.
     # - 'fileNumber' is included if provided, representing the user's file number.
+    # - 'ssn' is included if provided, representing the user's SSN.
+    # - 'icn' is included if provided, representing the user's ICN.
+    # - 'edipi' is included if provided, representing the user's EDIPI.
     # - 'payload' contains the parsed form data from the claim.
-    def default_payload(formatted_claim_form, form_id, participant_id = nil, file_number = nil)
-      {
-        'bpd' => {
-          'sensitivityLevel' => 0,
-          'payloadNamespace' => bpds_namespace(form_id),
-          'participantId' => participant_id,
-          'fileNumber' => file_number,
-          'payload' => formatted_claim_form
-        }
-      }
+    def default_payload(formatted_claim_form, form_id, identifiers)
+      bpd = { 'participantId' => nil, 'fileNumber' => nil } # ensure these fields are included, even if not populated
+      bpd = bpd.merge(identifiers.transform_keys { |key| key.to_s.camelize(:lower) })
+      bpd = bpd.merge({
+                        'sensitivityLevel' => 0,
+                        'payloadNamespace' => bpds_namespace(form_id),
+                        'payload' => formatted_claim_form
+                      })
+
+      { 'bpd' => bpd }
     end
 
     ##

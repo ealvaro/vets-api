@@ -26,22 +26,11 @@ RSpec.describe BPDS::Service do
   end
 
   describe '#submit_json' do
-    context 'when participant_id is provided' do
-      it 'returns the response body' do
-        expect(service).to receive(:perform).with(:post, '', anything, anything).and_return(response)
+    it 'returns the response body' do
+      expect(service).to receive(:perform).with(:post, '', anything, anything).and_return(response)
 
-        result = service.submit_json(formatted_claim_form, form_id, participant_id, nil)
-        expect(result).to eq('response body')
-      end
-    end
-
-    context 'when file_number is provided' do
-      it 'returns the response body' do
-        expect(service).to receive(:perform).with(:post, '', anything, anything).and_return(response)
-
-        result = service.submit_json(formatted_claim_form, form_id, nil, file_number)
-        expect(result).to eq('response body')
-      end
+      result = service.submit_json(formatted_claim_form, form_id, {})
+      expect(result).to eq('response body')
     end
   end
 
@@ -55,54 +44,27 @@ RSpec.describe BPDS::Service do
   end
 
   describe '#default_payload' do
-    context 'when a participant id is present' do
-      it 'returns the default payload with the participant id' do
-        expected_payload = {
-          'bpd' => {
-            'sensitivityLevel' => 0,
-            'payloadNamespace' => "urn:vets_api:#{form_id}:#{Settings.bpds.schema_version}",
-            'participantId' => participant_id,
-            'fileNumber' => nil,
-            'payload' => formatted_claim_form
-          }
-        }
-        expect(service.send(:default_payload, formatted_claim_form, form_id, participant_id,
-                            nil)).to eq(expected_payload)
-      end
-    end
+    it 'returns the default payload with the participant id' do
+      identifiers = {
+        file_number:,
+        ssn: 'SSN',
+        icn: 'ICN',
+        foo_bar: 'snafu'
+      }
 
-    context 'when a file number is present' do
-      it 'returns the default payload with the file number' do
-        expected_payload = {
-          'bpd' => {
-            'sensitivityLevel' => 0,
-            'payloadNamespace' => "urn:vets_api:#{form_id}:#{Settings.bpds.schema_version}",
-            'participantId' => nil,
-            'fileNumber' => file_number,
-            'payload' => formatted_claim_form
-          }
+      expected_payload = {
+        'bpd' => {
+          'participantId' => nil,
+          'fileNumber' => file_number,
+          'ssn' => 'SSN',
+          'icn' => 'ICN',
+          'fooBar' => 'snafu',
+          'sensitivityLevel' => 0,
+          'payloadNamespace' => "urn:vets_api:#{form_id}:#{Settings.bpds.schema_version}",
+          'payload' => formatted_claim_form
         }
-        expect(service.send(:default_payload, formatted_claim_form, form_id, nil, file_number)).to eq(expected_payload)
-      end
-    end
-
-    context 'when formatted data is provided' do
-      let(:formatted_result) { { 'veteranName' => { 'first' => 'John' } } }
-      let(:burial_form_id) { '21P-530EZ' }
-
-      it 'uses the formatted payload in the default_payload' do
-        expected_payload = {
-          'bpd' => {
-            'sensitivityLevel' => 0,
-            'payloadNamespace' => "urn:vets_api:#{burial_form_id}:#{Settings.bpds.schema_version}",
-            'participantId' => participant_id,
-            'fileNumber' => nil,
-            'payload' => formatted_result
-          }
-        }
-        expect(service.send(:default_payload, formatted_result, burial_form_id, participant_id,
-                            nil)).to eq(expected_payload)
-      end
+      }
+      expect(service.send(:default_payload, formatted_claim_form, form_id, identifiers)).to eq(expected_payload)
     end
   end
 

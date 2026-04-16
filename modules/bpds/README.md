@@ -57,10 +57,10 @@ Context:
 
 #### Associating a submission with a unique identifier
 
-About 30% of the users on the pension form are not authenticated.  To ensure that we have a unique identifier for the POI system to automate the submissions, we have determined that we will retrieve either the user's participantId (PID) or file number so it can be included in the submission to BPDS.
+About 30% of the users on the pension form are not authenticated.  To ensure that we have a unique identifier for the POI system to automate the submissions, we have determined that we will retrieve either the user's participantId (PID) or file number so it can be included in the submission to BPDS, along with other common unique identifiers.
 We will use either MPI service or BGS service to retrieve the user's unique identifier.  See [0009-adding-user-identifier-to-bpds-request.md](documentation/adr/0009-adding-user-identifier-to-bpds-request.md) for more details on the logic.
 
-The PID or file number is then included in the payload that is posted to BPDS.  If no PID or file number is found, these submissions will not be sent to BDPS.
+The identifiers are then included in the payload that is posted to BPDS.
 
 #### Claim ID's and tracking status of submissions
 The goal of this project is to have POI automate pension claim approvals.  MAS will continue to create claimID's for submissions that are sent to Lighthouse.  We need a way to link these submissions back to the JSON that has been posted to BDPS, since the POI system relies on the claim ID to process submissions.

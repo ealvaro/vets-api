@@ -35,7 +35,7 @@ RSpec.describe BPDS::SubmissionHandler do
 
       it 'returns false without submitting' do
         expect(BPDS::Sidekiq::SubmitToBPDSJob).not_to receive(:perform_async)
-        expect(controller.submit_claim_to_bpds(claim)).to be false
+        expect(controller.submit_claim_to_bpds(claim.id)).to be false
       end
     end
 
@@ -45,7 +45,7 @@ RSpec.describe BPDS::SubmissionHandler do
       it 'tracks skip event and returns false' do
         expect(bpds_monitor).to receive(:track_service_begun).with(claim.id)
         expect(bpds_monitor).to receive(:track_skip_bpds_job).with(claim.id)
-        expect(controller.submit_claim_to_bpds(claim)).to be false
+        expect(controller.submit_claim_to_bpds(claim.id)).to be false
       end
     end
 
@@ -63,7 +63,7 @@ RSpec.describe BPDS::SubmissionHandler do
         expect(bpds_monitor).to receive(:track_service_begun).with(claim.id)
         expect(bpds_monitor).to receive(:track_submit_begun).with(claim.id)
         expect(BPDS::Sidekiq::SubmitToBPDSJob).to receive(:perform_async).with(claim.id, 'encrypted')
-        expect(controller.submit_claim_to_bpds(claim)).to be true
+        expect(controller.submit_claim_to_bpds(claim.id)).to be true
       end
     end
 
@@ -81,7 +81,7 @@ RSpec.describe BPDS::SubmissionHandler do
         expect(bpds_monitor).to receive(:track_service_begun).with(claim.id)
         expect(bpds_monitor).to receive(:track_submit_begun).with(claim.id)
         expect(BPDS::Sidekiq::SubmitToBPDSJob).to receive(:perform_async).with(claim.id, 'encrypted')
-        expect(controller.submit_claim_to_bpds(claim)).to be true
+        expect(controller.submit_claim_to_bpds(claim.id)).to be true
       end
     end
   end
@@ -90,19 +90,20 @@ RSpec.describe BPDS::SubmissionHandler do
     let(:user) { build(:user, :loa3, icn: '1008596379V859838') }
 
     it 'returns participant_id when found' do
-      mpi_response = build(:find_profile_response, profile: build(:mpi_profile, participant_id: '600123456'))
+      mpi_profile = build(:mpi_profile, participant_id: '600123456')
+      mpi_response = build(:find_profile_response, profile: mpi_profile)
       allow(MPI::Service).to receive(:new).and_return(double(find_profile_by_identifier: mpi_response))
 
       result = controller.send(:retrieve_identifier_from_mpi)
-      expect(result).to eq({ participant_id: '600123456' })
+      expect(result).to eq({ participant_id: '600123456', ssn: mpi_profile.ssn, edipi: mpi_profile.edipi })
     end
 
-    it 'returns nil when not found' do
-      mpi_response = build(:find_profile_response, profile: build(:mpi_profile, participant_id: nil))
+    it 'returns empty hash when no profile found' do
+      mpi_response = build(:find_profile_response, profile: nil)
       allow(MPI::Service).to receive(:new).and_return(double(find_profile_by_identifier: mpi_response))
 
       result = controller.send(:retrieve_identifier_from_mpi)
-      expect(result).to be_nil
+      expect(result).to eq({})
     end
   end
 
@@ -130,12 +131,12 @@ RSpec.describe BPDS::SubmissionHandler do
         expect(result).to eq({ file_number: '987654321' })
       end
 
-      it 'returns nil when neither found' do
+      it 'returns empty hash when none found' do
         bgs_response = BGS::People::Response.new({})
         allow(BGS::People::Request).to receive(:new).and_return(double(find_person_by_participant_id: bgs_response))
 
         result = controller.send(:retrieve_identifier_from_bgs)
-        expect(result).to be_nil
+        expect(result).to eq({})
       end
     end
   end

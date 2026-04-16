@@ -38,7 +38,7 @@ RSpec.describe Swagger::Requests::IncomeAndAssetsClaims, type: %i[request serial
 
       it 'shows the validation errors' do
         subject
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
 
         expect(
           JSON.parse(response.body)['errors'][0]['detail'].include?(

@@ -50,7 +50,8 @@ RSpec.describe BPDS::Sidekiq::SubmitToBPDSJob, type: :job do
         it 'submits the BPDS submission and creates a successful attempt' do
           described_class.new.perform(claim.id, encrypted_payload)
 
-          expect(service).to have_received(:submit_json).with(claim.parsed_form, claim.form_id, participant_id, nil)
+          identifiers = { 'participant_id' => participant_id }
+          expect(service).to have_received(:submit_json).with(claim.parsed_form, claim.form_id, identifiers)
           expect(bpds_submission.submission_attempts).to have_received(:create).with(
             status: 'submitted',
             response: response.to_json,
@@ -64,7 +65,30 @@ RSpec.describe BPDS::Sidekiq::SubmitToBPDSJob, type: :job do
         it 'submits the BPDS submission and creates a successful attempt' do
           described_class.new.perform(claim.id, encrypted_payload_file_number)
 
-          expect(service).to have_received(:submit_json).with(claim.parsed_form, claim.form_id, nil, file_number)
+          identifiers = { 'file_number' => file_number }
+          expect(service).to have_received(:submit_json).with(claim.parsed_form, claim.form_id, identifiers)
+          expect(bpds_submission.submission_attempts).to have_received(:create).with(
+            status: 'submitted',
+            response: response.to_json,
+            bpds_id: response['uuid']
+          )
+          expect(monitor).to have_received(:track_submit_success).with(claim.id, response['uuid'])
+        end
+      end
+
+      context 'and other identifiers are provided' do
+        it 'submits the BPDS submission and creates a successful attempt' do
+          identifiers = {
+            file_number:,
+            ssn: 'SSN',
+            icn: 'ICN',
+            foo_bar: 'snafu'
+          }.stringify_keys
+          encrypted = KmsEncrypted::Box.new.encrypt(identifiers.to_json)
+
+          described_class.new.perform(claim.id, encrypted)
+
+          expect(service).to have_received(:submit_json).with(claim.parsed_form, claim.form_id, identifiers)
           expect(bpds_submission.submission_attempts).to have_received(:create).with(
             status: 'submitted',
             response: response.to_json,
@@ -134,7 +158,9 @@ RSpec.describe BPDS::Sidekiq::SubmitToBPDSJob, type: :job do
 
         expect(formatter_class).to have_received(:new).with(burial_claim.parsed_form)
         expect(formatter).to have_received(:format)
-        expect(service).to have_received(:submit_json).with(formatted_data, '21P-530EZ', participant_id, nil)
+
+        identifiers = { 'participant_id' => participant_id }
+        expect(service).to have_received(:submit_json).with(formatted_data, '21P-530EZ', identifiers)
       end
     end
 
@@ -142,7 +168,8 @@ RSpec.describe BPDS::Sidekiq::SubmitToBPDSJob, type: :job do
       it 'uses the parsed_form directly' do
         described_class.new.perform(claim.id, encrypted_payload)
 
-        expect(service).to have_received(:submit_json).with(claim.parsed_form, claim.form_id, participant_id, nil)
+        identifiers = { 'participant_id' => participant_id }
+        expect(service).to have_received(:submit_json).with(claim.parsed_form, claim.form_id, identifiers)
       end
     end
   end
