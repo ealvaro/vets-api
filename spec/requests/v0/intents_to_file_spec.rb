@@ -107,13 +107,21 @@ RSpec.describe 'V0::IntentsToFile', type: :request do
       end
 
       context 'when Lighthouse returns a server error' do
-        it 'raises the error' do
+        it 'logs and raises the error' do
           allow_any_instance_of(BenefitsClaims::Service).to receive(:get_intent_to_file)
             .and_raise(Common::Exceptions::ExternalServerInternalServerError.new)
+          allow(Rails.logger).to receive(:error)
 
           get '/v0/intents_to_file'
 
           expect(response).to have_http_status(:internal_server_error)
+          expect(Rails.logger).to have_received(:error).with(
+            'IntentsToFileController error fetching ITFs',
+            hash_including(
+              error_class: 'Common::Exceptions::ExternalServerInternalServerError',
+              error_message: 'Internal server error'
+            )
+          )
         end
 
         it 'increments the error metric' do

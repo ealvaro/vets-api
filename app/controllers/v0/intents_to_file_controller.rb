@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'concurrent-ruby'
 require 'lighthouse/benefits_claims/service'
 
 module V0
@@ -39,12 +40,24 @@ module V0
     # Temporary: fetches ITFs per type individually because Lighthouse currently only returns
     # the last active ITF for a single type. A change request has been submitted to Lighthouse
     # to support retrieving all ITFs in a single call.
+    #
+    # Requests run in parallel (scatter-gather) to reduce total latency; each future
+    # instantiates its own BenefitsClaims::Service to avoid sharing instance state.
     def fetch_all_itfs
-      TYPES.flat_map { |type| fetch_itf_for_type(type) }
+      icn = @current_user.icn
+
+      futures = TYPES.map do |type|
+        Concurrent::Promises.future { fetch_itf_for_type(icn, type) }
+      end
+      # Wait for every type to finish and raise if any future failed
+      Concurrent::Promises.zip(*futures).value!.flatten
+    rescue Concurrent::MultipleErrors => e
+      # Several types can fail at once; surface one exception for consistent API / error handling
+      raise e.errors.first
     end
 
-    def fetch_itf_for_type(type)
-      response = service.get_intent_to_file(type, nil, nil)
+    def fetch_itf_for_type(icn, type)
+      response = BenefitsClaims::Service.new(icn).get_intent_to_file(type, nil, nil)
       data = response&.dig('data')
 
       return [] unless data
@@ -70,10 +83,6 @@ module V0
         StatsD.increment("#{STATSD_KEY_PREFIX}.fetch",
                          tags: STATSD_TAGS + ["type:#{itf[:type]}", "status:#{itf[:status]}"])
       end
-    end
-
-    def service
-      @service ||= BenefitsClaims::Service.new(@current_user.icn)
     end
   end
 end
