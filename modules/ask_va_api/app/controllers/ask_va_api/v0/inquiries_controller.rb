@@ -5,7 +5,7 @@ module AskVAApi
     class InquiriesController < ApplicationController
       around_action :handle_exceptions
       before_action :require_loa3!, except: %i[unauth_create status]
-      before_action :validate_inquiry_id_format, only: %i[show status create_reply]
+      before_action :validate_inquiry_id_format, only: %i[status] # We can add back show and create_reply later
       skip_before_action :authenticate, only: %i[unauth_create status]
 
       def index
@@ -108,7 +108,7 @@ module AskVAApi
         raise Common::Exceptions::Unauthorized unless current_user&.loa&.fetch(:current, nil) == 3
       end
 
-      INQUIRY_ID_FORMAT = /\AA-[0-9]{8}-[0-9]{6}\z/
+      INQUIRY_ID_FORMAT = /\AA-[0-9]{8}-[0-9]{6,7}\z/
 
       # Validates that params[:id] follows the known inquiry ID format "A-YYYYMMDD-NNNNNN".
       def validate_inquiry_id_format

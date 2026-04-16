@@ -339,25 +339,6 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
                         ',"ExceptionOccurred":true,"ExceptionMessage":"Data Validation: No Inquiries found by ' \
                         'ID A-20240423-307090","MessageId":"ca5b990a-63fe-407d-a364-46caffce12c1"}'
       end
-
-      context 'when the id format is invalid' do
-        before do
-          sign_in(authorized_user)
-        end
-
-        %w[invalid 12345 A-1234567-123456 A-12345678-12345 A12345678123456].each do |bad_id|
-          it "returns bad_request for '#{bad_id}'" do
-            get "#{inquiry_path}/#{bad_id}"
-            expect(response).to have_http_status(:bad_request)
-            expect(JSON.parse(response.body)['error']).to include('Invalid inquiry ID format')
-          end
-        end
-
-        it 'returns ok for a valid format' do
-          get "#{inquiry_path}/#{valid_id}", params: { user_mock_data: true }
-          expect(response).to have_http_status(:ok)
-        end
-      end
     end
 
     it_behaves_like 'an endpoint requiring loa3', :get, '/ask_va_api/v0/inquiries/A-12345678-123456',
@@ -510,7 +491,7 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
     end
 
     context 'when the id format is invalid' do
-      %w[invalid 12345 A-1234567-123456 A-12345678-12345 A12345678123456].each do |bad_id|
+      %w[invalid 12345 A-1234567-123456 A-12345678-12345 A-12345678-12345678 A12345678123456].each do |bad_id|
         it "returns bad_request for '#{bad_id}'" do
           get "/ask_va_api/v0/inquiries/#{bad_id}/status"
           expect(response).to have_http_status(:bad_request)
@@ -824,20 +805,6 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
                         '{"Data":null,"Message":"Data Validation: Missing Reply"' \
                         ',"ExceptionOccurred":true,"ExceptionMessage":"Data Validation: ' \
                         'Missing Reply","MessageId":"e2cbe041-df91-41f4-8bd2-8b6d9dbb2e38"}'
-      end
-    end
-
-    context 'when the id format is invalid' do
-      before do
-        sign_in(authorized_user)
-      end
-
-      %w[invalid 12345 A-1234567-123456 A-12345678-12345 A12345678123456].each do |bad_id|
-        it "returns bad_request for '#{bad_id}'" do
-          post "/ask_va_api/v0/inquiries/#{bad_id}/reply/new", params: payload
-          expect(response).to have_http_status(:bad_request)
-          expect(JSON.parse(response.body)['error']).to include('Invalid inquiry ID format')
-        end
       end
     end
 
