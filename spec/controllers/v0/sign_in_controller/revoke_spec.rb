@@ -27,7 +27,8 @@ RSpec.describe V0::SignInController, '#revoke', type: :controller do
       let(:expected_error_json) { { 'errors' => expected_error } }
       let(:statsd_revoke_failure) { SignIn::Constants::Statsd::STATSD_SIS_REVOKE_FAILURE }
       let(:expected_error_log) { '[SignInService] [V0::SignInController] revoke error' }
-      let(:expected_error_context) { { errors: expected_error.to_s } }
+      let(:expected_error_context) { { errors: expected_error.to_s, error_code: } }
+      let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
 
       before { allow(Rails.logger).to receive(:info) }
 

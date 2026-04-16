@@ -51,6 +51,7 @@ RSpec.describe V0::SignInController, '#authorize', type: :controller do
       let(:expected_error_log) { '[SignInService] [V0::SignInController] authorize error' }
       let(:expected_error_message) do
         { errors: expected_error,
+          error_code:,
           client_id: client_id_value,
           type: type_value,
           acr: acr_value,
@@ -96,6 +97,7 @@ RSpec.describe V0::SignInController, '#authorize', type: :controller do
       let(:expected_error_log) { '[SignInService] [V0::SignInController] authorize error' }
       let(:expected_error_message) do
         { errors: expected_error,
+          error_code:,
           client_id: client_id_value,
           type: type_value,
           acr: acr_value,

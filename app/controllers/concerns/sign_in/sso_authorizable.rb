@@ -93,7 +93,7 @@ module SignIn
     end
 
     def log_authorize_sso_success
-      sign_in_logger.info('authorize sso', **authorize_sso_log_params)
+      sign_in_logger.info('authorize sso', authorize_sso_log_params)
       StatsD.increment(Constants::Statsd::STATSD_SIS_AUTHORIZE_SSO_SUCCESS, tags: authorize_sso_statsd_tags)
     end
 
@@ -104,7 +104,7 @@ module SignIn
                      Constants::Statsd::STATSD_SIS_AUTHORIZE_SSO_FAILURE
                    end
 
-      sign_in_logger.info("authorize sso #{handler}", error: error.message, **authorize_sso_log_params)
+      sign_in_logger.error("authorize sso #{handler}", exception: error, context: authorize_sso_log_params)
       StatsD.increment(statsd_key, tags: authorize_sso_statsd_tags)
     end
 

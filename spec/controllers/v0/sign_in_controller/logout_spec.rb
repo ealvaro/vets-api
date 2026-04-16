@@ -31,9 +31,10 @@ RSpec.describe V0::SignInController, '#logout', type: :controller do
     shared_context 'error response' do
       let(:statsd_failure) { SignIn::Constants::Statsd::STATSD_SIS_LOGOUT_FAILURE }
       let(:expected_error_log) { '[SignInService] [V0::SignInController] logout error' }
-      let(:expected_error_context) { { errors: expected_error_message, client_id: client_id_value } }
+      let(:expected_error_context) { { errors: expected_error_message, error_code:, client_id: client_id_value } }
       let(:expected_error_status) { :bad_request }
       let(:expected_error_json) { { 'errors' => expected_error_message } }
+      let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
 
       it 'renders expected error' do
         expect(JSON.parse(subject.body)).to eq(expected_error_json)
@@ -56,7 +57,8 @@ RSpec.describe V0::SignInController, '#logout', type: :controller do
     shared_context 'authorization error response' do
       let(:statsd_failure) { SignIn::Constants::Statsd::STATSD_SIS_LOGOUT_FAILURE }
       let(:expected_error_log) { '[SignInService] [V0::SignInController] logout error' }
-      let(:expected_error_context) { { errors: expected_error_message, client_id: client_id_value } }
+      let(:expected_error_context) { { errors: expected_error_message, error_code:, client_id: client_id_value } }
+      let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
 
       it 'triggers statsd increment for failed call' do
         expect { subject }.to trigger_statsd_increment(statsd_failure)
@@ -211,6 +213,7 @@ RSpec.describe V0::SignInController, '#logout', type: :controller do
 
       context 'and the access token is expired' do
         let(:expiration_time) { Time.zone.now - SignIn::Constants::AccessToken::VALIDITY_LENGTH_SHORT_MINUTES }
+        let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
 
         it 'does not delete the OAuthSession object and clears cookies' do
           expect { subject }.not_to change(SignIn::OAuthSession, :count)
@@ -219,7 +222,8 @@ RSpec.describe V0::SignInController, '#logout', type: :controller do
 
         it 'logs a logout error' do
           expect(Rails.logger).to receive(:info).with('[SignInService] [V0::SignInController] logout error',
-                                                      { errors: expected_error, client_id: client_id_value })
+                                                      { errors: expected_error, error_code:,
+                                                        client_id: client_id_value })
           subject
         end
 

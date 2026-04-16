@@ -71,7 +71,8 @@ RSpec.describe V0::SignInController, '#token', type: :controller do
       let(:expected_error_json) { { 'errors' => expected_error } }
       let(:statsd_token_failure) { SignIn::Constants::Statsd::STATSD_SIS_TOKEN_FAILURE }
       let(:expected_error_log) { '[SignInService] [V0::SignInController] token error' }
-      let(:expected_error_context) { { errors: expected_error.to_s, grant_type: grant_type_value } }
+      let(:expected_error_context) { { errors: expected_error.to_s, error_code:, grant_type: grant_type_value } }
+      let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
 
       it 'renders expected error' do
         expect(JSON.parse(subject.body)).to eq(expected_error_json)

@@ -29,7 +29,8 @@ RSpec.describe V0::SignInController, '#refresh', type: :controller do
       let(:expected_error_json) { { 'errors' => expected_error } }
       let(:statsd_refresh_error) { SignIn::Constants::Statsd::STATSD_SIS_REFRESH_FAILURE }
       let(:expected_error_log) { '[SignInService] [V0::SignInController] refresh error' }
-      let(:expected_error_context) { { errors: expected_error.to_s } }
+      let(:expected_error_context) { { errors: expected_error.to_s, error_code: } }
+      let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
 
       it 'renders expected error' do
         expect(JSON.parse(subject.body)).to eq(expected_error_json)
@@ -272,7 +273,8 @@ RSpec.describe V0::SignInController, '#refresh', type: :controller do
 
     context 'when refresh_token param is not given' do
       let(:expected_error) { 'Refresh token is not defined' }
-      let(:expected_error_json) { { 'errors' => expected_error } }
+      let(:expected_error_json) { { 'errors' => expected_error, error_code: } }
+      let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
       let(:refresh_token_param) { {} }
       let(:refresh_token) { nil }
       let(:expected_error_status) { :bad_request }

@@ -11,7 +11,8 @@ RSpec.describe V0::SignInController, '#revoke_all_sessions', type: :controller d
       let(:expected_error_json) { { 'errors' => expected_error_message } }
       let(:expected_error_status) { :unauthorized }
       let(:expected_error_log) { '[SignInService] [V0::SignInController] revoke all sessions error' }
-      let(:expected_error_context) { { errors: expected_error_message } }
+      let(:expected_error_context) { { errors: expected_error_message, error_code: } }
+      let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
 
       before do
         allow(Rails.logger).to receive(:info)

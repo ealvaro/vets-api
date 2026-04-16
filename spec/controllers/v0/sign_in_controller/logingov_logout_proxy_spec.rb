@@ -18,8 +18,9 @@ RSpec.describe V0::SignInController, '#logingov_logout_proxy', type: :controller
       let(:expected_error_status) { :bad_request }
       let(:expected_error_log) { '[SignInService] [V0::SignInController] logingov_logout_proxy error' }
       let(:expected_error_message) do
-        { errors: expected_error }
+        { errors: expected_error, error_code: }
       end
+      let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
       let(:expected_error) { 'State is not defined' }
 
       before { allow(Rails.logger).to receive(:info) }

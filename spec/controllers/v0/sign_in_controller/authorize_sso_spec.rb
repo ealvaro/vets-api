@@ -62,11 +62,13 @@ RSpec.describe V0::SignInController, '#authorize_sso', type: :controller do
       let(:expected_log_message) { '[SignInService] [V0::SignInController] authorize sso redirect' }
       let(:expected_log_payload) do
         {
-          error: expected_error_message,
+          errors: expected_error_message,
+          error_code:,
           client_id: client_id_param,
           app_name:
         }
       end
+      let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
       let(:expected_statsd_tags) { ["client_id:#{client_id_param}", "app_name:#{app_name}"] }
 
       it 'logs and redirects to USIP' do
@@ -82,11 +84,13 @@ RSpec.describe V0::SignInController, '#authorize_sso', type: :controller do
       let(:expected_log_message) { '[SignInService] [V0::SignInController] authorize sso error' }
       let(:expected_log_payload) do
         {
-          error: expected_error_message,
+          errors: expected_error_message,
+          error_code:,
           client_id: client_id_param.to_s,
           app_name:
         }
       end
+      let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
       let(:expected_statsd_tags) { ["client_id:#{client_id_param}", "app_name:#{app_name}"] }
 
       it 'logs and renders expected error' do

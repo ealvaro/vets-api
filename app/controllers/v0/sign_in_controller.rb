@@ -43,7 +43,7 @@ module V0
       render body: auth_service(type, client_id).render_auth(state:, acr: acr_for_type, operation:),
              content_type: 'text/html'
     rescue => e
-      sign_in_logger.info('authorize error', { errors: e.message, client_id:, type:, acr:, operation: })
+      sign_in_logger.error('authorize error', exception: e, context: { client_id:, type:, acr:, operation: })
       StatsD.increment(SignIn::Constants::Statsd::STATSD_SIS_AUTHORIZE_FAILURE)
       handle_pre_login_error(e, client_id)
     end
@@ -81,7 +81,7 @@ module V0
         acr: state_payload&.acr,
         operation: state_payload&.operation
       }
-      sign_in_logger.info('callback error', error_details.merge(errors: e.message))
+      sign_in_logger.error('callback error', exception: e, context: error_details)
       StatsD.increment(SignIn::Constants::Statsd::STATSD_SIS_CALLBACK_FAILURE,
                        tags: ["type:#{error_details[:type]}",
                               "client_id:#{error_details[:client_id]}",
@@ -101,7 +101,7 @@ module V0
 
       render json: response_body, status: :ok
     rescue SignIn::Errors::StandardError => e
-      sign_in_logger.info('token error', { errors: e.message, grant_type: token_params[:grant_type] })
+      sign_in_logger.error('token error', exception: e, context: { grant_type: token_params[:grant_type] })
       StatsD.increment(SignIn::Constants::Statsd::STATSD_SIS_TOKEN_FAILURE)
       render json: { errors: e }, status: :bad_request
     end
@@ -123,11 +123,11 @@ module V0
 
       render json: serializer_response, status: :ok
     rescue SignIn::Errors::MalformedParamsError => e
-      sign_in_logger.info('refresh error', { errors: e.message })
+      sign_in_logger.error('refresh error', exception: e)
       StatsD.increment(SignIn::Constants::Statsd::STATSD_SIS_REFRESH_FAILURE)
       render json: { errors: e }, status: :bad_request
     rescue SignIn::Errors::StandardError => e
-      sign_in_logger.info('refresh error', { errors: e.message })
+      sign_in_logger.error('refresh error', exception: e)
       StatsD.increment(SignIn::Constants::Statsd::STATSD_SIS_REFRESH_FAILURE)
       render json: { errors: e }, status: :unauthorized
     end
@@ -147,12 +147,12 @@ module V0
 
       render status: :ok
     rescue SignIn::Errors::MalformedParamsError => e
-      sign_in_logger.info('revoke error', { errors: e.message })
+      sign_in_logger.error('revoke error', exception: e)
       StatsD.increment(SignIn::Constants::Statsd::STATSD_SIS_REVOKE_FAILURE)
 
       render json: { errors: e }, status: :bad_request
     rescue SignIn::Errors::StandardError => e
-      sign_in_logger.info('revoke error', { errors: e.message })
+      sign_in_logger.error('revoke error', exception: e)
       StatsD.increment(SignIn::Constants::Statsd::STATSD_SIS_REVOKE_FAILURE)
 
       render json: { errors: e }, status: :unauthorized
@@ -169,7 +169,7 @@ module V0
 
       render status: :ok
     rescue SignIn::Errors::StandardError => e
-      sign_in_logger.info('revoke all sessions error', { errors: e.message })
+      sign_in_logger.error('revoke all sessions error', exception: e)
       StatsD.increment(SignIn::Constants::Statsd::STATSD_SIS_REVOKE_ALL_SESSIONS_FAILURE)
       render json: { errors: e }, status: :unauthorized
     end
@@ -207,13 +207,13 @@ module V0
     rescue SignIn::Errors::LogoutAuthorizationError,
            SignIn::Errors::SessionNotAuthorizedError,
            SignIn::Errors::SessionNotFoundError => e
-      sign_in_logger.info('logout error', { errors: e.message, client_id: })
+      sign_in_logger.error('logout error', exception: e, context: { client_id: })
       StatsD.increment(SignIn::Constants::Statsd::STATSD_SIS_LOGOUT_FAILURE)
       logout_redirect = SignIn::LogoutRedirectGenerator.new(client_config: client_config(client_id)).perform
 
       logout_redirect ? redirect_to(logout_redirect) : render(status: :ok)
     rescue => e
-      sign_in_logger.info('logout error', { errors: e.message, client_id: })
+      sign_in_logger.error('logout error', exception: e, context: { client_id: })
       StatsD.increment(SignIn::Constants::Statsd::STATSD_SIS_LOGOUT_FAILURE)
 
       render json: { errors: e }, status: :bad_request
@@ -227,7 +227,7 @@ module V0
       render body: auth_service(SignIn::Constants::Auth::LOGINGOV).render_logout_redirect(state),
              content_type: 'text/html'
     rescue => e
-      sign_in_logger.info('logingov_logout_proxy error', { errors: e.message })
+      sign_in_logger.error('logingov_logout_proxy error', exception: e)
 
       render json: { errors: e }, status: :bad_request
     end

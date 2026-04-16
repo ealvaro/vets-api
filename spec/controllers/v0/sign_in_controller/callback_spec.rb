@@ -61,9 +61,8 @@ RSpec.describe V0::SignInController, '#callback', type: :controller do
       let(:statsd_callback_failure) { SignIn::Constants::Statsd::STATSD_SIS_CALLBACK_FAILURE }
       let(:expected_error_log) { '[SignInService] [V0::SignInController] callback error' }
       let(:expected_error_message) do
-        { errors: expected_error, client_id:, type:, acr:, operation: }
+        { errors: expected_error, error_code:, client_id:, type:, acr:, operation: }
       end
-      let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
       let(:request_id) { SecureRandom.uuid }
 
       before do
@@ -112,7 +111,9 @@ RSpec.describe V0::SignInController, '#callback', type: :controller do
         let(:expected_error_status) { :ok }
         let(:auth_param) { 'fail' }
         let(:expected_error_log) { '[SignInService] [V0::SignInController] callback error' }
-        let(:expected_error_message) { { errors: expected_error, client_id:, type:, acr:, operation: } }
+        let(:expected_error_message) do
+          { errors: expected_error, error_code:, client_id:, type:, acr:, operation: }
+        end
         let(:request_id) { SecureRandom.uuid }
         let(:meta_refresh_tag) { '<meta http-equiv="refresh" content="0;' }
 
@@ -168,6 +169,7 @@ RSpec.describe V0::SignInController, '#callback', type: :controller do
         let(:code) { {} }
         let(:expected_error) { 'Code is not defined' }
         let(:client_id) { nil }
+        let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
 
         it_behaves_like 'api based error response'
       end
@@ -176,6 +178,7 @@ RSpec.describe V0::SignInController, '#callback', type: :controller do
         let(:state) { {} }
         let(:expected_error) { 'State is not defined' }
         let(:client_id) { nil }
+        let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
 
         it_behaves_like 'api based error response'
       end
@@ -184,6 +187,7 @@ RSpec.describe V0::SignInController, '#callback', type: :controller do
         let(:state_value) { 'some-state' }
         let(:expected_error) { 'State JWT is malformed' }
         let(:client_id) { nil }
+        let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
 
         it_behaves_like 'api based error response'
       end
@@ -194,6 +198,7 @@ RSpec.describe V0::SignInController, '#callback', type: :controller do
         let(:encode_algorithm) { SignIn::Constants::Auth::JWT_ENCODE_ALGORITHM }
         let(:expected_error) { 'State JWT body does not match signature' }
         let(:client_id) { nil }
+        let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
 
         it_behaves_like 'api based error response'
       end

@@ -159,7 +159,7 @@ module SignIn
 
     def handle_error(error_message, error_code, error: nil, new_record: nil, raise_error: true)
       sign_in_logger.info('attribute validator error', { errors: error_message,
-                                                         code: error_code,
+                                                         error_code:,
                                                          credential_uuid:,
                                                          mhv_icn:,
                                                          new_record:,

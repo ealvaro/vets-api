@@ -90,7 +90,7 @@ RSpec.describe SignIn::AttributeValidator do
         let(:expected_error_log) { 'attribute validator error' }
         let(:expected_error_log_payload) do
           { errors: expected_error_message,
-            code: expected_error_code,
+            error_code: expected_error_code,
             credential_uuid: csp_id,
             mhv_icn:,
             new_record:,
@@ -99,7 +99,10 @@ RSpec.describe SignIn::AttributeValidator do
 
         it 'raises the expected error' do
           expect { subject }.to raise_error(expected_error, expected_error_message)
-          expect(sign_in_logger).to have_received(:info).with(expected_error_log, expected_error_log_payload)
+          expect(sign_in_logger).to have_received(:info).with(
+            expected_error_log,
+            hash_including(expected_error_log_payload)
+          )
         end
 
         it 'adds the expected error code to the raised error' do
@@ -153,7 +156,7 @@ RSpec.describe SignIn::AttributeValidator do
           let(:expected_error_code) { SignIn::Constants::ErrorCode::MULTIPLE_MHV_IEN }
           let(:expected_error_log_payload) do
             { errors: expected_error_message,
-              code: expected_error_code,
+              error_code: expected_error_code,
               credential_uuid: csp_id,
               mhv_icn:,
               type: service_name }.compact
@@ -272,12 +275,16 @@ RSpec.describe SignIn::AttributeValidator do
 
           it 'makes a log to rails logger' do
             subject
-            expect(sign_in_logger).to have_received(:info).with(expected_error_log,
-                                                                { errors: expected_error_message,
-                                                                  code: expected_error_code,
-                                                                  credential_uuid: csp_id,
-                                                                  new_record:,
-                                                                  type: service_name })
+            expect(sign_in_logger).to have_received(:info).with(
+              expected_error_log,
+              hash_including(
+                errors: expected_error_message,
+                error_code: expected_error_code,
+                credential_uuid: csp_id,
+                new_record:,
+                type: service_name
+              )
+            )
           end
         end
 
@@ -640,7 +647,7 @@ RSpec.describe SignIn::AttributeValidator do
                 subject
                 expect(sign_in_logger).to have_received(:info).with(expected_error_log,
                                                                     { errors: expected_error_message,
-                                                                      code: SignIn::Constants::ErrorCode::GENERIC_EXTERNAL_ISSUE,
+                                                                      error_code: SignIn::Constants::ErrorCode::GENERIC_EXTERNAL_ISSUE,
                                                                       credential_uuid: csp_id,
                                                                       mhv_icn:,
                                                                       new_record: false,
