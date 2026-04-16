@@ -61,6 +61,7 @@ class SourceAppMiddleware
     '21P-601',
     '25-8832-planning-and-career-guidance',
     '28-1900-chapter-31',
+    '4138-ss',
     '4555-adapted-housing',
     '526EZ-all-claims',
     '5490-edu-benefits',
