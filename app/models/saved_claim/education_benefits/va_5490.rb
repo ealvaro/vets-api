@@ -23,16 +23,20 @@ class SavedClaim::EducationBenefits::VA5490 < SavedClaim::EducationBenefits
                 'The Fry Scholarship (Chapter 33)'
               end
 
-    VANotify::EmailJob.perform_async(
-      email,
-      Settings.vanotify.services.va_gov.template_id.form5490_confirmation_email,
-      {
-        'first_name' => parsed_form.dig('relativeFullName', 'first')&.upcase.presence,
-        'benefit' => benefit,
-        'date_submitted' => Time.zone.today.strftime('%B %d, %Y'),
-        'confirmation_number' => education_benefits_claim.confirmation_number,
-        'regional_office_address' => regional_office_address
-      }
-    )
+    personalisation = {
+      'first_name' => parsed_form.dig('relativeFullName', 'first')&.upcase.presence,
+      'benefit' => benefit,
+      'date_submitted' => Time.zone.today.strftime('%B %d, %Y'),
+      'confirmation_number' => education_benefits_claim.confirmation_number,
+      'regional_office_address' => regional_office_address
+    }
+
+    template_id = Settings.vanotify.services.va_gov.template_id.form5490_confirmation_email
+
+    if Flipper.enabled?(:va_notify_v2_form5490_confirmation_email)
+      VANotify::V2::QueueEmailJob.enqueue(email, template_id, personalisation, API_KEY_PATH)
+    else
+      VANotify::EmailJob.perform_async(email, template_id, personalisation)
+    end
   end
 end

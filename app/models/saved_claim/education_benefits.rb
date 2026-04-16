@@ -3,6 +3,8 @@
 require 'education_benefits_claims/notification_email'
 
 class SavedClaim::EducationBenefits < SavedClaim
+  API_KEY_PATH = 'Settings.vanotify.services.va_gov.api_key'
+
   has_one(:education_benefits_claim, foreign_key: 'saved_claim_id', inverse_of: :saved_claim, dependent: :destroy)
 
   validates(:education_benefits_claim, presence: true)
@@ -66,12 +68,11 @@ class SavedClaim::EducationBenefits < SavedClaim
 
     begin
       if Flipper.enabled?(:va_notify_v2_edu_benefits_confirmation_email)
-        api_key_path = 'Settings.vanotify.services.va_gov.api_key'
         VANotify::V2::QueueEmailJob.enqueue(
           email,
           template_id,
           all_params,
-          api_key_path,
+          API_KEY_PATH,
           callback_options
         )
       else

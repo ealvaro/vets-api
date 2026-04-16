@@ -3034,6 +3034,10 @@ features:
     description: >-
       If enabled, VA1995#send_confirmation_email will use VANotify::V2::QueueEmailJob
       instead of VANotify::EmailJob
+  va_notify_v2_form5490_confirmation_email:
+    actor_type: user
+    description: >-
+      If enabled, VA5490#send_confirmation_email will use VANotify::V2::QueueEmailJob
   va_notify_v2_form5495_confirmation_email:
     actor_type: user
     description: >-

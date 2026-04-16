@@ -13,18 +13,16 @@ RSpec.describe SavedClaim::EducationBenefits::VA5490 do
   describe '#after_submit' do
     let(:user) { create(:user) }
 
+    before do
+      allow(Flipper).to receive(:enabled?).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:form5490_confirmation_email).and_return(true)
+    end
+
     describe 'sends confirmation email for the 5490' do
-      it 'chapter 33' do
-        allow(VANotify::EmailJob).to receive(:perform_async)
-
-        subject = create(:va5490_chapter33)
-        confirmation_number = subject.education_benefits_claim.confirmation_number
-
-        subject.after_submit(user)
-
-        expect(VANotify::EmailJob).to have_received(:perform_async).with(
-          'email@example.com',
-          'form5490_confirmation_email_template_id',
+      context 'chapter 33' do
+        let(:claim) { create(:va5490_chapter33) }
+        let(:confirmation_number) { claim.education_benefits_claim.confirmation_number }
+        let(:expected_personalisation) do
           {
             'first_name' => 'MARK',
             'benefit' => 'The Fry Scholarship (Chapter 33)',
@@ -32,20 +30,50 @@ RSpec.describe SavedClaim::EducationBenefits::VA5490 do
             'confirmation_number' => confirmation_number,
             'regional_office_address' => "P.O. Box 4616\nBuffalo, NY 14240-4616"
           }
-        )
+        end
+
+        context 'when va_notify_v2_form5490_confirmation_email is disabled' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:va_notify_v2_form5490_confirmation_email).and_return(false)
+            allow(VANotify::EmailJob).to receive(:perform_async)
+          end
+
+          it 'sends email via V1 EmailJob' do
+            claim.after_submit(user)
+
+            expect(VANotify::EmailJob).to have_received(:perform_async).with(
+              'email@example.com',
+              'form5490_confirmation_email_template_id',
+              expected_personalisation
+            )
+          end
+        end
+
+        context 'when va_notify_v2_form5490_confirmation_email is enabled' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:va_notify_v2_form5490_confirmation_email).and_return(true)
+            allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
+            allow(VANotify::EmailJob).to receive(:perform_async)
+          end
+
+          it 'sends email via V2 QueueEmailJob' do
+            claim.after_submit(user)
+
+            expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
+              'email@example.com',
+              'form5490_confirmation_email_template_id',
+              expected_personalisation,
+              'Settings.vanotify.services.va_gov.api_key'
+            )
+            expect(VANotify::EmailJob).not_to have_received(:perform_async)
+          end
+        end
       end
 
-      it 'chapter 35' do
-        allow(VANotify::EmailJob).to receive(:perform_async)
-
-        subject = create(:va5490)
-        confirmation_number = subject.education_benefits_claim.confirmation_number
-
-        subject.after_submit(user)
-
-        expect(VANotify::EmailJob).to have_received(:perform_async).with(
-          'email@example.com',
-          'form5490_confirmation_email_template_id',
+      context 'chapter 35' do
+        let(:claim) { create(:va5490) }
+        let(:confirmation_number) { claim.education_benefits_claim.confirmation_number }
+        let(:expected_personalisation) do
           {
             'first_name' => 'MARK',
             'benefit' => 'Survivors’ and Dependents’ Educational Assistance (DEA, Chapter 35)',
@@ -53,7 +81,44 @@ RSpec.describe SavedClaim::EducationBenefits::VA5490 do
             'confirmation_number' => confirmation_number,
             'regional_office_address' => "P.O. Box 4616\nBuffalo, NY 14240-4616"
           }
-        )
+        end
+
+        context 'when va_notify_v2_form5490_confirmation_email is disabled' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:va_notify_v2_form5490_confirmation_email).and_return(false)
+            allow(VANotify::EmailJob).to receive(:perform_async)
+          end
+
+          it 'sends email via V1 EmailJob' do
+            claim.after_submit(user)
+
+            expect(VANotify::EmailJob).to have_received(:perform_async).with(
+              'email@example.com',
+              'form5490_confirmation_email_template_id',
+              expected_personalisation
+            )
+          end
+        end
+
+        context 'when va_notify_v2_form5490_confirmation_email is enabled' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:va_notify_v2_form5490_confirmation_email).and_return(true)
+            allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
+            allow(VANotify::EmailJob).to receive(:perform_async)
+          end
+
+          it 'sends email via V2 QueueEmailJob' do
+            claim.after_submit(user)
+
+            expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
+              'email@example.com',
+              'form5490_confirmation_email_template_id',
+              expected_personalisation,
+              'Settings.vanotify.services.va_gov.api_key'
+            )
+            expect(VANotify::EmailJob).not_to have_received(:perform_async)
+          end
+        end
       end
     end
   end
