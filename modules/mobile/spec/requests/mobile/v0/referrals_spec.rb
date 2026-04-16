@@ -176,6 +176,7 @@ RSpec.describe 'Mobile::V0::Referrals', type: :request do
         expect(json['data']['attributes']).to have_key('provider')
         expect(json['data']['attributes']).to have_key('referringFacility')
         expect(json['data']['attributes']).to have_key('appointments')
+        expect(json['data']['attributes']['onlineSchedule']).to be true
       end
 
       it 'sets has_appointments to false when there are no active appointments' do

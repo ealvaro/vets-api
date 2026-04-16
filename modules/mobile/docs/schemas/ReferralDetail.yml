@@ -52,6 +52,10 @@ properties:
             type: string
             nullable: true
             example: '983'
+          onlineSchedule:
+            type: boolean
+            description: Whether the referral supports online scheduling
+            example: true
           appointments:
             type: object
             nullable: true

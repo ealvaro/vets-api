@@ -17,6 +17,11 @@ module Mobile
       attribute :appointments
       attribute :referral_date
       attribute :station_id
+      # TODO: online_schedule is defaulting to true for all referrals. This is a temporary measure until
+      # we have a way to determine this value from the CCRA API
+      attribute :online_schedule do
+        true
+      end
 
       attribute :provider do |referral|
         provider_info = {
