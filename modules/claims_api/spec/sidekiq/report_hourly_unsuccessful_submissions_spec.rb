@@ -128,6 +128,116 @@ describe ClaimsApi::ReportHourlyUnsuccessfulSubmissions, type: :job do
 
           subject.perform
         end
+
+        it 'does not consider resolved claims older than RESOLVED_LOOKBACK_PERIOD' do
+          create(:auto_established_claim_va_gov, :errored, created_at: 30.minutes.ago,
+                                                           transaction_id: 'old-resolved-1')
+          create(:auto_established_claim, :established,
+                 created_at: 15.days.ago,
+                 transaction_id: 'old-resolved-1, other data')
+
+          expect(ClaimsApi::Slack::FailedSubmissionsMessenger).to receive(:new).with(
+            errored_disability_claims: [],
+            errored_va_gov_claims: ['old-resolved-1'],
+            errored_poa: [@poa.id],
+            errored_itf: [@itf.id],
+            errored_ews: [@ews.id],
+            from: kind_of(String),
+            to: kind_of(String),
+            environment: kind_of(String)
+          )
+
+          subject.perform
+        end
+
+        context 'when more errored transaction ids exist than the batch size' do
+          it 'resolves across all batches' do
+            stub_const('ClaimsApi::ReportHourlyUnsuccessfulSubmissions::RESOLVED_QUERY_BATCH_SIZE', 2)
+
+            # Create 3 errored VA.gov claims, all resolved
+            %w[batch-a batch-b batch-c].each do |tid|
+              create(:auto_established_claim_va_gov, :errored, created_at: 30.minutes.ago,
+                                                               transaction_id: tid)
+              create(:auto_established_claim, :established, created_at: 10.minutes.ago,
+                                                            transaction_id: "#{tid}, extra")
+            end
+
+            expect(ClaimsApi::Slack::FailedSubmissionsMessenger).to receive(:new).with(
+              errored_disability_claims: [],
+              errored_va_gov_claims: [],
+              errored_poa: [@poa.id],
+              errored_itf: [@itf.id],
+              errored_ews: [@ews.id],
+              from: kind_of(String),
+              to: kind_of(String),
+              environment: kind_of(String)
+            )
+
+            subject.perform
+          end
+
+          it 'still reports unresolved claims across batches' do
+            stub_const('ClaimsApi::ReportHourlyUnsuccessfulSubmissions::RESOLVED_QUERY_BATCH_SIZE', 2)
+
+            # 2 resolved, 1 unresolved
+            %w[resolved-a resolved-b].each do |tid|
+              create(:auto_established_claim_va_gov, :errored, created_at: 30.minutes.ago,
+                                                               transaction_id: tid)
+              create(:auto_established_claim, :established, created_at: 10.minutes.ago,
+                                                            transaction_id: "#{tid}, extra")
+            end
+            create(:auto_established_claim_va_gov, :errored, created_at: 30.minutes.ago,
+                                                             transaction_id: 'still-broken')
+
+            subject.perform
+
+            expect(subject.instance_variable_get(:@va_gov_errored_claims)).to eq(['still-broken'])
+          end
+        end
+      end
+    end
+
+    context 'when a database query timeout occurs' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:claims_hourly_slack_error_report_enabled).and_return(true)
+        allow(ClaimsApi::AutoEstablishedClaim).to receive(:where)
+          .and_raise(ActiveRecord::QueryCanceled.new(
+                       'PG::QueryCanceled: ERROR: canceling statement due to statement timeout'
+                     ))
+      end
+
+      it 'sends a Slack alert about the timeout' do
+        slack_client = instance_double(SlackNotify::Client)
+        allow(SlackNotify::Client).to receive(:new).and_return(slack_client)
+        allow(slack_client).to receive(:notify)
+
+        expect { subject.perform }.to raise_error(ActiveRecord::QueryCanceled)
+
+        expect(slack_client).to have_received(:notify).with(
+          a_string_including('query timeout')
+        )
+      end
+
+      it 'logs the timeout error' do
+        slack_client = instance_double(SlackNotify::Client)
+        allow(SlackNotify::Client).to receive(:new).and_return(slack_client)
+        allow(slack_client).to receive(:notify)
+
+        expect(ClaimsApi::Logger).to receive(:log).with(
+          'claims_api_hourly_report_timeout',
+          detail: 'ReportHourlyUnsuccessfulSubmissions query timeout',
+          error: kind_of(String)
+        )
+
+        expect { subject.perform }.to raise_error(ActiveRecord::QueryCanceled)
+      end
+
+      it 're-raises the error for Sidekiq retry' do
+        slack_client = instance_double(SlackNotify::Client)
+        allow(SlackNotify::Client).to receive(:new).and_return(slack_client)
+        allow(slack_client).to receive(:notify)
+
+        expect { subject.perform }.to raise_error(ActiveRecord::QueryCanceled)
       end
     end
 
