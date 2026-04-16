@@ -54,6 +54,7 @@ class SourceAppMiddleware
     '21-4140',
     '21-4142-medical-release',
     '21-4192-employment-information',
+    '21-4502',
     '21-8940',
     '21p-0537',
     '21P-0847-substitute-claimant',
