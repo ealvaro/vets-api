@@ -545,11 +545,49 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
                             MessageId: 'b8ebd8e7-3bbf-49c5-aff0-99503e50ee27'
                           })
             sign_in(authorized_user)
-            # inquiry_params is in include_context 'shared data'
-            post '/ask_va_api/v0/inquiries/auth', params: inquiry_params
           end
 
-          it { expect(response).to have_http_status(:created) }
+          it 'returns created' do
+            post '/ask_va_api/v0/inquiries/auth', params: inquiry_params
+
+            expect(response).to have_http_status(:created)
+          end
+
+          it 'records an inbound checkpoint with a normalized payload' do
+            expect do
+              post '/ask_va_api/v0/inquiries/auth', params: inquiry_params
+            end.to change(AskVAApi::InquirySubmissionCheckpoint, :count).by(1)
+
+            checkpoint = AskVAApi::InquirySubmissionCheckpoint.last
+
+            expect(checkpoint.payload).to include(
+              'question' => inquiry_params[:inquiry][:question],
+              'select_category' => inquiry_params[:inquiry][:select_category],
+              'attachment_count' => inquiry_params[:inquiry][:files].count
+            )
+            expect(checkpoint.payload).not_to have_key('files')
+          end
+
+          it 'does not block submission if inbound checkpoint recording fails' do
+            allow_any_instance_of(AskVAApi::Inquiries::Checkpoint::Inbound)
+              .to receive(:call)
+              .and_raise(StandardError, 'checkpoint failure')
+            allow(Rails.logger).to receive(:warn)
+
+            sign_in(authorized_user)
+            post '/ask_va_api/v0/inquiries/auth', params: inquiry_params
+
+            expect(response).to have_http_status(:created)
+            expect(Rails.logger).to have_received(:warn)
+              .with(
+                'Failed to record Inbound checkpoint',
+                hash_including(
+                  checkpoint_type: 'inbound_submission',
+                  error_class: 'StandardError',
+                  error_message: 'checkpoint failure'
+                )
+              )
+          end
         end
 
         context 'when crm api fail' do
@@ -718,10 +756,33 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
                           ExceptionMessage: '',
                           MessageId: 'b8ebd8e7-3bbf-49c5-aff0-99503e50ee27'
                         })
-          post inquiry_path, params: inquiry_params
         end
 
-        it { expect(response).to have_http_status(:created) }
+        it 'returns created' do
+          post inquiry_path, params: inquiry_params
+
+          expect(response).to have_http_status(:created)
+        end
+
+        it 'does not block submission if inbound checkpoint recording fails' do
+          allow_any_instance_of(AskVAApi::Inquiries::Checkpoint::Inbound)
+            .to receive(:call)
+            .and_raise(StandardError, 'checkpoint failure')
+          allow(Rails.logger).to receive(:warn)
+
+          post inquiry_path, params: inquiry_params
+
+          expect(response).to have_http_status(:created)
+          expect(Rails.logger).to have_received(:warn)
+            .with(
+              'Failed to record Inbound checkpoint',
+              hash_including(
+                checkpoint_type: 'inbound_submission',
+                error_class: 'StandardError',
+                error_message: 'checkpoint failure'
+              )
+            )
+        end
       end
 
       context 'when crm api fail' do

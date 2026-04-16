@@ -5,6 +5,7 @@ module AskVAApi
     class InquiriesController < ApplicationController
       around_action :handle_exceptions
       before_action :require_loa3!, except: %i[unauth_create status]
+      before_action :record_inbound_checkpoint, only: %i[create unauth_create]
       before_action :validate_inquiry_id_format, only: %i[status] # We can add back show and create_reply later
       skip_before_action :authenticate, only: %i[unauth_create status]
 
@@ -118,6 +119,26 @@ module AskVAApi
       end
 
       class InvalidAttachmentError < StandardError; end
+
+      def record_inbound_checkpoint
+        request_id = request.request_id
+        payload = params.require(:inquiry).to_unsafe_h
+
+        Inquiries::Checkpoint::Inbound.new.call(
+          request_id:,
+          payload:
+        )
+      rescue => e
+        Rails.logger.warn(
+          'Failed to record Inbound checkpoint',
+          {
+            request_id:,
+            checkpoint_type: 'inbound_submission',
+            error_class: e.class.name,
+            error_message: e.message
+          }
+        )
+      end
     end
   end
 end
