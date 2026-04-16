@@ -49,7 +49,8 @@ describe PdfFill::Forms::Va220989 do
     it 'formats the old school name and address' do
       merged_data = subject.merge_fields
 
-      expect(merged_data['closedSchoolNameAndAddress']).to eq("Test U\n111 2nd St S\nSeattle, WA, 98101\nUSA\n")
+      expected = "Test U\n111 2nd St S\nUnit B\nSection Alpha\nSeattle, WA, 98101, USA\n"
+      expect(merged_data['closedSchoolNameAndAddress']).to eq(expected)
     end
 
     it 'formats the new school name and program' do
@@ -62,7 +63,7 @@ describe PdfFill::Forms::Va220989 do
       merged_data = subject.merge_fields
 
       expect(merged_data['statementOfTruthSignature']).to eq('John Doe')
-      expect(merged_data['dateSigned']).to eq('01,01,2025')
+      expect(merged_data['dateSigned']).to eq('01/01/2025')
     end
   end
 
@@ -88,7 +89,7 @@ describe PdfFill::Forms::Va220989 do
         expect(get_field_value(fields, 'va_file_number')).to eq '123456789'
         expect(get_field_value(fields, 'signature')).to eq 'John Doe'
         expect(get_field_value(fields,
-                               'closed_school_name_and_address')).to eq "Test U\r111 2nd St S\rSeattle, WA, 98101\rUSA"
+                               'closed_school_name_and_address')).to eq 'See add&apos;l info page'
       end
     end
 

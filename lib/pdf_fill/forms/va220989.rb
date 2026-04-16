@@ -13,7 +13,12 @@ module PdfFill
         'homePhone' => { key: 'home_phone' },
         'mobilePhone' => { key: 'mobile_phone' },
         'schoolWasClosed' => { key: 'school_was_closed' },
-        'closedSchoolNameAndAddress' => { key: 'closed_school_name_and_address' },
+        'closedSchoolNameAndAddress' => {
+          key: 'closed_school_name_and_address',
+          question_text: 'School name and address',
+          question_num: 6,
+          multiline_limit: 3
+        },
         'didCompleteProgramOfStudy' => { key: 'did_complete_program_of_study' },
         'didReceiveCredit' => { key: 'did_receive_credit' },
         'wasEnrolledWhenSchoolClosed' => { key: 'was_enrolled_when_school_closed' },
@@ -69,7 +74,7 @@ module PdfFill
       def format_old_school_name_and_address(form_data)
         form_data['closedSchoolNameAndAddress'] = <<~SCHOOL
           #{form_data['closedSchoolName']}
-          #{combine_full_address_extras(form_data['closedSchoolAddress'])}
+          #{format_address(form_data['closedSchoolAddress'])}
         SCHOOL
       end
 
@@ -86,13 +91,27 @@ module PdfFill
         form_data['dateOfWithdraw'] = format_date(form_data['dateOfWithdraw'])
         form_data['lastDateOfAttendance'] = format_date(form_data['lastDateOfAttendance'])
         form_data['attestationDate'] = format_date(form_data['attestationDate'])
-        form_data['dateSigned'] = format_date(form_data['dateSigned'], '%m,%d,%Y')
+        form_data['dateSigned'] = format_date(form_data['dateSigned'])
       end
 
       def format_date(date_string, format_str = '%m/%d/%Y')
         Date.parse(date_string).strftime(format_str)
       rescue
         date_string
+      end
+
+      def format_address(address)
+        return if address.blank?
+
+        postal_code = address['postalCode']
+        postal_code = combine_postal_code(postal_code) if postal_code.is_a?(Hash)
+
+        [
+          address['street'],
+          address['street2'],
+          address['street3'],
+          [address['city'], address['state'], postal_code, address['country']].compact_blank.join(', ')
+        ].compact_blank.join("\n")
       end
     end
   end

@@ -20,6 +20,8 @@
   "closedSchoolName": "Test U",
   "closedSchoolAddress": {
     "street": "111 2nd St S",
+    "street2": "Unit B",
+    "street3": "Section Alpha",
     "city": "Seattle",
     "state": "WA",
     "postalCode": "98101",
