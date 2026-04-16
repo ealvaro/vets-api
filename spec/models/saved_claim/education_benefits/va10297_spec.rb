@@ -48,21 +48,59 @@ RSpec.describe SavedClaim::EducationBenefits::VA10297 do
               .and_return(false)
           end
 
-          it 'sends an email without the silent failure callback parameters' do
-            subject = create(:va10297_simple_form)
-            confirmation_number = subject.education_benefits_claim.confirmation_number
+          context 'when va_notify_v2_form10297_confirmation_email is disabled' do
+            before do
+              allow(Flipper)
+                .to receive(:enabled?)
+                .with(:va_notify_v2_form10297_confirmation_email)
+                .and_return(false)
+            end
 
-            subject.after_submit(user)
-            expect(VANotify::EmailJob).to have_received(:perform_async).with(
-              'test@test.com',
-              'form10297_confirmation_email_template_id',
-              {
-                'first_name' => 'TEST',
-                'date_submitted' => Time.zone.today.strftime('%B %d, %Y'),
-                'confirmation_number' => confirmation_number,
-                'regional_office_address' => "P.O. Box 4616\nBuffalo, NY 14240-4616"
-              }
-            )
+            it 'sends an email via V1 EmailJob' do
+              subject = create(:va10297_simple_form)
+              confirmation_number = subject.education_benefits_claim.confirmation_number
+
+              subject.after_submit(user)
+              expect(VANotify::EmailJob).to have_received(:perform_async).with(
+                'test@test.com',
+                'form10297_confirmation_email_template_id',
+                {
+                  'first_name' => 'TEST',
+                  'date_submitted' => Time.zone.today.strftime('%B %d, %Y'),
+                  'confirmation_number' => confirmation_number,
+                  'regional_office_address' => "P.O. Box 4616\nBuffalo, NY 14240-4616"
+                }
+              )
+            end
+          end
+
+          context 'when va_notify_v2_form10297_confirmation_email is enabled' do
+            before do
+              allow(Flipper)
+                .to receive(:enabled?)
+                .with(:va_notify_v2_form10297_confirmation_email)
+                .and_return(true)
+              allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
+            end
+
+            it 'sends an email via V2 QueueEmailJob' do
+              subject = create(:va10297_simple_form)
+              confirmation_number = subject.education_benefits_claim.confirmation_number
+
+              subject.after_submit(user)
+              expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
+                'test@test.com',
+                'form10297_confirmation_email_template_id',
+                {
+                  'first_name' => 'TEST',
+                  'date_submitted' => Time.zone.today.strftime('%B %d, %Y'),
+                  'confirmation_number' => confirmation_number,
+                  'regional_office_address' => "P.O. Box 4616\nBuffalo, NY 14240-4616"
+                },
+                'Settings.vanotify.services.va_gov.api_key'
+              )
+              expect(VANotify::EmailJob).not_to have_received(:perform_async)
+            end
           end
         end
 
