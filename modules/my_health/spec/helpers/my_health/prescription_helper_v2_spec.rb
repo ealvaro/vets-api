@@ -233,15 +233,31 @@ RSpec.describe MyHealth::PrescriptionHelperV2 do
                                                })
         end
       end
+
+      context 'when sort_param is -alphabetical-rx-name' do
+        it 'sorts by prescription_name descending with secondary sort by dispensed_date descending' do
+          result = helper.apply_sorting(resource, '-alphabetical-rx-name')
+          expected_record_order = resource.records.sort do |first_record, second_record|
+            prescription_name_comparison = second_record.prescription_name.to_s <=> first_record.prescription_name.to_s
+            next prescription_name_comparison unless prescription_name_comparison.zero?
+
+            second_record.dispensed_date <=> first_record.dispensed_date
+          end
+
+          expect(result.metadata[:sort]).to eq({
+                                                 'prescription_name' => 'DESC',
+                                                 'dispensed_date' => 'DESC'
+                                               })
+          expect(result.records).to eq(expected_record_order)
+        end
+      end
     end
 
     describe '#build_sort_metadata' do
-      it 'returns default metadata for -alphabetical-rx-name (unrecognized sort param)' do
+      it 'returns descending metadata for -alphabetical-rx-name' do
         result = helper.build_sort_metadata('-alphabetical-rx-name')
-        # Falls back to default since -alphabetical-rx-name is not a recognized case
         expect(result).to eq({
-                               'disp_status' => 'ASC',
-                               'prescription_name' => 'ASC',
+                               'prescription_name' => 'DESC',
                                'dispensed_date' => 'DESC'
                              })
       end

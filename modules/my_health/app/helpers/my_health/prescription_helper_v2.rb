@@ -38,6 +38,7 @@ module MyHealth
 
       def sort_resource_by_param(resource, param)
         return last_fill_date_sort(resource) if param == 'last-fill-date'
+        return alphabetical_sort(resource, reverse: true) if param == '-alphabetical-rx-name'
         return alphabetical_sort(resource) if param == 'alphabetical-rx-name'
 
         default_sort(resource)
@@ -49,6 +50,8 @@ module MyHealth
           { 'dispensed_date' => 'DESC', 'prescription_name' => 'ASC' }
         when 'alphabetical-rx-name'
           { 'prescription_name' => 'ASC', 'dispensed_date' => 'DESC' }
+        when '-alphabetical-rx-name'
+          { 'prescription_name' => 'DESC', 'dispensed_date' => 'DESC' }
         else
           { 'disp_status' => 'ASC', 'prescription_name' => 'ASC', 'dispensed_date' => 'DESC' }
         end
@@ -102,10 +105,10 @@ module MyHealth
          non_va.sort_by { |med| med.prescription_name.to_s.downcase }]
       end
 
-      def alphabetical_sort(resource)
+      def alphabetical_sort(resource, reverse: false)
         sorted_records = resource.records.sort_by { |med| get_medication_name(med) }
-        sorted_records = sort_grouped_by_name(sorted_records)
-        resource.records = sorted_records
+        sorted_records = sorted_records.reverse if reverse
+        resource.records = sort_grouped_by_name(sorted_records)
         resource
       end
 
