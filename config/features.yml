@@ -1755,10 +1755,6 @@ features:
     actor_type: user
     description: Enables/disables Secure Messaging Filter Accordion re-design updates on VA.gov
     enable_in_development: true
-  mhv_secure_messaging_remove_lefthand_nav:
-    actor_type: user
-    description: Disables/Enables Secure Messaging lefthand navigation for new navigation solution
-    enable_in_development: true
   mhv_secure_messaging_triage_group_plain_language:
     actor_type: user
     description: Disables/Enables Secure Messaging recipients group plain language design
