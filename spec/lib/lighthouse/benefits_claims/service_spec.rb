@@ -80,55 +80,21 @@ RSpec.describe BenefitsClaims::Service do
 
         # rubocop:disable Naming/VariableNumber
         context 'EP code filtering' do
-          # Test with both flags enabled
-          it 'filters out claims with both EP codes when both flags are enabled' do
+          it 'filters out EP 960 claims when cst_filter_ep_960 is enabled' do
             allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_960).and_return(true)
-            allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_290).and_return(true)
-
-            VCR.use_cassette('lighthouse/benefits_claims/index/200_response') do
-              response = service.get_claims
-              expect(response['data'].length).to eq(6)
-            end
-          end
-
-          # Test with only EP 960 flag enabled
-          it 'filters out only EP code 960 when only that flag is enabled' do
-            allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_960).and_return(true)
-            allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_290).and_return(false)
 
             VCR.use_cassette('lighthouse/benefits_claims/index/200_response') do
               response = service.get_claims
               # Should have 7 claims (8 original - 1 filtered EP 960)
               expect(response['data'].length).to eq(7)
-              # Verify no claims with EP code 960 remain
               ep_codes = response['data'].map { |claim| claim.dig('attributes', 'baseEndProductCode') }
               expect(ep_codes).not_to include('960')
-              # But EP code 290 should still be present
               expect(ep_codes).to include('290')
             end
           end
 
-          # Test with only EP 290 flag enabled
-          it 'filters out only EP code 290 when only that flag is enabled' do
+          it 'does not filter out any EP codes when cst_filter_ep_960 is disabled' do
             allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_960).and_return(false)
-            allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_290).and_return(true)
-
-            VCR.use_cassette('lighthouse/benefits_claims/index/200_response') do
-              response = service.get_claims
-              # Should have 7 claims (8 original - 1 filtered EP 290)
-              expect(response['data'].length).to eq(7)
-              # Verify no claims with EP code 290 remain
-              ep_codes = response['data'].map { |claim| claim.dig('attributes', 'baseEndProductCode') }
-              expect(ep_codes).not_to include('290')
-              # But EP code 960 should still be present
-              expect(ep_codes).to include('960')
-            end
-          end
-
-          # Test with both flags disabled
-          it 'does not filter out any EP codes when both flags are disabled' do
-            allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_960).and_return(false)
-            allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_290).and_return(false)
 
             VCR.use_cassette('lighthouse/benefits_claims/index/200_response') do
               response = service.get_claims
@@ -193,36 +159,16 @@ RSpec.describe BenefitsClaims::Service do
           end
 
           describe '#apply_configured_ep_filters' do
-            it 'filters based on enabled feature flags' do
+            it 'filters EP 960 claims when cst_filter_ep_960 is enabled' do
               allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_960).and_return(true)
-              allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_290).and_return(true)
-
-              results = service.send(:apply_configured_ep_filters, mock_data)
-              expect(results.length).to eq(1)
-              expect(results.first.dig('attributes', 'baseEndProductCode')).to eq('020')
-            end
-
-            it 'filters only EP 960 when only that flag is enabled' do
-              allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_960).and_return(true)
-              allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_290).and_return(false)
 
               results = service.send(:apply_configured_ep_filters, mock_data)
               expect(results.length).to eq(2)
               expect(results.map { |r| r.dig('attributes', 'baseEndProductCode') }).to eq(%w[020 290])
             end
 
-            it 'filters only EP 290 when only that flag is enabled' do
+            it 'returns all data when cst_filter_ep_960 is disabled' do
               allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_960).and_return(false)
-              allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_290).and_return(true)
-
-              results = service.send(:apply_configured_ep_filters, mock_data)
-              expect(results.length).to eq(2)
-              expect(results.map { |r| r.dig('attributes', 'baseEndProductCode') }).to eq(%w[020 960])
-            end
-
-            it 'returns all data when no flags are enabled' do
-              allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_960).and_return(false)
-              allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_290).and_return(false)
 
               results = service.send(:apply_configured_ep_filters, mock_data)
               expect(results.length).to eq(3)

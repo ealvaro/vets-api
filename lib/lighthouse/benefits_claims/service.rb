@@ -13,14 +13,9 @@ module BenefitsClaims
     STATSD_KEY_PREFIX = 'api.benefits_claims'
 
     FILTERED_STATUSES = %w[CANCELED ERRORED PENDING].freeze
-
-    # #90936 - according to the research done here,
-    # the 960 and 290 EP Codes were flagged as a claim groups that
-    # should be filtered out before they are sent to VA.gov and Mobile
     # rubocop:disable Naming/VariableNumber
     EP_CODE_FILTER_FLAGS = {
-      '960' => :cst_filter_ep_960,
-      '290' => :cst_filter_ep_290
+      '960' => :cst_filter_ep_960
     }.freeze
     # rubocop:enable Naming/VariableNumber
 

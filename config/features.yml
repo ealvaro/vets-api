@@ -690,9 +690,6 @@ features:
     actor_type: user
     description: Gates the intents to file endpoint and frontend functionality for retrieving all ITFs from Lighthouse Benefits Claims API v2.
     enable_in_development: true
-  cst_filter_ep_290:
-    actor_type: user
-    description: When enabled, benefits_claims/get_claims service filters 290 EP code claims from the response
   cst_filter_ep_960:
     actor_type: user
     description: When enabled, benefits_claims/get_claims service filters 960 EP code claims from the response
