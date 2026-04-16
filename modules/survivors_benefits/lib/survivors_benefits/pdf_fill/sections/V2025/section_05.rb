@@ -46,36 +46,36 @@ module SurvivorsBenefits
               }
             },
             'reasonForSeparation' => {
-              key: 'form1[0].#subform[154].RadioButtonList[19]'
+              key: 'form1[0].#subform[154].RadioButtonList[20]'
             },
             'reasonForSeparationExplanation' => {
-              limit: 52,
+              limit: 25,
               question_num: 5,
               question_suffix: 'C',
               question_label: 'Reason For Separation Explanation',
               question_text: 'REASON FOR SEPARATION EXPLANATION',
-              key: 'form1[0].#subform[154].Explain[4]'
+              key: 'form1[0].#subform[154].Explain[5]'
             },
             'dateOfMarriage' => {
               'month' => {
-                key: 'form1[0].#subform[154].Date_Month[3]'
+                key: 'form1[0].#subform[154].Date_Month[1]'
               },
               'day' => {
-                key: 'form1[0].#subform[154].Date_Day[3]'
+                key: 'form1[0].#subform[154].Date_Day[1]'
               },
               'year' => {
-                key: 'form1[0].#subform[154].Date_Year[3]'
+                key: 'form1[0].#subform[154].Date_Year[1]'
               }
             },
             'dateOfSeparation' => {
               'month' => {
-                key: 'form1[0].#subform[154].Date_Month[2]'
+                key: 'form1[0].#subform[154].Date_Month[0]'
               },
               'day' => {
-                key: 'form1[0].#subform[154].Date_Day[2]'
+                key: 'form1[0].#subform[154].Date_Day[0]'
               },
               'year' => {
-                key: 'form1[0].#subform[154].Date_Year[2]'
+                key: 'form1[0].#subform[154].Date_Year[0]'
               }
             },
             'locationOfMarriage' => {
@@ -122,36 +122,36 @@ module SurvivorsBenefits
               }
             },
             'reasonForSeparation' => {
-              key: 'form1[0].#subform[154].RadioButtonList[20]'
+              key: 'form1[0].#subform[154].RadioButtonList[19]'
             },
             'reasonForSeparationExplanation' => {
-              limit: 52,
+              limit: 25,
               question_num: 5,
               question_suffix: 'I',
               question_label: 'Reason For Separation Explanation',
               question_text: 'REASON FOR SEPARATION EXPLANATION',
-              key: 'form1[0].#subform[154].Explain[5]'
+              key: 'form1[0].#subform[154].Explain[4]'
             },
             'dateOfMarriage' => {
               'month' => {
-                key: 'form1[0].#subform[154].Date_Month[0]'
+                key: 'form1[0].#subform[154].Date_Month[5]'
               },
               'day' => {
-                key: 'form1[0].#subform[154].Date_Day[0]'
+                key: 'form1[0].#subform[154].Date_Day[5]'
               },
               'year' => {
-                key: 'form1[0].#subform[154].Date_Year[0]'
+                key: 'form1[0].#subform[154].Date_Year[5]'
               }
             },
             'dateOfSeparation' => {
               'month' => {
-                key: 'form1[0].#subform[154].Date_Month[1]'
+                key: 'form1[0].#subform[154].Date_Month[4]'
               },
               'day' => {
-                key: 'form1[0].#subform[154].Date_Day[1]'
+                key: 'form1[0].#subform[154].Date_Day[4]'
               },
               'year' => {
-                key: 'form1[0].#subform[154].Date_Year[1]'
+                key: 'form1[0].#subform[154].Date_Year[4]'
               }
             },
             'locationOfMarriage' => {
@@ -201,36 +201,36 @@ module SurvivorsBenefits
               }
             },
             'reasonForSeparation' => {
-              key: 'form1[0].#subform[154].RadioButtonList[22]'
+              key: 'form1[0].#subform[154].RadioButtonList[23]'
             },
             'reasonForSeparationExplanation' => {
-              limit: 64,
+              limit: 25,
               question_num: 5,
               question_suffix: 'P',
               question_label: 'Reason For Separation Explanation',
               question_text: 'REASON FOR SEPARATION EXPLANATION',
-              key: 'form1[0].#subform[154].Explain[6]'
+              key: 'form1[0].#subform[154].Explain[7]'
             },
             'dateOfMarriage' => {
               'month' => {
-                key: 'form1[0].#subform[154].Date_Month[7]'
+                key: 'form1[0].#subform[154].Date_Month[3]'
               },
               'day' => {
-                key: 'form1[0].#subform[154].Date_Day[7]'
+                key: 'form1[0].#subform[154].Date_Day[3]'
               },
               'year' => {
-                key: 'form1[0].#subform[154].Date_Year[7]'
+                key: 'form1[0].#subform[154].Date_Year[3]'
               }
             },
             'dateOfSeparation' => {
               'month' => {
-                key: 'form1[0].#subform[154].Date_Month[6]'
+                key: 'form1[0].#subform[154].Date_Month[2]'
               },
               'day' => {
-                key: 'form1[0].#subform[154].Date_Day[6]'
+                key: 'form1[0].#subform[154].Date_Day[2]'
               },
               'year' => {
-                key: 'form1[0].#subform[154].Date_Year[6]'
+                key: 'form1[0].#subform[154].Date_Year[2]'
               }
             },
             'locationOfMarriage' => {
@@ -277,36 +277,36 @@ module SurvivorsBenefits
               }
             },
             'reasonForSeparation' => {
-              key: 'form1[0].#subform[154].RadioButtonList[23]'
+              key: 'form1[0].#subform[154].RadioButtonList[22]'
             },
             'reasonForSeparationExplanation' => {
-              limit: 64,
+              limit: 25,
               question_num: 5,
               question_suffix: 'V',
               question_label: 'Reason For Separation Explanation',
               question_text: 'REASON FOR SEPARATION EXPLANATION',
-              key: 'form1[0].#subform[154].Explain[7]'
+              key: 'form1[0].#subform[154].Explain[6]'
             },
             'dateOfMarriage' => {
               'month' => {
-                key: 'form1[0].#subform[154].Date_Month[4]'
+                key: 'form1[0].#subform[154].Date_Month[7]'
               },
               'day' => {
-                key: 'form1[0].#subform[154].Date_Day[4]'
+                key: 'form1[0].#subform[154].Date_Day[7]'
               },
               'year' => {
-                key: 'form1[0].#subform[154].Date_Year[4]'
+                key: 'form1[0].#subform[154].Date_Year[7]'
               }
             },
             'dateOfSeparation' => {
               'month' => {
-                key: 'form1[0].#subform[154].Date_Month[5]'
+                key: 'form1[0].#subform[154].Date_Month[6]'
               },
               'day' => {
-                key: 'form1[0].#subform[154].Date_Day[5]'
+                key: 'form1[0].#subform[154].Date_Day[6]'
               },
               'year' => {
-                key: 'form1[0].#subform[154].Date_Year[5]'
+                key: 'form1[0].#subform[154].Date_Year[6]'
               }
             },
             'locationOfMarriage' => {

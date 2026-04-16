@@ -10,9 +10,9 @@
         "last": "5A Last"
       },
       "reasonForSeparation": "DEATH",
-      "reasonForSeparationExplanation": "5B. Other (Explain)",
+      "reasonForSeparationExplanation": "Vet 1 Other (Explain)",
       "dateOfMarriage": "1999-01-01",
-      "dateOfSeparation": "1999-03-31",
+      "dateOfSeparation": "2000-03-31",
       "locationOfMarriage": "5D. Place of Marriage",
       "locationOfSeparation": "5E. Place of Marriage Termination"
     },
@@ -23,9 +23,9 @@
         "last": "5F Last"
       },
       "reasonForSeparation": "DEATH",
-      "reasonForSeparationExplanation": "5G, Other (Explain)",
+      "reasonForSeparationExplanation": "Vet 2 Other (Explain)",
       "dateOfMarriage": "1999-01-01",
-      "dateOfSeparation": "1999-03-31",
+      "dateOfSeparation": "2000-03-31",
       "locationOfMarriage": "5O. Place of Marriage",
       "locationOfSeparation": "5P. Place of Marriage Termination"
     }
@@ -39,9 +39,9 @@
         "last": "5L Last"
       },
       "reasonForSeparation": "DEATH",
-      "reasonForSeparationExplanation": "5M. Other (Explain)",
+      "reasonForSeparationExplanation": "Sp1 Other (Explain)",
       "dateOfMarriage": "1999-01-01",
-      "dateOfSeparation": "1999-03-31",
+      "dateOfSeparation": "2000-03-31",
       "locationOfMarriage": "5D. Place of Marriage",
       "locationOfSeparation": "5E. Place of Marriage Termination"
     },
@@ -52,9 +52,9 @@
         "last": "5Q Last"
       },
       "reasonForSeparation": "DEATH",
-      "reasonForSeparationExplanation": "5R. Other (Explain)",
+      "reasonForSeparationExplanation": "Sp2 Other (Explain)",
       "dateOfMarriage": "1999-01-01",
-      "dateOfSeparation": "1999-03-31",
+      "dateOfSeparation": "2000-03-31",
       "locationOfMarriage": "5T. Place of Marriage",
       "locationOfSeparation": "5U. Place of Marriage Termination"
     }

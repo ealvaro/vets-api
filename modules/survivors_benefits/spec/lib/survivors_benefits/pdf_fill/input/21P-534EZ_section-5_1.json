@@ -4,16 +4,16 @@
       "reasonForSeparation": "DIVORCE"
     },
     {
-      "reasonForSeparation": "DIVORCE"
+      "reasonForSeparation": "DEATH"
     }
   ],
   "veteranHasAdditionalMarriages": false,
   "spouseMarriages": [
     {
-      "reasonForSeparation": "DIVORCE"
+      "reasonForSeparation": "DEATH"
     },
     {
-      "reasonForSeparation": "DIVORCE"
+      "reasonForSeparation": "OTHER"
     }
   ],
   "spouseHasAdditionalMarriages": false
