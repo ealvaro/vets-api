@@ -2944,6 +2944,13 @@ features:
       (e.g. validation errors) to API consumers instead of generic VA900 responses.
       Enabled - BTSSS error messages are included in the detail field of error responses.
       Disabled - Error responses are generic VA900 with no detail (legacy behavior).
+  travel_pay_enable_user_created_appointments:
+    actor_type: user
+    enable_in_development: true
+    description: >-
+      A switch that toggles the availability of user-created appointment features for Travel Pay.
+      Enabled - User-created appointment features are available to users.
+      Disabled - User-created appointment features are not available to users.
   yellow_ribbon_automated_date_on_school_search:
     actor_type: user
     description: Enable the automated date displayed in the Find a Yellow Ribbon school search results
