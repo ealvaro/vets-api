@@ -3957,4 +3957,52 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
       end
     end
   end
+
+  # ==========================================================================
+  # Null/nil exception regression tests (fix 7a)
+  # ==========================================================================
+  describe 'null/nil exception guards' do
+    # 7a. get_ordered_by — nil practitioner name
+    describe '#get_ordered_by — nil practitioner name (fix 7a)' do
+      it 'falls back to requester display when practitioner name is nil' do
+        record = { 'resource' => { 'contained' => [
+          { 'resourceType' => 'ServiceRequest',
+            'requester' => { 'reference' => 'Practitioner/abc-123', 'display' => 'Smith, Jane' } },
+          { 'resourceType' => 'Practitioner', 'id' => 'abc-123' }
+        ] } }
+        expect(adapter.send(:get_ordered_by, record)).to eq('Smith, Jane')
+      end
+
+      it 'falls back to requester display when practitioner name is empty array' do
+        record = { 'resource' => { 'contained' => [
+          { 'resourceType' => 'ServiceRequest',
+            'requester' => { 'reference' => 'Practitioner/abc-123', 'display' => 'Doe, John' } },
+          { 'resourceType' => 'Practitioner', 'id' => 'abc-123', 'name' => [] }
+        ] } }
+        expect(adapter.send(:get_ordered_by, record)).to eq('Doe, John')
+      end
+
+      it 'handles practitioner with name missing given field' do
+        record = { 'resource' => { 'contained' => [
+          { 'resourceType' => 'ServiceRequest',
+            'requester' => { 'reference' => 'Practitioner/abc-123' } },
+          { 'resourceType' => 'Practitioner', 'id' => 'abc-123',
+            'name' => [{ 'family' => 'Jones' }] }
+        ] } }
+        result = adapter.send(:get_ordered_by, record)
+        expect(result).to eq('Jones')
+      end
+
+      it 'handles practitioner with name missing family field' do
+        record = { 'resource' => { 'contained' => [
+          { 'resourceType' => 'ServiceRequest',
+            'requester' => { 'reference' => 'Practitioner/abc-123' } },
+          { 'resourceType' => 'Practitioner', 'id' => 'abc-123',
+            'name' => [{ 'given' => %w[Jane M] }] }
+        ] } }
+        result = adapter.send(:get_ordered_by, record)
+        expect(result).to eq('Jane M')
+      end
+    end
+  end
 end

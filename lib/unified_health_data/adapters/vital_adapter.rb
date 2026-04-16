@@ -111,7 +111,7 @@ module UnifiedHealthData
       end
 
       def get_name(resource)
-        resource.dig('code', 'text').humanize || resource.dig('code', 'coding', 0, 'display').humanize || ''
+        resource.dig('code', 'text')&.humanize || resource.dig('code', 'coding', 0, 'display')&.humanize || ''
       end
 
       def get_type(record)
@@ -145,14 +145,15 @@ module UnifiedHealthData
         if array_and_has_items(record['component'])
           format_blood_pressure(record)
         # Specific to items with multiple units of measure, e.g. Weight in both kg and lbs
-        elsif array_and_has_items(record['valueQuantity']['extension'])
+        elsif record['valueQuantity'].is_a?(Hash) && array_and_has_items(record['valueQuantity']['extension'])
           format_extension_measurements(record, record_type)
         else
           units = VITAL_UNIT_DISPLAY_TEXT[record_type.to_sym] || ''
           if record_type == 'HEIGHT'
             format_height(record)
           else
-            "#{record['valueQuantity']['value']}#{units}" || nil
+            value = record.dig('valueQuantity', 'value')
+            value ? "#{value}#{units}" : nil
           end
         end
       rescue
@@ -181,8 +182,8 @@ module UnifiedHealthData
       end
 
       def format_blood_pressure(record)
-        systolic_ref = {}
-        diastolic_ref = {}
+        systolic_ref = nil
+        diastolic_ref = nil
         record['component'].each do |item|
           if item['code']['coding']&.any? { |coding| coding['code'] == '8480-6' }
             systolic_ref = item
@@ -192,31 +193,49 @@ module UnifiedHealthData
         end
 
         if systolic_ref && diastolic_ref
-          "#{systolic_ref['valueQuantity']['value']}/#{diastolic_ref['valueQuantity']['value']}"
+          systolic_value = systolic_ref.dig('valueQuantity', 'value')
+          diastolic_value = diastolic_ref.dig('valueQuantity', 'value')
+          "#{systolic_value}/#{diastolic_value}" if systolic_value && diastolic_value
         end
       end
 
       def format_height(height_ref)
-        ft_in = height_ref['valueQuantity']['value'].divmod(12)
+        value = height_ref.dig('valueQuantity', 'value')
+        return nil unless value
+
+        ft_in = value.divmod(12)
         "#{ft_in[0]}#{VITAL_UNIT_DISPLAY_TEXT[:HEIGHT_FT]}, #{ft_in[1].round(1)}#{VITAL_UNIT_DISPLAY_TEXT[:HEIGHT_IN]}"
       end
 
       def format_extension_measurements(record, record_type)
+        extensions = record['valueQuantity']['extension']
         case record_type
         when 'HEIGHT'
-          height_ref = record['valueQuantity']['extension'].find { |ext| ext['valueQuantity']['code'] == '[in_i]' }
+          height_ref = extensions.find { |ext| ext.dig('valueQuantity', 'code') == '[in_i]' }
+          return nil unless height_ref
+
           format_height(height_ref)
         when 'WEIGHT'
-          lbs_ref = record['valueQuantity']['extension'].find { |ext| ext['valueQuantity']['code'] == '[lb_av]' }
-          "#{lbs_ref['valueQuantity']['value']}#{VITAL_UNIT_DISPLAY_TEXT[:WEIGHT]}"
+          format_extension_value(extensions, '[lb_av]', VITAL_UNIT_DISPLAY_TEXT[:WEIGHT])
         when 'TEMPERATURE'
-          temp_ref = record['valueQuantity']['extension'].find { |ext| ext['valueQuantity']['code'] == '[degF]' }
-          "#{temp_ref['valueQuantity']['value']}#{VITAL_UNIT_DISPLAY_TEXT[:TEMPERATURE]}"
+          format_extension_value(extensions, '[degF]', VITAL_UNIT_DISPLAY_TEXT[:TEMPERATURE])
         # if other types with multiple entries, but not specifically differentiated, return the default valueQuantity
         else
-          units = VITAL_UNIT_DISPLAY_TEXT[record_type.to_sym] || ''
-          "#{record['valueQuantity']['value']}#{units}"
+          value = record.dig('valueQuantity', 'value')
+          return nil unless value
+
+          "#{value}#{VITAL_UNIT_DISPLAY_TEXT[record_type.to_sym] || ''}"
         end
+      end
+
+      def format_extension_value(extensions, code, units)
+        ref = extensions.find { |ext| ext.dig('valueQuantity', 'code') == code }
+        return nil unless ref
+
+        value = ref.dig('valueQuantity', 'value')
+        return nil unless value
+
+        "#{value}#{units}"
       end
 
       def find_contained(record, reference, type = nil)
@@ -226,7 +245,7 @@ module UnifiedHealthData
           # Reference is in the format #mhv-resourceType-id
           target_id = reference.delete_prefix('#')
           resource = record['contained'].detect { |res| res['id'] == target_id }
-          nil unless resource && resource['resourceType'] == type
+          return nil unless resource && resource['resourceType'] == type
         else
           # Reference is in the format ResourceType/id
           type_id = reference.split('/')

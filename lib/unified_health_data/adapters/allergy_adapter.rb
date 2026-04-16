@@ -148,7 +148,7 @@ module UnifiedHealthData
           ext_item = resource['extension'].find do |item|
             item['url']&.include?('allergyObservedHistoric')
           end
-          ext_item['valueCode'] || nil
+          ext_item&.dig('valueCode')
         end
       end
 
@@ -187,7 +187,7 @@ module UnifiedHealthData
           # Reference is in the format #mhv-resourceType-id
           target_id = reference.delete_prefix('#')
           resource = record['contained'].detect { |res| res['id'] == target_id }
-          nil unless resource && resource['resourceType'] == type
+          return nil unless resource && resource['resourceType'] == type
         else
           # Reference is in the format ResourceType/id
           type_id = reference.split('/')

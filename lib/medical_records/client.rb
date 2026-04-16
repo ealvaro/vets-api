@@ -419,6 +419,8 @@ module MedicalRecords
     # @param order [Symbol] the sort order, :asc (default) or :desc
     #
     def sort_bundle_with_criteria(bundle, order = :asc)
+      return bundle unless bundle.entry.is_a?(Array)
+
       sorted_entries = bundle.entry.sort do |entry1, entry2|
         value1 = yield(entry1.resource)
         value2 = yield(entry2.resource)

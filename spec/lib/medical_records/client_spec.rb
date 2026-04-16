@@ -488,6 +488,26 @@ describe MedicalRecords::Client do
           expect(sorted.entry.map(&:resource)).to eq(expected_order)
         end
       end
+
+      # Null/nil exception regression test (fix 6a)
+      context 'when bundle.entry is nil (fix 6a)' do
+        it 'returns the bundle unchanged when entry is nil' do
+          bundle = double('FHIR::Bundle', entry: nil)
+
+          result = client.sort_bundle_with_criteria(bundle, :desc, &:date)
+          expect(result).to eq(bundle)
+        end
+
+        it 'sorts normally when entry is a valid array' do
+          entry_old = double('entry_old', resource: double('resource_old', date: '2024-01-01'))
+          entry_new = double('entry_new', resource: double('resource_new', date: '2024-06-01'))
+          bundle = double('FHIR::Bundle', entry: [entry_old, entry_new])
+          allow(bundle).to receive(:entry=)
+
+          result = client.sort_bundle_with_criteria(bundle, :desc, &:date)
+          expect(result).to eq(bundle)
+        end
+      end
     end
 
     describe '#fetch_nested_value' do

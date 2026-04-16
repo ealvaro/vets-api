@@ -245,7 +245,7 @@ module UnifiedHealthData
       def log_vaccine_group_names(record)
         data = {
           vaccine_code_text: record.dig('vaccineCode', 'text'),
-          vaccine_codes_display: record.dig('vaccineCode', 'coding').map { |c| c['display'] },
+          vaccine_codes_display: record.dig('vaccineCode', 'coding')&.map { |c| c['display'] } || [],
           target_disease_text: record.dig('protocolApplied', 0, 'targetDisease', 0, 'text'),
           service: 'unified_health_data'
         }

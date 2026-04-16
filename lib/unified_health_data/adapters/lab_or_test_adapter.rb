@@ -599,8 +599,12 @@ module UnifiedHealthData
         end
 
         if practitioner
-          name = practitioner['name'].first
-          "#{name['given'].join(' ')} #{name['family']}"
+          name = practitioner['name']&.first
+          return requester['display'] unless name
+
+          given = name['given']&.join(' ')
+          family = name['family']
+          "#{given} #{family}".strip
         else
           # OH records may include a display name on the requester when the Practitioner
           # is not embedded in the contained array

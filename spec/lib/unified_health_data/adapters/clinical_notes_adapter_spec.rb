@@ -594,8 +594,8 @@ RSpec.describe 'ClinicalNotesAdapter' do
     context 'build_addendum_entry' do
       it 'logs a warning and returns nil when a rescued error occurs inside build_addendum_entry' do
         # A doc missing the 'authenticator' key entirely but with content that passes the blank
-        # check. Stub extract_authenticator to raise NoMethodError, simulating a scenario where
-        # the inner rescue is bypassed (e.g., a future refactor removes the bare rescue).
+        # check. extract_authenticator is stubbed to raise NoMethodError, simulating a scenario
+        # where the error propagates up to build_addendum_entry's rescue.
         malformed_doc = {
           'id' => 'malformed-addendum-001',
           'date' => '2025-01-01T00:00:00Z',
@@ -603,6 +603,15 @@ RSpec.describe 'ClinicalNotesAdapter' do
         }
         allow(adapter).to receive(:extract_authenticator).with(malformed_doc, contained: nil)
                                                          .and_raise(NoMethodError, 'undefined method `[]` for nil')
+
+        # get_date_signed now catches its own NoMethodError on the malformed doc and logs a
+        # warning before extract_authenticator is called. Allow that inner warning through.
+        allow(Rails.logger).to receive(:warn).with(
+          hash_including(
+            action: 'get_date_signed',
+            anomaly: 'get_date_signed_failed'
+          )
+        )
 
         expect(Rails.logger).to receive(:warn).with(
           hash_including(
@@ -886,6 +895,126 @@ RSpec.describe 'ClinicalNotesAdapter' do
       expect(avs.loinc_codes).to be_nil
       expect(avs.content_type).to be_nil
       expect(avs.note_type).to be_nil
+    end
+  end
+
+  # ==========================================================================
+  # Null/nil exception regression tests (fixes 3a–3f)
+  # ==========================================================================
+  describe 'null/nil exception guards' do
+    # 3a. get_record_type — nil record['type']
+    describe '#parse — nil record type (fix 3a)' do
+      it 'does not crash when record type is nil' do
+        note = {
+          'resource' => {
+            'id' => 'cn-3a',
+            'docStatus' => 'final',
+            'content' => [{ 'attachment' => { 'contentType' => 'text/plain', 'data' => 'dGVzdA==' } }]
+          }
+        }
+        parsed = adapter.parse(note)
+        expect(parsed).not_to be_nil
+        expect(parsed.note_type).to eq('other')
+      end
+    end
+
+    # 3b. get_avs_record_type — nil record['type']
+    describe '#parse_avs_with_metadata — nil record type (fix 3b)' do
+      it 'does not crash when AVS record type is nil' do
+        avs = {
+          'resource' => {
+            'id' => 'cn-3b',
+            'contained' => [{ 'resourceType' => 'Binary', 'contentType' => 'application/pdf', 'data' => 'JVBER' }],
+            'content' => []
+          }
+        }
+        parsed = adapter.parse_avs_with_metadata(avs, 'appt-1', false)
+        expect(parsed).not_to be_nil
+        expect(parsed.note_type).to eq('other')
+      end
+    end
+
+    # 3c. get_loinc_codes — nil record['type']
+    describe '#get_loinc_codes — nil record type (fix 3c)' do
+      it 'returns nil when record has no type key' do
+        result = adapter.send(:get_loinc_codes, {})
+        expect(result).to be_nil
+      end
+
+      it 'returns nil when type has no coding' do
+        result = adapter.send(:get_loinc_codes, { 'type' => {} })
+        expect(result).to be_nil
+      end
+    end
+
+    # 3d. get_title — find returns nil
+    describe '#get_title — no content items have attachment (fix 3d)' do
+      it 'returns nil when no content items have attachment' do
+        record = { 'content' => [{ 'format' => 'text/plain' }] }
+        result = adapter.send(:get_title, record)
+        expect(result).to be_nil
+      end
+
+      it 'returns nil when content is nil' do
+        record = {}
+        result = adapter.send(:get_title, record)
+        expect(result).to be_nil
+      end
+
+      it 'falls back to type.text when attachment has no title' do
+        record = {
+          'content' => [{ 'attachment' => { 'contentType' => 'text/plain' } }],
+          'type' => { 'text' => 'Discharge Summary' }
+        }
+        result = adapter.send(:get_title, record)
+        expect(result).to eq('Discharge Summary')
+      end
+    end
+
+    # 3e. extract_avs_binary — nil attachment in content items
+    describe '#extract_avs_binary — content items with nil attachment (fix 3e)' do
+      it 'does not crash when content item has no attachment key' do
+        record = {
+          'contained' => [],
+          'content' => [
+            { 'format' => 'text/plain' },
+            { 'attachment' => { 'data' => 'dGVzdA==', 'contentType' => 'text/plain' } }
+          ]
+        }
+        result = adapter.send(:extract_avs_binary, record)
+        expect(result).not_to be_nil
+        expect(result[:content_type]).to eq('text/plain')
+      end
+
+      it 'returns nil when no content items have valid attachment data' do
+        record = {
+          'contained' => [],
+          'content' => [{ 'format' => 'text/plain' }]
+        }
+        result = adapter.send(:extract_avs_binary, record)
+        expect(result).to be_nil
+      end
+    end
+
+    # 3f. get_note — find returns nil
+    describe '#get_note — no text/plain content item (fix 3f)' do
+      it 'returns nil when no content item has text/plain contentType' do
+        record = {
+          'content' => [
+            { 'attachment' => { 'contentType' => 'application/pdf', 'data' => 'JVBER' } }
+          ]
+        }
+        result = adapter.send(:get_note, record)
+        expect(result).to be_nil
+      end
+
+      it 'does not crash when content items have no attachment key' do
+        record = {
+          'content' => [{ 'format' => 'text/plain' }]
+        }
+        result = adapter.send(:get_note, record)
+        expect(result).to be_nil
+      end
     end
   end
 end

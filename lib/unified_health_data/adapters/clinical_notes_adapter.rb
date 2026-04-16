@@ -338,15 +338,16 @@ module UnifiedHealthData
       end
 
       def get_record_type(record)
+        coding = record.dig('type', 'coding')
         LOINC_CODES.each do |key, value|
-          return value if record['type']['coding']&.any? { |coding| coding['code'] == key }
+          return value if coding&.any? { |c| c['code'] == key }
         end
 
         # Diagnostic: log when a LOINC code is not in our known mapping.
         # Toggle-gated because LOINC_CODES only has 3 entries, so many legitimate
         # codes (e.g. AVS codes) will hit this path in normal operation.
         # StatsD counter still fires always-on for DataDog monitoring.
-        codes = record['type']['coding']&.map { |c| c['code'] }&.compact
+        codes = coding&.map { |c| c['code'] }&.compact
         @mr_log.diagnostic(
           resource: MedicalRecords::MedicalRecordsLog::CLINICAL_NOTES,
           action: 'parse',
@@ -360,14 +361,15 @@ module UnifiedHealthData
       end
 
       def get_avs_record_type(record)
+        coding = record.dig('type', 'coding')
         AVS_LOINC_CODE_MAPPING.each do |key, value|
-          return value if record['type']['coding']&.any? { |coding| coding['code'] == key }
+          return value if coding&.any? { |c| c['code'] == key }
         end
         'other'
       end
 
       def get_loinc_codes(record)
-        record['type']['coding']&.map { |coding| coding['code'] if coding['code'] }
+        record.dig('type', 'coding')&.map { |coding| coding['code'] if coding['code'] }
       end
 
       def build_encounter_keyed_hash_from_doc_refs(document_references)
@@ -409,9 +411,10 @@ module UnifiedHealthData
 
       def get_title(record)
         content_item = record['content']&.find { |item| item['attachment'] }
-        return content_item['attachment']['title'] if content_item['attachment']['title']
+        return nil unless content_item
+        return content_item['attachment']['title'] if content_item.dig('attachment', 'title')
 
-        record['type']['text'] if record['type']['text']
+        record.dig('type', 'text')
       rescue
         nil
       end
@@ -500,7 +503,7 @@ module UnifiedHealthData
         # Fallback check for pdf or plain text with data string in the content array
         if array_and_has_items(record['content'])
           content_item = record['content'].find do |item|
-            item['attachment']['data'] && AVS_CONTENT_TYPES.include?(item['attachment']['contentType'])
+            item.dig('attachment', 'data') && AVS_CONTENT_TYPES.include?(item.dig('attachment', 'contentType'))
           end
 
           if content_item
@@ -513,9 +516,10 @@ module UnifiedHealthData
 
       def get_note(record)
         if array_and_has_items(record['content'])
-          content_item = record['content'].find { |item| item['attachment']['contentType'] == 'text/plain' }
+          content_item = record['content'].find { |item| item.dig('attachment', 'contentType') == 'text/plain' }
+          return nil unless content_item
 
-          content_item['attachment']['data'] if content_item['attachment']
+          content_item.dig('attachment', 'data')
         end
       rescue
         nil

@@ -457,4 +457,227 @@ RSpec.describe 'VitalAdapter' do
       end
     end
   end
+
+  # ==========================================================================
+  # Null/nil exception regression tests (fixes 1a–1g)
+  # ==========================================================================
+  describe 'null/nil exception guards' do
+    let(:adapter_instance) { UnifiedHealthData::Adapters::VitalAdapter.new }
+
+    before { allow(Rails.logger).to receive(:warn) }
+
+    # 1a. get_name — .humanize on nil
+    describe '#parse_single_vital — get_name nil guard (fix 1a)' do
+      it 'does not crash when code.text is nil' do
+        record = {
+          'resource' => {
+            'resourceType' => 'Observation',
+            'id' => 'v-1a-1',
+            'code' => {
+              'coding' => [{ 'code' => '29463-7', 'display' => 'Weight' }]
+            },
+            'valueQuantity' => { 'value' => 180, 'unit' => 'lb_av' }
+          }
+        }
+        vital = adapter_instance.parse_single_vital(record)
+        expect(vital.name).to eq('Weight')
+      end
+
+      it 'does not crash when both code.text and coding display are nil' do
+        record = {
+          'resource' => {
+            'resourceType' => 'Observation',
+            'id' => 'v-1a-2',
+            'code' => {
+              'coding' => [{ 'code' => '29463-7' }]
+            },
+            'valueQuantity' => { 'value' => 180 }
+          }
+        }
+        vital = adapter_instance.parse_single_vital(record)
+        expect(vital.name).to eq('')
+      end
+    end
+
+    # 1b. get_measurements — valueQuantity nil guard
+    describe '#parse_single_vital — nil valueQuantity (fix 1b)' do
+      it 'does not crash when valueQuantity is nil' do
+        record = {
+          'resource' => {
+            'resourceType' => 'Observation',
+            'id' => 'v-1b',
+            'code' => {
+              'coding' => [{ 'code' => '29463-7' }],
+              'text' => 'Weight'
+            }
+          }
+        }
+        vital = adapter_instance.parse_single_vital(record)
+        expect(vital.measurement).to be_nil
+      end
+    end
+
+    # 1c. get_measurements — string interpolation always truthy
+    describe '#parse_single_vital — nil valueQuantity.value (fix 1c)' do
+      it 'returns nil measurement when valueQuantity.value is nil' do
+        record = {
+          'resource' => {
+            'resourceType' => 'Observation',
+            'id' => 'v-1c',
+            'code' => {
+              'coding' => [{ 'code' => '8867-4' }],
+              'text' => 'Pulse'
+            },
+            'valueQuantity' => { 'unit' => 'bpm' }
+          }
+        }
+        vital = adapter_instance.parse_single_vital(record)
+        expect(vital.measurement).to be_nil
+      end
+    end
+
+    # 1d. format_blood_pressure — empty hash truthy
+    describe '#parse_single_vital — blood pressure with no matching components (fix 1d)' do
+      it 'returns nil measurement when neither systolic nor diastolic components match' do
+        record = {
+          'resource' => {
+            'resourceType' => 'Observation',
+            'id' => 'v-1d',
+            'code' => {
+              'coding' => [{ 'code' => '85354-9' }],
+              'text' => 'Blood pressure'
+            },
+            'component' => [
+              {
+                'code' => { 'coding' => [{ 'code' => 'UNKNOWN' }] },
+                'valueQuantity' => { 'value' => 120 }
+              }
+            ]
+          }
+        }
+        vital = adapter_instance.parse_single_vital(record)
+        expect(vital.measurement).to be_nil
+      end
+
+      it 'returns nil when systolic found but valueQuantity missing value' do
+        record = {
+          'resource' => {
+            'resourceType' => 'Observation',
+            'id' => 'v-1d-2',
+            'code' => {
+              'coding' => [{ 'code' => '85354-9' }],
+              'text' => 'Blood pressure'
+            },
+            'component' => [
+              {
+                'code' => { 'coding' => [{ 'code' => '8480-6' }] },
+                'valueQuantity' => {}
+              },
+              {
+                'code' => { 'coding' => [{ 'code' => '8462-4' }] },
+                'valueQuantity' => { 'value' => 80 }
+              }
+            ]
+          }
+        }
+        vital = adapter_instance.parse_single_vital(record)
+        expect(vital.measurement).to be_nil
+      end
+    end
+
+    # 1e. format_height — nil value before divmod
+    describe '#parse_single_vital — height with nil valueQuantity (fix 1e)' do
+      it 'returns nil measurement when height valueQuantity.value is nil' do
+        record = {
+          'resource' => {
+            'resourceType' => 'Observation',
+            'id' => 'v-1e',
+            'code' => {
+              'coding' => [{ 'code' => '8302-2' }],
+              'text' => 'Height'
+            },
+            'valueQuantity' => {}
+          }
+        }
+        vital = adapter_instance.parse_single_vital(record)
+        expect(vital.measurement).to be_nil
+      end
+    end
+
+    # 1f. format_extension_measurements — find returns nil
+    describe '#parse_single_vital — extension measurements with no matching entry (fix 1f)' do
+      it 'returns nil when height extension has no matching [in_i] code' do
+        record = {
+          'resource' => {
+            'resourceType' => 'Observation',
+            'id' => 'v-1f',
+            'code' => {
+              'coding' => [{ 'code' => '8302-2' }],
+              'text' => 'Height'
+            },
+            'valueQuantity' => {
+              'extension' => [
+                { 'valueQuantity' => { 'code' => '[cm]', 'value' => 165 } }
+              ]
+            }
+          }
+        }
+        vital = adapter_instance.parse_single_vital(record)
+        expect(vital.measurement).to be_nil
+      end
+
+      it 'returns nil when weight extension has no matching [lb_av] code' do
+        record = {
+          'resource' => {
+            'resourceType' => 'Observation',
+            'id' => 'v-1f-w',
+            'code' => {
+              'coding' => [{ 'code' => '29463-7' }],
+              'text' => 'Weight'
+            },
+            'valueQuantity' => {
+              'extension' => [
+                { 'valueQuantity' => { 'code' => '[kg]', 'value' => 75 } }
+              ]
+            }
+          }
+        }
+        vital = adapter_instance.parse_single_vital(record)
+        expect(vital.measurement).to be_nil
+      end
+
+      it 'returns nil when temperature extension has no matching [degF] code' do
+        record = {
+          'resource' => {
+            'resourceType' => 'Observation',
+            'id' => 'v-1f-t',
+            'code' => {
+              'coding' => [{ 'code' => '8310-5' }],
+              'text' => 'Temperature'
+            },
+            'valueQuantity' => {
+              'extension' => [
+                { 'valueQuantity' => { 'code' => '[degC]', 'value' => 37 } }
+              ]
+            }
+          }
+        }
+        vital = adapter_instance.parse_single_vital(record)
+        expect(vital.measurement).to be_nil
+      end
+    end
+
+    # 1g. find_contained — nil unless without return
+    describe '#find_contained — return nil for mismatched type (fix 1g)' do
+      it 'returns nil when contained resource has wrong type for hash reference' do
+        record = {
+          'contained' => [
+            { 'id' => 'prac-1', 'resourceType' => 'Practitioner', 'name' => 'Dr. Smith' }
+          ]
+        }
+        result = adapter_instance.send(:find_contained, record, '#prac-1', 'Location')
+        expect(result).to be_nil
+      end
+    end
+  end
 end

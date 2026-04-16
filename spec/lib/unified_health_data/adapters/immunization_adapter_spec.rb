@@ -587,4 +587,32 @@ RSpec.describe 'ImmunizationAdapter' do
       adapter.parse([completed_record])
     end
   end
+
+  # ==========================================================================
+  # Null/nil exception regression tests (fix 5a)
+  # ==========================================================================
+  describe 'null/nil exception guards' do
+    # 5a. log_vaccine_group_names — .map on nil
+    describe '#log_vaccine_group_names — nil vaccineCode.coding (fix 5a)' do
+      before do
+        allow(PersonalInformationLog).to receive(:create!)
+      end
+
+      it 'does not crash when vaccineCode.coding is nil' do
+        allow(Flipper).to receive(:enabled?).with(:mhv_vaccine_uhd_name_logging, user).and_return(true)
+
+        record = {
+          'vaccineCode' => { 'text' => 'Test Vaccine' }
+        }
+
+        expect { adapter.send(:log_vaccine_group_names, record) }.not_to raise_error
+
+        expect(PersonalInformationLog).to have_received(:create!).with(
+          hash_including(
+            data: hash_including(vaccine_codes_display: [])
+          )
+        )
+      end
+    end
+  end
 end

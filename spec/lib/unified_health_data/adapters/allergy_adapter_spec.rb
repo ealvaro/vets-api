@@ -388,4 +388,55 @@ RSpec.describe 'AllergyAdapter' do
       adapter_with_user.parse([active_allergy])
     end
   end
+
+  # ==========================================================================
+  # Null/nil exception regression tests (fixes 2a–2b)
+  # ==========================================================================
+  describe 'null/nil exception guards' do
+    # 2a. extract_observed_historic — find returns nil
+    describe '#parse_single_allergy — no allergyObservedHistoric extension (fix 2a)' do
+      it 'returns nil observedHistoric when no matching extension found' do
+        record = {
+          'resource' => {
+            'resourceType' => 'AllergyIntolerance',
+            'id' => 'a-2a',
+            'clinicalStatus' => { 'coding' => [{ 'code' => 'active' }] },
+            'code' => { 'coding' => [{ 'display' => 'Peanut' }] },
+            'extension' => [
+              { 'url' => 'http://example.com/unrelated', 'valueCode' => 'test' }
+            ]
+          }
+        }
+        allergy = adapter.parse_single_allergy(record)
+        expect(allergy.observedHistoric).to be_nil
+      end
+
+      it 'returns nil when extension array is empty' do
+        record = {
+          'resource' => {
+            'resourceType' => 'AllergyIntolerance',
+            'id' => 'a-2a-2',
+            'clinicalStatus' => { 'coding' => [{ 'code' => 'active' }] },
+            'code' => { 'coding' => [{ 'display' => 'Dust' }] },
+            'extension' => []
+          }
+        }
+        allergy = adapter.parse_single_allergy(record)
+        expect(allergy.observedHistoric).to be_nil
+      end
+    end
+
+    # 2b. find_contained — nil unless without return
+    describe '#find_contained — return nil for mismatched type (fix 2b)' do
+      it 'returns nil when contained resource has wrong type for hash reference' do
+        record = {
+          'contained' => [
+            { 'id' => 'org-1', 'resourceType' => 'Organization', 'name' => 'VA Hospital' }
+          ]
+        }
+        result = adapter.send(:find_contained, record, '#org-1', 'Location')
+        expect(result).to be_nil
+      end
+    end
+  end
 end
