@@ -2,6 +2,10 @@
 
 Flipper.enable(:cerner_non_eligible_sis_enabled)
 
+SignIn::ClientConfig.where("'dslogon' = ANY(credential_service_providers)").find_each do |config|
+  config.update!(credential_service_providers: config.credential_service_providers.without('dslogon'))
+end
+
 # Create Config for va.gov Sign in Service client
 vaweb = SignIn::ClientConfig.find_or_initialize_by(client_id: 'vaweb')
 vaweb.update!(authentication: SignIn::Constants::Auth::COOKIE,

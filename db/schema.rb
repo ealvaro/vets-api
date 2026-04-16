@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_04_07_160933) do
+ActiveRecord::Schema[7.2].define(version: 2026_04_16_203655) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -751,7 +751,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_07_160933) do
     t.text "enforced_terms"
     t.boolean "shared_sessions", default: false, null: false
     t.string "service_levels", default: ["ial1", "ial2", "loa1", "loa3", "min"], array: true
-    t.string "credential_service_providers", default: ["logingov", "idme", "dslogon", "mhv"], array: true
+    t.string "credential_service_providers", default: ["logingov", "idme", "mhv"], array: true
     t.boolean "json_api_compatibility", default: true, null: false
     t.index ["client_id"], name: "index_client_configs_on_client_id", unique: true
   end
