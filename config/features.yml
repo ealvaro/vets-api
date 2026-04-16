@@ -3242,6 +3242,9 @@ features:
     actor_type: user
     enable_in_development: true
     description: Enables form 21-4192 on vets-website
+  form_4192_submission_email_notification:
+    actor_type: user
+    description: Enables VA Notify confirmation email sending for Form 21-4192 submissions
   form_21_4192_govcio_mms:
     actor_type: cookie_id
     enable_in_development: true

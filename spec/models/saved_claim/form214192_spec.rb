@@ -339,9 +339,57 @@ RSpec.describe SavedClaim::Form214192, type: :model do
   end
 
   describe '#send_confirmation_email' do
-    it 'does not send email (MVP does not include email)' do
-      expect(VANotify::EmailJob).not_to receive(:perform_async)
-      claim.send_confirmation_email
+    let(:saved_claim) { create(:va214192) }
+
+    before do
+      allow(StatsD).to receive(:increment)
+    end
+
+    context 'when feature flag is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:form_4192_submission_email_notification).and_return(true)
+      end
+
+      it 'queues a submission confirmation email job' do
+        expect(Form214192SubmissionEmailJob).to receive(:perform_async).with(saved_claim.id)
+
+        saved_claim.send_confirmation_email
+
+        expect(StatsD).to have_received(:increment).with('api.form214192.email.queued')
+      end
+
+      it 'does not queue when the record is not persisted' do
+        expect(Form214192SubmissionEmailJob).not_to receive(:perform_async)
+
+        claim.send_confirmation_email
+      end
+
+      it 'tracks queue failures and does not raise' do
+        allow(Form214192SubmissionEmailJob).to receive(:perform_async).and_raise(StandardError.new('queue error'))
+        allow(Rails.logger).to receive(:error)
+
+        expect { saved_claim.send_confirmation_email }.not_to raise_error
+
+        expect(StatsD).to have_received(:increment).with('api.form214192.email.queue_failure')
+        expect(Rails.logger).to have_received(:error).with(
+          'SavedClaim::Form214192 failed to queue confirmation email',
+          hash_including(saved_claim_id: saved_claim.id, error: 'StandardError', message: 'queue error')
+        )
+      end
+    end
+
+    context 'when feature flag is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:form_4192_submission_email_notification).and_return(false)
+      end
+
+      it 'does not queue and tracks skipped_feature_flag metric' do
+        expect(Form214192SubmissionEmailJob).not_to receive(:perform_async)
+
+        saved_claim.send_confirmation_email
+
+        expect(StatsD).to have_received(:increment).with('api.form214192.email.skipped_feature_flag')
+      end
     end
   end
 

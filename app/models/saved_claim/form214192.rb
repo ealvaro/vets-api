@@ -22,20 +22,23 @@ class SavedClaim::Form214192 < SavedClaim
   end
 
   def send_confirmation_email
-    # Email functionality not included in MVP
-    # employer_email = parsed_form.dig('employmentInformation', 'employerEmail')
-    # return unless employer_email
+    return unless id
 
-    # VANotify::EmailJob.perform_async(
-    #   employer_email,
-    #   Settings.vanotify.services.va_gov.template_id.form214192_confirmation,
-    #   {
-    #     'employer_name' => employer_name,
-    #     'veteran_name' => veteran_name,
-    #     'confirmation_number' => confirmation_number,
-    #     'date_submitted' => created_at.strftime('%B %d, %Y')
-    #   }
-    # )
+    unless Flipper.enabled?(:form_4192_submission_email_notification)
+      StatsD.increment('api.form214192.email.skipped_feature_flag')
+      return
+    end
+
+    Form214192SubmissionEmailJob.perform_async(id)
+    StatsD.increment('api.form214192.email.queued')
+  rescue => e
+    StatsD.increment('api.form214192.email.queue_failure')
+    Rails.logger.error(
+      'SavedClaim::Form214192 failed to queue confirmation email',
+      saved_claim_id: id,
+      error: e.class.name,
+      message: e.message
+    )
   end
 
   # SavedClaims require regional_office to be defined
