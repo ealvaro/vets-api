@@ -20,15 +20,5 @@ FactoryBot.define do
         'benefitType' => 'compensation'
       }.to_json
     end
-
-    delete_date { nil }
-
-    trait :old do
-      delete_date { 1.day.ago }
-    end
-
-    trait :recent do
-      delete_date { 55.days.from_now }
-    end
   end
 end

@@ -55,10 +55,10 @@ RSpec.describe AccreditedRepresentativePortal::DeleteOldIntentToFileRecordsJob, 
       end
 
       context 'when there are records older than 60 days' do
-        let!(:old_record1) { create(:saved_claim_intent_to_file, :old) }
-        let!(:old_record2) { create(:saved_claim_intent_to_file, :old) }
-        let!(:recent_record1) { create(:saved_claim_intent_to_file, :recent) }
-        let!(:recent_record2) { create(:saved_claim_intent_to_file, :recent) }
+        let!(:old_record1) { create(:saved_claim_intent_to_file, created_at: 61.days.ago) }
+        let!(:old_record2) { create(:saved_claim_intent_to_file, created_at: 61.days.ago) }
+        let!(:recent_record1) { create(:saved_claim_intent_to_file, created_at: 1.day.ago) }
+        let!(:recent_record2) { create(:saved_claim_intent_to_file, created_at: 1.day.ago) }
 
         it 'deletes only records older than 60 days' do
           expect { job.perform }.to change(
@@ -87,8 +87,8 @@ RSpec.describe AccreditedRepresentativePortal::DeleteOldIntentToFileRecordsJob, 
       end
 
       context 'when no records qualify for deletion' do
-        let!(:recent_record1) { create(:saved_claim_intent_to_file, :recent) }
-        let!(:recent_record2) { create(:saved_claim_intent_to_file, :recent) }
+        let!(:recent_record1) { create(:saved_claim_intent_to_file, created_at: 1.day.ago) }
+        let!(:recent_record2) { create(:saved_claim_intent_to_file, created_at: 1.day.ago) }
 
         it 'does not delete anything' do
           expect { job.perform }.not_to change(

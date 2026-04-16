@@ -22,6 +22,19 @@ module AccreditedRepresentativePortal
       'IntentToFile'
     end
 
+    def perform_deletion
+      total = 0
+
+      scope
+        .where('created_at <= ?', 60.days.ago)
+        .find_each(batch_size: 1000) do |record|
+          record.destroy
+          total += 1
+        end
+
+      total
+    end
+
     # ----- Rerun helper -----
     def self.rerun_missed!
       new.perform
