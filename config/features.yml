@@ -3343,10 +3343,6 @@ features:
     actor_type: user
     description: If enabled, logs additional information about mobile appointments for debugging purposes
     enable_in_development: false
-  va_profile_transaction_status_logging:
-    actor_type: user
-    description: Logs VA Profile transaction create/update and status request details for debugging
-    enable_in_development: false
   va_online_scheduling_uhd_avs_metadata:
     actor_type: user
     description: Allows UHD AVS work for appointments to be used when requesting past appointments

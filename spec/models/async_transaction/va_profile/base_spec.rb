@@ -231,83 +231,6 @@ RSpec.describe AsyncTransaction::VAProfile::Base, type: :model do
     let(:user) { build(:user, :loa3) }
     let(:service) { instance_double(VAProfile::ContactInformation::V2::Service) }
 
-    before do
-      allow(Flipper).to receive(:enabled?)
-        .with(:va_profile_transaction_status_logging)
-        .and_return(true)
-    end
-
-    it 'logs refresh attempt and first check' do
-      now = Time.zone.now
-      transaction = create(
-        :address_transaction,
-        transaction_id: '0ea91332-4713-4008-bd57-40541ee8d4d4',
-        user_uuid: user.uuid,
-        transaction_status: 'RECEIVED',
-        created_at: now,
-        updated_at: now
-      )
-      api_response = double(transaction: double(status: 'COMPLETED_SUCCESS', messages: '[]'))
-
-      expect(Rails.logger).to receive(:info).with(
-        hash_including(
-          message: 'VAProfile transaction status refresh attempt',
-          transaction_id: transaction.transaction_id,
-          first_check: true
-        )
-      )
-      expect(Rails.logger).to receive(:info).with(
-        hash_including(
-          message: 'VAProfile first transaction status check',
-          transaction_id: transaction.transaction_id
-        )
-      )
-      allow(AsyncTransaction::VAProfile::Base).to receive(:fetch_transaction).and_return(api_response)
-
-      AsyncTransaction::VAProfile::Base.refresh_transaction_status(user, service, transaction.transaction_id)
-    end
-
-    it 'logs batch candidates and failures' do
-      transaction = create(
-        :address_transaction,
-        transaction_id: '5b4550b3-2bcb-4fef-8906-35d0b4b310a8',
-        user_uuid: user.uuid,
-        transaction_status: 'RECEIVED',
-        status: AsyncTransaction::VAProfile::Base::REQUESTED
-      )
-      error_class = Class.new(StandardError) do
-        attr_accessor :body, :status
-      end
-      error = error_class.new('boom')
-      error.body = { 'messages' => [{ 'code' => 'VET360_ERR', 'key' => 'error' }] }
-      error.status = 500
-
-      allow(AsyncTransaction::VAProfile::Base)
-        .to receive(:last_ongoing_transactions_for_user)
-        .and_return([transaction])
-      allow(AsyncTransaction::VAProfile::Base)
-        .to receive(:refresh_transaction_status)
-        .and_raise(error)
-
-      expect(Rails.logger).to receive(:info).with(
-        hash_including(
-          message: 'VAProfile batch transaction status refresh candidates',
-          user_uuid: user.uuid,
-          candidate_count: 1
-        )
-      )
-      expect(Rails.logger).to receive(:warn).with(
-        hash_including(
-          message: 'VAProfile batch transaction status refresh failed',
-          transaction_id: transaction.transaction_id
-        )
-      )
-
-      expect do
-        AsyncTransaction::VAProfile::Base.refresh_transaction_statuses(user, service)
-      end.to raise_error(StandardError, 'boom')
-    end
-
     it 'logs when stale requested transactions are marked completed' do
       stale_transaction = create(
         :email_transaction,
@@ -329,64 +252,11 @@ RSpec.describe AsyncTransaction::VAProfile::Base, type: :model do
           transaction_type: stale_transaction.type
         )
       )
-      expect(Rails.logger).to receive(:info).with(
-        hash_including(
-          message: 'VAProfile batch transaction status refresh candidates',
-          user_uuid: user.uuid,
-          candidate_count: 0
-        )
-      )
 
       transactions = AsyncTransaction::VAProfile::Base.refresh_transaction_statuses(user, service)
 
       expect(transactions).to eq([])
       expect(stale_transaction.reload.status).to eq(AsyncTransaction::VAProfile::Base::COMPLETED)
-    end
-
-    context 'when transaction status logging is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?)
-          .with(:va_profile_transaction_status_logging)
-          .and_return(false)
-      end
-
-      it 'does not log batch candidates or failures' do
-        transaction = create(
-          :address_transaction,
-          transaction_id: '5b4550b3-2bcb-4fef-8906-35d0b4b310a8',
-          user_uuid: user.uuid,
-          transaction_status: 'RECEIVED',
-          status: AsyncTransaction::VAProfile::Base::REQUESTED
-        )
-        error_class = Class.new(StandardError) do
-          attr_accessor :body, :status
-        end
-        error = error_class.new('boom')
-        error.body = { 'messages' => [{ 'code' => 'VET360_ERR', 'key' => 'error' }] }
-        error.status = 500
-
-        allow(AsyncTransaction::VAProfile::Base)
-          .to receive(:last_ongoing_transactions_for_user)
-          .and_return([transaction])
-        allow(AsyncTransaction::VAProfile::Base)
-          .to receive(:refresh_transaction_status)
-          .and_raise(error)
-
-        expect(Rails.logger).not_to receive(:info).with(
-          hash_including(
-            message: 'VAProfile batch transaction status refresh candidates'
-          )
-        )
-        expect(Rails.logger).not_to receive(:warn).with(
-          hash_including(
-            message: 'VAProfile batch transaction status refresh failed'
-          )
-        )
-
-        expect do
-          AsyncTransaction::VAProfile::Base.refresh_transaction_statuses(user, service)
-        end.to raise_error(StandardError, 'boom')
-      end
     end
   end
 

@@ -314,27 +314,19 @@ module VAProfile
         end
 
         def post_or_put_data(method, model, path, response_class)
-          request_path = nil
-
           with_monitoring do
             verify_user!
             request_path = "#{MPI::Constants::VA_ROOT_OID}/#{ERB::Util.url_encode(vaprofile_aaid)}" + "/#{path}"
-            log_transaction_request(method, request_path)
             raw_response = perform(method, request_path, model.in_json)
-            response = response_class.from(raw_response)
-
-            log_transaction_response(method, request_path, response)
-            response
+            response_class.from(raw_response)
           end
         rescue => e
-          log_transaction_failure(method, request_path, e)
+          log_transaction_failure(method, path, e)
           handle_error(e)
         end
 
         def get_transaction_status(path, response_class)
           with_monitoring do
-            log_transaction_status_request(path, response_class)
-
             raw_response = perform(:get, path)
             VAProfile::Stats.increment_transaction_results(raw_response)
 
@@ -346,45 +338,9 @@ module VAProfile
           handle_error(e)
         end
 
-        def log_transaction_request(method, request_path)
-          return unless transaction_status_logging_enabled?
-
-          safe_request_path = redact_vaprofile_aaid(request_path)
-
-          Rails.logger.info(
-            message: 'VAProfile transaction create/update request',
-            request_method: method.to_s.upcase,
-            request_path: safe_request_path,
-            identifier_type: vaprofile_identifier_type,
-            vet360_id_present: @user&.vet360_id.present?,
-            icn_present: @user&.icn.present?,
-            user_uuid_present: @user&.uuid.present?
-          )
-        end
-
-        def log_transaction_response(method, request_path, response)
-          return unless transaction_status_logging_enabled?
-
-          safe_request_path = redact_vaprofile_aaid(request_path)
-
-          Rails.logger.info(
-            message: 'VAProfile transaction create/update response',
-            request_method: method.to_s.upcase,
-            request_path: safe_request_path,
-            identifier_type: vaprofile_identifier_type,
-            vet360_id_present: @user&.vet360_id.present?,
-            icn_present: @user&.icn.present?,
-            transaction_id: response.transaction&.id,
-            transaction_status: response.transaction&.status,
-            user_uuid_present: @user&.uuid.present?
-          )
-        end
-
         def log_transaction_failure(method, request_path, error)
-          return unless transaction_status_logging_enabled?
-
           safe_request_path = redact_vaprofile_aaid(request_path)
-          error_status, error_code, error_key = extract_error_metadata(error)
+          error_status, error_code, error_key, error_message = extract_error_metadata(error)
 
           Rails.logger.warn(
             message: 'VAProfile transaction create/update request failed',
@@ -394,6 +350,7 @@ module VAProfile
             vet360_id_present: @user&.vet360_id.present?,
             icn_present: @user&.icn.present?,
             error_class: error.class.to_s,
+            error_message:,
             error_status:,
             error_code:,
             error_key:,
@@ -401,30 +358,10 @@ module VAProfile
           )
         end
 
-        def log_transaction_status_request(path, response_class)
-          return unless transaction_status_logging_enabled?
-
-          request_path = path
-          response_class_name = response_class.to_s
-
-          Rails.logger.info(
-            message: 'VAProfile transaction status request',
-            request_path:,
-            transaction_id: request_path.to_s.split('/').last,
-            response_class: response_class_name,
-            identifier_type: vaprofile_identifier_type,
-            vet360_id_present: @user&.vet360_id.present?,
-            icn_present: @user&.icn.present?,
-            user_uuid_present: @user&.uuid.present?
-          )
-        end
-
         def log_transaction_status_failure(path, response_class, error)
-          return unless transaction_status_logging_enabled?
-
           request_path = path
           response_class_name = response_class.to_s
-          error_status, error_code, error_key = extract_error_metadata(error)
+          error_status, error_code, error_key, error_message = extract_error_metadata(error)
 
           Rails.logger.warn(
             message: 'VAProfile transaction status request failed',
@@ -435,15 +372,12 @@ module VAProfile
             vet360_id_present: @user&.vet360_id.present?,
             icn_present: @user&.icn.present?,
             error_class: error.class.to_s,
+            error_message:,
             error_status:,
             error_code:,
             error_key:,
             user_uuid_present: @user&.uuid.present?
           )
-        end
-
-        def transaction_status_logging_enabled?
-          defined?(Flipper) && Flipper.enabled?(:va_profile_transaction_status_logging)
         end
 
         def vaprofile_identifier_type
@@ -455,8 +389,14 @@ module VAProfile
           body = error.respond_to?(:body) ? error.body : nil
           error_code = body.is_a?(Hash) ? body.dig('messages', 0, 'code') : nil
           error_key = body.is_a?(Hash) ? body.dig('messages', 0, 'key') : nil
+          error_message = error.respond_to?(:message) ? sanitize_error_message(error.message.to_s) : nil
 
-          [error_status, error_code, error_key]
+          [error_status, error_code, error_key, error_message]
+        end
+
+        def sanitize_error_message(message)
+          oid_pattern = Regexp.escape(MPI::Constants::VA_ROOT_OID)
+          message.gsub(%r{#{oid_pattern}/[^/\s]+}, "#{MPI::Constants::VA_ROOT_OID}/#{REDACTED_AAID}")
         end
 
         def redact_vaprofile_aaid(request_path)
