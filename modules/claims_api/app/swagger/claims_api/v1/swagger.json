@@ -10349,7 +10349,7 @@
                                   "header_hash": {
                                     "type": "string",
                                     "nullable": true,
-                                    "description": "Hashed representation of document headers"
+                                    "description": "Hashed representation of document header"
                                   },
                                   "filename": {
                                     "type": "string",
@@ -11059,9 +11059,9 @@
                         {
                           "id": "00000000-0000-0000-0000-000000000011",
                           "type": "claim_supporting_document",
-                          "md5": "d927c7e283b3158a54822a493d06181d",
-                          "header_hash": "bf4ac599b081869634566fdc561a0f8db17dd2e09b199a8c674ed08a6b6e113f",
-                          "filename": "extras.pdf",
+                          "md5": "84e997702baca501734d4e23dae0f9af",
+                          "header_hash": "c2714a50560affd76bfc376a90ec4e52d49e1a09d073456b7a1594452fd7ccc7",
+                          "filename": "custom_file_name.pdf",
                           "uploaded_at": "2024-01-01T00:00:00.000Z"
                         }
                       ]
@@ -11280,8 +11280,7 @@
                                   },
                                   "header_hash": {
                                     "type": "string",
-                                    "nullable": true,
-                                    "description": "Hashed representation of document headers"
+                                    "description": "Hashed representation of document header"
                                   },
                                   "filename": {
                                     "type": "string",
