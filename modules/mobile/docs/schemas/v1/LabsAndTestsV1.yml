@@ -16,7 +16,7 @@ properties:
       properties:
         type:
           type: string
-          example: labsAndTests
+          example: DiagnosticReport
         id:
           type: string
           example: abe3f152-90b0-45cb-8776-4958bad0e0ef
@@ -25,39 +25,132 @@ properties:
           type: object
           additionalProperties: false
           required:
-            - category
-            - subject
-            - effectiveDateTime
-            - issued
-            - code
+            - display
+            - testCode
             - status
           properties:
-            category:
+            display:
               type: string
-              example: LAB
-            subject:
+              description: User-friendly display name for the lab or test
+              example: CHEM 7
+            testCode:
               type: string
-              example: Patient/1234567
-            effectiveDateTime:
+              description: HL7 v2-0074 diagnostic service section code or LOINC code
+              example: CH
+            testCodeDisplay:
               type: string
-              format: date-time
-              example: 2021-01-01T00:00:00Z
-            issued:
+              nullable: true
+              description: Human-readable display name for the test code
+              example: Chemistry and hematology
+            dateCompleted:
               type: string
-              format: date-time
-              example: 2021-01-01T00:00:00Z
-            code:
-              type: object
-              properties:
-                coding:
-                  type: array
-                  items:
-                    type: object
-                text:
-                  type: string
+              nullable: true
+              description: Date/time the test was completed, in facility local time when available
+              example: '2025-01-23T15:01:52-07:00'
+            sampleTested:
+              type: string
+              nullable: true
+              description: Specimen type used for the test
+              example: BLOOD
+            encodedData:
+              type: string
+              nullable: true
+              description: Base64-encoded presentedForm data (e.g., radiology report text)
+              example: ''
+            location:
+              type: string
+              nullable: true
+              description: Name of the performing organization or location
+              example: CHYSHR TEST LAB
+            orderedBy:
+              type: string
+              nullable: true
+              description: Name of the ordering practitioner
+              example: John Doe
+            bodySite:
+              type: string
+              nullable: true
+              description: Body site related to the test, if applicable
+              example: Left arm
+            comments:
+              type: array
+              nullable: true
+              description: Comments from the DiagnosticReport or ServiceRequest
+              items:
+                type: string
             status:
               type: string
+              description: FHIR status of the DiagnosticReport
               example: final
+            source:
+              type: string
+              nullable: true
+              description: Data source identifier (e.g., vista or oracle-health)
+              example: vista
+            facilityTimezone:
+              type: string
+              nullable: true
+              description: IANA timezone ID for the facility where the test was performed
+              example: America/Denver
+            observations:
+              type: array
+              nullable: true
+              description: Individual test result observations within this report
+              items:
+                type: object
+                additionalProperties: false
+                properties:
+                  testCode:
+                    type: string
+                    description: Name of the individual observation test
+                    example: GLUCOSE
+                  value:
+                    type: object
+                    nullable: true
+                    description: The observation result value
+                    properties:
+                      text:
+                        type: string
+                        nullable: true
+                        description: Formatted value text
+                        example: 99.0 mg/dL
+                      type:
+                        type: string
+                        nullable: true
+                        description: Value type (quantity, codeable-concept, string, date-time)
+                        example: quantity
+                  referenceRange:
+                    type: string
+                    nullable: true
+                    description: Reference range for the observation
+                    example: 70 - 110 mg/dL
+                  status:
+                    type: string
+                    description: FHIR status of the observation
+                    example: final
+                  interpretation:
+                    type: string
+                    nullable: true
+                    description: >-
+                      Human-readable interpretation display string mapped from HL7 v3
+                      ObservationInterpretation codes (e.g., High, Low, Critical high).
+                      Falls back to CodeableConcept text or coding display if code is unmapped.
+                    example: High
+                  comments:
+                    type: array
+                    description: Notes attached to the observation
+                    items:
+                      type: string
+                  bodySite:
+                    type: string
+                    nullable: true
+                    description: Body site for the observation
+                    example: ''
+                  sampleTested:
+                    type: string
+                    nullable: true
+                    description: Specimen type for the observation
+                    example: ''
   meta:
     type: object
     additionalProperties: false

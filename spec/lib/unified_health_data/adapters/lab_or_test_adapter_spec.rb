@@ -2759,7 +2759,7 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
     end
 
     describe '#extract_interpretation' do
-      it 'extracts the HL7 v3 ObservationInterpretation code when present' do
+      it 'returns the mapped display string for HL7 v3 ObservationInterpretation code when present' do
         obs = {
           'code' => { 'text' => 'Glucose' },
           'interpretation' => [
@@ -2783,7 +2783,7 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
           ]
         }
         result = adapter.send(:extract_interpretation, obs)
-        expect(result).to eq('H')
+        expect(result).to eq('High')
       end
 
       it 'extracts critical high (HH) code' do
@@ -2803,7 +2803,7 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
           ]
         }
         result = adapter.send(:extract_interpretation, obs)
-        expect(result).to eq('HH')
+        expect(result).to eq('Critical high')
       end
 
       it 'extracts Low (L) code' do
@@ -2823,7 +2823,7 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
           ]
         }
         result = adapter.send(:extract_interpretation, obs)
-        expect(result).to eq('L')
+        expect(result).to eq('Low')
       end
 
       it 'extracts critical low (LL) code' do
@@ -2843,7 +2843,7 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
           ]
         }
         result = adapter.send(:extract_interpretation, obs)
-        expect(result).to eq('LL')
+        expect(result).to eq('Critical low')
       end
 
       it 'extracts Abnormal (A) code' do
@@ -2870,7 +2870,7 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
           ]
         }
         result = adapter.send(:extract_interpretation, obs)
-        expect(result).to eq('A')
+        expect(result).to eq('Abnormal')
       end
 
       it 'falls back to interpretation text when no HL7 v3 coding is present' do
@@ -2921,7 +2921,7 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
         expect(result).to be_nil
       end
 
-      it 'prefers HL7 v3 code from a later entry over text from an earlier entry' do
+      it 'prefers HL7 v3 mapped display from a later entry over text from an earlier entry' do
         obs = {
           'code' => { 'text' => 'Glucose' },
           'interpretation' => [
@@ -2950,7 +2950,63 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
           ]
         }
         result = adapter.send(:extract_interpretation, obs)
-        expect(result).to eq('H')
+        expect(result).to eq('High')
+      end
+
+      it 'falls back to HL7 coding display when code is not in INTERPRETATION_MAP' do
+        obs = {
+          'code' => { 'text' => 'Some Test' },
+          'interpretation' => [
+            {
+              'coding' => [
+                {
+                  'system' => 'http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation',
+                  'code' => 'UNKNOWN_FUTURE_CODE',
+                  'display' => 'Some New Interpretation'
+                }
+              ]
+            }
+          ]
+        }
+        result = adapter.send(:extract_interpretation, obs)
+        expect(result).to eq('Some New Interpretation')
+      end
+
+      it 'prefers interpretation text over raw HL7 code when code is not in INTERPRETATION_MAP' do
+        obs = {
+          'code' => { 'text' => 'Some Test' },
+          'interpretation' => [
+            {
+              'coding' => [
+                {
+                  'system' => 'http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation',
+                  'code' => 'UNKNOWN_FUTURE_CODE'
+                }
+              ],
+              'text' => 'Vendor Specific Interpretation'
+            }
+          ]
+        }
+        result = adapter.send(:extract_interpretation, obs)
+        expect(result).to eq('Vendor Specific Interpretation')
+      end
+
+      it 'falls back to raw HL7 code when code is not in INTERPRETATION_MAP and no display or text exists' do
+        obs = {
+          'code' => { 'text' => 'Some Test' },
+          'interpretation' => [
+            {
+              'coding' => [
+                {
+                  'system' => 'http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation',
+                  'code' => 'UNKNOWN_FUTURE_CODE'
+                }
+              ]
+            }
+          ]
+        }
+        result = adapter.send(:extract_interpretation, obs)
+        expect(result).to eq('UNKNOWN_FUTURE_CODE')
       end
     end
 
@@ -2975,7 +3031,7 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
           ]
         }
         result = adapter.send(:build_observation, obs, [])
-        expect(result.interpretation).to eq('H')
+        expect(result.interpretation).to eq('High')
       end
 
       it 'sets interpretation to nil when not present in FHIR data' do
@@ -3063,7 +3119,7 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
       end
     end
 
-    describe '#parse_labs' do
+    describe '#parse_labs with filtering' do
       context 'with multiple records with mixed statuses' do
         it 'filters records and returns only those with allowed statuses' do
           records = [
