@@ -11,7 +11,7 @@ module IncomeAndAssets
       {
         version: 0,
         prefill: true,
-        returnUrl: '/claimant-information'
+        returnUrl: '/claimant/type'
       }
     end
 

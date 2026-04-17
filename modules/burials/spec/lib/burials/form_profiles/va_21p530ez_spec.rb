@@ -18,7 +18,7 @@ RSpec.describe Burials::FormProfiles::VA21p530ez, type: :model do
       expect(subject.metadata).to eq(
         version: 0,
         prefill: true,
-        returnUrl: '/claimant-information'
+        returnUrl: '/claimant-information/relationship-to-veteran'
       )
 
       subject.metadata
@@ -37,7 +37,10 @@ RSpec.describe Burials::FormProfiles::VA21p530ez, type: :model do
                                            'claimantPhone' => '3035551234',
                                            'claimantEmail' => kind_of(String)
                                          },
-                                         metadata: { version: 0, prefill: true, returnUrl: '/claimant-information' }
+                                         metadata: {
+                                           version: 0, prefill: true,
+                                           returnUrl: '/claimant-information/relationship-to-veteran'
+                                         }
                                        })
     end
   end

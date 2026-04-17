@@ -65,7 +65,7 @@ module DependentsBenefits
       {
         version: 0,
         prefill: true,
-        returnUrl: '/686-options-selection'
+        returnUrl: '/veteran-information'
       }
     end
 

@@ -13,7 +13,7 @@ module Burials
       {
         version: 0,
         prefill: true,
-        returnUrl: '/claimant-information'
+        returnUrl: '/claimant-information/relationship-to-veteran'
       }
     end
 
