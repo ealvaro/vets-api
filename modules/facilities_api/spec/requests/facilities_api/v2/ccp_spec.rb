@@ -596,6 +596,21 @@ RSpec.describe 'FacilitiesApi::V2::Ccp', team: :facilities, type: :request, vcr:
         end
       end
 
+      context 'when PPMS API returns unparseable HTML (JSON::ParserError)' do
+        it 'returns 502 error' do
+          allow_any_instance_of(FacilitiesApi::V2::PPMS::Client).to receive(:facility_service_locator)
+            .and_raise(JSON::ParserError.new("unexpected character: '<html>' at line 1 column 1"))
+
+          get '/facilities_api/v2/ccp',
+              params: { lat: 40.0, long: -74.0, type: 'provider', specialties: ['213E00000X'] }
+
+          expect(response).to have_http_status(:bad_gateway)
+          response_json = JSON.parse(response.body)
+          expect(response_json['errors'].first['title']).to eq('Bad Gateway')
+          expect(response_json['errors'].first['code']).to eq('502')
+        end
+      end
+
       context 'when an unexpected error occurs' do
         it 'returns 500 error and tracks in Datadog' do
           allow_any_instance_of(FacilitiesApi::V2::PPMS::Client).to receive(:facility_service_locator)
