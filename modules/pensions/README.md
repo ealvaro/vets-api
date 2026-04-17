@@ -17,7 +17,6 @@ Key features include automated PDF form filling with overflow page generation, B
 | `pension_persistent_attachment_error_email_notification`  | Toggle sending of the Persistent Attachment Error email notification |
 | `pension_itf_validate_data_logger`     | Toggle sending of the ITF Validate Data to Rails Logger | 
 | `pension_error_email_notification`     | Toggle sending of the Action Needed email notification  | 
-| `pension_extras_redesign_enabled`      | Enable the new overflow design |
 
 ## Table of Contents
 

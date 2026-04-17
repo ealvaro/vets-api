@@ -150,16 +150,12 @@ module Burials
         raise BurialsBenefitIntakeError, response.to_s unless response.success?
       end
 
-      # Generate form PDF based on feature flag
+      # Generate form PDF
       #
       # @return [String] path to processed PDF document
       def generate_form_pdf
-        if Flipper.enabled?(:burial_extras_redesign_enabled)
-          pdf_path = @claim.to_pdf(@claim.id, { extras_redesign: true, omit_esign_stamp: true })
-          process_document(pdf_path, :burials_generated_claim)
-        else
-          process_document(@claim.to_pdf, :burials_generated_claim)
-        end
+        pdf_path = @claim.to_pdf(@claim.id, { extras_redesign: true, omit_esign_stamp: true })
+        process_document(pdf_path, :burials_generated_claim)
       end
 
       # Generate the form attachment pdfs

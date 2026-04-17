@@ -103,16 +103,12 @@ module Pensions
         set_signature_date
       end
 
-      # Generate form PDF based on feature flag
+      # Generate form PDF
       #
       # @return [String] path to processed PDF document
       def generate_form_pdf
-        if Flipper.enabled?(:pension_extras_redesign_enabled)
-          pdf_path = @claim.to_pdf(@claim.id, { extras_redesign: true, omit_esign_stamp: true })
-          process_document(pdf_path, :pensions_generated_claim)
-        else
-          process_document(@claim.to_pdf, :pensions_generated_claim)
-        end
+        pdf_path = @claim.to_pdf(@claim.id, { extras_redesign: true, omit_esign_stamp: true })
+        process_document(pdf_path, :pensions_generated_claim)
       end
 
       # Generate the form attachment pdfs

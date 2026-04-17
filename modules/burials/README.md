@@ -26,7 +26,6 @@ Key features include automated PDF form filling, Benefits Intake API integration
 | `burial_submitted_email_notification` | Toggle sending of the Burial Submission in Progress email notification |
 | `burial_error_email_notification` | Toggle sending of the Action Needed email notification |
 | `burial_persistent_attachment_error_email_notification` | Toggle sending of the Persistent Attachment Error email notification |
-| `burial_extras_redesign_enabled` | Enable the new overflow design |
 | `burial_pdf_form_alignment` | Align digital form with PDF form |
 
 ## Prerequisites

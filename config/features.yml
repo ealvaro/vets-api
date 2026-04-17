@@ -2758,10 +2758,6 @@ features:
     actor_type: user
     description: Toggle showing the updated confirmation page
     enable_in_development: true
-  burial_extras_redesign_enabled:
-    actor_type: user
-    description: Enable the new overflow design
-    enable_in_development: true
   burial_form_enabled:
     actor_type: user
     description: Enable the burial form
@@ -2793,10 +2789,6 @@ features:
   pension_multiple_page_response:
     actor_type: user
     description: Implement multiple page response pattern
-    enable_in_development: true
-  pension_extras_redesign_enabled:
-    actor_type: user
-    description: Enable the new overflow design
     enable_in_development: true
   pension_rating_alert_logging_enabled:
     actor_type: user
@@ -2853,9 +2845,6 @@ features:
   increase_compensation_persistent_attachment_error_email_notification:
     actor_type: cookie_id
     description: Toggle sending of the Persistent Attachment Error email notification
-  pbb_forms_require_loa3:
-    actor_type: user
-    description: Require LOA3 authentication to access Pension, Burials, and Income and Assets forms
   central_mail_benefits_intake_submission:
     actor_type: user
     description: Enable central mail claims submission uses Benefits Intake API
