@@ -9,6 +9,14 @@ module MyHealth
       include MyHealth::PrescriptionHelper::Filtering
       include MyHealth::PrescriptionHelper::Sorting
       include MyHealth::RxGroupingHelper
+
+      IN_PROGRESS_STATUSES = ['Active: Refill in Process', 'Active: Submitted'].freeze
+      ACTIVE_STATUSES = [
+        'Active', 'Active: Refill in Process', 'Active: Non-VA', 'Active: On hold',
+        'Active: Parked', 'Active: Submitted'
+      ].freeze
+      NON_ACTIVE_STATUSES = %w[Discontinued Expired Transferred Unknown].freeze
+
       # This index action supports various parameters described below, all are optional
       # This comment can be removed once documentation is finalized
       # @param refill_status - one refill status to filter on
@@ -19,15 +27,16 @@ module MyHealth
       def index
         resource = collection_resource
         recently_requested = get_recently_requested_prescriptions(resource.data)
-        raw_data = resource.data.dup
+        all_medications_count = count_grouped_prescriptions(resource.data)
         resource.records = resource_data_modifications(resource)
-        filter_count = set_filter_metadata(resource.data, raw_data)
+
+        filter_metadata = build_filter_metadata(resource.data, all_medications_count)
         resource = apply_filters(resource) if params[:filter].present?
         resource = apply_sorting(resource, params[:sort])
         resource.records = sort_prescriptions_with_pd_at_top(resource.records)
         is_using_pagination = params[:page].present? || params[:per_page].present?
         resource = resource.paginate(**pagination_params) if is_using_pagination
-        options = { meta: resource.metadata.merge(filter_count).merge(recently_requested:) }
+        options = { meta: resource.metadata.merge(filter_metadata).merge(recently_requested:) }
         options[:links] = pagination_links(resource) if is_using_pagination
         UniqueUserEvents.log_event(user: current_user,
                                    event_name: UniqueUserEvents::EventRegistry::PRESCRIPTIONS_ACCESSED)
@@ -143,7 +152,7 @@ module MyHealth
 
       def get_recently_requested_prescriptions(data)
         data.select do |item|
-          ['Active: Refill in Process', 'Active: Submitted'].include?(item.disp_status)
+          IN_PROGRESS_STATUSES.include?(item.disp_status)
         end
       end
 
@@ -193,29 +202,28 @@ module MyHealth
         resource.records = group_prescriptions(resource.data)
       end
 
-      def set_filter_metadata(list, non_modified_collection)
+      def build_filter_metadata(list, all_medications_count)
         {
           filter_count: {
-            all_medications: count_grouped_prescriptions(non_modified_collection),
+            all_medications: all_medications_count,
             active: count_active_medications(list),
-            recently_requested: get_recently_requested_prescriptions(list).length,
-            renewal: list.select(&method(:renewable)).length,
+            recently_requested: count_recently_requested(list),
+            renewal: list.count { |rx| renewable(rx) },
             non_active: count_non_active_medications(list)
           }
         }
       end
 
       def count_active_medications(list)
-        active_statuses = [
-          'Active', 'Active: Refill in Process', 'Active: Non-VA', 'Active: On hold',
-          'Active: Parked', 'Active: Submitted'
-        ]
-        list.select { |rx| active_statuses.include?(rx.disp_status) }.length
+        list.count { |rx| ACTIVE_STATUSES.include?(rx.disp_status) }
       end
 
       def count_non_active_medications(list)
-        non_active_statuses = %w[Discontinued Expired Transferred Unknown]
-        list.select { |rx| non_active_statuses.include?(rx.disp_status) }.length
+        list.count { |rx| NON_ACTIVE_STATUSES.include?(rx.disp_status) }
+      end
+
+      def count_recently_requested(list)
+        list.count { |item| IN_PROGRESS_STATUSES.include?(item.disp_status) }
       end
 
       # TODO: remove once pf and pd are allowed on va.gov
@@ -225,10 +233,8 @@ module MyHealth
       end
 
       def sort_prescriptions_with_pd_at_top(prescriptions)
-        pd_prescriptions = prescriptions.select { |med| med.prescription_source == 'PD' }
-        other_prescriptions = prescriptions.reject { |med| med.prescription_source == 'PD' }
-
-        pd_prescriptions + other_prescriptions
+        pd, others = prescriptions.partition { |med| med.prescription_source == 'PD' }
+        pd + others
       end
     end
   end

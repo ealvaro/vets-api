@@ -71,13 +71,13 @@ module MyHealth
         source_metadata = result[:metadata]
 
         recently_requested = get_recently_requested_prescriptions(prescriptions)
-        raw_data = prescriptions.dup
+        all_medications_count = count_grouped_prescriptions(prescriptions)
         prescriptions = resource_data_modifications(prescriptions).compact
 
-        filter_count = set_filter_metadata(prescriptions, raw_data)
+        filter_metadata = build_filter_metadata(prescriptions, all_medications_count)
         prescriptions, sort_metadata = apply_filters_and_sorting(prescriptions)
 
-        records, options = build_response_data(prescriptions, filter_count, recently_requested, sort_metadata)
+        records, options = build_response_data(prescriptions, filter_metadata, recently_requested, sort_metadata)
         options[:meta] = options[:meta].merge(source_metadata)
 
         log_prescriptions_access
@@ -168,10 +168,10 @@ module MyHealth
         [sort_prescriptions_with_pd_at_top(prescriptions), sort_metadata]
       end
 
-      def build_response_data(prescriptions, filter_count, recently_requested, sort_metadata = {})
+      def build_response_data(prescriptions, filter_metadata, recently_requested, sort_metadata = {})
         is_using_pagination = params[:page].present? || params[:per_page].present?
 
-        base_meta = filter_count.merge(recently_requested:)
+        base_meta = filter_metadata.merge(recently_requested:)
         # sort_metadata is the entire metadata hash from the resource, access the :sort key
         base_meta[:sort] = sort_metadata[:sort] if sort_metadata.is_a?(Hash) && sort_metadata[:sort].present?
 
@@ -320,12 +320,12 @@ module MyHealth
         group_prescriptions(prescriptions)
       end
 
-      def set_filter_metadata(list, non_modified_collection)
+      def build_filter_metadata(list, all_medications_count)
         {
           filter_count: {
-            all_medications: count_grouped_prescriptions(non_modified_collection),
+            all_medications: all_medications_count,
             active: count_active_medications(list),
-            in_progress: get_recently_requested_prescriptions(list).length,
+            in_progress: count_in_progress_medications(list),
             shipped: count_shipped_medications(list),
             renewable: count_renewable_medications(list),
             inactive: count_non_active_medications(list),
@@ -338,6 +338,10 @@ module MyHealth
       def count_active_medications(list)
         active_statuses = v2_status_mapping_enabled? ? ACTIVE_STATUSES_V2 : ACTIVE_STATUSES_V1
         list.count { |rx| rx.respond_to?(:disp_status) && active_statuses.include?(rx.disp_status) }
+      end
+
+      def count_in_progress_medications(list)
+        list.count { |item| item.respond_to?(:disp_status) && in_progress_statuses.include?(item.disp_status) }
       end
 
       def count_non_active_medications(list)
@@ -436,14 +440,10 @@ module MyHealth
       end
 
       def sort_prescriptions_with_pd_at_top(prescriptions)
-        pd_prescriptions = prescriptions.select do |med|
+        pd, others = prescriptions.partition do |med|
           med.respond_to?(:prescription_source) && med.prescription_source == 'PD'
         end
-        other_prescriptions = prescriptions.reject do |med|
-          med.respond_to?(:prescription_source) && med.prescription_source == 'PD'
-        end
-
-        pd_prescriptions + other_prescriptions
+        pd + others
       end
 
       def orders

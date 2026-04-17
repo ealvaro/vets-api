@@ -2,6 +2,8 @@
 
 module MyHealth
   module RxGroupingHelper
+    RX_NUMBER_SUFFIX_PATTERN = /[A-Z]$/
+
     def group_prescriptions(prescriptions)
       prescriptions ||= []
       grouped_prescriptions = []
@@ -36,28 +38,14 @@ module MyHealth
     end
 
     def count_grouped_prescriptions(prescriptions)
-      return 0 if prescriptions.nil?
+      return 0 if prescriptions.blank?
 
-      prescriptions = prescriptions.dup
-      count = 0
-
-      prescriptions.sort_by!(&:prescription_number)
-
-      while prescriptions.any?
-        prescription = prescriptions[0]
-        related = select_related_rxs(prescriptions, prescription)
-
-        if related.length <= 1
-          count += 1
-          prescriptions.delete(prescription)
-          next
-        end
-
-        count += 1
-        related.each { |rx| prescriptions.delete(rx) }
+      groups = {}
+      prescriptions.each do |p|
+        key = [p.prescription_number.sub(RX_NUMBER_SUFFIX_PATTERN, ''), p.station_number]
+        groups[key] = true
       end
-
-      count
+      groups.size
     end
 
     private
@@ -76,8 +64,8 @@ module MyHealth
 
     def select_related_rxs(prescriptions, prescription)
       prescriptions.select do |p|
-        base_prescription = prescription.prescription_number.sub(/[A-Z]$/, '')
-        current_prescription_number = p.prescription_number.sub(/[A-Z]$/, '')
+        base_prescription = prescription.prescription_number.sub(RX_NUMBER_SUFFIX_PATTERN, '')
+        current_prescription_number = p.prescription_number.sub(RX_NUMBER_SUFFIX_PATTERN, '')
         current_prescription_number == base_prescription && p.station_number == prescription.station_number
       end
     end

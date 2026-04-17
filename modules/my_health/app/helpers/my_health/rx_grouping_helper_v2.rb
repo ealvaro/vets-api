@@ -2,6 +2,8 @@
 
 module MyHealth
   module RxGroupingHelperV2
+    RX_NUMBER_SUFFIX_PATTERN = /[A-Z]$/
+
     def group_prescriptions(prescriptions)
       prescriptions ||= []
       with_numbers, without_numbers = prescriptions.partition { |rx| valid_prescription_number?(rx) }
@@ -45,32 +47,19 @@ module MyHealth
     end
 
     def count_grouped_prescriptions(prescriptions)
-      return 0 if prescriptions.nil?
+      return 0 if prescriptions.blank?
 
-      with_numbers, without_numbers = prescriptions.dup.partition { |rx| valid_prescription_number?(rx) }
-      count_prescriptions_with_numbers(with_numbers) + without_numbers.length
-    end
-
-    def count_prescriptions_with_numbers(prescriptions_with_numbers)
-      count = 0
-      prescriptions_with_numbers.sort_by!(&:prescription_number)
-
-      while prescriptions_with_numbers.any?
-        prescription = prescriptions_with_numbers[0]
-        related = select_related_rxs(prescriptions_with_numbers, prescription)
-        count += 1
-        remove_processed_prescriptions(related, prescriptions_with_numbers)
+      groups = {}
+      count_without_numbers = 0
+      prescriptions.each do |rx|
+        if valid_prescription_number?(rx)
+          key = [rx.prescription_number.sub(RX_NUMBER_SUFFIX_PATTERN, ''), rx.station_number]
+          groups[key] = true
+        else
+          count_without_numbers += 1
+        end
       end
-
-      count
-    end
-
-    def remove_processed_prescriptions(related, prescriptions_with_numbers)
-      if related.length <= 1
-        prescriptions_with_numbers.delete_at(0)
-      else
-        related.each { |rx| prescriptions_with_numbers.delete_at(prescriptions_with_numbers.index(rx)) }
-      end
+      groups.size + count_without_numbers
     end
 
     private
@@ -97,10 +86,10 @@ module MyHealth
     def select_related_rxs(prescriptions, prescription)
       return [] unless prescription.respond_to?(:prescription_number) && prescription.prescription_number
 
-      base_number = prescription.prescription_number.sub(/[A-Z]$/, '')
+      base_number = prescription.prescription_number.sub(RX_NUMBER_SUFFIX_PATTERN, '')
       prescriptions.select do |p|
         p.respond_to?(:prescription_number) && p.prescription_number &&
-          p.prescription_number.sub(/[A-Z]$/, '') == base_number &&
+          p.prescription_number.sub(RX_NUMBER_SUFFIX_PATTERN, '') == base_number &&
           p.station_number == prescription.station_number
       end
     end
