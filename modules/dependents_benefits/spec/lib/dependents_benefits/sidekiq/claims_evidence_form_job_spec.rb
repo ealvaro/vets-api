@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+
 require 'claims_evidence_api/uploader'
+require 'dependents_benefits/claim_processor'
 require 'dependents_benefits/sidekiq/claims_evidence_form_job'
+require 'dependents_benefits/pdf_stamper'
 require 'dependents_benefits/user_data'
-require 'pdf_utilities/pdf_stamper'
 
 RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob, type: :job do
   before do
@@ -19,8 +21,7 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob, type: :job do
   let!(:current_group) { create(:saved_claim_group, saved_claim:, parent_claim:) }
   let(:job) { described_class.new }
   let(:claims_evidence_uploader) { instance_double(ClaimsEvidenceApi::Uploader) }
-  let(:lighthouse_submission) { instance_double(DependentsBenefits::BenefitsIntake::LighthouseSubmission) }
-  let(:stamper) { instance_double(PDFUtilities::PDFStamper) }
+  let(:stamper) { instance_double(DependentsBenefits::PdfStamper) }
 
   describe '#submit_claims_to_service' do
     let(:child_claims) { [saved_claim] }
@@ -32,7 +33,7 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob, type: :job do
       allow(job).to receive(:claims_evidence_uploader).with(parent_claim).and_return(claims_evidence_uploader)
       allow(job).to receive_messages(child_claims:, parent_claim:)
 
-      allow(PDFUtilities::PDFStamper).to receive(:new).and_return(stamper)
+      allow(DependentsBenefits::PdfStamper).to receive(:new).and_return(stamper)
     end
 
     it 'submits each child claim and attachments to the service' do
@@ -59,20 +60,14 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob, type: :job do
   describe '#submit_to_claims_evidence_api' do
     before do
       allow(job).to receive(:claims_evidence_uploader).with(saved_claim).and_return(claims_evidence_uploader)
-      allow(job).to receive(:lighthouse_submission).with(saved_claim).and_return(lighthouse_submission)
       allow(claims_evidence_uploader).to receive(:upload_evidence).and_return(true)
-      allow(lighthouse_submission).to receive(:process_pdf).and_return('file_path')
-      allow(saved_claim).to receive(:to_pdf).with(form_id: saved_claim.form_id).and_return(
-        'tmp/pdfs/mock_form_final.pdf'
-      )
+      allow(saved_claim).to receive(:to_pdf).and_return('tmp/pdfs/mock_form_final.pdf')
     end
 
     it 'processes PDF and uploads evidence' do
-      expect(lighthouse_submission).to receive(:process_pdf).with(
-        'tmp/pdfs/mock_form_final.pdf',
-        saved_claim.created_at,
-        saved_claim.form_id
-      )
+      stamp_set = DependentsBenefits::PdfStamper.form_stamp_set(saved_claim.form_id)
+      expect(DependentsBenefits::PdfStamper).to receive(:new).with(stamp_set).and_return stamper
+      expect(stamper).to receive(:run).and_return 'file_path'
       expect(claims_evidence_uploader).to receive(:upload_evidence).with(
         saved_claim.id,
         file_path: 'file_path',
@@ -85,7 +80,8 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob, type: :job do
 
     it 'raises exception when error occurs' do
       error = StandardError.new('Test error')
-      allow(lighthouse_submission).to receive(:process_pdf).and_raise(error)
+      expect(DependentsBenefits::PdfStamper).to receive(:new).and_return(stamper)
+      expect(stamper).to receive(:run).and_raise(error)
 
       expect { job.send(:submit_to_claims_evidence_api, saved_claim) }.to raise_error(StandardError, 'Test error')
     end
@@ -245,14 +241,6 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob, type: :job do
     it 'creates uploader with folder identifier' do
       expect(ClaimsEvidenceApi::Uploader).to receive(:new).with(saved_claim.folder_identifier)
       job.send(:claims_evidence_uploader, saved_claim)
-    end
-  end
-
-  describe '#lighthouse_submission' do
-    it 'creates lighthouse submission with claim and user data' do
-      expect(saved_claim).to receive(:user_data).and_return user_data
-      expect(DependentsBenefits::BenefitsIntake::LighthouseSubmission).to receive(:new).with(saved_claim, user_data)
-      job.send(:lighthouse_submission, saved_claim)
     end
   end
 end

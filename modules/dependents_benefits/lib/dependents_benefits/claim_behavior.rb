@@ -40,7 +40,7 @@ module DependentsBenefits
       child_of_groups&.last&.parent_claim_id
     end
 
-    # Format the claim data for submission to fdf
+    # Format the claim data for submission to FDF
     # TODO: refactor so this is no longer needed after FDF pilot; future
     def fdf_submission_payload
       add_signature_date

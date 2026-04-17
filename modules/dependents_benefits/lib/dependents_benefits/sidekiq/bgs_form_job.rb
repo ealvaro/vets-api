@@ -1,10 +1,9 @@
 # frozen_string_literal: true
 
-require 'dependents_benefits/service_response'
-require 'dependents_benefits/sidekiq/dependent_submission_job'
 require 'bgs/job'
 require 'bgs/form686c'
 require 'bgs/form674'
+require 'dependents_benefits/sidekiq/dependent_submission_job'
 
 module DependentsBenefits::Sidekiq
   ##
@@ -38,11 +37,7 @@ module DependentsBenefits::Sidekiq
     # @raise [DependentSubmissionError] if any claim submission fails
     def submit_claims_to_service
       @proc_id = generate_proc_id
-      child_claims.each do |claim|
-        service_response = submit_claim_to_service(claim)
-        raise DependentSubmissionError, service_response&.error unless service_response&.success?
-      end
-      DependentsBenefits::ServiceResponse.new(status: true)
+      super()
     end
 
     ##

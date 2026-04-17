@@ -156,4 +156,21 @@ RSpec.describe DependentsBenefits::NotificationEmail do
       end
     end
   end
+
+  describe '#deliver_status_email_by_claim_type' do
+    let(:monitor) { instance_double(DependentsBenefits::Monitor) }
+
+    it 'records an error' do
+      allow(DependentsBenefits::Monitor).to receive(:new).and_return monitor
+
+      email_service = described_class.new(saved_claim.id)
+      error = StandardError.new('test coverage')
+
+      expect(email_service).to receive(:deliver).with(:foobar).and_raise error
+      expect(monitor).to receive(:track_error_event).with('Error sending TEST notification email', anything)
+
+      options = { DependentsBenefits::FORM_ID => :foobar }
+      expect { email_service.send(:deliver_status_email_by_claim_type, 'TEST', options) }.to raise_error error
+    end
+  end
 end

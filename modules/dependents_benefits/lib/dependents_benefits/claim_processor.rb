@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
+require 'dependents_benefits/helper'
+require 'dependents_benefits/sidekiq/benefits_intake_job'
 require 'dependents_benefits/sidekiq/bgs_form_job'
 require 'dependents_benefits/sidekiq/claims_evidence_form_job'
-require 'dependents_benefits/helper'
 
 module DependentsBenefits
   ##

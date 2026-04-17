@@ -28,10 +28,16 @@ module DependentsBenefits::Sidekiq::Include
     def handle_job_success
       monitor.track_info_event("Successfully submitted #{self.class} for parent_claim_id #{parent_claim_id}",
                                action: 'success', component:, parent_claim_id:)
-      claim_processor.handle_successful_submission
+      handle_successful_submission
     rescue => e
       monitor.track_error_event("Error handling job success #{self.class}",
                                 action: 'success_failure', component:, error: e, parent_claim_id:)
+    end
+
+    # Handles successful submission
+    # @return [void]
+    def handle_successful_submission
+      claim_processor.handle_successful_submission
     end
 
     # Handles job failure by determining if error is permanent or transient
@@ -50,12 +56,20 @@ module DependentsBenefits::Sidekiq::Include
 
       if permanent_failure?(error)
         # Skip Sidekiq retries for permanent failures
-        claim_processor.handle_permanent_failure(error)
+        handle_permanent_failure(error)
         raise ::Sidekiq::JobRetry::Skip
       end
 
       # raise other errors to trigger Sidekiq retry mechanism
       raise error
+    end
+
+    # Handles job permanent failure
+    #
+    # @param error [Exception] The error that caused the job to fail
+    # @return [void]
+    def handle_permanent_failure(error)
+      claim_processor.handle_permanent_failure(error)
     end
   end
 end

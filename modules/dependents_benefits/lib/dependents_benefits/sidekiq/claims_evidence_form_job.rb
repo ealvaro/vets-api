@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
+require 'claims_evidence_api/uploader'
+require 'dependents_benefits/pdf_stamper'
 require 'dependents_benefits/service_response'
 require 'dependents_benefits/sidekiq/dependent_submission_job'
-require 'claims_evidence_api/uploader'
-require 'pdf_utilities/pdf_stamper'
 
 module DependentsBenefits::Sidekiq
   ##
@@ -43,10 +43,7 @@ module DependentsBenefits::Sidekiq
     # @return [void]
     # @raise [DependentSubmissionError] if any claim submission fails
     def submit_claims_to_service
-      child_claims.each do |claim|
-        service_response = submit_claim_to_service(claim)
-        raise DependentSubmissionError, service_response&.error unless service_response&.success?
-      end
+      super()
 
       submit_attachments
 
@@ -76,13 +73,13 @@ module DependentsBenefits::Sidekiq
     #
     # @return [void]
     def submit_attachments
-      stamp_set = [{ text: 'VA.GOV', x: 5, y: 5 }]
+      stamper = DependentsBenefits::PdfStamper.new(:dependents_benefits_received_at)
       form_id = parent_claim.claim_form_type
       uploader = claims_evidence_uploader(parent_claim)
 
       parent_claim.persistent_attachments.each do |pa|
         doctype = pa.document_type
-        file_path = PDFUtilities::PDFStamper.new(stamp_set).run(pa.to_pdf, timestamp: pa.created_at)
+        file_path = stamper.run(pa.to_pdf, timestamp: pa.created_at)
         uploader.upload_evidence(parent_claim_id, pa.id, file_path:, form_id:, doctype:)
       end
     end
@@ -90,18 +87,13 @@ module DependentsBenefits::Sidekiq
     ##
     # Submit a claim to the Claims Evidence API
     #
-    # Performs the following steps:
-    # 1. Processes the claim PDF using Lighthouse submission helper
-    # 2. Uploads the evidence via Claims Evidence API uploader
-    #
     # @param claim [SavedClaim] The claim to submit
     # @return [void]
     def submit_to_claims_evidence_api(claim)
-      file_path = lighthouse_submission(claim).process_pdf(
-        claim.to_pdf(form_id: claim.form_id),
-        claim.created_at,
-        claim.form_id
-      )
+      stamp_set = DependentsBenefits::PdfStamper.form_stamp_set(claim.form_id)
+      stamper = DependentsBenefits::PdfStamper.new(stamp_set)
+
+      file_path = stamper.run(claim.to_pdf, timestamp: claim.created_at)
 
       claims_evidence_uploader(claim).upload_evidence(
         claim.id,
@@ -109,6 +101,14 @@ module DependentsBenefits::Sidekiq
         form_id: claim.form_id,
         doctype: claim.document_type
       )
+    end
+
+    # Returns a Claims Evidence API uploader instance
+    #
+    # @param claim [SavedClaim] The claim containing folder identifier
+    # @return [ClaimsEvidenceApi::Uploader] Uploader configured with claim's folder identifier
+    def claims_evidence_uploader(claim)
+      ClaimsEvidenceApi::Uploader.new(claim.folder_identifier)
     end
 
     ##
@@ -202,27 +202,6 @@ module DependentsBenefits::Sidekiq
       end
 
       false
-    end
-
-    ##
-    # Returns a Claims Evidence API uploader instance
-    #
-    # @param claim [SavedClaim] The claim containing folder identifier
-    # @return [ClaimsEvidenceApi::Uploader] Uploader configured with claim's folder identifier
-    def claims_evidence_uploader(claim)
-      ClaimsEvidenceApi::Uploader.new(claim.folder_identifier)
-    end
-
-    ##
-    # Returns a Lighthouse submission helper instance
-    #
-    # Used for PDF processing utilities (stamping, dating) rather than actual Lighthouse
-    # submission. The Claims Evidence API is the submission destination.
-    #
-    # @param claim [SavedClaim] The claim to process
-    # @return [DependentsBenefits::BenefitsIntake::LighthouseSubmission] Submission helper
-    def lighthouse_submission(claim)
-      DependentsBenefits::BenefitsIntake::LighthouseSubmission.new(claim, claim.user_data)
     end
   end
 end

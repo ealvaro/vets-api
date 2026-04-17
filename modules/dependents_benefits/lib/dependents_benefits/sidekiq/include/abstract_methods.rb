@@ -5,13 +5,6 @@ module DependentsBenefits::Sidekiq::Include
   module AbstractMethods
     private
 
-    # Submit claims to the appropriate service
-    # @abstract Subclasses must implement this method
-    # @return [void]
-    def submit_claims_to_service
-      raise NotImplementedError, 'Subclasses must implement submit_claims_to_service method'
-    end
-
     # Submit a 686c form to the service
     # @abstract Subclasses must implement this method
     # @param claim [SavedClaim] The 686c claim to submit
@@ -73,14 +66,14 @@ module DependentsBenefits::Sidekiq::Include
     #
     # @return [LighthouseFormSubmission, BGSFormSubmission] The submission record
     def submission
-      @submission ||= find_or_create_form_submission
+      @submission ||= find_or_create_form_submission(parent_claim)
     end
 
     # Returns the memoized form submission attempt record
     #
     # @return [LighthouseFormSubmissionAttempt, BGSFormSubmissionAttempt] The attempt record
     def submission_attempt
-      @submission_attempt ||= create_form_submission_attempt
+      @submission_attempt ||= create_form_submission_attempt(submission)
     end
   end
 end

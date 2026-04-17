@@ -4,221 +4,116 @@ require 'rails_helper'
 require 'dependents_benefits/sidekiq/benefits_intake_job'
 
 RSpec.describe DependentsBenefits::Sidekiq::BenefitsIntakeJob, type: :job do
-  before do
-    allow(DependentsBenefits::PdfFill::Filler).to receive(:fill_form).and_return('tmp/pdfs/mock_form_final.pdf')
-    allow(PDFUtilities::DatestampPdf).to receive(:new).and_return(pdf_stamper_instance).at_least(:once)
-    allow(pdf_stamper_instance).to receive(:run).and_return('/tmp/stamped_1.pdf', '/tmp/stamped_2.pdf',
-                                                            '/tmp/final_stamped.pdf')
-
-    allow(BenefitsIntake::Service).to receive(:new).and_return(lighthouse_mock)
-    allow(DependentsBenefits::ClaimProcessor).to receive(:new).and_return(claim_processor)
-    allow(claim_processor).to receive(:collect_child_claims).and_return([claim686c, claim674])
-  end
-
-  let(:pdf_stamper_instance) { instance_double(PDFUtilities::DatestampPdf) }
+  let(:job) { described_class.new }
+  let(:stamper) { instance_double(DependentsBenefits::PdfStamper) }
   let(:lighthouse_mock) do
     double(:lighthouse_service, uuid: 'uuid', location: 'https://mock.va.gov/upload',
                                 request_upload: ['https://mock.va.gov/upload', 'uuid'],
-                                perform_upload: OpenStruct.new(success?: true, data: {}))
+                                perform_upload: OpenStruct.new(success?: true, data: {}),
+                                valid_document?: true)
   end
   let(:parent_claim) { create(:dependents_claim) }
-  let(:job) { described_class.new }
-  let(:lh_submission) { instance_double(DependentsBenefits::BenefitsIntake::LighthouseSubmission) }
   let(:successful_response) { DependentsBenefits::ServiceResponse.new(status: true) }
+  let(:failure_response) { DependentsBenefits::ServiceResponse.new(status: false, error: StandardError.new('TEST')) }
   let(:user) { create(:evss_user) }
   let(:user_data) { DependentsBenefits::UserData.new(user, parent_claim.parsed_form).get_user_json }
-  let!(:parent_group) { create(:parent_claim_group, parent_claim:, user_data:) }
-  let(:monitor_instance) { instance_double(DependentsBenefits::Monitor) }
   let(:claim_processor) { double('DependentsBenefits::ClaimProcessor') }
   let(:claim686c) { create(:add_remove_dependents_claim) }
   let(:claim674) { create(:student_claim) }
+  let(:monitor) { DependentsBenefits::Monitor.new }
+  let(:email) { DependentsBenefits::NotificationEmail.new(parent_claim.id) }
+
+  let!(:parent_group) { create(:parent_claim_group, parent_claim:, user_data:) }
+
+  before do
+    allow(DependentsBenefits::PdfFill::Filler).to receive(:fill_form).and_return('tmp/pdfs/mock_form_final.pdf')
+    allow(DependentsBenefits::PdfStamper).to receive(:new).and_return(stamper)
+    allow(BenefitsIntake::Service).to receive(:new).and_return(lighthouse_mock)
+    allow(DependentsBenefits::ClaimProcessor).to receive(:new).and_return(claim_processor)
+    allow(DependentsBenefits::Monitor).to receive(:new).and_return(monitor)
+    allow(DependentsBenefits::NotificationEmail).to receive(:new).and_return(email)
+    allow(job).to receive(:collect_child_claims).and_return([claim686c, claim674])
+  end
 
   describe '#perform' do
-    context 'when job executes successfully' do
-      before do
-        allow(DependentsBenefits::BenefitsIntake::LighthouseSubmission).to receive(:new).and_return(lh_submission)
-      end
+    it 'succeeds' do
+      expect(job).to receive(:submit_claims_to_service).and_return successful_response
+      expect(job).to receive(:handle_job_success)
 
-      it 'processes the claim and calls required methods' do
-        expect(lh_submission).to receive(:initialize_service)
-        expect(lh_submission).to receive(:prepare_submission)
-        expect(lh_submission).to receive(:upload_to_lh).and_return(successful_response)
-        expect(lh_submission).to receive(:cleanup_file_paths)
-
-        expect { job.perform(parent_claim.id) }.not_to raise_error
-      end
-
-      it 'creates a pending submission attempt linked to the parent claim' do
-        allow(lh_submission).to receive_messages({ initialize_service: 'uuid-1', upload_to_lh: successful_response })
-        allow(lh_submission).to receive(:prepare_submission)
-        allow(lh_submission).to receive(:cleanup_file_paths)
-
-        expect { job.perform(parent_claim.id) }
-          .to change(Lighthouse::SubmissionAttempt, :count).by(1)
-
-        submission = Lighthouse::Submission.find_by(saved_claim_id: parent_claim.id)
-        attempt = submission.submission_attempts.order(created_at: :desc).first
-
-        expect(submission.form_id).to eq(parent_claim.form_id)
-        expect(attempt.submission.saved_claim_id).to eq(parent_claim.id)
-        expect(attempt.status).to eq('pending')
-      end
+      job.perform(parent_claim.id)
     end
 
-    context 'when job fails' do
-      let(:test_error) { StandardError.new('Test error') }
+    context 'with error handling' do
+      it 'handles a failure response' do
+        expect(job).to receive(:submit_claims_to_service).and_return failure_response
+        expect(job).to receive(:permanent_failure?).and_return false
+        expect(monitor).to receive(:track_error_event)
 
-      before do
-        allow(DependentsBenefits::BenefitsIntake::LighthouseSubmission).to receive(:new).and_return(lh_submission)
-        allow(lh_submission).to receive(:initialize_service)
-        allow(lh_submission).to receive(:prepare_submission).and_raise(test_error)
-        allow(job).to receive(:monitor).and_return(monitor_instance)
-        allow(monitor_instance).to receive(:track_info_event)
-      end
-
-      it 'updates submission to failed, ensures cleanup, and re-raises error' do
-        allow(monitor_instance).to receive(:track_error_event)
-        expect(job).to receive(:mark_submission_attempt_failed)
-        expect(lh_submission).to receive(:cleanup_file_paths)
         expect do
           job.perform(parent_claim.id)
-        end.to raise_error(DependentsBenefits::Sidekiq::DependentSubmissionError, 'Test error')
-      end
-    end
-
-    context 'when Lighthouse upload fails' do
-      before do
-        allow(DependentsBenefits::BenefitsIntake::LighthouseSubmission).to receive(:new).and_return(lh_submission)
-        allow(lh_submission).to receive(:initialize_service)
-        allow(lh_submission).to receive(:prepare_submission)
-        allow(lh_submission).to receive(:upload_to_lh).and_raise(StandardError.new('Upload failed'))
-        allow(lh_submission).to receive(:cleanup_file_paths)
-      end
-
-      it 'raises DependentSubmissionError' do
-        expect do
-          job.perform(parent_claim.id)
-        end.to raise_error(DependentsBenefits::Sidekiq::DependentSubmissionError, 'Upload failed')
-      end
-    end
-
-    context 'when parent group has already failed' do
-      let!(:failed_parent_group) do
-        create(:parent_claim_group, status: 'failure', parent_claim:, user_data:)
-      end
-
-      before do
-        allow(job).to receive(:parent_group).and_return(failed_parent_group)
-      end
-
-      it 'still processes the claim and runs submit_to_service' do
-        expect(job).to receive(:submit_to_service).and_return(successful_response)
-        expect { job.perform(parent_claim.id) }.not_to raise_error
+        end.to raise_error DependentsBenefits::Sidekiq::DependentSubmissionError, 'TEST'
       end
     end
   end
 
-  describe '#handle_job_success' do
-    let(:submission) { create(:lighthouse_submission, saved_claim_id: parent_claim.id) }
-    let(:submission_attempt) { create(:lighthouse_submission_attempt, submission:) }
+  describe '#submit_claims_to_service' do
+    it 'submits the claim successfully' do
+      expect(stamper).to receive(:run).at_least(:once)
+      expect(job).to receive(:handle_job_success)
+      expect(job).to receive(:cleanup_file_paths)
 
-    context 'when parent group was previously failed' do
-      let!(:failed_parent_group) do
-        create(:parent_claim_group, status: 'failure', parent_claim:, user_data:)
-      end
-
-      before do
-        allow(job).to receive(:parent_group).and_return(failed_parent_group)
-      end
-
-      it 'performs all success operations within transaction' do
-        expect(job).to receive(:mark_parent_group_processing)
-        expect(ActiveRecord::Base).to receive(:transaction).and_yield
-        expect(failed_parent_group).to receive(:with_lock).and_yield
-        job.send(:handle_job_success)
-      end
+      job.perform(parent_claim.id)
     end
 
-    context 'when success handling fails' do
-      let(:test_error) { StandardError.new('Success handling error') }
+    context 'with error handling' do
+      it 'handles a failure response' do
+        expect(job).to receive(:generate_claim_pdfs).and_raise StandardError, 'TEST'
+        expect(job).to receive(:permanent_failure?).and_return false
+        expect(monitor).to receive(:track_error_event)
 
-      before do
-        allow(job).to receive(:monitor).and_return(monitor_instance)
-        allow(job).to receive(:mark_parent_group_processing).and_raise(test_error)
-        job.instance_variable_set(:@parent_claim_id, parent_claim.id)
-      end
-
-      it 'tracks the error without re-raising' do
-        expect(monitor_instance).to receive(:track_error_event)
-          .with('Error handling job success',
-                action: 'success_failure',
-                component: anything,
-                error: test_error,
-                parent_claim_id: parent_claim.id)
-        expect { job.send(:handle_job_success) }.not_to raise_error
+        expect do
+          job.perform(parent_claim.id)
+        end.to raise_error DependentsBenefits::Sidekiq::DependentSubmissionError, 'TEST'
       end
     end
   end
 
   describe '#handle_permanent_failure' do
-    let(:test_error) { StandardError.new('Permanent failure error') }
-    let(:notification_email) { DependentsBenefits::NotificationEmail.new(parent_claim.id) }
+    let(:error) { StandardError.new('TEST') }
 
-    before do
-      allow(job).to receive_messages(monitor: monitor_instance, notification_email:)
+    it 'propagates the failure and sends email' do
+      expect(claim_processor).to receive(:handle_permanent_failure)
+      expect(job).to receive(:mark_parent_group_failed)
+      expect(monitor).to receive(:log_silent_failure_avoided)
+      expect(email).to receive(:send_error_notification)
+
+      job.send(:handle_permanent_failure, error)
     end
 
-    it 'sends failure notification and logs silent failure avoided' do
-      expect(notification_email).to receive(:deliver).with(:error_686c_674) # rubocop:disable Naming/VariableNumber
-      expect(monitor_instance).to receive(:log_silent_failure_avoided)
-        .with({ claim_id: parent_claim.id, error: test_error })
-      job.send(:handle_permanent_failure, parent_claim.id, test_error)
-    end
+    it 'send silent failure on error' do
+      expect(claim_processor).to receive(:handle_permanent_failure).and_raise error
+      expect(job).to receive(:mark_parent_group_failed)
+      expect(monitor).to receive(:log_silent_failure).with(hash_including(error:))
 
-    context 'when notification sending fails' do
-      let(:notification_error) { StandardError.new('Notification failed') }
-
-      it 'logs silent failure as last resort' do
-        allow(notification_email).to receive(:deliver).and_raise(notification_error)
-        expect(monitor_instance).to receive(:log_silent_failure)
-          .with({ claim_id: parent_claim.id, error: notification_error })
-        job.send(:handle_permanent_failure, parent_claim.id, notification_error)
-      end
+      job.send(:handle_permanent_failure, ArgumentError)
     end
   end
 
-  describe '#parent_group_failed?' do
-    it 'always returns false for backup job, even when parent group is failed' do
-      failed_parent_group = create(:parent_claim_group, status: 'failure', parent_claim:, user_data:)
-      allow(job).to receive(:parent_group).and_return(failed_parent_group)
+  describe '#handle_job_success' do
+    let(:error) { StandardError.new('TEST') }
 
-      expect(job.send(:parent_group_failed?)).to be false
-    end
-  end
+    it 'marks group processing' do
+      expect(job).to receive(:mark_parent_group_processing)
+      expect(monitor).to receive(:track_info_event)
 
-  describe '#submit_to_service' do
-    before do
-      allow(job).to receive(:monitor).and_return(monitor_instance)
-      allow(DependentsBenefits::BenefitsIntake::LighthouseSubmission).to receive(:new).and_return(lh_submission)
-      allow(lh_submission).to receive(:initialize_service)
-      allow(lh_submission).to receive(:prepare_submission)
-      allow(lh_submission).to receive(:upload_to_lh)
-      allow(lh_submission).to receive(:cleanup_file_paths)
-      job.instance_variable_set(:@parent_claim_id, parent_claim.id)
+      job.send(:handle_job_success)
     end
 
-    it 'runs successfully' do
-      result = job.send(:submit_to_service)
-      expect(result.status).to be true
-    end
+    it 'records an error' do
+      expect(job).to receive(:mark_parent_group_processing).and_raise error
+      expect(monitor).to receive(:track_error_event).with('Error handling job success', hash_including(error:))
 
-    it 'ensures cleanup even on error and returns error response' do
-      allow(lh_submission).to receive(:prepare_submission).and_raise(StandardError.new('Test error'))
-      expect(lh_submission).to receive(:cleanup_file_paths)
-
-      result = job.send(:submit_to_service)
-      expect(result.status).to be false
-      expect(result.error).to be_a(StandardError)
+      job.send(:handle_job_success)
     end
   end
 
@@ -227,7 +122,7 @@ RSpec.describe DependentsBenefits::Sidekiq::BenefitsIntakeJob, type: :job do
       msg = { 'args' => [parent_claim.id, 'proc_id'], 'class' => job.class.name }
       exception = StandardError.new('Service failed')
 
-      expect(claim_processor).to receive(:handle_permanent_failure).with(exception)
+      expect_any_instance_of(described_class).to receive(:handle_permanent_failure).with(exception)
 
       described_class.sidekiq_retries_exhausted_block.call(msg, exception)
     end

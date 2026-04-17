@@ -212,7 +212,7 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
         allow(Flipper).to receive(:enabled?).with(:dependents_digital_forms_api_submission_enabled,
                                                   instance_of(User)).and_return(true)
         allow(DependentsBenefits::PrimaryDependencyClaim).to receive(:new).and_return(claim)
-        allow(claim).to receive_messages(validate_schema: [], validate_form: [])
+        allow(claim).to receive_messages(validate_schema: [], validate_form: [], claim_form_type: '21-686c')
 
         allow(DigitalFormsApi::Service::Submissions).to receive(:new).and_return(dfa)
         allow(ClaimsEvidenceApi::Uploader).to receive(:new).and_return(uploader)

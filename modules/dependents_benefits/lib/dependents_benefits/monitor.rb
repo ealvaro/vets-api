@@ -223,30 +223,11 @@ module DependentsBenefits
       return false unless v3_logging_enabled?
       return false if claim.nil?
 
-      # The code below is really just for spec purposes, since in prod the claim.parsed_form should always be present
-      # and return a Hash object. If for some reason it doesn't, we don't want the entire monitor to fail,
-      # so we rescue and return false.
-      # skipping coverage - should refactor/remove once v3 (picklist) is stable
-      begin
-        parsed_form = claim.parsed_form
-      rescue
-        return false
-      end
+      parsed_form = claim.parsed_form
 
-      return false if parsed_form.nil?
+      return false if parsed_form.nil? # this should not happen
 
-      # Handle parsed_form being a JSON string, nil, or a Hash-like object
-      parsed = if parsed_form.is_a?(String)
-                 begin
-                   JSON.parse(parsed_form)
-                 rescue JSON::ParserError
-                   {}
-                 end
-               else
-                 parsed_form
-               end
-
-      parsed = parsed.with_indifferent_access if parsed.respond_to?(:with_indifferent_access)
+      parsed = parsed_form.try(:with_indifferent_access) || parsed_form
 
       !!parsed['is_v3_removal_flow']
     end

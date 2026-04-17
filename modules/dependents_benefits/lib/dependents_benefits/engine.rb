@@ -48,5 +48,16 @@ module DependentsBenefits
                                                                DependentsBenefits::BenefitsIntake::SubmissionHandler)
       end
     end
+
+    initializer 'dependents_benefits.pdf_stamper.register_stamp_sets' do |app|
+      app.config.to_prepare do
+        require 'pdf_utilities/pdf_stamper'
+        require 'dependents_benefits/pdf_stamper'
+
+        DependentsBenefits::PdfStamper::STAMP_SETS.each do |identifier, stamps|
+          ::PDFUtilities::PDFStamper.register_stamps(identifier, stamps)
+        end
+      end
+    end
   end
 end

@@ -31,20 +31,26 @@ module DependentsBenefits::Sidekiq
     # Callback runs outside job context - must recreate instance state
     sidekiq_retries_exhausted do |msg, exception|
       monitor = DependentsBenefits::Monitor.new
-      parent_claim_id, _proc_id = msg['args']
+      parent_claim_id, proc_id = msg['args']
 
       # Use the class of the inheriting job that exhausted, not the base class
       job_class_name = msg['class']
+      monitor.track_info_event("Retries exhausted for #{job_class_name} parent_claim_id #{parent_claim_id}",
+                               action: 'exhaustion', component: job_class_name, parent_claim_id:)
+
       if job_class_name.blank?
         # If we don't have a job class name, the error is irrecoverable
         monitor.log_silent_failure({ parent_claim_id:, error: exception })
       else
-        monitor.track_info_event("Retries exhausted for #{job_class_name} parent_claim_id #{parent_claim_id}",
-                                 action: 'exhaustion', component: job_class_name, parent_claim_id:)
-
-        DependentsBenefits::ClaimProcessor.new(parent_claim_id).handle_permanent_failure(exception)
+        job_instance = job_class_name.constantize.new
+        job_instance.parent_claim_id = parent_claim_id
+        job_instance.proc_id = proc_id
+        job_instance.send(:handle_permanent_failure, exception)
       end
     end
+
+    attr_accessor :parent_claim_id, :proc_id
+    attr_writer :user_data
 
     # Main job execution method for submitting dependent claims
     #
@@ -59,6 +65,7 @@ module DependentsBenefits::Sidekiq
     def perform(parent_claim_id, proc_id = nil)
       @parent_claim_id = parent_claim_id
       @proc_id = proc_id
+      @user_data = parent_claim.user_data # retrieve and populate 'veteran_information'
 
       monitor.track_info_event("Starting #{self.class} for parent_claim_id #{parent_claim_id}",
                                action: 'start', component:, parent_claim_id:)
@@ -77,7 +84,23 @@ module DependentsBenefits::Sidekiq
 
     private
 
-    attr_reader :parent_claim_id, :proc_id
+    # memoize the job user_data
+    def user_data
+      @user_data ||= parent_claim.user_data
+    end
+
+    # Submit all child claims to the service
+    #
+    # @return [DependentsBenefits::ServiceResponse] Response indicating success
+    # @raise [DependentSubmissionError] if any claim submission fails
+    def submit_claims_to_service
+      child_claims.each do |claim|
+        service_response = submit_claim_to_service(claim)
+        raise DependentSubmissionError, service_response&.error unless service_response&.success?
+      end
+
+      DependentsBenefits::ServiceResponse.new(status: true)
+    end
 
     # Submit a single claim to the service
     # @param claim [SavedClaim] The claim to submit

@@ -381,12 +381,6 @@ RSpec.describe DependentsBenefits::Sidekiq::DependentSubmissionJob, type: :job d
   end
 
   describe 'abstract method enforcement' do
-    it 'raises NotImplementedError for submit_claims_to_service' do
-      expect do
-        job.send(:submit_claims_to_service)
-      end.to raise_error(NotImplementedError, 'Subclasses must implement submit_claims_to_service method')
-    end
-
     it 'raises NotImplementedError for submit_686c_form' do
       expect do
         job.send(:submit_686c_form, nil)
@@ -433,6 +427,20 @@ RSpec.describe DependentsBenefits::Sidekiq::DependentSubmissionJob, type: :job d
       expect do
         job.send(:mark_submission_failed, nil)
       end.to raise_error(NotImplementedError, 'Subclasses must implement mark_submission_failed')
+    end
+
+    it 'raises NotImplementedError for submission' do
+      expect do
+        expect(job).to receive(:parent_claim)
+        job.send(:submission)
+      end.to raise_error(NotImplementedError, 'Subclasses must implement find_or_create_form_submission')
+    end
+
+    it 'raises NotImplementedError for submission_attempt' do
+      expect do
+        expect(job).to receive(:submission)
+        job.send(:submission_attempt)
+      end.to raise_error(NotImplementedError, 'Subclasses must implement create_form_submission_attempt')
     end
   end
 

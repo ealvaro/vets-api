@@ -1,14 +1,13 @@
 # frozen_string_literal: true
 
-require 'central_mail/service'
-require 'benefits_intake_service/service'
-require 'pdf_utilities/datestamp_pdf'
-require 'pdf_info'
-require 'simple_forms_api_submission/metadata_validator'
+require 'lighthouse/benefits_intake/metadata'
+require 'lighthouse/benefits_intake/service'
+require 'dependents_benefits/pdf_stamper'
+require 'dependents_benefits/sidekiq/dependent_submission_job'
 
 module DependentsBenefits::Sidekiq
   ##
-  # Backup submission job that uploads claims to Lighthouse Benefits Intake
+  # Submission job that uploads claims to Lighthouse Benefits Intake
   #
   # Used as a fallback when primary BGS submission fails. Submits the entire
   # claim package (main form and attachments) to Lighthouse Benefits Intake API.
@@ -21,35 +20,126 @@ module DependentsBenefits::Sidekiq
     # Submit a claim to Lighthouse Benefits Intake as backup
     # @return [ServiceResponse]
     def submit_claims_to_service
-      find_or_create_form_submission
-      create_form_submission_attempt
+      @form_path = generate_claim_pdfs.shift # use the first claim as the main form
+      @attachment_paths = generate_attachment_pdfs
+      @metadata = generate_metadata
 
-      parent_claim.user_data
-      raise Invalid686cClaim unless saved_claim.valid?(:run_686_form_jobs)
+      intake_service.request_upload # upload must be performed within 15 minutes of this request
+      find_or_create_form_submission(parent_claim)
+      create_form_submission_attempt(submission)
 
-      submit_to_service
-    end
+      payload = {
+        upload_url: intake_service.location,
+        document: @form_path,
+        metadata: @metadata.to_json,
+        attachments: @pdfs + @attachment_paths
+      }
 
-    ##
-    # Service-specific submission logic for Lighthouse upload
-    # @return [ServiceResponse] Must respond to success? and error methods
-    def submit_to_service
-      lighthouse_submission = DependentsBenefits::BenefitsIntake::LighthouseSubmission.new(parent_claim,
-                                                                                           parent_claim.user_data)
-      @uuid = lighthouse_submission.initialize_service
-      update_submission_attempt_uuid
-      lighthouse_submission.prepare_submission
-      lighthouse_submission.upload_to_lh
-      DependentsBenefits::ServiceResponse.new(status: true)
+      response = intake_service.perform_upload(**payload)
+      raise response.to_s unless response.success?
+
+      DependentsBenefits::ServiceResponse.new(status: true, data: response.body)
     rescue => e
       DependentsBenefits::ServiceResponse.new(status: false, error: e)
     ensure
-      lighthouse_submission&.cleanup_file_paths
+      cleanup_file_paths
     end
+
+    # memoized instance of BenefitsIntake::Service
+    def intake_service
+      @intake_service ||= ::BenefitsIntake::Service.new
+    end
+
+    # Returns the Lighthouse Benefits Intake UUID for this submission
+    #
+    # @return [String, nil] The benefits intake UUID, or nil if not yet initialized
+    def uuid
+      intake_service.uuid
+    end
+
+    # Generate the child form pdfs
+    #
+    # @return [Array<String>] path to processed PDF document
+    def generate_claim_pdfs
+      @pdfs = []
+      child_claims.each do |claim|
+        claim.add_veteran_info(user_data)
+        stamp_set = DependentsBenefits::PdfStamper.form_stamp_set(claim.form_id)
+        pdf = process_pdf(claim.to_pdf, stamp_set)
+
+        # if there is a 686C claim, that should be the main claim pdf - @form_path
+        claim.form_id == DependentsBenefits::ADD_REMOVE_DEPENDENT ? @pdfs.prepend(pdf) : @pdfs.append(pdf)
+      end
+
+      @pdfs
+    end
+
+    # Generate the form attachment pdfs
+    #
+    # @return [Array<String>] path to processed PDF document
+    def generate_attachment_pdfs
+      parent_claim.persistent_attachments.map { |pa| process_pdf(pa.to_pdf, :dependents_benefits_received_at) }
+    end
+
+    # Processes and stamps a PDF with submission information
+    #
+    # Applies multiple stamps to the PDF including VA.GOV branding, FDC review notice,
+    # and optional form-specific submission date stamp
+    #
+    # @param pdf_path [String] Path to the PDF file to process
+    # @param stamp_set [String|Symbol] the stamps to apply
+    # @param timestamp [Time, nil] Optional timestamp for the submission date stamp
+    #
+    # @return [String] Path to the final stamped PDF file
+    def process_pdf(pdf_path, stamp_set, timestamp = nil)
+      timestamp ||= parent_claim.created_at
+      document = DependentsBenefits::PdfStamper.new(stamp_set).run(pdf_path, timestamp:)
+
+      intake_service.valid_document?(document:)
+    end
+
+    # Generate form metadata to send in upload to Benefits Intake API
+    #
+    # @see SavedClaim.parsed_form
+    # @see BenefitsIntake::Metadata#generate
+    #
+    # @return [Hash] generated metadata for upload
+    def generate_metadata
+      form = parent_claim.parsed_form
+      address = form.dig('dependents_application', 'veteran_contact_information', 'veteran_address') || {}
+      veteran_information = user_data['veteran_information']
+
+      # also validates/manipulates the metadata
+      ::BenefitsIntake::Metadata.generate(
+        veteran_information['full_name']['first'],
+        veteran_information['full_name']['last'],
+        veteran_information['va_file_number'] || veteran_information['ssn'],
+        address['postal_code'], # will default to 00000 if not valid/present
+        self.class.to_s, # upload source
+        parent_claim.form_id,
+        parent_claim.business_line
+      )
+    end
+
+    # Cleans up temporary PDF files after submission
+    #
+    # Deletes the main form PDF and all attachment PDFs that were generated
+    # for the submission
+    #
+    # @return [void]
+    def cleanup_file_paths
+      Common::FileHelpers.delete_file_if_exists(@form_path)
+      @pdfs&.each { |pdf| Common::FileHelpers.delete_file_if_exists(pdf) }
+      @attachment_paths&.each { |pa| Common::FileHelpers.delete_file_if_exists(pa) }
+    end
+
+    #############
+    # OVERRIDES
+    #############
 
     # @see DependentsBenefits::Sidekiq::Include::HandleResults#handle_job_failure
     def handle_job_failure(error)
-      mark_submission_attempt_failed(error)
+      mark_submission_attempt_failed(@submission_attempt, error)
       super(error)
     end
 
@@ -59,15 +149,17 @@ module DependentsBenefits::Sidekiq
     # notification and logs the error. Does not update parent group status since
     # backup job failures should not prevent subsequent retry attempts.
     #
-    # @param claim_id [Integer] ID of the SavedClaim that failed
     # @param error [Exception] The error that caused the permanent failure
     # @return [void]
-    def handle_permanent_failure(claim_id, error)
+    def handle_permanent_failure(error)
+      mark_parent_group_failed
+      super(error)
+
       notification_email.send_error_notification
-      monitor.log_silent_failure_avoided({ claim_id:, error: })
+      monitor.log_silent_failure_avoided({ parent_claim_id:, error: })
     rescue => e
       # Last resort if notification fails
-      monitor.log_silent_failure({ claim_id:, error: e })
+      monitor.log_silent_failure({ parent_claim_id:, error: e })
     end
 
     # Handles successful backup submission
@@ -80,31 +172,16 @@ module DependentsBenefits::Sidekiq
     #
     # @return [void]
     def handle_job_success
-      ActiveRecord::Base.transaction do
-        parent_group.with_lock do
-          # update parent claim group status - overwrite failure since we're in backup job
-          # the parent group is marked as processing to indicate it hasn't reached VBMS yet
-          mark_parent_group_processing
-        end
-      end
+      mark_parent_group_processing
+      super()
     rescue => e
       monitor.track_error_event('Error handling job success',
                                 action: 'success_failure', component:, error: e, parent_claim_id:)
     end
 
-    # Returns the memoized SavedClaim for the current claim ID
-    #
-    # @return [SavedClaim] The saved claim record
-    # @raise [ActiveRecord::RecordNotFound] if claim not found
-    def saved_claim
-      @saved_claim ||= ::SavedClaim.find(parent_claim_id)
-    end
-
-    # Returns the Lighthouse Benefits Intake UUID for this submission
-    #
-    # @return [String, nil] The benefits intake UUID, or nil if not yet initialized
-    def uuid
-      @uuid || nil
+    # No-op for Lighthouse submissions
+    def handle_successful_submission
+      nil
     end
 
     # Finds or creates a Lighthouse form submission record
@@ -113,9 +190,9 @@ module DependentsBenefits::Sidekiq
     # or returns the existing one. Sets form_id and reference_data on creation.
     #
     # @return [Lighthouse::Submission] The submission record
-    def find_or_create_form_submission
-      @submission = Lighthouse::Submission.find_or_create_by!(saved_claim_id: parent_claim_id) do |submission|
-        submission.assign_attributes({ form_id: parent_claim.form_id, reference_data: parent_claim.to_json })
+    def find_or_create_form_submission(claim)
+      @submission = Lighthouse::Submission.find_or_create_by!(saved_claim_id: claim.id) do |submission|
+        submission.assign_attributes({ form_id: claim.form_id, reference_data: claim.to_json })
       end
     end
 
@@ -124,17 +201,8 @@ module DependentsBenefits::Sidekiq
     # Each retry gets its own attempt record for debugging and tracking.
     #
     # @return [Lighthouse::SubmissionAttempt] The newly created attempt record
-    def create_form_submission_attempt
+    def create_form_submission_attempt(submission)
       @submission_attempt = Lighthouse::SubmissionAttempt.create(submission:, benefits_intake_uuid: uuid)
-    end
-
-    # Updates the submission attempt with the Lighthouse UUID
-    #
-    # Called after the Lighthouse service initializes and generates a UUID.
-    #
-    # @return [Boolean, nil] Result of the update, or nil if attempt doesn't exist
-    def update_submission_attempt_uuid
-      submission_attempt&.update(benefits_intake_uuid: uuid)
     end
 
     # Marks the submission attempt as failed
@@ -143,7 +211,7 @@ module DependentsBenefits::Sidekiq
     #
     # @param _exception [Exception] The exception that caused the failure (unused)
     # @return [Boolean, nil] Result of status update, or nil if attempt doesn't exist
-    def mark_submission_attempt_failed(_exception)
+    def mark_submission_attempt_failed(submission_attempt, _exception)
       submission_attempt&.fail!
     end
 
@@ -161,6 +229,8 @@ module DependentsBenefits::Sidekiq
     #
     # Backup jobs don't check parent group status - they always attempt submission
     # regardless of previous failures, since they're the fallback mechanism.
+    #
+    # @see DependentsBenefits::Helper::Models#parent_group_failed?
     #
     # @return [Boolean] Always false
     def parent_group_failed?
