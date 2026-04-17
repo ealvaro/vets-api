@@ -78,15 +78,17 @@ module EducationForm
     end
 
     def default_stamp_set
-      default = [{
-        text: 'VA.GOV',
+      submit_time = claim.created_at
+      formatted_datetime = "#{submit_time.utc.strftime('%H:%M')} UTC #{submit_time.utc.strftime('%Y-%m-%d')}"
+
+      [{
+        text: "Signed electronically and submitted via VA.gov at #{formatted_datetime}. " \
+              'Signee signed with an identity-verified account.',
         timestamp: nil,
+        text_only: true,
         x: 5,
         y: 5
       }]
-
-      stamp_set = ::PDFUtilities::PDFStamper.get_stamp_set(:vagov_received_at)
-      stamp_set.presence || default
     end
 
     def upload_document

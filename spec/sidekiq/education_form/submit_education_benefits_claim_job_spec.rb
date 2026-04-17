@@ -125,4 +125,14 @@ RSpec.describe EducationForm::SubmitEducationBenefitsClaimJob, form: :education_
       end
     end
   end
+
+  describe 'pdf stamp' do
+    it 'generates the correct stamp data' do
+      subject.claim = claim
+      stamp_data = subject.send(:default_stamp_set)
+      expect(stamp_data.first[:text]).to include('Signed electronically and submitted via VA.gov')
+      expect(stamp_data.first[:text]).to include('Signee signed with an identity-verified account.')
+      expect(stamp_data.first[:text_only]).to be(true)
+    end
+  end
 end
