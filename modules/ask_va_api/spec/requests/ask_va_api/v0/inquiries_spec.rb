@@ -491,7 +491,8 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
     end
 
     context 'when the id format is invalid' do
-      %w[invalid 12345 A-1234567-123456 A-12345678-12345 A-12345678-12345678 A12345678123456].each do |bad_id|
+      %w[invalid 12345 A-1234567-123456 A-12345678-1234 A-12345678-12345678901 A-12345678-12L4567
+         A12345678123456].each do |bad_id|
         it "returns bad_request for '#{bad_id}'" do
           get "/ask_va_api/v0/inquiries/#{bad_id}/status"
           expect(response).to have_http_status(:bad_request)

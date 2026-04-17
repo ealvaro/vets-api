@@ -109,13 +109,13 @@ module AskVAApi
         raise Common::Exceptions::Unauthorized unless current_user&.loa&.fetch(:current, nil) == 3
       end
 
-      INQUIRY_ID_FORMAT = /\AA-[0-9]{8}-[0-9]{6,7}\z/
+      INQUIRY_ID_FORMAT = /\AA-[0-9]{8}-[0-9]{5,10}\z/
 
-      # Validates that params[:id] follows the known inquiry ID format "A-YYYYMMDD-NNNNNN".
+      # Validates that params[:id] follows the known inquiry ID format "A-<8-digit date>-<5-10 digit number>".
       def validate_inquiry_id_format
-        unless params[:id].match?(INQUIRY_ID_FORMAT)
-          render json: { error: 'Invalid inquiry ID format. Expected format: A-YYYYMMDD-NNNNNN.' }, status: :bad_request
-        end
+        msg = 'Invalid inquiry ID format. Expected: A-<8-digit date>-<5-10 digit number> (e.g., A-20260416-1234567).'
+
+        render json: { error: msg }, status: :bad_request unless params[:id].match?(INQUIRY_ID_FORMAT)
       end
 
       class InvalidAttachmentError < StandardError; end
