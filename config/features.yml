@@ -1300,6 +1300,10 @@ features:
     actor_type: user
     enable_in_development: true
     description: enable the prefill for the 21-8940
+  form_218940_disability_prefill_enabled:
+    actor_type: user
+    enable_in_development: true
+    description: enable prefilling for disabilities on the 21-8940
   form218940_leaving_last_position:
     actor_type: user
     description: enable the leaving last positon text box

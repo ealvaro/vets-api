@@ -1,8 +1,10 @@
-veteranFullName: [identity_information, full_name]
-veteranSocialSecurityNumber: [identity_information, ssn]
-veteranAddress: [contact_information, address]
-veteranPhone: [contact_information, us_phone]
+# the keys get camelCased in the prefill methods
+veteran_full_name: [identity_information, full_name]
+veteran_social_security_number: [identity_information, ssn]
+veteran_address: [contact_information, address]
+veteran_phone: [contact_information, us_phone]
 email: [contact_information, email]
-emailAddress: [contact_information, email]
-veteranDateOfBirth: [identity_information, date_of_birth]
-
+email_address: [contact_information, email]
+veteran_date_of_birth: [identity_information, date_of_birth]
+disability_description: [rated_disabilities_information, rated_disabilities]
+service_number: [military_information, service_number]
