@@ -3083,6 +3083,11 @@ features:
     description: >-
       If enabled, EducationCareerCounselingClaim#send_failure_email will use
       VANotify::V2::QueueEmailJob instead of VANotify::EmailJob
+  va_notify_v2_next_steps_email:
+    actor_type: user
+    description: >-
+      If enabled, RepresentationManagement::V0::NextStepsEmailController will use
+      VANotify::V2::QueueEmailJob instead of VANotify::EmailJob
   va_notify_v2_preneeds_burial_form_job:
     actor_type: user
     description: >-

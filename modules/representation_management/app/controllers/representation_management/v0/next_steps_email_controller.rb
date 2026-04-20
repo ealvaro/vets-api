@@ -15,13 +15,7 @@ module RepresentationManagement
       def create
         data = RepresentationManagement::NextStepsEmailData.new(next_steps_email_params)
         if data.valid?
-          VANotify::EmailJob.perform_async(
-            data.email_address,
-            template_id,
-            email_personalisation(data),
-            Settings.vanotify.services.va_gov.api_key,
-            email_delivery_callback(data)
-          )
+          enqueue_email(data)
           render json: { message: 'Email enqueued' }, status: :ok
         else
           render json: { errors: data.errors.full_messages }, status: :unprocessable_entity
@@ -29,6 +23,27 @@ module RepresentationManagement
       end
 
       private
+
+      def enqueue_email(data)
+        if Flipper.enabled?(:va_notify_v2_next_steps_email)
+          api_key_path = 'Settings.vanotify.services.va_gov.api_key'
+          VANotify::V2::QueueEmailJob.enqueue(
+            data.email_address,
+            template_id,
+            email_personalisation(data),
+            api_key_path,
+            email_delivery_callback(data)
+          )
+        else
+          VANotify::EmailJob.perform_async(
+            data.email_address,
+            template_id,
+            email_personalisation(data),
+            Settings.vanotify.services.va_gov.api_key,
+            email_delivery_callback(data)
+          )
+        end
+      end
 
       def email_personalisation(data)
         {
