@@ -18,7 +18,7 @@ module Swagger
           parameter do
             key :name, 'type'
             key :in, :query
-            key :description, 'Credential provider selected to authenticate with. Values: `logingov`, `idme`, `mhv`, `dslogon`'
+            key :description, 'Credential provider selected to authenticate with. Values: `logingov`, `idme`, `mhv`'
             key :required, true
             key :type, :string
           end

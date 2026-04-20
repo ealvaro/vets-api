@@ -49,25 +49,21 @@ module Swagger
               property :last_signed_in, type: :string, example: '2019-10-02T13:55:54.261Z'
               property :initial_sign_in, type: :string, example: '2019-10-02T13:55:54.261Z'
               property :authn_context,
-                       enum: ['dslogon', 'dslogon_loa3', 'dslogon_multifactor', 'myhealthevet', 'myhealthevet_loa3',
+                       enum: ['myhealthevet', 'myhealthevet_loa3',
                               'myhealthevet_multifactor', LOA::IDME_LOA1_VETS, LOA::IDME_LOA3_VETS],
                        example: 'myhealthevet_loa3',
-                       description: 'The login method of a user.
-                                     If a user logs in using a DS Logon Username and password and then goes through
-                                     identity verification with id.me their login type would be dslogon_loa3.
-                                     or if they logged in with dslogon and added multifactor authentication through
-                                     id.me their authn_context would be dslogon_multifactor'
+                       description: 'The login method of a user.'
               property :sign_in, type: :object do
                 property :service_name,
                          type: :string,
-                         enum: %w[mhv dslogon idme logingov],
+                         enum: %w[mhv idme logingov],
                          example: 'mhv',
                          description: 'The name of the service that the user used for the beginning of the
                                        authentication process (username + password)'
                 property :account_type,
-                         enum: %w[Basic Premium 1 2 3],
+                         enum: %w[Basic Premium],
                          example: 'Basic',
-                         description: 'myhealthevet account_types: Basic, Premium. dslogon account account_types: 1-3'
+                         description: 'myhealthevet account_types: Basic, Premium.'
                 property :ssoe,
                          type: :boolean,
                          description: 'true if the user was authenticated using SSOe'
