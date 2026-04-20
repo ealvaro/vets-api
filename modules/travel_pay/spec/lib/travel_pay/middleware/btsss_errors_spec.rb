@@ -43,6 +43,50 @@ RSpec.describe TravelPay::Middleware::BtsssErrors do
     end
   end
 
+  context 'when the response has validation messages in the data array' do
+    it 'combines message and data array into detail' do
+      body = {
+        'correlationId' => 'abc-def-123',
+        'timeStamp' => '2025-09-15T22:32:38Z',
+        'statusCode' => 400,
+        'message' => 'Bad Request',
+        'success' => false,
+        'data' => [
+          'Validation Failed: The request parameters are missing or invalid.',
+          'Validation Failed: The JSON value could not be converted to System.DateTime. ' \
+          'Path: $.appointmentDateTime | LineNumber: 1 | BytePositionInLine: 27.'
+        ]
+      }
+      env = env_for(status: 400, body:)
+      middleware.on_complete(env)
+
+      expect(env[:body]['detail']).to eq(
+        'Bad Request: Validation Failed: The request parameters are missing or invalid.; ' \
+        'Validation Failed: The JSON value could not be converted to System.DateTime. ' \
+        'Path: $.appointmentDateTime | LineNumber: 1 | BytePositionInLine: 27.'
+      )
+      expect(env[:body]['code']).to eq('400')
+    end
+
+    it 'ignores non-string items in the data array' do
+      body = {
+        'statusCode' => 400,
+        'message' => 'Bad Request',
+        'success' => false,
+        'data' => [
+          'Validation Failed: Missing field.',
+          42,
+          nil,
+          { 'nested' => 'object' }
+        ]
+      }
+      env = env_for(status: 400, body:)
+      middleware.on_complete(env)
+
+      expect(env[:body]['detail']).to eq('Bad Request: Validation Failed: Missing field.')
+    end
+  end
+
   context 'when the response body is not a Hash' do
     it 'does not raise an error' do
       env = env_for(status: 500, body: 'Internal Server Error')

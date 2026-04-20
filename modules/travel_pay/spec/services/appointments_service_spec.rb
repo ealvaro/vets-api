@@ -237,6 +237,29 @@ describe TravelPay::AppointmentsService do
 
         expect(appt[:data]['id']).to eq('uuid1')
       end
+
+      it 'raises a BadRequest if facility_name is missing' do
+        params = { 'appointment_date_time' => '2024-01-01T12:45:00',
+                   'facility_station_number' => '123',
+                   'appointment_type' => 'Other',
+                   'is_complete' => false,
+                   'appointment_name' => 'Test Appointment Name' }
+
+        expect { service.find_or_create_appointment(params) }
+          .to raise_error(Common::Exceptions::BadRequest)
+      end
+
+      it 'raises a BadRequest if facility_name is an empty string' do
+        params = { 'appointment_date_time' => '2024-01-01T12:45:00',
+                   'facility_station_number' => '123',
+                   'appointment_type' => 'Other',
+                   'is_complete' => false,
+                   'appointment_name' => 'Test Appointment Name',
+                   'facility_name' => '' }
+
+        expect { service.find_or_create_appointment(params) }
+          .to raise_error(Common::Exceptions::BadRequest)
+      end
     end
   end
 end

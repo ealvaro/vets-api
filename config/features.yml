@@ -2860,6 +2860,13 @@ features:
       Controls how the GI Bill State of Benefits (SOB) application is presented.
       When enabled: it use the new SOB application that works 24/7.
       When disabled: it will use the old SOB application that only works from 0600 to 2200 hrs
+  travel_pay_btsss_logging:
+    actor_type: user
+    enable_in_development: true
+    description: >-
+      Gates the BTSSS logging Faraday middleware for BTSSS API calls.
+      When enabled, scrubbed request/response bodies are logged to Rails logger
+      (and forwarded to Datadog) for debugging. PII is detected and replaced with [REDACTED].
   travel_pay_power_switch:
     actor_type: user
     enable_in_development: true

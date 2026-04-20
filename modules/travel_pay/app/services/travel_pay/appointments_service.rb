@@ -66,6 +66,8 @@ module TravelPay
         # Use feature flag to determine API version
         use_v4_api = !!(@auth_manager.user && Flipper.enabled?(:travel_pay_appt_add_v4_upgrade, @auth_manager.user))
 
+        validate_required_params!(params, use_v4_api:)
+
         faraday_response = client.find_or_create(auth_session, params, use_v4_api:)
         appointments = faraday_response.body['data']
 
@@ -77,6 +79,23 @@ module TravelPay
     rescue ArgumentError => e
       Rails.logger.error(message: "#{e} Invalid appointment time provided (given: #{params['appointment_date_time']}).")
       raise ArgumentError, "#{e} Invalid appointment time provided (given: #{params['appointment_date_time']})."
+    end
+
+    BASE_REQUIRED_FIELDS = %w[appointment_date_time facility_station_number].freeze
+    V4_REQUIRED_FIELDS = %w[facility_name].freeze
+
+    def validate_required_params!(params, use_v4_api: false)
+      required = use_v4_api ? BASE_REQUIRED_FIELDS + V4_REQUIRED_FIELDS : BASE_REQUIRED_FIELDS
+
+      missing = required.select { |key| params[key].blank? }
+      return if missing.empty?
+
+      Rails.logger.error(message: "Missing required params for find-or-add appointments (given: #{missing.map do |k|
+        "#{k}=#{params[k].inspect}"
+      end.join(', ')}).")
+      raise Common::Exceptions::BadRequest.new(
+        detail: "Missing required params: #{missing.join(', ')}"
+      )
     end
 
     private

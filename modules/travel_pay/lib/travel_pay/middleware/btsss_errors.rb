@@ -6,8 +6,14 @@ module TravelPay
     # Faraday response middleware that normalizes BTSSS error response bodies
     # to the format expected by Common::Client::Middleware::Response::RaiseCustomError.
     #
-    # BTSSS returns:
-    #   { "statusCode" => 400, "message" => "...", "success" => false, ... }
+    # BTSSS returns two common error shapes:
+    #
+    #   Shape 1 (detail in message):
+    #   { "statusCode" => 400, "message" => "Validation failed: ...", "success" => false, "data" => nil }
+    #
+    #   Shape 2 (detail in data array):
+    #   { "statusCode" => 400, "message" => "Bad Request", "success" => false,
+    #     "data" => ["Validation Failed: ...", "Validation Failed: ..."] }
     #
     # RaiseCustomError expects:
     #   { "detail" => "...", "code" => "...", "source" => "..." }
@@ -19,8 +25,27 @@ module TravelPay
         body = env[:body]
         return unless body.is_a?(Hash)
 
-        body['detail'] = body['message'] if body.key?('message')
+        body['detail'] = build_detail(body) if body.key?('message')
         body['code'] = body['statusCode']&.to_s if body.key?('statusCode')
+      end
+
+      private
+
+      ##
+      # Build the detail string from the BTSSS error response.
+      # If `data` contains an array of validation messages, join them with the
+      # top-level message for a complete error description.
+      #
+      def build_detail(body)
+        message = body['message']
+        data = body['data']
+
+        if data.is_a?(Array) && data.any? { |item| item.is_a?(String) }
+          validation_messages = data.select { |item| item.is_a?(String) }
+          "#{message}: #{validation_messages.join('; ')}"
+        else
+          message
+        end
       end
     end
   end

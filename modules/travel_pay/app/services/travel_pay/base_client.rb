@@ -2,6 +2,7 @@
 
 require 'securerandom'
 require 'travel_pay/middleware/btsss_errors'
+require 'travel_pay/middleware/btsss_logging'
 
 module TravelPay
   class BaseClient
@@ -31,6 +32,7 @@ module TravelPay
 
       Faraday.new(url: server_url, request: request_options) do |conn|
         conn.use(:breakers, service_name:)
+        conn.response :btsss_logging if Flipper.enabled?(:travel_pay_btsss_logging)
         conn.response :raise_custom_error, error_prefix: service_name, include_request: true
         conn.response :btsss_errors if Flipper.enabled?(:travel_pay_surface_btsss_errors)
         conn.response :betamocks if mock_enabled?
