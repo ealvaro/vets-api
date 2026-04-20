@@ -461,7 +461,7 @@ RSpec.describe EventBusGateway::LetterReadyEmailJob, type: :job do
     end
 
     it 'increments silent_failure metric' do
-      expected_tags = EventBusGateway::Constants::DD_TAGS + ['function: Test error']
+      expected_tags = EventBusGateway::Constants::DD_TAGS + ['function: LetterReadyEmailJob']
 
       expect(StatsD).to receive(:increment).with(
         'silent_failure',
