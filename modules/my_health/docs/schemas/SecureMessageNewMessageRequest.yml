@@ -42,3 +42,18 @@ properties:
       API. For other endpoints that reuse this schema (for example message drafts and reply drafts),
       this field is accepted but ignored and does not change endpoint behavior.
     example: "24654491"
+  signature_name:
+    type: string
+    description: |
+      Optional. The name to display in the electronic signature block appended to the message body.
+      Both signature_name and signature_date_user_local must be present for the signature to be appended.
+    example: "John Smith"
+  signature_date_user_local:
+    type: string
+    format: date
+    description: |
+      Optional. The date (YYYY-MM-DD) in the user's local timezone when the electronic signature
+      was submitted. Both signature_name and signature_date_user_local must be present for the
+      signature to be appended. Blank, invalid, or non-ISO 8601 date values are ignored, and the
+      request is still accepted without appending the signature.
+    example: "2026-04-13"

@@ -30,3 +30,17 @@ properties:
       Used for analytics tracking of Oracle Health facility messages. If not provided, facility
       tracking is skipped.
     example: "989"
+  signature_name:
+    type: string
+    description: |
+      Accepted for schema compatibility but not processed on reply. On new messages, this is
+      the name displayed in the electronic signature block appended to the message body.
+    example: "John Smith"
+  signature_date_user_local:
+    type: string
+    format: date
+    description: |
+      Accepted for schema compatibility but not processed on reply. On new messages, this is
+      the date (YYYY-MM-DD) in the user's local timezone when the electronic signature was
+      submitted.
+    example: "2026-04-13"

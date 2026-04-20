@@ -24,6 +24,7 @@ app/controllers/concerns/controller_logging_context.rb @department-of-veterans-a
 app/controllers/concerns/email_verification_rate_limited.rb @department-of-veterans-affairs/vfs-authenticated-experience-backend @department-of-veterans-affairs/backend-review-group
 app/controllers/concerns/chatbot/requires_edipi.rb @department-of-veterans-affairs/vfs-virtual-agent-chatbot @department-of-veterans-affairs/backend-review-group
 app/controllers/concerns/email_verification_error_handler.rb @department-of-veterans-affairs/vfs-authenticated-experience-backend @department-of-veterans-affairs/backend-review-group
+app/controllers/concerns/sm/electronic_signature_appending.rb @department-of-veterans-affairs/vfs-mhv-integration @department-of-veterans-affairs/backend-review-group
 app/controllers/concerns/exception_handling.rb @department-of-veterans-affairs/backend-review-group
 app/controllers/concerns/failed_request_loggable.rb @department-of-veterans-affairs/backend-review-group
 app/controllers/concerns/filterable.rb @department-of-veterans-affairs/backend-review-group

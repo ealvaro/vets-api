@@ -460,6 +460,169 @@ RSpec.describe 'MyHealth::V1::Messaging::Messages', type: :request do
         end
       end
 
+      context 'electronic signature appending' do
+        let(:esign_params) do
+          params.merge(
+            signature_name: 'John Smith',
+            signature_date_user_local: '2026-04-13'
+          )
+        end
+
+        let(:expected_body) do
+          "Continuous Integration\n\n" \
+            "--------------------------------------------------\n\n" \
+            "John Smith\n" \
+            'Signed electronically on 2026-04-13.'
+        end
+
+        context 'on create' do
+          it 'appends electronic signature to message body' do
+            expect_any_instance_of(SM::Client).to receive(:post_create_message)
+              .with(hash_including(body: expected_body), is_oh: anything)
+              .and_call_original
+
+            VCR.use_cassette('sm_client/messages/creates/a_new_message_without_attachments') do
+              post '/my_health/v1/messaging/messages', params: { message: esign_params }
+            end
+
+            expect(response).to be_successful
+          end
+
+          it 'strips e-sign params before sending to client' do
+            expect_any_instance_of(SM::Client).to receive(:post_create_message)
+              .with(
+                hash_excluding(:signature_name, :signature_date_user_local),
+                is_oh: anything
+              )
+              .and_call_original
+
+            VCR.use_cassette('sm_client/messages/creates/a_new_message_without_attachments') do
+              post '/my_health/v1/messaging/messages', params: { message: esign_params }
+            end
+
+            expect(response).to be_successful
+          end
+
+          it 'does not append when e-sign params are missing' do
+            expect_any_instance_of(SM::Client).to receive(:post_create_message)
+              .with(hash_including(body: 'Continuous Integration'), is_oh: anything)
+              .and_call_original
+
+            VCR.use_cassette('sm_client/messages/creates/a_new_message_without_attachments') do
+              post '/my_health/v1/messaging/messages', params: { message: params }
+            end
+
+            expect(response).to be_successful
+          end
+
+          it 'does not append when name is blank' do
+            blank_name_params = params.merge(
+              signature_name: '',
+              signature_date_user_local: '2026-04-13'
+            )
+
+            expect_any_instance_of(SM::Client).to receive(:post_create_message)
+              .with(hash_including(body: 'Continuous Integration'), is_oh: anything)
+              .and_call_original
+
+            VCR.use_cassette('sm_client/messages/creates/a_new_message_without_attachments') do
+              post '/my_health/v1/messaging/messages', params: { message: blank_name_params }
+            end
+
+            expect(response).to be_successful
+          end
+
+          it 'does not append when date is blank' do
+            blank_ts_params = params.merge(
+              signature_name: 'John Smith',
+              signature_date_user_local: ''
+            )
+
+            expect_any_instance_of(SM::Client).to receive(:post_create_message)
+              .with(hash_including(body: 'Continuous Integration'), is_oh: anything)
+              .and_call_original
+
+            VCR.use_cassette('sm_client/messages/creates/a_new_message_without_attachments') do
+              post '/my_health/v1/messaging/messages', params: { message: blank_ts_params }
+            end
+
+            expect(response).to be_successful
+          end
+
+          it 'does not append when date is unparseable' do
+            bad_ts_params = params.merge(
+              signature_name: 'John Smith',
+              signature_date_user_local: 'not-a-date'
+            )
+
+            expect_any_instance_of(SM::Client).to receive(:post_create_message)
+              .with(hash_including(body: 'Continuous Integration'), is_oh: anything)
+              .and_call_original
+
+            VCR.use_cassette('sm_client/messages/creates/a_new_message_without_attachments') do
+              post '/my_health/v1/messaging/messages', params: { message: bad_ts_params }
+            end
+
+            expect(response).to be_successful
+          end
+
+          it 'does not append when date format is not YYYY-MM-DD' do
+            bad_format_params = params.merge(
+              signature_name: 'John Smith',
+              signature_date_user_local: '04/13/2026'
+            )
+
+            expect_any_instance_of(SM::Client).to receive(:post_create_message)
+              .with(hash_including(body: 'Continuous Integration'), is_oh: anything)
+              .and_call_original
+
+            VCR.use_cassette('sm_client/messages/creates/a_new_message_without_attachments') do
+              post '/my_health/v1/messaging/messages', params: { message: bad_format_params }
+            end
+
+            expect(response).to be_successful
+          end
+
+          it 'appends electronic signature with camel-inflected params' do
+            camel_esign_params = params.merge(
+              signatureName: 'John Smith',
+              signatureDateUserLocal: '2026-04-13'
+            )
+
+            expect_any_instance_of(SM::Client).to receive(:post_create_message)
+              .with(hash_including(body: expected_body), is_oh: anything)
+              .and_call_original
+
+            VCR.use_cassette('sm_client/messages/creates/a_new_message_without_attachments') do
+              post '/my_health/v1/messaging/messages',
+                   params: { message: camel_esign_params },
+                   headers: inflection_header.merge('Content-Type' => 'application/json'),
+                   as: :json
+            end
+
+            expect(response).to be_successful
+          end
+        end
+
+        # Reply does not call append_electronic_signature!; e-sign params pass through harmlessly
+        context 'on reply' do
+          let(:reply_message_id) { 674_838 }
+
+          it 'does not append electronic signature to reply body' do
+            expect_any_instance_of(SM::Client).to receive(:post_create_message_reply)
+              .with(reply_message_id.to_s, hash_including(body: 'Continuous Integration'), is_oh: anything)
+              .and_call_original
+
+            VCR.use_cassette('sm_client/messages/creates/a_reply_without_attachments') do
+              post "/my_health/v1/messaging/messages/#{reply_message_id}/reply",
+                   params: { message: esign_params }
+            end
+
+            expect(response).to be_successful
+          end
+        end
+      end
+
       context 'timeout extension for OH triage groups' do
         let(:reply_message_id) { 674_838 }
 

@@ -267,6 +267,92 @@ RSpec.describe 'Mobile::V0::Messaging::Health::Messages', type: :request do
           end
         end
 
+        context 'electronic signature appending on create' do
+          let(:expected_body) do
+            "Continuous Integration\n\n" \
+              "--------------------------------------------------\n\n" \
+              "John Smith\n" \
+              'Signed electronically on 2026-04-13.'
+          end
+          let(:esign_params) do
+            params.merge(signature_name: 'John Smith', signature_date_user_local: '2026-04-13')
+          end
+
+          it 'appends electronic signature to message body' do
+            expect_any_instance_of(SM::Client).to receive(:post_create_message)
+              .with(hash_including(body: expected_body), is_oh: anything)
+              .and_call_original
+
+            VCR.use_cassette('sm_client/messages/creates/a_new_message_without_attachments') do
+              post '/mobile/v0/messaging/health/messages', headers: sis_headers,
+                                                           params: { message: esign_params }
+            end
+
+            expect(response).to be_successful
+          end
+
+          it 'strips e-sign params before sending to client' do
+            expect_any_instance_of(SM::Client).to receive(:post_create_message)
+              .with(hash_excluding(:signature_name, :signature_date_user_local), is_oh: anything)
+              .and_call_original
+
+            VCR.use_cassette('sm_client/messages/creates/a_new_message_without_attachments') do
+              post '/mobile/v0/messaging/health/messages', headers: sis_headers,
+                                                           params: { message: esign_params }
+            end
+
+            expect(response).to be_successful
+          end
+
+          it 'does not append when e-sign params are missing' do
+            expect_any_instance_of(SM::Client).to receive(:post_create_message)
+              .with(hash_including(body: 'Continuous Integration'), is_oh: anything)
+              .and_call_original
+
+            VCR.use_cassette('sm_client/messages/creates/a_new_message_without_attachments') do
+              post '/mobile/v0/messaging/health/messages', headers: sis_headers,
+                                                           params: { message: params }
+            end
+
+            expect(response).to be_successful
+          end
+
+          it 'does not append when date format is not YYYY-MM-DD' do
+            bad_date_params = params.merge(signature_name: 'John Smith', signature_date_user_local: '04/13/2026')
+
+            expect_any_instance_of(SM::Client).to receive(:post_create_message)
+              .with(hash_including(body: 'Continuous Integration'), is_oh: anything)
+              .and_call_original
+
+            VCR.use_cassette('sm_client/messages/creates/a_new_message_without_attachments') do
+              post '/mobile/v0/messaging/health/messages', headers: sis_headers,
+                                                           params: { message: bad_date_params }
+            end
+
+            expect(response).to be_successful
+          end
+
+          it 'appends electronic signature with camel-inflected params' do
+            camel_esign_params = params.merge(
+              signatureName: 'John Smith',
+              signatureDateUserLocal: '2026-04-13'
+            )
+
+            expect_any_instance_of(SM::Client).to receive(:post_create_message)
+              .with(hash_including(body: expected_body), is_oh: anything)
+              .and_call_original
+
+            VCR.use_cassette('sm_client/messages/creates/a_new_message_without_attachments') do
+              post '/mobile/v0/messaging/health/messages',
+                   headers: sis_headers(json: true),
+                   params: { message: camel_esign_params },
+                   as: :json
+            end
+
+            expect(response).to be_successful
+          end
+        end
+
         context 'reply' do
           let(:reply_message_id) { 674_838 }
 

@@ -1,5 +1,5 @@
 ---
-applyTo: "modules/my_health/app/controllers/my_health/sm_controller.rb,modules/my_health/app/controllers/my_health/v1/messages_controller.rb,modules/my_health/app/controllers/my_health/v1/message_drafts_controller.rb,modules/my_health/app/controllers/my_health/v1/folders_controller.rb,modules/my_health/app/controllers/my_health/v1/threads_controller.rb,modules/my_health/app/controllers/my_health/v1/triage_teams_controller.rb,modules/my_health/app/controllers/my_health/v1/all_triage_teams_controller.rb,modules/my_health/app/controllers/my_health/v1/attachments_controller.rb,modules/my_health/app/controllers/my_health/v1/messaging_preferences_controller.rb,modules/my_health/app/serializers/my_health/v1/message_serializer.rb,modules/my_health/app/serializers/my_health/v1/messages_serializer.rb,modules/my_health/app/serializers/my_health/v1/message_details_serializer.rb,modules/my_health/app/serializers/my_health/v1/message_draft_serializer.rb,modules/my_health/app/serializers/my_health/v1/folder_serializer.rb,modules/my_health/app/serializers/my_health/v1/triage_team_serializer.rb,modules/my_health/app/serializers/my_health/v1/all_triage_teams_serializer.rb,modules/my_health/app/serializers/my_health/v1/attachment_serializer.rb,modules/my_health/app/serializers/my_health/v1/category_serializer.rb,modules/my_health/app/serializers/my_health/v1/messaging_preference_serializer.rb,modules/my_health/app/serializers/my_health/v1/message_signature_serializer.rb,modules/my_health/app/serializers/my_health/v1/threads_serializer.rb,modules/my_health/config/routes.rb,modules/my_health/spec/requests/my_health/v1/messaging/**/*,lib/sm/**/*,app/models/message.rb,app/models/message_draft.rb,app/models/folder.rb,app/models/attachment.rb,app/models/triage_team.rb,app/models/all_triage_teams.rb,app/models/concerns/signature_required.rb,app/models/message_search.rb,app/models/messaging_preference.rb,app/models/messaging_signature.rb,app/policies/mhv_messaging_policy.rb,spec/models/message*,spec/models/triage_team*,spec/models/all_triage_teams*,spec/models/concerns/signature_required*,spec/lib/sm/**/*,modules/mobile/app/serializers/mobile/v0/triage_team_serializer.rb,modules/mobile/app/serializers/mobile/v0/all_triage_teams_serializer.rb"
+applyTo: "modules/my_health/app/controllers/my_health/sm_controller.rb,modules/my_health/app/controllers/my_health/v1/messages_controller.rb,modules/my_health/app/controllers/my_health/v1/message_drafts_controller.rb,modules/my_health/app/controllers/my_health/v1/folders_controller.rb,modules/my_health/app/controllers/my_health/v1/threads_controller.rb,modules/my_health/app/controllers/my_health/v1/triage_teams_controller.rb,modules/my_health/app/controllers/my_health/v1/all_triage_teams_controller.rb,modules/my_health/app/controllers/my_health/v1/attachments_controller.rb,modules/my_health/app/controllers/my_health/v1/messaging_preferences_controller.rb,modules/my_health/app/serializers/my_health/v1/message_serializer.rb,modules/my_health/app/serializers/my_health/v1/messages_serializer.rb,modules/my_health/app/serializers/my_health/v1/message_details_serializer.rb,modules/my_health/app/serializers/my_health/v1/message_draft_serializer.rb,modules/my_health/app/serializers/my_health/v1/folder_serializer.rb,modules/my_health/app/serializers/my_health/v1/triage_team_serializer.rb,modules/my_health/app/serializers/my_health/v1/all_triage_teams_serializer.rb,modules/my_health/app/serializers/my_health/v1/attachment_serializer.rb,modules/my_health/app/serializers/my_health/v1/category_serializer.rb,modules/my_health/app/serializers/my_health/v1/messaging_preference_serializer.rb,modules/my_health/app/serializers/my_health/v1/message_signature_serializer.rb,modules/my_health/app/serializers/my_health/v1/threads_serializer.rb,modules/my_health/config/routes.rb,modules/my_health/spec/requests/my_health/v1/messaging/**/*,lib/sm/**/*,app/models/message.rb,app/models/message_draft.rb,app/models/folder.rb,app/models/attachment.rb,app/models/triage_team.rb,app/models/all_triage_teams.rb,app/models/concerns/signature_required.rb,app/models/message_search.rb,app/models/messaging_preference.rb,app/models/messaging_signature.rb,app/policies/mhv_messaging_policy.rb,spec/models/message*,spec/models/triage_team*,spec/models/all_triage_teams*,spec/models/concerns/signature_required*,spec/lib/sm/**/*,modules/mobile/app/serializers/mobile/v0/triage_team_serializer.rb,modules/mobile/app/serializers/mobile/v0/all_triage_teams_serializer.rb,modules/mobile/app/controllers/mobile/v0/messages_controller.rb,modules/mobile/spec/requests/mobile/v0/messaging/health/messages_spec.rb,app/controllers/concerns/sm/electronic_signature_appending.rb"
 ---
 
 # Copilot Instructions for My Health / Secure Messaging
@@ -369,20 +369,25 @@ module MyHealth
         # 2. Validate before sending
         raise Common::Exceptions::ValidationErrors, message unless message.valid?
 
-        # 3. Prepare params
+        # 3. Prepare params — this is a plain hash, NOT the Message model
         message_params_h = prepare_message_params_h
+
+        # 4. Apply any body transformations (e.g., electronic signature appending)
+        #    ⚠️  Must happen on params_h, NOT on the Message model (see warning below)
+        append_electronic_signature!(message_params_h)
+
         create_message_params = { message: message_params_h }.merge(upload_params)
 
-        # 4. Call appropriate SM client endpoint
+        # 5. Call appropriate SM client endpoint
         client_response = create_client_response(message, message_params_h, create_message_params)
 
-        # 5. Log event
+        # 6. Log event
         UniqueUserEvents.log_event(
           user: current_user,
           event_name: UniqueUserEvents::EventRegistry::SECURE_MESSAGING_MESSAGE_SENT
         )
 
-        # 6. Return serialized response
+        # 7. Return serialized response
         options = build_response_options(client_response)
         render json: MessageSerializer.new(client_response, options)
       end
@@ -423,6 +428,69 @@ module MyHealth
   end
 end
 ```
+
+### ⚠️ Body Modification: Use `params_h`, NOT the Message Model
+
+`Message#initialize` runs `Nokogiri::HTML.parse(body).text` which strips all HTML tags, entities, and formatting from the body. This means:
+
+- Any body modifications (appending signatures, disclaimers, etc.) made on the **Message model instance** will be silently stripped.
+- Body modifications must happen on the **raw `params_h` hash** (returned by `prepare_message_params_h`) which is what gets sent to `SM::Client`.
+
+**Correct timing for body modifications:**
+1. `Message.new(...)` — model is created, body is HTML-stripped for validation
+2. `message.valid?` — validation runs against the stripped body
+3. `prepare_message_params_h` — returns the **raw** params hash (not the model)
+4. **→ Modify `params_h[:body]` here ←** — e.g., `append_electronic_signature!(message_params_h)`
+5. `client.post_create_message(message_params_h)` — sends the modified body upstream
+
+**Anti-pattern:**
+```ruby
+# ❌ WRONG — body modification on the model gets stripped by Nokogiri
+message = Message.new(message_params)
+message.body += "\n\nSigned by #{name}"  # This may lose formatting
+client.post_create_message(message.attributes)
+```
+
+**Correct pattern:**
+```ruby
+# ✅ RIGHT — modify the raw params hash after model validation
+message = Message.new(message_params)
+raise Common::Exceptions::ValidationErrors, message unless message.valid?
+message_params_h = prepare_message_params_h
+message_params_h[:body] = "#{message_params_h[:body]}\n\nSigned by #{name}"
+client.post_create_message(message_params_h)
+```
+
+### Controller-Only Params (FE-Only Fields)
+
+When the FE sends params that are consumed by the controller but should NOT be forwarded to the upstream MHV API:
+
+1. **Permit** the params in `message_params` (strong params)
+2. **Delete** them from `params_h` in the controller method that consumes them
+3. The SM::Client never sees these fields
+
+**Pattern:**
+```ruby
+def message_params
+  # Permit FE-only fields alongside standard message fields
+  params.require(:message).permit(:body, :subject, :my_fe_only_field)
+end
+
+def transform_message!(params_h)
+  # Delete and consume the FE-only field
+  my_value = params_h.delete(:my_fe_only_field)
+  return unless my_value.present?
+
+  # Use it for controller-level logic (body modification, logging, etc.)
+  params_h[:body] = "#{params_h[:body]}\n#{my_value}"
+end
+```
+
+**Why:** The SM::Client sends params directly to the MHV API. Unknown fields may cause upstream errors or be silently ignored. Always strip controller-only fields via `params_h.delete` before the params reach the client.
+
+**Current examples:**
+- `signature_name` / `signature_date_user_local` — consumed by `append_electronic_signature!`, deleted before client send
+- `station_number` — consumed by `recipient_facility_id` for UUM tracking (read-only, not deleted since it's harmless upstream)
 
 ### SM Client Usage Pattern
 
@@ -786,6 +854,43 @@ The SM::Client automatically tracks:
 
 ### Issue: OH triage group timeouts
 **Solution:** Use `extend_timeout` before_action for create/reply actions when `oh_triage_group?` is true.
+
+---
+
+## Shared Controller Concerns (MyHealth + Mobile)
+
+When SM controller logic is identical between `MyHealth::V1::MessagesController` and `Mobile::V0::MessagesController`, extract it to a shared concern in `app/controllers/concerns/` rather than duplicating.
+
+**Current shared concerns:**
+- `SM::ElectronicSignatureAppending` — `app/controllers/concerns/sm/electronic_signature_appending.rb`
+  - Provides `append_electronic_signature!(params_h)` for appending e-sign blocks to message body
+  - Included by both `MyHealth::V1::MessagesController` and `Mobile::V0::MessagesController`
+
+**When to extract vs. duplicate:**
+- **Extract** when the method is identical and behavior must stay in sync (e.g., signature formatting)
+- **Duplicate** when mobile and my_health have divergent logic or different method signatures
+
+### CamelCase Testing Differences
+
+Both modules use OliveBranch middleware for camelCase ↔ snake_case param transformation, but the test patterns differ:
+
+**MyHealth specs:**
+```ruby
+post '/my_health/v1/messaging/messages',
+     params: { message: camel_params },
+     headers: inflection_header.merge('Content-Type' => 'application/json'),
+     as: :json
+```
+
+**Mobile specs:**
+```ruby
+post '/mobile/v0/messaging/health/messages',
+     headers: sis_headers(json: true),  # adds Content-Type + Accept JSON headers
+     params: { message: camel_params },
+     as: :json
+```
+
+**Key:** OliveBranch only transforms inbound params when `Content-Type: application/json` is set. Form-encoded requests (multipart uploads) are NOT transformed. Both `as: :json` AND the JSON content-type header are required for camelCase param tests to work.
 
 ---
 

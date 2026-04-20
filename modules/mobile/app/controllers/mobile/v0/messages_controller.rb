@@ -6,6 +6,7 @@ require 'unique_user_events'
 module Mobile
   module V0
     class MessagesController < MessagingController
+      include SM::ElectronicSignatureAppending
       include Filterable
 
       before_action :validate_message_id, only: %i[show destroy thread reply move]
@@ -56,11 +57,12 @@ module Mobile
         message = Message.new(message_params.merge(upload_params))
         raise Common::Exceptions::ValidationErrors, message unless message.valid?
 
-        message_params[:id] = message_params.delete(:draft_id) if message_params[:draft_id].present?
-        create_message_params = { message: message_params.to_h }.merge(upload_params)
+        message_params_h = prepare_message_params_h
+        append_electronic_signature!(message_params_h)
+        create_message_params = { message: message_params_h }.merge(upload_params)
         Rails.logger.info('Mobile SM Category Tracking', category: create_message_params.dig(:message, :category))
 
-        client_response = build_create_client_response(message, create_message_params)
+        client_response = build_create_client_response(message, message_params_h, create_message_params)
 
         # Log unique user event for message sent (with facility tracking if recipient has a station number)
         UniqueUserEvents.log_event(
@@ -143,7 +145,7 @@ module Mobile
         @message_params ||= begin
           params[:message] = JSON.parse(params[:message]) if params[:message].is_a?(String)
           params.require(:message).permit(:draft_id, :category, :body, :recipient_id, :subject, :is_oh_triage_group,
-                                          :station_number)
+                                          :station_number, :signature_name, :signature_date_user_local)
         end
       rescue JSON::ParserError
         raise Common::Exceptions::InvalidFieldValue.new('message', params[:message])
@@ -162,8 +164,8 @@ module Mobile
         ActiveModel::Type::Boolean.new.cast(value)
       end
 
-      def build_create_client_response(message, create_message_params)
-        return client.post_create_message(message_params.to_h, is_oh: oh_triage_group?) if message.uploads.blank?
+      def build_create_client_response(message, message_params_h, create_message_params)
+        return client.post_create_message(message_params_h, is_oh: oh_triage_group?) if message.uploads.blank?
 
         client.post_create_message_with_attachment(create_message_params, is_oh: oh_triage_group?)
       rescue Common::Client::Errors::Serialization => e
@@ -217,6 +219,12 @@ module Mobile
       # @return [String, nil] The station number if provided, or nil if not provided.
       def recipient_facility_id
         message_params[:station_number]&.to_s&.presence
+      end
+
+      def prepare_message_params_h
+        message_params_h = message_params.to_h
+        message_params_h[:id] = message_params_h.delete(:draft_id) if message_params_h[:draft_id].present?
+        message_params_h
       end
 
       def validate_message_id

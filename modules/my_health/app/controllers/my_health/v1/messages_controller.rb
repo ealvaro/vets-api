@@ -5,6 +5,8 @@ require 'unique_user_events'
 module MyHealth
   module V1
     class MessagesController < SMController
+      include SM::ElectronicSignatureAppending
+
       MAX_STANDARD_FILES = 4
 
       before_action :extend_timeout, only: %i[create reply], if: :oh_triage_group?
@@ -25,6 +27,7 @@ module MyHealth
         raise Common::Exceptions::ValidationErrors, message unless message.valid?
 
         message_params_h = prepare_message_params_h
+        append_electronic_signature!(message_params_h)
         create_message_params = { message: message_params_h }.merge(upload_params)
         client_response = create_client_response(message, message_params_h, create_message_params)
 
@@ -152,7 +155,8 @@ module MyHealth
       def message_params
         @message_params ||= begin
           params[:message] = JSON.parse(params[:message]) if params[:message].is_a?(String)
-          permitted_attributes = %i[draft_id category body recipient_id subject station_number]
+          permitted_attributes = %i[draft_id category body recipient_id subject station_number
+                                    signature_name signature_date_user_local]
           permitted_attributes << :prescription_id if action_name == 'create'
           params.require(:message).permit(*permitted_attributes)
         end
