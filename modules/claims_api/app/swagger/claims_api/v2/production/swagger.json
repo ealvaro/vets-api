@@ -10254,8 +10254,7 @@
                                   "countryCode": {
                                     "description": "Country code for the veteran's phone number. Required for international phone numbers.",
                                     "type": "string",
-                                    "pattern": "^[0-9]+$",
-                                    "maxLength": 4
+                                    "pattern": "^[0-9]+$"
                                   },
                                   "areaCode": {
                                     "description": "Area code for the veteran's phone number. Required if countryCode is '1' or not included.",
@@ -10267,7 +10266,9 @@
                                     "description": "Phone number for the veteran.",
                                     "type": "string",
                                     "pattern": "^\\d(?:[- ]?\\d){0,14}$",
-                                    "example": "5555555"
+                                    "example": "5555555",
+                                    "minLength": 1,
+                                    "maxLength": 23
                                   }
                                 },
                                 "if": {
@@ -10386,8 +10387,7 @@
                                   "countryCode": {
                                     "description": "Country code for the dependent claimant's phone number. Required for international phone numbers.",
                                     "type": "string",
-                                    "pattern": "^[0-9]+$",
-                                    "maxLength": 4
+                                    "pattern": "^[0-9]+$"
                                   },
                                   "areaCode": {
                                     "description": "Area code for the dependent claimant's phone number.  Required if countryCode is '1' or not included.",
@@ -10399,7 +10399,9 @@
                                     "description": "Phone number for the dependent claimant.",
                                     "type": "string",
                                     "pattern": "^\\d(?:[- ]?\\d){0,14}$",
-                                    "example": "5555555"
+                                    "example": "5555555",
+                                    "minLength": 1,
+                                    "maxLength": 23
                                   }
                                 },
                                 "if": {
@@ -12216,8 +12218,8 @@
                                   "phoneNumber": {
                                     "description": "Phone number for the veteran.",
                                     "type": "string",
-                                    "pattern": "^\\d(?:[- ]?\\d){0,13}$",
-                                    "example": "555-5555",
+                                    "pattern": "^\\d(?:[- ]?\\d){0,14}$",
+                                    "example": "5555555",
                                     "minLength": 1,
                                     "maxLength": 23
                                   }
@@ -12358,8 +12360,8 @@
                                   "phoneNumber": {
                                     "description": "Phone number for the dependent claimant.",
                                     "type": "string",
-                                    "pattern": "^\\d(?:[- ]?\\d){0,13}$",
-                                    "example": "555-5555",
+                                    "pattern": "^\\d(?:[- ]?\\d){0,14}$",
+                                    "example": "5555555",
                                     "minLength": 1,
                                     "maxLength": 23
                                   }
@@ -12908,8 +12910,8 @@
                                   "phoneNumber": {
                                     "description": "Phone number for the veteran.",
                                     "type": "string",
-                                    "pattern": "^\\d(?:[- ]?\\d){0,13}$",
-                                    "example": "555-5555",
+                                    "pattern": "^\\d(?:[- ]?\\d){0,14}$",
+                                    "example": "5555555",
                                     "minLength": 1,
                                     "maxLength": 23
                                   }
@@ -13050,8 +13052,8 @@
                                   "phoneNumber": {
                                     "description": "Phone number for the dependent claimant.",
                                     "type": "string",
-                                    "pattern": "^\\d(?:[- ]?\\d){0,13}$",
-                                    "example": "555-5555",
+                                    "pattern": "^\\d(?:[- ]?\\d){0,14}$",
+                                    "example": "5555555",
                                     "minLength": 1,
                                     "maxLength": 23
                                   }
@@ -13663,8 +13665,8 @@
                                   "phoneNumber": {
                                     "description": "Phone number for the veteran.",
                                     "type": "string",
-                                    "pattern": "^\\d(?:[- ]?\\d){0,13}$",
-                                    "example": "555-5555",
+                                    "pattern": "^\\d(?:[- ]?\\d){0,14}$",
+                                    "example": "5555555",
                                     "minLength": 1,
                                     "maxLength": 23
                                   }
@@ -13791,8 +13793,8 @@
                                   "phoneNumber": {
                                     "description": "Phone number for the dependent claimant.",
                                     "type": "string",
-                                    "pattern": "^\\d(?:[- ]?\\d){0,13}$",
-                                    "example": "555-5555",
+                                    "pattern": "^\\d(?:[- ]?\\d){0,14}$",
+                                    "example": "5555555",
                                     "minLength": 1,
                                     "maxLength": 23
                                   }
@@ -14422,8 +14424,8 @@
                                   "phoneNumber": {
                                     "description": "Phone number for the veteran.",
                                     "type": "string",
-                                    "pattern": "^\\d(?:[- ]?\\d){0,13}$",
-                                    "example": "555-5555",
+                                    "pattern": "^\\d(?:[- ]?\\d){0,14}$",
+                                    "example": "5555555",
                                     "minLength": 1,
                                     "maxLength": 23
                                   }
@@ -14550,8 +14552,8 @@
                                   "phoneNumber": {
                                     "description": "Phone number for the dependent claimant.",
                                     "type": "string",
-                                    "pattern": "^\\d(?:[- ]?\\d){0,13}$",
-                                    "example": "555-5555",
+                                    "pattern": "^\\d(?:[- ]?\\d){0,14}$",
+                                    "example": "5555555",
                                     "minLength": 1,
                                     "maxLength": 23
                                   }
