@@ -22,11 +22,10 @@ describe PdfFill::Forms::Va2210272 do
                               ))
     end
 
-    it 'formats mailing and email address' do
+    it 'formats mailing address' do
       mailing_address = form_data['mailingAddress']
       form.normalize_mailing_address(mailing_address)
-      expect(merged_fields['address']['mailing']).to eq(form.combine_full_address_extras(mailing_address))
-      expect(merged_fields['address']['email']).to eq(form_data['emailAddress'])
+      expect(merged_fields['mailingAddress']).to eq(form.combine_full_address_extras(mailing_address))
     end
 
     it 'formats phone if domestic' do
@@ -40,6 +39,18 @@ describe PdfFill::Forms::Va2210272 do
       home, mobile = merged_fields['phone'].values
       expect(home).to eq(form_data['homePhone'])
       expect(mobile).to eq(form_data['mobilePhone'])
+    end
+
+    it 'formats va file number without payee number if not chapter 35' do
+      form_data['vaBenefitProgram'] = 'chapter33'
+      formatted_file_number = form_data['vaFileNumber'].gsub(/(\d{3})(\d{2})(\d{4})/, '\1-\2-\3')
+      expect(merged_fields['vaFileNumber']).to eq(formatted_file_number)
+    end
+
+    it 'appends payee number to va file number if chapter 35' do
+      expect(form_data['vaBenefitProgram']).to eq('chapter35')
+      formatted_file_number = form_data['vaFileNumber'].gsub(/(\d{3})(\d{2})(\d{4})/, '\1-\2-\3')
+      expect(merged_fields['vaFileNumber']).to eq("#{formatted_file_number} #{form_data['payeeNumber']}")
     end
 
     it 'converts hasPreviouslyApplied boolean to Yes/Off' do
@@ -75,6 +86,13 @@ describe PdfFill::Forms::Va2210272 do
     it 'formats dates to MM/DD/YYYY' do
       %w[prepCourseStartDate prepCourseEndDate dateSigned].each do |field|
         expect(merged_fields[field]).to match(%r{^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/\d{4}$})
+      end
+    end
+
+    it 'sets vaBenefitProgram values to Yes/Off' do
+      described_class::BENEFIT_PROGRAMS.each do |program|
+        expected = program == form_data['vaBenefitProgram'] ? 'Yes' : 'Off'
+        expect(merged_fields['vaBenefitProgram'][program]).to eq(expected)
       end
     end
   end

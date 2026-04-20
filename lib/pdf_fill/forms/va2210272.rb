@@ -6,116 +6,119 @@ module PdfFill
       include FormHelper
       include FormHelper::PhoneNumberFormatting
 
+      BENEFIT_PROGRAMS = %w[chapter33 chapter35].freeze
+
+      # rubocop:disable Layout/LineLength
       KEY = {
+        'vaBenefitProgram' => {
+          key: 'vaBenefitProgram',
+          question_text: 'Select the education benefit under which you are requesting Prep Course fee reimbursement',
+          question_num: 0,
+          'chapter33' => {
+            key: 'chapter33',
+            question_text: 'Post-9/11 GI Bill Including Transfer of Entitlement and Fry Scholarship Recipients (Chapter 33)'
+          },
+          'chapter35' => {
+            key: 'chapter35',
+            question_text: 'Survivors\' and Dependents\' Educational Assistance Program (DEA) (Chapter 35)'
+          }
+        },
         'applicantName' => {
           key: 'applicantName',
           question_text: 'APPLICANT\'S NAME (First, Middle Initial, Last Name)',
           question_num: 1,
-          limit: 54
+          limit: 118
         },
-        'address' => {
-          'mailing' => {
-            key: 'mailingAddress',
-            question_text: 'MAILING ADDRESS (Complete Street Address, City, State and 9-Digit ZIP Code)',
-            question_num: 2,
-            question_suffix: 'A',
-            limit: 340,
-            multiline_limit: 4
-          },
-          'email' => {
-            key: 'emailAddress',
-            question_text: 'APPLICANT\'S EMAIL ADDRESS',
-            question_num: 2,
-            question_suffix: 'B',
-            limit: 65
-          }
+        'mailingAddress' => {
+          key: 'mailingAddress',
+          question_text: 'MAILING ADDRESS (Complete Street Address, City, State and 9-Digit ZIP Code)',
+          question_num: 2,
+          limit: 280,
+          multiline_limit: 4
+        },
+        'emailAddress' => {
+          key: 'emailAddress',
+          question_text: 'APPLICANT\'S EMAIL ADDRESS',
+          question_num: 3,
+          limit: 54
         },
         'phone' => {
           question_text: 'TELEPHONE NUMBER (Include Area Code)',
-          'homePhone' => {
-            key: 'homePhone',
-            question_text: 'HOME',
-            question_num: 3,
-            question_suffix: 'A',
-            limit: 32
-          },
           'mobilePhone' => {
             key: 'mobilePhone',
             question_text: 'MOBILE',
-            question_num: 3,
+            question_num: 4,
+            question_suffix: 'A',
+            limit: 26
+          },
+          'homePhone' => {
+            key: 'homePhone',
+            question_text: 'HOME',
+            question_num: 4,
             question_suffix: 'B',
-            limit: 46
+            limit: 34
           }
         },
         'vaFileNumber' => {
           key: 'vaFileNumber',
-          question_text: 'VA FILE NUMBER',
-          question_num: 4,
-          limit: 42
-        },
-        'payeeNumber' => {
-          key: 'payeeNumber',
-          question_text: 'PAYEE NUMBER (if applicable)',
+          question_text: 'VA FILE NUMBER (For chapter 35, enter the Veteran\'s file number and your Payee Number)',
           question_num: 5,
-          limit: 42
+          limit: 70
         },
         'hasPreviouslyApplied' => {
-          question_text: 'HAVE YOU PREVIOUSLY APPLIED',
+          question_text: 'HAVE YOU PREVIOUSLY APPLIED FOR VA EDUCATION BENEFITS? (Please check the appropriate box below:)',
           question_num: 6,
-          question_suffix: 'A',
-          'hasPreviouslyAppliedYes' => {
+          'yes' => {
             key: 'hasPreviouslyAppliedYes',
             question_text: 'YES'
           },
-          'hasPreviouslyAppliedNo' => {
+          'no' => {
             key: 'hasPreviouslyAppliedNo',
             question_text: 'NO'
           }
         },
-        'vaBenefitProgram' => {
-          key: 'vaBenefitProgram',
-          question_text: 'WHAT EDUCATION BENEFIT(S) HAVE YOU APPLIED FOR PREVIOUSLY?',
-          question_num: 6,
-          question_suffix: 'B',
-          limit: 87
-        },
         'testName' => {
           key: 'testName',
-          question_text: 'NAME OF TEST',
+          question_text: 'NAME OF TEST FOR WHICH THE PREP COURSE WILL PREPARE YOU',
           question_num: 7,
-          limit: 87
+          limit: 70
         },
         'orgNameAndAddress' => {
           key: 'orgNameAndAddress',
-          question_text: 'NAME OF ORGANIZATION AWARDING LICENSE OR CERTIFICATION (Include address)',
+          question_text: 'NAME AND ADDRESS OF ORGANIZATION AWARDING LICENSE OR CERTIFICATION',
           question_num: 8,
-          limit: 340,
+          limit: 280,
           multiline_limit: 4
         },
         'prepCourseName' => {
           key: 'prepCourseName',
-          question_text: 'NAME OF COURSE',
+          question_text: 'NAME OF PREP COURSE',
           question_num: 9,
-          limit: 46,
+          limit: 76,
           multiline_limit: 2
         },
         'prepCourseOrgNameAndAddress' => {
           key: 'prepCourseOrgNameAndAddress',
-          question_text: 'ORGANIZATION GIVING PREP COURSE (Please include address)',
+          question_text: 'NAME AND ADDRESS OF ORGANIZATION GIVING PREP COURSE',
           question_num: 10,
-          question_suffix: 'A',
-          limit: 234,
-          multiline_limit: 5
+          limit: 448,
+          multiline_limit: 14
+        },
+        'prepCourseCost' => {
+          key: 'prepCourseCost',
+          question_text: 'TOTAL PREP COURSE COST INCLUDING MANDATORY FEES (You must attach a receipt)',
+          question_num: 11,
+          limit: 38
         },
         'prepCourseTakenOnline' => {
           question_text: 'TAKEN ONLINE?',
-          question_num: 10,
-          question_suffix: 'B',
-          'prepCourseTakenOnlineYes' => {
+          question_num: 12,
+          question_suffix: 'A',
+          'yes' => {
             key: 'prepCourseTakenOnlineYes',
             question_text: 'YES'
           },
-          'prepCourseTakenOnlineNo' => {
+          'no' => {
             key: 'prepCourseTakenOnlineNo',
             question_text: 'NO'
           }
@@ -123,44 +126,38 @@ module PdfFill
         'prepCourseStartDate' => {
           key: 'prepCourseStartDate',
           question_text: 'COURSE START DATE (MM/DD/YYYY)',
-          question_num: 11,
-          question_suffix: 'A',
-          limit: 24
+          question_num: 12,
+          question_suffix: 'B',
+          limit: 19
         },
         'prepCourseEndDate' => {
           key: 'prepCourseEndDate',
           question_text: 'COURSE END DATE (MM/DD/YYYY)',
-          question_num: 11,
-          question_suffix: 'B',
-          limit: 23
-        },
-        'prepCourseCost' => {
-          key: 'prepCourseCost',
-          question_text: 'ITEMIZE PREP COURSE COST INCLUDING FEES (Attach receipt)',
           question_num: 12,
-          limit: 524,
-          multiline_limit: 14
+          question_suffix: 'C',
+          limit: 19
         },
         'remarks' => {
           key: 'remarks',
           question_text: 'REMARKS',
           question_num: 14,
-          limit: 3200,
+          limit: 2590,
           multiline_limit: 37
         },
         'statementOfTruthSignature' => {
           key: 'statementOfTruthSignature',
           question_text: 'SIGNATURE OF APPLICANT',
           question_num: 15,
-          limit: 65
+          limit: 52
         },
         'dateSigned' => {
           key: 'dateSigned',
           question_text: 'DATE SIGNED (MM/DD/YYYY)',
           question_num: 16,
-          limit: 20
+          limit: 16
         }
       }.freeze
+      # rubocop:enable Layout/LineLength
 
       def merge_fields(_options = {})
         merge_identification_helpers
@@ -176,8 +173,9 @@ module PdfFill
 
       def merge_identification_helpers
         format_applicant_name(@form_data['applicantName'])
-        format_address(@form_data['mailingAddress'].dup)
+        format_address(@form_data['mailingAddress'])
         format_phone
+        format_va_file_number
       end
 
       def format_applicant_name(name)
@@ -186,22 +184,29 @@ module PdfFill
         @form_data['applicantName'] = combine_full_name(name)
       end
 
-      def format_address(mailing_address)
-        normalize_mailing_address(mailing_address)
-        @form_data['address'] = {
-          'mailing' => combine_full_address_extras(mailing_address),
-          'email' => @form_data['emailAddress']
-        }
+      def format_address(address)
+        @country = address['country']
+        normalize_mailing_address(address)
+        @form_data['mailingAddress'] = combine_full_address_extras(address)
       end
 
       def format_phone
         @form_data['phone'] = @form_data.slice('homePhone', 'mobilePhone')
-        country = @form_data['mailingAddress']['country']
-        @form_data['phone'].transform_values!(&method(:format_us_phone)) if domestic?(country)
+        @form_data['phone'].transform_values!(&method(:format_us_phone)) if domestic?(@country)
+      end
+
+      def format_va_file_number
+        append_payee_number = @form_data['vaFileNumber'].present? && @form_data['vaBenefitProgram'] == 'chapter35'
+        @form_data['vaFileNumber'] = if append_payee_number
+                                       "#{format_ssn(@form_data['vaFileNumber'])} #{@form_data['payeeNumber']}"
+                                     else
+                                       format_ssn(@form_data['ssn'] || @form_data['vaFileNumber'])
+                                     end
       end
 
       def merge_education_helpers
         format_yes_no_checkbox('hasPreviouslyApplied')
+        format_benefit_program_checkbox
       end
 
       def merge_licensing_helpers
@@ -222,9 +227,18 @@ module PdfFill
       def format_yes_no_checkbox(boolean_key)
         flag = @form_data[boolean_key]
         @form_data[boolean_key] = {
-          "#{boolean_key}Yes" => flag ? 'Yes' : 'Off',
-          "#{boolean_key}No" => flag ? 'Off' : 'Yes'
+          'yes' => flag ? 'Yes' : 'Off',
+          'no' => flag ? 'Off' : 'Yes'
         }
+      end
+
+      def format_benefit_program_checkbox
+        selected_program = @form_data.delete('vaBenefitProgram')
+        @form_data['vaBenefitProgram'] = {}
+        BENEFIT_PROGRAMS.each do |program|
+          flag = program == selected_program
+          @form_data['vaBenefitProgram'][program] = flag ? 'Yes' : 'Off'
+        end
       end
 
       def merge_date_helpers
@@ -234,6 +248,10 @@ module PdfFill
       def format_date(key)
         str = @form_data[key]
         @form_data[key] = str.to_date.strftime(self.class.date_strftime)
+      end
+
+      def format_ssn(ssn)
+        split_ssn(ssn).values.join('-')
       end
     end
   end

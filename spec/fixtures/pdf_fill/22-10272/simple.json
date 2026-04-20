@@ -18,7 +18,7 @@
   "vaFileNumber": "123456789",
   "payeeNumber": "12",
   "hasPreviouslyApplied": true,
-  "vaBenefitProgram": "Post-9/11 GI Bill",
+  "vaBenefitProgram": "chapter35",
   "testName": "SAT",
   "organizationName": "College Board",
   "organizationAddress": {

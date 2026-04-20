@@ -145,8 +145,7 @@ module PdfFill
         format_applicant_name(@form_data['applicantName'])
         format_address(@form_data['mailingAddress'])
         format_phone
-        append_payee_number = @form_data['vaFileNumber'].present? && @form_data['vaBenefitProgram'] == 'chapter35'
-        format_va_file_number(append_payee_number:)
+        format_va_file_number
       end
 
       def format_applicant_name(name)
@@ -166,7 +165,8 @@ module PdfFill
         @form_data['phone'].transform_values!(&method(:format_us_phone)) if domestic?(@country)
       end
 
-      def format_va_file_number(append_payee_number: false)
+      def format_va_file_number
+        append_payee_number = @form_data['vaFileNumber'].present? && @form_data['vaBenefitProgram'] == 'chapter35'
         @form_data['vaFileNumber'] = if append_payee_number
                                        "#{format_ssn(@form_data['vaFileNumber'])} #{@form_data['payeeNumber']}"
                                      else
