@@ -13,6 +13,7 @@
 .rubocop.yml @department-of-veterans-affairs/backend-review-group
 .rubocop*todo.yml @department-of-veterans-affairs/backend-review-group
 .vscode/mcp.json @department-of-veterans-affairs/backend-review-group
+app/concerns/rated_disabilities_fetch_concern.rb @department-of-veterans-affairs/disability-benefits @department-of-veterans-affairs/backend-review-group
 app/concerns/retriable_concern.rb @department-of-veterans-affairs/health-apps-backend @department-of-veterans-affairs/backend-review-group
 app/controllers/appeals_base_controller.rb @department-of-veterans-affairs/backend-review-group
 app/controllers/application_controller.rb @department-of-veterans-affairs/backend-review-group @department-of-veterans-affairs/octo-identity
@@ -1312,6 +1313,7 @@ script/upstream-connect/ @department-of-veterans-affairs/mobile-api-team @depart
 spec/concerns/form_attachment_create_spec.rb @department-of-veterans-affairs/backend-review-group
 spec/concerns/email_verification_rate_limited_spec.rb @department-of-veterans-affairs/vfs-authenticated-experience-backend @department-of-veterans-affairs/backend-review-group
 spec/concerns/pdf_filename_generator_spec.rb @department-of-veterans-affairs/health-apps-backend @department-of-veterans-affairs/backend-review-group
+spec/concerns/rated_disabilities_fetch_concern_spec.rb @department-of-veterans-affairs/disability-benefits @department-of-veterans-affairs/backend-review-group
 spec/concerns/retriable_concern_spec.rb @department-of-veterans-affairs/health-apps-backend @department-of-veterans-affairs/backend-review-group
 spec/concerns/traceable_spec.rb @department-of-veterans-affairs/backend-review-group
 spec/config/initializers/committee_spec.rb @department-of-veterans-affairs/backend-review-group
@@ -1861,6 +1863,7 @@ spec/models/form_attachment_unlock_pdf_spec.rb @department-of-veterans-affairs/v
 spec/models/form_intake_submission_spec.rb @department-of-veterans-affairs/bio-heart-team @department-of-veterans-affairs/backend-review-group
 spec/models/form_profile_spec.rb @department-of-veterans-affairs/vfs-authenticated-experience-backend @department-of-veterans-affairs/backend-review-group
 spec/models/form_profiles/mdot_spec.rb @department-of-veterans-affairs/va-cto-health-products @department-of-veterans-affairs/backend-review-group
+spec/models/form_profiles/va526ez_spec.rb @department-of-veterans-affairs/disability-benefits @department-of-veterans-affairs/backend-review-group
 spec/models/form_profiles/va0803_spec.rb @department-of-veterans-affairs/govcio-vfep-codereviewers @department-of-veterans-affairs/backend-review-group
 spec/models/form_profiles/va0810_spec.rb @department-of-veterans-affairs/govcio-vfep-codereviewers @department-of-veterans-affairs/backend-review-group
 spec/models/form_profiles/va0839_spec.rb @department-of-veterans-affairs/govcio-vfep-codereviewers @department-of-veterans-affairs/backend-review-group

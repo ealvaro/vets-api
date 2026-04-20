@@ -18,20 +18,16 @@ module V0
     end
 
     def update
-      form_data_present = parsed_form_data.present?
+      if params[:metadata].present? && parsed_form_data.present?
+        if Flipper.enabled?(:disability_compensation_sync_modern0781_flow_metadata)
+          params[:metadata][:sync_modern0781_flow] =
+            parsed_form_data['sync_modern0781_flow'] || parsed_form_data[:sync_modern0781_flow] || false
+        end
 
-      if Flipper.enabled?(:disability_compensation_sync_modern0781_flow_metadata) &&
-         params[:metadata].present? &&
-         form_data_present
-        params[:metadata][:sync_modern0781_flow] =
-          parsed_form_data['sync_modern0781_flow'] || parsed_form_data[:sync_modern0781_flow] || false
-      end
-
-      if Flipper.enabled?(:disability_compensation_new_conditions_workflow_metadata) &&
-         params[:metadata].present? &&
-         form_data_present
-        params[:metadata][:new_conditions_workflow] =
-          parsed_form_data['disability_comp_new_conditions_workflow'] || false
+        if Flipper.enabled?(:disability_compensation_new_conditions_workflow_metadata)
+          params[:metadata][:new_conditions_workflow] =
+            parsed_form_data['disability_comp_new_conditions_workflow'] || false
+        end
       end
       super
     end
@@ -55,7 +51,7 @@ module V0
       parsed_form_data = JSON.parse(form_for_user.form_data)
       metadata = form_for_user.metadata
 
-      # If EVSS's list of rated disabilities does not match our prefilled rated disabilities
+      # If the fetched list of rated disabilities does not match our prefilled rated disabilities
       update_rated_disabilities(parsed_form_data, metadata)
 
       # for Toxic Exposure 1.1 - add indicator to In Progress Forms
@@ -145,11 +141,13 @@ module V0
       data
     end
 
-    def rated_disabilities_evss
-      @rated_disabilities_evss ||= FormProfiles::VA526ez.for(form_id:, user: @current_user)
-                                                        .initialize_rated_disabilities_information
-    rescue
-      # if the call to EVSS fails we can skip updating. EVSS fails around an hour each night.
+    def rated_disabilities_from_api_provider
+      @rated_disabilities_from_api_provider ||=
+        FormProfiles::VA526ez.for(form_id:, user: @current_user)
+                             .initialize_rated_disabilities_information
+    rescue => e
+      # if the call fails we skip updating (providers EVSS and LH may have downtime)
+      Rails.logger.warn('Form526 IPF failed to fetch rated disabilities', { error: e.class, message: e.message })
       nil
     end
 
@@ -157,9 +155,9 @@ module V0
     # If they differ, assigns the latter to form_data['updatedRatedDisabilities'] and updates the returnUrl
     # to the appropriate page for rated disabilities
     def update_rated_disabilities(form_data, metadata)
-      return if rated_disabilities_evss.blank? ||
+      return if rated_disabilities_from_api_provider.blank? ||
                 arr_to_compare(form_data&.dig('ratedDisabilities')) ==
-                arr_to_compare(rated_disabilities_evss&.rated_disabilities&.map(&:attributes))
+                arr_to_compare(rated_disabilities_from_api_provider&.rated_disabilities&.map(&:attributes))
 
       if form_data['ratedDisabilities'].present? &&
          form_data.dig('view:claimType', 'view:claimingIncrease')
@@ -169,8 +167,8 @@ module V0
         metadata['returnUrl'] = return_url
       end
       # Use as_json instead of JSON.parse(to_json) to avoid string allocation overhead
-      evss_rated_disabilities = rated_disabilities_evss&.rated_disabilities&.map(&:as_json)
-      form_data['updatedRatedDisabilities'] = camelize_with_olivebranch(evss_rated_disabilities)
+      mapped_rated_disabilities = rated_disabilities_from_api_provider&.rated_disabilities&.map(&:as_json)
+      form_data['updatedRatedDisabilities'] = camelize_with_olivebranch(mapped_rated_disabilities)
     end
 
     def purge_duplicate_additional_information(form_data)

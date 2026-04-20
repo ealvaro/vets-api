@@ -59,10 +59,83 @@ RSpec.describe V0::DisabilityCompensationFormsController, type: :controller do
     end
   end
 
+  describe '#rated_disabilities' do
+    let(:retry_toggle) { :disability_compensation_retry_lh_rating_requests }
+    let(:invoker) { 'V0::DisabilityCompensationFormsController#rated_disabilities' }
+    let(:api_provider) { instance_double(LighthouseRatedDisabilitiesProvider) }
+    let(:rated_disabilities_response) { build(:rated_disabilities_response) }
+
+    before do
+      allow_any_instance_of(Auth::ClientCredentials::Service).to receive(:get_token).and_return('fake_token')
+    end
+
+    context 'when the retry toggle is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(retry_toggle, instance_of(User)).and_return(false)
+      end
+
+      it 'calls get_rated_disabilities directly and returns a successful response' do
+        VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+          get(:rated_disabilities)
+          expect(response).to have_http_status(:ok)
+        end
+      end
+    end
+
+    context 'when the retry toggle is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(retry_toggle, instance_of(User)).and_return(true)
+        allow(ApiProviderFactory).to receive(:call).and_return(api_provider)
+        allow(Kernel).to receive(:sleep) # prevent real backoff delays in retry tests
+      end
+
+      context 'when the circuit is closed (no outage)' do
+        before do
+          allow(VeteranVerification::Configuration.instance).to receive(:breakers_service)
+            .and_return(instance_double(Breakers::Service, latest_outage: nil))
+          allow(api_provider).to receive(:get_rated_disabilities).and_return(rated_disabilities_response)
+        end
+
+        it 'calls get_rated_disabilities inside with_retries and returns a successful response' do
+          get(:rated_disabilities)
+          expect(response).to have_http_status(:ok)
+          expect(api_provider).to have_received(:get_rated_disabilities).once
+        end
+      end
+
+      context 'when the circuit is open (Breakers outage)' do
+        let(:lh_outage_service) { instance_double(Breakers::Service, name: 'VeteranVerification') }
+        let(:lh_outage) { instance_double(Breakers::Outage, ended?: false, service: lh_outage_service, start_time: Time.zone.now) }
+        let(:lh_breakers_service) { instance_double(Breakers::Service, latest_outage: lh_outage) }
+
+        before do
+          allow(VeteranVerification::Configuration.instance).to receive(:breakers_service)
+            .and_return(lh_breakers_service)
+        end
+
+        it 'logs a warning about the service outage' do
+          allow(Rails.logger).to receive(:warn)
+          expect(Rails.logger).to receive(:warn).with(
+            'Skipping get_rated_disabilities due to service outage',
+            { invoker: }
+          )
+          get(:rated_disabilities)
+        end
+
+        it 'does not call the API provider and returns service unavailable' do
+          allow(Rails.logger).to receive(:warn)
+          expect(api_provider).not_to receive(:get_rated_disabilities)
+          get(:rated_disabilities)
+          expect(response).to have_http_status(:service_unavailable)
+        end
+      end
+    end
+  end
+
   describe '#rating_info' do
     context 'retrieve from Lighthouse' do
       before do
-        allow_any_instance_of(Auth::ClientCredentials::Service).to receive(:get_token).and_return('blahblech')
+        allow_any_instance_of(Auth::ClientCredentials::Service).to receive(:get_token).and_return('fake_token')
 
         allow(Flipper).to receive(:enabled?).with(:profile_lighthouse_rating_info, instance_of(User))
                                             .and_return(true)

@@ -43,6 +43,28 @@ RSpec.describe 'V0::DisabilityCompensationForm', type: :request do
         end
       end
 
+      context 'when there is a service outage' do
+        let(:lh_outage_service) { instance_double(Breakers::Service, name: 'VeteranVerification') }
+        let(:lh_outage) { instance_double(Breakers::Outage, ended?: false, service: lh_outage_service, start_time: Time.zone.now) }
+        let(:lh_breakers_service) { instance_double(Breakers::Service, latest_outage: lh_outage) }
+        let(:api_provider) { instance_double(LighthouseRatedDisabilitiesProvider) }
+
+        before do
+          allow(ApiProviderFactory).to receive(:call).and_return(api_provider)
+          allow(Flipper).to receive(:enabled?)
+            .with(:disability_compensation_retry_lh_rating_requests, instance_of(User))
+            .and_return(true)
+          allow(VeteranVerification::Configuration.instance).to receive(:breakers_service)
+            .and_return(lh_breakers_service)
+          allow(Rails.logger).to receive(:warn)
+        end
+
+        it 'returns 503' do
+          get('/v0/disability_compensation_form/rated_disabilities', params: nil, headers:)
+          expect(response).to have_http_status(:service_unavailable)
+        end
+      end
+
       context 'error handling tests' do
         cassettes_directory = 'lighthouse/veteran_verification/disability_rating'
 

@@ -78,6 +78,9 @@ module VA526ez
 end
 
 class FormProfiles::VA526ez < FormProfile
+  include RetriableConcern
+  include RatedDisabilitiesFetchConcern
+
   FORM_ID = '21-526EZ'
   attribute :rated_disabilities_information, VA526ez::FormRatedDisabilities
   attribute :veteran_contact_information, VA526ez::FormContactInformation
@@ -124,19 +127,11 @@ class FormProfiles::VA526ez < FormProfile
     return {} unless user.authorize :evss, :access?
     return {} unless user.authorize :lighthouse, :access_vet_status?
 
-    api_provider = ApiProviderFactory.call(
-      type: ApiProviderFactory::FACTORIES[:rated_disabilities],
-      provider: :lighthouse,
-      options: {
-        icn: user.icn.to_s,
-        auth_headers: EVSS::DisabilityCompensationAuthHeaders.new(user).add_headers(EVSS::AuthHeaders.new(user).to_h)
-      },
-      current_user: user,
-      feature_toggle: nil
-    )
     invoker = 'FormProfiles::VA526ez#initialize_rated_disabilities_information'
-    response = api_provider.get_rated_disabilities(nil, nil, { invoker: })
+    response = fetch_rated_disabilities_response(rated_disabilities_api_provider(user), invoker, user)
     ClaimFastTracking::MaxRatingAnnotator.annotate_disabilities(response)
+
+    Rails.logger.info('Form526 fetch_rated_disabilities_response completed')
 
     # Remap response object to schema fields
     VA526ez::FormRatedDisabilities.new(

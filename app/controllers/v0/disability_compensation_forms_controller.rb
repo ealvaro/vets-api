@@ -10,6 +10,9 @@ require 'disability_compensation/loggers/monitor'
 
 module V0
   class DisabilityCompensationFormsController < ApplicationController
+    include RetriableConcern
+    include RatedDisabilitiesFetchConcern
+
     service_tag 'disability-application'
     before_action(except: :rating_info) { authorize :evss, :access? }
     before_action(only: :rated_disabilities) { authorize :lighthouse, :access_vet_status? }
@@ -18,17 +21,9 @@ module V0
 
     def rated_disabilities
       invoker = 'V0::DisabilityCompensationFormsController#rated_disabilities'
-      api_provider = ApiProviderFactory.call(
-        type: ApiProviderFactory::FACTORIES[:rated_disabilities],
-        provider: :lighthouse,
-        options: { icn: @current_user.icn.to_s, auth_headers: },
-        current_user: @current_user,
-        feature_toggle: nil
+      render json: RatedDisabilitiesSerializer.new(
+        fetch_rated_disabilities_response(rated_disabilities_api_provider(@current_user), invoker, @current_user)
       )
-
-      response = api_provider.get_rated_disabilities(nil, nil, { invoker: })
-
-      render json: RatedDisabilitiesSerializer.new(response)
     end
 
     def separation_locations

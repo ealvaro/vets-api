@@ -808,6 +808,54 @@ RSpec.describe V0::DisabilityCompensationInProgressFormsController do
             expect(json_response['metadata']['returnUrl']).to eq('/disabilities/rated-disabilities')
           end
         end
+
+        context 'rated_disabilities_from_api_provider logging' do
+          context 'when initialize_rated_disabilities_information raises an error' do
+            let(:error) { Common::Exceptions::Timeout.new }
+
+            before do
+              allow_any_instance_of(FormProfiles::VA526ez)
+                .to receive(:initialize_rated_disabilities_information)
+                .and_raise(error)
+            end
+
+            it 'logs a warning with the error class and message' do
+              expect(Rails.logger).to receive(:warn).with(
+                'Form526 IPF failed to fetch rated disabilities',
+                { error: error.class, message: error.message }
+              )
+
+              VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+                get v0_disability_compensation_in_progress_form_url(in_progress_form_lighthouse.form_id), params: nil
+              end
+            end
+
+            it 'still returns a successful response' do
+              allow(Rails.logger).to receive(:warn)
+
+              VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+                get v0_disability_compensation_in_progress_form_url(in_progress_form_lighthouse.form_id), params: nil
+              end
+
+              expect(response).to have_http_status(:ok)
+            end
+          end
+
+          context 'when initialize_rated_disabilities_information succeeds' do
+            it 'does not log a warning' do
+              expect(Rails.logger).not_to receive(:warn).with(
+                'Form526 IPF failed to fetch rated disabilities',
+                anything
+              )
+
+              VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+                VCR.use_cassette('disability_max_ratings/max_ratings') do
+                  get v0_disability_compensation_in_progress_form_url(in_progress_form_lighthouse.form_id), params: nil
+                end
+              end
+            end
+          end
+        end
       end
 
       describe '#update' do
