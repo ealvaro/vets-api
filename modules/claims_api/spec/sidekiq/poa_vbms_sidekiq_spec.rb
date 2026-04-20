@@ -10,7 +10,6 @@ RSpec.describe ClaimsApi::PoaVbmsSidekiq, vcr: 'bgs/person_web_service/find_by_s
   before do
     Sidekiq::Job.clear_all
     allow_any_instance_of(Flipper).to receive(:enabled?).with(:claims_api_use_person_web_service).and_return false
-    allow_any_instance_of(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_poa_use_bd).and_return false
   end
 
   describe 'upload_to_vbms' do

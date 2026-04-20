@@ -13,11 +13,6 @@ FactoryBot.define do
     end
   end
 
-  trait :vbms_error do
-    status { 'errored' }
-    vbms_error_message { 'A VBMS error has occurred' }
-  end
-
   trait :fuzzed_consent_data do
     form_data do
       path = '/modules/claims_api/spec/fixtures/form_2122_json_api.json'.split('/')
@@ -54,12 +49,14 @@ FactoryBot.define do
 
   factory :power_of_attorney_with_doc, class: 'ClaimsApi::PowerOfAttorney',
                                        parent: :power_of_attorney do
-    after(:build) do |power_of_attorney|
+    transient { doc_type { 'docType' } }
+
+    after(:build) do |power_of_attorney, evaluator|
       power_of_attorney.set_file_data!(
         Rack::Test::UploadedFile.new(
-          Rails.root.join(*'/modules/claims_api/spec/fixtures/extras.pdf'.split('/')).to_s
+          Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'extras.pdf').to_s
         ),
-        'docType'
+        evaluator.doc_type
       )
     end
   end

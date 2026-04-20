@@ -1,0 +1,132 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: "<CLAIMS_API_BD_URL>/oauth2/benefits-documents/system/v1/token"
+    body:
+      encoding: US-ASCII
+      string: grant_type=stuff
+    headers:
+      Accept:
+      - application/json
+      Content-Type:
+      - application/x-www-form-urlencoded
+      User-Agent:
+      - Vets.gov Agent
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Thu, 09 Apr 2026 17:05:50 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Connection:
+      - keep-alive
+      X-Ratelimit-Remaining-Minute:
+      - '239'
+      X-Ratelimit-Limit-Minute:
+      - '240'
+      Ratelimit-Remaining:
+      - '239'
+      Ratelimit-Reset:
+      - '10'
+      Ratelimit-Limit:
+      - '240'
+      Vary:
+      - Origin
+      Cache-Control:
+      - no-cache, no-store
+      Pragma:
+      - no-cache
+      Etag:
+      - W/"409-UVlR2+hKf9SDizAADzFSoq2Umao:dtagent10333260303165926rPen"
+      Server-Timing:
+      - dtSInfo;desc="0", dtRpid;desc="316035639"
+      X-Envoy-Upstream-Service-Time:
+      - '335'
+      Strict-Transport-Security:
+      - max-age=16000000; includeSubDomains; preload;
+      Correlation-Id:
+      - 4499b68e-ab45-4fc2-bc3e-cc33b9355094#124905
+      Access-Control-Allow-Origin:
+      - "*"
+      Transfer-Encoding:
+      - chunked
+    body:
+      encoding: ASCII-8BIT
+      string: 'token-stuff-here'
+  recorded_at: Thu, 09 Apr 2026 17:05:52 GMT
+- request:
+    method: post
+    uri: "<CLAIMS_API_BD_URL>/services/benefits-documents/v1/documents"
+    body:
+      encoding: ASCII-8BIT
+      string: !binary |-
+        somevaluehere
+    headers:
+      Authorization: Bearer <TOKEN>
+      User-Agent:
+      - "<FARADAY_VERSION>"
+      Content-Type:
+      - multipart/form-data; boundary=-----------RubyMultipartPost-a1cbaf8adab50dd4ad8ec58aae7f2684
+      Content-Length:
+      - '1902'
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 500
+      message: Internal Server Error
+    headers:
+      Date:
+      - Thu, 09 Apr 2026 17:05:51 GMT
+      Content-Type:
+      - application/json
+      Content-Length:
+      - '50'
+      Connection:
+      - keep-alive
+      Ratelimit-Reset:
+      - '9'
+      X-Ratelimit-Remaining-Minute:
+      - '59'
+      X-Ratelimit-Limit-Minute:
+      - '60'
+      Ratelimit-Remaining:
+      - '59'
+      Ratelimit-Limit:
+      - '60'
+      X-Oneagent-Js-Injection:
+      - 'true'
+      Server-Timing:
+      - dtRpid;desc="1489010708", dtSInfo;desc="0"
+      X-Payload-Inspected:
+      - 'true'
+      X-Scan-Duration:
+      - '41'
+      X-Block-Reason:
+      - PayloadNotVerified
+      Pragma:
+      - no-cache
+      X-Envoy-Upstream-Service-Time:
+      - '117'
+      Strict-Transport-Security:
+      - max-age=16000000; includeSubDomains; preload;
+      - max-age=31536000; includeSubDomains; preload
+      Correlation-Id:
+      - 5482c25b-b082-4e54-88c7-d63650a323b8#124078
+      Access-Control-Allow-Origin:
+      - "*"
+      X-Frame-Options:
+      - SAMEORIGIN
+    body:
+      encoding: UTF-8
+      string: '{"status":500,"error":"Failed to verify payload."}'
+  recorded_at: Thu, 09 Apr 2026 17:05:52 GMT
+recorded_with: VCR 6.4.0
