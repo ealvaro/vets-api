@@ -90,5 +90,50 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::IvcChampvaBenefitsClaimsPr
       result = provider.get_claim(claim_id)
       expect(result.dig('data', 'attributes', 'provider')).to eq('ivc_champva')
     end
+
+    context 'when the claim has a Processed pega_status' do
+      it 'sets decisionLetterSent to true in serialized attributes' do
+        create(:ivc_champva_form, form_uuid: claim_id, email: 'primary@example.com',
+                                  pega_status: 'Processed', created_at: 1.day.ago)
+
+        result = provider.get_claim(claim_id)
+        expect(result.dig('data', 'attributes', 'decisionLetterSent')).to be true
+      end
+    end
+
+    context 'when the claim has a pending pega_status' do
+      it 'sets decisionLetterSent to false in serialized attributes' do
+        create(:ivc_champva_form, form_uuid: claim_id, email: 'primary@example.com',
+                                  pega_status: 'pending', created_at: 1.day.ago)
+
+        result = provider.get_claim(claim_id)
+        expect(result.dig('data', 'attributes', 'decisionLetterSent')).to be_falsey
+      end
+    end
+
+    context 'when the claim has a mixed-case pega_status (e.g. from polling job)' do
+      ['PROCESSED', 'Processed', 'processed', 'MANUALLY PROCESSED', 'manually processed'].each do |raw_status|
+        it "treats '#{raw_status}' as vbms and sets decisionLetterSent to true" do
+          create(:ivc_champva_form, form_uuid: claim_id, email: 'primary@example.com',
+                                    pega_status: raw_status, created_at: 1.day.ago)
+
+          result = provider.get_claim(claim_id)
+          expect(result.dig('data', 'attributes', 'decisionLetterSent')).to be true
+          expect(result.dig('data', 'attributes', 'status')).to eq('vbms')
+        end
+      end
+    end
+
+    context 'when the claim has a mixed-case error pega_status' do
+      %w[ERROR Failed REJECTED].each do |raw_status|
+        it "treats '#{raw_status}' as error status" do
+          create(:ivc_champva_form, form_uuid: claim_id, email: 'primary@example.com',
+                                    pega_status: raw_status, created_at: 1.day.ago)
+
+          result = provider.get_claim(claim_id)
+          expect(result.dig('data', 'attributes', 'status')).to eq('error')
+        end
+      end
+    end
   end
 end

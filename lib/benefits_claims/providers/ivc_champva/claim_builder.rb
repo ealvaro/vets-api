@@ -21,8 +21,8 @@ module BenefitsClaims
           '10-7959a' => 'CHAMPVA claim'
         }.freeze
 
-        PROCESSED_STATUSES = ['Processed', 'Manually Processed'].freeze
-        ERROR_STATUSES = ['Error', 'Failed', 'Rejected', 'Submission failed'].freeze
+        PROCESSED_STATUSES = ['processed', 'manually processed'].freeze
+        ERROR_STATUSES = ['error', 'failed', 'rejected', 'submission failed'].freeze
 
         def self.build_claim_response(records, user = nil)
           records = Array(records)
@@ -38,6 +38,7 @@ module BenefitsClaims
             claim_phase_dates: claim_phase_dates_for(representative, status),
             close_date: close_date_for(representative),
             claim_type:,
+            decision_letter_sent: status == 'vbms',
             display_title: titles[:display_title],
             claim_type_base: titles[:claim_type_base],
             status:,
@@ -65,7 +66,7 @@ module BenefitsClaims
         end
 
         def self.close_date_for(record)
-          return nil unless record&.pega_status && PROCESSED_STATUSES.include?(record.pega_status)
+          return nil unless record&.pega_status && PROCESSED_STATUSES.include?(record.pega_status.to_s.downcase.strip)
 
           format_date(record.updated_at)
         end
@@ -98,8 +99,9 @@ module BenefitsClaims
         end
 
         def self.normalize_status(pega_status)
-          return 'vbms' if PROCESSED_STATUSES.include?(pega_status)
-          return 'error' if ERROR_STATUSES.include?(pega_status)
+          normalized = pega_status.to_s.downcase.strip
+          return 'vbms' if PROCESSED_STATUSES.include?(normalized)
+          return 'error' if ERROR_STATUSES.include?(normalized)
 
           'pending'
         end
