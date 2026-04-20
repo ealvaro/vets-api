@@ -190,6 +190,8 @@ module MyHealth
         site_ids << ORACLE_HEALTH_SITE_ID if cerner_ids.present?
         site_ids.uniq!
 
+        log_site_id_breakdown(vista_ids, cerner_ids, site_ids)
+
         if site_ids.empty?
           Rails.logger.warn(
             message: 'ImagingController#user_site_ids resolved to empty site_ids',
@@ -198,6 +200,20 @@ module MyHealth
         end
 
         site_ids
+      end
+
+      def log_site_id_breakdown(vista_ids, cerner_ids, site_ids)
+        return unless Flipper.enabled?(:mhv_medical_records_imaging_site_id_logging, @current_user)
+
+        cerner_in_vista = vista_ids.map(&:to_s) & cerner_ids.map(&:to_s)
+        Rails.logger.info(
+          message: 'ImagingController#user_site_ids facility breakdown',
+          vista_ids: vista_ids.map(&:to_s),
+          cerner_ids: cerner_ids.map(&:to_s),
+          cerner_in_vista_ids: cerner_in_vista,
+          number_overlap: cerner_in_vista.size,
+          final_site_ids: site_ids
+        )
       end
 
       def enqueue_imaging_refresh_job
