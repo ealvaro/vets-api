@@ -235,6 +235,31 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
 
         expect(response).to have_http_status(:bad_request)
       end
+
+      it 'returns 400 when clinical_service is missing' do
+        get('/vaos/v2/provider_slots', params: base_params.except(:clinical_service), headers:)
+
+        expect(response).to have_http_status(:bad_request)
+      end
+
+      it 'returns 400 when clinical_service is blank' do
+        get('/vaos/v2/provider_slots',
+            params: base_params.merge(clinical_service: ''),
+            headers:)
+
+        expect(response).to have_http_status(:bad_request)
+      end
+
+      it 'passes the requested clinical_service through to SystemsService' do
+        get('/vaos/v2/provider_slots',
+            params: base_params.merge(clinical_service: 'audiology'),
+            headers:)
+
+        expect(response).to have_http_status(:ok)
+        expect(mock_systems_service).to have_received(:get_available_slots).with(
+          hash_including(clinical_service: 'audiology')
+        )
+      end
     end
 
     context 'with missing or invalid params' do

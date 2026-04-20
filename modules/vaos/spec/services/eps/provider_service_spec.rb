@@ -1892,6 +1892,47 @@ describe Eps::ProviderService do
       expect(result.map { |p| p[:id] }).to contain_exactly('provider-self-urology', 'provider-self-cardiology')
     end
 
+    # Regression guard for the singular vs. plural query param Wellhive expects.
+    # Wellhive silently ignores +specialtyIds+ (plural); the param it actually
+    # filters on is +specialtyId+ (singular), repeated for multiple values.
+    it 'sends the NUCC ids as the singular specialtyId query param (not specialtyIds)' do
+      expect_any_instance_of(VAOS::SessionService).to receive(:perform).with(
+        :get,
+        '/api/v1/provider-services',
+        hash_including(specialtyId: %w[207Q00000X 207R00000X 208D00000X]),
+        headers
+      ).and_return(response)
+
+      service.search_by_location(
+        latitude: 28.08, longitude: -80.6, radius: 30,
+        specialty_ids: %w[207Q00000X 207R00000X 208D00000X]
+      )
+    end
+
+    it 'does not include specialtyId in the outbound query when no specialty_ids are given' do
+      expect_any_instance_of(VAOS::SessionService).to receive(:perform) do |_inst, _verb, _path, query, _headers|
+        expect(query).not_to have_key(:specialtyId)
+        expect(query).not_to have_key(:specialtyIds)
+        response
+      end
+
+      service.search_by_location(latitude: 28.08, longitude: -80.6, radius: 30)
+    end
+
+    it 'compacts and de-duplicates specialty_ids before sending' do
+      expect_any_instance_of(VAOS::SessionService).to receive(:perform).with(
+        :get,
+        '/api/v1/provider-services',
+        hash_including(specialtyId: %w[207Q00000X 208D00000X]),
+        headers
+      ).and_return(response)
+
+      service.search_by_location(
+        latitude: 28.08, longitude: -80.6, radius: 30,
+        specialty_ids: ['207Q00000X', nil, '208D00000X', '207Q00000X']
+      )
+    end
+
     it 'raises ArgumentError when latitude is blank' do
       expect do
         service.search_by_location(latitude: nil, longitude: -80.6, radius: 30)

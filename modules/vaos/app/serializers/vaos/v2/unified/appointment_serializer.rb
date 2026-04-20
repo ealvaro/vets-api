@@ -27,12 +27,18 @@ module VAOS
 
         private
 
+        SUPPORTED_CARE_TYPES = %w[VA CC].freeze
+
         def build_attributes
           case @care_type
           when 'VA'
             build_va_attributes
           when 'CC'
             build_cc_attributes
+          else
+            raise ArgumentError,
+                  "Unsupported care_type: #{@care_type.inspect}. " \
+                  "Expected one of: #{SUPPORTED_CARE_TYPES.join(', ')}"
           end
         end
 

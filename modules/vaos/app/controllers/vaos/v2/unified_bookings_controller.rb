@@ -43,8 +43,12 @@ module VAOS
         )
 
         render json: serialize_confirmation(confirmation), status: :created
-      rescue VAOS::V2::Unified::BookingArgumentError
-        raise Common::Exceptions::ParameterMissing, 'create_booking_params'
+      rescue VAOS::V2::Unified::BookingArgumentError => e
+        # Surface the booking service's specific message (e.g. "referral_number or
+        # referral_id is required for EPS booking") so the client gets an actionable
+        # 400 instead of a generic parameter-missing complaint about an internal
+        # variable name. Maps to Common::Exceptions::ParameterMissing (HTTP 400).
+        raise Common::Exceptions::ParameterMissing.new('booking_params', detail: e.message)
       rescue Common::Exceptions::BaseError
         raise
       rescue => e
@@ -78,7 +82,6 @@ module VAOS
           permitted = params.permit(:clinic_id, :location_id, :service_type, :slot_id)
           permitted.require(:clinic_id)
           permitted.require(:location_id)
-          permitted.require(:service_type)
           permitted.require(:slot_id)
           permitted
         end
@@ -95,19 +98,19 @@ module VAOS
       end
 
       def build_va_provider
-        p = va_unified_booking_params
+        booking_params = va_unified_booking_params
         Unified::VAProvider.new(
-          id: p[:clinic_id],
-          location_id: p[:location_id],
-          service_type: p[:service_type]
+          id: booking_params[:clinic_id],
+          location_id: booking_params[:location_id],
+          service_type: booking_params[:service_type]
         )
       end
 
       def build_eps_provider
-        p = eps_unified_booking_params
+        booking_params = eps_unified_booking_params
         Unified::EpsProvider.new(
-          id: p[:provider_service_id],
-          network_id: p[:network_id]
+          id: booking_params[:provider_service_id],
+          network_id: booking_params[:network_id]
         )
       end
 

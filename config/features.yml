@@ -2575,6 +2575,27 @@ features:
       Use referring_provider_npi from CCRA for EPS provider lookups.
       Default is treating_provider_npi (root level). Falls back to nested provider_npi if selected NPI is blank.
       Primary care flag takes priority if both are enabled.
+  va_online_scheduling_unified_non_primary_care:
+    actor_type: user
+    enable_in_development: false
+    description: >-
+      Owned by VAOS (Oracle Health Unified Scheduling). When DISABLED (default,
+      pilot mode), VAOS::V2::Unified::CcraCategoryMapper resolves every CCRA
+      category_of_care to PRIMARY CARE (vaos_service_type=primaryCare, PC NUCC
+      ids, PC name patterns) regardless of whether an explicit CCRA_TO_TARGETS
+      entry exists. Each forced override emits a warn-level log + StatsD counter
+      so we can see which non-PC referrals are being rerouted. When ENABLED,
+      CCRA categories use their explicit CCRA_TO_TARGETS entry; categories with
+      no entry still fall back to primaryCare with logging.
+  va_online_scheduling_unified_name_filter:
+    actor_type: user
+    enable_in_development: true
+    description: >-
+      Owned by VAOS (Oracle Health Unified Scheduling). When enabled, applies a
+      client-side regex post-filter to Wellhive (EPS) results so only providers
+      whose name, facility name, or specialty name matches the category-
+      appropriate pattern list are returned. Disable to fall back to NUCC-only
+      server-side filtering.
   vba_documents_enable_kafka_tracking:
     actor_type: user
     description: Enables Kafka event tracking for 21P-527EZ uploads

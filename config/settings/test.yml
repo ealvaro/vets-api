@@ -1969,6 +1969,8 @@ vaos:
     encryption:
       hex_iv: "0123456789abcdef0123456789abcdef"
       hex_secret: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  unified_scheduling:
+    default_radius_miles: 25
 vass:
   api_url: <%= ENV['vass__api_url'] || 'https://api.vass.va.gov' %>
   auth_url: https://login.microsoftonline.us

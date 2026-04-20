@@ -151,33 +151,36 @@ module Eps
     # Search for provider services by geographic location.
     # Uses the EPS nearLocation parameter to find providers within a given radius.
     #
+    # When +specialty_ids+ is provided, filtering is delegated to Wellhive via the
+    # +specialtyId+ query parameter (server-side, authoritative). When only the
+    # legacy +specialty+ string is provided, a best-effort client-side name match
+    # is applied instead.
+    #
     # @param latitude [Float] Latitude of the search origin
     # @param longitude [Float] Longitude of the search origin
     # @param radius [Integer] Maximum miles from the origin (default: 25)
-    # @param specialty [String] Optional specialty to filter by (case-insensitive)
+    # @param specialty [String] Optional specialty name for client-side filtering (case-insensitive).
+    #   Ignored when +specialty_ids+ is provided.
+    # @param specialty_ids [Array<String>] Optional NUCC Healthcare Provider Taxonomy codes
+    #   forwarded to Wellhive as +specialtyId+ for server-side filtering.
     # @return [Array<Hash>] Self-schedulable provider services near the location
     #
-    def search_by_location(latitude:, longitude:, radius: 25, specialty: nil)
+    def search_by_location(latitude:, longitude:, radius: 25, specialty: nil, specialty_ids: nil)
       lat, lon, radius_miles = validate_location_search_params!(latitude, longitude, radius)
+      normalized_specialty_ids = Array(specialty_ids).compact.uniq.presence
 
       query_params = build_search_params(
         near_location: "#{lat},#{lon}",
         max_miles_from_near: radius_miles,
-        is_self_schedulable: true
+        is_self_schedulable: true,
+        specialty_ids: normalized_specialty_ids
       )
 
       with_monitoring do
         response = perform(:get, "/#{config.base_path}/provider-services", query_params,
                            request_headers_with_correlation_id)
-
         all_providers = response.body[:provider_services] || []
-        self_schedulable = filter_self_schedulable(all_providers)
-
-        if specialty.present?
-          filter_by_specialty(self_schedulable, specialty)
-        else
-          self_schedulable
-        end
+        apply_specialty_filters(all_providers, specialty, normalized_specialty_ids)
       end
     rescue Eps::ServiceException => e
       handle_eps_error!(e, 'search_by_location')
@@ -185,6 +188,20 @@ module Eps
     end
 
     private
+
+    ##
+    # Applies self-schedulable + specialty filtering to the raw provider results.
+    #
+    # When +normalized_specialty_ids+ is present, Wellhive has already filtered
+    # server-side by +specialtyId+; we only apply the self-schedulable filter.
+    # Otherwise we fall back to the legacy client-side name-match behavior.
+    #
+    def apply_specialty_filters(all_providers, specialty, normalized_specialty_ids)
+      self_schedulable = filter_self_schedulable(all_providers)
+      return self_schedulable if normalized_specialty_ids || specialty.blank?
+
+      filter_by_specialty(self_schedulable, specialty)
+    end
 
     ##
     # Fetches all provider slots by paginating through responses
@@ -566,7 +583,10 @@ module Eps
     #   - :max_miles_from_near [Integer] the maximum allowable miles from the specified location.
     #   - :near_location [String] the location reference for proximity.
     #   - :organization_names [Array<String>] an array of organization names.
-    #   - :specialty_ids [Array<Integer>] an array of specialty identifiers.
+    #   - :specialty_ids [Array<String>] an array of NUCC Healthcare Provider
+    #     Taxonomy codes (e.g. +'207Q00000X'+ for Family Medicine). Sent to
+    #     Wellhive as the +specialtyId+ query param (singular -- Wellhive
+    #     accepts repeated +specialtyId=...&specialtyId=...+ values).
     #   - :visit_modes [Array<String>] an array of visit mode options.
     #   - :include_inactive [Boolean] flag to include inactive records.
     #   - :digital_or_not [Boolean] flag indicating digital capability.
@@ -583,7 +603,7 @@ module Eps
         maxMilesFromNear: params[:max_miles_from_near],
         nearLocation: params[:near_location],
         organizationNames: params[:organization_names],
-        specialtyIds: params[:specialty_ids],
+        specialtyId: params[:specialty_ids],
         visitModes: params[:visit_modes],
         includeInactive: params[:include_inactive],
         digitalOrNot: params[:digital_or_not],

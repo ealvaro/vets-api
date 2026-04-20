@@ -8,6 +8,7 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
     sign_in_as(current_user)
     allow_any_instance_of(VAOS::UserService).to receive(:session).and_return('stubbed_token')
     allow(Rails.logger).to receive(:info)
+    allow(Rails.logger).to receive(:warn)
     allow(Rails.logger).to receive(:error)
     allow(StatsD).to receive(:increment)
   end
@@ -101,6 +102,25 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
              headers:)
 
         expect(response).to have_http_status(:bad_request)
+      end
+
+      it 'returns 400 when service_type is blank' do
+        post('/vaos/v2/unified_bookings',
+             params: va_params.merge(service_type: '').to_json,
+             headers:)
+
+        expect(response).to have_http_status(:bad_request)
+      end
+
+      it 'passes the requested service_type through to the VAOS request body' do
+        post('/vaos/v2/unified_bookings',
+             params: va_params.merge(service_type: 'optometry').to_json,
+             headers:)
+
+        expect(response).to have_http_status(:created)
+        expect(mock_appointments_service).to have_received(:post_appointment).with(
+          hash_including(service_type: 'optometry')
+        )
       end
 
       context 'when VAOS upstream service fails' do

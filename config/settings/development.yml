@@ -1970,6 +1970,8 @@ vaos:
     encryption:
       hex_iv: "0123456789abcdef0123456789abcdef"
       hex_secret: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  unified_scheduling:
+    default_radius_miles: 25
 vass:
   api_url: https://fake-api.com
   auth_url: https://fake-auth-url.com

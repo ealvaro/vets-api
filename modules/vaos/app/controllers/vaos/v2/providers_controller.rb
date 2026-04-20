@@ -42,7 +42,7 @@ module VAOS
       end
 
       def radius_param
-        default_radius = VAOS::V2::Unified::ProviderSearchService::DEFAULT_RADIUS_MILES
+        default_radius = VAOS::V2::Unified::ProviderSearchService.default_radius_miles
         raw_radius = params[:radius]
         return default_radius if raw_radius.nil?
 

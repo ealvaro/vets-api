@@ -25,8 +25,8 @@ RSpec.describe VAOS::V2::Unified::EligibilityService do
           .with('primaryCare', '983', 'direct').and_return(eligibility_result(eligible: true))
       end
 
-      it 'returns eligible with the mapped VAOS service type' do
-        result = service.check_eligibility(facility_id:, category_of_care: 'primaryCare')
+      it 'returns eligible with the passed-through VAOS service type' do
+        result = service.check_eligibility(facility_id:, vaos_service_type: 'primaryCare')
 
         expect(result[:facility_id]).to eq('983')
         expect(result[:vaos_service_type]).to eq('primaryCare')
@@ -34,7 +34,7 @@ RSpec.describe VAOS::V2::Unified::EligibilityService do
       end
 
       it 'checks direct eligibility' do
-        service.check_eligibility(facility_id:, category_of_care: 'primaryCare')
+        service.check_eligibility(facility_id:, vaos_service_type: 'primaryCare')
 
         expect(patients_service).to have_received(:get_patient_appointment_metadata)
           .with('primaryCare', '983', 'direct')
@@ -48,7 +48,7 @@ RSpec.describe VAOS::V2::Unified::EligibilityService do
       end
 
       it 'returns direct as ineligible' do
-        result = service.check_eligibility(facility_id:, category_of_care: 'primaryCare')
+        result = service.check_eligibility(facility_id:, vaos_service_type: 'primaryCare')
 
         expect(result[:direct_eligible]).to be false
       end
@@ -62,18 +62,74 @@ RSpec.describe VAOS::V2::Unified::EligibilityService do
       end
 
       it 'marks direct as ineligible' do
-        result = service.check_eligibility(facility_id:, category_of_care: 'primaryCare')
+        result = service.check_eligibility(facility_id:, vaos_service_type: 'primaryCare')
 
         expect(result[:direct_eligible]).to be false
       end
     end
 
-    context 'when the category of care is unmappable' do
+    context 'when vaos_service_type is blank' do
+      before do
+        allow(StatsD).to receive(:increment)
+        allow(patients_service).to receive(:get_patient_appointment_metadata)
+      end
+
       it 'returns nil for vaos_service_type and false for direct_eligible' do
-        result = service.check_eligibility(facility_id:, category_of_care: 'unknownServiceType')
+        result = service.check_eligibility(facility_id:, vaos_service_type: nil)
 
         expect(result[:facility_id]).to eq('983')
         expect(result[:vaos_service_type]).to be_nil
+        expect(result[:direct_eligible]).to be false
+      end
+
+      it 'increments the unmappable_service_type counter' do
+        service.check_eligibility(facility_id:, vaos_service_type: '')
+
+        expect(StatsD).to have_received(:increment)
+          .with('api.vaos.unified_eligibility.unmappable_service_type')
+      end
+
+      it 'does not call the upstream PatientsService' do
+        service.check_eligibility(facility_id:, vaos_service_type: nil)
+
+        expect(patients_service).not_to have_received(:get_patient_appointment_metadata)
+      end
+    end
+
+    # Regression guard for the bug Copilot flagged: ProviderSearchService passes
+    # an already-mapped VAOS service type (from CcraCategoryMapper) into here.
+    # Mapping a SECOND time via ServiceTypeMapper.to_vaos would have returned
+    # nil for VAOS-only identifiers like 'foodAndNutrition' or
+    # 'clinicalPharmacyPrimaryCare', silently marking every facility ineligible.
+    context 'with VAOS-only service types that are not Lighthouse keys' do
+      it "passes 'foodAndNutrition' through to PatientsService unchanged" do
+        allow(patients_service).to receive(:get_patient_appointment_metadata)
+          .with('foodAndNutrition', '983', 'direct').and_return(eligibility_result(eligible: true))
+
+        result = service.check_eligibility(facility_id:, vaos_service_type: 'foodAndNutrition')
+
+        expect(result[:vaos_service_type]).to eq('foodAndNutrition')
+        expect(result[:direct_eligible]).to be true
+        expect(patients_service).to have_received(:get_patient_appointment_metadata)
+          .with('foodAndNutrition', '983', 'direct')
+      end
+
+      it "passes 'clinicalPharmacyPrimaryCare' through to PatientsService unchanged" do
+        allow(patients_service).to receive(:get_patient_appointment_metadata)
+          .with('clinicalPharmacyPrimaryCare', '983', 'direct').and_return(eligibility_result(eligible: true))
+
+        result = service.check_eligibility(facility_id:, vaos_service_type: 'clinicalPharmacyPrimaryCare')
+
+        expect(result[:direct_eligible]).to be true
+      end
+
+      it "passes 'outpatientMentalHealth' through unchanged" do
+        allow(patients_service).to receive(:get_patient_appointment_metadata)
+          .with('outpatientMentalHealth', '983', 'direct').and_return(eligibility_result(eligible: false))
+
+        result = service.check_eligibility(facility_id:, vaos_service_type: 'outpatientMentalHealth')
+
+        expect(result[:vaos_service_type]).to eq('outpatientMentalHealth')
         expect(result[:direct_eligible]).to be false
       end
     end

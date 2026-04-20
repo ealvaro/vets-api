@@ -82,6 +82,18 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
       allow(lighthouse_client).to receive(:get_facilities).and_return([lighthouse_facility])
       allow(eps_provider_service).to receive(:search_by_location).and_return([eps_provider_hash])
       allow(systems_service).to receive(:get_facility_clinics).and_return([urology_clinic])
+
+      # Default the regex post-filter OFF for the structural tests that aren't
+      # exercising it (otherwise PC default patterns drop the UROLOGY EPS
+      # provider). Tests under the +operational toggles+ describe block stub
+      # this explicitly to true.
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:va_online_scheduling_unified_name_filter, user).and_return(false)
+      # Default the pilot kill-switch OFF (== PC-only) to match the production
+      # default. Tests that want CCRA_TO_TARGETS entries to win override this.
+      allow(Flipper).to receive(:enabled?)
+        .with(:va_online_scheduling_unified_non_primary_care, user).and_return(false)
     end
 
     it 'returns a combined list of VA clinics and EPS providers' do
@@ -140,35 +152,62 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
       )
     end
 
-    it 'calls EPS with correct parameters' do
+    it 'calls EPS with PRIMARY CARE NUCC IDs when pilot kill-switch overrides a non-PC category' do
+      # UROLOGY *is* in CcraCategoryMapper now (with NUCC 208800000X), but the
+      # +va_online_scheduling_unified_non_primary_care+ pilot kill-switch is
+      # OFF by default, so the mapper overrides UROLOGY back to PC NUCC IDs.
       service.search(referral:, radius: 30)
 
       expect(eps_provider_service).to have_received(:search_by_location).with(
         latitude: 28.08,
         longitude: -80.60,
         radius: 30,
-        specialty: 'UROLOGY'
+        specialty_ids: %w[207Q00000X 207R00000X 208D00000X]
       )
     end
 
-    it 'fetches VAOS clinics using ServiceTypeMapper.to_vaos(category_of_care)' do
+    it 'calls EPS with NUCC specialty IDs for mapped CCRA categories (PRIMARY CARE)' do
+      primary_care_referral = double(
+        'Referral',
+        category_of_care: 'PRIMARY CARE',
+        provider_npi: '91560381x'
+      )
+
+      service.search(referral: primary_care_referral, radius: 30)
+
+      expect(eps_provider_service).to have_received(:search_by_location).with(
+        latitude: 28.08,
+        longitude: -80.60,
+        radius: 30,
+        specialty_ids: %w[207Q00000X 207R00000X 208D00000X]
+      )
+    end
+
+    it 'fetches VAOS clinics with PC clinical_service when pilot kill-switch is off' do
       service.search(referral:)
 
-      # UROLOGY is not in LIGHTHOUSE_TO_VAOS; mapper returns nil
+      # Pilot flag default-off -> UROLOGY's mapped vaos_service_type is
+      # overridden to 'primaryCare'. (Even without the pilot flag, UROLOGY is
+      # not in VAOS::SCHEDULABLE_SERVICE_TYPES so this entry intentionally
+      # leaves vaos_service_type unset and inherits PC.)
       expect(systems_service).to have_received(:get_facility_clinics).with(
         location_id: '983',
-        clinical_service: nil
+        clinical_service: 'primaryCare'
       )
     end
 
-    it 'passes mapped clinical service when category_of_care maps to VAOS' do
-      audio_referral = double('Referral', category_of_care: 'audiology', provider_npi: '91560381x')
+    it 'passes mapped clinical service when category_of_care maps to a VAOS type' do
+      primary_care_referral = double(
+        'Referral',
+        category_of_care: 'PRIMARY CARE',
+        provider_npi: '91560381x'
+      )
 
-      service.search(referral: audio_referral)
+      service.search(referral: primary_care_referral)
 
       expect(systems_service).to have_received(:get_facility_clinics).with(
         location_id: '983',
-        clinical_service: 'audiology'
+        clinical_service: 'primaryCare'
       )
     end
 
@@ -202,7 +241,10 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
       expect(results.first.provider_type).to eq('va')
     end
 
-    it 'includes all facilities when category_of_care does not map to a VAOS service (no eligibility filter)' do
+    it 'still runs PC eligibility filtering when pilot kill-switch overrides a non-PC category' do
+      # UROLOGY referral + pilot flag default-off -> mapper returns PC defaults,
+      # so eligibility filtering runs against the PC service type rather than
+      # being skipped entirely.
       non_matching_facility = double(
         'Facility',
         id: 'vha_984', unique_id: '984', name: 'Other VA',
@@ -214,13 +256,11 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
         [lighthouse_facility, non_matching_facility]
       )
 
-      results = service.search(referral:)
+      service.search(referral:)
 
-      va_providers = results.select { |p| p.provider_type == 'va' }
-      expect(va_providers.size).to eq(2)
-      expect(va_providers.map(&:location_id).sort).to eq(%w[983 984])
-      expect(systems_service).to have_received(:get_facility_clinics).twice
-      expect(eligibility_service).not_to have_received(:check_eligibility)
+      expect(eligibility_service).to have_received(:check_eligibility).twice.with(
+        hash_including(vaos_service_type: 'primaryCare')
+      )
     end
 
     it 'excludes VA facilities that fail direct-scheduling eligibility when category maps to VAOS' do
@@ -229,23 +269,31 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
         id: 'vha_984', unique_id: '984', name: 'Other VA',
         address: nil, phone: nil, lat: 28.12, long: -80.65,
         facility_type: 'va_health_facility',
-        services: { 'health' => [{ 'serviceId' => 'audiology' }] }
+        services: { 'health' => [{ 'serviceId' => 'primaryCare' }] }
       )
       allow(lighthouse_client).to receive(:get_facilities).and_return(
         [lighthouse_facility, non_matching_facility]
       )
-      audio_referral = double('Referral', category_of_care: 'audiology', provider_npi: '91560381x')
+      primary_care_referral = double(
+        'Referral',
+        category_of_care: 'PRIMARY CARE',
+        provider_npi: '91560381x'
+      )
 
-      allow(eligibility_service).to receive(:check_eligibility) do |facility_id:, category_of_care:|
-        expect(category_of_care).to eq('audiology')
+      allow(eligibility_service).to receive(:check_eligibility) do |facility_id:, vaos_service_type:|
+        # ProviderSearchService passes the already-mapped VAOS service type
+        # directly under the +vaos_service_type:+ keyword (not a Lighthouse
+        # +category_of_care+) so the eligibility service can hand it straight
+        # to PatientsService without a second mapping step.
+        expect(vaos_service_type).to eq('primaryCare')
         {
           facility_id:,
-          vaos_service_type: 'audiology',
+          vaos_service_type:,
           direct_eligible: facility_id == '983'
         }
       end
 
-      results = service.search(referral: audio_referral)
+      results = service.search(referral: primary_care_referral)
 
       va_providers = results.select { |p| p.provider_type == 'va' }
       expect(va_providers.map(&:location_id)).to eq(['983'])
@@ -266,6 +314,444 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
       expect(lighthouse_client).to have_received(:get_facilities).with(
         hash_including(radius: 25)
       )
+    end
+
+    describe 'operational toggles' do
+      let(:primary_care_referral) do
+        double('Referral', category_of_care: 'PRIMARY CARE', provider_npi: '91560381x')
+      end
+
+      let(:matching_eps_provider) do
+        {
+          id: 'match-1',
+          name: 'Dr. Jones @ FHA Primary Care Clinic',
+          individual_providers: [{ name: 'Dr. Jones', npi: '99999999' }],
+          location: { name: 'FHA Primary Care Clinic', address: '1 Main St',
+                      latitude: 28.08, longitude: -80.60 },
+          network_ids: ['network-1'],
+          specialties: [{ id: '207Q00000X', name: 'Family Medicine' }],
+          features: { is_digital: true, direct_booking: { is_enabled: true } }
+        }
+      end
+
+      let(:non_matching_eps_provider) do
+        {
+          id: 'nomatch-1',
+          name: 'Dr. Bones @ Orthopaedic Center',
+          individual_providers: [{ name: 'Dr. Bones', npi: '77777777' }],
+          location: { name: 'Orthopaedic Center', address: '2 Main St',
+                      latitude: 28.08, longitude: -80.60 },
+          network_ids: ['network-1'],
+          specialties: [{ id: '207XX0004X', name: 'Orthopaedic Surgery' }],
+          features: { is_digital: true, direct_booking: { is_enabled: true } }
+        }
+      end
+
+      before do
+        allow(eps_provider_service).to receive(:search_by_location)
+          .and_return([matching_eps_provider, non_matching_eps_provider])
+      end
+
+      context 'when unified_name_filter is disabled (regex post-filter kill switch)' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:va_online_scheduling_unified_name_filter, user).and_return(false)
+        end
+
+        it 'still calls EPS with NUCC specialty IDs (server-side category filter always on)' do
+          service.search(referral: primary_care_referral)
+
+          expect(eps_provider_service).to have_received(:search_by_location).with(
+            hash_including(specialty_ids: %w[207Q00000X 207R00000X 208D00000X])
+          )
+        end
+
+        it 'keeps providers Wellhive returned even when their name does not match patterns' do
+          results = service.search(referral: primary_care_referral)
+
+          eps_results = results.select { |p| p.provider_type == 'eps' }
+          expect(eps_results.map(&:id)).to contain_exactly('match-1', 'nomatch-1')
+        end
+
+        it 'still runs VA facility eligibility filtering (server-side category filter is no longer gated)' do
+          service.search(referral: primary_care_referral)
+
+          expect(eligibility_service).to have_received(:check_eligibility).with(
+            hash_including(vaos_service_type: 'primaryCare')
+          )
+        end
+      end
+
+      context 'when unified_name_filter is enabled (default)' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:va_online_scheduling_unified_name_filter, user).and_return(true)
+        end
+
+        it 'sends NUCC IDs to Wellhive AND drops providers that fail the name regex post-filter' do
+          results = service.search(referral: primary_care_referral)
+
+          expect(eps_provider_service).to have_received(:search_by_location).with(
+            hash_including(specialty_ids: %w[207Q00000X 207R00000X 208D00000X])
+          )
+          eps_results = results.select { |p| p.provider_type == 'eps' }
+          expect(eps_results.map(&:id)).to eq(['match-1'])
+        end
+      end
+
+      context 'when CCRA category is mapped to non-PC and pilot kill-switch is OFF (default)' do
+        let(:cardiology_referral) do
+          double('Referral', category_of_care: 'CARDIOLOGY', provider_npi: '91560381x')
+        end
+
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:va_online_scheduling_unified_name_filter, user).and_return(true)
+          allow(Flipper).to receive(:enabled?)
+            .with(:va_online_scheduling_unified_non_primary_care, user).and_return(false)
+        end
+
+        it 'force-overrides CARDIOLOGY to PC NUCC + regex and logs pc_override' do
+          allow(Rails.logger).to receive(:warn)
+          allow(StatsD).to receive(:increment)
+
+          results = service.search(referral: cardiology_referral)
+
+          expect(eps_provider_service).to have_received(:search_by_location).with(
+            hash_including(specialty_ids: %w[207Q00000X 207R00000X 208D00000X])
+          )
+          eps_results = results.select { |p| p.provider_type == 'eps' }
+          expect(eps_results.map(&:id)).to eq(['match-1'])
+
+          expect(Rails.logger).to have_received(:warn).with(
+            'CcraCategoryMapper: pilot is PC-only, overriding mapped category to primaryCare',
+            hash_including(
+              category_of_care: 'CARDIOLOGY',
+              suppressed_vaos_service_type: 'primaryCare',
+              suppressed_eps_nucc_specialty_ids: %w[207RC0000X]
+            )
+          )
+          expect(StatsD).to have_received(:increment).with(
+            'api.vaos.ccra_category_mapper.pc_override',
+            tags: ['category_of_care:CARDIOLOGY']
+          )
+        end
+      end
+
+      context 'when CCRA category is mapped to non-PC and pilot kill-switch is ON' do
+        let(:cardiology_referral) do
+          double('Referral', category_of_care: 'CARDIOLOGY', provider_npi: '91560381x')
+        end
+
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:va_online_scheduling_unified_name_filter, user).and_return(false)
+          allow(Flipper).to receive(:enabled?)
+            .with(:va_online_scheduling_unified_non_primary_care, user).and_return(true)
+        end
+
+        it "uses CARDIOLOGY's mapped NUCC ids when pilot is expanded beyond PC" do
+          service.search(referral: cardiology_referral)
+
+          expect(eps_provider_service).to have_received(:search_by_location).with(
+            hash_including(specialty_ids: %w[207RC0000X])
+          )
+        end
+
+        it 'does not log a pc_override' do
+          allow(Rails.logger).to receive(:warn)
+
+          service.search(referral: cardiology_referral)
+
+          expect(Rails.logger).not_to have_received(:warn).with(
+            /pilot is PC-only/, anything
+          )
+        end
+      end
+
+      context 'when CCRA category is truly unmapped (not in CCRA_TO_TARGETS)' do
+        let(:gastro_referral) do
+          double('Referral', category_of_care: 'GASTROENTEROLOGY', provider_npi: '91560381x')
+        end
+
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:va_online_scheduling_unified_name_filter, user).and_return(true)
+          allow(Flipper).to receive(:enabled?)
+            .with(:va_online_scheduling_unified_non_primary_care, user).and_return(true)
+        end
+
+        it 'still falls back to PC and logs unmapped (independent of pilot kill-switch)' do
+          allow(Rails.logger).to receive(:warn)
+          allow(StatsD).to receive(:increment)
+
+          service.search(referral: gastro_referral)
+
+          expect(eps_provider_service).to have_received(:search_by_location).with(
+            hash_including(specialty_ids: %w[207Q00000X 207R00000X 208D00000X])
+          )
+          expect(Rails.logger).to have_received(:warn).with(
+            'CcraCategoryMapper: unmapped category_of_care, defaulting to primaryCare',
+            category_of_care: 'GASTROENTEROLOGY'
+          )
+          expect(StatsD).to have_received(:increment).with(
+            'api.vaos.ccra_category_mapper.unmapped',
+            tags: ['category_of_care:GASTROENTEROLOGY']
+          )
+        end
+      end
+
+      # Edge cases around the provider-hash shapes we feed into
+      # #provider_matches_patterns? (tested via the public #search interface).
+      context 'name-match edge cases (name filter enabled)' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:va_online_scheduling_unified_name_filter, user).and_return(true)
+        end
+
+        shared_context 'single EPS provider' do |provider_hash|
+          before { allow(eps_provider_service).to receive(:search_by_location).and_return([provider_hash]) }
+        end
+
+        context 'matches via top-level provider name' do
+          include_context 'single EPS provider', {
+            id: 'via-name',
+            name: 'Dr. Smith @ Primary Care Associates',
+            location: { name: 'Unrelated Building', latitude: 28.08, longitude: -80.60 },
+            specialties: [{ id: 'X', name: 'Unrelated' }],
+            features: { is_digital: true, direct_booking: { is_enabled: true } }
+          }
+
+          it 'keeps the provider' do
+            results = service.search(referral: primary_care_referral)
+            expect(results.map(&:id)).to include('via-name')
+          end
+        end
+
+        context 'matches via specialty name only' do
+          include_context 'single EPS provider', {
+            id: 'via-specialty',
+            name: 'Dr. Noname',
+            location: { name: 'Generic Clinic', latitude: 28.08, longitude: -80.60 },
+            specialties: [{ id: '207Q00000X', name: 'Family Medicine' }],
+            features: { is_digital: true, direct_booking: { is_enabled: true } }
+          }
+
+          it 'keeps the provider' do
+            results = service.search(referral: primary_care_referral)
+            expect(results.map(&:id)).to include('via-specialty')
+          end
+        end
+
+        context 'matches via location/facility name only' do
+          include_context 'single EPS provider', {
+            id: 'via-location',
+            name: 'Dr. Bland',
+            location: { name: 'Acme Primary Care Associates', latitude: 28.08, longitude: -80.60 },
+            specialties: [{ id: 'X', name: 'Unrelated' }],
+            features: { is_digital: true, direct_booking: { is_enabled: true } }
+          }
+
+          it 'keeps the provider' do
+            results = service.search(referral: primary_care_referral)
+            expect(results.map(&:id)).to include('via-location')
+          end
+        end
+
+        context 'case-insensitive matching' do
+          include_context 'single EPS provider', {
+            id: 'case-shouty',
+            name: 'DR. LOUD @ PRIMARY CARE CLINIC',
+            location: { name: 'noisy', latitude: 28.08, longitude: -80.60 },
+            specialties: [{ id: 'X', name: 'FAMILY MEDICINE' }],
+            features: { is_digital: true, direct_booking: { is_enabled: true } }
+          }
+
+          it 'matches regardless of provider name casing' do
+            results = service.search(referral: primary_care_referral)
+            expect(results.map(&:id)).to include('case-shouty')
+          end
+        end
+
+        context 'multi-pattern any-match semantics' do
+          include_context 'single EPS provider', {
+            id: 'only-general-practice',
+            name: 'Dr. Bland',
+            location: { name: 'Generic Building', latitude: 28.08, longitude: -80.60 },
+            specialties: [{ id: '208D00000X', name: 'General Practice' }],
+            features: { is_digital: true, direct_booking: { is_enabled: true } }
+          }
+
+          it 'keeps a provider that matches only ONE of the configured patterns' do
+            results = service.search(referral: primary_care_referral)
+            expect(results.map(&:id)).to include('only-general-practice')
+          end
+        end
+
+        context 'nil-safety: provider hash missing name' do
+          include_context 'single EPS provider', {
+            id: 'no-name',
+            location: { name: 'Primary Care Spot', latitude: 28.08, longitude: -80.60 },
+            specialties: [{ id: 'X', name: 'Unrelated' }],
+            features: { is_digital: true, direct_booking: { is_enabled: true } }
+          }
+
+          it 'does not crash and still matches via location name' do
+            expect { service.search(referral: primary_care_referral) }.not_to raise_error
+            results = service.search(referral: primary_care_referral)
+            expect(results.map(&:id)).to include('no-name')
+          end
+        end
+
+        context 'nil-safety: provider hash missing location' do
+          include_context 'single EPS provider', {
+            id: 'no-location',
+            name: 'Dr. Smith @ Primary Care Associates',
+            specialties: [{ id: '207Q00000X', name: 'Family Medicine' }],
+            features: { is_digital: true, direct_booking: { is_enabled: true } },
+            # location intentionally omitted; distance lookups are nil-safe via coerce_float
+            individual_providers: [{ name: 'Dr. Smith', npi: '1' }]
+          }
+
+          it 'does not crash and still matches via name' do
+            expect { service.search(referral: primary_care_referral) }.not_to raise_error
+            results = service.search(referral: primary_care_referral)
+            expect(results.map(&:id)).to include('no-location')
+          end
+        end
+
+        context 'nil-safety: provider hash missing specialties' do
+          include_context 'single EPS provider', {
+            id: 'no-specialties',
+            name: 'Dr. Smith @ Primary Care Associates',
+            location: { name: 'x', latitude: 28.08, longitude: -80.60 },
+            features: { is_digital: true, direct_booking: { is_enabled: true } }
+          }
+
+          it 'does not crash and still matches via name' do
+            expect { service.search(referral: primary_care_referral) }.not_to raise_error
+            results = service.search(referral: primary_care_referral)
+            expect(results.map(&:id)).to include('no-specialties')
+          end
+        end
+
+        context 'provider with zero name-like fields matching any pattern' do
+          include_context 'single EPS provider', {
+            id: 'no-match',
+            name: 'Dr. Unrelated @ Unrelated Center',
+            location: { name: 'Unrelated Building', latitude: 28.08, longitude: -80.60 },
+            specialties: [{ id: 'X', name: 'Dermatology' }],
+            features: { is_digital: true, direct_booking: { is_enabled: true } }
+          }
+
+          it 'is dropped from results' do
+            results = service.search(referral: primary_care_referral)
+            eps_results = results.select { |p| p.provider_type == 'eps' }
+            expect(eps_results.map(&:id)).not_to include('no-match')
+          end
+        end
+      end
+    end
+  end
+
+  describe '.default_radius_miles' do
+    it 'returns the Settings value when set' do
+      allow(Settings.vaos.unified_scheduling).to receive(:default_radius_miles).and_return(100)
+      expect(described_class.default_radius_miles).to eq(100)
+    end
+
+    it 'coerces numeric strings (AWS env vars are strings)' do
+      allow(Settings.vaos.unified_scheduling).to receive(:default_radius_miles).and_return('75')
+      expect(described_class.default_radius_miles).to eq(75)
+    end
+
+    it 'falls back to 25 when Settings value is nil' do
+      allow(Settings.vaos.unified_scheduling).to receive(:default_radius_miles).and_return(nil)
+      expect(described_class.default_radius_miles).to eq(25)
+    end
+
+    it 'falls back to 25 when Settings value is blank' do
+      allow(Settings.vaos.unified_scheduling).to receive(:default_radius_miles).and_return('')
+      expect(described_class.default_radius_miles).to eq(25)
+    end
+
+    it 'falls back to 25 when Settings value is zero' do
+      allow(Settings.vaos.unified_scheduling).to receive(:default_radius_miles).and_return(0)
+      expect(described_class.default_radius_miles).to eq(25)
+    end
+
+    it 'falls back to 25 when Settings value is negative (ops misconfiguration guard)' do
+      allow(Settings.vaos.unified_scheduling).to receive(:default_radius_miles).and_return(-5)
+      expect(described_class.default_radius_miles).to eq(25)
+    end
+
+    it 'falls back to 25 when Settings value is a negative numeric string' do
+      allow(Settings.vaos.unified_scheduling).to receive(:default_radius_miles).and_return('-10')
+      expect(described_class.default_radius_miles).to eq(25)
+    end
+
+    it 'falls back to 25 when Settings value is unparseable' do
+      allow(Settings.vaos.unified_scheduling).to receive(:default_radius_miles).and_return('not-a-number')
+      expect(described_class.default_radius_miles).to eq(25)
+    end
+
+    context 'when the Settings value is unparseable' do
+      before do
+        allow(Rails.logger).to receive(:warn)
+        allow(StatsD).to receive(:increment)
+      end
+
+      it 'emits a warn log + StatsD counter so the silent fallback is visible' do
+        allow(Settings.vaos.unified_scheduling).to receive(:default_radius_miles).and_return('not-a-number')
+
+        expect(described_class.default_radius_miles).to eq(25)
+
+        expect(Rails.logger).to have_received(:warn).with(
+          'api.vaos.unified_provider_search.default_radius_miles.invalid_setting',
+          hash_including(fallback: 25, error_class: 'ArgumentError')
+        )
+        expect(StatsD).to have_received(:increment).with(
+          'api.vaos.unified_provider_search.default_radius_miles.invalid_setting',
+          tags: ['error_class:ArgumentError']
+        )
+      end
+
+      it 'logs when the Settings value is an unexpected type (TypeError path)' do
+        allow(Settings.vaos.unified_scheduling).to receive(:default_radius_miles).and_return([25])
+
+        expect(described_class.default_radius_miles).to eq(25)
+
+        expect(Rails.logger).to have_received(:warn).with(
+          'api.vaos.unified_provider_search.default_radius_miles.invalid_setting',
+          hash_including(fallback: 25, error_class: 'TypeError', configured_class: 'Array')
+        )
+      end
+
+      it 'does not log when the Settings value is a valid integer' do
+        allow(Settings.vaos.unified_scheduling).to receive(:default_radius_miles).and_return(50)
+
+        described_class.default_radius_miles
+
+        expect(Rails.logger).not_to have_received(:warn)
+        expect(StatsD).not_to have_received(:increment)
+      end
+
+      it 'also logs when the Settings value is nil (Integer(nil) -> TypeError ' \
+         'surfaces as a missing-config alert)' do
+        allow(Settings.vaos.unified_scheduling).to receive(:default_radius_miles).and_return(nil)
+
+        expect(described_class.default_radius_miles).to eq(25)
+        expect(Rails.logger).to have_received(:warn).with(
+          'api.vaos.unified_provider_search.default_radius_miles.invalid_setting',
+          hash_including(fallback: 25, error_class: 'TypeError')
+        )
+      end
     end
   end
 end

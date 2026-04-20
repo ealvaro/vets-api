@@ -1951,6 +1951,8 @@ vaos:
     encryption:
       hex_iv: <%= ENV['vaos__referral__encryption__hex_iv'] %>
       hex_secret: <%= ENV['vaos__referral__encryption__hex_secret'] %>
+  unified_scheduling:
+    default_radius_miles: <%= ENV['vaos__unified_scheduling__default_radius_miles'] || 25 %>
 vass:
   api_url: <%= ENV['vass__api_url'] %>
   auth_url: https://login.microsoftonline.us

@@ -77,20 +77,20 @@ module VAOS
       end
 
       def build_va_provider
-        vp = va_provider_params
+        provider_params = va_provider_params
         Unified::VAProvider.new(
-          id: vp[:clinic_id],
-          location_id: vp[:location_id],
-          service_type: vp[:clinical_service]
+          id: provider_params[:clinic_id],
+          location_id: provider_params[:location_id],
+          service_type: provider_params[:clinical_service]
         )
       end
 
       def build_eps_provider
-        cp = cc_provider_params
+        provider_params = cc_provider_params
         Unified::EpsProvider.new(
-          id: cp[:provider_service_id],
-          network_id: cp[:network_id],
-          appointment_types: [{ id: cp[:appointment_type_id], is_self_schedulable: true }]
+          id: provider_params[:provider_service_id],
+          network_id: provider_params[:network_id],
+          appointment_types: [{ id: provider_params[:appointment_type_id], is_self_schedulable: true }]
         )
       end
 
@@ -118,9 +118,19 @@ module VAOS
           provider:,
           start_dt:,
           end_dt:,
-          clinical_service: params[:clinical_service],
+          clinical_service: va_clinical_service_for(provider),
           appointment_id: draft_id
         )
+      end
+
+      # Reads the +clinical_service+ value back off the +Unified::VAProvider+
+      # that {#build_va_provider} just constructed. EPS providers don't carry
+      # a +service_type+ and the EPS slot path doesn't use +clinical_service+,
+      # so return nil for them.
+      def va_clinical_service_for(provider)
+        return nil unless provider.is_a?(Unified::VAProvider)
+
+        provider.service_type
       end
 
       def referral_start_date(referral)
