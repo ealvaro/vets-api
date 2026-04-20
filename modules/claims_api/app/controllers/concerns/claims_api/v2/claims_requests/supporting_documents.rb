@@ -5,7 +5,7 @@ module ClaimsApi
     module ClaimsRequests
       module SupportingDocuments
         extend ActiveSupport::Concern
-
+        include ClaimsApi::FilterVADocumentsConcern
         def build_supporting_docs(bgs_claim, ssn)
           return [] if bgs_claim.nil?
 
@@ -22,6 +22,14 @@ module ClaimsApi
           docs = benefits_doc_api.search(params[:id], **identifier)&.dig(:data)
 
           return [] if docs.nil? || docs&.dig(:documents).blank?
+
+          # use filter service to remove VA-generated documents from the list of supporting documents
+          if Flipper.enabled?(:claims_api_add_document_uuid_to_claim)
+            claims_v2_logging('benefits_documents',
+                              message: 'calling benefits documents api (claim_letters_search) to filter VA ' \
+                                       "generated documents for claim_id #{params[:id]} in claims controller v2")
+            docs.merge!(documents: filter_va_documents(docs[:documents], **identifier))
+          end
 
           @supporting_documents = transform_documents(docs)
         end

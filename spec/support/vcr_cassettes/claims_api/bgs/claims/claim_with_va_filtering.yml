@@ -1,0 +1,142 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: "<BGS_BASE_URL>/EBenefitsBnftClaimStatusWebServiceBean/EBenefitsBnftClaimStatusWebService"
+    body:
+      encoding: UTF-8
+      string: |
+        <?xml version="1.0" encoding="UTF-8"?>
+          <env:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:tns="http://claimstatus.services.ebenefits.vba.va.gov/" xmlns:env="http://schemas.xmlsoap.org/soap/envelope/">
+          <env:Header>
+          <wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+            <wsse:UsernameToken>
+              <wsse:Username>VAGOVAPI</wsse:Username>
+            </wsse:UsernameToken>
+            <vaws:VaServiceHeaders xmlns:vaws="http://vbawebservices.vba.va.gov/vawss">
+              <vaws:CLIENT_MACHINE>127.0.0.1</vaws:CLIENT_MACHINE>
+              <vaws:STN_ID>281</vaws:STN_ID>
+              <vaws:applicationName>VAGOVAPI</vaws:applicationName>
+              <vaws:ExternalUid>9198795742</vaws:ExternalUid>
+              <vaws:ExternalKey>9198795742</vaws:ExternalKey>
+            </vaws:VaServiceHeaders>
+          </wsse:Security>
+        </env:Header>
+
+          <env:Body>
+            <tns:findBenefitClaimDetailsByBnftClaimId><bnftClaimId>600782743</bnftClaimId>
+        </tns:findBenefitClaimDetailsByBnftClaimId>
+          </env:Body>
+          </env:Envelope>
+    headers:
+      User-Agent:
+      - "<FARADAY_VERSION>"
+      Content-Type:
+      - text/xml;charset=UTF-8
+      Host:
+      - <BGS_BASE_URL_HOST>
+      Soapaction:
+      - '"findBenefitClaimDetailsByBnftClaimId"'
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 23 Mar 2026 15:11:10 GMT
+      Server:
+      - Apache/2.4.37 (Red Hat Enterprise Linux) OpenSSL/1.1.1k
+      X-Oneagent-Js-Injection:
+      - 'true'
+      Server-Timing:
+      - dtSInfo;desc="0", dtRpid;desc="-1734044839"
+      Transfer-Encoding:
+      - chunked
+      Content-Type:
+      - text/xml; charset=utf-8
+      Strict-Transport-Security:
+      - max-age=16000000; includeSubDomains; preload;
+    body:
+      encoding: UTF-8
+      string: <?xml version='1.0' encoding='UTF-8'?><S:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"
+        xmlns:S="http://schemas.xmlsoap.org/soap/envelope/"><env:Header/><S:Body><ns0:findBenefitClaimDetailsByBnftClaimIdResponse
+        xmlns:ns0="http://claimstatus.services.ebenefits.vba.va.gov/"><BenefitClaimDetailsDTO><attentionNeeded>No</attentionNeeded><baseEndPrdctTypeCd>400</baseEndPrdctTypeCd><benefitClaimId>600782743</benefitClaimId><bnftClaimLcStatus><phaseChngdDt>2025-08-21T14:56:49</phaseChngdDt><phaseType>Complete</phaseType><phaseTypeChangeInd>78</phaseTypeChangeInd></bnftClaimLcStatus><bnftClaimTypeCd>400SUPP</bnftClaimTypeCd><claimCompleteDt>2025-08-21T14:56:49</claimCompleteDt><claimDt>2025-08-20</claimDt><claimStatus>CAN</claimStatus><claimStatusType>Compensation</claimStatusType><contentions>hearing
+        loss (New)</contentions><decisionNotificationSent>No</decisionNotificationSent><developmentLetterSent>Yes</developmentLetterSent><endPrdctTypeCd>408</endPrdctTypeCd><poa>AMERICAN
+        LEGION</poa><programType>CPL</programType><ptcpntClmantId>600045025</ptcpntClmantId><ptcpntVetId>600045025</ptcpntVetId><regionalOfficeJrsdctn>National
+        Work Queue</regionalOfficeJrsdctn><submtrApplcnTypeCd>VBMS</submtrApplcnTypeCd><submtrRoleTypeCd>VBA</submtrRoleTypeCd><tempRegionalOfficeJrsdctn>St.
+        Petersburg</tempRegionalOfficeJrsdctn><wsyswwn><addressLine1>National Work
+        Queue</addressLine1><addressLine2>810 Vermont Avenue NW</addressLine2><addressLine3></addressLine3><city>Washington</city><state>DC</state><zip>20420</zip></wsyswwn></BenefitClaimDetailsDTO></ns0:findBenefitClaimDetailsByBnftClaimIdResponse></S:Body></S:Envelope>
+  recorded_at: Mon, 23 Mar 2026 15:11:09 GMT
+- request:
+    method: post
+    uri: "<BGS_BASE_URL>/TrackedItemService/TrackedItemService"
+    body:
+      encoding: UTF-8
+      string: |
+        <?xml version="1.0" encoding="UTF-8"?>
+          <env:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:tns="http://services.mapd.benefits.vba.va.gov/" xmlns:env="http://schemas.xmlsoap.org/soap/envelope/">
+          <env:Header>
+          <wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+            <wsse:UsernameToken>
+              <wsse:Username>VAGOVAPI</wsse:Username>
+            </wsse:UsernameToken>
+            <vaws:VaServiceHeaders xmlns:vaws="http://vbawebservices.vba.va.gov/vawss">
+              <vaws:CLIENT_MACHINE>127.0.0.1</vaws:CLIENT_MACHINE>
+              <vaws:STN_ID>281</vaws:STN_ID>
+              <vaws:applicationName>VAGOVAPI</vaws:applicationName>
+              <vaws:ExternalUid>9198795742</vaws:ExternalUid>
+              <vaws:ExternalKey>9198795742</vaws:ExternalKey>
+            </vaws:VaServiceHeaders>
+          </wsse:Security>
+        </env:Header>
+
+          <env:Body>
+            <tns:findTrackedItems><claimId>600782743</claimId>
+        </tns:findTrackedItems>
+          </env:Body>
+          </env:Envelope>
+    headers:
+      User-Agent:
+      - "<FARADAY_VERSION>"
+      Content-Type:
+      - text/xml;charset=UTF-8
+      Host:
+      - prepbepbenefits.vba.va.gov
+      Soapaction:
+      - '"findTrackedItems"'
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 23 Mar 2026 15:11:10 GMT
+      Server:
+      - Apache/2.4.37 (Red Hat Enterprise Linux) OpenSSL/1.1.1k
+      X-Oneagent-Js-Injection:
+      - 'true'
+      Server-Timing:
+      - dtSInfo;desc="0", dtRpid;desc="889149263"
+      Transfer-Encoding:
+      - chunked
+      Content-Type:
+      - text/xml; charset=utf-8
+      Strict-Transport-Security:
+      - max-age=16000000; includeSubDomains; preload;
+    body:
+      encoding: UTF-8
+      string: <?xml version='1.0' encoding='UTF-8'?><S:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"
+        xmlns:S="http://schemas.xmlsoap.org/soap/envelope/"><env:Header><work:WorkContext
+        xmlns:work="http://oracle.com/weblogic/soap/workarea/">rO0ABXdJABF3ZWJsb2dpYy5hcHAubWFwZAAAANYAAAAjd2VibG9naWMud29ya2FyZWEuU3RyaW5nV29ya0NvbnRleHQABzEuMTcuODgAAA==</work:WorkContext></env:Header><S:Body><ns0:findTrackedItemsResponse
+        xmlns:ns0="http://services.mapd.benefits.vba.va.gov/"><BenefitClaim><name>BenefitClaim</name><dvlpmtItems><jrnDt>2025-08-21T08:04:05-05:00</jrnDt><name>DevelopmentItem</name><claimId>600782743</claimId><createDt>2025-08-21T08:04:05-05:00</createDt><createPtcpntId>600284159</createPtcpntId><createStnNum>317</createStnNum><docid>1291149</docid><dvlpmtItemId>621134</dvlpmtItemId><dvlpmtTc>CLMNTRQST</dvlpmtTc><reqDt>2025-08-22T00:00:00-05:00</reqDt><shortNm>5103
+        Notice Response</shortNm><stdDevactnId>38953</stdDevactnId><suspnsDt>2025-09-21T00:00:00-05:00</suspnsDt><vbmsDevactionId>370462655</vbmsDevactionId></dvlpmtItems><letters><jrnDt>2025-08-21T08:04:05-05:00</jrnDt><name>Letter</name><clmId>600782743</clmId><docid>1291149</docid><dvlpmtTc>CLMNTRQST</dvlpmtTc><fileSttDt>2025-08-21T00:00:00-05:00</fileSttDt><fileSttTc>DONEDVLPMT</fileSttTc><incldEnclsrInd>N</incldEnclsrInd><outdcmtTc>DV</outdcmtTc><printDt>2025-08-22T00:00:00-05:00</printDt><ptcpntDcmntTn>Receiver</ptcpntDcmntTn><ptcpntId>600045025</ptcpntId><templatTc>VSCNP</templatTc></letters></BenefitClaim></ns0:findTrackedItemsResponse></S:Body></S:Envelope>
+  recorded_at: Mon, 23 Mar 2026 15:11:09 GMT
+recorded_with: VCR 6.4.0

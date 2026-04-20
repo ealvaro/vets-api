@@ -4,8 +4,34 @@ require 'rails_helper'
 require_relative '../../../../rails_helper'
 require 'bd/bd'
 require 'bgs_service/person_web_service'
+require_relative '../../../../support/vcr_helpers'
 
 describe ClaimsApi::V2::ClaimsRequests::SupportingDocuments do
+  # supporting document filtering common methods
+  def pre_filtered_uuids(search_data, letters_data)
+    original_search_uuids = search_data[:data][:documents].to_set { |doc| doc[:documentUuid].gsub(/[{}]/, '') }
+    original_letters_uuids = letters_data[:data][:documents].to_set { |doc| doc[:documentUuid].gsub(/[{}]/, '') }
+    [original_search_uuids, original_letters_uuids]
+  end
+
+  def common_filtering_expectations(controller, claim_id, file_number, original_search_uuids, original_letters_uuids)
+    result = controller.build_supporting_docs(
+      { benefit_claim_details_dto: { benefit_claim_id: claim_id } }, file_number
+    )
+    # Check if there are common documents between search and letters responses
+    common_documents = original_search_uuids & original_letters_uuids
+    expect(common_documents).to be_present
+
+    # Verify filtering occurred - result should equal search count minus filtered documents
+    search_document_count = original_search_uuids.length
+    expected_result_count = search_document_count - common_documents.length
+    expect(result.length).to eq(expected_result_count)
+
+    # Verify VA-generated documents (from letters_data) are not included in the results
+    result_uuids = result.to_set { |doc| doc[:document_uuid].gsub(/[{}]/, '') }
+    expect(result_uuids & original_letters_uuids).to be_empty
+  end
+
   let(:fake_documents_controller_class) do
     Class.new do
       include ClaimsApi::V2::ClaimsRequests::SupportingDocuments
@@ -26,7 +52,7 @@ describe ClaimsApi::V2::ClaimsRequests::SupportingDocuments do
       end
 
       def target_veteran
-        OpenStruct.new(
+        @target_veteran ||= OpenStruct.new(
           icn: '1012667169V030190',
           first_name: 'Ralph',
           last_name: 'Lee',
@@ -167,6 +193,92 @@ describe ClaimsApi::V2::ClaimsRequests::SupportingDocuments do
     it 'calls local bgs services instead of bgs-ext' do
       controller.find_by_ssn(ssn) # rubocop:disable Rails/DynamicFindBy
       expect(person_web_service).to have_received(:find_by_ssn)
+    end
+  end
+
+  describe 'when VA generated document filtering is enabled' do
+    let(:file_number) { '796378782' }
+    let(:participant_id) { '600045025' }
+    let(:claim_id) { '600397218' }
+
+    let(:bd_service) { instance_double(ClaimsApi::BD) }
+
+    let(:search_data) do
+      VcrHelpers.load_vcr_response_data('claims_api/bd/claim_with_mixed_documents_search', 1)
+    end
+    let(:letters_data) do
+      VcrHelpers.load_vcr_response_data('claims_api/bd/claim_with_mixed_documents_letters_search', 1)
+    end
+
+    before do
+      # exepect toggle to be enabled
+      allow(Flipper).to receive(:enabled?).with(:claims_api_add_document_uuid_to_claim).and_return true
+      # stub BD service methods
+      allow(ClaimsApi::BD).to receive(:new).and_return(bd_service)
+      allow(bd_service).to receive(:search).with(claim_id, participant_id:).and_return(search_data)
+      allow(bd_service).to receive(:claim_letters_search).with(
+        file_number: nil, participant_id:
+      ).and_return(letters_data)
+    end
+
+    context 'when searching with a participant_id and bd.search includes VA documents' do
+      before do
+        allow(controller).to receive(:determine_veteran_identifier).and_return({ participant_id: })
+      end
+
+      it 'filters out VA-generated documents from the documents/search response' do
+        # Extract UUIDs before mutation occurs
+        original_search_uuids, original_letters_uuids = pre_filtered_uuids(search_data, letters_data)
+        common_filtering_expectations(controller, claim_id, file_number, original_search_uuids, original_letters_uuids)
+        expect(bd_service).to have_received(:search).with(claim_id, participant_id:)
+        expect(bd_service).to have_received(:claim_letters_search).with(participant_id:, file_number: nil)
+      end
+    end
+
+    context 'when using file_number for search' do
+      let(:participant_id) { nil }
+
+      before do
+        allow(controller).to receive(:determine_veteran_identifier).and_return({ file_number: })
+        # Override the stubs for file_number search
+        allow(bd_service).to receive(:search).with(claim_id, file_number:).and_return(search_data)
+        allow(bd_service).to receive(:claim_letters_search).with(
+          file_number:, participant_id: nil
+        ).and_return(letters_data)
+      end
+
+      it 'uses file_number when participant_id is not available' do
+        # Extract UUIDs before mutation occurs
+        original_search_uuids, original_letters_uuids = pre_filtered_uuids(search_data, letters_data)
+        common_filtering_expectations(controller, claim_id, file_number, original_search_uuids, original_letters_uuids)
+        expect(bd_service).to have_received(:search).with(claim_id, file_number:)
+        expect(bd_service).to have_received(:claim_letters_search).with(file_number:, participant_id: nil)
+      end
+    end
+
+    context 'when no letters are found in claim_letters_search' do
+      let(:empty_letters_data) { { data: { documents: [] } } }
+
+      before do
+        allow(controller).to receive(:determine_veteran_identifier).and_return({ participant_id: })
+        allow(bd_service).to receive(:claim_letters_search).with(
+          file_number: nil, participant_id:
+        ).and_return(empty_letters_data)
+      end
+
+      it 'returns all documents from the documents/search response' do
+        # Extract UUIDs before mutation occurs
+        original_search_uuids, = pre_filtered_uuids(search_data, letters_data)
+
+        result = controller.build_supporting_docs(
+          { benefit_claim_details_dto: { benefit_claim_id: claim_id } }, file_number
+        )
+
+        # Should return all documents since no filtering occurs
+        expect(result.length).to eq(search_data[:data][:documents].length)
+        expect(result.map { |doc| doc[:document_uuid].gsub(/[{}]/, '') }).to match_array(original_search_uuids)
+        expect(bd_service).to have_received(:claim_letters_search).with(participant_id:, file_number: nil)
+      end
     end
   end
 end
