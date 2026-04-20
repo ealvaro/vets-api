@@ -214,9 +214,33 @@ class Swagger::V1::Requests::MedicalCopays
                        type: :string,
                        example: '675-K3FD983'
 
-              property :facility,
-                       type: :string,
-                       example: 'TEST VAMC'
+              property :facility, type: :object do
+                property :name, type: :string, example: 'TEST VAMC'
+
+                property :address, type: :object do
+                  property :addressLine1, type: :string, example: '151 KNOLLCROFT ROAD'
+                  property :addressLine2, type: :string
+                  property :addressLine3, type: :string
+                  property :city, type: :string, example: 'LYONS'
+                  property :state, type: :string, example: 'NJ'
+                  property :postalCode, type: :string, example: '07939-5001'
+                end
+              end
+
+              property :patient, type: :object do
+                property :firstName, type: :string, example: 'Travis'
+                property :middleName, type: :string
+                property :lastName, type: :string, example: 'Jones'
+
+                property :address, type: :object do
+                  property :addressLine1, type: :string, example: '909 Rohan Highlands'
+                  property :addressLine2, type: :string
+                  property :addressLine3, type: :string
+                  property :city, type: :string, example: 'Mesa'
+                  property :state, type: :string, example: 'AZ'
+                  property :postalCode, type: :string, example: '85120'
+                end
+              end
 
               property :billNumber,
                        type: :string,
@@ -232,7 +256,7 @@ class Swagger::V1::Requests::MedicalCopays
 
               property :invoiceDate,
                        type: :string,
-                       example: '2024-01-15'
+                       example: '2024-11-15T10:30:00Z'
 
               property :paymentDueDate,
                        type: :string,
@@ -279,18 +303,35 @@ class Swagger::V1::Requests::MedicalCopays
 
               property :associatedStatements, type: :array do
                 items type: :object do
-                  property :id, type: :string, example: '4-1abZUKu7LncRZi'
-                  property :date, type: :string, example: 'April 30, 2025'
-                  property :compositeId, type: :string, example: 'composite_id'
+                  property :id, type: :string
+                  property :date, type: :string
+                  property :compositeId, type: :string
 
                   property :chargeItems, type: :array do
                     items type: :object do
-                      property :id, type: :string, example: '4-6c9ZE23XQjkAu53'
-                      property :lastUpdatedAt, type: :string, example: '2025-05-30T00:00:00Z'
-                      property :status, type: :string, example: 'billed'
-                      property :code, type: :string, example: 'INTEREST/ADM. CHARGE'
-                      property :occurrenceDateTime, type: :string, example: '2025-05-29T17:10:47Z'
-                      property :enteredDate, type: :string, example: '2025-05-30T17:10:47Z'
+                      property :id, type: :string
+                      property :lastUpdatedAt, type: :string
+                      property :status, type: :string
+                      property :code, type: :string
+                      property :occurrenceDateTime, type: :string
+                      property :enteredDate, type: :string
+                    end
+                  end
+
+                  property :lineItems, type: :array do
+                    items do
+                      property :billingReference, type: :string
+                      property :datePosted, type: :string
+                      property :description, type: :string
+                      property :providerName, type: :string
+
+                      property :priceComponents, type: :array do
+                        items do
+                          property :type, type: :string
+                          property :code, type: :string
+                          property :amount, type: :number, format: :float
+                        end
+                      end
                     end
                   end
                 end
@@ -298,32 +339,53 @@ class Swagger::V1::Requests::MedicalCopays
 
               property :associatedInvoices, type: :array do
                 items type: :object do
-                  property :id, type: :string, example: '4-1abZUKu7LncRZi'
-                  property :date, type: :string, example: 'April 30, 2025'
-                  property :compositeId, type: :string, example: 'composite_id'
+                  property :id, type: :string
+                  property :date, type: :string
+                  property :compositeId, type: :string
+
+                  property :chargeItems, type: :array do
+                    items type: :object do
+                      property :id, type: :string
+                      property :lastUpdatedAt, type: :string
+                      property :status, type: :string
+                      property :code, type: :string
+                      property :occurrenceDateTime, type: :string
+                      property :enteredDate, type: :string
+                    end
+                  end
+
+                  property :lineItems, type: :array do
+                    items do
+                      property :billingReference, type: :string
+                      property :datePosted, type: :string
+                      property :description, type: :string
+                      property :providerName, type: :string
+
+                      property :priceComponents, type: :array do
+                        items do
+                          property :type, type: :string
+                          property :code, type: :string
+                          property :amount, type: :number, format: :float
+                        end
+                      end
+                    end
+                  end
                 end
               end
 
               property :lineItems, type: :array do
                 items do
-                  property :billingReference, type: :string, example: '4-6c9ZE23XQjkA9CC'
-                  property :datePosted, type: :string, example: '2024-01-10'
-                  property :description, type: :string, example: 'Outpatient Care'
-                  property :providerName, type: :string, example: 'TEST VAMC'
+                  property :billingReference, type: :string
+                  property :datePosted, type: :string
+                  property :description, type: :string
+                  property :providerName, type: :string
 
                   property :priceComponents, type: :array do
                     items do
-                      property :type, type: :string, example: 'base'
-                      property :code, type: :string, example: 'Copay Amount'
-                      property :amount, type: :number, format: :float, example: 50.0
+                      property :type, type: :string
+                      property :code, type: :string
+                      property :amount, type: :number, format: :float
                     end
-                  end
-
-                  property :medication, type: :object do
-                    property :medicationName, type: :string, example: 'Lisinopril 10mg Tablet'
-                    property :rxNumber, type: :string, example: 'RX-123456'
-                    property :quantity, type: :number, example: 30
-                    property :daysSupply, type: :integer, example: 30
                   end
                 end
               end
@@ -350,8 +412,8 @@ class Swagger::V1::Requests::MedicalCopays
 
             # Response meta
             property :meta, type: :object do
-              property :line_item_count, type: :integer, example: 3
-              property :payment_count, type: :integer, example: 1
+              property :lineItemCount, type: :integer, example: 3
+              property :paymentCount, type: :integer, example: 1
             end
           end
         end

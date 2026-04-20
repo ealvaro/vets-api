@@ -61,6 +61,57 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
                   'occurrence_date_time' => '2024-12-29T17:10:47Z',
                   'entered_date' => '2024-12-30T17:10:47Z'
                 }
+              ],
+              'lineItem' => [
+                {
+                  'chargeItemReference' => {
+                    'reference' => 'https://test.gov/services/health-care-costs-coverage/v0/r4/ChargeItem/4-6cXQjkA9CC',
+                    'display' => 'DG OPT COPAY NEW'
+                  },
+                  'priceComponent' => [
+                    { 'type' => 'base', 'code' => { 'text' => 'Total Charge' }, 'amount' => { 'value' => 76.19 } }
+                  ]
+                },
+                {
+                  'chargeItemReference' => {
+                    'reference' => 'https://test.gov/services/health-care-costs-coverage/v0/r4/ChargeItem/4-6cXQm5UhWz',
+                    'display' => 'INTEREST/ADM. CHARGE'
+                  },
+                  'priceComponent' => [
+                    {
+                      'type' => 'surcharge',
+                      'code' => { 'text' => 'Interest Charged' }, 'amount' => { 'value' => 0.99 }
+                    },
+                    {
+                      'type' => 'surcharge',
+                      'code' => { 'text' => 'Administrative Charged' }, 'amount' => { 'value' => 0.59 }
+                    },
+                    {
+                      'type' => 'informational',
+                      'code' => { 'text' => 'Total Charge' }, 'amount' => { 'value' => 1.58 }
+                    }
+                  ]
+                },
+                {
+                  'chargeItemReference' => {
+                    'reference' => 'https://test.gov/services/health-care-costs-coverage/v0/r4/ChargeItem/4-6cXQjkAu53',
+                    'display' => 'INTEREST/ADM. CHARGE'
+                  },
+                  'priceComponent' => [
+                    {
+                      'type' => 'surcharge',
+                      'code' => { 'text' => 'Interest Charged' }, 'amount' => { 'value' => 0.99 }
+                    },
+                    {
+                      'type' => 'surcharge',
+                      'code' => { 'text' => 'Administrative Charged' }, 'amount' => { 'value' => 0.59 }
+                    },
+                    {
+                      'type' => 'informational',
+                      'code' => { 'text' => 'Total Charge' }, 'amount' => { 'value' => 1.58 }
+                    }
+                  ]
+                }
               ]
             }
           },
@@ -127,13 +178,15 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
               'id' => '123',
               'composite_id' => '4-5pFm5Av0PHt-2-2026',
               'date' => 'February 1, 2026',
-              'charge_items' => []
+              'charge_items' => [],
+              'line_items' => []
             },
             {
               'id' => '123',
               'composite_id' => '4-5pFm5Av0PHt-1-2026',
               'date' => 'January 1, 2026',
-              'charge_items' => array_including(a_hash_including('id' => '4-6c9ZE23XQjkALyz'))
+              'charge_items' => array_including(a_hash_including('id' => '4-6c9ZE23XQjkALyz')),
+              'line_items' => a_collection_including(a_hash_including(billing_reference: '4-6cXQjkA9CC'))
             }
           ]
         )
@@ -142,18 +195,26 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
       it 'creates associated_invoices' do
         expect(subject.associated_invoices).to match(
           [
-            {
+            a_hash_including(
               'id' => '123',
               'composite_id' => '4-5pFm5Av0PHt-2-2026',
               'date' => 'February 1, 2026',
-              'charge_items' => an_instance_of(Array)
-            },
-            {
+              'charge_items' => an_instance_of(Array),
+              'line_items' => an_instance_of(Array)
+            ),
+            a_hash_including(
               'id' => '123',
               'composite_id' => '4-5pFm5Av0PHt-1-2026',
               'date' => 'January 1, 2026',
-              'charge_items' => array_including(a_hash_including('id' => '4-6c9ZE23XQjkALyz'))
-            }
+              'charge_items' => a_collection_including(
+                a_hash_including('id' => '4-6c9ZE23XQjkALyz')
+              ),
+              'line_items' => a_collection_including(
+                a_hash_including(
+                  billing_reference: '4-6cXQjkA9CC'
+                )
+              )
+            )
           ]
         )
       end
