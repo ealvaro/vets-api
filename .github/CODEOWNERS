@@ -830,6 +830,7 @@ config/initializers/cookie_rotation.rb @department-of-veterans-affairs/backend-r
 config/initializers/core_extensions.rb @department-of-veterans-affairs/backend-review-group
 config/initializers/datadog.rb @department-of-veterans-affairs/backend-review-group
 config/initializers/date_formats.rb @department-of-veterans-affairs/octo-identity
+config/initializers/disable_runner.rb @department-of-veterans-affairs/backend-review-group
 config/initializers/faraday_middleware.rb @department-of-veterans-affairs/backend-review-group
 config/initializers/fhir_client_patch.rb @department-of-veterans-affairs/vfs-mhv-integration @department-of-veterans-affairs/backend-review-group
 config/initializers/filter_parameter_logging.rb @department-of-veterans-affairs/backend-review-group
@@ -1283,6 +1284,7 @@ rakelib/decision_review_repl.rb @department-of-veterans-affairs/vfs-authenticate
 rakelib/decision_reviews_recovered_failures_remediation.rake @department-of-veterans-affairs/benefits-decision-reviews-be @department-of-veterans-affairs/backend-review-group
 rakelib/remediation_batch_upload.rake @department-of-veterans-affairs/octo-benefits-portfolio-code-reviewers @department-of-veterans-affairs/backend-review-group
 rakelib/education_benefits_submission.rake @department-of-veterans-affairs/backend-review-group @department-of-veterans-affairs/govcio-vfep-codereviewers
+rakelib/expiry_scanner.rake @department-of-veterans-affairs/backend-review-group
 rakelib/form526.rake @department-of-veterans-affairs/disability-benefits @department-of-veterans-affairs/backend-review-group
 rakelib/github_stats.rake @department-of-veterans-affairs/backend-review-group
 rakelib/import_disability_contentions.rake @department-of-veterans-affairs/disability-benefits @department-of-veterans-affairs/backend-review-group
