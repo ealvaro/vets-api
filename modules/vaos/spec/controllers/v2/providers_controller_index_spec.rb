@@ -33,7 +33,6 @@ RSpec.describe VAOS::V2::ProvidersController, type: :request do
     let(:eps_provider) do
       VAOS::V2::Unified::EpsProvider.new(
         id: '9mN718pH',
-        provider_service_id: '9mN718pH',
         name: 'Dr. Bones @ Melbourne Medical',
         address: { street1: '1105 Palmetto Ave', city: 'Melbourne', state: 'FL', zip: '32901' },
         phone: '555-555-0001',
@@ -81,7 +80,7 @@ RSpec.describe VAOS::V2::ProvidersController, type: :request do
 
         body = JSON.parse(response.body)
         types = body['data'].map { |p| p['attributes']['providerType'] }
-        expect(types).to contain_exactly('community_care', 'va')
+        expect(types).to contain_exactly('eps', 'va')
       end
 
       it 'marks the referral provider with isReferralProvider' do

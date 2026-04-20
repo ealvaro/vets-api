@@ -9,6 +9,7 @@ module VAOS
       before_action :authorize_with_facilities
 
       include VAOS::CommunityCareConstants
+      include VAOS::FacilityConstants
 
       # Local constants for this controller
       PARTIAL_RESPONSE_METRIC = 'api.vaos.va_mobile.response.partial'
@@ -18,7 +19,6 @@ module VAOS
       APPT_CREATION_FAILURE_METRIC = "#{STATSD_PREFIX}.appointment_creation.failure".freeze
       APPT_CREATION_DURATION_METRIC = "#{STATSD_PREFIX}.appointment_creation.duration".freeze
       PAP_COMPLIANCE_TELE = 'PAP COMPLIANCE/TELE'
-      FACILITY_ERROR_MSG = 'Error fetching facility details'
       APPT_INDEX_VAOS = "GET '/vaos/v1/patients/<icn>/appointments'"
       APPT_INDEX_VPG = "GET '/vpg/v1/patients/<icn>/appointments'"
       APPT_SHOW_VAOS = "GET '/vaos/v1/patients/<icn>/appointments/<id>'"

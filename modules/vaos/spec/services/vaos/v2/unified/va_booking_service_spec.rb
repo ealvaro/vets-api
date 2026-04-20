@@ -98,7 +98,7 @@ RSpec.describe VAOS::V2::Unified::VABookingService do
     end
 
     context 'when the provider is not a VAProvider' do
-      let(:provider) { VAOS::V2::Unified::EpsProvider.new(id: 'x', name: 'CC', provider_service_id: '1', network_id: 'n') }
+      let(:provider) { VAOS::V2::Unified::EpsProvider.new(id: 'x', name: 'CC', network_id: 'n') }
 
       it 'raises BookingArgumentError before calling post_appointment' do
         expect(appointments_service).not_to receive(:post_appointment)

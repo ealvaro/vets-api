@@ -4,12 +4,15 @@ module VAOS
   module V2
     module Unified
       class EpsProvider < BaseProvider
-        attr_accessor :provider_service_id, :network_id, :npi, :specialties,
+        attr_accessor :network_id, :npi, :specialties,
                       :digital_booking_features, :appointment_types
+
+        alias provider_service_id id
+        alias provider_service_id= id=
 
         def initialize(attrs = {})
           super
-          self.provider_type = 'community_care'
+          self.provider_type = 'eps'
         end
 
         ##
@@ -49,7 +52,6 @@ module VAOS
 
           new(
             id: provider[:id],
-            provider_service_id: provider[:id],
             name: provider[:name],
             facility_name: practice_name,
             address: parse_eps_address(location[:address]),

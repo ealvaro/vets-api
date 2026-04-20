@@ -134,10 +134,10 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
       end
     end
 
-    context 'with an EPS (community_care) provider' do
+    context 'with an EPS provider' do
       let(:eps_params) do
         {
-          provider_type: 'community_care',
+          provider_type: 'eps',
           slot_id: 'eps-slot-xyz|prov|2026-04-15T10:00:00Z|30m0s',
           provider_service_id: 'prov-789',
           network_id: 'sandbox-net-1',
@@ -167,7 +167,7 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
         body = JSON.parse(response.body)
         expect(body['data']['id']).to eq('draft-001')
         expect(body['data']['type']).to eq('unified_booking')
-        expect(body['data']['attributes']['provider_type']).to eq('community_care')
+        expect(body['data']['attributes']['provider_type']).to eq('eps')
         expect(body['data']['attributes']['status']).to eq('booked')
       end
 

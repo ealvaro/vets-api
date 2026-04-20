@@ -521,16 +521,17 @@ RSpec.describe Vass::V0::Session, type: :model do
 
   describe '#create_authenticated_session' do
     let(:jti) { SecureRandom.uuid }
-    let(:metadata) { { edipi: '1234567890', veteran_id: uuid } }
+    let(:metadata) { { edipi: '1234567890', veteran_id: uuid, email: 'veteran@example.com' } }
 
-    it 'creates session with veteran metadata and jti from Redis' do
+    it 'creates session with veteran metadata, email, and jti from Redis' do
       session = described_class.new(uuid:, redis_client:)
       allow(redis_client).to receive(:veteran_metadata).with(uuid:).and_return(metadata)
       expect(redis_client).to receive(:save_session).with(
         uuid:,
         jti:,
         edipi: '1234567890',
-        veteran_id: uuid
+        veteran_id: uuid,
+        email: 'veteran@example.com'
       )
       session.create_authenticated_session(jti:)
     end

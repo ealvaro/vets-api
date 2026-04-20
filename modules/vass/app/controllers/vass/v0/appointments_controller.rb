@@ -167,7 +167,8 @@ module Vass
       #   {
       #     "topics": ["67e0bd9f-5e53-f011-bec2-001dd806389e", "78f1ce0a-6f64-g122-cfd3-112ee917462f"],
       #     "dtStartUtc": "2026-01-10T10:00:00Z",
-      #     "dtEndUtc": "2026-01-10T10:30:00Z"
+      #     "dtEndUtc": "2026-01-10T10:30:00Z",
+      #     "timeZone": "America/New_York"
       #   }
       #
       # @example Response
@@ -290,6 +291,8 @@ module Vass
           return render_error('missing_edipi', 'Veteran EDIPI not found. Please re-authenticate.', :unauthorized)
         end
 
+        @veteran_contact_email = session_data&.fetch(:email, nil)
+
         @appointments_service = Vass::AppointmentsService.build(
           edipi:,
           correlation_id: permitted_params[:correlation_id]
@@ -302,7 +305,7 @@ module Vass
       # @return [ActionController::Parameters] Permitted parameters
       #
       def permitted_params
-        params.permit(:correlation_id, :appointment_id, :dt_start_utc, :dt_end_utc, topics: [])
+        params.permit(:correlation_id, :appointment_id, :dt_start_utc, :dt_end_utc, :time_zone, topics: [])
       end
 
       ##
@@ -412,7 +415,9 @@ module Vass
             time_start_utc: permitted_params[:dt_start_utc],
             time_end_utc: permitted_params[:dt_end_utc],
             appointment_id:,
-            selected_agent_skills: permitted_params[:topics]
+            selected_agent_skills: permitted_params[:topics],
+            veteran_contact_email: @veteran_contact_email,
+            time_zone: permitted_params[:time_zone]
           }
         )
       end

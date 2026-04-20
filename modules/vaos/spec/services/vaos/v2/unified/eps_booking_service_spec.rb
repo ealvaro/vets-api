@@ -6,9 +6,8 @@ RSpec.describe VAOS::V2::Unified::EpsBookingService do
   let(:user) { build(:user, :vaos) }
   let(:provider) do
     VAOS::V2::Unified::EpsProvider.new(
-      id: 'ps-1',
+      id: 'provider-svc-99',
       name: 'CC Provider',
-      provider_service_id: 'provider-svc-99',
       network_id: 'network-88'
     )
   end
@@ -66,7 +65,7 @@ RSpec.describe VAOS::V2::Unified::EpsBookingService do
 
       expect(result).to include(
         appointment_id: 'eps-draft-1',
-        provider_type: 'community_care',
+        provider_type: 'eps',
         status: 'booked',
         start: '2026-04-10T15:00:00Z'
       )
@@ -178,7 +177,7 @@ RSpec.describe VAOS::V2::Unified::EpsBookingService do
 
     context 'when network_id cannot be resolved' do
       let(:provider) do
-        VAOS::V2::Unified::EpsProvider.new(id: 'ps-1', name: 'X', provider_service_id: 'p1', network_id: nil)
+        VAOS::V2::Unified::EpsProvider.new(id: 'p1', name: 'X', network_id: nil)
       end
 
       it 'raises BookingArgumentError' do
@@ -190,7 +189,7 @@ RSpec.describe VAOS::V2::Unified::EpsBookingService do
 
     context 'when provider_service_id cannot be resolved' do
       let(:provider) do
-        VAOS::V2::Unified::EpsProvider.new(id: 'ps-1', name: 'X', provider_service_id: nil, network_id: 'net-1')
+        VAOS::V2::Unified::EpsProvider.new(id: nil, name: 'X', network_id: 'net-1')
       end
       let(:slot) { VAOS::V2::Unified::EpsSlot.new(id: 'slot-1', start: '2026-04-10T15:00:00Z') }
 
@@ -235,13 +234,13 @@ RSpec.describe VAOS::V2::Unified::EpsBookingService do
         expect(StatsD).to have_received(:increment).with(
           'api.vaos.unified_booking.failure',
           tags: [
-            'provider_type:community_care',
+            'provider_type:eps',
             'error_type:backend_service_exception'
           ]
         )
         expect(Rails.logger).to have_received(:error).with(
           'api.vaos.unified_booking: unified booking request failed',
-          hash_including(error_class: 'Common::Exceptions::BackendServiceException', provider_type: 'community_care')
+          hash_including(error_class: 'Common::Exceptions::BackendServiceException', provider_type: 'eps')
         )
       end
 
@@ -269,13 +268,13 @@ RSpec.describe VAOS::V2::Unified::EpsBookingService do
         expect(StatsD).to have_received(:increment).with(
           'api.vaos.unified_booking.failure',
           tags: [
-            'provider_type:community_care',
+            'provider_type:eps',
             'error_type:backend_service_exception'
           ]
         )
         expect(Rails.logger).to have_received(:error).with(
           'api.vaos.unified_booking: unified booking request failed',
-          hash_including(error_class: 'Common::Exceptions::BackendServiceException', provider_type: 'community_care')
+          hash_including(error_class: 'Common::Exceptions::BackendServiceException', provider_type: 'eps')
         )
       end
     end

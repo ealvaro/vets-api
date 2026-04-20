@@ -89,7 +89,7 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
 
       expect(results.size).to eq(2)
       provider_types = results.map(&:provider_type)
-      expect(provider_types).to include('va', 'community_care')
+      expect(provider_types).to include('va', 'eps')
       va = results.find { |p| p.provider_type == 'va' }
       expect(va.id).to eq('455')
       expect(va.location_id).to eq('983')
@@ -99,7 +99,7 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
       results = service.search(referral:)
 
       first = results.first
-      expect(first.provider_type).to eq('community_care')
+      expect(first.provider_type).to eq('eps')
       expect(first.npi).to eq('91560381x')
     end
 
@@ -129,7 +129,7 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
       remaining = results.drop(1)
       distances = remaining.map(&:distance_from_user)
       expect(distances).to eq(distances.sort)
-      expect(remaining.map(&:provider_type)).to eq(%w[va community_care])
+      expect(remaining.map(&:provider_type)).to eq(%w[va eps])
     end
 
     it 'calls Lighthouse with correct parameters' do
@@ -190,7 +190,7 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
       results = service.search(referral:)
 
       expect(results.size).to eq(1)
-      expect(results.first.provider_type).to eq('community_care')
+      expect(results.first.provider_type).to eq('eps')
     end
 
     it 'returns only VA providers when EPS fails' do
@@ -257,7 +257,7 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
 
       results = service.search(referral:)
 
-      expect(results.map(&:provider_type)).to eq(['community_care'])
+      expect(results.map(&:provider_type)).to eq(['eps'])
     end
 
     it 'uses the default 25-mile radius' do

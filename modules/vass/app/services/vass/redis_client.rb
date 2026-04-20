@@ -273,11 +273,12 @@ module Vass
     # @param veteran_id [String] Veteran ID in VASS system
     # @return [Boolean] true if write succeeds
     #
-    def save_session(uuid:, jti:, edipi:, veteran_id:)
+    def save_session(uuid:, jti:, edipi:, veteran_id:, email: nil)
       session_data = {
         jti:,
         edipi:,
-        veteran_id:
+        veteran_id:,
+        email:
       }
 
       with_redis_error_handling do

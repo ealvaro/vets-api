@@ -26,6 +26,7 @@ VAOS::Engine.routes.draw do
 
     # Unified scheduling (CC Hybrid: VA + EPS via referral flow)
     get '/provider_slots', to: 'unified_slots#index'
+    get '/unified_bookings/:id', to: 'unified_bookings#show'
     post '/unified_bookings', to: 'unified_bookings#create'
 
     # Referrals routes

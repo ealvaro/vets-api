@@ -330,6 +330,32 @@ describe Vass::RedisClient do
       expect(session_data[:edipi]).to eq(edipi)
       expect(session_data[:veteran_id]).to eq(veteran_id)
     end
+
+    it 'stores email when provided' do
+      email = 'veteran@example.com'
+      redis_client.save_session(
+        uuid:,
+        jti:,
+        edipi:,
+        veteran_id:,
+        email:
+      )
+
+      session_data = redis_client.session(uuid:)
+      expect(session_data[:email]).to eq(email)
+    end
+
+    it 'stores nil email when not provided' do
+      redis_client.save_session(
+        uuid:,
+        jti:,
+        edipi:,
+        veteran_id:
+      )
+
+      session_data = redis_client.session(uuid:)
+      expect(session_data[:email]).to be_nil
+    end
   end
 
   describe '#session' do

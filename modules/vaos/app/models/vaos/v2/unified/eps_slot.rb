@@ -8,7 +8,7 @@ module VAOS
 
         def initialize(attrs = {})
           super
-          self.provider_type = 'community_care'
+          self.provider_type = 'eps'
         end
 
         # Builds an EpsSlot from an EPS slot response (Hash).

@@ -312,7 +312,8 @@ module Vass
           uuid:,
           jti:,
           edipi: metadata[:edipi],
-          veteran_id: metadata[:veteran_id]
+          veteran_id: metadata[:veteran_id],
+          email: metadata[:email]
         )
       end
 

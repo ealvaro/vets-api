@@ -9,7 +9,7 @@ module VAOS
 
       STATSD_KEY_PREFIX = 'api.vaos.unified_slots'
 
-      VALID_PROVIDER_TYPES = %w[va community_care].freeze
+      VALID_PROVIDER_TYPES = %w[va eps].freeze
 
       def index
         validate_provider_type!
@@ -71,7 +71,7 @@ module VAOS
         case provider_type
         when 'va'
           build_va_provider
-        when 'community_care'
+        when 'eps'
           build_eps_provider
         end
       end
@@ -89,14 +89,13 @@ module VAOS
         cp = cc_provider_params
         Unified::EpsProvider.new(
           id: cp[:provider_service_id],
-          provider_service_id: cp[:provider_service_id],
           network_id: cp[:network_id],
           appointment_types: [{ id: cp[:appointment_type_id], is_self_schedulable: true }]
         )
       end
 
       def maybe_create_draft(referral)
-        return nil unless provider_type == 'community_care'
+        return nil unless provider_type == 'eps'
 
         draft = eps_appointment_service.create_draft_appointment(referral_id: referral.referral_number)
 

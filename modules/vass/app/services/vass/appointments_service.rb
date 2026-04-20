@@ -98,6 +98,8 @@ module Vass
     # @option appointment_params [Time, String] :time_end_utc Appointment end time
     # @option appointment_params [String] :appointment_id Appointment ID (optional)
     # @option appointment_params [Array<String>] :selected_agent_skills Selected agent skill IDs
+    # @option appointment_params [String] :veteran_contact_email Veteran's contact email for notifications
+    # @option appointment_params [String] :time_zone Veteran's time zone (e.g., "America/New_York")
     #
     # @return [Hash] Created appointment data with appointment ID
     #
@@ -118,7 +120,9 @@ module Vass
         timeStartUTC: format_datetime(appointment_params[:time_start_utc]),
         timeEndUTC: format_datetime(appointment_params[:time_end_utc]),
         appointmentId: appointment_params[:appointment_id],
-        selectedAgentSkills: appointment_params[:selected_agent_skills]
+        selectedAgentSkills: appointment_params[:selected_agent_skills],
+        veteranContactEmail: appointment_params[:veteran_contact_email],
+        timeZone: appointment_params[:time_zone]
       }.compact
 
       response = client.save_appointment(

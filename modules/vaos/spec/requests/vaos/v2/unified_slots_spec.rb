@@ -47,7 +47,7 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
   end
 
   describe 'GET /vaos/v2/provider_slots' do
-    context 'with community_care provider type' do
+    context 'with eps provider type' do
       before do
         allow(Eps::AppointmentService).to receive(:new).and_return(mock_eps_appt_service)
         allow(mock_eps_appt_service).to receive(:create_draft_appointment).and_return(mock_draft_response)
@@ -58,7 +58,7 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
       let(:base_params) do
         {
           referral_id: 'encrypted-ref-id',
-          provider_type: 'community_care',
+          provider_type: 'eps',
           provider_service_id: 'prov-789',
           appointment_type_id: 'ov',
           network_id: 'sandboxnetwork-5vuTac8v'
@@ -77,7 +77,7 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
         provider = data['attributes']['provider']
         expect(provider['id']).to eq('prov-789')
         expect(provider['type']).to eq('unified_provider')
-        expect(provider['attributes']['providerType']).to eq('community_care')
+        expect(provider['attributes']['providerType']).to eq('eps')
         expect(provider['attributes']['providerServiceId']).to eq('prov-789')
         expect(provider['attributes']['networkId']).to eq('sandboxnetwork-5vuTac8v')
 
@@ -240,7 +240,7 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
     context 'with missing or invalid params' do
       it 'returns 400 when referral_id is missing' do
         get('/vaos/v2/provider_slots',
-            params: { provider_service_id: 'prov-789', provider_type: 'community_care',
+            params: { provider_service_id: 'prov-789', provider_type: 'eps',
                       appointment_type_id: 'ov' }, headers:)
 
         expect(response).to have_http_status(:bad_request)
@@ -269,7 +269,7 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
       it 'returns 403' do
         get('/vaos/v2/provider_slots',
             params: { referral_id: 'encrypted-ref-id', provider_service_id: 'prov-789',
-                      provider_type: 'community_care', appointment_type_id: 'ov' },
+                      provider_type: 'eps', appointment_type_id: 'ov' },
             headers:)
 
         expect(response).to have_http_status(:forbidden)

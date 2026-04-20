@@ -4,9 +4,9 @@ require 'rails_helper'
 
 RSpec.describe VAOS::V2::Unified::EpsProvider do
   describe '#initialize' do
-    it 'sets provider_type to community_care' do
+    it 'sets provider_type to eps' do
       provider = described_class.new
-      expect(provider.provider_type).to eq('community_care')
+      expect(provider.provider_type).to eq('eps')
     end
   end
 
@@ -49,7 +49,7 @@ RSpec.describe VAOS::V2::Unified::EpsProvider do
       expect(provider.id).to eq('9mN718pH')
       expect(provider.provider_service_id).to eq('9mN718pH')
       expect(provider.name).to eq('Dr. Bones @ FHA South Melbourne Medical Complex')
-      expect(provider.provider_type).to eq('community_care')
+      expect(provider.provider_type).to eq('eps')
       expect(provider.latitude).to eq(28.08061)
       expect(provider.longitude).to eq(-80.60322)
       expect(provider.phone).to eq('555-555-0001')
@@ -70,7 +70,7 @@ RSpec.describe VAOS::V2::Unified::EpsProvider do
       provider = described_class.from_eps_provider_service(OpenStruct.new(eps_provider))
 
       expect(provider.id).to eq('9mN718pH')
-      expect(provider.provider_type).to eq('community_care')
+      expect(provider.provider_type).to eq('eps')
     end
 
     it 'handles missing contact details' do

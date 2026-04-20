@@ -4,9 +4,9 @@ require 'rails_helper'
 
 RSpec.describe VAOS::V2::Unified::EpsSlot do
   describe '#initialize' do
-    it 'sets provider_type to community_care' do
+    it 'sets provider_type to eps' do
       slot = described_class.new
-      expect(slot.provider_type).to eq('community_care')
+      expect(slot.provider_type).to eq('eps')
     end
   end
 
@@ -32,7 +32,7 @@ RSpec.describe VAOS::V2::Unified::EpsSlot do
       expect(slot.start).to eq('2025-01-02T11:00:00Z')
       expect(slot.end).to eq('2025-01-02T11:30:00Z')
       expect(slot.provider_id).to eq('9mN718pH')
-      expect(slot.provider_type).to eq('community_care')
+      expect(slot.provider_type).to eq('eps')
       expect(slot.provider_service_id).to eq('9mN718pH')
     end
 
@@ -40,7 +40,7 @@ RSpec.describe VAOS::V2::Unified::EpsSlot do
       slot = described_class.from_eps_slot(OpenStruct.new(eps_slot))
 
       expect(slot.id).to include('5vuTac8v-practitioner')
-      expect(slot.provider_type).to eq('community_care')
+      expect(slot.provider_type).to eq('eps')
     end
 
     it 'handles missing provider_service_id gracefully' do

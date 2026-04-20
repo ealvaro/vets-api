@@ -105,7 +105,6 @@ RSpec.describe VAOS::V2::Unified::SlotsService do
       let(:provider) do
         VAOS::V2::Unified::EpsProvider.new(
           id: '9mN718pH',
-          provider_service_id: '9mN718pH',
           appointment_types:
         )
       end

@@ -58,7 +58,7 @@ RSpec.describe VAOS::V2::UnifiedProviderSerializer do
       expect(result[:id]).to eq('9mN718pH')
       expect(result[:attributes][:name]).to eq('Dr. Bones @ Melbourne Medical')
       expect(result[:attributes][:facilityName]).to eq('Melbourne Medical')
-      expect(result[:attributes][:providerType]).to eq('community_care')
+      expect(result[:attributes][:providerType]).to eq('eps')
       expect(result[:attributes]).not_to have_key(:locationId)
       expect(result[:attributes]).not_to have_key(:clinicId)
     end

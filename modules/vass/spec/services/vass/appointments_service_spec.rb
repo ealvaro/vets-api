@@ -87,6 +87,53 @@ describe Vass::AppointmentsService do
         end
       end
     end
+
+    context 'when veteran_contact_email and time_zone are provided' do
+      let(:client) { instance_double(Vass::Client) }
+      let(:service_with_mock_client) do
+        service = described_class.build(edipi:, correlation_id:)
+        allow(service).to receive(:client).and_return(client)
+        service
+      end
+
+      let(:params_with_contact) do
+        appointment_params.merge(
+          veteran_contact_email: 'veteran@example.com',
+          time_zone: 'America/New_York'
+        )
+      end
+
+      it 'includes veteranContactEmail and timeZone in the request' do
+        expect(client).to receive(:save_appointment).with(
+          edipi:,
+          appointment_data: hash_including(
+            veteranContactEmail: 'veteran@example.com',
+            timeZone: 'America/New_York'
+          )
+        ).and_return(double(body: { 'success' => true, 'data' => { 'appointment_id' => 'appt-123' } }))
+
+        service_with_mock_client.save_appointment(appointment_params: params_with_contact)
+      end
+    end
+
+    context 'when veteran_contact_email and time_zone are nil' do
+      let(:client) { instance_double(Vass::Client) }
+      let(:service_with_mock_client) do
+        service = described_class.build(edipi:, correlation_id:)
+        allow(service).to receive(:client).and_return(client)
+        service
+      end
+
+      it 'excludes veteranContactEmail and timeZone from the request via compact' do
+        expect(client).to receive(:save_appointment) do |args|
+          expect(args[:appointment_data]).not_to have_key(:veteranContactEmail)
+          expect(args[:appointment_data]).not_to have_key(:timeZone)
+          double(body: { 'success' => true, 'data' => { 'appointment_id' => 'appt-123' } })
+        end
+
+        service_with_mock_client.save_appointment(appointment_params:)
+      end
+    end
   end
 
   describe '#cancel_appointment' do
