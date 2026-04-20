@@ -29,7 +29,7 @@ module ClaimsApi
         poa_form.save
         process.update!(step_status: 'SUCCESS', error_messages: [], completed_at: Time.zone.now)
 
-        ClaimsApi::Logger.log('poa', poa_id: poa_form.id, detail: 'BIRLS Success')
+        ClaimsApi::Logger.log('poa', poa_id: poa_form.id, message: 'BIRLS Success')
 
         ClaimsApi::PoaVBMSUpdater.perform_async(poa_form.id, rep_id)
       else
@@ -39,7 +39,7 @@ module ClaimsApi
         process.update!(step_status: 'FAILED',
                         error_messages: [{ title: 'BGS Error',
                                            detail: poa_form.vbms_error_message }])
-        ClaimsApi::Logger.log('poa', poa_id: poa_form.id, detail: 'BIRLS Failed', error: response[:return_code])
+        ClaimsApi::Logger.log('poa', poa_id: poa_form.id, message: 'BIRLS Failed', error: response[:return_code])
       end
 
     # handle exceptions thrown from soap_error_handler.rb with requests to BGS

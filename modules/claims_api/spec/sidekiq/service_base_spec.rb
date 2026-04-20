@@ -196,20 +196,20 @@ RSpec.describe ClaimsApi::ServiceBase do
   end
 
   describe '#log_job_progress' do
-    let(:detail) { 'PDF mapper succeeded' }
+    let(:message) { 'PDF mapper succeeded' }
 
     it 'logs job progress' do
-      expect(ClaimsApi::Logger).to receive(:log).with('claims_api_sidekiq_service_base', claim_id: claim.id, detail:)
+      expect(ClaimsApi::Logger).to receive(:log).with('claims_api_sidekiq_service_base', claim_id: claim.id, message:)
 
-      service.send(:log_job_progress, claim.id, detail)
+      service.send(:log_job_progress, claim.id, message)
     end
 
     it 'logs job progress with transaction_id when provided' do
       transaction_id = '00000000-0000-0000-000000000000'
-      expect(ClaimsApi::Logger).to receive(:log).with('claims_api_sidekiq_service_base', claim_id: claim.id, detail:,
+      expect(ClaimsApi::Logger).to receive(:log).with('claims_api_sidekiq_service_base', claim_id: claim.id, message:,
                                                                                          transaction_id:)
 
-      service.send(:log_job_progress, claim.id, detail, transaction_id)
+      service.send(:log_job_progress, claim.id, message, transaction_id)
     end
   end
 

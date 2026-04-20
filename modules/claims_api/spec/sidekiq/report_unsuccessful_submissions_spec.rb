@@ -81,7 +81,7 @@ RSpec.describe ClaimsApi::ReportUnsuccessfulSubmissions, type: :job do
         expect(ClaimsApi::Logger).to receive(:log).with(
           'claims_api_retries_exhausted',
           record_id: nil,
-          detail: "Job retries exhausted for #{described_class}",
+          message: "Job retries exhausted for #{described_class}",
           error: error_msg
         )
       end

@@ -98,7 +98,7 @@ describe ClaimsApi::BD do
       it 'returns empty hash and logs error when neither participant_id nor file_number is provided' do
         expect(ClaimsApi::Logger).to receive(:log).with(
           'benefits_documents',
-          hash_including(detail: /Either participant_id or file_number must be provided/)
+          hash_including(message: /Either participant_id or file_number must be provided/)
         )
         result = subject.search(claim_id)
         expect(result).to eq({})
@@ -383,7 +383,7 @@ describe ClaimsApi::BD do
         subject.search(claim_id, file_number:)
 
         expect(ClaimsApi::Logger).to have_received(:log)
-          .with('benefits_documents', { detail: "/search failure for claimId #{claim_id}, Gateway timeout" })
+          .with('benefits_documents', { message: "/search failure for claimId #{claim_id}, Gateway timeout" })
       end
     end
   end

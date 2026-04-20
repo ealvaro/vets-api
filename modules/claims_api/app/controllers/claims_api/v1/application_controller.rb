@@ -150,7 +150,7 @@ module ClaimsApi
           external_uid: target_veteran.participant_id,
           external_key: target_veteran.participant_id
         )
-        ClaimsApi::Logger.log('poa', detail: 'bgs-ext service built')
+        ClaimsApi::Logger.log('poa', message: 'bgs-ext service built')
         bgs
       end
 

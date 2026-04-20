@@ -118,8 +118,8 @@ module ClaimsApi
               return
             end
 
-          detail = "local BGS Faraday Timeout: #{error.message}"
-          ClaimsApi::Logger.log('local_bgs', retry: true, detail:)
+          message = "local BGS Faraday Timeout: #{error.message}"
+          ClaimsApi::Logger.log('local_bgs', retry: true, message:)
           raise error_klass
         end
       end

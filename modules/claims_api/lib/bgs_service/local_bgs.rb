@@ -168,7 +168,7 @@ module ClaimsApi
       rescue Faraday::TimeoutError, Faraday::ConnectionFailed => e
         ClaimsApi::Logger.log('local_bgs',
                               retry: true,
-                              detail: "local BGS Faraday Timeout: #{e.message}")
+                              message: "local BGS Faraday Timeout: #{e.message}")
         raise ::Common::Exceptions::BadGateway
       end
 
@@ -204,7 +204,7 @@ module ClaimsApi
     rescue => e
       unless e.is_a? ClaimsApi::FindDefinition::NotDefinedError
         ClaimsApi::Logger.log('local_bgs', level: :error,
-                                           detail: "local BGS FindDefinition Error: #{e.message}")
+                                           message: "local BGS FindDefinition Error: #{e.message}")
       end
 
       fetch_namespace(connection, endpoint)

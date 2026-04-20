@@ -52,7 +52,7 @@ describe ClaimsApi::EvidenceWaiverDocumentService do
         allow(ClaimsApi::Logger).to receive(:log)
         expect(ClaimsApi::Logger).to receive(:log).with(
           'Ews_Document_service',
-          detail: include('Evidence waiver PDF document not found')
+          message: include('Evidence waiver PDF document not found')
         ).at_least(:once)
 
         expect do

@@ -40,7 +40,7 @@ module ClaimsApi
         #
         # @return [JSON] Record in pending state
         def submit_form_526 # rubocop:disable Metrics/MethodLength
-          ClaimsApi::Logger.log('526', detail: '526 - Request Started')
+          ClaimsApi::Logger.log('526', message: '526 - Request Started')
           sanitize_account_type if form_attributes.dig('directDeposit', 'accountType')
           validate_json_schema
           # Choose the appropriate validator module based on FF status - using self.extend
@@ -58,7 +58,7 @@ module ClaimsApi
 
           validate_veteran_identifiers(require_birls: true)
           validate_initial_claim
-          ClaimsApi::Logger.log('526', detail: '526 - Controller Actions Completed')
+          ClaimsApi::Logger.log('526', message: '526 - Controller Actions Completed')
 
           auto_claim = ClaimsApi::AutoEstablishedClaim.create(
             status: ClaimsApi::AutoEstablishedClaim::PENDING,
@@ -71,7 +71,7 @@ module ClaimsApi
             veteran_icn: target_veteran.mpi.icn
           )
 
-          ClaimsApi::Logger.log('526', claim_id: auto_claim.id, detail: 'Submitted to Lighthouse',
+          ClaimsApi::Logger.log('526', claim_id: auto_claim.id, message: 'Submitted to Lighthouse',
                                        pdf_gen_dis: form_attributes['autoCestPDFGenerationDisabled'])
 
           form_attributes['disabilities'].each do |disability|
@@ -152,7 +152,7 @@ module ClaimsApi
         # @return [JSON] Success if valid, error messages if invalid.
         # rubocop:disable Metrics/MethodLength
         def validate_form_526
-          ClaimsApi::Logger.log('526', detail: '526/validate - Request Started')
+          ClaimsApi::Logger.log('526', message: '526/validate - Request Started')
           add_deprecation_headers_to_response(response:, link: ClaimsApi::EndpointDeprecation::V1_DEV_DOCS)
           sanitize_account_type if form_attributes.dig('directDeposit', 'accountType')
           validate_json_schema
@@ -169,7 +169,7 @@ module ClaimsApi
 
           validate_veteran_identifiers(require_birls: true)
           validate_initial_claim
-          ClaimsApi::Logger.log('526', detail: '526/validate - Controller Actions Completed')
+          ClaimsApi::Logger.log('526', message: '526/validate - Controller Actions Completed')
 
           auto_claim = ClaimsApi::AutoEstablishedClaim.new(
             status: ClaimsApi::AutoEstablishedClaim::PENDING,
@@ -181,7 +181,7 @@ module ClaimsApi
 
           validate_with_service(auto_claim)
 
-          ClaimsApi::Logger.log('526', detail: '526/validate - Request Completed')
+          ClaimsApi::Logger.log('526', message: '526/validate - Request Completed')
 
           render json: valid_526_response
         rescue ::EVSS::DisabilityCompensationForm::ServiceException, EVSS::ErrorMiddleware::EVSSError => e
@@ -320,7 +320,7 @@ module ClaimsApi
 
         def unprocessable_response(e)
           ClaimsApi::Logger.log '526',
-                                detail: 'Upload error in 526',
+                                message: 'Upload error in 526',
                                 level: :warn,
                                 error_message: e&.message,
                                 error_source: e&.key
@@ -354,7 +354,7 @@ module ClaimsApi
 
         # pre-FES claim establishment process
         def claim_establishment_and_upload(pending_claim)
-          ClaimsApi::Logger.log('526', claim_id: pending_claim.id, detail: 'Uploaded PDF to S3')
+          ClaimsApi::Logger.log('526', claim_id: pending_claim.id, message: 'Uploaded PDF to S3')
           ClaimsApi::ClaimEstablisher.perform_async(pending_claim.id)
           ClaimsApi::ClaimUploader.perform_async(pending_claim.id, 'claim')
         end
@@ -363,7 +363,7 @@ module ClaimsApi
         # and replaced by Form526EstablishmentUpload (for upload, not PDF generation)
         def fes_claim_establishment_and_upload(pending_claim)
           ClaimsApi::Logger.log(
-            '526', claim_id: pending_claim.id, detail: 'Starting FES claim establishment and upload'
+            '526', claim_id: pending_claim.id, message: 'Starting FES claim establishment and upload'
           )
           ClaimsApi::V1::Form526EstablishmentUpload.perform_async(pending_claim&.id)
         end

@@ -174,7 +174,7 @@ RSpec.describe ClaimsApi::V1::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
         expect(ClaimsApi::Logger).to receive(:log).with(
           'claims_api_retries_exhausted',
           record_id: power_of_attorney.id,
-          detail: "Job retries exhausted for #{subject}",
+          message: "Job retries exhausted for #{subject}",
           error: error_msg
         )
       end

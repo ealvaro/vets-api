@@ -208,7 +208,7 @@ RSpec.describe ClaimsApi::PoaVBMSUploadJob, type: :job, vcr: 'bgs/person_web_ser
         expect(ClaimsApi::Logger).to receive(:log).with(
           'claims_api_retries_exhausted',
           record_id: poa.id,
-          detail: "Job retries exhausted for #{subject}",
+          message: "Job retries exhausted for #{subject}",
           error: error_msg
         )
       end

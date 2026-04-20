@@ -21,7 +21,7 @@ module ClaimsApi
         rescue Faraday::ParsingError, Faraday::TimeoutError => e
           ClaimsApi::Logger.log('claims_establisher',
                                 retry: true,
-                                detail: "/submit failure for claimId #{auto_claim&.id}: #{e.message}, #{e.class}")
+                                message: "/submit failure for claimId #{auto_claim&.id}: #{e.message}, #{e.class}")
           raise e
         end
 
@@ -58,7 +58,7 @@ module ClaimsApi
       error_messages = get_error_message(e)
 
       ClaimsApi::Logger.log 'claim_establisher expectation_failed_error',
-                            level: :error, detail: error_messages
+                            level: :error, message: error_messages
 
       if error_messages.is_a?(String)
         if error_messages.include?('417') ||

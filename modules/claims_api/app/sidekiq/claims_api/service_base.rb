@@ -21,7 +21,7 @@ module ClaimsApi
     sidekiq_retries_exhausted do |message|
       ClaimsApi::Logger.log('claims_api_retries_exhausted',
                             record_id: message['args']&.first,
-                            detail: "Job retries exhausted for #{message['class']}",
+                            message: "Job retries exhausted for #{message['class']}",
                             error: message['error_message'])
 
       classes = %w[ClaimsApi::V1:DisabilityCompensationPdfGenerator
@@ -220,8 +220,8 @@ module ClaimsApi
       poa.save!
     end
 
-    def log_job_progress(claim_id, detail, transaction_id = nil)
-      log_data = { claim_id:, detail:, transaction_id: }
+    def log_job_progress(claim_id, message, transaction_id = nil)
+      log_data = { claim_id:, message:, transaction_id: }
       log_data.compact!
       ClaimsApi::Logger.log(self.class::LOG_TAG, **log_data)
     end

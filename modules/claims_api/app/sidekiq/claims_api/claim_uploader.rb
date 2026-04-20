@@ -16,7 +16,7 @@ module ClaimsApi
 
       if auto_claim.evss_id.nil?
         ClaimsApi::Logger.log('lighthouse_claim_uploader',
-                              detail: "evss id: #{auto_claim&.evss_id} was nil, for uuid: #{uuid}")
+                              message: "evss id: #{auto_claim&.evss_id} was nil, for uuid: #{uuid}")
 
         self.class.perform_in(30.minutes, uuid, record_type)
       else
@@ -73,7 +73,7 @@ module ClaimsApi
       message = get_error_message(e)
       ClaimsApi::Logger.log('lighthouse_claim_uploader',
                             retry: true,
-                            detail: "/upload failure for claimId #{claim&.id}: #{message}; error class: #{e.class}.")
+                            message: "/upload failure for claimId #{claim&.id}: #{message}; error class: #{e.class}.")
       raise e
     # Check to determine if job should be retried based on status code
     rescue ::Common::Exceptions::BackendServiceException => e
@@ -81,14 +81,14 @@ module ClaimsApi
       if will_retry_status_code?(e)
         ClaimsApi::Logger.log('lighthouse_claim_uploader',
                               retry: true,
-                              detail: "/upload failure for claimId #{claim&.id}: #{message}; error class: #{e.class}.")
+                              message: "/upload failure for claimId #{claim&.id}: #{message}; error class: #{e.class}.")
         raise e
       else
         ClaimsApi::Logger.log(
           'claims_api_sidekiq_failure',
           retry: false,
           claim_id: claim&.id.to_s,
-          detail: 'ClaimUploader job failed',
+          message: 'ClaimUploader job failed',
           error: message
         )
         {}
@@ -98,7 +98,7 @@ module ClaimsApi
       message = get_error_message(e)
       ClaimsApi::Logger.log('lighthouse_claim_uploader',
                             retry: false,
-                            detail: "/upload failure for claimId #{claim&.id}: #{message}; error class: #{e.class}.")
+                            message: "/upload failure for claimId #{claim&.id}: #{message}; error class: #{e.class}.")
       {}
     end
 

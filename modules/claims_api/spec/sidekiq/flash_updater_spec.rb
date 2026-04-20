@@ -88,7 +88,7 @@ RSpec.describe ClaimsApi::FlashUpdater, type: :job do
         expect(ClaimsApi::Logger).to receive(:log).with(
           'claims_api_retries_exhausted',
           claim_id: claim.id,
-          detail: "Job retries exhausted for #{subject}",
+          message: "Job retries exhausted for #{subject}",
           error: error_msg
         )
       end

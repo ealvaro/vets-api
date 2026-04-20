@@ -84,10 +84,10 @@ module ClaimsApi
       rescue ::Common::Exceptions::UnprocessableEntity
         raise
       rescue ::Common::Exceptions::Unauthorized => e
-        ClaimsApi::Logger.log 'poa_verification', level: :error, detail: e.message, error_class: e.class.name
+        ClaimsApi::Logger.log 'poa_verification', level: :error, message: e.message, error_class: e.class.name
         raise e, detail: 'Cannot validate Power of Attorney'
       rescue => e
-        ClaimsApi::Logger.log 'poa_verification', level: :error, detail: e.message, error_class: e.class.name
+        ClaimsApi::Logger.log 'poa_verification', level: :error, message: e.message, error_class: e.class.name
         raise e
       end
 
@@ -132,8 +132,8 @@ module ClaimsApi
 
       def handle_not_found(reps, poa_code)
         ClaimsApi::Logger.log 'poa_verification',
-                              detail: "Found 0 reps for POA code #{poa_code}" \
-                                      " out of #{reps.size} possible matches (found by name).",
+                              message: "Found 0 reps for POA code #{poa_code}" \
+                                       " out of #{reps.size} possible matches (found by name).",
                               level: :warn, poa_code:, rep_count: reps.size, current_users_uuid: @current_user.uuid
         raise ::Common::Exceptions::UnprocessableEntity, detail: 'Ambiguous VSO Representative Results' if reps.size > 1
 

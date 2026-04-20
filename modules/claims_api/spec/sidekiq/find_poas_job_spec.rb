@@ -14,7 +14,7 @@ Rspec.describe ClaimsApi::FindPoasJob, type: :job do
       it 'logs that the POAs were found' do
         allow_any_instance_of(ClaimsApi::FindPOAsService).to receive(:response).and_return([{ legacy_poa_cd: '002',
                                                                                               ptcpnt_id: '46004' }])
-        expect(ClaimsApi::Logger).to receive(:log).with('find_poas_job', detail: 'Find POAs cached')
+        expect(ClaimsApi::Logger).to receive(:log).with('find_poas_job', message: 'Find POAs cached')
         subject.new.perform
       end
     end
@@ -22,7 +22,7 @@ Rspec.describe ClaimsApi::FindPoasJob, type: :job do
     context 'when the response is not an array' do
       it 'logs that the POAs were not found' do
         allow_any_instance_of(ClaimsApi::FindPOAsService).to receive(:response).and_return('some error')
-        expect(ClaimsApi::Logger).to receive(:log).with('find_poas_job', detail: 'Find POAs failed')
+        expect(ClaimsApi::Logger).to receive(:log).with('find_poas_job', message: 'Find POAs failed')
         subject.new.perform
       end
     end
@@ -30,7 +30,7 @@ Rspec.describe ClaimsApi::FindPoasJob, type: :job do
     context 'when the response is an empty array' do
       it 'logs that the POAs were not found' do
         allow_any_instance_of(ClaimsApi::FindPOAsService).to receive(:response).and_return([])
-        expect(ClaimsApi::Logger).to receive(:log).with('find_poas_job', detail: 'Find POAs failed')
+        expect(ClaimsApi::Logger).to receive(:log).with('find_poas_job', message: 'Find POAs failed')
         subject.new.perform
       end
     end

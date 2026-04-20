@@ -38,7 +38,7 @@ RSpec.describe ClaimsApi::EvidenceWaiverBuilderJob, type: :job do
         expect(ClaimsApi::Logger).to receive(:log).with(
           'claims_api_retries_exhausted',
           record_id: ews.id,
-          detail: "Job retries exhausted for #{described_class}",
+          message: "Job retries exhausted for #{described_class}",
           error: error_msg
         )
       end
@@ -73,7 +73,7 @@ RSpec.describe ClaimsApi::EvidenceWaiverBuilderJob, type: :job do
           evidence_waiver_submission_id: ews.id,
           claim_id: ews.claim_id,
           method: :perform,
-          detail: 'Successfully uploaded benefits doc.'
+          message: 'Successfully uploaded benefits doc.'
         ).at_least(:once)
 
         subject.new.perform(ews.id)
@@ -95,7 +95,7 @@ RSpec.describe ClaimsApi::EvidenceWaiverBuilderJob, type: :job do
           evidence_waiver_submission_id: ews.id,
           claim_id: ews.claim_id,
           method: :perform,
-          detail: 'Job failed.',
+          message: 'Job failed.',
           error: 'Test error',
           retry: true
         ).at_least(:once)

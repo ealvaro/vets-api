@@ -57,7 +57,7 @@ module ClaimsApi
         bgs_service(power_of_attorney:).find_by_ssn(ssn)&.[](:file_nbr) # rubocop:disable Rails/DynamicFindBy
       rescue BGS::ShareError => e
         error_message = "A BGS failure occurred while trying to retrieve Veteran 'FileNumber'"
-        ClaimsApi::Logger.log 'PoaVbmsSidekiq', detail: error_message, error_message: e.message
+        ClaimsApi::Logger.log 'PoaVbmsSidekiq', message: error_message, error_message: e.message
         raise ::Common::Exceptions::FailedDependency
       end
     end

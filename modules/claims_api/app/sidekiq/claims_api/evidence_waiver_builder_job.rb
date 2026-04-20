@@ -51,12 +51,12 @@ module ClaimsApi
 
     private
 
-    def log_ews_event(claim, method_name, detail, **)
+    def log_ews_event(claim, method_name, message, **)
       ClaimsApi::Logger.log('EWS_builder',
                             evidence_waiver_submission_id: claim&.id,
                             claim_id: claim&.claim_id,
                             method: method_name,
-                            detail:,
+                            message:,
                             **)
     end
   end

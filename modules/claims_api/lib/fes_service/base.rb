@@ -95,7 +95,7 @@ module ClaimsApi
       end
 
       def log_outcome_for_claims_api(action, status, response, claim)
-        ClaimsApi::Logger.log('fes_service', detail: "FES #{action} #{status}: #{response}",
+        ClaimsApi::Logger.log('fes_service', message: "FES #{action} #{status}: #{response}",
                                              claim: claim&.id, transaction_id: claim&.transaction_id)
       end
 

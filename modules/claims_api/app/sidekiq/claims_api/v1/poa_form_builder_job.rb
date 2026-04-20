@@ -42,7 +42,7 @@ module ClaimsApi
       rescue ClaimsApi::StampSignatureError => e
         signature_errors = (power_of_attorney.signature_errors || []).push(e.detail)
         power_of_attorney.update(status: ClaimsApi::PowerOfAttorney::ERRORED, signature_errors:)
-        ClaimsApi::Logger.log('poa', poa_id: power_of_attorney_id, detail: 'Prawn Signature Error')
+        ClaimsApi::Logger.log('poa', poa_id: power_of_attorney_id, message: 'Prawn Signature Error')
       rescue => e
         rescue_generic_errors(power_of_attorney, e)
         raise

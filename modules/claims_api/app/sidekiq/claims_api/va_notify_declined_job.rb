@@ -20,9 +20,9 @@ module ClaimsApi
 
       ClaimsApi::VANotifyFollowUpJob.perform_async(res.id) if res.present?
     rescue => e
-      msg = "VA Notify email notification failed to send with error #{e}"
-      ClaimsApi::Logger.log(LOG_TAG, detail: msg)
-      slack_alert_on_failure('ClaimsApi::VANotifyDeclinedJob', msg)
+      message = "VA Notify email notification failed to send with error #{e}"
+      ClaimsApi::Logger.log(LOG_TAG, message:)
+      slack_alert_on_failure('ClaimsApi::VANotifyDeclinedJob', message)
       raise e
     end
 

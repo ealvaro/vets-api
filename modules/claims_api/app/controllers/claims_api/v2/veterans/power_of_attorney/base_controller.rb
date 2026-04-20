@@ -250,7 +250,7 @@ module ClaimsApi
         rescue => e
           ClaimsApi::Logger.log 'POABaseController',
                                 level: :warn,
-                                detail: 'Failed to retrieve icn for consumer',
+                                message: 'Failed to retrieve icn for consumer',
                                 error_message: e.message
           nil
         end

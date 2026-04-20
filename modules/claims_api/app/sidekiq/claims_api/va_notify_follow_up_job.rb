@@ -26,8 +26,8 @@ module ClaimsApi
 
     def perform(notification_id, poa_id = nil) # rubocop:disable Metrics/MethodLength
       status = notification_response_status(notification_id)
-      detail = "Status for notification #{notification_id} was '#{status}'"
-      detail += ". POA ID: #{poa_id}" if poa_id
+      message = "Status for notification #{notification_id} was '#{status}'"
+      message += ". POA ID: #{poa_id}" if poa_id
 
       if poa_id
         # Call logic to map VANotify status to our internal step status
@@ -42,29 +42,29 @@ module ClaimsApi
         end
       end
 
-      handle_failure(detail) if status == 'permanent-failure'
+      handle_failure(message) if status == 'permanent-failure'
 
       unless NON_RETRY_STATUSES.include?(status)
         ClaimsApi::Logger.log(
           'va_follow_up_job',
-          detail:
+          message:
         )
-        raise detail
+        raise message
       end
     rescue => e
       ClaimsApi::Logger.log(
         'va_follow_up_job',
-        detail: "Failed to check: #{get_error_message(e)}"
+        message: "Failed to check: #{get_error_message(e)}"
       )
       raise e
     end
 
     private
 
-    def handle_failure(msg)
+    def handle_failure(message)
       job_name = 'ClaimsApi::VANotifyFollowUpJob'
-      ClaimsApi::Logger.log(LOG_TAG, detail: msg)
-      slack_alert_on_failure(job_name, msg)
+      ClaimsApi::Logger.log(LOG_TAG, message:)
+      slack_alert_on_failure(job_name, message)
     end
 
     def notification_response_status(notification_id)

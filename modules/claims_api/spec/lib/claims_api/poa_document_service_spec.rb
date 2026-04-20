@@ -36,7 +36,7 @@ describe ClaimsApi::PoaDocumentService do
 
         expect(ClaimsApi::Logger).to receive(:log).with(
           'Poa_Document_service',
-          detail: include(pdf_path, "poa_id: #{poa.id}")
+          message: include(pdf_path, "poa_id: #{poa.id}")
         ).at_least(:once)
 
         expect do

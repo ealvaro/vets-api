@@ -13,7 +13,7 @@ module ClaimsApi
 
     def log_outcome_for_claims_api(action, status, response)
       ClaimsApi::Logger.log(action,
-                            detail: "#{action} #{status}: #{response}")
+                            message: "#{action} #{status}: #{response}")
     end
   end
 end

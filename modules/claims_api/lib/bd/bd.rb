@@ -26,8 +26,8 @@ module ClaimsApi
       body = { data: { claimId: claim_id }.merge(get_identifier(participant_id:, file_number:)) }
 
       ClaimsApi::Logger.log('benefits_documents',
-                            detail: "calling benefits documents search for claimId #{claim_id} " \
-                                    "with #{participant_id.present? ? 'participantId' : 'fileNumber'}")
+                            message: "calling benefits documents search for claimId #{claim_id} " \
+                                     "with #{participant_id.present? ? 'participantId' : 'fileNumber'}")
       res = client.post('documents/search', body)&.body
 
       raise ::Common::Exceptions::GatewayTimeout.new(detail: 'Upstream service error.') unless res.is_a?(Hash)
@@ -35,7 +35,7 @@ module ClaimsApi
       res.deep_symbolize_keys
     rescue => e
       ClaimsApi::Logger.log('benefits_documents',
-                            detail: "/search failure for claimId #{claim_id}, #{e.message}")
+                            message: "/search failure for claimId #{claim_id}, #{e.message}")
       {}
     end
 
@@ -52,8 +52,8 @@ module ClaimsApi
       body = { data: { docTypeIds: doc_type_ids }.merge(get_identifier(participant_id:, file_number:)) }
 
       ClaimsApi::Logger.log('benefits_documents',
-                            detail: 'calling benefits documents claim-letters search ' \
-                                    "#{doc_type_ids.present? ? "for docTypeIds #{doc_type_ids}" : ''}")
+                            message: 'calling benefits documents claim-letters search ' \
+                                     "#{doc_type_ids.present? ? "for docTypeIds #{doc_type_ids}" : ''}")
       res = client.post('claim-letters/search', body)&.body
 
       raise ::Common::Exceptions::GatewayTimeout.new(detail: 'Upstream service error.') unless res.is_a?(Hash)
@@ -61,8 +61,8 @@ module ClaimsApi
       res.deep_symbolize_keys
     rescue => e
       ClaimsApi::Logger.log('benefits_documents',
-                            detail: 'claim-letters/search failure ' \
-                                    "#{doc_type_ids.present? ? "for docTypeIds #{doc_type_ids}" : ''}, #{e.message}")
+                            message: 'claim-letters/search failure ' \
+                                     "#{doc_type_ids.present? ? "for docTypeIds #{doc_type_ids}" : ''}, #{e.message}")
       {}
     end
 
@@ -73,7 +73,7 @@ module ClaimsApi
     def upload(claim:, pdf_path:, doc_type: 'L122', action: 'post', original_filename: nil, # rubocop:disable Metrics/ParameterLists
                pctpnt_vet_id: nil)
       unless File.exist? pdf_path
-        ClaimsApi::Logger.log('benefits_documents', detail: "Error uploading doc to BD: #{pdf_path} doesn't exist,
+        ClaimsApi::Logger.log('benefits_documents', message: "Error uploading doc to BD: #{pdf_path} doesn't exist,
                                                     #{doc_type_to_plain_language(doc_type)}_id: #{claim.id}")
         raise Errno::ENOENT, pdf_path
       end
@@ -88,13 +88,13 @@ module ClaimsApi
       res = res.deep_symbolize_keys
       request_id = res.dig(:data, :requestId)
       ClaimsApi::Logger.log('benefits_documents',
-                            detail: "Successfully uploaded #{doc_type_to_plain_language(doc_type)} doc to BD,
+                            message: "Successfully uploaded #{doc_type_to_plain_language(doc_type)} doc to BD,
                                                     #{doc_type_to_plain_language(doc_type)}_id: #{claim.id}",
                             request_id:)
       res
     rescue => e
       ClaimsApi::Logger.log('benefits_documents',
-                            detail: "/upload failure for
+                            message: "/upload failure for
                                                     #{doc_type_to_plain_language(doc_type)}_id: #{claim.id},
                                                     #{e.message}")
       raise e
@@ -109,13 +109,13 @@ module ClaimsApi
       res = res.deep_symbolize_keys
       request_id = res.dig(:data, :requestId)
       ClaimsApi::Logger.log('benefits_documents',
-                            detail: "Successfully uploaded #{doc_type_name} doc to BD,
+                            message: "Successfully uploaded #{doc_type_name} doc to BD,
                                                    #{doc_type_name}_id: #{identifier}",
                             request_id:)
       res
     rescue => e
       ClaimsApi::Logger.log('benefits_documents',
-                            detail: "/upload failure for
+                            message: "/upload failure for
                                                     #{doc_type_name}_id: #{identifier},
                                                     #{e.message}")
       raise e

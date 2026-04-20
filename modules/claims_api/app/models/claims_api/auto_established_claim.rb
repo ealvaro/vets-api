@@ -459,7 +459,7 @@ module ClaimsApi
         name = period['serviceBranch']
 
         ClaimsApi::Logger.log('526',
-                              detail: "'serviceBranch' value received is :: #{name}")
+                              message: "'serviceBranch' value received is :: #{name}")
         period['serviceBranch'] = ClaimsApi::ServiceBranchMapper.new(name).value
 
         period
@@ -496,7 +496,7 @@ module ClaimsApi
         if pay_type_service_branch?(pay_type)
           branch = form_data['servicePay'][pay_type]['payment']['serviceBranch']
           ClaimsApi::Logger.log('526',
-                                detail: "#{pay_type} 'serviceBranch' value received is :: #{branch}")
+                                message: "#{pay_type} 'serviceBranch' value received is :: #{branch}")
 
           form_data['servicePay'][pay_type]['payment']['serviceBranch'] =
             ClaimsApi::ServiceBranchMapper.new(branch).value

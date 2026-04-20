@@ -48,7 +48,7 @@ module ClaimsApi
 
     def log_outcome_for_claims_api(action, status, response)
       ClaimsApi::Logger.log('526_pdf_client',
-                            detail: "PDF Client #{action} #{status},  is a string: #{response}")
+                            message: "PDF Client #{action} #{status},  is a string: #{response}")
     end
   end
 end

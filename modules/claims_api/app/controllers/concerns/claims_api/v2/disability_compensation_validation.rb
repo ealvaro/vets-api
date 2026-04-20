@@ -813,7 +813,7 @@ module ClaimsApi
 
           next if separation_location_code.nil? || separation_location_ids.include?(separation_location_code)
 
-          ClaimsApi::Logger.log('separation_location_codes', detail: 'Separation location code not found',
+          ClaimsApi::Logger.log('separation_location_codes', message: 'Separation location code not found',
                                                              separation_locations:, separation_location_code:)
 
           collect_error_messages(

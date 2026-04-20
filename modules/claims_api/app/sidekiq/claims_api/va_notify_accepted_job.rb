@@ -38,11 +38,11 @@ module ClaimsApi
 
     def handle_failure(poa_id, error, process)
       job_name = 'ClaimsApi::VANotifyAcceptedJob'
-      msg = "VA Notify email notification failed to send for #{poa_id} with error #{error}"
+      message = "VA Notify email notification failed to send for #{poa_id} with error #{error}"
       process.update!(step_status: 'FAILED', error_messages: [{ title: 'VA Notify Error',
-                                                                detail: msg }])
-      ClaimsApi::Logger.log(LOG_TAG, detail: msg)
-      slack_alert_on_failure(job_name, msg)
+                                                                detail: message }])
+      ClaimsApi::Logger.log(LOG_TAG, message:)
+      slack_alert_on_failure(job_name, message)
       raise error
     end
 

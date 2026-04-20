@@ -19,7 +19,7 @@ module ClaimsApi
       ClaimsApi::Logger.log(
         LOG_TAG,
         poa_id: poa.id,
-        detail: form_logger_consent_detail(poa, poa_code),
+        message: form_logger_consent_detail(poa, poa_code),
         poa_code:,
         allow_poa_access: allow_poa_access?(poa_form_data: poa.form_data),
         allow_poa_c_add: allow_address_change?(poa)

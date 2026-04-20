@@ -16,7 +16,7 @@ module ClaimsApi
       if bgs_claim&.dig(:bnft_claim_dto).blank?
         ews.status = ClaimsApi::EvidenceWaiverSubmission::ERRORED
         ClaimsApi::Logger.log('ews_updater',
-                              detail: "bnft_claim_dto, filed5103_waiver_ind is not present on claim: #{ews.claim_id},
+                              message: "bnft_claim_dto, filed5103_waiver_ind is not present on claim: #{ews.claim_id},
           and ews_id: #{ews.id}, and bgs_claim keys: #{bgs_claim&.keys}.")
       else
         bgs_claim[:bnft_claim_dto][:filed5103_waiver_ind] = FILE_5103
@@ -40,11 +40,11 @@ module ClaimsApi
         ews.bgs_error_message = "BGS Error: update_record failed with code #{response[:return_code]}"
         ews.bgs_upload_failure_count = ews.bgs_upload_failure_count + 1
         ClaimsApi::Logger.log('ews_updater', ews_id: ews.id, claim_id: ews.claim_id,
-                                             detail: 'Waiver update Failed', error: response[:return_code],
+                                             message: 'Waiver update Failed', error: response[:return_code],
                                              failure_count: ews.bgs_upload_failure_count)
       else
         ClaimsApi::Logger.log('ews_updater', ews_id: ews.id, claim_id: ews.claim_id,
-                                             detail: 'Waiver update Success')
+                                             message: 'Waiver update Success')
         ews.status = ClaimsApi::EvidenceWaiverSubmission::UPDATED
       end
     end
