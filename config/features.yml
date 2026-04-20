@@ -3093,6 +3093,11 @@ features:
   va_notify_v2_in_progress_form_reminder:
     actor_type: user
     description: If enabled, InProgressFormReminder uses VANotify::V2::QueueUserAccountJob instead of VANotify::UserAccountJob
+  va_notify_v2_meb_confirmation_email:
+    actor_type: user
+    description: >-
+      If enabled, MebApi::V0::BaseConfirmationEmailWorker will use VANotify::V2::QueueEmailJob
+      instead of VANotify::EmailJob
   va_notify_v2_career_counseling_job:
     actor_type: user
     description: >-

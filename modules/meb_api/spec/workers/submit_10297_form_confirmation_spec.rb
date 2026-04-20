@@ -23,19 +23,50 @@ describe MebApi::V0::Submit10297FormConfirmation, type: :worker do
       allow(Settings.vanotify.services.va_gov).to receive(:template_id).and_return(template_double)
     end
 
-    it 'uses the approved template id' do
-      travel_to Time.zone.local(2024, 1, 15) do
-        expected_date = Time.zone.today.strftime('%B %d, %Y')
-        described_class.new.perform('ELIGIBLE', email, first_name, user_icn)
+    context 'when va_notify_v2_meb_confirmation_email is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:va_notify_v2_meb_confirmation_email).and_return(false)
+      end
 
-        expect(VANotify::EmailJob).to have_received(:perform_async).with(
-          email,
-          'approved_template',
-          {
-            'first_name' => first_name,
-            'date_submitted' => expected_date
-          }
-        )
+      it 'sends email via V1 EmailJob' do
+        travel_to Time.zone.local(2024, 1, 15) do
+          expected_date = Time.zone.today.strftime('%B %d, %Y')
+          described_class.new.perform('ELIGIBLE', email, first_name, user_icn)
+
+          expect(VANotify::EmailJob).to have_received(:perform_async).with(
+            email,
+            'approved_template',
+            {
+              'first_name' => first_name,
+              'date_submitted' => expected_date
+            }
+          )
+        end
+      end
+    end
+
+    context 'when va_notify_v2_meb_confirmation_email is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:va_notify_v2_meb_confirmation_email).and_return(true)
+        allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
+      end
+
+      it 'sends email via V2 QueueEmailJob' do
+        travel_to Time.zone.local(2024, 1, 15) do
+          expected_date = Time.zone.today.strftime('%B %d, %Y')
+          described_class.new.perform('ELIGIBLE', email, first_name, user_icn)
+
+          expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
+            email,
+            'approved_template',
+            {
+              'first_name' => first_name,
+              'date_submitted' => expected_date
+            },
+            'Settings.vanotify.services.va_gov.api_key'
+          )
+          expect(VANotify::EmailJob).not_to have_received(:perform_async)
+        end
       end
     end
   end
@@ -46,17 +77,45 @@ describe MebApi::V0::Submit10297FormConfirmation, type: :worker do
       allow(Settings.vanotify.services.va_gov).to receive(:template_id).and_return(template_double)
     end
 
-    it 'uses the denied template id' do
-      described_class.new.perform('DENIED', email, first_name, user_icn)
+    context 'when va_notify_v2_meb_confirmation_email is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:va_notify_v2_meb_confirmation_email).and_return(false)
+      end
 
-      expect(VANotify::EmailJob).to have_received(:perform_async).with(
-        email,
-        'denied_template',
-        {
-          'first_name' => first_name,
-          'date_submitted' => today
-        }
-      )
+      it 'sends email via V1 EmailJob' do
+        described_class.new.perform('DENIED', email, first_name, user_icn)
+
+        expect(VANotify::EmailJob).to have_received(:perform_async).with(
+          email,
+          'denied_template',
+          {
+            'first_name' => first_name,
+            'date_submitted' => today
+          }
+        )
+      end
+    end
+
+    context 'when va_notify_v2_meb_confirmation_email is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:va_notify_v2_meb_confirmation_email).and_return(true)
+        allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
+      end
+
+      it 'sends email via V2 QueueEmailJob' do
+        described_class.new.perform('DENIED', email, first_name, user_icn)
+
+        expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
+          email,
+          'denied_template',
+          {
+            'first_name' => first_name,
+            'date_submitted' => today
+          },
+          'Settings.vanotify.services.va_gov.api_key'
+        )
+        expect(VANotify::EmailJob).not_to have_received(:perform_async)
+      end
     end
   end
 
@@ -66,34 +125,81 @@ describe MebApi::V0::Submit10297FormConfirmation, type: :worker do
       allow(Settings.vanotify.services.va_gov).to receive(:template_id).and_return(template_double)
     end
 
-    it 'uses the under_review template id' do
-      described_class.new.perform('PENDING', email, first_name, user_icn)
+    context 'when va_notify_v2_meb_confirmation_email is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:va_notify_v2_meb_confirmation_email).and_return(false)
+      end
 
-      expect(VANotify::EmailJob).to have_received(:perform_async).with(
-        email,
-        'under_review_template',
-        {
-          'first_name' => first_name,
-          'date_submitted' => today
-        }
-      )
+      it 'sends email via V1 EmailJob' do
+        described_class.new.perform('PENDING', email, first_name, user_icn)
+
+        expect(VANotify::EmailJob).to have_received(:perform_async).with(
+          email,
+          'under_review_template',
+          {
+            'first_name' => first_name,
+            'date_submitted' => today
+          }
+        )
+      end
+    end
+
+    context 'when va_notify_v2_meb_confirmation_email is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:va_notify_v2_meb_confirmation_email).and_return(true)
+        allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
+      end
+
+      it 'sends email via V2 QueueEmailJob' do
+        described_class.new.perform('PENDING', email, first_name, user_icn)
+
+        expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
+          email,
+          'under_review_template',
+          {
+            'first_name' => first_name,
+            'date_submitted' => today
+          },
+          'Settings.vanotify.services.va_gov.api_key'
+        )
+        expect(VANotify::EmailJob).not_to have_received(:perform_async)
+      end
     end
   end
 
-  context 'when a raised error occurs during VANotify::EmailJob' do
+  context 'when a raised error occurs' do
     let(:error) { VANotify::Error.new(500, 'Server error') }
 
-    before do
-      allow(VANotify::EmailJob).to receive(:perform_async).and_raise(error)
+    context 'when va_notify_v2_meb_confirmation_email is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:va_notify_v2_meb_confirmation_email).and_return(false)
+        allow(VANotify::EmailJob).to receive(:perform_async).and_raise(error)
+      end
+
+      it 'logs the error and re-raises for Sidekiq retry' do
+        expect(Rails.logger).to receive(:error).with(
+          'MEB confirmation email enqueue failed',
+          hash_including(error_class: 'VANotify::Error')
+        )
+
+        expect { described_class.new.perform('PENDING', email, first_name, user_icn) }.to raise_error(VANotify::Error)
+      end
     end
 
-    it 'logs the error and re-raises for Sidekiq retry' do
-      expect(Rails.logger).to receive(:error).with(
-        'MEB confirmation email enqueue failed',
-        hash_including(error_class: 'VANotify::Error')
-      )
+    context 'when va_notify_v2_meb_confirmation_email is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:va_notify_v2_meb_confirmation_email).and_return(true)
+        allow(VANotify::V2::QueueEmailJob).to receive(:enqueue).and_raise(error)
+      end
 
-      expect { described_class.new.perform('PENDING', email, first_name, user_icn) }.to raise_error(VANotify::Error)
+      it 'logs the error and re-raises for Sidekiq retry' do
+        expect(Rails.logger).to receive(:error).with(
+          'MEB confirmation email enqueue failed',
+          hash_including(error_class: 'VANotify::Error')
+        )
+
+        expect { described_class.new.perform('PENDING', email, first_name, user_icn) }.to raise_error(VANotify::Error)
+      end
     end
   end
 end

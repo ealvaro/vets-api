@@ -45,15 +45,12 @@ module MebApi
 
         log_worker_attempt(claim_status, template_id, email.present?)
 
-        VANotify::EmailJob.perform_async(
-          email,
-          template_id,
-          {
-            'first_name' => first_name,
-            'date_submitted' => Time.zone.today.strftime('%B %d, %Y')
-          }
-        )
+        personalisation = {
+          'first_name' => first_name,
+          'date_submitted' => Time.zone.today.strftime('%B %d, %Y')
+        }
 
+        dispatch_email(email, template_id, personalisation)
         log_worker_success(claim_status, template_id)
       rescue => e
         log_worker_error(e, claim_status, template_id, email.present?, user_icn)
@@ -61,6 +58,24 @@ module MebApi
       end
 
       private
+
+      def dispatch_email(email, template_id, personalisation)
+        if Flipper.enabled?(:va_notify_v2_meb_confirmation_email)
+          api_key_path = 'Settings.vanotify.services.va_gov.api_key'
+          VANotify::V2::QueueEmailJob.enqueue(
+            email,
+            template_id,
+            personalisation,
+            api_key_path
+          )
+        else
+          VANotify::EmailJob.perform_async(
+            email,
+            template_id,
+            personalisation
+          )
+        end
+      end
 
       def log_worker_attempt(claim_status, template_id, email_present)
         Rails.logger.info(
