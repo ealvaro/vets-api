@@ -270,7 +270,7 @@ RSpec.describe 'ClaimsApi::V2::Veterans::Claims::5103', type: :request do
                 mock_ccg(scopes) do |auth_header|
                   VCR.use_cassette('claims_api/bgs/benefit_claim/update_5103_200') do
                     post sub_path, headers: auth_header, params: json_params, as: :json
-                    expect(response).to have_http_status(:unprocessable_entity)
+                    expect(response).to have_http_status(:unprocessable_content)
                   end
                 end
               end
@@ -282,7 +282,7 @@ RSpec.describe 'ClaimsApi::V2::Veterans::Claims::5103', type: :request do
                   VCR.use_cassette('claims_api/bgs/benefit_claim/update_5103_200') do
                     post sub_path, headers: auth_header, params: json_params, as: :json
                     parsed_response = JSON.parse(response.body)
-                    expect(response).to have_http_status(:unprocessable_entity)
+                    expect(response).to have_http_status(:unprocessable_content)
                     expect(parsed_response['errors'][0]['detail']).to eq(
                       'If trackedItemIds are present, they must be in an array of integers.'
                     )

@@ -218,7 +218,7 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
 
             get '/services/claims/v1/claims/123123131', params: nil, headers: request_headers.merge(auth_header)
 
-            expect(response).to have_http_status(:unprocessable_entity)
+            expect(response).to have_http_status(:unprocessable_content)
             body = JSON.parse(response.body)
             expect(body['errors'][0]['detail']).to eq('Unable to locate Veteran in Master Person Index (MPI). ' \
                                                       'Please submit an issue at ask.va.gov or call ' \
@@ -244,7 +244,7 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
 
             get '/services/claims/v1/claims/123123131', params: nil, headers: request_headers.merge(auth_header)
 
-            expect(response).to have_http_status(:unprocessable_entity)
+            expect(response).to have_http_status(:unprocessable_content)
             body = JSON.parse(response.body)
             expect(body['errors'][0]['detail']).to eq('Veteran missing Integration Control Number (ICN). ' \
                                                       'Please submit an issue at ask.va.gov or call 1-800-MyVA411 ' \
@@ -265,7 +265,7 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
           VCR.use_cassette('claims_api/bgs/claims/claim') do
             headers = request_headers.merge(auth_header)
             get('/services/claims/v1/claims/d5536c5c-0465-4038-a368-1a9d9daf65c9', params: nil, headers:)
-            expect(response).to have_http_status(:unprocessable_entity)
+            expect(response).to have_http_status(:unprocessable_content)
           end
         end
       end
@@ -282,7 +282,7 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
           VCR.use_cassette('claims_api/bgs/claims/claim') do
             headers = request_headers.merge(auth_header)
             get('/services/claims/v1/claims/d5536c5c-0465-4038-a368-1a9d9daf65c9', params: nil, headers:)
-            expect(response).to have_http_status(:unprocessable_entity)
+            expect(response).to have_http_status(:unprocessable_content)
           end
         end
       end

@@ -71,7 +71,7 @@ describe ApplicationController, type: :controller do
 
       get :raise_unprocessable
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       parsed_body = JSON.parse(response.body)
 
       expect(parsed_body['errors'].size).to eq(1)

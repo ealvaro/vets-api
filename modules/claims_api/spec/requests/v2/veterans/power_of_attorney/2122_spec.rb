@@ -121,7 +121,7 @@ RSpec.describe 'ClaimsApi::V1::PowerOfAttorney::2122', type: :request do
 
                         response_body = JSON.parse(response.body)
 
-                        expect(response).to have_http_status(:unprocessable_entity)
+                        expect(response).to have_http_status(:unprocessable_content)
                         expect(response_body['errors'][0]['status']).to eq('422')
                         expect(response_body['errors'][0]['detail'])
                           .to eq("If 'countryCode' is 'US' then 'zipCode' is required.")
@@ -372,7 +372,7 @@ RSpec.describe 'ClaimsApi::V1::PowerOfAttorney::2122', type: :request do
 
                 response_body = JSON.parse(response.body)['errors'][0]
 
-                expect(response).to have_http_status(:unprocessable_entity)
+                expect(response).to have_http_status(:unprocessable_content)
                 expect(response_body['status']).to eq('422')
                 expect(response_body['detail']).to eq('Must have either first or last name')
               end
@@ -414,7 +414,7 @@ RSpec.describe 'ClaimsApi::V1::PowerOfAttorney::2122', type: :request do
 
                     response_body = JSON.parse(response.body)['errors'][0]
 
-                    expect(response).to have_http_status(:unprocessable_entity)
+                    expect(response).to have_http_status(:unprocessable_content)
                     expect(response_body['status']).to eq('422')
                     expect(response_body['detail']).to eq("If 'countryCode' is 'US' then 'zipCode' is required.")
                   end
@@ -496,7 +496,7 @@ RSpec.describe 'ClaimsApi::V1::PowerOfAttorney::2122', type: :request do
 
                   json_response = JSON.parse(response.body)
 
-                  expect(response).to have_http_status(:unprocessable_entity)
+                  expect(response).to have_http_status(:unprocessable_content)
                   expect(json_response['errors'][0]['detail']).to eq(
                     'The property /veteran/email did not match the following requirements: ' \
                     '{"description"=>"Email address for the veteran.", "type"=>"string", ' \
@@ -513,7 +513,7 @@ RSpec.describe 'ClaimsApi::V1::PowerOfAttorney::2122', type: :request do
 
                   json_response = JSON.parse(response.body)
 
-                  expect(response).to have_http_status(:unprocessable_entity)
+                  expect(response).to have_http_status(:unprocessable_content)
                   expect(json_response['errors'][0]['detail']).to eq(
                     'The property /veteran/email did not match the following requirements: ' \
                     '{"description"=>"Email address for the veteran.", "type"=>"string", ' \
@@ -594,7 +594,7 @@ RSpec.describe 'ClaimsApi::V1::PowerOfAttorney::2122', type: :request do
 
                   response_body = JSON.parse(response.body)['errors'][0]
 
-                  expect(response).to have_http_status(:unprocessable_entity)
+                  expect(response).to have_http_status(:unprocessable_content)
                   expect(response_body['title']).to eq('Unprocessable entity')
                   expect(response_body['status']).to eq('422')
                   expect(response_body['detail']).to include(detail)
@@ -617,7 +617,7 @@ RSpec.describe 'ClaimsApi::V1::PowerOfAttorney::2122', type: :request do
 
                     response_body = JSON.parse(response.body)['errors'][0]
 
-                    expect(response).to have_http_status(:unprocessable_entity)
+                    expect(response).to have_http_status(:unprocessable_content)
                     expect(response_body['title']).to eq('Unprocessable entity')
                     expect(response_body['status']).to eq('422')
                     expect(response_body['detail']).to eq(detail)
@@ -658,7 +658,7 @@ RSpec.describe 'ClaimsApi::V1::PowerOfAttorney::2122', type: :request do
 
                   post validate2122_path, params: request_body, headers: auth_header
                   response_body = JSON.parse(response.body)['errors'][0]
-                  expect(response).to have_http_status(:unprocessable_entity)
+                  expect(response).to have_http_status(:unprocessable_content)
                   expect(response_body['status']).to eq('422')
                   expect(response_body['detail']).to eq('Must have either first or last name')
                 end
@@ -870,7 +870,7 @@ RSpec.describe 'ClaimsApi::V1::PowerOfAttorney::2122', type: :request do
                       post validate2122_path, params: request_body, headers: auth_header
 
                       response_body = JSON.parse(response.body)['errors'][0]
-                      expect(response).to have_http_status(:unprocessable_entity)
+                      expect(response).to have_http_status(:unprocessable_content)
                       expect(response_body['detail']).to eq(error_msg)
                     end
                   end
@@ -936,7 +936,7 @@ RSpec.describe 'ClaimsApi::V1::PowerOfAttorney::2122', type: :request do
                         post validate2122_path, params: request_body, headers: auth_header
 
                         response_body = JSON.parse(response.body)['errors'][0]
-                        expect(response).to have_http_status(:unprocessable_entity)
+                        expect(response).to have_http_status(:unprocessable_content)
                         expect(response_body['detail']).to include(error_msg)
                       end
                     end

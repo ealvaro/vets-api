@@ -12,7 +12,7 @@ describe ApplicationController, type: :controller do
 
     skip_before_action :authenticate
 
-    def raise_unprocessable_entity
+    def raise_unprocessable_content
       error = { detail: 'Test 422' }
 
       raise ClaimsApi::Common::Exceptions::Lighthouse::UnprocessableEntity, error
@@ -59,7 +59,7 @@ describe ApplicationController, type: :controller do
 
   before do
     routes.draw do
-      get 'raise_unprocessable_entity' => 'anonymous#raise_unprocessable_entity'
+      get 'raise_unprocessable_content' => 'anonymous#raise_unprocessable_content'
       get 'raise_bad_request' => 'anonymous#raise_bad_request'
       get 'raise_resource_not_found' => 'anonymous#raise_resource_not_found'
       get 'raise_json_526_validation_error' => 'anonymous#raise_json_526_validation_error'
@@ -79,7 +79,7 @@ describe ApplicationController, type: :controller do
 
       get :raise_json_526_validation_error
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
 
       parsed_body = JSON.parse(response.body)
       expect(parsed_body['errors'].size).to eq(2)

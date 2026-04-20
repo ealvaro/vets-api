@@ -462,7 +462,7 @@ RSpec.describe 'ClaimsApi::V2::Veterans::IntentToFile', type: :request do
                   survivor_data = data
                   survivor_data[:data][:attributes][:type] = 'survivor'
                   post itf_submit_path, params: survivor_data, headers: auth_header, as: :json
-                  expect(response).to have_http_status(:unprocessable_entity)
+                  expect(response).to have_http_status(:unprocessable_content)
                 end
               end
             end
@@ -474,7 +474,7 @@ RSpec.describe 'ClaimsApi::V2::Veterans::IntentToFile', type: :request do
                   survivor_data[:data][:attributes][:type] = 'survivor'
                   survivor_data[:data][:attributes][:claimantSsn] = 'abcdefghi'
                   post itf_submit_path, params: survivor_data, headers: auth_header, as: :json
-                  expect(response).to have_http_status(:unprocessable_entity)
+                  expect(response).to have_http_status(:unprocessable_content)
                 end
               end
             end
@@ -582,7 +582,7 @@ RSpec.describe 'ClaimsApi::V2::Veterans::IntentToFile', type: :request do
                   invalid_data[:data][:attributes][:type] = 'survivor'
                   invalid_data[:data][:attributes][:claimantSsn] = ''
                   post itf_validate_path, params: invalid_data, headers: auth_header, as: :json
-                  expect(response).to have_http_status(:unprocessable_entity)
+                  expect(response).to have_http_status(:unprocessable_content)
                 end
               end
             end

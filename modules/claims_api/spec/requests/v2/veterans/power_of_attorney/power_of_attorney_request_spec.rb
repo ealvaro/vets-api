@@ -54,7 +54,7 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::PowerOfAttorneyRequest', type: :
 
               response_body = JSON.parse(response.body)['errors'][0]
 
-              expect(response).to have_http_status(:unprocessable_entity)
+              expect(response).to have_http_status(:unprocessable_content)
               expect(response_body['title']).to eq('Unprocessable entity')
               expect(response_body['status']).to eq('422')
               expect(response_body['detail']).to include(detail)
@@ -78,7 +78,7 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::PowerOfAttorneyRequest', type: :
 
                   response_body = JSON.parse(response.body)['errors'][0]
 
-                  expect(response).to have_http_status(:unprocessable_entity)
+                  expect(response).to have_http_status(:unprocessable_content)
                   expect(response_body['title']).to eq('Unprocessable entity')
                   expect(response_body['status']).to eq('422')
                   expect(response_body['detail']).to include(detail)
@@ -103,7 +103,7 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::PowerOfAttorneyRequest', type: :
 
                   response_body = JSON.parse(response.body)['errors'][0]
 
-                  expect(response).to have_http_status(:unprocessable_entity)
+                  expect(response).to have_http_status(:unprocessable_content)
                   expect(response_body['title']).to eq('Unprocessable Entity')
                   expect(response_body['status']).to eq('422')
                   expect(response_body['detail']).to include(detail)

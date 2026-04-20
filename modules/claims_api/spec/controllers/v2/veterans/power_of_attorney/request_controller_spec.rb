@@ -184,7 +184,7 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
         mock_ccg(scopes) do |auth_header|
           index_request_with(poa_codes:, filter:, auth_header:)
 
-          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response).to have_http_status(:unprocessable_content)
         end
       end
     end
@@ -197,7 +197,7 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
         mock_ccg(scopes) do |auth_header|
           index_request_with(poa_codes:, filter:, auth_header:)
 
-          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response).to have_http_status(:unprocessable_content)
         end
       end
     end
@@ -210,7 +210,7 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
         mock_ccg(scopes) do |auth_header|
           index_request_with(poa_codes:, filter:, auth_header:)
 
-          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response).to have_http_status(:unprocessable_content)
         end
       end
     end
@@ -410,7 +410,7 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
 
               response_body = JSON.parse(response.body)
 
-              expect(response).to have_http_status(:unprocessable_entity)
+              expect(response).to have_http_status(:unprocessable_content)
               expect(response_body['errors'][0]['detail']).to include(
                 'The property /decision did not match the following requirements:'
               )
@@ -431,7 +431,7 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
 
             response_body = JSON.parse(response.body)
 
-            expect(response).to have_http_status(:unprocessable_entity)
+            expect(response).to have_http_status(:unprocessable_content)
             expect(response_body['errors'][0]['detail']).to include(
               'The property /decision did not match the following requirements:'
             )
@@ -880,7 +880,7 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
           form_attributes[:veteran][:address][:countryCode] = '76'
           create_request_with(veteran_id:, form_attributes:, auth_header:)
 
-          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response).to have_http_status(:unprocessable_content)
           expect(JSON.parse(response.body)['errors'][0]['detail']).to eq(
             'The country provided is not valid.'
           )
@@ -902,7 +902,7 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
           form_attributes[:claimant][:address][:countryCode] = '76'
           create_request_with(veteran_id:, form_attributes:, auth_header:)
 
-          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response).to have_http_status(:unprocessable_content)
           expect(JSON.parse(response.body)['errors'][0]['detail']).to eq(
             'The country provided is not valid.'
           )

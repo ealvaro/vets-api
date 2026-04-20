@@ -127,21 +127,21 @@ RSpec.describe 'ClaimsApi::V1::Forms::0966', type: :request do
         mock_acg(scopes) do |auth_header|
           data[:data][:attributes][:type] = 'failingtesttype'
           post path, params: data.to_json, headers: headers.merge(auth_header)
-          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response).to have_http_status(:unprocessable_content)
         end
       end
 
       it 'fails if none is passed in' do
         mock_acg(scopes) do |auth_header|
           post path, headers: headers.merge(auth_header)
-          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response).to have_http_status(:unprocessable_content)
         end
       end
 
       it 'fails if none is passed in as non-poa request' do
         mock_acg(scopes) do |auth_header|
           post path, headers: auth_header, params: ''
-          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response).to have_http_status(:unprocessable_content)
         end
       end
 
@@ -151,7 +151,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::0966', type: :request do
 
           post path, params: data.to_json, headers: headers.merge(auth_header)
 
-          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response).to have_http_status(:unprocessable_content)
           expect(JSON.parse(response.body)['errors'].size).to eq(1)
           expect(JSON.parse(response.body)['errors'][0]['detail']).to eq(
             'The property /someBadField is not defined on the schema. Additional properties are not allowed'
@@ -258,7 +258,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::0966', type: :request do
         it 'returns an unprocessible entity status' do
           mock_acg(scopes) do |auth_header|
             post path, params: data.to_json, headers: headers.merge(auth_header)
-            expect(response).to have_http_status(:unprocessable_entity)
+            expect(response).to have_http_status(:unprocessable_content)
           end
         end
       end
@@ -273,7 +273,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::0966', type: :request do
         it 'returns an unprocessible entity status' do
           mock_acg(scopes) do |auth_header|
             post path, params: data.to_json, headers: headers.merge(auth_header)
-            expect(response).to have_http_status(:unprocessable_entity)
+            expect(response).to have_http_status(:unprocessable_content)
           end
         end
       end
@@ -322,7 +322,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::0966', type: :request do
     it 'fails if passed with wrong type' do
       mock_acg(scopes) do |auth_header|
         get "#{path}/active", params: { type: 'test' }, headers: headers.merge(auth_header)
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
     end
 
@@ -355,7 +355,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::0966', type: :request do
       mock_acg(scopes) do |auth_header|
         post "#{path}/validate", params: { data: { attributes: nil } }.to_json, headers: headers.merge(auth_header)
         parsed = JSON.parse(response.body)
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(parsed['errors']).not_to be_empty
       end
     end
@@ -363,7 +363,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::0966', type: :request do
     it 'responds properly when JSON parse error' do
       mock_acg(scopes) do |auth_header|
         post "#{path}/validate", params: 'hello', headers: headers.merge(auth_header)
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
     end
 
@@ -375,7 +375,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::0966', type: :request do
 
         post "#{path}/validate", params: data.to_json, headers: headers.merge(auth_header)
         parsed = JSON.parse(response.body)
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(parsed['errors'][0]['detail']).to eq("Unable to locate Veteran's BIRLS ID in Master Person Index " \
                                                     '(MPI). ' \
                                                     'Please submit an issue at ask.va.gov or call 1-800-MyVA411 ' \

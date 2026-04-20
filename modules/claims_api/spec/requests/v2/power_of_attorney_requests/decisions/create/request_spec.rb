@@ -206,7 +206,7 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorneyRequests::Decisions#create', :bgs,
       )
 
       expect(response).to(
-        have_http_status(:unprocessable_entity)
+        have_http_status(:unprocessable_content)
       )
     end
   end
@@ -335,7 +335,7 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorneyRequests::Decisions#create', :bgs,
           )
 
           expect(response).to(
-            have_http_status(:unprocessable_entity)
+            have_http_status(:unprocessable_content)
           )
         end
       end
@@ -345,7 +345,7 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorneyRequests::Decisions#create', :bgs,
   describe 'with a valid decline with reason submitted twice' do
     let(:id) { '600043216_73930' }
 
-    it 'responds accepted first and then unprocessable_entity second', run_at: '2024-05-09T07:18:04Z' do
+    it 'responds accepted first and then unprocessable_content second', run_at: '2024-05-09T07:18:04Z' do
       params = {
         'data' => {
           'type' => 'powerOfAttorneyRequestDecision',
@@ -386,7 +386,7 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorneyRequests::Decisions#create', :bgs,
           )
 
           expect(response).to(
-            have_http_status(:unprocessable_entity)
+            have_http_status(:unprocessable_content)
           )
         end
       end
@@ -431,7 +431,7 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorneyRequests::Decisions#create', :bgs,
           )
 
           expect(response).to(
-            have_http_status(:unprocessable_entity)
+            have_http_status(:unprocessable_content)
           )
         end
       end
@@ -526,7 +526,7 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorneyRequests::Decisions#create', :bgs,
         )
 
         expect(response).to(
-          have_http_status(:unprocessable_entity)
+          have_http_status(:unprocessable_content)
         )
       end
     end
@@ -617,7 +617,7 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorneyRequests::Decisions#create', :bgs,
         )
 
         expect(response).to(
-          have_http_status(:unprocessable_entity)
+          have_http_status(:unprocessable_content)
         )
       end
     end

@@ -97,7 +97,7 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
               .to receive(:target_veteran).and_return(target_veteran)
 
             post generate_pdf_path, params: data, headers: auth_header
-            expect(response).to have_http_status(:unprocessable_entity)
+            expect(response).to have_http_status(:unprocessable_content)
             expect(response.parsed_body['errors'][0]['detail']).to eq('Must have either first or last name')
           end
         end
@@ -124,7 +124,7 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
 
           mock_ccg_for_fine_grained_scope(generate_pdf_scopes) do |auth_header|
             post generate_pdf_path, params: data, headers: auth_header
-            expect(response).to have_http_status(:unprocessable_entity)
+            expect(response).to have_http_status(:unprocessable_content)
           end
         end
 
@@ -135,7 +135,7 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
 
           mock_ccg_for_fine_grained_scope(generate_pdf_scopes) do |auth_header|
             post generate_pdf_path, params: data, headers: auth_header
-            expect(response).to have_http_status(:unprocessable_entity)
+            expect(response).to have_http_status(:unprocessable_content)
           end
         end
       end
@@ -350,7 +350,7 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
               allow_any_instance_of(ClaimsApi::V2::ApplicationController)
                 .to receive(:target_veteran).and_return(target_veteran)
               post synchronous_path, params: data, headers: auth_header
-              expect(response).to have_http_status(:unprocessable_entity)
+              expect(response).to have_http_status(:unprocessable_content)
               expect(response.parsed_body['errors'][0]['detail']).to eq('Missing first and last name')
             end
           end

@@ -154,10 +154,10 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
             end
 
             context 'when consumer is representative' do
-              it 'returns an unprocessible entity status' do
+              it 'returns a 422' do
                 mock_acg(scopes) do |auth_header|
                   post path, params: data, headers: headers.merge(auth_header)
-                  expect(response).to have_http_status(:unprocessable_entity)
+                  expect(response).to have_http_status(:unprocessable_content)
                 end
               end
             end
@@ -182,7 +182,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
                     post path, params: parsed_data, headers: headers.merge(auth_header), as: :json
 
                     response_body = JSON.parse response.body
-                    expect(response).to have_http_status(:unprocessable_entity)
+                    expect(response).to have_http_status(:unprocessable_content)
                     expect(response_body['errors'][0]['detail']).to eq(
                       "Unable to locate Veteran's Participant ID in Master Person Index (MPI). " \
                       'Please submit an issue at ask.va.gov or call 1-800-MyVA411 (800-698-2411) for assistance.'
@@ -268,7 +268,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
 
               post path, params: data, headers: headers.merge(auth_header)
 
-              expect(response).to have_http_status(:unprocessable_entity)
+              expect(response).to have_http_status(:unprocessable_content)
               error_detail = JSON.parse(response.body)['errors'][0]['detail']
               substring = 'Veterans making requests do not need to include identifying headers'
               expect(error_detail.include?(substring)).to be true
@@ -304,13 +304,13 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
           let(:mpi_profile) { build(:mpi_profile, birth_date: nil, participant_id: nil) }
           let(:profile_response) { create(:find_profile_response, profile: mpi_profile) }
 
-          it 'returns an unprocessible entity status' do
+          it 'returns a 422' do
             allow_any_instance_of(MPI::Service).to receive(:find_profile_by_identifier).and_return(profile_response)
             allow_any_instance_of(MPI::Service).to receive(:find_profile_by_attributes)
               .and_raise(ArgumentError)
             mock_acg(scopes) do |auth_header|
               post path, params: data, headers: headers.merge(auth_header)
-              expect(response).to have_http_status(:unprocessable_entity)
+              expect(response).to have_http_status(:unprocessable_content)
             end
           end
         end
@@ -332,7 +332,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
 
               post path, params: data, headers: invalid_headers.merge(auth_header)
 
-              expect(response).to have_http_status(:unprocessable_entity)
+              expect(response).to have_http_status(:unprocessable_content)
               error_detail = JSON.parse(response.body)['errors'][0]['detail']
               substring = 'The following values are invalid: X-VA-Birth-Date'
               expect(error_detail).to eq(substring)
@@ -357,7 +357,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
 
               post path, params: data, headers: invalid_headers.merge(auth_header)
 
-              expect(response).to have_http_status(:unprocessable_entity)
+              expect(response).to have_http_status(:unprocessable_content)
               error_detail = JSON.parse(response.body)['errors'][0]['detail']
               substring = 'The following values are invalid: X-VA-First-Name, X-VA-Last-Name'
               expect(error_detail).to eq(substring)
@@ -376,7 +376,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
             params = json_data
             params['data']['attributes']['serviceOrganization']['poaCode'] = nil
             post path, params: params.to_json, headers: headers.merge(auth_header)
-            expect(response).to have_http_status(:unprocessable_entity)
+            expect(response).to have_http_status(:unprocessable_content)
             expect(JSON.parse(response.body)['errors'].size).to eq(1)
           end
         end
@@ -388,7 +388,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
             params = json_data
             params['data']['attributes']['someBadField'] = 'someValue'
             post path, params: params.to_json, headers: headers.merge(auth_header)
-            expect(response).to have_http_status(:unprocessable_entity)
+            expect(response).to have_http_status(:unprocessable_content)
             expect(JSON.parse(response.body)['errors'].size).to eq(1)
             expect(JSON.parse(response.body)['errors'][0]['detail']).to eq(
               'The property /someBadField is not defined on the schema. Additional properties are not allowed'
@@ -474,7 +474,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
               allow_any_instance_of(ClaimsApi::V1::Forms::PowerOfAttorneyController)
                 .to receive(:check_request_ssn_matches_mpi).and_return(nil)
               post path, params: data, headers: headers.merge(auth_header)
-              expect(response).to have_http_status(:unprocessable_entity)
+              expect(response).to have_http_status(:unprocessable_content)
               expect(response.parsed_body['errors']).to contain_exactly(
                 {
                   'status' => 422,
@@ -714,7 +714,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
               allow_any_instance_of(ClaimsApi::V1::Forms::PowerOfAttorneyController)
                 .to receive(:check_request_ssn_matches_mpi).with('987654321')
               parsed = JSON.parse(response.body)
-              expect(response).to have_http_status(:unprocessable_entity)
+              expect(response).to have_http_status(:unprocessable_content)
               expect(parsed['errors'].first['title']).to eq('Unprocessable Entity')
             end
           end
@@ -761,7 +761,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
                 power_of_attorney.reload
                 parsed = JSON.parse(response.body)
                 expect(power_of_attorney.file_data).to be_nil
-                expect(response).to have_http_status(:unprocessable_entity)
+                expect(response).to have_http_status(:unprocessable_content)
                 expect(parsed['errors'].first['title']).to eq('Unprocessable Entity')
                 expect(parsed['errors'].first['detail']).to eq(error_detail)
               end
@@ -781,7 +781,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
                 power_of_attorney.reload
                 parsed = JSON.parse(response.body)
                 expect(power_of_attorney.file_data).to be_nil
-                expect(response).to have_http_status(:unprocessable_entity)
+                expect(response).to have_http_status(:unprocessable_content)
                 expect(parsed['errors'].first['title']).to eq('Unprocessable Entity')
                 expect(parsed['errors'].first['detail']).to eq(error_detail)
               end
@@ -801,7 +801,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
                 power_of_attorney.reload
                 parsed = JSON.parse(response.body)
                 expect(power_of_attorney.file_data).to be_nil
-                expect(response).to have_http_status(:unprocessable_entity)
+                expect(response).to have_http_status(:unprocessable_content)
                 expect(parsed['errors'].first['title']).to eq('Unprocessable Entity')
                 expect(parsed['errors'].first['detail']).to eq(error_detail)
               end
@@ -847,7 +847,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
         mock_acg(scopes) do |auth_header|
           post "#{path}/validate", params: { data: { attributes: nil } }.to_json, headers: headers.merge(auth_header)
           parsed = JSON.parse(response.body)
-          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response).to have_http_status(:unprocessable_content)
           expect(parsed['errors']).not_to be_empty
         end
       end
@@ -855,7 +855,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
       it 'responds properly when JSON parse error' do
         mock_acg(scopes) do |auth_header|
           post "#{path}/validate", params: 'hello', headers: headers.merge(auth_header)
-          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response).to have_http_status(:unprocessable_content)
         end
       end
 
