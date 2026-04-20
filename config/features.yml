@@ -1376,6 +1376,9 @@ features:
   form214138:
     actor_type: user
     description: If enabled shows the digital form experience for form 21-4138
+  form214138_browser_monitoring_enabled:
+    actor_type: user
+    description: Form 214138 Datadog RUM monitoring
   form214140:
     actor_type: user
     description: If enabled shows the digital form experience for form 21-4140
