@@ -247,7 +247,7 @@ module ClaimsApi
       end
 
       def claim_meta
-        @fes_claim[:claimDate] = @data[:claimDate] || Time.zone.today.to_s
+        @fes_claim[:claimDate] = @data[:claimDate].presence || @auto_claim.created_at.strftime('%Y-%m-%d')
       end
 
       def wrap_in_request_structure

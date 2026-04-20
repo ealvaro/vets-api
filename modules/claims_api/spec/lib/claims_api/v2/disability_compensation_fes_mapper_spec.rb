@@ -460,11 +460,18 @@ describe ClaimsApi::V2::DisabilityCompensationFesMapper do
           expect(fes_data[:data][:form526][:claimDate]).to eq('2024-01-15')
         end
 
-        it 'defaults to today when claim date not provided' do
+        it 'defaults to auto_claim created_at when claim date not provided' do
           form_data['data']['attributes'].delete('claimDate')
           fes_data = map_claim_with_modified_data(form_data)
 
-          expect(fes_data[:data][:form526][:claimDate]).to eq(Time.zone.today.to_s)
+          expect(fes_data[:data][:form526][:claimDate]).to eq(Date.current.strftime('%Y-%m-%d'))
+        end
+
+        it 'defaults to auto_claim created_at when claim date is empty string' do
+          form_data['data']['attributes']['claimDate'] = ''
+          fes_data = map_claim_with_modified_data(form_data)
+
+          expect(fes_data[:data][:form526][:claimDate]).to eq(Date.current.strftime('%Y-%m-%d'))
         end
       end
     end

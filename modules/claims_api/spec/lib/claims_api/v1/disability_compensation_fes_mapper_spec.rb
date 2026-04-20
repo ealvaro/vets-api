@@ -61,7 +61,7 @@ describe ClaimsApi::V1::DisabilityCompensationFesMapper do
         end
 
         context 'when claimDate is not provided' do
-          it 'defaults to current date in YYYY-MM-DD format' do
+          it 'defaults to auto_claim created_at in YYYY-MM-DD format' do
             form_data['data']['attributes'].delete('claimDate')
 
             expected_date = Date.current.strftime('%Y-%m-%d')
@@ -70,7 +70,7 @@ describe ClaimsApi::V1::DisabilityCompensationFesMapper do
         end
 
         context 'when claimDate is blank' do
-          it 'defaults to current date' do
+          it 'defaults to auto_claim created_at' do
             form_data['data']['attributes']['claimDate'] = ''
 
             expected_date = Date.current.strftime('%Y-%m-%d')
