@@ -14,8 +14,8 @@ module Organizations
 
     SLICE_SIZE = 30
 
-    def perform
-      with_xlsx_file_content do |file_content|
+    def perform(source = 'gclaws')
+      with_xlsx_file_content(source:) do |file_content|
         processed_data = Organizations::XlsxFileProcessor.new(file_content).process
         queue_address_updates(processed_data)
       end

@@ -22,8 +22,8 @@ module Representatives
       @slack_messages = []
     end
 
-    def perform
-      with_xlsx_file_content do |file_content|
+    def perform(source = 'gclaws')
+      with_xlsx_file_content(source:) do |file_content|
         processed_data = Representatives::XlsxFileProcessor.new(file_content).process
         queue_address_updates(processed_data)
       end
@@ -31,7 +31,7 @@ module Representatives
       log_error("Error in file fetching process: #{e.message}")
       raise
     ensure
-      if @slack_messages.any? # Only report if we have errors
+      if @slack_messages.any?
         @slack_messages.unshift("Processed #{@rows} rows in #{@slices} slices")
         @slack_messages.unshift('Representatives::QueueUpdates')
         log_to_slack(@slack_messages.join("\n"))
@@ -91,9 +91,11 @@ module Representatives
     def log_to_slack(message)
       return unless Settings.vsp_environment == 'production'
 
-      client = SlackNotify::Client.new(webhook_url: Settings.edu.slack.webhook_url,
-                                       channel: '#benefits-representation-management-notifications',
-                                       username: 'Representatives::QueueUpdates Bot')
+      client = SlackNotify::Client.new(
+        webhook_url: Settings.edu.slack.webhook_url,
+        channel: '#benefits-representation-management-notifications',
+        username: 'Representatives::QueueUpdates Bot'
+      )
       client.notify(message)
     end
   end

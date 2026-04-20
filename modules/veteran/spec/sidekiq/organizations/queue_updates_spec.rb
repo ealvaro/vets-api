@@ -20,6 +20,7 @@ RSpec.describe Organizations::QueueUpdates, type: :job do
     end
     let(:batch) { instance_double(Sidekiq::Batch) }
     let(:temp_file) { Tempfile.new(['test', '.xlsx']) }
+    let(:sensitive_repo_fetcher) { instance_double(SensitiveRepoXlsxFileFetcher) }
 
     before do
       stub_const('Sidekiq::Batch', Class.new) unless defined?(Sidekiq::Batch)
@@ -27,20 +28,37 @@ RSpec.describe Organizations::QueueUpdates, type: :job do
       temp_file.binmode
       temp_file.write(file_content)
       temp_file.close
+
       allow(RepresentationManagement::GCLAWS::XlsxClient)
         .to receive(:download_accreditation_xlsx)
         .and_yield({ success: true, file_path: temp_file.path })
+
+      allow(SensitiveRepoXlsxFileFetcher).to receive(:new).and_return(sensitive_repo_fetcher)
+      allow(sensitive_repo_fetcher).to receive(:fetch).and_return(file_content)
+
       allow_any_instance_of(Organizations::XlsxFileProcessor).to receive(:process).and_return(processed_data)
       allow(Sidekiq::Batch).to receive(:new).and_return(batch)
       allow(batch).to receive(:description=)
       allow(batch).to receive(:jobs).and_yield
     end
 
-    after { temp_file.unlink }
+    after do
+      temp_file.unlink if File.exist?(temp_file.path)
+      Organizations::Update.clear
+    end
 
-    context 'when file processing is successful' do
+    context 'when file processing is successful with the default gclaws source' do
       it 'processes the file and queues updates' do
         expect { subject.perform }.not_to raise_error
+
+        expected_jobs_count = processed_data.keys.size
+        expect(Organizations::Update.jobs.size).to eq(expected_jobs_count)
+      end
+    end
+
+    context 'when using the sensitive_repo source' do
+      it 'processes the file and queues updates' do
+        expect { subject.perform('sensitive_repo') }.not_to raise_error
 
         expected_jobs_count = processed_data.keys.size
         expect(Organizations::Update.jobs.size).to eq(expected_jobs_count)
@@ -60,10 +78,24 @@ RSpec.describe Organizations::QueueUpdates, type: :job do
       end
     end
 
+    context 'when sensitive repo fetch fails' do
+      before do
+        allow(sensitive_repo_fetcher).to receive(:fetch).and_return(nil)
+      end
+
+      it 'raises and does not queue updates' do
+        expect { subject.perform('sensitive_repo') }
+          .to raise_error(StandardError, /Sensitive repo XLSX fetch failed or no fresh file was available/)
+
+        expect(Organizations::Update.jobs).to be_empty
+      end
+    end
+
     context 'when an exception is raised' do
       before do
-        allow_any_instance_of(Organizations::XlsxFileProcessor).to receive(:process).and_raise(StandardError,
-                                                                                               'test error')
+        allow_any_instance_of(Organizations::XlsxFileProcessor)
+          .to receive(:process)
+          .and_raise(StandardError, 'test error')
         allow_any_instance_of(described_class).to receive(:log_error)
       end
 
