@@ -2379,6 +2379,10 @@ features:
     actor_type: user
     description: Enables the MHV portal notice interstitial page
     enable_in_development: true
+  portal_notice_interstitial_redirect:
+    actor_type: user
+    description: Enables automatically redirecting users to /my-health from the MHV portal notice interstitial page
+    enable_in_development: false
   portal_notice_interstitial_sunset:
     actor_type: user
     description: Enables the sunsetting message on the MHV portal notice interstitial page
