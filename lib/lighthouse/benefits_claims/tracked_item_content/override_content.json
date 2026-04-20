@@ -746,6 +746,42 @@
       ]
     }
   },
+  "DBQ CARDIO Hypertension": {
+    "friendlyName": "Hypertension (high blood pressure) exam",
+    "shortDescription": "We’ve requested an exam for your hypertension (high blood pressure). The examiner’s office will contact you to schedule this appointment.",
+    "supportAliases": [
+      "DBQ CARDIO Hypertension"
+    ],
+    "noActionNeeded": true,
+    "isDBQ": true,
+    "isSensitive": true,
+    "longDescription": {
+      "blocks": [
+        {
+          "type": "paragraph",
+          "content": "For your benefits claim, we’ve requested an exam to evaluate your hypertension (high blood pressure). The examiner’s office will contact you to schedule this appointment."
+        }
+      ]
+    }
+  },
+  "DBQ DERM Skin Diseases": {
+    "friendlyName": "Skin condition exam",
+    "shortDescription": "We’ve requested an exam for your skin condition. The examiner’s office will contact you to schedule this appointment.",
+    "supportAliases": [
+      "DBQ DERM Skin Diseases"
+    ],
+    "noActionNeeded": true,
+    "isDBQ": true,
+    "isSensitive": true,
+    "longDescription": {
+      "blocks": [
+        {
+          "type": "paragraph",
+          "content": "For your benefits claim, we’ve requested an exam to understand your skin condition. The examiner’s office will contact you to schedule this appointment."
+        }
+      ]
+    }
+  },
   "DBQ GI Esophageal Disorders": {
     "friendlyName": "Digestive condition exam",
     "shortDescription": "We’ve requested an exam to learn more about your digestive condition. The examiner’s office will contact you to schedule it.",
