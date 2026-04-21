@@ -451,7 +451,10 @@ features:
     description: Enables sending VES JSON to PEGA for form submissions
   champva_use_hexapdf_to_unlock_pdfs:
     actor_type: user
-    description: Enables the the use of hexapdf instead of pdftk to unlock password-protected PDFs on form submission
+    description: Enables the use of hexapdf instead of pdftk to unlock password-protected PDFs on form submission
+  champva_use_hexapdf_to_combine_pdfs:
+    actor_type: user
+    description: Enables the use of HexaPDF instead of CombinePDF to combine PDFs
   champva_convert_to_pdf_on_upload:
     actor_type: user
     description: Converts supporting documents to PDF at upload time instead of final submission to improve submit latency
