@@ -84,7 +84,6 @@ module SignIn
                                                      auth_broker: sign_in[:auth_broker],
                                                      mhv_uuid: mhv_credential_uuid,
                                                      idme_uuid:,
-                                                     dslogon_uuid: nil,
                                                      logingov_uuid:,
                                                      icn: verified_icn,
                                                      credential_attributes_digest:).perform

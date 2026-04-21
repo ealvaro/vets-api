@@ -4,7 +4,7 @@ module Login
   class UserAcceptableVerifiedCredentialUpdaterLogger
     STATSD_KEY_PREFIX = 'api.user_avc_updater'
     LOG_MESSAGE = '[UserAcceptableVerifiedCredentialUpdater] - User AVC Updated'
-    FROM_TYPES = [MHV_TYPE = 'mhv', DSLOGON_TYPE = 'dslogon', IDME_TYPE = 'idme', LOGINGOV_TYPE = 'logingov'].freeze
+    FROM_TYPES = [MHV_TYPE = 'mhv', IDME_TYPE = 'idme', LOGINGOV_TYPE = 'logingov'].freeze
     ADDED_TYPES = [AVC_TYPE = 'avc', IVC_TYPE = 'ivc'].freeze
 
     def initialize(user_acceptable_verified_credential:)
@@ -51,8 +51,6 @@ module Login
     def added_from_type
       @added_from_type ||= if from_mhv?
                              MHV_TYPE
-                           elsif from_dslogon?
-                             DSLOGON_TYPE
                            elsif from_logingov?
                              LOGINGOV_TYPE
                            elsif from_idme?
@@ -66,10 +64,6 @@ module Login
 
       keys << "#{STATSD_KEY_PREFIX}.#{added_from_type}.#{added_type}.added"
 
-      if [MHV_TYPE, DSLOGON_TYPE].include?(added_from_type)
-        keys << "#{STATSD_KEY_PREFIX}.#{MHV_TYPE}_#{DSLOGON_TYPE}.#{added_type}.added"
-      end
-
       keys
     end
 
@@ -80,7 +74,6 @@ module Login
       payload[:added_from] = added_from_type if added_from_type.present?
       payload[:user_account_id] = user_account.id
       payload[:mhv_uuid] = mhv_credential.mhv_uuid if added_from_type == MHV_TYPE
-      payload[:dslogon_uuid] = dslogon_credential.dslogon_uuid if added_from_type == DSLOGON_TYPE
       payload[:backing_idme_uuid] = backing_idme_uuid if backing_idme_uuid.present?
       payload[:idme_uuid] = idme_credential&.idme_uuid
       payload[:logingov_uuid] = logingov_credential&.logingov_uuid
@@ -104,16 +97,8 @@ module Login
       @mhv_credential ||= user_verifications.mhv.first
     end
 
-    def dslogon_credential
-      @dslogon_credential ||= user_verifications.dslogon.first
-    end
-
     def backing_idme_uuid
-      @backing_idme_uuid ||= if from_mhv?
-                               mhv_credential.backing_idme_uuid
-                             elsif from_dslogon?
-                               dslogon_credential.backing_idme_uuid
-                             end
+      @backing_idme_uuid ||= (mhv_credential.backing_idme_uuid if from_mhv?)
     end
 
     def user_verifications
@@ -134,20 +119,14 @@ module Login
       mhv_credential.present? && (added_ivc_only? || added_avc_only?)
     end
 
-    # When the newly added verified_credential_at is the only one that exists and
-    # the user has a dslogon credential it is from dslogon e.g. user_avc_updater.dslogon.{added_type}.added
-    def from_dslogon?
-      dslogon_credential.present? && (added_ivc_only? || added_avc_only?)
-    end
-
     def from_idme?
       # When an avc is added on a uavc already having an ivc it is from idme.
       # e.g. user_avc_updater.idme.avc.added
       return user_avc.idme_verified_credential_at.present? if avc_added?
 
-      # When ivc is the only verified_credential_at that exists and it's not from mhv or dslogon,
+      # When ivc is the only verified_credential_at that exists and it's not from mhv,
       # it's from idme e.g. user_avc_updater.idme.ivc.added
-      added_ivc_only? && !from_mhv? && !from_dslogon?
+      added_ivc_only? && !from_mhv?
     end
 
     def from_logingov?
@@ -155,9 +134,9 @@ module Login
       # e.g. user_avc_updater.logingov.ivc.added
       return user_avc.acceptable_verified_credential_at.present? if ivc_added?
 
-      # When avc is the only verified_credential_at that exists and it's not from mhv or dslogon,
+      # When avc is the only verified_credential_at that exists and it's not from mhv,
       # it's from logingov e.g. user_avc_updater.logingov.avc.added
-      added_avc_only? && !from_mhv? && !from_dslogon?
+      added_avc_only? && !from_mhv?
     end
 
     ##

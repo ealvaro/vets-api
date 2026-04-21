@@ -1149,7 +1149,6 @@ RSpec.describe User, type: :model do
                               auth_broker: 'iam',
                               mhv_uuid: mhv_credential_uuid,
                               idme_uuid:,
-                              dslogon_uuid: edipi,
                               logingov_uuid:,
                               icn:).perform
     end
@@ -1173,41 +1172,6 @@ RSpec.describe User, type: :model do
 
         context 'and there is not an mhv_credential_uuid' do
           let(:mhv_credential_uuid) { nil }
-
-          context 'and user has an idme_uuid' do
-            let(:idme_uuid) { 'some-idme-uuid' }
-
-            it 'returns user verification with a matching idme_uuid' do
-              expect(user.user_verification.idme_uuid).to eq(idme_uuid)
-            end
-          end
-
-          context 'and user does not have an idme_uuid' do
-            let(:idme_uuid) { nil }
-            let(:user_verification) { nil }
-            let(:uuid) { SecureRandom.uuid }
-
-            it 'returns nil' do
-              expect(user.user_verification).to be_nil
-            end
-          end
-        end
-      end
-
-      context 'when user is logged in with dslogon' do
-        let(:csp) { 'dslogon' }
-        let(:authn_context) { 'dslogon' }
-
-        context 'and there is an edipi' do
-          let(:edipi) { 'some-edipi' }
-
-          it 'returns user verification with a matching edipi' do
-            expect(user.user_verification.dslogon_uuid).to eq(edipi)
-          end
-        end
-
-        context 'and there is not an edipi' do
-          let(:edipi) { nil }
 
           context 'and user has an idme_uuid' do
             let(:idme_uuid) { 'some-idme-uuid' }

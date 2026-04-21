@@ -24,7 +24,6 @@ namespace :sm do
       auth_broker: nil,
       mhv_uuid: nil,
       idme_uuid:,
-      dslogon_uuid: nil,
       logingov_uuid: nil,
       icn:
     ).perform

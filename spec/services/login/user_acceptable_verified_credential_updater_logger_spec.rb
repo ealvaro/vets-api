@@ -10,20 +10,11 @@ RSpec.describe Login::UserAcceptableVerifiedCredentialUpdaterLogger do
     end
   end
 
-  shared_examples 'a logingov or idme statsd increment' do
+  shared_examples 'a statsd increment' do
     it 'increments expected statsd keys' do
       subject
       expect(StatsD).to have_received(:increment).exactly(1).time
       expect(StatsD).to have_received(:increment).with(expected_single_statsd_key, 1).exactly(1).time
-    end
-  end
-
-  shared_examples 'a mhv or dslogon statsd increment' do
-    it 'increments expected statsd keys' do
-      subject
-      expect(StatsD).to have_received(:increment).exactly(2).time
-      expect(StatsD).to have_received(:increment).with(expected_single_statsd_key, 1).exactly(1).time
-      expect(StatsD).to have_received(:increment).with(expected_combined_statsd_key, 1).exactly(1).time
     end
   end
 
@@ -63,12 +54,6 @@ RSpec.describe Login::UserAcceptableVerifiedCredentialUpdaterLogger do
           payload[:mhv_uuid] =
             user_account&.user_verifications&.mhv&.first&.mhv_uuid
         end
-        if expected_added_from_type == 'dslogon'
-          payload[:backing_idme_uuid] =
-            user_account&.user_verifications&.dslogon&.first&.backing_idme_uuid
-          payload[:dslogon_uuid] =
-            user_account&.user_verifications&.dslogon&.first&.dslogon_uuid
-        end
         payload[:idme_uuid] = user_account&.user_verifications&.idme&.first&.idme_uuid
         payload[:logingov_uuid] = user_account&.user_verifications&.logingov&.first&.logingov_uuid
 
@@ -80,7 +65,7 @@ RSpec.describe Login::UserAcceptableVerifiedCredentialUpdaterLogger do
       end
 
       let(:expected_combined_statsd_key) do
-        "api.user_avc_updater.mhv_dslogon.#{expected_added_type}.added"
+        "api.user_avc_updater.mhv.#{expected_added_type}.added"
       end
 
       before do
@@ -102,7 +87,7 @@ RSpec.describe Login::UserAcceptableVerifiedCredentialUpdaterLogger do
             let(:expected_added_from_type) { 'logingov' }
 
             it_behaves_like 'a logger'
-            it_behaves_like 'a logingov or idme statsd increment'
+            it_behaves_like 'a statsd increment'
           end
 
           context 'and there is also a mhv verification' do
@@ -110,15 +95,7 @@ RSpec.describe Login::UserAcceptableVerifiedCredentialUpdaterLogger do
             let(:expected_added_from_type) { 'mhv' }
 
             it_behaves_like 'a logger'
-            it_behaves_like 'a mhv or dslogon statsd increment'
-          end
-
-          context 'and there is also a dslogon verification' do
-            let!(:dslogon_verification) { create(:dslogon_user_verification, user_account:) }
-            let(:expected_added_from_type) { 'dslogon' }
-
-            it_behaves_like 'a logger'
-            it_behaves_like 'a mhv or dslogon statsd increment'
+            it_behaves_like 'a statsd increment'
           end
         end
 
@@ -133,7 +110,7 @@ RSpec.describe Login::UserAcceptableVerifiedCredentialUpdaterLogger do
           end
 
           it_behaves_like 'a logger'
-          it_behaves_like 'a logingov or idme statsd increment'
+          it_behaves_like 'a statsd increment'
         end
       end
 
@@ -149,7 +126,7 @@ RSpec.describe Login::UserAcceptableVerifiedCredentialUpdaterLogger do
             let(:expected_added_from_type) { 'idme' }
 
             it_behaves_like 'a logger'
-            it_behaves_like 'a logingov or idme statsd increment'
+            it_behaves_like 'a statsd increment'
           end
 
           context 'and there is also a mhv verification' do
@@ -157,15 +134,7 @@ RSpec.describe Login::UserAcceptableVerifiedCredentialUpdaterLogger do
             let(:expected_added_from_type) { 'mhv' }
 
             it_behaves_like 'a logger'
-            it_behaves_like 'a mhv or dslogon statsd increment'
-          end
-
-          context 'and there is also a dslogon verification' do
-            let!(:dslogon_verification) { create(:dslogon_user_verification, user_account:) }
-            let(:expected_added_from_type) { 'dslogon' }
-
-            it_behaves_like 'a logger'
-            it_behaves_like 'a mhv or dslogon statsd increment'
+            it_behaves_like 'a statsd increment'
           end
         end
 
@@ -180,7 +149,7 @@ RSpec.describe Login::UserAcceptableVerifiedCredentialUpdaterLogger do
           end
 
           it_behaves_like 'a logger'
-          it_behaves_like 'a logingov or idme statsd increment'
+          it_behaves_like 'a statsd increment'
         end
       end
     end
