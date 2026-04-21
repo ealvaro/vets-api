@@ -1295,6 +1295,48 @@ RSpec.describe User, type: :model do
           expect(user.credential_lock).to be_nil
         end
       end
+
+      context 'when the user does not have a UserAccount' do
+        let(:user) { build(:user, :loa1, uuid: SecureRandom.uuid, user_account: nil) }
+
+        it 'returns nil' do
+          expect(user.credential_lock).to be_nil
+        end
+      end
+
+      context 'return @credential_lock without UserVerfication or UserAccount being called twice' do
+        let(:user_verification) { create(:idme_user_verification, locked:) }
+        let(:user_account) { create(:user_account, locked:) }
+        let(:user) { build(:user, :loa3, user_account:, user_verification:, idme_uuid: user_verification.idme_uuid) }
+        let(:locked) { true }
+
+        it 'returns the locked status of the UserVerification' do
+          expect(user.credential_lock).to be(true)
+          user_verification.update(locked: false)
+          user_account.update(locked: false)
+          expect(user.credential_lock).to be(true)
+        end
+      end
+
+      context 'when the user has a UserAccount' do
+        let(:user_account) { create(:user_account, locked:) }
+        let(:user) { build(:user, :loa3, user_account:) }
+        let(:locked) { false }
+
+        context 'when the UserAccount is not locked' do
+          it 'returns false' do
+            expect(user.credential_lock).to be(false)
+          end
+        end
+
+        context 'when the UserAccount is locked' do
+          let(:locked) { true }
+
+          it 'returns true' do
+            expect(user.credential_lock).to be(true)
+          end
+        end
+      end
     end
   end
 

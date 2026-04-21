@@ -3,8 +3,9 @@
 require 'rails_helper'
 
 RSpec.describe UserAccount, type: :model do
-  let(:user_account) { create(:user_account, icn:) }
+  let(:user_account) { create(:user_account, icn:, locked:) }
   let(:icn) { nil }
+  let(:locked) { false }
 
   describe 'validations' do
     describe '#icn' do
@@ -37,6 +38,66 @@ RSpec.describe UserAccount, type: :model do
         it 'raises a validation error' do
           expect { subject }.to raise_error(ActiveRecord::RecordInvalid, expected_error_message)
         end
+      end
+    end
+  end
+
+  describe '#locked' do
+    subject { user_account.locked }
+
+    context 'user account is not locked by default' do
+      it { is_expected.to be false }
+    end
+
+    context 'when user account is locked' do
+      let(:locked) { true }
+
+      it 'returns true' do
+        expect(subject).to be true
+      end
+    end
+  end
+
+  describe '#lock!' do
+    subject { user_account.lock! }
+
+    context 'when user account is unlocked' do
+      let(:locked) { false }
+
+      it 'locks the user account' do
+        subject
+        expect(user_account.locked).to be true
+      end
+    end
+
+    context 'when user account is already locked' do
+      let(:locked) { true }
+
+      it 'does not change the locked status' do
+        subject
+        expect(user_account.locked).to be true
+      end
+    end
+  end
+
+  describe '#unlock!' do
+    subject { user_account.unlock! }
+
+    context 'when user account is locked' do
+      let(:locked) { true }
+
+      it 'unlocks the user account' do
+        subject
+        expect(user_account.locked).to be false
+      end
+    end
+
+    context 'when user account is already unlocked' do
+      let(:locked) { false }
+
+      it 'does not change the locked status' do
+        subject
+        expect(user_account.locked).to be false
       end
     end
   end

@@ -27,7 +27,8 @@ RSpec.describe SignIn::SessionRefresher do
       let(:user_uuid) { user_verification.credential_identifier }
       let(:user_verification) { create(:user_verification, user_account:, locked:) }
       let(:locked) { false }
-      let(:user_account) { create(:user_account) }
+      let(:user_account) { create(:user_account, locked: account_locked) }
+      let(:account_locked) { false }
       let!(:session) do
         create(:oauth_session,
                refresh_expiration: session_expiration,
@@ -89,6 +90,24 @@ RSpec.describe SignIn::SessionRefresher do
               let(:expected_error_message) { 'Credential is locked' }
 
               it 'returns a credential locked error' do
+                expect { subject }.to raise_error(expected_error, expected_error_message)
+              end
+            end
+          end
+
+          context 'expected user account lock validation' do
+            context 'when the UserAccount is not locked' do
+              it 'does not return an error' do
+                expect { subject }.not_to raise_error
+              end
+            end
+
+            context 'when the UserAccount is locked' do
+              let(:account_locked) { true }
+              let(:expected_error) { SignIn::Errors::UserAccountLockedError }
+              let(:expected_error_message) { 'User account is locked' }
+
+              it 'returns a user account locked error' do
                 expect { subject }.to raise_error(expected_error, expected_error_message)
               end
             end

@@ -42,6 +42,29 @@ RSpec.describe SignIn::SessionCreator do
         end
       end
 
+      context 'expected user account validation' do
+        let(:validated_credential) { create(:validated_credential, client_config:, user_verification:) }
+        let(:user_verification) { create(:user_verification, user_account:) }
+        let(:user_account) { create(:user_account, locked:) }
+        let(:locked) { false }
+        let(:expected_error) { SignIn::Errors::UserAccountLockedError }
+        let(:expected_error_message) { 'User account is locked' }
+
+        context 'when the UserAccount is not locked' do
+          it 'does not return an error' do
+            expect { subject }.not_to raise_error
+          end
+        end
+
+        context 'when the UserAccount is locked' do
+          let(:locked) { true }
+
+          it 'returns a user account locked error' do
+            expect { subject }.to raise_error(expected_error, expected_error_message)
+          end
+        end
+      end
+
       context 'when client config is set to enforce terms' do
         let(:enforced_terms) { SignIn::Constants::Auth::VA_TERMS }
 

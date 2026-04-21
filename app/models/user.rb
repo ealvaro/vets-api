@@ -40,7 +40,7 @@ class User < Common::RedisStore
   def credential_lock
     return @credential_lock unless @credential_lock.nil?
 
-    @credential_lock = user_verification&.locked
+    @credential_lock = user_verification&.locked || user_account&.locked
   end
 
   def needs_accepted_terms_of_use

@@ -9,6 +9,7 @@ module SignIn
     end
 
     def perform
+      validate_user_account_lock
       validate_credential_lock
       validate_terms_of_use
       SessionContainer.new(session: create_new_session,
@@ -26,8 +27,12 @@ module SignIn
       raise SignIn::Errors::CredentialLockedError.new(message: 'Credential is locked') if user_verification.locked
     end
 
+    def validate_user_account_lock
+      raise SignIn::Errors::UserAccountLockedError.new(message: 'User account is locked') if user_account.locked
+    end
+
     def validate_terms_of_use
-      if client_config.enforced_terms.present? && user_verification.user_account.needs_accepted_terms_of_use?
+      if client_config.enforced_terms.present? && user_account.needs_accepted_terms_of_use?
         raise Errors::TermsOfUseNotAcceptedError.new message: 'Terms of Use has not been accepted'
       end
     end
@@ -83,7 +88,7 @@ module SignIn
     end
 
     def create_new_session
-      OAuthSession.create!(user_account: user_verification.user_account,
+      OAuthSession.create!(user_account:,
                            user_verification:,
                            client_id: client_config.client_id,
                            credential_email: validated_credential.credential_email,
@@ -117,12 +122,16 @@ module SignIn
       @user_verification ||= validated_credential.user_verification
     end
 
+    def user_account
+      @user_account ||= user_verification.user_account
+    end
+
     def user_attributes
       @user_attributes ||= validated_credential.user_attributes
     end
 
     def user_uuid
-      @user_uuid ||= user_verification.user_account.id
+      @user_uuid ||= user_account.id
     end
 
     def handle

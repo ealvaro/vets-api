@@ -11,7 +11,8 @@ module SignIn
                 :hashed_device_secret,
                 :refresh_creation
 
-    validate :validate_credential_lock!,
+    validate :validate_user_account_lock!,
+             :validate_credential_lock!,
              :validate_terms_of_use!
 
     def initialize(current_session:, new_session_client_config:)
@@ -39,6 +40,12 @@ module SignIn
 
     def validate_credential_lock!
       raise SignIn::Errors::CredentialLockedError.new message: 'Credential is locked' if user_verification.locked
+    end
+
+    def validate_user_account_lock!
+      if user_verification.user_account.locked
+        raise SignIn::Errors::UserAccountLockedError.new message: 'User account is locked'
+      end
     end
 
     def validate_terms_of_use!

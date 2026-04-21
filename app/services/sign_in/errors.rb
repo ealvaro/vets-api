@@ -72,6 +72,7 @@ module SignIn
     class TokenTheftDetectedError < StandardError; end
     class UnverifiedCredentialBlockedError < StandardError; end
     class UserAccountNotFoundError < StandardError; end
+    class UserAccountLockedError < StandardError; end
     class UserAttributesMalformedError < StandardError; end
   end
 end

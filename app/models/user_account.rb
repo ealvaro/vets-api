@@ -19,6 +19,14 @@ class UserAccount < ApplicationRecord
     verified? && !accepted_current_terms_of_use?
   end
 
+  def lock!
+    update!(locked: true)
+  end
+
+  def unlock!
+    update!(locked: false)
+  end
+
   private
 
   def accepted_current_terms_of_use?
