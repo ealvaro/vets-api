@@ -15,8 +15,13 @@ module IvcChampva
     def perform
       return unless Flipper.enabled?(:champva_ves_retry_failures_job)
 
-      # Get all failed VES submissions
-      failed_ves_submissions = IvcChampvaForm.where.not(ves_status: [nil, 'ok'])
+      # Get one record per form_uuid for failed VES submissions.
+      # Multiple records can share a form_uuid (form + supporting documents),
+      # so we deduplicate to avoid sending duplicate retries.
+      failed_ves_submissions = IvcChampvaForm
+                               .where.not(ves_status: [nil, 'ok'])
+                               .select('DISTINCT ON (form_uuid) *')
+                               .order(:form_uuid, created_at: :desc)
 
       return unless failed_ves_submissions.any?
 

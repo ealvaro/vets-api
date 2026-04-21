@@ -86,8 +86,12 @@ RSpec.describe IvcChampva::VesRetryFailuresJob, type: :job do
       before do
         allow(Flipper).to receive(:enabled?).with(:champva_ves_retry_failures_job).and_return(true)
         query_relation = double('ActiveRecord::Relation')
+        distinct_relation = double('ActiveRecord::Relation')
         allow(IvcChampvaForm).to receive(:where).with(no_args).and_return(query_relation)
-        allow(query_relation).to receive(:not).with(ves_status: [nil, 'ok']).and_return([recent_record, old_record])
+        allow(query_relation).to receive(:not).with(ves_status: [nil, 'ok']).and_return(distinct_relation)
+        allow(distinct_relation).to receive(:select).with('DISTINCT ON (form_uuid) *').and_return(distinct_relation)
+        allow(distinct_relation).to receive(:order).with(:form_uuid, created_at: :desc).and_return([recent_record,
+                                                                                                    old_record])
       end
 
       it 'processes only records newer than 5 hours' do
@@ -117,6 +121,30 @@ RSpec.describe IvcChampva::VesRetryFailuresJob, type: :job do
         expect(StatsD).to have_received(:gauge).with('ivc_champva.ves_submission_failures.count', 2)
       end
 
+      it 'deduplicates records by form_uuid so each submission is only retried once' do
+        # Simulate two records with the same form_uuid (e.g., form + supporting doc)
+        duplicate_record = instance_double(IvcChampvaForm,
+                                           form_uuid: 'form-123',
+                                           ves_status: 'failed',
+                                           created_at: 2.hours.ago,
+                                           request_json: nil,
+                                           ves_request_data: legacy_request_data)
+        allow(duplicate_record).to receive_messages(update: true, reload: duplicate_record)
+
+        query_relation = double('ActiveRecord::Relation')
+        distinct_relation = double('ActiveRecord::Relation')
+        allow(IvcChampvaForm).to receive(:where).with(no_args).and_return(query_relation)
+        allow(query_relation).to receive(:not).with(ves_status: [nil, 'ok']).and_return(distinct_relation)
+        # DISTINCT ON should collapse the two records with form_uuid 'form-123' into one
+        allow(distinct_relation).to receive(:select).with('DISTINCT ON (form_uuid) *').and_return(distinct_relation)
+        allow(distinct_relation).to receive(:order).with(:form_uuid, created_at: :desc).and_return([recent_record])
+
+        job.perform
+
+        # Only one submission should be made, not two
+        expect(ves_client).to have_received(:submit_1010d).once
+      end
+
       it 'skips records with neither request_json nor ves_request_data' do
         record_without_data = instance_double(IvcChampvaForm,
                                               form_uuid: 'form-no-data',
@@ -127,8 +155,12 @@ RSpec.describe IvcChampva::VesRetryFailuresJob, type: :job do
         allow(record_without_data).to receive_messages(update: true)
 
         query_relation = double('ActiveRecord::Relation')
+        distinct_relation = double('ActiveRecord::Relation')
         allow(IvcChampvaForm).to receive(:where).with(no_args).and_return(query_relation)
-        allow(query_relation).to receive(:not).with(ves_status: [nil, 'ok']).and_return([record_without_data])
+        allow(query_relation).to receive(:not).with(ves_status: [nil, 'ok']).and_return(distinct_relation)
+        allow(distinct_relation).to receive(:select).with('DISTINCT ON (form_uuid) *').and_return(distinct_relation)
+        allow(distinct_relation).to receive(:order).with(:form_uuid,
+                                                         created_at: :desc).and_return([record_without_data])
 
         expect(Rails.logger).to receive(:warn)
           .with(/VES Retry Failures Job.*no request_json or ves_request_data available/)
