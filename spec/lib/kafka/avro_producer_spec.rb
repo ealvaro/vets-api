@@ -53,6 +53,7 @@ describe Kafka::AvroProducer do
       end
 
       after do
+        Kafka::ProducerManager.instance.producer.close
         Singleton.__init__(Kafka::ProducerManager)
       end
 
