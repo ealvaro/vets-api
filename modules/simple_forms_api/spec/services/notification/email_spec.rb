@@ -777,7 +777,10 @@ describe SimpleFormsApi::Notification::Email do
             fixture_path = Rails.root.join(
               'modules', 'simple_forms_api', 'spec', 'fixtures', 'form_json', 'vba_40_1330m.json'
             )
-            JSON.parse(fixture_path.read)
+            JSON.parse(fixture_path.read).merge(
+              'date_submitted' => 'April 14, 2026 2:52 p.m. ET',
+              'date_expires' => 'April 14, 2027 2:52 p.m. ET'
+            )
           end
 
           it 'sends the confirmation email to the applicant' do
@@ -792,11 +795,11 @@ describe SimpleFormsApi::Notification::Email do
               'form40_1330m_confirmation_email_template_id',
               {
                 'first_name' => 'Jane',
-                'date_submitted' => date_submitted,
+                'date_submitted' => 'April 14, 2026 2:52 p.m. ET',
                 'confirmation_number' => 'confirmation_number',
                 'lighthouse_updated_at' => lighthouse_updated_at,
                 'veteran_name' => 'John Smith',
-                'date_expires' => 1.year.from_now.strftime('%B %d, %Y')
+                'date_expires' => 'April 14, 2027 2:52 p.m. ET'
               },
               a_string_matching(/\S+/),
               a_hash_including(:callback_metadata)
@@ -832,7 +835,10 @@ describe SimpleFormsApi::Notification::Email do
           fixture_path = Rails.root.join(
             'modules', 'simple_forms_api', 'spec', 'fixtures', 'form_json', 'vba_40_1330m.json'
           )
-          JSON.parse(fixture_path.read)
+          JSON.parse(fixture_path.read).merge(
+            'date_submitted' => 'April 14, 2026 2:52 p.m. ET',
+            'date_expires' => 'April 14, 2027 2:52 p.m. ET'
+          )
         end
 
         context 'when cemetery contact email is entered' do
@@ -848,11 +854,11 @@ describe SimpleFormsApi::Notification::Email do
               'form40_1330m_cemetery_notification_email_template_id',
               {
                 'first_name' => 'Robert',
-                'date_submitted' => date_submitted,
+                'date_submitted' => 'April 14, 2026 2:52 p.m. ET',
                 'confirmation_number' => 'confirmation_number',
                 'lighthouse_updated_at' => lighthouse_updated_at,
                 'veteran_name' => 'John Smith',
-                'date_expires' => 1.year.from_now.strftime('%B %d, %Y')
+                'date_expires' => 'April 14, 2027 2:52 p.m. ET'
               },
               a_string_matching(/\S+/),
               a_hash_including(:callback_metadata)

@@ -461,16 +461,40 @@ RSpec.describe SimpleFormsApi::VBA401330m do
         'veteran_full_name' => {
           'first' => 'John',
           'last' => 'Smith'
-        }
+        },
+        'date_submitted' => 'April 14, 2026 2:52 p.m. ET',
+        'date_expires' => 'April 14, 2027 2:52 p.m. ET'
       }
     end
 
-    it 'returns veteran_name and date_expires' do
+    it 'returns veteran_name and client-provided dates' do
       result = described_class.new(data).notification_personalization
       expect(result).to include(
         'veteran_name' => 'John Smith',
-        'date_expires' => 1.year.from_now.strftime('%B %d, %Y')
+        'date_submitted' => 'April 14, 2026 2:52 p.m. ET',
+        'date_expires' => 'April 14, 2027 2:52 p.m. ET'
       )
+    end
+
+    context 'when client dates are not provided' do
+      let(:data) do
+        {
+          'veteran_full_name' => {
+            'first' => 'John',
+            'last' => 'Smith'
+          }
+        }
+      end
+
+      it 'falls back to server-generated date-only format' do
+        today = Time.zone.today
+        result = described_class.new(data).notification_personalization
+        expect(result).to include(
+          'veteran_name' => 'John Smith',
+          'date_submitted' => today.strftime('%B %d, %Y'),
+          'date_expires' => (today + 1.year).strftime('%B %d, %Y')
+        )
+      end
     end
   end
 
