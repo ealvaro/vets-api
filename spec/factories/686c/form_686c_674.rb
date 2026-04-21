@@ -1140,8 +1140,7 @@ FactoryBot.define do
             'birth_date' => '1809-02-12',
             'full_name' => {
               'first' => 'Wesley',
-              'last' => 'Ford',
-              'middle' => ''
+              'last' => 'Ford'
             },
             'ssn' => '987654321',
             'va_file_number' => '987654321'
