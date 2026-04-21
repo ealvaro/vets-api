@@ -118,6 +118,10 @@ module SimpleFormsApi
         .generate
     end
 
+    def words_to_remove
+      veteran_ssn_and_file_number + veteran_dob + veteran_postal_code + [veteran_phone, veteran_email].compact
+    end
+
     def track_user_identity(confirmation_number); end
 
     def veteran_is_filing?
@@ -139,6 +143,25 @@ module SimpleFormsApi
     end
 
     private
+
+    def veteran_ssn_and_file_number
+      ssn = veteran_id_data['ssn']
+      file_number = veteran_id_data['va_file_number']
+      [
+        ssn&.[](0..2), ssn&.[](3..4), ssn&.[](5..8),
+        file_number&.[](0..2), file_number&.[](3..4), file_number&.[](5..8)
+      ].compact
+    end
+
+    def veteran_dob
+      dob = veteran_date_of_birth
+      [dob&.[](0..3), dob&.[](5..6), dob&.[](8..9)].compact
+    end
+
+    def veteran_postal_code
+      postal_code = veteran_mailing_address['postal_code']
+      [postal_code&.[](0..4), postal_code&.[](5..8)].compact
+    end
 
     def parse_profile_mailing_address
       addr = data.dig('veteran', 'mailing_address')

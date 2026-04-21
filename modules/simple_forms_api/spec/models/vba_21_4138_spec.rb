@@ -567,6 +567,99 @@ RSpec.describe SimpleFormsApi::VBA214138 do
     end
   end
 
+  describe '#words_to_remove' do
+    context 'when the Veteran is filing' do
+      let(:data) do
+        {
+          'claimant_type' => 'self',
+          'id_number' => { 'ssn' => '321540987', 'va_file_number' => 'C12345678' },
+          'date_of_birth' => '1980-01-15',
+          'veteran' => {
+            'mailing_address' => { 'zip_code' => '98117', 'country_code_iso3' => 'USA' },
+            'mobile_phone' => { 'area_code' => '206', 'phone_number' => '5550101' },
+            'email' => { 'email_address' => 'veteran@example.com' }
+          }
+        }
+      end
+
+      it 'includes SSN parts' do
+        result = described_class.new(data).words_to_remove
+        expect(result).to include('321', '54', '0987')
+      end
+
+      it 'includes VA file number parts' do
+        result = described_class.new(data).words_to_remove
+        expect(result).to include('C12', '34', '5678')
+      end
+
+      it 'includes date of birth parts' do
+        result = described_class.new(data).words_to_remove
+        expect(result).to include('1980', '01', '15')
+      end
+
+      it 'includes postal code' do
+        result = described_class.new(data).words_to_remove
+        expect(result).to include('98117')
+      end
+
+      it 'includes phone number' do
+        result = described_class.new(data).words_to_remove
+        expect(result).to include('2065550101')
+      end
+
+      it 'includes email address' do
+        result = described_class.new(data).words_to_remove
+        expect(result).to include('veteran@example.com')
+      end
+
+      it 'does not include nils' do
+        result = described_class.new(data).words_to_remove
+        expect(result).not_to include(nil)
+      end
+    end
+
+    context 'when a non-Veteran is filing' do
+      let(:data) do
+        {
+          'claimant_type' => 'forVeteran',
+          'veteran_id_number' => { 'ssn' => '432959594', 'va_file_number' => 'V9876543' },
+          'veteran_date_of_birth' => '1955-06-20',
+          'veteran_mailing_address' => { 'postal_code' => '46375', 'country' => 'USA' },
+          'veteran_phone' => '3175550202',
+          'veteran_email_address' => 'nonveteran@example.com'
+        }
+      end
+
+      it 'uses veteran_id_number SSN parts' do
+        result = described_class.new(data).words_to_remove
+        expect(result).to include('432', '95', '9594')
+      end
+
+      it 'uses veteran_date_of_birth parts' do
+        result = described_class.new(data).words_to_remove
+        expect(result).to include('1955', '06', '20')
+      end
+
+      it 'uses veteran_mailing_address postal code' do
+        result = described_class.new(data).words_to_remove
+        expect(result).to include('46375')
+      end
+
+      it 'uses veteran_phone' do
+        result = described_class.new(data).words_to_remove
+        expect(result).to include('3175550202')
+      end
+    end
+
+    context 'when PII fields are absent' do
+      it 'returns an array with no nils' do
+        result = described_class.new({}).words_to_remove
+        expect(result).to be_a(Array)
+        expect(result).not_to include(nil)
+      end
+    end
+  end
+
   context 'when the claimant header pushes content over the limit' do
     let(:header_offset) { 'Submitted by: Ally Soto (spouse)'.length + 2 }
     let(:data) do
