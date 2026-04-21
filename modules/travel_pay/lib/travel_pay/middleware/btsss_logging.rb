@@ -30,7 +30,7 @@ module TravelPay
 
           log(level, message, log_tags(env, duration, request_body:, response_body: response_env.body))
         end
-      rescue Timeout::Error, Faraday::TimeoutError, Faraday::ConnectionFailed => e
+      rescue => e
         duration = Time.current - start_time
         log(:warn, "BTSSS service call failed - #{e.class}",
             log_tags(env, duration, request_body:))
