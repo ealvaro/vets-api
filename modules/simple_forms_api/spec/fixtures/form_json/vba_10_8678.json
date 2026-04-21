@@ -1,0 +1,69 @@
+{
+"fullName": {
+  "first": "John",
+  "middle": "D",
+  "last": "Doe"
+},
+"ssn": "123456789",
+"address": {
+  "street": "123 Main St",
+  "street2": "Apt 4B",
+  "city": "Springfield",
+  "state": "PA",
+  "postalCode": "22150",
+  "country": "USA"
+},
+"phone": "7035551234",
+"emailAddress": "john.doe@example.com",
+"veteranSignature": "John A Doe",
+"signatureDate": "2026-04-16",
+"electTermination": true,
+"vhaMedicalFacility": "Clarksburg PA Medical Center",
+"appliances": [
+  {
+    "deviceOrMedication": "Hearing Aid",
+    "serviceConnectedDisability": "Hearing Loss",
+    "impactedLocations": {
+      "upperLeft": true,
+      "upperRight": false,
+      "lowerLeft": false,
+      "lowerRight": false
+    },
+    "issuingFacility": "Clarksburg PA Medical Center"
+  },
+  {
+    "deviceOrMedication": "Prosthetic Leg",
+    "serviceConnectedDisability": "Amputation",
+    "impactedLocations": {
+      "upperLeft": false,
+      "upperRight": false,
+      "lowerLeft": false,
+      "lowerRight": true
+    },
+    "issuingFacility": "Pittsburgh PA"
+  },
+  {
+    "deviceOrMedication": "Thing 3",
+    "serviceConnectedDisability": "device 3",
+    "impactedLocations": {
+      "upperLeft": false,
+      "upperRight": true,
+      "lowerLeft": false,
+      "lowerRight": false
+    },
+    "issuingFacility": "Pittsburgh PA"
+  },
+  {
+    "deviceOrMedication": "thing 4",
+    "serviceConnectedDisability": "device 4",
+    "impactedLocations": {
+      "upperLeft": false,
+      "upperRight": false,
+      "lowerLeft": true,
+      "lowerRight": false
+    },
+    "issuingFacility": "Pittsburgh PA"
+  }
+],
+"formNumber": "10-8678"
+}

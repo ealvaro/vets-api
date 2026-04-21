@@ -23,6 +23,7 @@ module SimpleFormsApi
       Rails.logger.info("Starting PDF stamping for: #{stamped_template_path}")
 
       all_form_stamps.each do |desired_stamp|
+        Rails.logger.info("all_form_stamps PDF stamping for: #{stamped_template_path}")
         stamp_form(desired_stamp)
       end
 
