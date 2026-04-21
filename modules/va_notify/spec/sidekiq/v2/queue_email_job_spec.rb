@@ -80,6 +80,59 @@ RSpec.describe VANotify::V2::QueueEmailJob, type: :job do
     end
   end
 
+  describe '.enqueue_at' do
+    let(:at_time) { 1.hour.from_now }
+
+    it 'creates an AttrPackage and calls perform_at with correct arguments' do
+      expect(Sidekiq::AttrPackage).to receive(:create)
+        .with(email:, personalisation:)
+        .and_return(key)
+
+      expect(described_class).to receive(:perform_at)
+        .with(at_time, template_id, key, api_key_path, callback_options)
+
+      described_class.enqueue_at(at_time, email, template_id, personalisation, api_key_path, callback_options)
+    end
+
+    it 'defaults callback_options to an empty hash' do
+      expect(Sidekiq::AttrPackage).to receive(:create)
+        .with(email:, personalisation:)
+        .and_return(key)
+
+      expect(described_class).to receive(:perform_at)
+        .with(at_time, template_id, key, api_key_path, {})
+
+      described_class.enqueue_at(at_time, email, template_id, personalisation, api_key_path)
+    end
+
+    it 'raises Sidekiq::AttrPackageError when AttrPackage creation fails' do
+      allow(Sidekiq::AttrPackage).to receive(:create)
+        .and_raise(Sidekiq::AttrPackageError.new('create', 'Connection refused'))
+
+      expect do
+        described_class.enqueue_at(at_time, email, template_id, personalisation, api_key_path, callback_options)
+      end.to raise_error(Sidekiq::AttrPackageError, /Connection refused/)
+    end
+
+    context 'when api_key_path does not start with Settings.' do
+      it 'raises ArgumentError' do
+        expect do
+          described_class.enqueue_at(at_time, email, template_id, personalisation, 'invalid_path', callback_options)
+        end.to raise_error(ArgumentError, "API key path must start with 'Settings.': invalid_path")
+      end
+
+      it 'does not create an AttrPackage' do
+        expect(Sidekiq::AttrPackage).not_to receive(:create)
+
+        begin
+          described_class.enqueue_at(at_time, email, template_id, personalisation, 'invalid_path', callback_options)
+        rescue ArgumentError
+          nil
+        end
+      end
+    end
+  end
+
   context 'when errors occur' do
     before do
       allow(Sidekiq::AttrPackage).to receive(:delete).with(key)

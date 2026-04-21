@@ -867,6 +867,7 @@ RSpec.describe 'SimpleFormsApi::V1::SimpleForms', type: :request do
     before do
       sign_in(user)
       allow(Flipper).to receive(:enabled?).with(:simple_forms_email_delivery_callback).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:va_notify_v2_simple_forms_email).and_return(false)
     end
 
     describe '21_4142' do

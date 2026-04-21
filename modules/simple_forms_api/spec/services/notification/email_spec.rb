@@ -15,6 +15,10 @@ end
 describe SimpleFormsApi::Notification::Email do
   let(:lighthouse_updated_at) { Time.current }
 
+  before do
+    allow(Flipper).to receive(:enabled?).with(:va_notify_v2_simple_forms_email).and_return(false)
+  end
+
   %i[confirmation error received].each do |notification_type|
     describe '#initialize' do
       context 'when all required arguments are passed in' do
@@ -220,6 +224,7 @@ describe SimpleFormsApi::Notification::Email do
       context 'flipper is on' do
         before do
           allow(Flipper).to receive(:enabled?).and_return true
+          allow(Flipper).to receive(:enabled?).with(:va_notify_v2_simple_forms_email).and_return(false)
         end
 
         context 'fetching the template id' do
@@ -393,6 +398,70 @@ describe SimpleFormsApi::Notification::Email do
         end
       end
 
+      context 'when va_notify_v2_simple_forms_email is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:form21_10210_confirmation_email).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:va_notify_v2_simple_forms_email).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:simple_forms_email_delivery_callback).and_return(false)
+          allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
+        end
+
+        it 'sends email via V2 QueueEmailJob' do
+          subject = described_class.new(config, notification_type:)
+
+          subject.send
+
+          expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
+            a_string_matching(/@/),
+            a_string_matching(/\S+/),
+            a_hash_including('confirmation_number'),
+            'Settings.vanotify.services.va_gov.api_key',
+            a_hash_including(:callback_metadata)
+          )
+        end
+
+        it 'does not call V1 EmailJob' do
+          allow(VANotify::EmailJob).to receive(:perform_async)
+          subject = described_class.new(config, notification_type:)
+
+          subject.send
+
+          expect(VANotify::EmailJob).not_to have_received(:perform_async)
+        end
+      end
+
+      context 'when va_notify_v2_simple_forms_email is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:form21_10210_confirmation_email).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:va_notify_v2_simple_forms_email).and_return(false)
+          allow(Flipper).to receive(:enabled?).with(:simple_forms_email_delivery_callback).and_return(false)
+          allow(VANotify::EmailJob).to receive(:perform_async)
+        end
+
+        it 'sends email via V1 EmailJob' do
+          subject = described_class.new(config, notification_type:)
+
+          subject.send
+
+          expect(VANotify::EmailJob).to have_received(:perform_async).with(
+            a_string_matching(/@/),
+            a_string_matching(/\S+/),
+            a_hash_including('confirmation_number'),
+            a_string_matching(/\S+/),
+            a_hash_including(:callback_metadata)
+          )
+        end
+
+        it 'does not call V2 QueueEmailJob' do
+          allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
+          subject = described_class.new(config, notification_type:)
+
+          subject.send
+
+          expect(VANotify::V2::QueueEmailJob).not_to have_received(:enqueue)
+        end
+      end
+
       context 'send at time is specified' do
         context 'user_account is passed in' do
           let(:confirmation_number) { 'confirmation_number' }
@@ -431,21 +500,56 @@ describe SimpleFormsApi::Notification::Email do
         end
 
         context 'user and user_account are not passed in' do
-          it 'sends the email at the specified time' do
-            time = double
-            allow(VANotify::EmailJob).to receive(:perform_at)
-            subject = described_class.new(config, notification_type:)
+          context 'when va_notify_v2_simple_forms_email is disabled' do
+            it 'sends the email at the specified time via V1' do
+              time = double
+              allow(VANotify::EmailJob).to receive(:perform_at)
+              subject = described_class.new(config, notification_type:)
 
-            subject.send(at: time)
+              subject.send(at: time)
 
-            expect(VANotify::EmailJob).to have_received(:perform_at).with(
-              time,
-              a_string_matching(/@/),
-              a_string_matching(/\S+/),
-              a_hash_including('confirmation_number'),
-              a_string_matching(/\S+/),
-              a_hash_including(:callback_metadata)
-            )
+              expect(VANotify::EmailJob).to have_received(:perform_at).with(
+                time,
+                a_string_matching(/@/),
+                a_string_matching(/\S+/),
+                a_hash_including('confirmation_number'),
+                a_string_matching(/\S+/),
+                a_hash_including(:callback_metadata)
+              )
+            end
+          end
+
+          context 'when va_notify_v2_simple_forms_email is enabled' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(:va_notify_v2_simple_forms_email).and_return(true)
+              allow(VANotify::V2::QueueEmailJob).to receive(:enqueue_at)
+            end
+
+            it 'sends the email at the specified time via V2' do
+              time = double
+              subject = described_class.new(config, notification_type:)
+
+              subject.send(at: time)
+
+              expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue_at).with(
+                time,
+                a_string_matching(/@/),
+                a_string_matching(/\S+/),
+                a_hash_including('confirmation_number'),
+                'Settings.vanotify.services.va_gov.api_key',
+                a_hash_including(:callback_metadata)
+              )
+            end
+
+            it 'does not call V1 EmailJob' do
+              time = double
+              allow(VANotify::EmailJob).to receive(:perform_at)
+              subject = described_class.new(config, notification_type:)
+
+              subject.send(at: time)
+
+              expect(VANotify::EmailJob).not_to have_received(:perform_at)
+            end
           end
         end
       end

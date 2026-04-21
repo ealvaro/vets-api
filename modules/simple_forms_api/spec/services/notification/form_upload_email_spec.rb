@@ -21,6 +21,10 @@ describe SimpleFormsApi::Notification::FormUploadEmail do
     }
   end
 
+  before do
+    allow(Flipper).to receive(:enabled?).with(:va_notify_v2_simple_forms_upload_email).and_return(false)
+  end
+
   describe '#initialize' do
     context 'when all required arguments are passed in' do
       let(:config) do
@@ -185,20 +189,54 @@ describe SimpleFormsApi::Notification::FormUploadEmail do
       end
 
       context 'send at time is specified' do
-        it 'sends the email at the specified time' do
-          time = double
-          allow(VANotify::EmailJob).to receive(:perform_at)
+        context 'when va_notify_v2_simple_forms_upload_email is disabled' do
+          it 'sends the email at the specified time via V1' do
+            time = double
+            allow(VANotify::EmailJob).to receive(:perform_at)
 
-          subject = described_class.new(config, notification_type: :confirmation)
-          subject.send(at: time)
+            subject = described_class.new(config, notification_type: :confirmation)
+            subject.send(at: time)
 
-          expect(VANotify::EmailJob).to have_received(:perform_at).with(
-            time,
-            email,
-            template_id,
-            expected_personalization,
-            *email_args
-          )
+            expect(VANotify::EmailJob).to have_received(:perform_at).with(
+              time,
+              email,
+              template_id,
+              expected_personalization,
+              *email_args
+            )
+          end
+        end
+
+        context 'when va_notify_v2_simple_forms_upload_email is enabled' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:va_notify_v2_simple_forms_upload_email).and_return(true)
+            allow(VANotify::V2::QueueEmailJob).to receive(:enqueue_at)
+          end
+
+          it 'sends the email at the specified time via V2' do
+            time = double
+            subject = described_class.new(config, notification_type: :confirmation)
+            subject.send(at: time)
+
+            expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue_at).with(
+              time,
+              email,
+              template_id,
+              expected_personalization,
+              'Settings.vanotify.services.va_gov.api_key',
+              { callback_metadata: { notification_type: :confirmation, form_number:,
+                                     confirmation_number:, statsd_tags: } }
+            )
+          end
+
+          it 'does not call V1 EmailJob' do
+            time = double
+            allow(VANotify::EmailJob).to receive(:perform_at)
+            subject = described_class.new(config, notification_type: :confirmation)
+            subject.send(at: time)
+
+            expect(VANotify::EmailJob).not_to have_received(:perform_at)
+          end
         end
       end
     end
@@ -249,6 +287,65 @@ describe SimpleFormsApi::Notification::FormUploadEmail do
       let(:form_number) { '21P-8924' }
 
       it_behaves_like 'sends confirmation email'
+    end
+
+    context 'when va_notify_v2_simple_forms_upload_email is enabled' do
+      let(:form_number) { '21-0779' }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:va_notify_v2_simple_forms_upload_email).and_return(true)
+        allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
+      end
+
+      it 'sends email via V2 QueueEmailJob' do
+        subject = described_class.new(config, notification_type: :confirmation)
+        subject.send
+
+        expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
+          email,
+          template_id,
+          expected_personalization,
+          'Settings.vanotify.services.va_gov.api_key',
+          { callback_metadata: { notification_type: :confirmation, form_number:, confirmation_number:, statsd_tags: } }
+        )
+      end
+
+      it 'does not call V1 EmailJob' do
+        allow(VANotify::EmailJob).to receive(:perform_async)
+        subject = described_class.new(config, notification_type: :confirmation)
+        subject.send
+
+        expect(VANotify::EmailJob).not_to have_received(:perform_async)
+      end
+    end
+
+    context 'when va_notify_v2_simple_forms_upload_email is disabled' do
+      let(:form_number) { '21-0779' }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:va_notify_v2_simple_forms_upload_email).and_return(false)
+        allow(VANotify::EmailJob).to receive(:perform_async)
+      end
+
+      it 'sends email via V1 EmailJob' do
+        subject = described_class.new(config, notification_type: :confirmation)
+        subject.send
+
+        expect(VANotify::EmailJob).to have_received(:perform_async).with(
+          email,
+          template_id,
+          expected_personalization,
+          *email_args
+        )
+      end
+
+      it 'does not call V2 QueueEmailJob' do
+        allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
+        subject = described_class.new(config, notification_type: :confirmation)
+        subject.send
+
+        expect(VANotify::V2::QueueEmailJob).not_to have_received(:enqueue)
+      end
     end
   end
 end

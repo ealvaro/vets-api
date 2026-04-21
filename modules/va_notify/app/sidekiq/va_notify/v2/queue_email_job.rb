@@ -52,6 +52,17 @@ module VANotify
         perform_async(template_id, key, api_key_path, callback_options)
       end
 
+      # rubocop:disable Metrics/ParameterLists
+      def self.enqueue_at(at, email, template_id, personalisation, api_key_path, callback_options = {})
+        # rubocop:enable Metrics/ParameterLists
+        unless api_key_path.start_with?('Settings.')
+          raise ArgumentError, "API key path must start with 'Settings.': #{api_key_path}"
+        end
+
+        key = Sidekiq::AttrPackage.create(email:, personalisation:)
+        perform_at(at, template_id, key, api_key_path, callback_options)
+      end
+
       private
 
       def fetch_attrs(attr_package_key, template_id = nil)

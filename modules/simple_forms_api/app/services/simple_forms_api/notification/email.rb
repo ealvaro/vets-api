@@ -111,13 +111,25 @@ module SimpleFormsApi
       end
 
       def async_job_with_form_data(email, at, template_id)
-        VANotify::EmailJob.perform_at(
-          at,
-          email,
-          template_id,
-          get_personalization,
-          *email_args
-        )
+        if Flipper.enabled?(:va_notify_v2_simple_forms_email)
+          callback_options = email_args.last
+          VANotify::V2::QueueEmailJob.enqueue_at(
+            at,
+            email,
+            template_id,
+            get_personalization,
+            'Settings.vanotify.services.va_gov.api_key',
+            callback_options
+          )
+        else
+          VANotify::EmailJob.perform_at(
+            at,
+            email,
+            template_id,
+            get_personalization,
+            *email_args
+          )
+        end
       end
 
       def async_job_with_user_account(user_account, at, template_id)
@@ -137,8 +149,18 @@ module SimpleFormsApi
       def send_email_now(template_id)
         email_address = resolve_notification_email || user&.email
         personalization = get_personalization
+        return unless email_address && personalization
 
-        if email_address && personalization
+        if Flipper.enabled?(:va_notify_v2_simple_forms_email)
+          callback_options = email_args.last
+          VANotify::V2::QueueEmailJob.enqueue(
+            email_address,
+            template_id,
+            personalization,
+            'Settings.vanotify.services.va_gov.api_key',
+            callback_options
+          )
+        else
           VANotify::EmailJob.perform_async(
             email_address,
             template_id,

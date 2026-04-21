@@ -102,22 +102,43 @@ module SimpleFormsApi
       end
 
       def send_email_now
-        VANotify::EmailJob.perform_async(
-          form_data['email'],
-          template_id,
-          get_personalization,
-          *email_args
-        )
+        if Flipper.enabled?(:va_notify_v2_simple_forms_upload_email)
+          VANotify::V2::QueueEmailJob.enqueue(
+            form_data['email'],
+            template_id,
+            get_personalization,
+            'Settings.vanotify.services.va_gov.api_key',
+            { callback_metadata: { notification_type:, form_number:, confirmation_number:, statsd_tags: } }
+          )
+        else
+          VANotify::EmailJob.perform_async(
+            form_data['email'],
+            template_id,
+            get_personalization,
+            *email_args
+          )
+        end
       end
 
       def enqueue_email(at)
-        VANotify::EmailJob.perform_at(
-          at,
-          form_data['email'],
-          template_id,
-          get_personalization,
-          *email_args
-        )
+        if Flipper.enabled?(:va_notify_v2_simple_forms_upload_email)
+          VANotify::V2::QueueEmailJob.enqueue_at(
+            at,
+            form_data['email'],
+            template_id,
+            get_personalization,
+            'Settings.vanotify.services.va_gov.api_key',
+            { callback_metadata: { notification_type:, form_number:, confirmation_number:, statsd_tags: } }
+          )
+        else
+          VANotify::EmailJob.perform_at(
+            at,
+            form_data['email'],
+            template_id,
+            get_personalization,
+            *email_args
+          )
+        end
       end
 
       def email_args
