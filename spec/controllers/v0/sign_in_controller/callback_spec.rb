@@ -63,22 +63,24 @@ RSpec.describe V0::SignInController, '#callback', type: :controller do
       let(:expected_error_message) do
         { errors: expected_error, error_code:, client_id:, type:, acr:, operation: }
       end
+      let(:meta_refresh_tag) { '<meta http-equiv="refresh" content="0;' }
       let(:request_id) { SecureRandom.uuid }
 
       before do
         allow_any_instance_of(ActionController::TestRequest).to receive(:request_id).and_return(request_id)
       end
 
-      it 'renders the error page HTML' do
-        expect(subject.body).to include("We can't sign you in")
+      it 'renders the meta refresh redirect to the error page' do
+        expect(subject.body).to include(meta_refresh_tag)
+        expect(subject.body).to include('/v0/sign_in/error')
       end
 
-      it 'includes the error code in the rendered page' do
-        expect(subject.body).to include(error_code)
+      it 'includes the error code in the redirect URL' do
+        expect(subject.body).to include("error_code=#{error_code}")
       end
 
-      it 'includes the request id in the rendered page' do
-        expect(subject.body).to include(request_id)
+      it 'includes the request id in the redirect URL' do
+        expect(subject.body).to include("request_id=#{request_id}")
       end
 
       it 'returns expected status' do

@@ -10,6 +10,10 @@ RSpec.describe SignIn::ErrorPageRenderer do
   let(:redirect_uri) { 'https://va.gov/sign-in' }
 
   describe '#perform' do
+    before do
+      allow(IdentitySettings.sign_in).to receive(:usip_uri).and_return('https://staging.va.gov/sign-in')
+    end
+
     it 'returns HTML containing the error code and request id' do
       html = renderer.perform
       expect(html).to include('some-request-id')
@@ -78,6 +82,11 @@ RSpec.describe SignIn::ErrorPageRenderer do
         expect(html).to include('temporary issue')
         expect(html).to include('manage your VA benefits over the phone')
       end
+    end
+
+    it 'includes the environment home URI in the header link' do
+      html = renderer.perform
+      expect(html).to include('href="https://staging.va.gov"')
     end
   end
 end

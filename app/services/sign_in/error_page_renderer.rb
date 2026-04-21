@@ -41,12 +41,13 @@ module SignIn
 
     TEMPLATE_PATH = Rails.root.join('lib', 'sign_in', 'templates', 'error_page.html.erb').freeze
 
-    attr_reader :error_code, :request_id, :redirect_uri
+    attr_reader :error_code, :request_id, :redirect_uri, :occurred_at
 
-    def initialize(error_code:, request_id:, redirect_uri:)
+    def initialize(error_code:, request_id:, redirect_uri:, occurred_at: nil)
       @error_code = error_code
       @request_id = request_id
       @redirect_uri = redirect_uri
+      @occurred_at = occurred_at || Time.current.to_i
     end
 
     def perform
@@ -62,7 +63,8 @@ module SignIn
           error_code:,
           request_id:,
           redirect_uri:,
-          timestamp: Time.current.strftime('%b %d, %Y, %l:%M:%S %p %Z').squeeze(' ')
+          home_uri:,
+          timestamp: format_timestamp
         }
       )
     end
@@ -71,6 +73,16 @@ module SignIn
 
     def content
       @content ||= DEFAULT_CONTENT.merge(ERROR_CONTENT.fetch(error_code.to_s, {}))
+    end
+
+    def format_timestamp
+      Time.zone.at(occurred_at.to_i).strftime('%b %d, %Y, %l:%M:%S %p %Z').squeeze(' ')
+    end
+
+    def home_uri
+      uri = URI.parse(IdentitySettings.sign_in.usip_uri)
+      port = uri.port == uri.default_port ? nil : uri.port
+      "#{uri.scheme}://#{uri.host}#{":#{port}" if port}"
     end
   end
 end

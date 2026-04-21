@@ -8,7 +8,7 @@ module V0
 
     skip_before_action :authenticate,
                        only: %i[authorize callback token refresh revoke revoke_all_sessions logout
-                                logingov_logout_proxy]
+                                logingov_logout_proxy error]
     before_action :access_token_authenticate, only: :revoke_all_sessions
 
     def authorize # rubocop:disable Metrics/MethodLength
@@ -232,6 +232,16 @@ module V0
       render json: { errors: e }, status: :bad_request
     end
 
+    def error
+      error_code = params[:error_code].presence || SignIn::Constants::ErrorCode::INVALID_REQUEST
+      request_id = params[:request_id].presence || request.request_id
+      occurred_at = Integer(params[:occurred_at], exception: false) if params[:occurred_at].present?
+      redirect_uri = client_config(params[:client_id].presence)&.logout_redirect_uri
+
+      render body: SignIn::ErrorPageRenderer.new(error_code:, request_id:, redirect_uri:, occurred_at:).perform,
+             content_type: 'text/html'
+    end
+
     private
 
     def validate_authorize_params(type, client_id, acr, operation)
@@ -269,9 +279,10 @@ module V0
                                                       params_hash:).perform,
                content_type: 'text/html'
       else
-        redirect_uri = client_config(client_id)&.logout_redirect_uri
+        error_params = { error_code:, request_id:, client_id:, occurred_at: Time.current.to_i }
 
-        render body: SignIn::ErrorPageRenderer.new(error_code:, request_id:, redirect_uri:).perform,
+        render body: SignIn::RedirectUrlGenerator.new(redirect_uri: sign_in_error_path,
+                                                      params_hash: error_params).perform,
                content_type: 'text/html'
       end
     end
