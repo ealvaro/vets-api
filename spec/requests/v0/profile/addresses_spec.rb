@@ -236,8 +236,14 @@ RSpec.describe 'V0::Profile::Addresses', type: :request do
       end
     end
 
-    context 'when non ASCII characters are used' do
-      it 'matches the error schema' do
+    context 'when international address validation is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:profile_international_address_validation_enabled)
+          .and_return(false)
+      end
+
+      it 'rejects non-ASCII characters' do
         address.address_line1 = '千代田区丸の'
 
         put('/v0/profile/addresses', params: address.to_json, headers:)
@@ -245,6 +251,34 @@ RSpec.describe 'V0::Profile::Addresses', type: :request do
         expect(response).to have_http_status(:unprocessable_entity)
         expect(response).to match_response_schema('errors')
         expect(errors_for(response)).to include 'address - must contain ASCII characters only'
+      end
+    end
+
+    context 'when international address validation is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:profile_international_address_validation_enabled)
+          .and_return(true)
+      end
+
+      it 'accepts UTF-8 characters' do
+        VCR.use_cassette('va_profile/v2/contact_information/put_address_success') do
+          address.address_line1 = 'Café Street'
+
+          put('/v0/profile/addresses', params: address.to_json, headers:)
+
+          expect(response).to have_http_status(:ok)
+        end
+      end
+
+      it 'rejects control characters' do
+        address.address_line1 = "123\x00Main St"
+
+        put('/v0/profile/addresses', params: address.to_json, headers:)
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to match_response_schema('errors')
+        expect(errors_for(response)).to include 'address - contains invalid characters'
       end
     end
   end

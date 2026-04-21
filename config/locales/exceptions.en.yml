@@ -1488,6 +1488,12 @@ en:
         code: VET360_ADDR309
         detail: UAM address validation not available
         status: 400
+      VET360_ADDR314:
+        <<: *external_defaults
+        title: Invalid Input Characters
+        code: VET360_ADDR314
+        detail: The address contains an invalid white space or control character
+        status: 400
       VET360_ADDRVAL101:
         <<: *external_defaults
         title: Address Service Error

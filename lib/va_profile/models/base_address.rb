@@ -7,6 +7,7 @@ require 'va_profile/concerns/expirable'
 module VAProfile
   module Models
     class BaseAddress < Base
+      include ActiveModel::Validations::Callbacks
       include VAProfile::Concerns::Defaultable
       include VAProfile::Concerns::Expirable
 
@@ -55,7 +56,9 @@ module VAProfile
       attribute :zip_code, String
       attribute :zip_code_suffix, String
 
-      validate :ascii_only
+      before_validation :strip_whitespace
+      validate :validate_address_characters
+
       validates(:address_line1, presence: true)
       validates(:city, presence: true)
       validates(:country_code_iso3, length: { maximum: 3 })
@@ -78,8 +81,7 @@ module VAProfile
       validates(
         :country_name,
         length: { maximum: 35 },
-        allow_blank: true,
-        format: { with: VALID_ALPHA_REGEX }
+        allow_blank: true
       )
 
       validates(
@@ -131,23 +133,50 @@ module VAProfile
         self.address_pou = 'RESIDENCE' if address_pou == 'RESIDENCE/CHOICE'
       end
 
-      def ascii_only
+      def validate_address_characters
         address = [
           address_line1,
           address_line2,
           address_line3,
           city,
+          country_name,
           province,
           international_postal_code
         ].join
 
-        errors.add(:address, 'must contain ASCII characters only') unless address.ascii_only?
+        if Flipper.enabled?(:profile_international_address_validation_enabled)
+          # VA Profile allows all unicode except control characters (U+0000–U+001F), tabs permitted
+          invalid_control_chars = /[\x00-\x08\x0A-\x1F]/
+          if !address.valid_encoding? || address.match?(invalid_control_chars)
+            errors.add(:address, 'contains invalid characters')
+          end
+        else
+          errors.add(:address, 'must contain ASCII characters only') unless address.ascii_only?
+        end
       end
 
       def zip_plus_four
         return if zip_code.blank?
 
         [zip_code, zip_code_suffix].compact.join('-')
+      end
+
+      def strip_whitespace
+        %i[
+          address_line1
+          address_line2
+          address_line3
+          city
+          state_code
+          zip_code
+          zip_code_suffix
+          country_name
+          province
+          international_postal_code
+        ].each do |attribute|
+          value = public_send(attribute)
+          public_send("#{attribute}=", value.strip) if value
+        end
       end
     end
   end

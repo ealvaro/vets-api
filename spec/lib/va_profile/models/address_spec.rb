@@ -63,40 +63,10 @@ describe VAProfile::Models::Address do
         expect(address.valid?).to be(false)
       end
 
-      it 'country_name must be alphabetic' do
-        expect(address.valid?).to be(true)
-        address.country_name = '42'
-        expect(address.valid?).to be(false)
-      end
-
       it 'address_line1 < 35' do
         expect(address.valid?).to be(true)
         address.address_line1 = 'a' * 36
         expect(address.valid?).to be(false)
-      end
-
-      it 'address_line1 must only have US-ASCII characters' do
-        address.address_line1 = '12-34 2nd & 31st Street!'
-        expect(address.valid?).to be(true)
-        address.address_line1 = '千代田区丸の内1-1-1'
-        expect(address.valid?).to be(false)
-        expect(address.errors.messages[:address].first).to eq('must contain ASCII characters only')
-      end
-
-      it 'address_line2 must only have US-ASCII characters' do
-        address.address_line2 = '12-34 2nd & 31st Street!'
-        expect(address.valid?).to be(true)
-        address.address_line2 = '千代田区丸の内1-1-1'
-        expect(address.valid?).to be(false)
-        expect(address.errors.messages[:address].first).to eq('must contain ASCII characters only')
-      end
-
-      it 'address_line3 must only have US-ASCII characters' do
-        address.address_line3 = '12-34 2nd & 31st Street!'
-        expect(address.valid?).to be(true)
-        address.address_line3 = '千代田区丸の内1-1-1'
-        expect(address.valid?).to be(false)
-        expect(address.errors.messages[:address].first).to eq('must contain ASCII characters only')
       end
 
       it 'zip_code_suffix must be numeric' do
@@ -104,18 +74,43 @@ describe VAProfile::Models::Address do
         address.zip_code_suffix = 'Hello'
         expect(address.valid?).to be(false)
       end
+
+      context 'when international address validation is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:profile_international_address_validation_enabled)
+            .and_return(false)
+        end
+
+        it 'address fields must only have US-ASCII characters' do
+          address.address_line1 = '千代田区丸の内1-1-1'
+          expect(address.valid?).to be(false)
+          expect(address.errors.messages[:address].first).to eq('must contain ASCII characters only')
+        end
+      end
+
+      context 'when international address validation is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:profile_international_address_validation_enabled)
+            .and_return(true)
+        end
+
+        it 'address fields allow UTF-8 characters' do
+          address.address_line1 = 'Café Street'
+          expect(address.valid?).to be(true)
+        end
+
+        it 'address fields reject control characters' do
+          address.address_line1 = "123\x00Main St"
+          expect(address.valid?).to be(false)
+          expect(address.errors.messages[:address].first).to eq('contains invalid characters')
+        end
+      end
     end
 
     context 'when address_type is domestic' do
       let(:address) { build(:va_profile_address, :domestic) }
-
-      it 'city must only have US-ASCII characters' do
-        address.city = '12-34 2nd & 31st Street!'
-        expect(address.valid?).to be(true)
-        address.city = '千代田区丸の内1-1-1'
-        expect(address.valid?).to be(false)
-        expect(address.errors.messages[:address].first).to eq('must contain ASCII characters only')
-      end
 
       it 'state_code is required' do
         expect(address.valid?).to be(true)
@@ -143,22 +138,6 @@ describe VAProfile::Models::Address do
 
     context 'when address_type is international' do
       let(:address) { build(:va_profile_address, :international) }
-
-      it 'province must only have US-ASCII characters' do
-        address.province = '12-34 2nd & 31st Street!'
-        expect(address.valid?).to be(true)
-        address.province = '千代田区丸の内1-1-1'
-        expect(address.valid?).to be(false)
-        expect(address.errors.messages[:address].first).to eq('must contain ASCII characters only')
-      end
-
-      it 'international_postal_code must only have US-ASCII characters' do
-        address.international_postal_code = '12-34 2nd & 31st Street!'
-        expect(address.valid?).to be(true)
-        address.international_postal_code = '千代田区丸の内1-1-1'
-        expect(address.valid?).to be(false)
-        expect(address.errors.messages[:address].first).to eq('must contain ASCII characters only')
-      end
 
       it 'state_code is disallowed' do
         expect(address.valid?).to be(true)

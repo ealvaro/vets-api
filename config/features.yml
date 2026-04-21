@@ -2093,6 +2093,9 @@ features:
   profile_enhanced_military_info:
     actor_type: user
     description: When enabled, /v1/profile/military_info endpoint will return all military information for a user.
+  profile_international_address_validation_enabled:
+    actor_type: user
+    description: Enables printable UTF-8 character validation on VA.gov profile to support international addresses.
   profile_international_phone_numbers:
     actor_type: user
     description: Enables international phone number support on VA.gov profile.
