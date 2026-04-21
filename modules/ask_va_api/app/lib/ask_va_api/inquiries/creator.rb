@@ -49,7 +49,7 @@ module AskVAApi
         @service = service || default_service
       end
 
-      def call(inquiry_params:)
+      def call(inquiry_params:, request_id:)
         # Directly coupling to Datadog::Trace is a bad idea, but this is a targetted change.
         # This is a temporary solution to avoid the need for a full refactor of Logservice.
         Datadog::Tracing.trace('ask_va_api.inquiries.creator.call') do |span|
@@ -62,6 +62,7 @@ module AskVAApi
           if payload.key?(:LevelOfAuthentication)
             span.set_tag('Crm.LevelOfAuthentication', payload[:LevelOfAuthentication])
           end
+          record_outbound_checkpoint(request_id:, payload:)
           post_data(payload)
         rescue => e
           span.set_error(e)
@@ -101,6 +102,23 @@ module AskVAApi
 
       def handle_response(response)
         response.is_a?(Hash) ? response[:Data] : raise(InquiriesCreatorError, response.body)
+      end
+
+      def record_outbound_checkpoint(request_id:, payload:)
+        Inquiries::Checkpoint::Outbound.new.call(
+          request_id:,
+          payload:
+        )
+      rescue => e
+        Rails.logger.warn(
+          'Failed to record Outbound checkpoint',
+          {
+            request_id:,
+            checkpoint_type: 'outbound_submission',
+            error_class: e.class.name,
+            error_message: e.message
+          }
+        )
       end
     end
   end

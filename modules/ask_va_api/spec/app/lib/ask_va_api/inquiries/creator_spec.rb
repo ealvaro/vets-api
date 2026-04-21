@@ -17,6 +17,7 @@ RSpec.describe AskVAApi::Inquiries::Creator do
   let(:base64_encoded_file) { Base64.strict_encode64(File.read(file_path)) }
   let(:file) { "data:image/png;base64,#{base64_encoded_file}" }
   let(:endpoint) { AskVAApi::Inquiries::Creator::ENDPOINT }
+  let(:request_id) { 'test-request-id' }
   let(:translator) { instance_double(AskVAApi::Translator) }
   let(:cache_data_service) { instance_double(Crm::CacheData) }
   let(:cached_data) do
@@ -86,11 +87,47 @@ RSpec.describe AskVAApi::Inquiries::Creator do
         setup_successful_service_response
       end
 
+      it 'invokes the outbound checkpoint with the transformed CRM payload' do
+        outbound_checkpoint = instance_double(AskVAApi::Inquiries::Checkpoint::Outbound, call: true)
+
+        allow(AskVAApi::Inquiries::Checkpoint::Outbound).to receive(:new).and_return(outbound_checkpoint)
+
+        creator.call(inquiry_params: inquiry_params[:inquiry], request_id:)
+
+        expect(outbound_checkpoint).to have_received(:call).with(
+          request_id:,
+          payload: translated_payload
+        )
+      end
+
+      it 'does not block CRM submission if outbound checkpoint recording fails' do
+        allow_any_instance_of(AskVAApi::Inquiries::Checkpoint::Outbound)
+          .to receive(:call)
+          .and_raise(StandardError, 'checkpoint failure')
+        allow(Rails.logger).to receive(:warn)
+
+        creator.call(inquiry_params: inquiry_params[:inquiry], request_id:)
+
+        expect(service).to have_received(:call).with(
+          endpoint:,
+          method: :put,
+          payload: translated_payload
+        )
+        expect(Rails.logger).to have_received(:warn).with(
+          'Failed to record Outbound checkpoint',
+          hash_including(
+            checkpoint_type: 'outbound_submission',
+            error_class: 'StandardError',
+            error_message: 'checkpoint failure'
+          )
+        )
+      end
+
       it 'assigns VeteranICN and posts data to the service' do
         allow(Datadog::Tracing).to receive(:trace).and_yield(span)
         allow(span).to receive(:set_tag)
 
-        response = creator.call(inquiry_params: inquiry_params[:inquiry])
+        response = creator.call(inquiry_params: inquiry_params[:inquiry], request_id:)
         expect(response).to include({ InquiryNumber: '530d56a8-affd-ee11-a1fe-001dd8094ff1' })
       end
 
@@ -105,7 +142,7 @@ RSpec.describe AskVAApi::Inquiries::Creator do
         end
 
         allow(span).to receive(:set_tag)
-        creator.call(inquiry_params: inquiry_params[:inquiry])
+        creator.call(inquiry_params: inquiry_params[:inquiry], request_id:)
       end
 
       it 'traces the call with Datadog and sets appropriate tags' do
@@ -115,7 +152,7 @@ RSpec.describe AskVAApi::Inquiries::Creator do
         expect(span).to receive(:set_tag).with('user.loa', anything)
         expect(span).to receive(:set_tag).with('inquiry', anything)
 
-        creator.call(inquiry_params: inquiry_params[:inquiry])
+        creator.call(inquiry_params: inquiry_params[:inquiry], request_id:)
       end
     end
 
@@ -136,7 +173,7 @@ RSpec.describe AskVAApi::Inquiries::Creator do
           expect(span).to receive(:set_tag).with('user.isAuthenticated', expected_auth_status)
           expect(span).to receive(:set_tag).with('user.loa', anything)
 
-          creator.call(inquiry_params: basic_inquiry_params)
+          creator.call(inquiry_params: basic_inquiry_params, request_id:)
         end
       end
 
@@ -185,7 +222,7 @@ RSpec.describe AskVAApi::Inquiries::Creator do
         allow(span).to receive(:set_tag) # for other tags
         allow(span).to receive(:set_error) # in case of errors
 
-        creator.call(inquiry_params: unsafe_params)
+        creator.call(inquiry_params: unsafe_params, request_id:)
       end
 
       it 'filters out all unsafe fields from inquiry tag' do
@@ -200,7 +237,7 @@ RSpec.describe AskVAApi::Inquiries::Creator do
         allow(span).to receive(:set_tag) # for other tags
         allow(span).to receive(:set_error) # in case of errors
 
-        creator.call(inquiry_params: unsafe_params)
+        creator.call(inquiry_params: unsafe_params, request_id:)
       end
     end
 
@@ -221,7 +258,7 @@ RSpec.describe AskVAApi::Inquiries::Creator do
         allow(span).to receive(:set_tag)
         allow(span).to receive(:set_error)
 
-        expect { creator.call(inquiry_params: inquiry_params[:inquiry]) }.to raise_error(
+        expect { creator.call(inquiry_params: inquiry_params[:inquiry], request_id:) }.to raise_error(
           AskVAApi::Inquiries::InquiriesCreatorError,
           /InquiriesCreatorError: .*Data Validation: missing InquiryCategory/
         )
@@ -235,7 +272,7 @@ RSpec.describe AskVAApi::Inquiries::Creator do
         expect(span).to receive(:set_tag).with('inquiry', anything)
         expect(span).to receive(:set_error).with(anything)
 
-        expect { creator.call(inquiry_params: inquiry_params[:inquiry]) }.to raise_error(
+        expect { creator.call(inquiry_params: inquiry_params[:inquiry], request_id:) }.to raise_error(
           AskVAApi::Inquiries::InquiriesCreatorError
         )
       end
@@ -249,7 +286,7 @@ RSpec.describe AskVAApi::Inquiries::Creator do
         allow(span).to receive(:set_tag)
         allow(span).to receive(:set_error)
 
-        expect { creator.call(inquiry_params: inquiry_params[:inquiry]) }.to raise_error(
+        expect { creator.call(inquiry_params: inquiry_params[:inquiry], request_id:) }.to raise_error(
           AskVAApi::Inquiries::InquiriesCreatorError,
           /InquiriesCreatorError: undefined method.*body.*for an instance of String/
         )
@@ -264,7 +301,7 @@ RSpec.describe AskVAApi::Inquiries::Creator do
         allow(span).to receive(:set_tag) # for other tags
         allow(span).to receive(:set_error) # in case of errors
 
-        creator.call(inquiry_params: empty_params)
+        creator.call(inquiry_params: empty_params, request_id:)
       end
 
       it 'handles inquiry_params with only unsafe fields' do
@@ -280,7 +317,7 @@ RSpec.describe AskVAApi::Inquiries::Creator do
         allow(span).to receive(:set_tag) # for other tags
         allow(span).to receive(:set_error) # in case of errors
 
-        creator.call(inquiry_params: unsafe_only_params)
+        creator.call(inquiry_params: unsafe_only_params, request_id:)
       end
     end
 
@@ -292,7 +329,7 @@ RSpec.describe AskVAApi::Inquiries::Creator do
       end
 
       it 'calls the service with correct parameters' do
-        result = creator.call(inquiry_params: inquiry_params[:inquiry])
+        result = creator.call(inquiry_params: inquiry_params[:inquiry], request_id:)
 
         expect(service).to have_received(:call)
         expect(result).to include({ InquiryNumber: '530d56a8-affd-ee11-a1fe-001dd8094ff1' })
@@ -313,7 +350,7 @@ RSpec.describe AskVAApi::Inquiries::Creator do
           expect(span).to receive(:set_tag).with('user.loa', anything)
           allow(span).to receive(:set_tag) # for other tags
 
-          creator.call(inquiry_params: inquiry_params[:inquiry])
+          creator.call(inquiry_params: inquiry_params[:inquiry], request_id:)
         end
 
         it 'sets inquiry context without PII' do
@@ -325,7 +362,7 @@ RSpec.describe AskVAApi::Inquiries::Creator do
           end
           allow(span).to receive(:set_tag)
 
-          creator.call(inquiry_params: inquiry_params[:inquiry])
+          creator.call(inquiry_params: inquiry_params[:inquiry], request_id:)
         end
 
         it 'logs inquiry result context with inquiry_number' do
@@ -334,7 +371,7 @@ RSpec.describe AskVAApi::Inquiries::Creator do
             hash_including(inquiry_number: anything)
           )
 
-          creator.call(inquiry_params: inquiry_params[:inquiry])
+          creator.call(inquiry_params: inquiry_params[:inquiry], request_id:)
         end
       end
 
@@ -345,7 +382,7 @@ RSpec.describe AskVAApi::Inquiries::Creator do
 
         it 'does not log inquiry result context' do
           expect(Rails.logger).not_to receive(:info).with('Inquiry Submission Result Context', anything)
-          creator.call(inquiry_params: inquiry_params[:inquiry])
+          creator.call(inquiry_params: inquiry_params[:inquiry], request_id:)
         end
       end
     end

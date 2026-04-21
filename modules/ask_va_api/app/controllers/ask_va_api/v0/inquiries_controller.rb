@@ -68,7 +68,7 @@ module AskVAApi
       private
 
       def process_inquiry
-        Inquiries::Creator.new(user: current_user).call(inquiry_params:)
+        Inquiries::Creator.new(user: current_user).call(inquiry_params:, request_id: request.request_id)
       end
 
       def retriever(icn: current_user.icn)

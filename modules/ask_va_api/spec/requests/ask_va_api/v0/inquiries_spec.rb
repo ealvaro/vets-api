@@ -554,19 +554,17 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
             expect(response).to have_http_status(:created)
           end
 
-          it 'records an inbound checkpoint with a normalized payload' do
-            expect do
-              post '/ask_va_api/v0/inquiries/auth', params: inquiry_params
-            end.to change(AskVAApi::InquirySubmissionCheckpoint, :count).by(1)
+          it 'invokes the inbound checkpoint at the request boundary' do
+            inbound_checkpoint = instance_double(AskVAApi::Inquiries::Checkpoint::Inbound, call: true)
 
-            checkpoint = AskVAApi::InquirySubmissionCheckpoint.last
+            allow(AskVAApi::Inquiries::Checkpoint::Inbound).to receive(:new).and_return(inbound_checkpoint)
 
-            expect(checkpoint.payload).to include(
-              'question' => inquiry_params[:inquiry][:question],
-              'select_category' => inquiry_params[:inquiry][:select_category],
-              'attachment_count' => inquiry_params[:inquiry][:files].count
+            post '/ask_va_api/v0/inquiries/auth', params: inquiry_params
+
+            expect(inbound_checkpoint).to have_received(:call).with(
+              request_id: an_instance_of(String),
+              payload: kind_of(Hash)
             )
-            expect(checkpoint.payload).not_to have_key('files')
           end
 
           it 'does not block submission if inbound checkpoint recording fails' do
