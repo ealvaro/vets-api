@@ -18,7 +18,6 @@ module PdfFill
           },
           'ssn' => {
             key: 'ssn',
-            limit: 10,
             question_num: 2,
             question_text: 'SOCIAL SECURITY NUMBER'
           },
@@ -82,11 +81,15 @@ module PdfFill
           }
         },
         'organizationRepresentatives' => {
-          key: "organizationRepresentatives#{ITERATOR}",
           limit: 6,
-          question_num: 12,
-          question_text: 'ORGANIZATION REPRESENTATIVES',
-          iterator: ITERATOR
+          first_key: 'name',
+          name: {
+            key: "organizationRepresentatives#{ITERATOR}",
+            limit: 160,
+            question_num: 12,
+            question_text: 'ORGANIZATION REPRESENTATIVES'
+            # iterator: ITERATOR
+          }
         },
         'claimInformation' => {
           'statusOfClaim' => {
@@ -177,13 +180,11 @@ module PdfFill
         },
         'ssn2' => {
           key: 'ssn2',
-          limit: 10,
           question_num: 29,
           question_text: 'SSN PART 2'
         },
         'ssn3' => {
           key: 'ssn3',
-          limit: 10,
           question_num: 30,
           question_text: 'SSN PART 3'
         }
@@ -226,7 +227,7 @@ module PdfFill
         end
 
         if person['ssn']
-          ssn = person['ssn'].delete('-')
+          ssn = format_ssn(person['ssn'])
           @form_data['claimantPersonalInformation']['ssn'] = ssn
           @form_data['ssn2'] = ssn
           @form_data['ssn3'] = ssn
@@ -276,7 +277,9 @@ module PdfFill
         return unless @form_data['organizationRepresentatives']
 
         @form_data['organizationRepresentatives'] = @form_data['organizationRepresentatives'].map do |rep|
-          combine_full_name(rep['fullName'])
+          {
+            name: combine_full_name(rep['fullName'])
+          }
         end
       end
 
@@ -288,7 +291,7 @@ module PdfFill
 
         %w[statusOfClaim currentBenefit paymentHistory amountOwed minor other].each do |field|
           if info[field]
-            info[field] = 'X'
+            info[field] = 'Yes'
             has_any = true
           else
             info[field] = nil
@@ -296,11 +299,11 @@ module PdfFill
         end
 
         if has_any
-          @form_data['isLimited'] = 'X'
+          @form_data['isLimited'] = 'Yes'
           @form_data['isNotLimited'] = nil
         else
           @form_data['isLimited'] = nil
-          @form_data['isNotLimited'] = 'X'
+          @form_data['isNotLimited'] = 'Yes'
         end
       end
 
@@ -309,12 +312,12 @@ module PdfFill
 
         release = @form_data['lengthOfRelease']
         if release['lengthOfRelease'] == 'ongoing'
-          @form_data['lengthOfRelease']['isOngoing'] = 'X'
+          @form_data['lengthOfRelease']['isOngoing'] = 'Yes'
           @form_data['lengthOfRelease']['isDated'] = nil
           @form_data['lengthOfRelease']['releaseDate'] = nil
         elsif release['lengthOfRelease'] == 'date'
           @form_data['lengthOfRelease']['isOngoing'] = nil
-          @form_data['lengthOfRelease']['isDated'] = 'X'
+          @form_data['lengthOfRelease']['isDated'] = 'Yes'
           @form_data['lengthOfRelease']['releaseDate'] = format_date(release['date'])
         end
       end
@@ -358,6 +361,14 @@ module PdfFill
         Date.parse(date_str).strftime('%m/%d/%Y')
       rescue ArgumentError
         date_str
+      end
+
+      def format_ssn(ssn_str)
+        return '' if ssn_str.blank?
+
+        [ssn_str[0..2],
+         ssn_str[3..4],
+         ssn_str[5..]].join('-')
       end
     end
   end

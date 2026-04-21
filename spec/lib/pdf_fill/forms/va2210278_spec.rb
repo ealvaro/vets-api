@@ -19,9 +19,9 @@ describe PdfFill::Forms::Va2210278 do
       end
 
       it 'splits and formats SSN correctly into all 3 fields' do
-        expect(merged_fields.dig('claimantPersonalInformation', 'ssn')).to eq('123456789')
-        expect(merged_fields['ssn2']).to eq('123456789')
-        expect(merged_fields['ssn3']).to eq('123456789')
+        expect(merged_fields.dig('claimantPersonalInformation', 'ssn')).to eq('123-45-6789')
+        expect(merged_fields['ssn2']).to eq('123-45-6789')
+        expect(merged_fields['ssn3']).to eq('123-45-6789')
       end
 
       it 'formats date of birth' do
@@ -85,8 +85,8 @@ describe PdfFill::Forms::Va2210278 do
       it 'maps organization representatives to simple string list' do
         reps = merged_fields['organizationRepresentatives']
         expect(reps).to be_an(Array)
-        expect(reps[0]).to eq('Rep One')
-        expect(reps[1]).to eq('Rep Two')
+        expect(reps[0][:name]).to eq('Rep One')
+        expect(reps[1][:name]).to eq('Rep Two')
       end
 
       it 'handles missing organization representatives' do
@@ -96,12 +96,12 @@ describe PdfFill::Forms::Va2210278 do
     end
 
     context 'Claim Information' do
-      it 'sets X for selected items and determines isLimited' do
-        expect(merged_fields.dig('claimInformation', 'statusOfClaim')).to eq('X')
-        expect(merged_fields.dig('claimInformation', 'paymentHistory')).to eq('X')
+      it 'sets Yes for selected items and determines isLimited' do
+        expect(merged_fields.dig('claimInformation', 'statusOfClaim')).to eq('Yes')
+        expect(merged_fields.dig('claimInformation', 'paymentHistory')).to eq('Yes')
         expect(merged_fields.dig('claimInformation', 'currentBenefit')).to be_nil
 
-        expect(merged_fields['isLimited']).to eq('X')
+        expect(merged_fields['isLimited']).to eq('Yes')
         expect(merged_fields['isNotLimited']).to be_nil
       end
 
@@ -113,7 +113,7 @@ describe PdfFill::Forms::Va2210278 do
 
         expect(merged_fields.dig('claimInformation', 'statusOfClaim')).to be_nil
         expect(merged_fields['isLimited']).to be_nil
-        expect(merged_fields['isNotLimited']).to eq('X')
+        expect(merged_fields['isNotLimited']).to eq('Yes')
       end
 
       it 'handles missing claim information' do
@@ -124,7 +124,7 @@ describe PdfFill::Forms::Va2210278 do
 
     context 'Length of Release' do
       it 'handles date release' do
-        expect(merged_fields.dig('lengthOfRelease', 'isDated')).to eq('X')
+        expect(merged_fields.dig('lengthOfRelease', 'isDated')).to eq('Yes')
         expect(merged_fields.dig('lengthOfRelease', 'isOngoing')).to be_nil
         expect(merged_fields.dig('lengthOfRelease', 'releaseDate')).to eq('12/31/2025')
       end
@@ -133,7 +133,7 @@ describe PdfFill::Forms::Va2210278 do
         form_data['lengthOfRelease'] = { 'lengthOfRelease' => 'ongoing' }
 
         expect(merged_fields.dig('lengthOfRelease', 'isDated')).to be_nil
-        expect(merged_fields.dig('lengthOfRelease', 'isOngoing')).to eq('X')
+        expect(merged_fields.dig('lengthOfRelease', 'isOngoing')).to eq('Yes')
         expect(merged_fields.dig('lengthOfRelease', 'releaseDate')).to be_nil
       end
 
@@ -214,7 +214,7 @@ describe PdfFill::Forms::Va2210278 do
       fields = PdfForms.new(Settings.binaries.pdftk).get_fields(file_path)
 
       expect(get_field_value(fields, 'fullName')).to eq 'John Quincy Doe'
-      expect(get_field_value(fields, 'ssn')).to eq '123456789'
+      expect(get_field_value(fields, 'ssn')).to eq '123-45-6789'
       expect(get_field_value(fields, 'dateOfBirth')).to eq '01/01/1980'
       expect(get_field_value(fields, 'emailAddress')).to eq 'john.doe@example.com'
       expect(get_field_value(fields, 'question')).to eq 'The city and state your mother was born in'
