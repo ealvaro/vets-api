@@ -490,11 +490,7 @@ RSpec.describe MHV::OhFacilitiesHelper::Service do
       let(:last_phase_offset) { phases.values.max }
       let(:p7_offset) { phases[:p7] }
 
-      context 'when mhv_oh_migration_extended_phases is enabled' do
-        before do
-          allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_extended_phases).and_return(true)
-        end
-
+      context 'migration status determination' do
         context 'when before first phase' do
           it 'returns NOT_STARTED' do
             allow(Date).to receive(:current).and_return(migration_date + first_phase_offset - 1)
@@ -544,44 +540,6 @@ RSpec.describe MHV::OhFacilitiesHelper::Service do
           end
         end
       end
-
-      context 'when mhv_oh_migration_extended_phases is disabled' do
-        before do
-          allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_extended_phases).and_return(false)
-        end
-
-        context 'when before first phase' do
-          it 'returns NOT_STARTED' do
-            allow(Date).to receive(:current).and_return(migration_date + first_phase_offset - 1)
-            result = service.get_migration_schedules
-            expect(result.first[:migration_status]).to eq(described_class::MIGRATION_STATUS[:not_started])
-          end
-        end
-
-        context 'when at p7' do
-          it 'returns ACTIVE' do
-            allow(Date).to receive(:current).and_return(migration_date + p7_offset)
-            result = service.get_migration_schedules
-            expect(result.first[:migration_status]).to eq(described_class::MIGRATION_STATUS[:active])
-          end
-        end
-
-        context 'when after p7' do
-          it 'returns COMPLETE' do
-            allow(Date).to receive(:current).and_return(migration_date + p7_offset + 1)
-            result = service.get_migration_schedules
-            expect(result.first[:migration_status]).to eq(described_class::MIGRATION_STATUS[:complete])
-          end
-        end
-
-        context 'when at p9 offset' do
-          it 'returns COMPLETE (extended phases not active)' do
-            allow(Date).to receive(:current).and_return(migration_date + last_phase_offset)
-            result = service.get_migration_schedules
-            expect(result.first[:migration_status]).to eq(described_class::MIGRATION_STATUS[:complete])
-          end
-        end
-      end
     end
 
     context 'Current Phase Nil Cases' do
@@ -592,10 +550,6 @@ RSpec.describe MHV::OhFacilitiesHelper::Service do
       let(:first_phase_offset) { phases.values.min }
       let(:last_phase_offset) { phases.values.max }
       let(:last_phase_key) { phases.key(last_phase_offset).to_s }
-
-      before do
-        allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_extended_phases).and_return(true)
-      end
 
       context 'when migration_status is NOT_STARTED' do
         it 'current phase is nil' do
@@ -637,7 +591,6 @@ RSpec.describe MHV::OhFacilitiesHelper::Service do
 
       before do
         allow(Date).to receive(:current).and_return(today)
-        allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_extended_phases).and_return(true)
       end
 
       it 'returns all migrations regardless of status' do
@@ -813,10 +766,6 @@ RSpec.describe MHV::OhFacilitiesHelper::Service do
     end
 
     context 'phase determination based on migration date' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_extended_phases).and_return(true)
-      end
-
       # Migration date in the future - before p0 (more than 60 days away)
       context 'when migration is more than 60 days away (before p0)' do
         let(:migration_date) { eastern_today + 100 }
@@ -1223,7 +1172,6 @@ RSpec.describe MHV::OhFacilitiesHelper::Service do
 
     before do
       allow(Settings.mhv.oh_facility_checks).to receive(:oh_migrations_list).and_return(oh_migrations_list)
-      allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_extended_phases).and_return(true)
       allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_dark_deploy_sm_rx, user).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_dark_deploy_appointments, user).and_return(false)
     end

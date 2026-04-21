@@ -1730,10 +1730,6 @@ features:
       Pre-cutover bypass for trusted user validation.
       When enabled for a user, enables the full post-cutover experience, removing
       any cutover banners, and turning on previously suppressed functionality.
-  mhv_oh_migration_extended_phases:
-    actor_type: user
-    description: Enables extended migration phases (p8, p9) for Oracle Health facility migration tracking
-    enable_in_development: true
   mhv_oh_migration_dark_deploy_appointments:
     actor_type: user
     description: Gradually re-enables VAOS appointments for flagged users at T+5 instead of T+7 during Oracle Health migration cutover

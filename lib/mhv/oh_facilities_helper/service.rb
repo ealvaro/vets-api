@@ -282,23 +282,13 @@ module MHV
       # Used by determine_current_phase to shift phase boundaries earlier for flagged users.
       # @return [Hash] phases with any applicable dark deploy offsets merged in
       def effective_phases
-        phases = active_phases
+        phases = PHASES
         phases = phases.merge(DARK_DEPLOY_SM_RX_OFFSETS) if Flipper.enabled?(:mhv_oh_migration_dark_deploy_sm_rx,
                                                                              @current_user)
         phases = phases.merge(DARK_DEPLOY_APPOINTMENTS_OFFSETS) if Flipper.enabled?(
           :mhv_oh_migration_dark_deploy_appointments, @current_user
         )
         phases
-      end
-
-      # Returns the active set of phases based on feature toggle
-      # @return [Hash] phases to use for calculations
-      def active_phases
-        if Flipper.enabled?(:mhv_oh_migration_extended_phases)
-          PHASES
-        else
-          PHASES.except(:p8, :p9)
-        end
       end
 
       # Calculates absolute dates for each phase based on migration date
@@ -337,9 +327,8 @@ module MHV
         today = Time.use_zone('Eastern Time (US & Canada)') { Date.current }
         days_until_migration = (migration_date - today).to_i
 
-        phases = active_phases
-        p0_offset = phases[:p0]
-        last_phase_offset = phases.values.max
+        p0_offset = PHASES[:p0]
+        last_phase_offset = PHASES.values.max
 
         if days_until_migration > -p0_offset
           MIGRATION_STATUS[:not_started]
