@@ -113,16 +113,28 @@ RSpec.describe UserSessionForm, type: :model do
       it_behaves_like 'a skipped correlation ssn mismatch check'
     end
 
-    context 'when the saml_ssn does not match the correlation record ssn' do
-      let(:correlation_mpi_ssn) { '987654321' }
+    context 'when the correlation_record is ok' do
+      context 'when the saml_ssn does not match the correlation record ssn' do
+        let(:correlation_mpi_ssn) { '987654321' }
 
-      it_behaves_like 'a correlation ssn mismatch error'
+        it_behaves_like 'a correlation ssn mismatch error'
+      end
+
+      context 'when the profile ssn is blank' do
+        let(:find_profile_response) { create(:find_profile_response, profile: build(:mpi_profile, ssn: nil)) }
+
+        it 'does not raise a ssn mismatch error' do
+          expect { UserSessionForm.new(saml_response) }.not_to raise_error
+        end
+      end
     end
 
-    context 'when the correlation_record is not found in MPI' do
-      let(:find_profile_response) { create(:find_profile_response, profile: nil) }
+    context 'when the correlation_record is not ok' do
+      let(:find_profile_response) { create(:find_profile_not_found_response) }
 
-      it_behaves_like 'a correlation ssn mismatch error'
+      it 'does not raise a ssn mismatch error' do
+        expect { UserSessionForm.new(saml_response) }.not_to raise_error
+      end
     end
 
     context 'and ID.me UUID not in SAML GCids' do
@@ -241,16 +253,28 @@ RSpec.describe UserSessionForm, type: :model do
         it_behaves_like 'a skipped correlation ssn mismatch check'
       end
 
-      context 'when the saml_ssn does not match the correlation record ssn' do
-        let(:correlation_mpi_ssn) { '987654321' }
+      context 'when the correlation_record is ok' do
+        context 'when the saml_ssn does not match the correlation record ssn' do
+          let(:correlation_mpi_ssn) { '987654321' }
 
-        it_behaves_like 'a correlation ssn mismatch error'
+          it_behaves_like 'a correlation ssn mismatch error'
+        end
+
+        context 'when the profile ssn is blank' do
+          let(:find_profile_response) { create(:find_profile_response, profile: build(:mpi_profile, ssn: nil)) }
+
+          it 'does not raise a ssn mismatch error' do
+            expect { UserSessionForm.new(saml_response) }.not_to raise_error
+          end
+        end
       end
 
-      context 'when the correlation_record is not found in MPI' do
-        let(:find_profile_response) { create(:find_profile_response, profile: nil) }
+      context 'when the correlation_record is not ok' do
+        let(:find_profile_response) { create(:find_profile_not_found_response) }
 
-        it_behaves_like 'a correlation ssn mismatch error'
+        it 'does not raise a ssn mismatch error' do
+          expect { UserSessionForm.new(saml_response) }.not_to raise_error
+        end
       end
     end
 

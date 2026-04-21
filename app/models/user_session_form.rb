@@ -116,15 +116,15 @@ class UserSessionForm
 
     correlation_record = mpi_correlation_record(identifier:, identifier_type:)
 
-    return if correlation_record.present? && correlation_record.ssn == saml_ssn
-
-    raise SAML::UserAttributeError.new(
-      message: SAML::UserAttributeError::ERRORS[:ssn_mismatch][:message],
-      code: SAML::UserAttributeError::SSN_MISMATCH_CODE,
-      tag: SAML::UserAttributeError::ERRORS[:ssn_mismatch][:tag],
-      context: { icn: saml_attributes[:mhv_icn], credential_uuid: identifier, type: identifier_type },
-      force_logout: true
-    )
+    if correlation_record.ok? && correlation_record.profile&.ssn.present? && correlation_record.profile.ssn != saml_ssn
+      raise SAML::UserAttributeError.new(
+        message: SAML::UserAttributeError::ERRORS[:ssn_mismatch][:message],
+        code: SAML::UserAttributeError::SSN_MISMATCH_CODE,
+        tag: SAML::UserAttributeError::ERRORS[:ssn_mismatch][:tag],
+        context: { icn: saml_attributes[:mhv_icn], credential_uuid: identifier, type: identifier_type },
+        force_logout: true
+      )
+    end
   end
 
   def get_session_errors
@@ -197,7 +197,7 @@ class UserSessionForm
       identifier:,
       identifier_type:,
       view_type: MPI::Constants::CORRELATION_VIEW
-    ).profile
+    )
   end
 
   def log_existing_user_warning(saml_uuid, saml_icn)
