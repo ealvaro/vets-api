@@ -15,6 +15,7 @@ module ClaimsApi
   module V2
     class ApplicationController < ::ApplicationController
       include ClaimsApi::Error::ErrorHandler
+      include ClaimsApi::SlackNotifier
       include ClaimsApi::TokenValidation
       include ClaimsApi::CcgTokenValidation
       include ClaimsApi::TargetVeteran

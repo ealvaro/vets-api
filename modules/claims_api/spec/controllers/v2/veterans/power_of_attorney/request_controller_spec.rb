@@ -1199,4 +1199,119 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
          params: { data: { attributes: form_attributes } }.to_json,
          headers: auth_header.merge('Content-Type' => 'application/json')
   end
+
+  describe '#request_slack_alert' do
+    let(:slack_client) { instance_double(SlackNotify::Client) }
+
+    before do
+      allow(SlackNotify::Client).to receive(:new).and_return(slack_client)
+      allow(slack_client).to receive(:notify)
+    end
+
+    it 'sends a Slack notification with the correct parameters' do
+      subject.send(:request_slack_alert, 'POA Decide Request', 'test message')
+
+      expect(SlackNotify::Client).to have_received(:new).with(
+        webhook_url: Settings.claims_api.slack.webhook_url.to_s,
+        channel: '#api-benefits-claims-alerts',
+        username: 'Failed POA Decide Request'
+      )
+      expect(slack_client).to have_received(:notify).with('test message')
+    end
+
+    context 'when webhook_url is blank' do
+      before do
+        allow(Settings.claims_api.slack).to receive(:webhook_url).and_return(nil)
+      end
+
+      it 'does not attempt to send a Slack notification' do
+        subject.send(:request_slack_alert, 'POA Decide Request', 'test message')
+
+        expect(SlackNotify::Client).not_to have_received(:new)
+      end
+    end
+
+    context 'when Slack notification fails' do
+      before do
+        allow(slack_client).to receive(:notify).and_raise(StandardError.new('Slack down'))
+      end
+
+      it 'logs the failure and does not raise' do
+        expect(ClaimsApi::Logger).to receive(:log).with(
+          'request_slack_alert',
+          level: :error,
+          message: 'Failed to send Slack alert: Slack down'
+        )
+
+        expect { subject.send(:request_slack_alert, 'POA Decide Request', 'test') }.not_to raise_error
+      end
+    end
+  end
+
+  describe '#log_and_raise_decision_error_message!' do
+    let(:slack_client) { instance_double(SlackNotify::Client) }
+
+    before do
+      allow(SlackNotify::Client).to receive(:new).and_return(slack_client)
+      allow(slack_client).to receive(:notify)
+      allow_any_instance_of(described_class).to receive(:claims_v2_logging)
+      allow_any_instance_of(described_class).to receive(:params).and_return({ id: 'abc-123' })
+    end
+
+    it 'sends a Slack alert including the POA request id and validation errors before raising' do
+      errors = ['field X is invalid']
+
+      expect(slack_client).to receive(:notify).with(
+        a_string_including('id: abc-123').and(a_string_including('field X is invalid'))
+      )
+
+      expect { subject.send(:log_and_raise_decision_error_message!, errors) }.to raise_error(
+        Common::Exceptions::UnprocessableEntity
+      )
+    end
+
+    it 'logs at error level with the POA request id and validation errors' do
+      errors = ['field X is invalid']
+
+      expect_any_instance_of(described_class).to receive(:claims_v2_logging).with(
+        'process_poa_decision',
+        level: :error,
+        message: a_string_including('id: abc-123').and(a_string_including('field X is invalid'))
+      )
+
+      expect { subject.send(:log_and_raise_decision_error_message!, errors) }.to raise_error(
+        Common::Exceptions::UnprocessableEntity
+      )
+    end
+  end
+
+  describe '#process_poa_decision rescue' do
+    let(:slack_client) { instance_double(SlackNotify::Client) }
+    let(:params) do
+      {
+        decision: 'accepted', proc_id: '12345', representative_id: '999',
+        poa_code: '083', metadata: {}, veteran: nil, claimant: nil
+      }
+    end
+
+    before do
+      allow(SlackNotify::Client).to receive(:new).and_return(slack_client)
+      allow(slack_client).to receive(:notify)
+      allow_any_instance_of(described_class).to receive(:claims_v2_logging)
+      allow_any_instance_of(described_class).to receive(:params).and_return({ id: 'lh-id-456' })
+      allow_any_instance_of(
+        ClaimsApi::PowerOfAttorneyRequestService::DecisionHandler
+      ).to receive(:call).and_raise(StandardError.new('BGS exploded'))
+    end
+
+    it 'sends a Slack alert with the lighthouse id, proc id, and error message' do
+      expect(slack_client).to receive(:notify).with(
+        a_string_including('id: lh-id-456')
+          .and(a_string_including('procId: 12345'))
+          .and(a_string_including('BGS exploded'))
+      )
+
+      expect { subject.send(:process_poa_decision, **params) }.to raise_error(StandardError, 'BGS exploded')
+    end
+  end
 end

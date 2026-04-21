@@ -10,11 +10,10 @@ module ClaimsApi
   module V2
     module Veterans
       class PowerOfAttorney::RequestController < ClaimsApi::V2::Veterans::PowerOfAttorney::BaseController
+        include ClaimsApi::V2::PowerOfAttorneyRequests::IndexValidation
+        include ClaimsApi::V2::PowerOfAttorneyRequests::CreateValidation
+
         FORM_NUMBER = 'POA_REQUEST'
-        MAX_PAGE_SIZE = 100
-        MAX_PAGE_NUMBER = 100
-        DEFAULT_PAGE_SIZE = 10
-        DEFAULT_PAGE_NUMBER = 1
 
         # POST /power-of-attorney-requests
         def index
@@ -202,11 +201,21 @@ module ClaimsApi
 
           @json_body, type = result
           validate_mapped_data!(veteran.participant_id, type, poa_code)
-          # build headers
+          build_decision_headers(veteran, claimant)
+          save_and_submit_poa_record(poa_code:, representative_id:, type:)
+        rescue => e
+          log_decision_failure(proc_id, e)
+          raise
+        end
+        # rubocop:enable Metrics/ParameterLists
+
+        def build_decision_headers(veteran, claimant)
           @claimant_icn = claimant.icn.presence || claimant.mpi.icn if claimant
           build_auth_headers(veteran)
+        end
+
+        def save_and_submit_poa_record(poa_code:, representative_id:, type:)
           attrs = decide_request_attributes(poa_code:, decide_form_attributes: form_attributes)
-          # save record
           power_of_attorney = ClaimsApi::PowerOfAttorney.create!(attrs)
 
           claims_v2_logging('process_poa_decision',
@@ -214,13 +223,17 @@ module ClaimsApi
           ClaimsApi::V2::PoaFormBuilderJob.perform_async(power_of_attorney.id, type,
                                                          'post', representative_id)
 
-          power_of_attorney # return to the decide method for the response
-        rescue => e
-          claims_v2_logging('process_poa_decision',
-                            message: "Failed to save power of attorney record. Error: #{e}")
-          raise e
+          power_of_attorney
         end
-        # rubocop:enable Metrics/ParameterLists
+
+        def log_decision_failure(proc_id, error)
+          claims_v2_logging('process_poa_decision',
+                            level: :error,
+                            message: "Failed to save power of attorney record. Error: #{error}")
+          request_slack_alert('POA Decide Request',
+                              "Failed to process POA decision for id: #{params[:id]}, " \
+                              "procId: #{proc_id} in #{Rails.env}: #{error.message}")
+        end
 
         def validate_mapped_data!(veteran_participant_id, type, poa_code)
           claims_v2_logging('process_poa_decision',
@@ -235,14 +248,21 @@ module ClaimsApi
           validate_json_schema(type.upcase)
           # otherwise we raise the errors from the custom validations if no JSON
           # errors exist
-          log_and_raise_decision_error_message! if @claims_api_forms_validation_errors
-        rescue JsonSchema::JsonApiMissingAttribute
-          log_and_raise_decision_error_message!
+          if @claims_api_forms_validation_errors
+            log_and_raise_decision_error_message!(@claims_api_forms_validation_errors)
+          end
+        rescue JsonSchema::JsonApiMissingAttribute => e
+          log_and_raise_decision_error_message!(e.to_json_api)
         end
 
-        def log_and_raise_decision_error_message!
+        def log_and_raise_decision_error_message!(errors)
           claims_v2_logging('process_poa_decision',
-                            message: 'Encountered issues validating the mapped data')
+                            level: :error,
+                            message: "Encountered issues validating the mapped data for POA id: #{params[:id]}: " \
+                                     "#{errors}")
+          request_slack_alert('POA Decide Request',
+                              "Validation errors in mapped data for POA id: #{params[:id]} in #{Rails.env}: " \
+                              "#{errors}")
 
           raise ::Common::Exceptions::UnprocessableEntity.new(
             detail: 'An error occurred while processing this decision. Please try again later.'
@@ -297,180 +317,8 @@ module ClaimsApi
           request
         end
 
-        def validate_country_code
-          vet_cc = form_attributes.dig('veteran', 'address', 'countryCode')
-          claimant_cc = form_attributes.dig('claimant', 'address', 'countryCode')
-
-          if ClaimsApi::BRD::COUNTRY_CODES[vet_cc.to_s.upcase].blank?
-            raise ::Common::Exceptions::UnprocessableEntity.new(
-              detail: 'The country provided is not valid.'
-            )
-          end
-
-          if claimant_cc.present? && ClaimsApi::BRD::COUNTRY_CODES[claimant_cc.to_s.upcase].blank?
-            raise ::Common::Exceptions::UnprocessableEntity.new(
-              detail: 'The country provided is not valid.'
-            )
-          end
-        end
-
-        def validate_phone_country_code
-          %w[veteran claimant].each do |key|
-            phone = form_attributes.dig(key, 'phone')
-            next if phone.blank?
-
-            validate_phone_details(phone, key)
-          end
-        end
-
-        def validate_phone_details(phone, key)
-          return if phone['phoneNumber'].blank?
-
-          validate_phone_and_country_code_combination_not_valid!(phone, key)
-          validate_domestic_country_code_on_international_number!(phone, key)
-        end
-
-        def validate_phone_and_country_code_combination_not_valid!(phone_data, key)
-          phone_number = phone_data['phoneNumber']&.gsub(/\D/, '')
-          country_code = phone_data['countryCode']
-
-          if phone_number.length > 7 && country_code.blank?
-            raise ::Common::Exceptions::UnprocessableEntity.new(
-              detail: "The #{key}'s international phone number requires a countryCode."
-            )
-          end
-        end
-
-        def validate_domestic_country_code_on_international_number!(phone_data, key)
-          phone_number = phone_data['phoneNumber']&.gsub(/\D/, '')
-          country_code = phone_data['countryCode']&.gsub(/\D/, '')
-
-          if phone_number.length > 7 && country_code == '1'
-            raise ::Common::Exceptions::UnprocessableEntity.new(
-              detail: "The #{key}'s countryCode is for a domestic phone number."
-            )
-          end
-        end
-
-        def validate_accredited_representative(poa_code)
-          @representative = ::Veteran::Service::Representative.where('? = ANY(poa_codes)',
-                                                                     poa_code).order(created_at: :desc).first
-          # there must be a representative to appoint. This representative can be an accredited attorney, claims agent,
-          #   or representative.
-          if @representative.nil?
-            raise ::Common::Exceptions::ResourceNotFound.new(
-              detail: "Could not find an Accredited Representative with poa code: #{poa_code}"
-            )
-          end
-        end
-
-        def validate_accredited_organization(poa_code)
-          # organization is not required. An attorney or claims agent appointment request would not have an accredited
-          #   organization to associate with.
-          @organization = ::Veteran::Service::Organization.find_by(poa: poa_code)
-        end
-
-        def build_bgs_attributes(form_attributes)
-          bgs_form_attributes = form_attributes.deep_merge(veteran_data)
-          bgs_form_attributes.deep_merge!(claimant_data) if user_profile&.status == :ok
-          bgs_form_attributes.deep_merge!(representative_data)
-          bgs_form_attributes.deep_merge!(organization_data) if @organization
-
-          bgs_form_attributes
-        end
-
-        def validate_filter!(filter)
-          return nil if filter.blank?
-
-          valid_filters = %w[status state city country]
-
-          invalid_filters = filter.keys - valid_filters
-
-          if invalid_filters.any?
-            raise ::Common::Exceptions::UnprocessableEntity.new(
-              detail: "Invalid filter(s): #{invalid_filters.join(', ')}"
-            )
-          end
-
-          validate_statuses!(filter['status'])
-        end
-
-        def validate_statuses!(statuses)
-          return nil if statuses.blank?
-
-          unless statuses.is_a?(Array)
-            raise ::Common::Exceptions::UnprocessableEntity.new(
-              detail: 'filter status must be an array'
-            )
-          end
-
-          valid_statuses = ManageRepresentativeService::ALL_STATUSES
-
-          if statuses.any? { |status| valid_statuses.exclude?(status.upcase) }
-            raise ::Common::Exceptions::UnprocessableEntity.new(
-              detail: "Status(es) must be one of: #{valid_statuses.join(', ')}"
-            )
-          end
-        end
-
-        def validate_page_size_and_number_params
-          return if use_defaults?
-
-          valid_page_param?('size') if params[:page][:size]
-          valid_page_param?('number') if params[:page][:number]
-
-          @page_size_param = params[:page][:size] ? params[:page][:size].to_i : DEFAULT_PAGE_SIZE
-          @page_number_param = params[:page][:number] ? params[:page][:number].to_i : DEFAULT_PAGE_NUMBER
-
-          verify_under_max_values!
-        end
-
-        def use_defaults?
-          if params[:page].blank?
-            @page_size_param = DEFAULT_PAGE_SIZE
-            @page_number_param = DEFAULT_PAGE_NUMBER
-
-            true
-          end
-        end
-
-        def verify_under_max_values!
-          if @page_size_param && @page_size_param > MAX_PAGE_SIZE
-            raise_param_exceeded_warning = true
-            include_page_size_msg = true
-          end
-          if @page_number_param && @page_number_param > MAX_PAGE_NUMBER
-            raise_param_exceeded_warning = true
-            include_page_number_msg = true
-          end
-          if raise_param_exceeded_warning.present?
-            build_params_error_msg(include_page_size_msg,
-                                   include_page_number_msg)
-          end
-        end
-
-        def valid_page_param?(key)
-          param_val = params[:page][:"#{key}"]
-          return true if param_val.is_a?(String) && param_val.match?(/^\d+?$/) && param_val
-
-          raise ::Common::Exceptions::BadRequest.new(
-            detail: "The page[#{key}] param value #{params[:page][:"#{key}"]} is invalid"
-          )
-        end
-
-        def build_params_error_msg(include_page_size_msg, include_page_number_msg)
-          if include_page_size_msg.present? && include_page_number_msg.present?
-            msg = "Both the maximum page size param value of #{MAX_PAGE_SIZE} has been exceeded and " \
-                  "the maximum page number param value of #{MAX_PAGE_NUMBER} has been exceeded."
-          elsif include_page_size_msg.present?
-            msg = "The maximum page size param value of #{MAX_PAGE_SIZE} has been exceeded."
-          elsif include_page_number_msg.present?
-            msg = "The maximum page number param value of #{MAX_PAGE_NUMBER} has been exceeded."
-          end
-
-          raise ::Common::Exceptions::BadRequest.new(
-            detail: msg
-          )
+        def normalize(item)
+          item.to_s.strip.downcase
         end
 
         def verify_poa_codes_data(poa_codes)
@@ -486,8 +334,13 @@ module ClaimsApi
           number - 1
         end
 
-        def normalize(item)
-          item.to_s.strip.downcase
+        def build_bgs_attributes(form_attributes)
+          bgs_form_attributes = form_attributes.deep_merge(veteran_data)
+          bgs_form_attributes.deep_merge!(claimant_data) if user_profile&.status == :ok
+          bgs_form_attributes.deep_merge!(representative_data)
+          bgs_form_attributes.deep_merge!(organization_data) if @organization
+
+          bgs_form_attributes
         end
 
         def veteran_data
