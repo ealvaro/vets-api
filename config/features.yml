@@ -696,6 +696,9 @@ features:
   cst_filter_ep_960:
     actor_type: user
     description: When enabled, benefits_claims/get_claims service filters 960 EP code claims from the response
+  cst_filter_claim_type_codes:
+    actor_type: user
+    description: When enabled, benefits_claims/get_claims service filters suppressed claimTypeCode claims from the response
   cst_claim_letters_log_failure:
     actor_type: user
     description: >-

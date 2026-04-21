@@ -19,6 +19,22 @@ module BenefitsClaims
     }.freeze
     # rubocop:enable Naming/VariableNumber
 
+    SUPPRESSED_CLAIM_TYPE_CODES = %w[
+      020IRSCFID
+      120IRPFID
+      130YR100PMC
+      290AFED
+      290DRASED
+      290ELIG
+      290ELIGPMC
+      290HE7131R
+      290LGYBDD
+      290LGYIDES
+      400AFM
+      400ORR
+      930CLQENR
+    ].freeze
+
     # Accepts either a user object or an ICN string for backwards compatibility
     # @param user_or_icn [User, String] A user object with an ICN or an ICN string
     def initialize(user_or_icn)
@@ -42,7 +58,7 @@ module BenefitsClaims
       validate_response_data!(claims, response, 'get_claims', Array)
 
       claims['data'] = filter_by_status(claims['data'])
-      claims['data'] = apply_configured_ep_filters(claims['data'])
+      claims['data'] = apply_filters_and_log(claims['data'])
 
       claims
     rescue Faraday::TimeoutError
@@ -56,6 +72,8 @@ module BenefitsClaims
       claim = response.body
 
       validate_response_data!(claim, response, 'get_claim', Hash)
+
+      suppress_filtered_claim!(claim['data'])
 
       # Manual status override for certain tracked items
       # See https://github.com/department-of-veterans-affairs/va-mobile-app/issues/9671
@@ -341,12 +359,53 @@ module BenefitsClaims
       items.reject { |item| FILTERED_STATUSES.include?(item.dig('attributes', 'status')) }
     end
 
+    def apply_filters_and_log(items)
+      claims_after_ep_filter = apply_configured_ep_filters(items)
+      claims_after_type_code_filter = if Flipper.enabled?(:cst_filter_claim_type_codes, @user)
+                                        filter_suppressed_claim_type_codes(claims_after_ep_filter)
+                                      else
+                                        claims_after_ep_filter
+                                      end
+
+      ::Rails.logger.info('Claims filtered from index', {
+                            message_type: 'cst.claims.filtered',
+                            ep_code_filtered_count: items.size - claims_after_ep_filter.size,
+                            claim_type_code_filtered_count: claims_after_ep_filter.size -
+                                                            claims_after_type_code_filter.size
+                          })
+
+      claims_after_type_code_filter
+    end
+
     def apply_configured_ep_filters(items)
       ep_codes_to_filter = EP_CODE_FILTER_FLAGS.select { |_code, flag| Flipper.enabled?(flag) }.keys
 
       return items if ep_codes_to_filter.empty?
 
       items.reject { |item| ep_codes_to_filter.include?(item.dig('attributes', 'baseEndProductCode')) }
+    end
+
+    def filter_suppressed_claim_type_codes(items)
+      items.reject { |item| SUPPRESSED_CLAIM_TYPE_CODES.include?(item.dig('attributes', 'claimTypeCode')) }
+    end
+
+    def suppress_filtered_claim!(claim_data)
+      ep_code = claim_data&.dig('attributes', 'baseEndProductCode')
+      claim_type_code = claim_data&.dig('attributes', 'claimTypeCode')
+
+      ep_filtered = EP_CODE_FILTER_FLAGS.any? { |code, flag| ep_code == code && Flipper.enabled?(flag) }
+      type_code_filtered = Flipper.enabled?(:cst_filter_claim_type_codes, @user) &&
+                           SUPPRESSED_CLAIM_TYPE_CODES.include?(claim_type_code)
+
+      if ep_filtered || type_code_filtered
+        ::Rails.logger.info('Filtered claim detail access attempt', {
+                              message_type: 'cst.filtered_claim.detail_access',
+                              claim_id: claim_data['id'],
+                              claim_type_code:,
+                              filter_reason: ep_filtered ? 'ep_code' : 'claim_type_code'
+                            })
+        raise Common::Exceptions::RecordNotFound, claim_data['id']
+      end
     end
 
     def override_tracked_items(claim)

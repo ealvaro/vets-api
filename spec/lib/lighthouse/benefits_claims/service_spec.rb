@@ -82,23 +82,89 @@ RSpec.describe BenefitsClaims::Service do
         context 'EP code filtering' do
           it 'filters out EP 960 claims when cst_filter_ep_960 is enabled' do
             allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_960).and_return(true)
+            allow(Flipper).to receive(:enabled?).with(:cst_filter_claim_type_codes, anything).and_return(false)
 
             VCR.use_cassette('lighthouse/benefits_claims/index/200_response') do
               response = service.get_claims
-              # Should have 7 claims (8 original - 1 filtered EP 960)
+              # 8 after status filter - 1 EP 960 = 7
               expect(response['data'].length).to eq(7)
               ep_codes = response['data'].map { |claim| claim.dig('attributes', 'baseEndProductCode') }
               expect(ep_codes).not_to include('960')
-              expect(ep_codes).to include('290')
             end
           end
 
-          it 'does not filter out any EP codes when cst_filter_ep_960 is disabled' do
+          it 'does not filter out EP 960 claims when cst_filter_ep_960 is disabled' do
             allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_960).and_return(false)
+            allow(Flipper).to receive(:enabled?).with(:cst_filter_claim_type_codes, anything).and_return(false)
 
             VCR.use_cassette('lighthouse/benefits_claims/index/200_response') do
               response = service.get_claims
+              # 8 after status filter = 8
               expect(response['data'].length).to eq(8)
+            end
+          end
+        end
+
+        context 'claimTypeCode filtering' do
+          it 'filters out suppressed claimTypeCode claims when cst_filter_claim_type_codes is enabled' do
+            allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_960).and_return(true)
+            allow(Flipper).to receive(:enabled?).with(:cst_filter_claim_type_codes, anything).and_return(true)
+
+            VCR.use_cassette('lighthouse/benefits_claims/index/200_response') do
+              response = service.get_claims
+              # 8 after status filter - 1 EP 960 - 1 suppressed (290HE7131R) = 6
+              expect(response['data'].length).to eq(6)
+              claim_type_codes = response['data'].map { |claim| claim.dig('attributes', 'claimTypeCode') }
+              expect(claim_type_codes).not_to include('290HE7131R')
+            end
+          end
+
+          it 'does not filter out suppressed claimTypeCode claims when cst_filter_claim_type_codes is disabled' do
+            allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_960).and_return(true)
+            allow(Flipper).to receive(:enabled?).with(:cst_filter_claim_type_codes, anything).and_return(false)
+
+            VCR.use_cassette('lighthouse/benefits_claims/index/200_response') do
+              response = service.get_claims
+              # 8 after status filter - 1 EP 960 = 7 (290HE7131R passes through)
+              expect(response['data'].length).to eq(7)
+              claim_type_codes = response['data'].map { |claim| claim.dig('attributes', 'claimTypeCode') }
+              expect(claim_type_codes).to include('290HE7131R')
+            end
+          end
+
+          it 'logs filtered counts when both filters are active' do
+            allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_960).and_return(true)
+            allow(Flipper).to receive(:enabled?).with(:cst_filter_claim_type_codes, anything).and_return(true)
+
+            expect(Rails.logger).to receive(:info).with(
+              'Claims filtered from index',
+              hash_including(
+                message_type: 'cst.claims.filtered',
+                ep_code_filtered_count: 1,
+                claim_type_code_filtered_count: 1
+              )
+            )
+
+            VCR.use_cassette('lighthouse/benefits_claims/index/200_response') do
+              service.get_claims
+            end
+          end
+
+          it 'logs zero filtered counts when both filters are disabled' do
+            allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_960).and_return(false)
+            allow(Flipper).to receive(:enabled?).with(:cst_filter_claim_type_codes, anything).and_return(false)
+
+            expect(Rails.logger).to receive(:info).with(
+              'Claims filtered from index',
+              hash_including(
+                message_type: 'cst.claims.filtered',
+                ep_code_filtered_count: 0,
+                claim_type_code_filtered_count: 0
+              )
+            )
+
+            VCR.use_cassette('lighthouse/benefits_claims/index/200_response') do
+              service.get_claims
             end
           end
         end
@@ -172,6 +238,140 @@ RSpec.describe BenefitsClaims::Service do
 
               results = service.send(:apply_configured_ep_filters, mock_data)
               expect(results.length).to eq(3)
+            end
+          end
+
+          describe '#filter_suppressed_claim_type_codes' do
+            let(:suppressed_claims) do
+              BenefitsClaims::Service::SUPPRESSED_CLAIM_TYPE_CODES.map.with_index do |code, i|
+                { 'id' => "suppressed-#{i}",
+                  'type' => 'claim',
+                  'attributes' => { 'claimTypeCode' => code, 'status' => 'OPEN' } }
+              end
+            end
+
+            let(:non_suppressed_claims) do
+              [{ 'id' => 'keep-1',
+                 'type' => 'claim',
+                 'attributes' => { 'claimTypeCode' => '010COMP', 'status' => 'OPEN' } },
+               { 'id' => 'keep-2',
+                 'type' => 'claim',
+                 'attributes' => { 'claimTypeCode' => nil, 'status' => 'OPEN' } }]
+            end
+
+            it 'filters out every code in SUPPRESSED_CLAIM_TYPE_CODES' do
+              input = suppressed_claims + non_suppressed_claims
+              results = service.send(:filter_suppressed_claim_type_codes, input)
+
+              returned_codes = results.map { |r| r.dig('attributes', 'claimTypeCode') }
+              BenefitsClaims::Service::SUPPRESSED_CLAIM_TYPE_CODES.each do |code|
+                expect(returned_codes).not_to include(code), "expected #{code} to be filtered but it was not"
+              end
+            end
+
+            it 'passes through claims that are not in the suppressed list' do
+              input = suppressed_claims + non_suppressed_claims
+              results = service.send(:filter_suppressed_claim_type_codes, input)
+
+              expect(results.length).to eq(non_suppressed_claims.length)
+              expect(results.map { |r| r['id'] }).to match_array(%w[keep-1 keep-2])
+            end
+          end
+
+          describe '#suppress_filtered_claim!' do
+            let(:suppressed_type_code) { BenefitsClaims::Service::SUPPRESSED_CLAIM_TYPE_CODES.first }
+
+            let(:suppressed_claim) do
+              { 'id' => '100', 'attributes' => { 'claimTypeCode' => suppressed_type_code,
+                                                 'baseEndProductCode' => '020' } }
+            end
+
+            let(:ep_960_claim) do
+              { 'id' => '200', 'attributes' => { 'claimTypeCode' => '960ADMER',
+                                                 'baseEndProductCode' => '960' } }
+            end
+
+            let(:normal_claim) do
+              { 'id' => '300', 'attributes' => { 'claimTypeCode' => '010COMP',
+                                                 'baseEndProductCode' => '010' } }
+            end
+
+            it 'raises RecordNotFound for a suppressed claimTypeCode when flag is enabled' do
+              allow(Flipper).to receive(:enabled?).with(:cst_filter_claim_type_codes, anything).and_return(true)
+
+              expect { service.send(:suppress_filtered_claim!, suppressed_claim) }
+                .to raise_error(Common::Exceptions::RecordNotFound)
+            end
+
+            it 'does not raise for a suppressed claimTypeCode when flag is disabled' do
+              allow(Flipper).to receive(:enabled?).with(:cst_filter_claim_type_codes, anything).and_return(false)
+              allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_960).and_return(false)
+
+              expect { service.send(:suppress_filtered_claim!, suppressed_claim) }.not_to raise_error
+            end
+
+            it 'raises RecordNotFound for a filtered EP code when flag is enabled' do
+              allow(Flipper).to receive(:enabled?).with(:cst_filter_claim_type_codes, anything).and_return(false)
+              allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_960).and_return(true)
+
+              expect { service.send(:suppress_filtered_claim!, ep_960_claim) }
+                .to raise_error(Common::Exceptions::RecordNotFound)
+            end
+
+            it 'does not raise for a filtered EP code when flag is disabled' do
+              allow(Flipper).to receive(:enabled?).with(:cst_filter_claim_type_codes, anything).and_return(false)
+              allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_960).and_return(false)
+
+              expect { service.send(:suppress_filtered_claim!, ep_960_claim) }.not_to raise_error
+            end
+
+            it 'does not raise for a normal claim regardless of flags' do
+              allow(Flipper).to receive(:enabled?).with(:cst_filter_claim_type_codes, anything).and_return(true)
+              allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_960).and_return(true)
+
+              expect { service.send(:suppress_filtered_claim!, normal_claim) }.not_to raise_error
+            end
+
+            it 'logs a structured message when a claimTypeCode-filtered claim is accessed' do
+              allow(Flipper).to receive(:enabled?).with(:cst_filter_claim_type_codes, anything).and_return(true)
+
+              expect(Rails.logger).to receive(:info).with(
+                'Filtered claim detail access attempt',
+                hash_including(
+                  message_type: 'cst.filtered_claim.detail_access',
+                  claim_id: '100',
+                  filter_reason: 'claim_type_code'
+                )
+              )
+
+              expect { service.send(:suppress_filtered_claim!, suppressed_claim) }
+                .to raise_error(Common::Exceptions::RecordNotFound)
+            end
+
+            it 'logs a structured message when an EP code-filtered claim is accessed' do
+              allow(Flipper).to receive(:enabled?).with(:cst_filter_claim_type_codes, anything).and_return(false)
+              allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_960).and_return(true)
+
+              expect(Rails.logger).to receive(:info).with(
+                'Filtered claim detail access attempt',
+                hash_including(
+                  message_type: 'cst.filtered_claim.detail_access',
+                  claim_id: '200',
+                  filter_reason: 'ep_code'
+                )
+              )
+
+              expect { service.send(:suppress_filtered_claim!, ep_960_claim) }
+                .to raise_error(Common::Exceptions::RecordNotFound)
+            end
+
+            it 'does not log for a normal claim' do
+              allow(Flipper).to receive(:enabled?).with(:cst_filter_claim_type_codes, anything).and_return(true)
+              allow(Flipper).to receive(:enabled?).with(:cst_filter_ep_960).and_return(true)
+
+              expect(Rails.logger).not_to receive(:info).with('Filtered claim detail access attempt', anything)
+
+              service.send(:suppress_filtered_claim!, normal_claim)
             end
           end
         end

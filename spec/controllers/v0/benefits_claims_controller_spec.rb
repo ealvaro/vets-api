@@ -74,10 +74,9 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
 
         expect(response).to have_http_status(:ok)
         # NOTE: The VCR cassette has 11 claims: 3 filtered by status (CANCELED/ERRORED/PENDING),
-        # 1 filtered by EP code 960 (cst_filter_ep_960, auto-enabled in test env) = 7 remaining.
-        # Previously, EP code 290 was also filtered (cst_filter_ep_290), giving 6.
-        # cst_filter_ep_290 was removed from EP_CODE_FILTER_FLAGS, so the 290 claim now persists.
-        expect(EVSSClaim.all.count).to equal(7)
+        # 1 filtered by EP code 960 (cst_filter_ep_960, auto-enabled in test env),
+        # 1 filtered by suppressed claimTypeCode (290HE7131R) = 6 remaining.
+        expect(EVSSClaim.all.count).to equal(6)
       end
 
       it 'returns claimType language modifications' do
@@ -166,9 +165,10 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
             !claim['attributes']['claimTypeCode'].nil?
         end
 
-        expect(code_only_claims.count).to eq(2)
+        # 290HE7131R is suppressed; only 960ADMER (null claimType) remains
+        expect(code_only_claims.count).to eq(1)
 
-        # Check that both claims with claimTypeCode get default titles (since these codes aren't in our mapping)
+        # Check that claims with claimTypeCode get default titles (since these codes aren't in our mapping)
         code_only_claims.each do |claim|
           expect(claim['attributes']['displayTitle']).to eq('Claim for disability compensation')
           expect(claim['attributes']['claimTypeBase']).to eq('disability compensation claim')
