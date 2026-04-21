@@ -116,6 +116,8 @@ module VAOS
             per_page: 50
           )
 
+          apply_vaos_station_ids!(facilities)
+
           fetch_providers_for_facilities(facilities, user_address, clinical_service:)
         rescue => e
           Rails.logger.error("#{log_prefix}: VA facility search failed",
@@ -129,12 +131,31 @@ module VAOS
           []
         end
 
+        # Lighthouse returns production station IDs in every env; VAOS staging
+        # expects mock IDs (983/984). Mutate each facility's +unique_id+ once here
+        # so eligibility, clinic fetch, and +VAProvider.location_id+ all read the same
+        # VAOS-facing station without wrapper types or per-call-site translation.
+        # Composite Lighthouse +id+ is left unchanged; only +unique_id+ drives VAOS.
+        # In production {FacilityIdTranslator.to_staging} is a no-op, so attributes
+        # are unchanged.
+        def apply_vaos_station_ids!(facilities)
+          facilities.each do |facility|
+            vaos_station_id = FacilityIdTranslator.to_staging(facility.unique_id)
+            next if vaos_station_id == facility.unique_id
+
+            facility.unique_id = vaos_station_id
+          end
+        end
+
         def fetch_providers_for_facilities(facilities, user_address, clinical_service:)
           matching_facilities = filter_supported_facilities(facilities, clinical_service)
 
           matching_facilities.flat_map do |facility|
             fetch_clinics_for_facility(facility, clinical_service).map do |clinic|
-              provider = VAProvider.from_facility_and_clinic(facility, clinic, service_type: clinical_service)
+              provider = VAProvider.from_facility_and_clinic(
+                facility, clinic,
+                service_type: clinical_service
+              )
               assign_distance(provider, user_address)
               provider
             end
@@ -214,6 +235,8 @@ module VAOS
         # (e.g. +"primaryCare"+) produced by {CcraCategoryMapper.lookup}.
         # The mapper always returns a non-blank value (PC default for unmapped /
         # blank CCRA categories), so the +blank?+ guard here is defensive only.
+        # Facilities are already adjusted by {#apply_vaos_station_ids!} so
+        # +unique_id+ matches what VAOS expects in this environment.
         def filter_supported_facilities(facilities, vaos_service_type)
           return facilities if vaos_service_type.blank?
 

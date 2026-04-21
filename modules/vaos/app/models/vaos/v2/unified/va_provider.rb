@@ -15,7 +15,9 @@ module VAOS
         end
 
         ##
-        # @param facility [FacilitiesApi::V2::Lighthouse::Facility] parent facility (address, geo, phone)
+        # @param facility [FacilitiesApi::V2::Lighthouse::Facility] parent facility (address, geo, phone).
+        #   Callers should set +facility.unique_id+ to the VAOS-facing station (e.g. unified search
+        #   applies {VAOS::V2::Unified::FacilityIdTranslator} before building providers).
         # @param clinic [OpenStruct, Hash] VAOS clinic payload from SystemsService#get_facility_clinics
         #
         def self.from_facility_and_clinic(facility, clinic, service_type: nil)

@@ -64,6 +64,18 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
   let(:systems_service) { instance_double(VAOS::V2::SystemsService) }
   let(:eligibility_service) { instance_double(VAOS::V2::Unified::EligibilityService) }
 
+  # RSpec verifying doubles reject +unique_id=+ unless stubbed; real Lighthouse
+  # facility objects accept assignment. Mirror that so staging translation specs
+  # mutate IDs like production.
+  def lighthouse_facility_double(unique_id:, id:, **attrs)
+    state = { unique_id: }
+    double('Facility', **attrs).tap do |f|
+      allow(f).to receive(:unique_id) { state[:unique_id] }
+      allow(f).to receive(:unique_id=) { |v| state[:unique_id] = v }
+      allow(f).to receive(:id).and_return(id)
+    end
+  end
+
   before do
     allow(user).to receive(:vet360_contact_info).and_return(vet360_contact_info)
   end
@@ -314,6 +326,148 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
       expect(lighthouse_client).to have_received(:get_facilities).with(
         hash_including(radius: 25)
       )
+    end
+
+    describe 'staging facility-id translation' do
+      # Lighthouse hands back real-world station IDs (442 = Cheyenne, 552 =
+      # Dayton). Downstream VAOS staging calls need the staging vocabulary
+      # (983, 984) to find the patient's panel in lower envs. The translator
+      # is gated on +Settings.vsp_environment == 'production'+ so production
+      # is a pure passthrough. Translation happens exactly once per facility,
+      # at the Lighthouse boundary -- these tests assert that every VAOS-side
+      # consumer (eligibility, clinics, VAProvider.location_id) sees the same
+      # translated ID, not independently re-translated copies.
+      let(:real_cheyenne_facility) do
+        lighthouse_facility_double(
+          unique_id: '442',
+          id: 'vha_442',
+          name: 'Cheyenne VA Medical Center',
+          address: { 'physical' => { 'address1' => '2360 E Pershing Blvd',
+                                     'city' => 'Cheyenne', 'state' => 'WY', 'zip' => '82001' } },
+          phone: { 'main' => '307-778-7550', 'healthConnect' => '307-778-7550' },
+          lat: 41.1456, long: -104.7892,
+          facility_type: 'va_health_facility',
+          services: { 'health' => [{ 'serviceId' => 'primaryCare' }] }
+        )
+      end
+
+      let(:real_substation_facility) do
+        lighthouse_facility_double(
+          unique_id: '442GC',
+          id: 'vha_442GC',
+          name: 'Fort Collins VA Clinic',
+          address: nil, phone: nil, lat: 40.5853, long: -105.0844,
+          facility_type: 'va_health_facility',
+          services: { 'health' => [{ 'serviceId' => 'primaryCare' }] }
+        )
+      end
+
+      let(:unmapped_facility) do
+        lighthouse_facility_double(
+          unique_id: '668',
+          id: 'vha_668',
+          name: 'Spokane VA Medical Center',
+          address: nil, phone: nil, lat: 47.6588, long: -117.4260,
+          facility_type: 'va_health_facility',
+          services: { 'health' => [{ 'serviceId' => 'primaryCare' }] }
+        )
+      end
+
+      let(:primary_care_referral) do
+        double('Referral', category_of_care: 'PRIMARY CARE', provider_npi: '91560381x')
+      end
+
+      before do
+        allow(eligibility_service).to receive(:check_eligibility)
+          .and_return({ direct_eligible: true })
+      end
+
+      context 'in non-production environments' do
+        before { allow(Settings).to receive(:vsp_environment).and_return('staging') }
+
+        it 'sends the staging-translated id to eligibility for the parent station' do
+          allow(lighthouse_client).to receive(:get_facilities).and_return([real_cheyenne_facility])
+
+          service.search(referral: primary_care_referral)
+
+          expect(eligibility_service).to have_received(:check_eligibility)
+            .with(facility_id: '983', vaos_service_type: 'primaryCare')
+        end
+
+        it 'sends the staging-translated id to clinic fetch for the parent station' do
+          allow(lighthouse_client).to receive(:get_facilities).and_return([real_cheyenne_facility])
+
+          service.search(referral: primary_care_referral)
+
+          expect(systems_service).to have_received(:get_facility_clinics)
+            .with(location_id: '983', clinical_service: 'primaryCare')
+        end
+
+        it 'stamps the staging id on the resulting VAProvider' do
+          allow(lighthouse_client).to receive(:get_facilities).and_return([real_cheyenne_facility])
+
+          results = service.search(referral: primary_care_referral)
+          va = results.find { |p| p.provider_type == 'va' }
+
+          expect(va.location_id).to eq('983')
+        end
+
+        it 'preserves sub-station suffixes when translating (442GC -> 983GC)' do
+          allow(lighthouse_client).to receive(:get_facilities).and_return([real_substation_facility])
+
+          service.search(referral: primary_care_referral)
+
+          expect(eligibility_service).to have_received(:check_eligibility)
+            .with(facility_id: '983GC', vaos_service_type: 'primaryCare')
+          expect(systems_service).to have_received(:get_facility_clinics)
+            .with(location_id: '983GC', clinical_service: 'primaryCare')
+        end
+
+        it 'leaves unmapped Lighthouse station IDs unchanged' do
+          allow(lighthouse_client).to receive(:get_facilities).and_return([unmapped_facility])
+
+          service.search(referral: primary_care_referral)
+
+          expect(eligibility_service).to have_received(:check_eligibility)
+            .with(facility_id: '668', vaos_service_type: 'primaryCare')
+          expect(systems_service).to have_received(:get_facility_clinics)
+            .with(location_id: '668', clinical_service: 'primaryCare')
+        end
+
+        it 'translates each Lighthouse facility exactly once at the boundary' do
+          # Locks in the "translate once at the edge" design: for N Lighthouse
+          # facilities we expect N calls to +to_staging+ in this service,
+          # regardless of how many downstream VAOS consumers (eligibility,
+          # clinic fetch, VAProvider stamp) read the translated id.
+          allow(lighthouse_client).to receive(:get_facilities)
+            .and_return([real_cheyenne_facility, real_substation_facility])
+          allow(VAOS::V2::Unified::FacilityIdTranslator).to receive(:to_staging).and_call_original
+
+          service.search(referral: primary_care_referral)
+
+          expect(VAOS::V2::Unified::FacilityIdTranslator).to have_received(:to_staging)
+            .with('442').once
+          expect(VAOS::V2::Unified::FacilityIdTranslator).to have_received(:to_staging)
+            .with('442GC').once
+        end
+      end
+
+      context 'in production' do
+        before { allow(Settings).to receive(:vsp_environment).and_return('production') }
+
+        it 'is a pure no-op: real ids flow straight through to VAOS calls' do
+          allow(lighthouse_client).to receive(:get_facilities).and_return([real_cheyenne_facility])
+
+          results = service.search(referral: primary_care_referral)
+          va = results.find { |p| p.provider_type == 'va' }
+
+          expect(eligibility_service).to have_received(:check_eligibility)
+            .with(facility_id: '442', vaos_service_type: 'primaryCare')
+          expect(systems_service).to have_received(:get_facility_clinics)
+            .with(location_id: '442', clinical_service: 'primaryCare')
+          expect(va.location_id).to eq('442')
+        end
+      end
     end
 
     describe 'operational toggles' do
