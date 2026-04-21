@@ -42,6 +42,7 @@ class SourceAppMiddleware
     '10-7959a',
     '10-7959C',
     '10-7959f-1-FMP',
+    '10-8678',
     '1330m2-medallions',
     '1330m-medallions',
     '1990-edu-benefits',
