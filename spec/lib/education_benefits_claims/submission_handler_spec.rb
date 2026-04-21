@@ -53,6 +53,18 @@ RSpec.describe EducationBenefitsClaims::SubmissionHandler do
     end
   end
 
+  describe 'registered handlers in SubmissionStatusJob' do
+    it 'registers subclasses with FORM_ID defined, not the parent class' do
+      %w[22-0989 22-10278].each do |form_id|
+        handler = BenefitsIntake::SubmissionStatusJob::FORM_HANDLERS[form_id]
+        expect(handler).not_to be_nil, "No handler registered for #{form_id}"
+        expect(handler).to be < EducationBenefitsClaims::SubmissionHandler
+        expect(handler::FORM_ID).to eq(form_id)
+        expect { handler.pending_attempts }.not_to raise_error
+      end
+    end
+  end
+
   describe '#on_failure' do
     it 'logs silent failure avoided' do
       expect(notification).to receive(:deliver).with(:error).and_return true
