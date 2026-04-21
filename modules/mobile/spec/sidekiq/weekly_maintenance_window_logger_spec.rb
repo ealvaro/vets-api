@@ -10,7 +10,6 @@ RSpec.describe Mobile::V0::WeeklyMaintenanceWindowLogger, type: :job do
     before do
       create(:mobile_maintenance_lighthouse_first)
       create(:mobile_maintenance_mpi)
-      create(:mobile_maintenance_dslogon)
     end
 
     context 'When maintenance windows have been created within the last week' do

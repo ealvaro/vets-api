@@ -47,7 +47,6 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
         Timecop.freeze('2021-05-25T03:33:39Z')
         create(:mobile_maintenance_lighthouse_first)
         create(:mobile_maintenance_mpi)
-        create(:mobile_maintenance_dslogon)
         create(:mobile_maintenance_vbms)
         get '/mobile/v0/maintenance_windows', headers: { 'X-Key-Inflection' => 'camel' }
       end

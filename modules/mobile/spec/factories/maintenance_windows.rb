@@ -37,15 +37,6 @@ FactoryBot.define do
     description { 'mpi is down' }
   end
 
-  factory :mobile_maintenance_dslogon, class: '::MaintenanceWindow' do
-    pagerduty_id { 'PHA6DOW' }
-    external_service { 'dslogon' }
-    start_time { '2021-05-25 23:33:39' }
-    end_time { '2021-05-26 01:45:00' }
-    created_at { '2021-05-24 12:15:17' }
-    description { '' }
-  end
-
   factory :mobile_maintenance_bgs_first, class: '::MaintenanceWindow' do
     pagerduty_id { 'PHA6DOA' }
     external_service { 'bgs' }

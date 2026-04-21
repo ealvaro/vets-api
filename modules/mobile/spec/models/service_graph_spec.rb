@@ -10,11 +10,9 @@ RSpec.describe Mobile::V0::ServiceGraph, type: :model do
       %i[mpi auth],
       %i[mpi lighthouse],
       %i[arcgis facility_locator],
-      %i[auth auth_dslogon],
       %i[auth auth_idme],
       %i[auth auth_mhv],
       %i[caseflow appeals],
-      %i[dslogon auth_dslogon],
       %i[vet360 military_service_history],
       %i[lighthouse claims],
       %i[lighthouse direct_deposit_benefits],
@@ -34,7 +32,7 @@ RSpec.describe Mobile::V0::ServiceGraph, type: :model do
     end
 
     it 'adds multiple service nodes to the list' do
-      expect(subject.services.size).to eq(26)
+      expect(subject.services.size).to eq(24)
     end
   end
 
@@ -66,7 +64,7 @@ RSpec.describe Mobile::V0::ServiceGraph, type: :model do
       let(:affected_services) { subject.affected_services([maintenance_bgs, maintenance_mpi]) }
 
       it 'finds the api services (leaves) that are downstream from the queried node' do
-        expect(affected_services.keys).to eq(%i[claims direct_deposit_benefits letters_and_documents auth_dslogon
+        expect(affected_services.keys).to eq(%i[claims direct_deposit_benefits letters_and_documents
                                                 auth_idme auth_mhv])
       end
 
