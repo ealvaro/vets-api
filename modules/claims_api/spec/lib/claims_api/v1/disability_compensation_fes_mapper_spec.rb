@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require 'claims_api/v1/disability_compensation_fes_mapper'
+require 'claims_api/fes_mapper_base'
 
 describe ClaimsApi::V1::DisabilityCompensationFesMapper do
   describe '526 claim maps to FES format' do
@@ -146,6 +147,91 @@ describe ClaimsApi::V1::DisabilityCompensationFesMapper do
               expect(addr[:internationalPostalCode]).to eq('SW1A 1AA')
               expect(addr[:addressType]).to eq('INTERNATIONAL')
               expect(addr[:country]).to eq('GBR')
+            end
+          end
+
+          context 'address length' do
+            let(:expected_overflow) { 'THIS IS OVERFLOW' }
+            let(:long_line1) { "123 Mulberry Lane NW #{expected_overflow}" }
+            let(:short_line1) { '1 Mulberry Lane NW' }
+            let(:max_length_allowed) { ClaimsApi::FesMapperBase::MAX_LINE_LENGTH_ADDRESS_LINE_ONE }
+            let(:base_attrs) do
+              form_data['data']['attributes'].deep_dup.tap do |attrs|
+                attrs['veteranIdentification'] = {
+                  'currentVaEmployee' => false,
+                  'mailingAddress' => {
+                    'numberAndStreet' => long_line1,
+                    'addressLine2' => 'Suite 100',
+                    'addressLine3' => 'Building B',
+                    'city' => 'Portland',
+                    'state' => 'OR',
+                    'country' => 'USA',
+                    'zipFirstFive' => '12345'
+                  }
+                }
+              end
+            end
+
+            context 'when addressLine1 is within the max length' do
+              let(:auto_claim) do
+                attrs = form_data['data']['attributes'].deep_dup
+                attrs['veteranIdentification'] = {
+                  'currentVaEmployee' => false,
+                  'mailingAddress' => {
+                    'numberAndStreet' => short_line1,
+                    'city' => 'Portland',
+                    'state' => 'OR',
+                    'country' => 'USA',
+                    'zipFirstFive' => '12345'
+                  }
+                }
+                create(:auto_established_claim, form_data: attrs, auth_headers:)
+              end
+
+              it 'does not modify addressLine1' do
+                addr = veteran[:currentMailingAddress]
+
+                expect(addr[:addressLine1]).to eq(short_line1)
+              end
+            end
+
+            context 'when addressLine1 exceeds the max length' do
+              let(:auto_claim) { create(:auto_established_claim, form_data: base_attrs, auth_headers:) }
+
+              it 'truncates addressLine1 to the max length at a word boundary' do
+                addr = veteran[:currentMailingAddress]
+
+                expect(addr[:addressLine1].length).to be <= max_length_allowed
+                expect(addr[:addressLine1]).not_to end_with(' ')
+              end
+
+              it 'puts the overflow into addressLine2' do
+                addr = veteran[:currentMailingAddress]
+
+                expect(addr[:addressLine2]).to eq(expected_overflow)
+              end
+
+              it 'preserves existing addressLine2 and addressLine3 in addressLine3' do
+                addr = veteran[:currentMailingAddress]
+
+                expect(addr[:addressLine3]).to eq('Suite 100 Building B')
+              end
+            end
+
+            context 'when addressLine1 exceeds max length and addressLine2 and addressLine3 are blank' do
+              let(:auto_claim) do
+                attrs = base_attrs.deep_dup
+                attrs['veteranIdentification']['mailingAddress'].delete('addressLine2')
+                attrs['veteranIdentification']['mailingAddress'].delete('addressLine3')
+                create(:auto_established_claim, form_data: attrs, auth_headers:)
+              end
+
+              it 'still truncates addressLine1 as expected' do
+                addr = veteran[:currentMailingAddress]
+
+                expect(addr[:addressLine1].length).to be <= max_length_allowed
+                expect(addr[:addressLine2]).to eq(expected_overflow)
+              end
             end
           end
         end

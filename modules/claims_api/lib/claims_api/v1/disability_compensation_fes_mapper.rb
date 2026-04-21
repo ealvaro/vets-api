@@ -91,9 +91,23 @@ module ClaimsApi
       end
 
       def handle_military_address
+        addr = build_military_address
+        addr = transform_address_lines_length(addr) if address_line1_too_long?(addr)
+        @fes_claim[:veteran] ||= {}
+        @fes_claim[:veteran][:currentMailingAddress] = addr
+      end
+
+      def handle_domestic_or_international_address
+        addr = build_domestic_or_international_address
+        addr = transform_address_lines_length(addr) if address_line1_too_long?(addr)
+        @fes_claim[:veteran] ||= {}
+        @fes_claim[:veteran][:currentMailingAddress] = addr
+      end
+
+      def build_military_address
         addr = veteran_mailing_address || {}
         line1 = addr[:addressLine1] || format_address_line(addr[:numberAndStreet], addr[:apartmentOrUnitNumber])
-        formatted = {
+        {
           addressLine1: line1,
           addressLine2: addr[:addressLine2],
           addressLine3: addr[:addressLine3],
@@ -104,11 +118,9 @@ module ClaimsApi
           zipLastFour: addr[:zipLastFour],
           addressType: 'MILITARY'
         }.compact_blank
-        @fes_claim[:veteran] ||= {}
-        @fes_claim[:veteran][:currentMailingAddress] = formatted
       end
 
-      def handle_domestic_or_international_address
+      def build_domestic_or_international_address
         addr = veteran_mailing_address || {}
         type = addr[:internationalPostalCode].present? ? 'INTERNATIONAL' : 'DOMESTIC'
         line1 = addr[:addressLine1] || format_address_line(addr[:numberAndStreet], addr[:apartmentOrUnitNumber])
@@ -122,13 +134,9 @@ module ClaimsApi
           zipLastFour: addr[:zipLastFour],
           addressType: type
         }
-        if type == 'INTERNATIONAL'
-          formatted[:internationalPostalCode] = addr[:internationalPostalCode]
-        else
-          formatted[:state] = addr[:state]
-        end
-        @fes_claim[:veteran] ||= {}
-        @fes_claim[:veteran][:currentMailingAddress] = formatted.compact_blank
+        formatted[:internationalPostalCode] = addr[:internationalPostalCode] if type == 'INTERNATIONAL'
+        formatted[:state] = addr[:state] if type == 'DOMESTIC'
+        formatted.compact_blank
       end
 
       def change_of_address
