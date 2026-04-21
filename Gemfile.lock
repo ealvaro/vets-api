@@ -459,8 +459,8 @@ GEM
       dry-schema (~> 1.14)
       zeitwerk (~> 2.6)
     einhorn (1.0.0)
-    erb (6.0.1)
-    erb (6.0.1-java)
+    erb (6.0.4)
+    erb (6.0.4-java)
     erubi (1.13.1)
     et-orbi (1.2.11)
       tzinfo
