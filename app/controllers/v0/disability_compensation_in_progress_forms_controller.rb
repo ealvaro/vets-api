@@ -9,10 +9,21 @@ module V0
         # get IPF
         data = data_and_metadata_with_updated_rated_disabilities
         log_started_form_version(data, 'get IPF')
+        Rails.logger.info(
+          'Form526 InProgressForm show',
+          in_progress_form_id: form_for_user.id,
+          user_uuid: @current_user&.uuid,
+          return_url: form_for_user.metadata&.dig('returnUrl') || form_for_user.metadata&.dig('return_url')
+        )
       else
         # create IPF
         data = camelized_prefill_for_user
         log_started_form_version(data, 'create IPF')
+        # next call to #update will create the IPF
+        Rails.logger.info(
+          'Form526 InProgressForm show (prefill IPF)',
+          user_uuid: @current_user&.uuid
+        )
       end
       render json: data
     end
@@ -30,6 +41,7 @@ module V0
         end
       end
       super
+      log_form_update
     end
 
     private
@@ -41,6 +53,16 @@ module V0
           form_data.is_a?(String) ? JSON.parse(form_data) : form_data
         end
       end
+    end
+
+    def log_form_update
+      updated_form = InProgressForm.form_for_user(form_id, @current_user)
+      Rails.logger.info(
+        'Form526 InProgressForm update',
+        in_progress_form_id: updated_form&.id,
+        user_uuid: @current_user&.uuid,
+        return_url: params.dig(:metadata, :returnUrl) || params.dig(:metadata, :return_url)
+      )
     end
 
     def form_id

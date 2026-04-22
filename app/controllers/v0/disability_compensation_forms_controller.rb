@@ -63,31 +63,19 @@ module V0
                                                        @current_user)
 
       saved_claim = SavedClaim::DisabilityCompensation::Form526AllClaim.from_hash(form_content)
-      if Flipper.enabled?(:disability_compensation_sync_modern0781_flow_metadata) && form_content['form526'].present?
-        saved_claim.metadata = add_0781_metadata(form_content['form526'])
-      end
+      saved_claim.metadata = check_for_0781_metadata
+      in_progress_form = InProgressForm.form_for_user(FormProfiles::VA526ez::FORM_ID, @current_user)
 
-      saved_claim.save ? log_success(saved_claim) : log_failure(saved_claim)
-      # if jid = 0 then the submission was prevented from going any further in the process
+      saved_claim.save ? log_success(saved_claim) : log_failure(saved_claim, in_progress_form)
       submission = create_submission(saved_claim)
+      log_submission(submission, saved_claim, in_progress_form)
 
       if Flipper.enabled?(:disability_526_toxic_exposure_opt_out_data_purge, @current_user)
-        log_toxic_exposure_changes(saved_claim, submission)
+        log_toxic_exposure_changes(saved_claim, submission, in_progress_form)
       end
 
-      jid = 0
-      # Feature flag to stop submission from being submitted to third-party service
-      # With this on, the submission will NOT be processed by EVSS or Lighthouse,
-      # nor will it go to VBMS,
-      # but the line of code before this one creates the submission in the vets-api database
-      if Flipper.enabled?(:disability_compensation_prevent_submission_job, @current_user)
-        Rails.logger.info("Submission ID: #{submission.id} prevented from sending to third party service.")
-      else
-        jid = submission.start
-      end
-
-      render json: { data: { attributes: { job_id: jid } } },
-             status: :ok
+      jid = process_job_submission(submission)
+      render json: { data: { attributes: { job_id: jid } } }, status: :ok
     end
 
     def submission_status
@@ -153,19 +141,30 @@ module V0
       raise e
     end
 
-    def log_failure(claim)
-      if Flipper.enabled?(:disability_526_track_saved_claim_error) && claim&.errors
-        begin
-          in_progress_form =
-            @current_user ? InProgressForm.form_for_user(FormProfiles::VA526ez::FORM_ID, @current_user) : nil
-        ensure
-          monitor.track_saved_claim_save_error(
-            # Array of ActiveModel::Error instances from the claim that failed to save
-            claim&.errors&.errors,
-            in_progress_form&.id,
-            @current_user.uuid
-          )
-        end
+    def check_for_0781_metadata
+      if Flipper.enabled?(:disability_compensation_sync_modern0781_flow_metadata) && form_content['form526'].present?
+        add_0781_metadata(form_content['form526'])
+      end
+    end
+
+    def log_submission(submission, saved_claim, in_progress_form)
+      Rails.logger.info(
+        'Form526 submit_all_claim',
+        in_progress_form_id: in_progress_form&.id,
+        saved_claim_id: saved_claim&.id,
+        submission_id: submission&.id,
+        user_uuid: @current_user&.uuid
+      )
+    end
+
+    def log_failure(claim, in_progress_form)
+      if claim&.errors
+        monitor.track_saved_claim_save_error(
+          # Array of ActiveModel::Error instances from the claim that failed to save
+          claim&.errors&.errors,
+          in_progress_form&.id,
+          @current_user&.uuid
+        )
       end
 
       raise Common::Exceptions::ValidationErrors, claim
@@ -174,7 +173,7 @@ module V0
     def log_success(claim)
       monitor.track_saved_claim_save_success(
         claim,
-        @current_user.uuid
+        @current_user&.uuid
       )
     end
 
@@ -229,9 +228,9 @@ module V0
     #
     # @param submitted_claim [SavedClaim::DisabilityCompensation::Form526AllClaim] The submitted claim
     # @param submission [Form526Submission] The submission record
+    # @param in_progress_form [InProgressForm] The in-progress form record
     # @return [void]
-    def log_toxic_exposure_changes(submitted_claim, submission)
-      in_progress_form = InProgressForm.form_for_user(FormProfiles::VA526ez::FORM_ID, @current_user)
+    def log_toxic_exposure_changes(submitted_claim, submission, in_progress_form)
       return unless in_progress_form
 
       monitor.track_toxic_exposure_changes(
@@ -249,6 +248,17 @@ module V0
         error: e.message,
         backtrace: e.backtrace&.first(5)
       )
+    end
+
+    def process_job_submission(submission)
+      # Feature flag to stop submission from being submitted to Lighthouse and onto VBMS
+      if Flipper.enabled?(:disability_compensation_prevent_submission_job, @current_user)
+        Rails.logger.info("Submission ID: #{submission.id} prevented from sending to third party service.")
+        # if jid = 0 then the submission was prevented from going any further in the process
+        0
+      else
+        submission.start
+      end
     end
   end
 end

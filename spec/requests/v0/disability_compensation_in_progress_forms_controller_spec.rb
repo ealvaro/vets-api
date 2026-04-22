@@ -68,6 +68,85 @@ RSpec.describe V0::DisabilityCompensationInProgressFormsController do
           sign_in_as(lighthouse_user)
         end
 
+        context 'IPF ID logging on show' do
+          it 'logs the in_progress_form_id and return_url when an existing form is found' do
+            raw_meta = in_progress_form_lighthouse[:metadata] || {}
+            raw_meta['returnUrl'] = '/veteran-information'
+            in_progress_form_lighthouse.update!(metadata: raw_meta)
+
+            allow(Rails.logger).to receive(:info).and_call_original
+
+            expect(Rails.logger).to receive(:info).with(
+              'Form526 InProgressForm show',
+              hash_including(
+                in_progress_form_id: in_progress_form_lighthouse.id,
+                user_uuid: lighthouse_user.uuid,
+                return_url: '/veteran-information'
+              )
+            )
+
+            VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+              get v0_disability_compensation_in_progress_form_url(in_progress_form_lighthouse.form_id), params: nil
+            end
+
+            expect(response).to have_http_status(:ok)
+          end
+
+          it 'logs return_url from snake_case metadata key' do
+            raw_meta = in_progress_form_lighthouse[:metadata] || {}
+            raw_meta.delete('returnUrl')
+            raw_meta['return_url'] = '/contact-information'
+            in_progress_form_lighthouse.update!(metadata: raw_meta)
+
+            allow(Rails.logger).to receive(:info).and_call_original
+
+            expect(Rails.logger).to receive(:info).with(
+              'Form526 InProgressForm show',
+              hash_including(
+                in_progress_form_id: in_progress_form_lighthouse.id,
+                return_url: '/contact-information'
+              )
+            )
+
+            VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+              get v0_disability_compensation_in_progress_form_url(in_progress_form_lighthouse.form_id), params: nil
+            end
+
+            expect(response).to have_http_status(:ok)
+          end
+
+          it 'logs user_uuid for prefill when no existing form is found' do
+            sign_in_as(loa1_user)
+
+            allow(Rails.logger).to receive(:info).and_call_original
+
+            expect(Rails.logger).to receive(:info).with(
+              'Form526 InProgressForm show (prefill IPF)',
+              hash_including(
+                user_uuid: loa1_user.uuid
+              )
+            )
+
+            get v0_disability_compensation_in_progress_form_url('21-526EZ'), params: nil
+
+            expect(response).to have_http_status(:ok)
+          end
+
+          it 'does not log PII in any attributes' do
+            allow(Rails.logger).to receive(:info).and_call_original
+
+            expect(Rails.logger).to receive(:info).with('Form526 InProgressForm show', anything) do |_message, attrs|
+              expect(attrs).not_to have_key(:form_data)
+              expect(attrs).not_to have_key(:ssn)
+              expect(attrs).not_to have_key(:name)
+            end
+
+            VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+              get v0_disability_compensation_in_progress_form_url(in_progress_form_lighthouse.form_id), params: nil
+            end
+          end
+        end
+
         context 'when a form is found and rated_disabilities have updates' do
           it 'returns the form as JSON' do
             # change form data
@@ -901,6 +980,57 @@ RSpec.describe V0::DisabilityCompensationInProgressFormsController do
               headers: { 'CONTENT_TYPE' => 'application/json' }
           expect(JSON.parse(response.body)['data']['attributes']['metadata'].key?('sync_modern0781_flow')).to be(false)
           expect(response).to have_http_status(:ok)
+        end
+
+        context 'IPF ID logging on update' do
+          it 'logs the in_progress_form_id after a successful update' do
+            # Create the form first
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: { returnUrl: '/veteran-information' }
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+
+            expect(response).to have_http_status(:ok)
+
+            created_form = InProgressForm.form_for_user(new_form.form_id, update_user)
+
+            allow(Rails.logger).to receive(:info).and_call_original
+
+            expect(Rails.logger).to receive(:info).with(
+              'Form526 InProgressForm update',
+              hash_including(
+                in_progress_form_id: created_form.id,
+                user_uuid: update_user.uuid,
+                return_url: '/veteran-information'
+              )
+            )
+
+            # Update it
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: { returnUrl: '/veteran-information' }
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+
+            expect(response).to have_http_status(:ok)
+          end
+
+          it 'logs the return_url from metadata params' do
+            allow(Rails.logger).to receive(:info).and_call_original
+
+            expect(Rails.logger).to receive(:info).with(
+              'Form526 InProgressForm update',
+              hash_including(
+                return_url: '/supporting-evidence/evidence-types'
+              )
+            )
+
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: { returnUrl: '/supporting-evidence/evidence-types' }
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+
+            expect(response).to have_http_status(:ok)
+          end
         end
 
         context 'when flipper is enabled for 0781 metadata sync' do
