@@ -41,21 +41,5 @@ FactoryBot.define do
       sign_in { [[:service_name, SignIn::Constants::Auth::MHV]].to_h }
       loa { [[:current, LOA::ONE], [:highest, LOA::THREE]].to_h }
     end
-
-    factory :dslogon_user_identity_attrs do
-      authn_context { 'dslogon' }
-      uuid { 'b2fab2b5-6af0-45e1-a9e2-394347af91ef' }
-      email { Faker::Internet.email }
-      first_name { nil }
-      last_name { nil }
-      gender { nil }
-      birth_date { nil }
-      zip { nil }
-      ssn { nil }
-      mhv_icn { nil }
-      mhv_account_type { nil }
-      sign_in { [[:service_name, SignIn::Constants::Auth::DSLOGON]].to_h }
-      loa { [[:current, LOA::ONE], [:highest, LOA::THREE]].to_h }
-    end
   end
 end

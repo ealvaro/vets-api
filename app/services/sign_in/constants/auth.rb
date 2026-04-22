@@ -18,14 +18,10 @@ module SignIn
                           IDME_IAL1 = 'http://idmanagement.gov/ns/assurance/ial/1/aal/1',
                           IDME_IAL2 = 'http://idmanagement.gov/ns/assurance/ial/2/aal/2',
                           IDME_CLASSIC_LOA3 = 'classic_loa3',
-                          IDME_DSLOGON_LOA1 = 'dslogon',
-                          IDME_DSLOGON_LOA3 = 'dslogon_loa3',
                           IDME_MHV_LOA1 = 'myhealthevet',
                           IDME_MHV_LOA3 = 'myhealthevet_loa3',
                           IDME_COMPARISON_MINIMUM = 'comparison:minimum',
                           MHV_PREMIUM_VERIFIED = %w[Premium].freeze,
-                          DSLOGON_PREMIUM_VERIFIED = [DSLOGON_ASSURANCE_TWO = '2',
-                                                      DSLOGON_ASSURANCE_THREE = '3'].freeze,
                           LOGIN_GOV_IAL0 = 'http://idmanagement.gov/ns/assurance/ial/0',
                           LOGIN_GOV_IAL1 = 'http://idmanagement.gov/ns/assurance/ial/1',
                           LOGIN_GOV_IAL2 = 'http://idmanagement.gov/ns/assurance/ial/2',
@@ -38,7 +34,6 @@ module SignIn
       CLIENT_STATE_MINIMUM_LENGTH = 22
       CODE_CHALLENGE_METHOD = 'S256'
       CSP_TYPES = [IDME = 'idme', LOGINGOV = 'logingov', MHV = 'mhv'].freeze
-      DSLOGON = 'dslogon'
       OPERATION_TYPES = [SIGN_UP = 'sign_up',
                          AUTHORIZE = 'authorize',
                          AUTHORIZE_SSO = 'authorize_sso',

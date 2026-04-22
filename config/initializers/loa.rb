@@ -28,11 +28,6 @@ module LOA
   # MHV accounts with this designation are considered LOA3 level
   MHV_PREMIUM_VERIFIED = %w[Premium].freeze
 
-  # DSLogon accounts with these assurance levels are considered LOA3
-  DSLOGON_PREMIUM_VERIFIED = [DSLOGON_ASSURANCE_TWO = '2', DSLOGON_ASSURANCE_THREE = '3'].freeze
-
   IDME_MHV_LOA1 = 'myhealthevet'
   IDME_MHV_LOA3 = 'myhealthevet_loa3'
-  IDME_DSLOGON_LOA1 = 'dslogon'
-  IDME_DSLOGON_LOA3 = 'dslogon_loa3'
 end

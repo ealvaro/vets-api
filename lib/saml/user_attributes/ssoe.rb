@@ -127,15 +127,9 @@ module SAML
         LOA::MHV_PREMIUM_VERIFIED.include?(mhv_assurance) ? 3 : nil
       end
 
-      def dslogon_loa_highest
-        dslogon_assurance = dslogon_account_type
-        LOA::DSLOGON_PREMIUM_VERIFIED.include?(dslogon_assurance) ? 3 : nil
-      end
-
       # This is the ID.me highest level of assurance attained
       def loa_highest
         result = mhv_loa_highest
-        result ||= dslogon_loa_highest
         result ||= %w[2 classic_loa3].include?(safe_attr('va_eauth_ial_idme_highest')) ? 3 : 1
         result
       end
