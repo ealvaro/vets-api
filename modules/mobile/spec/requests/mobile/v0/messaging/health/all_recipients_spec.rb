@@ -322,5 +322,32 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
         expect(returned_ids).to include(6_692_633) # Columbus VTG at 757
       end
     end
+
+    describe 'schema contract validation' do
+      let(:user_account) { create(:user_account) }
+
+      before do
+        user.user_account_uuid = user_account.id
+        user.save!
+      end
+
+      context 'when :schema_contract_triage_teams is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with('schema_contract_triage_teams').and_return(true)
+        end
+
+        it 'validates schema for get_all_triage_teams' do
+          allow_any_instance_of(Mobile::V0::RecipientsController).to receive(:get_unique_care_systems).and_return(
+            care_systems_stub
+          )
+          VCR.use_cassette('sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients') do
+            get '/mobile/v0/messaging/health/allrecipients', headers: sis_headers
+          end
+          expect(response).to be_successful
+          SchemaContract::ValidationJob.drain
+          expect(SchemaContract::Validation.last.status).to eq('success')
+        end
+      end
+    end
   end
 end

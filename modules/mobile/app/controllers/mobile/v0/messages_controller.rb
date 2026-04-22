@@ -14,7 +14,11 @@ module Mobile
       before_action :extend_timeout, only: %i[create reply], if: :oh_triage_group?
 
       def index
-        resource = client.get_folder_messages(@current_user.uuid, params[:folder_id].to_s, use_cache?)
+        resource = client.get_folder_messages(@current_user.uuid, params[:folder_id].to_s, use_cache?) do |json|
+          SchemaContract::ValidationInitiator.call_with_body(
+            user: @current_user, body: json, contract_name: 'messages_index'
+          )
+        end
         raise Common::Exceptions::RecordNotFound, params[:folder_id] if resource.blank?
 
         resource = resource.find_by(filter_params) if params[:filter].present?
@@ -37,7 +41,9 @@ module Mobile
 
       def show
         message_id = params[:id].try(:to_i)
-        response = client.get_message(message_id)
+        response = client.get_message(message_id) do |resp|
+          SchemaContract::ValidationInitiator.call(user: @current_user, response: resp, contract_name: 'message_show')
+        end
         raise Common::Exceptions::RecordNotFound, message_id if response.blank?
 
         user_triage_teams = client.get_all_triage_teams(@current_user.uuid)
@@ -83,7 +89,11 @@ module Mobile
 
       def thread
         message_id = params[:id].try(:to_i)
-        resource = client.get_message_history(message_id)
+        resource = client.get_message_history(message_id) do |resp|
+          SchemaContract::ValidationInitiator.call(
+            user: @current_user, response: resp, contract_name: 'message_history'
+          )
+        end
         raise Common::Exceptions::RecordNotFound, message_id if resource.blank?
 
         resource.metadata.merge!(message_counts(resource))
@@ -113,7 +123,9 @@ module Mobile
       end
 
       def categories
-        resource = client.get_categories
+        resource = client.get_categories do |resp|
+          SchemaContract::ValidationInitiator.call(user: @current_user, response: resp, contract_name: 'categories')
+        end
 
         render json: Mobile::V0::CategorySerializer.new(resource)
       end
@@ -125,7 +137,12 @@ module Mobile
       end
 
       def signature
-        result = client.get_signature[:data]
+        result = client.get_signature do |resp|
+          SchemaContract::ValidationInitiator.call(
+            user: @current_user, response: resp, contract_name: 'message_signature'
+          )
+        end
+        result = result[:data]
         result = { signature_name: nil, include_signature: false, signature_title: nil } if result.nil?
         render json: Mobile::V0::MessageSignatureSerializer.new(@current_user.uuid, result).to_json
       end

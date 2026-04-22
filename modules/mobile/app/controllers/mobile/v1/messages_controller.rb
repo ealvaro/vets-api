@@ -7,7 +7,11 @@ module Mobile
 
       def thread
         message_id = params[:id]
-        resource = client.get_messages_for_thread(message_id)
+        resource = client.get_messages_for_thread(message_id) do |resp|
+          SchemaContract::ValidationInitiator.call(
+            user: @current_user, response: resp, contract_name: 'messages_for_thread'
+          )
+        end
         raise Common::Exceptions::RecordNotFound, message_id if resource.blank?
 
         if ActiveModel::Type::Boolean.new.cast(params[:excludeProvidedMessage])

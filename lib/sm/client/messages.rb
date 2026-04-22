@@ -5,16 +5,18 @@ module SM
     ##
     # Module containing message retrieval and management methods for the SM Client
     #
-    module Messages
+    module Messages # rubocop:disable Metrics/ModuleLength
       ##
       # Get message categories
       #
       # @return [Category]
       #
-      def get_categories
+      def get_categories(&block)
         path = 'message/category'
 
-        json = perform(:get, path, nil, token_headers).body
+        response = perform(:get, path, nil, token_headers)
+        block&.call(response)
+        json = response.body
         Category.new(json[:data])
       end
 
@@ -24,9 +26,11 @@ module SM
       # @param id [Fixnum] message id
       # @return [Message]
       #
-      def get_message(id)
+      def get_message(id, &block)
         path = "message/#{id}/read"
-        json = perform(:get, path, nil, token_headers).body
+        response = perform(:get, path, nil, token_headers)
+        block&.call(response)
+        json = response.body
         message = Message.new(json[:data].merge(json[:metadata]))
 
         # Derive OH migration phase from the message's triage group (e.g., station number)
@@ -41,9 +45,11 @@ module SM
       # @param id [Fixnum] message id
       # @return [Common::Collection[Message]]
       #
-      def get_message_history(id)
+      def get_message_history(id, &block)
         path = "message/#{id}/history"
-        json = perform(:get, path, nil, token_headers).body
+        response = perform(:get, path, nil, token_headers)
+        block&.call(response)
+        json = response.body
         Vets::Collection.new(json[:data], Message, metadata: json[:metadata], errors: json[:errors])
       end
 
@@ -53,11 +59,13 @@ module SM
       # @param id [Fixnum] message id
       # @return [Common::Collection[MessageThread]]
       #
-      def get_messages_for_thread(id)
+      def get_messages_for_thread(id, &block)
         path = "message/#{id}/messagesforthread"
         path = append_requires_oh_messages_query(path)
 
-        json = perform(:get, path, nil, token_headers).body
+        response = perform(:get, path, nil, token_headers)
+        block&.call(response)
+        json = response.body
         is_oh = json[:data].any? { |msg| msg[:is_oh_message] == true }
         result = Vets::Collection.new(json[:data], MessageThreadDetails, metadata: json[:metadata],
                                                                          errors: json[:errors])

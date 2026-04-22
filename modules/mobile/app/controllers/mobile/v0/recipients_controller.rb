@@ -16,7 +16,11 @@ module Mobile
 
       def all_recipients
         filter_vtgs = !Flipper.enabled?(:mhv_secure_messaging_show_vtgs_mobile, @current_user)
-        resource = client.get_all_triage_teams(@current_user.uuid, filter_virtual_groups: filter_vtgs)
+        resource = client.get_all_triage_teams(@current_user.uuid, filter_virtual_groups: filter_vtgs) do |resp|
+          SchemaContract::ValidationInitiator.call(
+            user: @current_user, response: resp, contract_name: 'triage_teams'
+          )
+        end
         raise Common::Exceptions::ResourceNotFound if resource.blank?
 
         resource.records = resource.records.reject(&:blocked_status)

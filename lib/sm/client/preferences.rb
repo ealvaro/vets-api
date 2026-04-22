@@ -49,8 +49,10 @@ module SM
       #
       # @return [String] json response
       #
-      def get_signature
-        perform(:get, 'preferences/signature', nil, token_headers).body
+      def get_signature(&block)
+        response = perform(:get, 'preferences/signature', nil, token_headers)
+        block&.call(response)
+        response.body
       end
 
       ##

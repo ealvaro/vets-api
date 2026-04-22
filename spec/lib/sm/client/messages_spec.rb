@@ -113,6 +113,7 @@ describe 'sm client' do
 
       before do
         allow(client).to receive(:current_user).and_return(mock_user)
+        allow(mock_user).to receive_messages(user_account_uuid: 'some-uuid', uuid: 'some-uuid')
       end
 
       it 'sets migrated_to_oracle_health to true when oh_triage_group is false and facility is Cerner' do

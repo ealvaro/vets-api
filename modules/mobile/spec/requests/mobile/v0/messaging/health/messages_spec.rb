@@ -614,6 +614,77 @@ RSpec.describe 'Mobile::V0::Messaging::Health::Messages', type: :request do
         end
       end
 
+      describe 'schema contract validation' do
+        let(:user_account) { create(:user_account) }
+
+        before do
+          user.user_account_uuid = user_account.id
+          user.save!
+        end
+
+        context 'when :schema_contract_message_show is enabled' do
+          before do
+            allow(Flipper).to receive(:enabled?).with('schema_contract_message_show').and_return(true)
+          end
+
+          it 'validates schema for get_message' do
+            VCR.use_cassette('mobile/messages/gets_a_message_with_id_and_attachment') do
+              VCR.use_cassette('sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients') do
+                get "/mobile/v0/messaging/health/messages/#{message_id}", headers: sis_headers
+              end
+            end
+            expect(response).to be_successful
+            SchemaContract::ValidationJob.drain
+            expect(SchemaContract::Validation.last.status).to eq('success')
+          end
+        end
+
+        context 'when :schema_contract_message_history is enabled' do
+          before do
+            allow(Flipper).to receive(:enabled?).with('schema_contract_message_history').and_return(true)
+          end
+
+          it 'validates schema for get_message_history' do
+            VCR.use_cassette('mobile/messages/v0_gets_a_message_thread') do
+              get '/mobile/v0/messaging/health/messages/573059/thread', headers: sis_headers
+            end
+            expect(response).to be_successful
+            SchemaContract::ValidationJob.drain
+            expect(SchemaContract::Validation.last.status).to eq('success')
+          end
+        end
+
+        context 'when :schema_contract_categories is enabled' do
+          before do
+            allow(Flipper).to receive(:enabled?).with('schema_contract_categories').and_return(true)
+          end
+
+          it 'validates schema for get_categories' do
+            VCR.use_cassette('sm_client/messages/gets_message_categories') do
+              get '/mobile/v0/messaging/health/messages/categories', headers: sis_headers
+            end
+            expect(response).to be_successful
+            SchemaContract::ValidationJob.drain
+            expect(SchemaContract::Validation.last.status).to eq('success')
+          end
+        end
+
+        context 'when :schema_contract_message_signature is enabled' do
+          before do
+            allow(Flipper).to receive(:enabled?).with('schema_contract_message_signature').and_return(true)
+          end
+
+          it 'validates schema for get_signature' do
+            VCR.use_cassette('sm_client/messages/gets_message_signature') do
+              get '/mobile/v0/messaging/health/messages/signature', headers: sis_headers
+            end
+            expect(response).to be_successful
+            SchemaContract::ValidationJob.drain
+            expect(SchemaContract::Validation.last.status).to eq('success')
+          end
+        end
+      end
+
       describe '#move' do
         let(:message_id) { 573_052 }
 

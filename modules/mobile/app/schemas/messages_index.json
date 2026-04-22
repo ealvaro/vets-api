@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "description": "Schema for SM get_folder_messages response - list of messages in a folder",
+  "type": "object",
+  "required": ["data"],
+  "additionalProperties": false,
+  "properties": {
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "category",
+          "subject",
+          "attachment",
+          "sender_id",
+          "sender_name",
+          "recipient_id",
+          "recipient_name"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "category": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "body": {
+            "type": ["string", "null"]
+          },
+          "attachment": {
+            "type": "boolean"
+          },
+          "attachments": {
+            "type": ["array", "null"],
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "attachment_size": { "type": "integer" },
+                "message_id": { "type": "integer" }
+              }
+            }
+          },
+          "sent_date": {
+            "type": ["string", "null"]
+          },
+          "sender_id": {
+            "type": "integer"
+          },
+          "sender_name": {
+            "type": "string"
+          },
+          "recipient_id": {
+            "type": "integer"
+          },
+          "recipient_name": {
+            "type": "string"
+          },
+          "read_receipt": {
+            "type": ["string", "null"]
+          },
+          "triage_group_name": {
+            "type": ["string", "null"]
+          },
+          "triage_group_id": {
+            "type": ["integer", "null"]
+          },
+          "triage_group": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": ["string", "null"] },
+              "triage_team_id": { "type": ["integer", "null"] },
+              "preferred_team": { "type": ["boolean", "null"] },
+              "virtual_group": { "type": ["boolean", "null"] },
+              "active": { "type": ["boolean", "null"] },
+              "station_number": { "type": ["string", "null"] },
+              "health_care_system_name": { "type": ["string", "null"] },
+              "location_name": { "type": ["string", "null"] },
+              "location_station_number": { "type": ["string", "null"] },
+              "group_type_enum_val": { "type": ["string", "null"] },
+              "sub_group_type_enum_val": { "type": ["string", "null"] },
+              "group_type_patient_display": { "type": ["string", "null"] },
+              "sub_group_type_patient_display": { "type": ["string", "null"] },
+              "team_name": { "type": ["string", "null"] },
+              "lead_provider_name": { "type": ["string", "null"] },
+              "suggested_name_display": { "type": ["string", "null"] },
+              "description": { "type": ["string", "null"] },
+              "legacy_name": { "type": ["string", "null"] },
+              "oh_pool_id": { "type": ["integer", "null"] },
+              "oplock": { "type": ["integer", "null"] },
+              "created_date": { "type": ["string", "null"] },
+              "modified_date": { "type": ["string", "null"] },
+              "relation_type": { "type": ["string", "null"] },
+              "oh_triage_group": { "type": ["boolean", "null"] }
+            }
+          },
+          "proxy_sender_name": {
+            "type": ["string", "null"]
+          },
+          "proxy_sender_type": {
+            "type": ["string", "null"]
+          },
+          "suggested_name_display": {
+            "type": ["string", "null"]
+          },
+          "is_oh_message": {
+            "type": ["boolean", "null"]
+          },
+          "reply_disabled": {
+            "type": ["boolean", "null"]
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "errors": {
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "description": "Schema for SM get_signature response - user message signature preferences",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["data"],
+  "properties": {
+    "data": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "email_address": {
+          "type": ["string", "null"]
+        },
+        "notify_me": {
+          "type": ["string", "null"]
+        },
+        "signature_name": {
+          "type": ["string", "null"]
+        },
+        "include_signature": {
+          "type": "boolean"
+        },
+        "signature_title": {
+          "type": ["string", "null"]
+        },
+        "display_settings": {
+          "type": ["integer", "null"]
+        }
+      }
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "errors": {
+      "type": ["object", "null"]
+    }
+  }
+}

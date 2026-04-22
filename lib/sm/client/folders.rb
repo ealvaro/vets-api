@@ -74,10 +74,11 @@ module SM
       #
       # @return [Common::Collection]
       #
-      def get_folder_messages(user_uuid, folder_id, use_cache)
+      def get_folder_messages(user_uuid, folder_id, use_cache, &block)
         cache_key = "#{user_uuid}-folder-messages-#{folder_id}"
         get_cached_or_fetch_data(use_cache, cache_key, Message) do
           json = fetch_all_folder_messages(folder_id)
+          block&.call(json)
           is_oh = json[:data].any? { |msg| msg[:is_oh_message] == true }
           result = Vets::Collection.new(json[:data], Message, metadata: json[:metadata], errors: json[:errors])
           track_metric('get_folder_messages', is_oh:, status: 'success')

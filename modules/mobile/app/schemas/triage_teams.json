@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "description": "Schema for SM get_all_triage_teams response - list of triage teams including blocked",
+  "type": "object",
+  "required": ["data"],
+  "additionalProperties": false,
+  "properties": {
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["triage_team_id", "name"],
+        "properties": {
+          "triage_team_id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "preferred_team": {
+            "type": "boolean"
+          },
+          "virtual_group": {
+            "type": ["boolean", "null"]
+          },
+          "active": {
+            "type": ["boolean", "null"]
+          },
+          "station_number": {
+            "type": ["string", "null"]
+          },
+          "health_care_system_name": {
+            "type": ["string", "null"]
+          },
+          "location_name": {
+            "type": ["string", "null"]
+          },
+          "location_station_number": {
+            "type": ["string", "null"]
+          },
+          "group_type_enum_val": {
+            "type": ["string", "null"]
+          },
+          "sub_group_type_enum_val": {
+            "type": ["string", "null"]
+          },
+          "group_type_patient_display": {
+            "type": ["string", "null"]
+          },
+          "sub_group_type_patient_display": {
+            "type": ["string", "null"]
+          },
+          "team_name": {
+            "type": ["string", "null"]
+          },
+          "lead_provider_name": {
+            "type": ["string", "null"]
+          },
+          "suggested_name_display": {
+            "type": ["string", "null"]
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "legacy_name": {
+            "type": ["string", "null"]
+          },
+          "oh_pool_id": {
+            "type": ["integer", "null"]
+          },
+          "oplock": {
+            "type": ["integer", "null"]
+          },
+          "created_date": {
+            "type": ["string", "null"]
+          },
+          "modified_date": {
+            "type": ["string", "null"]
+          },
+          "relation_type": {
+            "type": ["string", "null"]
+          },
+          "blocked_status": {
+            "type": "boolean"
+          },
+          "oh_triage_group": {
+            "type": ["boolean", "null"]
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "errors": {
+      "type": ["object", "null"]
+    }
+  }
+}

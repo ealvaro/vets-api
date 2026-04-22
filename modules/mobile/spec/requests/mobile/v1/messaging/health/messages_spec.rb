@@ -208,6 +208,30 @@ RSpec.describe 'Mobile::V1::Messaging::Health::Messages', type: :request do
     describe '#thread' do
       let(:thread_id) { 573_059 }
 
+      describe 'schema contract validation' do
+        let(:user_account) { create(:user_account) }
+
+        before do
+          user.user_account_uuid = user_account.id
+          user.save!
+        end
+
+        context 'when :schema_contract_messages_for_thread is enabled' do
+          before do
+            allow(Flipper).to receive(:enabled?).with('schema_contract_messages_for_thread').and_return(true)
+          end
+
+          it 'validates schema for get_messages_for_thread' do
+            VCR.use_cassette('mobile/messages/v1_get_thread') do
+              get "/mobile/v1/messaging/health/messages/#{thread_id}/thread", headers: sis_headers
+            end
+            expect(response).to be_successful
+            SchemaContract::ValidationJob.drain
+            expect(SchemaContract::Validation.last.status).to eq('success')
+          end
+        end
+      end
+
       it 'includes provided message' do
         VCR.use_cassette('mobile/messages/v1_get_thread') do
           get "/mobile/v1/messaging/health/messages/#{thread_id}/thread", headers: sis_headers

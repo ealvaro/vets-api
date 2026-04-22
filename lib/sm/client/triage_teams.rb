@@ -39,9 +39,11 @@ module SM
       # @note Only triage_team_id and station_number are cached via TriageTeamCache model
       # @return [Common::Collection[AllTriageTeams]]
       #
-      def get_all_triage_teams(user_uuid, filter_virtual_groups: true)
+      def get_all_triage_teams(user_uuid, filter_virtual_groups: true, &block)
         path = append_requires_oh_messages_query('alltriageteams', 'requiresOHTriageGroup')
-        json = perform(:get, path, nil, token_headers).body
+        response = perform(:get, path, nil, token_headers)
+        block&.call(response)
+        json = response.body
 
         # Instantiate teams and filter out those migrating to OH
         teams = json[:data].map { |data| AllTriageTeams.new(data) }
