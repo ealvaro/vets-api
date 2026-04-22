@@ -487,4 +487,52 @@ RSpec.describe 'MebApi::V0 EducationBenefits', type: :request do
       end
     end
   end
+
+  describe 'VetTec type parameter casing' do
+    context 'when type parameter is VetTec with various casings' do
+      it 'handles exact VetTec casing correctly' do
+        VCR.use_cassette('dgi/post_claimant_info_vettec') do
+          get '/meb_api/v0/claimant_info', params: { type: 'VetTec' }
+          expect(response).to have_http_status(:ok)
+        end
+      end
+
+      it 'handles lowercase vettec and normalizes to VetTec' do
+        VCR.use_cassette('dgi/post_claimant_info_vettec') do
+          get '/meb_api/v0/claimant_info', params: { type: 'vettec' }
+          expect(response).to have_http_status(:ok)
+        end
+      end
+
+      it 'handles uppercase VETTEC and normalizes to VetTec' do
+        VCR.use_cassette('dgi/post_claimant_info_vettec') do
+          get '/meb_api/v0/claimant_info', params: { type: 'VETTEC' }
+          expect(response).to have_http_status(:ok)
+        end
+      end
+
+      it 'handles mixed case VeTtEc and normalizes to VetTec' do
+        VCR.use_cassette('dgi/post_claimant_info_vettec') do
+          get '/meb_api/v0/claimant_info', params: { type: 'VeTtEc' }
+          expect(response).to have_http_status(:ok)
+        end
+      end
+    end
+
+    context 'when type parameter is other chapter types' do
+      it 'capitalizes chapter33 correctly' do
+        VCR.use_cassette('dgi/post_claimant_info') do
+          get '/meb_api/v0/claimant_info', params: { type: 'chapter33' }
+          expect(response).to have_http_status(:ok)
+        end
+      end
+
+      it 'capitalizes chapter1606 correctly' do
+        VCR.use_cassette('dgi/post_claimant_info_1606') do
+          get '/meb_api/v0/claimant_info', params: { type: 'chapter1606' }
+          expect(response).to have_http_status(:ok)
+        end
+      end
+    end
+  end
 end

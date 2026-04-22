@@ -146,7 +146,8 @@ module MebApi
       private
 
       def set_type
-        @form_type = params['type']&.capitalize.presence || 'Chapter33'
+        type = params['type'].presence || 'Chapter33'
+        @form_type = type.casecmp('VetTec').zero? ? 'VetTec' : type.capitalize
       end
 
       def dispatch_confirmation_email(email)

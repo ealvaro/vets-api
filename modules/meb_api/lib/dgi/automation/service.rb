@@ -28,7 +28,7 @@ module MebApi
         private
 
         def end_point(type)
-          "claimType/#{type.capitalize}/claimants"
+          "claimType/#{normalize_claim_type(type)}/claimants"
         end
 
         def request_headers
