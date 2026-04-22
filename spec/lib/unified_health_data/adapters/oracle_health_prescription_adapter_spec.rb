@@ -423,6 +423,103 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
       end
     end
 
+    context 'with renewal submission tracking using Task resources' do
+      it 'sets renewal_submitted_timestamp when valid renewal Task exists' do
+        result = subject.parse(fhir_resource_with_renewal_task)
+
+        expect(result.renewal_submitted_timestamp).to be_a(Integer)
+        expect(result.renewal_submitted_timestamp).to be > 0
+      end
+
+      it 'ignores renewal Task with failed status' do
+        result = subject.parse(fhir_resource_with_renewal_task(task_status: 'failed'))
+
+        expect(result.renewal_submitted_timestamp).to be_nil
+      end
+
+      it 'ignores Task with wrong task-type extension' do
+        result = subject.parse(fhir_resource_with_renewal_task(task_type: 'refill'))
+
+        expect(result.renewal_submitted_timestamp).to be_nil
+      end
+
+      it 'sets renewal_submitted_timestamp when no task-type extension is present' do
+        resource = fhir_resource_with_renewal_task
+        # Remove meta extension to test fallback behavior
+        resource['contained'].first.delete('meta')
+
+        result = subject.parse(resource)
+
+        expect(result.renewal_submitted_timestamp).to be_a(Integer)
+        expect(result.renewal_submitted_timestamp).to be > 0
+      end
+
+      it 'does not set renewal_submitted_timestamp for refill Tasks (intent=order)' do
+        result = subject.parse(fhir_resource_with_task)
+
+        expect(result.renewal_submitted_timestamp).to be_nil
+      end
+
+      it 'converts executionPeriod.start to epoch milliseconds correctly' do
+        task_date = '2025-06-24T21:05:53.000Z'
+        result = subject.parse(fhir_resource_with_renewal_task(task_date:))
+
+        parsed_time = Time.zone.parse(task_date)
+        expected_millis = (parsed_time.to_i * 1000) + (parsed_time.nsec / 1_000_000)
+        expect(result.renewal_submitted_timestamp).to eq(expected_millis)
+      end
+
+      it 'preserves non-zero milliseconds when converting executionPeriod.start' do
+        task_date = '2025-06-24T21:05:53.789Z'
+        result = subject.parse(fhir_resource_with_renewal_task(task_date:))
+
+        parsed_time = Time.zone.parse(task_date)
+        expected_millis = (parsed_time.to_i * 1000) + (parsed_time.nsec / 1_000_000)
+        expect(result.renewal_submitted_timestamp).to eq(expected_millis)
+      end
+
+      it 'ignores renewal Task with missing executionPeriod.start' do
+        resource = fhir_resource_with_renewal_task
+        resource['contained'].first.delete('executionPeriod')
+
+        result = subject.parse(resource)
+
+        expect(result.renewal_submitted_timestamp).to be_nil
+      end
+
+      it 'ignores renewal Task with non-matching focus reference' do
+        resource = fhir_resource_with_renewal_task
+        # Override focus to point to a different MedicationRequest
+        resource['contained'].first['focus']['reference'] = 'MedicationRequest/99999'
+
+        result = subject.parse(resource)
+
+        expect(result.renewal_submitted_timestamp).to be_nil
+      end
+
+      it 'selects the most recent renewal Task when multiple exist' do
+        resource = fhir_resource_with_renewal_task(task_date: '2025-06-20T10:00:00.000Z')
+        newer_task = fhir_renewal_task('requested', '2025-06-25T10:00:00.000Z', '12345')
+        resource['contained'] << newer_task
+
+        result = subject.parse(resource)
+
+        expected_millis = Time.zone.parse('2025-06-25T10:00:00.000Z').to_f * 1000
+        expect(result.renewal_submitted_timestamp).to eq(expected_millis.to_i)
+      end
+
+      it 'sets both refill and renewal fields when both Task types exist' do
+        resource = fhir_resource_with_renewal_task
+        refill_task = fhir_task('requested', 'order', '2025-06-22T10:00:00.000Z', '12345')
+        resource['contained'] << refill_task
+
+        result = subject.parse(resource)
+
+        expect(result.renewal_submitted_timestamp).to be_a(Integer)
+        expect(result.refill_submit_date).to eq('2025-06-22T10:00:00.000Z')
+      end
+    end
+
     context 'with tracking information from extension-based shipping data' do
       let(:resource_with_extension_tracking) do
         {

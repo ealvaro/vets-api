@@ -2,20 +2,10 @@
 
 module FhirResourceBuilder
   def base_fhir_resource
-    {
-      'resourceType' => 'MedicationRequest',
-      'id' => '12345',
-      'status' => 'active',
+    { 'resourceType' => 'MedicationRequest', 'id' => '12345', 'status' => 'active',
       'authoredOn' => '2025-01-29T19:41:43Z',
-      'medicationCodeableConcept' => {
-        'text' => 'Test Medication'
-      },
-      'dosageInstruction' => [
-        {
-          'text' => 'Take as directed'
-        }
-      ]
-    }
+      'medicationCodeableConcept' => { 'text' => 'Test Medication' },
+      'dosageInstruction' => [{ 'text' => 'Take as directed' }] }
   end
 
   def fhir_resource(**options)
@@ -40,31 +30,31 @@ module FhirResourceBuilder
   end
 
   def fhir_resource_with_task(**options)
-    defaults = {
-      task_status: 'requested',
-      task_intent: 'order',
-      task_date: '2025-06-24T21:05:53.000Z',
-      med_request_id: '12345',
-      dispenses: []
-    }
+    defaults = { task_status: 'requested', task_intent: 'order',
+                 task_date: '2025-06-24T21:05:53.000Z', med_request_id: '12345', dispenses: [] }
     opts = defaults.merge(options)
+    contained = [fhir_task(opts[:task_status], opts[:task_intent], opts[:task_date], opts[:med_request_id])] +
+                opts[:dispenses].map.with_index { |d, i| fhir_dispense(d, i) }
+    build_resource_with_contained(opts[:med_request_id], contained)
+  end
 
-    resource = fhir_resource(
-      status: 'active',
-      refills: 3,
-      expiration: 30.days.from_now,
-      dispense_status: nil
-    )
-    resource['id'] = opts[:med_request_id]
-
-    resource['contained'] = [
-      fhir_task(opts[:task_status], opts[:task_intent], opts[:task_date], opts[:med_request_id])
-    ] + opts[:dispenses].map.with_index { |d, i| fhir_dispense(d, i) }
-
-    resource
+  def fhir_resource_with_renewal_task(**options)
+    defaults = { task_status: 'requested', task_date: '2025-06-24T21:05:53.000Z',
+                 med_request_id: '12345', task_type: 'renewal' }
+    opts = defaults.merge(options)
+    contained = [fhir_renewal_task(opts[:task_status], opts[:task_date], opts[:med_request_id],
+                                   task_type: opts[:task_type])]
+    build_resource_with_contained(opts[:med_request_id], contained)
   end
 
   private
+
+  def build_resource_with_contained(med_request_id, contained)
+    resource = fhir_resource(status: 'active', refills: 3, expiration: 30.days.from_now, dispense_status: nil)
+    resource['id'] = med_request_id
+    resource['contained'] = contained
+    resource
+  end
 
   def fhir_categories(source)
     codes = source == 'VA' ? %w[community discharge] : %w[community patientspecified]
@@ -72,22 +62,14 @@ module FhirResourceBuilder
   end
 
   def fhir_dispense_request(refills, expiration)
-    {
-      'numberOfRepeatsAllowed' => refills,
-      'validityPeriod' => { 'end' => expiration.utc.iso8601 }
-    }
+    { 'numberOfRepeatsAllowed' => refills, 'validityPeriod' => { 'end' => expiration.utc.iso8601 } }
   end
 
   def fhir_dispenses(status, date)
     return [] unless status
 
-    [{
-      'resourceType' => 'MedicationDispense',
-      'id' => 'dispense-1',
-      'status' => status,
-      'whenHandedOver' => date,
-      'location' => { 'display' => '648' }
-    }]
+    [{ 'resourceType' => 'MedicationDispense', 'id' => 'dispense-1',
+       'status' => status, 'whenHandedOver' => date, 'location' => { 'display' => '648' } }]
   end
 
   def fhir_task(status, intent, date, med_request_id)
@@ -98,6 +80,12 @@ module FhirResourceBuilder
       'focus' => { 'reference' => "MedicationRequest/#{med_request_id}" },
       'executionPeriod' => { 'start' => date }
     }
+  end
+
+  def fhir_renewal_task(status, date, med_request_id, task_type: 'renewal')
+    fhir_task(status, 'proposal', date, med_request_id).merge(
+      'meta' => { 'extension' => [{ 'url' => 'http://va.gov/mhv/rx/task-type', 'valueString' => task_type }] }
+    )
   end
 
   def fhir_dispense(data, index)
