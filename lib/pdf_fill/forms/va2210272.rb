@@ -222,6 +222,7 @@ module PdfFill
                                                                              'prepCourseOrganizationName',
                                                                              'prepCourseOrganizationAddress')
         format_yes_no_checkbox('prepCourseTakenOnline')
+        @form_data['prepCourseCost'] = format_cost(@form_data['prepCourseCost'])
       end
 
       def format_yes_no_checkbox(boolean_key)
@@ -239,6 +240,10 @@ module PdfFill
           flag = program == selected_program
           @form_data['vaBenefitProgram'][program] = flag ? 'Yes' : 'Off'
         end
+      end
+
+      def format_cost(num)
+        ActiveSupport::NumberHelper.number_to_currency(num)
       end
 
       def merge_date_helpers

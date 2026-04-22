@@ -89,6 +89,11 @@ describe PdfFill::Forms::Va2210272 do
       end
     end
 
+    it 'formats prepCourseCost' do
+      expect(merged_fields['prepCourseCost'])
+        .to eq(ActiveSupport::NumberHelper.number_to_currency(form_data['prepCourseCost']))
+    end
+
     it 'sets vaBenefitProgram values to Yes/Off' do
       described_class::BENEFIT_PROGRAMS.each do |program|
         expected = program == form_data['vaBenefitProgram'] ? 'Yes' : 'Off'

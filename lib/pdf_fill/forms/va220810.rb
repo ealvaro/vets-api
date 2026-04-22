@@ -134,6 +134,7 @@ module PdfFill
         merge_identification_helpers
         merge_benefit_program_helpers
         format_organization
+        format_cost
         merge_date_helpers
 
         @form_data
@@ -214,6 +215,10 @@ module PdfFill
       def format_date(key)
         str = @form_data[key]
         @form_data[key] = str.to_date.strftime(self.class.date_strftime)
+      end
+
+      def format_cost
+        @form_data['examCost'] = ActiveSupport::NumberHelper.number_to_currency(@form_data['examCost'])
       end
     end
   end

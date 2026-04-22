@@ -80,5 +80,10 @@ describe PdfFill::Forms::Va220810 do
         expect(merged_fields[field]).to match(%r{^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/\d{4}$})
       end
     end
+
+    it 'formats examCost' do
+      expect(merged_fields['examCost'])
+        .to eq(ActiveSupport::NumberHelper.number_to_currency(form_data['examCost']))
+    end
   end
 end
