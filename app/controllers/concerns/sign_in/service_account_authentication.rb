@@ -40,7 +40,8 @@ module SignIn
 
     def validate_requested_scope
       authorized_scopes = @service_account_access_token.scopes
-      return if authorized_scopes.any? { |scope| request.url.include?(scope) }
+      request_url = request.base_url + request.path
+      return if authorized_scopes.any? { |scope| request_url.include?(scope) }
 
       raise Errors::InvalidServiceAccountScope.new message: 'Required scope for requested resource not found'
     end

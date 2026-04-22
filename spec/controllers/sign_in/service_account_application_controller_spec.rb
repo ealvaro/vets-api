@@ -18,7 +18,9 @@ RSpec.describe SignIn::ServiceAccountApplicationController, type: :controller do
   end
 
   describe '#authenticate_service_account' do
-    subject { get :service_account_auth }
+    subject { get :service_account_auth, params: }
+
+    let(:params) {}
 
     shared_context 'error response' do
       let(:expected_error_json) { { 'errors' => expected_error } }
@@ -92,6 +94,12 @@ RSpec.describe SignIn::ServiceAccountApplicationController, type: :controller do
           let(:expected_error_json) { { 'errors' => expected_error } }
 
           it_behaves_like 'error response'
+
+          context 'and request params includes scope' do
+            let(:params) { { some_param: scope } }
+
+            it_behaves_like 'error response'
+          end
         end
 
         context 'and scope matches request url' do
