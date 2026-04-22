@@ -299,7 +299,7 @@ paths:
           schema:
             type: string
           description: A comma-separated list of document IDs.
-          example: '20875041789,20875041790'
+          example: "20875041789,20875041790"
       responses:
         "200":
           description: AVS binary retrieved successfully
@@ -455,7 +455,7 @@ paths:
       summary: Retrieve eps appointment by id
       operationId: fetchAppointment
       security:
-        - bearerAuth: [ ]
+        - bearerAuth: []
       parameters:
         - in: path
           required: true
@@ -522,7 +522,7 @@ paths:
           schema:
             type: string
           description: A comma-separated list of facility IDs.
-          example: '534,534gb,442'
+          example: "534,534gb,442"
         - in: query
           name: children
           schema:
@@ -540,7 +540,7 @@ paths:
             type: string
           description: Indicates how returned facilities should be sorted if specified. Currently options are ['recentLocations'].
       responses:
-        '200':
+        "200":
           description: Success
           content:
             application/json:
@@ -871,6 +871,92 @@ paths:
           $ref: "#/components/responses/ServiceUnavailable"
         "504":
           $ref: "#/components/responses/GatewayTimeout"
+      "/locations/{location_id}/slots/next_available":
+    get:
+      tags:
+        - appointments
+      summary: Returns next available appointment slots for given clinics
+      operationId: getNextAvailableSlots
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          required: true
+          name: location_id
+          description: The facility division ID
+          schema:
+            type: string
+        - in: query
+          required: true
+          name: clinic_ids
+          description: Array of clinic IDs
+          schema:
+            type: array
+            items:
+              type: string
+        - in: query
+          required: true
+          name: before
+          description: Latest date to search for availability
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          required: false
+          name: on_or_after
+          description: Earliest date to search for availability
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Retrieves next available slots for requested clinics
+          content:
+            application/json:
+              schema:
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      required:
+                        - id
+                        - type
+                        - attributes
+                      properties:
+                        id:
+                          type: string
+                        type:
+                          type: string
+                          example: slots
+                        attributes:
+                          type: object
+                          properties:
+                            clinic_id:
+                              type: string
+                            status:
+                              type: string
+                            has_availability:
+                              type: boolean
+                            slot_id:
+                              type: string
+                            start:
+                              type: string
+                              format: date-time
+                            end:
+                              type: string
+                              format: date-time
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "502":
+          $ref: "#/components/responses/BadGateway"
   "/eligibility":
     parameters:
      - in: query
@@ -992,7 +1078,7 @@ paths:
       summary: Search patient relationships
       operationId: getRelationships
       security:
-        - bearerAuth: [ ]
+        - bearerAuth: []
       parameters:
         - in: query
           required: false
@@ -1013,7 +1099,7 @@ paths:
           schema:
             type: string
             format: date-time
-            example: '2026-05-13T17:42:00Z'
+            example: "2026-05-13T17:42:00Z"
       responses:
         "200":
           description: Retrieves all matching relationships for the patient
@@ -1207,7 +1293,7 @@ components:
           description: If true then this appointment is pending.
         patientInstruction:
           type: string
-          description: 'Detailed information and instructions for the patient. See: https://www.hl7.org/fhir/appointment-definitions.html#Appointment.patientInstruction'
+          description: "Detailed information and instructions for the patient. See: https://www.hl7.org/fhir/appointment-definitions.html#Appointment.patientInstruction"
         telehealth:
           "$ref": "#/components/schemas/TelehealthInfo"
         extension:
@@ -1233,7 +1319,7 @@ components:
           description: Optional field indicating the date and time that the patient originally desired to have the appointment. Used for reporting with VistA appointments.
           format: date-time
         ccLocation:
-          $ref: '#/components/schemas/CommunityCareLocation'
+          $ref: "#/components/schemas/CommunityCareLocation"
         ccRequestedCancellation:
           type: boolean
           description: Indicates if a cancellation request has been submitted for an appointment request.
@@ -1401,7 +1487,7 @@ components:
         coding:
           type: array
           items:
-            $ref: '#/components/schemas/Coding'
+            $ref: "#/components/schemas/Coding"
         text:
           type: string
           description: Plain text representation of the concept
@@ -1419,7 +1505,7 @@ components:
         practiceName:
           type: string
         address:
-          $ref: '#/components/schemas/Address'
+          $ref: "#/components/schemas/Address"
       description: Information about the location of a community care appointment.
     CreateAppointmentRequest:
       description: A request to create a new appointment.
@@ -1466,10 +1552,9 @@ components:
               - Afternoon
               - Evening
         preferredLocation:
-          $ref: '#/components/schemas/PreferredLocation'
+          $ref: "#/components/schemas/PreferredLocation"
         comment:
-          description:
-            A free-form comment section to provide additional information about an appointment request.
+          description: A free-form comment section to provide additional information about an appointment request.
           type: string
         preferredLanguage:
           type: string
@@ -1500,7 +1585,7 @@ components:
         name:
           $ref: "#/components/schemas/HumanName"
         address:
-          $ref: '#/components/schemas/Address'
+          $ref: "#/components/schemas/Address"
         birthDate:
           description: The birth date of the patient.
           type: string
@@ -1569,7 +1654,7 @@ components:
             ineligibilityReasons:
               type: array
               items:
-                $ref: '#/components/schemas/CodeableConcept'
+                $ref: "#/components/schemas/CodeableConcept"
       description: The response for a patient scheduling eligibility request.
     PatientProviderRelationship:
       type: object
@@ -1680,13 +1765,13 @@ components:
         vistaSite:
           description: The VistA site that this facility belongs to.
           type: string
-          example: '612'
+          example: "612"
         vastParent:
           description: The VAST parent site.
           type: string
           example: 612A4
         type:
-          description: 'The VA facility type. One of: health, benefits, cemetery, vetCenter'
+          description: "The VA facility type. One of: health, benefits, cemetery, vetCenter"
           example: health
           type: string
         name:
@@ -1696,7 +1781,7 @@ components:
           type: string
           example: VA Medical Center (VAMC)
         timezone:
-          $ref: '#/components/schemas/Timezone'
+          $ref: "#/components/schemas/Timezone"
         lat:
           type: number
           description: Facility latitude
@@ -1710,28 +1795,28 @@ components:
         website:
           type: string
           format: url
-          example: 'http://www.washingtondc.va.gov'
+          example: "http://www.washingtondc.va.gov"
         phone:
-          $ref: '#/components/schemas/PhoneNumbers'
+          $ref: "#/components/schemas/PhoneNumbers"
         hoursOfOperation:
           type: array
           items:
-            $ref: '#/components/schemas/HoursOfOperation'
+            $ref: "#/components/schemas/HoursOfOperation"
         mailingAddress:
-          $ref: '#/components/schemas/Address'
+          $ref: "#/components/schemas/Address"
         physicalAddress:
-          $ref: '#/components/schemas/Address'
+          $ref: "#/components/schemas/Address"
         mobile:
           description: 'The mobile health facilities move regularly within a region. If a facility comes back from this API with "mobile": "true", the latitude/longitude and address could be inaccurate. To get the exact current location, please call the number listed.'
           type: boolean
           example: false
         healthService:
-          description: 'The health services offered by this facility, such as ''PrimaryCare'' or ''Podiatry''.'
+          description: "The health services offered by this facility, such as 'PrimaryCare' or 'Podiatry'."
           type: array
           items:
             type: string
         operatingStatus:
-          $ref: '#/components/schemas/OperatingStatus'
+          $ref: "#/components/schemas/OperatingStatus"
     HoursOfOperation:
       type: object
       properties:
@@ -1767,13 +1852,13 @@ components:
           example: Marion VA Clinic
     OperatingStatus:
       type: object
-      description: 'Current status of facility operations.The overall status of the facility which can be Normal Hours and Services, Facility Notice, Limited Hours and/or Services, or Closed. This field replaces active_status.'
+      description: "Current status of facility operations.The overall status of the facility which can be Normal Hours and Services, Facility Notice, Limited Hours and/or Services, or Closed. This field replaces active_status."
       properties:
         code:
-          description: 'The operating status of the facility. One of: NORMAL, NOTICE, LIMITED, or CLOSED.'
+          description: "The operating status of the facility. One of: NORMAL, NOTICE, LIMITED, or CLOSED."
           type: string
         additionalInfo:
-          description: 'Details of facility notices for visitors, such as messages about parking lot closures or floor visitation information.'
+          description: "Details of facility notices for visitors, such as messages about parking lot closures or floor visitation information."
           type: string
           minLength: 0
           maxLength: 300
@@ -1857,7 +1942,7 @@ components:
           example: 202-555-1212
     DraftAppointment:
       type: object
-      description: 'Draft appointment'
+      description: "Draft appointment"
       properties:
         provider:
           "$ref": "#/components/schemas/Provider"
@@ -1896,7 +1981,7 @@ components:
                   type: number
     EpsAppointment:
       type: object
-      description: 'EPS appointment'
+      description: "EPS appointment"
       properties:
         appointment:
           "$ref": "#/components/schemas/Appointment"

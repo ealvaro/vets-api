@@ -15,6 +15,7 @@ VAOS::Engine.routes.draw do
     get '/locations/last_visited_clinic', to: 'clinics#last_visited_clinic'
     get '/locations/:location_id/clinics/:clinic_id/slots', to: 'slots#index'
     get '/locations/:location_id/slots', to: 'slots#facility_slots'
+    get '/locations/:location_id/slots/next_available', to: 'slots#next_available'
     get '/eligibility/', to: 'patients#index'
     get '/scheduling/configurations', to: 'scheduling#configurations'
     get '/facilities', to: 'facilities#index'

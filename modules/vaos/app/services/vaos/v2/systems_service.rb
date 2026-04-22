@@ -33,6 +33,24 @@ module VAOS
         end
       end
 
+      def get_next_available_slots(options = {})
+        location_id = options[:location_id]
+        clinic_ids = options[:clinic_ids]
+        on_or_after = options[:on_or_after]
+        before = options[:before]
+
+        with_monitoring do
+          response = get_next_available_slots_vpg(
+            location_id:,
+            clinic_ids:,
+            on_or_after:,
+            before:
+          )
+
+          build_next_available_slots(response.body)
+        end
+      end
+
       private
 
       def get_clinics(location_id:, clinical_service:, clinic_ids:, page_size:, page_number:)
@@ -88,6 +106,10 @@ module VAOS
         ids.is_a?(Array) ? ids.to_csv(row_sep: nil) : ids
       end
 
+      def get_clinic_list(ids)
+        ids.is_a?(Array) ? ids : ids.to_s.split(',')
+      end
+
       def get_slots_vaos(location_id:, clinic_id:, start_dt:, end_dt:)
         url_path = "/#{base_vaos_route}/locations/#{location_id}/clinics/#{clinic_id}/slots"
         url_params = {
@@ -113,6 +135,50 @@ module VAOS
         with_monitoring do
           perform(:get, url_path, url_params, headers)
         end
+      end
+
+      def get_next_available_slots_vpg(location_id:, clinic_ids:, before:, on_or_after: nil)
+        url_path = '/vpg/v1/next-available-slot'
+        url_params = {
+          'site' => location_id,
+          'clinic' => get_clinic_ids(clinic_ids),
+          'before' => before,
+          'onOrAfter' => on_or_after
+        }.compact
+
+        with_monitoring do
+          perform(:get, url_path, url_params, headers)
+        end
+      end
+
+      def build_next_available_slots(body)
+        Array(body[:data] || body['data']).map do |slot|
+          clinic_id = slot[:ien] || slot['ien']
+
+          OpenStruct.new(
+            id: clinic_id,
+            clinic_id:,
+            status: slot[:status] || slot['status'],
+            has_availability: extract_has_availability(slot),
+            slot_id: extract_slot_id(slot),
+            start: slot[:start] || slot['start'],
+            end: slot[:end] || slot['end']
+          )
+        end
+      end
+
+      def extract_has_availability(slot)
+        slot[:has_availability] ||
+          slot['has_availability'] ||
+          slot[:hasAvailability] ||
+          slot['hasAvailability']
+      end
+
+      def extract_slot_id(slot)
+        slot[:slot_id] ||
+          slot['slot_id'] ||
+          slot[:slotId] ||
+          slot['slotId']
       end
     end
   end

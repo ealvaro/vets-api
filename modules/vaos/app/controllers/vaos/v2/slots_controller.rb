@@ -31,7 +31,23 @@ module VAOS
         end
       end
 
+      def next_available
+        serializer = VAOS::V2::VAOSSerializer.new
+        serialized = serializer.serialize(next_available_slots, 'slots')
+
+        render json: { data: serialized }
+      end
+
       private
+
+      def next_available_slots
+        @next_available_slots ||= systems_service.get_next_available_slots({
+                                                                             location_id:,
+                                                                             clinic_ids:,
+                                                                             on_or_after:,
+                                                                             before:
+                                                                           })
+      end
 
       def systems_service
         VAOS::V2::SystemsService.new(current_user)
@@ -72,6 +88,18 @@ module VAOS
 
       def end_dt
         params.require(:end)
+      end
+
+      def clinic_ids
+        params.require(:clinic_ids)
+      end
+
+      def on_or_after
+        params[:on_or_after]
+      end
+
+      def before
+        params.require(:before)
       end
     end
   end
