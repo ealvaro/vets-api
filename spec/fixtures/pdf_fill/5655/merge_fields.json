@@ -9,7 +9,7 @@
     "address": "1200 Park Ave, c/o Pixar, Emeryville, CA, 94608, US",
     "telephoneNumber": "(510) 922-4444",
     "dateOfBirth": "10/04/1950",
-    "married": 1,
+    "married": 2,
     "spouseFullName": "  ",
     "agesOfOtherDependents": "12",
     "employmentHistory": [
@@ -151,7 +151,7 @@
   },
   "additionalData": {
     "bankruptcy": {
-      "hasBeenAdjudicatedBankrupt": 1
+      "hasBeenAdjudicatedBankrupt": 2
     },
     "additionalComments": ""
   },

@@ -431,9 +431,11 @@ module PdfFill
       end
 
       def merge_booleans
-        @form_data['personalData']['married'] = @form_data['personalData']['married'] ? 0 : 1
+        # For both RadioButtonList[0] (married) and RadioButtonList[1] (adjudicated bankrupt) on
+        # lib/pdf_fill/forms/pdfs/5655.pdf, export value 1 = yes and 2 = no (per FieldStateOption / FDF test).
+        @form_data['personalData']['married'] = @form_data['personalData']['married'] ? 1 : 2
         @form_data['additionalData']['bankruptcy']['hasBeenAdjudicatedBankrupt'] =
-          @form_data['additionalData']['bankruptcy']['hasBeenAdjudicatedBankrupt'] ? 0 : 1
+          @form_data['additionalData']['bankruptcy']['hasBeenAdjudicatedBankrupt'] ? 1 : 2
       end
 
       def merge_ages_of_other_dependents
