@@ -22,7 +22,7 @@ module SimpleFormsApi
 
       if File.exist?(stamped_template_path)
         generated_form_path = fill_and_generate_pdf(generated_form_path, stamped_template_path)
-
+        generated_form_path = form.manual_fills(generated_form_path) if form.respond_to?(:manual_fills)
         final_path = if form.respond_to?(:overflow_pdf)
                        merge_overflow_if_needed(generated_form_path)
                      else

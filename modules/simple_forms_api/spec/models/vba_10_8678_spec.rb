@@ -11,10 +11,6 @@ RSpec.describe SimpleFormsApi::VBA108678 do
   end
   let(:data) { JSON.parse(fixture_path.read) }
 
-  shared_examples 'hyphenated_phone_number' do
-    it { is_expected.to match(/\d{3}-\d{3}-\d{4}/) }
-  end
-
   describe '#address' do
     subject(:address) { form.address }
 
@@ -79,16 +75,16 @@ RSpec.describe SimpleFormsApi::VBA108678 do
       expect(first_appliance[:device]).to eq(raw_appliance['deviceOrMedication'])
       expect(first_appliance[:disability]).to eq(raw_appliance['serviceConnectedDisability'])
       expect(first_appliance[:upper_or_lower]).to eq(
-        { upper: '1', upper_side: 'LEFT', lower: 'off', lower_side: 'off' }
+        { upper: 1, upper_side: 'LEFT', lower: 'Off', lower_side: 'Off' }
       )
       expect(subject[1][:upper_or_lower]).to eq(
-        { upper: 'off', upper_side: 'off', lower: '2', lower_side: 'RIGHT' }
+        { upper: 'Off', upper_side: 'Off', lower: 2, lower_side: 'RIGHT' }
       )
       expect(subject[2][:upper_or_lower]).to eq(
-        { upper: '1', upper_side: 'RIGHT', lower: 'off', lower_side: 'off' }
+        { upper: 1, upper_side: 'RIGHT', lower: 'Off', lower_side: 'Off' }
       )
       expect(subject[3][:upper_or_lower]).to eq(
-        { upper: 'off', upper_side: 'off', lower: '2', lower_side: 'LEFT' }
+        { upper: 'Off', upper_side: 'Off', lower: 2, lower_side: 'LEFT' }
       )
     end
   end
