@@ -24,6 +24,26 @@ module UnifiedHealthData
 
       DEFAULT_FILTERED_STATUSES = %w[cancelled entered-in-error].freeze
 
+      # Internal refill status values
+      STATUS_ACTIVE = 'active'
+      STATUS_SUBMITTED = 'submitted'
+      STATUS_REFILL_IN_PROCESS = 'refillinprocess'
+      STATUS_PROVIDER_HOLD = 'providerHold'
+      STATUS_DISCONTINUED = 'discontinued'
+      STATUS_EXPIRED = 'expired'
+      STATUS_PENDING = 'pending'
+      STATUS_UNKNOWN = 'unknown'
+
+      # Display status values (user-facing)
+      DISP_ACTIVE = 'Active'
+      DISP_ACTIVE_NON_VA = 'Active: Non-VA'
+      DISP_ACTIVE_SUBMITTED = 'Active: Submitted'
+      DISP_ACTIVE_REFILL_IN_PROCESS = 'Active: Refill in Process'
+      DISP_ACTIVE_ON_HOLD = 'Active: On hold'
+      DISP_DISCONTINUED = 'Discontinued'
+      DISP_EXPIRED = 'Expired'
+      DISP_UNKNOWN = 'Unknown'
+
       def initialize(current_user = nil)
         @current_user = current_user
       end
@@ -222,7 +242,7 @@ module UnifiedHealthData
           end
 
           task_submit_date = most_recent_task.dig('executionPeriod', 'start')
-          return 'submitted' if task_submit_date && !subsequent_dispense?(task_submit_date, dispenses_data)
+          return STATUS_SUBMITTED if task_submit_date && !subsequent_dispense?(task_submit_date, dispenses_data)
         end
 
         normalize_to_legacy_vista_status(resource)
@@ -236,28 +256,28 @@ module UnifiedHealthData
       # @return [String] User-friendly display status
       def map_refill_status_to_disp_status(refill_status, prescription_source)
         # Special case: active + Non-VA source
-        return 'Active: Non-VA' if refill_status == 'active' && prescription_source == 'NV'
+        return DISP_ACTIVE_NON_VA if refill_status == STATUS_ACTIVE && prescription_source == 'NV'
 
         # Standard mapping
         case refill_status
-        when 'active'
-          'Active'
-        when 'submitted'
-          'Active: Submitted'
-        when 'refillinprocess'
-          'Active: Refill in Process'
-        when 'providerHold'
-          'Active: On hold'
-        when 'discontinued'
-          'Discontinued'
-        when 'expired'
-          'Expired'
-        when 'unknown', 'pending'
-          'Unknown'
+        when STATUS_ACTIVE
+          DISP_ACTIVE
+        when STATUS_SUBMITTED
+          DISP_ACTIVE_SUBMITTED
+        when STATUS_REFILL_IN_PROCESS
+          DISP_ACTIVE_REFILL_IN_PROCESS
+        when STATUS_PROVIDER_HOLD
+          DISP_ACTIVE_ON_HOLD
+        when STATUS_DISCONTINUED
+          DISP_DISCONTINUED
+        when STATUS_EXPIRED
+          DISP_EXPIRED
+        when STATUS_UNKNOWN, STATUS_PENDING
+          DISP_UNKNOWN
         else
           # Fallback for unexpected values
           Rails.logger.warn("Unexpected refill_status for disp_status mapping: #{refill_status}")
-          'Unknown'
+          DISP_UNKNOWN
         end
       end
 
@@ -298,18 +318,18 @@ module UnifiedHealthData
         when 'active'
           normalize_active_status(refills_remaining, expiration_date, has_in_progress_dispense, resource)
         when 'on-hold'
-          'providerHold'
+          STATUS_PROVIDER_HOLD
         when 'cancelled', 'entered-in-error', 'stopped'
-          'discontinued'
+          STATUS_DISCONTINUED
         when 'completed'
           normalize_completed_status(expiration_date)
         when 'draft'
-          'pending'
+          STATUS_PENDING
         when 'unknown'
-          'unknown'
+          STATUS_UNKNOWN
         else
           Rails.logger.warn("Unexpected MedicationRequest status: #{mr_status}")
-          'unknown'
+          STATUS_UNKNOWN
         end
       end
 
@@ -342,20 +362,17 @@ module UnifiedHealthData
       # @param has_in_progress_dispense [Boolean] Whether the most recent dispense is in-progress
       # @return [String] VistA status value
       def normalize_active_status(_refills_remaining, expiration_date, has_in_progress_dispense, resource = nil)
-        # Rule: Expired more than 120 days ago
-        return status_for_long_expired if expiration_date && expiration_date < 120.days.ago.utc
-
         # Rule: Most recent dispense is in-progress → refillinprocess
         # This takes priority over expired status since an active refill is being processed
-        return 'refillinprocess' if has_in_progress_dispense
+        return STATUS_REFILL_IN_PROCESS if has_in_progress_dispense
 
         # Rule: Past expiration date → expired (UNLESS it's a Non-VA medication)
         is_non_va = resource && non_va_med?(resource)
         is_past_expiration = expiration_date && expiration_date < Time.current.utc
-        return 'expired' if is_past_expiration && !is_non_va
+        return STATUS_EXPIRED if is_past_expiration && !is_non_va
 
         # Default: active
-        'active'
+        STATUS_ACTIVE
       end
 
       # Determines VistA status for 'completed' MedicationRequest
@@ -363,25 +380,10 @@ module UnifiedHealthData
       # @param expiration_date [Time, nil] Parsed UTC expiration date
       # @return [String] VistA status value ('expired' or 'discontinued')
       def normalize_completed_status(expiration_date)
-        # If no expiration date, we can't determine if it's expired based on date
-        # A completed med without an expiration date should be discontinued
-        return 'discontinued' if expiration_date.nil?
-
-        if expiration_date < 120.days.ago.utc
-          status_for_long_expired
+        if expiration_date.nil?
+          STATUS_DISCONTINUED
         else
-          'expired'
-        end
-      end
-
-      # Returns the appropriate status for prescriptions expired more than 120 days ago.
-      # When the renewal request feature flag is enabled, reports 'expired' instead of
-      # 'discontinued' to support the medication renewal request flow (S12-GAP-1).
-      def status_for_long_expired
-        if Flipper.enabled?(:mhv_secure_messaging_medications_renewal_request, @current_user)
-          'expired'
-        else
-          'discontinued'
+          STATUS_EXPIRED
         end
       end
 

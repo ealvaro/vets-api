@@ -17,7 +17,6 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
     allow(Rails.logger).to receive(:info)
     allow(Rails.logger).to receive(:warn)
     allow(Flipper).to receive(:enabled?).with(:mhv_medications_v2_status_mapping).and_return(false)
-    allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_medications_renewal_request, nil).and_return(false)
     facility = instance_double(HealthFacility, name: 'Portland VA Medical Center')
     allow(HealthFacility).to receive(:find_by).and_return(facility)
 
@@ -294,49 +293,24 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
         expect(result.refill_status).to eq('expired')
       end
 
-      it 'maps active to "discontinued" when expired more than 120 days ago and feature flag is off' do
+      it 'maps active to "expired" when expired more than 120 days ago' do
         result = subject.parse(fhir_resource(status: 'active', refills: 0, expiration: 150.days.ago, source: 'VA'))
-        expect(result.refill_status).to eq('discontinued')
-        expect(result.disp_status).to eq('Discontinued')
+        expect(result.refill_status).to eq('expired')
+        expect(result.disp_status).to eq('Expired')
       end
 
-      context 'when mhv_secure_messaging_medications_renewal_request flag is enabled' do
-        subject { described_class.new(current_user) }
+      it 'maps completed to "expired" when expired more than 120 days ago' do
+        result = subject.parse(fhir_resource(status: 'completed', refills: 0, expiration: 150.days.ago, source: 'VA'))
+        expect(result.refill_status).to eq('expired')
+        expect(result.disp_status).to eq('Expired')
+      end
 
-        let(:current_user) { double('User') }
-
-        before do
-          allow(Flipper).to receive(:enabled?).with(:mhv_medications_v2_status_mapping).and_return(false)
-          allow(Flipper).to receive(:enabled?)
-            .with(:mhv_secure_messaging_medications_renewal_request, current_user)
-            .and_return(true)
-        end
-
-        it 'maps active to "expired" instead of "discontinued" when expired more than 120 days ago' do
-          result = subject.parse(fhir_resource(status: 'active', refills: 0, expiration: 150.days.ago, source: 'VA'))
-          expect(result.refill_status).to eq('expired')
-          expect(result.disp_status).to eq('Expired')
-        end
-
-        it 'maps completed to "expired" instead of "discontinued" when expired more than 120 days ago' do
-          result = subject.parse(fhir_resource(status: 'completed', refills: 0, expiration: 150.days.ago, source: 'VA'))
-          expect(result.refill_status).to eq('expired')
-          expect(result.disp_status).to eq('Expired')
-        end
-
-        it 'still maps completed to "discontinued" when expiration date is nil' do
-          resource = fhir_resource(status: 'completed', refills: 0, source: 'VA')
-          resource['dispenseRequest'].delete('validityPeriod')
-          result = subject.parse(resource)
-          expect(result.refill_status).to eq('discontinued')
-          expect(result.disp_status).to eq('Discontinued')
-        end
-
-        it 'still maps active to "expired" for prescriptions expired less than 120 days ago' do
-          result = subject.parse(fhir_resource(status: 'active', refills: 3, expiration: 30.days.ago, source: 'VA'))
-          expect(result.refill_status).to eq('expired')
-          expect(result.disp_status).to eq('Expired')
-        end
+      it 'maps completed to "discontinued" when expiration date is nil' do
+        resource = fhir_resource(status: 'completed', refills: 0, source: 'VA')
+        resource['dispenseRequest'].delete('validityPeriod')
+        result = subject.parse(resource)
+        expect(result.refill_status).to eq('discontinued')
+        expect(result.disp_status).to eq('Discontinued')
       end
     end
 
