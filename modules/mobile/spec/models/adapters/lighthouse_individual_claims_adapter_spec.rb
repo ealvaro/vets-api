@@ -89,9 +89,10 @@ describe Mobile::V0::Adapters::LighthouseIndividualClaims, :aggregate_failures d
                                      document_type: nil,
                                      filename: nil,
                                      document_id: nil,
-                                     # Content override fields should be nil when the feature flag is disabled
+                                     # Content override fields should be nil when the feature flag
+                                     # is disabled, except for can_upload_file
                                      activity_description: nil,
-                                     can_upload_file: nil,
+                                     can_upload_file: true,
                                      friendly_name: nil,
                                      hide_claim_letter_section: nil,
                                      is_dbq: nil,
@@ -311,6 +312,36 @@ describe Mobile::V0::Adapters::LighthouseIndividualClaims, :aggregate_failures d
         expect(tracked_item.hide_claim_letter_section).to eq(content_override_mock[:hideClaimLetterSection])
         expect(tracked_item.long_description).to eq(content_override_mock[:longDescription])
         expect(tracked_item.next_steps).to eq(content_override_mock[:nextSteps])
+      end
+
+      context 'when TrackedItemContent has no entry for the display name' do
+        before do
+          allow(BenefitsClaims::TrackedItemContent).to receive(:find_by_display_name).and_return(nil)
+        end
+
+        it 'sets can_upload_file to true and does not merge other override fields' do
+          tracked_item = test_claim[:events_timeline].find do |event|
+            %w[still_need_from_you_list received_from_you_list].include?(event[:type].to_s)
+          end
+
+          expect(tracked_item.can_upload_file).to be true
+          expect(tracked_item.friendly_name).to be_nil
+        end
+      end
+
+      context 'when TrackedItemContent entry sets canUploadFile to false' do
+        before do
+          allow(BenefitsClaims::TrackedItemContent).to receive(:find_by_display_name)
+            .and_return(content_override_mock.merge(canUploadFile: false))
+        end
+
+        it 'sets can_upload_file to false' do
+          tracked_item = test_claim[:events_timeline].find do |event|
+            %w[still_need_from_you_list received_from_you_list].include?(event[:type].to_s)
+          end
+
+          expect(tracked_item.can_upload_file).to be false
+        end
       end
     end
 

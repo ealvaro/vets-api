@@ -204,11 +204,12 @@ module Mobile
         def merge_tracked_item_content_overrides!(event, display_name)
           content = BenefitsClaims::TrackedItemContent.find_by_display_name(display_name) # rubocop:disable Rails/DynamicFindBy
 
+          event[:can_upload_file] = content.nil? || content[:canUploadFile]
+
           return unless content
 
           event.merge!(
             activity_description: content[:activityDescription],
-            can_upload_file: content[:canUploadFile],
             friendly_name: content[:friendlyName],
             hide_claim_letter_section: content[:hideClaimLetterSection],
             is_dbq: content[:isDBQ],
