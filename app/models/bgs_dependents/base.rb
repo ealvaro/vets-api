@@ -136,13 +136,14 @@ module BGSDependents
       # pursuing that some day. Until then, the following short-term improvement suffices.
 
       # we are now using a short term fix for special country names that are different from IsoCountryCodes in BIS.
-      special_country_names = { 'USA' => 'USA', 'BOL' => 'Bolivia', 'BIH' => 'Bosnia-Herzegovina', 'BRN' => 'Brunei',
+      special_country_names = { 'USA' => 'USA', 'ANT' => 'Netherlands Antilles', 'BOL' => 'Bolivia',
+                                'BIH' => 'Bosnia-Herzegovina', 'BRN' => 'Brunei',
                                 'CPV' => 'Cape Verde', 'COG' => "Congo, People's Republic of",
                                 'COD' => 'Congo, Democratic Republic of', 'CIV' => "Cote d'Ivoire",
                                 'CZE' => 'Czech Republic', 'PRK' => 'North Korea', 'KOR' => 'South Korea',
                                 'LAO' => 'Laos', 'MKD' => 'Macedonia', 'MDA' => 'Moldavia', 'RUS' => 'Russia',
-                                'KNA' => 'St. Kitts', 'LCA' => 'St. Lucia', 'STP' => 'Sao-Tome/Principe',
-                                'SCG' => 'Serbia', 'SYR' => 'Syria', 'TZA' => 'Tanzania',
+                                'KNA' => 'St. Kitts', 'LCA' => 'St. Lucia', 'SCG' => 'Serbia',
+                                'STP' => 'Sao-Tome/Principe', 'SYR' => 'Syria', 'TZA' => 'Tanzania',
                                 'GBR' => 'United Kingdom', 'VEN' => 'Venezuela', 'VNM' => 'Vietnam',
                                 'YEM' => 'Yemen Arab Republic' }
       address['country'] =

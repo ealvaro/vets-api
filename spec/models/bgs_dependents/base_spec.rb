@@ -3,8 +3,8 @@
 require 'rails_helper'
 
 TEST_COUNTRIES = {
-  'USA' => 'USA', 'BOL' => 'Bolivia', 'BIH' => 'Bosnia-Herzegovina', 'BRN' => 'Brunei',
-  'CPV' => 'Cape Verde', 'COG' => "Congo, People's Republic of",
+  'USA' => 'USA', 'ANT' => 'Netherlands Antilles', 'BOL' => 'Bolivia', 'BIH' => 'Bosnia-Herzegovina',
+  'BRN' => 'Brunei', 'CPV' => 'Cape Verde', 'COG' => "Congo, People's Republic of",
   'COD' => 'Congo, Democratic Republic of', 'CIV' => "Cote d'Ivoire",
   'CZE' => 'Czech Republic', 'PRK' => 'North Korea', 'KOR' => 'South Korea',
   'LAO' => 'Laos', 'MKD' => 'Macedonia', 'MDA' => 'Moldavia', 'RUS' => 'Russia',
