@@ -1930,7 +1930,10 @@ vanotify:
         preneeds_burial_form_email: preneeds_burial_form_email_template_id
         reactivation_email_test_b: ~
         va_appointment_failure: fake_template_id
-        vass_otp_email: fake_vass_otp_email_template_id
+    vass:
+      api_key: fake_secret
+      template_id:
+        otp_email: fake_vass_otp_email_template_id
     veteran_readiness_and_employment:
       api_key: ~
       email:

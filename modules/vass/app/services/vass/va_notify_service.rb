@@ -5,7 +5,8 @@ module Vass
   # Service class for sending OTP codes via VANotify.
   #
   # This service handles sending One-Time Passwords (OTP) to users via email
-  # using the VANotify service.
+  # using VA Notify. Credentials must come from the dedicated VASS workspace
+  # (`Settings.vanotify.services.vass`), not `va_gov`.
   #
   # @example Send OTP via email
   #   service = Vass::VANotifyService.build
@@ -22,7 +23,7 @@ module Vass
     # Builds a VANotifyService instance.
     #
     # @param opts [Hash] Options to create the service
-    # @option opts [String] :api_key VANotify API key (optional, defaults to va_gov)
+    # @option opts [String] :api_key VANotify API key (optional, defaults to dedicated VASS workspace key)
     #
     # @return [Vass::VANotifyService] An instance of this class
     #
@@ -34,10 +35,14 @@ module Vass
     # Initializes a new VANotifyService.
     #
     # @param opts [Hash] Options to create the service
-    # @option opts [String] :api_key VANotify API key (optional, defaults to va_gov)
+    # @option opts [String] :api_key VANotify API key (optional, defaults to dedicated VASS workspace key)
+    #
+    # @return [Vass::VANotifyService] An instance of this class
     #
     def initialize(opts = {})
-      @api_key = opts[:api_key] || default_api_key
+      @api_key = vass_workspace_api_key(opts)
+      # VaNotify::Service is the shared vets-api client for VA Notify; the workspace
+      # (rate limits, templates) is determined entirely by @api_key from `vanotify.services.vass`.
       @notify_client = VaNotify::Service.new(@api_key)
     end
 
@@ -77,12 +82,12 @@ module Vass
     end
 
     ##
-    # Returns the default API key from settings.
+    # API key for the VASS VA Notify workspace (`Settings.vanotify.services.vass`).
     #
     # @return [String] API key
     #
-    def default_api_key
-      Settings.vanotify.services.va_gov.api_key
+    def vass_workspace_api_key(opts)
+      opts[:api_key] || vass_notify_service_settings.api_key
     end
 
     ##
@@ -91,8 +96,12 @@ module Vass
     # @return [String] Template ID
     #
     def email_template_id
-      Settings.vanotify.services.va_gov.template_id.vass_otp_email ||
+      vass_notify_service_settings.template_id.otp_email ||
         raise(ArgumentError, 'VASS OTP email template ID not configured')
+    end
+
+    def vass_notify_service_settings
+      Settings.vanotify.services.vass
     end
   end
 end

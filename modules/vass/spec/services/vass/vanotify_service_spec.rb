@@ -13,13 +13,13 @@ RSpec.describe Vass::VANotifyService do
   before do
     # Mock Settings
     template_id_double = double
-    allow(template_id_double).to receive_messages(vass_otp_email: email_template_id)
+    allow(template_id_double).to receive_messages(otp_email: email_template_id)
 
-    va_gov_service_double = double
-    allow(va_gov_service_double).to receive_messages(api_key:, template_id: template_id_double)
+    vass_service_double = double
+    allow(vass_service_double).to receive_messages(api_key:, template_id: template_id_double)
 
     services_double = double
-    allow(services_double).to receive(:va_gov).and_return(va_gov_service_double)
+    allow(services_double).to receive(:vass).and_return(vass_service_double)
 
     vanotify_double = double
     allow(vanotify_double).to receive(:services).and_return(services_double)
@@ -96,13 +96,13 @@ RSpec.describe Vass::VANotifyService do
     context 'when template IDs are not configured' do
       it 'raises error for missing email template ID' do
         template_id_double = double
-        allow(template_id_double).to receive_messages(vass_otp_email: nil)
+        allow(template_id_double).to receive_messages(otp_email: nil)
 
-        va_gov_service_double = double
-        allow(va_gov_service_double).to receive_messages(api_key:, template_id: template_id_double)
+        vass_service_double = double
+        allow(vass_service_double).to receive_messages(api_key:, template_id: template_id_double)
 
         services_double = double
-        allow(services_double).to receive(:va_gov).and_return(va_gov_service_double)
+        allow(services_double).to receive(:vass).and_return(vass_service_double)
 
         vanotify_double = double
         allow(vanotify_double).to receive(:services).and_return(services_double)
