@@ -494,6 +494,8 @@ RSpec.describe BenefitsClaims::Service do
               # Content override fields should NOT be present when no content entry exists
               expect(tracked_item_without_content_overrides).not_to have_key('longDescription')
               expect(tracked_item_without_content_overrides).not_to have_key('nextSteps')
+              # Without a TrackedItemContent entry, uploads should default to true
+              expect(tracked_item_without_content_overrides['canUploadFile']).to be true
             end
           end
         end

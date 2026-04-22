@@ -451,13 +451,14 @@ module BenefitsClaims
     def apply_content_overrides(item, display_name)
       content = BenefitsClaims::TrackedItemContent.find_by_display_name(display_name) # rubocop:disable Rails/DynamicFindBy
 
+      item['canUploadFile'] = content.nil? || content[:canUploadFile]
+
       if content
         # Existing fields (previously from constants.rb, now from TrackedItemContent::CONTENT)
         item['friendlyName'] = content[:friendlyName]
         item['activityDescription'] = content[:activityDescription]
         item['shortDescription'] = content[:shortDescription]
         item['supportAliases'] = content[:supportAliases]
-        item['canUploadFile'] = content[:canUploadFile]
         item['longDescription'] = content[:longDescription]
         item['nextSteps'] = content[:nextSteps]
         item['noActionNeeded'] = content[:noActionNeeded]
