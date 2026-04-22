@@ -82,6 +82,7 @@ module Lighthouse
             'id' => resource['id'],
             'composite_id' => "#{facility_num}-#{month}-#{year}",
             'date' => format_date(resource['date']),
+            'bill_number' => extract_bill_number(resource),
             'charge_items' => resource['charge_items'] || [],
             'line_items' => (resource['lineItem'] || []).map { |li| build_line_item(li) }
           }

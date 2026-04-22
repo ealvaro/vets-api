@@ -40,6 +40,7 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
           {
             'resource' => {
               'id' => '123', 'date' => '2026-01-01T14:32:00-05:00',
+              'identifier' => [{ 'type' => { 'text' => 'Bill Number' }, 'value' => '573-JAN-TEST' }],
               'issuer' => {
                 'reference' => 'https://api.gov/services/health-care-costs-coverage/v0/r4/Organization/4-5pFm5Av0PHt',
                 'display' => 'TEST VAMC'
@@ -118,6 +119,7 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
           {
             'resource' => {
               'id' => '123', 'date' => '2026-02-01T14:32:00-05:00',
+              'identifier' => [{ 'type' => { 'text' => 'Bill Number' }, 'value' => '573-FEB-TEST' }],
               'issuer' => {
                 'reference' => 'https://api.gov/services/health-care-costs-coverage/v0/r4/Organization/4-5pFm5Av0PHt',
                 'display' => 'TEST VAMC'
@@ -171,13 +173,14 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
         expect(subject.account_number).to eq('ACCT-999')
       end
 
-      it 'creates associated_statements' do
+      it 'creates associated_statements with bill_number from extract_bill_number (same as payments)' do
         expect(subject.associated_statements).to match(
           [
             {
               'id' => '123',
               'composite_id' => '4-5pFm5Av0PHt-2-2026',
               'date' => 'February 1, 2026',
+              'bill_number' => '573-FEB-TEST',
               'charge_items' => [],
               'line_items' => []
             },
@@ -185,6 +188,7 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
               'id' => '123',
               'composite_id' => '4-5pFm5Av0PHt-1-2026',
               'date' => 'January 1, 2026',
+              'bill_number' => '573-JAN-TEST',
               'charge_items' => array_including(a_hash_including('id' => '4-6c9ZE23XQjkALyz')),
               'line_items' => a_collection_including(a_hash_including(billing_reference: '4-6cXQjkA9CC'))
             }
@@ -313,6 +317,28 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
             'postalCode' => nil
           )
         )
+      end
+
+      it 'sets bill_number to nil when extract_bill_number finds no Bill Number identifier' do
+        invoice_data = {
+          'id' => 'inv-1',
+          'date' => '2025-06-01T20:29:47Z',
+          'issuer' => { 'display' => 'VA', 'reference' => 'Organization/4-5pFm5Av0PHt' }
+        }
+        associated_statements = [
+          {
+            'resource' => {
+              'id' => 'assoc-1',
+              'date' => '2026-03-01T12:00:00Z',
+              'issuer' => { 'reference' => 'Organization/4-5pFm5Av0PHt' },
+              'charge_items' => [],
+              'lineItem' => []
+            }
+          }
+        ]
+        detail = described_class.new(invoice_data:, associated_statements:)
+
+        expect(detail.associated_statements.first['bill_number']).to be_nil
       end
     end
   end

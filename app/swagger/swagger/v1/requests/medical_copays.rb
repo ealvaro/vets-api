@@ -306,7 +306,7 @@ class Swagger::V1::Requests::MedicalCopays
                   property :id, type: :string
                   property :date, type: :string
                   property :compositeId, type: :string
-
+                  property :bill_number, type: :string, example: '573-K3FDDA0'
                   property :chargeItems, type: :array do
                     items type: :object do
                       property :id, type: :string

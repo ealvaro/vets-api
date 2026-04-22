@@ -155,6 +155,8 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
           expect(facility['address']).to be_a(Hash)
           expect(data.dig('attributes', 'associatedStatements').pluck('id'))
             .to eq(%w[4-1abZUKu7LncRZi])
+          expect(data.dig('attributes', 'associatedStatements').pluck('bill_number'))
+            .to eq(%w[573-K3FDDA0])
           expect(data.dig('attributes', 'associatedInvoices').pluck('composite_id'))
             .to eq(%w[4-5pFm5Av0PHt-4-2025])
           address = facility['address']
