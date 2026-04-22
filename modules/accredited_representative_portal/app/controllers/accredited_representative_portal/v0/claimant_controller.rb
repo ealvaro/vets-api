@@ -35,7 +35,8 @@ module AccreditedRepresentativePortal
           ClaimantSerializer.new(
             power_of_attorney_requests:,
             claimant_representative:,
-            claimant_profile:
+            claimant_profile:,
+            current_user:
           )
 
         data = serializer.serializable_hash

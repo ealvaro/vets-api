@@ -51,7 +51,9 @@ module AccreditedRepresentativePortal
       pending_poa_requests = poa_requests.unresolved.order(created_at: :desc)
       resolved_poa_requests = poa_requests.resolved.order(created_at: :desc)
       [*pending_poa_requests, *resolved_poa_requests].map do |poa_request|
-        PowerOfAttorneyRequestSerializer.new(poa_request).serializable_hash
+        PowerOfAttorneyRequestSerializer.new(poa_request, params: {
+                                               current_user: object[:current_user]
+                                             }).serializable_hash
       end
     end
   end

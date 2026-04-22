@@ -7,9 +7,23 @@ RSpec.describe AccreditedRepresentativePortal::ClaimantSerializer, type: :serial
     described_class.new(
       power_of_attorney_requests:,
       claimant_representative:,
-      claimant_profile:
+      claimant_profile:,
+      current_user: representative_user
     ).as_json
   end
+
+  let!(:poa_code) { '067' }
+  let(:representative_user) do
+    create(:representative_user, email: 'test@va.gov', icn: '123498767V234859', all_emails: ['test@va.gov'])
+  end
+  let!(:representative) do
+    create(:representative,
+           :vso,
+           email: representative_user.email,
+           representative_id: '357458',
+           poa_codes: [poa_code])
+  end
+  let!(:vso) { create(:organization, poa: poa_code, can_accept_digital_poa_requests: false) }
 
   let(:address) do
     double(
@@ -103,6 +117,26 @@ RSpec.describe AccreditedRepresentativePortal::ClaimantSerializer, type: :serial
       it 'returns the designation unchanged' do
         expect(subject.dig('data', 'attributes', 'city')).to eq 'FPO'
       end
+    end
+  end
+
+  describe '#poa_requests' do
+    let!(:declined_poa_request) { create(:power_of_attorney_request, :with_declination, poa_code:) }
+    let!(:pending_poa_request) { create(:power_of_attorney_request, poa_code:) }
+    let!(:pending_poa_request2) { create(:power_of_attorney_request, poa_code:) }
+    let!(:accepted_poa_request) { create(:power_of_attorney_request, :with_acceptance, poa_code:) }
+    let(:serialized_poa_requests) do
+      [pending_poa_request2, pending_poa_request, poa_request,
+       accepted_poa_request, declined_poa_request].map do |poa_request|
+        AccreditedRepresentativePortal::PowerOfAttorneyRequestSerializer.new(poa_request, params: {
+                                                                               current_user: representative_user
+                                                                             }).serializable_hash
+      end
+    end
+
+    it 'serializes poa requests with pending placed before resolved' do
+      poa_requests = subject.dig('data', 'attributes', 'poaRequests')
+      expect(poa_requests).to eq(serialized_poa_requests.as_json)
     end
   end
 end
