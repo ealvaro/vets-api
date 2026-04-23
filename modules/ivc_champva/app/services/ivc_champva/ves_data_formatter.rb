@@ -170,7 +170,7 @@ module IvcChampva
         middle_initial: certification_data['middle_initial'],
         phone_number: format_phone_number(certification_data['phone_number']),
         relationship: certification_data['relationship'],
-        address: map_address(certification_data)
+        address: map_address(extract_certification_address(certification_data))
       }
     end
 
@@ -205,6 +205,24 @@ module IvcChampva
       return nil if address.values.all?(&:nil?)
 
       address
+    end
+
+    # Handles both nested and flat certification address structures.
+    # When the FE sends `certification.address` as a nested object, use it directly.
+    # Otherwise, extract address fields from the flat certification hash.
+    def self.extract_certification_address(certification_data)
+      return nil unless certification_data.is_a?(Hash)
+      return certification_data['address'] if certification_data['address'].is_a?(Hash)
+
+      {
+        'street_address' => certification_data['street_address'],
+        'street' => certification_data['street'],
+        'street_combined' => certification_data['street_combined'],
+        'city' => certification_data['city'],
+        'state' => certification_data['state'],
+        'postal_code' => certification_data['postal_code'],
+        'country' => certification_data['country']
+      }
     end
 
     ##
@@ -397,7 +415,7 @@ module IvcChampva
         middle_initial: certification['middle_initial'],
         phone_number: format_phone_number(certification['phone_number']),
         relationship: certification['relationship'] || form_data['certifier_role'],
-        address: map_address(certification)
+        address: map_address(extract_certification_address(certification))
       }.compact
     end
 

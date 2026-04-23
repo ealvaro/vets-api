@@ -133,7 +133,8 @@
     "street_address": "123 Certifier Street ",
     "city": "Citytown",
     "state": "AL",
-    "postal_code": "12312"
+    "postal_code": "12312",
+    "country": "USA"
   },
   "supporting_docs": [
     {

@@ -584,6 +584,104 @@ describe IvcChampva::VesDataFormatter do
     end
   end
 
+  describe '.extract_certification_address' do
+    it 'returns nil for non-hash input' do
+      expect(IvcChampva::VesDataFormatter.extract_certification_address(nil)).to be_nil
+      expect(IvcChampva::VesDataFormatter.extract_certification_address('string')).to be_nil
+    end
+
+    it 'returns the nested address hash when certification has an address key' do
+      cert = {
+        'first_name' => 'Certifier',
+        'last_name' => 'Jones',
+        'address' => {
+          'street' => '123 Main St',
+          'city' => 'Springfield',
+          'state' => 'IL',
+          'postal_code' => '62701',
+          'country' => 'USA'
+        }
+      }
+
+      result = IvcChampva::VesDataFormatter.extract_certification_address(cert)
+      expect(result).to eq(cert['address'])
+    end
+
+    it 'extracts address fields from flat certification structure' do
+      cert = {
+        'first_name' => 'Certifier',
+        'last_name' => 'Jones',
+        'phone_number' => '1231231234',
+        'street_address' => '123 Certifier Street ',
+        'city' => 'Citytown',
+        'state' => 'AL',
+        'postal_code' => '12312',
+        'country' => 'USA'
+      }
+
+      result = IvcChampva::VesDataFormatter.extract_certification_address(cert)
+
+      expect(result['street_address']).to eq('123 Certifier Street ')
+      expect(result['city']).to eq('Citytown')
+      expect(result['state']).to eq('AL')
+      expect(result['postal_code']).to eq('12312')
+      expect(result['country']).to eq('USA')
+      expect(result).not_to have_key('first_name')
+      expect(result).not_to have_key('last_name')
+      expect(result).not_to have_key('phone_number')
+    end
+
+    it 'does not treat non-hash address values as nested address' do
+      cert = { 'address' => 'not a hash', 'city' => 'Fallback', 'state' => 'VA', 'postal_code' => '12345' }
+
+      result = IvcChampva::VesDataFormatter.extract_certification_address(cert)
+
+      expect(result['city']).to eq('Fallback')
+    end
+  end
+
+  describe '10-10D extended fixture certification address mapping' do
+    let(:extended_fixture) do
+      JSON.parse(File.read('modules/ivc_champva/spec/fixtures/form_json/vha_10_10d_extended.json'))
+    end
+
+    before do
+      extended_fixture['veteran']['ssn_or_tin'] = '123456789'
+      extended_fixture['veteran']['address'] = {
+        'street_combined' => '123 Main St', 'city' => 'Anytown', 'state' => 'VA', 'postal_code' => '12345'
+      }
+      allow(SecureRandom).to receive(:uuid).and_return('12345678-1234-5678-1234-567812345678')
+    end
+
+    it 'maps flat certification address in OHI certification hash' do
+      ohi_cert_hash = IvcChampva::VesDataFormatter.map_ohi_certification(extended_fixture)
+      address = ohi_cert_hash[:address]
+
+      expect(address[:street_address]).to eq('123 Certifier Street ')
+      expect(address[:city]).to eq('Citytown')
+      expect(address[:state]).to eq('AL')
+      expect(address[:zip_code]).to eq('12312')
+    end
+
+    it 'prefers nested address object when present' do
+      extended_fixture['certification']['address'] = {
+        'street' => '999 Nested Ave',
+        'city' => 'NestedCity',
+        'state' => 'CA',
+        'postal_code' => '90210',
+        'country' => 'USA'
+      }
+
+      ves_request = IvcChampva::VesDataFormatter.format_for_request(extended_fixture, form_uuid:)
+      address = ves_request.certification.address
+
+      expect(address.street_address).to eq('999 Nested Ave')
+      expect(address.city).to eq('NestedCity')
+      expect(address.state).to eq('CA')
+      expect(address.zip_code).to eq('90210')
+    end
+  end
+
   describe 'OHI subform attachment' do
     let(:extended_form_data) do
       # Load fixture and patch with valid data for VES validation
