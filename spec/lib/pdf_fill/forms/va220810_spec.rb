@@ -30,15 +30,8 @@ describe PdfFill::Forms::Va220810 do
 
     it 'formats phone if domestic' do
       home, mobile = merged_fields['phone'].values
-      expect(home).to eq(form.format_us_phone(form_data['homePhone']))
-      expect(mobile).to eq(form.format_us_phone(form_data['mobilePhone']))
-    end
-
-    it 'does not format phone if international' do
-      form_data['mailingAddress']['country'] = 'MEX'
-      home, mobile = merged_fields['phone'].values
-      expect(home).to eq(form_data['homePhone'])
-      expect(mobile).to eq(form_data['mobilePhone'])
+      expect(home).to eq('555-123-4567 x23')
+      expect(mobile).to eq('555-987-6543')
     end
 
     it 'formats va file number as ssn if not chapter 35' do

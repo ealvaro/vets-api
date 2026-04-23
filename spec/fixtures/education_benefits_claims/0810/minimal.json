@@ -18,8 +18,8 @@
     "country": "USA"
   },
   "emailAddress": "spongebob.squarepants@example.com",
-  "homePhone": "5551234567",
-  "mobilePhone": "5559876543",
+  "homePhone": "555-123-4567 x12",
+  "mobilePhone": "555-987-6543",
   "examName": "Project Management Professional (PMP)",
   "examDate": "2024-05-15",
   "examCost": 405.00,

@@ -4,7 +4,6 @@ module PdfFill
   module Forms
     class Va220810 < FormBase
       include FormHelper
-      include FormHelper::PhoneNumberFormatting
 
       BENEFIT_PROGRAMS = %w[chapter30 chapter33 chapter35 chapter1606].freeze
 
@@ -163,7 +162,6 @@ module PdfFill
 
       def format_phone
         @form_data['phone'] = @form_data.slice('homePhone', 'mobilePhone')
-        @form_data['phone'].transform_values!(&method(:format_us_phone)) if domestic?(@country)
       end
 
       def format_va_file_number

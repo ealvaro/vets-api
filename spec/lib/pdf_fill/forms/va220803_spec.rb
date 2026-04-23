@@ -34,6 +34,13 @@ describe PdfFill::Forms::Va220803 do
       expect(merged_data['bill_type_chapter_1606']).to be_nil
     end
 
+    it 'fills in the phone number correctly' do
+      merged_data = subject.merge_fields
+
+      expect(merged_data['homePhone']).to eq('999-876-5456 x23')
+      expect(merged_data['mobilePhone']).to eq('666-543-1234')
+    end
+
     it 'does fills in the file number field with ssn' do
       merged_data = subject.merge_fields
 

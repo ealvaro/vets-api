@@ -15,8 +15,8 @@
   },
   "testName": "Fake test",
   "testDate": "2022-11-13",
-  "mobilePhone": "6665431234",
-  "homePhone": "9998765456",
+  "mobilePhone": "666-543-1234",
+  "homePhone": "999-876-5456 x23",
   "emailAddress": "example@example.com",
   "mailingAddress": {
     "country": "USA",

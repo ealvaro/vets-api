@@ -17,11 +17,11 @@
     "country": "USA"
   },
   "emailAddress": "spongebob.squarepants@example.com",
-  "homePhone": "5551234567",
-  "mobilePhone": "5559876543",
+  "homePhone": "555-123-4567",
+  "mobilePhone": "555-987-6543",
   "examName": "Project Management Professional (PMP)",
   "examDate": "2024-05-15",
-  "examCost": 405.00,
+  "examCost": 405.0,
   "organizationName": "Project Management Institute",
   "organizationAddress": {
     "street": "14 Campus Blvd",
