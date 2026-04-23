@@ -166,7 +166,7 @@ module SimpleFormsApi
         lower_device = impact_area['lowerLeft'] == true && impact_area['lowerRight'] == true
         if upper_device && lower_device
           apps << app.merge({ 'both' => true })
-        elsif upper_overflow || lower_overflow
+        elsif upper_device || lower_device
           apps << app
         end
       end

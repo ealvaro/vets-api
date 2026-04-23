@@ -105,4 +105,64 @@ RSpec.describe SimpleFormsApi::VBA108678 do
       )
     end
   end
+
+  describe '#gather_overflow_devices' do
+    it 'return empty if nothing qualifies' do
+      result = subject.gather_overflow_devices([])
+      expect(result).to eq([])
+
+      result = subject.gather_overflow_devices(
+        [
+          {
+            'deviceOrMedication' => 'Hearing Aid',
+            'serviceConnectedDisability' => 'Hearing Loss',
+            'impactedLocations' => {
+              'upperLeft' => true,
+              'upperRight' => false,
+              'lowerLeft' => false,
+              'lowerRight' => true
+            }
+          }
+        ]
+      )
+      expect(result).to eq([])
+    end
+
+    it 'Adds a "both" key if all options are selected' do
+      test_data = [{
+        'deviceOrMedication' => 'Hearing Aid',
+        'serviceConnectedDisability' => 'Hearing Loss',
+        'impactedLocations' => {
+          'upperLeft' => true,
+          'upperRight' => true,
+          'lowerLeft' => true,
+          'lowerRight' => true
+        }
+      }]
+      results = form.gather_overflow_devices(test_data)
+      expect(results[0]).to include('both' => true)
+    end
+
+    it 'Adds a the hash if both left and right are seleted' do
+      test_data = [{
+        'deviceOrMedication' => 'Hearing Aid',
+        'serviceConnectedDisability' => 'Hearing Loss',
+        'impactedLocations' => {
+          'upperLeft' => true,
+          'upperRight' => true,
+          'lowerLeft' => false,
+          'lowerRight' => false
+        }
+      }]
+      results = form.gather_overflow_devices(test_data)
+      expect(results.length).to be(1)
+
+      test_data[0]['impactedLocations']['upperLeft'] = false
+      test_data[0]['impactedLocations']['upperRight'] = false
+      test_data[0]['impactedLocations']['lowerLeft'] = true
+      test_data[0]['impactedLocations']['lowerRight'] = true
+      results = form.gather_overflow_devices(test_data)
+      expect(results.length).to be(1)
+    end
+  end
 end
