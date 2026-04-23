@@ -12,7 +12,7 @@
     "emptyState": "You don't need to do anything right now. If there's an update, we'll mail you a letter."
   },
   "files": {
-    "simpleLayout": true,
+    "simpleLayout": false,
     "headerTitle": "Application files",
     "description": "If you need to add or update your supporting documents, you can submit them online, by mail, or by fax. This could be your personal information, health insurance, or school status.",
     "sectionTitle": "Application files",

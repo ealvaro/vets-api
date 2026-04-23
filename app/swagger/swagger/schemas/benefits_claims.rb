@@ -89,6 +89,31 @@ module Swagger
             key :description, 'Base claim type used for title generation'
             key :example, 'Compensation'
           end
+          property :uploadMetadata do
+            key :type, :object
+            key :description, 'Upload routing metadata used by clients to choose upload destination and payload'
+            property :uploadDestinationKey, type: :string, example: 'benefits_claims'
+            property :formId, type: %i[string null], example: '10-10D-EXTENDED'
+            property :finalizeDestinationKey, type: %i[string null], example: 'ivc_champva_docs_only_resubmission'
+            property :submissionType, type: %i[string null], example: 'existing'
+            property :acceptedFileTypes do
+              key :type, :array
+              key :description, 'Optional list of accepted file extensions for this upload destination'
+              items do
+                key :type, :string
+                key :example, 'pdf'
+              end
+            end
+            property :documentTypeOptions do
+              key :type, :array
+              key :description, 'Optional list of provider-specific document type choices for uploader dropdowns'
+              items do
+                key :type, :object
+                property :value, type: :string, example: 'Birth certificate'
+                property :label, type: :string, example: 'Birth certificate'
+              end
+            end
+          end
 
           property :supportingDocuments do
             key :type, :array

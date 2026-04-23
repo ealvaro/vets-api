@@ -639,6 +639,67 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
           expect(PersistentAttachment.last).to be_a(PersistentAttachments::MilitaryRecords)
         end
       end
+
+      it 'creates an evidence submission when claim_id is provided' do
+        clamscan = double(safe?: true)
+        allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
+        user_account = create(:user_account)
+
+        allow_any_instance_of(IvcChampva::V1::UploadsController)
+          .to receive(:current_user_account_for_evidence_submission)
+          .and_return(user_account)
+
+        expect do
+          post '/ivc_champva/v1/forms/submit_supporting_documents',
+               params: { form_id: '10-10D', claim_id: 12_345, file:, attachment_id: 'Birth certificate' }
+        end.to change(EvidenceSubmission, :count).by(1)
+
+        submission = EvidenceSubmission.last
+        expect(submission.claim_id).to eq(12_345)
+        expect(submission.upload_status).to eq(BenefitsDocuments::Constants::UPLOAD_STATUS[:CREATED])
+        expect(submission.user_account_id).to eq(user_account.id)
+        expect(JSON.parse(submission.template_metadata)['personalisation']).to include(
+          'document_type' => 'Birth certificate',
+          'file_name' => 'doctors-note.gif'
+        )
+      end
+
+      it 'maps UUID claim_id to the underlying CHAMPVA form record id' do
+        clamscan = double(safe?: true)
+        allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
+        user_account = create(:user_account)
+        form = create(:ivc_champva_form)
+
+        allow_any_instance_of(IvcChampva::V1::UploadsController)
+          .to receive(:current_user_account_for_evidence_submission)
+          .and_return(user_account)
+
+        expect do
+          post '/ivc_champva/v1/forms/submit_supporting_documents',
+               params: { form_id: '10-10D', claim_id: form.form_uuid, file: }
+        end.to change(EvidenceSubmission, :count).by(1)
+
+        expect(EvidenceSubmission.last.claim_id).to eq(form.id)
+      end
+
+      it 'maps UUID claim_id to a stable CHAMPVA form id when multiple records share the UUID' do
+        clamscan = double(safe?: true)
+        allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
+        user_account = create(:user_account)
+        first_form = create(:ivc_champva_form)
+        create(:ivc_champva_form, form_uuid: first_form.form_uuid)
+
+        allow_any_instance_of(IvcChampva::V1::UploadsController)
+          .to receive(:current_user_account_for_evidence_submission)
+          .and_return(user_account)
+
+        expect do
+          post '/ivc_champva/v1/forms/submit_supporting_documents',
+               params: { form_id: '10-10D', claim_id: first_form.form_uuid, file: }
+        end.to change(EvidenceSubmission, :count).by(1)
+
+        expect(EvidenceSubmission.last.claim_id).to eq(first_form.id)
+      end
     end
 
     context 'LLM response integration' do
@@ -809,6 +870,82 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
         post '/ivc_champva/v1/forms/submit_supporting_documents', params: { form_id: '10-10D', file: }
         expect(response).to have_http_status(:internal_server_error)
       end
+    end
+  end
+
+  describe '#submit_docs_only_resubmission' do
+    let(:claim_uuid) { SecureRandom.uuid }
+    let!(:claim_form) do
+      create(
+        :ivc_champva_form,
+        form_uuid: claim_uuid,
+        first_name: 'Pat',
+        last_name: 'Veteran',
+        email: 'pat@example.com'
+      )
+    end
+    let!(:newer_claim_form_same_uuid) do
+      create(
+        :ivc_champva_form,
+        form_uuid: claim_uuid,
+        first_name: 'Pat',
+        last_name: 'Veteran',
+        email: 'pat@example.com'
+      )
+    end
+    let!(:evidence_submission) do
+      EvidenceSubmission.create!(
+        claim_id: claim_form.id,
+        user_account: create(:user_account),
+        upload_status: BenefitsDocuments::Constants::UPLOAD_STATUS[:CREATED],
+        template_metadata: {
+          personalisation: {
+            file_name: 'birth-certificate.png',
+            document_type: 'Birth certificate'
+          }
+        }.to_json
+      )
+    end
+    let(:payload) do
+      {
+        form_number: '10-10D-EXTENDED',
+        submission_type: 'existing',
+        claim_id: claim_uuid,
+        supporting_docs: [
+          {
+            confirmation_code: 'd1fde9a6-b48f-4763-9cd5-9f06f32a6b56',
+            attachment_id: 'Birth certificate',
+            name: 'birth-certificate.png'
+          }
+        ]
+      }
+    end
+
+    before do
+      allow(PersistentAttachments::MilitaryRecords).to receive(:exists?).and_return(true)
+    end
+
+    it 'accepts docs-only resubmission when the flow is enabled' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?).with(:form1010d_enhanced_flow_enabled, anything).and_return(true)
+      allow_any_instance_of(IvcChampva::V1::UploadsController)
+        .to receive(:handle_file_uploads_wrapper)
+        .and_return({ json: {}, status: 200 })
+
+      post '/ivc_champva/v1/forms/docs_only_resubmission', params: payload, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(evidence_submission.reload.upload_status).to eq(BenefitsDocuments::Constants::UPLOAD_STATUS[:SUCCESS])
+    end
+
+    it 'returns 422 when docs-only flow is disabled' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?).with(:form1010d_enhanced_flow_enabled, anything).and_return(false)
+
+      post '/ivc_champva/v1/forms/docs_only_resubmission', params: payload, as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(JSON.parse(response.body)['error_message']).to include('not enabled')
     end
   end
 
@@ -1613,6 +1750,39 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
           expect(metadata).to eq({ 'metadata' => {}, 'attachment_ids' => %w[doc1 doc2] })
         end
       end
+    end
+  end
+
+  describe '#get_docs_only_resubmission_file_paths_and_metadata' do
+    let(:controller) { IvcChampva::V1::UploadsController.new }
+    let(:claim_uuid) { SecureRandom.uuid }
+    let(:parsed_form_data) do
+      {
+        'form_number' => '10-10D-EXTENDED',
+        'submission_type' => 'existing',
+        'claim_id' => claim_uuid,
+        'supporting_docs' => [{ 'confirmation_code' => 'abc', 'attachment_id' => 'Birth certificate' }]
+      }
+    end
+    let(:form_instance) { double('FormInstance', metadata: { 'uuid' => SecureRandom.uuid }) }
+
+    before do
+      allow(controller).to receive(:form_id_for_form_number).with('10-10D-EXTENDED').and_return('vha_10_10d')
+      allow(IvcChampva::FormVersionManager).to receive(:create_form_instance).and_return(form_instance)
+      allow(controller).to receive(:track_form_submission_metrics)
+      allow(controller).to receive_messages(
+        supporting_document_ids: ['Birth certificate'],
+        docs_only_resubmission_supporting_paths_from_form: ['/tmp/supporting.pdf']
+      )
+      allow(IvcChampva::MetadataValidator).to receive(:validate) { |metadata| metadata }
+    end
+
+    it 'reuses the original claim UUID so supporting docs append to the existing case' do
+      _file_paths, metadata = controller.send(:get_docs_only_resubmission_file_paths_and_metadata, parsed_form_data)
+
+      expect(metadata['uuid']).to eq(claim_uuid)
+      expect(metadata['docType']).to eq('10-10D-EXTENDED-EXISTING')
+      expect(metadata['attachment_ids']).to eq(['Birth certificate'])
     end
   end
 

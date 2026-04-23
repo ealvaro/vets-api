@@ -28,6 +28,8 @@ module IvcChampva
         'an error occurred while verifying stamp:',
         'unable to find file'
       ].freeze
+      DOCS_ONLY_RESUBMISSION_SUBMISSION_TYPES = %w[existing enrollment].freeze
+      DOCS_ONLY_RESUBMISSION_FORM_NUMBERS = %w[10-10D-EXTENDED].freeze
 
       def submit(form_data = nil)
         Datadog::Tracing.trace('IVC Champva Forms - Submit Form') do
@@ -96,6 +98,20 @@ module IvcChampva
         log_error_and_respond("Error submitting merged form: #{e.message}", e)
       end
 
+      def submit_docs_only_resubmission
+        parsed_form_data = parse_docs_only_payload
+        ensure_docs_only_resubmission_enabled(parsed_form_data)
+        validate_docs_only_resubmission!(parsed_form_data)
+        hydrate_docs_only_resubmission_data(parsed_form_data)
+
+        response = process_docs_only_resubmission(parsed_form_data)
+        render json: response.fetch(:json), status: response.fetch(:status)
+      rescue ArgumentError => e
+        handle_docs_only_resubmission_argument_error(e)
+      rescue => e
+        handle_docs_only_resubmission_unexpected_error(e)
+      end
+
       ##
       # Handles PEGA/S3 file uploads and VES submission
       #
@@ -104,7 +120,7 @@ module IvcChampva
       #
       # @return [Hash] response from build_json
       def handle_file_uploads_wrapper(form_id, parsed_form_data)
-        if should_process_ves?(form_id)
+        if should_process_ves?(form_id) && !docs_only_resubmission_flow_enabled?(parsed_form_data)
           handle_ves_submission(form_id, parsed_form_data)
         else
           statuses, error_messages = handle_file_uploads(form_id, parsed_form_data)
@@ -443,6 +459,8 @@ module IvcChampva
               attachment.save
             end
 
+            persist_claim_evidence_submission(attachment)
+
             launch_background_job(attachment, params[:form_id].to_s, params['attachment_id'])
 
             if Flipper.enabled?(:champva_claims_llm_validation, @current_user)
@@ -578,6 +596,216 @@ module IvcChampva
       end
 
       private
+
+      def parse_docs_only_payload
+        parsed_form_data = JSON.parse(params.to_json)
+        parsed_form_data['form_number'] ||= '10-10D-EXTENDED'
+        parsed_form_data
+      end
+
+      def process_docs_only_resubmission(parsed_form_data)
+        form_id = form_id_for_form_number(parsed_form_data['form_number'])
+        Datadog::Tracing.active_trace&.set_tag('form_id', form_id)
+
+        response = handle_file_uploads_wrapper(form_id, parsed_form_data)
+        mark_docs_only_evidence_submissions_received(parsed_form_data) if successful_upload_response?(response[:status])
+        response
+      end
+
+      def ensure_docs_only_resubmission_enabled(parsed_form_data)
+        return if docs_only_resubmission_flow_enabled?(parsed_form_data)
+
+        raise ArgumentError, 'documents-only resubmission flow is not enabled for this payload'
+      end
+
+      def form_id_for_form_number(form_number)
+        form_id = FORM_NUMBER_MAP[form_number]
+        return form_id if form_id.present?
+
+        raise ArgumentError, "Unsupported form number: #{form_number}"
+      end
+
+      def handle_docs_only_resubmission_argument_error(error)
+        message = error.message
+        Rails.logger.error("Validation error in CHAMPVA docs-only resubmission: #{message}")
+        render json: { error_message: message }, status: :unprocessable_entity
+      end
+
+      def handle_docs_only_resubmission_unexpected_error(error)
+        message = error.message
+        Rails.logger.error("Docs-only resubmission error: #{message}")
+        Rails.logger.error(error.backtrace.join("\n"))
+        render json: { error_message: "Error: #{message}" }, status: :internal_server_error
+      end
+
+      def persist_claim_evidence_submission(attachment)
+        raw_claim_id = params[:claim_id]
+        return if raw_claim_id.blank?
+
+        logger = Rails.logger
+        claim_id = claim_id_for_evidence_submission(raw_claim_id, logger)
+        return if claim_id.blank?
+
+        user_account = user_account_for_evidence_submission(logger)
+        return if user_account.blank?
+
+        file_name = uploaded_file_name_for_evidence_submission(attachment, logger)
+        return if file_name.blank?
+
+        create_evidence_submission_record(claim_id, user_account, file_name)
+      rescue ArgumentError, TypeError
+        # `claim_id` is optional for legacy upload paths.
+        nil
+      rescue => e
+        logger&.error("Failed to persist CHAMPVA evidence submission: #{e.class} #{e.message}")
+        nil
+      end
+
+      def claim_id_for_evidence_submission(raw_claim_id, logger)
+        claim_id = resolve_claim_record_ids(raw_claim_id).first
+        return claim_id if claim_id.present?
+
+        logger.warn('Skipping CHAMPVA evidence submission persistence: provided claim_id was unresolvable')
+        nil
+      end
+
+      def user_account_for_evidence_submission(logger)
+        user_account = current_user_account_for_evidence_submission
+        return user_account if user_account.present?
+
+        logger.warn('Skipping CHAMPVA evidence submission persistence: missing user_account')
+        nil
+      end
+
+      def uploaded_file_name_for_evidence_submission(attachment, logger)
+        file_name = uploaded_file_name(params['file'], attachment)
+        return file_name if file_name.present?
+
+        logger.warn('Skipping CHAMPVA evidence submission persistence: missing file_name')
+        nil
+      end
+
+      def create_evidence_submission_record(claim_id, user_account, file_name)
+        EvidenceSubmission.create(
+          claim_id:,
+          tracked_item_id: nil,
+          upload_status: BenefitsDocuments::Constants::UPLOAD_STATUS[:CREATED],
+          user_account:,
+          template_metadata: evidence_submission_template_metadata(file_name).to_json
+        )
+      end
+
+      def evidence_submission_template_metadata(file_name)
+        document_type = params[:attachment_id].presence || 'Supporting document'
+
+        {
+          personalisation: {
+            document_type:,
+            file_name:,
+            obfuscated_file_name: BenefitsDocuments::Utilities::Helpers.generate_obscured_file_name(file_name),
+            date_submitted: BenefitsDocuments::Utilities::Helpers.format_date_for_mailers(Time.zone.now),
+            date_failed: nil
+          }
+        }
+      end
+
+      def successful_upload_response?(status)
+        status.to_i == 200
+      end
+
+      def mark_docs_only_evidence_submissions_received(parsed_form_data)
+        claim_ids = resolve_claim_record_ids(parsed_form_data['claim_id'])
+        return if claim_ids.blank?
+
+        submitted_file_names = submitted_supporting_doc_file_names(parsed_form_data)
+        return if submitted_file_names.blank?
+
+        pending_submissions = pending_evidence_submissions_for_claim_ids(claim_ids)
+
+        updated_count = 0
+        pending_submissions.each do |submission|
+          updated_count += 1 if mark_submission_received_if_matches(submission, submitted_file_names)
+        end
+
+        Rails.logger.info(
+          "Marked #{updated_count} CHAMPVA evidence submission(s) as SUCCESS for claim_ids=#{claim_ids.join(',')}"
+        )
+      end
+
+      def submitted_supporting_doc_file_names(parsed_form_data)
+        Array(parsed_form_data['supporting_docs'])
+          .filter_map { |doc| normalize_file_name(doc['name']) }
+          .uniq
+      end
+
+      def pending_evidence_submissions_for_claim_ids(claim_ids)
+        pending_statuses = [
+          BenefitsDocuments::Constants::UPLOAD_STATUS[:CREATED],
+          BenefitsDocuments::Constants::UPLOAD_STATUS[:QUEUED],
+          BenefitsDocuments::Constants::UPLOAD_STATUS[:PENDING]
+        ]
+
+        EvidenceSubmission.where(claim_id: claim_ids, upload_status: pending_statuses)
+                          .where('created_at >= ?', 2.days.ago)
+                          .order(created_at: :desc)
+                          .limit(50)
+      end
+
+      def resolve_claim_record_ids(raw_claim_id)
+        claim_id = raw_claim_id.to_s
+        return [] if claim_id.blank?
+        return [Integer(claim_id, 10)] if claim_id.match?(/\A\d+\z/)
+
+        IvcChampvaForm.where(form_uuid: claim_id).order(:created_at).pluck(:id)
+      end
+
+      def mark_submission_received_if_matches(submission, submitted_file_names)
+        file_name = submission_file_name(submission)
+        return false if file_name.blank? || submitted_file_names.exclude?(file_name)
+
+        submission.update!(
+          upload_status: BenefitsDocuments::Constants::UPLOAD_STATUS[:SUCCESS],
+          acknowledgement_date: Time.current
+        )
+        true
+      rescue JSON::ParserError, TypeError
+        false
+      end
+
+      def submission_file_name(submission)
+        metadata = JSON.parse(submission.template_metadata)
+        normalize_file_name(metadata.dig('personalisation', 'file_name'))
+      end
+
+      def normalize_file_name(file_name)
+        file_name.to_s.strip.downcase.presence
+      end
+
+      def resolve_claim_record_id(raw_claim_id)
+        claim_id = raw_claim_id.to_s
+        return nil if claim_id.blank?
+        return Integer(claim_id, 10) if claim_id.match?(/\A\d+\z/)
+
+        IvcChampvaForm.where(form_uuid: claim_id).order(updated_at: :desc).limit(1).pick(:id)
+      rescue ArgumentError, TypeError
+        nil
+      end
+
+      def current_user_account_for_evidence_submission
+        return nil if @current_user&.user_account_uuid.blank?
+
+        UserAccount.find_by(id: @current_user.user_account_uuid)
+      end
+
+      def uploaded_file_name(source_file, attachment)
+        attachment_file = attachment.file
+        return source_file.original_filename if source_file.respond_to?(:original_filename)
+        return attachment_file.original_filename if attachment_file.respond_to?(:original_filename)
+        return attachment_file.metadata['filename'] if attachment_file.respond_to?(:metadata)
+        return File.basename(attachment_file.path) if attachment_file.respond_to?(:path)
+
+        nil
+      end
 
       def content_type_from_extension(ext)
         case ext.downcase
@@ -862,14 +1090,7 @@ module IvcChampva
         # Optionally add a supporting document with arbitrary form-defined values.
         add_blank_doc_and_stamp(form, parsed_form_data)
 
-        # DataDog Tracking
-        form.track_user_identity
-        form.track_current_user_loa(@current_user)
-        form.track_email_usage
-
-        if Flipper.enabled?(:champva_update_datadog_tracking, @current_user) && form.respond_to?(:track_submission)
-          form.track_submission(@current_user)
-        end
+        track_form_submission_metrics(form)
 
         attachment_ids = build_attachment_ids(base_form_id, parsed_form_data, applicant_rounded_number)
         attachment_ids = [base_form_id] if attachment_ids.empty?
@@ -1026,6 +1247,10 @@ module IvcChampva
       # - generation of VES JSON files
       def get_file_paths_and_metadata(parsed_form_data)
         Datadog::Tracing.trace('IVC Champva Forms - Get File Paths and Metadata and Other Work') do
+          if docs_only_resubmission_flow_enabled?(parsed_form_data)
+            return get_docs_only_resubmission_file_paths_and_metadata(parsed_form_data)
+          end
+
           attachment_ids, form = get_attachment_ids_and_form(parsed_form_data)
 
           # Use the actual form ID for PDF generation, but legacy form ID for S3/metadata
@@ -1051,6 +1276,141 @@ module IvcChampva
           end
 
           [file_paths, metadata.merge({ 'attachment_ids' => attachment_ids })]
+        end
+      end
+
+      def docs_only_resubmission?(parsed_form_data)
+        return false unless DOCS_ONLY_RESUBMISSION_FORM_NUMBERS.include?(parsed_form_data['form_number'].to_s)
+
+        submission_type = parsed_form_data['submission_type'].to_s.strip.downcase
+        DOCS_ONLY_RESUBMISSION_SUBMISSION_TYPES.include?(submission_type)
+      end
+
+      def docs_only_resubmission_flow_enabled?(parsed_form_data)
+        docs_only_resubmission?(parsed_form_data) &&
+          Flipper.enabled?(:form1010d_enhanced_flow_enabled, @current_user)
+      end
+
+      def validate_docs_only_resubmission!(parsed_form_data)
+        if parsed_form_data['claim_id'].blank?
+          raise ArgumentError, 'claim_id is required for documents-only resubmission'
+        end
+        if parsed_form_data['submission_type'].blank?
+          raise ArgumentError, 'submission_type is required for documents-only resubmission'
+        end
+
+        docs = parsed_form_data['supporting_docs']
+        raise ArgumentError, 'supporting documents are required for documents-only resubmission' if docs.blank?
+
+        docs.each_with_index do |doc, index|
+          validate_docs_only_supporting_doc(doc, index)
+        end
+      end
+
+      def validate_docs_only_supporting_doc(doc, index)
+        raise ArgumentError, "supporting_docs[#{index}] must be an object" unless doc.respond_to?(:[])
+
+        file_name = doc['name']
+        raise ArgumentError, "supporting_docs[#{index}] is missing name" if file_name.blank?
+
+        confirmation_code = doc['confirmation_code']
+        raise ArgumentError, "supporting_docs[#{index}] is missing confirmation_code" if confirmation_code.blank?
+
+        return if PersistentAttachments::MilitaryRecords.exists?(guid: confirmation_code)
+
+        raise ArgumentError,
+              "supporting_docs[#{index}] confirmation_code could not be resolved to an existing attachment"
+      end
+
+      def hydrate_docs_only_resubmission_data(parsed_form_data)
+        source_form = IvcChampvaForm.where(form_uuid: parsed_form_data['claim_id'].to_s).order(updated_at: :desc).first
+        raise ArgumentError, 'claim_id could not be resolved to an existing CHAMPVA form' if source_form.blank?
+
+        hydrate_primary_contact_info(parsed_form_data, source_form)
+        hydrate_veteran_info(parsed_form_data, source_form)
+        hydrate_default_applicant(parsed_form_data, source_form)
+      end
+
+      def hydrate_primary_contact_info(parsed_form_data, source_form)
+        primary_contact_info = parsed_form_data['primary_contact_info'] ||= {}
+        primary_contact_info['email'] ||= source_form.email
+
+        name = primary_contact_info['name'] ||= {}
+        name['first'] ||= source_form.first_name
+        name['last'] ||= source_form.last_name
+      end
+
+      def hydrate_veteran_info(parsed_form_data, source_form)
+        veteran = parsed_form_data['veteran'] ||= {}
+
+        full_name = veteran['full_name'] ||= {}
+        full_name['first'] ||= source_form.first_name
+        full_name['last'] ||= source_form.last_name
+
+        address = veteran['address'] ||= {}
+        address['country'] ||= 'USA'
+        address['postal_code'] ||= '00000'
+      end
+
+      def hydrate_default_applicant(parsed_form_data, source_form)
+        return if parsed_form_data['applicants'].present?
+
+        parsed_form_data['applicants'] = [{
+          'applicant_name' => {
+            'first' => source_form.first_name,
+            'last' => source_form.last_name
+          },
+          'vet_relationship' => 'spouse'
+        }]
+      end
+
+      def get_docs_only_resubmission_file_paths_and_metadata(parsed_form_data)
+        Datadog::Tracing.trace('IVC Champva Forms - Get docs-only paths and metadata') do
+          base_form_id = form_id_for_form_number(parsed_form_data['form_number'])
+          form = IvcChampva::FormVersionManager.create_form_instance(base_form_id, parsed_form_data, @current_user)
+          track_form_submission_metrics(form)
+
+          attachment_ids = supporting_document_ids(parsed_form_data)
+          if attachment_ids.blank?
+            raise ArgumentError, 'supporting documents must resolve to at least one attachment id for upload'
+          end
+
+          submission_type = parsed_form_data['submission_type'].to_s.upcase
+          raw_metadata = form.metadata.merge(
+            'uuid' => parsed_form_data['claim_id'].to_s,
+            'submissionType' => parsed_form_data['submission_type'].to_s,
+            'docType' => "#{parsed_form_data['form_number']}-#{submission_type}"
+          )
+          metadata = IvcChampva::MetadataValidator.validate(raw_metadata)
+
+          file_paths = docs_only_resubmission_supporting_paths_from_form(form)
+
+          [file_paths, metadata.merge({ 'attachment_ids' => attachment_ids })]
+        end
+      end
+
+      def docs_only_resubmission_supporting_paths_from_form(form)
+        placeholder_path = IvcChampva::Attachments.get_blank_page
+        begin
+          file_paths = form.handle_attachments(placeholder_path)
+          file_paths.shift
+
+          if file_paths.empty?
+            raise ArgumentError, 'no supporting document files could be resolved for documents-only resubmission'
+          end
+
+          file_paths
+        ensure
+          FileUtils.rm_f(placeholder_path)
+        end
+      end
+
+      def track_form_submission_metrics(form)
+        form.track_user_identity
+        form.track_current_user_loa(@current_user)
+        form.track_email_usage
+        if Flipper.enabled?(:champva_update_datadog_tracking, @current_user) && form.respond_to?(:track_submission)
+          form.track_submission(@current_user)
         end
       end
 

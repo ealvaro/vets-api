@@ -458,6 +458,9 @@ features:
   champva_convert_to_pdf_on_upload:
     actor_type: user
     description: Converts supporting documents to PDF at upload time instead of final submission to improve submit latency
+  form1010d_enhanced_flow_enabled:
+    actor_type: user
+    description: Enables enhanced docs-only resubmission flow for CHAMPVA 10-10D-EXTENDED submissions
   champva_stamper_logging:
     actor_type: user
     description: Enables logging of the desired stamp text

@@ -15,6 +15,8 @@ module BenefitsClaims
           'vha_10_10d_2027' => 'CHAMPVA application',
           '10-10d' => 'CHAMPVA application',
           '10-10d-extended' => 'CHAMPVA application',
+          '10-10d-extended-existing' => 'CHAMPVA application',
+          '10-10d-extended-enrollment' => 'CHAMPVA application',
           '10-7959c' => 'Other Health Insurance',
           '10-7959f-1' => 'Foreign Medical Program registration',
           '10-7959f-2' => 'Foreign Medical Program claim',
@@ -23,6 +25,7 @@ module BenefitsClaims
 
         PROCESSED_STATUSES = ['processed', 'manually processed'].freeze
         ERROR_STATUSES = ['error', 'failed', 'rejected', 'submission failed'].freeze
+        INTERNAL_DOCS_ONLY_1010D_FILE_NAME_PATTERN = /_vha_10_10d(?:_supporting_doc-\d+)?\.pdf\z/i
 
         def self.build_claim_response(records, user = nil)
           records = Array(records)
@@ -79,7 +82,7 @@ module BenefitsClaims
         end
 
         def self.build_supporting_documents(records)
-          records.map do |record|
+          records.reject { |record| internal_docs_only_artifact?(record) }.map do |record|
             BenefitsClaims::Responses::SupportingDocument.new(
               document_id: record.id.to_s,
               document_type_label: nil,
@@ -88,6 +91,13 @@ module BenefitsClaims
               upload_date: format_datetime(record.created_at)
             )
           end
+        end
+
+        def self.internal_docs_only_artifact?(record)
+          form_number = record.form_number.to_s
+          file_name = record.file_name.to_s
+
+          form_number.start_with?('10-10D-EXTENDED-') && file_name.match?(INTERNAL_DOCS_ONLY_1010D_FILE_NAME_PATTERN)
         end
 
         def self.format_date(value)

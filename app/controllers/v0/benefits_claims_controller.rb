@@ -10,6 +10,7 @@ require 'lighthouse/benefits_documents/documents_status_polling_service'
 require 'lighthouse/benefits_documents/update_documents_status_service'
 
 module V0
+  # rubocop:disable Metrics/ClassLength
   class BenefitsClaimsController < ApplicationController
     include InboundRequestLogging
     include V0::Concerns::MultiProviderSupport
@@ -28,6 +29,48 @@ module V0
 
     FEATURE_USE_TITLE_GENERATOR_WEB = 'cst_use_claim_title_generator_web'
     FEATURE_MULTI_CLAIM_PROVIDER = 'cst_multi_claim_provider'
+    DEFAULT_UPLOAD_DESTINATION_KEY = 'benefits_claims'
+    IVC_CHAMPVA_UPLOAD_DESTINATION_KEY = 'ivc_champva_supporting_documents'
+    IVC_CHAMPVA_FINALIZE_DESTINATION_KEY = 'ivc_champva_docs_only_resubmission'
+
+    UPLOAD_DESTINATION_KEY_BY_PROVIDER = {
+      'lighthouse' => DEFAULT_UPLOAD_DESTINATION_KEY,
+      'ivc_champva' => IVC_CHAMPVA_UPLOAD_DESTINATION_KEY
+    }.freeze
+
+    IVC_CHAMPVA_FORM_ID_BY_CLAIM_TYPE = {
+      'CHAMPVA application' => '10-10D-EXTENDED',
+      'Other Health Insurance' => '10-7959C',
+      'Foreign Medical Program registration' => '10-7959F-1',
+      'Foreign Medical Program claim' => '10-7959F-2',
+      'CHAMPVA claim' => '10-7959A'
+    }.freeze
+
+    IVC_CHAMPVA_10_10D_EXTENDED_DOCUMENT_TYPE_OPTIONS = [
+      'Court ordered adoption papers',
+      'Birth certificate',
+      'Certificate of civil union',
+      'Divorce decree',
+      'Marriage certificate',
+      'Front of Medicare Parts A or B card',
+      'Back of Medicare Parts A or B card',
+      'Front of Medicare Part C card',
+      'Back of Medicare Part C card',
+      'Front of Medicare Part D card',
+      'Back of Medicare Part D card',
+      'Front of health insurance card',
+      'Back of health insurance card',
+      'Other document',
+      'School enrollment certification form',
+      'Enrollment letter',
+      'Letter from the SSA'
+    ].map { |option| { 'value' => option, 'label' => option } }.freeze
+
+    IVC_CHAMPVA_DOCUMENT_TYPE_OPTIONS_BY_FORM_ID = {
+      '10-10D-EXTENDED' => IVC_CHAMPVA_10_10D_EXTENDED_DOCUMENT_TYPE_OPTIONS
+    }.freeze
+
+    IVC_CHAMPVA_ACCEPTED_FILE_TYPES = %w[pdf jpg jpeg png].freeze
 
     def index
       claims = if Flipper.enabled?(FEATURE_MULTI_CLAIM_PROVIDER, @current_user)
@@ -35,12 +78,14 @@ module V0
                else
                  service.get_claims
                end
+      champva_enhanced_flow_enabled = Flipper.enabled?(:form1010d_enhanced_flow_enabled, @current_user)
 
       check_for_birls_id
       check_for_file_number
 
       claims['data'].each do |claim|
         update_claim_type_language(claim)
+        add_upload_metadata(claim, champva_enhanced_flow_enabled:)
       end
 
       claim_ids = claims['data'].map { |claim| claim['id'] }
@@ -63,7 +108,9 @@ module V0
                 # Legacy single-provider path: Apply Lighthouse-specific transforms here
                 get_legacy_claim(params[:id])
               end
+      champva_enhanced_flow_enabled = Flipper.enabled?(:form1010d_enhanced_flow_enabled, @current_user)
       update_claim_type_language(claim['data'])
+      add_upload_metadata(claim['data'], champva_enhanced_flow_enabled:)
 
       # Document uploads to EVSS require a birls_id; This restriction should
       # be removed when we move to Lighthouse Benefits Documents for document uploads
@@ -178,6 +225,37 @@ module V0
       if language_map.key?(claim.dig('attributes', 'claimType'))
         claim['attributes']['claimType'] = language_map[claim['attributes']['claimType']]
       end
+    end
+
+    def add_upload_metadata(claim, champva_enhanced_flow_enabled: false)
+      metadata = build_upload_metadata_for_claim(claim, champva_enhanced_flow_enabled:)
+      return if metadata.blank?
+
+      claim['attributes'] ||= {}
+      claim['attributes']['uploadMetadata'] = metadata
+    end
+
+    def build_upload_metadata_for_claim(claim, champva_enhanced_flow_enabled: false)
+      claim_attributes = claim['attributes'] || {}
+      provider = claim_attributes['provider'].presence
+      destination_key = UPLOAD_DESTINATION_KEY_BY_PROVIDER.fetch(provider, DEFAULT_UPLOAD_DESTINATION_KEY)
+
+      metadata = { 'uploadDestinationKey' => destination_key }
+
+      if destination_key == IVC_CHAMPVA_UPLOAD_DESTINATION_KEY
+        form_id = IVC_CHAMPVA_FORM_ID_BY_CLAIM_TYPE[claim_attributes['claimType']]
+        metadata['formId'] = form_id if form_id.present?
+        metadata['acceptedFileTypes'] = IVC_CHAMPVA_ACCEPTED_FILE_TYPES
+        if form_id == '10-10D-EXTENDED' && champva_enhanced_flow_enabled
+          metadata['finalizeDestinationKey'] = IVC_CHAMPVA_FINALIZE_DESTINATION_KEY
+          metadata['submissionType'] = 'existing'
+        end
+
+        document_type_options = IVC_CHAMPVA_DOCUMENT_TYPE_OPTIONS_BY_FORM_ID[form_id]
+        metadata['documentTypeOptions'] = document_type_options if document_type_options.present?
+      end
+
+      metadata
     end
 
     def add_evidence_submissions(claim, evidence_submissions)
@@ -328,7 +406,10 @@ module V0
     end
 
     def fetch_evidence_submissions(claim_ids, endpoint)
-      EvidenceSubmission.where(claim_id: claim_ids)
+      query_ids = resolve_evidence_submission_claim_ids(claim_ids)
+      return EvidenceSubmission.none if query_ids.empty?
+
+      EvidenceSubmission.where(claim_id: query_ids)
     rescue => e
       ::Rails.logger.error(
         "BenefitsClaimsController##{endpoint} Error fetching evidence submissions",
@@ -340,6 +421,17 @@ module V0
         }
       )
       EvidenceSubmission.none
+    end
+
+    def resolve_evidence_submission_claim_ids(claim_ids)
+      identifiers = Array(claim_ids).compact.map(&:to_s)
+      return [] if identifiers.empty?
+
+      numeric_ids = identifiers.grep(/\A\d+\z/).map(&:to_i)
+      uuid_ids = identifiers.grep_v(/\A\d+\z/)
+      numeric_ids += IvcChampvaForm.where(form_uuid: uuid_ids).pluck(:id) if uuid_ids.any?
+
+      numeric_ids.uniq
     end
 
     def update_evidence_submissions_for_claim(claim_id, evidence_submissions)
@@ -441,28 +533,58 @@ module V0
     def add_evidence_submissions_to_claims(claims, all_evidence_submissions, endpoint)
       return if claims.empty?
 
-      # Group evidence submissions by claim_id for efficient lookup
-      evidence_submissions_by_claim = all_evidence_submissions.group_by(&:claim_id)
+      evidence_submissions_by_claim_id = all_evidence_submissions.group_by(&:claim_id)
+      ivc_form_ids_by_uuid = {}
 
-      # Add evidence submissions to each claim
+      assign_evidence_submissions_to_claims(
+        claims,
+        evidence_submissions_by_claim_id,
+        ivc_form_ids_by_uuid
+      )
+    rescue ArgumentError
+      ensure_claims_have_evidence_submissions(claims)
+    rescue => e
+      log_add_evidence_submissions_error(claims, endpoint, e)
+    end
+
+    def assign_evidence_submissions_to_claims(claims, evidence_submissions_by_claim_id, ivc_form_ids_by_uuid)
       claims.each do |claim|
-        claim_id = claim['id'].to_i
-        evidence_submissions = evidence_submissions_by_claim[claim_id] || []
-
+        evidence_submissions = evidence_submissions_for_claim(
+          claim,
+          evidence_submissions_by_claim_id,
+          ivc_form_ids_by_uuid
+        )
         claim['attributes']['evidenceSubmissions'] =
           add_evidence_submissions(claim, evidence_submissions)
       end
-    rescue => e
-      # Log error but don't fail the request - graceful degradation
-      # Frontend already handles missing evidenceSubmissions attribute
+    end
+
+    def ensure_claims_have_evidence_submissions(claims)
+      claims.each do |claim|
+        claim['attributes']['evidenceSubmissions'] ||= []
+      end
+    end
+
+    def log_add_evidence_submissions_error(claims, endpoint, error)
       claim_ids = claims.map { |claim| claim['id'] }
       ::Rails.logger.error(
         "BenefitsClaimsController##{endpoint} Error adding evidence submissions",
-        {
-          claim_ids:,
-          error_class: e.class.name
-        }
+        { claim_ids:, error_class: error.class.name }
       )
+    end
+
+    def evidence_submissions_for_claim(claim, evidence_submissions_by_claim_id, ivc_form_ids_by_uuid)
+      provider = claim.dig('attributes', 'provider')
+      claim_id = claim['id'].to_s
+      return non_champva_evidence_submissions(claim_id, evidence_submissions_by_claim_id) if provider != 'ivc_champva'
+
+      ivc_form_ids_by_uuid[claim_id] ||= IvcChampvaForm.where(form_uuid: claim_id).pluck(:id)
+      ivc_form_ids_by_uuid[claim_id].flat_map { |form_id| evidence_submissions_by_claim_id[form_id] || [] }
+    end
+
+    def non_champva_evidence_submissions(claim_id, evidence_submissions_by_claim_id)
+      numeric_claim_id = Integer(claim_id, 10)
+      evidence_submissions_by_claim_id[numeric_claim_id] || []
     end
 
     def recently_polled_request_ids?(claim_id, request_ids)
@@ -500,4 +622,5 @@ module V0
       )
     end
   end
+  # rubocop:enable Metrics/ClassLength
 end

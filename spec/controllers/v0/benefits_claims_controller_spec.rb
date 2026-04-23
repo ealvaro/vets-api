@@ -1095,7 +1095,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
           allow(EvidenceSubmission).to receive(:where).and_call_original
 
           # Mock to raise error when fetching evidence submissions for this specific claim
-          allow(EvidenceSubmission).to receive(:where).with(claim_id: claim_id.to_s)
+          allow(EvidenceSubmission).to receive(:where).with(claim_id: [claim_id.to_i])
                                                       .and_raise(StandardError, 'Database connection error')
         end
 
@@ -2461,6 +2461,92 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
           end
         end
       end
+    end
+  end
+
+  describe '#build_upload_metadata_for_claim' do
+    it 'returns benefits_claims destination for lighthouse claims' do
+      claim = {
+        'attributes' => {
+          'provider' => 'lighthouse',
+          'claimType' => 'Compensation'
+        }
+      }
+
+      metadata = controller.send(:build_upload_metadata_for_claim, claim)
+
+      expect(metadata).to eq({ 'uploadDestinationKey' => 'benefits_claims' })
+    end
+
+    context 'for mapped CHAMPVA claim types' do
+      let(:claim) do
+        {
+          'attributes' => {
+            'provider' => 'ivc_champva',
+            'claimType' => 'CHAMPVA application'
+          }
+        }
+      end
+
+      let(:base_metadata) do
+        {
+          'uploadDestinationKey' => 'ivc_champva_supporting_documents',
+          'formId' => '10-10D-EXTENDED',
+          'acceptedFileTypes' => %w[pdf jpg jpeg png],
+          'documentTypeOptions' => [
+            { 'value' => 'Court ordered adoption papers', 'label' => 'Court ordered adoption papers' },
+            { 'value' => 'Birth certificate', 'label' => 'Birth certificate' },
+            { 'value' => 'Certificate of civil union', 'label' => 'Certificate of civil union' },
+            { 'value' => 'Divorce decree', 'label' => 'Divorce decree' },
+            { 'value' => 'Marriage certificate', 'label' => 'Marriage certificate' },
+            { 'value' => 'Front of Medicare Parts A or B card', 'label' => 'Front of Medicare Parts A or B card' },
+            { 'value' => 'Back of Medicare Parts A or B card', 'label' => 'Back of Medicare Parts A or B card' },
+            { 'value' => 'Front of Medicare Part C card', 'label' => 'Front of Medicare Part C card' },
+            { 'value' => 'Back of Medicare Part C card', 'label' => 'Back of Medicare Part C card' },
+            { 'value' => 'Front of Medicare Part D card', 'label' => 'Front of Medicare Part D card' },
+            { 'value' => 'Back of Medicare Part D card', 'label' => 'Back of Medicare Part D card' },
+            { 'value' => 'Front of health insurance card', 'label' => 'Front of health insurance card' },
+            { 'value' => 'Back of health insurance card', 'label' => 'Back of health insurance card' },
+            { 'value' => 'Other document', 'label' => 'Other document' },
+            { 'value' => 'School enrollment certification form', 'label' => 'School enrollment certification form' },
+            { 'value' => 'Enrollment letter', 'label' => 'Enrollment letter' },
+            { 'value' => 'Letter from the SSA', 'label' => 'Letter from the SSA' }
+          ]
+        }
+      end
+
+      it 'includes docs-only finalize metadata when enhanced flow flipper is enabled' do
+        metadata = controller.send(
+          :build_upload_metadata_for_claim,
+          claim,
+          champva_enhanced_flow_enabled: true
+        )
+
+        expect(metadata).to eq(
+          base_metadata.merge(
+            'finalizeDestinationKey' => 'ivc_champva_docs_only_resubmission',
+            'submissionType' => 'existing'
+          )
+        )
+      end
+
+      it 'omits docs-only finalize metadata when enhanced flow flipper is disabled' do
+        metadata = controller.send(
+          :build_upload_metadata_for_claim,
+          claim,
+          champva_enhanced_flow_enabled: false
+        )
+
+        expect(metadata).to eq(base_metadata)
+      end
+    end
+
+    it 'falls back to default destination when provider is missing' do
+      claim = { 'attributes' => { 'claimType' => 'Compensation' } }
+
+      metadata = controller.send(:build_upload_metadata_for_claim, claim)
+
+      expect(metadata).to eq({ 'uploadDestinationKey' => 'benefits_claims' })
     end
   end
 end

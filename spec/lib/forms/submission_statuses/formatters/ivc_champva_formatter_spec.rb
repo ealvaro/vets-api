@@ -17,8 +17,8 @@ describe Forms::SubmissionStatuses::Formatters::IvcChampvaFormatter,
         pega_status: 'Processed'
       )
 
-      dataset = instance_double(
-        Forms::SubmissionStatuses::Dataset,
+      dataset = double(
+        'Dataset',
         submissions?: true,
         submissions: [submission],
         intake_statuses?: false,
@@ -41,8 +41,8 @@ describe Forms::SubmissionStatuses::Formatters::IvcChampvaFormatter,
         pega_status: 'Processed'
       )
 
-      dataset = instance_double(
-        Forms::SubmissionStatuses::Dataset,
+      dataset = double(
+        'Dataset',
         submissions?: true,
         submissions: [submission],
         intake_statuses?: false,
@@ -54,6 +54,27 @@ describe Forms::SubmissionStatuses::Formatters::IvcChampvaFormatter,
       expect(result.first.form_type).to eq('10-10D')
     end
 
+    it 'excludes 10-10D-EXTENDED-EXISTING from card display' do
+      submission = create(
+        :ivc_champva_form,
+        form_uuid: SecureRandom.uuid,
+        form_number: '10-10D-EXTENDED-EXISTING',
+        pega_status: 'Submitted'
+      )
+
+      dataset = double(
+        'Dataset',
+        submissions?: true,
+        submissions: [submission],
+        intake_statuses?: false,
+        intake_statuses: nil
+      )
+
+      result = formatter.format_data(dataset)
+
+      expect(result).to be_empty
+    end
+
     it 'maps PEGA Not Processed status to error (action needed)' do
       submission = create(
         :ivc_champva_form,
@@ -62,8 +83,8 @@ describe Forms::SubmissionStatuses::Formatters::IvcChampvaFormatter,
         pega_status: 'Not Processed'
       )
 
-      dataset = instance_double(
-        Forms::SubmissionStatuses::Dataset,
+      dataset = double(
+        'Dataset',
         submissions?: true,
         submissions: [submission],
         intake_statuses?: false,
@@ -85,8 +106,8 @@ describe Forms::SubmissionStatuses::Formatters::IvcChampvaFormatter,
         s3_status: 'failed'
       )
 
-      dataset = instance_double(
-        Forms::SubmissionStatuses::Dataset,
+      dataset = double(
+        'Dataset',
         submissions?: true,
         submissions: [submission],
         intake_statuses?: false,
@@ -108,8 +129,8 @@ describe Forms::SubmissionStatuses::Formatters::IvcChampvaFormatter,
         s3_status: 'Submitted'
       )
 
-      dataset = instance_double(
-        Forms::SubmissionStatuses::Dataset,
+      dataset = double(
+        'Dataset',
         submissions?: true,
         submissions: [submission],
         intake_statuses?: false,
@@ -131,8 +152,8 @@ describe Forms::SubmissionStatuses::Formatters::IvcChampvaFormatter,
         s3_status: 'queued'
       )
 
-      dataset = instance_double(
-        Forms::SubmissionStatuses::Dataset,
+      dataset = double(
+        'Dataset',
         submissions?: true,
         submissions: [submission],
         intake_statuses?: false,
@@ -142,6 +163,33 @@ describe Forms::SubmissionStatuses::Formatters::IvcChampvaFormatter,
       result = formatter.format_data(dataset)
 
       expect(result.first.status).to eq('pending')
+    end
+
+    it 'excludes docs-only supporting-document submissions from application cards' do
+      docs_only_submission = create(
+        :ivc_champva_form,
+        form_uuid: SecureRandom.uuid,
+        form_number: '10-10D-EXTENDED-EXISTING',
+        pega_status: 'Submitted'
+      )
+      real_application_submission = create(
+        :ivc_champva_form,
+        form_uuid: SecureRandom.uuid,
+        form_number: '10-10D-EXTENDED',
+        pega_status: 'Submitted'
+      )
+
+      dataset = double(
+        'Dataset',
+        submissions?: true,
+        submissions: [docs_only_submission, real_application_submission],
+        intake_statuses?: false,
+        intake_statuses: nil
+      )
+
+      result = formatter.format_data(dataset)
+
+      expect(result.map(&:id)).to contain_exactly(real_application_submission.form_uuid.to_s)
     end
   end
 end

@@ -7,8 +7,11 @@ module Forms
     module Formatters
       class IvcChampvaFormatter < BaseFormatter
         FORM_TYPE_MAP = {
-          '10-10d-extended' => '10-10D'
+          '10-10d-extended' => '10-10D',
+          '10-10d-extended-existing' => '10-10D',
+          '10-10d-extended-enrollment' => '10-10D'
         }.freeze
+        DOCS_ONLY_FORM_NUMBER_PATTERN = /\A10-10d-extended-(existing|enrollment)\z/i
 
         STATUS_MAP = {
           # PEGA statuses
@@ -43,7 +46,9 @@ module Forms
         end
 
         def build_submissions_map(submissions)
-          submissions.each_with_object({}) do |submission, hash|
+          filtered_submissions = submissions.reject { |submission| docs_only_submission?(submission) }
+
+          filtered_submissions.each_with_object({}) do |submission, hash|
             hash[submission.form_uuid.to_s] = OpenStruct.new(
               id: submission.form_uuid.to_s,
               detail: submission.case_id,
@@ -55,6 +60,10 @@ module Forms
               pdf_support: false
             )
           end
+        end
+
+        def docs_only_submission?(submission)
+          submission.form_number.to_s.match?(DOCS_ONLY_FORM_NUMBER_PATTERN)
         end
 
         def normalize_status(submission)
