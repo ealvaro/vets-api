@@ -1611,6 +1611,10 @@ features:
     actor_type: cookie_id
     enable_in_development: true
     description: "Toggle the sending of data to IBM GOVCIO for form 21p-8416"
+  mhv_account_activity_log_enabled:
+    actor_type: user
+    description: Enables the MHV account activity log feature
+    enable_in_development: false
   mhv_accelerated_delivery_enabled:
     actor_type: user
     description: Control whether vets-api allows fetching MR data from LightHouse
