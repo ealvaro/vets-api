@@ -2393,6 +2393,14 @@ features:
     actor_type: user
     description: Blocks users under 18 years old from filing the 1990e and 5490 forms
     enable_in_development: true
+  meb5490_automation:
+    actor_type: user
+    description: >
+      Enables automated claim status polling and confirmation emails for Chapter 35
+      (DEA - Dependents' Educational Assistance) applications. When enabled, Chapter 35
+      applicants receive real-time eligibility updates and automated confirmation emails.
+      Does not affect Fry Scholarship applications.
+    enable_in_development: true
   dgi_rudisill_hide_benefits_selection_step:
     actor_type: user
     description: Hides benefit selection page on original claims application.

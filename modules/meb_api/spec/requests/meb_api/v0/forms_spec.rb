@@ -99,6 +99,13 @@ RSpec.describe 'MebApi::V0 Forms', type: :request do
           expect(JSON.parse(response.body)['data']['attributes']['claimant_id']).to eq(600_000_001)
         end
       end
+
+      it 'handles a request for Chapter35 type' do
+        VCR.use_cassette('dgi/polling_chapter35_without_race_condition') do
+          get '/meb_api/v0/forms_claim_status', params: { type: 'Chapter35' }
+          expect(response).to have_http_status(:ok)
+        end
+      end
     end
   end
 
@@ -241,6 +248,74 @@ RSpec.describe 'MebApi::V0 Forms', type: :request do
             form_type: '10297', email: 'test@test.com', first_name: 'test'
           }
           expect(MebApi::V0::Submit10297FormConfirmation).not_to have_received(:perform_async)
+          expect(response).to have_http_status(:unprocessable_entity)
+        end
+      end
+    end
+
+    context 'with form_type=225490' do
+      context 'when the feature flag is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?).with(:meb5490_automation).and_return(true)
+        end
+
+        it 'dispatches the 225490 worker with provided params' do
+          allow(MebApi::V0::Submit225490FormConfirmation).to receive(:perform_async)
+          post '/meb_api/v0/forms_send_confirmation_email', params: {
+            form_type: '225490', claim_status: 'ELIGIBLE', email: 'test@test.com', first_name: 'test'
+          }
+          expect(MebApi::V0::Submit225490FormConfirmation).to have_received(:perform_async)
+            .with('ELIGIBLE', 'test@test.com', 'TEST', user.icn)
+        end
+
+        it 'uses current user email and name when params not provided' do
+          allow(MebApi::V0::Submit225490FormConfirmation).to receive(:perform_async)
+          post '/meb_api/v0/forms_send_confirmation_email', params: {
+            form_type: '225490', claim_status: 'INPROGRESS'
+          }
+          expect(MebApi::V0::Submit225490FormConfirmation).to have_received(:perform_async)
+            .with('INPROGRESS', user.email, 'HERBERT', user.icn)
+        end
+
+        it 'does not dispatch the 1990emeb worker' do
+          allow(MebApi::V0::Submit225490FormConfirmation).to receive(:perform_async)
+          allow(MebApi::V0::Submit1990emebFormConfirmation).to receive(:perform_async)
+          post '/meb_api/v0/forms_send_confirmation_email', params: {
+            form_type: '225490', claim_status: 'INPROGRESS', email: 'test@test.com', first_name: 'test'
+          }
+          expect(MebApi::V0::Submit1990emebFormConfirmation).not_to have_received(:perform_async)
+        end
+      end
+
+      context 'when the feature flag is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?).with(:meb5490_automation).and_return(false)
+        end
+
+        it 'does not send the confirmation email' do
+          allow(MebApi::V0::Submit225490FormConfirmation).to receive(:perform_async)
+          post '/meb_api/v0/forms_send_confirmation_email', params: {
+            form_type: '225490', claim_status: 'ELIGIBLE', email: 'test@test.com', first_name: 'test'
+          }
+          expect(MebApi::V0::Submit225490FormConfirmation).not_to have_received(:perform_async)
+          expect(response).to have_http_status(:no_content)
+        end
+      end
+
+      context 'when required attributes are missing' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?).with(:meb5490_automation).and_return(true)
+          allow(MebApi::V0::Submit225490FormConfirmation).to receive(:perform_async)
+        end
+
+        it 'does not send email when claim_status is missing' do
+          post '/meb_api/v0/forms_send_confirmation_email', params: {
+            form_type: '225490', email: 'test@test.com', first_name: 'test'
+          }
+          expect(MebApi::V0::Submit225490FormConfirmation).not_to have_received(:perform_async)
           expect(response).to have_http_status(:unprocessable_entity)
         end
       end

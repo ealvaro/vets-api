@@ -7,11 +7,13 @@ module MebApi
     FORM_1990MEB = '1990MEB'
     FORM_1990EMEB = '1990EMEB'
     FORM_10297 = '10297'
+    FORM_225490 = '225490'
 
     # StatsD metric tags
     TAG_1990MEB = 'form:1990meb'
     TAG_1990EMEB = 'form:1990emeb'
     TAG_10297 = 'form:10297'
+    TAG_225490 = 'form:225490'
 
     # Normalized claim statuses for metrics (prevent unbounded cardinality)
     VALID_CLAIM_STATUSES = %w[ELIGIBLE DENIED PENDING OFFRAMP UNDER_REVIEW].freeze
@@ -20,7 +22,8 @@ module MebApi
     DEFAULT_FALLBACK = {
       FORM_1990MEB => 'OFFRAMP',
       FORM_1990EMEB => 'OFFRAMP',
-      FORM_10297 => 'UNDER_REVIEW'
+      FORM_10297 => 'UNDER_REVIEW',
+      FORM_225490 => 'OFFRAMP'
     }.freeze
 
     # Template ID mappings by form type and status
@@ -39,6 +42,10 @@ module MebApi
         'ELIGIBLE' => :form10297_approved_confirmation_email,
         'DENIED' => :form10297_denied_confirmation_email,
         'UNDER_REVIEW' => :form10297_under_review_confirmation_email
+      },
+      FORM_225490 => {
+        'ELIGIBLE' => :form225490_approved_confirmation_email,
+        'OFFRAMP' => :form225490_offramp_confirmation_email
       }
     }.freeze
 

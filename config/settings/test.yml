@@ -1908,6 +1908,8 @@ vanotify:
         form21p_601_confirmation_email: form21p_601_confirmation_email_template_id
         form21p_601_error_email: form21p_601_error_email_template_id
         form21p_601_received_email: form21p_601_received_email_template_id
+        form225490_approved_confirmation_email: form225490_approved_confirmation_email_template_id
+        form225490_offramp_confirmation_email: form225490_offramp_confirmation_email_template_id
         form26_4555_confirmation_email: form26_4555_confirmation_email_template_id
         form26_4555_duplicate_email: form26_4555_duplicate_email_template_id
         form26_4555_rejected_email: form26_4555_rejected_email_template_id

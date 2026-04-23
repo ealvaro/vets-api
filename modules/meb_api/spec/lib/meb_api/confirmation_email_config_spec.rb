@@ -32,7 +32,9 @@ RSpec.describe MebApi::ConfirmationEmailConfig do
         form1990emeb_offramp_confirmation_email: 'emeb_offramp',
         form10297_approved_confirmation_email: '10297_approved',
         form10297_denied_confirmation_email: '10297_denied',
-        form10297_under_review_confirmation_email: '10297_under_review'
+        form10297_under_review_confirmation_email: '10297_under_review',
+        form225490_approved_confirmation_email: '225490_approved',
+        form225490_offramp_confirmation_email: '225490_offramp'
       )
     end
 
@@ -93,6 +95,28 @@ RSpec.describe MebApi::ConfirmationEmailConfig do
       it 'returns the under_review template for PENDING' do
         result = described_class.template_id(form_type: '10297', claim_status: 'PENDING')
         expect(result).to eq('10297_under_review')
+      end
+    end
+
+    context 'with FORM_225490' do
+      it 'returns the approved template for ELIGIBLE' do
+        result = described_class.template_id(form_type: '225490', claim_status: 'ELIGIBLE')
+        expect(result).to eq('225490_approved')
+      end
+
+      it 'returns the offramp template for INPROGRESS' do
+        result = described_class.template_id(form_type: '225490', claim_status: 'INPROGRESS')
+        expect(result).to eq('225490_offramp')
+      end
+
+      it 'returns the offramp template for DENIED' do
+        result = described_class.template_id(form_type: '225490', claim_status: 'DENIED')
+        expect(result).to eq('225490_offramp')
+      end
+
+      it 'returns the offramp template for ERROR' do
+        result = described_class.template_id(form_type: '225490', claim_status: 'ERROR')
+        expect(result).to eq('225490_offramp')
       end
     end
   end

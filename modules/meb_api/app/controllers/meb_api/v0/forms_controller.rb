@@ -21,6 +21,11 @@ module MebApi
           worker: MebApi::V0::Submit10297FormConfirmation,
           form_tag: MebApi::ConfirmationEmailConfig::TAG_10297,
           flipper_key: :form10297_meb_confirmation_email
+        },
+        '225490' => {
+          worker: MebApi::V0::Submit225490FormConfirmation,
+          form_tag: MebApi::ConfirmationEmailConfig::TAG_225490,
+          flipper_key: :meb5490_automation
         }
       }.freeze
 
@@ -108,7 +113,11 @@ module MebApi
       private
 
       def set_type
-        @form_type = params['type'] == 'ToeSubmission' ? 'toe' : params['type']&.capitalize
+        @form_type = case params['type']
+                     when 'ToeSubmission' then 'toe'
+                     when 'Chapter35Submission' then 'Chapter35'
+                     else params['type']&.capitalize
+                     end
       end
 
       def resolve_email_config
