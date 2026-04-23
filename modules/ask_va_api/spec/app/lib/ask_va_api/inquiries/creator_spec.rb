@@ -123,6 +123,38 @@ RSpec.describe AskVAApi::Inquiries::Creator do
         )
       end
 
+      it 'invokes the crm response checkpoint with the CRM response payload' do
+        crm_response_checkpoint = instance_double(AskVAApi::Inquiries::Checkpoint::CrmResponse, call: true)
+
+        allow(AskVAApi::Inquiries::Checkpoint::CrmResponse).to receive(:new).and_return(crm_response_checkpoint)
+
+        creator.call(inquiry_params: inquiry_params[:inquiry], request_id:)
+
+        expect(crm_response_checkpoint).to have_received(:call).with(
+          request_id:,
+          payload: crm_success_response
+        )
+      end
+
+      it 'does not block a successful submission if crm response checkpoint recording fails' do
+        allow_any_instance_of(AskVAApi::Inquiries::Checkpoint::CrmResponse)
+          .to receive(:call)
+          .and_raise(StandardError, 'crm response checkpoint failure')
+        allow(Rails.logger).to receive(:warn)
+
+        response = creator.call(inquiry_params: inquiry_params[:inquiry], request_id:)
+
+        expect(response).to include({ InquiryNumber: '530d56a8-affd-ee11-a1fe-001dd8094ff1' })
+        expect(Rails.logger).to have_received(:warn).with(
+          'Failed to record CRM response checkpoint',
+          hash_including(
+            checkpoint_type: 'crm_response',
+            error_class: 'StandardError',
+            error_message: 'crm response checkpoint failure'
+          )
+        )
+      end
+
       it 'assigns VeteranICN and posts data to the service' do
         allow(Datadog::Tracing).to receive(:trace).and_yield(span)
         allow(span).to receive(:set_tag)
@@ -245,12 +277,26 @@ RSpec.describe AskVAApi::Inquiries::Creator do
       let(:body) do
         '{"Data":null,"Message":"Data Validation: missing InquiryCategory"' \
           ',"ExceptionOccurred":true,"ExceptionMessage":"Data Validation: missing' \
-          'InquiryCategory","MessageId":"cb0dd954-ef25-4e56-b0d9-41925e5a190c"}'
+          ' InquiryCategory","MessageId":"cb0dd954-ef25-4e56-b0d9-41925e5a190c"}'
       end
       let(:failure) { Faraday::Response.new(response_body: body, status: 400) }
 
       before do
         allow(service).to receive(:call).and_return(failure)
+      end
+
+      it 'invokes the crm response checkpoint with a parsed CRM failure payload' do
+        crm_response_checkpoint = instance_double(AskVAApi::Inquiries::Checkpoint::CrmResponse, call: true)
+
+        allow(AskVAApi::Inquiries::Checkpoint::CrmResponse).to receive(:new).and_return(crm_response_checkpoint)
+
+        expect { creator.call(inquiry_params: inquiry_params[:inquiry], request_id:) }
+          .to raise_error(AskVAApi::Inquiries::InquiriesCreatorError)
+
+        expect(crm_response_checkpoint).to have_received(:call).with(
+          request_id:,
+          payload: crm_failure_response
+        )
       end
 
       it 'raises InquiriesCreatorError with proper error message' do

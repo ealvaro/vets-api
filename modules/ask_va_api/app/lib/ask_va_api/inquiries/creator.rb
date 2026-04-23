@@ -63,7 +63,7 @@ module AskVAApi
             span.set_tag('Crm.LevelOfAuthentication', payload[:LevelOfAuthentication])
           end
           record_outbound_checkpoint(request_id:, payload:)
-          post_data(payload)
+          post_data(payload, request_id:)
         rescue => e
           span.set_error(e)
           raise InquiriesCreatorError.new("InquiriesCreatorError: #{e.message}", context: { safe_fields: })
@@ -85,11 +85,40 @@ module AskVAApi
         PayloadBuilder::InquiryPayload.new(inquiry_params:, user:).call
       end
 
-      def post_data(payload)
+      def post_data(payload, request_id:)
         response = service.call(endpoint: ENDPOINT, method: :put, payload:)
+        record_crm_response_checkpoint(request_id:, payload: crm_response_checkpoint_payload(response))
         data = handle_response(response)
         log_inquiry_result_context(data)
         data
+      end
+
+      def crm_response_checkpoint_payload(response)
+        return response if response.is_a?(Hash)
+
+        # CRM failures arrive as Faraday::Response objects; normalize them into a hash before checkpointing.
+        parsed_body = parse_response_body(response.body)
+        return parsed_body if parsed_body.is_a?(Hash)
+
+        fallback_crm_error_payload(response)
+      end
+
+      def parse_response_body(body)
+        return body unless body.is_a?(String)
+
+        JSON.parse(body, symbolize_names: true)
+      rescue JSON::ParserError
+        nil
+      end
+
+      def fallback_crm_error_payload(response)
+        {
+          Data: nil,
+          Message: response.body.to_s,
+          ExceptionOccurred: true,
+          ExceptionMessage: response.body.to_s,
+          StatusCode: response.status
+        }
       end
 
       def log_inquiry_result_context(data)
@@ -105,7 +134,7 @@ module AskVAApi
       end
 
       def record_outbound_checkpoint(request_id:, payload:)
-        Inquiries::Checkpoint::Outbound.new.call(
+        Checkpoint::Outbound.new.call(
           request_id:,
           payload:
         )
@@ -115,6 +144,23 @@ module AskVAApi
           {
             request_id:,
             checkpoint_type: 'outbound_submission',
+            error_class: e.class.name,
+            error_message: e.message
+          }
+        )
+      end
+
+      def record_crm_response_checkpoint(request_id:, payload:)
+        Checkpoint::CrmResponse.new.call(
+          request_id:,
+          payload:
+        )
+      rescue => e
+        Rails.logger.warn(
+          'Failed to record CRM response checkpoint',
+          {
+            request_id:,
+            checkpoint_type: 'crm_response',
             error_class: e.class.name,
             error_message: e.message
           }
