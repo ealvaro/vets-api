@@ -381,8 +381,9 @@ module IvcChampva
           termination_date: format_date(insurance['expiration_date'] || insurance['termination_date']),
           insurance_plan_type: normalize_insurance_plan_type(plan_type),
           is_through_employment: insurance['through_employer'] || insurance['is_through_employment'],
-          is_prescription_covered: insurance['is_prescription_covered'] || insurance['has_prescription'],
-          eob_indicator: normalize_eob_indicator(insurance['eob'] || insurance['eob_indicator']),
+          is_prescription_covered: insurance.values_at('eob', 'is_prescription_covered',
+                                                       'has_prescription').compact.first,
+          eob_indicator: normalize_eob_indicator(insurance['eob_indicator']),
           comments: insurance['additional_comments'] || insurance['comments']
         }.compact
       end

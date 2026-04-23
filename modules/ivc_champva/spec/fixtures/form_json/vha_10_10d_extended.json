@@ -117,6 +117,7 @@
           "effective_date": "2024-10-01",
           "expiration_date": "2024-10-02",
           "through_employer": true,
+          "eob": true,
           "additional_comments": "Lorem"
         }
       ],

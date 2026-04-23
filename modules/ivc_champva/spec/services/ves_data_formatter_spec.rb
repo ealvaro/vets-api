@@ -864,6 +864,7 @@ describe IvcChampva::VesDataFormatter do
         expect(result.first[:insurance_name]).to eq('Advantage Health Solutions')
         expect(result.first[:insurance_plan_type]).to eq('MEDICARE_ADVANTAGE')
         expect(result.first[:effective_date]).to eq('2023-02-01')
+        expect(result.first[:is_prescription_covered]).to be true
       end
 
       it 'returns empty array when no Part C present or nil input' do
@@ -891,6 +892,21 @@ describe IvcChampva::VesDataFormatter do
         expect(result.first[:effective_date]).to eq('2024-10-01')
         expect(result.first[:termination_date]).to eq('2024-10-02')
         expect(result.first[:is_through_employment]).to be true
+        expect(result.first[:is_prescription_covered]).to be true
+        expect(result.first[:eob_indicator]).to be_nil
+      end
+
+      it 'maps eob_indicator when explicitly provided' do
+        insurance = [{
+          'insurance_type' => 'hmo',
+          'provider' => 'Aetna',
+          'effective_date' => '2024-01-01',
+          'eob' => false,
+          'eob_indicator' => true
+        }]
+        result = IvcChampva::VesDataFormatter.map_other_insurances(insurance)
+
+        expect(result.first[:is_prescription_covered]).to be false
         expect(result.first[:eob_indicator]).to be true
       end
 
@@ -964,6 +980,14 @@ describe IvcChampva::VesDataFormatter do
         # Other insurances (Part C as MEDICARE_ADVANTAGE + health_insurance)
         plan_types = beneficiary.other_insurances.map(&:insurance_plan_type)
         expect(plan_types).to include('MEDICARE_ADVANTAGE', 'MEDIGAP_PLAN')
+
+        # Prescription coverage: 'eob' from health_insurance maps to isPrescriptionCovered
+        medigap = beneficiary.other_insurances.find { |oi| oi.insurance_plan_type == 'MEDIGAP_PLAN' }
+        expect(medigap.is_prescription_covered).to be true
+
+        # Prescription coverage: 'has_pharmacy_benefits' from Medicare Part C maps to isPrescriptionCovered
+        advantage = beneficiary.other_insurances.find { |oi| oi.insurance_plan_type == 'MEDICARE_ADVANTAGE' }
+        expect(advantage.is_prescription_covered).to be true
       end
 
       it 'produces valid JSON output with normalized dates' do
@@ -1002,14 +1026,23 @@ describe IvcChampva::VesDataFormatter do
         # Insurance types
         plan_types = beneficiary.other_insurances.map(&:insurance_plan_type)
         expect(plan_types).to include('MEDIGAP_PLAN', 'MEDICARE_ADVANTAGE')
+
+        # Prescription coverage populated from 'eob' and 'has_pharmacy_benefits'
+        medigap = beneficiary.other_insurances.find { |oi| oi.insurance_plan_type == 'MEDIGAP_PLAN' }
+        expect(medigap.is_prescription_covered).to be true
+        advantage = beneficiary.other_insurances.find { |oi| oi.insurance_plan_type == 'MEDICARE_ADVANTAGE' }
+        expect(advantage.is_prescription_covered).to be true
       end
 
-      it 'produces valid JSON with certification from nested object' do
+      it 'produces valid JSON with isPrescriptionCovered in serialized output' do
         ves_request = IvcChampva::VesDataFormatter.format_for_extended_request(extended_form_data, form_uuid:)
         parsed = JSON.parse(ves_request.subforms.first[:request].to_json)
 
         expect(parsed['applicationType']).to eq('CHAMPVA_INS_APPLICATION')
         expect(parsed['certification']['signature']).to eq('Certifier Jones')
+
+        other_insurances = parsed['beneficiaryMedicare']['otherInsurances']
+        expect(other_insurances).to all(have_key('isPrescriptionCovered'))
       end
     end
 
