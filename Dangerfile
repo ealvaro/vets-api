@@ -190,9 +190,9 @@ module VSPDanger
     end
 
     def run
-      required_group = '@department-of-veterans-affairs/backend-review-group'
-      exception_groups = %w[@department-of-veterans-affairs/octo-identity
-                            @department-of-veterans-affairs/mobile-api-team]
+      required_group = '@software/backend-review-group'
+      exception_groups = %w[@software/octo-identity
+                            @software/mobile-api-team]
 
       diff = fetch_git_diff
 
@@ -495,7 +495,7 @@ module VSPDanger
       <<~EMSG
         You've removed Sidekiq Enterprise from the Gemfile!  You must restore it before merging this PR.
 
-        More details about Sidekiq Enterprise can be found in the [README](https://github.com/department-of-veterans-affairs/vets-api/blob/master/README.md).
+        More details about Sidekiq Enterprise can be found in the [README](https://va.ghe.com/software/vets-api/blob/master/README.md).
       EMSG
     end
 

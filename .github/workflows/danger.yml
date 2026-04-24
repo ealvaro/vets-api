@@ -2,6 +2,7 @@ name: Danger
 on: [pull_request]
 permissions:
   contents: read
+  issues: read
   pull-requests: write
   statuses: write
 jobs:
@@ -11,6 +12,7 @@ jobs:
     env:
       BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
       DANGER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DANGER_GITHUB_API_BASE_URL: https://va.ghe.com/api/v3
 
     runs-on: ubuntu-latest
 

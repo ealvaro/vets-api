@@ -6,7 +6,7 @@ When `backend-review-group` is assigned to directories (rather than specific fil
 
 ## Problem Statement
 
-Based on [PR #25237](https://github.com/department-of-veterans-affairs/vets-api/pull/25237), when `backend-review-group` is assigned to entire directories in CODEOWNERS, any new files created by other VFS teams within those directories are automatically assigned to the backend-review-group for review. This can:
+Based on [PR #25237](https://va.ghe.com/software/vets-api/pull/25237), when `backend-review-group` is assigned to entire directories in CODEOWNERS, any new files created by other VFS teams within those directories are automatically assigned to the backend-review-group for review. This can:
 
 - Overwhelm the backend-review-group with reviews for code they don't own
 - Create confusion about code ownership
@@ -22,10 +22,10 @@ The Codeowner Check triggers on PRs that modify `.github/CODEOWNERS` and:
 ### ❌ Incorrect Ownership
 
 ```
-app/models/claims_api @department-of-veterans-affairs/backend-review-group
-lib/rx @department-of-veterans-affairs/mobile-api-team @department-of-veterans-affairs/backend-review-group
-modules/appeals_api @department-of-veterans-affairs/lighthouse-banana-peels @department-of-veterans-affairs/backend-review-group
-spec/models/saved_claim @department-of-veterans-affairs/backend-review-group
+app/models/claims_api @software/backend-review-group
+lib/rx @software/mobile-api-team @software/backend-review-group
+modules/appeals_api @software/lighthouse-banana-peels @software/backend-review-group
+spec/models/saved_claim @software/backend-review-group
 ```
 
 ## Recommended Steps
@@ -34,15 +34,15 @@ spec/models/saved_claim @department-of-veterans-affairs/backend-review-group
 
 ```
 # Remove backend-review-group from directory, let owning team manage it
-app/models/claims_api @department-of-veterans-affairs/lighthouse-dash
-modules/appeals_api @department-of-veterans-affairs/lighthouse-banana-peels
+app/models/claims_api @software/lighthouse-dash
+modules/appeals_api @software/lighthouse-banana-peels
 ```
 
 ### Step 2: Assign Specific Files That Have Shared Ownership Across Shared Directories
 
 ```
 app/models/claims_api # This should not be assigned to one team when multiple teams also own files inside a directory.
-app/models/claims_api/legacy_model.rb  @department-of-veterans-affairs/lighthouse-dash @department-of-veterans-affairs/backend-review-group
+app/models/claims_api/legacy_model.rb  @software/lighthouse-dash @software/backend-review-group
 ```
 
 ### Recommendations:
