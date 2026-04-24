@@ -38,6 +38,7 @@ jobs:
         id: pr_info
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_HOST: va.ghe.com
         run: |
           PR_NUMBER="${{ github.event.pull_request.number }}"
           echo "pr_number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
@@ -183,6 +184,7 @@ jobs:
         id: approval_status
         env:
           GITHUB_TOKEN: ${{ env.VA_VSP_BOT_GITHUB_TOKEN }}
+          GH_HOST: va.ghe.com
           PR_NUMBER: ${{ steps.pr_info.outputs.pr_number }}
           ALL_FILES_EXEMPT: ${{ steps.file_ownership.outputs.all_files_exempt }}
         run: |
@@ -256,6 +258,7 @@ jobs:
       - name: Update PR labels
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_HOST: va.ghe.com
           PR_NUMBER: ${{ steps.pr_info.outputs.pr_number }}
           EXEMPT: ${{ steps.approval_status.outputs.exempt }}
           REQUIRES_APPROVAL: ${{ steps.approval_status.outputs.requires_approval }}

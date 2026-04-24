@@ -85,6 +85,7 @@ jobs:
              echo "CHANGED_FILES=$FILES" >> $GITHUB_ENV
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_HOST: va.ghe.com
 
       - name: Run service tags audit controllers task
         timeout-minutes: 20
