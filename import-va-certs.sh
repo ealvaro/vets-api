@@ -37,7 +37,7 @@ set -euo pipefail
     )
 
     echo "Downloading VA certificates..."
-    wget \
+    if wget \
         --level=1 \
         --quiet \
         --recursive \
@@ -45,7 +45,31 @@ set -euo pipefail
         --no-host-directories \
         --no-directories \
         --accept="VA*.cer" \
-        http://aia.pki.va.gov/PKI/AIA/VA/
+        http://aia.pki.va.gov/PKI/AIA/VA/; then
+        echo "✓ VA certificates downloaded from aia.pki.va.gov"
+    else
+        echo "⚠ aia.pki.va.gov unreachable, falling back to GitHub mirror..."
+        VA_CERT_REPO="https://raw.githubusercontent.com/department-of-veterans-affairs/platform-va-ca-certificate/main"
+        for cert in \
+            VA-Internal-S2-ICA1-v1 VA-Internal-S2-ICA2-v1 VA-Internal-S2-ICA3-v1 \
+            VA-Internal-S2-ICA4 VA-Internal-S2-ICA5 VA-Internal-S2-ICA6 \
+            VA-Internal-S2-ICA7 VA-Internal-S2-ICA8 VA-Internal-S2-ICA9 \
+            VA-Internal-S2-ICA10 VA-Internal-S2-ICA11 VA-Internal-S2-ICA12 \
+            VA-Internal-S2-ICA13 VA-Internal-S2-ICA14 VA-Internal-S2-ICA15 \
+            VA-Internal-S2-ICA16 VA-Internal-S2-ICA17 VA-Internal-S2-ICA18 \
+            VA-Internal-S2-ICA19 VA-Internal-S2-ICA20 VA-Internal-S2-ICA21 \
+            VA-Internal-S2-ICA22 VA-Internal-S2-ICA23 VA-Internal-S2-ICA24 \
+            VA-Internal-S2-ICA25 VA-Internal-S2-ICA26 VA-Internal-S2-ICA27 \
+            VA-Internal-S2-ICA28 VA-Internal-S2-ICA29 VA-Internal-S2-ICA30 \
+            VA-Internal-S2-ICA31 VA-Internal-S2-ICA32 VA-Internal-S2-ICA33 \
+            VA-Internal-S2-ICA34 \
+            VA-Internal-S2-RCA1-v1 VA-Internal-S2-RCA2 VA-Internal-S2-RCA3
+        do
+            curl --silent --show-error --fail --connect-timeout 10 --max-time 30 --retry 2 \
+                -o "${cert}.cer" "${VA_CERT_REPO}/${cert}.cer" || echo "Warning: Failed to download ${cert}.cer"
+        done
+        echo "✓ VA certificates downloaded from GitHub mirror"
+    fi
 
     # Check if any certificate files exist before processing
     shopt -s nullglob

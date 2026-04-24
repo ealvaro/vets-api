@@ -62,8 +62,8 @@ gem 'aws-msk-iam-sasl-signer', '~> 0.1.1'
 gem 'aws-sdk-kms'
 gem 'aws-sdk-s3', '~> 1'
 gem 'aws-sdk-sns', '~> 1'
-gem 'betamocks', git: 'https://github.com/department-of-veterans-affairs/betamocks', branch: 'master'
-gem 'bgs_ext', git: 'https://github.com/department-of-veterans-affairs/bgs-ext.git', require: 'bgs', ref: 'a68ea30'
+gem 'betamocks', git: 'https://va.ghe.com/software/betamocks', branch: 'master'
+gem 'bgs_ext', git: 'https://va.ghe.com/software/bgs-ext.git', require: 'bgs', ref: 'a68ea30'
 gem 'blind_index'
 gem 'blueprinter'
 gem 'bootsnap', require: false
@@ -90,7 +90,7 @@ gem 'faraday-multipart'
 gem 'faraday-retry'
 gem 'faraday-typhoeus'
 gem 'fastimage'
-gem 'fhir_client', git: 'https://github.com/department-of-veterans-affairs/fhir_client.git', tag: 'v6.1.0'
+gem 'fhir_client', git: 'https://va.ghe.com/software/fhir_client.git', tag: 'v6.1.0'
 gem 'fitbit_api'
 gem 'flipper'
 gem 'flipper-active_record'
@@ -99,7 +99,7 @@ gem 'flipper-ui'
 gem 'foreman'
 gem 'geocoder', '~> 1.8', '>= 1.8.6'
 gem 'google-protobuf' # For Datadog Profiling
-gem 'govdelivery-tms', git: 'https://github.com/department-of-veterans-affairs/govdelivery-tms-ruby.git', tag: 'v4.2.0', require: 'govdelivery/tms/mail/delivery_method'
+gem 'govdelivery-tms', git: 'https://va.ghe.com/software/govdelivery-tms-ruby.git', tag: 'v4.2.0', require: 'govdelivery/tms/mail/delivery_method'
 gem 'gyoku'
 gem 'hexapdf'
 gem 'holidays'
@@ -174,7 +174,7 @@ gem 'ttfunk', '~> 1.7.0'
 # POSIX systems should have this already, so we're not going to bring it in on other platforms
 gem 'tzinfo-data', platforms: %i[mingw mswin x64_mingw jruby]
 gem 'utf8-cleaner'
-gem 'vets_json_schema', git: 'https://github.com/department-of-veterans-affairs/vets-json-schema', branch: 'master'
+gem 'vets_json_schema', git: 'https://va.ghe.com/software/vets-json-schema', branch: 'master'
 gem 'virtus'
 gem 'warden-github'
 gem 'waterdrop'
@@ -196,7 +196,7 @@ group :development do
 end
 
 group :test do
-  gem 'apivore', git: 'https://github.com/department-of-veterans-affairs/apivore', tag: 'v2.1.0.vsp'
+  gem 'apivore', git: 'https://va.ghe.com/software/apivore', tag: 'v2.1.0.vsp'
   gem 'hashdiff'
   gem 'mock_redis'
   gem 'pdf-inspector'
@@ -223,7 +223,7 @@ group :development, :test do
   gem 'factory_bot_rails'
   gem 'faker'
   # CAUTION: faraday_curl may not provide all headers used in the actual faraday request. Be cautious if using this to
-  # assist with debugging production issues (https://github.com/department-of-veterans-affairs/vets.gov-team/pull/6262)
+  # assist with debugging production issues (https://va.ghe.com/software/vets.gov-team/pull/6262)
   gem 'faraday_curl'
   gem 'fuubar'
   gem 'guard-rspec'

@@ -54,9 +54,21 @@ jobs:
             bash script/ci/check_runtime_spec_dependencies.sh
           fi
 
+      - name: Generate cross-repo token for gems
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.GEM_APP_ID }}
+          private-key: ${{ secrets.GEM_APP_PRIVATE_KEY }}
+          owner: software
+          github-api-url: https://va.ghe.com/api/v3
+
       - uses: ruby/setup-ruby@7372622e62b60b3cb750dcd2b9e32c247ffec26a # v1
+        env:
+          BUNDLE_VA__GHE__COM: x-access-token:${{ steps.app-token.outputs.token }}
         with:
           bundler-cache: true
+
 
       - name: Check for Gemfile changes
         id: gemfile_changes
@@ -280,6 +292,15 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
 
+      - name: Generate cross-repo token for gems
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.GEM_APP_ID }}
+          private-key: ${{ secrets.GEM_APP_PRIVATE_KEY }}
+          owner: software
+          github-api-url: https://va.ghe.com/api/v3
+
       - name: Build and Cache Docker Image
         uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
         env:
@@ -287,6 +308,7 @@ jobs:
         with:
           build-args: |
             BUNDLE_ENTERPRISE__CONTRIBSYS__COM=${{ env.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
+            BUNDLE_VA__GHE__COM=x-access-token:${{ steps.app-token.outputs.token }}
             USER_ID=1001
           context: .
           push: false
@@ -475,9 +497,19 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
+      - name: Generate cross-repo token for gems
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.GEM_APP_ID }}
+          private-key: ${{ secrets.GEM_APP_PRIVATE_KEY }}
+          owner: software
+          github-api-url: https://va.ghe.com/api/v3
+
       - uses: ruby/setup-ruby@7372622e62b60b3cb750dcd2b9e32c247ffec26a # v1
         env:
           BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
+          BUNDLE_VA__GHE__COM: x-access-token:${{ steps.app-token.outputs.token }}
         with:
           bundler-cache: ${{ needs.tests.result == 'success' }}
 

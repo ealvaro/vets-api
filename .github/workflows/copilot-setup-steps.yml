@@ -18,8 +18,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
+      - name: Generate cross-repo token for gems
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.GEM_APP_ID }}
+          private-key: ${{ secrets.GEM_APP_PRIVATE_KEY }}
+          owner: software
+          github-api-url: https://va.ghe.com/api/v3
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@7372622e62b60b3cb750dcd2b9e32c247ffec26a # v1
+        env:
+          BUNDLE_VA__GHE__COM: x-access-token:${{ steps.app-token.outputs.token }}
         with:
           ruby-version: '3.3.6'
           bundler-cache: false
@@ -74,6 +85,8 @@ jobs:
           echo "TEST_DATABASE_URL=postgis://runner:@localhost:5432/vets_api_test" >> $GITHUB_ENV
 
       - name: Install Ruby dependencies
+        env:
+          BUNDLE_VA__GHE__COM: x-access-token:${{ steps.app-token.outputs.token }}
         run: |
           gem install bundler
           # Configure bundler to not be in frozen mode and allow missing Sidekiq Enterprise gems
