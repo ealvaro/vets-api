@@ -113,7 +113,7 @@ jobs:
           ssm_parameter: /devops/VA_VSP_BOT_GITHUB_TOKEN
           env_variable_name: VA_VSP_BOT_GITHUB_TOKEN
 
-      - name: Generate cross-repo token for gems
+      - name: Generate cross-repo token for actions
         id: vsp-bot-app-token
         uses: actions/create-github-app-token@v3
         with:
