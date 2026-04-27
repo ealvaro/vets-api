@@ -104,13 +104,22 @@ jobs:
           ssm_parameter: /devops/VA_VSP_BOT_GITHUB_TOKEN
           env_variable_name: VA_VSP_BOT_GITHUB_TOKEN
 
+      - name: Generate cross-repo token for gems
+        id: vsp-bot-app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.VA_VSP_BOT_APP_ID }}
+          private-key: ${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
+          owner: software
+          github-api-url: https://va.ghe.com/api/v3
+
       - name: Checkout VSP actions
         if: steps.bundle_audit.outcome == 'failure'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           repository: software/vsp-github-actions
           ref: refs/heads/main
-          token: ${{ env.VA_VSP_BOT_GITHUB_TOKEN }}
+          token: ${{ steps.vsp-bot-app-token.outputs.token }}
           persist-credentials: false
           path: ./.github/actions/vsp-github-actions
 
@@ -632,13 +641,22 @@ jobs:
           ssm_parameter: /devops/VA_VSP_BOT_GITHUB_TOKEN
           env_variable_name: VA_VSP_BOT_GITHUB_TOKEN
 
+      - name: Generate cross-repo token for gems
+        id: vsp-bot-app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.VA_VSP_BOT_APP_ID }}
+          private-key: ${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
+          owner: software
+          github-api-url: https://va.ghe.com/api/v3
+
       - name: Checkout VSP actions
         if: needs.tests.result == 'success' && github.event_name != 'pull_request'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           repository: software/vsp-github-actions
           ref: refs/heads/main
-          token: ${{ env.VA_VSP_BOT_GITHUB_TOKEN }}
+          token: ${{ steps.vsp-bot-app-token.outputs.token }}
           persist-credentials: false
           path: ./.github/actions/vsp-github-actions
 
