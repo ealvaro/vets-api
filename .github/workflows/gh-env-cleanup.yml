@@ -110,7 +110,7 @@ jobs:
             RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
               -H "Authorization: Bearer ${{ env.VA_VSP_BOT_GITHUB_TOKEN }}" \
               -H "Accept: application/vnd.github.v3+json" \
-              "https://api.github.com/repos/${{ github.repository }}/environments/$ENCODED_ENV")
+              "https://api.va.ghe.com/repos/${{ github.repository }}/environments/$ENCODED_ENV")
 
             if [ "$RESPONSE" -eq 204 ]; then
               echo "Successfully deleted: $ENCODED_ENV"

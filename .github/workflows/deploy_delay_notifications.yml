@@ -19,7 +19,7 @@ jobs:
         id: git-info
         run: |
           latest_commit_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/commits/master")
+            "https://api.va.ghe.com/repos/${{ github.repository }}/commits/master")
           latest_sha=$(echo "${latest_commit_info}" | jq -r '.sha')
           echo "latest_sha=${latest_sha}" >> $GITHUB_ENV
           echo "latest_sha: ${latest_sha}"
@@ -49,7 +49,7 @@ jobs:
           commit_time=${{ env.commit_time }}
           deployed_sha=${{ env.dev_deployed_sha }}
           info_message="Latest commit (${latest_sha:0:8}, ${commit_time}) to development"
-          action_items="\n- <https://argocd.vfs.va.gov/applications/vets-api-dev|ArgoCD dev>\n- <https://github.com/department-of-veterans-affairs/vets-api/actions/workflows/build.yml?query=branch%3Amaster|Build, Push, & Deploy> GitHub Action\n- <https://www.va.gov/atlas/apps/vets-api/deploy_status|Deploy dashboard>\n- <https://github.com/department-of-veterans-affairs/vets-api/commits/master/|Latest commits>"
+          action_items="\n- <https://argocd.vfs.va.gov/applications/vets-api-dev|ArgoCD dev>\n- <https://va.ghe.com/software/vets-api/actions/workflows/build.yml?query=branch%3Amaster|Build, Push, & Deploy> GitHub Action\n- <https://www.va.gov/atlas/apps/vets-api/deploy_status|Deploy dashboard>\n- <https://va.ghe.com/software/vets-api/commits/master/|Latest commits>"
 
 
           if [ "${latest_sha:0:8}" == "${deployed_sha:0:8}" ]; then
@@ -76,7 +76,7 @@ jobs:
           commit_time=${{ env.commit_time }}
           deployed_sha=${{ env.staging_deployed_sha }}
           info_message="Latest commit (${latest_sha:0:8}, ${commit_time}) to staging"
-          action_items="\n- <https://argocd.vfs.va.gov/applications/vets-api-staging|ArgoCD staging>\n- <https://github.com/department-of-veterans-affairs/vets-api/actions/workflows/build.yml?query=branch%3Amaster|Build, Push, & Deploy> GitHub Action\n- <https://www.va.gov/atlas/apps/vets-api/deploy_status|Deploy dashboard>\n- <https://github.com/department-of-veterans-affairs/vets-api/commits/master/|Latest commits>"
+          action_items="\n- <https://argocd.vfs.va.gov/applications/vets-api-staging|ArgoCD staging>\n- <https://va.ghe.com/software/vets-api/actions/workflows/build.yml?query=branch%3Amaster|Build, Push, & Deploy> GitHub Action\n- <https://www.va.gov/atlas/apps/vets-api/deploy_status|Deploy dashboard>\n- <https://va.ghe.com/software/vets-api/commits/master/|Latest commits>"
 
           if [ "${latest_sha:0:8}" == "${deployed_sha:0:8}" ]; then
             echo "${info_message} has been deployed."
@@ -108,7 +108,7 @@ jobs:
           role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
           aws-region: "us-gov-west-1"
 
-      - uses: department-of-veterans-affairs/action-inject-ssm-secrets@d8e6de3bde4dd728c9d732baef58b3c854b8c4bb # latest
+      - uses: software/action-inject-ssm-secrets@d8e6de3bde4dd728c9d732baef58b3c854b8c4bb # latest
         with:
           ssm_parameter: /devops/VA_VSP_BOT_GITHUB_TOKEN
           env_variable_name: VA_VSP_BOT_GITHUB_TOKEN
@@ -116,18 +116,18 @@ jobs:
       - name: Checkout VSP actions
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
-          repository: department-of-veterans-affairs/vsp-github-actions
+          repository: software/vsp-github-actions
           ref: refs/heads/main
           token: ${{ env.VA_VSP_BOT_GITHUB_TOKEN }}
           persist-credentials: false
           path: ./.github/actions/vsp-github-actions
 
-      - uses: department-of-veterans-affairs/action-inject-ssm-secrets@d8e6de3bde4dd728c9d732baef58b3c854b8c4bb # latest
+      - uses: software/action-inject-ssm-secrets@d8e6de3bde4dd728c9d732baef58b3c854b8c4bb # latest
         with:
           ssm_parameter: /devops/github_actions_slack_socket_token
           env_variable_name: SLACK_APP_TOKEN
 
-      - uses: department-of-veterans-affairs/action-inject-ssm-secrets@d8e6de3bde4dd728c9d732baef58b3c854b8c4bb # latest
+      - uses: software/action-inject-ssm-secrets@d8e6de3bde4dd728c9d732baef58b3c854b8c4bb # latest
         with:
           ssm_parameter: /devops/github_actions_slack_bot_user_token
           env_variable_name: SLACK_BOT_TOKEN
@@ -146,7 +146,7 @@ jobs:
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": ":scared_and_sweating_smiley: GitHub Action Runner Workflow failed! :scared_and_sweating_smiley:\n <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.workflow }} Run #${{ github.run_number }}>\n\n *Development Summary:*\n${{ env.dev_summary }}\n\n *Staging Summary:*\n${{ env.staging_summary }}"
+                  "text": ":scared_and_sweating_smiley: GitHub Action Runner Workflow failed! :scared_and_sweating_smiley:\n <https://va.ghe.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.workflow }} Run #${{ github.run_number }}>\n\n *Development Summary:*\n${{ env.dev_summary }}\n\n *Staging Summary:*\n${{ env.staging_summary }}"
                 }
               },
               { "type": "divider" }
@@ -167,7 +167,7 @@ jobs:
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": ":scared_and_sweating_smiley: GitHub Action Runner Workflow failed! :scared_and_sweating_smiley:\n\n Unknown error occured. See logs:\n <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.workflow }} Run #${{ github.run_number }}>"
+                  "text": ":scared_and_sweating_smiley: GitHub Action Runner Workflow failed! :scared_and_sweating_smiley:\n\n Unknown error occured. See logs:\n <https://va.ghe.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.workflow }} Run #${{ github.run_number }}>"
                 }
               },
               { "type": "divider" }

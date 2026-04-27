@@ -44,7 +44,7 @@ jobs:
           echo "pr_number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
 
           # Fetch PR metadata
-          PR_DATA=$(gh api /repos/${{ github.repository }}/pulls/${PR_NUMBER} --jq '{
+          PR_DATA=$(gh api --hostname va.ghe.com /repos/${{ github.repository }}/pulls/${PR_NUMBER} --jq '{
             author: .user.login,
             draft: .draft,
             labels: [.labels[].name]
@@ -55,7 +55,7 @@ jobs:
           echo "pr_labels=$(echo "$PR_DATA" | jq -c '.labels')" >> "$GITHUB_OUTPUT"
 
           # Fetch changed files (handles pagination automatically)
-          CHANGED_FILES=$(gh api "/repos/${{ github.repository }}/pulls/${PR_NUMBER}/files" \
+          CHANGED_FILES=$(gh api --hostname va.ghe.com "/repos/${{ github.repository }}/pulls/${PR_NUMBER}/files" \
             --paginate --jq '.[] | select(.status != "removed") | .filename')
 
           echo "$CHANGED_FILES" > /tmp/changed_files.txt
@@ -209,12 +209,12 @@ jobs:
             echo "Checking for backend-review-group approval..."
 
             # Fetch backend-review-group members
-            BACKEND_REVIEWERS=$(gh api /orgs/software/teams/backend-review-group/members --jq '.[].login')
-            BACKEND_REVIEWERS=$(echo "$BACKEND_REVIEWERS" | tr '\n' '|' | sed 's/|$//')
+            BACKEND_REVIEWERS="Lindsey-Hattamer|Rebecca-Tolmach|STEVEN-CUMMING|Joseph-Weissman|Jennica-Stiehl|CURT-BONADE|Craig-Donavin|RYAN-JOHNSON26|Rachal-Cassity"
+            # BACKEND_REVIEWERS=$(echo "$BACKEND_REVIEWERS" | tr '\n' '|' | sed 's/|$//')
             echo "  Backend reviewers: ${BACKEND_REVIEWERS}"
 
             # Get most recent review state per user
-            REVIEWS_JSON=$(gh api /repos/${{ github.repository }}/pulls/${PR_NUMBER}/reviews --paginate --jq '
+            REVIEWS_JSON=$(gh api --hostname va.ghe.com /repos/${{ github.repository }}/pulls/${PR_NUMBER}/reviews --paginate --jq '
               .[] | select(.state == "APPROVED") | {login: .user.login, submitted_at: .submitted_at}
             ' 2>/dev/null || echo "[]")
 

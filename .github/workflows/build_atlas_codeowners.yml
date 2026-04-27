@@ -23,7 +23,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Get bot token from Parameter Store
-        uses: department-of-veterans-affairs/action-inject-ssm-secrets@32c55d942e380d6819aef96bc01b0eabb2159715 # latest
+        uses: software/action-inject-ssm-secrets@32c55d942e380d6819aef96bc01b0eabb2159715 # latest
         with:
           ssm_parameter: /devops/VA_VSP_BOT_GITHUB_TOKEN
           env_variable_name: VA_VSP_BOT_GITHUB_TOKEN
@@ -42,7 +42,7 @@ jobs:
           API_TOKEN_GITHUB: ${{ env.VA_VSP_BOT_GITHUB_TOKEN }}
         with:
           source_file: '.github/CODEOWNERS'
-          destination_repo: 'department-of-veterans-affairs/platform-atlas'
+          destination_repo: 'software/platform-atlas'
           destination_folder: '/lib/codeowners/vets-api'
           destination_branch: 'master'
           user_email: '70344339+va-vsp-bot@users.noreply.github.com'

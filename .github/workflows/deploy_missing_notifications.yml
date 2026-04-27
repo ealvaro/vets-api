@@ -19,7 +19,7 @@ jobs:
         role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
         aws-region: "us-gov-west-1"
 
-    - uses: department-of-veterans-affairs/action-inject-ssm-secrets@d8e6de3bde4dd728c9d732baef58b3c854b8c4bb # latest
+    - uses: software/action-inject-ssm-secrets@d8e6de3bde4dd728c9d732baef58b3c854b8c4bb # latest
       with:
         ssm_parameter: /devops/VA_VSP_BOT_GITHUB_TOKEN
         env_variable_name: VA_VSP_BOT_GITHUB_TOKEN
@@ -27,7 +27,7 @@ jobs:
     - name: Checkout VSP infra ArgoCD repo
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       with:
-        repository: department-of-veterans-affairs/vsp-infra-argocd
+        repository: software/vsp-infra-argocd
         ref: refs/heads/main
         token: ${{ env.VA_VSP_BOT_GITHUB_TOKEN }}
         persist-credentials: false
@@ -144,7 +144,7 @@ jobs:
           role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
           aws-region: "us-gov-west-1"
 
-      - uses: department-of-veterans-affairs/action-inject-ssm-secrets@d8e6de3bde4dd728c9d732baef58b3c854b8c4bb # latest
+      - uses: software/action-inject-ssm-secrets@d8e6de3bde4dd728c9d732baef58b3c854b8c4bb # latest
         with:
           ssm_parameter: /devops/VA_VSP_BOT_GITHUB_TOKEN
           env_variable_name: VA_VSP_BOT_GITHUB_TOKEN
@@ -152,18 +152,18 @@ jobs:
       - name: Checkout VSP actions
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
-          repository: department-of-veterans-affairs/vsp-github-actions
+          repository: software/vsp-github-actions
           ref: refs/heads/main
           token: ${{ env.VA_VSP_BOT_GITHUB_TOKEN }}
           persist-credentials: false
           path: ./.github/actions/vsp-github-actions
 
-      - uses: department-of-veterans-affairs/action-inject-ssm-secrets@d8e6de3bde4dd728c9d732baef58b3c854b8c4bb # latest
+      - uses: software/action-inject-ssm-secrets@d8e6de3bde4dd728c9d732baef58b3c854b8c4bb # latest
         with:
           ssm_parameter: /devops/github_actions_slack_socket_token
           env_variable_name: SLACK_APP_TOKEN
 
-      - uses: department-of-veterans-affairs/action-inject-ssm-secrets@d8e6de3bde4dd728c9d732baef58b3c854b8c4bb # latest
+      - uses: software/action-inject-ssm-secrets@d8e6de3bde4dd728c9d732baef58b3c854b8c4bb # latest
         with:
           ssm_parameter: /devops/github_actions_slack_bot_user_token
           env_variable_name: SLACK_BOT_TOKEN
@@ -174,5 +174,5 @@ jobs:
           slack_app_token: ${{ env.SLACK_APP_TOKEN }}
           slack_bot_token: ${{ env.SLACK_BOT_TOKEN }}
           message: "Vets API Deployment Delay:"
-          blocks: "[{\"type\": \"divider\"}, {\"type\": \"section\", \"text\": { \"type\": \"mrkdwn\", \"text\": \":scared_and_sweating_smiley: GitHub Action Runner Workflow failed! :scared_and_sweating_smiley:\n <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.workflow }} Run #${{ github.run_number }}>\n\n*Status Summary:*\n${{ needs.check-api-status.outputs.status_summary }}\"}}, {\"type\": \"divider\"}]"
+          blocks: "[{\"type\": \"divider\"}, {\"type\": \"section\", \"text\": { \"type\": \"mrkdwn\", \"text\": \":scared_and_sweating_smiley: GitHub Action Runner Workflow failed! :scared_and_sweating_smiley:\n <https://va.ghe.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.workflow }} Run #${{ github.run_number }}>\n\n*Status Summary:*\n${{ needs.check-api-status.outputs.status_summary }}\"}}, {\"type\": \"divider\"}]"
           channel_id: "C0APA867M0V"
