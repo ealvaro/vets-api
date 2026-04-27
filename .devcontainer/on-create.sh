@@ -17,7 +17,7 @@ asdf global ruby $( cat .ruby-version )
 # Clone needed repos and set permission to the dev-container user
 sudo mkdir -p /workspaces/vets-api-mockdata
 sudo chown $(whoami):$(whoami) /workspaces/vets-api-mockdata
-git clone https://github.com/department-of-veterans-affairs/vets-api-mockdata.git /workspaces/vets-api-mockdata
+git clone https://va.ghe.com/software/vets-api-mockdata.git /workspaces/vets-api-mockdata
 
 # Install dependencies
 sudo apt-get update

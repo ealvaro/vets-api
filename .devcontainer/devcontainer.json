@@ -9,7 +9,7 @@
         "README.md"
       ],
       "repositories": {
-        "department-of-veterans-affairs/vets-api-mockdata": {
+        "software/vets-api-mockdata": {
           "permissions": {
             "contents": "read",
             "pull_requests": "write"

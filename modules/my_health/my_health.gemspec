@@ -15,8 +15,8 @@ Gem::Specification.new do |spec|
   spec.metadata['allowed_push_host'] = 'TODO: Set to "http://mygemserver.com"'
 
   spec.metadata['homepage_uri'] = spec.homepage
-  spec.metadata['source_code_uri'] = 'https://github.com/department-of-veterans-affairs/vets-api/'
-  spec.metadata['changelog_uri'] = 'https://github.com/department-of-veterans-affairs/vets-api/modules/my_health/CHANGELOG.md'
+  spec.metadata['source_code_uri'] = 'https://va.ghe.com/software/vets-api/'
+  spec.metadata['changelog_uri'] = 'https://va.ghe.com/software/vets-api/modules/my_health/CHANGELOG.md'
 
   spec.files = Dir['{app,config,db,lib}/**/*', 'Rakefile', 'README.md']
 

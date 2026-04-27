@@ -10,7 +10,7 @@ set -e
 #   VERSION=2.6.1
 
 PORT=80
-# For latest, see https://github.com/department-of-veterans-affairs/vsp-infra-traefik/tree/main/versions.json#L6
+# For latest, see https://va.ghe.com/software/vsp-infra-traefik/tree/main/versions.json#L6
 TRAEFIK_VERSION="2.6.1"
 
 # parse flags

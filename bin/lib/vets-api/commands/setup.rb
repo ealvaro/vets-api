@@ -63,7 +63,7 @@ module VetsApi
           puts "\nBefore continuing Ruby #{ruby_version} must be installed"
           puts 'We suggest using a Ruby version manager such as rbenv, asdf, rvm, or chruby' \
                ' to install and maintain your version of Ruby.'
-          puts 'More information: https://github.com/department-of-veterans-affairs/vets-api/blob/master/docs/setup/native.md#installing-a-ruby-version-manager'
+          puts 'More information: https://va.ghe.com/software/vets-api/blob/master/docs/setup/native.md#installing-a-ruby-version-manager'
           exit 1
         end
       end
@@ -71,7 +71,7 @@ module VetsApi
       def validate_docker_running
         unless docker_running?
           puts "\nBefore continuing Docker Desktop (Engine + Compose) must be installed"
-          puts 'More information: https://github.com/department-of-veterans-affairs/vets-api/blob/master/docs/setup/docker.md'
+          puts 'More information: https://va.ghe.com/software/vets-api/blob/master/docs/setup/docker.md'
           exit 1
         end
       end

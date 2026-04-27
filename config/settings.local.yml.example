@@ -3,7 +3,7 @@
 
 # betamocks:
   # For NATIVE installation
-  # The relative path to department-of-veterans-affairs/vets-api-mockdata
+  # The relative path to software/vets-api-mockdata
   # cache_dir: ../vets-api-mockdata
 
 # clamav:

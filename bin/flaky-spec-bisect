@@ -491,7 +491,7 @@ HELP_TEXT = <<~HELP
   Arguments:
     <url-or-run-id>   GitHub Actions run URL or run ID
                       Examples:
-                        https://github.com/department-of-veterans-affairs/vets-api/actions/runs/12345678
+                        https://va.ghe.com/software/vets-api/actions/runs/12345678
                         12345678
 
   Options:
@@ -506,7 +506,7 @@ HELP_TEXT = <<~HELP
     - Run from the vets-api root directory
 
   Examples:
-    bin/flaky-spec-bisect https://github.com/department-of-veterans-affairs/vets-api/actions/runs/12345678
+    bin/flaky-spec-bisect https://va.ghe.com/software/vets-api/actions/runs/12345678
     bin/flaky-spec-bisect --group "Group 3" 12345678
     bin/flaky-spec-bisect --dry-run 12345678
 

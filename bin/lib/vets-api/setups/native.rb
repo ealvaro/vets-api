@@ -84,7 +84,7 @@ module VetsApi
           puts 'You will need to install postgres and the extenstions via the app'
           puts
           puts 'Follow the instructions on:'
-          puts 'https://github.com/department-of-veterans-affairs/vets-api/blob/master/docs/setup/native.md#osx'
+          puts 'https://va.ghe.com/software/vets-api/blob/master/docs/setup/native.md#osx'
           exit 1
         end
       end

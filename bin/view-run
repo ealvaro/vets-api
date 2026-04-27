@@ -13,7 +13,7 @@ show_help() {
     echo "  --filter-rspec  Filter the logs to show only rspec results."
     echo
     echo "Example:"
-    echo "  $0 --filter-rspec https://github.com/department-of-veterans-affairs/vets-api/runs/123456789"
+    echo "  $0 --filter-rspec https://va.ghe.com/software/vets-api/runs/123456789"
 }
 
 # Check if the GitHub CLI is installed

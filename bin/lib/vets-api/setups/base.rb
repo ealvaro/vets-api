@@ -52,7 +52,7 @@ module VetsApi
           puts 'Skipping vets-api-mockdata clone (already installed)'
         else
           puts 'Cloning vets-api-mockdata to sibiling directory'
-          repo_url = 'git@github.com:department-of-veterans-affairs/vets-api-mockdata.git'
+          repo_url = 'git@va.ghe.com:software/vets-api-mockdata.git'
           destination = '../'
           system("git clone #{repo_url} #{destination}mockdata")
         end
