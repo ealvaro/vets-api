@@ -124,7 +124,7 @@
 2. In terminal, clone the repository using the command:
 
    ```bash
-   git clone git@github.com:department-of-veterans-affairs/vets-api.git
+   git clone git@va.ghe.com:software/vets-api.git
    ```
 
 3. Create the required certs directory and files:
@@ -157,7 +157,7 @@
 
 6. Uncomment `authn_requests_signed: false` and save the file.
 
-7. Install dependencies for Ubuntu 20.04: [vets-api/docs/setup/native.md](https://github.com/department-of-veterans-affairs/vets-api/blob/master/docs/setup/native.md)
+7. Install dependencies for Ubuntu 20.04: [vets-api/docs/setup/native.md](https://va.ghe.com/software/vets-api/blob/master/docs/setup/native.md)
 
 ### Ubuntu 24.04.1 Dependencies Setup
 
@@ -334,20 +334,20 @@ exit
 
 ## Set Up vets-api-mockdata
 
-1. Follow setup steps for vets-api-mockdata: [vets-api/docs/setup/new_machine.md](https://github.com/department-of-veterans-affairs/vets-api/blob/master/docs/setup/new_machine.md)
+1. Follow setup steps for vets-api-mockdata: [vets-api/docs/setup/new_machine.md](https://va.ghe.com/software/vets-api/blob/master/docs/setup/new_machine.md)
    - If using SSH, run the following command instead of the HTTPS command:
 
      ```bash
-     git clone git@github.com:department-of-veterans-affairs/vets-api-mockdata.git
+     git clone git@va.ghe.com:software/vets-api-mockdata.git
      ```
 
 ### Setup vets-api-mockdata Troubleshooting
 
-If you receive an error where the repo cannot be found, make sure you have access to team lighthouse-dash: [lighthouse-dash · Department of Veterans Affairs Team](https://github.com/orgs/department-of-veterans-affairs/teams/lighthouse-dash)
+If you receive an error where the repo cannot be found, make sure you have access to team lighthouse-dash: [lighthouse-dash](https://va.ghe.com/orgs/software/teams/lighthouse-dash)
 
 ## Configure Cached Directory in vets-api
 
-1. Follow the setup steps for updating the development and settings yml files for your local environment: [vets-api/docs/setup/new_machine.md](https://github.com/department-of-veterans-affairs/vets-api/blob/master/docs/setup/new_machine.md)
+1. Follow the setup steps for updating the development and settings yml files for your local environment: [vets-api/docs/setup/new_machine.md](https://va.ghe.com/software/vets-api/blob/master/docs/setup/new_machine.md)
 
 ## Running the Application Natively
 
@@ -361,7 +361,7 @@ If you receive an error where the repo cannot be found, make sure you have acces
 
 ## Tests Setup
 
-1. Follow the setup steps for setting up test DBs and setting up tests to run in parallel: [vets-api/docs/setup/running_natively.md](https://github.com/department-of-veterans-affairs/vets-api/blob/master/docs/setup/running_natively.md)
+1. Follow the setup steps for setting up test DBs and setting up tests to run in parallel: [vets-api/docs/setup/running_natively.md](https://va.ghe.com/software/vets-api/blob/master/docs/setup/running_natively.md)
 2. Validate tests can run by running:
 
    ```bash
@@ -376,6 +376,6 @@ If you receive an error where the repo cannot be found, make sure you have acces
 - [WSL Git: Get started using Git on WSL | Microsoft Learn](https://learn.microsoft.com/en-us/windows/wsl/tutorials/wsl-git)
 - [RVM: Ruby Version Manager - Installing RVM](https://rvm.io/rvm/install)
 - [rvm/ubuntu_rvm: Ubuntu package for RVM](https://github.com/rvm/ubuntu_rvm)
-- [Team Lighthouse-Dash](https://github.com/orgs/department-of-veterans-affairs/teams/lighthouse-dash)
-- [Running vets-api natively](https://github.com/department-of-veterans-affairs/vets-api/blob/master/docs/setup/running_natively.md)
-- [vets-api-mockdata repo](https://github.com/department-of-veterans-affairs/vets-api-mockdata)
+- [Team Lighthouse-Dash](https://va.ghe.com/orgs/software/teams/lighthouse-dash)
+- [Running vets-api natively](https://va.ghe.com/software/vets-api/blob/master/docs/setup/running_natively.md)
+- [vets-api-mockdata repo](https://va.ghe.com/software/vets-api-mockdata)

@@ -3,7 +3,7 @@
 These changes will work for accessing a local deploy from within in a virtual machine.
 
 1. Find the IP of the host machine from inside the VM. For VirtualBox this tends to be `10.0.2.2`.
-1. [Run vets-website](https://github.com/department-of-veterans-affairs/vets-website/#building-vets-website)
+1. [Run vets-website](https://va.ghe.com/software/vets-website/#building-vets-website)
 1. In `settings.local.yml` 
     1. Add `http://10.0.2.2:3000` and `http://10.0.2.2:3001` to `web_origin`
     1. Add `"10.0.2.2"` to `virtual_hosts`

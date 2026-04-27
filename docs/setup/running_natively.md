@@ -4,7 +4,7 @@
 To run vets-api and its redis and postgres dependencies run the following command from within the repo you cloned
 in the above steps.
 
-If you are running into Postgres or database issues, please refer to the commands in [docs/setup/new_machine.md](https://github.com/department-of-veterans-affairs/vets-api/blob/master/docs/setup/new_machine.md).
+If you are running into Postgres or database issues, please refer to the commands in [docs/setup/new_machine.md](https://va.ghe.com/software/vets-api/blob/master/docs/setup/new_machine.md).
 
 ```
 foreman start -m all=1,clamd=0,freshclam=0

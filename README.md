@@ -13,14 +13,14 @@ This project provides common APIs for applications that live on VA.gov (formerly
 
 [API Docs](https://department-of-veterans-affairs.github.io/va-digital-services-platform-docs/api-reference/#/)
 
-For frontend, see [vets-website](https://github.com/department-of-veterans-affairs/vets-website).
+For frontend, see [vets-website](https://va.ghe.com/software/vets-website).
 
 ## Base setup
 
 1. Clone the `vets-api` repo:
 
    ```bash
-   git clone https://github.com/department-of-veterans-affairs/vets-api.git
+   git clone https://va.ghe.com/software/vets-api.git
    ```
 
 1. Set up key & cert for localhost authentication to ID.me:
@@ -47,7 +47,7 @@ For frontend, see [vets-website](https://github.com/department-of-veterans-affai
        authn_requests_signed: false
      ```
 
-1. If you are developing features that need Sidekiq Enterprise, you must have access to the va.gov-team-sensitive repo and [install the sidekiq enterprise license](https://github.com/department-of-veterans-affairs/va.gov-team-sensitive/blob/master/platform/engineering/sidekiq-enterprise-setup.md)
+1. If you are developing features that need Sidekiq Enterprise, you must have access to the va.gov-team-sensitive repo and [install the sidekiq enterprise license](https://va.ghe.com/software/va.gov-team-sensitive/blob/master/platform/engineering/sidekiq-enterprise-setup.md)
 
    Sidekiq Enterprise is used for worker rate limiting and additional reliability in production and requires a license be configured on your development machine. If you do not have a license configured, the open source version of Sidekiq will be installed instead. This is not an issue unless you are specifically developing features that need Sidekiq Enterprise.
 
@@ -99,7 +99,6 @@ The following features require additional configuration, click for details.
 - [Master Person Index (MPI)](/docs/setup/mpi.md)
 - [My HealtheVet (MHV)](/docs/setup/mhv.md)
 - [Virtual Machine Access](/docs/setup/virtual_machine_access.md)
-- [Test User Dashboard](https://github.com/department-of-veterans-affairs/vsp-test-user-dashboard/blob/main/README.md#back-end)
 
 To mock one or more of the above services see [Betamocks](/docs/setup/betamocks.md)
 
@@ -128,7 +127,7 @@ the response.
 
 ## Versions
 
-The version of Ruby and gem dependencies (including Rails) used are defined in the included [Gemfile](https://github.com/department-of-veterans-affairs/vets-api/blob/master/Gemfile). The currently used versions of gems are maintained with Bundler and stored in the [Gemfile.lock](https://github.com/department-of-veterans-affairs/vets-api/blob/master/Gemfile.lock).
+The version of Ruby and gem dependencies (including Rails) used are defined in the included [Gemfile](https://va.ghe.com/software/vets-api/blob/master/Gemfile). The currently used versions of gems are maintained with Bundler and stored in the [Gemfile.lock](https://va.ghe.com/software/vets-api/blob/master/Gemfile.lock).
 
 #### Version Policy
 

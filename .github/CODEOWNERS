@@ -900,32 +900,13 @@ docker-compose.review.yml @software/backend-review-group
 docker-compose.test.yml @software/backend-review-group
 docker-compose.yml @software/backend-review-group
 Dockerfile @software/backend-review-group
-docs/deployment @software/backend-review-group
-docs/deployment/information.md @software/backend-review-group
-docs/HISTORY.md @software/backend-review-group
-docs/index.md @software/backend-review-group
-docs/setup/betamocks.md @software/backend-review-group
-docs/setup/binstubs.md @software/backend-review-group
+docs/ @software/backend-review-group
 docs/setup/codespaces.md @software/backend-review-group @software/cto-engineers
-docs/setup/docker.md @software/backend-review-group
 docs/setup/edu_benefits.md @software/backend-review-group @software/govcio-vfep-codereviewers
-docs/setup/evss.md @software/backend-review-group
 docs/setup/facilities_locator.md @software/vfs-facilities-frontend @software/backend-review-group
-docs/setup/hybrid.md @software/backend-review-group
 docs/setup/idp.md @software/bio-huntridge @software/backend-review-group
-docs/setup/images @software/backend-review-group
-docs/setup/local_network_access.md @software/backend-review-group
-docs/setup/mailer.md @software/backend-review-group
 docs/setup/mhv.md @software/vfs-mhv-integration @software/backend-review-group
 docs/setup/mpi.md @software/octo-identity
-docs/setup/native.md @software/backend-review-group
-docs/setup/rswag_setup.md @software/backend-review-group
-docs/setup/running_binstubs.md @software/backend-review-group
-docs/setup/running_docker.md @software/backend-review-group
-docs/setup/running_natively.md @software/backend-review-group
-docs/setup/setup_with_binstubs.md @software/backend-review-group
-docs/setup/virtual_machine_access.md @software/backend-review-group
-docs/setup/new_machine_wsl.md @software/backend-review-group
 Gemfile @software/backend-review-group
 Gemfile.lock @software/backend-review-group
 helmCharts/ @software/backend-review-group

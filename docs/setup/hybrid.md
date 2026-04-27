@@ -36,7 +36,7 @@ redis:
 
 ### Mock ClamAV
 
-If you wish to mock ClamAV, please set the clamav mock setting to true in settings.local.yml. This will mock the clamav response in the [virus_scan code](https://github.com/department-of-veterans-affairs/vets-api/blob/master/lib/common/virus_scan.rb#L14-L23).
+If you wish to mock ClamAV, please set the clamav mock setting to true in settings.local.yml. This will mock the clamav response in the [virus_scan code](https://va.ghe.com/software/vets-api/blob/master/lib/common/virus_scan.rb#L14-L23).
 
 ```
 clamav:

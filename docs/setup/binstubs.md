@@ -54,7 +54,7 @@ Shows how to reproduce flaky specs locally by downloading CI artifacts and runni
 **Examples:**
 ```bash
 # Basic usage with GitHub Actions URL
-bin/flaky-spec-bisect https://github.com/department-of-veterans-affairs/vets-api/actions/runs/12345678
+bin/flaky-spec-bisect https://va.ghe.com/software/vets-api/actions/runs/12345678
 
 # Dry run to see the commands without executing
 bin/flaky-spec-bisect --dry-run <url>

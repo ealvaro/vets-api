@@ -9,7 +9,7 @@ Created to walk users through the entire process of setting up the Vets-API loca
 Start by cloning the repository and navigating into the project directory.
 
 ```bash
-git clone https://github.com/department-of-veterans-affairs/vets-api.git
+git clone https://va.ghe.com/software/vets-api.git
 cd vets-api
 ```
 
@@ -174,7 +174,7 @@ Clone the mock data repo into a **sibling directory** of `vets-api`:
 
 ```bash
 cd ..
-git clone https://github.com/department-of-veterans-affairs/vets-api-mockdata.git
+git clone https://va.ghe.com/software/vets-api-mockdata.git
 ```
 
 ### If authentication fails:
@@ -229,4 +229,4 @@ This script will:
 
 At this point, your local Vets-API environment should be fully set up and ready to run. 🎉
 
-> Need help? Refer to the [original repo documentation](https://github.com/department-of-veterans-affairs/vets-api#readme) or reach out to your team.
+> Need help? Refer to the [original repo documentation](https://va.ghe.com/software/vets-api#readme) or reach out to your team.

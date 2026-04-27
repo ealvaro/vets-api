@@ -8,7 +8,7 @@ These changes will work for accessing a local deploy on another device on the sa
       1. Click the connection you are using to connect to the internet
       1. Look for `Status`, underneath the laptop's IP address will be listed, i.e `192.168.x.x`
    1. Windows - https://support.microsoft.com/en-us/help/4026518/windows-10-find-your-ip-address
-1. [Run vets-website so that devices on your local network can access it](https://github.com/department-of-veterans-affairs/vets-website/#more-commands)
+1. [Run vets-website so that devices on your local network can access it](https://va.ghe.com/software/vets-website/#more-commands)
 
    ```
    yarn watch --env.host 0.0.0.0 --env.public 198.162.x.x:3001

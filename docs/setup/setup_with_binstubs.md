@@ -38,13 +38,13 @@ If you are running vets-api via docker, running hybrid, OR want to test the full
 
 #### Sidekiq License 
 
-Although not required to run vets-api, if you plan to develop for vets-api, you'll need the sidekiq enterprise license, that can be found [here](https://github.com/department-of-veterans-affairs/va.gov-team-sensitive/blob/master/platform/engineering/sidekiq-enterprise-setup.md) Note: this is a private repo. 
+Although not required to run vets-api, if you plan to develop for vets-api, you'll need the sidekiq enterprise license, that can be found [here](https://va.ghe.com/software/va.gov-team-sensitive/blob/master/platform/engineering/sidekiq-enterprise-setup.md) Note: this is a private repo. 
 
 ### Clone vets-api
 
 You'll also need to clone vets-api. If you don't have git installed you'll need to install `git` as well: 
 
-`git clone https://github.com/department-of-veterans-affairs/vets-api.git`
+`git clone https://va.ghe.com/software/vets-api.git`
 
 ### bin/setup
 

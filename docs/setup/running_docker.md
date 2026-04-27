@@ -1,6 +1,6 @@
 # Running the app with Docker
 
-First make sure to follow the common [base setup](https://github.com/department-of-veterans-affairs/vets-api/blob/master/README.md#Base%20setup).
+First make sure to follow the common [base setup](https://va.ghe.com/software/vets-api/blob/master/README.md#Base%20setup).
 
 ## ClamAV Antivirus Configuration
 ### EKS
@@ -47,7 +47,7 @@ browser and start interacting with the API. Changes to the source in your local
 directory will be reflected automatically via a docker volume mount, just as
 they would be when running rails directly.
 
-The [Makefile](https://github.com/department-of-veterans-affairs/vets-api/blob/master/Makefile) has shortcuts for many common development tasks. You can still run manual [docker-compose commands](https://docs.docker.com/compose/),
+The [Makefile](https://va.ghe.com/software/vets-api/blob/master/Makefile) has shortcuts for many common development tasks. You can still run manual [docker-compose commands](https://docs.docker.com/compose/),
 but the following tasks have been aliased to speed development:
 
 ## Running tests

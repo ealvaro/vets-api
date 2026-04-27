@@ -3,7 +3,7 @@
 This project provides common APIs for applications that live on VA.gov (formerly vets.gov APIs).
 
 [![Yard Docs](http://img.shields.io/badge/yard-docs-blue.svg)](https://www.rubydoc.info/github/department-of-veterans-affairs/vets-api)
-[![License: CC0-1.0](https://img.shields.io/badge/License-CC0%201.0-lightgrey.svg)](https://github.com/department-of-veterans-affairs/vets-api/blob/master/LICENSE.md)
+[![License: CC0-1.0](https://img.shields.io/badge/License-CC0%201.0-lightgrey.svg)](https://va.ghe.com/software/vets-api/blob/master/LICENSE.md)
 
 [Build Status](http://jenkins.vfs.va.gov/job/builds/job/vets-api/)
 
@@ -11,14 +11,14 @@ This project provides common APIs for applications that live on VA.gov (formerly
 
 [API Docs](https://department-of-veterans-affairs.github.io/va-digital-services-platform-docs/api-reference/#/)
 
-For frontend, see [vets-website](https://github.com/department-of-veterans-affairs/vets-website) and [vets-content](https://github.com/department-of-veterans-affairs/vagov-content) repos.
+For frontend, see [vets-website](https://va.ghe.com/software/vets-website) and [vets-content](https://va.ghe.com/software/vagov-content) repos.
 
 ## Base setup
 
 1. Clone the `vets-api` repo:
 
    ```bash
-   git clone https://github.com/department-of-veterans-affairs/vets-api.git
+   git clone https://va.ghe.com/software/vets-api.git
    ```
 
 1. Setup key & cert for localhost authentication to ID.me:
@@ -45,7 +45,7 @@ For frontend, see [vets-website](https://github.com/department-of-veterans-affai
        authn_requests_signed: false
      ```
 
-1. If you are developing features that need Sidekiq Enterprise, you must have access to the va.gov-team-sensitive repo and [install the sidekiq enterprise license](https://github.com/department-of-veterans-affairs/va.gov-team-sensitive/blob/master/platform/engineering/sidekiq-enterprise-setup.md)
+1. If you are developing features that need Sidekiq Enterprise, you must have access to the va.gov-team-sensitive repo and [install the sidekiq enterprise license](https://va.ghe.com/software/va.gov-team-sensitive/blob/master/platform/engineering/sidekiq-enterprise-setup.md)
 
    Sidekiq Enterprise is used for worker rate limiting and additional reliability in production and requires a license be configured on your development machine. If you do not have a license configured, the open source version of Sidekiq will be installed instead. This is not an issue unless you are specifically developing features that need Sidekiq Enterprise.
 
@@ -66,7 +66,7 @@ For frontend, see [vets-website](https://github.com/department-of-veterans-affai
 ## Configuration
 
 Vets API is configured with [Config](https://github.com/railsconfig/config). The
-default configuration is contained in [settings.yml](https://github.com/department-of-veterans-affairs/vets-api/blob/master/config/settings.yml). To
+default configuration is contained in [settings.yml](https://va.ghe.com/software/vets-api/blob/master/config/settings.yml). To
 customize your setup, you can create a `config/settings.local.yml` file with
 configuration specific to your needs. For example, to configure Redis and
 PostgreSQL (PostGIS is required), place something like this in that file:
@@ -84,7 +84,7 @@ or certificate paths.
 
 Config settings that vary in value depending on the deployment environment will also need
 to be set appropriately for each environment in the relevant
-[devops (Private Repo)](https://github.com/department-of-veterans-affairs/devops/blob/master/ansible/deployment/config/vets-api) configurations (dev-, staging-, and prod-settings.local.yml.j2).
+[devops (Private Repo)](https://va.ghe.com/software/devops/blob/master/ansible/deployment/config/vets-api) configurations (dev-, staging-, and prod-settings.local.yml.j2).
 
 Some examples of configuration that will need to be added to these files are:
 
@@ -105,7 +105,6 @@ The following features require additional configuration, click for details.
 - [Master Person Index (MPI)](setup/mpi.md)
 - [My HealtheVet (MHV)](setup/mhv.md)
 - [Virtual Machine Access](setup/virtual_machine_access.md)
-- [Test User Dashboard](https://github.com/department-of-veterans-affairs/vsp-test-user-dashboard/blob/main/README.md#back-end)
 
 To mock one or more of the above services see [Betamocks](setup/betamocks.md)
 
@@ -138,7 +137,7 @@ the response.
 
 ## Versions
 
-The version of Ruby and gem dependencies (including Rails) used are defined in the included [Gemfile](https://github.com/department-of-veterans-affairs/vets-api/blob/master/Gemfile). The currently used versions of gems are maintained with Bundler and stored in the [Gemfile.lock](https://github.com/department-of-veterans-affairs/vets-api/blob/master/Gemfile.lock).
+The version of Ruby and gem dependencies (including Rails) used are defined in the included [Gemfile](https://va.ghe.com/software/vets-api/blob/master/Gemfile). The currently used versions of gems are maintained with Bundler and stored in the [Gemfile.lock](https://va.ghe.com/software/vets-api/blob/master/Gemfile.lock).
 
 #### Version Policy
 

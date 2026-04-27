@@ -7,7 +7,7 @@ Vets API requires:
 - PostgreSQL 15.x (including PostGIS 3)
 - Redis 6.2.x
 
-The most up-to-date versions of each key dependency will be specified in the `docker-compose.yml` [file](https://github.com/department-of-veterans-affairs/vets-api/blob/master/docker-compose.yml) and the `Dockerfile`.
+The most up-to-date versions of each key dependency will be specified in the `docker-compose.yml` [file](https://va.ghe.com/software/vets-api/blob/master/docker-compose.yml) and the `Dockerfile`.
 
 ## Installing a Ruby Version Manager
 
@@ -30,7 +30,7 @@ For example: `rvm install 3.3.6 -C --with-openssl-dir=/$(brew --prefix openssl@3
 
 ## Base Setup
 
-1. Follow the common [base setup](https://github.com/department-of-veterans-affairs/vets-api/blob/master/README.md#Base%20setup). Or alternatively use [binstubs](binstubs.md).
+1. Follow the common [base setup](https://va.ghe.com/software/vets-api/blob/master/README.md#Base%20setup). Or alternatively use [binstubs](binstubs.md).
 
 
 1. Install Bundler to manage Ruby dependencies
@@ -47,14 +47,14 @@ For example: `rvm install 3.3.6 -C --with-openssl-dir=/$(brew --prefix openssl@3
    cd vets-api; bundle install
    ```
 
-   More information about installing _with_ Sidekiq Enterprise as well as our credentials are on the internal system [here](https://github.com/department-of-veterans-affairs/vets.gov-team/blob/master/Products/Platform/Vets-API/Sidekiq%20Enterprise%20Setup.md)
+   More information about installing _with_ Sidekiq Enterprise as well as our credentials are on the internal system [here](https://va.ghe.com/software/va.gov-team-sensitive/blob/master/platform/engineering/sidekiq-enterprise-setup.md)
 
 1. Setup local databases and run schema migrations:
    ```bash
    cd vets-api; rails db:setup; rails db:migrate
    ```
 
-1. Make sure you have the [vets-api-mockdata](https://github.com/department-of-veterans-affairs/vets-api-mockdata) repo locally installed, preferably in a sibling directory to `vets-api`.
+1. Make sure you have the [vets-api-mockdata](https://va.ghe.com/software/vets-api-mockdata) repo locally installed, preferably in a sibling directory to `vets-api`.
 
 1. Go to the file `config/settings/development.yml` and make sure the `cache-dir` points to the local installation of `vets-api-mockdata` from the previous step.
 
@@ -88,7 +88,7 @@ pg_stat_statements.max = 10000
 track_activity_query_size = 2048
 ```
 
-**Make sure to migrate your database to enable the [pg_stat_statements extension](https://github.com/department-of-veterans-affairs/vets-api/blob/master/db/migrate/20210507122840_add_stats_extension.rb)**
+**Make sure to migrate your database to enable the [pg_stat_statements extension](https://va.ghe.com/software/vets-api/blob/master/db/migrate/20210507122840_add_stats_extension.rb)**
 
 ## Settings and configuration
 
@@ -113,7 +113,7 @@ clamav:
 
 #### Mock ClamAV
 
-If you wish to mock ClamAV, please set the clamav mock setting to true in settings.local.yml. This will mock the clamav response in the [virus_scan code](https://github.com/department-of-veterans-affairs/vets-api/blob/master/lib/common/virus_scan.rb#L14-L23).
+If you wish to mock ClamAV, please set the clamav mock setting to true in settings.local.yml. This will mock the clamav response in the [virus_scan code](https://va.ghe.com/software/vets-api/blob/master/lib/common/virus_scan.rb#L14-L23).
 
 ```
 clamav:

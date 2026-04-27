@@ -1,15 +1,15 @@
 # Betamocks
 
-[Betamocks](https://github.com/department-of-veterans-affairs/betamocks) is a Faraday middleware gem that mocks APIs by recording and replaying requests. It's especially useful for local development to mock out APIs that are behind a VPN, often go down, or when an API may not have a corresponding dev or staging environment. Mockdata for vets-api is in https://github.com/department-of-veterans-affairs/vets-api-mockdata
+[Betamocks](https://va.ghe.com/software/betamocks) is a Faraday middleware gem that mocks APIs by recording and replaying requests. It's especially useful for local development to mock out APIs that are behind a VPN, often go down, or when an API may not have a corresponding dev or staging environment. Mockdata for vets-api is in https://va.ghe.com/software/vets-api-mockdata
 
 
-See also: https://github.com/department-of-veterans-affairs/vets-api-mockdata#create-mock-data-for-a-brand-new-service
+See also: https://va.ghe.com/software/vets-api-mockdata#create-mock-data-for-a-brand-new-service
 ## Setup
 1. `cd` to parent directory of `vets-api` and clone `vets-api-mockdata`,
 e.g. if you checked out `vets-api` to `~/Documents` then:
 ```bash
 cd ~/Documents
-git clone git@github.com:department-of-veterans-affairs/vets-api-mockdata.git
+git clone git@va.ghe.com:software/vets-api-mockdata.git
 ```
 
 2. Set the cache dir to the relative path of the mock data repo in
@@ -25,8 +25,8 @@ betamocks:
 ```
 If you're using Docker, run `make up` to start vets-api.
 
-Lighthouse devs can begin making api requests. Va.gov devs can now login with one of the [test users](https://github.com/department-of-veterans-affairs/vets.gov-team/blob/master/Products/Identity/MVI%20Integration/reference_documents/mvi_users_s1a.csv)
-without being connect to the VA VPN. By default all users have been mocked for MVI but
+Lighthouse devs can begin making api requests. Va.gov devs can now login with one of the [test users]([https://va.ghe.com/software/va.gov-team-sensitive/blob/master/Administrative/vagov-users/mvi-staging-users.csv)
+without being connected to the VA VPN. By default all users have been mocked for MVI but
 only M. Webb (vets.gov.user+228@gmail.com) will work for the other services unless their mock data has been added.
 
 
