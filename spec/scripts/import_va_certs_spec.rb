@@ -43,14 +43,18 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
     it 'implements multiple fallback mechanisms for DoD certificates' do
       script_content = File.read(script_path)
 
-      # Verify primary HTTPS attempt with proper flags
+      # Verify primary HTTPS attempt with proper flags including --fail
       expect(script_content).to include(
-        'curl --show-error --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 5'
+        'curl --fail --show-error --location --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 5'
       )
-      expect(script_content).to include('https://dl.dod.cyber.mil/wp-content/uploads/pki-pke/zip/unclass-certificates_pkcs7_ECA.zip')
+      expect(script_content).to include(
+        'https://dl.dod.cyber.mil/wp-content/uploads/pki-pke/zip/unclass-certificates_pkcs7_ECA.zip'
+      )
 
-      # Verify HTTP fallback
-      expect(script_content).to include('elif curl --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 5 -LO http://dl.dod.cyber.mil')
+      # Verify HTTP fallback with --fail
+      expect(script_content).to include(
+        'elif curl --fail --show-error --location --connect-timeout 10'
+      )
 
       # Verify proper if/elif structure
       expect(script_content).to include('elif curl')
@@ -78,33 +82,42 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
       expect(script_content).to include('cp *.pem ../../')
     end
 
-    it 'handles DoD certificate download failures gracefully' do
+    it 'fails the build when DoD certificate downloads fail' do
       script_content = File.read(script_path)
 
       # Verify it checks for zip file existence before processing
       expect(script_content).to include('if [ -f "unclass-certificates_pkcs7_ECA.zip" ]; then')
 
-      # Verify it continues without exiting on failure (no actual exit 1 command after DoD failures)
-      # Look for the else block and verify it doesn't have an executable exit 1
-      dod_else_block = script_content[/else\s+echo "✗ All DoD ECA download attempts failed".*?fi/m]
-      expect(dod_else_block).not_to match(/^\s*exit 1\s*$/m)
+      # Verify it exits on download failure
+      dod_download_block = script_content[/else\s+echo "✗ All DoD ECA download attempts failed".*?fi/m]
+      expect(dod_download_block).to include('exit 1')
+
+      # Verify it exits when zip file is missing
+      dod_zip_block = script_content[/else\s+echo "✗ DoD ECA zip file not found after download attempts".*?fi/m]
+      expect(dod_zip_block).to include('exit 1')
     end
   end
 
   describe 'VA certificate download' do
-    it 'uses curl for VA certificates' do
+    it 'downloads VA certificates with wget and falls back to GitHub mirror' do
       script_content = File.read(script_path)
 
       # Verify wget command with proper options
       expect(script_content).to include('wget')
       expect(script_content).to include('--level=1')
-      expect(script_content).to include('--quiet')
       expect(script_content).to include('--recursive')
       expect(script_content).to include('--no-parent')
       expect(script_content).to include('--no-host-directories')
       expect(script_content).to include('--no-directories')
       expect(script_content).to include('--accept="VA*.cer"')
       expect(script_content).to include('http://aia.pki.va.gov/PKI/AIA/VA/')
+
+      # Verify GitHub mirror fallback
+      expect(script_content).to include('falling back to GitHub mirror')
+      expect(script_content).to include('platform-va-ca-certificate')
+
+      # Verify build fails when no cert files found after both attempts
+      expect(script_content).to include('No certificate files found after download')
     end
 
     it 'includes VA certificate download logging' do
@@ -148,11 +161,18 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
   end
 
   describe 'external certificate sources' do
-    it 'downloads DigiCert certificates' do
+    it 'downloads DigiCert certificates with validation and retries' do
       script_content = File.read(script_path)
 
-      expect(script_content).to include('curl -LO https://cacerts.digicert.com/DigiCertTLSRSASHA2562020CA1-1.crt.pem')
-      expect(script_content).to include('curl -LO https://digicert.tbs-certificats.com/DigiCertGlobalG2TLSRSASHA2562020CA1.crt')
+      expect(script_content).to include('https://cacerts.digicert.com/DigiCertTLSRSASHA2562020CA1-1.crt.pem')
+      expect(script_content).to include('https://digicert.tbs-certificats.com/DigiCertGlobalG2TLSRSASHA2562020CA1.crt')
+
+      # Verify curl uses --fail to catch HTTP errors
+      expect(script_content).to include('curl --fail')
+
+      # Verify build fails on DigiCert download failure
+      expect(script_content).to include('DigiCert TLS RSA SHA256 2020 CA1-1 download failed')
+      expect(script_content).to include('DigiCert Global G2 TLS RSA SHA256 2020 CA1 download failed')
     end
   end
 
@@ -183,11 +203,12 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
     it 'uses proper error handling with curl --fail flag' do
       script_content = File.read(script_path)
 
-      # Verify the primary DoD download uses --fail flag
-      expect(script_content).to include('curl --show-error')
+      # Verify all curl commands use --fail to catch HTTP errors
+      expect(script_content).to include('curl --fail --show-error')
 
       # Verify it's used in an if statement for proper error handling
       expect(script_content).to match(/if curl .*then/m)
+      expect(script_content).to match(/if ! curl .*then/m)
     end
   end
 

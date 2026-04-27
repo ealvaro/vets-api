@@ -1,27 +1,56 @@
 #!/usr/bin/env bash
+#
+# import-va-certs.sh — Downloads and installs VA internal CA certificates
+#
+# Called during the Docker build (see Dockerfile). Downloads certificates from:
+#   1. DigiCert (TLS RSA SHA256 2020 CA1-1, Global G2)
+#   2. DoD ECA (Enterprise CA root, with HTTPS→HTTP fallback)
+#   3. VA PKI (VA-Internal certs from aia.pki.va.gov)
+#
+# IMPORTANT: This script will FAIL THE BUILD if any cert download is unsuccessful.
+# This is intentional — deploying an image without VA internal certs causes
+# SSL_connect certificate verification failures against VA internal services.
+#
+# If the build fails here:
+#   - Check network connectivity to the cert CDNs (digicert.com, dl.dod.cyber.mil, aia.pki.va.gov)
+#   - Retry the build — transient CDN/network issues are the most common cause
+#   - If a cert URL has permanently changed, update this script and the corresponding
+#     specs in spec/scripts/import_va_certs_spec.rb
+#
+# Related: https://github.com/department-of-veterans-affairs/va.gov-team/issues/136662
+#
 
 set -euo pipefail
 
 (
     cd /usr/local/share/ca-certificates/
 
-    curl -LO https://cacerts.digicert.com/DigiCertTLSRSASHA2562020CA1-1.crt.pem
-    curl -LO https://digicert.tbs-certificats.com/DigiCertGlobalG2TLSRSASHA2562020CA1.crt
+    echo "Downloading DigiCert certificates..."
+    if ! curl --fail --show-error --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 5 -LO https://cacerts.digicert.com/DigiCertTLSRSASHA2562020CA1-1.crt.pem; then
+        echo "✗ DigiCert TLS RSA SHA256 2020 CA1-1 download failed"
+        exit 1
+    fi
+    if ! curl --fail --show-error --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 5 -LO https://digicert.tbs-certificats.com/DigiCertGlobalG2TLSRSASHA2562020CA1.crt; then
+        echo "✗ DigiCert Global G2 TLS RSA SHA256 2020 CA1 download failed"
+        exit 1
+    fi
+    echo "✓ DigiCert certificates downloaded"
 
     # DoD ECA with multiple fallback mechanisms
     (
         echo "Downloading DoD ECA certificates..."
 
         # Primary: HTTPS with timeout and retries
-        if curl --show-error --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 5 -o unclass-certificates_pkcs7_ECA.zip https://dl.dod.cyber.mil/wp-content/uploads/pki-pke/zip/unclass-certificates_pkcs7_ECA.zip; then
+        if curl --fail --show-error --location --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 5 -o unclass-certificates_pkcs7_ECA.zip https://dl.dod.cyber.mil/wp-content/uploads/pki-pke/zip/unclass-certificates_pkcs7_ECA.zip; then
             echo "✓ DoD ECA downloaded via HTTPS"
         # Fallback 1: HTTP with timeout and retries
         ## Uncomment in case the https call fails again
         ## Last time we got this error: Failed to connect to dl.dod.cyber.mil port 443
-        elif curl --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 5 -LO http://dl.dod.cyber.mil/wp-content/uploads/pki-pke/zip/unclass-certificates_pkcs7_ECA.zip; then
+        elif curl --fail --show-error --location --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 5 -o unclass-certificates_pkcs7_ECA.zip http://dl.dod.cyber.mil/wp-content/uploads/pki-pke/zip/unclass-certificates_pkcs7_ECA.zip; then
             echo "✓ DoD ECA downloaded via HTTP fallback"
         else
             echo "✗ All DoD ECA download attempts failed"
+            exit 1
         fi
         # Process the downloaded certificates
         if [ -f "unclass-certificates_pkcs7_ECA.zip" ]; then
@@ -33,13 +62,13 @@ set -euo pipefail
             echo "✓ DoD ECA certificates processed successfully"
         else
             echo "✗ DoD ECA zip file not found after download attempts"
+            exit 1
         fi
     )
 
     echo "Downloading VA certificates..."
     if wget \
         --level=1 \
-        --quiet \
         --recursive \
         --no-parent \
         --no-host-directories \
@@ -77,7 +106,8 @@ set -euo pipefail
     shopt -u nullglob
 
     if [ ${#cert_files[@]} -eq 0 ]; then
-        echo "Warning: No certificate files found to process"
+        echo "✗ No certificate files found after download — build cannot continue without VA certs"
+        exit 1
     else
         echo "Processing ${#cert_files[@]} certificate files..."
     fi
