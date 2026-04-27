@@ -301,8 +301,8 @@ coverband:
   github_api_key: <%= ENV['coverband__github_api_key'] %>
   github_oauth_key: <%= ENV['coverband__github_oauth_key'] %>
   github_oauth_secret: <%= ENV['coverband__github_oauth_secret'] %>
-  github_organization: department-of-veterans-affairs
-  github_team: 6394772
+  github_organization: software
+  github_team: 170836
 covid_vaccine:
   enrollment_service:
     job_enabled: <%= ENV['covid_vaccine__enrollment_service__job_enabled'] %>
@@ -520,7 +520,7 @@ flipper:
   github_api_key: <%= ENV['flipper__github_api_key'] %>
   github_oauth_key: <%= ENV['flipper__github_oauth_key'] %>
   github_oauth_secret: <%= ENV['flipper__github_oauth_secret'] %>
-  github_organization: department-of-veterans-affairs
+  github_organization: software
   github_team: <%= ENV['flipper__github_team'] %>
   mute_logs: <%= ENV['flipper__mute_logs'] %>
 form0781_remediation:
