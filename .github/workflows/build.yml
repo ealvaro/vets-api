@@ -60,6 +60,16 @@ jobs:
           push: true
           tags: |
             ${{ steps.ecr-login.outputs.registry }}/dsva/vets-api-postman:${{ github.event.workflow_run.head_commit.id }}
+     
+      - name: Generate cross-repo token for gems
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.GEM_APP_ID }}
+          private-key: ${{ secrets.GEM_APP_PRIVATE_KEY }}
+          owner: software
+          github-api-url: https://va.ghe.com/api/v3
+
       - name: Build vets-api Docker Image
         uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
         env:
@@ -67,6 +77,7 @@ jobs:
         with:
           build-args: |
             BUNDLE_ENTERPRISE__CONTRIBSYS__COM=${{ env.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
+            BUNDLE_VA__GHE__COM=x-access-token:${{ steps.app-token.outputs.token }}
             USER_ID=${{ env.VETS_API_USER_ID }}
             RAILS_ENV=production
           context: .
