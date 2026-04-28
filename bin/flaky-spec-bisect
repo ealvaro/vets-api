@@ -170,7 +170,7 @@ class FlakySpecBisect
       match[1]
     else
       puts Colors.red("Error: Could not extract run ID from: #{url_or_id}")
-      puts "Expected format: https://github.com/#{REPO}/actions/runs/12345678 or just 12345678"
+      puts "Expected format: https://va.ghe.com/#{REPO}/actions/runs/12345678 or just 12345678"
       exit 1
     end
   end
