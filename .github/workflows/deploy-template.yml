@@ -20,6 +20,8 @@ on:
         required: true
       aws_secret_access_key: #${{ secrets.AWS_SECRET_ACCESS_KEY }}
         required: true
+      va_vsp_bot_private_key: #${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
+        required: true
 permissions:
   id-token: write
   contents: read
@@ -72,7 +74,7 @@ jobs:
         uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ vars.VA_VSP_BOT_APP_ID }}
-          private-key: ${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
+          private-key: ${{ secrets.va_vsp_bot_private_key }}
           owner: software
           github-api-url: https://va.ghe.com/api/v3
 

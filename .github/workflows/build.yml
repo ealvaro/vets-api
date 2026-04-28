@@ -98,6 +98,7 @@ jobs:
     secrets:
       aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
       aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      va_vsp_bot_private_key: ${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
 
   deploy_prod_sandbox:
     needs: build_and_push
@@ -111,3 +112,4 @@ jobs:
     secrets:
       aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
       aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      va_vsp_bot_private_key: ${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
