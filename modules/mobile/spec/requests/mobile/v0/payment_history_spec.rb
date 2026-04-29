@@ -195,6 +195,47 @@ RSpec.describe 'Mobile::V0::PaymentHistory', type: :request do
       end
     end
 
+    context 'with multiple payments on the same day as the recurring payment' do
+      let(:same_day_non_recurring_payment) do
+        bgs_payments[:payment].first.merge(
+          payment_date: DateTime.parse('Fri, 29 Nov 2019 00:00:00 -0600'),
+          payment_record_identifier: { payment_id: '99999999' }
+        )
+      end
+
+      let(:payment_history_with_same_day_payments) do
+        {
+          payment: [
+            same_day_non_recurring_payment,
+            *bgs_payments[:payment]
+          ]
+        }
+      end
+
+      before do
+        allow_any_instance_of(BGS::PaymentService)
+          .to receive(:payment_history)
+          .and_return({ payments: payment_history_with_same_day_payments })
+
+        get '/mobile/v0/payment-history', headers: sis_headers
+      end
+
+      it 'returns a 200' do
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'returns the sum of all payments on the recurring payment date' do
+        expect(response.parsed_body['meta']).to include(
+          {
+            'recurringPayment' => {
+              'amount' => '$3,444.70',
+              'date' => '2019-11-29T00:00:00.000-06:00'
+            }
+          }
+        )
+      end
+    end
+
     context 'with a missing address_eft or account_number' do
       let(:params) do
         {

@@ -5,6 +5,7 @@ require 'adapters/payment_history_adapter'
 module Mobile
   module V0
     class PaymentHistoryController < ApplicationController
+      include ActionView::Helpers::NumberHelper
       before_action { authorize :bgs, :access? }
 
       def index
@@ -50,10 +51,16 @@ module Mobile
 
       def recurring_payment(payments)
         payment = payments&.find { |p| p[:payment_type] == 'Compensation & Pension - Recurring' }
-        return {} unless payment
+        return {} unless payment && payment[:date]
+
+        target_date = payment[:date].to_date
+
+        total_amount = payments.inject(0) do |sum, p|
+          sum + (p[:date]&.to_date == target_date ? p[:amount].delete('$,').to_f : 0)
+        end
 
         {
-          amount: payment[:amount],
+          amount: number_to_currency(total_amount),
           date: payment[:date]
         }
       end
