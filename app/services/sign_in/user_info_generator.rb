@@ -75,7 +75,8 @@ module SignIn
 
       return {} unless response.ok?
 
-      response.profile.address.attributes.symbolize_keys
+      address = response.profile&.address
+      address ? address.attributes.symbolize_keys : {}
     end
 
     def filter_gcids

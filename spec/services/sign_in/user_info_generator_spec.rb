@@ -200,6 +200,23 @@ RSpec.describe SignIn::UserInfoGenerator do
             expect(user_info.address_postal_code).to be_nil
           end
         end
+
+        context 'when MPI correlation profile address is nil' do
+          let(:mpi_profile) { build(:mpi_profile, address: nil) }
+
+          it 'returns empty address without raising an error' do
+            user_info = nil
+
+            expect { user_info = generator.perform }.not_to raise_error
+
+            expect(user_info.address_street1).to be_nil
+            expect(user_info.address_street2).to be_nil
+            expect(user_info.address_city).to be_nil
+            expect(user_info.address_state).to be_nil
+            expect(user_info.address_country).to be_nil
+            expect(user_info.address_postal_code).to be_nil
+          end
+        end
       end
 
       context 'when the gcids are valid' do
