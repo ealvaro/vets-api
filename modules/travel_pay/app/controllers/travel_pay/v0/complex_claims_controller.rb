@@ -34,16 +34,24 @@ module TravelPay
       end
 
       def create
+        appointment_source = validate_appointment_source!(request.query_parameters[:appointment_source])
         permitted_params = require_and_permit_claim_params(params)
         validate_required_params!(permitted_params)
         validate_datetime_format!(permitted_params[:appointment_date_time])
+
         appt_id = find_or_create_appt_id!('Complex', permitted_params)
         claim_id = create_claim(appt_id, 'Complex')
+        increment_statsd(appointment_source, 'success')
         render json: { claimId: claim_id }, status: :created
+      rescue Common::Exceptions::BadRequest
+        increment_statsd(appointment_source, 'failure') if appointment_source
+        raise
       rescue Common::Exceptions::ResourceNotFound => e
+        increment_statsd(appointment_source, 'failure')
         Rails.logger.error("Appointment not found: #{e.message}")
         render json: { error: e.message }, status: :not_found
       rescue Faraday::Error => e
+        increment_statsd(appointment_source, 'failure')
         Rails.logger.error("Faraday error creating complex claim: #{e.message}")
         # Some Faraday errors may not have a response object (e.response can be nil),
         # so we fall back to :internal_server_error
@@ -52,6 +60,11 @@ module TravelPay
       end
 
       private
+
+      def increment_statsd(appointment_source, result)
+        StatsD.increment('travel_pay.claims.complex.create',
+                         tags: ["appointment_source:#{appointment_source}", "result:#{result}"])
+      end
 
       def base_required_fields
         %i[
@@ -139,6 +152,20 @@ module TravelPay
         raise Common::Exceptions::BadRequest.new(
           detail: 'Appointment date time must be a valid datetime'
         )
+      end
+
+      VALID_APPOINTMENT_SOURCES = %w[user-generated vaos].freeze
+
+      def validate_appointment_source!(type)
+        type = 'vaos' if type.blank?
+
+        unless VALID_APPOINTMENT_SOURCES.include?(type)
+          raise Common::Exceptions::BadRequest.new(
+            detail: "Invalid appointment_source '#{type}'. Must be one of: #{VALID_APPOINTMENT_SOURCES.join(', ')}"
+          )
+        end
+
+        type
       end
     end
   end

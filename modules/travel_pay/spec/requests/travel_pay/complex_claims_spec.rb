@@ -104,6 +104,52 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
               expect(response).to have_http_status(:created)
               expect(JSON.parse(response.body)).to eq('claimId' => claim_id)
             end
+
+            it 'successfully creates complex claim with a valid appointment_source query param' do
+              allow(StatsD).to receive(:increment)
+
+              post('/travel_pay/v0/complex_claims?appointment_source=vaos', params: params_v2, as: :json)
+
+              expect(response).to have_http_status(:created)
+              expect(JSON.parse(response.body)).to eq('claimId' => claim_id)
+              expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
+                                                               tags: ['appointment_source:vaos',
+                                                                      'result:success'])
+            end
+
+            it 'successfully creates complex claim with user-generated appointment_source' do
+              allow(StatsD).to receive(:increment)
+
+              post('/travel_pay/v0/complex_claims?appointment_source=user-generated', params: params_v2, as: :json)
+
+              expect(response).to have_http_status(:created)
+              expect(JSON.parse(response.body)).to eq('claimId' => claim_id)
+              expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
+                                                               tags: ['appointment_source:user-generated',
+                                                                      'result:success'])
+            end
+
+            it 'increments StatsD with vaos default when appointment_source is omitted' do
+              allow(StatsD).to receive(:increment)
+
+              post('/travel_pay/v0/complex_claims', params: params_v2, as: :json)
+
+              expect(response).to have_http_status(:created)
+              expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
+                                                               tags: ['appointment_source:vaos',
+                                                                      'result:success'])
+            end
+          end
+
+          context 'when appointment_source query param is invalid' do
+            it 'returns bad request for an unrecognized appointment_source' do
+              post('/travel_pay/v0/complex_claims?appointment_source=invalid', params: params_v2, as: :json)
+
+              expect(response).to have_http_status(:bad_request)
+              body = JSON.parse(response.body)
+              expect(body['errors'].first['detail'])
+                .to eq("Invalid appointment_source 'invalid'. Must be one of: user-generated, vaos")
+            end
           end
 
           context 'when params are missing' do
@@ -157,10 +203,15 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
             end
 
             it 'returns resource not found when appointment does not exist' do
+              allow(StatsD).to receive(:increment)
+
               post('/travel_pay/v0/complex_claims', params: params_v2, as: :json)
 
               expect(response).to have_http_status(:not_found)
               expect(JSON.parse(response.body)['error']).to match(/Resource not found/)
+              expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
+                                                               tags: ['appointment_source:vaos',
+                                                                      'result:failure'])
             end
           end
 
@@ -184,11 +235,16 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
             end
 
             it 'returns a 500 error with generic error message' do
+              allow(StatsD).to receive(:increment)
+
               post('/travel_pay/v0/complex_claims', params: params_v2, as: :json)
 
               expect(response).to have_http_status(:bad_gateway)
               body = JSON.parse(response.body)
               expect(body['error']).to eq('Error creating complex claim')
+              expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
+                                                               tags: ['appointment_source:vaos',
+                                                                      'result:failure'])
             end
           end
         end
@@ -351,10 +407,15 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
             end
 
             it 'returns resource not found when appointment does not exist' do
+              allow(StatsD).to receive(:increment)
+
               post('/travel_pay/v0/complex_claims', params: params_v4, as: :json)
 
               expect(response).to have_http_status(:not_found)
               expect(JSON.parse(response.body)['error']).to match(/Resource not found/)
+              expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
+                                                               tags: ['appointment_source:vaos',
+                                                                      'result:failure'])
             end
           end
 
@@ -378,11 +439,16 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
             end
 
             it 'returns a 500 error with generic error message' do
+              allow(StatsD).to receive(:increment)
+
               post('/travel_pay/v0/complex_claims', params: params_v4, as: :json)
 
               expect(response).to have_http_status(:bad_gateway)
               body = JSON.parse(response.body)
               expect(body['error']).to eq('Error creating complex claim')
+              expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
+                                                               tags: ['appointment_source:vaos',
+                                                                      'result:failure'])
             end
           end
         end
