@@ -41,7 +41,7 @@ jobs:
           echo "environments=${{ env.environments }}" >> $GITHUB_OUTPUT
   release:
     needs: [prepare-values]
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/production-bypass'
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -90,11 +90,7 @@ jobs:
       - name: Determine environments to update
         id: determine-envs
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/master" ]]; then
-            echo "environments=dev staging" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref }}" == "refs/heads/production-bypass" ]]; then
-            echo "environments=prod sandbox" >> $GITHUB_OUTPUT
-          fi
+          echo "environments=dev staging prod sandbox" >> $GITHUB_OUTPUT
 
       - name: Update vets-api image and version name in Manifest repo
         env:
