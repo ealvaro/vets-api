@@ -1,5 +1,4 @@
 name: Settings Checks
-
 on:
   pull_request:
     types: [opened, reopened, synchronize]
@@ -10,6 +9,7 @@ permissions:
   id-token: write
   contents: read
   checks: write
+  pull-requests: write
 
 jobs:
   validate-config-files:
@@ -200,7 +200,7 @@ jobs:
         if: env.INVALID_PARAMETERS != ''
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
-          github-token: ${{ env.VA_VSP_BOT_GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const prNumber = context.payload.pull_request.number
             const invalidParameters = process.env.INVALID_PARAMETERS || ''
@@ -220,7 +220,7 @@ jobs:
         if: env.INVALID_PARAMETERS == '' && env.PARAM_STORE_VARS == 'true'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
-          github-token: ${{ env.VA_VSP_BOT_GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const prNumber = context.payload.pull_request.number
             await github.rest.issues.createComment({
