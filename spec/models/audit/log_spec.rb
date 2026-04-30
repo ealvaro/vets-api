@@ -22,7 +22,6 @@ RSpec.describe Audit::Log, type: :model do
         logingov_uuid: 'logingov_uuid',
         idme_uuid: 'idme_uuid',
         mhv_id: 'mhv_id',
-        dslogon_id: 'dslogon_id',
         system_hostname: 'system_hostname'
       }
     end

@@ -111,7 +111,7 @@ RSpec.describe Login::UserAcceptableVerifiedCredentialUpdater do
         end
 
         context 'and user account is not associated with either an idme or logingov user verification' do
-          let!(:user_verification) { create(:dslogon_user_verification, user_account:) }
+          let!(:user_verification) { create(:mhv_user_verification, user_account:) }
           let(:expected_avc_at) { nil }
           let(:expected_ivc_at) { nil }
 

@@ -7,7 +7,6 @@ RSpec.describe UserVerification, type: :model do
     create(:user_verification,
            idme_uuid:,
            logingov_uuid:,
-           dslogon_uuid:,
            mhv_uuid:,
            backing_idme_uuid:,
            verified_at:,
@@ -17,7 +16,6 @@ RSpec.describe UserVerification, type: :model do
 
   let(:idme_uuid) { nil }
   let(:logingov_uuid) { nil }
-  let(:dslogon_uuid) { nil }
   let(:mhv_uuid) { nil }
   let(:user_account) { nil }
   let(:backing_idme_uuid) { nil }
@@ -153,54 +151,6 @@ RSpec.describe UserVerification, type: :model do
       end
     end
 
-    describe '#dslogon_uuid' do
-      subject { user_verification.dslogon_uuid }
-
-      let(:user_account) { create(:user_account) }
-
-      context 'when another credential is defined' do
-        let(:idme_uuid) { 'some-idme-uuid-id' }
-
-        context 'and dslogon_uuid is not defined' do
-          it 'returns nil' do
-            expect(subject).to be_nil
-          end
-        end
-
-        context 'and dslogon_uuid is defined' do
-          let(:dslogon_uuid) { 'some-dslogon-uuid' }
-
-          it_behaves_like 'failed credential identifier validation'
-        end
-      end
-
-      context 'when another credential is not defined' do
-        context 'and dslogon_uuid is not defined' do
-          let(:dslogon_uuid) { nil }
-
-          it_behaves_like 'failed both validations'
-        end
-
-        context 'and dslogon_uuid is defined' do
-          let(:dslogon_uuid) { 'some-dslogon-uuid' }
-
-          context 'and backing_idme_uuid is not defined' do
-            let(:backing_idme_uuid) { nil }
-
-            it_behaves_like 'failed backing uuid credentials validation'
-          end
-
-          context 'and backing_idme_uuid is defined' do
-            let(:backing_idme_uuid) { 'some-backing-idme-uuid' }
-
-            it 'returns dslogon_uuid' do
-              expect(subject).to eq(dslogon_uuid)
-            end
-          end
-        end
-      end
-    end
-
     describe '#mhv_uuid' do
       subject { user_verification.mhv_uuid }
 
@@ -308,16 +258,6 @@ RSpec.describe UserVerification, type: :model do
         end
       end
 
-      context 'when a DSLogon user verification is found' do
-        let(:dslogon_uuid) { 'some-dslogon-uuid' }
-        let(:backing_idme_uuid) { 'some-backing-idme-uuid' }
-        let(:type) { 'dslogon' }
-
-        it 'returns the user verification' do
-          expect(subject).to eq(user_verification)
-        end
-      end
-
       context 'when an MHV user verification is found' do
         let(:mhv_uuid) { 'some-mhv-uuid' }
         let(:backing_idme_uuid) { 'some-backing-idme-uuid' }
@@ -378,16 +318,6 @@ RSpec.describe UserVerification, type: :model do
       end
     end
 
-    context 'when dslogon_uuid is present' do
-      let(:dslogon_uuid) { 'some-dslogon-uuid' }
-      let(:backing_idme_uuid) { 'some-backing-idme-uuid' }
-      let(:expected_credential_type) { SAML::User::DSLOGON_CSID }
-
-      it 'returns expected credential type' do
-        expect(subject).to eq(expected_credential_type)
-      end
-    end
-
     context 'when mhv_uuid is present' do
       let(:mhv_uuid) { 'some-mhv-uuid' }
       let(:backing_idme_uuid) { 'some-backing-idme-uuid' }
@@ -416,16 +346,6 @@ RSpec.describe UserVerification, type: :model do
     context 'when idme_uuid is present' do
       let(:idme_uuid) { 'some-idme-uuid' }
       let(:expected_credential_identifier) { idme_uuid }
-
-      it 'returns expected credential identifier' do
-        expect(subject).to eq(expected_credential_identifier)
-      end
-    end
-
-    context 'when dslogon_uuid is present' do
-      let(:dslogon_uuid) { 'some-dslogon-uuid' }
-      let(:backing_idme_uuid) { 'some-backing-idme-uuid' }
-      let(:expected_credential_identifier) { dslogon_uuid }
 
       it 'returns expected credential identifier' do
         expect(subject).to eq(expected_credential_identifier)

@@ -6,6 +6,6 @@ FactoryBot.define do
   end
   factory :user_account_with_verification, class: 'UserAccount' do
     icn { Faker::Alphanumeric.alphanumeric(number: 10) }
-    user_verifications { create_list(:dslogon_user_verification, 1) }
+    user_verifications { create_list(:user_verification, 1) }
   end
 end

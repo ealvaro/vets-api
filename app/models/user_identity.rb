@@ -31,7 +31,7 @@ class UserIdentity < Common::RedisStore
   attribute :mhv_icn # only needed by B/E not serialized in user_serializer
   attribute :mhv_credential_uuid
   attribute :mhv_account_type # this is only available for MHV sign-in users
-  attribute :edipi # this is only available for dslogon users
+  attribute :edipi
   attribute :sign_in, Hash # original sign_in (see sso_service#mergable_identity_attributes)
   attribute :icn_with_aaid
   attribute :search_token
@@ -41,8 +41,8 @@ class UserIdentity < Common::RedisStore
   validate  :loa_highest_present
 
   # LOA3 no longer just means ID.me FICAM LOA3.
-  # It could also be DSLogon or MHV Premium users.
-  # It could also be DSLogon or MHV NON PREMIUM users who have done ID.me FICAM LOA3.
+  # It could also be MHV Premium users.
+  # It could also be MHV NON PREMIUM users who have done ID.me FICAM LOA3.
   # Additionally, LOA3 does not automatically mean user has opted to have MFA.
   def loa3?
     loa && loa[:current].try(:to_i) == LOA::THREE

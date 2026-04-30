@@ -73,37 +73,8 @@ RSpec.describe Identity::UserAcceptableVerifiedCredentialTotalsJob do
       include_context 'when there are no avc and ivc'
     end
 
-    context 'dslogon verified accounts' do
-      let(:expected_provider) { :dslogon }
-
-      include_context 'when there are avc'
-      include_context 'when there are ivc'
-      include_context 'when there are no avc'
-      include_context 'when there are no ivc'
-      include_context 'when there are no avc and ivc'
-    end
-
     context 'mhv verified accounts' do
       let(:expected_provider) { :mhv }
-
-      include_context 'when there are avc'
-      include_context 'when there are ivc'
-      include_context 'when there are no avc'
-      include_context 'when there are no ivc'
-      include_context 'when there are no avc and ivc'
-    end
-
-    context 'combined mhv and dslogon accounts' do
-      let(:expected_provider) { :mhv }
-
-      let!(:dslogon_avcs) do
-        create_list(:user_acceptable_verified_credential,
-                    expected_count,
-                    :dslogon_verified_account,
-                    :"#{expected_scope}")
-      end
-      let(:expected_statsd_key) { "worker.user_avc_totals.mhv_dslogon.#{expected_scope}.total" }
-      let(:expected_statsd_count) { UserAcceptableVerifiedCredential.all.count }
 
       include_context 'when there are avc'
       include_context 'when there are ivc'

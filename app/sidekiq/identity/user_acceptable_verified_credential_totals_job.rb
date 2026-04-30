@@ -15,7 +15,6 @@ module Identity
     PROVIDERS = [ALL = :all,
                  IDME = :idme,
                  LOGINGOV = :logingov,
-                 DSLOGON = :dslogon,
                  MHV = :mhv].freeze
 
     def perform
@@ -30,7 +29,6 @@ module Identity
       base_query = UserAcceptableVerifiedCredential.joins(user_account: :user_verifications).distinct
 
       SCOPES.each do |scope|
-        mhv_dslogon_combined_total = 0
         scoped_query = base_query.merge(UserAcceptableVerifiedCredential.public_send(scope))
 
         PROVIDERS.each do |provider|
@@ -41,13 +39,7 @@ module Identity
                   end
 
           StatsD.gauge("#{STATSD_KEY_PREFIX}.#{provider}.#{scope}.total", count)
-
-          # MHV and DSLOGON combined total
-          mhv_dslogon_combined_total += count if [MHV, DSLOGON].include?(provider)
         end
-
-        # MHV_DSLOGON Combined gauge
-        StatsD.gauge("#{STATSD_KEY_PREFIX}.#{MHV}_#{DSLOGON}.#{scope}.total", mhv_dslogon_combined_total)
       end
     end
   end
