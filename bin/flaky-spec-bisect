@@ -17,7 +17,7 @@ module Colors
 end
 
 class FlakySpecBisect
-  REPO = 'department-of-veterans-affairs/vets-api'
+  REPO = 'software/vets-api'
 
   def initialize(url_or_run_id, options = {})
     @run_id = extract_run_id(url_or_run_id)

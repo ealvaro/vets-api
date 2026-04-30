@@ -30,7 +30,7 @@ namespace :github_stats do
     # get open PRs for vets-api and vets-website and add data to hash
     responses = {}
     REPOS.each do |repo|
-      url = "https://api.github.com/repos/department-of-veterans-affairs/#{repo}/pulls?state=open&per_page=100"
+      url = "https://api.va.ghe.com/repos/software/#{repo}/pulls?state=open&per_page=100"
       resp = get_response_body(url)
       responses[repo] = resp
     end

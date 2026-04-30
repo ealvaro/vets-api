@@ -115,10 +115,11 @@ RSpec.describe RepresentationManagement::DataComparisonService do
     before do
       xlsx_file_fetcher = double('xlsx_file_fetcher', github_access_token: 'fake_github_token')
       allow(Settings).to receive(:xlsx_file_fetcher).and_return(xlsx_file_fetcher)
-      allow(Octokit::Client).to receive(:new).with(access_token: 'fake_github_token')
+      allow(Octokit::Client).to receive(:new).with(access_token: 'fake_github_token',
+                                                   api_endpoint: 'https://api.va.ghe.com')
                                              .and_return(mock_github_client)
       allow(mock_github_client).to receive(:contents)
-        .with('department-of-veterans-affairs/va.gov-team-sensitive',
+        .with('software/va.gov-team-sensitive',
               path: 'products/accredited-representation-management/data/rep-org-addresses.xlsx')
         .and_return(mock_file_info)
     end
@@ -135,7 +136,8 @@ RSpec.describe RepresentationManagement::DataComparisonService do
       end
 
       it 'sets up GitHub client with correct token' do
-        expect(Octokit::Client).to receive(:new).with(access_token: 'fake_github_token')
+        expect(Octokit::Client).to receive(:new).with(access_token: 'fake_github_token',
+                                                      api_endpoint: 'https://api.va.ghe.com')
         service.send(:download_file)
       end
     end
@@ -552,7 +554,7 @@ RSpec.describe RepresentationManagement::DataComparisonService do
 
   describe 'GitHub constants' do
     it 'has correct GitHub organization constant' do
-      expect(described_class::GITHUB_ORG).to eq('department-of-veterans-affairs')
+      expect(described_class::GITHUB_ORG).to eq('software')
     end
 
     it 'has correct GitHub repository constant' do
@@ -596,7 +598,8 @@ RSpec.describe RepresentationManagement::DataComparisonService do
       end
 
       it 'creates Octokit client with access token from settings' do
-        expect(Octokit::Client).to receive(:new).with(access_token: 'test_token_12345')
+        expect(Octokit::Client).to receive(:new).with(access_token: 'test_token_12345',
+                                                      api_endpoint: 'https://api.va.ghe.com')
         service.send(:setup_github_client)
       end
 
@@ -615,7 +618,7 @@ RSpec.describe RepresentationManagement::DataComparisonService do
 
       it 'calls contents with correct repository and path' do
         expect(mock_github_client).to receive(:contents)
-          .with('department-of-veterans-affairs/va.gov-team-sensitive',
+          .with('software/va.gov-team-sensitive',
                 path: 'products/accredited-representation-management/data/rep-org-addresses.xlsx')
           .and_return(mock_file_info)
 

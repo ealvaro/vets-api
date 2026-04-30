@@ -10,7 +10,7 @@ require 'vets/shared_logging'
 class SensitiveRepoXlsxFileFetcher
   include Vets::SharedLogging
 
-  ORG = 'department-of-veterans-affairs'
+  ORG = 'software'
   REPO = 'va.gov-team-sensitive'
   PATH = 'products/accredited-representation-management/data/rep-org-addresses.xlsx'
   OPEN_TIMEOUT = 5
@@ -33,7 +33,7 @@ class SensitiveRepoXlsxFileFetcher
     token = github_access_token
     raise ArgumentError, 'GitHub access token is missing or invalid' if token.blank?
 
-    @client = Octokit::Client.new(access_token: token)
+    @client = Octokit::Client.new(access_token: token, api_endpoint: 'https://api.va.ghe.com')
   end
 
   def github_access_token

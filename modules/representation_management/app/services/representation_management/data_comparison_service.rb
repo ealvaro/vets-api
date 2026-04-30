@@ -23,7 +23,7 @@ module RepresentationManagement
   # to ensure visibility in the Rails console environment.
   class DataComparisonService
     # Constants for GitHub file location
-    GITHUB_ORG = 'department-of-veterans-affairs'
+    GITHUB_ORG = 'software'
     GITHUB_REPO = 'va.gov-team-sensitive'
     GITHUB_PATH = 'products/accredited-representation-management/data/rep-org-addresses.xlsx'
 
@@ -121,7 +121,8 @@ module RepresentationManagement
 
     # Sets up the Octokit GitHub client with an access token
     def setup_github_client
-      @github_client = Octokit::Client.new(access_token: Settings.xlsx_file_fetcher.github_access_token)
+      @github_client = Octokit::Client.new(access_token: Settings.xlsx_file_fetcher.github_access_token,
+                                           api_endpoint: 'https://api.va.ghe.com')
     end
 
     # Retrieves the file information for the XLSX file from GitHub
