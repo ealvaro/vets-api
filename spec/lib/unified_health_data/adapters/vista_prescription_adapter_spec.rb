@@ -903,4 +903,28 @@ describe UnifiedHealthData::Adapters::VistaPrescriptionAdapter do
       expect(second_tracking[:other_prescriptions]).to eq([])
     end
   end
+
+  describe 'is_renewal_flow_enabled' do
+    it 'is always false for VistA prescriptions' do
+      medication = base_vista_medication.merge(
+        'dispStatus' => 'Active',
+        'refillRemaining' => 0,
+        'prescriptionSource' => 'RX'
+      )
+      result = subject.parse(medication)
+      expect(result.is_renewal_flow_enabled).to be false
+    end
+
+    it 'is false even when is_renewable is true' do
+      medication = base_vista_medication.merge(
+        'dispStatus' => 'Active',
+        'refillRemaining' => 0,
+        'prescriptionSource' => 'RX',
+        'isRenewable' => false
+      )
+      result = subject.parse(medication)
+      expect(result.is_renewable).to be true
+      expect(result.is_renewal_flow_enabled).to be false
+    end
+  end
 end

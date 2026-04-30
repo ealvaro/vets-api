@@ -38,6 +38,7 @@ module MyHealth
       attribute :station_number
       attribute :is_refillable
       attribute :is_renewable
+      attribute :is_renewal_flow_enabled
       attribute :is_trackable
       attribute :source_ehr
       attribute :renewal_submitted_timestamp

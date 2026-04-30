@@ -6,6 +6,7 @@ require_relative 'medication_dispense_helpers'
 require_relative 'oracle_health_categorizer'
 require_relative 'oracle_health_expiration_helper'
 require_relative 'oracle_health_refill_helper'
+require_relative 'oracle_health_renewal_flow_helper'
 require_relative 'oracle_health_renewability_helper'
 require_relative 'oracle_health_task_helper'
 require_relative 'oracle_health_tracking_helper'
@@ -18,6 +19,7 @@ module UnifiedHealthData
       include OracleHealthCategorizer
       include OracleHealthExpirationHelper
       include OracleHealthRefillHelper
+      include OracleHealthRenewalFlowHelper
       include OracleHealthRenewabilityHelper
       include OracleHealthTaskHelper
       include OracleHealthTrackingHelper
@@ -128,9 +130,23 @@ module UnifiedHealthData
           prescription_number: extract_prescription_number(resource),
           prescription_name: extract_prescription_name(resource),
           station_number: extract_station_number(resource),
-          is_refillable: facility_name.present? && extract_is_refillable(resource, refill_status),
-          is_renewable: extract_is_renewable(resource),
           cmop_ndc_number: nil # Not available in Oracle Health yet, will get this when we get CMOP data
+        }.merge(build_availability_flags(resource, facility_name, refill_status))
+      end
+
+      # Builds boolean availability flags for a prescription.
+      #
+      # @param resource [Hash] FHIR MedicationRequest resource
+      # @param facility_name [String, nil] Resolved facility name (must be present for refillable)
+      # @param refill_status [String] Current refill status
+      # @return [Hash] Hash with :is_refillable, :is_renewable, :is_renewal_flow_enabled
+      def build_availability_flags(resource, facility_name, refill_status)
+        is_renewable = extract_is_renewable(resource)
+        station = extract_station_number(resource)
+        {
+          is_refillable: facility_name.present? && extract_is_refillable(resource, refill_status),
+          is_renewable:,
+          is_renewal_flow_enabled: compute_renewal_flow_enabled(is_renewable, station, @current_user)
         }
       end
 

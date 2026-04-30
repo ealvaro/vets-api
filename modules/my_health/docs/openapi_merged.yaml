@@ -4584,6 +4584,14 @@ components:
             isRefillable:
               type: boolean
               example: true
+            isRenewable:
+              type: boolean
+              description: Whether this prescription is eligible for renewal. Only present in V2 responses.
+              example: false
+            isRenewalFlowEnabled:
+              type: boolean
+              description: Whether the secure-message renewal flow is enabled for this prescription's facility. Always false for VistA prescriptions. Only present in V2 responses.
+              example: false
             isTrackable:
               type: boolean
               example: false

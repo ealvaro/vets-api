@@ -25,6 +25,7 @@ module UnifiedHealthData
     attribute :station_number, String
     attribute :is_refillable, Bool
     attribute :is_renewable, Bool
+    attribute :is_renewal_flow_enabled, Bool
     attribute :is_trackable, Bool
     attribute :tracking, Array, default: []
     attribute :instructions, String

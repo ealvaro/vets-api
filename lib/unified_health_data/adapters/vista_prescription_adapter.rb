@@ -51,6 +51,7 @@ module UnifiedHealthData
           station_number: medication['stationNumber'],
           is_refillable: medication['isRefillable'],
           is_renewable: extract_is_renewable(medication),
+          is_renewal_flow_enabled: false,
           cmop_ndc_number: medication['cmopNdcNumber']
         }
       end

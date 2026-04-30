@@ -741,6 +741,7 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
           expect(oracle_attrs['refill_status']).to be_present
           expect(oracle_attrs['is_refillable']).to be_in([true, false])
           expect(oracle_attrs['is_trackable']).to be_in([true, false])
+          expect(oracle_attrs['is_renewal_flow_enabled']).to be_in([true, false])
 
           # Verify prescription_source is valid for Oracle (VA indicates Oracle Health/Cerner system)
           expect(oracle_attrs['prescription_source']).to eq('VA')
@@ -780,6 +781,26 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
             attributes = prescription['attributes']
             expect(attributes).to have_key('is_renewable')
             expect(attributes['is_renewable']).to be_in([true, false, nil])
+          end
+        end
+      end
+
+      it 'includes is_renewal_flow_enabled attribute in prescription data' do
+        VCR.use_cassette('unified_health_data/get_prescriptions_success', match_requests_on: %i[method path]) do
+          get('/my_health/v2/prescriptions', headers:)
+
+          json_response = JSON.parse(response.body)
+          prescriptions = json_response['data']
+
+          expect(prescriptions).not_to be_empty
+
+          prescriptions.each do |prescription|
+            attributes = prescription['attributes']
+            expect(attributes).to have_key('is_renewal_flow_enabled')
+            expect(attributes['is_renewal_flow_enabled']).to be_in([true, false])
+
+            # is_renewal_flow_enabled must be false when is_renewable is false
+            expect(attributes['is_renewal_flow_enabled']).to be(false) unless attributes['is_renewable']
           end
         end
       end
@@ -836,8 +857,10 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
           expect(attributes).to have_key('prescriptionNumber')
           expect(attributes).to have_key('prescriptionName')
           expect(attributes).to have_key('refillStatus')
+          expect(attributes).to have_key('isRenewalFlowEnabled')
           expect(attributes).not_to have_key('prescription_id')
           expect(attributes).not_to have_key('prescription_number')
+          expect(attributes).not_to have_key('is_renewal_flow_enabled')
         end
       end
 
@@ -1638,8 +1661,10 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
           attributes = prescription['attributes']
           expect(attributes).to have_key('prescriptionId')
           expect(attributes).to have_key('prescriptionName')
+          expect(attributes).to have_key('isRenewalFlowEnabled')
           expect(attributes).not_to have_key('prescription_id')
           expect(attributes).not_to have_key('prescription_name')
+          expect(attributes).not_to have_key('is_renewal_flow_enabled')
         end
       end
 
