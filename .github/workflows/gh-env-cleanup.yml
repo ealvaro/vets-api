@@ -76,7 +76,6 @@ jobs:
             puts "\nDone."
           EOF
 
-
   # PR-close cleanup job
   pr-close-cleanup:
     if: github.event_name == 'pull_request'
@@ -108,7 +107,7 @@ jobs:
             ENCODED_ENV=$(echo "$ENV" | jq -Rr @uri)
             echo "Attempting to delete environment: $ENV"
             RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
-              -H "Authorization: Bearer ${{ env.VA_VSP_BOT_GITHUB_TOKEN }}" \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
               -H "Accept: application/vnd.github.v3+json" \
               "https://api.va.ghe.com/repos/${{ github.repository }}/environments/$ENCODED_ENV")
 
