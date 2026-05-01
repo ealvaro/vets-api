@@ -335,7 +335,6 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
 
           expect(span_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'form_id' }, form_number)
           expect(span_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'org' }, '067')
-          expect(span_double).to have_received(:set_tag).with('form_submission.bdd_status', :non_bdd)
 
           expect(trace_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'form_id' }, form_number)
           expect(trace_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'org' }, '067')
@@ -421,6 +420,18 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
         end
 
         context 'bdd checkbox is checked' do
+          let(:monitor_instance) do
+            AccreditedRepresentativePortal::Monitoring.new(
+              AccreditedRepresentativePortal::Monitoring::NAME,
+              default_tags: []
+            )
+          end
+
+          before do
+            allow(AccreditedRepresentativePortal::Monitoring).to receive(:new).and_return(monitor_instance)
+            allow(monitor_instance).to receive(:track_count)
+          end
+
           it 'makes the veteran request with multiple attachments' do
             post('/accredited_representative_portal/v0/submit_representative_form', params: bdd_form_veteran_params)
             expect(response).to have_http_status(:ok)
@@ -431,6 +442,15 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
                 'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
               }
             )
+          end
+
+          it 'increments ar.claims.form_upload.submit.success with bdd params' do
+            post('/accredited_representative_portal/v0/submit_representative_form', params: bdd_form_veteran_params)
+            expect(response).to have_http_status(:ok)
+            expect(monitor_instance).to have_received(:track_count).with(
+              'ar.claims.form_upload.submit.success',
+              tags: array_including("form_id:#{form_number}", 'bdd_status:bdd_with_sha')
+            ).once
           end
         end
       end
