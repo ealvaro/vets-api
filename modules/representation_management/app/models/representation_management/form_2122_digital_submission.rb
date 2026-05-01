@@ -7,12 +7,14 @@ module RepresentationManagement
     DEPENDENT_SUBMITTER = 'must submit as the Veteran for digital Power of Attorney Requests'
     DOES_NOT_ACCEPT_DIGITAL_REQUESTS = 'does not accept digital Power of Attorney Requests'
     NOT_FOUND = 'not found'
+    REP_CANNOT_ACCEPT = 'representative does not have an active acceptance mode for this organization'
 
     attr_accessor :dependent, :organization_id, :user
 
     validates :organization_id, presence: true
     validate :organization_exists?
     validate :organization_accepts_digital_poa_requests?
+    validate :representative_can_accept_for_organization?
     validate :user_is_submitting_as_veteran?
     validate :user_has_participant_id?
     validate :user_has_icn?
@@ -54,6 +56,21 @@ module RepresentationManagement
       return if organization&.can_accept_digital_poa_requests
 
       errors.add(:organization, DOES_NOT_ACCEPT_DIGITAL_REQUESTS)
+    end
+
+    def representative_can_accept_for_organization?
+      return unless Flipper.enabled?(:accredited_representative_portal_individual_accept)
+      return if organization.nil? || representative.nil?
+      return unless organization.can_accept_digital_poa_requests
+
+      poa_code = organization.respond_to?(:poa) ? organization.poa : organization.poa_code
+      return if Veteran::Service::OrganizationRepresentative.active
+                                                            .where(representative_id:,
+                                                                   organization_poa: poa_code)
+                                                            .where.not(acceptance_mode: 'no_acceptance')
+                                                            .exists?
+
+      errors.add(:representative, REP_CANNOT_ACCEPT)
     end
 
     def user_is_submitting_as_veteran?

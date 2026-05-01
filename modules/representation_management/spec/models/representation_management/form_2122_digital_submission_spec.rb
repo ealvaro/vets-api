@@ -135,6 +135,163 @@ RSpec.describe RepresentationManagement::Form2122DigitalSubmission, type: :model
       end
     end
 
+    context 'representative_can_accept_for_organization?' do
+      let(:organization) { create(:organization, name: 'Test Org', can_accept_digital_poa_requests: true) }
+      let(:organization_id) { organization.poa }
+      let(:rep) { create(:representative, representative_id: '12345') }
+
+      before do
+        subject.representative_id = rep.representative_id
+        allow(Flipper).to receive(:enabled?).and_call_original
+      end
+
+      context 'when accredited_representative_portal_individual_accept flag is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:accredited_representative_portal_individual_accept).and_return(false)
+        end
+
+        it 'does not add an error regardless of acceptance mode' do
+          subject.valid?
+
+          expect(subject.errors[:representative]).not_to include(
+            RepresentationManagement::Form2122DigitalSubmission::REP_CANNOT_ACCEPT
+          )
+        end
+      end
+
+      context 'when accredited_representative_portal_individual_accept flag is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:accredited_representative_portal_individual_accept).and_return(true)
+        end
+
+        context 'when the representative has an active any_request record' do
+          before do
+            create(:veteran_organization_representative,
+                   representative: rep, organization:, acceptance_mode: 'any_request')
+          end
+
+          it 'does not add an error' do
+            subject.valid?
+
+            expect(subject.errors[:representative]).not_to include(
+              RepresentationManagement::Form2122DigitalSubmission::REP_CANNOT_ACCEPT
+            )
+          end
+        end
+
+        context 'when the representative has an active self_only record' do
+          before do
+            create(:veteran_organization_representative,
+                   representative: rep, organization:, acceptance_mode: 'self_only')
+          end
+
+          it 'does not add an error' do
+            subject.valid?
+
+            expect(subject.errors[:representative]).not_to include(
+              RepresentationManagement::Form2122DigitalSubmission::REP_CANNOT_ACCEPT
+            )
+          end
+        end
+
+        context 'when the representative has an active no_acceptance record' do
+          before do
+            create(:veteran_organization_representative,
+                   representative: rep, organization:, acceptance_mode: 'no_acceptance')
+          end
+
+          it 'adds an error' do
+            subject.valid?
+
+            expect(subject.errors[:representative]).to include(
+              RepresentationManagement::Form2122DigitalSubmission::REP_CANNOT_ACCEPT
+            )
+          end
+        end
+
+        context 'when the representative has no organization_representative record' do
+          it 'adds an error' do
+            subject.valid?
+
+            expect(subject.errors[:representative]).to include(
+              RepresentationManagement::Form2122DigitalSubmission::REP_CANNOT_ACCEPT
+            )
+          end
+        end
+
+        context 'when the representative has a deactivated record' do
+          before do
+            create(:veteran_organization_representative,
+                   representative: rep, organization:, acceptance_mode: 'any_request',
+                   deactivated_at: 1.day.ago)
+          end
+
+          it 'adds an error' do
+            subject.valid?
+
+            expect(subject.errors[:representative]).to include(
+              RepresentationManagement::Form2122DigitalSubmission::REP_CANNOT_ACCEPT
+            )
+          end
+        end
+
+        context 'when the organization is not accepting digital requests' do
+          let(:organization) do
+            create(:organization, name: 'Test Org', can_accept_digital_poa_requests: false)
+          end
+
+          it 'skips the representative check and does not add a representative error' do
+            subject.valid?
+
+            expect(subject.errors[:representative]).not_to include(
+              RepresentationManagement::Form2122DigitalSubmission::REP_CANNOT_ACCEPT
+            )
+          end
+        end
+      end
+
+      context 'when the organization is an AccreditedOrganization' do
+        let(:accredited_org) do
+          create(:accredited_organization, can_accept_digital_poa_requests: true)
+        end
+        let(:veteran_org) { create(:organization, poa: accredited_org.poa_code) }
+        let(:organization_id) { accredited_org.id }
+
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:accredited_representative_portal_individual_accept).and_return(true)
+        end
+
+        context 'when the representative has an active record' do
+          before do
+            create(:veteran_organization_representative,
+                   representative: rep, organization: veteran_org,
+                   acceptance_mode: 'any_request')
+          end
+
+          it 'does not add an error' do
+            subject.valid?
+
+            expect(subject.errors[:representative]).not_to include(
+              RepresentationManagement::Form2122DigitalSubmission::REP_CANNOT_ACCEPT
+            )
+          end
+        end
+
+        context 'when the representative has no active record' do
+          it 'adds an error' do
+            subject.valid?
+
+            expect(subject.errors[:representative]).to include(
+              RepresentationManagement::Form2122DigitalSubmission::REP_CANNOT_ACCEPT
+            )
+          end
+        end
+      end
+    end
+
     context 'user_is_submitting_as_veteran?' do
       context 'when the user is not submitting as the Veteran' do
         let(:dependent) { true }
