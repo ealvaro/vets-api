@@ -108,6 +108,7 @@ class SourceAppMiddleware
     'feedback-tool',
     'find-a-representative',
     'fmp-cover-sheet',
+    'form-renderer',
     'fry-dea',
     'gi',
     'hca',
