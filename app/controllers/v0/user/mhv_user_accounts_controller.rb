@@ -9,7 +9,8 @@ module V0
       def show
         authorize MHVUserAccount
         mhv_user_account = MHV::UserAccount::Creator.new(user_verification: current_user.user_verification,
-                                                         break_cache: true).perform
+                                                         break_cache: true,
+                                                         session_id: current_user.session_handle).perform
 
         return render_mhv_account_errors('not_found', status: :not_found) if mhv_user_account.blank?
 

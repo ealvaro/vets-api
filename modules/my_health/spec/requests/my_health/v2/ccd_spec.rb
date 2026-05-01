@@ -11,7 +11,7 @@ RSpec.describe 'MyHealth::V2::CcdController', type: :request do
   let(:current_user) { build(:user, :mhv, icn: '1000123456V123456') }
 
   before do
-    sign_in_as(current_user)
+    sign_in_as(current_user, stub_mhv_account: true)
   end
 
   describe 'GET /my_health/v2/medical_records/ccd/generate' do

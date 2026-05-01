@@ -8,7 +8,7 @@ RSpec.describe MyHealth::MRController, type: :controller do
   let(:user) { create(:user, :loa3) }
 
   before do
-    sign_in_as(user)
+    sign_in_as(user, stub_mhv_account: true)
     controller.instance_variable_set(:@current_user, user)
   end
 

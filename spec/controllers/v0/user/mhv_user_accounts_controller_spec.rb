@@ -4,7 +4,7 @@ require 'rails_helper'
 require 'mhv/account_creation/service'
 
 describe V0::User::MHVUserAccountsController, type: :controller do
-  let(:user) { build(:user, :loa3, icn:) }
+  let(:user) { build(:user, :loa3, icn:, skip_mhv_user_account_preload: true) }
   let(:icn) { '10101V964144' }
   let(:user_account) { user.user_account }
   let(:user_verification) { user.user_verification }
@@ -49,7 +49,7 @@ describe V0::User::MHVUserAccountsController, type: :controller do
                                                                     email: user_credential_email.credential_email,
                                                                     tou_occurred_at: terms_of_use_agreement.created_at,
                                                                     break_cache: true,
-                                                                    from_cache_only: false)
+                                                                    session_id: user.session_handle)
         end
       end
 

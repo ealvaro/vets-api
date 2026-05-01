@@ -24,7 +24,7 @@ RSpec.describe 'MyHealth::V1::VhieSharingController', type: :request do
 
     allow(BB::Client).to receive(:new).and_return(bb_client)
     allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_new_eligibility_check).and_return(false)
-    sign_in_as(current_user)
+    sign_in_as(current_user, stub_mhv_account: true)
   end
 
   context 'Authorized user' do

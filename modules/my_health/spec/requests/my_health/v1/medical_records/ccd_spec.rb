@@ -33,7 +33,7 @@ RSpec.describe MyHealth::V1::MedicalRecords::CcdController, type: :request do
     )
     allow(BBInternal::Client).to receive(:new).and_return(bb_internal_client)
 
-    sign_in_as(current_user)
+    sign_in_as(current_user, stub_mhv_account: true)
   end
 
   context 'Authorized user' do

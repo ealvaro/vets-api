@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'digest'
 require 'mhv/account_creation/configuration'
 
 module MHV
@@ -7,12 +8,10 @@ module MHV
     class Service < Common::Client::Base
       configuration Configuration
 
-      def create_account(icn:, email:, tou_occurred_at:, break_cache: false, from_cache_only: false)
-        return find_cached_response(icn) if from_cache_only
-
+      def create_account(icn:, email:, tou_occurred_at:, break_cache: false, session_id: nil)
         params = build_create_account_params(icn:, email:, tou_occurred_at:)
 
-        create_account_with_cache(icn:, force: break_cache, expires_in: 1.day) do
+        create_account_with_cache(icn:, session_id:, force: break_cache, expires_in: 1.day) do
           Rails.logger.info("#{config.logging_prefix} create_account request", { icn: })
           response = perform(:post, config.account_creation_path, params, authenticated_header(icn:))
           normalize_response_body(response.body)
@@ -25,14 +24,10 @@ module MHV
 
       private
 
-      def find_cached_response(icn)
-        Rails.cache.read("#{config.service_name}_#{icn}")
-      end
-
-      def create_account_with_cache(icn:, force:, expires_in:, &request)
+      def create_account_with_cache(icn:, session_id:, force:, expires_in:, &request)
         cache_hit = true
         start = nil
-        account = Rails.cache.fetch("#{config.service_name}_#{icn}", force:, expires_in:) do
+        account = Rails.cache.fetch(cache_key(icn:, session_id:), force:, expires_in:) do
           cache_hit = false
           start = Time.current
           request.call
@@ -44,6 +39,13 @@ module MHV
                             { icn:, account:, duration_ms: })
         end
         account
+      end
+
+      def cache_key(icn:, session_id:)
+        base_key = "#{config.service_name}_#{icn}"
+        return base_key if session_id.blank?
+
+        "#{base_key}_#{Digest::SHA256.hexdigest(session_id.to_s)}"
       end
 
       def build_create_account_params(icn:, email:, tou_occurred_at:)

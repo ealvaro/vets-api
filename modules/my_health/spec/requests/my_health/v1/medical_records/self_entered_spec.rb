@@ -30,7 +30,7 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::SelfEntered', type: :request do
     allow(MedicalRecords::Client).to receive(:new).and_return(authenticated_client)
     allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_new_eligibility_check).and_return(false)
     allow(BBInternal::Client).to receive(:new).and_return(bb_internal_client)
-    sign_in_as(current_user)
+    sign_in_as(current_user, stub_mhv_account: true)
   end
 
   context 'Unauthorized user' do
@@ -38,11 +38,11 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::SelfEntered', type: :request do
       let(:invalid_user) { build(:user) }
 
       before do
-        sign_in_as(invalid_user)
+        sign_in_as(invalid_user, stub_mhv_account: true)
       end
 
       it 'returns 403 Forbidden when mhv_correlation_id is missing' do
-        sign_in_as(invalid_user)
+        sign_in_as(invalid_user, stub_mhv_account: true)
 
         get '/my_health/v1/medical_records/self_entered'
 
@@ -58,11 +58,11 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::SelfEntered', type: :request do
       let(:invalid_user) { build(:user, :mhv, icn: nil) }
 
       before do
-        sign_in_as(invalid_user)
+        sign_in_as(invalid_user, stub_mhv_account: true)
       end
 
       it 'returns 403 Forbidden when icn is missing' do
-        sign_in_as(invalid_user)
+        sign_in_as(invalid_user, stub_mhv_account: true)
 
         get '/my_health/v1/medical_records/self_entered'
 

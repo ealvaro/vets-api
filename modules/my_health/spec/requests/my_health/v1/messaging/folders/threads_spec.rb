@@ -16,7 +16,7 @@ RSpec.describe 'MyHealth::V1::Messaging::Folders::Threads', type: :request do
   let(:inflection_header) { { 'X-Key-Inflection' => 'camel' } }
 
   before do
-    sign_in_as(current_user)
+    sign_in_as(current_user, stub_mhv_account: true)
     Timecop.freeze(Time.zone.parse('2017-05-01T19:25:00Z'))
   end
 

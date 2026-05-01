@@ -129,12 +129,12 @@ class User < Common::RedisStore
     return unless can_create_mhv_account?
     return mhv_user_account.id if mhv_user_account.present?
 
-    mpi_mhv_correlation_id if active_mhv_ids&.one?
+    nil
   end
 
-  def mhv_user_account(from_cache_only: true)
+  def mhv_user_account
     @mhv_user_account_error = nil
-    @mhv_user_account ||= MHV::UserAccount::Creator.new(user_verification:, from_cache_only:).perform
+    @mhv_user_account ||= MHV::UserAccount::Creator.new(user_verification:, session_id: session_handle).perform
   rescue MHV::UserAccount::Errors::ValidationError => e
     @mhv_user_account_error = :validation
     log_mhv_user_account_error(e.message)

@@ -42,7 +42,7 @@ RSpec.describe 'DecisionReviews::V1::NoticeOfDisagreements', type: :request do
     }
   end
 
-  before { sign_in_as(user) }
+  before { sign_in_as(user, nil, stub_mhv_account: true) }
 
   describe '#show' do
     subject do

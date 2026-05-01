@@ -11,7 +11,7 @@ MHVMedicalRecordsPolicy = Struct.new(:user, :mhv_medical_records) do
         return false
       end
 
-      account = mhv_user_account
+      account = user.mhv_user_account
       return true if account&.patient
 
       log_access_denied(MR_ACCESS_LOG_MESSAGE, account)
@@ -22,10 +22,6 @@ MHVMedicalRecordsPolicy = Struct.new(:user, :mhv_medical_records) do
   end
 
   private
-
-  def mhv_user_account
-    user.mhv_user_account(from_cache_only: false)
-  end
 
   def denial_reason(account)
     return 'not_loa3' unless user.loa3?

@@ -12,7 +12,7 @@ RSpec.describe 'MyHealth::V1::Messaging::Messages::Attachments', type: :request 
   let(:message_id) { 573_302 }
 
   before do
-    sign_in_as(current_user)
+    sign_in_as(current_user, stub_mhv_account: true)
     Timecop.freeze(Time.zone.parse('2017-05-01T19:25:00Z'))
   end
 

@@ -4,7 +4,7 @@ require 'rails_helper'
 require 'mhv/account_creation/service'
 
 RSpec.describe MHV::UserAccount::Creator do
-  subject { described_class.new(user_verification:, break_cache:, from_cache_only:) }
+  subject { described_class.new(user_verification:, break_cache:, session_id:) }
 
   let(:user_account) { create(:user_account, icn:) }
   let(:user_verification) { create(:user_verification, user_account:) }
@@ -14,7 +14,7 @@ RSpec.describe MHV::UserAccount::Creator do
   let(:email) { 'some-email@email.com' }
   let(:tou_occurred_at) { terms_of_use_agreement&.created_at }
   let(:break_cache) { false }
-  let(:from_cache_only) { false }
+  let(:session_id) { nil }
   let(:mhv_client) { instance_double(MHV::AccountCreation::Service) }
   let(:mhv_response_body) do
     {
@@ -32,7 +32,7 @@ RSpec.describe MHV::UserAccount::Creator do
 
     allow(MHV::AccountCreation::Service).to receive(:new).and_return(mhv_client)
     allow(mhv_client).to receive(:create_account)
-      .with(icn:, email:, tou_occurred_at:, break_cache:, from_cache_only:)
+      .with(icn:, email:, tou_occurred_at:, break_cache:, session_id:)
       .and_return(mhv_response_body)
   end
 
@@ -76,7 +76,7 @@ RSpec.describe MHV::UserAccount::Creator do
         it 'calls MHV::AccountCreation::Service#create_account with break_cache: false' do
           subject.perform
           expect(mhv_client).to have_received(:create_account).with(icn:, email:, tou_occurred_at:, break_cache: false,
-                                                                    from_cache_only:)
+                                                                    session_id: nil)
         end
       end
 
@@ -86,38 +86,17 @@ RSpec.describe MHV::UserAccount::Creator do
         it 'calls MHV::AccountCreation::Service#create_account with break_cache: true' do
           subject.perform
           expect(mhv_client).to have_received(:create_account).with(icn:, email:, tou_occurred_at:, break_cache: true,
-                                                                    from_cache_only:)
+                                                                    session_id: nil)
         end
       end
 
-      context 'when from_cache_only is true' do
-        let(:from_cache_only) { true }
-        let(:expected_cache_key) { "mhv_account_creation_#{icn}" }
+      context 'when session_id is provided' do
+        let(:session_id) { 'some-session-handle' }
 
-        before do
-          allow(Rails.cache).to receive(:read).with(expected_cache_key).and_return(mhv_response_body)
-        end
-
-        it 'calls MHV::AccountCreation::Service#create_account with from_cache_only: true' do
+        it 'calls MHV::AccountCreation::Service#create_account with session_id' do
           subject.perform
-          expect(mhv_client).to have_received(:create_account).with(icn:, email:, tou_occurred_at:, break_cache:,
-                                                                    from_cache_only: true)
-        end
-
-        context 'when the response is cached' do
-          it 'returns the cached response' do
-            mhv_user_account = subject.perform
-            expect(mhv_user_account).to be_a(MHVUserAccount)
-            expect(mhv_user_account).to be_valid
-          end
-        end
-
-        context 'when the response is not cached' do
-          let(:mhv_response_body) { nil }
-
-          it 'returns nil' do
-            expect(subject.perform).to be_nil
-          end
+          expect(mhv_client).to have_received(:create_account).with(icn:, email:, tou_occurred_at:, break_cache: false,
+                                                                    session_id: 'some-session-handle')
         end
       end
     end
@@ -125,7 +104,7 @@ RSpec.describe MHV::UserAccount::Creator do
 
   context 'when the mhv response is successful' do
     context 'when the MHVUserAccount is valid' do
-      it 'retuns a MHVUserAccount' do
+      it 'returns a MHVUserAccount' do
         mhv_user_account = subject.perform
         expect(mhv_user_account).to be_a(MHVUserAccount)
         expect(mhv_user_account).to be_valid

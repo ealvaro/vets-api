@@ -14,7 +14,7 @@ RSpec.describe 'MyHealth::V2::ImagingController', :skip_json_api_validation, typ
   let(:current_user) { build(:user, :mhv) }
 
   before do
-    sign_in_as(current_user)
+    sign_in_as(current_user, stub_mhv_account: true)
     allow_any_instance_of(User).to receive(:va_treatment_facility_ids).and_return([])
     allow_any_instance_of(User).to receive(:cerner_facility_ids).and_return(%w[668])
   end

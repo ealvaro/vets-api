@@ -24,6 +24,8 @@ RSpec.describe Users::Services do
             appeals-status
             form-save-in-progress
             form-prefill
+            rx
+            medical-records
             identity-proofed
             vet360
             dgi

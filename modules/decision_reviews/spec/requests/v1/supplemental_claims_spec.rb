@@ -52,7 +52,7 @@ RSpec.describe 'DecisionReviews::V1::SupplementalClaims', type: :request do
     }
   end
 
-  before { sign_in_as(user) }
+  before { sign_in_as(user, nil, stub_mhv_account: true) }
 
   describe '#create' do
     def personal_information_logs

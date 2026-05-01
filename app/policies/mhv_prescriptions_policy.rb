@@ -11,7 +11,7 @@ MHVPrescriptionsPolicy = Struct.new(:user, :mhv_prescriptions) do
       return false
     end
 
-    account = mhv_user_account
+    account = user.mhv_user_account
     return true if account&.patient || account&.champ_va
 
     log_access_denied(RX_ACCESS_LOG_MESSAGE, account)
@@ -19,10 +19,6 @@ MHVPrescriptionsPolicy = Struct.new(:user, :mhv_prescriptions) do
   end
 
   private
-
-  def mhv_user_account
-    user.mhv_user_account(from_cache_only: false)
-  end
 
   def denial_reason(account)
     return 'not_loa3' unless user.loa3?

@@ -54,7 +54,7 @@ RSpec.describe 'DecisionReviews::V2::HigherLevelReviews', type: :request do
     'BackendServiceException: {:source=>"Common::Client::Errors::ClientError raised in DecisionReviews::V1::Service", :code=>"DR_422"}' # rubocop:disable Layout/LineLength
   end
 
-  before { sign_in_as(user) }
+  before { sign_in_as(user, nil, stub_mhv_account: true) }
 
   describe '#show' do
     subject do

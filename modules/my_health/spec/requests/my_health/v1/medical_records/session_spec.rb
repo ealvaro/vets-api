@@ -19,7 +19,7 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::Session', type: :request do
     allow(BBInternal::Client).to receive(:new).and_return(authenticated_client)
     allow(PHRMgr::Client).to receive(:new).and_return(PHRMgr::Client.new(12_345))
     allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_new_eligibility_check).and_return(false)
-    sign_in_as(current_user)
+    sign_in_as(current_user, stub_mhv_account: true)
   end
 
   it 'responds to POST #create' do

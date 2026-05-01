@@ -4,11 +4,10 @@ require 'login/errors'
 
 module Login
   class AfterLoginActions
-    attr_reader :current_user, :skip_mhv_account_creation
+    attr_reader :current_user
 
-    def initialize(user, skip_mhv_account_creation)
+    def initialize(user)
       @current_user = user
-      @skip_mhv_account_creation = skip_mhv_account_creation
     end
 
     def perform
@@ -18,7 +17,6 @@ module Login
                                             user_verification: current_user.user_verification).perform
       Login::UserAcceptableVerifiedCredentialUpdater.new(user_account: @current_user.user_account).perform
       id_mismatch_validations
-      create_mhv_account
       current_user.provision_cerner_async(source: :ssoe)
 
       if Settings.test_user_dashboard.env == 'staging'
@@ -28,12 +26,6 @@ module Login
     end
 
     private
-
-    def create_mhv_account
-      return if skip_mhv_account_creation
-
-      current_user.create_mhv_account_async
-    end
 
     def login_type
       @login_type ||= current_user.identity.sign_in[:service_name]

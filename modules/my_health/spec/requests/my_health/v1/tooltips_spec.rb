@@ -9,7 +9,7 @@ RSpec.describe 'MyHealth::V1::Tooltips', type: :request do
   let(:inflection_header) { { 'X-Key-Inflection' => 'camel' } }
 
   before do
-    sign_in_as(current_user)
+    sign_in_as(current_user, stub_mhv_account: true)
   end
 
   describe 'GET /my_health/v1/tooltips' do

@@ -27,7 +27,7 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::MilitaryServiceController', type: 
     )
 
     allow(PHRMgr::Client).to receive(:new).and_return(phr_mgr_client)
-    sign_in_as(current_user)
+    sign_in_as(current_user, stub_mhv_account: true)
   end
 
   context 'Unauthorized User' do
@@ -36,11 +36,11 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::MilitaryServiceController', type: 
       let(:current_user) { build(:user) }
 
       before do
-        sign_in_as(current_user)
+        sign_in_as(current_user, stub_mhv_account: true)
       end
 
       it 'returns 400 Bad Request when EDIPI is missing' do
-        sign_in_as(current_user)
+        sign_in_as(current_user, stub_mhv_account: true)
 
         get '/my_health/v1/medical_records/military_service'
 
@@ -59,11 +59,11 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::MilitaryServiceController', type: 
       let(:mhv_account_type) { 'Premium' }
 
       before do
-        sign_in_as(current_user)
+        sign_in_as(current_user, stub_mhv_account: true)
       end
 
       it 'returns 403 Forbidden when ICN is missing' do
-        sign_in_as(current_user)
+        sign_in_as(current_user, stub_mhv_account: true)
 
         get '/my_health/v1/medical_records/military_service'
 

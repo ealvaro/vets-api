@@ -5,7 +5,7 @@ require 'mhv/account_creation/service'
 
 describe MHV::AccountCreation::Service do
   describe '#create_account' do
-    subject { described_class.new.create_account(icn:, email:, tou_occurred_at:, break_cache:, from_cache_only:) }
+    subject { described_class.new.create_account(icn:, email:, tou_occurred_at:, break_cache:, session_id:) }
 
     let(:icn) { '10101V964144' }
     let(:email) { 'some-email@email.com' }
@@ -16,7 +16,7 @@ describe MHV::AccountCreation::Service do
     let(:account_creation_base_url) { 'https://apigw-intb.aws.myhealth.va.gov' }
     let(:account_creation_path) { 'v1/usermgmt/account-service/account' }
     let(:break_cache) { false }
-    let(:from_cache_only) { false }
+    let(:session_id) { nil }
     let(:start_time) { Time.zone.now }
     let(:end_time) { start_time + 10.seconds }
 
@@ -80,13 +80,50 @@ describe MHV::AccountCreation::Service do
       end
     end
 
-    context 'when from_cache_only is true' do
-      let(:from_cache_only) { true }
+    context 'when session_id is provided' do
+      let(:session_id) { 'some-session-handle' }
+      let(:expected_cache_key) { "mhv_account_creation_#{icn}_#{Digest::SHA256.hexdigest(session_id)}" }
+      let(:expires_in) { 1.day }
+
+      context 'when the account is in the session-scoped cache' do
+        before do
+          allow(Rails.cache).to receive(:fetch)
+            .with(expected_cache_key, force: break_cache, expires_in:)
+            .and_return(expected_response_body)
+        end
+
+        it 'returns the cached response' do
+          expect(subject).to eq(expected_response_body)
+        end
+
+        it 'does not make a request to the account creation service' do
+          subject
+          expect(a_request(:post, "#{account_creation_base_url}/#{account_creation_path}")).not_to have_been_made
+          expect(Rails.logger).not_to have_received(:info).with("#{log_prefix} create_account request",
+                                                                anything)
+        end
+      end
+
+      context 'when the account is not in the session-scoped cache' do
+        it 'makes a request to the account creation service' do
+          VCR.use_cassette('mhv/account_creation/account_creation_service_200_created') do
+            subject
+            expect(a_request(:post, "#{account_creation_base_url}/#{account_creation_path}")).to have_been_made
+            expect(Rails.logger).to have_received(:info).with("#{log_prefix} create_account request", { icn: })
+          end
+        end
+      end
+    end
+
+    context 'when session_id is not provided' do
       let(:expected_cache_key) { "mhv_account_creation_#{icn}" }
+      let(:expires_in) { 1.day }
 
       context 'when the account is in the cache' do
         before do
-          allow(Rails.cache).to receive(:read).with(expected_cache_key).and_return(expected_response_body)
+          allow(Rails.cache).to receive(:fetch)
+            .with(expected_cache_key, force: break_cache, expires_in:)
+            .and_return(expected_response_body)
         end
 
         it 'returns the cached response' do
@@ -102,19 +139,12 @@ describe MHV::AccountCreation::Service do
       end
 
       context 'when the account is not in the cache' do
-        before do
-          allow(Rails.cache).to receive(:read).with(expected_cache_key).and_return(nil)
-        end
-
-        it 'returns nil' do
-          expect(subject).to be_nil
-        end
-
-        it 'does not make a request to the account creation service' do
-          subject
-          expect(a_request(:post, "#{account_creation_base_url}/#{account_creation_path}")).not_to have_been_made
-          expect(Rails.logger).not_to have_received(:info).with("#{log_prefix} create_account request",
-                                                                anything)
+        it 'makes a request to the account creation service' do
+          VCR.use_cassette('mhv/account_creation/account_creation_service_200_created') do
+            subject
+            expect(a_request(:post, "#{account_creation_base_url}/#{account_creation_path}")).to have_been_made
+            expect(Rails.logger).to have_received(:info).with("#{log_prefix} create_account request", { icn: })
+          end
         end
       end
     end
@@ -176,14 +206,14 @@ describe MHV::AccountCreation::Service do
 
       context 'when the account is in the cache' do
         let(:expected_cache_key) { "mhv_account_creation_#{icn}" }
-        let(:expected_expires_in) { 1.day }
+        let(:expires_in) { 1.day }
 
         context 'when break_cache is false' do
           let(:expected_duration) { nil }
 
           before do
             allow(Rails.cache).to receive(:fetch)
-              .with(expected_cache_key, force: break_cache, expires_in: expected_expires_in)
+              .with(expected_cache_key, force: break_cache, expires_in:)
               .and_return(expected_response_body)
           end
 
@@ -207,14 +237,14 @@ describe MHV::AccountCreation::Service do
 
           before do
             allow(Rails.cache).to receive(:fetch)
-              .with(expected_cache_key, force: break_cache, expires_in: expected_expires_in).and_call_original
+              .with(expected_cache_key, force: break_cache, expires_in:).and_call_original
           end
 
           it 'calls Rails.cache.fetch with force: true' do
             VCR.use_cassette('mhv/account_creation/account_creation_service_200_created') do
               subject
               expect(Rails.cache).to have_received(:fetch)
-                .with(expected_cache_key, force: true, expires_in: expected_expires_in)
+                .with(expected_cache_key, force: true, expires_in:)
             end
           end
 

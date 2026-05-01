@@ -3,11 +3,9 @@
 require 'rails_helper'
 
 RSpec.describe Login::AfterLoginActions do
-  subject(:after_login_actions) { described_class.new(user, skip_mhv_account_creation) }
+  subject(:after_login_actions) { described_class.new(user) }
 
   describe '#perform' do
-    let(:skip_mhv_account_creation) { false }
-
     context 'creating credential email' do
       let(:user) { create(:user, email:) }
       let(:email) { 'some-email' }
@@ -83,7 +81,7 @@ RSpec.describe Login::AfterLoginActions do
       shared_examples 'identity-mpi id validation' do
         it 'logs a warning when Identity & MPI values conflict' do
           expect(Rails.logger).to receive(:warn).at_least(:once).with(expected_error_message, expected_error_data)
-          described_class.new(loa3_user, skip_mhv_account_creation).perform
+          described_class.new(loa3_user).perform
         end
       end
 
@@ -113,32 +111,6 @@ RSpec.describe Login::AfterLoginActions do
         let(:validation_id) { 'ICN' }
 
         it_behaves_like 'identity-mpi id validation'
-      end
-    end
-
-    context 'when creating an MHV account' do
-      let(:user) { create(:user) }
-
-      before do
-        allow(user).to receive(:create_mhv_account_async)
-      end
-
-      context 'when skip_mhv_account_creation is set to false' do
-        let(:skip_mhv_account_creation) { false }
-
-        it 'calls create_mhv_account_async' do
-          after_login_actions.perform
-          expect(user).to have_received(:create_mhv_account_async)
-        end
-      end
-
-      context 'when skip_mhv_account_creation is set to true' do
-        let(:skip_mhv_account_creation) { true }
-
-        it 'does not call create_mhv_account_async' do
-          after_login_actions.perform
-          expect(user).not_to have_received(:create_mhv_account_async)
-        end
       end
     end
 

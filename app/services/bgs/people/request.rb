@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'common/models/concerns/cache_aside'
+
 module BGS
   # The People module provides Redis-backed caching for BGS (Benefits Gateway Service)
   # person lookups. It wraps remote calls to BGS and caches responses to minimize

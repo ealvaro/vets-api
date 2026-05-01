@@ -22,7 +22,7 @@ RSpec.describe 'MyHealth::V2::LabsAndTestsController', :skip_json_api_validation
   let(:current_user) { build(:user, :mhv) }
 
   before do
-    sign_in_as(current_user)
+    sign_in_as(current_user, stub_mhv_account: true)
   end
 
   describe 'GET /my_health/v2/medical_records/labs_and_tests' do

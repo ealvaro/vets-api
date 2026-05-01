@@ -8,7 +8,7 @@ RSpec.describe MyHealth::V2::ImagingController, type: :controller do
   let(:user) { create(:user, :loa3) }
 
   before do
-    sign_in_as(user)
+    sign_in_as(user, stub_mhv_account: true)
     controller.instance_variable_set(:@current_user, user)
     allow(user).to receive_messages(va_treatment_facility_ids: %w[453], cerner_facility_ids: %w[668])
   end

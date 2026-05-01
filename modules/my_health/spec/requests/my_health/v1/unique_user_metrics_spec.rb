@@ -21,7 +21,7 @@ RSpec.describe 'MyHealth::V1::UniqueUserMetricsController', type: :request do
 
     context 'when user is authenticated' do
       before do
-        sign_in_as(current_user)
+        sign_in_as(current_user, stub_mhv_account: true)
       end
 
       context 'when feature flag is disabled' do
@@ -222,7 +222,7 @@ RSpec.describe 'MyHealth::V1::UniqueUserMetricsController', type: :request do
 
     context 'when request content type is not JSON' do
       before do
-        sign_in_as(current_user)
+        sign_in_as(current_user, stub_mhv_account: true)
         allow(Flipper).to receive(:enabled?).with(:unique_user_metrics_logging).and_return(true)
       end
 

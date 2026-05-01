@@ -128,8 +128,12 @@ FactoryBot.define do
       end
 
       mhv_user_account do
-        FactoryBot.build(:mhv_user_account)
+        FactoryBot.build(:mhv_user_account, **mhv_account_creation)
       end
+
+      mhv_account_creation { {} }
+
+      skip_mhv_user_account_preload { false }
     end
 
     callback(:after_build, :after_stub, :after_create) do |user, t|
@@ -137,6 +141,10 @@ FactoryBot.define do
       user.instance_variable_set(:@identity, user_identity)
       user.instance_variable_set(:@needs_accepted_terms_of_use, t.needs_accepted_terms_of_use)
       stub_mpi(t.mpi_profile) unless t.should_stub_mpi == false
+
+      if t.loa[:current] == LOA::THREE && !t.needs_accepted_terms_of_use && !t.skip_mhv_user_account_preload
+        user.instance_variable_set(:@mhv_user_account, t.mhv_user_account)
+      end
     end
 
     # This is used by the response_builder helper to build a user from saml attributes

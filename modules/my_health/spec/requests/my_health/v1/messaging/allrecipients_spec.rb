@@ -11,7 +11,7 @@ RSpec.describe 'MyHealth::V1::Messaging::Allrecipients', type: :request do
   let(:current_user) { build(:user, :mhv) }
 
   before do
-    sign_in_as(current_user)
+    sign_in_as(current_user, stub_mhv_account: true)
     Timecop.freeze(Time.zone.parse('2017-05-01T19:25:00Z'))
   end
 
@@ -148,7 +148,7 @@ RSpec.describe 'MyHealth::V1::Messaging::Allrecipients', type: :request do
 
   context 'VTG filtering' do
     before do
-      sign_in_as(current_user)
+      sign_in_as(current_user, stub_mhv_account: true)
       VCR.insert_cassette('sm_client/session')
       allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_show_vtgs_web, anything).and_return(false)
     end

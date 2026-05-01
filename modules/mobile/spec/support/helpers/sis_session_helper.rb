@@ -25,7 +25,20 @@ module SISSessionHelper
       user_attributes = { uuid: sis_access_token.user_uuid,
                           session_handle: sis_access_token.session_handle }.merge(*attributes)
       traits |= [:api_auth]
-      create(:user, *traits, **user_attributes)
+      user = create(:user, *traits, **user_attributes)
+
+      # stub MHV UserAccount linked to User record
+      allow_any_instance_of(MHV::UserAccount::Creator).to receive(:perform).and_wrap_original do |method, *method_args|
+        creator = method.receiver
+
+        if creator.user_verification&.id == user.user_verification_id
+          FactoryBot.build(:mhv_user_account)
+        else
+          method.call(*method_args)
+        end
+      end
+
+      user
     end
   end
 

@@ -20,7 +20,7 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::Vaccines', type: :request do
     allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_new_eligibility_check).and_return(false)
     allow(MedicalRecords::Client).to receive(:new).and_return(authenticated_client)
     allow(BBInternal::Client).to receive(:new).and_return(authenticated_client)
-    sign_in_as(current_user)
+    sign_in_as(current_user, stub_mhv_account: true)
   end
 
   include_examples 'medical records new eligibility check',

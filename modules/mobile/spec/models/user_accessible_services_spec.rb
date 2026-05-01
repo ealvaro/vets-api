@@ -241,6 +241,8 @@ describe Mobile::V0::UserAccessibleServices, :aggregate_failures, type: :model d
 
     describe 'prescriptions' do
       context 'when user does not have mhv_prescriptions access' do
+        let(:user) { build(:user, skip_mhv_user_account_preload: true) }
+
         it 'is false' do
           expect(user_services.service_auth_map[:prescriptions]).to be(false)
         end

@@ -24,7 +24,7 @@ RSpec.describe 'MyHealth::V2::AllergiesController', :skip_json_api_validation, t
 
   before do
     Timecop.freeze('2025-06-02T08:00:00Z')
-    sign_in_as(current_user)
+    sign_in_as(current_user, stub_mhv_account: true)
     allow(Flipper).to receive(:enabled?).with(uhd_flipper, instance_of(User)).and_return(true)
     allow(Flipper).to receive(:enabled?).with(allergies_flipper, instance_of(User)).and_return(true)
   end

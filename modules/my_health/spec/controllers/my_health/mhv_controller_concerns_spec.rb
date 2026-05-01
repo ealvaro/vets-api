@@ -26,7 +26,7 @@ RSpec.describe MyHealth::MHVControllerConcerns, type: :controller do
   let(:mock_client) { double('Client', authenticate: true) }
 
   before do
-    sign_in_as(user)
+    sign_in_as(user, stub_mhv_account: true)
     routes.draw { get 'index' => 'anonymous#index' }
   end
 

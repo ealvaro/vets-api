@@ -36,7 +36,6 @@ module SignIn
       current_user.save && user_identity.save
       current_user.invalidate_mpi_cache
       current_user.validate_mpi_profile
-      current_user.create_mhv_account_async
       current_user.provision_cerner_async(source: :sis)
       set_cerner_eligibility_cookie
 

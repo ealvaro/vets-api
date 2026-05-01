@@ -12,7 +12,7 @@ RSpec.describe 'MyHealth::V1::AALController', type: :request do
       let(:current_user) { build(:user) }
 
       before do
-        sign_in_as(current_user)
+        sign_in_as(current_user, stub_mhv_account: true)
       end
 
       it 'returns 403 Forbidden when MHV Correlation ID is missing' do
@@ -55,7 +55,7 @@ RSpec.describe 'MyHealth::V1::AALController', type: :request do
       )
 
       allow(AAL::MRClient).to receive(:new).and_return(aal_client)
-      sign_in_as(current_user)
+      sign_in_as(current_user, stub_mhv_account: true)
     end
 
     it 'responds to POST #create' do

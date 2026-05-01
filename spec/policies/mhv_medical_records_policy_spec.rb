@@ -20,9 +20,11 @@ describe MHVMedicalRecordsPolicy do
   end
   let(:patient) { false }
   let(:champ_va) { false }
+  let(:mhv_client) { MHV::AccountCreation::Service.new }
 
   before do
-    allow_any_instance_of(MHV::AccountCreation::Service).to receive(:create_account).and_return(mhv_response)
+    allow(MHV::AccountCreation::Service).to receive(:new).and_return(mhv_client)
+    allow(mhv_client).to receive(:create_account).and_return(mhv_response)
   end
 
   context 'when Flipper flag is enabled' do
@@ -31,7 +33,7 @@ describe MHVMedicalRecordsPolicy do
     end
 
     context 'and user is verified' do
-      let(:user) { create(:user, :loa3, :with_terms_of_use_agreement) }
+      let(:user) { create(:user, :loa3, :with_terms_of_use_agreement, skip_mhv_user_account_preload: true) }
 
       context 'and user is a patient' do
         let(:patient) { true }
@@ -80,7 +82,7 @@ describe MHVMedicalRecordsPolicy do
       context 'and mhv_user_account is nil due to validation error' do
         before do
           allow(Rails.logger).to receive(:info)
-          allow_any_instance_of(MHV::AccountCreation::Service).to receive(:create_account)
+          allow(mhv_client).to receive(:create_account)
             .and_raise(MHV::UserAccount::Errors::ValidationError, 'Current terms of use agreement must be present')
         end
 
@@ -121,7 +123,7 @@ describe MHVMedicalRecordsPolicy do
       it 'does not attempt MHV account creation' do
         allow(Rails.logger).to receive(:info)
 
-        expect_any_instance_of(MHV::AccountCreation::Service).not_to receive(:create_account)
+        expect(MHV::AccountCreation::Service).not_to receive(:new)
 
         described_class.new(user, mhv_medical_records).access?
       end

@@ -18,7 +18,7 @@ RSpec.describe 'MyHealth::V2::Prescriptions::DrugSheets', type: :request do
     allow_any_instance_of(User).to receive(:mhv_user_account).and_return(OpenStruct.new(patient: va_patient))
     allow_any_instance_of(User).to receive(:mhv_correlation_id).and_return('12345678901')
     allow(Rx::Client).to receive(:new).and_return(authenticated_client)
-    sign_in_as(current_user)
+    sign_in_as(current_user, stub_mhv_account: true)
   end
 
   context 'when user is unauthorized' do

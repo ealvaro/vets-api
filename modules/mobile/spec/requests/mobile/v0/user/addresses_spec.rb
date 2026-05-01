@@ -69,7 +69,7 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
 
           VCR.use_cassette('va_profile/v2/contact_information/address_complete_status', VCR::MATCH_EVERYTHING) do
             VCR.use_cassette('va_profile/v2/contact_information/address_incomplete_status', VCR::MATCH_EVERYTHING) do
-              VCR.use_cassette('va_profile/v2/contact_information/post_address_succes', VCR::MATCH_EVERYTHING) do
+              VCR.use_cassette('va_profile/v2/contact_information/post_address_success', VCR::MATCH_EVERYTHING) do
                 post '/mobile/v0/user/addresses', params: model_to_request_json(address),
                                                   headers: sis_headers(json: true)
               end
@@ -78,7 +78,7 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
         end
 
         it 'returns a gateway timeout error' do
-          expect(response).to have_http_status(:bad_gateway)
+          expect(response).to have_http_status(:gateway_timeout)
         end
       end
 

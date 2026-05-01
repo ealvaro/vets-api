@@ -168,19 +168,6 @@ RSpec.describe SignIn::UserLoader do
           expect(subject.edipi).to eq edipi
         end
 
-        context 'when the user can create MHV account' do
-          let(:enabled) { true }
-
-          before do
-            allow(MHV::AccountCreatorJob).to receive(:perform_async)
-          end
-
-          it 'enqueues an MHV::AccountCreatorJob' do
-            subject
-            expect(MHV::AccountCreatorJob).to have_received(:perform_async).with(user_verification.id)
-          end
-        end
-
         context 'when the user can provision cerner' do
           let(:stub_cerner_facility_ids) { '123, 456' }
 

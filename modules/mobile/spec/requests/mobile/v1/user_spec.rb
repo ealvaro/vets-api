@@ -189,6 +189,7 @@ RSpec.describe 'Mobile::V1::User', type: :request do
             militaryServiceHistory
             paymentHistory
             preferredName
+            prescriptions
             scheduleAppointments
             userProfileUpdate
           ]
@@ -299,6 +300,7 @@ RSpec.describe 'Mobile::V1::User', type: :request do
               militaryServiceHistory
               paymentHistory
               preferredName
+              prescriptions
               scheduleAppointments
               secureMessagingOracleHealthEnabled
               userProfileUpdate
@@ -330,6 +332,7 @@ RSpec.describe 'Mobile::V1::User', type: :request do
               militaryServiceHistory
               paymentHistory
               preferredName
+              prescriptions
               scheduleAppointments
               secureMessagingOracleHealthEnabled
               userProfileUpdate
@@ -358,6 +361,7 @@ RSpec.describe 'Mobile::V1::User', type: :request do
               militaryServiceHistory
               paymentHistory
               preferredName
+              prescriptions
               scheduleAppointments
               secureMessagingOracleHealthEnabled
               userProfileUpdate

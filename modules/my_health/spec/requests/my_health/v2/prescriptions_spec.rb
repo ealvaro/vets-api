@@ -33,7 +33,7 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
   end
 
   before do
-    sign_in_as(current_user)
+    sign_in_as(current_user, stub_mhv_account: true)
     allow(Flipper).to receive(:enabled?).with(:mhv_medications_cerner_pilot, current_user).and_return(true)
   end
 

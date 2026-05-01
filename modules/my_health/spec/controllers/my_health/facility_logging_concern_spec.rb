@@ -19,7 +19,7 @@ RSpec.describe MyHealth::FacilityLoggingConcern, type: :controller do
   let(:user) { build(:user, :mhv) }
 
   before do
-    sign_in_as(user)
+    sign_in_as(user, stub_mhv_account: true)
     routes.draw { get 'index' => 'anonymous#index' }
     allow(Flipper).to receive(:enabled?).with(:mhv_facility_logging, anything).and_return(true)
   end
