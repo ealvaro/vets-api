@@ -27,14 +27,19 @@ module WardenGithubStrategyExtensions
     session[:sidekiq_user] = load_user if scope == :sidekiq
     session[:coverband_user] = load_user if scope == :coverband
     if scope == :flipper
-      # now we can grab the actual URL without the redirect param and redirect to the intended page
       session[:flipper_user] = load_user
-      url = custom_session['return_to'].split('?').first
-      url += "/#{custom_session[:redirect]}" if custom_session[:redirect]
-      custom_session['return_to'] = url
+      return_to = custom_session['return_to']
+      if return_to
+        url = return_to.split('?').first
+        url += "/#{custom_session[:redirect]}" if custom_session[:redirect]
+        custom_session['return_to'] = url
+      end
     end
 
     super
+  rescue => e
+    Rails.logger.error("[warden_github] scope=#{scope}", exception: e)
+    raise
   end
 end
 
