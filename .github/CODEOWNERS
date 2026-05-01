@@ -3,7 +3,7 @@
 # For more details and guidance, please take a look at .github/CODEOWNERS_README.md
 
 .devcontainer/ @software/backend-review-group @software/cto-engineers
-.dockerignore @software/backend-review-group
+.dockerignore @software/backend-review-group @software/cto-engineers
 .github/ @software/backend-review-group
 .github/instructions/my-health-medical-records.instructions.md @software/vfs-mhv-integration @software/backend-review-group
 .github/instructions/my-health-messaging.instructions.md @software/vfs-mhv-integration @software/backend-review-group

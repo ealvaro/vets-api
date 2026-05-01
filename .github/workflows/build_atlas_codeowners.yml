@@ -7,44 +7,66 @@ on:
     paths:
       - '.github/CODEOWNERS'
 permissions:
-  id-token: write
   contents: read
-  checks: write
 jobs:
   copy-codeowners:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6
-        with:
-          role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
-          aws-region: "us-gov-west-1"
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - name: Get bot token from Parameter Store
-        uses: software/action-inject-ssm-secrets@32c55d942e380d6819aef96bc01b0eabb2159715 # latest
-        with:
-          ssm_parameter: /devops/VA_VSP_BOT_GITHUB_TOKEN
-          env_variable_name: VA_VSP_BOT_GITHUB_TOKEN
 
-      - name:  Check codeowner changes
+      - name: Check codeowner changes
         id: check-codeowner-changes
         uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
         with:
           files: |
             .github/CODEOWNERS
 
-      - name: Pushes CODEOWNERS updates to Atlas
+      - name: Generate cross-repo token for actions
         if: steps.check-codeowner-changes.outputs.any_changed == 'true'
-        uses: dmnemec/copy_file_to_another_repo_action@bbebd3da22e4a37d04dca5f782edd5201cb97083 # main
-        env:
-          API_TOKEN_GITHUB: ${{ env.VA_VSP_BOT_GITHUB_TOKEN }}
+        id: vsp-bot-app-token
+        uses: actions/create-github-app-token@v3
         with:
-          source_file: '.github/CODEOWNERS'
-          destination_repo: 'software/platform-atlas'
-          destination_folder: '/lib/codeowners/vets-api'
-          destination_branch: 'master'
-          user_email: '70344339+va-vsp-bot@users.noreply.github.com'
-          user_name: 'va-vsp-bot'
-          commit_message: 'Auto update Atlas with Vets-API CODEOWNERS'
+          app-id: ${{ vars.VA_VSP_BOT_APP_ID }}
+          private-key: ${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
+          owner: software
+          github-api-url: https://va.ghe.com/api/v3
+
+      - name: Push CODEOWNERS updates to Atlas
+        if: steps.check-codeowner-changes.outputs.any_changed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.vsp-bot-app-token.outputs.token }}
+          GH_HOST: va.ghe.com
+        run: |
+          set -euo pipefail
+          DEST_REPO="software/platform-atlas"
+          DEST_PATH="lib/codeowners/vets-api/CODEOWNERS"
+          BRANCH="master"
+
+          NEW_CONTENT_B64=$(base64 -w0 .github/CODEOWNERS)
+
+          RESPONSE=$(gh api "/repos/${DEST_REPO}/contents/${DEST_PATH}?ref=${BRANCH}" 2>/dev/null || echo '{}')
+          CURRENT_SHA=$(echo "$RESPONSE" | jq -r '.sha // empty')
+          CURRENT_CONTENT=$(echo "$RESPONSE" | jq -r '.content // empty' | tr -d '\n')
+
+          if [ "$CURRENT_CONTENT" = "$NEW_CONTENT_B64" ]; then
+            echo "No changes to push"
+            exit 0
+          fi
+
+          JQ_ARGS=(--arg msg "Auto update Atlas with Vets-API CODEOWNERS" \
+                   --arg content "$NEW_CONTENT_B64" \
+                   --arg branch "$BRANCH" \
+                   --arg name "va-vsp-bot" \
+                   --arg email "70344339+va-vsp-bot@users.noreply.github.com")
+          if [ -n "$CURRENT_SHA" ]; then
+            JQ_ARGS+=(--arg sha "$CURRENT_SHA")
+            PAYLOAD=$(jq -n "${JQ_ARGS[@]}" \
+              '{message:$msg, content:$content, branch:$branch, sha:$sha,
+                committer:{name:$name,email:$email}, author:{name:$name,email:$email}}')
+          else
+            PAYLOAD=$(jq -n "${JQ_ARGS[@]}" \
+              '{message:$msg, content:$content, branch:$branch,
+                committer:{name:$name,email:$email}, author:{name:$name,email:$email}}')
+          fi
+
+          echo "$PAYLOAD" | gh api --method PUT "/repos/${DEST_REPO}/contents/${DEST_PATH}" --input -
