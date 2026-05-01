@@ -15,7 +15,7 @@ module SignIn
       return unless logout_redirect_uri
 
       if authenticated_with_logingov?
-        logingov_service.render_logout(logout_redirect_uri)
+        logingov_service.render_logout(client_config.client_id, logout_redirect_uri)
       else
         parse_logout_redirect_uri
       end

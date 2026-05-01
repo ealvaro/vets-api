@@ -41,6 +41,7 @@ module SignIn
     class InvalidAcrError < StandardError; end
     class InvalidAudienceError < StandardError; end
     class InvalidClientConfigError < StandardError; end
+    class InvalidLogoutRedirectUriError < StandardError; end
     class InvalidCredentialLevelError < StandardError; end
     class InvalidScope < StandardError; end
     class InvalidServiceAccountScope < StandardError; end

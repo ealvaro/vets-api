@@ -129,48 +129,120 @@ describe SignIn::Logingov::Service do
   end
 
   describe '#render_logout' do
-    let(:client_id) { IdentitySettings.logingov.client_id }
-    let(:logout_redirect_uri) { IdentitySettings.logingov.logout_redirect_uri }
-    let(:expected_url_params) do
-      {
-        client_id:,
-        post_logout_redirect_uri: logout_redirect_uri,
-        state: encoded_state
-      }
-    end
-    let(:encoded_state) { Base64.encode64(state_payload.to_json) }
+    let(:logingov_client_id) { 'logingov-client-id' }
+    let(:logingov_logout_redirect_uri) { 'https://some-client.logingov.com/logout' }
+    let(:client_id) { 'some-client-id' }
     let(:state_payload) do
       {
+        client_id:,
         logout_redirect: client_logout_redirect_uri,
         seed:
       }
     end
     let(:seed) { 'some-seed' }
+    let(:ssl_key) { OpenSSL::PKey::RSA.generate(2048) }
+    let(:encoded_state) { JWT.encode(state_payload, ssl_key, 'RS256') }
+    let(:expected_url_params) do
+      {
+        client_id: logingov_client_id,
+        post_logout_redirect_uri: logingov_logout_redirect_uri,
+        state: encoded_state
+      }
+    end
     let(:expected_url_host) { IdentitySettings.logingov.oauth_url }
     let(:expected_url_path) { 'openid_connect/logout' }
     let(:expected_url) { "#{expected_url_host}/#{expected_url_path}?#{expected_url_params.to_query}" }
     let(:client_logout_redirect_uri) { 'some-client-logout-redirect-uri' }
 
-    before { allow(SecureRandom).to receive(:hex).and_return(seed) }
+    before do
+      allow(IdentitySettings.logingov).to receive_messages(client_id: logingov_client_id,
+                                                           logout_redirect_uri: logingov_logout_redirect_uri)
+      allow(SecureRandom).to receive(:hex).and_return(seed)
+      allow_any_instance_of(SignIn::Logingov::Configuration).to receive(:ssl_key).and_return(ssl_key)
+    end
 
     it 'returns expected logout url' do
-      expect(subject.render_logout(client_logout_redirect_uri)).to eq(expected_url)
+      expect(subject.render_logout(client_id, client_logout_redirect_uri)).to eq(expected_url)
     end
   end
 
   describe '#render_logout_redirect' do
-    let(:encoded_state) { Base64.encode64(state_payload.to_json) }
+    let(:ssl_key) { OpenSSL::PKey::RSA.generate(2048) }
     let(:state_payload) do
       {
+        client_id: 'some-client-id',
         logout_redirect: client_logout_redirect_uri,
-        seed:
+        seed: 'some-seed'
       }
     end
-    let(:seed) { 'some-seed' }
-    let(:client_logout_redirect_uri) { 'some-client-logout-redirect-uri' }
+    let(:client_logout_redirect_uri) { 'https://some-client.example.com/logout' }
 
-    it 'directs to the expected logout redirect uri' do
-      expect(subject.render_logout_redirect(encoded_state)).to include(client_logout_redirect_uri)
+    before do
+      allow_any_instance_of(SignIn::Logingov::Configuration).to receive(:ssl_key).and_return(ssl_key)
+    end
+
+    context 'when state is a valid signed JWT' do
+      let(:encoded_state) { JWT.encode(state_payload, ssl_key, 'RS256') }
+
+      it 'directs to the expected logout redirect uri' do
+        expect(subject.render_logout_redirect(encoded_state)).to include(client_logout_redirect_uri)
+      end
+    end
+
+    context 'when state is signed with a different key' do
+      let(:wrong_key) { OpenSSL::PKey::RSA.generate(2048) }
+      let(:encoded_state) { JWT.encode(state_payload, wrong_key, 'RS256') }
+
+      it 'raises a MalformedParamsError' do
+        expect { subject.render_logout_redirect(encoded_state) }.to raise_error(SignIn::Errors::MalformedParamsError)
+      end
+    end
+
+    context 'when state is unsigned base64-encoded JSON' do
+      let(:encoded_state) { Base64.encode64(state_payload.to_json) }
+
+      it 'raises a MalformedParamsError' do
+        expect { subject.render_logout_redirect(encoded_state) }.to raise_error(SignIn::Errors::MalformedParamsError)
+      end
+    end
+
+    context 'when state is completely malformed' do
+      let(:encoded_state) { 'malformed-state' }
+
+      it 'raises a MalformedParamsError' do
+        expect { subject.render_logout_redirect(encoded_state) }.to raise_error(SignIn::Errors::MalformedParamsError)
+      end
+    end
+  end
+
+  describe '#decode_logout_state' do
+    let(:ssl_key) { OpenSSL::PKey::RSA.generate(2048) }
+    let(:state_payload) do
+      {
+        client_id: 'some-client-id',
+        logout_redirect: 'https://example.com/logout',
+        seed: 'some-seed'
+      }.with_indifferent_access
+    end
+
+    before do
+      allow_any_instance_of(SignIn::Logingov::Configuration).to receive(:ssl_key).and_return(ssl_key)
+    end
+
+    context 'when state is a valid signed JWT' do
+      let(:encoded_state) { JWT.encode(state_payload, ssl_key, 'RS256') }
+
+      it 'returns the decoded payload' do
+        expect(subject.decode_logout_state(encoded_state)).to eq(state_payload)
+      end
+    end
+
+    context 'when state is not a valid JWT' do
+      let(:encoded_state) { 'malformed-jwt' }
+
+      it 'raises a MalformedParamsError' do
+        expect { subject.decode_logout_state(encoded_state) }.to raise_error(SignIn::Errors::MalformedParamsError)
+      end
     end
   end
 

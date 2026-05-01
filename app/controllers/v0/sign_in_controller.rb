@@ -224,8 +224,11 @@ module V0
 
       raise SignIn::Errors::MalformedParamsError.new message: 'State is not defined' unless state
 
-      render body: auth_service(SignIn::Constants::Auth::LOGINGOV).render_logout_redirect(state),
-             content_type: 'text/html'
+      logingov_service = auth_service(SignIn::Constants::Auth::LOGINGOV)
+      state_payload = logingov_service.decode_logout_state(state)
+      validate_logout_redirect_uri!(state_payload['client_id'], state_payload['logout_redirect'])
+
+      render body: logingov_service.render_logout_redirect(state), content_type: 'text/html'
     rescue => e
       sign_in_logger.error('logingov_logout_proxy error', exception: e)
 
@@ -243,6 +246,13 @@ module V0
     end
 
     private
+
+    def validate_logout_redirect_uri!(client_id, uri)
+      config = client_config(client_id)
+      if config.blank? || config.logout_redirect_uri != uri
+        raise SignIn::Errors::InvalidLogoutRedirectUriError.new message: 'Logout redirect URI is not registered'
+      end
+    end
 
     def validate_authorize_params(type, client_id, acr, operation)
       if client_config(client_id).blank?

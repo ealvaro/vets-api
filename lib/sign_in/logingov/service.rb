@@ -41,15 +41,21 @@ module SignIn
         RedirectUrlGenerator.new(redirect_uri: auth_url, params_hash: auth_params(acr[:acr], state, scope)).perform
       end
 
-      def render_logout(client_logout_redirect_uri)
+      def render_logout(client_id, client_logout_redirect_uri)
         "#{sign_out_url}?#{sign_out_params(config.logout_redirect_uri,
-                                           encode_logout_redirect(client_logout_redirect_uri)).to_query}"
+                                           encode_logout_redirect(client_id, client_logout_redirect_uri)).to_query}"
       end
 
       def render_logout_redirect(state)
-        state_hash = JSON.parse(Base64.decode64(state))
-        logout_redirect_uri = state_hash['logout_redirect']
+        state_payload = decode_logout_state(state)
+        logout_redirect_uri = state_payload['logout_redirect']
         RedirectUrlGenerator.new(redirect_uri: URI.parse(logout_redirect_uri).to_s).perform
+      end
+
+      def decode_logout_state(state)
+        JWT.decode(state, config.ssl_key.public_key, true, { algorithm: 'RS256' }).first
+      rescue JWT::DecodeError => e
+        raise SignIn::Errors::MalformedParamsError.new message: "State is malformed: #{e.message}"
       end
 
       def token(code)
@@ -193,12 +199,13 @@ module SignIn
         }.to_json
       end
 
-      def encode_logout_redirect(logout_redirect_uri)
-        Base64.encode64(logout_state_payload(logout_redirect_uri).to_json)
+      def encode_logout_redirect(client_id, logout_redirect_uri)
+        JWT.encode(logout_state_payload(client_id, logout_redirect_uri), config.ssl_key, 'RS256')
       end
 
-      def logout_state_payload(logout_redirect_uri)
+      def logout_state_payload(client_id, logout_redirect_uri)
         {
+          client_id:,
           logout_redirect: logout_redirect_uri,
           seed: random_seed
         }

@@ -20,13 +20,15 @@ RSpec.describe SignIn::LogoutRedirectGenerator do
           let(:logingov_client_id) { IdentitySettings.logingov.client_id }
           let(:logingov_logout_redirect_uri) { IdentitySettings.logingov.logout_redirect_uri }
           let(:random_seed) { 'some-random-seed' }
+          let(:ssl_key) { OpenSSL::PKey::RSA.generate(2048) }
           let(:logout_state_payload) do
             {
+              client_id: client_config.client_id,
               logout_redirect: client_config.logout_redirect_uri,
               seed: random_seed
             }
           end
-          let(:state) { Base64.encode64(logout_state_payload.to_json) }
+          let(:state) { JWT.encode(logout_state_payload, ssl_key, 'RS256') }
           let(:expected_url_params) do
             {
               client_id: logingov_client_id,
@@ -38,7 +40,10 @@ RSpec.describe SignIn::LogoutRedirectGenerator do
           let(:expected_url_path) { 'openid_connect/logout' }
           let(:expected_url) { "#{expected_url_host}/#{expected_url_path}?#{expected_url_params.to_query}" }
 
-          before { allow(SecureRandom).to receive(:hex).and_return(random_seed) }
+          before do
+            allow(SecureRandom).to receive(:hex).and_return(random_seed)
+            allow_any_instance_of(SignIn::Logingov::Configuration).to receive(:ssl_key).and_return(ssl_key)
+          end
 
           it 'returns a logout redirect to login.gov logout endpoint with proper params' do
             expect(subject).to eq(expected_url)

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'sign_in/logingov/service'
 
 RSpec.describe V0::SignInController, '#logingov_logout_proxy', type: :controller do
   describe 'GET logingov_logout_proxy' do
@@ -11,6 +12,9 @@ RSpec.describe V0::SignInController, '#logingov_logout_proxy', type: :controller
     end
     let(:state) { { state: state_value } }
     let(:state_value) { 'some-state-value' }
+    let!(:client_config) { create(:client_config, client_id:, logout_redirect_uri:) }
+    let(:client_id) { 'some-client-id' }
+    let(:logout_redirect_uri) { 'https://registered-client.example.com/logout' }
 
     context 'when state param is not given' do
       let(:state) { {} }
@@ -41,22 +45,46 @@ RSpec.describe V0::SignInController, '#logingov_logout_proxy', type: :controller
 
     context 'when state param is given' do
       let(:state_value) { encoded_state }
-      let(:encoded_state) { Base64.encode64(state_payload.to_json) }
+      let(:ssl_key) { OpenSSL::PKey::RSA.generate(2048) }
+      let(:encoded_state) { JWT.encode(state_payload, ssl_key, 'RS256') }
       let(:state_payload) do
         {
-          logout_redirect: client_logout_redirect_uri,
-          seed:
+          client_id: state_client_id,
+          logout_redirect: state_logout_redirect_uri,
+          seed: 'some-seed'
         }
       end
-      let(:seed) { 'some-seed' }
-      let(:client_logout_redirect_uri) { 'some-client-logout-redirect-uri' }
+      let(:state_client_id) { client_id }
+      let(:state_logout_redirect_uri) { logout_redirect_uri }
 
-      it 'returns ok status' do
-        expect(subject).to have_http_status(:ok)
+      before do
+        allow_any_instance_of(SignIn::Logingov::Configuration).to receive(:ssl_key).and_return(ssl_key)
       end
 
-      it 'renders expected logout redirect uri in template' do
-        expect(subject.body).to match(client_logout_redirect_uri)
+      context 'when state matches the registered client config exactly' do
+        it 'returns ok status' do
+          expect(subject).to have_http_status(:ok)
+        end
+
+        it 'renders expected logout redirect uri in template' do
+          expect(subject.body).to match(logout_redirect_uri)
+        end
+      end
+
+      context 'when client_id does not match any client config' do
+        let(:state_client_id) { 'unregistered-client-id' }
+
+        it 'returns bad request status' do
+          expect(subject).to have_http_status(:bad_request)
+        end
+      end
+
+      context "when logout_redirect does not match the client config's registered uri" do
+        let(:state_logout_redirect_uri) { 'https://different-uri.example.com/logout' }
+
+        it 'returns bad request status' do
+          expect(subject).to have_http_status(:bad_request)
+        end
       end
     end
   end
