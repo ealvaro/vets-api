@@ -33,7 +33,19 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
       expect(adapter.send(:get_location, record)).to eq('Correct Lab')
     end
 
-    it 'returns the Location name matching the performer reference' do
+    it 'returns managingOrganization.display for Location matching the performer reference' do
+      record = { 'resource' => {
+        'performer' => [{ 'reference' => 'Location/loc-789' }],
+        'contained' => [
+          { 'resourceType' => 'Location', 'id' => 'loc-789', 'name' => 'Primary Care Blue',
+            'managingOrganization' => { 'reference' => 'Organization/org-1',
+                                        'display' => '668 Mann-Grandstaff WA VA Medical Center' } }
+        ]
+      } }
+      expect(adapter.send(:get_location, record)).to eq('668 Mann-Grandstaff WA VA Medical Center')
+    end
+
+    it 'falls back to Location.name when managingOrganization is absent' do
       record = { 'resource' => {
         'performer' => [{ 'reference' => 'Location/loc-789' }],
         'contained' => [
@@ -97,30 +109,45 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
       expect(adapter.send(:get_location, record)).to eq('Fallback Lab')
     end
 
-    it 'falls back to first Location when no performer matches and no Organization exists (OH data)' do
+    it 'falls back to first Location managingOrganization.display when no performer matches (OH data)' do
       record = { 'resource' => {
         'performer' => [{ 'reference' => 'Practitioner/prac-1' }],
         'contained' => [
           { 'resourceType' => 'Practitioner', 'id' => 'prac-1', 'name' => [{ 'family' => 'Smith' }] },
-          { 'resourceType' => 'Location', 'id' => 'loc-1', 'name' => 'Primary Care Blue' }
+          { 'resourceType' => 'Location', 'id' => 'loc-1', 'name' => 'Primary Care Blue',
+            'managingOrganization' => { 'reference' => 'Organization/org-1',
+                                        'display' => '556 Captain James A Lovell IL VA Medical Center' } }
         ]
       } }
-      expect(adapter.send(:get_location, record)).to eq('Primary Care Blue')
+      expect(adapter.send(:get_location, record)).to eq('556 Captain James A Lovell IL VA Medical Center')
     end
 
-    it 'uses whichever Organization or Location appears first in contained for fallback' do
+    it 'uses managingOrganization.display for Location in fallback when it appears first' do
       record = { 'resource' => {
         'performer' => [{ 'reference' => 'Practitioner/prac-1' }],
         'contained' => [
           { 'resourceType' => 'Practitioner', 'id' => 'prac-1', 'name' => [{ 'family' => 'Smith' }] },
-          { 'resourceType' => 'Location', 'id' => 'loc-1', 'name' => 'Location Clinic' },
+          { 'resourceType' => 'Location', 'id' => 'loc-1', 'name' => 'Location Clinic',
+            'managingOrganization' => { 'reference' => 'Organization/org-1',
+                                        'display' => 'VA Medical Center' } },
           { 'resourceType' => 'Organization', 'id' => 'org-1', 'name' => 'Organization Lab' }
         ]
       } }
-      expect(adapter.send(:get_location, record)).to eq('Location Clinic')
+      expect(adapter.send(:get_location, record)).to eq('VA Medical Center')
     end
 
-    it 'falls back to first Location when no performer references exist and no Organization exists' do
+    it 'falls back to first Location managingOrganization.display when no performer refs and no Org' do
+      record = { 'resource' => {
+        'contained' => [
+          { 'resourceType' => 'Location', 'id' => 'loc-1', 'name' => 'OH Clinic',
+            'managingOrganization' => { 'reference' => 'Organization/org-1',
+                                        'display' => 'OH VA Medical Center' } }
+        ]
+      } }
+      expect(adapter.send(:get_location, record)).to eq('OH VA Medical Center')
+    end
+
+    it 'falls back to Location.name when no managingOrganization and no performer refs' do
       record = { 'resource' => {
         'contained' => [
           { 'resourceType' => 'Location', 'id' => 'loc-1', 'name' => 'OH Clinic' }

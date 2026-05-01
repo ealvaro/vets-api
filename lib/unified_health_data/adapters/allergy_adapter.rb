@@ -174,7 +174,13 @@ module UnifiedHealthData
       def extract_location(record)
         # OH has the encounter reference, but there is no contained array in either VistA or OH samples to match it to
         resource = find_contained(record, record['encounter']['reference'], FHIR_RESOURCE_TYPES[:LOCATION])
-        resource['name'] || nil
+        return nil if resource.nil?
+
+        if resource['resourceType'] == 'Location'
+          resource.dig('managingOrganization', 'display') || resource['name']
+        else
+          resource['name']
+        end
       rescue
         nil
       end

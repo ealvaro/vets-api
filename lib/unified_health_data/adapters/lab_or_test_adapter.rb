@@ -309,7 +309,7 @@ module UnifiedHealthData
             performer_ref_ids.include?(r['id'])
         end
 
-        name = match&.dig('name')
+        name = location_display_name(match)
 
         if name.present? && match['resourceType'] == 'Organization' && name.match?(VISTA_HOSTNAME_PATTERN)
           return resolve_hostname_location(match)
@@ -319,7 +319,20 @@ module UnifiedHealthData
 
         # Fallback: first Organization or Location in contained order.
         # VistA records typically use Organization; OH records use Location.
-        contained.find { |r| %w[Organization Location].include?(r['resourceType']) }&.dig('name')
+        fallback = contained.find { |r| %w[Organization Location].include?(r['resourceType']) }
+        location_display_name(fallback)
+      end
+
+      # Prefer managingOrganization.display for Location resources (stable facility name),
+      # fall back to resource name. Organization resources always use name directly.
+      def location_display_name(resource)
+        return nil if resource.nil?
+
+        if resource['resourceType'] == 'Location'
+          resource.dig('managingOrganization', 'display') || resource['name']
+        else
+          resource['name']
+        end
       end
 
       def resolve_hostname_location(organization)

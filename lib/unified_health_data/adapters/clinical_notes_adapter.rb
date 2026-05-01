@@ -477,12 +477,12 @@ module UnifiedHealthData
           reference = record['context']['related'].find { |r| r['reference'] }['reference']
           if reference
             resource = find_contained(contained, reference)
-            resource['name'] || nil
+            resource.dig('managingOrganization', 'display') || resource['name']
           end
         # OH - location is in the custodian field
         elsif record['custodian']['reference']
           resource = find_contained(contained, record['custodian']['reference'], FHIR_RESOURCE_TYPES[:LOCATION])
-          resource['name'] || nil
+          resource.dig('managingOrganization', 'display') || resource['name']
         end
       rescue
         nil

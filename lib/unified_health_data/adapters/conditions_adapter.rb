@@ -114,7 +114,7 @@ module UnifiedHealthData
         location = resource['contained'].find { |item| item['resourceType'] == 'Location' }
         return '' unless location
 
-        location['name'] || ''
+        location.dig('managingOrganization', 'display') || location['name'] || ''
       end
 
       def find_contained_practitioner(resource, reference)

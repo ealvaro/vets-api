@@ -71,7 +71,7 @@ RSpec.describe UnifiedHealthData::Adapters::ConditionsAdapter, type: :service do
         name: 'Disease caused by 2019-nCoV',
         date: '2025-01-20',
         provider: 'SYSTEM, SYSTEM Cerner, Cerner Managed Acct',
-        facility: 'WAMC Bariatric Surgery',
+        facility: '0089C-AMC Womack-Liberty',
         comments: ['This problem was added by Discern Expert for positive COVID-19 lab test.']
       )
     end

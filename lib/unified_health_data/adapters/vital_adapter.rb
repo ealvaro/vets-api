@@ -168,8 +168,11 @@ module UnifiedHealthData
         # OH has no definitive reference, unlike VistA
         if array_and_has_items(record['contained'])
           # For now just get the first one
+          # Prefer managingOrganization.display for Location resources (stable facility name)
           location_array = record['contained'].map do |res|
-            res['resourceType'] == FHIR_RESOURCE_TYPES[:LOCATION] ? res['name'] : nil
+            next nil unless res['resourceType'] == FHIR_RESOURCE_TYPES[:LOCATION]
+
+            res.dig('managingOrganization', 'display') || res['name']
           end.compact
           if location_array.size > 1
             locations = { 'locations found' => location_array.size, 'names' => location_array.join('; ') }
