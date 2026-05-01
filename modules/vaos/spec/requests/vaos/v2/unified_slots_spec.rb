@@ -100,13 +100,15 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
       end
 
       it 'uses referral dates for the slot window' do
-        get('/vaos/v2/provider_slots', params: base_params, headers:)
+        Timecop.freeze(Time.zone.parse('2026-03-15T00:00:00Z')) do
+          get('/vaos/v2/provider_slots', params: base_params, headers:)
 
-        expect(mock_eps_provider_service).to have_received(:get_provider_slots)
-          .with('prov-789', hash_including(
-                              startOnOrAfter: a_string_matching(/2026-04-/),
-                              startBefore: a_string_matching(/2026-06-01/)
-                            ))
+          expect(mock_eps_provider_service).to have_received(:get_provider_slots)
+            .with('prov-789', hash_including(
+                                startOnOrAfter: a_string_matching(/2026-04-/),
+                                startBefore: a_string_matching(/2026-06-01/)
+                              ))
+        end
       end
 
       it 'passes appointment_type_id from params to slot lookup' do
