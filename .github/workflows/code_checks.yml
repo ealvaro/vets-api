@@ -323,7 +323,7 @@ jobs:
           tags: vets-api
           outputs: type=docker,dest=/tmp/vets-api.tar
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=min
 
       - name: Compress Docker image
         run: zstd -T0 /tmp/vets-api.tar -o /tmp/vets-api.tar.zst
