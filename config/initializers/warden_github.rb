@@ -23,7 +23,7 @@ module WardenGithubStrategyExtensions
   def begin_flow!
     # We want this redirect value for later in the flow
     if request.path.include?('/flipper')
-      Rails.logger.info { "[warden_github] begin_flow! flipper redirect=#{redirect.inspect}" }
+      Rails.logger.info { "[warden_github] begin_flow! flipper request url=#{request.env['QUERY_STRING']}" }
       redirect = request.env['QUERY_STRING']&.split('=')&.[](1)
       custom_session[:redirect] = redirect if redirect.present?
     end
