@@ -24,40 +24,11 @@ http_interactions:
       code: 200
       message: OK
     headers:
-      Cache-Control:
-      - max-age=0, private, must-revalidate
       Content-Type:
       - application/json; charset=utf-8
-      Date:
-      - Fri, 19 Jan 2018 17:26:32 GMT
-      Etag:
-      - W/"ab470b0240e45ddd9bd220cdea147828"
-      Server:
-      - nginx/1.12.1
-      Strict-Transport-Security:
-      - max-age=31536000; includeSubDomains
-      X-Content-Type-Options:
-      - nosniff
-      X-Frame-Options:
-      - SAMEORIGIN
-      X-Request-Id:
-      - 89ccfeb0-097a-4b26-9bdf-6570dd6f1c87
-      X-Runtime:
-      - '0.012297'
-      X-Xss-Protection:
-      - 1; mode=block
-      Content-Length:
-      - '3241'
-      Connection:
-      - keep-alive
     body:
       encoding: UTF-8
-      string: |-
-        {
-          "data": [{
-            "foo": "bar"
-          }]
-        }
+      string: 'this is not valid { json }'
     http_version:
   recorded_at: Wed, 08 Jan 2018 14:44:00 GMT
 recorded_with: VCR 3.0.3

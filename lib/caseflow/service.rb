@@ -42,8 +42,10 @@ module Caseflow
         # If we are seeing a lot of these, we will need to take further action
         begin
           appeals = response.body['data']
-
           handle_appeals_with_null_issue_descriptions(user, appeals) if appeals.present?
+        rescue Faraday::ParsingError, JSON::ParserError => e
+          Rails.logger.error("Caseflow returned an unparseable response body: #{e.message}")
+          raise # re-raise so it propagates up to the controller / error middleware
         rescue => e
           Rails.logger.error("Logging null description issues for appeals failed: #{e.message}")
         end

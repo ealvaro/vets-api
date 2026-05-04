@@ -95,10 +95,10 @@ RSpec.describe 'V0::Appeals', type: :request do
     end
 
     context 'with an invalid JSON body in the response' do
-      it 'returns a 502 and logs an error level message' do
+      it 'returns a 503 and logs an error level message' do
         VCR.use_cassette('caseflow/invalid_body') do
           get appeals_endpoint
-          expect(response).to have_http_status(:internal_server_error)
+          expect(response).to have_http_status(:service_unavailable)
         end
       end
     end
