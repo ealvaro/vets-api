@@ -486,8 +486,8 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
       let(:representative_id) { '8942584724354' }
       let(:params) do
         {
-          decision: 'ACCEPTED', proc_id: '09876', representative_id:, poa_code:,
-          metadata: {}, veteran:, claimant: nil
+          decision: 'ACCEPTED', poa_request: OpenStruct.new(proc_id: '09876', poa_code:, metadata: {}),
+          representative_id:, veteran:, claimant: nil
         }
       end
       let(:poa_code) { '067' }
@@ -681,8 +681,8 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
 
         let(:params) do
           {
-            decision:, proc_id: '09876', representative_id: '8942584724354', poa_code: '083',
-            metadata: {}, veteran: nil, claimant: nil
+            decision:, poa_request: OpenStruct.new(proc_id: '09876', poa_code: '083', metadata: {}),
+            representative_id: '8942584724354', veteran: nil, claimant: nil
           }
         end
 
@@ -1290,8 +1290,8 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
     let(:slack_client) { instance_double(SlackNotify::Client) }
     let(:params) do
       {
-        decision: 'accepted', proc_id: '12345', representative_id: '999',
-        poa_code: '083', metadata: {}, veteran: nil, claimant: nil
+        decision: 'accepted', poa_request: OpenStruct.new(proc_id: '12345', poa_code: '083', metadata: {}),
+        representative_id: '999', veteran: nil, claimant: nil
       }
     end
 

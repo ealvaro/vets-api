@@ -73,21 +73,21 @@ module ClaimsApi
           lighthouse_id = params[:id]
           decision = normalize(form_attributes['decision'])
           representative_id = form_attributes['representativeId']
-          request = find_poa_request!(lighthouse_id)
-          proc_id = request.proc_id
+          poa_request = find_poa_request!(lighthouse_id)
+          proc_id = poa_request.proc_id
 
-          decide_service.validate_decide_representative_params!(request.poa_code, representative_id)
+          decide_service.validate_decide_representative_params!(poa_request.poa_code, representative_id)
 
           # There will be a Veteran since we saved the Create request, claimant is optional
           veteran_info, claimant_info = decide_service.build_veteran_and_dependent_data(
-            request, method(:build_target_veteran)
+            poa_request, method(:build_target_veteran)
           )
           # skip the BGS API calls in lower environments to prevent 3rd parties from creating data in external systems
           unless Flipper.enabled?(:lighthouse_claims_v2_poa_requests_skip_bgs)
             # Will either get null when a decision is declined or
             # a poa.id for record saved in our DB when decision is accepted
             decision_response = process_poa_decision(
-              decision:, proc_id:, representative_id:, poa_code: request.poa_code, metadata: request.metadata,
+              decision:, poa_request:, representative_id:,
               veteran: veteran_info, claimant: claimant_info
             )
             # updates the request with the decision in BGS (BEP)
@@ -108,7 +108,7 @@ module ClaimsApi
               get_poa_response, view: :shared_response, root: :data
             ), status: :ok, location: url_for(
               controller: 'power_of_attorney/base', action: 'status', id: decision_response.id,
-              veteranId: request.veteran_icn
+              veteranId: poa_request.veteran_icn
             )
           end
         end
@@ -192,10 +192,12 @@ module ClaimsApi
           [dependent.first_name, dependent.last_name]
         end
 
-        # rubocop:disable Metrics/ParameterLists
-        def process_poa_decision(decision:, proc_id:, representative_id:, poa_code:, metadata:, veteran:, claimant:)
+        def process_poa_decision(decision:, poa_request:, representative_id:, veteran:, claimant:)
+          poa_code = poa_request.poa_code
+
           result = ClaimsApi::PowerOfAttorneyRequestService::DecisionHandler.new(
-            decision:, proc_id:, registration_number: representative_id, poa_code:, metadata:, veteran:, claimant:
+            decision:, proc_id: poa_request.proc_id, registration_number: representative_id,
+            poa_code:, metadata: poa_request.metadata, veteran:, claimant:
           ).call
           return nil if result.blank?
 
@@ -204,10 +206,9 @@ module ClaimsApi
           build_decision_headers(veteran, claimant)
           save_and_submit_poa_record(poa_code:, representative_id:, type:)
         rescue => e
-          log_decision_failure(proc_id, e)
+          log_decision_failure(poa_request.proc_id, e)
           raise
         end
-        # rubocop:enable Metrics/ParameterLists
 
         def build_decision_headers(veteran, claimant)
           @claimant_icn = claimant.icn.presence || claimant.mpi.icn if claimant
@@ -306,15 +307,15 @@ module ClaimsApi
         end
 
         def find_poa_request!(lighthouse_id)
-          request = ClaimsApi::PowerOfAttorneyRequest.find_by(id: lighthouse_id)
+          poa_request = ClaimsApi::PowerOfAttorneyRequest.find_by(id: lighthouse_id)
 
-          unless request
+          unless poa_request
             raise ::ClaimsApi::Common::Exceptions::Lighthouse::ResourceNotFound.new(
               detail: "Could not find Power of Attorney request with id: #{lighthouse_id}"
             )
           end
 
-          request
+          poa_request
         end
 
         def normalize(item)
