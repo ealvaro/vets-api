@@ -62,6 +62,23 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
           expect(parsed['data']['attributes']['status']).to eq('valid')
         end
       end
+
+      describe "'claimantCertification'" do
+        context 'when not provided' do
+          it 'is optional and returns a successful response' do
+            mock_ccg(scopes) do |auth_header|
+              json_data = JSON.parse data
+              params = json_data
+              params['data']['attributes'].delete('claimantCertification')
+              post validation_path, params: params.to_json, headers: auth_header
+              expect(response).to have_http_status(:ok)
+              parsed = JSON.parse(response.body)
+              expect(parsed['data']['type']).to eq('claims_api_auto_established_claim_validation')
+              expect(parsed['data']['attributes']['status']).to eq('valid')
+            end
+          end
+        end
+      end
     end
 
     describe '#generate_pdf' do
@@ -319,6 +336,23 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
         end
       end
 
+      describe "'claimantCertification'" do
+        context 'when not provided' do
+          it 'is optional and returns a 202 response' do
+            mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+              VCR.use_cassette('claims_api/disability_comp') do
+                json_data = JSON.parse data
+                params = json_data
+                params['data']['attributes'].delete('claimantCertification')
+                post synchronous_path, params: params.to_json, headers: auth_header
+
+                expect(response).to have_http_status(:accepted)
+              end
+            end
+          end
+        end
+      end
+
       it 'returns a 401 unauthorized with incorrect scopes' do
         mock_ccg_for_fine_grained_scope(invalid_scopes) do |auth_header|
           post synchronous_path, params: data, headers: auth_header
@@ -340,6 +374,146 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
       end
     end
 
+    describe "'treatments' validations" do
+      describe 'when FES is enabled' do
+        let(:treatments) do
+          [
+            {
+              center: {
+                name: 'Some Treatment Center',
+                city: 'Portland',
+                state: 'OR'
+              },
+              treatedDisabilityNames: [
+                'PTSD (post traumatic stress disorder)'
+              ],
+              beginDate: treatment_begin_date
+            }
+          ]
+        end
+
+        before do
+          allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v2_enable_FES).and_return(true)
+        end
+
+        context 'it does not require the treatment beginDate to be after the earliest activeDutyBeginDate' do
+          let(:treatment_begin_date) { '1970-01-01' }
+
+          it 'returns a 202' do
+            mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+              VCR.use_cassette('claims_api/disability_comp') do
+                temp = JSON.parse(data)
+                temp['data']['attributes']['treatments'] = treatments
+                test_data = temp.to_json
+                post synchronous_path, params: test_data, headers: auth_header
+                expect(response).to have_http_status(:accepted)
+              end
+            end
+          end
+        end
+
+        context 'it does not require the begin date to be in yyyy-mm-dd format' do
+          let(:treatment_begin_date) { '1985-01' }
+
+          it 'returns a 202' do
+            mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+              VCR.use_cassette('claims_api/disability_comp') do
+                temp = JSON.parse(data)
+                temp['data']['attributes']['treatments'] = treatments
+                test_data = temp.to_json
+                post synchronous_path, params: test_data, headers: auth_header
+                expect(response).to have_http_status(:accepted)
+              end
+            end
+          end
+        end
+
+        context 'it allows the begin date to be nil' do
+          let(:treatment_begin_date) { nil }
+
+          it 'returns a 202' do
+            mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+              VCR.use_cassette('claims_api/disability_comp') do
+                temp = JSON.parse(data)
+                temp['data']['attributes']['treatments'] = treatments
+                test_data = temp.to_json
+                post synchronous_path, params: test_data, headers: auth_header
+                expect(response).to have_http_status(:accepted)
+              end
+            end
+          end
+        end
+
+        context 'it allows the treatment begin date not be a valid date format' do
+          let(:treatment_begin_date) { 'four score and seven years ago' }
+
+          it 'returns a 202' do
+            mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+              VCR.use_cassette('claims_api/disability_comp') do
+                temp = JSON.parse(data)
+                temp['data']['attributes']['treatments'] = treatments
+                test_data = temp.to_json
+                post synchronous_path, params: test_data, headers: auth_header
+                expect(response).to have_http_status(:accepted)
+              end
+            end
+          end
+        end
+
+        context 'it does not require a treatment begin date' do
+          let(:treatments) do
+            [
+              {
+                center: {
+                  name: 'Some Treatment Center',
+                  city: 'Portland',
+                  state: 'OR'
+                },
+                treatedDisabilityNames: [
+                  'PTSD (post traumatic stress disorder)'
+                ]
+              }
+            ]
+          end
+
+          it 'returns a 202' do
+            mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+              VCR.use_cassette('claims_api/disability_comp') do
+                temp = JSON.parse(data)
+                temp['data']['attributes']['treatments'] = treatments
+                test_data = temp.to_json
+                post synchronous_path, params: test_data, headers: auth_header
+                expect(response).to have_http_status(:accepted)
+              end
+            end
+          end
+        end
+
+        context 'it does not require the center name, city, state, or treatedDisabilityNames' do
+          let(:treatments) do
+            [
+              {
+                center: {},
+                treatedDisabilityNames: []
+              }
+            ]
+          end
+
+          it 'returns a 202' do
+            mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+              VCR.use_cassette('claims_api/disability_comp') do
+                temp = JSON.parse(data)
+                temp['data']['attributes']['treatments'] = treatments
+                test_data = temp.to_json
+                post synchronous_path, params: test_data, headers: auth_header
+                expect(response).to have_http_status(:accepted)
+              end
+            end
+          end
+        end
+      end
+    end
+
     context 'handling for missing first and last name' do
       context 'without the first and last name present' do
         it 'does not allow the submit to occur' do
@@ -352,6 +526,255 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
               post synchronous_path, params: data, headers: auth_header
               expect(response).to have_http_status(:unprocessable_content)
               expect(response.parsed_body['errors'][0]['detail']).to eq('Missing first and last name')
+            end
+          end
+        end
+      end
+    end
+
+    context 'removed servicePay validations - confirming no errors when violating old schema rules' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v2_enable_FES).and_return(true)
+      end
+
+      describe "'militaryRetiredPay.payment.monthlyAmount' no longer has min/max constraints" do
+        let(:service_pay_data) do
+          temp = JSON.parse(data)
+          temp['data']['attributes']['servicePay'] = {
+            'receivingMilitaryRetiredPay' => 'YES',
+            'futureMilitaryRetiredPay' => 'NO',
+            'militaryRetiredPay' => {
+              'branchOfService' => 'Army',
+              'monthlyAmount' => monthly_amount
+            },
+            'retiredStatus' => 'PERMANENT_DISABILITY_RETIRED_LIST',
+            'favorMilitaryRetiredPay' => false
+          }
+          temp.to_json
+        end
+
+        context "when 'monthlyAmount' is 0 (was below old minimum of 1)" do
+          let(:monthly_amount) { 0 }
+
+          it 'returns a 202 accepted (no longer validated at schema level)' do
+            mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+              VCR.use_cassette('claims_api/disability_comp') do
+                post synchronous_path, params: service_pay_data, headers: auth_header
+                expect(response).to have_http_status(:accepted)
+              end
+            end
+          end
+        end
+
+        context "when 'monthlyAmount' is 1000000 (was above old maximum of 999999)" do
+          let(:monthly_amount) { 1_000_000 }
+
+          it 'returns a 202 accepted (no longer validated at schema level)' do
+            mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+              VCR.use_cassette('claims_api/disability_comp') do
+                post synchronous_path, params: service_pay_data, headers: auth_header
+                expect(response).to have_http_status(:accepted)
+              end
+            end
+          end
+        end
+      end
+
+      describe "'separationSeverancePay.preTaxAmountReceived' no longer has min/max constraints" do
+        let(:service_pay_data) do
+          temp = JSON.parse(data)
+          temp['data']['attributes']['servicePay'] = {
+            'receivingMilitaryRetiredPay' => 'NO',
+            'futureMilitaryRetiredPay' => 'NO',
+            'receivedSeparationOrSeverancePay' => 'YES',
+            'separationSeverancePay' => {
+              'datePaymentReceived' => '2022-03-12',
+              'branchOfService' => 'Army',
+              'preTaxAmountReceived' => pre_tax_amount
+            },
+            'favorTrainingPay' => false
+          }
+          temp.to_json
+        end
+
+        context "when 'preTaxAmountReceived' is 0 (was below old minimum of 1)" do
+          let(:pre_tax_amount) { 0 }
+
+          it 'returns a 202 accepted (no longer validated at schema level)' do
+            mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+              VCR.use_cassette('claims_api/disability_comp') do
+                post synchronous_path, params: service_pay_data, headers: auth_header
+                expect(response).to have_http_status(:accepted)
+              end
+            end
+          end
+        end
+
+        context "when 'preTaxAmountReceived' is 1000000 (was above old maximum of 999999)" do
+          let(:pre_tax_amount) { 1_000_000 }
+
+          it 'returns a 202 accepted (no longer validated at schema level)' do
+            mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+              VCR.use_cassette('claims_api/disability_comp') do
+                post synchronous_path, params: service_pay_data, headers: auth_header
+                expect(response).to have_http_status(:accepted)
+              end
+            end
+          end
+        end
+      end
+
+      describe "'separationSeverancePay.datePaymentReceived' no longer enforces date format pattern" do
+        let(:service_pay_data) do
+          temp = JSON.parse(data)
+          temp['data']['attributes']['servicePay'] = {
+            'receivingMilitaryRetiredPay' => 'NO',
+            'futureMilitaryRetiredPay' => 'NO',
+            'receivedSeparationOrSeverancePay' => 'YES',
+            'separationSeverancePay' => {
+              'datePaymentReceived' => date_received,
+              'branchOfService' => 'Army',
+              'preTaxAmountReceived' => 100
+            },
+            'favorTrainingPay' => false
+          }
+          temp.to_json
+        end
+
+        context "when 'datePaymentReceived' is an arbitrary string" do
+          let(:date_received) { 'invalid-date-format' }
+
+          it 'returns a 202 accepted (format pattern no longer enforced at schema level)' do
+            mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+              VCR.use_cassette('claims_api/disability_comp') do
+                post synchronous_path, params: service_pay_data, headers: auth_header
+                expect(response).to have_http_status(:accepted)
+              end
+            end
+          end
+        end
+
+        context "when 'datePaymentReceived' is null" do
+          let(:date_received) { nil }
+
+          it 'returns a 202 accepted (field is nullable)' do
+            mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+              VCR.use_cassette('claims_api/disability_comp') do
+                post synchronous_path, params: service_pay_data, headers: auth_header
+                expect(response).to have_http_status(:accepted)
+              end
+            end
+          end
+        end
+      end
+    end
+
+    context 'alternateNames validations' do
+      context 'when alternateNames contains duplicate names' do
+        it 'allows duplicate alternate names when FES validation is enabled' do
+          allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v2_enable_FES).and_return(true)
+
+          mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+            VCR.use_cassette('claims_api/disability_comp') do
+              json_data = JSON.parse(data)
+              json_data['data']['attributes']['serviceInformation']['alternateNames'] = [
+                'John Smith',
+                'john smith',
+                'Johnny Smith',
+                'John Smith'
+              ]
+
+              post synchronous_path, params: json_data.to_json, headers: auth_header
+              expect(response).to have_http_status(:accepted)
+            end
+          end
+        end
+      end
+    end
+
+    describe "'disabilities.secondaryDisabilities' validations" do
+      context 'when secondary disability name contains invalid characters' do
+        it 'returns an error for secondary disability name with @ symbol' do
+          mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+            VCR.use_cassette('claims_api/disability_comp') do
+              json_data = JSON.parse(data)
+              disabilities = [
+                {
+                  disabilityActionType: 'NONE',
+                  name: 'PTSD (post traumatic stress disorder)',
+                  diagnosticCode: 9999,
+                  secondaryDisabilities: [
+                    {
+                      disabilityActionType: 'SECONDARY',
+                      name: 'hearing loss @home',
+                      serviceRelevance: 'Caused by a service-connected disability.'
+                    }
+                  ]
+                }
+              ]
+              json_data['data']['attributes']['disabilities'] = disabilities
+              post synchronous_path, params: json_data.to_json, headers: auth_header
+              expect(response).to have_http_status(:unprocessable_content)
+              parsed_response = JSON.parse(response.body)
+              expect(parsed_response['errors']).to be_present
+              expect(parsed_response['errors'][0]['detail']).to include('secondaryDisabilities')
+            end
+          end
+        end
+      end
+
+      context 'when secondary disability name contains valid characters' do
+        it 'accepts secondary disability name with allowed special characters' do
+          mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+            VCR.use_cassette('claims_api/disability_comp') do
+              json_data = JSON.parse(data)
+              disabilities = [
+                {
+                  disabilityActionType: 'NONE',
+                  name: 'PTSD (post traumatic stress disorder)',
+                  diagnosticCode: 9999,
+                  secondaryDisabilities: [
+                    {
+                      disabilityActionType: 'SECONDARY',
+                      name: "hearing loss, tinnitus-related (O'Brien's case)",
+                      serviceRelevance: 'Caused by a service-connected disability.'
+                    }
+                  ]
+                }
+              ]
+              json_data['data']['attributes']['disabilities'] = disabilities
+              post synchronous_path, params: json_data.to_json, headers: auth_header
+              expect(response).to have_http_status(:accepted)
+            end
+          end
+        end
+      end
+
+      context 'when secondary disability name contains double spaces' do
+        it 'returns an error for secondary disability name with consecutive spaces' do
+          mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+            VCR.use_cassette('claims_api/disability_comp') do
+              json_data = JSON.parse(data)
+              disabilities = [
+                {
+                  disabilityActionType: 'NONE',
+                  name: 'PTSD (post traumatic stress disorder)',
+                  diagnosticCode: 9999,
+                  secondaryDisabilities: [
+                    {
+                      disabilityActionType: 'SECONDARY',
+                      name: 'hearing  loss',
+                      serviceRelevance: 'Caused by a service-connected disability.'
+                    }
+                  ]
+                }
+              ]
+              json_data['data']['attributes']['disabilities'] = disabilities
+              post synchronous_path, params: json_data.to_json, headers: auth_header
+              expect(response).to have_http_status(:unprocessable_content)
+              parsed_response = JSON.parse(response.body)
+              expect(parsed_response['errors']).to be_present
+              expect(parsed_response['errors'][0]['detail']).to include('secondaryDisabilities')
             end
           end
         end

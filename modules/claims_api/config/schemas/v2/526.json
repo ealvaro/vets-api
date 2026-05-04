@@ -4,7 +4,6 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "claimantCertification",
     "claimProcessType",
     "disabilities",
     "serviceInformation",
@@ -548,7 +547,6 @@
           "name": {
             "description": "Name of the disability. The /disabilities endpoint on the [Benefits Reference Data API](https://developer.va.gov/explore/benefits/docs/benefits_reference_data?version=current) may be used to retrieve possible disability names.",
             "type": "string",
-            "pattern": "^$|([a-zA-Z0-9\"\\/&\\(\\)\\-'.,#\\[\\] ]([a-zA-Z0-9(\\)\\-'.,#\\[\\] ])?)+$",
             "example": "PTSD (post traumatic stress disorder)",
             "maxLength": 255
           },
@@ -625,7 +623,7 @@
                 "name": {
                   "description": "Name of the disability. The /disabilities endpoint on the [Benefits Reference Data API](https://developer.va.gov/explore/benefits/docs/benefits_reference_data?version=current) may be used to retrieve possible disability names.",
                   "type": "string",
-                  "pattern": "^$|([a-zA-Z0-9\"\\/&\\(\\)\\-'.,# ]([a-zA-Z0-9(\\)\\-'.,#\\[\\] ])?)+$",
+                  "pattern": "^(?!.* {2})[a-zA-Z0-9',. /()-]+$",
                   "example": "PTSD (post traumatic stress disorder)",
                   "maxLength": 255
                 },
@@ -678,9 +676,8 @@
         "additionalProperties": false,
         "properties": {
           "beginDate": {
-            "description": "Begin date for treatment. If treatment began from 2005 to present, you do not need to provide dates. Each treatment begin date must be after the first 'servicePeriod.activeDutyBeginDate'.",
+            "description": "Begin date for treatment.",
             "type": ["string", "null"],
-            "pattern": "^(?:19|20)[0-9][0-9]$|^(?:19|20)[0-9][0-9]-(0[1-9]|1[0-2])$",
             "example": "2018-06 or 2018",
             "nullable": true
           },
@@ -741,7 +738,6 @@
           "type": ["array", "null"],
           "nullable": true,
           "maxItems": 100,
-          "uniqueItems": true,
           "items": {
             "type": "string",
             "additionalProperties": false,
@@ -779,7 +775,7 @@
                 "example": "2018-06-06"
               },
               "activeDutyEndDate": {
-                "description": "Date Completed Active Duty. If in the future, 'separationLocationCode' is required. Cannot be more than 180 days in the future, unless past service is also included.",
+                "description": "Date Completed Active Duty. Cannot be more than 180 days in the future, unless past service is also included.",
                 "type": "string",
                 "pattern": "^(?:[0-9]{4})-(?:0[1-9]|1[0-2])-(?:0[1-9]|[1-2][0-9]|3[0-1])$",
                 "example": "2018-06-06"
@@ -979,8 +975,6 @@
               "description": "Amount being received.",
               "type": ["integer", "null"],
               "nullable": true,
-              "minimum": 1,
-              "maximum": 999999,
               "example": 100
             }
           }
@@ -1018,7 +1012,6 @@
             "datePaymentReceived": {
               "description": "Approximate date separation pay was received. \n Format can be either YYYY-MM-DD or YYYY-MM or YYYY",
               "type": ["string", "null"],
-              "pattern": "^(?:[0-9]{4})-(?:0[1-9]|1[0-2])-(?:0[1-9]|[1-2][0-9]|3[0-1])$|(?:[0-9]{4})$|(?:[0-9]{4})-(?:0[1-9]|1[0-2])$",
               "example": "2018-03-02 or 2018-03 or 2018"
             },
             "branchOfService": {
@@ -1032,8 +1025,6 @@
               "description": "Amount being received.",
               "type": ["integer", "null"],
               "nullable": true,
-              "minimum": 1,
-              "maximum": 999999,
               "example": 100
             }
           }
@@ -1051,7 +1042,7 @@
       "type": ["object", "null"],
       "nullable": true,
       "additionalProperties": false,
-      "description": "If direct deposit information is included, the following attributes are required: accountType, accountNumber, routingNumber.",
+      "description": "Direct deposit information.",
       "properties": {
         "noAccount": {
           "type": ["boolean", "null"],
