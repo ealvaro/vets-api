@@ -61,6 +61,7 @@ module SM
         # Create collection once with all data ready
         collection = Vets::Collection.new(filtered_teams, AllTriageTeams, metadata:, errors: json[:errors])
         cache_triage_team_station_numbers(user_uuid, collection.data)
+        log_health_care_system_names(collection.data)
 
         collection
       end
@@ -124,6 +125,26 @@ module SM
         end
         cache_key = "#{user_uuid}-all-triage-teams-station-numbers"
         TriageTeamCache.set_cached(cache_key, minimal_data)
+      end
+
+      # Logs count of triage teams with missing healthCareSystemName values
+      def log_health_care_system_names(triage_teams)
+        system_names = triage_teams.map(&:health_care_system_name).uniq
+        log_message_to_rails(
+          'AllTriageTeams healthCareSystemName validation',
+          'info',
+          { health_care_system_names: system_names }
+        )
+
+        missing_system_teams = triage_teams.select { |team| team.health_care_system_name.blank? }
+        if missing_system_teams.present?
+          missing_names = missing_system_teams.map(&:name)
+          log_message_to_rails(
+            'AllTriageTeams missing healthCareSystemName',
+            'warn',
+            { triage_team_names: missing_names }
+          )
+        end
       end
     end
   end

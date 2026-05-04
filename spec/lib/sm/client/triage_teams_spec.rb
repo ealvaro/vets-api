@@ -99,6 +99,58 @@ describe 'sm client' do
       end
     end
 
+    describe 'healthCareSystemName logging' do
+      it 'logs unique healthCareSystemName values' do
+        allow(Rails.logger).to receive(:info)
+
+        VCR.use_cassette 'sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients' do
+          VCR.use_cassette('sm_client/get_unique_care_systems') do
+            client.get_all_triage_teams('1234')
+          end
+        end
+
+        expect(Rails.logger).to have_received(:info).with(
+          /AllTriageTeams healthCareSystemName validation.*health_care_system_names/
+        ).once
+      end
+
+      it 'logs warn with team names when healthCareSystemName values are blank' do
+        allow(Rails.logger).to receive(:info)
+        allow(Rails.logger).to receive(:warn)
+        allow(MHV::OhFacilitiesHelper::Service).to receive(:new)
+          .and_return(instance_double(MHV::OhFacilitiesHelper::Service, get_phases_for_station_numbers: {}))
+
+        VCR.use_cassette 'sm_client/triage_teams/gets_all_triage_team_recipients_with_some_blank_system_names' do
+          VCR.use_cassette('sm_client/get_unique_care_systems') do
+            client.get_all_triage_teams('1234')
+          end
+        end
+
+        expect(Rails.logger).to have_received(:info).with(
+          /AllTriageTeams healthCareSystemName validation.*health_care_system_names/
+        ).once
+
+        expect(Rails.logger).to have_received(:warn).with(
+          /AllTriageTeams missing healthCareSystemName.*Team B.*Team C/
+        ).once
+      end
+
+      it 'does not log warn when all healthCareSystemName values are present' do
+        allow(Rails.logger).to receive(:info)
+        allow(Rails.logger).to receive(:warn)
+        allow(MHV::OhFacilitiesHelper::Service).to receive(:new)
+          .and_return(instance_double(MHV::OhFacilitiesHelper::Service, get_phases_for_station_numbers: {}))
+
+        VCR.use_cassette 'sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients' do
+          VCR.use_cassette('sm_client/get_unique_care_systems') do
+            client.get_all_triage_teams('1234')
+          end
+        end
+
+        expect(Rails.logger).not_to have_received(:warn)
+      end
+    end
+
     describe '#get_triage_teams_station_numbers' do
       it 'returns cached triage team station numbers when cache exists' do
         # Pre-populate the cache
