@@ -115,17 +115,48 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
           end
         end
 
+        # relaxed schema validations for FES now allow the startDate to be empty
+        # this was a previous failure converted to a success test to validate the relaxed validation
         context "when 'treatment.startDate' is included but empty" do
           let(:treatment_start_date) { '' }
 
-          it 'returns a 422' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_enable_FES).and_return(true)
+          end
+
+          it 'returns a 200' do
             mock_acg(scopes) do |auth_header|
-              VCR.use_cassette('claims_api/brd/countries') do
-                json_data = JSON.parse data
-                params = json_data
-                params['data']['attributes']['treatments'] = treatments
-                post path, params: params.to_json, headers: headers.merge(auth_header)
-                expect(response).to have_http_status(:unprocessable_content)
+              VCR.use_cassette('claims_api/bgs/claims/claims') do
+                VCR.use_cassette('claims_api/brd/countries') do
+                  json_data = JSON.parse data
+                  params = json_data
+                  params['data']['attributes']['treatments'] = treatments
+                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  expect(response).to have_http_status(:ok)
+                end
+              end
+            end
+          end
+        end
+
+        context "when 'treatment.startDate' is not a valid date format" do
+          let(:treatment_start_date) { 'four score and seven years ago' }
+
+          # validations relaxed for FES, so toggle needs to be on to use the FES validations
+          before do
+            allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_enable_FES).and_return(true)
+          end
+
+          it 'returns a 200' do
+            mock_acg(scopes) do |auth_header|
+              VCR.use_cassette('claims_api/bgs/claims/claims') do
+                VCR.use_cassette('claims_api/brd/countries') do
+                  json_data = JSON.parse data
+                  params = json_data
+                  params['data']['attributes']['treatments'] = treatments
+                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  expect(response).to have_http_status(:ok)
+                end
               end
             end
           end
@@ -197,6 +228,29 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
 
         context "when 'treatment.endDate' is after 'treatment.startDate'" do
           let(:treatment_end_date) { '1986-01-01' }
+
+          it 'returns a 200' do
+            mock_acg(scopes) do |auth_header|
+              VCR.use_cassette('claims_api/bgs/claims/claims') do
+                VCR.use_cassette('claims_api/brd/countries') do
+                  json_data = JSON.parse data
+                  params = json_data
+                  params['data']['attributes']['treatments'] = treatments
+                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  expect(response).to have_http_status(:ok)
+                end
+              end
+            end
+          end
+        end
+
+        context "when 'treatment.endDate' is not a valid date format" do
+          let(:treatment_end_date) { 'four score and seven years ago' }
+
+          # validations relaxed for FES, so toggle needs to be on to use the FES validations
+          before do
+            allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_enable_FES).and_return(true)
+          end
 
           it 'returns a 200' do
             mock_acg(scopes) do |auth_header|
@@ -380,6 +434,159 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
                     post path, params: params.to_json, headers: headers.merge(auth_header)
                     expect(response).to have_http_status(:ok)
                   end
+                end
+              end
+            end
+          end
+        end
+      end
+
+      describe 'when FES is enabled' do
+        let(:treatments) do
+          [
+            {
+              center: {
+                name: 'Some Treatment Center',
+                country: 'United States of America'
+              },
+              treatedDisabilityNames: [
+                'PTSD (post traumatic stress disorder)'
+              ],
+              startDate: treatment_start_date,
+              endDate: treatment_end_date
+            }
+          ]
+        end
+
+        before do
+          allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_enable_FES).and_return(true)
+        end
+
+        context 'it does not require treatment endDate and startDate being in chronological order' do
+          let(:treatment_start_date) { '1985-01-01' }
+          let(:treatment_end_date) { '1984-01-01' }
+
+          it 'returns a 200' do
+            mock_acg(scopes) do |auth_header|
+              VCR.use_cassette('claims_api/bgs/claims/claims') do
+                VCR.use_cassette('claims_api/brd/countries') do
+                  json_data = JSON.parse data
+                  params = json_data
+                  params['data']['attributes']['treatments'] = treatments
+                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  expect(response).to have_http_status(:ok)
+                end
+              end
+            end
+          end
+        end
+
+        context 'it does not require the start date and end date to be in yyyy-mm-dd format' do
+          let(:treatment_start_date) { '1985-01' }
+          let(:treatment_end_date) { '1984-01' }
+
+          it 'returns a 200' do
+            mock_acg(scopes) do |auth_header|
+              VCR.use_cassette('claims_api/bgs/claims/claims') do
+                VCR.use_cassette('claims_api/brd/countries') do
+                  json_data = JSON.parse data
+                  params = json_data
+                  params['data']['attributes']['treatments'] = treatments
+                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  expect(response).to have_http_status(:ok)
+                end
+              end
+            end
+          end
+        end
+
+        context 'it allows the start date to be nil' do
+          let(:treatment_start_date) { nil }
+          let(:treatment_end_date) { nil }
+
+          it 'returns a 200' do
+            mock_acg(scopes) do |auth_header|
+              VCR.use_cassette('claims_api/bgs/claims/claims') do
+                VCR.use_cassette('claims_api/brd/countries') do
+                  json_data = JSON.parse data
+                  params = json_data
+                  params['data']['attributes']['treatments'] = treatments
+                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  expect(response).to have_http_status(:ok)
+                end
+              end
+            end
+          end
+        end
+
+        context 'it does not require the treatment startDate to be after the earliest activeDutyBeginDate' do
+          let(:treatment_start_date) { '1970-01-01' }
+          let(:treatment_end_date) { nil }
+
+          it 'returns a 200' do
+            mock_acg(scopes) do |auth_header|
+              VCR.use_cassette('claims_api/bgs/claims/claims') do
+                VCR.use_cassette('claims_api/brd/countries') do
+                  json_data = JSON.parse data
+                  params = json_data
+                  params['data']['attributes']['treatments'] = treatments
+                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  expect(response).to have_http_status(:ok)
+                end
+              end
+            end
+          end
+        end
+
+        context 'it does not require a treatment start date or treatment end date' do
+          let(:treatments) do
+            [
+              {
+                center: {
+                  name: 'Some Treatment Center',
+                  country: 'United States of America'
+                },
+                treatedDisabilityNames: [
+                  'PTSD (post traumatic stress disorder)'
+                ]
+              }
+            ]
+          end
+
+          it 'returns a 200' do
+            mock_acg(scopes) do |auth_header|
+              VCR.use_cassette('claims_api/bgs/claims/claims') do
+                VCR.use_cassette('claims_api/brd/countries') do
+                  json_data = JSON.parse data
+                  params = json_data
+                  params['data']['attributes']['treatments'] = treatments
+                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  expect(response).to have_http_status(:ok)
+                end
+              end
+            end
+          end
+        end
+
+        context 'it does not require the country, treatmentCenterName, or treatedDisabilityNames' do
+          let(:treatments) do
+            [
+              {
+                center: {},
+                treatedDisabilityNames: []
+              }
+            ]
+          end
+
+          it 'returns a 200' do
+            mock_acg(scopes) do |auth_header|
+              VCR.use_cassette('claims_api/bgs/claims/claims') do
+                VCR.use_cassette('claims_api/brd/countries') do
+                  json_data = JSON.parse data
+                  params = json_data
+                  params['data']['attributes']['treatments'] = treatments
+                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  expect(response).to have_http_status(:ok)
                 end
               end
             end
@@ -1125,7 +1332,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
         end
 
         context "when 'unitName' is not present" do
-          it 'returns a unsuccessful response' do
+          it 'returns a successful response' do
             mock_acg(scopes) do |auth_header|
               VCR.use_cassette('claims_api/bgs/claims/claims') do
                 VCR.use_cassette('claims_api/brd/countries') do
@@ -1133,7 +1340,8 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
                   par['data']['attributes']['serviceInformation']['reservesNationalGuardService'].delete('unitName')
 
                   post path, params: par.to_json, headers: headers.merge(auth_header)
-                  expect(response).to have_http_status(:unprocessable_content)
+
+                  expect(response).to have_http_status(:ok)
                 end
               end
             end
@@ -1150,6 +1358,35 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
 
                   post path, params: par.to_json, headers: headers.merge(auth_header)
                   expect(response).to have_http_status(:unprocessable_content)
+                end
+              end
+            end
+          end
+        end
+
+        context "when 'alternateNames' contains duplicate names" do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_enable_FES).and_return(true)
+          end
+
+          it 'allows duplicate alternate names (uniqueness not required)' do
+            mock_acg(scopes) do |auth_header|
+              VCR.use_cassette('claims_api/bgs/claims/claims') do
+                VCR.use_cassette('claims_api/brd/countries') do
+                  par = json_data
+                  par['data']['attributes']['serviceInformation']['alternateNames'] = [
+                    {
+                      'firstName' => 'John',
+                      'lastName' => 'Smith'
+                    },
+                    {
+                      'firstName' => 'John',
+                      'lastName' => 'Smith'
+                    }
+                  ]
+
+                  post path, params: par.to_json, headers: headers.merge(auth_header)
+                  expect(response).to have_http_status(:ok)
                 end
               end
             end
@@ -1965,6 +2202,26 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
       end
     end
 
+    describe "'claimantCertification'" do
+      describe 'is optional' do
+        context 'when not provided' do
+          it 'responds with a 200' do
+            mock_acg(scopes) do |auth_header|
+              VCR.use_cassette('claims_api/bgs/claims/claims') do
+                VCR.use_cassette('claims_api/brd/countries') do
+                  json_data = JSON.parse data
+                  params = json_data
+                  params['data']['attributes'].delete('claimantCertification')
+                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  expect(response).to have_http_status(:ok)
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+
     context 'when submitted separationLocationCode is missing for a future activeDutyEndDate' do
       it 'responds with bad request' do
         mock_acg(scopes) do |auth_header|
@@ -2261,40 +2518,6 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
             }
           end
 
-          context "when 'amount' is below the minimum" do
-            let(:military_retired_payment_amount) { 0 }
-
-            it 'responds with an unprocessable entity' do
-              mock_acg(scopes) do |auth_header|
-                VCR.use_cassette('claims_api/brd/countries') do
-                  json_data = JSON.parse data
-                  params = json_data
-                  params['data']['attributes']['servicePay'] = service_pay_attribute
-                  post path, params: params.to_json, headers: headers.merge(auth_header)
-                  expect(response).to have_http_status(:unprocessable_content)
-                end
-              end
-            end
-          end
-
-          context "when 'amount' is above the maximum" do
-            let(:military_retired_payment_amount) { 1_000_000 }
-
-            it 'responds with an unprocessable entity' do
-              mock_acg(scopes) do |auth_header|
-                VCR.use_cassette('claims_api/bgs/claims/claims') do
-                  VCR.use_cassette('claims_api/brd/countries') do
-                    json_data = JSON.parse data
-                    params = json_data
-                    params['data']['attributes']['servicePay'] = service_pay_attribute
-                    post path, params: params.to_json, headers: headers.merge(auth_header)
-                    expect(response).to have_http_status(:unprocessable_content)
-                  end
-                end
-              end
-            end
-          end
-
           context "when 'amount' is within limits" do
             let(:military_retired_payment_amount) { 100 }
 
@@ -2317,32 +2540,6 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
         describe "'futurePayExplanation'" do
           context "when 'militaryRetiredPay.willReceiveInFuture' is 'true'" do
             let(:will_receive_in_future) { true }
-
-            context "when 'militaryRetiredPay.futurePayExplanation' is not provided" do
-              let(:service_pay_attribute) do
-                {
-                  militaryRetiredPay: {
-                    receiving: false,
-                    willReceiveInFuture: will_receive_in_future,
-                    payment: {
-                      serviceBranch: 'Air Force'
-                    }
-                  }
-                }
-              end
-
-              it 'responds with an unprocessable entity' do
-                mock_acg(scopes) do |auth_header|
-                  VCR.use_cassette('claims_api/brd/countries') do
-                    json_data = JSON.parse data
-                    params = json_data
-                    params['data']['attributes']['servicePay'] = service_pay_attribute
-                    post path, params: params.to_json, headers: headers.merge(auth_header)
-                    expect(response).to have_http_status(:unprocessable_content)
-                  end
-                end
-              end
-            end
 
             context "when 'militaryRetiredPay.futurePayExplanation' is provided" do
               let(:service_pay_attribute) do
@@ -2389,40 +2586,6 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
                 }
               }
             }
-          end
-
-          context "when 'amount' is below the minimum" do
-            let(:separation_payment_amount) { 0 }
-
-            it 'responds with an unprocessable entity' do
-              mock_acg(scopes) do |auth_header|
-                VCR.use_cassette('claims_api/brd/countries') do
-                  json_data = JSON.parse data
-                  params = json_data
-                  params['data']['attributes']['servicePay'] = service_pay_attribute
-                  post path, params: params.to_json, headers: headers.merge(auth_header)
-                  expect(response).to have_http_status(:unprocessable_content)
-                end
-              end
-            end
-          end
-
-          context "when 'amount' is above the maximum" do
-            let(:separation_payment_amount) { 1_000_000 }
-
-            it 'responds with an unprocessable entity' do
-              mock_acg(scopes) do |auth_header|
-                VCR.use_cassette('claims_api/bgs/claims/claims') do
-                  VCR.use_cassette('claims_api/brd/countries') do
-                    json_data = JSON.parse data
-                    params = json_data
-                    params['data']['attributes']['servicePay'] = service_pay_attribute
-                    post path, params: params.to_json, headers: headers.merge(auth_header)
-                    expect(response).to have_http_status(:unprocessable_content)
-                  end
-                end
-              end
-            end
           end
 
           context "when 'amount' is within limits" do
@@ -2487,6 +2650,175 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
                     post path, params: params.to_json, headers: headers.merge(auth_header)
                     expect(response).to have_http_status(:ok)
                   end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+
+    describe 'removed servicePay validations - confirming no errors when violating old schema rules' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_enable_FES).and_return(true)
+      end
+
+      describe "'militaryRetiredPay.payment.amount' no longer has min/max constraints" do
+        let(:service_pay_attribute) do
+          {
+            militaryRetiredPay: {
+              receiving: true,
+              willReceiveInFuture: false,
+              payment: {
+                serviceBranch: 'Air Force',
+                amount: military_retired_payment_amount
+              }
+            }
+          }
+        end
+
+        context "when 'amount' is 0 (was below old minimum of 1)" do
+          let(:military_retired_payment_amount) { 0 }
+
+          it 'responds with a 200 (no longer validated at schema level)' do
+            mock_acg(scopes) do |auth_header|
+              VCR.use_cassette('claims_api/bgs/claims/claims') do
+                VCR.use_cassette('claims_api/brd/countries') do
+                  json_data = JSON.parse data
+                  params = json_data
+                  params['data']['attributes']['servicePay'] = service_pay_attribute
+                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  expect(response).to have_http_status(:ok)
+                end
+              end
+            end
+          end
+        end
+
+        context "when 'amount' is 1000000 (was above old maximum of 999999)" do
+          let(:military_retired_payment_amount) { 1_000_000 }
+
+          it 'responds with a 200 (no longer validated at schema level)' do
+            mock_acg(scopes) do |auth_header|
+              VCR.use_cassette('claims_api/bgs/claims/claims') do
+                VCR.use_cassette('claims_api/brd/countries') do
+                  json_data = JSON.parse data
+                  params = json_data
+                  params['data']['attributes']['servicePay'] = service_pay_attribute
+                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  expect(response).to have_http_status(:ok)
+                end
+              end
+            end
+          end
+        end
+      end
+
+      describe "'militaryRetiredPay.futurePayExplanation' no longer required when willReceiveInFuture is true" do
+        let(:service_pay_attribute) do
+          {
+            militaryRetiredPay: {
+              receiving: false,
+              willReceiveInFuture: true,
+              payment: {
+                serviceBranch: 'Air Force'
+              }
+            }
+          }
+        end
+
+        it 'responds with a 200 (futurePayExplanation no longer required)' do
+          mock_acg(scopes) do |auth_header|
+            VCR.use_cassette('claims_api/bgs/claims/claims') do
+              VCR.use_cassette('claims_api/brd/countries') do
+                json_data = JSON.parse data
+                params = json_data
+                params['data']['attributes']['servicePay'] = service_pay_attribute
+                post path, params: params.to_json, headers: headers.merge(auth_header)
+                expect(response).to have_http_status(:ok)
+              end
+            end
+          end
+        end
+      end
+
+      describe "'separationPay.payment.amount' no longer has min/max constraints" do
+        let(:service_pay_attribute) do
+          {
+            separationPay: {
+              received: true,
+              receivedDate: (Time.zone.today - 1.year).to_s,
+              payment: {
+                serviceBranch: 'Air Force',
+                amount: separation_payment_amount
+              }
+            }
+          }
+        end
+
+        context "when 'amount' is 0 (was below old minimum of 1)" do
+          let(:separation_payment_amount) { 0 }
+
+          it 'responds with a 200 (no longer validated at schema level)' do
+            mock_acg(scopes) do |auth_header|
+              VCR.use_cassette('claims_api/bgs/claims/claims') do
+                VCR.use_cassette('claims_api/brd/countries') do
+                  json_data = JSON.parse data
+                  params = json_data
+                  params['data']['attributes']['servicePay'] = service_pay_attribute
+                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  expect(response).to have_http_status(:ok)
+                end
+              end
+            end
+          end
+        end
+
+        context "when 'amount' is 1000000 (was above old maximum of 999999)" do
+          let(:separation_payment_amount) { 1_000_000 }
+
+          it 'responds with a 200 (no longer validated at schema level)' do
+            mock_acg(scopes) do |auth_header|
+              VCR.use_cassette('claims_api/bgs/claims/claims') do
+                VCR.use_cassette('claims_api/brd/countries') do
+                  json_data = JSON.parse data
+                  params = json_data
+                  params['data']['attributes']['servicePay'] = service_pay_attribute
+                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  expect(response).to have_http_status(:ok)
+                end
+              end
+            end
+          end
+        end
+      end
+
+      describe "'separationPay.receivedDate' no longer enforces date format pattern" do
+        let(:service_pay_attribute) do
+          {
+            separationPay: {
+              received: true,
+              receivedDate: received_date,
+              payment: {
+                serviceBranch: 'Air Force',
+                amount: 100
+              }
+            }
+          }
+        end
+
+        context "when 'receivedDate' is an arbitrary string" do
+          let(:received_date) { 'invalid-date-format' }
+
+          it 'responds with a 200 (format pattern no longer enforced at schema level)' do
+            mock_acg(scopes) do |auth_header|
+              VCR.use_cassette('claims_api/bgs/claims/claims') do
+                VCR.use_cassette('claims_api/brd/countries') do
+                  json_data = JSON.parse data
+                  params = json_data
+                  params['data']['attributes']['servicePay'] = service_pay_attribute
+                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  expect(response).to have_http_status(:ok)
                 end
               end
             end
@@ -2636,6 +2968,36 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
         end
       end
 
+      context "when 'disabilities.secondaryDisabilities.classificationCode' is not present" do
+        it 'accepts the request when classificationCode is omitted' do
+          mock_acg(scopes) do |auth_header|
+            VCR.use_cassette('claims_api/bgs/claims/claims') do
+              VCR.use_cassette('claims_api/brd/countries') do
+                json_data = JSON.parse data
+                params = json_data
+                disabilities = [
+                  {
+                    disabilityActionType: 'NONE',
+                    name: 'PTSD (post traumatic stress disorder)',
+                    diagnosticCode: 9999,
+                    secondaryDisabilities: [
+                      {
+                        disabilityActionType: 'SECONDARY',
+                        name: 'PTSD',
+                        serviceRelevance: 'Caused by a service-connected disability.'
+                      }
+                    ]
+                  }
+                ]
+                params['data']['attributes']['disabilities'] = disabilities
+                post path, params: params.to_json, headers: headers.merge(auth_header)
+                expect(response).to have_http_status(:ok)
+              end
+            end
+          end
+        end
+      end
+
       context "when 'disabilities.secondaryDisabilities.approximateBeginDate' is present" do
         it 'raises an exception if date is invalid' do
           mock_acg(scopes) do |auth_header|
@@ -2692,7 +3054,11 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
         end
       end
 
-      context "when 'disabilities.secondaryDisabilities.classificationCode' is not present" do
+      context "when 'disabilities.secondaryDisabilities.name' validations" do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_enable_FES).and_return(true)
+        end
+
         it 'raises an exception if name is not valid structure' do
           mock_acg(scopes) do |auth_header|
             VCR.use_cassette('claims_api/brd/countries') do
@@ -2706,7 +3072,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
                   secondaryDisabilities: [
                     {
                       disabilityActionType: 'SECONDARY',
-                      name: 'PTSD_;;',
+                      name: 'PTSD @home',
                       serviceRelevance: 'Caused by a service-connected disability.'
                     }
                   ]
@@ -2714,7 +3080,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
               ]
               params['data']['attributes']['disabilities'] = disabilities
               post path, params: params.to_json, headers: headers.merge(auth_header)
-              expect(response).to have_http_status(:bad_request)
+              expect(response).to have_http_status(:unprocessable_content)
             end
           end
         end
@@ -2741,7 +3107,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
                 ]
                 params['data']['attributes']['disabilities'] = disabilities
                 post path, params: params.to_json, headers: headers.merge(auth_header)
-                expect(response).to have_http_status(:bad_request)
+                expect(response).to have_http_status(:unprocessable_content)
               end
             end
           end
@@ -2750,6 +3116,33 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
     end
 
     describe "'disabilities' validations" do
+      describe "'disabilities.name' validations" do
+        context 'when the name is over 255 characters' do
+          it 'raises an exception' do
+            mock_acg(scopes) do |auth_header|
+              VCR.use_cassette('claims_api/brd/countries') do
+                json_data = JSON.parse data
+                params = json_data
+                disabilities = [
+                  {
+                    disabilityActionType: 'NONE',
+                    name: 'a' * 256
+                  }
+                ]
+                params['data']['attributes']['disabilities'] = disabilities
+
+                post path, params: params.to_json, headers: headers.merge(auth_header)
+
+                expect(response).to have_http_status(:unprocessable_content)
+                expect(JSON.parse(response.body)['errors'][0]['detail']).to include(
+                  'The property /disabilities/0/name did not match the following requirements: '
+                )
+              end
+            end
+          end
+        end
+      end
+
       describe "'disabilities.classificationCode' validations" do
         [true, false].each do |flipped|
           context "when feature flag is #{flipped}" do
@@ -3344,6 +3737,26 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
               errors = JSON.parse(response.body)['errors']
               expected_verbiage = '"" is not a valid value for "directDeposit.bankName"'
               expect(errors.any? { |error| error['detail'].include?(expected_verbiage) }).to be true
+            end
+          end
+        end
+      end
+    end
+
+    describe 'directDeposit fields are optional' do
+      it 'allows submission without accountType, accountNumber, or routingNumber' do
+        mock_acg(scopes) do |auth_header|
+          VCR.use_cassette('claims_api/bgs/claims/claims') do
+            VCR.use_cassette('claims_api/brd/countries') do
+              json_data = JSON.parse data
+              params = json_data
+              params['data']['attributes']['directDeposit'] = {
+                'bankName' => 'Some Bank'
+              }
+
+              post path, params: params.to_json, headers: headers.merge(auth_header)
+
+              expect(response).to have_http_status(:ok)
             end
           end
         end

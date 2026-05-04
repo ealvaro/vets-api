@@ -3191,7 +3191,7 @@
                           "poa_code": "074"
                         }
                       },
-                      "status": "pending"
+                      "status": "submitted"
                     }
                   }
                 },
@@ -4545,7 +4545,6 @@
                         "veteran",
                         "serviceInformation",
                         "disabilities",
-                        "claimantCertification",
                         "standardClaim",
                         "autoCestPDFGenerationDisabled"
                       ],
@@ -5037,13 +5036,13 @@
                                     "example": "1980-02-05"
                                   },
                                   "activeDutyEndDate": {
-                                    "description": "Date Completed Active Duty. If in the future, 'separationLocationCode' is required. Cannot be more than 180 days in the future, unless past service is also included.",
+                                    "description": "Date Completed Active Duty. Cannot be more than 180 days in the future, unless past service is also included.",
                                     "type": "string",
                                     "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",
                                     "example": "1990-01-02"
                                   },
                                   "separationLocationCode": {
-                                    "description": "Code for the facility the Veteran plans to separate from.  Required if 'servicePeriod.activeDutyEndDate' is in the future. Code must match the values returned by the /intake-sites endpoint on the [Benefits reference Data API](https://developer.va.gov/explore/benefits/docs/benefits_reference_data?version=current).",
+                                    "description": "Code for the facility the Veteran plans to separate from. Code must match the values returned by the /intake-sites endpoint on the [Benefits reference Data API](https://developer.va.gov/explore/benefits/docs/benefits_reference_data?version=current).",
                                     "type": "string",
                                     "example": "98283"
                                   }
@@ -5079,8 +5078,7 @@
                               "additionalProperties": false,
                               "required": [
                                 "obligationTermOfServiceFromDate",
-                                "obligationTermOfServiceToDate",
-                                "unitName"
+                                "obligationTermOfServiceToDate"
                               ],
                               "properties": {
                                 "title10Activation": {
@@ -5144,7 +5142,6 @@
                               "type": "array",
                               "minItems": 1,
                               "maxItems": 100,
-                              "uniqueItems": true,
                               "items": {
                                 "type": "object",
                                 "additionalProperties": false,
@@ -5381,7 +5378,8 @@
                               "name": {
                                 "description": "What the Disability is called.",
                                 "type": "string",
-                                "example": "PTSD (post traumatic stress disorder)"
+                                "example": "PTSD (post traumatic stress disorder)",
+                                "maxLength": 255
                               },
                               "classificationCode": {
                                 "type": "string",
@@ -5415,6 +5413,8 @@
                                     "name": {
                                       "description": "What the Disability is called.",
                                       "type": "string",
+                                      "pattern": "^(?!.* {2})[a-zA-Z0-9',. /()-]+$",
+                                      "maxLength": 255,
                                       "example": "PTSD"
                                     },
                                     "disabilityActionType": {
@@ -5660,30 +5660,29 @@
                           "items": {
                             "type": "object",
                             "additionalProperties": false,
-                            "required": [
-                              "treatedDisabilityNames",
-                              "center"
-                            ],
                             "properties": {
                               "startDate": {
-                                "description": "Date Veteran started treatment. Date must be after the earliest servicePeriods.activeDutyBeginDate.",
+                                "description": "Date Veteran started treatment.",
                                 "type": [
                                   "null",
                                   "string"
                                 ],
-                                "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",
                                 "example": "2018-03-02"
                               },
                               "endDate": {
-                                "description": "Date Veteran ended treatment. End date must be after the start date.",
-                                "type": "string",
-                                "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",
+                                "description": "Date Veteran ended treatment.",
+                                "type": [
+                                  "null",
+                                  "string"
+                                ],
                                 "example": "2018-03-02"
                               },
                               "treatedDisabilityNames": {
                                 "description": "Names of any disabilities for which the Veteran was treated.",
-                                "type": "array",
-                                "minItems": 1,
+                                "type": [
+                                  "array",
+                                  "null"
+                                ],
                                 "maxItems": 101,
                                 "uniqueItems": true,
                                 "items": {
@@ -5696,10 +5695,6 @@
                                 "description": "VA Medical Center(s) and Department of Defense Military Treatment Facilities where the Veteran received treatment after discharge for any claimed disabilities.",
                                 "type": "object",
                                 "additionalProperties": false,
-                                "required": [
-                                  "name",
-                                  "country"
-                                ],
                                 "properties": {
                                   "name": {
                                     "description": "Name of facility Veteran was treated in.",
@@ -5797,8 +5792,6 @@
                                     "amount": {
                                       "description": "Amount being received.",
                                       "type": "number",
-                                      "minimum": 1,
-                                      "maximum": 999999,
                                       "example": 100
                                     }
                                   }
@@ -5808,21 +5801,6 @@
                                   "type": "string",
                                   "example": "Will be retiring soon."
                                 }
-                              },
-                              "if": {
-                                "properties": {
-                                  "willReceiveInFuture": {
-                                    "const": true
-                                  }
-                                },
-                                "required": [
-                                  "willReceiveInFuture"
-                                ]
-                              },
-                              "then": {
-                                "required": [
-                                  "futurePayExplanation"
-                                ]
                               }
                             },
                             "separationPay": {
@@ -5879,8 +5857,6 @@
                                     "amount": {
                                       "description": "Amount being received.",
                                       "type": "number",
-                                      "minimum": 1,
-                                      "maximum": 999999,
                                       "example": 100
                                     }
                                   }
@@ -5888,7 +5864,6 @@
                                 "receivedDate": {
                                   "description": "Approximate date separation pay was received.",
                                   "type": "string",
-                                  "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",
                                   "example": "2018-03-02"
                                 }
                               }
@@ -5899,11 +5874,6 @@
                           "description": "Financial Direct Deposit information for Veteran.",
                           "type": "object",
                           "additionalProperties": false,
-                          "required": [
-                            "accountType",
-                            "accountNumber",
-                            "routingNumber"
-                          ],
                           "properties": {
                             "accountType": {
                               "description": "Veteran Account Type (value is case insensitive).",
@@ -6407,7 +6377,6 @@
                           "veteran",
                           "serviceInformation",
                           "disabilities",
-                          "claimantCertification",
                           "standardClaim",
                           "autoCestPDFGenerationDisabled"
                         ],
@@ -6899,13 +6868,13 @@
                                       "example": "1980-02-05"
                                     },
                                     "activeDutyEndDate": {
-                                      "description": "Date Completed Active Duty. If in the future, 'separationLocationCode' is required. Cannot be more than 180 days in the future, unless past service is also included.",
+                                      "description": "Date Completed Active Duty. Cannot be more than 180 days in the future, unless past service is also included.",
                                       "type": "string",
                                       "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",
                                       "example": "1990-01-02"
                                     },
                                     "separationLocationCode": {
-                                      "description": "Code for the facility the Veteran plans to separate from.  Required if 'servicePeriod.activeDutyEndDate' is in the future. Code must match the values returned by the /intake-sites endpoint on the [Benefits reference Data API](https://developer.va.gov/explore/benefits/docs/benefits_reference_data?version=current).",
+                                      "description": "Code for the facility the Veteran plans to separate from. Code must match the values returned by the /intake-sites endpoint on the [Benefits reference Data API](https://developer.va.gov/explore/benefits/docs/benefits_reference_data?version=current).",
                                       "type": "string",
                                       "example": "98283"
                                     }
@@ -6941,8 +6910,7 @@
                                 "additionalProperties": false,
                                 "required": [
                                   "obligationTermOfServiceFromDate",
-                                  "obligationTermOfServiceToDate",
-                                  "unitName"
+                                  "obligationTermOfServiceToDate"
                                 ],
                                 "properties": {
                                   "title10Activation": {
@@ -7006,7 +6974,6 @@
                                 "type": "array",
                                 "minItems": 1,
                                 "maxItems": 100,
-                                "uniqueItems": true,
                                 "items": {
                                   "type": "object",
                                   "additionalProperties": false,
@@ -7243,7 +7210,8 @@
                                 "name": {
                                   "description": "What the Disability is called.",
                                   "type": "string",
-                                  "example": "PTSD (post traumatic stress disorder)"
+                                  "example": "PTSD (post traumatic stress disorder)",
+                                  "maxLength": 255
                                 },
                                 "classificationCode": {
                                   "type": "string",
@@ -7277,6 +7245,8 @@
                                       "name": {
                                         "description": "What the Disability is called.",
                                         "type": "string",
+                                        "pattern": "^(?!.* {2})[a-zA-Z0-9',. /()-]+$",
+                                        "maxLength": 255,
                                         "example": "PTSD"
                                       },
                                       "disabilityActionType": {
@@ -7522,30 +7492,29 @@
                             "items": {
                               "type": "object",
                               "additionalProperties": false,
-                              "required": [
-                                "treatedDisabilityNames",
-                                "center"
-                              ],
                               "properties": {
                                 "startDate": {
-                                  "description": "Date Veteran started treatment. Date must be after the earliest servicePeriods.activeDutyBeginDate.",
+                                  "description": "Date Veteran started treatment.",
                                   "type": [
                                     "null",
                                     "string"
                                   ],
-                                  "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",
                                   "example": "2018-03-02"
                                 },
                                 "endDate": {
-                                  "description": "Date Veteran ended treatment. End date must be after the start date.",
-                                  "type": "string",
-                                  "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",
+                                  "description": "Date Veteran ended treatment.",
+                                  "type": [
+                                    "null",
+                                    "string"
+                                  ],
                                   "example": "2018-03-02"
                                 },
                                 "treatedDisabilityNames": {
                                   "description": "Names of any disabilities for which the Veteran was treated.",
-                                  "type": "array",
-                                  "minItems": 1,
+                                  "type": [
+                                    "array",
+                                    "null"
+                                  ],
                                   "maxItems": 101,
                                   "uniqueItems": true,
                                   "items": {
@@ -7558,10 +7527,6 @@
                                   "description": "VA Medical Center(s) and Department of Defense Military Treatment Facilities where the Veteran received treatment after discharge for any claimed disabilities.",
                                   "type": "object",
                                   "additionalProperties": false,
-                                  "required": [
-                                    "name",
-                                    "country"
-                                  ],
                                   "properties": {
                                     "name": {
                                       "description": "Name of facility Veteran was treated in.",
@@ -7659,8 +7624,6 @@
                                       "amount": {
                                         "description": "Amount being received.",
                                         "type": "number",
-                                        "minimum": 1,
-                                        "maximum": 999999,
                                         "example": 100
                                       }
                                     }
@@ -7670,21 +7633,6 @@
                                     "type": "string",
                                     "example": "Will be retiring soon."
                                   }
-                                },
-                                "if": {
-                                  "properties": {
-                                    "willReceiveInFuture": {
-                                      "const": true
-                                    }
-                                  },
-                                  "required": [
-                                    "willReceiveInFuture"
-                                  ]
-                                },
-                                "then": {
-                                  "required": [
-                                    "futurePayExplanation"
-                                  ]
                                 }
                               },
                               "separationPay": {
@@ -7741,8 +7689,6 @@
                                       "amount": {
                                         "description": "Amount being received.",
                                         "type": "number",
-                                        "minimum": 1,
-                                        "maximum": 999999,
                                         "example": 100
                                       }
                                     }
@@ -7750,7 +7696,6 @@
                                   "receivedDate": {
                                     "description": "Approximate date separation pay was received.",
                                     "type": "string",
-                                    "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",
                                     "example": "2018-03-02"
                                   }
                                 }
@@ -7761,11 +7706,6 @@
                             "description": "Financial Direct Deposit information for Veteran.",
                             "type": "object",
                             "additionalProperties": false,
-                            "required": [
-                              "accountType",
-                              "accountNumber",
-                              "routingNumber"
-                            ],
                             "properties": {
                               "accountType": {
                                 "description": "Veteran Account Type (value is case insensitive).",
@@ -8530,11 +8470,6 @@
                     },
                     {
                       "status": 422,
-                      "detail": "The property / did not contain the required key claimantCertification",
-                      "source": "/"
-                    },
-                    {
-                      "status": 422,
                       "detail": "The property / did not contain the required key standardClaim",
                       "source": "/"
                     },
@@ -8658,7 +8593,6 @@
                           "veteran",
                           "serviceInformation",
                           "disabilities",
-                          "claimantCertification",
                           "standardClaim",
                           "autoCestPDFGenerationDisabled"
                         ],
@@ -9150,13 +9084,13 @@
                                       "example": "1980-02-05"
                                     },
                                     "activeDutyEndDate": {
-                                      "description": "Date Completed Active Duty. If in the future, 'separationLocationCode' is required. Cannot be more than 180 days in the future, unless past service is also included.",
+                                      "description": "Date Completed Active Duty. Cannot be more than 180 days in the future, unless past service is also included.",
                                       "type": "string",
                                       "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",
                                       "example": "1990-01-02"
                                     },
                                     "separationLocationCode": {
-                                      "description": "Code for the facility the Veteran plans to separate from.  Required if 'servicePeriod.activeDutyEndDate' is in the future. Code must match the values returned by the /intake-sites endpoint on the [Benefits reference Data API](https://developer.va.gov/explore/benefits/docs/benefits_reference_data?version=current).",
+                                      "description": "Code for the facility the Veteran plans to separate from. Code must match the values returned by the /intake-sites endpoint on the [Benefits reference Data API](https://developer.va.gov/explore/benefits/docs/benefits_reference_data?version=current).",
                                       "type": "string",
                                       "example": "98283"
                                     }
@@ -9192,8 +9126,7 @@
                                 "additionalProperties": false,
                                 "required": [
                                   "obligationTermOfServiceFromDate",
-                                  "obligationTermOfServiceToDate",
-                                  "unitName"
+                                  "obligationTermOfServiceToDate"
                                 ],
                                 "properties": {
                                   "title10Activation": {
@@ -9257,7 +9190,6 @@
                                 "type": "array",
                                 "minItems": 1,
                                 "maxItems": 100,
-                                "uniqueItems": true,
                                 "items": {
                                   "type": "object",
                                   "additionalProperties": false,
@@ -9494,7 +9426,8 @@
                                 "name": {
                                   "description": "What the Disability is called.",
                                   "type": "string",
-                                  "example": "PTSD (post traumatic stress disorder)"
+                                  "example": "PTSD (post traumatic stress disorder)",
+                                  "maxLength": 255
                                 },
                                 "classificationCode": {
                                   "type": "string",
@@ -9528,6 +9461,8 @@
                                       "name": {
                                         "description": "What the Disability is called.",
                                         "type": "string",
+                                        "pattern": "^(?!.* {2})[a-zA-Z0-9',. /()-]+$",
+                                        "maxLength": 255,
                                         "example": "PTSD"
                                       },
                                       "disabilityActionType": {
@@ -9773,30 +9708,29 @@
                             "items": {
                               "type": "object",
                               "additionalProperties": false,
-                              "required": [
-                                "treatedDisabilityNames",
-                                "center"
-                              ],
                               "properties": {
                                 "startDate": {
-                                  "description": "Date Veteran started treatment. Date must be after the earliest servicePeriods.activeDutyBeginDate.",
+                                  "description": "Date Veteran started treatment.",
                                   "type": [
                                     "null",
                                     "string"
                                   ],
-                                  "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",
                                   "example": "2018-03-02"
                                 },
                                 "endDate": {
-                                  "description": "Date Veteran ended treatment. End date must be after the start date.",
-                                  "type": "string",
-                                  "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",
+                                  "description": "Date Veteran ended treatment.",
+                                  "type": [
+                                    "null",
+                                    "string"
+                                  ],
                                   "example": "2018-03-02"
                                 },
                                 "treatedDisabilityNames": {
                                   "description": "Names of any disabilities for which the Veteran was treated.",
-                                  "type": "array",
-                                  "minItems": 1,
+                                  "type": [
+                                    "array",
+                                    "null"
+                                  ],
                                   "maxItems": 101,
                                   "uniqueItems": true,
                                   "items": {
@@ -9809,10 +9743,6 @@
                                   "description": "VA Medical Center(s) and Department of Defense Military Treatment Facilities where the Veteran received treatment after discharge for any claimed disabilities.",
                                   "type": "object",
                                   "additionalProperties": false,
-                                  "required": [
-                                    "name",
-                                    "country"
-                                  ],
                                   "properties": {
                                     "name": {
                                       "description": "Name of facility Veteran was treated in.",
@@ -9910,8 +9840,6 @@
                                       "amount": {
                                         "description": "Amount being received.",
                                         "type": "number",
-                                        "minimum": 1,
-                                        "maximum": 999999,
                                         "example": 100
                                       }
                                     }
@@ -9921,21 +9849,6 @@
                                     "type": "string",
                                     "example": "Will be retiring soon."
                                   }
-                                },
-                                "if": {
-                                  "properties": {
-                                    "willReceiveInFuture": {
-                                      "const": true
-                                    }
-                                  },
-                                  "required": [
-                                    "willReceiveInFuture"
-                                  ]
-                                },
-                                "then": {
-                                  "required": [
-                                    "futurePayExplanation"
-                                  ]
                                 }
                               },
                               "separationPay": {
@@ -9992,8 +9905,6 @@
                                       "amount": {
                                         "description": "Amount being received.",
                                         "type": "number",
-                                        "minimum": 1,
-                                        "maximum": 999999,
                                         "example": 100
                                       }
                                     }
@@ -10001,7 +9912,6 @@
                                   "receivedDate": {
                                     "description": "Approximate date separation pay was received.",
                                     "type": "string",
-                                    "pattern": "^(\\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",
                                     "example": "2018-03-02"
                                   }
                                 }
@@ -10012,11 +9922,6 @@
                             "description": "Financial Direct Deposit information for Veteran.",
                             "type": "object",
                             "additionalProperties": false,
-                            "required": [
-                              "accountType",
-                              "accountNumber",
-                              "routingNumber"
-                            ],
                             "properties": {
                               "accountType": {
                                 "description": "Veteran Account Type (value is case insensitive).",
@@ -10191,7 +10096,7 @@
                           "md5": "",
                           "header_hash": "",
                           "filename": null,
-                          "uploaded_at": "2026-03-27T16:22:17.676Z"
+                          "uploaded_at": "2024-01-01T00:00:00.000Z"
                         }
                       ]
                     }
