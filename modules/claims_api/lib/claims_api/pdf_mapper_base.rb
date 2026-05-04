@@ -92,6 +92,8 @@ module ClaimsApi
     end
 
     def handle_yes_no(pay)
+      return pay if %w[YES NO].include?(pay)
+
       pay ? 'YES' : 'NO'
     end
   end

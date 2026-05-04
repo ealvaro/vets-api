@@ -275,5 +275,17 @@ describe ClaimsApi::PdfMapperBase do
 
       expect(res).to eq('YES')
     end
+
+    it "return 'YES' when sent string 'YES'" do
+      res = subject.handle_yes_no('YES')
+
+      expect(res).to eq('YES')
+    end
+
+    it "return 'NO' when sent string 'NO'" do
+      res = subject.handle_yes_no('NO')
+
+      expect(res).to eq('NO')
+    end
   end
 end
