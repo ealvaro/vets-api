@@ -23,6 +23,9 @@ module ClaimsApi
 
     ALL_STATUSES = [PENDING, SUBMITTED, UPLOADED, UPDATED, ERRORED].freeze
 
+    ORG_POA_FORM_NUMBER = '2122'
+    IND_POA_FORM_NUMBER = '2122A'
+
     before_save :set_md5
     before_save :set_header_hash
 

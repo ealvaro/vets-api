@@ -15,8 +15,8 @@ module ClaimsApi
 
         LOG_TAG = 'poa_auto_establishment_data_mapper'
         DATA_MAPPERS = {
-          '2122a' => ClaimsApi::PowerOfAttorneyRequestService::DataMapper::IndividualDataMapper,
-          '2122' => ClaimsApi::PowerOfAttorneyRequestService::DataMapper::OrganizationDataMapper
+          ::ClaimsApi::PowerOfAttorney::IND_POA_FORM_NUMBER => ClaimsApi::PowerOfAttorneyRequestService::DataMapper::IndividualDataMapper,
+          ::ClaimsApi::PowerOfAttorney::ORG_POA_FORM_NUMBER => ClaimsApi::PowerOfAttorneyRequestService::DataMapper::OrganizationDataMapper
         }.freeze
 
         def initialize(type:, data:)
@@ -31,6 +31,10 @@ module ClaimsApi
 
           mapper_class = DATA_MAPPERS[@type].new(data: @data)
           return {} unless mapper_class
+
+          ClaimsApi::Logger.log(
+            LOG_TAG, message: "Mapping form #{mapper_class}."
+          )
 
           @mapped_data = mapper_class.map_data
 

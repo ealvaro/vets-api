@@ -219,7 +219,7 @@ module ClaimsApi
           power_of_attorney = ClaimsApi::PowerOfAttorney.create!(attrs)
 
           claims_v2_logging('process_poa_decision',
-                            message: 'Record saved, sending to POA Form Builder Job')
+                            message: "Record saved for form type #{type}, sending to POA Form Builder Job")
           ClaimsApi::V2::PoaFormBuilderJob.perform_async(power_of_attorney.id, type,
                                                          'post', representative_id)
 

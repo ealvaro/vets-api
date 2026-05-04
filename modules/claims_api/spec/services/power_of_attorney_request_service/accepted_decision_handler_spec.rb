@@ -27,8 +27,8 @@ describe ClaimsApi::PowerOfAttorneyRequestService::AcceptedDecisionHandler do
   let(:proc_id) { '3866592' }
   let(:poa_code) { '083' }
   let(:registration_number) { '123456783' }
-  let(:individual_type) { '2122a' }
-  let(:organization_type) { '2122' }
+  let(:individual_type) { ClaimsApi::PowerOfAttorney::IND_POA_FORM_NUMBER }
+  let(:organization_type) { ClaimsApi::PowerOfAttorney::ORG_POA_FORM_NUMBER }
 
   context 'for a valid decide request' do
     let(:proc_id) { '3866592' }

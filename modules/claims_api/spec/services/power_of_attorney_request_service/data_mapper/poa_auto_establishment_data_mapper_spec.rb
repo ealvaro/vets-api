@@ -8,8 +8,8 @@ require 'claims_api/v2/json_format_validation'
 describe ClaimsApi::PowerOfAttorneyRequestService::DataMapper::PoaAutoEstablishmentDataMapper do
   let(:clazz) { described_class }
 
-  let(:individual_type) { '2122a' }
-  let(:organization_type) { '2122' }
+  let(:individual_type) { ClaimsApi::PowerOfAttorney::IND_POA_FORM_NUMBER }
+  let(:organization_type) { ClaimsApi::PowerOfAttorney::ORG_POA_FORM_NUMBER }
   let(:individual_subject) { build_subject(individual_type, individual_gathered_data) }
   let(:organization_subject) { build_subject(organization_type, org_gathered_data) }
 
@@ -50,7 +50,7 @@ describe ClaimsApi::PowerOfAttorneyRequestService::DataMapper::PoaAutoEstablishm
 
         res = organization_subject.map_data
 
-        expect(res).to eq([org_mapped_form_data, '2122'])
+        expect(res).to eq([org_mapped_form_data, organization_type])
       end
     end
 
@@ -63,7 +63,9 @@ describe ClaimsApi::PowerOfAttorneyRequestService::DataMapper::PoaAutoEstablishm
 
         res = individual_subject.map_data
 
-        expect(res).to eq([individual_mapped_form_data, '2122a'])
+        expect(res).to eq(
+          [individual_mapped_form_data, individual_type]
+        )
       end
     end
   end
@@ -76,7 +78,9 @@ describe ClaimsApi::PowerOfAttorneyRequestService::DataMapper::PoaAutoEstablishm
 
       res = individual_subject.map_data
 
-      expect(res).to eq([individual_mapped_form_data, individual_type])
+      expect(res).to eq(
+        [individual_mapped_form_data, individual_type]
+      )
     end
   end
 

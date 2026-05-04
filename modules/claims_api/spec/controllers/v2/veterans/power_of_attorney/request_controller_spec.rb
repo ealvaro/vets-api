@@ -491,7 +491,7 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
         }
       end
       let(:poa_code) { '067' }
-      let(:form_type_code) { '2122a' }
+      let(:form_type_code) { ClaimsApi::PowerOfAttorney::IND_POA_FORM_NUMBER }
       let(:return_data) do
         [{ 'data' => { 'attributes' => { 'some_key' => 'some_value' } } }, form_type_code]
       end
@@ -506,6 +506,7 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
       let(:dummy_record) do
         OpenStruct.new(id: '8675309')
       end
+      let(:log_message) { "Record saved for form type #{form_type_code}, sending to POA Form Builder Job" }
 
       before do
         allow_any_instance_of(
@@ -535,7 +536,7 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
         expect_any_instance_of(
           ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController
         ).to receive(:claims_v2_logging).with(
-          'process_poa_decision', { message: 'Record saved, sending to POA Form Builder Job' }
+          'process_poa_decision', { message: log_message }
         )
 
         returned_poa = subject.send(:process_poa_decision, **params)

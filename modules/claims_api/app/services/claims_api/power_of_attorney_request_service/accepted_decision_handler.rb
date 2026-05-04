@@ -47,9 +47,9 @@ module ClaimsApi
 
       def determine_type
         if poa_code_in_organization?
-          '2122'
+          ::ClaimsApi::PowerOfAttorney::ORG_POA_FORM_NUMBER
         else
-          '2122a'
+          ::ClaimsApi::PowerOfAttorney::IND_POA_FORM_NUMBER
         end
       end
 
