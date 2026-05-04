@@ -46,13 +46,10 @@ module Mobile
         end
         raise Common::Exceptions::RecordNotFound, message_id if response.blank?
 
-        user_triage_teams = client.get_all_triage_teams(@current_user.uuid)
-        active_teams = user_triage_teams.data.reject(&:blocked_status)
-        matched_team = active_teams.find do |team|
-          response.triage_group_id && team.triage_team_id == response.triage_group_id
-        end
+        matched_team = find_matched_triage_team(response)
+        user_in_triage_team = oracle_health_direct_message?(response) || matched_team.present?
 
-        meta = response.metadata.merge(user_in_triage_team: matched_team.present?,
+        meta = response.metadata.merge(user_in_triage_team:,
                                        station_number: matched_team&.station_number)
         options = { meta: }
         options[:include] = [:attachments] if response.attachment
@@ -246,6 +243,20 @@ module Mobile
 
       def validate_message_id
         raise Common::Exceptions::ParameterMissing, 'id' if params[:id].blank?
+      end
+
+      def oracle_health_direct_message?(message)
+        message.triage_group&.name == 'Oracle Health Direct Message'
+      end
+
+      def find_matched_triage_team(message)
+        return nil if oracle_health_direct_message?(message)
+
+        user_triage_teams = client.get_all_triage_teams(@current_user.uuid)
+        active_teams = user_triage_teams.data.reject(&:blocked_status)
+        active_teams.find do |team|
+          message.triage_group_id && team.triage_team_id == message.triage_group_id
+        end
       end
 
       def raise_if_in_migration

@@ -116,6 +116,52 @@ RSpec.describe 'Mobile::V0::Messaging::Health::Messages', type: :request do
         expect(response).to match_camelized_response_schema('message', strict: false)
       end
 
+      context 'when triage group is Oracle Health Direct Message' do
+        let(:triage_group) { TriageGroupInfo.new(name: 'Oracle Health Direct Message') }
+        let(:message_response) do
+          Message.new(
+            id: message_id,
+            triage_group:,
+            triage_group_id: 999_999,
+            body: 'Test body',
+            subject: 'Test subject',
+            category: 'OTHER',
+            sender_id: 1,
+            sender_name: 'Test Sender',
+            recipient_id: 2,
+            recipient_name: 'Test Recipient'
+          )
+        end
+
+        before do
+          allow_any_instance_of(Mobile::V0::Messaging::Client)
+            .to receive(:get_message).and_return(message_response)
+        end
+
+        it 'sets userInTriageTeam to true without calling get_all_triage_teams' do
+          expect_any_instance_of(Mobile::V0::Messaging::Client).not_to receive(:get_all_triage_teams)
+
+          get "/mobile/v0/messaging/health/messages/#{message_id}", headers: sis_headers
+
+          expect(response).to be_successful
+          expect(response.parsed_body['meta']['userInTriageTeam']).to be(true)
+          expect(response.parsed_body['meta']['stationNumber']).to be_nil
+        end
+      end
+
+      context 'when triage group is not Oracle Health Direct Message' do
+        it 'falls back to triage team matching' do
+          VCR.use_cassette('mobile/messages/gets_a_message_with_id_and_attachment') do
+            VCR.use_cassette('sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients') do
+              get "/mobile/v0/messaging/health/messages/#{message_id}", headers: sis_headers
+            end
+          end
+          expect(response).to be_successful
+          # This cassette has a triage_group_id that doesn't match any active team
+          expect(response.parsed_body['meta']['userInTriageTeam']).to be(false)
+        end
+      end
+
       it 'returns message signature preferences' do
         VCR.use_cassette('sm_client/messages/gets_message_signature') do
           get '/mobile/v0/messaging/health/messages/signature', headers: sis_headers
