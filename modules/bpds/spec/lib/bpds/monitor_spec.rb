@@ -11,6 +11,7 @@ RSpec.describe BPDS::Monitor do
   let(:user_type) { 'loa3' }
   let(:lookup_service) { 'mpi' }
   let(:is_pid_present) { true }
+  let(:is_ssn_present) { true }
   let(:is_file_number_present) { false }
 
   describe '#track_service_begun' do
@@ -136,15 +137,18 @@ RSpec.describe BPDS::Monitor do
 
   describe '#track_get_user_identifier_result' do
     it 'tracks the get_user_identifier result event' do
+      result_str = "#{is_pid_present}, #{is_ssn_present}"
       expect(monitor).to receive(:track_request).with(
         :info,
-        "#{BPDS::Monitor::SERVICE_NAME} #{lookup_service} service participant_id lookup result: #{is_pid_present}",
+        "#{BPDS::Monitor::SERVICE_NAME} #{lookup_service} service participant_id lookup result: #{result_str}",
         'api.bpds_service.get_participant_id.mpi.result',
         call_location: instance_of(Thread::Backtrace::Location),
         lookup_service:,
-        tags: ["pid_present:#{is_pid_present}"]
+        tags: ["pid_present:#{is_pid_present}", "ssn_present:#{is_ssn_present}"],
+        is_pid_present:,
+        is_ssn_present:
       )
-      monitor.track_get_user_identifier_result(lookup_service, is_pid_present)
+      monitor.track_get_user_identifier_result(lookup_service, is_pid_present, is_ssn_present)
     end
   end
 

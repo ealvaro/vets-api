@@ -147,17 +147,20 @@ module BPDS
       )
     end
 
-    # Track result of user identifier lookup for BPDS when checking for participant id
+    # Track result of user identifier lookup for BPDS when checking for participant id, ssn
     #
     # @param lookup_service [String] the service name
     # @param is_pid_present [Boolean] if the participant id is present in the response
-    def track_get_user_identifier_result(lookup_service, is_pid_present)
-      context = { lookup_service:, tags: ["pid_present:#{is_pid_present}"] }
+    # @param is_ssn_present [Boolean] if the user ssn is present in the response
+    def track_get_user_identifier_result(lookup_service, is_pid_present, is_ssn_present)
+      context = { lookup_service:, tags: ["pid_present:#{is_pid_present}", "ssn_present:#{is_ssn_present}"] }
       track_request(
         :info,
-        "#{SERVICE_NAME} #{lookup_service} service participant_id lookup result: #{is_pid_present}",
+        "#{SERVICE_NAME} #{lookup_service} service participant_id lookup result: #{is_pid_present}, #{is_ssn_present}",
         "#{STATSD_KEY_PREFIX}.get_participant_id.#{lookup_service}.result",
         call_location: caller_locations.first,
+        is_pid_present:,
+        is_ssn_present:,
         **context
       )
     end

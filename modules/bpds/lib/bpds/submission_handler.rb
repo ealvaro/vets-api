@@ -112,9 +112,10 @@ module BPDS
       )
 
       participant_id = response.profile&.participant_id
-      bpds_monitor.track_get_user_identifier_result('mpi', participant_id.present?)
+      ssn = response.profile&.ssn
+      bpds_monitor.track_get_user_identifier_result('mpi', participant_id.present?, ssn.present?)
 
-      { participant_id:, ssn: response.profile&.ssn, edipi: response.profile&.edipi }.compact_blank
+      { participant_id:, ssn:, edipi: response.profile&.edipi }.compact_blank
     end
 
     ##
@@ -132,12 +133,13 @@ module BPDS
       response = BGS::People::Request.new.find_person_by_participant_id(user:)
 
       participant_id = response.participant_id
-      bpds_monitor.track_get_user_identifier_result('bgs', response.participant_id.present?)
+      ssn = response.ssn_number
+      bpds_monitor.track_get_user_identifier_result('bgs', response.participant_id.present?, ssn.present?)
 
       file_number = response.file_number
       bpds_monitor.track_get_user_identifier_file_number_result(file_number.present?)
 
-      { participant_id:, file_number:, ssn: response.ssn_number }.compact_blank
+      { participant_id:, file_number:, ssn: }.compact_blank
     end
 
     ##
