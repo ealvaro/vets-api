@@ -1093,25 +1093,21 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
 
       describe '#validate_page_size_and_number_params' do
         context 'when no page params are sent in' do
-          it 'assigns the default values when no page params are sent' do
+          it 'returns the default values when no page params are sent' do
             page_params = {}
             allow(subject).to receive(:params).and_return(page_params)
 
-            subject.send(:validate_page_size_and_number_params)
-            size = subject.instance_variable_get(:@page_size_param)
-            number = subject.instance_variable_get(:@page_number_param)
+            size, number = subject.send(:validate_page_size_and_number_params)
 
             expect(size).to eq(10)
             expect(number).to eq(1)
           end
 
-          it 'assigns the default values for when empty page params are sent' do
+          it 'returns the default values for when empty page params are sent' do
             page_params = { page: {} }
             allow(subject).to receive(:params).and_return(page_params)
 
-            subject.send(:validate_page_size_and_number_params)
-            size = subject.instance_variable_get(:@page_size_param)
-            number = subject.instance_variable_get(:@page_number_param)
+            size, number = subject.send(:validate_page_size_and_number_params)
 
             expect(size).to eq(10)
             expect(number).to eq(1)
@@ -1148,25 +1144,21 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
 
         context 'when only one param is sent' do
           context 'sets the param value and uses the default for the other' do
-            it 'sets default page number when page size is sent in' do
+            it 'returns page size with default page number when page size is sent in' do
               page_params = { page: { size: '5' } }
               allow(subject).to receive(:params).and_return(page_params)
 
-              subject.send(:validate_page_size_and_number_params)
-              size = subject.instance_variable_get(:@page_size_param)
-              number = subject.instance_variable_get(:@page_number_param)
+              size, number = subject.send(:validate_page_size_and_number_params)
 
               expect(size).to eq(5)
               expect(number).to eq(1)
             end
 
-            it 'sets default page size when page number is sent in' do
+            it 'returns default page size with page number when page number is sent in' do
               page_params = { page: { number: '2' } }
               allow(subject).to receive(:params).and_return(page_params)
 
-              subject.send(:validate_page_size_and_number_params)
-              size = subject.instance_variable_get(:@page_size_param)
-              number = subject.instance_variable_get(:@page_number_param)
+              size, number = subject.send(:validate_page_size_and_number_params)
 
               expect(size).to eq(10)
               expect(number).to eq(2)

@@ -18,7 +18,7 @@ module ClaimsApi
         # POST /power-of-attorney-requests
         def index
           poa_codes = form_attributes['poaCodes']
-          validate_page_size_and_number_params
+          @page_size_param, @page_number_param = validate_page_size_and_number_params
 
           filter = form_attributes['filter'] || {}
 

@@ -46,34 +46,31 @@ module ClaimsApi
         end
 
         def validate_page_size_and_number_params
-          return if use_defaults?
+          return [DEFAULT_PAGE_SIZE, DEFAULT_PAGE_NUMBER] if use_defaults?
 
           page = params[:page]
 
           valid_page_param?('size') if page[:size]
           valid_page_param?('number') if page[:number]
 
-          @page_size_param = page[:size] ? page[:size].to_i : DEFAULT_PAGE_SIZE
-          @page_number_param = page[:number] ? page[:number].to_i : DEFAULT_PAGE_NUMBER
+          page_size = page[:size] ? page[:size].to_i : DEFAULT_PAGE_SIZE
+          page_number = page[:number] ? page[:number].to_i : DEFAULT_PAGE_NUMBER
 
-          verify_under_max_values!
+          verify_under_max_values(page_size, page_number)
+
+          [page_size, page_number]
         end
 
         def use_defaults?
-          if params[:page].blank?
-            @page_size_param = DEFAULT_PAGE_SIZE
-            @page_number_param = DEFAULT_PAGE_NUMBER
-
-            true
-          end
+          params[:page].blank?
         end
 
-        def verify_under_max_values!
-          if @page_size_param && @page_size_param > MAX_PAGE_SIZE
+        def verify_under_max_values(page_size, page_number)
+          if page_size > MAX_PAGE_SIZE
             raise_param_exceeded_warning = true
             include_page_size_msg = true
           end
-          if @page_number_param && @page_number_param > MAX_PAGE_NUMBER
+          if page_number > MAX_PAGE_NUMBER
             raise_param_exceeded_warning = true
             include_page_number_msg = true
           end
