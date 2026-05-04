@@ -41,7 +41,8 @@
                   "recipientId",
                   "recipientName",
                   "readReceipt",
-                  "isOhMessage"
+                  "isOhMessage",
+                  "isAutomatedMessage"
                 ],
                 "properties": {
                   "messageId": {
@@ -102,6 +103,9 @@
                     ]
                   },
                   "isOhMessage": {
+                    "type": "boolean"
+                  },
+                  "isAutomatedMessage": {
                     "type": "boolean"
                   },
                   "replyDisabled": {

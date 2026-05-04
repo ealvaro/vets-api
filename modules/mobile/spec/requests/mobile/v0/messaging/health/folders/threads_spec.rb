@@ -61,6 +61,7 @@ RSpec.describe 'Mobile::V0::Messaging::Health::Folders::Threads', type: :request
            'unsentDrafts' => false,
            'unreadMessages' => false,
            'isOhMessage' => false,
+           'isAutomatedMessage' => false,
            'suggestedNameDisplay' => nil },
         'links' => { 'self' => 'http://www.example.com/my_health/v1/messaging/threads/7298505' } }
     end

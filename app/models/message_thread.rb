@@ -4,6 +4,7 @@ require 'vets/model'
 
 class MessageThread
   include Vets::Model
+
   attribute :thread_id, Integer
   attribute :folder_id, Integer
   attribute :message_id, Integer
@@ -25,6 +26,10 @@ class MessageThread
   attribute :unread_messages, Bool, default: false
   attribute :is_oh_message, Bool, default: false
   attribute :suggested_name_display, String
+
+  def automated_message?
+    triage_group_name == 'MHV Automated Message'
+  end
 
   def initialize(attributes = {})
     super(attributes)

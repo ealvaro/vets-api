@@ -47,6 +47,7 @@
               "unsentDrafts",
               "unreadMessages",
               "isOhMessage",
+              "isAutomatedMessage",
               "suggestedNameDisplay"
             ],
             "properties": {
@@ -124,6 +125,9 @@
                 "type": "boolean"
               },
               "isOhMessage": {
+                "type": "boolean"
+              },
+              "isAutomatedMessage": {
                 "type": "boolean"
               },
               "suggestedNameDisplay": {

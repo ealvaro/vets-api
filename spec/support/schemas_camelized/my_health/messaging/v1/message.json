@@ -39,7 +39,8 @@
             "recipientName",
             "readReceipt",
             "suggestedNameDisplay",
-            "isOhMessage"
+            "isOhMessage",
+            "isAutomatedMessage"
           ],
           "properties": {
             "messageId": {
@@ -106,6 +107,9 @@
               ]
             },
             "isOhMessage": {
+              "type": "boolean"
+            },
+            "isAutomatedMessage": {
               "type": "boolean"
             },
             "ohMigrationPhase": {

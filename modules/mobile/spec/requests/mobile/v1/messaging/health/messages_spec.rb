@@ -127,7 +127,8 @@ RSpec.describe 'Mobile::V1::Messaging::Health::Messages', type: :request do
                 'hasAttachments' => false,
                 'replyDisabled' => false,
                 'ohMigrationPhase' => nil,
-                'migratedToOracleHealth' => false
+                'migratedToOracleHealth' => false,
+                'isAutomatedMessage' => false
               },
               'links' => {
                 'self' => 'http://www.example.com/mobile/v0/messaging/health/messages/573059'
@@ -159,7 +160,8 @@ RSpec.describe 'Mobile::V1::Messaging::Health::Messages', type: :request do
                 'hasAttachments' => false,
                 'replyDisabled' => false,
                 'ohMigrationPhase' => nil,
-                'migratedToOracleHealth' => false
+                'migratedToOracleHealth' => false,
+                'isAutomatedMessage' => false
               },
               'links' => {
                 'self' => 'http://www.example.com/mobile/v0/messaging/health/messages/573052'
@@ -191,7 +193,8 @@ RSpec.describe 'Mobile::V1::Messaging::Health::Messages', type: :request do
                 'hasAttachments' => false,
                 'replyDisabled' => false,
                 'ohMigrationPhase' => nil,
-                'migratedToOracleHealth' => false
+                'migratedToOracleHealth' => false,
+                'isAutomatedMessage' => false
               },
               'links' => {
                 'self' => 'http://www.example.com/mobile/v0/messaging/health/messages/573041'

@@ -21,6 +21,7 @@ module MyHealth
       attribute :proxy_sender_name
       attribute :suggested_name_display
       attribute :is_oh_message
+      attribute :is_automated_message, &:automated_message?
       attribute :oh_migration_phase
       attribute :migrated_to_oracle_health
 

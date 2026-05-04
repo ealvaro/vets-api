@@ -66,6 +66,18 @@ describe MyHealth::V1::MessagesSerializer, type: :serializer do
     expect(attributes['proxy_sender_name']).to eq message.proxy_sender_name
   end
 
+  it 'includes :is_automated_message' do
+    expect(attributes['is_automated_message']).to eq message.automated_message?
+  end
+
+  context 'when triage_group_name is MHV Automated Message' do
+    let(:message) { build_stubbed(:message, :automated_message) }
+
+    it 'returns is_automated_message as true' do
+      expect(attributes['is_automated_message']).to be true
+    end
+  end
+
   it 'includes :self link' do
     expected_url = MyHealth::UrlHelper.new.v1_message_url(message.id)
     expect(links['self']).to eq expected_url

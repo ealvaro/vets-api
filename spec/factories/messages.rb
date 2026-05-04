@@ -24,6 +24,10 @@ FactoryBot.define do
     recipient_name { 'Recipient 1' }
     read_receipt { 'READ' }
 
+    trait :automated_message do
+      triage_group_name { 'MHV Automated Message' }
+    end
+
     trait :with_attachments do
       attachment { true }
       attachments { build_list(:attachment, 4) }

@@ -41,7 +41,8 @@
               "recipient_name",
               "read_receipt",
               "suggested_name_display",
-              "is_oh_message"
+              "is_oh_message",
+              "is_automated_message"
             ],
             "properties": {
               "message_id": {
@@ -108,6 +109,9 @@
                 ]
               },
               "is_oh_message": {
+                "type": "boolean"
+              },
+              "is_automated_message": {
                 "type": "boolean"
               }
             }

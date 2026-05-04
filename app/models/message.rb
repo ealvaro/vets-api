@@ -91,6 +91,10 @@ class Message
 
   alias attachment? attachment
 
+  def automated_message?
+    triage_group_name == 'MHV Automated Message'
+  end
+
   def initialize(attributes = {})
     # super is calling Vets::Model#initialize
     super(attributes)

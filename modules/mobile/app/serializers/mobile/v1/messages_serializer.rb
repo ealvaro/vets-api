@@ -15,6 +15,7 @@ module Mobile
                  :migrated_to_oracle_health
 
       attribute :body, &:message_body
+      attribute :is_automated_message, &:automated_message?
 
       link :self do |object|
         Mobile::UrlHelper.new.v0_message_url(object.message_id)

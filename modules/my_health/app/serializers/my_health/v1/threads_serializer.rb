@@ -28,6 +28,7 @@ module MyHealth
       attribute :unsent_drafts
       attribute :unread_messages
       attribute :is_oh_message
+      attribute :is_automated_message, &:automated_message?
       attribute :suggested_name_display
 
       link :self do |object|

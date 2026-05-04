@@ -90,6 +90,26 @@ describe MyHealth::V1::ThreadsSerializer, type: :serializer do
     expect(attributes['unread_messages']).to eq thread.unread_messages
   end
 
+  it 'includes :is_automated_message' do
+    expect(attributes['is_automated_message']).to eq thread.automated_message?
+  end
+
+  context 'when triage_group_name is MHV Automated Message' do
+    let(:thread) { build(:message_thread, :automated_message) }
+
+    it 'returns is_automated_message as true' do
+      expect(attributes['is_automated_message']).to be true
+    end
+  end
+
+  context 'when triage_group_name is nil' do
+    let(:thread) { build(:message_thread, triage_group_name: nil) }
+
+    it 'returns is_automated_message as false' do
+      expect(attributes['is_automated_message']).to be false
+    end
+  end
+
   it 'includes :self link' do
     expected_url = MyHealth::UrlHelper.new.v1_thread_url(thread.thread_id)
     expect(links['self']).to eq expected_url

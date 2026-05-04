@@ -20,5 +20,9 @@ FactoryBot.define do
     has_attachment { false }
     unsent_drafts { false }
     unread_messages { false }
+
+    trait :automated_message do
+      triage_group_name { 'MHV Automated Message' }
+    end
   end
 end

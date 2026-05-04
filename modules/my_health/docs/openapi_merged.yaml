@@ -3100,6 +3100,7 @@ components:
         - unsentDrafts
         - unreadMessages
         - isOhMessage
+        - isAutomatedMessage
         - suggestedNameDisplay
       properties:
         threadId:
@@ -3172,6 +3173,10 @@ components:
           example: true
         isOhMessage:
           type: boolean
+          example: false
+        isAutomatedMessage:
+          type: boolean
+          description: Indicates if this thread is from the MHV Automated Message triage group (used for Oracle Health migration notices)
           example: false
         suggestedNameDisplay:
           type: string
@@ -3388,6 +3393,10 @@ components:
               type: boolean
               description: Indicates if this message is an Oracle Health message
               example: false
+            isAutomatedMessage:
+              type: boolean
+              description: Indicates if this message is from the MHV Automated Message triage group (used for Oracle Health migration notices)
+              example: false
             ohMigrationPhase:
               type: string
               nullable: true
@@ -3600,6 +3609,10 @@ components:
             isOhMessage:
               type: boolean
               description: Indicates if this message is an Oracle Health message
+              example: false
+            isAutomatedMessage:
+              type: boolean
+              description: Indicates if this message is from the MHV Automated Message triage group (used for Oracle Health migration notices)
               example: false
             ohMigrationPhase:
               type: string
@@ -3877,6 +3890,10 @@ components:
               type: boolean
               description: Indicates if this message is an Oracle Health message
               example: false
+            isAutomatedMessage:
+              type: boolean
+              description: Indicates if this message is from the MHV Automated Message triage group (used for Oracle Health migration notices)
+              example: false
             ohMigrationPhase:
               type: string
               nullable: true
@@ -4034,6 +4051,10 @@ components:
             isOhMessage:
               type: boolean
               description: Indicates if this message is an Oracle Health message
+              example: false
+            isAutomatedMessage:
+              type: boolean
+              description: Indicates if this message is from the MHV Automated Message triage group (used for Oracle Health migration notices)
               example: false
             ohMigrationPhase:
               type: string

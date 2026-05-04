@@ -42,6 +42,23 @@ RSpec.describe Message do
       expect([subject, other].sort).to eq([other, subject])
     end
 
+    describe '#automated_message?' do
+      it 'returns false for a normal triage group' do
+        message = described_class.new(params.merge(triage_group_name: 'WORKLOAD CAPTURE_SLC 4_Mohammad'))
+        expect(message.automated_message?).to be false
+      end
+
+      it 'returns true for MHV Automated Message triage group' do
+        message = described_class.new(params.merge(triage_group_name: 'MHV Automated Message'))
+        expect(message.automated_message?).to be true
+      end
+
+      it 'returns false when triage_group_name is nil' do
+        message = described_class.new(params.merge(triage_group_name: nil))
+        expect(message.automated_message?).to be false
+      end
+    end
+
     describe 'when validating' do
       context 'message or draft' do
         it 'requires recipient_id' do
