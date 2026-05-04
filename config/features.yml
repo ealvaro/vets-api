@@ -3465,3 +3465,159 @@ features:
     actor_type: user
     description: Allows UHD AVS work for appointments to be used when requesting past appointments
     enable_in_development: true
+  accessva_box_high_impact_oktaurl:
+    actor_type: user
+    description: Switches the Box High Impact AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_box_oktaurl:
+    actor_type: user
+    description: Switches the Box AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_ccra_oktaurl:
+    actor_type: user
+    description: Switches the Community Care Referrals and Authorization (CCR&A) AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_centralized_mail_oktaurl:
+    actor_type: user
+    description: Switches the Centralized Mail Portal AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_edms_oktaurl:
+    actor_type: user
+    description: Switches the Education Development Management System (EDMS) AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_fast_oktaurl:
+    actor_type: user
+    description: Switches the Fiduciary Accountings Submission Tool (FAST) AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_grants4vets_oktaurl:
+    actor_type: user
+    description: Switches the Grants4Vets AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_hmis_oktaurl:
+    actor_type: user
+    description: Switches the Homeless Management Information System (HMIS) AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_iam_invitation_oktaurl:
+    actor_type: user
+    description: Switches the IAM Invitation Service AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_kahua_oktaurl:
+    actor_type: user
+    description: Switches the Kahua AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_life_insurance_oktaurl:
+    actor_type: user
+    description: Switches the Life Insurance Online Policy Access AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_moveliq_approval_oktaurl:
+    actor_type: user
+    description: Switches the PCS Travel / moveLINQ approval portal AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_moveliq_employee_oktaurl:
+    actor_type: user
+    description: Switches the PCS Travel / moveLINQ employee portal AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_moveliq_expense_oktaurl:
+    actor_type: user
+    description: Switches the PCS Travel / moveLINQ expense portal AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_mvp_oktaurl:
+    actor_type: user
+    description: Switches the Million Veteran Program (MVP) AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_paws_oktaurl:
+    actor_type: user
+    description: Switches the Puppies Assisting Wounded Service Members (PAWS) AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_prosthetics_vendor_oktaurl:
+    actor_type: user
+    description: Switches the Prosthetics Vendor Portal AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_qgenda_oktaurl:
+    actor_type: user
+    description: Switches the QGenda AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_quicksubmit_oktaurl:
+    actor_type: user
+    description: Switches the QuickSubmit AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_roes_oktaurl:
+    actor_type: user
+    description: Switches the Remote Order Entry System (ROES) AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_sourcetrack_oktaurl:
+    actor_type: user
+    description: Switches the SourceTrack AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_sports4vets_officials_oktaurl:
+    actor_type: user
+    description: Switches the Sports4Vets for certifying officials and NVGAG volunteers AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_sports4vets_oktaurl:
+    actor_type: user
+    description: Switches the Sports4Vets AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_squares_oktaurl:
+    actor_type: user
+    description: Switches the Squares AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_va_caregiver_support_oktaurl:
+    actor_type: user
+    description: Switches the VA Caregiver Support AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_valerir_oktaurl:
+    actor_type: user
+    description: Switches the VA Loan Electronic Reporting Interface Reengineering (VALERI-R) AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_valife_oktaurl:
+    actor_type: user
+    description: Switches the VA Life Insurance (VALife) AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_vetbiz_oktaurl:
+    actor_type: user
+    description: Switches the VetBiz Portal AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_veteran_travel_claim_oktaurl:
+    actor_type: user
+    description: Switches the Veteran travel claim entry AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_veterans_health_venture_studio_oktaurl:
+    actor_type: user
+    description: Switches the Veterans Health Venture Studio AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_vetride_oktaurl:
+    actor_type: user
+    description: Switches the VetRide AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_vhic_oktaurl:
+    actor_type: user
+    description: Switches the Veteran Health Identification Card (VHIC) AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_vic_oktaurl:
+    actor_type: user
+    description: Switches the Veterans ID Card (VIC) AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_vlogicfm_oktaurl:
+    actor_type: user
+    description: Switches the VLogicFM AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_vta_ides_oktaurl:
+    actor_type: user
+    description: Switches the VTA IDES AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_yourit_oktaurl:
+    actor_type: user
+    description: Switches the yourIT employee self service AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_vet_home_oktaurl:
+    actor_type: user
+    description: Switches the Veterans Exposure Team - Health Outcomes Military Exposures (VET-HOME) AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_edelivery_oktaurl:
+    actor_type: user
+    description: Switches the VA eDelivery AccessVA link to use the Okta URL
+    enable_in_development: false
+  accessva_mceq_vendor_portal_oktaurl:
+    actor_type: user
+    description: Switches the MCEQ Vendor Portal AccessVA link to use the Okta URL
+    enable_in_development: false
