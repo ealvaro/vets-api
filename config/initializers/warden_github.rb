@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'github_authentication/session_user'
+
 module WardenGithubStrategyExtensions
   def authenticate!
     Rails.logger.info do
