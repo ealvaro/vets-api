@@ -46,7 +46,13 @@ RSpec.describe V0::EducationBenefitsClaimsController, type: :controller do
   end
 
   describe '#create (when form is invalid)' do
-    before { allow(StatsD).to receive(:increment) }
+    let(:dummy_logger) { double('Logger') }
+
+    before do
+      allow(StatsD).to receive(:increment)
+      allow(Rails).to receive(:logger).and_return(dummy_logger)
+      allow(dummy_logger).to receive(:error)
+    end
 
     context 'when claim save fails' do
       it 'increments failure stats and raises validation error' do
@@ -69,6 +75,8 @@ RSpec.describe V0::EducationBenefitsClaimsController, type: :controller do
 
         expect(StatsD).to have_received(:increment).with('api.education_benefits_claim.create.221990.failure')
         expect(StatsD).to have_received(:increment).with('api.education_benefits_claim.create.failure')
+        expect(dummy_logger).to have_received(:error).with('EBCC::create Failed to create claim 221990',
+                                                           hash_including(:form_type, :errors))
       end
     end
   end
