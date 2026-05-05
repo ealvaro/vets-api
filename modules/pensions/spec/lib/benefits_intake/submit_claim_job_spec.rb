@@ -16,7 +16,7 @@ RSpec.describe Pensions::BenefitsIntake::SubmitClaimJob, :uploader_helpers do
   let(:claim) { build_stubbed(:pensions_saved_claim) }
   let(:service) { double('service') }
   let(:monitor) { Pensions::Monitor.new }
-  let(:user_account_uuid) { 123 }
+  let(:user_account) { double('user_account', id: SecureRandom.uuid, icn: 'FOOBAR') }
 
   describe '#perform' do
     let(:response) { double('response') }
@@ -26,390 +26,78 @@ RSpec.describe Pensions::BenefitsIntake::SubmitClaimJob, :uploader_helpers do
     before do
       allow(Flipper).to receive(:enabled?).with(:validate_saved_claims_with_json_schemer).and_return(true)
 
-      job.instance_variable_set(:@claim, claim)
-      allow(Pensions::SavedClaim).to receive(:find).and_return(claim)
+      allow(Pensions::SavedClaim).to receive(:find_by).and_return(claim)
       allow(claim).to receive_messages(to_pdf: pdf_path, persistent_attachments: [])
 
-      job.instance_variable_set(:@intake_service, service)
       allow(BenefitsIntake::Service).to receive(:new).and_return(service)
       allow(service).to receive(:uuid)
       allow(service).to receive(:request_upload)
       allow(service).to receive_messages(location:, perform_upload: response)
       allow(response).to receive(:success?).and_return true
 
-      job.instance_variable_set(:@monitor, monitor)
+      allow(Pensions::Monitor).to receive(:new).and_return(monitor)
     end
 
-    context 'Feature pension_submitted_email_notification=false' do
-      it 'submits the saved claim successfully' do
-        allow(Flipper).to receive(:enabled?).with(:pension_submitted_email_notification).and_return(false)
-        allow(job).to receive_messages(process_document: pdf_path, lighthouse_submission_pending_or_success: false)
+    it 'submits the saved claim successfully' do
+      expect(UserAccount).to receive(:find_by).and_return(user_account)
 
-        expect(Lighthouse::Submission).to receive(:create)
-        expect(Lighthouse::SubmissionAttempt).to receive(:create)
-        expect(Datadog::Tracing).to receive(:active_trace)
-        expect(UserAccount).to receive(:find)
-        expect(Kafka::EventBusSubmissionJob).to receive(:perform_async)
+      expect(Lighthouse::Submission).to receive(:create)
+      expect(Lighthouse::SubmissionAttempt).to receive(:create)
+      expect(Datadog::Tracing).to receive(:active_trace)
+      expect(Kafka::EventBusSubmissionJob).to receive(:perform_async)
 
-        expect(service).to receive(:perform_upload).with(
-          upload_url: 'test_location', document: pdf_path, metadata: anything, attachments: []
-        )
+      stamper = Pensions::PDFStamper.new([])
+      expect(Pensions::PDFStamper).to receive(:new).with(:pensions_generated_claim).and_return(stamper)
+      expect(stamper).to receive(:run).and_return(pdf_path)
+      expect(service).to receive(:valid_document?).with(document: pdf_path).and_return(pdf_path)
 
-        expect(job).to receive(:send_confirmation_email)
-        expect(job).not_to receive(:send_submitted_email)
-        expect(job).to receive(:cleanup_file_paths)
-
-        job.perform(claim.id, :user_uuid)
-      end
-    end
-
-    context 'Feature pension_submitted_email_notification=true' do
-      it 'submits the saved claim successfully' do
-        allow(Flipper).to receive(:enabled?).with(:pension_submitted_email_notification).and_return(true)
-        allow(job).to receive_messages(process_document: pdf_path, lighthouse_submission_pending_or_success: false)
-
-        expect(Lighthouse::Submission).to receive(:create)
-        expect(Lighthouse::SubmissionAttempt).to receive(:create)
-        expect(Datadog::Tracing).to receive(:active_trace)
-        expect(UserAccount).to receive(:find)
-        expect(Kafka::EventBusSubmissionJob).to receive(:perform_async)
-
-        expect(service).to receive(:perform_upload).with(
-          upload_url: 'test_location', document: pdf_path, metadata: anything, attachments: []
-        )
-
-        expect(job).not_to receive(:send_confirmation_email)
-        expect(job).to receive(:send_submitted_email)
-        expect(job).to receive(:cleanup_file_paths)
-
-        job.perform(claim.id, :user_uuid)
-      end
-    end
-
-    it 'is unable to find user_account' do
-      expect(Pensions::SavedClaim).not_to receive(:find)
-      expect(BenefitsIntake::Service).not_to receive(:new)
-      expect(claim).not_to receive(:to_pdf)
-
-      expect(Kafka::EventBusSubmissionJob).not_to receive(:perform_async)
-      expect(job).not_to receive(:send_confirmation_email)
-      expect(job).not_to receive(:send_submitted_email)
-      expect(job).to receive(:cleanup_file_paths)
-      expect(monitor).to receive(:track_submission_retry)
-
-      expect { job.perform(claim.id, :user_account_uuid) }.to raise_error(
-        ActiveRecord::RecordNotFound,
-        /Couldn't find UserAccount/
+      expect(service).to receive(:perform_upload).with(
+        upload_url: 'test_location', document: pdf_path, metadata: anything, attachments: []
       )
-    end
 
-    it 'is unable to find saved_claim_id' do
-      allow(Pensions::SavedClaim).to receive(:find).and_return(nil)
-
-      expect(UserAccount).to receive(:find)
-
-      expect(BenefitsIntake::Service).not_to receive(:new)
-      expect(claim).not_to receive(:to_pdf)
-
-      expect(Kafka::EventBusSubmissionJob).not_to receive(:perform_async)
-      expect(job).not_to receive(:send_confirmation_email)
-      expect(job).not_to receive(:send_submitted_email)
+      expect(claim).to receive(:send_email).with(:submitted)
       expect(job).to receive(:cleanup_file_paths)
-      expect(monitor).to receive(:track_submission_retry)
 
-      expect { job.perform(claim.id, :user_account_uuid) }.to raise_error(
-        Pensions::BenefitsIntake::SubmitClaimJob::PensionBenefitIntakeError,
-        "Unable to find Pensions::SavedClaim #{claim.id}"
-      )
+      job.perform(claim.id, user_account.id)
     end
-
-    # perform
   end
 
-  describe '#generate_form_pdf' do
+  describe '#claim_to_pdf' do
     let(:pdf_path) { 'random/path/to/pdf' }
 
     before do
       job.instance_variable_set(:@claim, claim)
       allow(claim).to receive(:to_pdf).and_return(pdf_path)
-      allow(job).to receive(:process_document).and_return(pdf_path)
     end
 
     it 'generates PDF with redesign options' do
       expect(claim).to receive(:to_pdf).with(claim.id, { extras_redesign: true, omit_esign_stamp: true })
-      expect(job).to receive(:process_document).with(pdf_path, :pensions_generated_claim)
 
-      result = job.send(:generate_form_pdf)
+      result = job.send(:claim_to_pdf)
       expect(result).to eq(pdf_path)
     end
   end
 
-  describe '#lighthouse_submission_pending_or_success' do
-    before do
-      job.instance_variable_set(:@claim, claim)
-      allow(Pensions::SavedClaim).to receive(:find).and_return(claim)
-    end
-
-    context 'with no form submissions' do
-      it 'returns false' do
-        expect(job.send(:lighthouse_submission_pending_or_success)).to be(false).or be_nil
-      end
-    end
-
-    context 'with pending form submission attempt' do
-      let(:claim) { create(:pensions_saved_claim, :pending) }
-
-      it 'return true' do
-        expect(job.send(:lighthouse_submission_pending_or_success)).to be(true)
-      end
-    end
-
-    context 'with success form submission attempt' do
-      let(:claim) { create(:pensions_saved_claim, :submitted) }
-
-      it 'return true' do
-        expect(job.send(:lighthouse_submission_pending_or_success)).to be(true)
-      end
-    end
-
-    context 'with failure form submission attempt' do
-      let(:claim) { create(:pensions_saved_claim, :failure) }
-
-      it 'return false' do
-        expect(job.send(:lighthouse_submission_pending_or_success)).to be(false)
-      end
-    end
-  end
-
-  describe '#process_document' do
-    let(:service) { double('service') }
-    let(:pdf_path) { 'random/path/to/pdf' }
-    let(:stamp_pdf_double) { instance_double(Pensions::PDFStamper) }
-
-    before do
-      job.instance_variable_set(:@intake_service, service)
-      job.instance_variable_set(:@claim, claim)
-    end
-
-    it 'returns a datestamp pdf path' do
-      allow(Pensions::PDFStamper).to receive(:new).and_return(stamp_pdf_double)
-
-      expect(stamp_pdf_double).to receive(:run).with('test/path', timestamp: claim.created_at).and_return('foo/bar')
-      expect(service).to receive(:valid_document?).and_return(pdf_path)
-
-      new_path = job.send(:process_document, 'test/path', :test)
-
-      expect(new_path).to eq(pdf_path)
-    end
-
-    it 'successfully stamps the generated pdf' do
-      expect(service).to receive(:valid_document?).and_return(pdf_path)
-      new_path = job.send(:process_document, claim.to_pdf, :pensions_generated_claim)
-      expect(new_path).to eq(pdf_path)
-    end
-    # process_document
-  end
-
-  describe '#cleanup_file_paths' do
-    before do
-      job.instance_variable_set(:@form_path, 'path/file.pdf')
-      job.instance_variable_set(:@attachment_paths, '/invalid_path/should_be_an_array.failure')
-
-      job.instance_variable_set(:@monitor, monitor)
-      allow(monitor).to receive(:track_file_cleanup_error)
-    end
-
-    it 'errors and logs but does not reraise' do
-      expect(monitor).to receive(:track_file_cleanup_error)
-      job.send(:cleanup_file_paths)
-    end
-  end
-
-  describe '#set_signature_date' do
-    before do
-      job.instance_variable_set(:@monitor, monitor)
-      allow(monitor).to receive(:track_claim_signature_error)
-    end
-
-    it 'errors and logs but does not reraise' do
-      expect(monitor).to receive(:track_claim_signature_error)
-      job.send(:set_signature_date)
-    end
-
-    it 'sets the signature date to claim.created_at' do
-      job.instance_variable_set(:@claim, claim)
-      job.send(:set_signature_date)
-      form_data = JSON.parse(claim.form)
-      expect(form_data['signatureDate']).to eq(claim.created_at.strftime('%Y-%m-%d'))
-    end
-  end
-
-  describe '#send_confirmation_email' do
-    let(:monitor_error) { build_stubbed(:monitor_error) }
-    let(:notification) { double('notification') }
-
-    before do
-      job.instance_variable_set(:@claim, claim)
-
-      allow(Pensions::NotificationEmail).to receive(:new).and_return(notification)
-      allow(notification).to receive(:deliver).and_raise(monitor_error)
-
-      job.instance_variable_set(:@monitor, monitor)
-      allow(monitor).to receive(:track_send_email_failure)
-    end
-
-    it 'errors and logs but does not reraise' do
-      expect(Pensions::NotificationEmail).to receive(:new).with(claim.id)
-      expect(notification).to receive(:deliver).with(:confirmation)
-      expect(monitor).to receive(:track_send_email_failure)
-      job.send(:send_confirmation_email)
-    end
-  end
-
-  describe '#send_submitted_email' do
-    let(:monitor_error) { build_stubbed(:monitor_error) }
-    let(:notification) { double('notification') }
-
-    before do
-      job.instance_variable_set(:@claim, claim)
-
-      allow(Pensions::NotificationEmail).to receive(:new).and_return(notification)
-      allow(notification).to receive(:deliver).and_raise(monitor_error)
-
-      job.instance_variable_set(:@monitor, monitor)
-      allow(monitor).to receive(:track_send_email_failure)
-    end
-
-    it 'errors and logs but does not reraise' do
-      expect(Pensions::NotificationEmail).to receive(:new).with(claim.id)
-      expect(notification).to receive(:deliver).with(:submitted)
-      expect(monitor).to receive(:track_send_email_failure)
-      job.send(:send_submitted_email)
-    end
-  end
-
-  describe '#submit_traceability_to_event_bus' do
-    let(:user_account) { create(:user_account) }
-
-    before do
-      job.instance_variable_set(:@claim, claim)
-      job.instance_variable_set(:@intake_service, service)
-      job.instance_variable_set(:@user_account, user_account)
-      allow(BenefitsIntake::Service).to receive(:new).and_return(service)
-      allow(service).to receive(:uuid).and_return('intake-uuid-123')
-    end
-
-    context 'when participant_id is present' do
-      it 'includes participant_id in additional_ids' do
-        job.instance_variable_set(:@participant_id, '99887766')
-
-        expect(Kafka).to receive(:submit_event).with(
-          hash_including(
-            additional_ids: ['participant_id:99887766'],
-            state: Kafka::State::SENT,
-            next_id: 'intake-uuid-123'
-          )
-        )
-
-        job.send(:submit_traceability_to_event_bus)
-      end
-    end
-
-    context 'when participant_id is nil' do
-      it 'passes empty additional_ids' do
-        job.instance_variable_set(:@participant_id, nil)
-
-        expect(Kafka).to receive(:submit_event).with(
-          hash_including(additional_ids: [])
-        )
-
-        job.send(:submit_traceability_to_event_bus)
-      end
-    end
-  end
-
   describe 'sidekiq_retries_exhausted block' do
-    let(:exhaustion_msg) do
-      { 'args' => [], 'class' => 'Pensions::BenefitsIntake::SubmitClaimJob', 'error_message' => 'An error occurred',
-        'queue' => 'low' }
-    end
-
     before do
       allow(Pensions::Monitor).to receive(:new).and_return(monitor)
     end
 
     context 'when retries are exhausted' do
       it 'logs a distinct error when no claim_id provided' do
+        msg = { 'args' => [], 'class' => 'Pensions::BenefitsIntake::SubmitClaimJob', 'error_message' => 'An error occurred', 'queue' => 'low' }
         Pensions::BenefitsIntake::SubmitClaimJob.within_sidekiq_retries_exhausted_block do
-          expect(Kafka::EventBusSubmissionJob).not_to receive(:perform_async)
-          expect(monitor).to receive(:track_submission_exhaustion).with(exhaustion_msg, nil)
+          expect(monitor).to receive(:track_submission_exhaustion).with(msg, nil)
         end
       end
 
       it 'logs a distinct error when only claim_id provided' do
-        Pensions::BenefitsIntake::SubmitClaimJob
-          .within_sidekiq_retries_exhausted_block({ 'args' => [claim.id] }) do
-            allow(Pensions::SavedClaim).to receive(:find).and_return(claim)
-            expect(Pensions::SavedClaim).to receive(:find).with(claim.id)
-            expect(Kafka::EventBusSubmissionJob).to receive(:perform_async)
+        config = { claim_class: 'Pensions::SavedClaim' }
+        msg = { 'args' => [claim.id, config], 'class' => 'Pensions::BenefitsIntake::SubmitClaimJob', 'error_message' => 'An error occurred', 'queue' => 'low' }
+        Pensions::BenefitsIntake::SubmitClaimJob.within_sidekiq_retries_exhausted_block(msg) do
+          expect(Pensions::SavedClaim).to receive(:find_by).with(id: claim.id).and_return(claim)
 
-            exhaustion_msg['args'] = [claim.id]
-
-            expect(monitor).to receive(:track_submission_exhaustion).with(exhaustion_msg, claim)
-        end
-      end
-
-      it 'logs a distinct error when claim_id and user_uuid provided' do
-        Pensions::BenefitsIntake::SubmitClaimJob
-          .within_sidekiq_retries_exhausted_block({ 'args' => [claim.id, 2] }) do
-            allow(Pensions::SavedClaim).to receive(:find).and_return(claim)
-            expect(Pensions::SavedClaim).to receive(:find).with(claim.id)
-            expect(Kafka::EventBusSubmissionJob).to receive(:perform_async)
-
-            exhaustion_msg['args'] = [claim.id, 2]
-
-            expect(monitor).to receive(:track_submission_exhaustion).with(exhaustion_msg, claim)
-        end
-      end
-
-      it 'includes participant_id in additional_ids when provided as 3rd arg' do
-        pid = '99887766'
-        Pensions::BenefitsIntake::SubmitClaimJob
-          .within_sidekiq_retries_exhausted_block({ 'args' => [claim.id, 2, pid] }) do
-            allow(Pensions::SavedClaim).to receive(:find).and_return(claim)
-            expect(Kafka).to receive(:submit_event).with(
-              hash_including(additional_ids: ["participant_id:#{pid}"], state: Kafka::State::ERROR)
-            )
-
-            exhaustion_msg['args'] = [claim.id, 2, pid]
-
-            expect(monitor).to receive(:track_submission_exhaustion).with(exhaustion_msg, claim)
-        end
-      end
-
-      it 'passes empty additional_ids when no participant_id arg' do
-        Pensions::BenefitsIntake::SubmitClaimJob
-          .within_sidekiq_retries_exhausted_block({ 'args' => [claim.id, 2] }) do
-            allow(Pensions::SavedClaim).to receive(:find).and_return(claim)
-            expect(Kafka).to receive(:submit_event).with(
-              hash_including(additional_ids: [])
-            )
-
-            exhaustion_msg['args'] = [claim.id, 2]
-
-            expect(monitor).to receive(:track_submission_exhaustion).with(exhaustion_msg, claim)
-        end
-      end
-
-      it 'logs a distinct error when claim is not found' do
-        Pensions::BenefitsIntake::SubmitClaimJob
-          .within_sidekiq_retries_exhausted_block({ 'args' => [claim.id - 1, 2] }) do
-            expect(Pensions::SavedClaim).to receive(:find).with(claim.id - 1)
-            expect(Kafka::EventBusSubmissionJob).not_to receive(:perform_async)
-
-            exhaustion_msg['args'] = [claim.id - 1, 2]
-
-            expect(monitor).to receive(:track_submission_exhaustion).with(exhaustion_msg, nil)
+          expect(monitor).to receive(:track_submission_exhaustion).with(msg, claim)
         end
       end
     end

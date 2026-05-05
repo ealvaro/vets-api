@@ -24,7 +24,7 @@ module Pensions
 
       # confirmation, error
       pensions = {
-        'first_name' => claim.first_name&.titleize,
+        'first_name' => claim.veteran_first_name&.titleize,
         'date_received' => date_received
       }
 

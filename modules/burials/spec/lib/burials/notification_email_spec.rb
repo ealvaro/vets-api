@@ -18,12 +18,12 @@ RSpec.describe Burials::NotificationEmail do
       expect(vanotify).to receive(:send_email).with(
         {
           email_address: saved_claim.email,
-          template_id: Settings.vanotify.services['21p_530ez'].email.confirmation.template_id,
+          template_id: Settings.vanotify.services['21p_530ez'].email.error.template_id,
           personalisation: be_a(Hash)
         }.compact
       )
 
-      described_class.new(23).deliver(:confirmation)
+      described_class.new(23).deliver(:error)
     end
 
     context 'date_received fallback logic' do

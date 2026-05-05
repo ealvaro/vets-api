@@ -1628,9 +1628,6 @@ vanotify:
     21p_530ez: &vanotify_services_burial
       api_key: <%= ENV['vanotify__services__21p_530ez__api_key'] %>
       email:
-        confirmation:
-          flipper_id: false
-          template_id: <%= ENV['vanotify__services__21p_530ez__email__confirmation__template_id'] %>
         error:
           flipper_id: burial_error_email_notification
           template_id: <%= ENV['vanotify__services__21p_530ez__email__error__template_id'] %>

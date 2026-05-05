@@ -458,9 +458,6 @@ features:
   champva_convert_to_pdf_on_upload:
     actor_type: user
     description: Converts supporting documents to PDF at upload time instead of final submission to improve submit latency
-  form1010d_enhanced_flow_enabled:
-    actor_type: user
-    description: Enables enhanced docs-only resubmission flow for CHAMPVA 10-10D-EXTENDED submissions
   champva_stamper_logging:
     actor_type: user
     description: Enables logging of the desired stamp text
@@ -2863,6 +2860,9 @@ features:
   burial_persistent_attachment_error_email_notification:
     actor_type: cookie_id
     description: Toggle sending of the Persistent Attachment Error email notification
+  burial_kafka_event_enabled:
+    actor_type: cookie_id
+    description: Enables the Kafka event for Burial
   burial_bpds_service_enabled:
     actor_type: user
     description: Enables the BPDS service for Burial
@@ -2909,6 +2909,9 @@ features:
   income_and_assets_bpds_service_enabled:
     actor_type: user
     description: Enables the BPDS service for Income and Assets
+  income_and_assets_kafka_event_enabled:
+    actor_type: cookie_id
+    description: Enables the Kafka event for Income and Assets
   increase_compensation_govcio_mms:
     actor_type: cookie_id
     enable_in_development: true

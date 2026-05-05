@@ -73,9 +73,9 @@ RSpec.describe Pensions::SavedClaim, :uploader_helpers do
     end
   end
 
-  describe '#first_name' do
+  describe '#veteran_first_name' do
     it 'returns the users first name' do
-      expect(instance.first_name).to eq('Test')
+      expect(instance.veteran_first_name).to eq('Test')
     end
   end
 

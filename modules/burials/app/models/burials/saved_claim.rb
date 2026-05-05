@@ -119,6 +119,23 @@ module Burials
     end
 
     ##
+    # Utility function to retrieve veteran filenumber from form; fallback to ssn
+    #
+    # @return [String]
+    def veteran_filenumber
+      parsed_form['vaFileNumber'] || parsed_form['veteranSocialSecurityNumber']
+    end
+
+    ##
+    # Utility function to retrieve postal code from form
+    #
+    # @return [String]
+    def postal_code
+      address = parsed_form['claimantAddress'] || parsed_form['veteranAddress']
+      address&.dig('postalCode')
+    end
+
+    ##
     # Utility function to retrieve claimant first name from form
     #
     # @return [String]

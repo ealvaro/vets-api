@@ -15,7 +15,7 @@ RSpec.describe Burials::BenefitsIntake::SubmitClaimJob, :uploader_helpers do
   let(:claim) { create(:burials_saved_claim) }
   let(:service) { double('service') }
   let(:monitor) { Burials::Monitor.new }
-  let(:user_account_uuid) { 123 }
+  let(:user_account) { double('user_account', id: SecureRandom.uuid, icn: 'FOOBAR') }
 
   describe '#perform' do
     let(:response) { double('response') }
@@ -23,331 +23,81 @@ RSpec.describe Burials::BenefitsIntake::SubmitClaimJob, :uploader_helpers do
     let(:location) { 'test_location' }
 
     before do
-      allow(Flipper).to receive(:enabled?).with(:validate_saved_claims_with_json_schemer).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:burial_kafka_event_enabled).and_return false
+      allow(Flipper).to receive(:enabled?).with(:validate_saved_claims_with_json_schemer).and_return true
 
-      job.instance_variable_set(:@claim, claim)
-      allow(Burials::SavedClaim).to receive(:find).and_return(claim)
+      allow(Burials::SavedClaim).to receive(:find_by).and_return(claim)
       allow(claim).to receive_messages(to_pdf: pdf_path, persistent_attachments: [])
 
-      job.instance_variable_set(:@intake_service, service)
       allow(BenefitsIntake::Service).to receive(:new).and_return(service)
       allow(service).to receive(:uuid)
       allow(service).to receive(:request_upload)
       allow(service).to receive_messages(location:, perform_upload: response)
       allow(response).to receive(:success?).and_return true
 
-      job.instance_variable_set(:@monitor, monitor)
+      allow(Burials::Monitor).to receive(:new).and_return(monitor)
     end
 
-    context 'Feature burial_submitted_email_notification=false' do
-      it 'submits the saved claim successfully' do
-        allow(Flipper).to receive(:enabled?).with(:burial_submitted_email_notification).and_return(false)
-        allow(job).to receive_messages(process_document: pdf_path, lighthouse_submission_pending_or_success: false)
+    it 'submits the saved claim successfully' do
+      expect(UserAccount).to receive(:find_by).and_return(user_account)
+      expect(Burials::SavedClaim).to receive(:find_by).and_return(claim)
 
-        expect(Lighthouse::Submission).to receive(:create)
-        expect(Lighthouse::SubmissionAttempt).to receive(:create)
-        expect(Datadog::Tracing).to receive(:active_trace)
-        expect(UserAccount).to receive(:find)
+      expect(Lighthouse::Submission).to receive(:create)
+      expect(Lighthouse::SubmissionAttempt).to receive(:create)
+      expect(Datadog::Tracing).to receive(:active_trace)
 
-        expect(service).to receive(:perform_upload).with(
-          upload_url: 'test_location', document: pdf_path, metadata: anything, attachments: []
-        )
+      stamper = Burials::PDFStamper.new([])
+      expect(Burials::PDFStamper).to receive(:new).with(:burials_generated_claim).and_return(stamper)
+      expect(stamper).to receive(:run).and_return(pdf_path)
+      expect(service).to receive(:valid_document?).with(document: pdf_path).and_return(pdf_path)
 
-        expect(job).to receive(:send_confirmation_email)
-        expect(job).not_to receive(:send_submitted_email)
-        expect(job).to receive(:cleanup_file_paths)
-
-        job.perform(claim.id, :user_uuid)
-      end
-    end
-
-    context 'Feature burial_submitted_email_notification=true' do
-      it 'submits the saved claim successfully' do
-        allow(Flipper).to receive(:enabled?).with(:burial_submitted_email_notification).and_return(true)
-        allow(job).to receive_messages(process_document: pdf_path, lighthouse_submission_pending_or_success: false)
-
-        expect(Lighthouse::Submission).to receive(:create)
-        expect(Lighthouse::SubmissionAttempt).to receive(:create)
-        expect(Datadog::Tracing).to receive(:active_trace)
-        expect(UserAccount).to receive(:find)
-
-        expect(service).to receive(:perform_upload).with(
-          upload_url: 'test_location', document: pdf_path, metadata: anything, attachments: []
-        )
-
-        expect(job).not_to receive(:send_confirmation_email)
-        expect(job).to receive(:send_submitted_email)
-        expect(job).to receive(:cleanup_file_paths)
-
-        job.perform(claim.id, :user_uuid)
-      end
-    end
-
-    it 'is unable to find user_account' do
-      expect(Burials::SavedClaim).not_to receive(:find)
-      expect(BenefitsIntake::Service).not_to receive(:new)
-      expect(claim).not_to receive(:to_pdf)
-
-      expect(job).not_to receive(:send_confirmation_email)
-      expect(job).not_to receive(:send_submitted_email)
-      expect(job).to receive(:cleanup_file_paths)
-      expect(monitor).to receive(:track_submission_retry)
-
-      expect { job.perform(claim.id, :user_account_uuid) }.to raise_error(
-        ActiveRecord::RecordNotFound,
-        /Couldn't find UserAccount/
+      expect(service).to receive(:perform_upload).with(
+        upload_url: 'test_location', document: pdf_path, metadata: anything, attachments: []
       )
-    end
 
-    it 'is unable to find saved_claim_id' do
-      allow(Burials::SavedClaim).to receive(:find).and_return(nil)
-
-      expect(UserAccount).to receive(:find)
-
-      expect(BenefitsIntake::Service).not_to receive(:new)
-      expect(claim).not_to receive(:to_pdf)
-
-      expect(job).not_to receive(:send_confirmation_email)
-      expect(job).not_to receive(:send_submitted_email)
+      expect(job).to receive(:send_claim_email)
       expect(job).to receive(:cleanup_file_paths)
-      expect(monitor).to receive(:track_submission_retry)
 
-      expect { job.perform(claim.id, :user_account_uuid) }.to raise_error(
-        Burials::BenefitsIntake::SubmitClaimJob::BurialsBenefitIntakeError,
-        "Unable to find Burials::SavedClaim #{claim.id}"
-      )
-    end
-
-    context 'when a non-retryable error occurs' do
-      before do
-        allow(UserAccount).to receive(:find)
-        allow(job).to receive(:lighthouse_submission_pending_or_success).and_return(false)
-      end
-
-      it 'does not re-raise ArgumentError and triggers exhaustion immediately' do
-        allow(job).to receive(:generate_form_pdf).and_raise(ArgumentError, 'postalCode is missing')
-
-        expect(monitor).not_to receive(:track_submission_retry)
-        expect(monitor).to receive(:track_submission_exhaustion)
-
-        expect { job.perform(claim.id, user_account_uuid) }.not_to raise_error
-      end
-
-      it 'does not re-raise InvalidDocumentError and triggers exhaustion immediately' do
-        allow(job).to receive(:generate_form_pdf)
-          .and_raise(BenefitsIntake::Service::InvalidDocumentError, 'PDF too large')
-
-        expect(monitor).not_to receive(:track_submission_retry)
-        expect(monitor).to receive(:track_submission_exhaustion)
-
-        expect { job.perform(claim.id, user_account_uuid) }.not_to raise_error
-      end
-
-      it 'still re-raises transient errors for Sidekiq retry' do
-        allow(job).to receive(:generate_form_pdf).and_raise(StandardError, 'network timeout')
-
-        expect(monitor).to receive(:track_submission_retry)
-        expect(monitor).not_to receive(:track_submission_exhaustion)
-
-        expect { job.perform(claim.id, user_account_uuid) }.to raise_error(StandardError, 'network timeout')
-      end
-    end
-
-    # perform
-  end
-
-  describe '#lighthouse_submission_pending_or_success' do
-    before do
-      job.instance_variable_set(:@claim, claim)
-      allow(Burials::SavedClaim).to receive(:find).and_return(claim)
-    end
-
-    context 'with no form submissions' do
-      it 'returns false' do
-        expect(job.send(:lighthouse_submission_pending_or_success)).to be(false).or be_nil
-      end
-    end
-
-    context 'with pending form submission attempt' do
-      let(:claim) { create(:burials_saved_claim, :pending) }
-
-      it 'return true' do
-        expect(job.send(:lighthouse_submission_pending_or_success)).to be(true)
-      end
-    end
-
-    context 'with success form submission attempt' do
-      let(:claim) { create(:burials_saved_claim, :submitted) }
-
-      it 'return true' do
-        expect(job.send(:lighthouse_submission_pending_or_success)).to be(true)
-      end
-    end
-
-    context 'with failure form submission attempt' do
-      let(:claim) { create(:burials_saved_claim, :failure) }
-
-      it 'return false' do
-        expect(job.send(:lighthouse_submission_pending_or_success)).to be(false)
-      end
+      job.perform(claim.id, user_account.id)
     end
   end
 
-  describe '#process_document' do
-    let(:service) { double('service') }
-    let(:pdf_path) { 'random/path/to/pdf' }
-    let(:stamp_pdf_double) { instance_double(Burials::PDFStamper) }
-
-    before do
-      job.instance_variable_set(:@intake_service, service)
-      job.instance_variable_set(:@claim, claim)
-    end
-
-    it 'returns a stamped pdf path' do
-      allow(Burials::PDFStamper).to receive(:new).and_return(stamp_pdf_double)
-
-      expect(stamp_pdf_double).to receive(:run).with('test/path', timestamp: claim.created_at).and_return('foo/bar')
-      expect(service).to receive(:valid_document?).and_return(pdf_path)
-
-      new_path = job.send(:process_document, 'test/path', :test)
-
-      expect(new_path).to eq(pdf_path)
-    end
-
-    it 'successfully stamps the generated pdf' do
-      expect(service).to receive(:valid_document?).and_return(pdf_path)
-      new_path = job.send(:process_document, claim.to_pdf, :burials_generated_claim)
-      expect(new_path).to eq(pdf_path)
-    end
-    # process_document
-  end
-
-  describe '#cleanup_file_paths' do
-    before do
-      job.instance_variable_set(:@form_path, 'path/file.pdf')
-      job.instance_variable_set(:@attachment_paths, '/invalid_path/should_be_an_array.failure')
-
-      job.instance_variable_set(:@monitor, monitor)
-      allow(monitor).to receive(:track_file_cleanup_error)
-    end
-
-    it 'errors and logs but does not reraise' do
-      expect(monitor).to receive(:track_file_cleanup_error)
-      job.send(:cleanup_file_paths)
-    end
-  end
-
-  describe '#send_confirmation_email' do
-    let(:monitor_error) { create(:monitor_error) }
-    let(:notification) { double('notification') }
-
-    before do
-      job.instance_variable_set(:@claim, claim)
-
-      allow(Burials::NotificationEmail).to receive(:new).and_return(notification)
-      allow(notification).to receive(:deliver).and_raise(monitor_error)
-
-      job.instance_variable_set(:@monitor, monitor)
-      allow(monitor).to receive(:track_send_email_failure)
-    end
-
-    it 'errors and logs but does not reraise' do
-      expect(Burials::NotificationEmail).to receive(:new).with(claim.id)
-      expect(notification).to receive(:deliver).with(:confirmation)
-      expect(monitor).to receive(:track_send_email_failure)
-      job.send(:send_confirmation_email)
-    end
-  end
-
-  describe '#send_submitted_email' do
-    let(:monitor_error) { create(:monitor_error) }
-    let(:notification) { double('notification') }
-
-    before do
-      job.instance_variable_set(:@claim, claim)
-
-      allow(Burials::NotificationEmail).to receive(:new).and_return(notification)
-      allow(notification).to receive(:deliver).and_raise(monitor_error)
-
-      job.instance_variable_set(:@monitor, monitor)
-      allow(monitor).to receive(:track_send_email_failure)
-    end
-
-    it 'errors and logs but does not reraise' do
-      expect(Burials::NotificationEmail).to receive(:new).with(claim.id)
-      expect(notification).to receive(:deliver).with(:submitted)
-      expect(monitor).to receive(:track_send_email_failure)
-      job.send(:send_submitted_email)
-    end
-  end
-
-  describe '#generate_form_pdf' do
+  describe '#claim_to_pdf' do
     let(:pdf_path) { 'random/path/to/pdf' }
 
     before do
       job.instance_variable_set(:@claim, claim)
       allow(claim).to receive(:to_pdf).and_return(pdf_path)
-      allow(job).to receive(:process_document).and_return(pdf_path)
     end
 
     it 'generates PDF with redesign options' do
       expect(claim).to receive(:to_pdf).with(claim.id, { extras_redesign: true, omit_esign_stamp: true })
-      expect(job).to receive(:process_document).with(pdf_path, :burials_generated_claim)
 
-      result = job.send(:generate_form_pdf)
+      result = job.send(:claim_to_pdf)
       expect(result).to eq(pdf_path)
     end
   end
 
   describe 'sidekiq_retries_exhausted block' do
-    let(:exhaustion_msg) do
-      { 'args' => [], 'class' => 'Burials::BenefitsIntake::SubmitClaimJob', 'error_message' => 'An error occurred',
-        'queue' => 'low' }
-    end
-
     before do
       allow(Burials::Monitor).to receive(:new).and_return(monitor)
     end
 
     context 'when retries are exhausted' do
       it 'logs a distinct error when no claim_id provided' do
+        msg = { 'args' => [], 'class' => 'Burials::BenefitsIntake::SubmitClaimJob', 'error_message' => 'An error occurred', 'queue' => 'low' }
         Burials::BenefitsIntake::SubmitClaimJob.within_sidekiq_retries_exhausted_block do
-          expect(monitor).to receive(:track_submission_exhaustion).with(exhaustion_msg, nil)
+          expect(monitor).to receive(:track_submission_exhaustion).with(msg, nil)
         end
       end
 
       it 'logs a distinct error when only claim_id provided' do
-        Burials::BenefitsIntake::SubmitClaimJob
-          .within_sidekiq_retries_exhausted_block({ 'args' => [claim.id] }) do
-            allow(Burials::SavedClaim).to receive(:find).and_return(claim)
-            expect(Burials::SavedClaim).to receive(:find).with(claim.id)
+        config = { claim_class: 'Burials::SavedClaim' }
+        msg = { 'args' => [claim.id, config], 'class' => 'Burials::BenefitsIntake::SubmitClaimJob', 'error_message' => 'An error occurred', 'queue' => 'low' }
+        Burials::BenefitsIntake::SubmitClaimJob.within_sidekiq_retries_exhausted_block(msg) do
+          expect(Burials::SavedClaim).to receive(:find_by).with(id: claim.id).and_return(claim)
 
-            exhaustion_msg['args'] = [claim.id]
-
-            expect(monitor).to receive(:track_submission_exhaustion).with(exhaustion_msg, claim)
-        end
-      end
-
-      it 'logs a distinct error when claim_id and user_uuid provided' do
-        Burials::BenefitsIntake::SubmitClaimJob
-          .within_sidekiq_retries_exhausted_block({ 'args' => [claim.id, 2] }) do
-            allow(Burials::SavedClaim).to receive(:find).and_return(claim)
-            expect(Burials::SavedClaim).to receive(:find).with(claim.id)
-
-            exhaustion_msg['args'] = [claim.id, 2]
-
-            expect(monitor).to receive(:track_submission_exhaustion).with(exhaustion_msg, claim)
-        end
-      end
-
-      it 'logs a distinct error when claim is not found' do
-        Burials::BenefitsIntake::SubmitClaimJob
-          .within_sidekiq_retries_exhausted_block({ 'args' => [claim.id - 1, 2] }) do
-            expect(Burials::SavedClaim).to receive(:find).with(claim.id - 1)
-
-            exhaustion_msg['args'] = [claim.id - 1, 2]
-
-            expect(monitor).to receive(:track_submission_exhaustion).with(exhaustion_msg, nil)
+          expect(monitor).to receive(:track_submission_exhaustion).with(msg, claim)
         end
       end
     end

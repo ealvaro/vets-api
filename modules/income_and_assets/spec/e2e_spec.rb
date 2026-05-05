@@ -23,6 +23,7 @@ RSpec.describe 'Income and Assets End to End', type: :request do
     allow(VaNotify::Service).to receive(:new).and_return(vanotify)
 
     allow(Flipper).to receive(:enabled?).with(anything).and_call_original
+    allow(Flipper).to receive(:enabled?).with(:income_and_assets_kafka_event_enabled).and_return false
     allow(Flipper).to receive(:enabled?).with(:income_and_assets_submitted_email_notification).and_return true
     allow(Flipper).to receive(:enabled?).with(:benefits_intake_submission_status_job).and_return true
   end

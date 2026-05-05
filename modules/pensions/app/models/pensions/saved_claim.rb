@@ -73,13 +73,33 @@ module Pensions
       parsed_form['email']
     end
 
-    ##
-    # utility function to retrieve claimant first name from form
+    # Utility function to retrieve veteran filenumber/ssn
     #
-    # @return [String] the claimant first name
+    # @return [String]
+    def veteran_filenumber
+      parsed_form['vaFileNumber'] || parsed_form['veteranSocialSecurityNumber']
+    end
+
+    # Utility function to retrieve veteran first name from form
     #
-    def first_name
+    # @return [String]
+    def veteran_first_name
       parsed_form.dig('veteranFullName', 'first')
+    end
+
+    # Utility function to retrieve veteran last name from form
+    #
+    # @return [String]
+    def veteran_last_name
+      parsed_form.dig('veteranFullName', 'last')
+    end
+
+    # Utility function to retrieve postal code from form
+    #
+    # @return [String]
+    def postal_code
+      address = parsed_form['claimantAddress'] || parsed_form['veteranAddress']
+      address&.dig('postalCode')
     end
 
     # Run after a claim is saved, this processes any files and workflows that are present

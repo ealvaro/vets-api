@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'sidekiq/job_retry'
+
 require 'kafka/sidekiq/event_bus_submission_job'
 require 'lighthouse/benefits_intake/metadata'
 require 'lighthouse/benefits_intake/monitor'
@@ -8,6 +10,7 @@ require 'pdf_utilities/pdf_stamper'
 
 module BenefitsIntake
   # generic job for submitting a claim to Lighthouse Benefits Intake
+  # @see https://developer.va.gov/explore/api/benefits-intake/docs
   class SubmitClaimJob
     include Sidekiq::Job
 
@@ -31,9 +34,10 @@ module BenefitsIntake
     #
     # @param msg [Hash] sidekiq exhaustion response; 'args', 'error_message' are required
     def self.exhaustion(msg)
-      claim = ::SavedClaim.find_by(id: msg['args'][0])
-
       config = msg['args'][1] || {}
+      claim_class = config[:claim_class]&.to_s&.constantize || ::SavedClaim
+
+      claim = claim_class.find_by(id: msg['args'][0])
       if claim.present? && config[:submit_kafka_event]
         user_account_uuid = config[:user_account_uuid]
         user_icn = UserAccount.find_by(id: user_account_uuid)&.icn.to_s
@@ -42,11 +46,14 @@ module BenefitsIntake
           icn: user_icn,
           current_id: claim.confirmation_number.to_s,
           submission_name: claim.form_id,
-          state: Kafka::State::ERROR
+          state: Kafka::State::ERROR,
+          additional_ids: Kafka.build_additional_ids(participant_id: config[:participant_id])
         )
       end
 
-      monitor = BenefitsIntake::Monitor.new
+      job_class_name = msg['class'] || 'BenefitsIntake::SubmitClaimJob'
+      job_instance = job_class_name.constantize.new
+      monitor = job_instance.send(:monitor)
       monitor.track_submission_exhaustion(msg, claim)
     end
 
@@ -56,6 +63,7 @@ module BenefitsIntake
     # @param saved_claim_id [Integer] the claim id
     # @param config [Mixed] key-value pairs for process steps
     # @option config [UUID] :user_account_uuid the user submitting the form
+    # @option config [UUID] :participant_id the participant ID for Kafka event traceability
     # @option config [Symbol|String] :email_type the email template to be sent on success
     # @option config [Symbol|Array<Hash>] :claim_stamp_set stamp set name or list to apply to generated pdf
     # @option config [Symbol|Array<Hash>] :attachment_stamp_set stamp set name or list to apply to evidence pdf
@@ -79,8 +87,9 @@ module BenefitsIntake
       benefits_intake_uuid
     rescue NoRetryError => e
       submission_attempt&.fail!
-      msg = { 'args' => [saved_claim_id, config], 'error_message' => e.message }
+      msg = { 'args' => [saved_claim_id, config], 'error_message' => e.message, 'class' => self.class.to_s }
       BenefitsIntake::SubmitClaimJob.exhaustion(msg)
+      raise ::Sidekiq::JobRetry::Skip
     rescue => e
       submission_attempt&.fail!
       monitor.track_submission_retry(claim, service, user_account_uuid, e)
@@ -118,6 +127,12 @@ module BenefitsIntake
       @config[:attachment_stamp_set] || default_stamp_set
     end
 
+    # The claim class to be used
+    # inheriting class may want/need to override
+    def claim_class
+      @config[:claim_class]&.to_s&.constantize || ::SavedClaim
+    end
+
     # the default stamp set to be used if none specified in config
     def default_stamp_set
       default = [{
@@ -152,17 +167,23 @@ module BenefitsIntake
         raise NoRetryError, "Unable to find ::UserAccount #{user_account_uuid}" unless @user_account
       end
 
-      @claim = ::SavedClaim.find_by(id: saved_claim_id)
+      @claim = claim_class.find_by(id: saved_claim_id)
       raise NoRetryError, "Unable to find ::SavedClaim #{saved_claim_id}" unless @claim
 
       @service = ::BenefitsIntake::Service.new
+    end
+
+    # Create the claim PDF
+    # inheriting class may want/need to override for bespoke claim `to_pdf`
+    def claim_to_pdf
+      claim.to_pdf
     end
 
     # Generate form PDF
     #
     # @return [String] path to processed PDF
     def generate_form_pdf
-      @form_path = process_document(claim.to_pdf, claim_stamp_set)
+      @form_path = process_document(claim_to_pdf, claim_stamp_set)
     end
 
     # Generate the form attachment pdfs
@@ -179,8 +200,19 @@ module BenefitsIntake
     #
     # @return [String] path to stamped PDF
     def process_document(file_path, stamp_set)
-      document = ::PDFUtilities::PDFStamper.new(stamp_set).run(file_path, timestamp: claim.created_at)
+      document = stamper(stamp_set).run(file_path, timestamp: claim.created_at)
       service.valid_document?(document:)
+    rescue => e
+      raise NoRetryError, e
+    end
+
+    # Create a stamper
+    #
+    # @param stamp_set [String|Symbol|Array<Hash>] the identifier for a stamp set or an array of stamps
+    #
+    # @return ::PDFUtilities::PDFStamper
+    def stamper(stamp_set = nil)
+      ::PDFUtilities::PDFStamper.new(stamp_set)
     end
 
     # Generate form metadata to send in upload to Benefits Intake API
@@ -200,6 +232,8 @@ module BenefitsIntake
         claim.form_id,
         claim.business_line
       )
+    rescue => e
+      raise NoRetryError, e
     end
 
     # Upload generated pdf to Benefits Intake API
@@ -247,7 +281,8 @@ module BenefitsIntake
         current_id: claim&.confirmation_number.to_s,
         submission_name: claim&.form_id,
         state: Kafka::State::SENT,
-        next_id: service&.uuid.to_s
+        next_id: service&.uuid.to_s,
+        additional_ids: Kafka.build_additional_ids(participant_id: config[:participant_id])
       )
     end
 

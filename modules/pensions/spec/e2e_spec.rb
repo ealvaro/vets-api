@@ -48,6 +48,7 @@ RSpec.describe 'Pensions End to End', type: :request do
     pension_claim = Pensions::SavedClaim.find(saved_claim_id)
     expect(pension_claim).to be_present
     expect(pension_claim.confirmation_number).to eq data['attributes']['confirmation_number']
+    expect(pension_claim.form).to match(/signatureDate/)
 
     # claim upload to benefits intake
     expect(BenefitsIntake::Metadata).to receive(:generate).and_call_original

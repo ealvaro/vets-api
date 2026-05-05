@@ -89,7 +89,18 @@ module Pensions
         claim_attributes = { form: form_params }
         claim_attributes[:user_account] = @current_user.user_account if @current_user&.user_account
 
-        claim_class.new(**claim_attributes)
+        claim = claim_class.new(**claim_attributes)
+
+        begin
+          form_params = JSON.parse(claim.form)
+          form_params['signatureDate'] = Time.zone.today.strftime('%Y-%m-%d')
+          claim.form = form_params.to_json
+        rescue => e
+          metric = "#{Pensions::Monitor::CLAIM_STATS_KEY}.claim_signature_error"
+          monitor.track_request(:error, 'Pensions claim signature error', metric, error: e.message, claim_id: claim.id)
+        end
+
+        claim
       end
 
       # Build payload and submit to EventBusSubmissionJob

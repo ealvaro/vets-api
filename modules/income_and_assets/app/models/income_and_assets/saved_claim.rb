@@ -77,6 +77,14 @@ module IncomeAndAssets
       parsed_form.dig('claimantFullName', 'first')
     end
 
+    ##
+    # Utility function to retrieve postal code from form
+    #
+    # @return [String]
+    def postal_code
+      nil.to_s # => '00000'; zipcode is not present on the 0969 form
+    end
+
     # claim attachment property list
     #
     # @see PersistentAttachment

@@ -16,6 +16,7 @@ RSpec.describe BenefitsIntake::SubmitClaimJob, :uploader_helpers do
   let(:user_account) { double('user_account', id: SecureRandom.uuid, icn: 'FOOBAR') }
   let(:pdf_path) { 'random/path/to/pdf' }
   let(:location) { 'test_location' }
+  let(:skip_error) { Sidekiq::JobRetry::Skip }
 
   before do
     allow(BenefitsIntake::Monitor).to receive(:new).and_return(monitor)
@@ -87,7 +88,7 @@ RSpec.describe BenefitsIntake::SubmitClaimJob, :uploader_helpers do
       expect(job).to receive(:cleanup_file_paths)
       expect(BenefitsIntake::SubmitClaimJob).to receive(:exhaustion)
 
-      job.perform(claim.id, user_account_uuid: 'invalid-user-account-uuid')
+      expect { job.perform(claim.id, user_account_uuid: 'invalid-user-account-uuid') }.to raise_error(skip_error)
     end
 
     it 'is unable to find saved_claim_id' do
@@ -99,7 +100,7 @@ RSpec.describe BenefitsIntake::SubmitClaimJob, :uploader_helpers do
       expect(job).to receive(:cleanup_file_paths)
       expect(BenefitsIntake::SubmitClaimJob).to receive(:exhaustion)
 
-      job.perform(claim.id)
+      expect { job.perform(claim.id) }.to raise_error(skip_error)
     end
 
     it 'raises a runtime error' do
@@ -141,48 +142,46 @@ RSpec.describe BenefitsIntake::SubmitClaimJob, :uploader_helpers do
   end
 
   describe 'sidekiq_retries_exhausted block' do
-    let(:exhaustion_msg) do
-      { 'args' => [], 'class' => 'BenefitsIntake::SubmitClaimJob',
-        'error_message' => 'An error occurred', 'queue' => 'low' }
-    end
-
     context 'when retries are exhausted' do
       it 'logs a distrinct error when no claim_id provided' do
+        msg = { 'args' => [], 'class' => 'BenefitsIntake::SubmitClaimJob', 'error_message' => 'An error occurred', 'queue' => 'low' }
         BenefitsIntake::SubmitClaimJob.within_sidekiq_retries_exhausted_block do
-          expect(monitor).to receive(:track_submission_exhaustion).with(exhaustion_msg, nil)
+          expect(monitor).to receive(:track_submission_exhaustion).with(msg, nil)
         end
       end
 
-      it 'logs a distrinct error when only claim_id provided' do
-        BenefitsIntake::SubmitClaimJob
-          .within_sidekiq_retries_exhausted_block({ 'args' => [claim.id] }) do
-            expect(SavedClaim).to receive(:find_by).with(id: claim.id).and_return(claim)
+      it 'logs a distinct error when only claim_id provided' do
+        msg = { 'args' => [claim.id, {}], 'class' => 'BenefitsIntake::SubmitClaimJob', 'error_message' => 'An error occurred', 'queue' => 'low' }
+        BenefitsIntake::SubmitClaimJob.within_sidekiq_retries_exhausted_block(msg) do
+          expect(SavedClaim).to receive(:find_by).with(id: claim.id).and_return(claim)
 
-            exhaustion_msg['args'] = [claim.id]
-
-            expect(monitor).to receive(:track_submission_exhaustion).with(exhaustion_msg, claim)
+          expect(monitor).to receive(:track_submission_exhaustion).with(msg, claim)
         end
       end
 
-      it 'logs a distrinct error when claim_id and user_account_uuid provided' do
-        BenefitsIntake::SubmitClaimJob
-          .within_sidekiq_retries_exhausted_block({ 'args' => [claim.id, { user_account_uuid: 2 }] }) do
-            expect(SavedClaim).to receive(:find_by).with(id: claim.id).and_return(claim)
+      it 'logs a distinct error and sends a kafka event' do
+        config = { user_account_uuid: 2, participant_id: '99887766', submit_kafka_event: true }
+        msg = { 'args' => [claim.id, config], 'class' => 'BenefitsIntake::SubmitClaimJob', 'error_message' => 'An error occurred', 'queue' => 'low' }
+        BenefitsIntake::SubmitClaimJob.within_sidekiq_retries_exhausted_block(msg) do
+          expect(SavedClaim).to receive(:find_by).with(id: claim.id).and_return(claim)
+          expect(UserAccount).to receive(:find_by).with(id: 2).and_return(user_account)
 
-            exhaustion_msg['args'] = [claim.id, { user_account_uuid: 2 }]
+          addl_ids = Kafka.build_additional_ids(participant_id: '99887766')
+          expect(Kafka).to receive(:submit_event).with(icn: user_account.icn, current_id: claim.confirmation_number,
+                                                       submission_name: claim.form_id, state: Kafka::State::ERROR,
+                                                       additional_ids: addl_ids)
 
-            expect(monitor).to receive(:track_submission_exhaustion).with(exhaustion_msg, claim)
+          expect(monitor).to receive(:track_submission_exhaustion).with(msg, claim)
         end
       end
 
-      it 'logs a distrinct error when claim is not found' do
-        BenefitsIntake::SubmitClaimJob
-          .within_sidekiq_retries_exhausted_block({ 'args' => [claim.id - 1] }) do
-            expect(SavedClaim).to receive(:find_by).with(id: claim.id - 1)
+      it 'logs a distinct error when claim is not found' do
+        msg = { 'args' => [claim.id - 1, {}], 'class' => 'BenefitsIntake::SubmitClaimJob', 'error_message' => 'An error occurred', 'queue' => 'low' }
+        BenefitsIntake::SubmitClaimJob.within_sidekiq_retries_exhausted_block(msg) do
+          expect(SavedClaim).to receive(:find_by).with(id: claim.id - 1)
+          expect(Kafka).not_to receive(:submit_event)
 
-            exhaustion_msg['args'] = [claim.id - 1]
-
-            expect(monitor).to receive(:track_submission_exhaustion).with(exhaustion_msg, nil)
+          expect(monitor).to receive(:track_submission_exhaustion).with(msg, nil)
         end
       end
     end
