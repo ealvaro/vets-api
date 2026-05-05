@@ -1,4 +1,20 @@
 {
+  "1151 development to VAMC": {
+    "friendlyName": "Request for medical records related to incident",
+    "shortDescription": "We’ve requested information from the VA medical center related to the incident you reported.",
+    "supportAliases": [
+      "1151 development to VAMC"
+    ],
+    "noActionNeeded": true,
+    "longDescription": {
+      "blocks": [
+        {
+          "type": "paragraph",
+          "content": "We’ve sent a request for more information to the VA medical center you indicated. We asked them to send us any medical records they have for you from your time there."
+        }
+      ]
+    }
+  },
   "21-4142": {
     "friendlyName": "Authorization to disclose information",
     "shortDescription": "We need your permission to request your personal information from a non-VA source, like a private doctor or hospital.",
@@ -746,6 +762,24 @@
       ]
     }
   },
+  "DBQ CARDIO Heart": {
+    "friendlyName": "Heart condition exam",
+    "shortDescription": "We’ve requested an exam for your heart condition. The examiner’s office will contact you to schedule this appointment.",
+    "supportAliases": [
+      "DBQ CARDIO Heart"
+    ],
+    "noActionNeeded": true,
+    "isDBQ": true,
+    "isSensitive": true,
+    "longDescription": {
+      "blocks": [
+        {
+          "type": "paragraph",
+          "content": "For your benefits claim, we’ve requested an exam to evaluate your heart condition. The examiner’s office will contact you to schedule this appointment."
+        }
+      ]
+    }
+  },
   "DBQ CARDIO Hypertension": {
     "friendlyName": "Hypertension (high blood pressure) exam",
     "shortDescription": "We’ve requested an exam for your hypertension (high blood pressure). The examiner’s office will contact you to schedule this appointment.",
@@ -818,6 +852,24 @@
       ]
     }
   },
+  "DBQ MUSC Ankle": {
+    "friendlyName": "Ankle exam",
+    "shortDescription": "We’ve requested an exam for your ankle. The examiner’s office will contact you to schedule this appointment.",
+    "supportAliases": [
+      "DBQ MUSC Ankle"
+    ],
+    "noActionNeeded": true,
+    "isDBQ": true,
+    "isSensitive": true,
+    "longDescription": {
+      "blocks": [
+        {
+          "type": "paragraph",
+          "content": "For your benefits claim, we’ve requested an exam to understand your ankle condition. The examiner’s office will contact you to schedule this appointment."
+        }
+      ]
+    }
+  },
   "DBQ MUSC Back (thoracolumbar spine)": {
     "friendlyName": "Back pain exam",
     "shortDescription": "We’ve requested an exam to understand your back condition. The examiner’s office will contact you to schedule this appointment.",
@@ -854,6 +906,24 @@
       ]
     }
   },
+  "DBQ MUSC Hip and Thigh": {
+    "friendlyName": "Hip or thigh exam",
+    "shortDescription": "We’ve requested an exam for your hip or thigh condition. The examiner’s office will contact you to schedule this appointment.",
+    "supportAliases": [
+      "DBQ MUSC Hip and Thigh"
+    ],
+    "noActionNeeded": true,
+    "isDBQ": true,
+    "isSensitive": true,
+    "longDescription": {
+      "blocks": [
+        {
+          "type": "paragraph",
+          "content": "For your benefits claim, we’ve requested an exam to understand your hip or thigh condition. The examiner’s office will contact you to schedule this appointment."
+        }
+      ]
+    }
+  },
   "DBQ MUSC Knee and Lower Leg": {
     "friendlyName": "Knee and leg exam",
     "shortDescription": "We’ve requested an exam for your knee and lower leg. The examiner’s office will contact you to schedule this appointment.",
@@ -868,6 +938,24 @@
         {
           "type": "paragraph",
           "content": "For your benefits claim, we’ve requested an exam for your knee and lower leg. The examiner’s office will contact you to schedule this appointment."
+        }
+      ]
+    }
+  },
+  "DBQ MUSC Neck (Cervical Spine)": {
+    "friendlyName": "Cervical spine (neck) exam",
+    "shortDescription": "We’ve requested an exam for your neck condition. The examiner’s office will contact you to schedule this appointment.",
+    "supportAliases": [
+      "DBQ MUSC Neck (Cervical Spine)"
+    ],
+    "noActionNeeded": true,
+    "isDBQ": true,
+    "isSensitive": true,
+    "longDescription": {
+      "blocks": [
+        {
+          "type": "paragraph",
+          "content": "For your benefits claim, we’ve requested an exam to understand your neck condition. The examiner’s office will contact you to schedule this appointment."
         }
       ]
     }
