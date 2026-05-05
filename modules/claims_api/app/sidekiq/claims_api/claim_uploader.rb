@@ -7,7 +7,7 @@ module ClaimsApi
   class ClaimUploader < ClaimsApi::ServiceBase
     sidekiq_options retry: true, unique_until: :success
 
-    def perform(uuid, record_type) # rubocop:disable Metrics/MethodLength
+    def perform(uuid, record_type)
       claim_object = ClaimsApi::SupportingDocument.find_by(id: uuid) ||
                      ClaimsApi::AutoEstablishedClaim.find_by(id: uuid)
 
@@ -20,35 +20,16 @@ module ClaimsApi
 
         self.class.perform_in(30.minutes, uuid, record_type)
       else
-        auth_headers = auto_claim.auth_headers
         uploader = claim_object.uploader
         original_filename = claim_object.file_data['filename']
         uploader.retrieve_from_store!(original_filename)
         file_body = uploader.read
         ClaimsApi::Logger.log('lighthouse_claim_uploader', claim_id: auto_claim.id, attachment_id: uuid)
-        if Flipper.enabled? :claims_claim_uploader_use_bd
-          bd_upload_body(auto_claim:, file_body:, doc_type:, original_filename:)
-        else
-          EVSS::DocumentsService.new(auth_headers).upload(file_body, claim_upload_document(claim_object))
-        end
+        bd_upload_body(auto_claim:, file_body:, doc_type:, original_filename:)
       end
     end
 
     private
-
-    ##
-    # Constructs error message used when creation of auto_established_claim fails.
-    #
-    # @param [String] uuid The unique ID of attachment being submitted
-    # @param [String] record_type Type of record, either 'claim' or 'document'
-    # @param [String] auto_claim_id ID associated with the failed auto_established_claim
-    #
-    # @return [String] Message to include in slack alert
-    def build_failure_alert_msg(uuid, record_type, auto_claim_id)
-      uploadee = record_type == 'claim' ? '526EZ PDF' : "attachment #{uuid}"
-      "Claim Uploader job failed to upload #{uploadee} to Benefits Documents API " \
-        "due to claim submission error for claim #{auto_claim_id}"
-    end
 
     def bd_upload_body(auto_claim:, file_body:, doc_type:, original_filename:)
       fh = Tempfile.new(['pdf_path', '.pdf'], binmode: true)

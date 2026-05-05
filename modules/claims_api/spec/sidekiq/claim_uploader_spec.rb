@@ -8,7 +8,6 @@ RSpec.describe ClaimsApi::ClaimUploader, type: :job do
   before do
     Sidekiq::Job.clear_all
     allow(Flipper).to receive(:enabled?).with(:claims_api_bd_refactor).and_return false
-    allow(Flipper).to receive(:enabled?).with(:claims_claim_uploader_use_bd).and_return false
     allow(Flipper).to receive(:enabled?).with(:claims_load_testing).and_return false
   end
 
@@ -92,34 +91,11 @@ RSpec.describe ClaimsApi::ClaimUploader, type: :job do
   end
 
   it 'submits successfully with BD' do
-    allow(Flipper).to receive(:enabled?).with(:claims_claim_uploader_use_bd).and_return true
     expect_any_instance_of(ClaimsApi::BD).to receive(:upload).and_return true
 
     subject.new.perform(supporting_document.id, 'document')
     supporting_document.reload
     expect(auto_claim.uploader.blank?).to be(false)
-  end
-
-  # relates to API-14302 and API-14303
-  # do not remove uploads from S3 until we feel that uploads to EVSS are stable
-  it 'on successful call it does not delete the file from S3' do
-    evss_service_stub = instance_double(EVSS::DocumentsService)
-    allow(EVSS::DocumentsService).to receive(:new) { evss_service_stub }
-    allow(evss_service_stub).to receive(:upload) { OpenStruct.new(response: 200) }
-
-    subject.new.perform(supporting_document.id, 'document')
-    supporting_document.reload
-    expect(supporting_document.uploader.blank?).to be(false)
-  end
-
-  it 'if an evss_id is nil, and claim is not errored, it reschedules the sidekiq job to the future' do
-    evss_service_stub = instance_double(EVSS::DocumentsService)
-    allow(EVSS::DocumentsService).to receive(:new) { evss_service_stub }
-    allow(evss_service_stub).to receive(:upload) { OpenStruct.new(response: 200) }
-
-    subject.new.perform(pending_auto_claim.id, 'claim')
-    pending_auto_claim.reload
-    expect(pending_auto_claim.uploader.blank?).to be(false)
   end
 
   it 'if an evss_id is nil, and claim is errored, it reschedules the sidekiq job to the future' do
@@ -129,46 +105,10 @@ RSpec.describe ClaimsApi::ClaimUploader, type: :job do
     expect(subject.jobs.first['args']).to eq([errored_auto_claim.id, 'claim'])
   end
 
-  it 'transforms a claim document to the right properties for EVSS' do
-    evss_service_stub = instance_double(EVSS::DocumentsService)
-    allow(EVSS::DocumentsService).to receive(:new) { evss_service_stub }
-    expect(evss_service_stub).to receive(:upload).with(any_args, OpenStruct.new(
-                                                                   file_name: supporting_document.file_name,
-                                                                   document_type: supporting_document.document_type,
-                                                                   description: supporting_document.description,
-                                                                   evss_claim_id: supporting_document.evss_claim_id,
-                                                                   tracked_item_id: supporting_document.tracked_item_id
-                                                                 ))
-
-    subject.new.perform(supporting_document.id, 'document')
-
-    supporting_document.reload
-    expect(supporting_document.uploader.blank?).to be(false)
-  end
-
-  it 'transforms a 526 claim form to the right properties for EVSS' do
-    evss_service_stub = instance_double(EVSS::DocumentsService)
-    allow(EVSS::DocumentsService).to receive(:new) { evss_service_stub }
-
-    expect(evss_service_stub).to receive(:upload).with(any_args, OpenStruct.new(
-                                                                   file_name: auto_claim.file_name,
-                                                                   document_type: auto_claim.document_type,
-                                                                   description: auto_claim.description,
-                                                                   evss_claim_id: auto_claim.evss_id,
-                                                                   tracked_item_id: auto_claim.id
-                                                                 ))
-
-    subject.new.perform(auto_claim.id, 'claim')
-
-    auto_claim.reload
-    expect(auto_claim.uploader.blank?).to be(false)
-  end
-
   describe 'BD document type' do
     it 'is a 526' do
       tf = Tempfile.new(['pdf_path', '.pdf'], binmode: true)
       allow(Tempfile).to receive(:new).and_return tf
-      allow(Flipper).to receive(:enabled?).with(:claims_claim_uploader_use_bd).and_return true
 
       args = { claim: auto_claim, doc_type: 'L122', original_filename: 'extras.pdf', pdf_path: tf.path }
       expect_any_instance_of(ClaimsApi::BD).to receive(:upload).with(args).and_return true
@@ -178,7 +118,6 @@ RSpec.describe ClaimsApi::ClaimUploader, type: :job do
     it 'is an attachment' do
       tf = Tempfile.new(['pdf_path', '.pdf'], binmode: true)
       allow(Tempfile).to receive(:new).and_return tf
-      allow(Flipper).to receive(:enabled?).with(:claims_claim_uploader_use_bd).and_return true
 
       args = { claim: supporting_document.auto_established_claim, doc_type: 'L023',
                original_filename: 'extras.pdf', pdf_path: tf.path }
@@ -189,7 +128,6 @@ RSpec.describe ClaimsApi::ClaimUploader, type: :job do
     it 'is an attachment resulting in error' do
       tf = Tempfile.new(['pdf_path', '.pdf'], binmode: true)
       allow(Tempfile).to receive(:new).and_return tf
-      allow(Flipper).to receive(:enabled?).with(:claims_claim_uploader_use_bd).and_return true
 
       body = {
         messages: [
