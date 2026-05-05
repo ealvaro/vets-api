@@ -33,6 +33,8 @@ module BenefitsClaims
       400AFM
       400ORR
       930CLQENR
+      940OSTEM
+      950SSTEM
     ].freeze
 
     # Accepts either a user object or an ICN string for backwards compatibility
