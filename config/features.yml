@@ -110,6 +110,10 @@ features:
     description: >
       The Ask VA form alert banner with a link to the old portal. To use while form is down for maintenance.
     enable_in_development: true
+  ask_va_business_personal:
+    actor_type: user
+    description: Enables the page to transition to the business flow
+    enable_in_development: true
   ask_va_canary_release:
     actor_type: cookie_id
     description: >
