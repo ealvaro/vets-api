@@ -30,7 +30,7 @@ describe TravelPay::DocumentsService do
 
   before do
     allow_any_instance_of(TravelPay::DocumentsClient).to receive(:get_document_binary).and_return(doc_binary_data)
-    allow(auth_manager).to receive_messages(authorize: auth_session)
+    allow(auth_manager).to receive_messages(authorize: auth_session, user:)
   end
 
   describe '#get_document_summaries' do
@@ -118,6 +118,77 @@ describe TravelPay::DocumentsService do
         expect { service.upload_document(claim_id, invalid_file) }.to raise_error(
           Common::Exceptions::BadRequest
         )
+      end
+    end
+
+    context 'when document is HEIC' do
+      let(:heic_file) do
+        heic_path = Rails.root.join('modules', 'travel_pay', 'spec', 'fixtures', 'pixel-working.heic')
+        Rack::Test::UploadedFile.new(heic_path, 'image/heic')
+      end
+
+      context 'when HEIC conversion feature flag is enabled' do
+        before do
+          allow(auth_manager).to receive(:user).and_return(user)
+          allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_heic_conversion, user).and_return(true)
+        end
+
+        it 'converts the HEIC document to JPG before uploading' do
+          converted_doc = nil
+          expect_any_instance_of(TravelPay::DocumentsClient).to receive(:add_document) do |_instance, session, params|
+            expect(session).to eq(auth_session)
+            expect(params[:claim_id]).to eq(claim_id)
+            converted_doc = params[:document]
+            expect(converted_doc).to be_an_instance_of(ActionDispatch::Http::UploadedFile)
+            upload_response
+          end
+
+          result = service.upload_document(claim_id, heic_file)
+          expect(result).to eq({ 'documentId' => '123e4567-e89b-12d3-a456-426614174000' })
+          expect(File.extname(converted_doc.original_filename)).to eq('.jpg')
+          expect(converted_doc.content_type).to eq('image/jpeg')
+        end
+      end
+
+      context 'when HEIC conversion feature flag is disabled' do
+        before do
+          allow(auth_manager).to receive(:user).and_return(user)
+          allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_heic_conversion, user).and_return(false)
+        end
+
+        it 'raises a Common::Exceptions::BadRequest for HEIC files' do
+          expect { service.upload_document(claim_id, heic_file) }.to raise_error(
+            Common::Exceptions::BadRequest
+          )
+        end
+      end
+    end
+
+    context 'when document is HEIF' do
+      let(:heif_file) do
+        heic_path = Rails.root.join('modules', 'travel_pay', 'spec', 'fixtures', 'pixel-working.heic')
+        tf = Tempfile.new(['test', '.heif'])
+        tf.binmode
+        tf.write(File.binread(heic_path))
+        tf.rewind
+        Rack::Test::UploadedFile.new(tf.path, 'image/heif')
+      end
+
+      before do
+        allow(auth_manager).to receive(:user).and_return(user)
+        allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_heic_conversion, user).and_return(true)
+      end
+
+      it 'allows and converts HEIF files when feature flag is enabled' do
+        converted_doc = nil
+        allow_any_instance_of(TravelPay::DocumentsClient).to receive(:add_document) do |_instance, _session, params|
+          converted_doc = params[:document]
+          upload_response
+        end
+
+        expect { service.upload_document(claim_id, heif_file) }.not_to raise_error
+        expect(File.extname(converted_doc.original_filename)).to eq('.jpg')
+        expect(converted_doc.content_type).to eq('image/jpeg')
       end
     end
 

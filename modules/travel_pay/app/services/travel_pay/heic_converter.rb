@@ -5,9 +5,9 @@ require 'base64'
 
 module TravelPay
   ##
-  # Converts HEIC/HEIF receipt images to JPG format.
+  # Converts HEIC/HEIF images to JPG format.
   #
-  class ReceiptConverter
+  class HeicConverter
     # @param user [User] the current user for feature flag checks
     def initialize(user)
       @user = user
@@ -33,6 +33,38 @@ module TravelPay
 
       converted_receipt = convert_heic_to_jpg(receipt)
       params.merge('expenseReceipt' => converted_receipt)
+    rescue Common::Exceptions::UnprocessableEntity
+      raise
+    rescue => e
+      error_message = "HEIC conversion failed: #{e.class} - #{e.message}"
+      Rails.logger.error(error_message)
+      raise Common::Exceptions::UnprocessableEntity.new(detail: error_message)
+    end
+
+    # Converts an uploaded HEIC/HEIF file to a JPG uploaded file.
+    # Yields the converted file to the block; the underlying tempfile is
+    # automatically closed and deleted when the block returns.
+    #
+    # @param uploaded_file [ActionDispatch::Http::UploadedFile] the uploaded HEIC/HEIF file
+    # @yield [ActionDispatch::Http::UploadedFile] the converted JPG file
+    # @raise [Common::Exceptions::UnprocessableEntity] if conversion fails
+    def convert_file_to_jpg(uploaded_file)
+      Rails.logger.info('Converting HEIC document upload to JPG')
+
+      jpg_binary = convert_image_to_jpg(uploaded_file.read)
+
+      converted_tempfile = Tempfile.new(['converted', '.jpg'])
+      converted_tempfile.binmode
+      converted_tempfile.write(jpg_binary)
+      converted_tempfile.rewind
+
+      converted_file = ActionDispatch::Http::UploadedFile.new(
+        tempfile: converted_tempfile,
+        filename: uploaded_file.original_filename.sub(/\.hei[cf]$/i, '.jpg'),
+        type: 'image/jpeg'
+      )
+
+      yield converted_file
     rescue Common::Exceptions::UnprocessableEntity
       raise
     rescue => e

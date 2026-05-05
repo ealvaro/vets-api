@@ -40,14 +40,17 @@ module TravelPay
       end
 
       validate_document_extension!(document)
-      validate_document_size!(document)
 
-      params = { claim_id:, document: }
-      auth_session = @auth_manager.authorize
+      convert_heic_document(document) do |doc|
+        validate_document_size!(doc)
 
-      documents_response = client.add_document(auth_session, params)
+        params = { claim_id:, document: doc }
+        auth_session = @auth_manager.authorize
 
-      documents_response.body['data']
+        documents_response = client.add_document(auth_session, params)
+
+        documents_response.body['data']
+      end
     end
 
     def delete_document(claim_id, document_id)
@@ -72,10 +75,26 @@ module TravelPay
       TravelPay::DocumentsClient.new
     end
 
+    def heic_conversion_enabled?
+      Flipper.enabled?(:travel_pay_enable_heic_conversion, @auth_manager.user)
+    end
+
+    def convert_heic_document(document, &)
+      extension = File.extname(document.original_filename).delete('.').downcase
+      return yield document unless %w[heic heif].include?(extension)
+
+      heic_converter.convert_file_to_jpg(document, &)
+    end
+
+    def heic_converter
+      @heic_converter ||= TravelPay::HeicConverter.new(@auth_manager.user)
+    end
+
     def validate_document_extension!(document)
       return if document.blank?
 
       allowed_extensions = %w[pdf jpeg jpg png gif bmp tif tiff doc docx]
+      allowed_extensions.push('heic', 'heif') if heic_conversion_enabled?
 
       # Extract the extension from the original filename
       extension = File.extname(document.original_filename).delete('.').downcase

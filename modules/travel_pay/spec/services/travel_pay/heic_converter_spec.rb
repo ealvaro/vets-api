@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe TravelPay::ReceiptConverter do
+RSpec.describe TravelPay::HeicConverter do
   subject(:converter) { described_class.new(user) }
 
   let(:user) { build(:user) }
@@ -200,6 +200,101 @@ RSpec.describe TravelPay::ReceiptConverter do
 
       it 'returns params unchanged for non-HEIC receipts' do
         expect(converter.convert_if_heic(jpeg_params)).to eq(jpeg_params)
+      end
+    end
+  end
+
+  describe '#convert_file_to_jpg' do
+    let(:heic_binary) do
+      fixture_path = Rails.root.join('modules', 'travel_pay', 'spec', 'fixtures', 'pixel-working.heic')
+      File.binread(fixture_path)
+    end
+
+    context 'when given a HEIC uploaded file' do
+      let(:uploaded_file) do
+        tempfile = Tempfile.new(['test', '.heic'])
+        tempfile.binmode
+        tempfile.write(heic_binary)
+        tempfile.rewind
+
+        ActionDispatch::Http::UploadedFile.new(
+          tempfile:,
+          filename: 'photo.heic',
+          type: 'image/heic'
+        )
+      end
+
+      it 'returns an UploadedFile with JPG content type' do
+        converter.convert_file_to_jpg(uploaded_file) do |result|
+          expect(result).to be_a(ActionDispatch::Http::UploadedFile)
+          expect(result.content_type).to eq('image/jpeg')
+        end
+      end
+
+      it 'renames the filename from .heic to .jpg' do
+        converter.convert_file_to_jpg(uploaded_file) do |result|
+          expect(result.original_filename).to eq('photo.jpg')
+        end
+      end
+
+      it 'produces a non-empty tempfile' do
+        converter.convert_file_to_jpg(uploaded_file) do |result|
+          expect(result.tempfile.size).to be_positive
+        end
+      end
+
+      it 'logs the conversion' do
+        expect(Rails.logger).to receive(:info).with('Converting HEIC document upload to JPG')
+
+        converter.convert_file_to_jpg(uploaded_file) { |_| nil }
+      end
+    end
+
+    context 'when given a HEIF uploaded file' do
+      let(:uploaded_file) do
+        tempfile = Tempfile.new(['test', '.heif'])
+        tempfile.binmode
+        tempfile.write(heic_binary)
+        tempfile.rewind
+
+        ActionDispatch::Http::UploadedFile.new(
+          tempfile:,
+          filename: 'photo.HEIF',
+          type: 'image/heif'
+        )
+      end
+
+      it 'renames the filename from .HEIF to .jpg' do
+        converter.convert_file_to_jpg(uploaded_file) do |result|
+          expect(result.original_filename).to eq('photo.jpg')
+        end
+      end
+    end
+
+    context 'when conversion fails' do
+      let(:uploaded_file) do
+        tempfile = Tempfile.new(['test', '.heic'])
+        tempfile.binmode
+        tempfile.write('not a real image')
+        tempfile.rewind
+
+        ActionDispatch::Http::UploadedFile.new(
+          tempfile:,
+          filename: 'bad.heic',
+          type: 'image/heic'
+        )
+      end
+
+      before do
+        allow(MiniMagick::Image).to receive(:open).and_raise(StandardError.new('conversion error'))
+      end
+
+      it 'raises UnprocessableEntity and logs the error' do
+        expect(Rails.logger).to receive(:error)
+          .with('HEIC conversion failed: StandardError - conversion error')
+
+        expect { converter.convert_file_to_jpg(uploaded_file) { |_| nil } }
+          .to raise_error(Common::Exceptions::UnprocessableEntity)
       end
     end
   end
