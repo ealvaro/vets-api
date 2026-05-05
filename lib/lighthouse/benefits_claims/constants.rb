@@ -33,12 +33,13 @@ module BenefitsClaims
     ].freeze
 
     FIRST_PARTY_AS_THIRD_PARTY_OVERRIDES = [
-      'PMR Pending',
-      'Proof of service (DD214, etc.)',
-      'NG1 - National Guard Records Request',
-      'VHA Outpatient Treatment Records (10-7131)',
+      'Audit Request',
       'HAIMS STR Follow-up',
-      'Audit Request'
+      'NG1 - National Guard Records Request',
+      'PMR Pending',
+      'Prison Development - 21-4193 Needed',
+      'Proof of service (DD214, etc.)',
+      'VHA Outpatient Treatment Records (10-7131)'
     ].freeze
   end
 end
