@@ -31,6 +31,12 @@ describe Mobile::V0::Adapters::LighthouseIndividualClaims, :aggregate_failures d
     subject.parse(claim_data[1])
   end
 
+  before do
+    allow(Flipper).to receive(:enabled?)
+      .with(:efolder_use_lighthouse_benefits_documents_service, anything)
+      .and_return(false)
+  end
+
   it 'returns nil when provided nil' do
     expect(subject.parse(nil)).to be_nil
   end
@@ -376,6 +382,36 @@ describe Mobile::V0::Adapters::LighthouseIndividualClaims, :aggregate_failures d
         expect(BenefitsClaims::TrackedItemContent).not_to receive(:find_by_display_name)
         test_claim
       end
+    end
+  end
+
+  describe "when ':efolder_use_lighthouse_benefits_documents_service' feature flag is enabled" do
+    before do
+      allow(Flipper).to receive(:enabled?)
+        .with(:efolder_use_lighthouse_benefits_documents_service, anything)
+        .and_return(true)
+    end
+
+    it 'uses documentUuid for untracked documents' do
+      other_documents_list = claim_with_untracked_documents[:events_timeline].select do |event|
+        event[:type] == :other_documents_list
+      end
+      expect(other_documents_list.map(&:document_id))
+        .to include('{4270E1D4-79DB-6D38-F60F-D18593C89C10}')
+    end
+
+    it 'uses documentUuid for tracked item documents' do
+      tracked_items = claim_with_tracked_documents[:events_timeline].filter_map do |event|
+        event.to_h if %w[still_need_from_you_list received_from_you_list].include?(event[:type].to_s)
+      end
+      tracked_with_doc = tracked_items.find { |item| item[:documents].present? }
+      expect(tracked_with_doc[:documents].first[:document_id])
+        .to eq('{CAB50AEC-BC3A-F27F-2496-9BDF5C803318}')
+    end
+
+    it 'uses documentUuid in download_eligible_documents' do
+      download_eligible = claim_with_tracked_documents[:download_eligible_documents]
+      expect(download_eligible[0][:document_id]).to eq('{CAB50AEC-BC3A-F27F-2496-9BDF5C803318}')
     end
   end
 end

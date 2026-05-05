@@ -33,6 +33,9 @@ RSpec.describe 'Mobile::V0::Claim', type: :request do
             anything
           )
           .and_return(false)
+        allow(Flipper).to receive(:enabled?)
+          .with(:efolder_use_lighthouse_benefits_documents_service, anything)
+          .and_return(false)
         allow(Flipper).to receive(:enabled?).with('schema_contract_claims_and_appeals_get_claim').and_return(false)
       end
 

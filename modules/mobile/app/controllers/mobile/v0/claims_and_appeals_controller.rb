@@ -234,7 +234,7 @@ module Mobile
         # end
 
         # For now, all providers use Lighthouse adapter
-        Mobile::V0::Adapters::LighthouseIndividualClaims.new
+        Mobile::V0::Adapters::LighthouseIndividualClaims.new(@current_user)
       end
 
       def appeal_adapter

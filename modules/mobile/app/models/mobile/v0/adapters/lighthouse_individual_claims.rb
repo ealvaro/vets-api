@@ -163,7 +163,17 @@ module Mobile
               upload_date: document['uploadDate'],
               file_type: document['documentTypeLabel'],
               filename: document['originalFileName'],
-              document_id: document['documentId']
+              # A note on document id's:
+              # `documentId` is synonymous with `currentVersionUuid` for claims evidence documents
+              # `documentUuid` is synonymous with `uuid` for claims evidence documents
+              # The former is used for document downloads using the VBMS service, while the latter is used for document
+              # downloads using the Lighthouse Benefits Documents service.
+              document_id: if Flipper.enabled?(:efolder_use_lighthouse_benefits_documents_service,
+                                               @user)
+                             document['documentUuid']
+                           else
+                             document['documentId']
+                           end
             )
           end
         end
@@ -233,7 +243,13 @@ module Mobile
               document_type: nil,
               filename: document['originalFileName'],
               upload_date: document['uploadDate'],
-              document_id: document['documentId']
+              # See `create_events_for_documents` for the documentId / documentUuid distinction.
+              document_id: if Flipper.enabled?(:efolder_use_lighthouse_benefits_documents_service,
+                                               @user)
+                             document['documentUuid']
+                           else
+                             document['documentId']
+                           end
             }
             ClaimDocument.new(document_hash)
           end

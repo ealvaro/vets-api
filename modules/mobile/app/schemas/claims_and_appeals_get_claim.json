@@ -125,6 +125,7 @@
                 "additionalProperties": false,
                 "properties": {
                   "documentId": { "type": "string" },
+                  "documentUuid": { "type": "string" },
                   "documentTypeLabel": { "type": ["string", "null"] },
                   "originalFileName": { "type": ["string", "null"] },
                   "trackedItemId": { "type": ["integer", "null"] },
