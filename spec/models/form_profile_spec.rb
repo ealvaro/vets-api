@@ -1894,7 +1894,7 @@ RSpec.describe FormProfile, type: :model do
                   expect(monitor)
                     .to have_received(:track_event)
                     .with(
-                      'warn', 'Failed to retrieve awards pension data', 'awards_pension_error', {
+                      'warn', 'Failed to retrieve awards pension data for awards', 'awards_pension_error', {
                         user_account_uuid: user&.user_account_uuid,
                         error: error.message,
                         form_id: '686C-674-V2'
@@ -2159,7 +2159,7 @@ RSpec.describe FormProfile, type: :model do
                   expect(monitor)
                     .to have_received(:track_event)
                     .with(
-                      'warn', 'Failed to retrieve awards pension data', 'awards_pension_error', {
+                      'warn', 'Failed to retrieve awards pension data for awards', 'awards_pension_error', {
                         user_account_uuid: user&.user_account_uuid,
                         error: error.message,
                         form_id: '686C-674-V2'

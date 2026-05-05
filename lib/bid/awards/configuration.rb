@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'bid/configuration'
+require 'bid/awards/jwt_generator'
 
 # module for BID service
 module BID
@@ -19,14 +20,6 @@ module BID
       # @return [String] the service name identifier
       def service_name
         'BID/Awards'
-      end
-
-      # Constructs the request headers for API calls
-      # @return [Hash] headers hash including authorization token
-      def request_headers
-        {
-          Authorization: "Bearer #{Settings.bid.awards.credentials}"
-        }
       end
 
       # Checks if mock mode is enabled for the BID Awards service

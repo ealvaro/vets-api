@@ -164,8 +164,11 @@ class FormProfiles::VA686c674v2 < FormProfile
   # Tracks pension award errors using the monitor service
   #
   # @param error [Exception] The error that occurred during pension award retrieval
-  def track_pension_award_error(error)
-    monitor.track_event('warn', 'Failed to retrieve awards pension data', 'awards_pension_error', {
+  def track_pension_award_error(error:, type:)
+    monitor.track_event('warn',
+                        "Failed to retrieve awards pension data for #{type}",
+                        'awards_pension_error',
+                        {
                           user_account_uuid: user&.user_account_uuid,
                           error: error.message,
                           form_id:

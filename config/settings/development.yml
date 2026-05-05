@@ -89,7 +89,7 @@ bgs:
 bid:
   awards:
     base_url: ~
-    credentials: ~
+    jwt_secret: abcd1234abcd1234abcd1234abcd1234abcd1234
     mock: true
 binaries:
   clamdscan: "/usr/bin/clamdscan"

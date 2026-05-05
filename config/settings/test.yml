@@ -88,7 +88,7 @@ bgs:
 bid:
   awards:
     base_url: https://fake_url.com
-    credentials: fake_auth
+    jwt_secret: abcd1234abcd1234abcd1234abcd1234abcd1234
     mock: true
 binaries:
   clamdscan: "/usr/bin/clamdscan"

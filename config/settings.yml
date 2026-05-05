@@ -89,7 +89,7 @@ bgs:
 bid:
   awards:
     base_url: <%= ENV['bid__awards__base_url'] %>
-    credentials: <%= ENV['bid__awards__credentials'] %>
+    jwt_secret: <%= ENV['bid__awards__jwt_secret'] %>
     mock: true
 binaries:
   clamdscan: "/usr/bin/clamdscan"

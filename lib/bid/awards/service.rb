@@ -44,10 +44,12 @@ module BID
 
       private
 
-      # Constructs the authorization headers for API requests
-      # @return [Hash] headers hash with Bearer token authorization
+      # Constructs the request headers for API calls
+      # @return [Hash] headers hash including authorization token
       def request_headers
-        config.request_headers
+        {
+          Authorization: "Bearer #{BID::Awards::JwtGenerator.encode_jwt}"
+        }
       end
 
       def participant_id
