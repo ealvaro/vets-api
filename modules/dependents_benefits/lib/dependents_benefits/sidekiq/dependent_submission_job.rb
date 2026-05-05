@@ -68,7 +68,7 @@ module DependentsBenefits::Sidekiq
       @user_data = parent_claim.user_data # retrieve and populate 'veteran_information'
 
       monitor.track_info_event("Starting #{self.class} for parent_claim_id #{parent_claim_id}",
-                               action: 'start', component:, parent_claim_id:)
+                               action: 'start', component:, parent_claim_id:, proc_id:)
 
       # Early exit optimization - prevents unnecessary service calls
       return if parent_group_failed?
@@ -125,7 +125,7 @@ module DependentsBenefits::Sidekiq
     rescue => e
       monitor.track_error_event("Submission attempt failure in #{self.class}",
                                 action: 'claim.error', component:, error: e.message,
-                                parent_claim_id:, saved_claim_id: claim.id)
+                                parent_claim_id:, saved_claim_id: claim.id, proc_id:)
       mark_submission_attempt_failed(submission_attempt, e)
       mark_in_progress_form_pending
       DependentsBenefits::ServiceResponse.new(status: false, error: e.message)

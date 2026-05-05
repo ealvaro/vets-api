@@ -122,6 +122,12 @@ module DependentsBenefits
 
     private
 
+    # @see Logging::BaseMonitor#submit_event
+    def submit_event(level, message, stats_key, **context)
+      context[:call_location] ||= caller_locations.second # the caller to the `track_*_event` method
+      super(level, message, stats_key, **context)
+    end
+
     ##
     # Module application name used for logging
     # @return [String]

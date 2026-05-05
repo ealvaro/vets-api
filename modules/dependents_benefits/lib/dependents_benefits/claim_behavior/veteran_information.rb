@@ -30,10 +30,14 @@ module DependentsBenefits
       def user_data
         if @user_data.blank?
           @user_data = begin
-            JSON.parse(child_of_groups&.last&.user_data)
+            # since we do not know if this claim is the parent or child in the claim group,
+            # we need to check a child of the group for the parent claim group which has user data
+            parent_group = child_of_groups&.last&.parent_claim_group_for_child
+            JSON.parse(parent_group&.user_data)
           rescue => e
             monitor.track_error_event('Dependents Benefits user data could not be parsed to json.',
-                                      action: 'user_data_parse_error', component:, form_id:, error: e.message)
+                                      action: 'user_data_parse_error', component:,
+                                      form_id:, claim_id: id, error: e.message)
             nil
           end
           add_veteran_info(@user_data)

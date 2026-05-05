@@ -52,7 +52,8 @@ module DependentsBenefits::Sidekiq::Include
     # @raise [::Sidekiq::JobRetry::Skip] for permanent failures to skip retries
     def handle_job_failure(error)
       monitor.track_error_event("Error submitting #{self.class}",
-                                action: 'error', component:, error:, parent_claim_id:, claim_id: parent_claim_id)
+                                action: 'error', component:, error:,
+                                parent_claim_id:, claim_id: parent_claim_id, proc_id:)
 
       if permanent_failure?(error)
         # Skip Sidekiq retries for permanent failures

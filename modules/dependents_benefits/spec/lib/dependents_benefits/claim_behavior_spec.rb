@@ -540,6 +540,7 @@ RSpec.describe DependentsBenefits::ClaimBehavior do
         }
       }
       expect(claim_group).to receive(:user_data).and_return veteran_info.to_json
+      expect(claim_group).to receive(:parent_claim_group_for_child).and_return claim_group
       expect(claim).to receive(:child_of_groups).and_return([claim_group])
       expect(claim).to receive(:add_veteran_info).and_call_original
 
@@ -555,7 +556,7 @@ RSpec.describe DependentsBenefits::ClaimBehavior do
       expect(claim_group).not_to receive(:user_data)
       expect(monitor_double).to receive(:track_error_event)
 
-      claim.user_data
+      expect(claim.user_data).to be_nil
     end
   end
 

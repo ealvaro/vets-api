@@ -166,8 +166,9 @@ module DependentsBenefits
           claims_evidence_uploader.upload_evidence(claim.id, pa.id, file_path:, form_id:, doctype:)
         end
       rescue => e
+        metric = "#{DependentsBenefits::Monitor::CLAIM_STATS_KEY}.submit_pdf.failure"
         monitor.track_request(:error, 'Evidence submission during Forms API processing failed',
-                              "#{STATS_KEY}.submit_pdf.failure", error: e.message)
+                              metric, error: e.message)
       end
 
       # Limits the allowed parameters for dependents benefits claim submissions
