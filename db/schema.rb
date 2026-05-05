@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_04_16_203655) do
+ActiveRecord::Schema[7.2].define(version: 2026_04_28_181117) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -1934,6 +1934,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_16_203655) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "acting_user_verification_id"
+    t.string "acting_visit_id"
+    t.string "acting_device_id"
     t.index ["acting_user_verification_id"], name: "index_user_actions_on_acting_user_verification_id"
     t.index ["subject_user_verification_id"], name: "index_user_actions_on_subject_user_verification_id"
     t.index ["user_action_event_id"], name: "index_user_actions_on_user_action_event_id"
