@@ -1,7 +1,17 @@
 # frozen_string_literal: true
 
 class SavedClaim::CoeClaim < SavedClaim
+  include CoeClaimFormValidation
+
   FORM = '26-1880'
+
+  def form_matches_schema
+    return super unless rebuild_form_version?
+
+    return unless form_is_string
+
+    validate_coe_rebuild_form
+  end
 
   def send_to_lgy(edipi:, icn:)
     @edipi = edipi
@@ -39,6 +49,12 @@ class SavedClaim::CoeClaim < SavedClaim
   end
 
   private
+
+  def rebuild_form_version?
+    parsed_form.is_a?(Hash) && parsed_form.fetch('version', 1).to_i > 1
+  rescue JSON::ParserError
+    false
+  end
 
   # rubocop:disable Metrics/MethodLength
   def prepare_form_data

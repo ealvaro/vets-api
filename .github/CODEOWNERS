@@ -202,6 +202,7 @@ app/models/claims_api @software/lighthouse-dash
 app/models/claims_api/claim_submission.rb @software/backend-review-group
 app/models/concerns/async_request.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 app/models/concerns/authorization.rb @software/backend-review-group @software/octo-identity
+app/models/concerns/coe_claim_form_validation.rb @software/va-core-veteran-experiences @software/backend-review-group
 app/models/concerns/form526_claim_fast_tracking_concern.rb @software/disability-benefits @software/backend-review-group
 app/models/concerns/ibm_data_dictionary.rb @software/benefits-optimization-aquia @software/backend-review-group
 app/models/concerns/form526_mpi_concern.rb @software/disability-benefits @software/backend-review-group
@@ -2242,6 +2243,7 @@ spec/support/certificates/vic-signing-cert.pem @software/octo-identity
 spec/support/certificates/vic-signing-key.pem @software/octo-identity
 spec/support/claim_letters @software/backend-review-group @software/benefits-management-tools-be
 spec/support/codeowners_parser.rb @software/backend-review-group
+spec/support/coe_claim_form_validation_context.rb @software/va-core-veteran-experiences @software/backend-review-group
 spec/support/controller_spec_helper.rb @software/backend-review-group
 spec/support/database_cleaner.rb @software/backend-review-group
 spec/support/default_configuration_helper.rb @software/backend-review-group
