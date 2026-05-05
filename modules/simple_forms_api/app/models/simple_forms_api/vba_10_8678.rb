@@ -44,6 +44,10 @@ module SimpleFormsApi
       data.dig('fullName', 'last') || ''
     end
 
+    def zip_code_is_us_based
+      %w[USA US].include?(data.dig('address', 'country')&.strip&.upcase)
+    end
+
     def notification_first_name
       first_name
     end
@@ -80,6 +84,7 @@ module SimpleFormsApi
         'veteranFirstName' => first_name,
         'veteranLastName' => last_name,
         'zipCode' => address.zip_code,
+        'fileNumber' => data['va_file_number'].presence || data['ssn'],
         'source' => 'VA Platform Digital Forms',
         'docType' => data['form_number'],
         'businessLine' => 'CMP'
@@ -172,6 +177,8 @@ module SimpleFormsApi
       end
       apps
     end
+
+    def track_user_identity(confirmation_number); end
 
     private
 

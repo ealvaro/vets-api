@@ -98,6 +98,7 @@ RSpec.describe SimpleFormsApi::VBA108678 do
           'veteranFirstName' => data.dig('fullName', 'first'),
           'veteranLastName' => data.dig('fullName', 'last'),
           'zipCode' => data.dig('address', 'zip_code'),
+          'fileNumber' => data['va_file_number'].presence || data['ssn'],
           'source' => 'VA Platform Digital Forms',
           'docType' => data['form_number'],
           'businessLine' => 'CMP'
