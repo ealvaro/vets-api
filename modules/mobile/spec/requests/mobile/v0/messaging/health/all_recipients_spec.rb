@@ -11,9 +11,6 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
 
   before do
     Timecop.freeze(Time.zone.parse('2017-05-01T19:25:00Z'))
-    allow(Flipper).to receive(:enabled?)
-      .with(:mhv_secure_messaging_612_care_systems_fix, anything)
-      .and_return(false)
   end
 
   after do
@@ -78,12 +75,9 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
       expect(response).to match_camelized_response_schema('all_triage_teams')
     end
 
-    it 'responds to GET #index with requires_oh flipper and 612 flipper enabled and returns correct care systems' do
+    it 'responds to GET #index with requires_oh flipper enabled and returns correct care systems' do
       allow(Flipper).to receive(:enabled?)
         .with(:mhv_secure_messaging_cerner_pilot, anything)
-        .and_return(true)
-      allow(Flipper).to receive(:enabled?)
-        .with(:mhv_secure_messaging_612_care_systems_fix, anything)
         .and_return(true)
       VCR.use_cassette('sm_client/session_require_oh') do
         VCR.use_cassette('sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients_require_oh') do
@@ -129,29 +123,6 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
       expect(care_systems[1]['stationNumber']).to eq('978')
       expect(care_systems[2]['healthCareSystemName']).to eq('979')
       expect(care_systems[2]['stationNumber']).to eq('979')
-      expect(response).to match_camelized_response_schema('all_triage_teams', { strict: false })
-    end
-
-    it 'responds to GET #index with requires_oh flipper enabled but 612 disabled and returns correct care systems' do
-      allow(Flipper).to receive(:enabled?)
-        .with(:mhv_secure_messaging_cerner_pilot, anything)
-        .and_return(true)
-      VCR.use_cassette('sm_client/session_require_oh') do
-        VCR.use_cassette('sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients_require_oh') do
-          VCR.use_cassette('mobile/lighthouse_facilities/200_facilities_977_978_979') do
-            get '/mobile/v0/messaging/health/allrecipients', headers: sis_headers
-          end
-        end
-      end
-
-      parsed_response_meta = response.parsed_body['meta']
-      care_systems = parsed_response_meta['careSystems']
-      expect(care_systems.length).to be(3)
-      expect(care_systems[0]['healthCareSystemName']).to eq('Manila VA Clinic')
-      expect(care_systems[1]['healthCareSystemName']).to eq('978')
-      expect(care_systems[2]['healthCareSystemName']).to eq('Chalmers P. Wylie Veterans Outpatient Clinic')
-      expect(response).to be_successful
-      expect(response.body).to be_a(String)
       expect(response).to match_camelized_response_schema('all_triage_teams', { strict: false })
     end
 
@@ -209,32 +180,7 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
         allow_any_instance_of(SM::Client).to receive(:get_all_triage_teams).and_return(data)
       end
 
-      it 'returns a list of the name and station number for each unique care system in meta with 612 off' do
-        VCR.use_cassette('mobile/lighthouse_facilities/200_hardcoded_facilities') do
-          get('/mobile/v0/messaging/health/allrecipients', headers: sis_headers, params:)
-        end
-        expect(response).to be_successful
-        expect(response.body).to be_a(String)
-        parsed_response_meta = response.parsed_body['meta']
-        care_systems = parsed_response_meta['careSystems']
-        expect(care_systems.length).to be(10)
-        expect(care_systems[0]['healthCareSystemName']).to eq('Manila VA Clinic')
-        expect(care_systems[1]['healthCareSystemName']).to eq('612')
-        expect(care_systems[2]['healthCareSystemName']).to eq('978')
-        expect(care_systems[3]['healthCareSystemName']).to eq('Chalmers P. Wylie Veterans Outpatient Clinic')
-        expect(care_systems[4]['healthCareSystemName']).to eq('528')
-        expect(care_systems[5]['healthCareSystemName']).to eq('620')
-        expect(care_systems[6]['healthCareSystemName']).to eq('657')
-        expect(care_systems[7]['healthCareSystemName']).to eq('589')
-        expect(care_systems[8]['healthCareSystemName']).to eq('626')
-        expect(care_systems[9]['healthCareSystemName']).to eq('636')
-      end
-
-      it 'returns a list of the name and station number for each unique care system in meta with 612 on' do
-        allow(Flipper).to receive(:enabled?)
-          .with(:mhv_secure_messaging_612_care_systems_fix, anything)
-          .and_return(true)
-
+      it 'returns a list of the name and station number for each unique care system in meta' do
         VCR.use_cassette('mobile/lighthouse_facilities/200_facilities_977_978_979') do
           get('/mobile/v0/messaging/health/allrecipients', headers: sis_headers, params:)
         end

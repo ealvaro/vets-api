@@ -27,11 +27,7 @@ module Mobile
         resource.records = resource.records.select(&:preferred_team)
         resource = resource.sort(params[:sort])
 
-        resource.metadata[:care_systems] = if Flipper.enabled?(:mhv_secure_messaging_612_care_systems_fix, @user)
-                                             get_unique_care_systems612_fix(resource.records)
-                                           else
-                                             get_unique_care_systems(resource.records)
-                                           end
+        resource.metadata[:care_systems] = get_unique_care_systems(resource.records)
 
         # Even though this is a collection action we are not going to paginate
         options = { meta: resource.metadata }
@@ -47,11 +43,6 @@ module Mobile
       private
 
       def get_unique_care_systems(all_recipients)
-        unique_care_system_ids = all_recipients.uniq(&:station_number).map(&:station_number)
-        map_care_systems(unique_care_system_ids)
-      end
-
-      def get_unique_care_systems612_fix(all_recipients)
         unique_care_system_ids = all_recipients.uniq(&:station_number).map(&:station_number)
         included_complex_systems = MyHealth::FacilitiesHelper::COMPLICATED_SYSTEMS.keys & unique_care_system_ids
         unique_care_system_ids -= included_complex_systems
