@@ -5,7 +5,6 @@ module Mobile
     module Contracts
       class ClaimsAndAppeals < PaginationBase
         params(Schemas::DateRangeSchema) do
-          optional(:use_cache).maybe(:bool, :filled?)
           optional(:show_completed).maybe(:bool, :filled?)
         end
       end

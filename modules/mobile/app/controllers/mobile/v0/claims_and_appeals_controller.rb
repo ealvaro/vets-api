@@ -127,34 +127,25 @@ module Mobile
       end
 
       def fetch_claims_and_appeals
-        use_cache = validated_params[:use_cache]
-
         if Flipper.enabled?(:cst_multi_claim_provider_mobile, @current_user)
-          fetch_claims_and_appeals_multi_provider(use_cache)
+          fetch_claims_and_appeals_multi_provider
         else
-          service_list, service_errors = claims_index_interface.get_accessible_claims_appeals(use_cache)
+          service_list, service_errors = claims_index_interface.get_accessible_claims_appeals
           [service_list, service_errors]
         end
       end
 
-      def fetch_claims_and_appeals_multi_provider(use_cache)
+      def fetch_claims_and_appeals_multi_provider
         raise Pundit::NotAuthorizedError unless claims_authorized? || appeals_authorized?
 
-        cached_data = get_cached_claims_and_appeals if use_cache
         errors = []
+        full_list = []
 
-        unless cached_data
-          full_list = []
-
-          fetch_and_process_data(full_list, errors)
-
-          cached_data = claims_adapter.parse(full_list)
-          set_cached_claims_and_appeals(cached_data) unless errors.any?
-        end
-
+        fetch_and_process_data(full_list, errors)
+        data = claims_adapter.parse(full_list)
         add_authorization_errors(errors)
 
-        [cached_data, errors]
+        [data, errors]
       end
 
       def fetch_and_process_data(full_list, errors)
@@ -212,14 +203,6 @@ module Mobile
         Mobile::V0::Adapters::ClaimsOverview.new
       end
 
-      def get_cached_claims_and_appeals
-        Mobile::V0::ClaimOverview.get_cached(@current_user)
-      end
-
-      def set_cached_claims_and_appeals(data)
-        Mobile::V0::ClaimOverview.set_cached(@current_user, data)
-      end
-
       def lighthouse_claims_adapter
         Mobile::V0::Adapters::LighthouseIndividualClaims.new(@current_user)
       end
@@ -270,8 +253,7 @@ module Mobile
           start_date: params[:startDate] || DateTime.new(1700).iso8601,
           end_date: params[:endDate] || (DateTime.now.utc.beginning_of_day + 1.year).iso8601,
           page_number: params.dig(:page, :number),
-          page_size: params.dig(:page, :size),
-          use_cache: params[:useCache] || true
+          page_size: params.dig(:page, :size)
         }
         pagination_params[:show_completed] = params[:showCompleted] if params[:showCompleted].present?
         pagination_params

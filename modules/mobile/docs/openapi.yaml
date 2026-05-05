@@ -1275,13 +1275,6 @@ paths:
           name: showCompleted
           schema:
             type: boolean
-        - description: Whether or not to use this API's cache or fetch records from
-            the upstream service
-          example: true
-          in: query
-          name: useCache
-          schema:
-            type: boolean
         - $ref: '#/components/parameters/InflectionHeader'
       responses:
         '200':
