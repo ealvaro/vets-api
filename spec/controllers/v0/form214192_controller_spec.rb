@@ -195,14 +195,20 @@ RSpec.describe V0::Form214192Controller, type: :controller do
           allow(File).to receive(:delete).and_call_original
           allow(File).to receive(:delete).with(temp_pdf)
 
-          expect(monitor).to receive(:track_pdf_generation_success).with(kind_of(Time))
+          expect(monitor).to receive(:track_pdf_generation_success).with(
+            kind_of(Time),
+            hash_including(user_uuid: user.uuid)
+          )
 
           post(:download_pdf, body: form_data.to_json, as: :json)
         end
 
         it 'tracks PDF generation failure' do
           allow(PdfFill::Filler).to receive(:fill_ancillary_form).and_raise(StandardError, 'PDF error')
-          expect(monitor).to receive(:track_pdf_generation_failure).with(kind_of(StandardError))
+          expect(monitor).to receive(:track_pdf_generation_failure).with(
+            kind_of(StandardError),
+            hash_including(user_uuid: user.uuid)
+          )
 
           post(:download_pdf, body: form_data.to_json, as: :json)
           expect(response).to have_http_status(:internal_server_error)
@@ -331,6 +337,121 @@ RSpec.describe V0::Form214192Controller, type: :controller do
           expect(json['errors'].first['status']).to eq('500')
         end
       end
+    end
+
+    describe 'GET #download_pdf_by_guid' do
+      let(:claim) do
+        SavedClaim::Form214192.create!(
+          form: form_data.to_json,
+          form_id: '21-4192',
+          user_account: user.user_account
+        )
+      end
+      let(:pdf_content) { 'PDF_BINARY_CONTENT' }
+      let(:temp_file_path) { '/tmp/test_pdf.pdf' }
+      let(:monitor) { instance_double(Form214192::Monitor) }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:form_4192_enabled, anything).and_return(true)
+        allow(Form214192::Monitor).to receive(:new).and_return(monitor)
+        allow(monitor).to receive(:track_request_code)
+        allow(monitor).to receive(:track_pdf_generation_success)
+        allow(monitor).to receive(:track_pdf_generation_failure)
+
+        # Stub after_create callback to prevent metrics tracking during claim creation
+        allow_any_instance_of(SavedClaim::Form214192).to receive(:after_create_metrics)
+
+        # Stub to_pdf to return the temp file path
+        allow_any_instance_of(SavedClaim::Form214192).to receive(:to_pdf).and_return(temp_file_path)
+        allow(File).to receive(:read).and_call_original
+        allow(File).to receive(:read).with(temp_file_path).and_return(pdf_content)
+        allow(File).to receive(:exist?).and_call_original
+        allow(File).to receive(:exist?).with(temp_file_path).and_return(true)
+        allow(File).to receive(:delete).and_call_original
+        allow(File).to receive(:delete).with(temp_file_path)
+      end
+
+      it 'generates and downloads PDF by GUID' do
+        get(:download_pdf_by_guid, params: { guid: claim.guid })
+
+        expect(response).to have_http_status(:ok)
+        expect(response.headers['Content-Type']).to eq('application/pdf')
+        expect(response.body).to eq(pdf_content)
+      end
+
+      it 'includes proper filename with veteran name' do
+        get(:download_pdf_by_guid, params: { guid: claim.guid })
+
+        expect(response.headers['Content-Disposition']).to include('attachment')
+        expect(response.headers['Content-Disposition']).to include('21-4192_')
+        expect(response.headers['Content-Disposition']).to include('21-4192_John_Doe.pdf')
+      end
+
+      it 'uses same filename for same claim' do
+        get(:download_pdf_by_guid, params: { guid: claim.guid })
+        first_filename = response.headers['Content-Disposition']
+
+        get(:download_pdf_by_guid, params: { guid: claim.guid })
+        second_filename = response.headers['Content-Disposition']
+
+        expect(first_filename).to eq(second_filename)
+      end
+
+      it 'deletes temporary PDF file after sending' do
+        allow(File).to receive(:exist?).and_call_original
+        allow(File).to receive(:exist?).with(temp_file_path).and_return(true)
+        expect(File).to receive(:delete).with(temp_file_path)
+        get(:download_pdf_by_guid, params: { guid: claim.guid })
+      end
+
+      it 'deletes temporary file even when file read fails' do
+        allow(File).to receive(:read).with(temp_file_path).and_raise(StandardError, 'Read error')
+        # File should still be deleted in ensure block (file was created by Filler)
+        expect(File).to receive(:delete).with(temp_file_path)
+
+        get(:download_pdf_by_guid, params: { guid: claim.guid })
+        expect(response).to have_http_status(:internal_server_error)
+
+        json = JSON.parse(response.body)
+        expect(json['errors']).to be_present
+        expect(json['errors'].first['title']).to eq('PDF Generation Failed')
+      end
+
+      it 'returns 404 for invalid GUID' do
+        get(:download_pdf_by_guid, params: { guid: SecureRandom.uuid })
+        expect(response).to have_http_status(:not_found)
+      end
+
+      describe 'monitoring' do
+        it 'tracks PDF generation success' do
+          expect(monitor).to receive(:track_pdf_generation_success).with(kind_of(Time),
+                                                                         hash_including(user_uuid: user.uuid,
+                                                                                        claim_guid: claim.guid))
+
+          get(:download_pdf_by_guid, params: { guid: claim.guid })
+        end
+
+        it 'tracks PDF generation failure for errors' do
+          allow_any_instance_of(SavedClaim::Form214192).to receive(:to_pdf).and_raise(StandardError, 'PDF error')
+          expect(monitor).to receive(:track_pdf_generation_failure).with(kind_of(StandardError),
+                                                                         hash_including(user_uuid: user.uuid,
+                                                                                        claim_guid: claim.guid))
+
+          get(:download_pdf_by_guid, params: { guid: claim.guid })
+          expect(response).to have_http_status(:internal_server_error)
+        end
+      end
+
+      context 'when feature flag is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:form_4192_enabled, anything).and_return(false)
+        end
+
+        it 'returns 404 Not Found (routing error)' do
+          get(:download_pdf_by_guid, params: { guid: claim.guid })
+          expect(response).to have_http_status(:not_found)
+        end
+      end
 
       context 'with 30-character street2 address' do
         let(:payload_with_max_street2) do
@@ -339,8 +460,16 @@ RSpec.describe V0::Form214192Controller, type: :controller do
           payload
         end
 
+        let(:claim) do
+          SavedClaim::Form214192.create!(
+            form: payload_with_max_street2.to_json,
+            form_id: '21-4192',
+            user_account: user.user_account
+          )
+        end
+
         it 'accepts street2 with exactly 30 characters' do
-          post(:download_pdf, body: payload_with_max_street2.to_json, as: :json)
+          get(:download_pdf_by_guid, params: { guid: claim.guid })
 
           expect(response).to have_http_status(:ok)
           expect(response.headers['Content-Type']).to eq('application/pdf')

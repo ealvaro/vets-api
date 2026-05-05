@@ -34,13 +34,34 @@ module V0
       parsed_form = JSON.parse(request.raw_post)
       source_file_path = generate_and_stamp_pdf(parsed_form)
 
-      monitor.track_pdf_generation_success(pdf_start_time)
+      monitor.track_pdf_generation_success(pdf_start_time, user_uuid: current_user&.uuid)
 
       client_file_name = "21-4192_#{SecureRandom.uuid}.pdf"
       file_contents = File.read(source_file_path)
       send_data file_contents, filename: client_file_name, type: 'application/pdf', disposition: 'attachment'
     rescue => e
-      handle_pdf_generation_error(e)
+      handle_pdf_generation_error(e, user_uuid: current_user&.uuid)
+    ensure
+      File.delete(source_file_path) if source_file_path && File.exist?(source_file_path)
+    end
+
+    # GET /v0/form214192/download_pdf/:guid - Download PDF from saved claim by GUID
+    def download_pdf_by_guid
+      pdf_start_time = Time.current
+      claim_guid = params[:guid]
+      claim = SavedClaim::Form214192.find_by!(guid: claim_guid)
+      source_file_path = claim.to_pdf
+
+      monitor.track_pdf_generation_success(pdf_start_time, user_uuid: current_user&.uuid, claim_guid: claim.guid)
+
+      file_contents = File.read(source_file_path)
+      client_file_name = "21-4192_#{claim.veteran_name.gsub(' ', '_')}.pdf"
+      send_data file_contents, filename: client_file_name, type: 'application/pdf', disposition: 'attachment'
+    rescue ActiveRecord::RecordNotFound => e
+      monitor.track_pdf_generation_failure(e, user_uuid: current_user&.uuid, claim_guid:)
+      raise Common::Exceptions::RecordNotFound, claim_guid
+    rescue => e
+      handle_pdf_generation_error(e, user_uuid: current_user&.uuid, claim_guid:)
     ensure
       File.delete(source_file_path) if source_file_path && File.exist?(source_file_path)
     end
@@ -51,8 +72,8 @@ module V0
       routing_error unless Flipper.enabled?(:form_4192_enabled, current_user)
     end
 
-    def handle_pdf_generation_error(error)
-      monitor.track_pdf_generation_failure(error)
+    def handle_pdf_generation_error(error, user_uuid: nil, claim_guid: nil)
+      monitor.track_pdf_generation_failure(error, user_uuid:, claim_guid:)
       render json: {
         errors: [{
           title: 'PDF Generation Failed',

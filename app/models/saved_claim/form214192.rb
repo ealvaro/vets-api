@@ -86,16 +86,16 @@ class SavedClaim::Form214192 < SavedClaim
     build_ibm_payload(parsed_form)
   end
 
-  private
-
-  def employer_name
-    parsed_form.dig('employmentInformation', 'employerName') || 'Employer'
-  end
-
   def veteran_name
     first = parsed_form.dig('veteranInformation', 'fullName', 'first')
     last = parsed_form.dig('veteranInformation', 'fullName', 'last')
     "#{first} #{last}".strip.presence || 'Veteran'
+  end
+
+  private
+
+  def employer_name
+    parsed_form.dig('employmentInformation', 'employerName') || 'Employer'
   end
 
   def zip_code_for_metadata

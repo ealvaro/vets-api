@@ -182,7 +182,7 @@
       "cwe_id": [
         22
       ],
-      "note": "to_pdf is a method, not a model attribute and uses SecureRandom.uuid"
+      "note": "to_pdf is a method call that returns a server-generated temp file path; this is a Brakeman false positive for model-attribute filename usage."
     },
     {
       "warning_type": "SQL Injection",
@@ -228,7 +228,7 @@
       "cwe_id": [
         22
       ],
-      "note": "to_pdf is a method, not a model attribute and uses SecureRandom.uuid"
+      "note": "to_pdf is a method call that returns a server-generated temp file path; this is a Brakeman false positive for model-attribute filename usage."
     },
     {
       "warning_type": "Remote Code Execution",
@@ -272,6 +272,98 @@
         77
       ],
       "note": "rel_path is derived from relative_path() which removes VETS_API_ROOT prefix from validated cassette file paths - not user input. Using Open3.capture3 with argument array prevents shell injection."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "3746d850d7239d0a46314d4ab6399b9eedc0f1c46321cc1b896d883854159bd2",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/controllers/v0/form214192_controller.rb",
+      "line": 55,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "File.read(SavedClaim::Form214192.find_by!(:guid => params[:guid]).to_pdf)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "V0::Form214192Controller",
+        "method": "download_pdf_by_guid"
+      },
+      "user_input": "SavedClaim::Form214192.find_by!(:guid => params[:guid]).to_pdf",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
+      ],
+      "note": "to_pdf is a method call that returns a server-generated temp file path; this is a Brakeman false positive for model-attribute filename usage."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "6c4aad8ac7e3077fdc12c6aee3c1809ae484daade1e1e5ed4e1e8650cd314619",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/controllers/v0/form214192_controller.rb",
+      "line": 64,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "File.delete(SavedClaim::Form214192.find_by!(:guid => params[:guid]).to_pdf)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "V0::Form214192Controller",
+        "method": "download_pdf_by_guid"
+      },
+      "user_input": "SavedClaim::Form214192.find_by!(:guid => params[:guid]).to_pdf",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
+      ],
+      "note": "to_pdf is a method call that returns a server-generated temp file path; this is a Brakeman false positive for model-attribute filename usage."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "84a3d5e59f247f2563202ab8fdfb22ecebc7e197c537e5a094e5ce18f5d953f3",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/controllers/v0/form21p530a_controller.rb",
+      "line": 61,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "File.read(SavedClaim::Form21p530a.find_by!(:guid => params[:guid]).to_pdf)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "V0::Form21p530aController",
+        "method": "download_pdf_by_guid"
+      },
+      "user_input": "SavedClaim::Form21p530a.find_by!(:guid => params[:guid]).to_pdf",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
+      ],
+      "note": "to_pdf is a method call that returns a server-generated temp file path; this is a Brakeman false positive for model-attribute filename usage."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "3b16a97ca45429f456303ab40d32dd733e6b3618a0c16e180f8a7e22242a1225",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/controllers/v0/form21p530a_controller.rb",
+      "line": 70,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "File.delete(SavedClaim::Form21p530a.find_by!(:guid => params[:guid]).to_pdf)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "V0::Form21p530aController",
+        "method": "download_pdf_by_guid"
+      },
+      "user_input": "SavedClaim::Form21p530a.find_by!(:guid => params[:guid]).to_pdf",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
+      ],
+      "note": "to_pdf is a method call that returns a server-generated temp file path; this is a Brakeman false positive for model-attribute filename usage."
     },
     {
       "warning_type": "Cross-Site Scripting",

@@ -101,6 +101,16 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -295,7 +305,7 @@
           "200": {
             "description": "PDF generated successfully",
             "content": {
-              "application/json": {
+              "application/pdf": {
                 "schema": {
                   "type": "string",
                   "format": "binary"
@@ -367,6 +377,16 @@
                       }
                     }
                   }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
                 }
               }
             }
@@ -551,6 +571,70 @@
         }
       }
     },
+    "/v0/form214192/download_pdf/{guid}": {
+      "get": {
+        "summary": "Download PDF for Form 21-4192 by GUID",
+        "tags": [
+          "benefits_forms"
+        ],
+        "operationId": "downloadForm214192PdfByGuid",
+        "description": "Download a filled PDF for Form 21-4192 using a previously-saved claim GUID.",
+        "parameters": [
+          {
+            "name": "guid",
+            "in": "path",
+            "required": true,
+            "description": "Saved claim GUID for Form 21-4192",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF generated successfully",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - claim GUID not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - PDF generation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v0/form21p530a": {
       "post": {
         "summary": "Submit a 21P-530a form",
@@ -558,7 +642,7 @@
           "benefits_forms"
         ],
         "operationId": "submitForm21p530a",
-        "description": "Submit a Form 21P-530a (Application for Burial Allowance - State/Tribal Organizations). This endpoint is unauthenticated and may be used by cemetery officials.",
+        "description": "Submit a Form 21P-530a (Application for Burial Allowance - State/Tribal Organizations). Authentication may be required depending on current feature flag configuration.",
         "parameters": [],
         "responses": {
           "200": {
@@ -643,6 +727,16 @@
           },
           "422": {
             "description": "Unprocessable Entity - schema validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - not authenticated",
             "content": {
               "application/json": {
                 "schema": {
@@ -906,7 +1000,7 @@
           "200": {
             "description": "PDF generated successfully",
             "content": {
-              "application/json": {
+              "application/pdf": {
                 "schema": {
                   "type": "string",
                   "format": "binary"
@@ -949,6 +1043,16 @@
                       }
                     }
                   }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
                 }
               }
             }
@@ -1192,6 +1296,70 @@
             }
           },
           "required": true
+        }
+      }
+    },
+    "/v0/form21p530a/download_pdf/{guid}": {
+      "get": {
+        "summary": "Download PDF for Form 21P-530a by GUID",
+        "tags": [
+          "benefits_forms"
+        ],
+        "operationId": "downloadForm21p530aPdfByGuid",
+        "description": "Download a filled PDF for Form 21P-530a using a previously-saved claim GUID.",
+        "parameters": [
+          {
+            "name": "guid",
+            "in": "path",
+            "required": true,
+            "description": "Saved claim GUID for Form 21P-530a",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF generated successfully",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - claim GUID not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - PDF generation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
         }
       }
     }

@@ -93,17 +93,17 @@ class SavedClaim::Form21p530a < SavedClaim
     build_ibm_hash(vet_info, burial_info, certification, service_periods_data)
   end
 
+  def veteran_name
+    first = parsed_form.dig('veteranInformation', 'fullName', 'first')
+    last = parsed_form.dig('veteranInformation', 'fullName', 'last')
+    "#{first} #{last}".strip.presence || 'Veteran'
+  end
+
   private
 
   def organization_name
     parsed_form.dig('burialInformation', 'recipientOrganization', 'name') ||
       parsed_form.dig('burialInformation', 'nameOfStateCemeteryOrTribalOrganization')
-  end
-
-  def veteran_name
-    first = parsed_form.dig('veteranInformation', 'fullName', 'first')
-    last = parsed_form.dig('veteranInformation', 'fullName', 'last')
-    "#{first} #{last}".strip.presence
   end
 
   def zip_code_for_metadata

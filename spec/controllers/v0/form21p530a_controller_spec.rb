@@ -67,6 +67,37 @@ RSpec.describe V0::Form21p530aController, type: :controller do
           expect(response).to have_http_status(:ok)
         end
       end
+
+      describe 'GET #download_pdf_by_guid' do
+        let(:temp_file_path) { '/tmp/test_pdf.pdf' }
+        let(:claim_guid) { SecureRandom.uuid }
+        let(:claim) do
+          instance_double(SavedClaim::Form21p530a,
+                          guid: claim_guid,
+                          veteran_name: 'John Doe',
+                          to_pdf: temp_file_path)
+        end
+        let(:monitor) { instance_double(Form21p530a::Monitor) }
+
+        before do
+          allow(SavedClaim::Form21p530a).to receive(:find_by!).with(guid: claim_guid).and_return(claim)
+          allow(Form21p530a::Monitor).to receive(:new).and_return(monitor)
+          allow(monitor).to receive(:track_request_code)
+          allow(monitor).to receive(:track_pdf_generation_success)
+          allow(monitor).to receive(:track_pdf_generation_failure)
+          allow(File).to receive(:read).and_call_original
+          allow(File).to receive(:read).with(temp_file_path).and_return('PDF_CONTENT')
+          allow(File).to receive(:exist?).and_call_original
+          allow(File).to receive(:exist?).with(temp_file_path).and_return(true)
+          allow(File).to receive(:delete).and_call_original
+          allow(File).to receive(:delete).with(temp_file_path)
+        end
+
+        it 'allows unauthenticated access' do
+          get(:download_pdf_by_guid, params: { guid: claim_guid })
+          expect(response).to have_http_status(:ok)
+        end
+      end
     end
   end
 
@@ -485,6 +516,84 @@ RSpec.describe V0::Form21p530aController, type: :controller do
 
         it 'returns 404 Not Found (routing error)' do
           post(:download_pdf, body: valid_payload.to_json, as: :json)
+          expect(response).to have_http_status(:not_found)
+        end
+      end
+    end
+
+    describe 'GET #download_pdf_by_guid' do
+      let(:claim) do
+        claim = SavedClaim::Form21p530a.new(form: valid_payload.to_json)
+        claim.save!(validate: false)
+        claim
+      end
+      let(:pdf_content) { 'PDF_BINARY_CONTENT' }
+      let(:temp_file_path) { '/tmp/test_pdf.pdf' }
+      let(:monitor) { instance_double(Form21p530a::Monitor) }
+
+      before do
+        allow(Form21p530a::Monitor).to receive(:new).and_return(monitor)
+        allow(monitor).to receive(:track_request_code)
+        allow(monitor).to receive(:track_pdf_generation_success)
+        allow(monitor).to receive(:track_pdf_generation_failure)
+        allow_any_instance_of(SavedClaim::Form21p530a).to receive(:after_create_metrics)
+        allow_any_instance_of(SavedClaim::Form21p530a).to receive(:to_pdf).and_return(temp_file_path)
+        allow(File).to receive(:read).and_call_original
+        allow(File).to receive(:read).with(temp_file_path).and_return(pdf_content)
+        allow(File).to receive(:exist?).and_call_original
+        allow(File).to receive(:exist?).with(temp_file_path).and_return(true)
+        allow(File).to receive(:delete).and_call_original
+        allow(File).to receive(:delete).with(temp_file_path)
+      end
+
+      it 'generates and downloads PDF' do
+        get(:download_pdf_by_guid, params: { guid: claim.guid })
+
+        expect(response).to have_http_status(:ok)
+        expect(response.headers['Content-Type']).to eq('application/pdf')
+        expect(response.body).to eq(pdf_content)
+      end
+
+      it 'includes proper filename with veteran name' do
+        get(:download_pdf_by_guid, params: { guid: claim.guid })
+
+        expect(response.headers['Content-Disposition']).to include('attachment')
+        expect(response.headers['Content-Disposition']).to include('21P-530a_John_Doe.pdf')
+      end
+
+      it 'returns 404 for invalid guid' do
+        get(:download_pdf_by_guid, params: { guid: SecureRandom.uuid })
+        expect(response).to have_http_status(:not_found)
+      end
+
+      it 'deletes temporary PDF file after sending' do
+        expect(File).to receive(:delete).with(temp_file_path)
+        get(:download_pdf_by_guid, params: { guid: claim.guid })
+      end
+
+      it 'tracks PDF generation success' do
+        expect(monitor).to receive(:track_pdf_generation_success)
+          .with(kind_of(Time), hash_including(user_uuid: user.uuid, claim_guid: claim.guid))
+
+        get(:download_pdf_by_guid, params: { guid: claim.guid })
+      end
+
+      it 'tracks PDF generation failure with claim_guid' do
+        allow_any_instance_of(SavedClaim::Form21p530a).to receive(:to_pdf).and_raise(StandardError, 'PDF error')
+        expect(monitor).to receive(:track_pdf_generation_failure)
+          .with(kind_of(StandardError), hash_including(user_uuid: user.uuid, claim_guid: claim.guid))
+
+        get(:download_pdf_by_guid, params: { guid: claim.guid })
+        expect(response).to have_http_status(:internal_server_error)
+      end
+
+      context 'when feature flag is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:form_530a_enabled, anything).and_return(false)
+        end
+
+        it 'returns 404 Not Found (routing error)' do
+          get(:download_pdf_by_guid, params: { guid: claim.guid })
           expect(response).to have_http_status(:not_found)
         end
       end
