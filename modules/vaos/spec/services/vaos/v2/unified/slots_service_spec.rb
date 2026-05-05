@@ -18,14 +18,9 @@ RSpec.describe VAOS::V2::Unified::SlotsService do
     end
 
     context 'with VAProvider' do
-      let(:provider) do
-        VAOS::V2::Unified::VAProvider.new(
-          id: '1081',
-          location_id: '983'
-        )
-      end
-
       let(:systems_service) { instance_double(VAOS::V2::SystemsService) }
+      let(:start_dt) { '2025-01-01T00:00:00Z' }
+      let(:end_dt) { '2025-01-02T00:00:00Z' }
       let(:raw_slot) do
         OpenStruct.new(
           id: 'slot-1',
@@ -38,59 +33,91 @@ RSpec.describe VAOS::V2::Unified::SlotsService do
 
       before do
         allow(VAOS::V2::SystemsService).to receive(:new).with(user).and_return(systems_service)
-      end
-
-      it 'returns normalized VASlot records' do
         allow(systems_service).to receive(:get_available_slots).and_return([raw_slot])
-
-        slots = service.slots_for(
-          provider:,
-          start_dt: '2025-01-01T00:00:00Z',
-          end_dt: '2025-01-02T00:00:00Z',
-          clinical_service: 'audiology'
-        )
-
-        expect(slots.size).to eq(1)
-        expect(slots.first).to be_a(VAOS::V2::Unified::VASlot)
-        expect(slots.first.id).to eq('slot-1')
-        expect(slots.first.location_id).to eq('983')
       end
 
-      it 'raises when clinical_service is blank' do
-        expect do
-          service.slots_for(
-            provider:,
-            start_dt: '2025-01-01T00:00:00Z',
-            end_dt: '2025-01-02T00:00:00Z',
-            clinical_service: nil
+      context 'at a VistA-backed VA health facility' do
+        let(:provider) do
+          VAOS::V2::Unified::VAProvider.new(
+            id: '1081',
+            location_id: '983',
+            facility_type: 'va_health_facility'
           )
-        end.to raise_error(Common::Exceptions::ParameterMissing)
-      end
+        end
 
-      it 'raises when id (clinic IEN) is blank' do
-        provider.id = nil
-
-        expect do
-          service.slots_for(
-            provider:,
-            start_dt: '2025-01-01T00:00:00Z',
-            end_dt: '2025-01-02T00:00:00Z',
-            clinical_service: 'audiology'
+        it 'returns normalized VASlot records' do
+          slots = service.slots_for(
+            provider:, start_dt:, end_dt:, clinical_service: 'audiology'
           )
-        end.to raise_error(Common::Exceptions::UnprocessableEntity)
+
+          expect(slots.size).to eq(1)
+          expect(slots.first).to be_a(VAOS::V2::Unified::VASlot)
+          expect(slots.first.id).to eq('slot-1')
+          expect(slots.first.location_id).to eq('983')
+        end
+
+        it 'does NOT forward clinical_service to SystemsService (VPG rejects it for VistA)' do
+          service.slots_for(provider:, start_dt:, end_dt:, clinical_service: 'audiology')
+
+          expect(systems_service).to have_received(:get_available_slots).with(
+            hash_including(clinical_service: nil, location_id: '983', clinic_id: '1081')
+          )
+        end
+
+        it 'succeeds when clinical_service is omitted entirely' do
+          expect do
+            service.slots_for(provider:, start_dt:, end_dt:)
+          end.not_to raise_error
+        end
+
+        it 'returns an empty array when upstream returns no slots' do
+          allow(systems_service).to receive(:get_available_slots).and_return([])
+
+          slots = service.slots_for(provider:, start_dt:, end_dt:)
+          expect(slots).to eq([])
+        end
       end
 
-      it 'returns an empty array when upstream returns no slots' do
-        allow(systems_service).to receive(:get_available_slots).and_return([])
+      context 'at a Cerner / Oracle Health facility' do
+        let(:provider) do
+          VAOS::V2::Unified::VAProvider.new(
+            id: '1081',
+            location_id: '668',
+            facility_type: 'va_cerner_facility'
+          )
+        end
 
-        slots = service.slots_for(
-          provider:,
-          start_dt: '2025-01-01T00:00:00Z',
-          end_dt: '2025-01-02T00:00:00Z',
-          clinical_service: 'audiology'
-        )
+        it 'forwards clinical_service to SystemsService' do
+          service.slots_for(provider:, start_dt:, end_dt:, clinical_service: 'audiology')
 
-        expect(slots).to eq([])
+          expect(systems_service).to have_received(:get_available_slots).with(
+            hash_including(clinical_service: 'audiology', location_id: '668', clinic_id: '1081')
+          )
+        end
+
+        it 'raises ParameterMissing when clinical_service is blank' do
+          expect do
+            service.slots_for(provider:, start_dt:, end_dt:, clinical_service: nil)
+          end.to raise_error(Common::Exceptions::ParameterMissing)
+        end
+
+        it 'raises ParameterMissing when clinical_service is an empty string' do
+          expect do
+            service.slots_for(provider:, start_dt:, end_dt:, clinical_service: '')
+          end.to raise_error(Common::Exceptions::ParameterMissing)
+        end
+      end
+
+      context 'when provider id (clinic IEN) is blank' do
+        let(:provider) do
+          VAOS::V2::Unified::VAProvider.new(id: nil, location_id: '983', facility_type: 'va_health_facility')
+        end
+
+        it 'raises UnprocessableEntity regardless of facility type' do
+          expect do
+            service.slots_for(provider:, start_dt:, end_dt:, clinical_service: 'audiology')
+          end.to raise_error(Common::Exceptions::UnprocessableEntity)
+        end
       end
     end
 

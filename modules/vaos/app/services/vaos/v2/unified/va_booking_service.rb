@@ -86,11 +86,35 @@ module VAOS
 
           return nil if slot.start.blank?
 
-          { desired_date: parse_slot_start_for_extension(slot) }
+          desired_date = parse_slot_start_for_extension(slot)
+          return nil if desired_date.nil?
+
+          { desired_date: }
         end
 
+        ##
+        # Returns +nil+ when +slot.start+ is non-blank but +Time.zone.parse+ returns +nil+ for
+        # totally unrecognized input (e.g. "not-a-date") so the caller can omit the +desired_date+
+        # extension instead of raising +NoMethodError+. The other failure mode of +Time.zone.parse+
+        # is raising +ArgumentError+ for partly-valid but out-of-range input (e.g. "2026-13-99");
+        # that is logged and re-raised so the error surfaces back to the controller rather than
+        # being silently dropped. +desired_date+ is a VistA-reporting field on the appointment.
         def parse_slot_start_for_extension(slot)
-          Time.zone.parse(slot.start.to_s).to_datetime
+          parsed = Time.zone.parse(slot.start.to_s)
+          return parsed.to_datetime if parsed
+
+          log_unparseable_slot_start(slot.start)
+          nil
+        rescue ArgumentError => e
+          log_unparseable_slot_start(slot.start, error: e.message)
+          raise
+        end
+
+        def log_unparseable_slot_start(slot_start, error: nil)
+          Rails.logger.warn(
+            'VABookingService: unparseable slot.start, omitting desired_date',
+            { slot_start:, error: }.compact
+          )
         end
 
         def extract_appointment_id(result)

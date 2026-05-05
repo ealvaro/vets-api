@@ -37,19 +37,29 @@ module VAOS
 
         attr_reader :user
 
+        ##
+        # VPG +/vpg/v1/slots+ rejects the +clinicalService+ filter for VistA-backed sites with a
+        # 400 ("Service Type cannot be used as a filter for VistA sites") and only honors it for
+        # Cerner / Oracle Health sites. We forward +clinical_service+ only when the provider is
+        # at a Cerner facility; for VistA sites +clinic_id+ + +location_id+ are sufficient to
+        # scope the lookup. +clinical_service+ is still required for Cerner so the upstream gets
+        # the same filtering it had pre-unified.
         def fetch_va_slots(provider, start_dt, end_dt, clinical_service)
-          raise Common::Exceptions::ParameterMissing, 'clinical_service' if clinical_service.blank?
-
           if provider.location_id.blank? || provider.id.blank?
             raise Common::Exceptions::UnprocessableEntity.new(
               detail: 'VA provider requires location_id and id (clinic IEN) for slot lookup'
             )
           end
 
+          forward_clinical_service = provider.cerner?
+          if forward_clinical_service && clinical_service.blank?
+            raise Common::Exceptions::ParameterMissing, 'clinical_service'
+          end
+
           raw = systems_service.get_available_slots(
             location_id: provider.location_id,
             clinic_id: provider.id,
-            clinical_service:,
+            clinical_service: forward_clinical_service ? clinical_service : nil,
             provider_id: nil,
             start_dt:,
             end_dt:

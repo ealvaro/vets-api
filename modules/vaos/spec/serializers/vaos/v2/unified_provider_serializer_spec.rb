@@ -52,6 +52,27 @@ RSpec.describe VAOS::V2::UnifiedProviderSerializer do
       expect(result[:attributes][:distanceInMiles]).to eq(3.2)
     end
 
+    context 'facilityType (round-tripped to FE for slots requests)' do
+      it 'is included when present so the FE can echo it back on the slots request' do
+        va_provider.facility_type = 'va_cerner_facility'
+        result = serializer.serialize([va_provider]).first
+
+        expect(result[:attributes][:facilityType]).to eq('va_cerner_facility')
+      end
+
+      it 'is omitted (not nil) when the provider has no facility_type' do
+        result = serializer.serialize([va_provider]).first
+
+        expect(result[:attributes]).not_to have_key(:facilityType)
+      end
+
+      it 'is not added to EPS providers' do
+        result = serializer.serialize([eps_provider]).first
+
+        expect(result[:attributes]).not_to have_key(:facilityType)
+      end
+    end
+
     it 'serializes EPS provider attributes' do
       result = serializer.serialize([eps_provider]).first
 

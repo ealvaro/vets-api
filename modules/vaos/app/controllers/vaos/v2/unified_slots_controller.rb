@@ -40,7 +40,7 @@ module VAOS
         @va_provider_params ||= begin
           params.require(:clinic_id)
           params.require(:location_id)
-          params.permit(:clinic_id, :location_id, :clinical_service)
+          params.permit(:clinic_id, :location_id, :clinical_service, :facility_type)
         end
       end
 
@@ -76,13 +76,30 @@ module VAOS
         end
       end
 
+      ##
+      # +facility_type+ is forwarded from the FE (from the unified provider search response) so
+      # {Unified::SlotsService} can detect Cerner vs VistA and decide whether to forward
+      # +clinical_service+ to VPG. When omitted, the provider falls through as non-Cerner and
+      # +clinical_service+ is dropped before the upstream call.
       def build_va_provider
         provider_params = va_provider_params
+        ensure_pilot_station_allowed!(provider_params[:location_id])
         Unified::VAProvider.new(
           id: provider_params[:clinic_id],
           location_id: provider_params[:location_id],
-          service_type: provider_params[:clinical_service]
+          service_type: provider_params[:clinical_service],
+          facility_type: provider_params[:facility_type]
         )
+      end
+
+      # Defense-in-depth for the pilot station allowlist. The provider search already
+      # filters non-pilot stations out of the FE-visible list, but a stale FE cache or
+      # a hand-crafted request could still target a non-pilot station -- reject those
+      # with a 404 so they don't reach upstream VAOS.
+      def ensure_pilot_station_allowed!(location_id)
+        return if Unified::ParentStationFilter.allowed?(location_id)
+
+        raise Common::Exceptions::RecordNotFound, location_id
       end
 
       def build_eps_provider

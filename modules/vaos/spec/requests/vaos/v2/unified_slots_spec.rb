@@ -215,14 +215,16 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
         expect(Eps::ProviderService).not_to have_received(:new)
       end
 
-      it 'fetches slots from VAOS SystemsService' do
+      it 'fetches slots from VAOS SystemsService for a VistA station (no clinical_service forwarded)' do
+        # Default base_params has no facility_type, which the slots service treats as non-Cerner.
+        # VPG rejects clinicalService for VistA stations, so we drop it before the upstream call.
         get('/vaos/v2/provider_slots', params: base_params, headers:)
 
         expect(mock_systems_service).to have_received(:get_available_slots)
           .with(hash_including(
                   location_id: '983',
                   clinic_id: '455',
-                  clinical_service: 'optometry'
+                  clinical_service: nil
                 ))
       end
 
@@ -238,29 +240,31 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
         expect(response).to have_http_status(:bad_request)
       end
 
-      it 'returns 400 when clinical_service is missing' do
-        get('/vaos/v2/provider_slots', params: base_params.except(:clinical_service), headers:)
+      context 'at a Cerner / Oracle Health facility' do
+        let(:cerner_params) { base_params.merge(facility_type: 'va_cerner_facility') }
 
-        expect(response).to have_http_status(:bad_request)
-      end
+        it 'forwards clinical_service through to SystemsService' do
+          get('/vaos/v2/provider_slots',
+              params: cerner_params.merge(clinical_service: 'audiology'),
+              headers:)
 
-      it 'returns 400 when clinical_service is blank' do
-        get('/vaos/v2/provider_slots',
-            params: base_params.merge(clinical_service: ''),
-            headers:)
+          expect(response).to have_http_status(:ok)
+          expect(mock_systems_service).to have_received(:get_available_slots).with(
+            hash_including(clinical_service: 'audiology')
+          )
+        end
 
-        expect(response).to have_http_status(:bad_request)
-      end
+        it 'returns 400 when clinical_service is missing' do
+          get('/vaos/v2/provider_slots', params: cerner_params.except(:clinical_service), headers:)
 
-      it 'passes the requested clinical_service through to SystemsService' do
-        get('/vaos/v2/provider_slots',
-            params: base_params.merge(clinical_service: 'audiology'),
-            headers:)
+          expect(response).to have_http_status(:bad_request)
+        end
 
-        expect(response).to have_http_status(:ok)
-        expect(mock_systems_service).to have_received(:get_available_slots).with(
-          hash_including(clinical_service: 'audiology')
-        )
+        it 'returns 400 when clinical_service is blank' do
+          get('/vaos/v2/provider_slots', params: cerner_params.merge(clinical_service: ''), headers:)
+
+          expect(response).to have_http_status(:bad_request)
+        end
       end
     end
 
@@ -287,6 +291,60 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
             headers:)
 
         expect(response).to have_http_status(:bad_request)
+      end
+    end
+
+    context 'pilot station allowlist (VA path)' do
+      let(:mock_systems_service) { instance_double(VAOS::V2::SystemsService) }
+
+      let(:base_params) do
+        { referral_id: 'encrypted-ref-id', provider_type: 'va',
+          clinic_id: '455', location_id: '983', clinical_service: 'optometry' }
+      end
+
+      before do
+        allow(VAOS::V2::SystemsService).to receive(:new).and_return(mock_systems_service)
+        allow(mock_systems_service).to receive(:get_available_slots).and_return([])
+      end
+
+      def stub_allowlist(value)
+        allow(Settings.vaos.unified_scheduling)
+          .to receive(:allowed_parent_stations).and_return(value)
+      end
+
+      it 'returns 404 for a non-allowlisted parent station' do
+        stub_allowlist('442')
+
+        get('/vaos/v2/provider_slots', params: base_params, headers:)
+
+        expect(response).to have_http_status(:not_found)
+        expect(mock_systems_service).not_to have_received(:get_available_slots)
+      end
+
+      it 'allows an allowlisted parent station' do
+        stub_allowlist('983')
+
+        get('/vaos/v2/provider_slots', params: base_params, headers:)
+
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'allows a satellite that rolls up to the parent' do
+        stub_allowlist('983')
+
+        get('/vaos/v2/provider_slots',
+            params: base_params.merge(location_id: '983GC'), headers:)
+
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'allows any station when the allowlist is unset (default)' do
+        stub_allowlist(nil)
+
+        get('/vaos/v2/provider_slots',
+            params: base_params.merge(location_id: '552'), headers:)
+
+        expect(response).to have_http_status(:ok)
       end
     end
 

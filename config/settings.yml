@@ -1958,6 +1958,12 @@ vaos:
       hex_iv: <%= ENV['vaos__referral__encryption__hex_iv'] %>
       hex_secret: <%= ENV['vaos__referral__encryption__hex_secret'] %>
   unified_scheduling:
+    # Comma-delimited allowlist of VA parent station IDs that the unified scheduling pilot
+    # is permitted to operate against (e.g. "983, 442"). Whitespace around entries is
+    # tolerated. Leave unset/blank to disable the filter and accept all stations (the
+    # default for staging, dev, and test). Configured via AWS Parameter Store / ECS env in
+    # production. See VAOS::V2::Unified::ParentStationFilter.
+    allowed_parent_stations: <%= ENV['vaos__unified_scheduling__allowed_parent_stations'] %>
     default_radius_miles: <%= ENV['vaos__unified_scheduling__default_radius_miles'] || 25 %>
 vass:
   api_url: <%= ENV['vass__api_url'] %>

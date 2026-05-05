@@ -7,11 +7,23 @@ module VAOS
       # +id+ is the clinic IEN. +location_id+ is the parent facility +unique_id+ used with VAOS
       # clinics and slots APIs.
       class VAProvider < BaseProvider
+        # Lighthouse facility_type values that identify Cerner / Oracle Health VA sites.
+        # All other VA medical facilities are treated as VistA-backed for scheduling purposes.
+        CERNER_FACILITY_TYPES = %w[va_cerner_facility].freeze
+
         attr_accessor :location_id, :facility_type, :service_type
 
         def initialize(attrs = {})
           super
           self.provider_type = 'va'
+        end
+
+        ##
+        # Cerner / Oracle Health VA sites accept +clinicalService+ as a slot-search filter on VPG;
+        # VistA sites reject it (HTTP 400 "Service Type cannot be used as a filter for VistA sites").
+        # Callers fetching VA slots use this to decide whether to forward +clinical_service+.
+        def cerner?
+          CERNER_FACILITY_TYPES.include?(facility_type.to_s)
         end
 
         ##

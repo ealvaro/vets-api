@@ -812,6 +812,122 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
         end
       end
     end
+
+    describe 'pilot station allowlist (Settings.vaos.unified_scheduling.allowed_parent_stations)' do
+      let(:allowed_facility) do
+        lighthouse_facility_double(
+          unique_id: '983',
+          id: 'vha_983',
+          name: 'Cheyenne VA Medical Center',
+          address: nil, phone: nil, lat: 41.1456, long: -104.7892,
+          facility_type: 'va_health_facility',
+          services: { 'health' => [{ 'serviceId' => 'primaryCare' }] }
+        )
+      end
+
+      let(:allowed_satellite_facility) do
+        lighthouse_facility_double(
+          unique_id: '983GC',
+          id: 'vha_983GC',
+          name: 'Fort Collins VA Clinic',
+          address: nil, phone: nil, lat: 40.5853, long: -105.0844,
+          facility_type: 'va_health_facility',
+          services: { 'health' => [{ 'serviceId' => 'primaryCare' }] }
+        )
+      end
+
+      let(:disallowed_facility) do
+        lighthouse_facility_double(
+          unique_id: '552',
+          id: 'vha_552',
+          name: 'Dayton VA Medical Center',
+          address: nil, phone: nil, lat: 39.7589, long: -84.1916,
+          facility_type: 'va_health_facility',
+          services: { 'health' => [{ 'serviceId' => 'primaryCare' }] }
+        )
+      end
+
+      let(:primary_care_referral) do
+        double('Referral', category_of_care: 'PRIMARY CARE', provider_npi: '91560381x')
+      end
+
+      # Pin to production so FacilityIdTranslator.to_staging is a no-op and
+      # the allowlist test reads station IDs straight through (in staging the
+      # translator would map 442 -> 983 / 552 -> 984, which would force the
+      # test to assert against translated IDs and conflate two concerns).
+      before { allow(Settings).to receive(:vsp_environment).and_return('production') }
+
+      def stub_allowlist(value)
+        allow(Settings.vaos.unified_scheduling)
+          .to receive(:allowed_parent_stations).and_return(value)
+      end
+
+      context 'when the allowlist is unset / blank (default)' do
+        it 'returns providers from every facility (no filter applied)' do
+          stub_allowlist(nil)
+          allow(lighthouse_client).to receive(:get_facilities)
+            .and_return([allowed_facility, disallowed_facility])
+
+          results = service.search(referral: primary_care_referral)
+          va_locations = results.select { |p| p.provider_type == 'va' }.map(&:location_id)
+          expect(va_locations).to contain_exactly('983', '552')
+        end
+      end
+
+      context 'when the allowlist is configured' do
+        before { stub_allowlist('983, 442') }
+
+        it 'returns only providers from facilities whose parent station is allowed' do
+          allow(lighthouse_client).to receive(:get_facilities)
+            .and_return([allowed_facility, disallowed_facility])
+
+          results = service.search(referral: primary_care_referral)
+          va_locations = results.select { |p| p.provider_type == 'va' }.map(&:location_id)
+          expect(va_locations).to contain_exactly('983')
+        end
+
+        it 'includes satellite/CBOC facilities that roll up to an allowed parent' do
+          allow(lighthouse_client).to receive(:get_facilities)
+            .and_return([allowed_satellite_facility, disallowed_facility])
+
+          results = service.search(referral: primary_care_referral)
+          va_locations = results.select { |p| p.provider_type == 'va' }.map(&:location_id)
+          expect(va_locations).to contain_exactly('983GC')
+        end
+
+        it 'does not call the eligibility service for filtered-out facilities' do
+          allow(lighthouse_client).to receive(:get_facilities)
+            .and_return([allowed_facility, disallowed_facility])
+
+          service.search(referral: primary_care_referral)
+
+          expect(eligibility_service).to have_received(:check_eligibility)
+            .with(facility_id: '983', vaos_service_type: 'primaryCare')
+          expect(eligibility_service).not_to have_received(:check_eligibility)
+            .with(facility_id: '552', vaos_service_type: anything)
+        end
+
+        it 'emits a StatsD increment for the rejected count' do
+          allow(StatsD).to receive(:increment)
+          allow(lighthouse_client).to receive(:get_facilities)
+            .and_return([allowed_facility, disallowed_facility])
+
+          service.search(referral: primary_care_referral)
+
+          expect(StatsD).to have_received(:increment)
+            .with('api.vaos.unified_provider_search.station_allowlist.filtered',
+                  1, hash_including(:tags))
+        end
+
+        it 'does not affect EPS providers (community care has no station ID)' do
+          allow(lighthouse_client).to receive(:get_facilities).and_return([disallowed_facility])
+
+          results = service.search(referral: primary_care_referral)
+          eps_results = results.select { |p| p.provider_type == 'eps' }
+          expect(eps_results).not_to be_empty
+        end
+      end
+    end
   end
 
   describe '.default_radius_miles' do

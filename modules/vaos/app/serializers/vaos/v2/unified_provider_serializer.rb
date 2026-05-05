@@ -27,7 +27,14 @@ module VAOS
       def type_specific_attributes(provider)
         case provider
         when Unified::VAProvider
-          { locationId: provider.location_id, serviceType: provider.service_type }.compact
+          # +facilityType+ is round-tripped to the FE so it can be echoed back on the slots
+          # request; {Unified::SlotsService} uses it (via {Unified::VAProvider#cerner?}) to gate
+          # whether +clinicalService+ is forwarded to VPG (Cerner only; VistA rejects it).
+          {
+            locationId: provider.location_id,
+            serviceType: provider.service_type,
+            facilityType: provider.facility_type
+          }.compact
         when Unified::EpsProvider
           {
             providerServiceId: provider.provider_service_id,

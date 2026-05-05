@@ -123,6 +123,31 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
         )
       end
 
+      context 'with slot_start supplied' do
+        let(:slot_start) { '2026-04-15T14:00:00Z' }
+
+        it 'forwards slot_start as desired_date in the VAOS request extension' do
+          post('/vaos/v2/unified_bookings',
+               params: va_params.merge(slot_start:, slot_end: '2026-04-15T14:30:00Z').to_json,
+               headers:)
+
+          expect(response).to have_http_status(:created)
+          expect(mock_appointments_service).to have_received(:post_appointment).with(
+            hash_including(extension: hash_including(:desired_date))
+          )
+        end
+      end
+
+      context 'without slot_start' do
+        it 'omits the extension block (no desired_date) so VAOS does not get an empty hash' do
+          post('/vaos/v2/unified_bookings', params: va_params.to_json, headers:)
+
+          body_arg = nil
+          expect(mock_appointments_service).to have_received(:post_appointment) { |b| body_arg = b }
+          expect(body_arg).not_to have_key(:extension)
+        end
+      end
+
       context 'when VAOS upstream service fails' do
         before do
           allow(mock_appointments_service).to receive(:post_appointment)
@@ -202,6 +227,24 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
                                provider_service_id: 'prov-789',
                                referral_number: 'VA0000005678'
                              ))
+      end
+
+      context 'when EPS submit response has no start time and slot_start was supplied' do
+        # The appointments list filters out EPS appointments missing a start time. With slot_start
+        # in the request, the booking service falls back to it so the confirmation (and the FE-
+        # facing list) still has a usable start.
+        let(:slot_start) { '2026-04-15T10:00:00Z' }
+        let(:mock_submit_response) { OpenStruct.new(id: 'draft-001', state: 'booked') }
+
+        it 'returns slot_start as the confirmation start' do
+          post('/vaos/v2/unified_bookings',
+               params: eps_params.merge(slot_start:).to_json,
+               headers:)
+
+          expect(response).to have_http_status(:created)
+          body = JSON.parse(response.body)
+          expect(body['data']['attributes']['start']).to eq(slot_start)
+        end
       end
 
       it 'returns 400 when provider_service_id is missing' do
@@ -289,6 +332,62 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
              headers:)
 
         expect(response).to have_http_status(:bad_request)
+      end
+    end
+
+    context 'pilot station allowlist' do
+      let(:va_params) do
+        { provider_type: 'va', slot_id: 'slot-1', location_id: '983',
+          clinic_id: '455', service_type: 'primaryCare' }
+      end
+
+      let(:mock_appointments_service) { instance_double(VAOS::V2::AppointmentsService) }
+
+      before do
+        allow(VAOS::V2::AppointmentsService).to receive(:new).and_return(mock_appointments_service)
+        allow(mock_appointments_service).to receive(:post_appointment).and_return(
+          OpenStruct.new(id: 'va-appt-001', status: 'booked', start: '2026-04-15T14:00:00Z')
+        )
+      end
+
+      def stub_allowlist(value)
+        allow(Settings.vaos.unified_scheduling)
+          .to receive(:allowed_parent_stations).and_return(value)
+      end
+
+      it 'returns 404 for a VA booking against a non-allowlisted parent station' do
+        stub_allowlist('442')
+
+        post('/vaos/v2/unified_bookings', params: va_params.to_json, headers:)
+
+        expect(response).to have_http_status(:not_found)
+        expect(mock_appointments_service).not_to have_received(:post_appointment)
+      end
+
+      it 'allows a VA booking against an allowlisted parent station' do
+        stub_allowlist('983')
+
+        post('/vaos/v2/unified_bookings', params: va_params.to_json, headers:)
+
+        expect(response).to have_http_status(:created)
+      end
+
+      it 'allows a VA booking against a satellite that rolls up to the parent' do
+        stub_allowlist('983')
+
+        post('/vaos/v2/unified_bookings',
+             params: va_params.merge(location_id: '983GC').to_json, headers:)
+
+        expect(response).to have_http_status(:created)
+      end
+
+      it 'allows any station when the allowlist is unset (default)' do
+        stub_allowlist(nil)
+
+        post('/vaos/v2/unified_bookings',
+             params: va_params.merge(location_id: '552').to_json, headers:)
+
+        expect(response).to have_http_status(:created)
       end
     end
 

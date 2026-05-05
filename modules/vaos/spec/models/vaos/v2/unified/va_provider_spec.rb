@@ -10,6 +10,27 @@ RSpec.describe VAOS::V2::Unified::VAProvider do
     end
   end
 
+  describe '#cerner?' do
+    it 'is true for Cerner / Oracle Health facilities' do
+      expect(described_class.new(facility_type: 'va_cerner_facility').cerner?).to be(true)
+    end
+
+    it 'is false for traditional VistA-backed VA health facilities' do
+      expect(described_class.new(facility_type: 'va_health_facility').cerner?).to be(false)
+    end
+
+    it 'is false when facility_type is unknown / unset' do
+      expect(described_class.new.cerner?).to be(false)
+      expect(described_class.new(facility_type: nil).cerner?).to be(false)
+      expect(described_class.new(facility_type: '').cerner?).to be(false)
+      expect(described_class.new(facility_type: 'dod_health').cerner?).to be(false)
+    end
+
+    it 'tolerates symbol facility_type values' do
+      expect(described_class.new(facility_type: :va_cerner_facility).cerner?).to be(true)
+    end
+  end
+
   describe '.from_facility_and_clinic' do
     let(:facility) do
       double(

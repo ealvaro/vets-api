@@ -117,6 +117,7 @@ module VAOS
           )
 
           apply_vaos_station_ids!(facilities)
+          facilities = apply_pilot_station_allowlist(facilities)
 
           fetch_providers_for_facilities(facilities, user_address, clinical_service:)
         rescue => e
@@ -129,6 +130,26 @@ module VAOS
                              }.compact)
           StatsD.increment("#{STATSD_KEY_PREFIX}.va_search.failure")
           []
+        end
+
+        # Pilot scope: when an allowlist is configured (typically prod via the
+        # +vaos__unified_scheduling__allowed_parent_stations+ env var), drop facilities
+        # whose parent station isn't in the list. No-op when unset/blank (staging,
+        # dev, test). Operates on the VAOS-facing +unique_id+ produced by
+        # {#apply_vaos_station_ids!} so satellite suffixes (+"983GC"+) roll up to the
+        # correct parent. Logs the rejected count so pilot scope is observable.
+        def apply_pilot_station_allowlist(facilities)
+          return facilities unless ParentStationFilter.enabled?
+
+          allowed, rejected = facilities.partition { |f| ParentStationFilter.allowed?(f.unique_id) }
+          if rejected.any?
+            StatsD.increment(
+              "#{STATSD_KEY_PREFIX}.station_allowlist.filtered",
+              rejected.size,
+              tags: ["allowed:#{ParentStationFilter.allowed_parents.join('|')}"]
+            )
+          end
+          allowed
         end
 
         # Lighthouse returns production station IDs in every env; VAOS staging

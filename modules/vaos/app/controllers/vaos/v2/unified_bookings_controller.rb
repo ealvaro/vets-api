@@ -79,9 +79,10 @@ module VAOS
 
       def va_unified_booking_params
         @va_unified_booking_params ||= begin
-          permitted = params.permit(:clinic_id, :location_id, :service_type, :slot_id)
+          permitted = params.permit(:clinic_id, :location_id, :service_type, :slot_id, :slot_start, :slot_end)
           permitted.require(:clinic_id)
           permitted.require(:location_id)
+          permitted.require(:service_type)
           permitted.require(:slot_id)
           permitted
         end
@@ -89,7 +90,7 @@ module VAOS
 
       def eps_unified_booking_params
         @eps_unified_booking_params ||= begin
-          permitted = params.permit(:provider_service_id, :network_id, :slot_id)
+          permitted = params.permit(:provider_service_id, :network_id, :slot_id, :slot_start, :slot_end)
           permitted.require(:provider_service_id)
           permitted.require(:network_id)
           permitted.require(:slot_id)
@@ -99,11 +100,22 @@ module VAOS
 
       def build_va_provider
         booking_params = va_unified_booking_params
+        ensure_pilot_station_allowed!(booking_params[:location_id])
         Unified::VAProvider.new(
           id: booking_params[:clinic_id],
           location_id: booking_params[:location_id],
           service_type: booking_params[:service_type]
         )
+      end
+
+      # Defense-in-depth for the pilot station allowlist. The provider search and slots
+      # endpoints already filter non-pilot stations out, but a stale FE cache or a
+      # hand-crafted booking request could still target a non-pilot station -- reject
+      # those with a 404 before any upstream VAOS call is made.
+      def ensure_pilot_station_allowed!(location_id)
+        return if Unified::ParentStationFilter.allowed?(location_id)
+
+        raise Common::Exceptions::RecordNotFound, location_id
       end
 
       def build_eps_provider
@@ -114,13 +126,26 @@ module VAOS
         )
       end
 
+      ##
+      # +slot_start+ / +slot_end+ are forwarded so the booking services can populate downstream
+      # fields the FE-supplied +slot_id+ alone can't reach: VA uses +slot.start+ to set
+      # +extension.desired_date+ on the VAOS +post_appointment+ body, and EPS falls back to
+      # +slot.start+ when the upstream draft response omits it (the appointments list filters
+      # out EPS appointments missing a start time).
       def build_slot
         case provider_type
         when 'va'
-          Unified::VASlot.new(id: va_unified_booking_params[:slot_id])
+          Unified::VASlot.new(
+            id: va_unified_booking_params[:slot_id],
+            start: va_unified_booking_params[:slot_start],
+            end: va_unified_booking_params[:slot_end],
+            location_id: va_unified_booking_params[:location_id]
+          )
         when 'eps'
           Unified::EpsSlot.new(
             id: eps_unified_booking_params[:slot_id],
+            start: eps_unified_booking_params[:slot_start],
+            end: eps_unified_booking_params[:slot_end],
             provider_service_id: eps_unified_booking_params[:provider_service_id]
           )
         end

@@ -1977,6 +1977,10 @@ vaos:
       hex_iv: "0123456789abcdef0123456789abcdef"
       hex_secret: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
   unified_scheduling:
+    # Empty = no station filter applied (open to all VA stations). Override locally by
+    # setting the +vaos__unified_scheduling__allowed_parent_stations+ env var to a
+    # comma-delimited list (e.g. "983,442") if you want to mimic the prod scope.
+    allowed_parent_stations: ~
     default_radius_miles: 25
 vass:
   api_url: https://fake-api.com

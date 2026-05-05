@@ -87,6 +87,57 @@ RSpec.describe VAOS::V2::Unified::VABookingService do
       end
     end
 
+    context 'when slot.start is unrecognized by Time.zone.parse (returns nil)' do
+      before { allow(Rails.logger).to receive(:warn) }
+
+      let(:bad_value) { 'not-a-date' }
+      let(:slot) { VAOS::V2::Unified::VASlot.new(id: 'slot-1', start: bad_value) }
+
+      it 'omits the extension entirely instead of raising NoMethodError (which would 500)' do
+        body_arg = nil
+        allow(appointments_service).to receive(:post_appointment) do |body|
+          body_arg = body
+          OpenStruct.new(created_appointment)
+        end
+
+        expect do
+          service.book(user:, provider:, slot:, params: base_params)
+        end.not_to raise_error
+        expect(body_arg).not_to have_key(:extension)
+      end
+
+      it 'logs a warning so unparseable inputs are observable' do
+        allow(appointments_service).to receive(:post_appointment).and_return(OpenStruct.new(created_appointment))
+
+        service.book(user:, provider:, slot:, params: base_params)
+
+        expect(Rails.logger).to have_received(:warn).with(
+          'VABookingService: unparseable slot.start, omitting desired_date',
+          hash_including(slot_start: bad_value)
+        )
+      end
+    end
+
+    context 'when slot.start is out-of-range (Time.zone.parse raises ArgumentError)' do
+      before { allow(Rails.logger).to receive(:warn) }
+
+      let(:bad_value) { '2026-13-99T25:99:99Z' }
+      let(:slot) { VAOS::V2::Unified::VASlot.new(id: 'slot-1', start: bad_value) }
+
+      it 'logs a warning and re-raises so the error surfaces back to the controller' do
+        expect(appointments_service).not_to receive(:post_appointment)
+
+        expect do
+          service.book(user:, provider:, slot:, params: base_params)
+        end.to raise_error(ArgumentError)
+
+        expect(Rails.logger).to have_received(:warn).with(
+          'VABookingService: unparseable slot.start, omitting desired_date',
+          hash_including(slot_start: bad_value)
+        )
+      end
+    end
+
     context 'when comment is present' do
       it 'includes comment on the request' do
         expect(appointments_service).to receive(:post_appointment).with(
