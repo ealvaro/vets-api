@@ -22,6 +22,7 @@ updates:
       - dependency-name: "sidekiq"
       - dependency-name: "sidekiq-pro"
       - dependency-name: "sidekiq-ent"
+      - dependency-name: "betamocks"
     open-pull-requests-limit: 5
     registries:
     - rubygems-server-enterprise-contribsys-com
