@@ -13,7 +13,8 @@ RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmitClaimJob, :uploader_help
   let(:claim) { create(:survivors_benefits_claim) }
   let(:service) { double('service') }
   let(:monitor) { SurvivorsBenefits::Monitor.new }
-  let(:user_account_uuid) { 123 }
+  let!(:user_account) { create(:user_account) }
+  let(:user_account_uuid) { user_account.id }
 
   describe '#perform' do
     let(:response) { double('response') }
@@ -286,5 +287,89 @@ RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmitClaimJob, :uploader_help
     end
   end
 
-  # Rspec.describe
+  describe '#generate_metadata' do
+    subject(:metadata) { job.send(:generate_metadata) }
+
+    let(:job)   { described_class.new }
+    let(:claim) { instance_double(SurvivorsBenefits::SavedClaim) }
+
+    let(:form) do
+      {
+        'veteranFullName' => { 'first' => 'Jane', 'last' => 'Doe' },
+        'veteranSocialSecurityNumber' => '123456789',
+        'claimantAddress' => {
+          'street' => '1 Test St',
+          'city' => 'Janesville',
+          'state' => 'WI',
+          'postalCode' => '53547',
+          'country' => 'USA'
+        }
+      }
+    end
+
+    before do
+      job.instance_variable_set(:@claim, claim)
+      allow(claim).to receive_messages(
+        parsed_form: form,
+        form_id: SurvivorsBenefits::FORM_ID,
+        business_line: 'NCA'
+      )
+    end
+
+    it 'sets docType to "StructuredData:<form_id>" so MAS triggers the MMS pull' do
+      expect(metadata['docType']).to eq("StructuredData:#{SurvivorsBenefits::FORM_ID}")
+      expect(metadata['docType']).to start_with('StructuredData:')
+    end
+
+    it 'sets businessLine to NCA' do
+      expect(metadata['businessLine']).to eq('NCA')
+    end
+
+    it 'sets zipCode from the claimant address' do
+      expect(metadata['zipCode']).to eq('53547')
+    end
+
+    it 'sets source to va_gov_benefits_intake_{contractor}' do
+      expect(metadata['source']).to eq('va_gov_benefits_intake_huntridge_labs')
+    end
+
+    it 'sets veteran name and file number' do
+      expect(metadata['veteranFirstName']).to eq('Jane')
+      expect(metadata['veteranLastName']).to eq('Doe')
+      expect(metadata['fileNumber']).to eq('123456789')
+    end
+
+    context 'when claimantAddress is absent, falls back to veteranAddress' do
+      let(:form) do
+        {
+          'veteranFullName' => { 'first' => 'Jane', 'last' => 'Doe' },
+          'veteranSocialSecurityNumber' => '123456789',
+          'veteranAddress' => { 'postalCode' => '22202' }
+        }
+      end
+
+      it 'uses veteranAddress postalCode' do
+        expect(metadata['zipCode']).to eq('22202')
+      end
+    end
+
+    context 'when no address is present' do
+      let(:form) do
+        {
+          'veteranFullName' => { 'first' => 'Jane', 'last' => 'Doe' },
+          'veteranSocialSecurityNumber' => '123456789'
+        }
+      end
+    end
+
+    context 'when vaFileNumber is present' do
+      let(:form) do
+        super().merge('vaFileNumber' => '987654321')
+      end
+
+      it 'prefers vaFileNumber over SSN' do
+        expect(metadata['fileNumber']).to eq('987654321')
+      end
+    end
+  end
 end

@@ -113,16 +113,20 @@ module SurvivorsBenefits
       # @return [Hash]
       def generate_metadata
         form = @claim.parsed_form
+        address = form['claimantAddress'].presence || form['veteranAddress'].presence || {}
 
         # also validates/maniuplates the metadata
-        ::BenefitsIntake::Metadata.generate(
-          form['veteranFullName']['first'],
-          form['veteranFullName']['last'],
-          form['vaFileNumber'] || form['veteranSocialSecurityNumber'],
-          self.class.to_s,
-          "StructuredData:#{@claim.form_id}",
-          @claim.business_line
-        )
+        # BenefitsIntake::Metadata.generate expects:
+        #   (first_name, last_name, file_number, zip_code, source, doc_type, business_line = nil)
+        first = form.dig('veteranFullName', 'first')
+        last = form.dig('veteranFullName', 'last')
+        file_number = form['vaFileNumber'] || form['veteranSocialSecurityNumber']
+        zip_code = address['postalCode']
+        source = 'va_gov_benefits_intake_huntridge_labs'
+        doc_type = "StructuredData:#{@claim.form_id}"
+        business_line = @claim.business_line
+
+        ::BenefitsIntake::Metadata.generate(first, last, file_number, zip_code, source, doc_type, business_line)
       end
 
       # Upload generated pdf to Benefits Intake API
