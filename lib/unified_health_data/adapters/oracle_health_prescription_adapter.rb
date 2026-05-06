@@ -137,7 +137,7 @@ module UnifiedHealthData
       # Builds boolean availability flags for a prescription.
       #
       # @param resource [Hash] FHIR MedicationRequest resource
-      # @param facility_name [String, nil] Resolved facility name (must be present for refillable)
+      # @param facility_name [String, nil] Resolved facility name (must be present for refillable/renewable)
       # @param refill_status [String] Current refill status
       # @return [Hash] Hash with :is_refillable, :is_renewable, :is_renewal_flow_enabled
       def build_availability_flags(resource, facility_name, refill_status)
@@ -146,7 +146,8 @@ module UnifiedHealthData
         {
           is_refillable: facility_name.present? && extract_is_refillable(resource, refill_status),
           is_renewable:,
-          is_renewal_flow_enabled: compute_renewal_flow_enabled(is_renewable, station, @current_user)
+          is_renewal_flow_enabled: facility_name.present? &&
+            compute_renewal_flow_enabled(is_renewable, station, @current_user)
         }
       end
 

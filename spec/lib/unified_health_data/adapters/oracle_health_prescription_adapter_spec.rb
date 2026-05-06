@@ -259,6 +259,41 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
       end
     end
 
+    context 'with renewal flow enabled' do
+      let(:renewable_resource) do
+        fhir_resource(
+          status: 'active',
+          refills: 1,
+          expiration: 30.days.ago,
+          source: 'VA'
+        ).merge(
+          'contained' => [
+            {
+              'resourceType' => 'MedicationDispense',
+              'id' => 'dispense-1',
+              'status' => 'completed',
+              'whenHandedOver' => '2025-01-15T10:00:00Z'
+            },
+            {
+              'resourceType' => 'MedicationDispense',
+              'id' => 'dispense-2',
+              'status' => 'completed',
+              'whenHandedOver' => '2025-01-20T10:00:00Z'
+            }
+          ]
+        )
+      end
+
+      it 'sets is_renewal_flow_enabled to false when facility cannot be resolved' do
+        allow(HealthFacility).to receive(:find_by).and_return(nil)
+        allow_any_instance_of(Lighthouse::Facilities::V1::Client).to receive(:get_facilities).and_return([])
+
+        result = subject.parse(renewable_resource)
+        expect(result.is_renewable).to be true
+        expect(result.is_renewal_flow_enabled).to be false
+      end
+    end
+
     context 'with status normalization' do
       it 'maps active status to "active" refill_status' do
         result = subject.parse(fhir_resource(status: 'active'))
