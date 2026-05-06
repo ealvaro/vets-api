@@ -273,44 +273,43 @@ module ClaimsApi
         end
       end
 
-      def multiple_exposures # rubocop:disable Metrics/MethodLength
-        if @pdf_data&.dig(:data, :attributes, :toxicExposure, :multipleExposures).present?
-          @pdf_data[:data][:attributes][:toxicExposure][:multipleExposures].each_with_index do |exp, index|
+      # NOTE: Two similar paths exist in @pdf_data:
+      #   Form input:  [:data][:attributes][:toxicExposure][:multipleExposures]
+      #   PDF output:  [:data][:attributes][:exposureInformation][:toxicExposure][:multipleExposures]
+      # `exp` iterates over form input values; mutations target the PDF output path.
+      def multiple_exposures
+        multiple_exposure_form_data = @pdf_data&.dig(:data, :attributes, :toxicExposure, :multipleExposures)
+        if multiple_exposure_form_data.present?
+          multiple_exposures_pdf_data = @pdf_data[:data][:attributes][:exposureInformation][:toxicExposure][:multipleExposures]
+          multiple_exposure_form_data.each_with_index do |exp, index|
             if exp[:exposureDates].present?
-              multiple_service_dates_begin = exp[:exposureDates][:beginDate]
-              if multiple_service_dates_begin.present?
-                @pdf_data[:data][:attributes][:exposureInformation][:toxicExposure][:multipleExposures][index][:exposureDates][:start] =
-                  make_date_object(multiple_service_dates_begin, multiple_service_dates_begin.length)
-              end
-              @pdf_data[:data][:attributes][:exposureInformation][:toxicExposure][:multipleExposures][index][:exposureDates].delete(:beginDate)
-
-              multiple_service_dates_end = exp[:exposureDates][:endDate]
-              if multiple_service_dates_end.present?
-                @pdf_data[:data][:attributes][:exposureInformation][:toxicExposure][:multipleExposures][index][:exposureDates][:end] =
-                  make_date_object(multiple_service_dates_end, multiple_service_dates_end.length)
-              end
-              @pdf_data[:data][:attributes][:exposureInformation][:toxicExposure][:multipleExposures][index][:exposureDates].delete(:endDate)
+              map_exposure_date(multiple_exposures_pdf_data[index], exp, :start, :beginDate)
+              map_exposure_date(multiple_exposures_pdf_data[index], exp, :end, :endDate)
             else
-              @pdf_data[:data][:attributes][:exposureInformation][:toxicExposure][:multipleExposures][index].delete(:exposureDates)
+              multiple_exposures_pdf_data[index].delete(:exposureDates)
             end
             clean_up_exposure(exp, index)
           end
-          if @pdf_data[:data][:attributes][:exposureInformation][:toxicExposure][:multipleExposures].empty?
+          multiple_exposures_pdf_data.reject! { |e| e.values.all?(&:nil?) }
+          if multiple_exposures_pdf_data.empty?
             @pdf_data[:data][:attributes][:exposureInformation][:toxicExposure].delete(:multipleExposures)
           end
         end
         @pdf_data
       end
 
+      def map_exposure_date(exposure, exp, key, date_key)
+        date = exp[:exposureDates][date_key]
+        exposure[:exposureDates][key] = make_date_object(date, date.length) if date.present?
+        exposure[:exposureDates].delete(date_key)
+      end
+
       def clean_up_exposure(exp, idx)
         deep_compact(exp)
 
-        if @pdf_data[:data][:attributes][:exposureInformation][:toxicExposure][:multipleExposures][idx][:exposureDates].empty?
+        exposure = @pdf_data[:data][:attributes][:exposureInformation][:toxicExposure][:multipleExposures][idx]
+        if exposure[:exposureDates].blank?
           @pdf_data[:data][:attributes][:exposureInformation][:toxicExposure][:multipleExposures][idx].delete(:exposureDates)
-        end
-
-        if exp.empty?
-          @pdf_data[:data][:attributes][:exposureInformation][:toxicExposure][:multipleExposures].delete_at(idx)
         end
       end
 

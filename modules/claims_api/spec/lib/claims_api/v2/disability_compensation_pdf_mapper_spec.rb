@@ -379,6 +379,152 @@ describe ClaimsApi::V2::DisabilityCompensationPdfMapper do
         expect(herb_exp_data).to be_nil
       end
 
+      context 'multiple exposures' do
+        it 'processes all when an earlier exposure has all nil values' do
+          form_attributes['toxicExposure']['multipleExposures'] = [
+            {
+              'hazardExposedTo' => nil,
+              'exposureLocation' => nil,
+              'exposureDates' => { 'beginDate' => nil, 'endDate' => nil }
+            },
+            {
+              'hazardExposedTo' => 'RADIATION',
+              'exposureLocation' => 'Guam',
+              'exposureDates' => { 'beginDate' => '2012-12', 'endDate' => '2013-07' }
+            },
+            {
+              'hazardExposedTo' => 'POISONING',
+              'exposureLocation' => 'Italy',
+              'exposureDates' => { 'beginDate' => '2014-12', 'endDate' => '2015-07' }
+            }
+          ]
+
+          mapper.map_claim
+
+          multiple_exposures = pdf_data[:data][:attributes][:exposureInformation][:toxicExposure][:multipleExposures]
+          expect(multiple_exposures.length).to eq(2)
+          expect(multiple_exposures[0][:hazardExposedTo]).to eq('RADIATION')
+          expect(multiple_exposures[0][:exposureLocation]).to eq('Guam')
+          expect(multiple_exposures[1][:hazardExposedTo]).to eq('POISONING')
+          expect(multiple_exposures[1][:exposureLocation]).to eq('Italy')
+        end
+
+        it 'handles exposureDates with only beginDate' do
+          form_attributes['toxicExposure']['multipleExposures'] = [
+            {
+              'hazardExposedTo' => 'RADIATION',
+              'exposureLocation' => 'Guam',
+              'exposureDates' => { 'beginDate' => '2012-12', 'endDate' => nil }
+            }
+          ]
+          mapper.map_claim
+          exposure = pdf_data[:data][:attributes][:exposureInformation][:toxicExposure][:multipleExposures][0]
+          expect(exposure[:exposureDates][:start]).to be_present
+          expect(exposure[:exposureDates][:end]).to be_nil
+        end
+
+        it 'handles exposureDates with only endDate' do
+          form_attributes['toxicExposure']['multipleExposures'] = [
+            {
+              'hazardExposedTo' => 'RADIATION',
+              'exposureLocation' => 'Guam',
+              'exposureDates' => { 'beginDate' => nil, 'endDate' => '2013-07' }
+            }
+          ]
+          mapper.map_claim
+          exposure = pdf_data[:data][:attributes][:exposureInformation][:toxicExposure][:multipleExposures][0]
+          expect(exposure[:exposureDates][:start]).to be_nil
+          expect(exposure[:exposureDates][:end]).to be_present
+        end
+
+        it 'removes exposureDates key when exposureDates is nil' do
+          form_attributes['toxicExposure']['multipleExposures'] = [
+            {
+              'hazardExposedTo' => 'RADIATION',
+              'exposureLocation' => 'Guam',
+              'exposureDates' => nil
+            }
+          ]
+          mapper.map_claim
+          exposure = pdf_data[:data][:attributes][:exposureInformation][:toxicExposure][:multipleExposures][0]
+          expect(exposure.key?(:exposureDates)).to be false
+        end
+
+        it 'removes multipleExposures key when all exposures are nil' do
+          form_attributes['toxicExposure']['multipleExposures'] = [
+            {
+              'hazardExposedTo' => nil,
+              'exposureLocation' => nil,
+              'exposureDates' => nil
+            }
+          ]
+          mapper.map_claim
+          toxic_exposure = pdf_data[:data][:attributes][:exposureInformation][:toxicExposure]
+          expect(toxic_exposure.key?(:multipleExposures)).to be false
+        end
+
+        it 'returns pdf_data unchanged when multipleExposures is nil' do
+          form_attributes['toxicExposure']['multipleExposures'] = nil
+          mapper.map_claim
+          toxic_exposure = pdf_data[:data][:attributes][:exposureInformation][:toxicExposure]
+          expect(toxic_exposure.key?(:multipleExposures)).to be false
+        end
+
+        it 'returns pdf_data unchanged when multipleExposures is missing' do
+          form_attributes['toxicExposure'].delete('multipleExposures')
+          mapper.map_claim
+          toxic_exposure = pdf_data[:data][:attributes][:exposureInformation][:toxicExposure]
+          expect(toxic_exposure.key?(:multipleExposures)).to be false
+        end
+
+        it 'handles year-only date format' do
+          form_attributes['toxicExposure']['multipleExposures'] = [
+            {
+              'hazardExposedTo' => 'RADIATION',
+              'exposureLocation' => 'Guam',
+              'exposureDates' => { 'beginDate' => '2012', 'endDate' => '2013' }
+            }
+          ]
+          mapper.map_claim
+          exposure = pdf_data[:data][:attributes][:exposureInformation][:toxicExposure][:multipleExposures][0]
+          expect(exposure[:exposureDates][:start]).to be_present
+          expect(exposure[:exposureDates][:end]).to be_present
+        end
+
+        it 'removes nil exposure entries when they appear at the end of the array' do
+          form_attributes['toxicExposure']['multipleExposures'] = [
+            {
+              'hazardExposedTo' => 'RADIATION',
+              'exposureLocation' => 'Guam',
+              'exposureDates' => { 'beginDate' => '2012-12', 'endDate' => '2013-07' }
+            },
+            {
+              'hazardExposedTo' => nil,
+              'exposureLocation' => nil,
+              'exposureDates' => nil
+            }
+          ]
+          mapper.map_claim
+          exposures = pdf_data[:data][:attributes][:exposureInformation][:toxicExposure][:multipleExposures]
+          expect(exposures.length).to eq(1)
+          expect(exposures[0][:hazardExposedTo]).to eq('RADIATION')
+        end
+
+        it 'keeps exposure with only exposureLocation populated' do
+          form_attributes['toxicExposure']['multipleExposures'] = [
+            {
+              'hazardExposedTo' => nil,
+              'exposureLocation' => 'Guam',
+              'exposureDates' => nil
+            }
+          ]
+          mapper.map_claim
+          exposures = pdf_data[:data][:attributes][:exposureInformation][:toxicExposure][:multipleExposures]
+          expect(exposures.length).to eq(1)
+          expect(exposures[0][:exposureLocation]).to eq('Guam')
+        end
+      end
+
       it 'maps herbicide correctly when dates are not included' do
         form_attributes['toxicExposure']['herbicideHazardService']['serviceDates'] = nil
 
