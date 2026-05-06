@@ -255,7 +255,7 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
     end
 
     it 'returns summarized copay data with default month window' do
-      allow(service).to receive(:summary).with(month_count: 6).and_return(
+      allow(service).to receive(:summary).with(month_count: 6, status: nil).and_return(
         {
           entries: [],
           meta: {

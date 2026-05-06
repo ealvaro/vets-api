@@ -11,6 +11,15 @@ class Swagger::V1::Requests::MedicalCopays
 
       parameter :authorization
 
+      parameter do
+        key :name, :status
+        key :in, :query
+        key :description, 'Filter invoices by FHIR Invoice status. Multiple values can be comma-separated. ' \
+                          'Allowed values: draft, issued, balanced, cancelled, entered-in-error'
+        key :required, false
+        key :type, :string
+      end
+
       response 200 do
         key :description, 'Successful copays lookup'
 

@@ -17,7 +17,9 @@ module V1
 
         render json: copays
       else
-        invoice_bundle = medical_copay_service.list_months
+        invoice_bundle = medical_copay_service.list_months(
+          status: params[:status]
+        )
         serialized = Lighthouse::HCC::InvoiceSerializer.new(
           invoice_bundle.entries, links: invoice_bundle.links, meta: invoice_bundle.meta
         ).serializable_hash
@@ -28,7 +30,8 @@ module V1
 
     def summary
       result = medical_copay_service.summary(
-        month_count: params[:months]&.to_i || 6
+        month_count: params[:months]&.to_i || 6,
+        status: cerner_copay_user? ? nil : params[:status]
       )
 
       render json: Lighthouse::HCC::InvoiceSerializer.new(

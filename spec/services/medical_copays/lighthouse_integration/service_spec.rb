@@ -217,6 +217,9 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
 
         service = MedicalCopays::LighthouseIntegration::Service.new('123')
 
+        # TODO: Remove client-side filter testing once Lighthouse HCCC honors the
+        # `status` FHIR search parameter. Then test the FHIR search parameter directly.
+        # Currently the sandbox silently ignores it and returns unfiltered results.
         response = service.list(count: 10, page: 1)
 
         expect(response.total).to eq(10)
@@ -376,8 +379,8 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
       allow(service).to receive(:invoice_service).and_return(invoice_service)
     end
 
-    def invoice_entry(date:, balance:)
-      {
+    def invoice_entry(date:, balance:, status: nil)
+      entry = {
         'resource' => {
           'date' => date,
           'totalPriceComponent' => [
@@ -393,6 +396,8 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
           ]
         }
       }
+      entry['resource']['status'] = status if status
+      entry
     end
 
     it 'aggregates total amount and count within the month window' do
@@ -481,6 +486,112 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
           month_window: 6
         }
       )
+    end
+
+    context 'with status filter' do
+      it 'filters summary by status from unfiltered data' do
+        unfiltered_entries = [
+          invoice_entry(date: Time.current.utc.iso8601, balance: 10.50, status: 'issued'),
+          invoice_entry(date: Time.current.utc.iso8601, balance: 20.25, status: 'balanced'),
+          invoice_entry(date: Time.current.utc.iso8601, balance: 30.00, status: 'draft'),
+          invoice_entry(date: Time.current.utc.iso8601, balance: 15.00, status: 'cancelled')
+        ]
+
+        # Lighthouse API call where status isn't applied as a search param yet, so everything will get returned.
+        allow(invoice_service).to receive(:list)
+          .with(count: 50, page: 1, status: 'issued,balanced')
+          .and_return({ 'entry' => unfiltered_entries })
+
+        result = service.summary(month_count: 6, status: 'issued,balanced')
+
+        # Service should have filtered to only issued and balanced
+        expect(result[:meta][:total_amount_due]).to eq(30.75)
+        expect(result[:meta][:total_copays]).to eq(2)
+      end
+
+      it 'returns zero totals when no entries match status filter' do
+        unfiltered_entries = [
+          invoice_entry(date: Time.current.utc.iso8601, balance: 10.50, status: 'draft'),
+          invoice_entry(date: Time.current.utc.iso8601, balance: 20.25, status: 'cancelled')
+        ]
+
+        allow(invoice_service).to receive(:list)
+          .with(count: 50, page: 1, status: 'issued')
+          .and_return({ 'entry' => unfiltered_entries })
+
+        result = service.summary(month_count: 6, status: 'issued')
+
+        expect(result[:meta][:total_amount_due]).to eq(0.0)
+        expect(result[:meta][:total_copays]).to eq(0)
+      end
+    end
+  end
+
+  describe '#parse_status_filter' do
+    let(:service) { described_class.new('123456789V123456') }
+
+    it 'returns nil when status is blank' do
+      expect(service.send(:parse_status_filter, nil)).to be_nil
+      expect(service.send(:parse_status_filter, '')).to be_nil
+    end
+
+    it 'returns allowed statuses when valid statuses are provided' do
+      result = service.send(:parse_status_filter, 'issued,balanced')
+      expect(result).to eq(%w[issued balanced])
+    end
+
+    it 'filters out invalid statuses' do
+      result = service.send(:parse_status_filter, 'issued,invalid,balanced')
+      expect(result).to eq(%w[issued balanced])
+    end
+
+    it 'returns empty array when no valid statuses match' do
+      result = service.send(:parse_status_filter, 'invalid1,invalid2')
+      expect(result).to eq([])
+    end
+
+    it 'handles whitespace in status values' do
+      result = service.send(:parse_status_filter, ' issued , balanced ')
+      expect(result).to eq(%w[issued balanced])
+    end
+  end
+
+  describe '#apply_status_filter!' do
+    let(:service) { described_class.new('123456789V123456') }
+    let(:bundle) do
+      {
+        'entry' => [
+          { 'resource' => { 'status' => 'issued' } },
+          { 'resource' => { 'status' => 'balanced' } },
+          { 'resource' => { 'status' => 'draft' } }
+        ],
+        'total' => 3
+      }
+    end
+
+    it 'filters entries by status' do
+      service.send(:apply_status_filter!, bundle, %w[issued balanced])
+
+      expect(bundle['entry'].length).to eq(2)
+      expect(bundle['entry'].map { |e| e['resource']['status'] }).to eq(%w[issued balanced])
+      expect(bundle['total']).to eq(2)
+    end
+
+    it 'returns bundle unchanged when statuses is nil' do
+      original_bundle = bundle.dup
+      service.send(:apply_status_filter!, bundle, nil)
+
+      expect(bundle).to eq(original_bundle)
+    end
+
+    it 'handles empty entry array' do
+      bundle['entry'] = []
+      bundle['total'] = 0
+
+      service.send(:apply_status_filter!, bundle, %w[issued])
+
+      expect(bundle['entry']).to be_empty
+      expect(bundle['total']).to eq(0)
     end
   end
 end

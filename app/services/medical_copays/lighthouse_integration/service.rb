@@ -22,6 +22,7 @@ module MedicalCopays
       MAX_SUMMARY_PAGES = 20
       DEFAULT_MONTH_COUNT = 6
       DEFAULT_INVOICE_COUNT = 50
+      ALLOWED_INVOICE_STATUSES = %w[draft issued balanced cancelled entered-in-error].freeze
 
       class MissingOrganizationIdError < StandardError; end
       class MissingOrganizationRefError < StandardError; end
@@ -32,11 +33,18 @@ module MedicalCopays
         @icn = icn
       end
 
-      def list(count:, page:)
+      def list(count:, page:, status: nil)
         StatsD.increment("#{STATSD_KEY_PREFIX}.list.initiated")
 
         record_success('list') do
-          raw_invoices = invoice_service.list(count:, page:)
+          extra = status.present? ? { status: } : {}
+          raw_invoices = invoice_service.list(count:, page:, **extra)
+
+          # TODO: Remove client-side filter once Lighthouse HCCC honors the
+          # `status` FHIR search parameter. Currently the sandbox silently
+          # ignores it and returns unfiltered results.
+          apply_status_filter!(raw_invoices, parse_status_filter(status))
+
           entries = build_invoice_entries(raw_invoices)
           Lighthouse::HCC::Bundle.new(raw_invoices, entries)
         end
@@ -46,8 +54,8 @@ module MedicalCopays
         raise
       end
 
-      def summary(month_count: 6)
-        result = collect_invoices_in_range(month_count)
+      def summary(month_count: 6, status: nil)
+        result = collect_invoices_in_range(month_count, status:)
         entries = result['entries']
 
         total_amount = 0.to_d
@@ -66,8 +74,8 @@ module MedicalCopays
         raise ServiceError, 'External service error'
       end
 
-      def list_months(month_count: 6)
-        result = collect_invoices_in_range(month_count)
+      def list_months(month_count: 6, status: nil)
+        result = collect_invoices_in_range(month_count, status:)
         raw_bundle = result['raw_bundle']
         filtered_entries = result['entries']
 
@@ -98,17 +106,37 @@ module MedicalCopays
 
       private
 
+      def parse_status_filter(status)
+        return nil if status.blank?
+
+        requested = status.split(',').map(&:strip)
+        requested & ALLOWED_INVOICE_STATUSES
+      end
+
+      def apply_status_filter!(raw_bundle, statuses)
+        return raw_bundle unless statuses
+
+        entries = raw_bundle['entry'] || []
+        raw_bundle['entry'] = entries.select do |entry|
+          statuses.include?(entry.dig('resource', 'status'))
+        end
+        raw_bundle['total'] = raw_bundle['entry'].length
+        raw_bundle
+      end
+
       # rubocop:disable Metrics/MethodLength
-      def collect_invoices_in_range(month_count, count = 50)
+      def collect_invoices_in_range(month_count, count: 50, status: nil)
         from = month_count.months.ago.utc
         page = 1
         collected_entries = []
         last_raw_bundle = nil
+        extra = status.present? ? { status: } : {}
+        allowed_statuses = parse_status_filter(status)
 
         loop do
           break if page > MAX_SUMMARY_PAGES
 
-          raw = invoice_service.list(count:, page:)
+          raw = invoice_service.list(count:, page:, **extra)
           last_raw_bundle = raw
 
           entries = raw['entry'] || []
@@ -123,6 +151,10 @@ module MedicalCopays
             invoice_date = Time.iso8601(date_str)
 
             next if invoice_date < from
+
+            # TODO: Remove client-side filter once Lighthouse HCCC honors the
+            # `status` FHIR search parameter.
+            next if allowed_statuses&.exclude?(entry.dig('resource', 'status'))
 
             collected_entries << entry
           end
@@ -168,7 +200,7 @@ module MedicalCopays
       # rubocop:enable Metrics/MethodLength
 
       def invoices_for_organization(month_count, count, organization_id, current_invoice_id)
-        result = collect_invoices_in_range(month_count, count)
+        result = collect_invoices_in_range(month_count, count:)
 
         filtered_invoices = result['entries'].select do |entry|
           next if entry.dig('resource', 'id') == current_invoice_id
