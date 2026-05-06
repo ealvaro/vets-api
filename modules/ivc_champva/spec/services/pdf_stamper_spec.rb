@@ -401,4 +401,90 @@ describe IvcChampva::PdfStamper do
       end
     end
   end
+
+  describe '.stamp_metadata_items' do
+    let(:pdf_path) { 'tmp/test_stamp_metadata.pdf' }
+    let(:stamp_path) { 'tmp/test_stamp_overlay' }
+    let(:metadata) do
+      {
+        'provider_name' => 'Dr. Smith',
+        'provider_phone' => '555-123-4567',
+        'additional_comments' => 'Patient needs follow-up care'
+      }
+    end
+
+    before do
+      allow(Common::FileHelpers).to receive(:random_file_path).and_return(stamp_path)
+      allow(Common::FileHelpers).to receive(:delete_file_if_exists).and_call_original
+    end
+
+    context 'when champva_stamp_text_wrapping flag is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:champva_stamp_text_wrapping).and_return(false)
+        allow(described_class).to receive(:stamp)
+      end
+
+      it 'calls stamp for each metadata item' do
+        described_class.stamp_metadata_items(pdf_path, metadata)
+
+        expect(described_class).to have_received(:stamp).exactly(3).times
+      end
+
+      it 'returns all keys as stamped with empty remaining' do
+        stamped, remaining = described_class.stamp_metadata_items(pdf_path, metadata)
+
+        expect(stamped).to eq(%w[provider_name provider_phone additional_comments])
+        expect(remaining).to eq({})
+      end
+    end
+
+    context 'when champva_stamp_text_wrapping flag is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:champva_stamp_text_wrapping).and_return(true)
+        allow(described_class).to receive(:verify).and_return(true)
+        allow(described_class).to receive(:perform_multistamp)
+      end
+
+      it 'stamps all short metadata items successfully' do
+        stamped, remaining = described_class.stamp_metadata_items(pdf_path, metadata)
+
+        expect(stamped).to eq(%w[provider_name provider_phone additional_comments])
+        expect(remaining).to eq({})
+      end
+
+      it 'handles long additional_comments with text wrapping' do
+        long_metadata = metadata.merge('additional_comments' => 'A' * 300)
+
+        stamped, remaining = described_class.stamp_metadata_items(pdf_path, long_metadata)
+
+        expect(stamped).to include('additional_comments')
+        expect(remaining).to be_empty
+      end
+
+      it 'respects the bottom margin and returns remaining items' do
+        many_items = (1..50).each_with_object({}) { |i, h| h["field_#{i}"] = 'x' * 100 }
+
+        stamped, remaining = described_class.stamp_metadata_items(pdf_path, many_items)
+
+        expect(stamped.length).to be < 50
+        expect(remaining).not_to be_empty
+      end
+
+      it 'cleans up the temp file' do
+        described_class.stamp_metadata_items(pdf_path, metadata)
+
+        expect(Common::FileHelpers).to have_received(:delete_file_if_exists).with(stamp_path)
+      end
+
+      it 'cleans up the temp file even when an error occurs during Prawn generation' do
+        allow(Prawn::Document).to receive(:generate).and_raise(StandardError, 'prawn error')
+
+        expect do
+          described_class.stamp_metadata_items(pdf_path, metadata)
+        end.to raise_error(StandardError, 'prawn error')
+
+        expect(Common::FileHelpers).to have_received(:delete_file_if_exists).with(stamp_path)
+      end
+    end
+  end
 end

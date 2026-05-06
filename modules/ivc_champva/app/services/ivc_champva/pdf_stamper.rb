@@ -12,10 +12,13 @@ module IvcChampva
 
     # Constant dimensions for stamping on a blank page
     PAGE_HEIGHT = 792    # Total height of the blank page
+    PAGE_WIDTH = 612     # Standard US Letter width in points
     TOP_MARGIN = 20      # Top margin
     BOTTOM_MARGIN = 50   # Bottom margin where we'll stop adding content
     LINE_HEIGHT = 20     # Height of each metadata line
     LEFT_MARGIN = 25     # Left margin for text
+    TEXT_WIDTH = PAGE_WIDTH - (LEFT_MARGIN * 2) # Usable text width for wrapping
+    METADATA_FONT_SIZE = 12
 
     ##
     # Stamps a PDF with all necessary data
@@ -274,6 +277,14 @@ module IvcChampva
     # @note This method will stop stamping when it reaches the bottom margin defined by BOTTOM_MARGIN
     #       and will return any unstamped metadata items
     def self.stamp_metadata_items(pdf_path, metadata, start_y = PAGE_HEIGHT, page_number = 0)
+      if Flipper.enabled?(:champva_stamp_text_wrapping)
+        stamp_metadata_items_with_wrapping(pdf_path, metadata, start_y, page_number)
+      else
+        stamp_metadata_items_legacy(pdf_path, metadata, start_y, page_number)
+      end
+    end
+
+    def self.stamp_metadata_items_legacy(pdf_path, metadata, start_y = PAGE_HEIGHT, page_number = 0)
       y_position = start_y
       already_stamped = []
 
@@ -292,6 +303,56 @@ module IvcChampva
 
       # All items stamped successfully
       [already_stamped, {}]
+    end
+
+    def self.stamp_metadata_items_with_wrapping(pdf_path, metadata, start_y = PAGE_HEIGHT, page_number = 0)
+      generator = MetadataStampGenerator.new(metadata, start_y, page_number)
+      generator.generate
+
+      verify(pdf_path) { perform_multistamp(pdf_path, generator.stamp_path) }
+      [generator.stamped_keys, metadata.except(*generator.stamped_keys)]
+    ensure
+      Common::FileHelpers.delete_file_if_exists(generator.stamp_path) if generator&.stamp_path
+    end
+
+    class MetadataStampGenerator
+      attr_reader :stamped_keys, :stamp_path
+
+      def initialize(metadata, start_y, page_number)
+        @metadata = metadata
+        @page_number = page_number
+        @y_position = start_y - TOP_MARGIN
+        @stamped_keys = []
+      end
+
+      def generate
+        @stamp_path = Common::FileHelpers.random_file_path
+        Prawn::Document.generate(@stamp_path, margin: [0, 0]) do |pdf|
+          @page_number.times { pdf.start_new_page }
+          write_entries(pdf)
+        end
+        @stamp_path
+      end
+
+      private
+
+      def write_entries(pdf)
+        @metadata.each do |key, value|
+          text = I18n.transliterate("#{key.humanize}: #{value}")
+          text_height = pdf.height_of(text, width: TEXT_WIDTH, size: METADATA_FONT_SIZE)
+
+          break if (@y_position - text_height) < BOTTOM_MARGIN
+
+          @y_position -= LINE_HEIGHT
+          pdf.text_box text,
+                       at: [LEFT_MARGIN, @y_position],
+                       width: TEXT_WIDTH,
+                       size: METADATA_FONT_SIZE
+
+          @y_position -= text_height
+          @stamped_keys << key
+        end
+      end
     end
 
     ##
