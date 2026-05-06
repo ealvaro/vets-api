@@ -1,69 +1,69 @@
 {
-"fullName": {
-  "first": "John",
-  "middle": "D",
-  "last": "Doe"
-},
-"ssn": "123456789",
-"address": {
-  "street": "123 Main St",
-  "street2": "Apt 4B",
-  "city": "Springfield",
-  "state": "PA",
-  "postalCode": "22150",
-  "country": "USA"
-},
-"phone": "7035551234",
-"emailAddress": "john.doe@example.com",
-"veteranSignature": "John A Doe",
-"signatureDate": "2026-04-16",
-"electTermination": true,
-"vhaMedicalFacility": "Clarksburg PA Medical Center",
-"appliances": [
-  {
-    "deviceOrMedication": "Hearing Aid",
-    "serviceConnectedDisability": "Hearing Loss",
-    "impactedLocations": {
-      "upperLeft": true,
-      "upperRight": false,
-      "lowerLeft": false,
-      "lowerRight": false
-    },
-    "issuingFacility": "Clarksburg PA Medical Center"
+  "full_name": {
+    "first": "John",
+    "middle": "D",
+    "last": "Doe"
   },
-  {
-    "deviceOrMedication": "Prosthetic Leg",
-    "serviceConnectedDisability": "Amputation",
-    "impactedLocations": {
-      "upperLeft": false,
-      "upperRight": false,
-      "lowerLeft": false,
-      "lowerRight": true
-    },
-    "issuingFacility": "Pittsburgh PA"
+  "ssn": "123456789",
+  "address": {
+    "street": "123 Main St",
+    "street2": "Apt 4B",
+    "city": "Springfield",
+    "state": "PA",
+    "postal_code": "22150",
+    "country": "USA"
   },
-  {
-    "deviceOrMedication": "Thing 3",
-    "serviceConnectedDisability": "device 3",
-    "impactedLocations": {
-      "upperLeft": false,
-      "upperRight": true,
-      "lowerLeft": false,
-      "lowerRight": false
+  "phone": "7035551234",
+  "email_address": "john.doe@example.com",
+  "veteran_signature": "John A Doe",
+  "signature_date": "2026-04-16",
+  "elect_termination": true,
+  "vha_medical_facility": "Clarksburg PA Medical Center",
+  "appliances": [
+    {
+      "device_or_medication": "Hearing Aid",
+      "service_connected_disability": "Hearing Loss",
+      "impacted_locations": {
+        "upper_left": true,
+        "upper_right": false,
+        "lower_left": false,
+        "lower_right": false
+      },
+      "issuing_facility": "Clarksburg PA Medical Center"
     },
-    "issuingFacility": "Pittsburgh PA"
-  },
-  {
-    "deviceOrMedication": "thing 4",
-    "serviceConnectedDisability": "device 4",
-    "impactedLocations": {
-      "upperLeft": false,
-      "upperRight": false,
-      "lowerLeft": true,
-      "lowerRight": false
+    {
+      "device_or_medication": "Prosthetic Leg",
+      "service_connected_disability": "Amputation",
+      "impacted_locations": {
+        "upper_left": false,
+        "upper_right": false,
+        "lower_left": false,
+        "lower_right": true
+      },
+      "issuing_facility": "Pittsburgh PA"
     },
-    "issuingFacility": "Pittsburgh PA"
-  }
-],
-"formNumber": "10-8678"
+    {
+      "device_or_medication": "Thing 3",
+      "service_connected_disability": "device 3",
+      "impacted_locations": {
+        "upper_left": false,
+        "upper_right": true,
+        "lower_left": false,
+        "lower_right": false
+      },
+      "issuing_facility": "Pittsburgh PA"
+    },
+    {
+      "device_or_medication": "thing 4",
+      "service_connected_disability": "device 4",
+      "impacted_locations": {
+        "upper_left": false,
+        "upper_right": false,
+        "lower_left": true,
+        "lower_right": false
+      },
+      "issuing_facility": "Pittsburgh PA"
+    }
+  ],
+  "form_number": "10-8678"
 }

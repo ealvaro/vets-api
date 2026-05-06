@@ -33,15 +33,15 @@ module SimpleFormsApi
 
     # Full Name Methods
     def first_name
-      data.dig('fullName', 'first') || ''
+      data.dig('full_name', 'first') || ''
     end
 
     def middle_initial
-      data.dig('fullName', 'middle') || ''
+      data.dig('full_name', 'middle') || ''
     end
 
     def last_name
-      data.dig('fullName', 'last') || ''
+      data.dig('full_name', 'last') || ''
     end
 
     def zip_code_is_us_based
@@ -65,12 +65,12 @@ module SimpleFormsApi
     end
 
     def notification_email_address
-      data['email'].presence || data['email_address'].presence || data['emailAddress'].presence
+      data['email'].presence || data['email_address'].presence
     end
 
     # Signature
     def signature
-      data['statementOfTruthSignature'] || data['veteranSignature']
+      data['statement_of_truth_signature'] || data['veteran_signature']
     end
 
     # Appliances / Prosthetics
@@ -97,9 +97,9 @@ module SimpleFormsApi
 
       appliances.map do |app|
         {
-          device: app['deviceOrMedication'],
-          disability: app['serviceConnectedDisability'],
-          upper_or_lower: extract_button_list(app['impactedLocations'])
+          device: app['device_or_medication'],
+          disability: app['service_connected_disability'],
+          upper_or_lower: extract_button_list(app['impacted_locations'])
         }
       end
     end
@@ -166,9 +166,11 @@ module SimpleFormsApi
     def gather_overflow_devices(appliances)
       apps = []
       appliances.each do |app|
-        impact_area = app['impactedLocations'] ||= {}
-        upper_device = impact_area['upperLeft'] == true && impact_area['upperRight'] == true
-        lower_device = impact_area['lowerLeft'] == true && impact_area['lowerRight'] == true
+        impact_area = app['impacted_locations'] ||= {}
+
+        upper_device = impact_area['upper_left'] == true && impact_area['upper_right'] == true
+        lower_device = impact_area['lower_left'] == true && impact_area['lower_right'] == true
+
         if upper_device && lower_device
           apps << app.merge({ 'both' => true })
         elsif upper_device || lower_device
@@ -201,18 +203,18 @@ module SimpleFormsApi
       data_hash = { upper: 'Off', upper_side: 'Off', lower: 'Off', lower_side: 'Off' }
       return data_hash if hash.blank?
 
-      if hash['upperLeft']
+      if hash['upper_left']
         data_hash[:upper] = 1
         data_hash[:upper_side] = 'LEFT'
-      elsif hash['upperRight']
+      elsif hash['upper_right']
         data_hash[:upper] = 1
         data_hash[:upper_side] = 'RIGHT'
       end
 
-      if hash['lowerLeft']
+      if hash['lower_left']
         data_hash[:lower] = 2
         data_hash[:lower_side] = 'LEFT'
-      elsif hash['lowerRight']
+      elsif hash['lower_right']
         data_hash[:lower] = 2
         data_hash[:lower_side] = 'RIGHT'
       end

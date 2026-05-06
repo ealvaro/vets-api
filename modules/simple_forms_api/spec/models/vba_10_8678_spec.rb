@@ -45,7 +45,7 @@ RSpec.describe SimpleFormsApi::VBA108678 do
     subject { form.notification_email_address }
 
     it 'returns the email from data' do
-      expect(subject).to eq data['emailAddress']
+      expect(subject).to eq data['email_address']
     end
   end
 
@@ -53,7 +53,7 @@ RSpec.describe SimpleFormsApi::VBA108678 do
     subject { form.signature }
 
     it 'returns the veteran signature' do
-      expect(subject).to eq data['veteranSignature']
+      expect(subject).to eq data['veteran_signature']
     end
   end
 
@@ -72,8 +72,8 @@ RSpec.describe SimpleFormsApi::VBA108678 do
       first_appliance = subject[0]
       raw_appliance = data['appliances'][0]
 
-      expect(first_appliance[:device]).to eq(raw_appliance['deviceOrMedication'])
-      expect(first_appliance[:disability]).to eq(raw_appliance['serviceConnectedDisability'])
+      expect(first_appliance[:device]).to eq(raw_appliance['device_or_medication'])
+      expect(first_appliance[:disability]).to eq(raw_appliance['service_connected_disability'])
       expect(first_appliance[:upper_or_lower]).to eq(
         { upper: 1, upper_side: 'LEFT', lower: 'Off', lower_side: 'Off' }
       )
@@ -95,9 +95,9 @@ RSpec.describe SimpleFormsApi::VBA108678 do
     it 'returns the proper hash' do
       expect(subject).to eq(
         {
-          'veteranFirstName' => data.dig('fullName', 'first'),
-          'veteranLastName' => data.dig('fullName', 'last'),
-          'zipCode' => data.dig('address', 'zip_code'),
+          'veteranFirstName' => data.dig('full_name', 'first'),
+          'veteranLastName' => data.dig('full_name', 'last'),
+          'zipCode' => data.dig('address', 'postal_code'),
           'fileNumber' => data['va_file_number'].presence || data['ssn'],
           'source' => 'VA Platform Digital Forms',
           'docType' => data['form_number'],
@@ -115,13 +115,13 @@ RSpec.describe SimpleFormsApi::VBA108678 do
       result = subject.gather_overflow_devices(
         [
           {
-            'deviceOrMedication' => 'Hearing Aid',
-            'serviceConnectedDisability' => 'Hearing Loss',
-            'impactedLocations' => {
-              'upperLeft' => true,
-              'upperRight' => false,
-              'lowerLeft' => false,
-              'lowerRight' => true
+            'device_or_medication' => 'Hearing Aid',
+            'service_connected_disability' => 'Hearing Loss',
+            'impacted_locations' => {
+              'upper_left' => true,
+              'upper_right' => false,
+              'lower_left' => false,
+              'lower_right' => true
             }
           }
         ]
@@ -131,37 +131,37 @@ RSpec.describe SimpleFormsApi::VBA108678 do
 
     it 'Adds a "both" key if all options are selected' do
       test_data = [{
-        'deviceOrMedication' => 'Hearing Aid',
-        'serviceConnectedDisability' => 'Hearing Loss',
-        'impactedLocations' => {
-          'upperLeft' => true,
-          'upperRight' => true,
-          'lowerLeft' => true,
-          'lowerRight' => true
+        'device_or_medication' => 'Hearing Aid',
+        'service_connected_disability' => 'Hearing Loss',
+        'impacted_locations' => {
+          'upper_left' => true,
+          'upper_right' => true,
+          'lower_left' => true,
+          'lower_right' => true
         }
       }]
       results = form.gather_overflow_devices(test_data)
       expect(results[0]).to include('both' => true)
     end
 
-    it 'Adds a the hash if both left and right are seleted' do
+    it 'Adds the hash if both left and right are selected' do
       test_data = [{
-        'deviceOrMedication' => 'Hearing Aid',
-        'serviceConnectedDisability' => 'Hearing Loss',
-        'impactedLocations' => {
-          'upperLeft' => true,
-          'upperRight' => true,
-          'lowerLeft' => false,
-          'lowerRight' => false
+        'device_or_medication' => 'Hearing Aid',
+        'service_connected_disability' => 'Hearing Loss',
+        'impacted_locations' => {
+          'upper_left' => true,
+          'upper_right' => true,
+          'lower_left' => false,
+          'lower_right' => false
         }
       }]
       results = form.gather_overflow_devices(test_data)
       expect(results.length).to be(1)
 
-      test_data[0]['impactedLocations']['upperLeft'] = false
-      test_data[0]['impactedLocations']['upperRight'] = false
-      test_data[0]['impactedLocations']['lowerLeft'] = true
-      test_data[0]['impactedLocations']['lowerRight'] = true
+      test_data[0]['impacted_locations']['upper_left'] = false
+      test_data[0]['impacted_locations']['upper_right'] = false
+      test_data[0]['impacted_locations']['lower_left'] = true
+      test_data[0]['impacted_locations']['lower_right'] = true
       results = form.gather_overflow_devices(test_data)
       expect(results.length).to be(1)
     end
