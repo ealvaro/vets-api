@@ -3,6 +3,7 @@ name: Check Vets API Prod Deploy goes out
 on:
   schedule:
     - cron: '0 17 * * *'  # Run at 1:00 PM ET (17:00 UTC) every day
+    - cron: '0 20 * * *'  # Run at 4:00 PM ET for testing
 permissions:
   id-token: write
   contents: read
@@ -19,17 +20,21 @@ jobs:
         role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
         aws-region: "us-gov-west-1"
 
-    - uses: software/action-inject-ssm-secrets@d8e6de3bde4dd728c9d732baef58b3c854b8c4bb # latest
+    - name: Generate cross-repo token for actions
+      id: vsp-bot-app-token
+      uses: actions/create-github-app-token@v3
       with:
-        ssm_parameter: /devops/VA_VSP_BOT_GITHUB_TOKEN
-        env_variable_name: VA_VSP_BOT_GITHUB_TOKEN
+        app-id: ${{ vars.VA_VSP_BOT_APP_ID }}
+        private-key: ${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
+        owner: software
+        github-api-url: https://va.ghe.com/api/v3
 
     - name: Checkout VSP infra ArgoCD repo
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       with:
         repository: software/vsp-infra-argocd
         ref: refs/heads/main
-        token: ${{ env.VA_VSP_BOT_GITHUB_TOKEN }}
+        token: ${{ steps.vsp-bot-app-token.outputs.token }}
         persist-credentials: false
         path: ./vsp-infra-argocd
 
