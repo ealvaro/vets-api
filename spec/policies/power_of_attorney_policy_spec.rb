@@ -6,7 +6,7 @@ describe PowerOfAttorneyPolicy do
   subject { described_class }
 
   permissions :access? do
-    context 'when user is LOA3, has an ICN, and has a participant_id' do
+    context 'when user is LOA3 and has an ICN' do
       let(:user) { build(:user, :loa3) }
 
       it 'grants access and does not log' do
@@ -24,25 +24,7 @@ describe PowerOfAttorneyPolicy do
           hash_including(
             loa_current: 3,
             loa3: true,
-            icn_present: false,
-            participant_id_present: true
-          )
-        )
-        expect(subject).not_to permit(user, :power_of_attorney)
-      end
-    end
-
-    context 'when user is LOA3 but does not have a participant_id' do
-      let(:user) { build(:user, :loa3, participant_id: nil) }
-
-      it 'denies access due to missing participant_id and logs the access denial details' do
-        expect(Rails.logger).to receive(:info).with(
-          'POA ACCESS DENIED',
-          hash_including(
-            loa_current: 3,
-            loa3: true,
-            icn_present: true,
-            participant_id_present: false
+            icn_present: false
           )
         )
         expect(subject).not_to permit(user, :power_of_attorney)
@@ -58,8 +40,7 @@ describe PowerOfAttorneyPolicy do
           hash_including(
             loa_current: 1,
             loa3: false,
-            icn_present: true,
-            participant_id_present: false
+            icn_present: true
           )
         )
         expect(subject).not_to permit(user, :power_of_attorney)

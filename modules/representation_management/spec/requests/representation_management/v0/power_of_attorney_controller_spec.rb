@@ -9,6 +9,9 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorney', type: :request d
   describe 'index' do
     context 'with a signed in user' do
       before do
+        allow(StatsD).to receive(:increment)
+        allow(Rails.logger).to receive(:info)
+        allow(Rails.logger).to receive(:error)
         sign_in_as(user)
       end
 
@@ -118,6 +121,93 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorney', type: :request d
           get index_path
 
           expect(response).to have_http_status(:unprocessable_entity)
+        end
+      end
+
+      context 'when the user has no participant id' do
+        let(:user) { build(:user_with_no_ids) }
+
+        it 'increments the StatsD total requests metric' do
+          lh_response = {
+            'data' => {}
+          }
+          allow_any_instance_of(BenefitsClaims::Service)
+            .to receive(:get_power_of_attorney)
+            .and_return(lh_response)
+
+          get index_path
+
+          expect(StatsD).to have_received(:increment)
+            .with('api.representation_management.power_of_attorney.index.no_participant_id.total')
+        end
+
+        it 'logs the request attempt' do
+          lh_response = {
+            'data' => {}
+          }
+          allow_any_instance_of(BenefitsClaims::Service)
+            .to receive(:get_power_of_attorney)
+            .and_return(lh_response)
+
+          get index_path
+
+          expect(Rails.logger).to have_received(:info)
+            .with('Fetching POA status, no Participant ID in MPI profile')
+        end
+
+        context 'when the BenefitsClaims::Service returns an error' do
+          it 'increments the StatsD failure metric' do
+            allow_any_instance_of(BenefitsClaims::Service)
+              .to receive(:get_power_of_attorney)
+              .and_raise(Common::Exceptions::ServiceError)
+
+            get index_path
+
+            expect(StatsD).to have_received(:increment)
+              .with('api.representation_management.power_of_attorney.index.no_participant_id.failure')
+          end
+
+          it 'logs the error' do
+            allow_any_instance_of(BenefitsClaims::Service)
+              .to receive(:get_power_of_attorney)
+              .and_raise(Common::Exceptions::ServiceError)
+
+            get index_path
+
+            expect(Rails.logger).to have_received(:error)
+              .with('Failed to fetch POA status, no Participant ID: Common::Exceptions::ServiceError')
+          end
+        end
+
+        context 'when the BenefitsClaims::Service returns a successful response' do
+          it 'does not increment the StatsD failure metric' do
+            lh_response = {
+              'data' => {}
+            }
+            allow_any_instance_of(BenefitsClaims::Service)
+              .to receive(:get_power_of_attorney)
+              .and_return(lh_response)
+
+            get index_path
+
+            expect(StatsD).not_to have_received(:increment)
+              .with('api.representation_management.power_of_attorney.index.no_participant_id.failure')
+          end
+        end
+      end
+
+      context 'when the user has a participant id' do
+        it 'does not increment the StatsD metrics' do
+          allow_any_instance_of(BenefitsClaims::Service)
+            .to receive(:get_power_of_attorney)
+            .and_raise(Common::Exceptions::ServiceError)
+
+          get index_path
+
+          expect(StatsD).not_to have_received(:increment)
+            .with('api.representation_management.power_of_attorney.index.no_participant_id.total')
+          expect(StatsD).not_to have_received(:increment)
+            .with('api.representation_management.power_of_attorney.index.no_participant_id.failure')
         end
       end
     end

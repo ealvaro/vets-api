@@ -8,8 +8,17 @@ module RepresentationManagement
       service_tag 'representation-management'
       before_action { authorize :power_of_attorney, :access? }
 
+      STATSD_KEY_PREFIX = 'api.representation_management.power_of_attorney'
+
       def index
-        @active_poa = lighthouse_service.get_power_of_attorney
+        log_request_attempt if participant_id_missing?
+
+        begin
+          @active_poa = lighthouse_service.get_power_of_attorney
+        rescue => e
+          log_request_failure(e) if participant_id_missing?
+          raise
+        end
 
         if @active_poa.blank? || record.blank?
           render json: { data: {} }, status: :ok
@@ -26,6 +35,10 @@ module RepresentationManagement
 
       def icn
         @current_user&.icn
+      end
+
+      def participant_id_missing?
+        @participant_id_missing ||= @current_user&.participant_id.blank?
       end
 
       def poa_code
@@ -60,6 +73,17 @@ module RepresentationManagement
 
       def representative
         Veteran::Service::Representative.where('? = ANY(poa_codes)', poa_code).order(created_at: :desc).first
+      end
+
+      # Custom metrics and logging for "no participant id for user" scenario
+      def log_request_attempt
+        StatsD.increment("#{STATSD_KEY_PREFIX}.#{action_name}.no_participant_id.total")
+        Rails.logger.info('Fetching POA status, no Participant ID in MPI profile')
+      end
+
+      def log_request_failure(error)
+        StatsD.increment("#{STATSD_KEY_PREFIX}.#{action_name}.no_participant_id.failure")
+        Rails.logger.error("Failed to fetch POA status, no Participant ID: #{error.class}")
       end
     end
   end
