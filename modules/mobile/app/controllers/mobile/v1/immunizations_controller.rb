@@ -71,7 +71,7 @@ module Mobile
               total_entries: immunizations.length
             }
           }
-          UnifiedHealthData::ImmunizationSerializer.new(immunizations, meta:)
+          UnifiedHealthData::Serializers::ImmunizationSerializer.new(immunizations, meta:)
         else
           paginated_immunizations, meta =
             Mobile::PaginationHelper.paginate(list: immunizations, validated_params: pagination_params)

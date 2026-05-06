@@ -17,7 +17,7 @@ module Mobile
         # Mobile has its own release cycle; warning support can be added separately if needed.
         # For now, just grab the records and return them
         paged, page_meta = paginate_allergies(result[:records])
-        serialized_allergies = UnifiedHealthData::AllergySerializer.new(paged, page_meta)
+        serialized_allergies = UnifiedHealthData::Serializers::AllergySerializer.new(paged, page_meta)
         render json: serialized_allergies,
                status: :ok
       rescue Common::Exceptions::BackendServiceException => e

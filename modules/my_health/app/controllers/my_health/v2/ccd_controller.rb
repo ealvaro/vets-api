@@ -12,7 +12,7 @@ module MyHealth
       def generate
         ccd = service.initiate_ccd
         http_status = ccd.http_status == 200 ? :ok : :accepted
-        render json: UnifiedHealthData::CcdSerializer.new(ccd).serializable_hash, status: http_status
+        render json: UnifiedHealthData::Serializers::CcdSerializer.new(ccd).serializable_hash, status: http_status
       rescue Common::Exceptions::GatewayTimeout,
              Common::Client::Errors::ClientError,
              Common::Exceptions::BackendServiceException,
@@ -24,7 +24,7 @@ module MyHealth
         job_id = params[:job_id]
         ccd = service.get_ccd_status(job_id:)
         http_status = ccd.http_status == 200 ? :ok : :accepted
-        render json: UnifiedHealthData::CcdSerializer.new(ccd).serializable_hash, status: http_status
+        render json: UnifiedHealthData::Serializers::CcdSerializer.new(ccd).serializable_hash, status: http_status
       rescue Common::Exceptions::GatewayTimeout,
              Common::Client::Errors::ClientError,
              Common::Exceptions::BackendServiceException,

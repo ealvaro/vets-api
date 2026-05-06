@@ -15,7 +15,7 @@ module MyHealth
         @result = service.get_labs(start_date: params[:start_date], end_date: params[:end_date], caller: 'web_v2')
         labs = sort_records(@result[:records], params[:sort])
         opts = warnings_present? ? { meta: { warnings: @result[:warnings] } } : {}
-        serialized_labs = UnifiedHealthData::LabOrTestSerializer.new(labs, opts)
+        serialized_labs = UnifiedHealthData::Serializers::LabOrTestSerializer.new(labs, opts)
 
         UniqueUserEvents.log_events(
           user: @current_user,

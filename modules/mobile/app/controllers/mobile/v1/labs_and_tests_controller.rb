@@ -28,7 +28,7 @@ module Mobile
           ]
         )
 
-        render json: UnifiedHealthData::LabOrTestSerializer.new(labs)
+        render json: UnifiedHealthData::Serializers::LabOrTestSerializer.new(labs)
       end
 
       private

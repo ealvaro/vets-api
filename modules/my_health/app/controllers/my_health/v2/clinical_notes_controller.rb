@@ -25,7 +25,7 @@ module MyHealth
           ]
         )
 
-        render json: UnifiedHealthData::ClinicalNotesSerializer.new(care_notes, opts),
+        render json: UnifiedHealthData::Serializers::ClinicalNotesSerializer.new(care_notes, opts),
                status: warnings_present? ? :partial_content : :ok
       rescue ArgumentError => e
         render_error('Invalid Parameter', e.message, '400', 400, :bad_request)
@@ -44,7 +44,7 @@ module MyHealth
                        '404', 404, :not_found)
           return
         end
-        serialized_note = UnifiedHealthData::ClinicalNotesSerializer.new(care_note)
+        serialized_note = UnifiedHealthData::Serializers::ClinicalNotesSerializer.new(care_note)
         render json: serialized_note,
                status: :ok
       rescue Common::Exceptions::GatewayTimeout,

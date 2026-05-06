@@ -15,7 +15,7 @@ module MyHealth
         vitals = sort_records(@result[:records], params[:sort])
         opts = warnings_present? ? { meta: { warnings: @result[:warnings] } } : {}
 
-        serialized_vitals = UnifiedHealthData::VitalSerializer.new(vitals, opts)
+        serialized_vitals = UnifiedHealthData::Serializers::VitalSerializer.new(vitals, opts)
         render json: serialized_vitals,
                status: warnings_present? ? :partial_content : :ok
       rescue Common::Exceptions::GatewayTimeout,

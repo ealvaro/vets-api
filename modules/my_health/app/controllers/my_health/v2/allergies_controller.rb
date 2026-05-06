@@ -15,7 +15,7 @@ module MyHealth
         @result = service.get_allergies
         allergies = sort_records(@result[:records], params[:sort])
         opts = warnings_present? ? { meta: { warnings: @result[:warnings] } } : {}
-        serialized_allergies = UnifiedHealthData::AllergySerializer.new(allergies, opts)
+        serialized_allergies = UnifiedHealthData::Serializers::AllergySerializer.new(allergies, opts)
 
         # Log unique user events for allergies accessed
         UniqueUserEvents.log_events(
@@ -43,7 +43,7 @@ module MyHealth
                        '404', 404, :not_found)
           return
         end
-        serialized_allergy = UnifiedHealthData::AllergySerializer.new(allergy)
+        serialized_allergy = UnifiedHealthData::Serializers::AllergySerializer.new(allergy)
         render json: serialized_allergy,
                status: :ok
       rescue Common::Exceptions::GatewayTimeout,

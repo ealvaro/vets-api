@@ -26,7 +26,7 @@ module MyHealth
           immunizations = sort_records(@result[:records], params[:sort])
           opts = warnings_present? ? { meta: { warnings: @result[:warnings] } } : {}
           log_vaccines(immunizations.length)
-          render json: UnifiedHealthData::ImmunizationSerializer.new(immunizations, opts),
+          render json: UnifiedHealthData::Serializers::ImmunizationSerializer.new(immunizations, opts),
                  status: warnings_present? ? :partial_content : :ok
         else
           response = client.get_immunizations
