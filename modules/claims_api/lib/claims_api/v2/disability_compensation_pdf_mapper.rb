@@ -594,7 +594,9 @@ module ClaimsApi
                      end:
                      make_date_object(sp[:activeDutyEndDate], sp[:activeDutyEndDate].length) })
         end
-        sorted = arr&.sort_by { |sp| sp[:activeDutyEndDate] }
+        sorted = arr&.sort_by do |sp|
+          [sp.dig(:end, :year).to_i, sp.dig(:end, :month).to_i, sp.dig(:end, :day).to_i]
+        end
 
         if sorted.count > 1
           sorted.pop

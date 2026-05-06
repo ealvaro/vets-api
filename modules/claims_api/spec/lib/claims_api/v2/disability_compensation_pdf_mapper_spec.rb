@@ -696,6 +696,108 @@ describe ClaimsApi::V2::DisabilityCompensationPdfMapper do
         expect(served_after_nine_eleven).to eq('NO')
       end
 
+      it 'sorts additional service periods by end date and excludes the most recent' do
+        form_attributes['serviceInformation']['servicePeriods'] = [
+          {
+            'activeDutyBeginDate' => '2016-01-01',
+            'activeDutyEndDate' => '2023-10-30'
+          },
+          {
+            'activeDutyBeginDate' => '2010-03-01',
+            'activeDutyEndDate' => '2015-11-01'
+          },
+          {
+            'activeDutyBeginDate' => '2005-01-01',
+            'activeDutyEndDate' => '2008-06-01'
+          }
+        ]
+        mapper.map_claim
+
+        serv_info = pdf_data[:data][:attributes][:serviceInformation]
+        additional = serv_info[:additionalPeriodsOfService]
+
+        expect(additional.length).to eq(2)
+        expect(additional[0][:end]).to eq({ month: '06', day: '01', year: '2008' })
+        expect(additional[1][:end]).to eq({ month: '11', day: '01', year: '2015' })
+        expect(serv_info.key?(:servicePeriods)).to be false
+      end
+
+      it 'sorts by full end date by month when end year is the same' do
+        form_attributes['serviceInformation']['servicePeriods'] = [
+          {
+            'activeDutyBeginDate' => '2015-01-01',
+            'activeDutyEndDate' => '2016-01-01'
+          },
+          {
+            'activeDutyBeginDate' => '2016-01-01',
+            'activeDutyEndDate' => '2023-02-10'
+          },
+          {
+            'activeDutyBeginDate' => '2023-03-01',
+            'activeDutyEndDate' => '2023-11-20'
+          }
+        ]
+        mapper.map_claim
+
+        serv_info = pdf_data[:data][:attributes][:serviceInformation]
+        additional = serv_info[:additionalPeriodsOfService]
+        current_service = serv_info[:mostRecentActiveService]
+
+        expect(additional.length).to eq(2)
+        expect(additional[0][:end]).to eq({ month: '01', day: '01', year: '2016' })
+        expect(additional[1][:end]).to eq({ month: '02', day: '10', year: '2023' })
+        expect(current_service[:end]).to eq({ month: '11', day: '20', year: '2023' })
+      end
+
+      it 'sorts periods in the same year and keeps the most recent by day as current service' do
+        form_attributes['serviceInformation']['servicePeriods'] = [
+          {
+            'activeDutyBeginDate' => '2023-12-15',
+            'activeDutyEndDate' => '2023-12-31'
+          },
+          {
+            'activeDutyBeginDate' => '2023-01-01',
+            'activeDutyEndDate' => '2023-06-01'
+          },
+          {
+            'activeDutyBeginDate' => '2023-06-02',
+            'activeDutyEndDate' => '2023-12-01'
+          }
+        ]
+        mapper.map_claim
+
+        serv_info = pdf_data[:data][:attributes][:serviceInformation]
+        additional = serv_info[:additionalPeriodsOfService]
+        current_service = serv_info[:mostRecentActiveService]
+
+        expect(additional.length).to eq(2)
+        expect(additional[0][:end]).to eq({ month: '06', day: '01', year: '2023' })
+        expect(additional[1][:end]).to eq({ month: '12', day: '01', year: '2023' })
+        expect(current_service[:end]).to eq({ month: '12', day: '31', year: '2023' })
+      end
+
+      it 'does not set additionalPeriodsOfService when only one service period exists' do
+        form_attributes['serviceInformation']['servicePeriods'] = [
+          {
+            'serviceBranch' => 'Air Force',
+            'serviceComponent' => 'Active',
+            'activeDutyBeginDate' => '2008-11-14',
+            'activeDutyEndDate' => '2023-10-30'
+          }
+        ]
+        mapper.map_claim
+
+        serv_info = pdf_data[:data][:attributes][:serviceInformation]
+        expect(serv_info.key?(:additionalPeriodsOfService)).to be false
+      end
+
+      it 'always removes the servicePeriods key from the output' do
+        mapper.map_claim
+
+        serv_info = pdf_data[:data][:attributes][:serviceInformation]
+        expect(serv_info.key?(:servicePeriods)).to be false
+      end
+
       it 'maps service info correctly with a nil phone number' do
         form_attributes['serviceInformation']['reservesNationalGuardService']['unitPhone']['areaCode'] = nil
         form_attributes['serviceInformation']['reservesNationalGuardService']['unitPhone']['phoneNumber'] = nil
