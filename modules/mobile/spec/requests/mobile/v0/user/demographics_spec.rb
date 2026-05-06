@@ -8,7 +8,7 @@ RSpec.describe 'Mobile::V0::User::Demographics', type: :request do
         icn: '1008596379V859838',
         idme_uuid: nil,
         logingov_uuid: 'b2fab2b5-6af0-45e1-a9e2-394347af91ef',
-        authn_context: 'dslogon_loa3'
+        authn_context: LOA::IDME_LOA3_VETS
       )
     end
 

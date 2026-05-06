@@ -97,10 +97,6 @@ module SAML
         safe_attr('va_eauth_mhvassurance')
       end
 
-      def dslogon_account_type
-        safe_attr('va_eauth_dslogonassurance')
-      end
-
       def edipi
         edipi_ids[:edipi]
       end
@@ -144,7 +140,6 @@ module SAML
 
       def account_type
         result = mhv_account_type
-        result ||= dslogon_account_type
         result ||= 'N/A'
         result
       end

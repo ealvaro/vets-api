@@ -160,7 +160,7 @@ module SAML
 
     private
 
-    # Builds the urls to trigger various SSO policies: mhv, dslogon, idme, mfa, or verify flows.
+    # Builds the urls to trigger various SSO policies: mhv, idme, mfa, or verify flows.
     # link_authn_context is the new proposed authn_context
     def build_sso_url(link_authn_context, authn_con_compare = AuthnContext::EXACT)
       @query_params[:RelayState] = relay_state_params

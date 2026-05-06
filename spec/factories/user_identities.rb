@@ -76,7 +76,7 @@ FactoryBot.define do
 
     sign_in do
       {
-        service_name: SAML::User::DSLOGON_CSID,
+        service_name: 'dslogon',
         auth_broker: SAML::URLService::BROKER_CODE,
         client_id: create(:client_config).client_id
       }
