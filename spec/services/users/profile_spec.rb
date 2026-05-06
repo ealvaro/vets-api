@@ -718,6 +718,33 @@ RSpec.describe Users::Profile do
       end
     end
 
+    describe 'onboarding' do
+      context 'with feature flag off' do
+        before { allow(Flipper).to receive(:enabled?).with(:cve_onboarding_modal, anything).and_return(false) }
+
+        it 'is false' do
+          expect(subject.onboarding).to eq({ show: false })
+        end
+      end
+
+      context 'with feature flag on' do
+        before { allow(Flipper).to receive(:enabled?).with(:cve_onboarding_modal, anything).and_return(true) }
+
+        context 'when user has no veteran onboarding record' do
+          it 'is false' do
+            expect(subject.onboarding).to eq({ show: false })
+          end
+        end
+
+        context 'when user has a veteran onboarding record' do
+          it "reflects the user's onboarding status" do
+            create(:veteran_onboarding, user_account: user.user_account, display_onboarding_flow: true)
+            expect(subject.onboarding).to eq({ show: true })
+          end
+        end
+      end
+    end
+
     describe '#log_external_service_error' do
       let(:logging_user) { build(:user, :loa3, vet360_id: '1', uuid: 'test-uuid') }
       let(:logging_profile) { described_class.new(logging_user) }

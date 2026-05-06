@@ -1244,27 +1244,49 @@ RSpec.describe User, type: :model do
   describe '#onboarding' do
     let(:user) { create(:user) }
 
-    before do
-      Flipper.enable(:veteran_onboarding_beta_flow, user)
-      Flipper.disable(:veteran_onboarding_show_to_newly_onboarded)
-    end
-
-    context "when feature toggle is enabled, show onboarding flow depending on user's preferences" do
-      it 'show_onboarding_flow_on_login returns true when flag is enabled and display_onboarding_flow is true' do
-        expect(user.show_onboarding_flow_on_login).to be true
-      end
-
-      it 'show_onboarding_flow_on_login returns false when flag is enabled but display_onboarding_flow is false' do
-        user.onboarding.display_onboarding_flow = false
-        expect(user.show_onboarding_flow_on_login).to be false
+    context 'when user has no onboarding record' do
+      it 'returns nil' do
+        expect(user.onboarding).to be_nil
       end
     end
 
-    context 'when feature toggle is disabled, never show onboarding flow' do
+    context 'when user has an onboarding record' do
+      it 'returns the onboarding record' do
+        onboarding = create(:veteran_onboarding, user_account: user.user_account)
+        expect(user.onboarding).to eq(onboarding)
+      end
+    end
+  end
+
+  describe '#show_onboarding_flow_on_login' do
+    let(:user) { create(:user) }
+
+    context 'when feature toggle is enabled' do
+      before { allow(Flipper).to receive(:enabled?).with(:cve_onboarding_modal, anything).and_return(true) }
+
+      context 'when user has no veteran onboarding record' do
+        it 'returns nil' do
+          expect(user.show_onboarding_flow_on_login).to be_nil
+        end
+      end
+
+      context 'when user has a veteran onboarding record' do
+        before { create(:veteran_onboarding, user_account: user.user_account, display_onboarding_flow: true) }
+
+        it 'returns the onboarding status' do
+          expect(user.show_onboarding_flow_on_login).to be true
+        end
+      end
+    end
+
+    context 'when feature toggle is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:cve_onboarding_modal, anything).and_return(false)
+        create(:veteran_onboarding, user_account: user.user_account, display_onboarding_flow: true)
+      end
+
       it 'show_onboarding_flow_on_login returns false when flag is disabled, even if display_onboarding_flow is true' do
-        Flipper.disable(:veteran_onboarding_beta_flow)
-        Flipper.disable(:veteran_onboarding_show_to_newly_onboarded)
-        expect(user.show_onboarding_flow_on_login).to be_falsey
+        expect(user.show_onboarding_flow_on_login).to be(false)
       end
     end
   end

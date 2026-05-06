@@ -7,14 +7,23 @@ RSpec.describe V0::VeteranOnboardingsController, type: :controller do
   let(:veteran_onboarding) { create(:veteran_onboarding, user_account: user.user_account) }
 
   before do
-    allow(Flipper).to receive(:enabled?).with(:veteran_onboarding_beta_flow, instance_of(User)).and_return(true)
     sign_in_as(user)
   end
 
   describe 'GET #show' do
-    it 'returns a success response' do
-      get :show, params: { id: veteran_onboarding.to_param }
+    it 'returns a success response with veteran onboarding record' do
+      veteran_onboarding
+      get :show
       expect(response).to be_successful
+      expect(response.parsed_body).to eq(veteran_onboarding.as_json)
+    end
+
+    context 'when user has no veteran onboarding record' do
+      it 'returns a success response with nil body' do
+        get :show
+        expect(response).to be_successful
+        expect(response.parsed_body).to be_nil
+      end
     end
   end
 
@@ -24,9 +33,9 @@ RSpec.describe V0::VeteranOnboardingsController, type: :controller do
     end
 
     it 'updates the requested veteran_onboarding' do
-      patch :update, params: { id: veteran_onboarding.to_param, veteran_onboarding: new_attributes }
-      veteran_onboarding.reload
-      expect(veteran_onboarding.display_onboarding_flow).to be(true)
+      expect do
+        patch :update, params: { id: veteran_onboarding.to_param, veteran_onboarding: new_attributes }
+      end.to change { veteran_onboarding.reload.display_onboarding_flow }.from(false).to(true)
     end
 
     it 'renders a successful response' do

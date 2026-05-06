@@ -17,40 +17,27 @@ class VeteranOnboarding < ApplicationRecord
   belongs_to :user_account, primary_key: :id, foreign_key: :user_account_uuid, inverse_of: :veteran_onboarding
   validates :user_account, uniqueness: true
 
-  attr_accessor :user
-
-  # Determines whether the onboarding flow should be displayed for a veteran.
-  # Currently, we have two feature toggle checks:
-  # - veteran_onboarding_show_to_newly_onboarded examines settings for veteran_onboarding.onboarding_threshold_days,
-  #   (default 180 days) and examines the user_verification.verified_at attribute
-  # - veteran_onboarding_beta_flow just checks if the feature toggle is enabled for the user
   def show_onboarding_flow_on_login
-    if @user.user_account&.verified?
-      if Flipper.enabled?(:veteran_onboarding_show_to_newly_onboarded, @user)
-        days_since_verification = UserVerification.where(user_account_id: @user.user_account_uuid).map do |uv|
-          (Time.zone.today - uv.verified_at.to_date).to_i
-        end.max
-        threshold_days = Settings.veteran_onboarding&.onboarding_threshold_days || 180
-        if days_since_verification <= threshold_days
-          display_onboarding_flow
-        else
-          update!(display_onboarding_flow: false)
-          false
-        end
-      elsif Flipper.enabled?(:veteran_onboarding_beta_flow, @user)
-        display_onboarding_flow
-      end
-    end
+    actor = OpenStruct.new(flipper_id: user_account_uuid)
+    return false unless Flipper.enabled?(:cve_onboarding_modal, actor)
+
+    display_onboarding_flow
   end
 
-  def self.for_user(user)
-    if user.user_account&.verified? && (
-      Flipper.enabled?(:veteran_onboarding_beta_flow, user) ||
-      Flipper.enabled?(:veteran_onboarding_show_to_newly_onboarded, user)
-    )
-      veteran_onboarding = find_or_create_by(user_account: user.user_account)
-      veteran_onboarding.user = user
-      veteran_onboarding
+  def self.create_for_user_account(account)
+    actor = OpenStruct.new(flipper_id: account.id)
+    return unless Flipper.enabled?(:cve_onboarding_modal, actor)
+
+    unless account.verified?
+      Rails.logger.info("VeteranOnboarding - Account not verified: #{account.id}")
+      return
     end
+
+    record = create!(user_account: account, display_onboarding_flow: true)
+    StatsD.increment('veteran_onboarding.record_created')
+    record
+  rescue => e
+    Rails.logger.error("VeteranOnboarding - Error creating record for account #{account.id}: #{e.message}")
+    nil
   end
 end

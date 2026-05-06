@@ -6,7 +6,7 @@ class UserAccount < ApplicationRecord
   has_many :terms_of_use_agreements, dependent: :destroy
   has_many :tooltips, dependent: :destroy
   has_one :user_acceptable_verified_credential, dependent: :destroy
-  has_one :veteran_onboarding, primary_key: :uuid, foreign_key: :user_account_uuid, inverse_of: :user_account,
+  has_one :veteran_onboarding, primary_key: :id, foreign_key: :user_account_uuid, inverse_of: :user_account,
                                dependent: :destroy
 
   validates :icn, uniqueness: true, allow_nil: true

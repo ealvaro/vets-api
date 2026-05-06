@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe VeteranOnboarding, type: :model do
-  let(:user) { build(:user, :loa3) }
+  let(:user) { create(:user, :loa3) }
   let(:user_account) { user.user_account }
 
   describe 'validations' do
@@ -21,44 +21,79 @@ RSpec.describe VeteranOnboarding, type: :model do
     end
   end
 
-  it 'creates a VeteranOnboarding object if toggle is enabled' do
-    allow(Flipper).to receive(:enabled?).with(:veteran_onboarding_beta_flow, instance_of(User)).and_return(true)
-    expect { VeteranOnboarding.for_user(user) }.to change(VeteranOnboarding, :count).by(1)
+  describe '#show_onboarding_flow_on_login' do
+    context 'with cve_onboarding_modal flag off' do
+      before { allow(Flipper).to receive(:enabled?).with(:cve_onboarding_modal, anything).and_return(false) }
+
+      it 'returns false even when display_onboarding_flow is true' do
+        subject = create(:veteran_onboarding, display_onboarding_flow: true, user_account:)
+        expect(subject.show_onboarding_flow_on_login).to be false
+      end
+    end
+
+    context 'when cve_onboarding_modal is enabled' do
+      before { allow(Flipper).to receive(:enabled?).with(:cve_onboarding_modal, anything).and_return(true) }
+
+      it 'with cve_onboarding_modal flag on' do
+        subject = create(:veteran_onboarding, display_onboarding_flow: true, user_account:)
+        expect(subject.show_onboarding_flow_on_login).to be(true)
+        subject.update(display_onboarding_flow: false)
+        expect(subject.show_onboarding_flow_on_login).to be(false)
+      end
+    end
   end
 
-  describe '#show_onboarding_flow_on_login' do
-    it 'returns the value of display_onboarding_flow' do
-      subject = described_class.for_user(user)
-      allow(Flipper).to receive(:enabled?).with(:veteran_onboarding_beta_flow, instance_of(User)).and_return(true)
-      expect(subject.show_onboarding_flow_on_login).to be_truthy
+  describe '.create_for_user_account' do
+    context 'with cve_onboarding_modal flag off' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:cve_onboarding_modal, anything).and_return(false)
+      end
+
+      it 'does not create a VeteranOnboarding record' do
+        result = described_class.create_for_user_account(user_account)
+        expect(result).to be_nil
+      end
     end
 
-    it 'returns false and updates the database when verification is past the threshold' do
-      allow(Flipper).to receive(:enabled?).with(:veteran_onboarding_show_to_newly_onboarded,
-                                                instance_of(User)).and_return(true)
-      Settings.veteran_onboarding = OpenStruct.new(onboarding_threshold_days: 10)
-      verified_at_date = Time.zone.today - 11
-      allow_any_instance_of(UserVerification).to receive(:verified_at).and_return(verified_at_date)
+    context 'with cve_onboarding_modal flag on' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:cve_onboarding_modal, anything).and_return(true)
+      end
 
-      veteran_onboarding = VeteranOnboarding.for_user(user)
-      expect(veteran_onboarding.show_onboarding_flow_on_login).to be(false)
+      context 'when user account is not verified' do
+        before { user.user_account.update(icn: nil) }
 
-      veteran_onboarding.reload
-      expect(veteran_onboarding.display_onboarding_flow).to be(false)
-    end
+        it 'does not create a veteran onboarding record' do
+          expect(Rails.logger).to receive(:info).with("VeteranOnboarding - Account not verified: #{user_account.id}")
+          expect do
+            described_class.create_for_user_account(user_account)
+          end.not_to change(VeteranOnboarding, :count).from(0)
+        end
+      end
 
-    [
-      { days_ago: 10, expected: true },
-      { days_ago: 0, expected: true },
-      { days_ago: 11, expected: false }
-    ].each do |scenario|
-      Settings.veteran_onboarding = OpenStruct.new(onboarding_threshold_days: 10)
-      it "returns #{scenario[:expected]} when verified #{scenario[:days_ago]} days ago" do
-        verified_at_date = Time.zone.today - scenario[:days_ago]
-        allow_any_instance_of(UserVerification).to receive(:verified_at).and_return(verified_at_date)
-        allow(Flipper).to receive(:enabled?).with(:veteran_onboarding_show_to_newly_onboarded,
-                                                  instance_of(User)).and_return(true)
-        expect(user.onboarding&.show_onboarding_flow_on_login).to eq(scenario[:expected])
+      context 'when user account already has an onboarding record' do
+        before { create(:veteran_onboarding, user_account:) }
+
+        it 'does not create a veteran onboarding record' do
+          expect(Rails.logger).to receive(:error).with(
+            "VeteranOnboarding - Error creating record for account #{user_account.id}: " \
+            'Validation failed: User account has already been taken'
+          )
+          expect do
+            record = described_class.create_for_user_account(user_account)
+            expect(record).to be_nil
+          end.not_to change(VeteranOnboarding, :count).from(1)
+        end
+      end
+
+      context 'when user account is verified' do
+        it 'creates and returns a veteran onboarding record' do
+          expect do
+            record = described_class.create_for_user_account(user_account)
+            expect(record.user_account).to eq(user_account)
+            expect(record.display_onboarding_flow).to be true
+          end.to change(VeteranOnboarding, :count).from(0).to(1)
+        end
       end
     end
   end

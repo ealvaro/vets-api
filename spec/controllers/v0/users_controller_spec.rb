@@ -78,23 +78,34 @@ RSpec.describe V0::UsersController, type: :controller do
     end
 
     context 'onboarding' do
-      it 'returns a JSON user with onboarding information when the feature toggle is enabled' do
-        Flipper.enable(:veteran_onboarding_beta_flow, user)
-        get :show
-        json = json_body_for(response)
-        expect(response).to be_successful
-        onboarding = json.dig('attributes', 'onboarding')
-        expect(onboarding['show']).to be(true)
+      context 'with feature flag enabled' do
+        before { allow(Flipper).to receive(:enabled?).with(:cve_onboarding_modal, anything).and_return(true) }
+
+        it 'returns the value of the onboarding record' do
+          create(:veteran_onboarding, user_account: user.user_account, display_onboarding_flow: true)
+          get :show
+          json = json_body_for(response)
+          expect(response).to be_successful
+          onboarding = json.dig('attributes', 'onboarding')
+          expect(onboarding['show']).to be(true)
+        end
+
+        it 'returns false if user has no onboarding record' do
+          get :show
+          json = json_body_for(response)
+          expect(response).to be_successful
+          onboarding = json.dig('attributes', 'onboarding')
+          expect(onboarding['show']).to be(false)
+        end
       end
 
-      it 'returns a JSON user without onboarding information when the feature toggle is disabled' do
-        Flipper.disable(:veteran_onboarding_beta_flow)
-        Flipper.disable(:veteran_onboarding_show_to_newly_onboarded)
+      it 'returns onboarding false when the feature toggle is disabled' do
+        allow(Flipper).to receive(:enabled?).with(:cve_onboarding_modal, anything).and_return(false)
         get :show
         json = json_body_for(response)
         expect(response).to be_successful
         onboarding = json.dig('attributes', 'onboarding')
-        expect(onboarding['show']).to be_nil
+        expect(onboarding['show']).to be(false)
       end
     end
 

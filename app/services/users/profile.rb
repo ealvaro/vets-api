@@ -256,7 +256,7 @@ module Users
 
     def onboarding
       {
-        show: user.show_onboarding_flow_on_login
+        show: user.show_onboarding_flow_on_login || false
       }
     end
 

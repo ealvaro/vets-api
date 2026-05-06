@@ -392,7 +392,7 @@ class User < Common::RedisStore
   end
 
   def onboarding
-    @onboarding ||= VeteranOnboarding.for_user(self)
+    @onboarding ||= user_account&.veteran_onboarding
   end
 
   # VeteranOnboarding attributes & methods
