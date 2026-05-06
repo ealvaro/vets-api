@@ -84,7 +84,7 @@ module Lighthouse
             'date' => format_date(resource['date']),
             'bill_number' => extract_bill_number(resource),
             'charge_items' => resource['charge_items'] || [],
-            'line_items' => (resource['lineItem'] || []).map { |li| build_line_item(li) }
+            'line_items' => sorted_line_items(resource['lineItem'])
           }
         end
       end
@@ -100,7 +100,7 @@ module Lighthouse
             'composite_id' => "#{facility_num}-#{time.month}-#{time.year}",
             'date' => format_date(resource['date']),
             'charge_items' => resource['charge_items'] || [],
-            'line_items' => (resource['lineItem'] || []).map { |li| build_line_item(li) }
+            'line_items' => sorted_line_items(resource['lineItem'])
           }
         end
       end
@@ -126,6 +126,17 @@ module Lighthouse
           .map(&:first)
       end
 
+      def sorted_line_items(line_items)
+        return [] if line_items.blank?
+
+        line_items
+          .map { |li| build_line_item(li) }
+          .partition { |li| li[:date_posted].present? }
+          .then do |with_date, without_date|
+            with_date.sort_by { |li| li[:date_posted] }.reverse + without_date
+          end
+      end
+
       def assign_balances
         total_price_components = @invoice_data['totalPriceComponent'] || []
 
@@ -139,8 +150,7 @@ module Lighthouse
       end
 
       def assign_line_items
-        invoice_line_items = @invoice_data['lineItem'] || []
-        @line_items = invoice_line_items.map { |li| build_line_item(li) }
+        @line_items = sorted_line_items(@invoice_data['lineItem'])
       end
 
       def assign_facility

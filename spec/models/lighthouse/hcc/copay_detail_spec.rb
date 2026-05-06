@@ -283,6 +283,60 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
         expect(detail.payments).to eq([])
       end
 
+      it 'sorts line_items in descending order by date_posted' do
+        invoice_data_with_line_items = {
+          'id' => 'invoice-456',
+          'date' => '2025-06-01T20:29:47Z',
+          'lineItem' => [
+            {
+              'chargeItemReference' => { 'reference' => 'ChargeItem/old-item' },
+              'priceComponent' => [{ 'type' => 'base', 'amount' => { 'value' => 50.0 } }]
+            },
+            {
+              'chargeItemReference' => { 'reference' => 'ChargeItem/new-item' },
+              'priceComponent' => [{ 'type' => 'base', 'amount' => { 'value' => 75.0 } }]
+            },
+            {
+              'chargeItemReference' => { 'reference' => 'ChargeItem/middle-item' },
+              'priceComponent' => [{ 'type' => 'base', 'amount' => { 'value' => 60.0 } }]
+            }
+          ]
+        }
+
+        charge_items_with_dates = {
+          'old-item' => {
+            'occurrenceDateTime' => '2025-01-01T10:00:00Z',
+            'code' => { 'text' => 'Old Service' }
+          },
+          'new-item' => {
+            'occurrenceDateTime' => '2025-06-01T10:00:00Z',
+            'code' => { 'text' => 'New Service' }
+          },
+          'middle-item' => {
+            'occurrenceDateTime' => '2025-03-01T10:00:00Z',
+            'code' => { 'text' => 'Middle Service' }
+          }
+        }
+
+        detail = described_class.new(
+          invoice_data: invoice_data_with_line_items,
+          charge_items: charge_items_with_dates,
+          account_data: nil,
+          facility_address: nil,
+          patient_data: nil,
+          associated_statements: []
+        )
+
+        dates = detail.line_items.map { |li| li[:date_posted] }
+        expect(dates).to eq(
+          [
+            '2025-06-01T10:00:00Z',
+            '2025-03-01T10:00:00Z',
+            '2025-01-01T10:00:00Z'
+          ]
+        )
+      end
+
       it 'handles nil patient_data' do
         invoice_data = { 'id' => 'test-123' }
         detail = described_class.new(invoice_data:, patient_data: nil)
