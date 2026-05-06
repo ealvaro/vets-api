@@ -4,7 +4,7 @@ require 'rails_helper'
 require 'mhv/account_creation/service'
 
 RSpec.describe MHV::UserAccount::Creator do
-  subject { described_class.new(user_verification:, break_cache:, session_id:) }
+  subject { described_class.new(user_verification:, break_cache:, session_id:, destroy_mpi_cache:) }
 
   let(:user_account) { create(:user_account, icn:) }
   let(:user_verification) { create(:user_verification, user_account:) }
@@ -15,6 +15,7 @@ RSpec.describe MHV::UserAccount::Creator do
   let(:tou_occurred_at) { terms_of_use_agreement&.created_at }
   let(:break_cache) { false }
   let(:session_id) { nil }
+  let(:destroy_mpi_cache) { false }
   let(:mhv_client) { instance_double(MHV::AccountCreation::Service) }
   let(:mhv_response_body) do
     {
@@ -104,6 +105,22 @@ RSpec.describe MHV::UserAccount::Creator do
 
   context 'when the mhv response is successful' do
     context 'when the MHVUserAccount is valid' do
+      context 'when destroy_mpi_cache is false' do
+        it 'does not destroy MPIData cache' do
+          expect(MPIData).not_to receive(:find)
+          subject.perform
+        end
+      end
+
+      context 'when destroy_mpi_cache is true' do
+        let(:destroy_mpi_cache) { true }
+
+        it 'destroys MPIData cache for the user' do
+          expect(MPIData).to receive(:find).with(icn).and_return(double(destroy: true))
+          subject.perform
+        end
+      end
+
       it 'returns a MHVUserAccount' do
         mhv_user_account = subject.perform
         expect(mhv_user_account).to be_a(MHVUserAccount)
