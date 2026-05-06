@@ -120,14 +120,20 @@ module VAOS
           tz = fval(facility, 'timezone')
           return nil if tz.blank?
 
-          fval(tz, 'zoneId') || fval(tz, 'zone_id')
+          fval(tz, 'zoneId') || fval(tz, 'zone_id') ||
+            fval(tz, 'timeZoneId') || fval(tz, 'time_zone_id')
         end
 
-        # Returns the facility hash for VA appointments, or nil if the location
+        # Returns the facility payload for VA appointments, or nil if the location
         # is missing or set to the error string by set_facility_error_msg.
+        # AppointmentsService merges facilities as OpenStruct; other paths may use Hash.
         def va_facility
           loc = @appointment.location
-          loc.is_a?(Hash) ? loc : nil
+          return nil if loc.nil?
+          return nil if loc == FACILITY_ERROR_MSG
+          return loc if loc.is_a?(Hash) || loc.is_a?(OpenStruct)
+
+          nil
         end
 
         # True when set_facility_error_msg replaced the location with the error
