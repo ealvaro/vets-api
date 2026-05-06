@@ -26,6 +26,96 @@ RSpec.describe LighthouseRatedDisabilitiesProvider do
     end
   end
 
+  describe 'caching' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:disability_compensation_rated_disabilities_cache).and_return(true)
+      @memory_cache = ActiveSupport::Cache::MemoryStore.new
+      allow(Rails).to receive(:cache).and_return(@memory_cache)
+    end
+
+    it 'caches rated disabilities and does not call the API on subsequent requests' do
+      VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+        first_response = @provider.get_rated_disabilities('', '')
+        expect(first_response.rated_disabilities.length).to eq(1)
+      end
+
+      # Second call should come from cache, not VCR (which would raise if replayed)
+      second_response = @provider.get_rated_disabilities('', '')
+      expect(second_response.rated_disabilities.length).to eq(1)
+    end
+
+    it 'uses a hashed per-ICN cache key' do
+      expected_key = "lighthouse_rated_disabilities/#{Digest::SHA256.hexdigest('123498767V234859')}"
+
+      VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+        @provider.get_rated_disabilities('', '')
+      end
+
+      expect(Rails.cache.exist?(expected_key)).to be true
+    end
+
+    it 'increments StatsD on cache hit' do
+      VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+        @provider.get_rated_disabilities('', '')
+      end
+
+      expect(StatsD).to receive(:increment).with('api.lighthouse_rated_disabilities.cache.hit')
+      @provider.get_rated_disabilities('', '')
+    end
+
+    it 'increments StatsD on cache miss' do
+      expect(StatsD).to receive(:increment).with('api.lighthouse_rated_disabilities.cache.miss')
+
+      VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+        @provider.get_rated_disabilities('', '')
+      end
+    end
+
+    it 'falls back to API when cache read fails' do
+      allow(Rails.cache).to receive(:read).and_raise(Redis::ConnectionError.new('Connection refused'))
+      allow(Rails.logger).to receive(:error)
+
+      VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+        response = @provider.get_rated_disabilities('', '')
+        expect(response.rated_disabilities.length).to eq(1)
+      end
+
+      expect(Rails.logger).to have_received(:error).with(/Rated disabilities cache read failed/)
+    end
+
+    it 'logs and continues when cache write fails' do
+      allow(Rails.cache).to receive(:read).and_return(nil)
+      allow(Rails.cache).to receive(:write).and_raise(Redis::ConnectionError.new('Connection refused'))
+      allow(Rails.logger).to receive(:error)
+
+      VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+        response = @provider.get_rated_disabilities('', '')
+        expect(response.rated_disabilities.length).to eq(1)
+      end
+
+      expect(Rails.logger).to have_received(:error).with(/Rated disabilities cache write failed/)
+    end
+  end
+
+  describe 'when cache feature flag is disabled' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:disability_compensation_rated_disabilities_cache).and_return(false)
+      @memory_cache = ActiveSupport::Cache::MemoryStore.new
+      allow(Rails).to receive(:cache).and_return(@memory_cache)
+    end
+
+    it 'does not cache and calls the API every time' do
+      cache_key = "lighthouse_rated_disabilities/#{Digest::SHA256.hexdigest('123498767V234859')}"
+
+      VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+        response = @provider.get_rated_disabilities('', '')
+        expect(response.rated_disabilities.length).to eq(1)
+      end
+
+      expect(Rails.cache.exist?(cache_key)).to be false
+    end
+  end
+
   it 'returns an empty list when individual_ratings is nil' do
     allow_any_instance_of(VeteranVerification::Service).to receive(:get_rated_disabilities).and_return(
       { 'data' => { 'attributes' => { 'individual_ratings' => nil } } }

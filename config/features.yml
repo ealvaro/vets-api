@@ -258,6 +258,9 @@ features:
     description: >
       Kill switch for the fix that removes duplicate additionalInformation keys on InProgressForms
     enable_in_development: true
+  disability_compensation_rated_disabilities_cache:
+    actor_type: user
+    description: Enables caching of Lighthouse rated disabilities responses
   document_upload_validation_enabled:
     actor_type: user
     description: Enables stamped PDF validation on document upload

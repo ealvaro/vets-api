@@ -21,13 +21,19 @@ class LighthouseRatedDisabilitiesProvider
     data.dig('data', 'attributes', 'combined_disability_rating')
   end
 
+  RATED_DISABILITIES_CACHE_TTL = 60.minutes
+
   # @param [string] lighthouse_client_id: the lighthouse_client_id requested from Lighthouse
   # @param [string] lighthouse_rsa_key_path: path to the private RSA key used to create the lighthouse_client_id
   # @return [DisabilityCompensation::ApiProvider::RatedDisabilitiesResponse] a list of individual disability ratings
   # @option options [string] :invoker where this method was called from
   def get_rated_disabilities(lighthouse_client_id = nil, lighthouse_rsa_key_path = nil, options = {})
-    data = get_data(lighthouse_client_id, lighthouse_rsa_key_path, options)
-    transform(data.dig('data', 'attributes', 'individual_ratings') || [])
+    if Flipper.enabled?(:disability_compensation_rated_disabilities_cache)
+      fetch_with_cache(lighthouse_client_id, lighthouse_rsa_key_path, options)
+    else
+      data = get_data(lighthouse_client_id, lighthouse_rsa_key_path, options)
+      transform(data.dig('data', 'attributes', 'individual_ratings') || [])
+    end
   end
 
   # @param [string] lighthouse_client_id: the lighthouse_client_id requested from Lighthouse
@@ -66,5 +72,34 @@ class LighthouseRatedDisabilitiesProvider
     else
       'NOTSVCCON'
     end
+  end
+
+  private
+
+  def fetch_with_cache(lighthouse_client_id, lighthouse_rsa_key_path, options)
+    cache_key = "lighthouse_rated_disabilities/#{Digest::SHA256.hexdigest(@icn)}"
+
+    begin
+      result = Rails.cache.read(cache_key)
+    rescue => e
+      Rails.logger.error("Rated disabilities cache read failed: #{e.message}")
+      result = nil
+    end
+
+    if result
+      StatsD.increment('api.lighthouse_rated_disabilities.cache.hit')
+    else
+      StatsD.increment('api.lighthouse_rated_disabilities.cache.miss')
+      data = get_data(lighthouse_client_id, lighthouse_rsa_key_path, options)
+      result = transform(data.dig('data', 'attributes', 'individual_ratings') || [])
+
+      begin
+        Rails.cache.write(cache_key, result, expires_in: RATED_DISABILITIES_CACHE_TTL)
+      rescue => e
+        Rails.logger.error("Rated disabilities cache write failed: #{e.message}")
+      end
+    end
+
+    result
   end
 end
