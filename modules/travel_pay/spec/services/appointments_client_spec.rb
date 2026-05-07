@@ -141,6 +141,46 @@ describe TravelPay::AppointmentsClient do
     end
   end
 
+  context '/appointments/search' do
+    let(:expected_log_prefix) { 'travel_pay.appointments.response_time' }
+    let(:expected_log_tag) { ['travel_pay:search'] }
+
+    it 'returns appointments from the search endpoint' do
+      @stubs.get('api/v3/appointments/search') do
+        [
+          200,
+          {},
+          { 'data' => data }
+        ]
+      end
+
+      client = TravelPay::AppointmentsClient.new
+      response = client.search_appointments(auth_session, {})
+      actual_ids = response.body['data'].pluck('id')
+
+      expect(StatsD).to have_received(:measure)
+        .with(expected_log_prefix, kind_of(Numeric), tags: expected_log_tag)
+      expect(actual_ids).to eq(%w[uuid1 uuid2 uuid3])
+    end
+
+    it 'camelizes snake_case params before sending to the API' do
+      @stubs.get('api/v3/appointments/search') do |env|
+        expect(env.params).to include(
+          'appointmentStartDate' => '2026-04-01T00:00:00Z',
+          'appointmentEndDate' => '2026-04-30T23:59:59Z'
+        )
+        [200, {}, { 'data' => data }]
+      end
+
+      client = TravelPay::AppointmentsClient.new
+      client.search_appointments(
+        auth_session,
+        { 'appointment_start_date' => '2026-04-01T00:00:00Z',
+          'appointment_end_date' => '2026-04-30T23:59:59Z' }
+      )
+    end
+  end
+
   context '/appointments/find-or-add' do
     let(:appointment_params) do
       {

@@ -38,6 +38,40 @@ module TravelPay
     end
 
     ##
+    # HTTP GET call to the BTSSS 'appointments/search' endpoint
+    # Searches for appointments within a date range with optional filters
+    #
+    # Available @params: (for Travel Pay API)
+    #   hasClaim: boolean
+    #   externalAppointmentId: string
+    #   facilityId: string (uuid)
+    #   appointmentStartDate: string ($date-time)
+    #   appointmentEndDate: string ($date-time)
+    #   facilityName: string
+    #   pageNumber: integer
+    #   pageSize: integer
+    #   sortField: string
+    #   sortDirection: string (None, Ascending, Descending)
+    #
+    # @return [Faraday::Response]
+    #
+    def search_appointments(auth_session, params = {})
+      btsss_url = Settings.travel_pay.base_url
+      correlation_id = SecureRandom.uuid
+      Rails.logger.info(message: 'Correlation ID', correlation_id:)
+      url_params = params.transform_keys { |k| k.to_s.camelize(:lower) }
+
+      log_to_statsd('appointments', 'search') do
+        connection(server_url: btsss_url).get('api/v3/appointments/search', url_params) do |req|
+          req.headers['Authorization'] = "Bearer #{auth_session.veis_token}"
+          req.headers['BTSSS-Access-Token'] = auth_session.btsss_token
+          req.headers['X-Correlation-ID'] = correlation_id
+          req.headers.merge!(claim_headers)
+        end
+      end
+    end
+
+    ##
     # HTTP POST call to the BTSSS 'appointments/find-or-create' endpoint
     # API responds with BTSSS appointment ID
     #

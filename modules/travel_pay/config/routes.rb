@@ -5,6 +5,7 @@ TravelPay::Engine.routes.draw do
     resource :contact, only: %i[show]
     get 'facilities/related', to: 'facilities#index'
     resources :claims, only: %i[index show create]
+    get 'appointments/search', to: 'appointments#index'
 
     scope '/claims/:claim_id', constraints: { claim_id: %r{[^/]+} } do
       resources :documents, only: %i[index show create destroy]

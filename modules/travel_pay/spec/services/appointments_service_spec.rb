@@ -112,6 +112,55 @@ describe TravelPay::AppointmentsService do
     end
   end
 
+  context 'search_appointments' do
+    let(:user) { build(:user) }
+    let(:auth_session) { TravelPay::AuthSession.new(veis_token: 'veis_token', btsss_token: 'btsss_token') }
+    let(:auth_manager) { object_double(TravelPay::AuthManager.new(123, user), authorize: auth_session, user:) }
+    let(:service) { TravelPay::AppointmentsService.new(auth_manager) }
+    let(:appointment_data) do
+      [
+        {
+          'id' => 'uuid1',
+          'appointmentDateTime' => '2026-04-15T10:00:00Z',
+          'facilityName' => 'Cheyenne VA Medical Center',
+          'isCompleted' => false
+        }
+      ]
+    end
+
+    context 'when the client returns appointments' do
+      let(:search_response) { Faraday::Response.new(body: { 'data' => appointment_data }) }
+
+      before do
+        allow_any_instance_of(TravelPay::AppointmentsClient)
+          .to receive(:search_appointments)
+          .and_return(search_response)
+      end
+
+      it 'returns the data array' do
+        result = service.search_appointments({ 'appointment_start_date' => '2026-04-01T00:00:00Z' })
+
+        expect(result).to eq(appointment_data)
+      end
+    end
+
+    context 'when the client returns no data' do
+      let(:empty_response) { Faraday::Response.new(body: {}) }
+
+      before do
+        allow_any_instance_of(TravelPay::AppointmentsClient)
+          .to receive(:search_appointments)
+          .and_return(empty_response)
+      end
+
+      it 'returns an empty array' do
+        result = service.search_appointments({})
+
+        expect(result).to eq([])
+      end
+    end
+  end
+
   context 'find or create appointment' do
     let(:user) { build(:user) }
 

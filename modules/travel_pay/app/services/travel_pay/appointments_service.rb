@@ -81,6 +81,20 @@ module TravelPay
       raise ArgumentError, "#{e} Invalid appointment time provided (given: #{params['appointment_date_time']})."
     end
 
+    ##
+    # Searches for appointments using a date range and optional filters.
+    # Returns the data array from the BTSSS response, or an empty array
+    # if no appointments match.
+    #
+    # @param params [Hash] snake_case search params (see AppointmentsClient#search_appointments)
+    # @return [Array] appointment records
+    #
+    def search_appointments(params = {})
+      auth_session = @auth_manager.authorize
+      response = client.search_appointments(auth_session, params)
+      response.body['data'] || []
+    end
+
     BASE_REQUIRED_FIELDS = %w[appointment_date_time facility_station_number].freeze
     V4_REQUIRED_FIELDS = %w[facility_name].freeze
 
