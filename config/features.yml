@@ -1625,6 +1625,10 @@ features:
     actor_type: user
     description: Enables the MHV account activity log feature
     enable_in_development: false
+  mhv_blue_button_use_v2:
+    actor_type: user
+    description: Control whether Blue Button uses v2 health API endpoints instead of v1
+    enable_in_development: false
   mhv_accelerated_delivery_enabled:
     actor_type: user
     description: Control whether vets-api allows fetching MR data from LightHouse
