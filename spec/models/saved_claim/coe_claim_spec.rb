@@ -5,6 +5,10 @@ require 'lgy/service'
 
 RSpec.describe SavedClaim::CoeClaim do
   describe '#send_to_lgy(edipi:, icn:)' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:coe_form_rebuild_cveteam).and_return(false)
+    end
+
     it 'logs an error to sentry if edipi is nil' do
       coe_claim = create(:coe_claim)
       allow(coe_claim).to receive(:prepare_form_data).and_return({})
@@ -35,12 +39,14 @@ RSpec.describe SavedClaim::CoeClaim do
           'dateOfBirth' => '1933-10-27',
           'vetAddress1' => '123 ANY ST',
           'vetAddress2' => '',
+          'vetAddress3' => '',
           'vetCity' => 'ANYTOWN',
           'vetState' => 'AL',
           'vetZip' => '54321',
           'vetZipSuffix' => nil,
           'mailingAddress1' => '123 ANY ST',
           'mailingAddress2' => '',
+          'mailingAddress3' => '',
           'mailingCity' => 'ANYTOWN',
           'mailingState' => 'AL',
           'mailingZip' => '54321',
@@ -99,6 +105,7 @@ RSpec.describe SavedClaim::CoeClaim do
           'disabilityIndicator' => false
         }]
       }
+
       expect_any_instance_of(LGY::Service)
         .to receive(:put_application)
         .with(payload: expected_prepared_form_data)
@@ -121,12 +128,14 @@ RSpec.describe SavedClaim::CoeClaim do
             'dateOfBirth' => '1933-10-27',
             'vetAddress1' => '123 ANY ST',
             'vetAddress2' => '',
+            'vetAddress3' => '',
             'vetCity' => 'ANYTOWN',
             'vetState' => 'AL',
             'vetZip' => '54321',
             'vetZipSuffix' => nil,
             'mailingAddress1' => '123 ANY ST',
             'mailingAddress2' => '',
+            'mailingAddress3' => '',
             'mailingCity' => 'ANYTOWN',
             'mailingState' => 'AL',
             'mailingZip' => '54321',
@@ -208,12 +217,14 @@ RSpec.describe SavedClaim::CoeClaim do
             'dateOfBirth' => '1933-10-27',
             'vetAddress1' => '123 ANY ST',
             'vetAddress2' => '',
+            'vetAddress3' => '',
             'vetCity' => 'ANYTOWN',
             'vetState' => 'AL',
             'vetZip' => '54321',
             'vetZipSuffix' => nil,
             'mailingAddress1' => '123 ANY ST',
             'mailingAddress2' => '',
+            'mailingAddress3' => '',
             'mailingCity' => 'ANYTOWN',
             'mailingState' => 'AL',
             'mailingZip' => '54321',
@@ -295,12 +306,14 @@ RSpec.describe SavedClaim::CoeClaim do
             'dateOfBirth' => '1933-10-27',
             'vetAddress1' => '123 ANY ST',
             'vetAddress2' => '',
+            'vetAddress3' => '',
             'vetCity' => 'ANYTOWN',
             'vetState' => 'AL',
             'vetZip' => '54321',
             'vetZipSuffix' => nil,
             'mailingAddress1' => '123 ANY ST',
             'mailingAddress2' => '',
+            'mailingAddress3' => '',
             'mailingCity' => 'ANYTOWN',
             'mailingState' => 'AL',
             'mailingZip' => '54321',
@@ -382,12 +395,14 @@ RSpec.describe SavedClaim::CoeClaim do
             'dateOfBirth' => '1933-10-27',
             'vetAddress1' => '123 ANY ST',
             'vetAddress2' => '',
+            'vetAddress3' => '',
             'vetCity' => 'ANYTOWN',
             'vetState' => 'AL',
             'vetZip' => '54321',
             'vetZipSuffix' => nil,
             'mailingAddress1' => '123 ANY ST',
             'mailingAddress2' => '',
+            'mailingAddress3' => '',
             'mailingCity' => 'ANYTOWN',
             'mailingState' => 'AL',
             'mailingZip' => '54321',
