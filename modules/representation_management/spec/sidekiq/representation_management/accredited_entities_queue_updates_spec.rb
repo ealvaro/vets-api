@@ -1542,7 +1542,8 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
           'firstName' => 'judy',
           'workNumber' => '555-1234',
           'workEmailAddress' => 'judy@example.com',
-          'id' => 'dfc36f35-0464-450f-a85b-3fa639705826'
+          'id' => 'dfc36f35-0464-450f-a85b-3fa639705826',
+          'number' => 'R123456'
         },
         'lastName' => 'aalaam',
         'firstName' => 'judy',
@@ -1976,7 +1977,8 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
           'representative' => {
             'lastName' => 'aalaam',
             'firstName' => 'judy',
-            'id' => 'dfc36f35-0464-450f-a85b-3fa639705826'
+            'id' => 'dfc36f35-0464-450f-a85b-3fa639705826',
+            'number' => 'R123456'
           },
           'veteransServiceOrganization' => {
             'id' => '9c6f8595-4e84-42e5-b90a-270c422c373a'
@@ -1994,7 +1996,8 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
           'representative' => {
             'lastName' => 'abad',
             'firstName' => 'julia',
-            'id' => nil
+            'id' => nil,
+            'number' => nil
           },
           'veteransServiceOrganization' => {
             'id' => '8f8d4051-ddcc-4730-973e-9688559a91fc'
@@ -2032,14 +2035,14 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
         allow(record_without_id).to receive(:update)
       end
 
-      it 'updates representative records with valid registration_number from representative ID' do
+      it 'updates representative records with valid registration_number from representative number' do
         job.send(:update_reps)
 
         expect(record_with_id).to have_received(:update)
-          .with(hash_including(registration_number: 'dfc36f35-0464-450f-a85b-3fa639705826'))
+          .with(hash_including(registration_number: 'R123456'))
       end
 
-      it 'updates representative records with nil registration_number when representative ID is missing' do
+      it 'updates representative records with nil registration_number when representative number is missing' do
         job.send(:update_reps)
 
         expect(record_without_id).to have_received(:update)
@@ -2078,14 +2081,19 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
 
       it 'includes registration_number in representative transformation' do
         rep = {
-          'representative' => { 'id' => 'rep-id-789', 'firstName' => 'Bob', 'lastName' => 'Wilson' },
+          'representative' => {
+            'id' => 'rep-id-789',
+            'number' => 'rep-number-789',
+            'firstName' => 'Bob',
+            'lastName' => 'Wilson'
+          },
           'workCity' => 'Test City',
           'workState' => 'TX'
         }
         result = job.send(:data_transform_for_representative, rep)
 
         expect(result).to have_key(:registration_number)
-        expect(result[:registration_number]).to eq('rep-id-789')
+        expect(result[:registration_number]).to eq('rep-number-789')
       end
 
       it 'handles nil registration_number values gracefully' do

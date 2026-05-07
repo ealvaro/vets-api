@@ -521,7 +521,7 @@ module RepresentationManagement
                                   phone: rep['representative']['workNumber'],
                                   email: rep['representative']['workEmailAddress'],
                                   raw_address: raw_address_for_representative(rep),
-                                  registration_number: rep.dig('representative', 'id')
+                                  registration_number: rep.dig('representative', 'number')
                                 })
     end
 
