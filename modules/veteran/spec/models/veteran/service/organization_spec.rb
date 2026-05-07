@@ -15,6 +15,50 @@ RSpec.describe Veteran::Service::Organization, type: :model do
     end
   end
 
+  describe 'enums' do
+    describe 'primary_org_acceptance_mode' do
+      it 'accepts valid values' do
+        org = described_class.new(poa: '000')
+        expect { org.primary_any_request! }.not_to raise_error
+        expect { org.primary_self_only! }.not_to raise_error
+        expect { org.primary_no_acceptance! }.not_to raise_error
+      end
+
+      it 'has default value of no_acceptance' do
+        org = described_class.new(poa: '000')
+        expect(org.primary_org_acceptance_mode).to eq('no_acceptance')
+      end
+
+      it 'provides predicate methods' do
+        org = described_class.create!(poa: 'ABC', primary_org_acceptance_mode: 'any_request')
+        expect(org.primary_any_request?).to be true
+        expect(org.primary_self_only?).to be false
+        expect(org.primary_no_acceptance?).to be false
+      end
+    end
+
+    describe 'default_new_rep_acceptance_mode' do
+      it 'accepts valid values' do
+        org = described_class.new(poa: '000')
+        expect { org.default_rep_any_request! }.not_to raise_error
+        expect { org.default_rep_self_only! }.not_to raise_error
+        expect { org.default_rep_no_acceptance! }.not_to raise_error
+      end
+
+      it 'has default value of no_acceptance' do
+        org = described_class.new(poa: '000')
+        expect(org.default_new_rep_acceptance_mode).to eq('no_acceptance')
+      end
+
+      it 'provides predicate methods' do
+        org = described_class.create!(poa: 'DEF', default_new_rep_acceptance_mode: 'self_only')
+        expect(org.default_rep_any_request?).to be false
+        expect(org.default_rep_self_only?).to be true
+        expect(org.default_rep_no_acceptance?).to be false
+      end
+    end
+  end
+
   describe 'associations' do
     it 'has many organization_representatives' do
       assoc = described_class.reflect_on_association(:organization_representatives)

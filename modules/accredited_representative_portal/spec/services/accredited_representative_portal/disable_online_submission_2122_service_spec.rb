@@ -7,16 +7,28 @@ RSpec.describe AccreditedRepresentativePortal::DisableOnlineSubmission2122Servic
     subject(:call_service) { described_class.call(poa_codes:) }
 
     context 'with comma-separated string' do
-      let!(:org_svs) { create(:veteran_organization, poa: 'SVS', can_accept_digital_poa_requests: true, name: 'SVS') }
-      let!(:org_yhz) { create(:veteran_organization, poa: 'YHZ', can_accept_digital_poa_requests: true, name: 'YHZ') }
+      let!(:org_svs) do
+        create(:veteran_organization, poa: 'SVS', can_accept_digital_poa_requests: true, name: 'SVS',
+                                      primary_org_acceptance_mode: 'any_request',
+                                      default_new_rep_acceptance_mode: 'any_request')
+      end
+      let!(:org_yhz) do
+        create(:veteran_organization, poa: 'YHZ', can_accept_digital_poa_requests: true, name: 'YHZ',
+                                      primary_org_acceptance_mode: 'any_request',
+                                      default_new_rep_acceptance_mode: 'any_request')
+      end
       let(:poa_codes) { 'SVS,YHZ' }
 
       it 'updates matching orgs and returns counts' do
         result = call_service
 
-        expect(result).to eq(orgs_updated: 2, reps_updated: 0)
+        expect(result).to eq(orgs_updated: 2, reps_updated: 0, org_modes_updated: 2)
         expect(org_svs.reload.can_accept_digital_poa_requests).to be(false)
+        expect(org_svs.primary_org_acceptance_mode).to eq('no_acceptance')
+        expect(org_svs.default_new_rep_acceptance_mode).to eq('no_acceptance')
         expect(org_yhz.reload.can_accept_digital_poa_requests).to be(false)
+        expect(org_yhz.primary_org_acceptance_mode).to eq('no_acceptance')
+        expect(org_yhz.default_new_rep_acceptance_mode).to eq('no_acceptance')
       end
     end
 
@@ -28,7 +40,7 @@ RSpec.describe AccreditedRepresentativePortal::DisableOnlineSubmission2122Servic
       it 'flattens, normalizes, deduplicates, and updates matching orgs' do
         result = call_service
 
-        expect(result).to eq(orgs_updated: 2, reps_updated: 0)
+        expect(result).to eq(orgs_updated: 2, reps_updated: 0, org_modes_updated: 0)
         expect(org_svs.reload.can_accept_digital_poa_requests).to be(false)
         expect(org_yhz.reload.can_accept_digital_poa_requests).to be(false)
       end
@@ -42,7 +54,7 @@ RSpec.describe AccreditedRepresentativePortal::DisableOnlineSubmission2122Servic
       it 'trims whitespace, removes duplicates, and updates matching orgs' do
         result = call_service
 
-        expect(result).to eq(orgs_updated: 2, reps_updated: 0)
+        expect(result).to eq(orgs_updated: 2, reps_updated: 0, org_modes_updated: 0)
         expect(org_svs.reload.can_accept_digital_poa_requests).to be(false)
         expect(org_yhz.reload.can_accept_digital_poa_requests).to be(false)
       end
@@ -66,13 +78,17 @@ RSpec.describe AccreditedRepresentativePortal::DisableOnlineSubmission2122Servic
         result = nil
         expect { result = call_service }.not_to raise_error
 
-        expect(result).to eq(orgs_updated: 0, reps_updated: 0)
+        expect(result).to eq(orgs_updated: 0, reps_updated: 0, org_modes_updated: 0)
         expect(org_other.reload.can_accept_digital_poa_requests).to be(true)
       end
     end
 
     context 'updates rep permissions for active joins only' do
-      let!(:org) { create(:veteran_organization, poa: 'SVS', can_accept_digital_poa_requests: true, name: 'SVS') }
+      let!(:org) do
+        create(:veteran_organization, poa: 'SVS', can_accept_digital_poa_requests: true, name: 'SVS',
+                                      primary_org_acceptance_mode: 'any_request',
+                                      default_new_rep_acceptance_mode: 'any_request')
+      end
       let(:poa_codes) { 'SVS' }
 
       let!(:active_needs_update) do
@@ -105,7 +121,7 @@ RSpec.describe AccreditedRepresentativePortal::DisableOnlineSubmission2122Servic
       it 'sets acceptance_mode=no_acceptance for active joins and returns accurate counts' do
         result = call_service
 
-        expect(result).to eq(orgs_updated: 1, reps_updated: 1)
+        expect(result).to eq(orgs_updated: 1, reps_updated: 1, org_modes_updated: 1)
 
         expect(active_needs_update.reload.acceptance_mode).to eq('no_acceptance')
         expect(active_already_no_acceptance.reload.acceptance_mode).to eq('no_acceptance')
@@ -114,7 +130,11 @@ RSpec.describe AccreditedRepresentativePortal::DisableOnlineSubmission2122Servic
     end
 
     context 'idempotency' do
-      let!(:org) { create(:veteran_organization, poa: 'SVS', can_accept_digital_poa_requests: true, name: 'SVS') }
+      let!(:org) do
+        create(:veteran_organization, poa: 'SVS', can_accept_digital_poa_requests: true, name: 'SVS',
+                                      primary_org_acceptance_mode: 'any_request',
+                                      default_new_rep_acceptance_mode: 'any_request')
+      end
       let(:poa_codes) { 'SVS' }
 
       let!(:active_join) do
@@ -128,12 +148,12 @@ RSpec.describe AccreditedRepresentativePortal::DisableOnlineSubmission2122Servic
 
       it 'is safe to call twice; second call updates nothing' do
         first = call_service
-        expect(first).to eq(orgs_updated: 1, reps_updated: 1)
+        expect(first).to eq(orgs_updated: 1, reps_updated: 1, org_modes_updated: 1)
         expect(org.reload.can_accept_digital_poa_requests).to be(false)
         expect(active_join.reload.acceptance_mode).to eq('no_acceptance')
 
         second = described_class.call(poa_codes:)
-        expect(second).to eq(orgs_updated: 0, reps_updated: 0)
+        expect(second).to eq(orgs_updated: 0, reps_updated: 0, org_modes_updated: 0)
         expect(org.reload.can_accept_digital_poa_requests).to be(false)
         expect(active_join.reload.acceptance_mode).to eq('no_acceptance')
       end

@@ -13,7 +13,12 @@ module AccreditedRepresentativePortal
       ActiveRecord::Base.transaction do
         {
           orgs_updated: disable_online_submission!(orgs),
-          reps_updated: set_active_reps_mode!(orgs, 'no_acceptance')
+          reps_updated: set_active_reps_mode!(orgs, 'no_acceptance'),
+          org_modes_updated: set_org_acceptance_modes!(
+            orgs,
+            primary_mode: 'no_acceptance',
+            default_rep_mode: 'no_acceptance'
+          )
         }
       end
     end

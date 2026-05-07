@@ -2,9 +2,11 @@
 
 require 'rails_helper'
 
-RSpec.describe AccreditedRepresentativePortal::EnableOnlineSubmission2122Service do
+RSpec.describe AccreditedRepresentativePortal::ConfigureOnlineSubmission2122Service do
   describe '.call' do
-    subject(:call_service) { described_class.call(poa_codes:) }
+    subject(:call_service) do
+      described_class.call(poa_codes:, acceptance_mode: 'any_request', default_new_rep_mode: 'any_request')
+    end
 
     context 'with comma-separated string' do
       let!(:org_svs) { create(:veteran_organization, poa: 'SVS', can_accept_digital_poa_requests: false, name: 'SVS') }
@@ -14,9 +16,13 @@ RSpec.describe AccreditedRepresentativePortal::EnableOnlineSubmission2122Service
       it 'updates matching orgs and returns counts' do
         result = call_service
 
-        expect(result).to eq(orgs_updated: 2, reps_updated: 0)
+        expect(result).to eq(orgs_updated: 2, reps_updated: 0, org_modes_updated: 2)
         expect(org_svs.reload.can_accept_digital_poa_requests).to be(true)
+        expect(org_svs.primary_org_acceptance_mode).to eq('any_request')
+        expect(org_svs.default_new_rep_acceptance_mode).to eq('any_request')
         expect(org_yhz.reload.can_accept_digital_poa_requests).to be(true)
+        expect(org_yhz.primary_org_acceptance_mode).to eq('any_request')
+        expect(org_yhz.default_new_rep_acceptance_mode).to eq('any_request')
       end
     end
 
@@ -28,7 +34,7 @@ RSpec.describe AccreditedRepresentativePortal::EnableOnlineSubmission2122Service
       it 'accepts arrays and updates matching orgs' do
         result = call_service
 
-        expect(result).to eq(orgs_updated: 2, reps_updated: 0)
+        expect(result).to eq(orgs_updated: 2, reps_updated: 0, org_modes_updated: 2)
         expect(org_svs.reload.can_accept_digital_poa_requests).to be(true)
         expect(org_yhz.reload.can_accept_digital_poa_requests).to be(true)
       end
@@ -41,7 +47,7 @@ RSpec.describe AccreditedRepresentativePortal::EnableOnlineSubmission2122Service
       it 'trims and de-dupes, updating only needed rows' do
         result = call_service
 
-        expect(result).to eq(orgs_updated: 1, reps_updated: 0)
+        expect(result).to eq(orgs_updated: 1, reps_updated: 0, org_modes_updated: 1)
         expect(org_svs.reload.can_accept_digital_poa_requests).to be(true)
       end
     end
@@ -64,7 +70,7 @@ RSpec.describe AccreditedRepresentativePortal::EnableOnlineSubmission2122Service
         result = nil
         expect { result = call_service }.not_to raise_error
 
-        expect(result).to eq(orgs_updated: 0, reps_updated: 0)
+        expect(result).to eq(orgs_updated: 0, reps_updated: 0, org_modes_updated: 0)
         expect(org_other.reload.can_accept_digital_poa_requests).to be(false)
       end
     end
@@ -103,7 +109,7 @@ RSpec.describe AccreditedRepresentativePortal::EnableOnlineSubmission2122Service
       it 'sets acceptance_mode=any_request for active joins and returns accurate counts' do
         result = call_service
 
-        expect(result).to eq(orgs_updated: 1, reps_updated: 1)
+        expect(result).to eq(orgs_updated: 1, reps_updated: 1, org_modes_updated: 1)
 
         expect(active_needs_update.reload.acceptance_mode).to eq('any_request')
         expect(active_already_any_request.reload.acceptance_mode).to eq('any_request')
@@ -126,12 +132,12 @@ RSpec.describe AccreditedRepresentativePortal::EnableOnlineSubmission2122Service
 
       it 'is safe to call twice; second call updates nothing' do
         first = call_service
-        expect(first).to eq(orgs_updated: 1, reps_updated: 1)
+        expect(first).to eq(orgs_updated: 1, reps_updated: 1, org_modes_updated: 1)
         expect(org.reload.can_accept_digital_poa_requests).to be(true)
         expect(active_join.reload.acceptance_mode).to eq('any_request')
 
-        second = described_class.call(poa_codes:)
-        expect(second).to eq(orgs_updated: 0, reps_updated: 0)
+        second = described_class.call(poa_codes:, acceptance_mode: 'any_request', default_new_rep_mode: 'any_request')
+        expect(second).to eq(orgs_updated: 0, reps_updated: 0, org_modes_updated: 0)
         expect(org.reload.can_accept_digital_poa_requests).to be(true)
         expect(active_join.reload.acceptance_mode).to eq('any_request')
       end

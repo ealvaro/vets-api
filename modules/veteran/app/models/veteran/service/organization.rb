@@ -6,6 +6,20 @@ module Veteran
     class Organization < ApplicationRecord
       self.primary_key = :poa
 
+      ACCEPTANCE_MODES = %w[any_request self_only no_acceptance].freeze
+
+      enum :primary_org_acceptance_mode, {
+        any_request: 'any_request',
+        self_only: 'self_only',
+        no_acceptance: 'no_acceptance'
+      }, prefix: :primary, default: 'no_acceptance'
+
+      enum :default_new_rep_acceptance_mode, {
+        any_request: 'any_request',
+        self_only: 'self_only',
+        no_acceptance: 'no_acceptance'
+      }, prefix: :default_rep, default: 'no_acceptance'
+
       validates :poa, presence: true
       has_many :organization_representatives,
                class_name: 'Veteran::Service::OrganizationRepresentative',
