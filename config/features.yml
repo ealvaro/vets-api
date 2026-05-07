@@ -1879,6 +1879,12 @@ features:
     actor_type: user
     description: Enables/disables Medical Records new filter and sort changes
     enable_in_development: true
+  mhv_medical_records_partial_failure_handling:
+    actor_type: user
+    description: >-
+      When enabled, returns partial medical records data with warnings when one upstream
+      source fails instead of returning a 500 error. Requires SCDF incomplete code support.
+    enable_in_development: true
   mhv_medical_records_retry_next_page:
     actor_type: user
     description: Enables/disables with_retries when getting the next page
