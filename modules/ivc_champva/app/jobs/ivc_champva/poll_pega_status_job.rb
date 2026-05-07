@@ -21,6 +21,7 @@ module IvcChampva
 
     FEATURE_TOGGLE = :ivc_champva_poll_pega_status_job
     STATUS_KEYS = ['Determination Type', 'Deternimation Type'].freeze
+    STATSD_PREFIX = 'ivc_champva.poll_pega_status_job'
 
     # Pega terminal/determination statuses — once a form reaches one of these we stop
     # polling because the application has been fully adjudicated. These match the
@@ -38,12 +39,23 @@ module IvcChampva
     def perform
       return unless Flipper.enabled?(FEATURE_TOGGLE)
 
+      StatsD.increment("#{STATSD_PREFIX}.start")
+
       form_uuids = pending_form_uuids
       log_start(form_uuids.size)
+      StatsD.gauge("#{STATSD_PREFIX}.form_uuids_count", form_uuids.size)
+
+      record_status_distribution
+
       return if form_uuids.empty?
 
       results = process_batches(form_uuids)
       log_complete(results)
+
+      StatsD.gauge("#{STATSD_PREFIX}.updated", results[:updated])
+      StatsD.gauge("#{STATSD_PREFIX}.skipped", results[:skipped])
+      StatsD.gauge("#{STATSD_PREFIX}.error", results[:error])
+      StatsD.increment("#{STATSD_PREFIX}.complete")
     rescue => e
       log_error(e)
     end
@@ -110,6 +122,7 @@ module IvcChampva
       { updated: outcomes.count { |o, _| o == :updated }, skipped: outcomes.count { |o, _| o == :skipped }, error: 0 }
     rescue IvcChampva::PegaApi::PegaApiError => e
       log_api_error(form_uuid, e)
+      StatsD.increment("#{STATSD_PREFIX}.api_error")
       { updated: 0, skipped: 0, error: batch.size }
     end
 
@@ -138,6 +151,7 @@ module IvcChampva
 
       update_form(form, status, case_id)
       log_update(form_uuid, status, case_id)
+      StatsD.increment("#{STATSD_PREFIX}.form_updated")
       [:updated, nil]
     end
 
@@ -168,6 +182,43 @@ module IvcChampva
 
     def needs_update?(form, status, case_id)
       form.pega_status != status || form.case_id != case_id
+    end
+
+    # ──────────────────────────────────────────────
+    # Metrics
+    # ──────────────────────────────────────────────
+
+    def record_status_distribution
+      record_forms_by_status
+      record_case_id_health
+      record_missing_status_windows
+    end
+
+    def record_forms_by_status
+      scope = IvcChampvaForm.where(pega_status: nil)
+      scope = scope.or(IvcChampvaForm.where.not(pega_status: COMPLETE_STATUSES)) if COMPLETE_STATUSES.present?
+      scope.group(:pega_status).count.each do |status, count|
+        # pega_status is a string column; AR returns String or nil for NULL rows
+        tag = status.present? ? status.to_s.downcase.gsub(/[^a-z0-9_]/, '_') : 'null'
+        StatsD.gauge("#{STATSD_PREFIX}.forms_by_status", count, tags: ["pega_status:#{tag}"])
+      end
+      StatsD.gauge("#{STATSD_PREFIX}.forms_null_pega_status", IvcChampvaForm.where(pega_status: nil).count)
+    end
+
+    def record_case_id_health
+      pending_scope = pending_forms_scope
+      StatsD.gauge("#{STATSD_PREFIX}.forms_with_case_id",    pending_scope.where.not(case_id: nil).count)
+      StatsD.gauge("#{STATSD_PREFIX}.forms_without_case_id", pending_scope.where(case_id: nil).count)
+    end
+
+    def record_missing_status_windows
+      null_scope = IvcChampvaForm.where(pega_status: nil)
+      StatsD.gauge("#{STATSD_PREFIX}.forms_missing_status.1d_old",
+                   null_scope.where('created_at < ?', 1.day.ago).count)
+      StatsD.gauge("#{STATSD_PREFIX}.forms_missing_status.5d_old",
+                   null_scope.where('created_at < ?', 5.days.ago).count)
+      StatsD.gauge("#{STATSD_PREFIX}.forms_missing_status.7d_old",
+                   null_scope.where('created_at < ?', 7.days.ago).count)
     end
 
     # ──────────────────────────────────────────────
