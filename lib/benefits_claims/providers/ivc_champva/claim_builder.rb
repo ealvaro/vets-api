@@ -24,7 +24,18 @@ module BenefitsClaims
         }.freeze
 
         PROCESSED_STATUSES = ['processed', 'manually processed'].freeze
-        ERROR_STATUSES = ['error', 'failed', 'rejected', 'submission failed'].freeze
+        CLAIM_RECEIVED_STATUSES = ['received', 'submission received'].freeze
+        COMPLETE_STATUSES = [
+          'eligiblity denied/additional information needed',
+          'eligibility denied/additional information needed',
+          'eligible - issued a card',
+          'duplicate application',
+          'eligible - reissued a card',
+          'additional documentation requested',
+          'processed - eligiblity determination unknown',
+          'processed - eligibility determination unknown',
+          'document identification error'
+        ].freeze
         INTERNAL_DOCS_ONLY_1010D_FILE_NAME_PATTERN = /_vha_10_10d(?:_supporting_doc-\d+)?\.pdf\z/i
 
         def self.build_claim_response(records, user = nil)
@@ -65,11 +76,13 @@ module BenefitsClaims
 
         def self.status_for(records)
           representative = pick_representative(records)
-          normalize_status(representative&.pega_status)
+          normalize_status(representative&.pega_status, form_uuid: representative&.form_uuid)
         end
 
         def self.close_date_for(record)
-          return nil unless record&.pega_status && PROCESSED_STATUSES.include?(record.pega_status.to_s.downcase.strip)
+          normalized = record&.pega_status.to_s.downcase.strip
+          terminal = PROCESSED_STATUSES.include?(normalized) || COMPLETE_STATUSES.include?(normalized)
+          return nil unless normalized.present? && terminal
 
           format_date(record.updated_at)
         end
@@ -108,12 +121,18 @@ module BenefitsClaims
           value&.iso8601
         end
 
-        def self.normalize_status(pega_status)
+        def self.normalize_status(pega_status, form_uuid: nil)
           normalized = pega_status.to_s.downcase.strip
+          return 'pending' if normalized.blank?
           return 'vbms' if PROCESSED_STATUSES.include?(normalized)
-          return 'error' if ERROR_STATUSES.include?(normalized)
+          return 'claimReceived' if CLAIM_RECEIVED_STATUSES.include?(normalized)
+          return 'complete' if COMPLETE_STATUSES.include?(normalized)
 
-          'pending'
+          Rails.logger.warn(
+            '[BenefitsClaims::Providers::IvcChampva::ClaimBuilder] Unrecognized pega_status received',
+            { form_uuid:, raw_pega_status: pega_status }
+          )
+          'error'
         end
 
         def self.build_claim_status_meta(records, status, user)
@@ -155,7 +174,7 @@ module BenefitsClaims
         end
 
         def self.phase_type_for_status(status)
-          return 'COMPLETE' if status == 'vbms'
+          return 'COMPLETE' if %w[vbms complete].include?(status)
           return 'REVIEW_OF_EVIDENCE' if status == 'error'
 
           'UNDER_REVIEW'

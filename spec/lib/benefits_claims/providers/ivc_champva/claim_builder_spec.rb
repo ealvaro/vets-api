@@ -10,6 +10,39 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
     end
   end
 
+  describe '.normalize_status' do
+    it 'maps "Submission Received" to claimReceived' do
+      expect(described_class.normalize_status('Submission Received')).to eq('claimReceived')
+    end
+
+    it 'maps "Received" to claimReceived' do
+      expect(described_class.normalize_status('Received')).to eq('claimReceived')
+    end
+
+    it 'maps processed statuses to vbms' do
+      expect(described_class.normalize_status('Processed')).to eq('vbms')
+      expect(described_class.normalize_status('Manually Processed')).to eq('vbms')
+    end
+
+    it 'maps error statuses to error' do
+      expect(described_class.normalize_status('Not Processed')).to eq('error')
+      expect(described_class.normalize_status('Failed')).to eq('error')
+    end
+
+    it 'maps complete statuses to complete' do
+      expect(described_class.normalize_status('Eligible - issued a card')).to eq('complete')
+    end
+
+    it 'returns pending for blank status' do
+      expect(described_class.normalize_status(nil)).to eq('pending')
+      expect(described_class.normalize_status('')).to eq('pending')
+    end
+
+    it 'returns error for unrecognized statuses' do
+      expect(described_class.normalize_status('Some Unknown Status')).to eq('error')
+    end
+  end
+
   describe '.build_supporting_documents' do
     it 'filters internal docs-only generated 10-10D files from user-facing supporting documents' do
       created_at = Time.zone.parse('2026-04-21 11:30:00')
@@ -39,6 +72,94 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
       expect(supporting_documents.map(&:original_file_name)).to eq(
         ['Screenshot 2026-04-21 at 9.22.07 AM.png']
       )
+    end
+  end
+
+  describe '.build_claim_status_meta' do
+    let(:record) do
+      double(
+        first_name: 'Jane',
+        last_name: 'Doe',
+        form_uuid: '123',
+        form_number: '10-10D',
+        file_name: 'test.pdf',
+        pega_status: nil,
+        created_at: Time.zone.now,
+        updated_at: Time.zone.now
+      )
+    end
+    let(:user) { double('user', id: 1, first_name: 'John', last_name: 'Veteran') }
+
+    context 'when cst_champva_custom_content flipper is enabled' do
+      before { allow(Flipper).to receive(:enabled?).with(:cst_champva_custom_content, user).and_return(true) }
+
+      it 'returns the base metadata hash with currentStatus injected' do
+        meta = described_class.build_claim_status_meta([record], 'pending', user)
+        expect(meta).to be_a(Hash)
+        expect(meta.dig('whatWeAreDoing', 'currentStatus')).to eq('pending')
+      end
+
+      it 'maps claimReceived status into currentStatus correctly' do
+        meta = described_class.build_claim_status_meta([record], 'claimReceived', user)
+        expect(meta.dig('whatWeAreDoing', 'currentStatus')).to eq('claimReceived')
+      end
+
+      it 'includes a statusMap entry for claimReceived' do
+        meta = described_class.build_claim_status_meta([record], 'claimReceived', user)
+        expect(meta.dig('whatWeAreDoing', 'statusMap', 'claimReceived')).to be_a(Hash)
+        expect(meta.dig('whatWeAreDoing', 'statusMap', 'claimReceived', 'title')).to be_present
+      end
+
+      it 'maps claimReceived to step 1 in currentStepByStatus' do
+        meta = described_class.build_claim_status_meta([record], 'claimReceived', user)
+        expect(meta.dig('overview', 'currentStepByStatus', 'claimReceived')).to eq(1)
+      end
+
+      it 'maps vbms to step 2 in currentStepByStatus' do
+        meta = described_class.build_claim_status_meta([record], 'vbms', user)
+        expect(meta.dig('overview', 'currentStepByStatus', 'vbms')).to eq(2)
+      end
+
+      it 'injects veteran name into sectionGroups' do
+        meta = described_class.build_claim_status_meta([record], 'pending', user)
+        section_groups = meta.dig('detail', 'sectionGroups')
+        veteran_group = section_groups.find { |g| g['title'] == 'Veteran' }
+        expect(veteran_group).to be_present
+        expect(veteran_group['items']).to include('John Veteran')
+      end
+
+      it 'injects applicant names into sectionGroups' do
+        meta = described_class.build_claim_status_meta([record], 'pending', user)
+        section_groups = meta.dig('detail', 'sectionGroups')
+        applicant_group = section_groups.find { |g| g['title'] == 'Applicants' }
+        expect(applicant_group).to be_present
+        expect(applicant_group['items']).to include('Jane Doe')
+      end
+
+      it 'deduplicates applicant names across records with the same person' do
+        duplicate_record = double(
+          first_name: 'Jane',
+          last_name: 'Doe',
+          form_uuid: '123',
+          form_number: '10-10D',
+          file_name: 'test2.pdf',
+          pega_status: nil,
+          created_at: Time.zone.now,
+          updated_at: Time.zone.now
+        )
+        meta = described_class.build_claim_status_meta([record, duplicate_record], 'pending', user)
+        applicant_group = meta.dig('detail', 'sectionGroups').find { |g| g['title'] == 'Applicants' }
+        expect(applicant_group['items'].count).to eq(1)
+      end
+    end
+
+    context 'when cst_champva_custom_content flipper is disabled' do
+      before { allow(Flipper).to receive(:enabled?).with(:cst_champva_custom_content, user).and_return(false) }
+
+      it 'returns nil' do
+        meta = described_class.build_claim_status_meta([record], 'pending', user)
+        expect(meta).to be_nil
+      end
     end
   end
 end

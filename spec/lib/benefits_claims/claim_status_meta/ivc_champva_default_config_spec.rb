@@ -21,20 +21,18 @@ RSpec.describe BenefitsClaims::ClaimStatusMeta::ConfigLoader, '#load ivc_champva
   describe 'files section' do
     subject(:files) { config['files'] }
 
-    it 'has option1 (online), option2 (mail), option3 (fax)' do
-      expect(files.dig('options', 'option1', 'title')).to eq('Option 1: Online')
-      expect(files.dig('options', 'option2', 'title')).to eq('Option 2: By mail')
-      expect(files.dig('options', 'option3', 'title')).to eq('Option 3: By fax')
+    it 'has option1 (mail) and option2 (fax)' do
+      expect(files.dig('options', 'option1', 'title')).to eq('Option 1: By mail')
+      expect(files.dig('options', 'option2', 'title')).to eq('Option 2: By fax')
     end
 
-    it 'option1 has linkUrl and linkExternal' do
+    it 'option1 has addressLines' do
       option1 = files.dig('options', 'option1')
-      expect(option1['linkUrl']).to be_present
-      expect(option1['linkExternal']).to be true
+      expect(option1['addressLines']).to be_present
     end
 
-    it 'option3 has noteText' do
-      expect(files.dig('options', 'option3', 'noteText')).to be_present
+    it 'option2 has noteText' do
+      expect(files.dig('options', 'option2', 'noteText')).to be_present
     end
 
     it 'confirmation has descriptionPrefix, phone, tty, and descriptionNote' do
@@ -81,8 +79,8 @@ RSpec.describe BenefitsClaims::ClaimStatusMeta::ConfigLoader, '#load ivc_champva
   describe 'whatWeAreDoing section' do
     subject(:what_we_are_doing) { config['whatWeAreDoing'] }
 
-    it 'has statusMap entries for pending, vbms, and error' do
-      %w[pending vbms error].each do |status|
+    it 'has statusMap entries for pending and vbms' do
+      %w[pending vbms].each do |status|
         entry = what_we_are_doing.dig('statusMap', status)
         expect(entry['title']).to be_present
         expect(entry['description']).to be_present
@@ -114,8 +112,8 @@ RSpec.describe BenefitsClaims::ClaimStatusMeta::ConfigLoader, '#load ivc_champva
       expect(template).to include('{date}')
     end
 
-    it 'currentStepByStatus covers pending, vbms, and error' do
-      expect(overview['currentStepByStatus'].keys).to match_array(%w[pending vbms error])
+    it 'currentStepByStatus covers pending, claimReceived, vbms, and complete' do
+      expect(overview['currentStepByStatus'].keys).to match_array(%w[pending claimReceived vbms complete])
     end
   end
 end

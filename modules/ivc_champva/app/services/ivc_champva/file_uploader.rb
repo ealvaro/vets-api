@@ -186,6 +186,7 @@ module IvcChampva
           email: validate_email(@metadata&.dig('primaryContactInfo', 'email')),
           first_name: @metadata&.dig('primaryContactInfo', 'name', 'first'),
           last_name: @metadata&.dig('primaryContactInfo', 'name', 'last'),
+          submitted_by_icn: @current_user&.icn,
           form_number: @metadata['docType'],
           file_name:,
           s3_status: response_status,

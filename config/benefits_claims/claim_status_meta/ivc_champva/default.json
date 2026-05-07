@@ -1,7 +1,7 @@
 {
   "detail": {
     "pageTitle": "Application for CHAMPVA benefits",
-    "sectionTitle": "Applicants"
+    "sectionTitle": ""
   },
   "statusHeader": {
     "label": "Application status",
@@ -13,20 +13,16 @@
   },
   "files": {
     "simpleLayout": false,
+    "uploadFirstLayout": true,
+    "uploadTitle": "Upload supporting documents",
     "headerTitle": "Application files",
-    "description": "If you need to add or update your supporting documents, you can submit them online, by mail, or by fax. This could be your personal information, health insurance, or school status.",
-    "sectionTitle": "Application files",
-    "introText": "If you need to add or update your supporting documents, you can submit them online, by mail, or by fax. This could be your personal information, health insurance, or school status.",
+    "description": "If you need to update your information, you can upload your supporting documents here. This could be your personal information, health insurance, or school status. You can also review files you've submitted using this tool.",
+    "filesReceivedDescription": "If you submitted files using this tool, they'll appear here once we receive them. Files you or others submitted by mail or fax won't appear here.",
+    "evidenceSubmittedText": "You submitted this file as a supporting document.",
+    "otherWaysIntroText": "You can send your documents by mail or fax.",
     "options": {
       "option1": {
-        "title": "Option 1: Online",
-        "description": "You can add or update your documents online now.",
-        "linkText": "Add or update your documents",
-        "linkUrl": "/family-and-caregiver-benefits/health-and-disability/champva/apply-form-10-10d/introduction",
-        "linkExternal": true
-      },
-      "option2": {
-        "title": "Option 2: By mail",
+        "title": "Option 1: By mail",
         "description": "Mail copies of your documents to this address:",
         "addressLines": [
           "VHA Office of Community Care",
@@ -35,8 +31,8 @@
           "Spring City, PA 19475"
         ]
       },
-      "option3": {
-        "title": "Option 3: By fax",
+      "option2": {
+        "title": "Option 2: By fax",
         "description": "Fax your documents to 1-303-331-7809.",
         "noteText": "We can only scan 1 side of each document. If any of your documents are double-sided, you'll need to include copies of each side of those documents."
       }
@@ -54,7 +50,7 @@
     "tty": "711",
     "inlineTty": true,
     "hours": "Monday through Friday, 8:00 a.m. to 7:30 p.m. ET.",
-    "intro": "If you have questions about your CHAMPVA application, call us",
+    "intro": "Call us",
     "askVa": {
       "text": "You can also use Ask VA to ask questions online.",
       "linkText": "Go to Ask VA",
@@ -88,8 +84,9 @@
     ],
     "currentStepByStatus": {
       "pending": 1,
+      "claimReceived": 1,
       "vbms": 2,
-      "error": 2
+      "complete": 2
     }
   },
   "listCard": {
@@ -133,15 +130,20 @@
         "recentActivityTitle": "Step 1: Application received",
         "description": "We received your application. If we need more information, we'll mail you a letter."
       },
+      "claimReceived": {
+        "title": "Step 1 of 2: Application received",
+        "recentActivityTitle": "Step 1: Application received",
+        "description": "We received your application. If we need more information, we'll mail you a letter."
+      },
       "vbms": {
         "title": "Step 2 of 2: Application decided",
         "recentActivityTitle": "Step 2: Application decided",
         "description": "We completed processing your application."
       },
-      "error": {
-        "title": "Step 2 of 2: Additional review needed",
-        "recentActivityTitle": "Step 2: Additional review needed",
-        "description": "We need additional review before we can complete your application."
+      "complete": {
+        "title": "Step 2 of 2: Application decided",
+        "recentActivityTitle": "Step 2: Application decided",
+        "description": "We completed processing your application."
       }
     }
   }

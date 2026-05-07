@@ -135,5 +135,76 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::IvcChampvaBenefitsClaimsPr
         end
       end
     end
+
+    context 'when the claim has an unrecognized pega_status' do
+      before { allow(Rails.logger).to receive(:warn) }
+
+      it 'returns error status and logs a structured warning with form_uuid and raw value' do
+        create(:ivc_champva_form, form_uuid: claim_id, email: 'primary@example.com',
+                                  pega_status: 'd', created_at: 1.day.ago)
+
+        result = provider.get_claim(claim_id)
+
+        expect(result.dig('data', 'attributes', 'status')).to eq('error')
+        expect(Rails.logger).to have_received(:warn).with(
+          '[BenefitsClaims::Providers::IvcChampva::ClaimBuilder] Unrecognized pega_status received',
+          hash_including(form_uuid: claim_id, raw_pega_status: 'd')
+        )
+      end
+    end
+
+    context 'when cst_champva_custom_content flipper is enabled' do
+      before { allow(Flipper).to receive(:enabled?).with(:cst_champva_custom_content, current_user).and_return(true) }
+
+      it 'includes claimStatusMeta in the serialized response' do
+        create(:ivc_champva_form, form_uuid: claim_id, email: 'primary@example.com',
+                                  pega_status: nil, created_at: 1.day.ago)
+
+        result = provider.get_claim(claim_id)
+        expect(result.dig('data', 'attributes', 'claimStatusMeta')).to be_a(Hash)
+      end
+
+      it 'claimStatusMeta.statusMap contains a claimReceived key' do
+        create(:ivc_champva_form, form_uuid: claim_id, email: 'primary@example.com',
+                                  pega_status: 'Received', created_at: 1.day.ago)
+
+        result = provider.get_claim(claim_id)
+        status_map = result.dig('data', 'attributes', 'claimStatusMeta', 'whatWeAreDoing', 'statusMap')
+        expect(status_map).to have_key('claimReceived')
+      end
+
+      it 'claimStatusMeta.overview.currentStepByStatus maps claimReceived to step 1' do
+        create(:ivc_champva_form, form_uuid: claim_id, email: 'primary@example.com',
+                                  pega_status: 'Received', created_at: 1.day.ago)
+
+        result = provider.get_claim(claim_id)
+        current_step_by_status = result.dig(
+          'data', 'attributes', 'claimStatusMeta', 'overview', 'currentStepByStatus'
+        )
+        expect(current_step_by_status['claimReceived']).to eq(1)
+      end
+
+      it 'claimStatusMeta.overview.currentStepByStatus maps vbms to step 2' do
+        create(:ivc_champva_form, form_uuid: claim_id, email: 'primary@example.com',
+                                  pega_status: 'Processed', created_at: 1.day.ago)
+
+        result = provider.get_claim(claim_id)
+        current_step_by_status = result.dig(
+          'data', 'attributes', 'claimStatusMeta', 'overview', 'currentStepByStatus'
+        )
+        expect(current_step_by_status['vbms']).to eq(2)
+      end
+    end
+  end
+
+  describe '#close_date_for complete statuses' do
+    let(:claim_id) { SecureRandom.uuid }
+
+    it 'returns a close_date for a COMPLETE_STATUSES pega_status' do
+      record = create(:ivc_champva_form, form_uuid: claim_id, email: 'primary@example.com',
+                                         pega_status: 'Eligible - Issued a Card', created_at: 1.day.ago)
+      result = provider.get_claim(claim_id)
+      expect(result.dig('data', 'attributes', 'closeDate')).to eq(record.updated_at.to_date.iso8601)
+    end
   end
 end

@@ -31,7 +31,8 @@ module IvcChampva
       'duplicate application',
       'eligible - reissued a card',
       'additional documentation requested',
-      'processed - eligiblity determination unknown'
+      'processed - eligiblity determination unknown',
+      'document identification error'
     ].freeze
 
     def perform

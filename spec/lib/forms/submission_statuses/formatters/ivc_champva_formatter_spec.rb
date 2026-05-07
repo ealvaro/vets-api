@@ -96,6 +96,48 @@ describe Forms::SubmissionStatuses::Formatters::IvcChampvaFormatter,
       expect(result.first.status).to eq('error')
     end
 
+    it 'maps PEGA Received status to claimReceived' do
+      submission = create(
+        :ivc_champva_form,
+        form_uuid: SecureRandom.uuid,
+        form_number: '10-10D',
+        pega_status: 'Received'
+      )
+
+      dataset = double(
+        'Dataset',
+        submissions?: true,
+        submissions: [submission],
+        intake_statuses?: false,
+        intake_statuses: nil
+      )
+
+      result = formatter.format_data(dataset)
+
+      expect(result.first.status).to eq('claimReceived')
+    end
+
+    it 'maps PEGA terminal determination statuses to complete' do
+      submission = create(
+        :ivc_champva_form,
+        form_uuid: SecureRandom.uuid,
+        form_number: '10-10D',
+        pega_status: 'Eligible - issued a card'
+      )
+
+      dataset = double(
+        'Dataset',
+        submissions?: true,
+        submissions: [submission],
+        intake_statuses?: false,
+        intake_statuses: nil
+      )
+
+      result = formatter.format_data(dataset)
+
+      expect(result.first.status).to eq('complete')
+    end
+
     it 'uses PEGA status precedence over VES and S3 statuses' do
       submission = create(
         :ivc_champva_form,
@@ -142,14 +184,14 @@ describe Forms::SubmissionStatuses::Formatters::IvcChampvaFormatter,
       expect(result.first.status).to eq('error')
     end
 
-    it 'defaults unknown statuses to pending (in progress)' do
+    it 'returns pending when all statuses are blank' do
       submission = create(
         :ivc_champva_form,
         form_uuid: SecureRandom.uuid,
         form_number: '10-10D',
         ves_status: nil,
         pega_status: nil,
-        s3_status: 'queued'
+        s3_status: nil
       )
 
       dataset = double(
@@ -163,6 +205,39 @@ describe Forms::SubmissionStatuses::Formatters::IvcChampvaFormatter,
       result = formatter.format_data(dataset)
 
       expect(result.first.status).to eq('pending')
+    end
+
+    it 'returns error and logs a warning when pega_status is unrecognized' do
+      submission = create(
+        :ivc_champva_form,
+        form_uuid: SecureRandom.uuid,
+        form_number: '10-10D',
+        pega_status: 'd',
+        ves_status: nil,
+        s3_status: nil
+      )
+
+      allow(Rails.logger).to receive(:warn)
+
+      dataset = double(
+        'Dataset',
+        submissions?: true,
+        submissions: [submission],
+        intake_statuses?: false,
+        intake_statuses: nil
+      )
+
+      result = formatter.format_data(dataset)
+
+      expect(result.first.status).to eq('error')
+      expect(Rails.logger).to have_received(:warn).with(
+        '[Forms::SubmissionStatuses::Formatters::IvcChampvaFormatter] Unrecognized status received',
+        hash_including(
+          form_uuid: submission.form_uuid,
+          source: :pega_status,
+          raw_status: 'd'
+        )
+      )
     end
 
     it 'excludes docs-only supporting-document submissions from application cards' do

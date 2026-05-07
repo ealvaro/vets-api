@@ -17,8 +17,18 @@ module Forms
           # PEGA statuses
           'submitted' => 'pending',
           'processed' => 'vbms',
-          'not processed' => 'error',
           'manually processed' => 'vbms',
+          'received' => 'claimReceived',
+          'submission received' => 'claimReceived',
+
+          # PEGA terminal/determination statuses
+          'eligiblity denied/additional information needed' => 'complete',
+          'eligible - issued a card' => 'complete',
+          'duplicate application' => 'complete',
+          'eligible - reissued a card' => 'complete',
+          'additional documentation requested' => 'complete',
+          'processed - eligiblity determination unknown' => 'complete',
+          'document identification error' => 'complete',
 
           # VES statuses
           'ok' => 'pending',
@@ -67,11 +77,21 @@ module Forms
         end
 
         def normalize_status(submission)
-          [submission.pega_status, submission.ves_status, submission.s3_status].each do |raw_status|
+          {
+            pega_status: submission.pega_status,
+            ves_status: submission.ves_status,
+            s3_status: submission.s3_status
+          }.each do |source, raw_status|
             next if raw_status.blank?
 
             mapped_status = STATUS_MAP[raw_status.to_s.downcase.strip]
             return mapped_status if mapped_status.present?
+
+            Rails.logger.warn(
+              '[Forms::SubmissionStatuses::Formatters::IvcChampvaFormatter] Unrecognized status received',
+              { form_uuid: submission.form_uuid, source:, raw_status: }
+            )
+            return 'error'
           end
 
           'pending'
