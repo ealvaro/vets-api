@@ -46,13 +46,14 @@ module AccreditedRepresentativePortal
 
           span.set_tag('form_submission.status', '200')
           span.set_tag('form_submission.confirmation_number', confirmation_number)
+          span.set_tag('form_submission.bdd_status', bdd_status(saved_claim))
           trace_key_tags(span, form_id:, org: organization)
 
           monitoring.track_count(
             SUCCESS_METRIC_SUBMIT,
             tags: [
               "form_id:#{form_id}",
-              ("bdd_status:#{bdd_status(saved_claim)}" if form_id == '21-526EZ')
+              "bdd_status:#{bdd_status(saved_claim)}"
             ].compact
           )
 
