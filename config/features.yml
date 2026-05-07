@@ -2431,6 +2431,10 @@ features:
     actor_type: user
     description: Hides benefit selection page on original claims application.
     enable_in_development: false
+  dgi_meb_rudisill_flow_partition:
+    actor_type: user
+    description: Enables partitioned application flow for Rudisill benefit applications on form 22-1990.
+    enable_in_development: false
   sign_in_service_enabled:
     actor_type: cookie_id
     description: Enables the ability to use OAuth authentication via the Sign in Service (Identity)
