@@ -25,7 +25,7 @@ module Veteran
     def organization_accept_map(poa_codes)
       Veteran::Service::Organization
         .where(poa: poa_codes)
-        .pluck(:poa, :can_accept_digital_poa_requests)
+        .pluck(:poa, :default_new_rep_acceptance_mode)
         .to_h
     end
 
@@ -33,12 +33,10 @@ module Veteran
       pairs.filter_map do |rep_id, poa|
         next if rep_id.blank? || poa.blank?
 
-        acceptance_mode = org_accept_map.fetch(poa, false) ? 'any_request' : 'no_acceptance'
-
         {
           representative_id: rep_id,
           organization_poa: poa,
-          acceptance_mode:
+          acceptance_mode: org_accept_map.fetch(poa, 'no_acceptance')
         }
       end
     end
@@ -49,7 +47,7 @@ module Veteran
     # This behaves like `INSERT ... ON CONFLICT DO NOTHING`:
     # - If a (organization, representative) join row does NOT exist yet,
     #   it is inserted and `acceptance_mode` is seeded from the
-    #   organization-wide `can_accept_digital_poa_requests` flag.
+    #   organization's `default_new_rep_acceptance_mode` column.
     #
     # - If the join row already exists (including cases where
     #   `acceptance_mode` was manually changed later),

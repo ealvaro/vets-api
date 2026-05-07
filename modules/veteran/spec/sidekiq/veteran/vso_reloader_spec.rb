@@ -96,9 +96,9 @@ RSpec.describe Veteran::VSOReloader, type: :job do
         end
       end
 
-      it 'seeds acceptance_mode to any_request when org accepts digital POA' do
+      it 'seeds acceptance_mode to any_request when org default_new_rep_acceptance_mode is any_request' do
         VCR.use_cassette('veteran/ogc_vso_rep_data') do
-          create(:organization, poa: '095', can_accept_digital_poa_requests: true)
+          create(:organization, poa: '095', default_new_rep_acceptance_mode: 'any_request')
 
           Veteran::VSOReloader.new.reload_vso_reps
 
@@ -109,7 +109,7 @@ RSpec.describe Veteran::VSOReloader, type: :job do
 
       it 'seeds acceptance_mode but does not overwrite join rows or create duplicates' do
         VCR.use_cassette('veteran/ogc_vso_rep_data', allow_playback_repeats: true) do
-          create(:organization, poa: '095', can_accept_digital_poa_requests: false)
+          create(:organization, poa: '095', default_new_rep_acceptance_mode: 'no_acceptance')
 
           Veteran::VSOReloader.new.reload_vso_reps
           org_rep = Veteran::Service::OrganizationRepresentative.find_by!(organization_poa: '095')
@@ -127,9 +127,9 @@ RSpec.describe Veteran::VSOReloader, type: :job do
           # Simulate a later change that should be preserved
           org_rep.update!(acceptance_mode: 'self_only')
 
-          # Even if org-wide flag changes later, ingestion should NOT clobber the join row
+          # Even if org-wide default changes later, ingestion should NOT clobber the join row
           Veteran::Service::Organization.find_by!(poa: '095')
-                                        .update!(can_accept_digital_poa_requests: true)
+                                        .update!(default_new_rep_acceptance_mode: 'any_request')
 
           Veteran::VSOReloader.new.reload_vso_reps
 
@@ -143,6 +143,35 @@ RSpec.describe Veteran::VSOReloader, type: :job do
               representative_id: rep_id
             ).count
           ).to eq(1)
+        end
+      end
+    end
+
+    context 'join table acceptance_mode with default_new_rep_acceptance_mode column' do
+      it 'seeds acceptance_mode from default_new_rep_acceptance_mode when set on the org' do
+        VCR.use_cassette('veteran/ogc_vso_rep_data') do
+          create(:organization, poa: '095', default_new_rep_acceptance_mode: 'self_only')
+
+          Veteran::VSOReloader.new.reload_vso_reps
+
+          org_rep = Veteran::Service::OrganizationRepresentative.find_by!(organization_poa: '095')
+          expect(org_rep.acceptance_mode).to eq('self_only')
+        end
+      end
+
+      it 'ignores can_accept_digital_poa_requests and uses default_new_rep_acceptance_mode' do
+        VCR.use_cassette('veteran/ogc_vso_rep_data') do
+          create(
+            :organization,
+            poa: '095',
+            can_accept_digital_poa_requests: true,
+            default_new_rep_acceptance_mode: 'no_acceptance'
+          )
+
+          Veteran::VSOReloader.new.reload_vso_reps
+
+          org_rep = Veteran::Service::OrganizationRepresentative.find_by!(organization_poa: '095')
+          expect(org_rep.acceptance_mode).to eq('no_acceptance')
         end
       end
     end
