@@ -145,6 +145,10 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
           end
 
           before do
+            allow(Flipper).to receive(:enabled?)
+              .with(:accredited_representative_portal_individual_accept_backend)
+              .and_return(false)
+
             create(
               :representative,
               user_types: ['attorney'],
@@ -255,6 +259,10 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
       end
 
       before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:accredited_representative_portal_individual_accept_backend)
+          .and_return(true)
+
         create(
           :representative,
           user_types: ['attorney'],
@@ -279,6 +287,11 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
 
         create(:organization, poa: 'P12', name: 'Org A')
         create(:organization, poa: 'P13', name: 'Org B', can_accept_digital_poa_requests: true)
+
+        vso_rep = Veteran::Service::Representative.find_by(representative_id: 'R1002')
+        org_a = Veteran::Service::Organization.find_by(poa: 'P12')
+        create(:veteran_organization_representative,
+               representative: vso_rep, organization: org_a, acceptance_mode: 'no_acceptance')
 
         expect_any_instance_of(OgcClient).to(
           receive(:post_icn_and_registration_combination)
@@ -310,7 +323,7 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
           memberships.power_of_attorney_holders
         end
 
-        it 'returns power_of_attorney_holders' do
+        it 'returns power_of_attorney_holders only for orgs with active org_rep records' do
           expect(power_of_attorney_holders).to eq(
             [
               PowerOfAttorneyHolder.new(
@@ -333,13 +346,6 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
                 poa_code: 'P12',
                 can_accept_digital_poa_requests: false,
                 acceptance_mode: 'no_acceptance'
-              ),
-              PowerOfAttorneyHolder.new(
-                type: 'veteran_service_organization',
-                name: 'Org B',
-                poa_code: 'P13',
-                can_accept_digital_poa_requests: true,
-                acceptance_mode: 'no_acceptance'
               )
             ]
           )
@@ -347,25 +353,26 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
       end
 
       describe '#find' do
-        subject(:find) do
-          memberships = described_class.new(icn: 'some_icn', emails:)
-          memberships.find('P13')
-        end
-
         it 'finds the membership that matches the provided poa holder' do
-          expect(find).to eq(
+          memberships = described_class.new(icn: 'some_icn', emails:)
+          expect(memberships.find('P12')).to eq(
             described_class::Membership.new(
               registration_number: 'R1002',
               power_of_attorney_holder:
                 PowerOfAttorneyHolder.new(
-                  poa_code: 'P13',
+                  poa_code: 'P12',
                   type: 'veteran_service_organization',
-                  name: 'Org B',
-                  can_accept_digital_poa_requests: true,
+                  name: 'Org A',
+                  can_accept_digital_poa_requests: false,
                   acceptance_mode: 'no_acceptance'
                 )
             )
           )
+        end
+
+        it 'returns nil for an org with no active org_rep record' do
+          memberships = described_class.new(icn: 'some_icn', emails:)
+          expect(memberships.find('P13')).to be_nil
         end
       end
 
@@ -416,10 +423,9 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
         end
 
         context 'when no OrganizationRepresentative record exists' do
-          it 'defaults acceptance_mode to no_acceptance' do
+          it 'excludes the organization from memberships' do
             memberships = described_class.new(icn: 'some_icn', emails:)
-            holder = memberships.find('P13').power_of_attorney_holder
-            expect(holder.acceptance_mode).to eq('no_acceptance')
+            expect(memberships.find('P13')).to be_nil
           end
         end
 
@@ -430,7 +436,20 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
                    acceptance_mode: 'any_request', deactivated_at: Time.current)
           end
 
-          it 'defaults acceptance_mode to no_acceptance' do
+          it 'excludes the organization from memberships' do
+            memberships = described_class.new(icn: 'some_icn', emails:)
+            expect(memberships.find('P13')).to be_nil
+          end
+        end
+
+        context 'when flag is disabled and no OrganizationRepresentative record exists' do
+          before do
+            allow(Flipper).to receive(:enabled?)
+              .with(:accredited_representative_portal_individual_accept_backend)
+              .and_return(false)
+          end
+
+          it 'still includes the organization with default acceptance_mode' do
             memberships = described_class.new(icn: 'some_icn', emails:)
             holder = memberships.find('P13').power_of_attorney_holder
             expect(holder.acceptance_mode).to eq('no_acceptance')

@@ -67,8 +67,14 @@ module AccreditedRepresentativePortal
                        )
                        .index_by(&:organization_poa)
 
-            organizations.map do |organization|
+            individual_accept = Flipper.enabled?(:accredited_representative_portal_individual_accept_backend)
+
+            organizations.filter_map do |organization|
               org_rep = org_reps[organization.poa]
+
+              next if org_rep.nil? && individual_accept
+
+              acceptance_mode = org_rep&.acceptance_mode || DEFAULT_ACCEPTANCE_MODE
 
               Membership.new(
                 registration_number:
@@ -82,7 +88,6 @@ module AccreditedRepresentativePortal
                     can_accept_digital_poa_requests:
                       organization.can_accept_digital_poa_requests,
                     acceptance_mode:
-                      org_rep&.acceptance_mode || DEFAULT_ACCEPTANCE_MODE
                   )
               )
             end

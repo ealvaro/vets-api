@@ -6,6 +6,9 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimSubmissionsController, t
   before do
     login_as(representative_user)
     allow_any_instance_of(Auth::ClientCredentials::Service).to receive(:get_token).and_return('fake_access_token')
+    allow(Flipper).to receive(:enabled?)
+      .with(:accredited_representative_portal_individual_accept_backend)
+      .and_return(false)
 
     # This removes: SHRINE WARNING: Error occurred when attempting to extract image dimensions:
     # #<FastImage::UnknownImageType: FastImage::UnknownImageType>

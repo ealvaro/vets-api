@@ -25,6 +25,9 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
     allow(Flipper).to receive(:enabled?)
       .with(:accredited_representative_portal_individual_accept_backend, anything)
       .and_return(false)
+    allow(Flipper).to receive(:enabled?)
+      .with(:accredited_representative_portal_individual_accept_backend)
+      .and_return(false)
 
     test_user
     representative
@@ -76,6 +79,9 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
         before do
           allow(Flipper).to receive(:enabled?)
             .with(:accredited_representative_portal_individual_accept_backend, anything)
+            .and_return(true)
+          allow(Flipper).to receive(:enabled?)
+            .with(:accredited_representative_portal_individual_accept_backend)
             .and_return(true)
 
           allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
@@ -156,12 +162,10 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
         end
 
         context 'when org participates but acceptance_mode is blank (no org rep row)' do
-          it 'returns org requests with can_accept false' do
+          it 'returns forbidden because rep has no active membership with the org' do
             get('/accredited_representative_portal/v0/power_of_attorney_requests')
 
-            expect(response).to have_http_status(:ok)
-            can_accept_values = parsed_response['data'].map { |p| p['canAccept'] }
-            expect(can_accept_values).to all(be false)
+            expect(response).to have_http_status(:forbidden)
           end
         end
       end
@@ -683,6 +687,9 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
           allow(Flipper).to receive(:enabled?)
             .with(:accredited_representative_portal_individual_accept_backend, anything)
             .and_return(false)
+          allow(Flipper).to receive(:enabled?)
+            .with(:accredited_representative_portal_individual_accept_backend)
+            .and_return(false)
         end
 
         it 'returns the details of the POA request' do
@@ -697,6 +704,9 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
         before do
           allow(Flipper).to receive(:enabled?)
             .with(:accredited_representative_portal_individual_accept_backend, anything)
+            .and_return(true)
+          allow(Flipper).to receive(:enabled?)
+            .with(:accredited_representative_portal_individual_accept_backend)
             .and_return(true)
 
           allow(test_user).to receive(:registration_numbers).and_return([representative.representative_id])
