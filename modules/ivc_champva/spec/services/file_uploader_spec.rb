@@ -142,7 +142,6 @@ describe IvcChampva::FileUploader do
          'modules/ivc_champva/spec/fixtures/images/test_image.pdf',
          'spec/fixtures/files/doctors-note.pdf']
       end
-      # let(:uploader) { IvcChampva::FileUploader.new(form_id, metadata, file_paths, insert_db_row) }
 
       before do
         allow(Flipper).to receive(:enabled?).with(:champva_fmp_single_file_upload, @current_user).and_return(true)
@@ -194,7 +193,7 @@ describe IvcChampva::FileUploader do
         expect(FileUtils).to have_received(:rm_f).with(combined_pdf_path)
       end
 
-      it 'inserts all original files plus the merged file into the database when insert_db_row is true' do
+      it 'inserts all original files plus the combined file into the database when insert_db_row is true' do
         mixed_file_paths = [
           'path/to/main_form.pdf',
           'path/to/supporting_doc_1.pdf',
@@ -218,7 +217,7 @@ describe IvcChampva::FileUploader do
         end
 
         # call the method directly with test parameters
-        test_uploader.send(:insert_merged_pdf_and_docs, combined_pdf_path, [200])
+        test_uploader.send(:insert_combined_pdf_and_docs, combined_pdf_path, [200])
 
         # verify that exactly 6 files were inserted: combined PDF + 5 original files
         expect(inserted_files.size).to eq(6)

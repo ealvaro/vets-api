@@ -240,9 +240,9 @@ RSpec.describe 'IvcChampva::V1::Forms::StatusUpdates', type: :request do
       end
     end
 
-    context 'with merged PDF submission' do
+    context 'with combined PDF submission' do
       let(:form_uuid) { '12345678-1234-5678-1234-567812345678' }
-      let(:merged_pdf_payload) do
+      let(:combined_pdf_payload) do
         {
           'form_uuid' => form_uuid,
           'file_names' => ["#{form_uuid}_vha_10_7959f_2_combined.pdf"],
@@ -256,8 +256,8 @@ RSpec.describe 'IvcChampva::V1::Forms::StatusUpdates', type: :request do
         IvcChampvaForm.delete_all
       end
 
-      it 'updates both merged PDF and supporting documents with same status' do
-        # Create merged PDF record
+      it 'updates both combined PDF and supporting documents with same status' do
+        # Create combined PDF record
         IvcChampvaForm.create!(
           form_uuid:,
           email: 'test@email.com',
@@ -287,7 +287,7 @@ RSpec.describe 'IvcChampva::V1::Forms::StatusUpdates', type: :request do
           )
         end
 
-        post '/ivc_champva/v1/forms/status_updates', params: merged_pdf_payload
+        post '/ivc_champva/v1/forms/status_updates', params: combined_pdf_payload
 
         # Verify all records were updated
         updated_forms = IvcChampvaForm.where(form_uuid:)
@@ -297,12 +297,12 @@ RSpec.describe 'IvcChampva::V1::Forms::StatusUpdates', type: :request do
         expect(response).to have_http_status(:ok)
       end
 
-      it 'sends confirmation email only once when processing merged PDF' do
+      it 'sends confirmation email only once when processing combined PDF' do
         email_instance = instance_double(IvcChampva::Email)
         allow(IvcChampva::Email).to receive(:new).and_return(email_instance)
         allow(email_instance).to receive(:send_email).and_return(true)
 
-        # Create merged PDF and supporting docs
+        # Create combined PDF and supporting docs
         IvcChampvaForm.create!(
           form_uuid:,
           email: 'test@email.com',
@@ -331,7 +331,7 @@ RSpec.describe 'IvcChampva::V1::Forms::StatusUpdates', type: :request do
           )
         end
 
-        post '/ivc_champva/v1/forms/status_updates', params: merged_pdf_payload
+        post '/ivc_champva/v1/forms/status_updates', params: combined_pdf_payload
 
         # Verify email was sent exactly once
         expect(email_instance).to have_received(:send_email).once
@@ -341,12 +341,12 @@ RSpec.describe 'IvcChampva::V1::Forms::StatusUpdates', type: :request do
         expect(updated_forms.pluck(:email_sent).uniq).to eq([true])
       end
 
-      it 'handles Not Processed status for merged PDF submissions without sending email' do
+      it 'handles Not Processed status for combined PDF submissions without sending email' do
         email_instance = instance_double(IvcChampva::Email)
         allow(IvcChampva::Email).to receive(:new).and_return(email_instance)
         allow(email_instance).to receive(:send_email).and_return(true)
 
-        # Create merged PDF and supporting docs
+        # Create combined PDF and supporting docs
         IvcChampvaForm.create!(
           form_uuid:,
           email: 'test@email.com',
@@ -375,7 +375,7 @@ RSpec.describe 'IvcChampva::V1::Forms::StatusUpdates', type: :request do
           )
         end
 
-        not_processed_payload = merged_pdf_payload.merge('status' => 'Not Processed')
+        not_processed_payload = combined_pdf_payload.merge('status' => 'Not Processed')
 
         post '/ivc_champva/v1/forms/status_updates', params: not_processed_payload
 

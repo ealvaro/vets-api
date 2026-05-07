@@ -212,7 +212,7 @@ module IvcChampva
     ##
     # Filters batch to only include files that Pega actually processes.
     # Excludes VES JSON files (sent to VES, not Pega) and for FMP combined submissions,
-    # only counts the combined PDF (not the individual files that were merged into it).
+    # only counts the combined PDF (not the individual files that were combined into it).
     #
     # @param batch [Array<IvcChampvaForm>] An array of IVC CHAMPVA form objects
     # @return [Array<IvcChampvaForm>] Filtered array of Pega-processable files
@@ -221,7 +221,7 @@ module IvcChampva
       has_combined_pdf = batch.any? { |record| combined_pdf_file?(record.file_name) }
 
       if has_combined_pdf
-        # For FMP combined submissions, only the _combined.pdf was sent to Pega
+        # For FMP combined submissions, only the combined PDF was sent to Pega
         batch.select { |record| combined_pdf_file?(record.file_name) }
       else
         # For regular submissions, exclude only VES JSON files
@@ -246,9 +246,7 @@ module IvcChampva
     # @param file_name [String] The name of the file to check
     # @return [Boolean] true if the file is a combined PDF, false otherwise
     def combined_pdf_file?(file_name)
-      return false if file_name.blank?
-
-      file_name.end_with?('_combined.pdf')
+      IvcChampva::FileNaming.combined_pdf?(file_name)
     end
   end
 end

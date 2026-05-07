@@ -37,7 +37,7 @@ describe IvcChampva::DocumentMerger do
 
   after do
     # Clean up any generated merged files
-    Dir.glob('tmp/*_merged.pdf').each { |file| FileUtils.rm_f(file) }
+    Dir.glob("tmp/*#{IvcChampva::FileNaming::COMBINED_PDF_SUFFIX}").each { |file| FileUtils.rm_f(file) }
   end
 
   describe '#initialize' do
@@ -112,13 +112,13 @@ describe IvcChampva::DocumentMerger do
         expect(result[:updated_attachment_ids]).to contain_exactly('Medicare card', 'EOB', 'Birth Certificate')
 
         # Verify merged Medicare card file exists and has merged naming
-        medicare_file = result[:merged_file_paths].find { |path| File.basename(path).include?('_merged.pdf') }
+        medicare_file = result[:merged_file_paths].find { |path| File.basename(path).include?(IvcChampva::FileNaming::COMBINED_PDF_SUFFIX) }
         expect(medicare_file).not_to be_nil
         expect(File.exist?(medicare_file)).to be(true)
-        expect(File.basename(medicare_file)).to include('_merged.pdf')
+        expect(File.basename(medicare_file)).to include(IvcChampva::FileNaming::COMBINED_PDF_SUFFIX)
 
         # Verify non-merged files are the original files
-        non_merged_files = result[:merged_file_paths].reject { |path| File.basename(path).include?('_merged.pdf') }
+        non_merged_files = result[:merged_file_paths].reject { |path| File.basename(path).include?(IvcChampva::FileNaming::COMBINED_PDF_SUFFIX) }
         expect(non_merged_files).to include(eob_document)
         expect(non_merged_files).to include(other_document)
       end
@@ -131,7 +131,7 @@ describe IvcChampva::DocumentMerger do
         result[:merged_file_paths].each_with_index do |file_path, index|
           attachment_id = result[:updated_attachment_ids][index]
 
-          if File.basename(file_path).include?('_merged.pdf')
+          if File.basename(file_path).include?(IvcChampva::FileNaming::COMBINED_PDF_SUFFIX)
             # Merged files should have the merged attachment ID
             expect(attachment_id).to eq('Medicare card')
           elsif file_path == eob_document
@@ -202,7 +202,7 @@ describe IvcChampva::DocumentMerger do
 
         # No merged files should be created
         result[:merged_file_paths].each do |file_path|
-          expect(File.basename(file_path)).not_to include('_merged.pdf')
+          expect(File.basename(file_path)).not_to include(IvcChampva::FileNaming::COMBINED_PDF_SUFFIX)
         end
       end
     end
@@ -233,7 +233,7 @@ describe IvcChampva::DocumentMerger do
         expect(result[:updated_attachment_ids]).to contain_exactly('Medicare card', 'EOB', 'Birth Certificate')
 
         # Verify merged file exists
-        merged_file = result[:merged_file_paths].find { |path| File.basename(path).include?('_merged.pdf') }
+        merged_file = result[:merged_file_paths].find { |path| File.basename(path).include?(IvcChampva::FileNaming::COMBINED_PDF_SUFFIX) }
         expect(merged_file).not_to be_nil
         expect(File.exist?(merged_file)).to be(true)
       end
@@ -253,7 +253,7 @@ describe IvcChampva::DocumentMerger do
 
         # No merged files should be created
         result[:merged_file_paths].each do |file_path|
-          expect(File.basename(file_path)).not_to include('_merged.pdf')
+          expect(File.basename(file_path)).not_to include(IvcChampva::FileNaming::COMBINED_PDF_SUFFIX)
         end
       end
     end

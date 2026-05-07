@@ -258,7 +258,7 @@ module IvcChampva
     def merge_file_chunk(rule_name, rule_config, file_chunk, batch_index, chunk_index)
       return nil if file_chunk.empty?
 
-      merged_file_path = generate_merged_file_path(rule_config[:merged_attachment_id], batch_index, chunk_index)
+      merged_file_path = generate_combined_file_path(rule_config[:merged_attachment_id], batch_index, chunk_index)
       file_paths_to_merge = file_chunk.map { |f| f[:file_path] }
 
       Rails.logger.info "IVC ChampVA DocumentMerger - Merging #{file_paths_to_merge.length} files " \
@@ -281,19 +281,19 @@ module IvcChampva
     end
 
     ##
-    # Generates a file path for the merged PDF
+    # Generates a file path for the combined PDF
     #
     # @param [String] base_attachment_id Base attachment ID for naming
     # @param [Integer] batch_index Index of the batch
     # @param [Integer] chunk_index Index of the chunk within batch
-    # @return [String] Full file path for the merged PDF
-    def generate_merged_file_path(base_attachment_id, batch_index, chunk_index)
+    # @return [String] Full file path for the combined PDF
+    def generate_combined_file_path(base_attachment_id, batch_index, chunk_index)
       safe_attachment_id = base_attachment_id.downcase.gsub(/[^a-z0-9]/, '_')
 
       # Always include batch and chunk indexes for consistent naming
       suffix = "_#{batch_index}_#{chunk_index}"
 
-      File.join('tmp/', "#{@uuid}_#{@form_id}_#{safe_attachment_id}#{suffix}_merged.pdf")
+      File.join('tmp/', "#{@uuid}_#{@form_id}_#{safe_attachment_id}#{suffix}#{IvcChampva::FileNaming::COMBINED_PDF_SUFFIX}")
     end
 
     ##

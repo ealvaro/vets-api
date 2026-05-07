@@ -267,7 +267,7 @@ RSpec.describe 'IvcChampva::MissingFormStatusJob', type: :job do
   end
 
   it 'reconciles all records when combined PDF submission matches single Pega report' do
-    # For combined submissions, multiple docs are merged into a single _combined.pdf
+    # For combined submissions, multiple docs are combined into a single _combined.pdf
     # Pega only sees the combined file, but we store individual records for each original doc
     form_uuid = SecureRandom.uuid
     batch = [

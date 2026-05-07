@@ -110,25 +110,24 @@ module IvcChampva
     #
     # @return [Array<Array<Integer, String>>] Array of arrays containing status codes and error messages
     def handle_combined_uploads
-      merged_pdf_path = File.join('tmp/', "#{@metadata['uuid']}_#{@form_id}_combined.pdf")
+      combined_pdf_path = File.join('tmp/', "#{@metadata['uuid']}_#{@form_id}#{IvcChampva::FileNaming::COMBINED_PDF_SUFFIX}")
 
       begin
         Datadog::Tracing.trace('IVC Champva Forms - Combine All PDFs into a Single File') do
-          # Combine all PDFs into a single file
-          IvcChampva::PdfCombiner.combine(merged_pdf_path, @file_paths.compact, @current_user)
+          IvcChampva::PdfCombiner.combine(combined_pdf_path, @file_paths.compact, @current_user)
         end
 
         attachment_id = @form_id
-        file_name = File.basename(merged_pdf_path)
+        file_name = File.basename(combined_pdf_path)
 
         Rails.logger.info "IVC Champva Forms - FileUploader: Starting upload with attachment_id: #{
           sanitize_for_logging(attachment_id)
         }"
 
         # Upload the combined PDF
-        response_status = upload(file_name, merged_pdf_path, metadata_for_s3(attachment_id))
+        response_status = upload(file_name, combined_pdf_path, metadata_for_s3(attachment_id))
 
-        insert_merged_pdf_and_docs(file_name, response_status) if @insert_db_row
+        insert_combined_pdf_and_docs(file_name, response_status) if @insert_db_row
 
         [response_status]
       rescue => e
@@ -136,17 +135,17 @@ module IvcChampva
                            "#{e.message}")
         raise
       ensure
-        FileUtils.rm_f(merged_pdf_path)
+        FileUtils.rm_f(combined_pdf_path)
       end
     end
 
-    def insert_merged_pdf_and_docs(file_name, response_status)
-      Datadog::Tracing.trace('IVC Champva Forms - Insert Merged PDF and Docs') do
+    def insert_combined_pdf_and_docs(file_name, response_status)
+      Datadog::Tracing.trace('IVC Champva Forms - Insert Combined PDF and Docs') do
         response_status_string = response_status.to_s
         # insert the combined PDF
         insert_form(file_name, response_status_string)
 
-        # insert individual records for every original pre-merge file (main form + all attachments)
+        # insert individual records for every original pre-combine file (main form + all attachments)
         @file_paths.each do |file_path|
           next if file_path.blank?
 
