@@ -3,7 +3,6 @@ name: Check Vets API Prod Deploy goes out
 on:
   schedule:
     - cron: '0 17 * * *'  # Run at 1:00 PM ET (17:00 UTC) every day
-    - cron: '0 20 * * *'  # Run at 4:00 PM ET for testing
 permissions:
   id-token: write
   contents: read
