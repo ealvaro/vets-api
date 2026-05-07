@@ -71,6 +71,24 @@ describe SimpleFormsApiSubmission::MetadataValidator do
       end
     end
 
+    describe 'contains only disallowed characters' do
+      it 'raises when first name is blank after sanitization' do
+        metadata = {
+          'veteranFirstName' => '12345',
+          'veteranLastName' => 'Doe',
+          'fileNumber' => '444444444',
+          'zipCode' => '12345',
+          'source' => 'VA Platform Digital Forms',
+          'docType' => '21-0845',
+          'businessLine' => 'CMP'
+        }
+
+        expect do
+          SimpleFormsApiSubmission::MetadataValidator.validate(metadata)
+        end.to raise_error(ArgumentError, 'veteran first name is blank after sanitization')
+      end
+    end
+
     describe 'contains disallowed characters' do
       it 'returns metadata with disallowed characters of veteran first name stripped or corrected' do
         metadata = {
@@ -129,6 +147,24 @@ describe SimpleFormsApiSubmission::MetadataValidator do
         validated_metadata = SimpleFormsApiSubmission::MetadataValidator.validate(metadata)
 
         expect(validated_metadata).to eq expected_metadata
+      end
+    end
+
+    describe 'contains only disallowed characters' do
+      it 'raises when last name is blank after sanitization' do
+        metadata = {
+          'veteranFirstName' => 'John',
+          'veteranLastName' => '12345',
+          'fileNumber' => '444444444',
+          'zipCode' => '12345',
+          'source' => 'VA Platform Digital Forms',
+          'docType' => '21-0845',
+          'businessLine' => 'CMP'
+        }
+
+        expect do
+          SimpleFormsApiSubmission::MetadataValidator.validate(metadata)
+        end.to raise_error(ArgumentError, 'veteran last name is blank after sanitization')
       end
     end
 

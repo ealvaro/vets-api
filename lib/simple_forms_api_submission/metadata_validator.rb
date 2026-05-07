@@ -13,17 +13,19 @@ module SimpleFormsApiSubmission
 
     def self.validate_first_name(metadata)
       validate_presence_and_stringiness(metadata['veteranFirstName'], 'veteran first name')
-      metadata['veteranFirstName'] =
-        I18n.transliterate(metadata['veteranFirstName']).gsub(%r{[^a-zA-Z\-/\s]}, '').strip.first(50)
+      sanitized = I18n.transliterate(metadata['veteranFirstName']).gsub(%r{[^a-zA-Z\-/\s]}, '').strip.first(50)
+      raise ArgumentError, 'veteran first name is blank after sanitization' if sanitized.blank?
 
+      metadata['veteranFirstName'] = sanitized
       metadata
     end
 
     def self.validate_last_name(metadata)
       validate_presence_and_stringiness(metadata['veteranLastName'], 'veteran last name')
-      metadata['veteranLastName'] =
-        I18n.transliterate(metadata['veteranLastName']).gsub(%r{[^a-zA-Z\-/\s]}, '').strip.first(50)
+      sanitized = I18n.transliterate(metadata['veteranLastName']).gsub(%r{[^a-zA-Z\-/\s]}, '').strip.first(50)
+      raise ArgumentError, 'veteran last name is blank after sanitization' if sanitized.blank?
 
+      metadata['veteranLastName'] = sanitized
       metadata
     end
 
