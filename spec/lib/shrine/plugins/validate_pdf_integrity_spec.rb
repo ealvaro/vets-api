@@ -22,42 +22,69 @@ describe Shrine::Plugins::ValidatePdfIntegrity do
 
   let(:instance) { klass.new }
 
+  def stub_attachment(file, mime_type: 'application/pdf', size: nil)
+    file_size = size || (file.respond_to?(:size) ? file.size : File.size(file))
+    attachment = instance_double(Shrine::UploadedFile, mime_type:, size: file_size)
+
+    allow(attachment).to receive(:download) do |&block|
+      file.rewind if file.respond_to?(:rewind)
+      block ? block.call(file) : file
+    end
+
+    allow(instance).to receive(:get).and_return(attachment)
+    attachment
+  end
+
+  def write_tempfile(name, content)
+    file = Tempfile.new([name, '.pdf'], binmode: true)
+    file.write(content)
+    file.rewind
+    file
+  end
+
   describe '#validate_pdf_integrity' do
     context 'when file is not a PDF' do
-      let(:attachment) do
-        instance_double(Shrine::UploadedFile, mime_type: 'image/jpeg')
+      before { stub_attachment(nil, mime_type: 'image/jpeg', size: 0) }
+
+      it 'skips validation entirely' do
+        expect { instance.validate_pdf_integrity }
+          .not_to(change { instance.errors.count })
       end
 
-      before { allow(instance).to receive(:get).and_return(attachment) }
-
-      it 'skips validation' do
-        expect { instance.validate_pdf_integrity }.not_to(
-          change { instance.errors.count }
-        )
+      it 'does not call download' do
+        expect(instance.get).not_to receive(:download)
+        instance.validate_pdf_integrity
       end
     end
 
     context 'when PDF is valid with pages' do
-      let(:file) { Rails.root.join('spec', 'fixtures', 'files', 'doctors-note.pdf') }
-      let(:attachment) do
-        instance_double(Shrine::UploadedFile, download: File.open(file), mime_type: 'application/pdf')
-      end
+      let(:fixture_path) { Rails.root.join('spec', 'fixtures', 'files', 'doctors-note.pdf') }
+      let(:file) { File.open(fixture_path, 'rb') }
 
-      before do
-        allow(instance).to receive(:get).and_return(attachment)
-      end
+      before { stub_attachment(file) }
+      after  { file.close }
 
       it 'does not add an error' do
-        expect { instance.validate_pdf_integrity }.not_to(
-          change { instance.errors.count }
+        expect { instance.validate_pdf_integrity }
+          .not_to(change { instance.errors.count })
+      end
+
+      it 'parses every page (forces deep parse, not just page_count)' do
+        reader_spy = instance_double(PDF::Reader, page_count: 2, pages: [])
+        allow(reader_spy).to receive(:pages).and_return(
+          Array.new(2) { instance_double(PDF::Reader::Page, raw_content: 'stream') }
         )
+        allow(PDF::Reader).to receive(:new).and_return(reader_spy)
+
+        instance.validate_pdf_integrity
+
+        expect(reader_spy.pages).to all(have_received(:raw_content))
       end
     end
 
     context 'when PDF has zero pages' do
       let(:zero_page_pdf) do
-        file = Tempfile.new(['zero_pages', '.pdf'])
-        file.write(<<~PDF)
+        write_tempfile('zero_pages', <<~PDF)
           %PDF-1.4
           1 0 obj
           << /Type /Catalog /Pages 2 0 R >>
@@ -76,98 +103,202 @@ describe Shrine::Plugins::ValidatePdfIntegrity do
           109
           %%EOF
         PDF
-        file.rewind
-        file
       end
 
-      let(:attachment) do
-        instance_double(Shrine::UploadedFile, download: zero_page_pdf, mime_type: 'application/pdf')
-      end
-
-      before { allow(instance).to receive(:get).and_return(attachment) }
+      before { stub_attachment(zero_page_pdf) }
 
       after do
         zero_page_pdf.close
         zero_page_pdf.unlink
       end
 
-      it 'adds an error' do
-        expect { instance.validate_pdf_integrity }.to(
-          change { instance.errors.count }.from(0).to(1)
+      it 'adds the invalid-pdf error' do
+        instance.validate_pdf_integrity
+        expect(instance.errors).to contain_exactly(
+          I18n.t('errors.messages.uploads.pdf.invalid')
         )
       end
 
-      it 'includes a readable error message' do
-        instance.validate_pdf_integrity
-        expect(instance.errors
-        .first).to eq('We couldn’t open your PDF. Please save it and try uploading it again.')
-      end
-    end
-
-    context 'when PDF is malformed' do
-      let(:malformed_pdf) do
-        file = Tempfile.new(['malformed', '.pdf'])
-        file.write('%PDF-1.4 this is not valid pdf content')
-        file.rewind
-        file
-      end
-
-      let(:attachment) do
-        instance_double(Shrine::UploadedFile, download: malformed_pdf, mime_type: 'application/pdf')
-      end
-
-      before { allow(instance).to receive(:get).and_return(attachment) }
-
-      after do
-        malformed_pdf.close
-        malformed_pdf.unlink
-      end
-
-      it 'adds an error' do
-        expect { instance.validate_pdf_integrity }.to(
-          change { instance.errors.count }.from(0).to(1)
+      it 'logs the rejection with reason: empty_pdf' do
+        expect(Rails.logger).to receive(:warn).with(
+          'validate_pdf_integrity rejected file',
+          hash_including(reason: 'empty_pdf')
         )
-      end
-
-      it 'includes a readable error message' do
-        instance.validate_pdf_integrity
-        expect(instance.errors).to include('We couldn’t upload your PDF because the file is corrupted')
-      end
-
-      it 'logs a warning' do
-        expect(Rails.logger).to receive(:warn).with(/validate_pdf_integrity:/)
         instance.validate_pdf_integrity
       end
     end
 
-    context 'when PDF has completely invalid content' do
-      let(:corrupt_pdf) do
-        file = Tempfile.new(['corrupt', '.pdf'])
-        file.write('This is not a PDF at all, just plain text')
-        file.rewind
-        file
-      end
+    context 'when PDF construction raises MalformedPDFError' do
+      let(:file) { write_tempfile('malformed', '%PDF-1.4 this is not valid pdf content') }
 
-      let(:attachment) do
-        instance_double(Shrine::UploadedFile, download: corrupt_pdf, mime_type: 'application/pdf')
-      end
-
-      before { allow(instance).to receive(:get).and_return(attachment) }
+      before { stub_attachment(file) }
 
       after do
-        corrupt_pdf.close
-        corrupt_pdf.unlink
+        file.close
+        file.unlink
       end
 
-      it 'adds an error' do
-        expect { instance.validate_pdf_integrity }.to(
-          change { instance.errors.count }.from(0).to(1)
+      it 'adds the malformed-pdf error' do
+        instance.validate_pdf_integrity
+        expect(instance.errors).to contain_exactly(
+          I18n.t('errors.messages.uploads.malformed_pdf')
         )
       end
 
-      it 'includes a readable error message' do
+      it 'logs the rejection with the error class name' do
+        expect(Rails.logger).to receive(:warn).with(
+          'validate_pdf_integrity rejected file',
+          hash_including(reason: a_string_matching(/malformed/i))
+        )
         instance.validate_pdf_integrity
-        expect(instance.errors).to include('We couldn’t upload your PDF because the file is corrupted')
+      end
+    end
+
+    context 'when a page raises Zlib::DataError during deep parse' do
+      let(:file) { write_tempfile('zlib_data', '%PDF-1.4') }
+
+      before do
+        stub_attachment(file)
+        page = instance_double(PDF::Reader::Page)
+        allow(page).to receive(:raw_content).and_raise(Zlib::DataError, 'invalid block type')
+        reader = instance_double(PDF::Reader, page_count: 1, pages: [page])
+        allow(PDF::Reader).to receive(:new).and_return(reader)
+      end
+
+      after do
+        file.close
+        file.unlink
+      end
+
+      it 'adds the malformed-pdf error instead of crashing' do
+        instance.validate_pdf_integrity
+        expect(instance.errors).to contain_exactly(
+          I18n.t('errors.messages.uploads.malformed_pdf')
+        )
+      end
+
+      it 'logs the rejection with reason: data_error' do
+        expect(Rails.logger).to receive(:warn).with(
+          'validate_pdf_integrity rejected file',
+          hash_including(reason: 'data_error')
+        )
+        instance.validate_pdf_integrity
+      end
+    end
+
+    context 'when a page raises Zlib::BufError during deep parse' do
+      let(:file) { write_tempfile('zlib_buf', '%PDF-1.4') }
+
+      before do
+        stub_attachment(file)
+        page = instance_double(PDF::Reader::Page)
+        allow(page).to receive(:raw_content).and_raise(Zlib::BufError)
+        reader = instance_double(PDF::Reader, page_count: 1, pages: [page])
+        allow(PDF::Reader).to receive(:new).and_return(reader)
+      end
+
+      after do
+        file.close
+        file.unlink
+      end
+
+      it 'adds the malformed-pdf error instead of crashing' do
+        instance.validate_pdf_integrity
+        expect(instance.errors).to contain_exactly(
+          I18n.t('errors.messages.uploads.malformed_pdf')
+        )
+      end
+    end
+
+    context 'when PDF::Reader raises EncryptedPDFError' do
+      let(:file) { write_tempfile('encrypted', '%PDF-1.4') }
+
+      before do
+        stub_attachment(file)
+        allow(PDF::Reader).to receive(:new).and_raise(PDF::Reader::EncryptedPDFError)
+      end
+
+      after do
+        file.close
+        file.unlink
+      end
+
+      it 'adds the malformed-pdf error (validate_unlocked_pdf handles encryption separately)' do
+        instance.validate_pdf_integrity
+        expect(instance.errors).to contain_exactly(
+          I18n.t('errors.messages.uploads.malformed_pdf')
+        )
+      end
+    end
+
+    context 'when PDF::Reader raises UnsupportedFeatureError' do
+      let(:file) { write_tempfile('unsupported', '%PDF-1.4') }
+
+      before do
+        stub_attachment(file)
+        allow(PDF::Reader).to receive(:new).and_raise(PDF::Reader::UnsupportedFeatureError)
+      end
+
+      after do
+        file.close
+        file.unlink
+      end
+
+      it 'adds the malformed-pdf error' do
+        instance.validate_pdf_integrity
+        expect(instance.errors).to contain_exactly(
+          I18n.t('errors.messages.uploads.malformed_pdf')
+        )
+      end
+    end
+
+    context 'when an unexpected StandardError leaks from the parser' do
+      let(:file) { write_tempfile('weird', '%PDF-1.4') }
+
+      before do
+        stub_attachment(file)
+        allow(PDF::Reader).to receive(:new).and_raise(IOError, 'stream closed prematurely')
+      end
+
+      after do
+        file.close
+        file.unlink
+      end
+
+      it 'is caught and surfaced as a validation error rather than a 500' do
+        expect { instance.validate_pdf_integrity }.not_to raise_error
+        expect(instance.errors).to contain_exactly(
+          I18n.t('errors.messages.uploads.malformed_pdf')
+        )
+      end
+
+      it 'logs with reason: unexpected_error and includes the original class' do
+        expect(Rails.logger).to receive(:warn).with(
+          'validate_pdf_integrity rejected file',
+          hash_including(reason: 'unexpected_error', detail: a_string_matching(/IOError/))
+        )
+        instance.validate_pdf_integrity
+      end
+    end
+
+    context 'tempfile cleanup' do
+      let(:file) { write_tempfile('cleanup', '%PDF-1.4') }
+
+      after do
+        file.close unless file.closed?
+        file.unlink if File.exist?(file.path)
+      end
+
+      it 'uses the block form of download so Shrine cleans up the tempfile' do
+        attachment = stub_attachment(file)
+
+        expect(attachment).to receive(:download).with(no_args) do |&block|
+          expect(block).not_to be_nil
+          file.rewind
+          block.call(file)
+        end
+
+        instance.validate_pdf_integrity
       end
     end
   end
