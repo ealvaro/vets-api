@@ -28,12 +28,13 @@ RSpec.describe LighthouseRatedDisabilitiesProvider do
 
   describe 'caching' do
     before do
+      @provider = LighthouseRatedDisabilitiesProvider.new('123498767V234859')
       allow(Flipper).to receive(:enabled?).with(:disability_compensation_rated_disabilities_cache).and_return(true)
       @memory_cache = ActiveSupport::Cache::MemoryStore.new
       allow(Rails).to receive(:cache).and_return(@memory_cache)
     end
 
-    it 'caches rated disabilities and does not call the API on subsequent requests' do
+    it 'caches the raw API response and does not call the API on subsequent get_rated_disabilities requests' do
       VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
         first_response = @provider.get_rated_disabilities('', '')
         expect(first_response.rated_disabilities.length).to eq(1)
@@ -44,14 +45,48 @@ RSpec.describe LighthouseRatedDisabilitiesProvider do
       expect(second_response.rated_disabilities.length).to eq(1)
     end
 
+    it 'caches the raw API response and does not call the API on subsequent get_combined_disability_rating requests' do
+      first_response = nil
+      VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+        first_response = @provider.get_combined_disability_rating('', '')
+        expect(first_response).to be_present
+      end
+
+      # Second call should come from cache, not VCR (which would raise if replayed)
+      second_response = @provider.get_combined_disability_rating('', '')
+      expect(second_response).to eq(first_response)
+    end
+
+    it 'shares the cache between get_rated_disabilities and get_combined_disability_rating' do
+      VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+        @provider.get_rated_disabilities('', '')
+      end
+
+      # get_combined_disability_rating should use the same cached raw response
+      rating = @provider.get_combined_disability_rating('', '')
+      expect(rating).to be_present
+    end
+
     it 'uses a hashed per-ICN cache key' do
-      expected_key = "lighthouse_rated_disabilities/#{Digest::SHA256.hexdigest('123498767V234859')}"
+      expected_key = "lighthouse_rated_disabilities/v2/#{Digest::SHA256.hexdigest('123498767V234859')}"
 
       VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
         @provider.get_rated_disabilities('', '')
       end
 
       expect(Rails.cache.exist?(expected_key)).to be true
+    end
+
+    it 'does not read stale v1 cache entries written by the old code' do
+      old_key = "lighthouse_rated_disabilities/#{Digest::SHA256.hexdigest('123498767V234859')}"
+      stale_response = instance_double(DisabilityCompensation::ApiProvider::RatedDisabilitiesResponse)
+      @memory_cache.write(old_key, stale_response)
+
+      VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+        response = @provider.get_rated_disabilities('', '')
+        expect(response).to be_a(DisabilityCompensation::ApiProvider::RatedDisabilitiesResponse)
+        expect(response).not_to equal(stale_response)
+      end
     end
 
     it 'increments StatsD on cache hit' do
@@ -95,6 +130,47 @@ RSpec.describe LighthouseRatedDisabilitiesProvider do
 
       expect(Rails.logger).to have_received(:error).with(/Rated disabilities cache write failed/)
     end
+
+    it 'stores encrypted ciphertext in the cache, not the raw response' do
+      cache_key = "lighthouse_rated_disabilities/v2/#{Digest::SHA256.hexdigest('123498767V234859')}"
+
+      VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+        @provider.get_rated_disabilities('', '')
+      end
+
+      raw = @memory_cache.read(cache_key)
+      expect(raw).to be_a(String)
+      expect(raw).not_to include('diagnostic_text')
+      expect(raw).not_to include('individual_ratings')
+    end
+
+    it 'falls back to the API and does not raise when cached data cannot be decrypted' do
+      cache_key = "lighthouse_rated_disabilities/v2/#{Digest::SHA256.hexdigest('123498767V234859')}"
+      @memory_cache.write(cache_key, 'this-is-not-valid-ciphertext')
+      allow(Rails.logger).to receive(:error)
+
+      VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+        response = @provider.get_rated_disabilities('', '')
+        expect(response.rated_disabilities.length).to eq(1)
+      end
+
+      expect(Rails.logger).to have_received(:error).with(/Rated disabilities cache read failed/)
+    end
+
+    it 'falls back to the API and does not raise when decrypted data is not valid JSON' do
+      cache_key = "lighthouse_rated_disabilities/v2/#{Digest::SHA256.hexdigest('123498767V234859')}"
+      allow(Rails.logger).to receive(:error)
+
+      lockbox = Lockbox.new(key: Settings.lockbox.master_key, encode: true)
+      @memory_cache.write(cache_key, lockbox.encrypt('not-json'))
+
+      VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+        response = @provider.get_rated_disabilities('', '')
+        expect(response.rated_disabilities.length).to eq(1)
+      end
+
+      expect(Rails.logger).to have_received(:error).with(/Rated disabilities cache read failed/)
+    end
   end
 
   describe 'when cache feature flag is disabled' do
@@ -105,7 +181,7 @@ RSpec.describe LighthouseRatedDisabilitiesProvider do
     end
 
     it 'does not cache and calls the API every time' do
-      cache_key = "lighthouse_rated_disabilities/#{Digest::SHA256.hexdigest('123498767V234859')}"
+      cache_key = "lighthouse_rated_disabilities/v2/#{Digest::SHA256.hexdigest('123498767V234859')}"
 
       VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
         response = @provider.get_rated_disabilities('', '')

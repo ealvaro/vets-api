@@ -28,19 +28,21 @@ class LighthouseRatedDisabilitiesProvider
   # @return [DisabilityCompensation::ApiProvider::RatedDisabilitiesResponse] a list of individual disability ratings
   # @option options [string] :invoker where this method was called from
   def get_rated_disabilities(lighthouse_client_id = nil, lighthouse_rsa_key_path = nil, options = {})
-    if Flipper.enabled?(:disability_compensation_rated_disabilities_cache)
-      fetch_with_cache(lighthouse_client_id, lighthouse_rsa_key_path, options)
-    else
-      data = get_data(lighthouse_client_id, lighthouse_rsa_key_path, options)
-      transform(data.dig('data', 'attributes', 'individual_ratings') || [])
-    end
+    data = get_data(lighthouse_client_id, lighthouse_rsa_key_path, options)
+    transform(data.dig('data', 'attributes', 'individual_ratings') || [])
   end
 
   # @param [string] lighthouse_client_id: the lighthouse_client_id requested from Lighthouse
   # @param [string] lighthouse_rsa_key_path: path to the private RSA key used to create the lighthouse_client_id
   # @option options [string] :invoker where this method was called from
+  # @return [Hash] the raw Lighthouse API response hash containing 'data' => 'attributes' =>
+  #   'combined_disability_rating' and 'individual_ratings'
   def get_data(lighthouse_client_id = nil, lighthouse_rsa_key_path = nil, options = {})
-    @service.get_rated_disabilities(@icn, lighthouse_client_id, lighthouse_rsa_key_path, options)
+    if Flipper.enabled?(:disability_compensation_rated_disabilities_cache)
+      fetch_data_with_cache(lighthouse_client_id, lighthouse_rsa_key_path, options)
+    else
+      @service.get_rated_disabilities(@icn, lighthouse_client_id, lighthouse_rsa_key_path, options)
+    end
   end
 
   def transform(data)
@@ -76,11 +78,12 @@ class LighthouseRatedDisabilitiesProvider
 
   private
 
-  def fetch_with_cache(lighthouse_client_id, lighthouse_rsa_key_path, options)
-    cache_key = "lighthouse_rated_disabilities/#{Digest::SHA256.hexdigest(@icn)}"
+  def fetch_data_with_cache(lighthouse_client_id, lighthouse_rsa_key_path, options)
+    cache_key = "lighthouse_rated_disabilities/v2/#{Digest::SHA256.hexdigest(@icn)}"
 
     begin
-      result = Rails.cache.read(cache_key)
+      cached = Rails.cache.read(cache_key)
+      result = cached ? decrypt_data(cached) : nil
     rescue => e
       Rails.logger.error("Rated disabilities cache read failed: #{e.message}")
       result = nil
@@ -90,16 +93,27 @@ class LighthouseRatedDisabilitiesProvider
       StatsD.increment('api.lighthouse_rated_disabilities.cache.hit')
     else
       StatsD.increment('api.lighthouse_rated_disabilities.cache.miss')
-      data = get_data(lighthouse_client_id, lighthouse_rsa_key_path, options)
-      result = transform(data.dig('data', 'attributes', 'individual_ratings') || [])
+      result = @service.get_rated_disabilities(@icn, lighthouse_client_id, lighthouse_rsa_key_path, options)
 
       begin
-        Rails.cache.write(cache_key, result, expires_in: RATED_DISABILITIES_CACHE_TTL)
+        Rails.cache.write(cache_key, encrypt_data(result), expires_in: RATED_DISABILITIES_CACHE_TTL)
       rescue => e
         Rails.logger.error("Rated disabilities cache write failed: #{e.message}")
       end
     end
 
     result
+  end
+
+  def lockbox
+    @lockbox ||= Lockbox.new(key: Settings.lockbox.master_key, encode: true)
+  end
+
+  def encrypt_data(data)
+    lockbox.encrypt(data.to_json)
+  end
+
+  def decrypt_data(encrypted_data)
+    JSON.parse(lockbox.decrypt(encrypted_data))
   end
 end
