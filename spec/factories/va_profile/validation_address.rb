@@ -26,4 +26,15 @@ FactoryBot.define do
       zip_code { '38843' }
     end
   end
+
+  factory :va_profile_validation_address_international, class: 'VAProfile::Models::ValidationAddress' do
+    address_pou { VAProfile::Models::Address::RESIDENCE }
+    address_type { VAProfile::Models::Address::INTERNATIONAL }
+    address_line1 { '10 Downing St' }
+    country_name { 'United Kingdom' }
+    country_code_iso3 { 'GBR' }
+    province { 'England' }
+    international_postal_code { 'SW1A 1AA' }
+    city { 'London' }
+  end
 end

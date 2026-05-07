@@ -25,7 +25,7 @@ module VAProfile
             country: { countryCodeISO3: @country_code_iso3,
                        countryName: @country_name, countryCodeFIPS: @country_code_fips },
             state: { stateCode: @state_code, stateName: @state_name },
-            province: { provinceName: @province_name, provinceCode: @province_code },
+            province: { provinceName: @province, provinceCode: nil },
             addressPOU: @address_pou
           )
         )
@@ -51,7 +51,7 @@ module VAProfile
       def self.regional_attributes(address_type, address_hash)
         if address_type == INTERNATIONAL
           {
-            province: address_hash['province']['province_name'],
+            province: address_hash.dig('province', 'province_name'),
             international_postal_code: address_hash['int_postal_code']
           }
         else

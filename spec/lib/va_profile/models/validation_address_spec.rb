@@ -24,6 +24,29 @@ describe VAProfile::Models::ValidationAddress do
         }
       )
     end
+
+    context 'with an international address' do
+      let(:address) { build(:va_profile_validation_address_international) }
+
+      it 'formats the international address for an address validation request' do
+        expect(address.address_validation_req).to match(
+          address: {
+            'addressLine1' => '10 Downing St',
+            :cityName => 'London',
+            :intPostalCode => 'SW1A 1AA',
+            :country => {
+              countryCodeISO3: 'GBR',
+              countryName: 'United Kingdom'
+            },
+            :state => {},
+            :province => {
+              provinceName: 'England'
+            },
+            :addressPOU => 'RESIDENCE'
+          }
+        )
+      end
+    end
   end
 
   describe '#build_from_address_suggestion' do
