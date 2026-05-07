@@ -32,11 +32,14 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
   end
 
   describe 'POST /vass/v0/request-otp' do
+    let(:veteran_contact_email) { 'link-recipient@example.com' }
+
     let(:params) do
       {
         uuid:,
         last_name:,
-        dob: date_of_birth
+        dob: date_of_birth,
+        veteran_contact_email:
       }
     end
 
@@ -58,7 +61,7 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
               json_response = JSON.parse(response.body)
               expect(json_response['data']['message']).to eq('OTP sent to registered email address')
               expect(json_response['data']['expiresIn']).to be_a(Integer)
-              expect(json_response['data']['email']).to eq('v******@example.com')
+              expect(json_response['data']['email']).to eq('l*************@example.com')
             end
           end
         end
@@ -123,9 +126,72 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
               expect(metadata).to be_present
               expect(metadata[:edipi]).to eq(edipi)
               expect(metadata[:veteran_id]).to eq(uuid)
+              expect(metadata[:email]).to eq(veteran_contact_email)
             end
           end
         end
+      end
+    end
+
+    context 'when veteran_contact_email is missing' do
+      it 'returns bad request status' do
+        post '/vass/v0/request-otp',
+             params: {
+               uuid:,
+               last_name:,
+               dob: date_of_birth
+             },
+             as: :json
+
+        expect(response).to have_http_status(:bad_request)
+        json_response = JSON.parse(response.body)
+        expect(json_response['errors'].first['code']).to eq('missing_parameter')
+      end
+    end
+
+    context 'when veteran_contact_email is blank' do
+      it 'returns bad request status' do
+        post '/vass/v0/request-otp',
+             params: params.merge(veteran_contact_email: '   '),
+             as: :json
+
+        expect(response).to have_http_status(:bad_request)
+        json_response = JSON.parse(response.body)
+        expect(json_response['errors'].first['code']).to eq('missing_parameter')
+      end
+    end
+
+    context 'when another required request-otp field is whitespace-only' do
+      it 'returns bad request status' do
+        post '/vass/v0/request-otp',
+             params: params.merge(last_name: "\t  "),
+             as: :json
+
+        expect(response).to have_http_status(:bad_request)
+        json_response = JSON.parse(response.body)
+        expect(json_response['errors'].first['code']).to eq('missing_parameter')
+      end
+    end
+
+    context 'when veteran_contact_email is not a valid email format' do
+      let(:appointments_service_spy) { instance_spy(Vass::AppointmentsService) }
+
+      before do
+        allow(Vass::AppointmentsService).to receive(:build).and_return(appointments_service_spy)
+      end
+
+      it 'returns bad request without calling upstream VASS' do
+        post '/vass/v0/request-otp',
+             params: params.merge(veteran_contact_email: 'not-an-email'),
+             as: :json
+
+        expect(response).to have_http_status(:bad_request)
+        json_response = JSON.parse(response.body)
+        expect(json_response['errors'].first['code']).to eq('missing_parameter')
+        expect(json_response['errors'].first['detail']).to eq(
+          'veteranContactEmail must be a valid email address'
+        )
+        expect(appointments_service_spy).not_to have_received(:get_veteran_info)
       end
     end
 
@@ -138,7 +204,8 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
             post '/vass/v0/request-otp', params: {
               uuid:,
               last_name: invalid_last_name,
-              dob: date_of_birth
+              dob: date_of_birth,
+              veteran_contact_email:
             }, as: :json
 
             expect(response).to have_http_status(:unauthorized)
@@ -150,16 +217,17 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
       end
     end
 
-    context 'when contact info is missing' do
-      it 'returns unprocessable entity status' do
+    context 'when VASS has no notification email on file' do
+      it 'still sends OTP to the invitation email from the request' do
         VCR.use_cassette('vass/sessions/oauth_token', match_requests_on: %i[method uri]) do
           VCR.use_cassette('vass/sessions/get_veteran_missing_contact', match_requests_on: %i[method uri]) do
-            post '/vass/v0/request-otp', params:, as: :json
+            VCR.use_cassette('vass/sessions/vanotify_send_otp', match_requests_on: %i[method uri]) do
+              post '/vass/v0/request-otp', params:, as: :json
 
-            expect(response).to have_http_status(:unprocessable_content)
-            json_response = JSON.parse(response.body)
-            expect(json_response['errors']).to be_present
-            expect(json_response['errors'].first['code']).to eq('missing_contact_info')
+              expect(response).to have_http_status(:ok)
+              json_response = JSON.parse(response.body)
+              expect(json_response['data']['email']).to eq('l*************@example.com')
+            end
           end
         end
       end
@@ -334,6 +402,18 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
         expect(json_response['errors']).to be_present
         expect(json_response['errors'].first['code']).to eq('missing_parameter')
         expect(json_response['errors'].first['detail']).to eq('Required parameter is missing')
+      end
+    end
+
+    context 'when otp is whitespace-only' do
+      it 'returns bad request status' do
+        post '/vass/v0/authenticate-otp',
+             params: params.merge(otp: " \t "),
+             as: :json
+
+        expect(response).to have_http_status(:bad_request)
+        json_response = JSON.parse(response.body)
+        expect(json_response['errors'].first['code']).to eq('missing_parameter')
       end
     end
 

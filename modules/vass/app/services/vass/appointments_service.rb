@@ -243,7 +243,7 @@ module Vass
     #
     # @param veteran_id [String] Veteran ID (UUID) in VASS system
     #
-    # @return [Hash] Veteran data including firstName, lastName, dateOfBirth, edipi, notificationEmail
+    # @return [Hash] Veteran data including firstName, lastName, dateOfBirth, edipi (raw VASS response body)
     #
     # @raise [Vass::Errors::VassApiError] if VASS API call fails
     #
@@ -252,20 +252,7 @@ module Vass
     #
     def get_veteran_info(veteran_id:)
       response = client.get_veteran(veteran_id:)
-      veteran_data = response.body
-
-      # Extract and add contact info for OTP flow
-      contact_method, contact_value = extract_contact_info(veteran_data)
-      unless contact_method && contact_value
-        raise Vass::Errors::MissingContactInfoError, 'Veteran contact information not found'
-      end
-
-      veteran_data.merge(
-        'contact_method' => contact_method,
-        'contact_value' => contact_value
-      )
-    rescue Vass::Errors::MissingContactInfoError
-      raise
+      response.body
     rescue Vass::ServiceException,
            Common::Exceptions::GatewayTimeout,
            Common::Client::Errors::ClientError => e
@@ -433,29 +420,6 @@ module Vass
       return value unless value.is_a?(String)
 
       ::Logging::Helper::DataScrubber.scrub(value)
-    end
-
-    ##
-    # Extracts contact method and value from VASS veteran data.
-    #
-    # Currently only supports email (SMS not supported for OTP flow).
-    #
-    # @param veteran_data [Hash] Veteran data from VASS API
-    # @return [Array<String, String>, Array[nil, nil]] [contact_method, contact_value] or [nil, nil]
-    #
-    def extract_contact_info(veteran_data)
-      return [nil, nil] unless veteran_data
-
-      data = veteran_data['data']
-      return [nil, nil] unless data
-
-      email = data['notification_email']
-
-      if email.present?
-        ['email', email]
-      else
-        [nil, nil]
-      end
     end
 
     ##

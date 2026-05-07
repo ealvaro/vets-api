@@ -33,7 +33,8 @@ module Vass
       OTP_LENGTH = 6
 
       attr_accessor :contact_method, :contact_value, :edipi, :veteran_id
-      attr_reader :uuid, :last_name, :date_of_birth, :otp_code, :redis_client
+      attr_reader :uuid, :last_name, :date_of_birth, :otp_code, :redis_client,
+                  :veteran_contact_email
 
       ##
       # Builds a Session instance.
@@ -43,6 +44,7 @@ module Vass
       # @option opts [String] :last_name Veteran's last name for validation
       # @option opts [String] :dob Veteran's date of birth for validation (YYYY-MM-DD)
       # @option opts [String] :otp User-provided OTP for validation
+      # @option opts [String] :veteran_contact_email Email from the invitation/scheduling link (required for OTP flow)
       # @option opts [Vass::RedisClient] :redis_client Optional Redis client
       #
       # @return [Vass::V0::Session] An instance of this class
@@ -72,6 +74,8 @@ module Vass
         @contact_method = opts[:contact_method] || data[:contact_method]
         @contact_value = opts[:contact_value] || data[:contact_value]
         @otp_code = opts[:otp_code] || opts[:otp] || data[:otp_code] || data[:otp]
+        link_email = opts[:veteran_contact_email] || data[:veteran_contact_email]
+        @veteran_contact_email = link_email.to_s.strip.presence
         @edipi = opts[:edipi] || data[:edipi]
         @veteran_id = opts[:veteran_id] || data[:veteran_id]
         @redis_client = opts[:redis_client] || Vass::RedisClient.build
@@ -84,6 +88,15 @@ module Vass
       #
       def valid_for_creation?
         uuid.present? && last_name.present? && date_of_birth.present?
+      end
+
+      ##
+      # Validates +veteran_contact_email+ format for request-otp (invitation link email).
+      #
+      # @return [Boolean] true if present and matches EMAIL_REGEX
+      #
+      def valid_veteran_contact_email_format?
+        veteran_contact_email.present? && EMAIL_REGEX.match?(veteran_contact_email)
       end
 
       ##
@@ -229,23 +242,20 @@ module Vass
       end
 
       ##
-      # Sets contact information and veteran data from VASS response.
+      # Sets EDIPI from VASS response and applies invitation-link email for OTP delivery and Redis metadata.
       #
-      # Expects veteran_data to contain 'contact_method' and 'contact_value' keys
-      # (extracted by AppointmentsService) along with 'data' key containing veteran info.
+      # OTP is sent to +veteran_contact_email+ (from the scheduling link), not to email fields from VASS.
       #
-      # @param veteran_data [Hash] Veteran data from VASS API with 'data', 'contact_method',
-      #   and 'contact_value' keys
+      # @param veteran_data [Hash] Veteran data from VASS API (+data.edipi+, identity fields, etc.)
       #
       def set_contact_from_veteran_data(veteran_data)
-        return unless veteran_data && veteran_data['contact_method'] && veteran_data['contact_value']
+        return unless veteran_data
 
-        self.contact_method = veteran_data['contact_method']
-        self.contact_value = veteran_data['contact_value']
         self.edipi = veteran_data.dig('data', 'edipi')
         self.veteran_id = uuid
+        self.contact_method = 'email'
+        self.contact_value = veteran_contact_email
 
-        # Store veteran metadata in Redis to avoid fetching again in show flow
         save_veteran_metadata_for_session if edipi.present?
       end
 

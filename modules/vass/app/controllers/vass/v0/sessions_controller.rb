@@ -21,21 +21,23 @@ module Vass
       # Validates veteran identity and generates an OTP.
       #
       # Flow:
-      # 1. Accepts UUID (veteran_id from welcome email), last_name, and dob
+      # 1. Accepts UUID (veteran_id from welcome email), last_name, dob, and veteran_contact_email
+      #    (email from the invitation/scheduling link)
       # 2. Calls VASS GetVeteran to fetch veteran info using UUID
       # 3. Validates last_name and dob match VASS response
-      # 4. Extracts contact info (email) from VASS response
-      # 5. Generates OTP and sends via VANotify
+      # 4. Generates OTP and sends via VANotify to veteran_contact_email
       #
       # @param uuid [String] Veteran UUID from welcome email
       # @param last_name [String] Veteran's last name for validation
       # @param dob [String] Veteran's date of birth for validation (YYYY-MM-DD)
+      # @param veteran_contact_email [String] Email address the scheduling link was sent to (required)
       #
       # @return [JSON] Success message and expiration time per spec
       #
       def request_otp
-        validate_required_params!(:uuid, :last_name, :dob)
-        session = Vass::V0::Session.build(data: permitted_params)
+        session = Vass::V0::Session.build(data: request_otp_params.to_h)
+        return unless validate_veteran_contact_email_for_request_otp(session)
+
         check_all_rate_limits(session.uuid)
         process_otp_creation(session)
         complete_otp_creation(session)
@@ -44,8 +46,6 @@ module Vass
         handle_request_otp_error(e, session, :rate_limit)
       rescue Vass::Errors::IdentityValidationError => e
         handle_request_otp_error(e, session, :identity_validation)
-      rescue Vass::Errors::MissingContactInfoError => e
-        handle_request_otp_error(e, session, :missing_contact)
       rescue *vass_api_exceptions => e
         handle_request_otp_error(e, session, :vass_api)
       rescue VANotify::Error => e
@@ -66,8 +66,7 @@ module Vass
       # @return [JSON] JWT token and expiration per spec
       #
       def authenticate_otp
-        validate_required_params!(:uuid, :last_name, :dob, :otp)
-        session = Vass::V0::Session.build(data: permitted_params_for_auth)
+        session = Vass::V0::Session.build(data: authenticate_otp_params.to_h)
         check_validation_rate_limit(session.uuid)
         return unless validate_otp_session(session)
 
@@ -142,21 +141,60 @@ module Vass
       end
 
       ##
-      # Permitted parameters for OTP request.
+      # Strong params for POST /vass/v0/request-otp: requires keys, permits assignable keys, and rejects
+      # blank or whitespace-only values (params.require alone allows empty strings).
       #
-      # @return [Hash] Permitted params
+      # @return [ActionController::Parameters]
       #
-      def permitted_params
-        params.permit(:uuid, :last_name, :dob)
+      def request_otp_params
+        required_keys = %i[uuid last_name dob veteran_contact_email]
+        required_keys.each { |key| params.require(key) }
+        permitted = params.permit(:uuid, :last_name, :dob, :veteran_contact_email)
+        reject_blank_required_strings!(permitted, required_keys)
+        permitted
       end
 
       ##
-      # Permitted parameters for OTP authentication.
+      # Strong params for POST /vass/v0/authenticate-otp: requires keys, permits assignable keys, and rejects
+      # blank or whitespace-only values.
       #
-      # @return [Hash] Permitted params
+      # @return [ActionController::Parameters]
       #
-      def permitted_params_for_auth
-        params.permit(:uuid, :last_name, :dob, :otp)
+      def authenticate_otp_params
+        required_keys = %i[uuid last_name dob otp]
+        required_keys.each { |key| params.require(key) }
+        permitted = params.permit(:uuid, :last_name, :dob, :otp)
+        reject_blank_required_strings!(permitted, required_keys)
+        permitted
+      end
+
+      ##
+      # Raises ParameterMissing when a permitted value is blank or whitespace-only (require alone does not).
+      #
+      # @param permitted [ActionController::Parameters]
+      # @param keys [Array<Symbol>]
+      #
+      def reject_blank_required_strings!(permitted, keys)
+        keys.each do |key|
+          raise ActionController::ParameterMissing, key if permitted[key].blank?
+        end
+      end
+
+      ##
+      # Ensures invitation email is syntactically valid before VASS/VANotify work.
+      #
+      # @param session [Vass::V0::Session]
+      # @return [Boolean] false if response already rendered
+      #
+      def validate_veteran_contact_email_for_request_otp(session)
+        return true if session.valid_veteran_contact_email_format?
+
+        render_session_error_response(
+          code: 'missing_parameter',
+          detail: 'veteranContactEmail must be a valid email address',
+          status: :bad_request
+        )
+        false
       end
 
       ##
@@ -274,21 +312,6 @@ module Vass
       end
 
       ##
-      # Handles missing contact info errors.
-      #
-      # @param session [Vass::V0::Session] Session instance
-      # @param error [Vass::Errors::MissingContactInfoError] Error
-      #
-      def handle_missing_contact_info_error(session, _error)
-        log_vass_error('missing_contact_info', vass_uuid: session.uuid)
-        render_session_error_response(
-          code: 'missing_contact_info',
-          detail: 'No contact information available for this veteran.',
-          status: :unprocessable_content
-        )
-      end
-
-      ##
       # Handles VASS API errors.
       #
       # @param session [Vass::V0::Session] Session instance
@@ -363,7 +386,6 @@ module Vass
         when :identity_validation
           increment_rate_limit(session.uuid)
           handle_identity_validation_error(session, error)
-        when :missing_contact then handle_missing_contact_info_error(session, error)
         when :vass_api then handle_vass_api_error(session, error)
         when :vanotify then handle_vanotify_error(session, error)
         end

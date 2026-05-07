@@ -149,7 +149,7 @@ module Vass
     # @param uuid [String] Veteran UUID
     # @param edipi [String] Veteran EDIPI
     # @param veteran_id [String] Veteran ID
-    # @param email [String, nil] Veteran email address (optional)
+    # @param email [String, nil] Veteran email (from invitation/scheduling link)
     # @return [Boolean] true if write succeeds
     #
     def save_veteran_metadata(uuid:, edipi:, veteran_id:, email: nil)
@@ -271,6 +271,7 @@ module Vass
     # @param jti [String] JWT ID of the currently valid token
     # @param edipi [String] Veteran EDIPI (required for VASS API headers)
     # @param veteran_id [String] Veteran ID in VASS system
+    # @param email [String, nil] Veteran email from invitation link (optional)
     # @return [Boolean] true if write succeeds
     #
     def save_session(uuid:, jti:, edipi:, veteran_id:, email: nil)

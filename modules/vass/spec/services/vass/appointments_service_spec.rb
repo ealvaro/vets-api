@@ -254,17 +254,17 @@ describe Vass::AppointmentsService do
         )
       end
 
-      it 'returns enriched veteran data with contact info' do
+      it 'returns veteran data from VASS without merging contact fields' do
         result = service_with_mock_client.get_veteran_info(veteran_id:)
 
         expect(result['success']).to be true
         expect(result['data']['first_name']).to eq('John')
         expect(result['data']['last_name']).to eq('Doe')
-        expect(result['contact_method']).to eq('email')
-        expect(result['contact_value']).to eq('john.doe@example.com')
+        expect(result['contact_method']).to be_nil
+        expect(result['contact_value']).to be_nil
       end
 
-      context 'when contact info is missing' do
+      context 'when notification email is missing from VASS' do
         let(:veteran_response_no_email) do
           {
             'success' => true,
@@ -284,13 +284,11 @@ describe Vass::AppointmentsService do
           )
         end
 
-        it 'raises MissingContactInfoError' do
-          expect do
-            service_with_mock_client.get_veteran_info(veteran_id:)
-          end.to raise_error(
-            Vass::Errors::MissingContactInfoError,
-            'Veteran contact information not found'
-          )
+        it 'still returns veteran data' do
+          result = service_with_mock_client.get_veteran_info(veteran_id:)
+
+          expect(result['success']).to be true
+          expect(result['data']['edipi']).to eq(edipi)
         end
       end
 

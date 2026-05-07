@@ -117,6 +117,39 @@ RSpec.describe Vass::V0::Session, type: :model do
     end
   end
 
+  describe '#valid_veteran_contact_email_format?' do
+    it 'returns true for a typical email address' do
+      session = described_class.new(uuid:, veteran_contact_email: valid_email)
+      expect(session.valid_veteran_contact_email_format?).to be true
+    end
+
+    it 'returns true after stripping whitespace from invitation email' do
+      session = described_class.new(uuid:, veteran_contact_email: "  #{valid_email}  ")
+      expect(session.veteran_contact_email).to eq(valid_email)
+      expect(session.valid_veteran_contact_email_format?).to be true
+    end
+
+    it 'returns false when veteran_contact_email is nil' do
+      session = described_class.new(uuid:, veteran_contact_email: nil)
+      expect(session.valid_veteran_contact_email_format?).to be false
+    end
+
+    it 'returns false when veteran_contact_email is not a valid format' do
+      session = described_class.new(uuid:, veteran_contact_email: 'not-an-email')
+      expect(session.valid_veteran_contact_email_format?).to be false
+    end
+
+    it 'returns false when veteran_contact_email lacks a domain' do
+      session = described_class.new(uuid:, veteran_contact_email: 'localonly@')
+      expect(session.valid_veteran_contact_email_format?).to be false
+    end
+
+    it 'returns false when veteran_contact_email lacks @' do
+      session = described_class.new(uuid:, veteran_contact_email: 'user.example.com')
+      expect(session.valid_veteran_contact_email_format?).to be false
+    end
+  end
+
   describe '#valid_for_validation?' do
     context 'with valid UUID and OTP' do
       it 'returns true' do
@@ -450,6 +483,7 @@ RSpec.describe Vass::V0::Session, type: :model do
   end
 
   describe '#set_contact_from_veteran_data' do
+    let(:invitation_email) { 'invitation@example.com' }
     let(:veteran_data) do
       {
         'success' => true,
@@ -457,51 +491,63 @@ RSpec.describe Vass::V0::Session, type: :model do
           'edipi' => '1234567890',
           'firstName' => 'John',
           'lastName' => 'Smith'
-        },
-        'contact_method' => 'email',
-        'contact_value' => valid_email
+        }
       }
     end
 
-    it 'sets contact method and value' do
-      session = described_class.new(uuid:, redis_client:)
+    it 'sets email contact from invitation link and EDIPI from VASS' do
+      session = described_class.new(uuid:, veteran_contact_email: invitation_email, redis_client:)
       allow(redis_client).to receive(:save_veteran_metadata)
       session.set_contact_from_veteran_data(veteran_data)
 
       expect(session.contact_method).to eq('email')
-      expect(session.contact_value).to eq(valid_email)
+      expect(session.contact_value).to eq(invitation_email)
       expect(session.edipi).to eq('1234567890')
       expect(session.veteran_id).to eq(uuid)
     end
 
     it 'saves veteran metadata when edipi is present' do
-      session = described_class.new(uuid:, edipi: '1234567890', redis_client:)
-      expect(redis_client).to receive(:save_veteran_metadata).with(
+      session = described_class.new(
         uuid:,
         edipi: '1234567890',
-        veteran_id: uuid,
-        email: valid_email
+        veteran_contact_email: invitation_email,
+        redis_client:
+      )
+      expect(redis_client).to receive(:save_veteran_metadata).with(
+        hash_including(
+          uuid:,
+          edipi: '1234567890',
+          veteran_id: uuid,
+          email: invitation_email
+        )
       )
       session.set_contact_from_veteran_data(veteran_data)
     end
 
     it 'does not save metadata when edipi is not present' do
-      veteran_data_no_edipi = veteran_data.dup
-      veteran_data_no_edipi['data'] = { 'firstName' => 'John' }
-      session = described_class.new(uuid:, redis_client:)
+      veteran_data_no_edipi = veteran_data.merge('data' => { 'firstName' => 'John' })
+      session = described_class.new(uuid:, veteran_contact_email: invitation_email, redis_client:)
       expect(redis_client).not_to receive(:save_veteran_metadata)
       session.set_contact_from_veteran_data(veteran_data_no_edipi)
     end
   end
 
   describe '#save_veteran_metadata_for_session' do
-    it 'saves veteran metadata to Redis including email' do
-      session = described_class.new(uuid:, edipi: '1234567890', contact_value: valid_email, redis_client:)
-      expect(redis_client).to receive(:save_veteran_metadata).with(
+    it 'persists contact_value as email in Redis' do
+      invitation_email = 'invitation@example.com'
+      session = described_class.new(
         uuid:,
         edipi: '1234567890',
-        veteran_id: uuid,
-        email: valid_email
+        contact_value: invitation_email,
+        redis_client:
+      )
+      expect(redis_client).to receive(:save_veteran_metadata).with(
+        hash_including(
+          uuid:,
+          edipi: '1234567890',
+          veteran_id: uuid,
+          email: invitation_email
+        )
       )
       session.save_veteran_metadata_for_session
     end

@@ -28,7 +28,6 @@ module Vass
     class NotFoundError < BaseError; end
     class RateLimitError < BaseError; end
     class IdentityValidationError < BaseError; end
-    class MissingContactInfoError < BaseError; end
     class AuditLogError < BaseError; end
     class SerializationError < BaseError; end
     class EncryptionError < BaseError; end

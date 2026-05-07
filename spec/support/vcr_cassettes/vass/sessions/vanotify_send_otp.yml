@@ -5,7 +5,7 @@ http_interactions:
       uri: http://fakeapi.com/v2/notifications/email
       body:
         encoding: UTF-8
-        string: '{"email_address":"veteran@example.com","template_id":"vass-otp-email-template-id","personalisation":{"otp_code":"123456"}}'
+        string: '{"email_address":"link-recipient@example.com","template_id":"vass-otp-email-template-id","personalisation":{"otp_code":"123456"}}'
       headers:
         Accept:
           - "*/*"
