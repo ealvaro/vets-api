@@ -86,7 +86,8 @@
           "has_pharmacy_benefits": true,
           "has_medicare_part_d": true,
           "medicare_part_d_carrier": "PharmaCare Plus",
-          "medicare_part_d_effective_date": "2023-02-01"
+          "medicare_part_d_effective_date": "2023-02-01",
+          "medicare_part_d_termination_date": "2025-03-15"
         }
       ],
       "health_insurance": [

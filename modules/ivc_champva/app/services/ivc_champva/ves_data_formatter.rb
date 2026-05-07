@@ -325,7 +325,8 @@ module IvcChampva
     MEDICARE_PART_CONFIGS = [
       { type: 'MEDICARE_PART_A', date_key: 'medicare_part_a_effective_date' },
       { type: 'MEDICARE_PART_B', date_key: 'medicare_part_b_effective_date' },
-      { type: 'MEDICARE_PART_D', date_key: 'medicare_part_d_effective_date', flag_key: 'has_medicare_part_d' }
+      { type: 'MEDICARE_PART_D', date_key: 'medicare_part_d_effective_date', flag_key: 'has_medicare_part_d',
+        termination_key: 'medicare_part_d_termination_date' }
     ].freeze
 
     # Maps A, B, D medicare parts. Returns [] if no parts found.
@@ -346,7 +347,8 @@ module IvcChampva
 
       {
         medicare_part_type: config[:type],
-        effective_date: format_date(medicare[config[:date_key]])
+        effective_date: format_date(medicare[config[:date_key]]),
+        termination_date: format_date(medicare[config[:termination_key]])
       }.compact
     end
 

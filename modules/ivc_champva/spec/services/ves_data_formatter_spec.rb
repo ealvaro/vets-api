@@ -842,6 +842,39 @@ describe IvcChampva::VesDataFormatter do
         expect(result.first[:effective_date]).to eq('2023-06-15')
       end
 
+      it 'maps termination_date for Part D when present' do
+        medicare = [{
+          'has_medicare_part_d' => true,
+          'medicare_part_d_effective_date' => '02-01-2023',
+          'medicare_part_d_termination_date' => '03-15-2025'
+        }]
+        result = IvcChampva::VesDataFormatter.map_medicare_parts(medicare)
+
+        part_d = result.find { |p| p[:medicare_part_type] == 'MEDICARE_PART_D' }
+        expect(part_d[:termination_date]).to eq('2025-03-15')
+      end
+
+      it 'omits termination_date when not present' do
+        medicare = [{ 'has_medicare_part_d' => true, 'medicare_part_d_effective_date' => '06-15-2023' }]
+        result = IvcChampva::VesDataFormatter.map_medicare_parts(medicare)
+
+        expect(result.first).not_to have_key(:termination_date)
+      end
+
+      it 'does not include termination_date for Parts A and B' do
+        medicare = [{
+          'medicare_part_a_effective_date' => '01-15-2023',
+          'medicare_part_b_effective_date' => '01-15-2023'
+        }]
+        result = IvcChampva::VesDataFormatter.map_medicare_parts(medicare)
+
+        part_a = result.find { |p| p[:medicare_part_type] == 'MEDICARE_PART_A' }
+        expect(part_a).not_to have_key(:termination_date)
+
+        part_b = result.find { |p| p[:medicare_part_type] == 'MEDICARE_PART_B' }
+        expect(part_b).not_to have_key(:termination_date)
+      end
+
       it 'does NOT include Part C in medicare_parts' do
         medicare_c = [{ 'medicare_plan_type' => 'c', 'medicare_part_c_effective_date' => '2023-03-01' }]
         result = IvcChampva::VesDataFormatter.map_medicare_parts(medicare_c)
@@ -1001,6 +1034,9 @@ describe IvcChampva::VesDataFormatter do
         # Dates should be normalized to YYYY-MM-DD
         part_a = parsed['beneficiaryMedicare']['medicareParts'].find { |p| p['medicarePartType'] == 'MEDICARE_PART_A' }
         expect(part_a['effectiveDate']).to eq('2023-01-15')
+
+        part_d = parsed['beneficiaryMedicare']['medicareParts'].find { |p| p['medicarePartType'] == 'MEDICARE_PART_D' }
+        expect(part_d['terminationDate']).to eq('2025-03-15')
       end
     end
 
@@ -1043,6 +1079,9 @@ describe IvcChampva::VesDataFormatter do
 
         other_insurances = parsed['beneficiaryMedicare']['otherInsurances']
         expect(other_insurances).to all(have_key('isPrescriptionCovered'))
+
+        part_d = parsed['beneficiaryMedicare']['medicareParts'].find { |p| p['medicarePartType'] == 'MEDICARE_PART_D' }
+        expect(part_d['terminationDate']).to eq('2025-03-15')
       end
     end
 
