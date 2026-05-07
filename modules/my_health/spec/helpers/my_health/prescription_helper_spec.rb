@@ -42,6 +42,20 @@ RSpec.describe MyHealth::PrescriptionHelper::Filtering do
       end
     end
 
+    context 'when disp_status is Active: Parked with non-array rx_rf_records' do
+      it 'does not raise and returns false' do
+        item = build_prescription(
+          disp_status: 'Active: Parked',
+          is_refillable: false,
+          refill_remaining: 0,
+          rx_rf_records: { rf_record: nil }
+        )
+
+        expect { helper_instance.send(:renewable, item) }.not_to raise_error
+        expect(helper_instance.send(:renewable, item)).to be false
+      end
+    end
+
     context 'when disp_status is Active: Parked with empty rx_rf_records' do
       it 'returns false' do
         item = build_prescription(

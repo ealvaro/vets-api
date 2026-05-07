@@ -5,6 +5,9 @@ require 'common/exceptions'
 module MyHealth
   module PrescriptionHelper
     module Filtering
+      # Fetches the appropriate prescription collection based on the refill_status param.
+      #
+      # @return [Common::Collection] prescriptions from the Rx client
       def collection_resource
         case params[:refill_status]
         when nil
@@ -14,10 +17,18 @@ module MyHealth
         end
       end
 
+      # Removes Non-VA medications from the list, except those with an 'Active: Non-VA' status.
+      #
+      # @param data [Array<PrescriptionDetails>] list of prescriptions
+      # @return [Array<PrescriptionDetails>] filtered list excluding Non-VA meds
       def filter_non_va_meds(data)
         data.reject { |item| item.prescription_source == 'NV' && item.disp_status != 'Active: Non-VA' }
       end
 
+      # Filters prescriptions to only those that are refillable or renewable.
+      #
+      # @param data [Array<PrescriptionDetails>] list of prescriptions
+      # @return [Array<PrescriptionDetails>] prescriptions eligible for refill or renewal
       def filter_data_by_refill_and_renew(data)
         data.select do |item|
           next true if item.is_refillable
@@ -27,6 +38,15 @@ module MyHealth
         end
       end
 
+      # Determines whether a prescription is eligible for renewal.
+      # A prescription is renewable when it has no refills remaining, is not refillable, and meets
+      # one of the following conditions:
+      #   - Status is 'Active' (any remaining refills exhausted)
+      #   - Status is 'Active: Parked' with non-empty refill history records
+      #   - Status is 'Expired' and the expiration date is within the 120-day cut-off window
+      #
+      # @param item [PrescriptionDetails] a single prescription record
+      # @return [Boolean] true if the prescription is eligible for renewal
       def renewable(item)
         disp_status = item.disp_status
         refill_history_expired_date = item.rx_rf_records&.dig(0, :expiration_date)&.to_date
@@ -34,8 +54,10 @@ module MyHealth
         not_refillable = ['false'].include?(item.is_refillable.to_s)
         if item.refill_remaining.to_i.zero? && not_refillable
           return true if disp_status&.downcase == 'active'
-          return true if disp_status&.downcase == 'active: parked' && item.rx_rf_records.present? &&
-                         !item.rx_rf_records.all?(&:empty?)
+
+          rf_records = item.rx_rf_records
+          return true if disp_status&.downcase == 'active: parked' && rf_records.present? &&
+                         rf_records.is_a?(Array) && !rf_records.all?(&:empty?)
         end
         if disp_status == 'Expired' && expired_date.present? && within_cut_off_date?(expired_date) && not_refillable
           return true
@@ -58,6 +80,11 @@ module MyHealth
     end
 
     module Sorting
+      # Sorts the prescription collection by the given sort parameter and updates resource metadata.
+      #
+      # @param resource [Common::Collection] the prescription collection to sort
+      # @param sort_param [String, nil] one of 'last-fill-date', 'alphabetical-rx-name', or nil for default
+      # @return [Common::Collection] the sorted collection with updated sort metadata
       def apply_sorting(resource, sort_param)
         sorted_resource = case sort_param
                           when 'last-fill-date'
