@@ -964,12 +964,66 @@ describe ClaimsApi::V2::DisabilityCompensationPdfMapper do
         expect(actual).to eq('3035555555')
       end
 
-      it 'maps servedInReservesOrNationalGuard info correctly with a nil' do
-        form_attributes['serviceInformation']['reservesNationalGuardService'] = nil
-        mapper.map_claim
+      context 'servedInReservesOrNationalGuard' do
+        it 'sets to YES when reservesNationalGuardService is present' do
+          mapper.map_claim
 
-        actual = pdf_data[:data][:attributes][:serviceInformation][:servedInReservesOrNationalGuard]
-        expect(actual).to be_nil
+          actual = pdf_data[:data][:attributes][:serviceInformation][:servedInReservesOrNationalGuard]
+          expect(actual).to eq('YES')
+        end
+
+        it 'is nil when reservesNationalGuardService is nil' do
+          form_attributes['serviceInformation']['reservesNationalGuardService'] = nil
+          mapper.map_claim
+
+          actual = pdf_data[:data][:attributes][:serviceInformation][:servedInReservesOrNationalGuard]
+          expect(actual).to be_nil
+        end
+      end
+
+      context 'servedInActiveCombatSince911' do
+        it 'keeps YES when set to YES' do
+          form_attributes['serviceInformation']['servedInActiveCombatSince911'] = 'YES'
+          mapper.map_claim
+
+          actual = pdf_data[:data][:attributes][:serviceInformation][:servedInActiveCombatSince911]
+          expect(actual).to eq('YES')
+        end
+
+        it 'keeps NO when set to NO' do
+          form_attributes['serviceInformation']['servedInActiveCombatSince911'] = 'NO'
+          mapper.map_claim
+
+          actual = pdf_data[:data][:attributes][:serviceInformation][:servedInActiveCombatSince911]
+          expect(actual).to eq('NO')
+        end
+
+        it 'deletes the key when nil' do
+          form_attributes['serviceInformation']['servedInActiveCombatSince911'] = nil
+          mapper.map_claim
+
+          serv_info = pdf_data[:data][:attributes][:serviceInformation]
+          expect(serv_info).not_to have_key(:servedInActiveCombatSince911)
+        end
+
+        it 'deletes the key when not present' do
+          form_attributes['serviceInformation'].delete('servedInActiveCombatSince911')
+          mapper.map_claim
+
+          serv_info = pdf_data[:data][:attributes][:serviceInformation]
+          expect(serv_info).not_to have_key(:servedInActiveCombatSince911)
+        end
+      end
+
+      context 'fed_activation' do
+        it 'preserves federalActivation at serviceInformation so PDF fields are populated' do
+          mapper.map_claim
+
+          fed_activation = pdf_data[:data][:attributes][:serviceInformation][:federalActivation]
+          expect(fed_activation).to be_present
+          expect(fed_activation[:activationDate]).to be_present
+          expect(fed_activation[:anticipatedSeparationDate]).to be_present
+        end
       end
     end
 

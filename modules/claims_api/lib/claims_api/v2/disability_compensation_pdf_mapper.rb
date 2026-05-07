@@ -519,19 +519,8 @@ module ClaimsApi
         @pdf_data[:data][:attributes][:serviceInformation].merge!(
           @auto_claim['serviceInformation'].deep_symbolize_keys
         )
-        if @auto_claim.dig('data', 'attributes', 'serviceInformation', 'servedInActiveCombatSince911').present?
-          served_in_active_combat_since911 =
-            @pdf_data[:data][:attributes][:serviceInformation][:servedInActiveCombatSince911]
-          @pdf_data[:data][:attributes][:serviceInformation][:servedInActiveCombatSince911] =
-            served_in_active_combat_since911 == true ? 'YES' : 'NO'
-        end
-        served_in_reserves_or_national_guard =
-          @pdf_data[:data][:attributes][:serviceInformation][:servedInReservesOrNationalGuard]
-        if served_in_reserves_or_national_guard.nil?
-          @pdf_data[:data][:attributes][:serviceInformation].delete(:servedInReservesOrNationalGuard)
-        else
-          @pdf_data[:data][:attributes][:serviceInformation][:servedInReservesOrNationalGuard] =
-            served_in_reserves_or_national_guard == true ? 'YES' : 'NO'
+        unless %w[YES NO].include?(@auto_claim.dig('serviceInformation', 'servedInActiveCombatSince911'))
+          @pdf_data[:data][:attributes][:serviceInformation].delete(:servedInActiveCombatSince911)
         end
 
         @pdf_data
@@ -686,11 +675,6 @@ module ClaimsApi
             make_date_object(anticipated_sep_date, anticipated_sep_date.length)
         end
         @pdf_data[:data][:attributes][:serviceInformation][:activatedOnFederalOrders] = activation_date ? 'YES' : 'NO'
-        if @pdf_data&.dig(
-          'data', 'attributes', 'serviceInformation', 'reservesNationalGuardService', 'federalActivation'
-        ).present?
-          @pdf_data[:data][:attributes][:serviceInformation][:reservesNationalGuardService].delete(:federalActivation)
-        end
         @pdf_data
       end
 
