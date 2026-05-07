@@ -84,7 +84,7 @@
               "type": "string",
               "pattern": "^$|([a-zA-Z0-9\\'-'.# ]([a-zA-Z0-9\\'-'.# ])?)+$",
               "minLength": 1,
-              "maxLength": 30,
+              "maxLength": 20,
               "example": "Schenectady"
             },
             "state": {
@@ -191,7 +191,7 @@
           "type": "string",
           "pattern": "^$|([a-zA-Z0-9\\'-'.# ]([a-zA-Z0-9\\'-'.# ])?)+$",
           "minLength": 0,
-          "maxLength": 30,
+          "maxLength": 20,
           "example": "Schenectady"
         },
         "state": {

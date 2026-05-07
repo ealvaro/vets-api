@@ -745,6 +745,50 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
       end
     end
 
+    describe "'mailingAddress.city'" do
+      context 'when city exceeds maxLength' do
+        it 'returns an unprocessable entity error' do
+          mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+            VCR.use_cassette('claims_api/disability_comp') do
+              json_data = JSON.parse(data)
+              json_data['data']['attributes']['veteranIdentification']['mailingAddress']['city'] = 'A' * 21
+              post synchronous_path, params: json_data.to_json, headers: auth_header
+              expect(response).to have_http_status(:unprocessable_content)
+              errors = JSON.parse(response.body)['errors']
+              expect(errors).to be_an Array
+              expect(errors[0]['detail']).to include('/veteranIdentification/mailingAddress/city',
+                                                     '"maxLength"=>20')
+            end
+          end
+        end
+      end
+    end
+
+    describe "'changeOfAddress.city'" do
+      context 'when city exceeds maxLength' do
+        it 'returns an unprocessable entity error' do
+          mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+            VCR.use_cassette('claims_api/disability_comp') do
+              json_data = JSON.parse(data)
+              json_data['data']['attributes']['changeOfAddress'] = {
+                typeOfAddressChange: 'PERMANENT',
+                addressLine1: '1234 Couch Street',
+                city: 'A' * 21,
+                state: 'OR',
+                zipFirstFive: '12345',
+                country: 'USA'
+              }
+              post synchronous_path, params: json_data.to_json, headers: auth_header
+              expect(response).to have_http_status(:unprocessable_content)
+              errors = JSON.parse(response.body)['errors']
+              expect(errors).to be_an Array
+              expect(errors[0]['detail']).to include('/changeOfAddress/city', '"maxLength"=>20')
+            end
+          end
+        end
+      end
+    end
+
     describe "'disabilities.secondaryDisabilities' validations" do
       context 'when secondary disability name contains invalid characters' do
         it 'returns an error for secondary disability name with @ symbol' do
