@@ -95,6 +95,7 @@ Current feature flags used to control functionality:
 | `champva_vanotify_custom_callback` | Enables custom callback for failure emails with VA Notify | |
 | `champva_vanotify_custom_confirmation_callback` | Enables custom callback for confirmation emails | |
 | `champva_log_all_s3_uploads` | Enables detailed logging for all S3 uploads | |
+| `champva_claims_insurance_dates` | Uses the 12/31/2027 OMB revision of 10-7959A (requires `champva_form_versioning`); shared with FE | Adds beneficiary email, OHI effective/termination dates, signer email on the PDF and in Pega metadata |
 | (TODO) | Enables the endpoint to submit combined 10-10d/10-7959c form submissions | Feature is WIP |
 |`form1010d_extended`|Enables access to the combined 10-10d/10-7959c form experience (frontend) |This form is a WIP|
 
@@ -134,12 +135,13 @@ The module currently supports the following forms:
 Form PDFs have an expiration date found in the upper right corner below the OMB control number.
 To update a form with the latest PDF:
 1. Locate the latest version of the form PDF via VA.gov
-2. Save the PDF somewhere on disk
+2. Save the PDF somewhere on disk. **Important:** for `generate_mapping`, the filename before `.pdf` must match the existing mapping basename (e.g. save as `vha_10_7959a.pdf` in a temp path), not `VA.Form....pdf`, or the task will derive the wrong form name.
 3. Run `rails ivc_champva:generate_mapping\['path to PDF file'\]` - a file will be generated:
     - A JSON.erb mapping file in `modules/ivc_champva/app/form_mappings` (it will have "latest" in the name)
+   - **Note:** `generate_mapping` compares field names to the existing `.json.erb` using `JSON.parse` on that file. If the current mapping is ERB (not pure JSON), that step fails—use `pdftk the.pdf dump_data_fields` (or `PdfForms#get_field_names` in `rails runner`) to list fields and update the mapping manually.
 4. Compare the new mapping file with the existing one, updating mappings as appropriate.
-5. When the mapping file is complete, replace the original mapping file with the new one. 
-6. Replace the existing form PDF found in `modules/ivc_champva/templates/vha_{FORM NUMBER}.pdf` with the new one
+5. When the mapping file is complete, replace the original mapping file with the new one, **or** add a versioned form: new template `templates/vha_{id}.pdf`, mapping `form_mappings/vha_{id}.json.erb`, model `app/models/ivc_champva/vha_{id}.rb`, register in `FormVersionManager` + `config/features.yml`, and gate with `champva_form_versioning` + a `champva_form_*` flag.
+6. Replace the existing form PDF found in `modules/ivc_champva/templates/vha_{FORM NUMBER}.pdf` with the new one (for a new revision, add a new template file instead of overwriting when using `FormVersionManager`).
 7. Verify stamping behavior by running ivc_champva unit tests locally and observing the generated PDFs in the `tmp` directory.
 8. Adjust the form OMB expiration unit test found in `modules/ivc_champva/spec/models/vha_{FORM NUMBER}_spec.rb`
 

@@ -10,6 +10,7 @@ FORM_CONFIGS = {
   'vha_10_10d' => { fixture: 'vha_10_10d', has_stamps: true },
   'vha_10_10d_2027' => { fixture: 'vha_10_10d', has_stamps: true },
   'vha_10_7959a' => { fixture: 'vha_10_7959a', has_stamps: true },
+  'vha_10_7959a_2027' => { fixture: 'vha_10_7959a_2027', has_stamps: true },
   'vha_10_7959c' => { fixture: 'vha_10_7959c', has_stamps: false },
   'vha_10_7959c_rev2025' => { fixture: 'vha_10_7959c', has_stamps: true },
   'vha_10_7959f_1' => { fixture: 'vha_10_7959f_1', has_stamps: true },

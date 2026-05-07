@@ -12,7 +12,7 @@ RSpec.describe IvcChampva::VHA107959a do
           'first' => 'Veteran',
           'last' => 'Surname'
         },
-        'email' => false
+        'email' => 'veteran.contact@example.com'
       },
       'applicant_member_number' => '123456789',
       'applicant_name' => { 'first' => 'John', 'middle' => 'P', 'last' => 'Doe' },
@@ -60,9 +60,9 @@ RSpec.describe IvcChampva::VHA107959a do
               'first' => 'Veteran',
               'last' => 'Surname'
             },
-            'email' => false
+            'email' => 'veteran.contact@example.com'
           },
-          'primaryContactEmail' => 'false'
+          'primaryContactEmail' => 'veteran.contact@example.com'
         )
       end
     end
@@ -87,9 +87,9 @@ RSpec.describe IvcChampva::VHA107959a do
               'first' => 'Veteran',
               'last' => 'Surname'
             },
-            'email' => false
+            'email' => 'veteran.contact@example.com'
           },
-          'primaryContactEmail' => 'false'
+          'primaryContactEmail' => 'veteran.contact@example.com'
         )
       end
     end

@@ -15,6 +15,10 @@ module IvcChampva
       'vha_10_7959f_2' => {
         current: 'vha_10_7959f_2',
         '2025' => 'vha_10_7959f_2_2025'
+      },
+      'vha_10_7959a' => {
+        current: 'vha_10_7959a',
+        '2027' => 'vha_10_7959a_2027'
       }
     }.freeze
 
@@ -22,14 +26,16 @@ module IvcChampva
     FORM_VERSION_FLAGS = {
       'vha_10_10d_2027' => 'champva_form_10_10d_2027',
       'vha_10_7959c_rev2025' => 'champva_form_10_7959c_rev2025',
-      'vha_10_7959f_2_2025' => 'champva_form_10_7959f_2_2025'
+      'vha_10_7959f_2_2025' => 'champva_form_10_7959f_2_2025',
+      'vha_10_7959a_2027' => 'champva_claims_insurance_dates' # reuse existing FE flag for same feature
     }.freeze
 
     # Mapping of new form IDs back to legacy form IDs for S3/metadata compatibility
     LEGACY_MAPPING = {
       'vha_10_10d_2027' => 'vha_10_10d',
       'vha_10_7959c_rev2025' => 'vha_10_7959c',
-      'vha_10_7959f_2_2025' => 'vha_10_7959f_2'
+      'vha_10_7959f_2_2025' => 'vha_10_7959f_2',
+      'vha_10_7959a_2027' => 'vha_10_7959a'
     }.freeze
 
     class << self

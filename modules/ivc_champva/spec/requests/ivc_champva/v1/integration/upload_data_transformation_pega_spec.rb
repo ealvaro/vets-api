@@ -29,6 +29,9 @@ RSpec.describe 'Transformation Pega', type: :request do
         allow(Flipper).to receive(:enabled?)
           .with(:champva_send_to_ves, @current_user)
           .and_return(flipper_value)
+        # Prevent accidental use of the 10-7959A 2027 PDF in this suite unless a nested example opts in.
+        # Flipper flag name is a String (matches FormVersionManager::FORM_VERSION_FLAGS values).
+        allow(Flipper).to receive(:enabled?).with('champva_claims_insurance_dates', anything).and_return(false)
 
         allow(SecureRandom).to receive(:uuid).and_return(uuid)
         allow(PersistentAttachments::MilitaryRecords).to receive(:find_by)
@@ -36,7 +39,8 @@ RSpec.describe 'Transformation Pega', type: :request do
                                         id: 'some_uuid', file: double(id: 'file0')))
 
         # Mock PDF generation
-        [IvcChampva::VHA1010d2027, IvcChampva::VHA1010d, IvcChampva::VHA107959a, IvcChampva::VHA107959cRev2025,
+        [IvcChampva::VHA1010d2027, IvcChampva::VHA1010d, IvcChampva::VHA107959a, IvcChampva::VHA107959a2027,
+         IvcChampva::VHA107959cRev2025,
          IvcChampva::VHA107959c, IvcChampva::VHA107959f1, IvcChampva::VHA107959f2,
          IvcChampva::VHA107959f22025].each do |form|
           allow_any_instance_of(form).to receive(:handle_attachments).and_return([pdf_path])
@@ -356,6 +360,65 @@ RSpec.describe 'Transformation Pega', type: :request do
               key: "#{uuid}_vha_10_7959a_metadata.json",
               body: metadata_json,
               metadata: {}
+            )
+          )
+        end
+      end
+
+      describe '10_7959a 2027 revision (version flags on)' do
+        fixture_path = Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json',
+                                       'vha_10_7959a_2027.json')
+        data = JSON.parse(fixture_path.read)
+
+        let(:pdf_path) { Rails.root.join('tmp', "#{uuid}_vha_10_7959a.pdf").to_s }
+
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?).with(:champva_form_versioning, anything).and_return(true)
+          allow(Flipper).to receive(:enabled?).with('champva_claims_insurance_dates', anything).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:champva_update_metadata_keys).and_return(false)
+        end
+
+        it 'submits using the 2027 model and includes new Pega metadata email fields' do
+          metadata_json = {
+            veteranFirstName: data.dig('applicant_name', 'first'),
+            veteranLastName: data.dig('applicant_name', 'last'),
+            zipCode: data.dig('applicant_address', 'postal_code'),
+            source: 'VA Platform Digital Forms',
+            docType: data['form_number'],
+            businessLine: 'CMP',
+            ssn_or_tin: data['applicant_member_number'],
+            member_number: data['applicant_member_number'],
+            fileNumber: data['applicant_member_number'],
+            country: data.dig('applicant_address', 'country'),
+            uuid:,
+            primaryContactInfo: {
+              name: data.dig('primary_contact_info', 'name'),
+              email: data.dig('primary_contact_info', 'email').to_s,
+              phone: data.dig('primary_contact_info', 'phone')
+            },
+            primaryContactEmail: data.dig('primary_contact_info', 'email').to_s,
+            applicantEmail: data['applicant_email'].to_s,
+            signerEmail: data['certifier_email'].to_s,
+            formExpiration: '12/31/2027',
+            claim_type: data['claim_type'],
+            attachment_ids: %w[vha_10_7959a vha_10_7959a 0 1]
+          }.to_json
+
+          allow_any_instance_of(IvcChampva::S3).to receive(:read_file).and_return(metadata_json)
+
+          post '/ivc_champva/v1/forms', params: data
+          expect(response).to have_http_status(:ok)
+
+          expect(aws_client).to have_received(:put_object).once.with(
+            hash_including(
+              key: "#{uuid}_vha_10_7959a.pdf",
+              metadata: a_hash_including(
+                'applicantEmail' => data['applicant_email'].to_s,
+                'signerEmail' => data['certifier_email'].to_s,
+                'formExpiration' => '12/31/2027',
+                'attachment_id' => 'vha_10_7959a'
+              )
             )
           )
         end
