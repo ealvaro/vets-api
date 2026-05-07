@@ -33,7 +33,7 @@ http_interactions:
       X-Git-Sha:
       - MISSING_GIT_REVISION
       X-Github-Repository:
-      - https://github.com/department-of-veterans-affairs/vets-api
+      - https://va.ghe.com/software/vets-api
       Content-Type:
       - application/json; charset=utf-8
       Cache-Control:

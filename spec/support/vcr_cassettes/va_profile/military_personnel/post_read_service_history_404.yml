@@ -39,7 +39,7 @@ http_interactions:
       X-Git-Sha:
       - ffdae4f2019e2d3795d6022c57ca7304bf44c6d7
       X-Github-Repository:
-      - https://github.com/department-of-veterans-affairs/vets-api
+      - https://va.ghe.com/software/vets-api
       X-Permitted-Cross-Domain-Policies:
       - none
       X-Request-Id:

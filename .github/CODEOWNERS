@@ -2448,6 +2448,7 @@ spec/support/vcr_cassettes/lighthouse/benefits_claims/submit_power_of_attorney_r
 spec/support/vcr_cassettes/lighthouse/benefits_claims/submit_power_of_attorney_request/404_response.yml @software/accredited-representative-crew @software/backend-review-group
 spec/support/vcr_cassettes/lighthouse/benefits_claims/submit_power_of_attorney_request/413_response.yml @software/accredited-representative-crew @software/backend-review-group
 spec/support/vcr_cassettes/lighthouse/benefits_claims/submit_power_of_attorney_request/422_response.yml @software/accredited-representative-crew @software/backend-review-group
+spec/support/vcr_cassettes/lighthouse/claims @software/backend-review-group @software/disability-benefits
 spec/support/vcr_cassettes/apps @software/lighthouse-pivot
 spec/support/vcr_cassettes/ask_va_api @software/ask-va-team @software/backend-review-group
 spec/support/vcr_cassettes/ask_va_api/dynamics @software/ask-va-team @software/backend-review-group
@@ -2580,6 +2581,7 @@ spec/support/vcr_cassettes/veteran_enrollment_system/enrollment_periods @softwar
 spec/support/vcr_cassettes/veteran_enrollment_system/form1095_b @software/va-core-veteran-experiences @software/backend-review-group
 spec/support/vcr_cassettes/veteran_readiness_employment @software/benefits-non-disability @software/backend-review-group
 spec/support/vcr_cassettes/vetext @software/mobile-api-team
+spec/support/vcr_cassettes/verbose_logging @software/backend-review-group
 spec/support/vcr_cassettes/vha/sharepoint/update_list_item_fields_400.yml @software/vsa-debt-resolution @software/backend-review-group
 spec/support/vcr_cassettes/vha/sharepoint/upload_pdf_400_response.yml @software/vsa-debt-resolution @software/backend-review-group
 spec/support/vcr_cassettes/vre @software/govcio-vfep-codereviewers @software/va-core-veteran-experiences @software/backend-review-group

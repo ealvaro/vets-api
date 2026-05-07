@@ -39,7 +39,7 @@ http_interactions:
       X-Git-Sha:
       - eb535c6d95076e05329b90864ddb943e860a71c1
       X-Github-Repository:
-      - https://github.com/department-of-veterans-affairs/vets-api
+      - https://va.ghe.com/software/vets-api
       X-Kong-Proxy-Latency:
       - '1'
       X-Kong-Upstream-Latency:
