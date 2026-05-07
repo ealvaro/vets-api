@@ -900,6 +900,31 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
             end
           end
         end
+
+        context 'when city exceeds maxLength' do
+          it 'returns an unprocessable entity error' do
+            mock_acg(scopes) do |auth_header|
+              VCR.use_cassette('claims_api/brd/countries') do
+                par = json_data
+                par['data']['attributes']['veteran']['changeOfAddress'] = {
+                  beginningDate: 1.month.from_now.to_date.to_s,
+                  addressChangeType: 'PERMANENT',
+                  addressLine1: '1234 Couch Street',
+                  city: 'A' * 21,
+                  state: 'OR',
+                  type: 'DOMESTIC',
+                  zipFirstFive: '12345',
+                  country: 'USA'
+                }
+                post path, params: par.to_json, headers: headers.merge(auth_header)
+                expect(response).to have_http_status(:unprocessable_content)
+                errors = JSON.parse(response.body)['errors']
+                expect(errors).to be_an Array
+                expect(errors[0]['detail']).to include('/veteran/changeOfAddress/city', '"maxLength"=>20')
+              end
+            end
+          end
+        end
       end
 
       describe 'activeDutyEndDate within 180 days' do
@@ -3666,6 +3691,25 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
               params['data']['attributes']['veteran']['currentMailingAddress']['country'] = 'US'
               post path, params: params.to_json, headers: headers.merge(auth_header)
               expect(response).to have_http_status(:bad_request)
+            end
+          end
+        end
+      end
+
+      describe "'currentMailingAddress.city'" do
+        context 'when city exceeds maxLength' do
+          it 'returns an unprocessable entity error' do
+            mock_acg(scopes) do |auth_header|
+              VCR.use_cassette('claims_api/brd/countries') do
+                json_data = JSON.parse data
+                params = json_data
+                params['data']['attributes']['veteran']['currentMailingAddress']['city'] = 'A' * 21
+                post path, params: params.to_json, headers: headers.merge(auth_header)
+                expect(response).to have_http_status(:unprocessable_content)
+                errors = JSON.parse(response.body)['errors']
+                expect(errors).to be_an Array
+                expect(errors[0]['detail']).to include('/veteran/currentMailingAddress/city', '"maxLength"=>20')
+              end
             end
           end
         end

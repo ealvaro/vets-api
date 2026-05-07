@@ -77,6 +77,7 @@
               "description": "City Veteran resides in.",
               "type": "string",
               "pattern": "^([-a-zA-Z0-9'.#]([-a-zA-Z0-9'.# ])?)+$",
+              "maxLength": 20,
               "example": "Portland"
             },
             "country": {
@@ -213,6 +214,7 @@
               "description": "New city Veteran resides in.",
               "type": "string",
               "pattern": "^([-a-zA-Z0-9'.#]([-a-zA-Z0-9'.# ])?)+$",
+              "maxLength": 20,
               "example": "Portland"
             },
             "country": {
