@@ -612,6 +612,35 @@ describe MedicalRecords::Client do
           expect { client.handle_api_errors(result) }.to raise_error(Common::Exceptions::BackendServiceException)
         end
       end
+
+      context 'when response body is HTML instead of JSON' do
+        let(:html_body) { '<html><body><h1>500 Internal Server Error</h1></body></html>' }
+        let(:result) { OpenStruct.new(code: 500, body: html_body) }
+
+        it 'raises a BackendServiceException with a non-JSON diagnostic message' do
+          expect(Rails.logger).to receive(:error).with(
+            'MedicalRecords received non-JSON error response',
+            hash_including(body_size: html_body.length)
+          )
+          expect { client.handle_api_errors(result) }.to raise_error(
+            Common::Exceptions::BackendServiceException
+          ) do |error|
+            expect(error.message).to include('Upstream service returned a non-JSON response')
+          end
+        end
+      end
+
+      context 'when response body is non-JSON text' do
+        let(:result) { OpenStruct.new(code: 502, body: 'Bad Gateway') }
+
+        it 'raises a BackendServiceException and logs safe metadata' do
+          expect(Rails.logger).to receive(:error).with(
+            'MedicalRecords received non-JSON error response',
+            hash_including(body_size: 11)
+          )
+          expect { client.handle_api_errors(result) }.to raise_error(Common::Exceptions::BackendServiceException)
+        end
+      end
     end
   end
 

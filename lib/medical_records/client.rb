@@ -339,8 +339,7 @@ module MedicalRecords
 
     def handle_api_errors(result)
       if result.code.present? && result.code >= 400
-        body = JSON.parse(result.body)
-        diagnostics = body['issue']&.first&.fetch('diagnostics', nil)
+        diagnostics = parse_error_diagnostics(result.body)
         diagnostics = "Error fetching data#{": #{diagnostics}" if diagnostics}"
 
         # Default exception handling
@@ -351,6 +350,17 @@ module MedicalRecords
           source: self.class.to_s
         )
       end
+    end
+
+    def parse_error_diagnostics(body)
+      parsed = JSON.parse(body.to_s)
+      parsed['issue']&.first&.fetch('diagnostics', nil)
+    rescue JSON::ParserError
+      Rails.logger.error(
+        'MedicalRecords received non-JSON error response',
+        body_size: body.to_s.length
+      )
+      'Upstream service returned a non-JSON response'
     end
 
     ##
