@@ -181,6 +181,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
         before do
           allow(Flipper).to receive(:enabled?).and_call_original
           allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(false)
         end
 
         it 'excludes the Service Verification letter' do
@@ -207,6 +208,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
         before do
           allow(Flipper).to receive(:enabled?).and_call_original
           allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
+          allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(false)
         end
 
         it 'does not exclude the Service Verification letter and matches the letters schema' do
@@ -234,6 +236,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
           allow(Flipper).to receive(:enabled?).and_call_original
           allow(Flipper).to receive(:enabled?).with(:mobile_coe_letter_use_lgy_service,
                                                     instance_of(User)).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(false)
         end
 
         context 'with an app version that supports COE letters' do
@@ -533,6 +536,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
         allow(Flipper).to receive(:enabled?).and_call_original
         allow(Flipper).to receive(:enabled?).with(:mobile_coe_letter_use_lgy_service,
                                                   instance_of(User)).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(false)
       end
 
       it 'returns 400 bad request' do
@@ -552,6 +556,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
         allow(Flipper).to receive(:enabled?).and_call_original
         allow(Flipper).to receive(:enabled?).with(:mobile_coe_letter_use_lgy_service,
                                                   instance_of(User)).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(false)
       end
 
       it 'downloads a PDF' do

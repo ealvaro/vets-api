@@ -288,6 +288,82 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
       end
     end
 
+    describe 'cst_letters_content_updates flag' do
+      let(:user) { build(:user) }
+      let(:eligible_letters_response) do
+        {
+          'letters' => [
+            { 'letterType' => 'SERVICE_VERIFICATION', 'letterName' => 'Service verification letter' },
+            { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => 'Benefits summary letter from LH' },
+            { 'letterType' => 'PROOF_OF_SERVICE', 'letterName' => 'Proof of service letter from LH' }
+          ],
+          'letterDestination' => { 'name' => 'DOLLY PARTON' }
+        }
+      end
+
+      before do
+        expect_any_instance_of(Lighthouse::LettersGenerator::Configuration)
+          .to receive(:get_access_token)
+          .once
+          .and_return('faketoken')
+
+        @stubs.get('/eligible-letters?icn=DOLLYPARTON') do
+          [200, {}, eligible_letters_response]
+        end
+      end
+
+      context 'when cst_letters_content_updates is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(false)
+          allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
+        end
+
+        it 'returns the existing lighthouse shape' do
+          client = Lighthouse::LettersGenerator::Service.new
+          response = client.get_eligible_letter_types('DOLLYPARTON', user)
+
+          expect(response[:letters]).to eq(
+            [
+              { letterType: 'service_verification', name: 'Service verification letter' },
+              { letterType: 'benefit_summary', name: 'Benefits summary letter from LH' },
+              { letterType: 'proof_of_service', name: 'Proof of service letter from LH' }
+            ]
+          )
+        end
+      end
+
+      context 'when cst_letters_content_updates is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
+        end
+
+        it 'applies names, descriptions, and ordering' do
+          client = Lighthouse::LettersGenerator::Service.new
+          response = client.get_eligible_letter_types('DOLLYPARTON', user)
+
+          expect(response[:letters].map { |l| l[:letterType] }).to eq(
+            %w[benefit_summary proof_of_service service_verification]
+          )
+
+          benefit_summary = response[:letters].first
+          service_verification = response[:letters].last
+
+          expect(benefit_summary[:name]).to eq('Benefits and service verification')
+          expect(benefit_summary[:description]['paragraphs'].first).to start_with(
+            'This letter confirms your service history'
+          )
+          expect(benefit_summary[:description]['lists'].first['items']).to include('Applying for housing assistance')
+          expect(benefit_summary[:description]['subtitle']).to eq('Choose topics to include')
+
+          expect(service_verification[:name]).to eq('Service verification letter')
+          expect(service_verification[:description]).to be_nil
+        end
+      end
+    end
+
     context 'Error handling' do
       it 'handles an error that returns a detailed response' do
         ## This test covers classes of client errors in lighthouse that
@@ -483,6 +559,161 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
         expect { client.download_letter(icns, 'BENEFIT_SUMMARY') }.to raise_error do |error|
           expect(error).to be_an_instance_of(Common::Exceptions::BadRequest)
         end
+      end
+    end
+  end
+
+  describe 'letters_hide_service_verification_letter flag' do
+    let(:user) { build(:user) }
+    let(:eligible_letters_response) do
+      {
+        'letters' => [
+          { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => 'Benefit summary letter' },
+          { 'letterType' => 'SERVICE_VERIFICATION', 'letterName' => 'Service verification letter' },
+          { 'letterType' => 'PROOF_OF_SERVICE', 'letterName' => 'Proof of service letter' }
+        ],
+        'letterDestination' => { 'name' => 'DOLLY PARTON' }
+      }
+    end
+
+    before do
+      expect_any_instance_of(Lighthouse::LettersGenerator::Configuration)
+        .to receive(:get_access_token)
+        .once
+        .and_return('faketoken')
+
+      @stubs.get('/eligible-letters?icn=DOLLYPARTON') do
+        [200, {}, eligible_letters_response]
+      end
+    end
+
+    context 'when letters_hide_service_verification_letter is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
+      end
+
+      it 'includes service_verification letter' do
+        client = Lighthouse::LettersGenerator::Service.new
+        response = client.get_eligible_letter_types('DOLLYPARTON', user)
+
+        letter_types = response[:letters].pluck(:letterType)
+        expect(letter_types).to include('service_verification')
+      end
+    end
+
+    context 'when letters_hide_service_verification_letter is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(true)
+      end
+
+      it 'excludes service_verification letter' do
+        client = Lighthouse::LettersGenerator::Service.new
+        response = client.get_eligible_letter_types('DOLLYPARTON', user)
+
+        letter_types = response[:letters].pluck(:letterType)
+        expect(letter_types).not_to include('service_verification')
+        expect(letter_types).to include('benefit_summary', 'proof_of_service')
+      end
+    end
+  end
+
+  describe 'letter ordering and sorting' do
+    let(:user) { build(:user) }
+    let(:eligible_letters_response) do
+      {
+        'letters' => [
+          { 'letterType' => 'BENEFIT_SUMMARY_DEPENDENT', 'letterName' => 'Dependent Benefit Summary Letter' },
+          { 'letterType' => 'PROOF_OF_SERVICE', 'letterName' => 'Proof of service card' },
+          { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => 'Benefits and service verification' }
+        ],
+        'letterDestination' => { 'name' => 'TEST USER' }
+      }
+    end
+
+    before do
+      expect_any_instance_of(Lighthouse::LettersGenerator::Configuration)
+        .to receive(:get_access_token)
+        .once
+        .and_return('faketoken')
+
+      @stubs.get('/eligible-letters?icn=TESTUSER') do
+        [200, {}, eligible_letters_response]
+      end
+    end
+
+    context 'when cst_letters_content_updates is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
+      end
+
+      it 'returns letters in the original order from Lighthouse' do
+        client = Lighthouse::LettersGenerator::Service.new
+        response = client.get_eligible_letter_types('TESTUSER', user)
+
+        letter_types = response[:letters].map { |l| l[:letterType] }
+        expect(letter_types).to eq(%w[benefit_summary_dependent proof_of_service benefit_summary])
+      end
+    end
+
+    context 'when cst_letters_content_updates is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:fmp_benefits_authorization_letter, user).and_return(true)
+      end
+
+      it 'sorts letters according to LETTER_ORDER with remaining letters appended' do
+        client = Lighthouse::LettersGenerator::Service.new
+        response = client.get_eligible_letter_types('TESTUSER', user)
+
+        letter_types = response[:letters].map { |l| l[:letterType] }
+        # benefit_summary should come first (defined in LETTER_ORDER)
+        # proof_of_service should come second (defined in LETTER_ORDER)
+        # benefit_summary_dependent should come last (not in LETTER_ORDER)
+        expect(letter_types).to eq(%w[benefit_summary proof_of_service benefit_summary_dependent])
+      end
+    end
+  end
+
+  describe 'edge cases in letter transformation' do
+    let(:user) { build(:user) }
+    let(:eligible_letters_response) do
+      {
+        'letters' => [
+          { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => nil }
+        ],
+        'letterDestination' => { 'name' => 'TEST USER' }
+      }
+    end
+
+    before do
+      expect_any_instance_of(Lighthouse::LettersGenerator::Configuration)
+        .to receive(:get_access_token)
+        .once
+        .and_return('faketoken')
+
+      @stubs.get('/eligible-letters?icn=TESTUSER') do
+        [200, {}, eligible_letters_response]
+      end
+    end
+
+    context 'when cst_letters_content_updates is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
+      end
+
+      it 'handles letters with missing letterName gracefully' do
+        client = Lighthouse::LettersGenerator::Service.new
+        response = client.get_eligible_letter_types('TESTUSER', user)
+
+        expect(response[:letters].first[:name]).to be_nil
       end
     end
   end

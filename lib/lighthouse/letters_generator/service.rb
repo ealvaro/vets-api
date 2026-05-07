@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'lighthouse/letters_generator/configuration'
+require 'lighthouse/letters_generator/content'
 require 'lighthouse/letters_generator/service_error'
 require 'lighthouse/service_exception'
 require 'common/exceptions/bad_request'
@@ -132,12 +133,45 @@ module Lighthouse
 
       def transform_letters(letters, user = nil)
         filtered_letters = letters.select { |l| valid_type?(l['letterType'], user) }
-        filtered_letters.map do |letter|
+
+        unless content_updates_enabled?(user)
+          return filtered_letters.map do |letter|
+            {
+              letterType: letter['letterType'].downcase,
+              name: letter['letterName']
+            }
+          end
+        end
+
+        transformed = updated_letter_transformation(filtered_letters)
+        sort_letters_by_order(transformed)
+      end
+
+      def updated_letter_transformation(letters)
+        letters.map do |letter|
+          letter_type_lower = letter['letterType'].downcase
           {
-            letterType: letter['letterType'].downcase,
-            name: letter['letterName']
+            letterType: letter_type_lower,
+            name: Content::LETTER_NAME_OVERRIDES[letter_type_lower] || letter['letterName'],
+            description: Content::LETTER_DESCRIPTIONS[letter_type_lower]
           }
         end
+      end
+
+      def sort_letters_by_order(transformed_letters)
+        sorted_by_order = Content::LETTER_ORDER.filter_map do |letter_type|
+          transformed_letters.find { |letter| letter[:letterType] == letter_type }
+        end
+
+        remaining_letters = transformed_letters.reject do |letter|
+          sorted_by_order.any? { |sorted| sorted[:letterType] == letter[:letterType] }
+        end
+
+        sorted_by_order + remaining_letters
+      end
+
+      def content_updates_enabled?(user)
+        Flipper.enabled?(:cst_letters_content_updates, user)
       end
 
       def transform_military_services(services_info)

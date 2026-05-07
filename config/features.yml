@@ -722,6 +722,12 @@ features:
   cst_claim_letters_use_lighthouse_api_provider_mobile:
     actor_type: user
     description: When enabled, claims_letters from the Lighthouse API Provider in mobile endpoints
+  cst_letters_content_updates:
+    actor_type: user
+    description: >-
+      Enables shared benefit-letter content (names, ordering, filtering, and
+      structured descriptions) across vets-website and va-mobile-app.
+    enable_in_development: false
   cst_use_claim_title_generator_web:
     description: When enabled, use the title generator to insert claim titles into claim list responses.
   cst_use_claim_title_generator_mobile:
