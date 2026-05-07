@@ -152,10 +152,8 @@ module ClaimsApi
         def flashes
           veteran_flashes = []
           homelessness = form_attributes.dig('homeless', 'currentlyHomeless', 'homelessSituationOptions')
-          hardship = form_attributes.dig('homeless', 'riskOfBecomingHomeless', 'livingSituationOptions')
 
           veteran_flashes.push('Homeless') if homelessness.present?
-          veteran_flashes.push('Hardship') if hardship.present?
 
           veteran_flashes
         end

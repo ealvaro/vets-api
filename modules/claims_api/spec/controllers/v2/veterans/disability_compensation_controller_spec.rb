@@ -125,6 +125,34 @@ RSpec.describe ClaimsApi::V2::Veterans::DisabilityCompensationController, type: 
       end
     end
 
+    describe '#flashes' do
+      let(:homeless_situation_attributes) do
+        {
+          'homeless' => {
+            'currentlyHomeless' => {
+              'homelessSituationOptions' => 'LIVING_IN_A_HOMELESS_SHELTER'
+            }
+          }
+        }
+      end
+
+      context 'when homeless situation options are present' do
+        it 'includes Homeless flash' do
+          allow(controller).to receive(:form_attributes).and_return(homeless_situation_attributes)
+
+          expect(controller.send(:flashes)).to eq(['Homeless'])
+        end
+      end
+
+      context 'when homeless situation options are not present' do
+        it 'returns empty array' do
+          allow(controller).to receive(:form_attributes).and_return({})
+
+          expect(controller.send(:flashes)).to eq([])
+        end
+      end
+    end
+
     # NOTE: Intentionally NOT testing shared_validation with FES flipper logic
     # That will be covered in the actual PR with the FES changes
   end
