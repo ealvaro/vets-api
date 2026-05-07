@@ -36,5 +36,11 @@
         "status": "PENDING"
       }
     ]
+  },
+  "caseManager": {
+    "firstName": "Chicken",
+    "lastName": "Chickenova",
+    "email": "chicken@aol.gov",
+    "phone": "908-999-9999"
   }
 }

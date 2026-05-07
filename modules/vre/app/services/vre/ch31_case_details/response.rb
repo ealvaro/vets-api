@@ -9,6 +9,7 @@ module VRE
       attribute :is_transferred_to_cwnrs, Bool
       attribute :orientation_appointment_details, OrientationAppointmentDetails
       attribute :external_status, ExternalStatus
+      attribute :case_manager, CaseManager
 
       def initialize(_status, response = nil)
         super(response.body) if response

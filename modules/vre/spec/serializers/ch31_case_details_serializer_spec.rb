@@ -31,4 +31,8 @@ RSpec.describe VRE::Ch31CaseDetailsSerializer, type: :serializer do
   it 'includes :external_status' do
     expect(attributes['external_status']).to eq(body['external_status'])
   end
+
+  it 'includes :case_manager' do
+    expect(attributes['case_manager']).to eq(body['case_manager'])
+  end
 end
