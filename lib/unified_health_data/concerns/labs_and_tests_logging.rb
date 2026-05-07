@@ -41,6 +41,114 @@ module UnifiedHealthData
         @labs_caller ? { caller: @labs_caller } : {}
       end
 
+      # Dual-path logging: structured mr_log when available, Rails.logger fallback otherwise.
+      def log_adapter(level, structured_opts, fallback_message, fallback_opts = {})
+        if @mr_log
+          @mr_log.public_send(level, **structured_opts)
+        else
+          Rails.logger.public_send(level, fallback_message, fallback_opts.presence)
+        end
+      end
+
+      def log_warnings(record, encoded_data, observations)
+        log_final_status_warning(record, record['resource']['status'], encoded_data, observations)
+        log_missing_date_warning(record)
+      end
+
+      def log_filtered_diagnostic_report(record, reason)
+        resource = record['resource']
+        log_adapter(
+          :info,
+          { resource: LABS, action: 'filter', report_id: resource['id'],
+            status: resource['status'], reason:, filtering: true },
+          "Filtered DiagnosticReport: id=#{resource['id']}, status=#{resource['status']}, reason=#{reason}",
+          { service: 'unified_health_data', filtering: true }
+        )
+        StatsD.increment('unified_health_data.lab_or_test.filtered_diagnostic_report',
+                         tags: ["reason:#{reason}"])
+      end
+
+      def log_filtered_observations(record, filtered_count, total_count)
+        resource = record['resource']
+        log_adapter(
+          :info,
+          { resource: LABS, action: 'filter_observations', report_id: resource['id'],
+            filtered: filtered_count, total: total_count, filtering: true },
+          "Filtered #{filtered_count}/#{total_count} Observations from DiagnosticReport #{resource['id']}",
+          { service: 'unified_health_data', filtering: true }
+        )
+        # Increment the counter once per DiagnosticReport that has filtered observations
+        StatsD.increment('unified_health_data.lab_or_test.filtered_observations')
+      end
+
+      # Logs when an individual record fails to parse. Isolates one bad record from
+      # killing the entire batch so the veteran still sees the rest of their results.
+      def log_record_parse_failure(record, error)
+        report_id = record.dig('resource', 'id')
+        log_adapter(
+          :error,
+          { resource: LABS, action: 'parse', anomaly: 'record_parse_failure',
+            report_id:, error_class: error.class.name, error_message: error.message },
+          "Failed to parse DiagnosticReport #{report_id}: #{error.class} - #{error.message}",
+          { service: 'unified_health_data' }
+        )
+        StatsD.increment('unified_health_data.lab_or_test.parse_failure')
+      end
+
+      # Logs when an individual observation within a DiagnosticReport fails to parse.
+      # Isolates one bad observation so the rest of the record's observations are still returned.
+      def log_observation_parse_failure(record, obs, error)
+        report_id = record.dig('resource', 'id')
+        observation_id = obs['id']
+        log_adapter(
+          :error,
+          { resource: LABS, action: 'parse', anomaly: 'observation_parse_failure',
+            report_id:, observation_id:, error_class: error.class.name, error_message: error.message },
+          "Failed to parse Observation #{observation_id} in DiagnosticReport #{report_id}: " \
+          "#{error.class} - #{error.message}",
+          { service: 'unified_health_data' }
+        )
+        StatsD.increment('unified_health_data.lab_or_test.observation_parse_failure')
+      end
+
+      def log_final_status_warning(record, status, encoded_data, observations)
+        return unless status == 'final' && encoded_data.blank? && observations.blank?
+
+        report_id = record['resource']['id']
+        if @mr_log
+          @mr_log.warn(resource: LABS, action: 'parse', anomaly: 'final_status_empty_data', report_id:)
+        else
+          patient_ref = record['resource']&.dig('subject', 'reference')
+          patient_last_four = patient_ref&.split('/')&.last&.last(4) || 'unknown'
+          Rails.logger.warn(
+            "DiagnosticReport #{report_id} has status 'final' but is missing " \
+            "both encoded data and observations (Patient: #{patient_last_four})",
+            { service: 'unified_health_data' }
+          )
+        end
+        StatsD.increment('unified_health_data.lab_or_test.final_status_empty_data')
+      end
+
+      def log_missing_date_warning(record)
+        resource = record['resource']
+        effective_date_time = resource['effectiveDateTime']
+        effective_period = resource['effectivePeriod']
+
+        detail = if effective_date_time.blank? && effective_period.blank?
+                   'missing effectiveDateTime and effectivePeriod'
+                 elsif effective_period.present? && effective_period['start'].blank?
+                   'missing effectivePeriod.start'
+                 end
+        return unless detail
+
+        log_adapter(
+          :warn,
+          { resource: LABS, action: 'parse', anomaly: 'missing_date', report_id: resource['id'], detail: },
+          "DiagnosticReport #{resource['id']} is #{detail}",
+          { service: 'unified_health_data' }
+        )
+      end
+
       # Logs test code and display name distribution (migrated from Logging class).
       # NOTE: warn_short_test_names is intentionally diagnostic-gated (unlike the
       # always-on anomaly warnings in log_labs_metrics) because short names (≤3 chars)

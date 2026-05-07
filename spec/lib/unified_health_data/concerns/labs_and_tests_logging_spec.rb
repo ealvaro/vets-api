@@ -566,4 +566,127 @@ RSpec.describe UnifiedHealthData::Concerns::LabsAndTestsLogging do
       end
     end
   end
+
+  describe 'mr_log structured logging (dual-path)' do
+    let(:mr_log) { instance_double(MedicalRecords::MedicalRecordsLog) }
+
+    let(:instance_with_log) do
+      obj = test_class.new(user)
+      obj.instance_variable_set(:@mr_log, mr_log)
+      obj
+    end
+
+    let(:base_record) do
+      {
+        'resource' => {
+          'resourceType' => 'DiagnosticReport',
+          'id' => 'mr-log-test-123',
+          'status' => 'final',
+          'category' => [{ 'coding' => [{ 'code' => 'CH' }] }],
+          'code' => { 'text' => 'Chemistry Panel' },
+          'effectiveDateTime' => '2024-06-01T00:00:00Z',
+          'presentedForm' => [{ 'contentType' => 'text/plain', 'data' => 'encoded-data' }]
+        }
+      }
+    end
+
+    before do
+      allow(StatsD).to receive(:increment)
+    end
+
+    describe '#log_filtered_diagnostic_report' do
+      it 'uses mr_log.info with structured opts when mr_log present' do
+        expect(mr_log).to receive(:info).with(
+          resource: 'labs_and_tests',
+          action: 'filter',
+          report_id: 'mr-log-test-123',
+          status: 'preliminary',
+          reason: 'disallowed_status',
+          filtering: true
+        )
+
+        record = base_record.deep_dup
+        record['resource']['status'] = 'preliminary'
+        instance_with_log.send(:log_filtered_diagnostic_report, record, 'disallowed_status')
+      end
+
+      it 'falls back to Rails.logger when mr_log is nil' do
+        expect(Rails.logger).to receive(:info).with(
+          /Filtered DiagnosticReport.*disallowed_status/,
+          hash_including(service: 'unified_health_data')
+        )
+
+        record = base_record.deep_dup
+        record['resource']['status'] = 'preliminary'
+        instance.send(:log_filtered_diagnostic_report, record, 'disallowed_status')
+      end
+    end
+
+    describe '#log_filtered_observations' do
+      it 'uses mr_log.info with structured opts when mr_log present' do
+        expect(mr_log).to receive(:info).with(
+          resource: 'labs_and_tests',
+          action: 'filter_observations',
+          report_id: 'mr-log-test-123',
+          filtered: 2,
+          total: 5,
+          filtering: true
+        )
+
+        instance_with_log.send(:log_filtered_observations, base_record, 2, 5)
+      end
+    end
+
+    describe '#log_final_status_warning' do
+      it 'uses mr_log.warn with structured opts when mr_log present' do
+        expect(mr_log).to receive(:warn).with(
+          resource: 'labs_and_tests',
+          action: 'parse',
+          anomaly: 'final_status_empty_data',
+          report_id: 'mr-log-test-123'
+        )
+
+        instance_with_log.send(:log_final_status_warning, base_record, 'final', nil, nil)
+      end
+
+      it 'increments the StatsD counter for final_status_empty_data' do
+        allow(mr_log).to receive(:warn)
+
+        instance_with_log.send(:log_final_status_warning, base_record, 'final', nil, nil)
+
+        expect(StatsD).to have_received(:increment)
+          .with('unified_health_data.lab_or_test.final_status_empty_data')
+      end
+
+      it 'does not log or increment when status is not final' do
+        expect(mr_log).not_to receive(:warn)
+        instance_with_log.send(:log_final_status_warning, base_record, 'preliminary', nil, nil)
+
+        expect(StatsD).not_to have_received(:increment)
+          .with('unified_health_data.lab_or_test.final_status_empty_data')
+      end
+    end
+
+    describe '#log_missing_date_warning' do
+      it 'uses mr_log.warn for missing dates when mr_log present' do
+        record = base_record.deep_dup
+        record['resource'].delete('effectiveDateTime')
+
+        expect(mr_log).to receive(:warn).with(
+          resource: 'labs_and_tests',
+          action: 'parse',
+          anomaly: 'missing_date',
+          report_id: 'mr-log-test-123',
+          detail: 'missing effectiveDateTime and effectivePeriod'
+        )
+
+        instance_with_log.send(:log_missing_date_warning, record)
+      end
+
+      it 'does not log when effectiveDateTime is present' do
+        expect(mr_log).not_to receive(:warn)
+        instance_with_log.send(:log_missing_date_warning, base_record)
+      end
+    end
+  end
 end

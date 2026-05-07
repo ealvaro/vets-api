@@ -129,6 +129,21 @@ module UnifiedHealthData
         StatsD.increment("#{self.class::STATSD_KEY_PREFIX}.clinical_notes.anomaly.date_parse_failures")
       end
 
+      def log_care_summaries_metrics(doc_ref_records, parsed_notes, start_date, end_date)
+        clinical_notes_logging_enabled? && log_notes_response_count(doc_ref_records.size, parsed_notes.size)
+        clinical_notes_logging_enabled? && log_notes_index_metrics(parsed_notes, start_date, end_date)
+
+        doc_ref_tally = doc_ref_records.map { |r| r['source'] }.tally
+        returned_tally = parsed_notes.map(&:source).tally
+        source_breakdown = {
+          vista_doc_refs: doc_ref_tally[SourceConstants::VISTA] || 0,
+          oh_doc_refs: doc_ref_tally[SourceConstants::ORACLE_HEALTH] || 0,
+          vista_returned: returned_tally[SourceConstants::VISTA] || 0,
+          oh_returned: returned_tally[SourceConstants::ORACLE_HEALTH] || 0
+        }
+        warn_high_filter_rate(doc_ref_records.size, parsed_notes.size, source_breakdown:)
+      end
+
       # Diagnostic: logs each individual note excluded by the date-range filter.
       # Toggle-gated to avoid log volume in normal operation.
       def log_note_excluded_by_date(note, reason:)

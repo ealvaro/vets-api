@@ -3,6 +3,7 @@
 require 'rails_helper'
 require 'unified_health_data/concerns/clinical_notes_logging'
 require 'unified_health_data/source_constants'
+require 'unified_health_data/models/clinical_notes'
 require 'medical_records/medical_records_log'
 
 RSpec.describe UnifiedHealthData::Concerns::ClinicalNotesLogging do
@@ -428,6 +429,97 @@ RSpec.describe UnifiedHealthData::Concerns::ClinicalNotesLogging do
       expect(Rails.logger).not_to have_received(:warn)
       expect(StatsD).not_to have_received(:increment)
         .with('api.uhd.clinical_notes.anomaly.date_parse_failures')
+    end
+  end
+
+  describe '#log_care_summaries_metrics' do
+    let(:vista_note) { double('ClinicalNotes', source: 'vista') }
+    let(:oh_note) { double('ClinicalNotes', source: 'oracle-health') }
+    let(:parsed_notes) { [vista_note, vista_note, oh_note] }
+
+    let(:doc_ref_records) do
+      [
+        { 'source' => 'vista' },
+        { 'source' => 'vista' },
+        { 'source' => 'vista' },
+        { 'source' => 'oracle-health' },
+        { 'source' => 'oracle-health' }
+      ]
+    end
+
+    before do
+      allow(Flipper).to receive(:enabled?)
+        .with(:mhv_medical_records_clinical_notes_diagnostic, user)
+        .and_return(true)
+    end
+
+    it 'logs response count and index metrics when logging is enabled' do
+      instance.send(:log_care_summaries_metrics, doc_ref_records, parsed_notes, '2024-01-01', '2025-06-01')
+
+      expect(Rails.logger).to have_received(:info).with(
+        hash_including(
+          action: 'filter',
+          total_doc_refs: 5,
+          returned: 3,
+          filtered: 2
+        )
+      )
+
+      expect(Rails.logger).to have_received(:info).with(
+        hash_including(
+          action: 'index',
+          total_notes: 3,
+          vista_count: 2,
+          oracle_health_count: 1
+        )
+      )
+    end
+
+    it 'triggers high filter rate warning when rate exceeds threshold' do
+      # 5 doc_refs, 2 returned = 60% filtered
+      small_parsed = [vista_note, oh_note]
+      instance.send(:log_care_summaries_metrics, doc_ref_records, small_parsed, '2024-01-01', '2025-06-01')
+
+      expect(Rails.logger).to have_received(:warn).with(
+        hash_including(
+          anomaly: 'high_filter_rate',
+          filter_rate: 60.0,
+          doc_ref_count: 5,
+          returned_count: 2,
+          vista_doc_refs: 3,
+          oh_doc_refs: 2,
+          vista_returned: 1,
+          oh_returned: 1
+        )
+      )
+    end
+
+    it 'does not warn when filter rate is at or below 50%' do
+      # 5 doc_refs, 3 returned = 40% filtered
+      instance.send(:log_care_summaries_metrics, doc_ref_records, parsed_notes, '2024-01-01', '2025-06-01')
+
+      expect(Rails.logger).not_to have_received(:warn)
+    end
+
+    context 'when logging is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:mhv_medical_records_clinical_notes_diagnostic, user)
+          .and_return(false)
+        allow(Flipper).to receive(:enabled?)
+          .with(:mhv_medical_records_diagnostic_logging, user)
+          .and_return(false)
+      end
+
+      it 'skips diagnostic logs but still emits high filter rate warning' do
+        small_parsed = [vista_note]
+        instance.send(:log_care_summaries_metrics, doc_ref_records, small_parsed, '2024-01-01', '2025-06-01')
+
+        expect(Rails.logger).not_to have_received(:info)
+        expect(Rails.logger).to have_received(:warn).with(
+          hash_including(anomaly: 'high_filter_rate')
+        )
+      end
     end
   end
 
