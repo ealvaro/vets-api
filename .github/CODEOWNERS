@@ -1200,20 +1200,20 @@ modules/ask_va_api @software/ask-va-team @software/backend-review-group
 modules/avs @software/after-visit-summary @software/backend-review-group
 modules/banners @software/vfs-facilities-frontend @software/backend-review-group
 modules/bio_heart @software/bio-heart-team @software/backend-review-group
-modules/bpds @software/benefits-lifestage @software/backend-review-group
-modules/burials @software/pension-and-burials @software/backend-review-group
+modules/bpds @software/benefits-lifestage @software/govcio-vfep-codereviewers @software/backend-review-group
+modules/burials @software/govcio-vfep-codereviewers @software/backend-review-group
 modules/check_in @software/vsa-healthcare-health-quest-1-backend @software/patient-check-in @software/backend-review-group
 modules/claims_api @software/lighthouse-dash
 modules/claims_api/config/schemas/v2/526.json @software/disability-benefits @software/backend-review-group
 modules/claims_evidence_api @software/benefits-lifestage @software/claims-evidence-api @software/backend-review-group
 modules/debts_api @software/vsa-debt-resolution @software/backend-review-group
 modules/decision_reviews @software/benefits-decision-reviews-be @software/backend-review-group
-modules/dependents_benefits @software/benefits-dependents-management @software/backend-review-group
-modules/dependents_verification @software/benefits-dependents-management @software/backend-review-group
+modules/dependents_benefits @software/govcio-vfep-codereviewers @software/backend-review-group
+modules/dependents_verification @software/govcio-vfep-codereviewers @software/backend-review-group
 modules/dhp_connected_devices @software/digital-health-platform @software/backend-review-group
 modules/digital_forms_api @software/benefits-lifestage @software/benefits-employee-exp-engineers @software/backend-review-group
 modules/facilities_api @software/vfs-facilities-frontend @software/backend-review-group
-modules/income_and_assets @software/income-and-assets @software/backend-review-group
+modules/income_and_assets @software/govcio-vfep-codereviewers @software/backend-review-group
 modules/income_limits @software/vfs-public-websites-frontend @software/backend-review-group
 modules/increase_compensation @software/backend-review-group @software/benefits-intake-pingwind
 modules/ivc_champva @software/health-apps-backend @software/backend-review-group
@@ -1235,7 +1235,7 @@ modules/my_health @software/vfs-mhv-integration @software/backend-review-group
 modules/my_health/app/controllers/my_health/v1/prescriptions_controller.rb @software/vfs-mhv-integration @software/backend-review-group
 modules/my_health/app/controllers/my_health/v1/tooltips_controller.rb @software/vfs-mhv-integration @software/backend-review-group
 modules/my_health/spec/request/v1/prescriptions_request_spec.rb @software/vfs-mhv-integration @software/backend-review-group
-modules/pensions @software/pension-and-burials @software/backend-review-group
+modules/pensions @software/govcio-vfep-codereviewers @software/backend-review-group
 modules/representation_management @software/backend-review-group @software/accredited-representative-crew
 modules/simple_forms_api @software/platform-va-product-forms @software/backend-review-group
 modules/sob @software/backend-review-group @software/govcio-vfep-codereviewers
