@@ -16,6 +16,7 @@ module IvcChampva
       FORM_NUMBER_MAP = {
         '10-10D' => 'vha_10_10d',
         '10-10D-EXTENDED' => 'vha_10_10d',
+        '10-10D-SUPPLEMENTAL' => 'vha_10_10d',
         '10-7959F-1' => 'vha_10_7959f_1',
         '10-7959F-2' => 'vha_10_7959f_2',
         '10-7959C' => 'vha_10_7959c',
@@ -28,8 +29,11 @@ module IvcChampva
         'an error occurred while verifying stamp:',
         'unable to find file'
       ].freeze
+      # submission_type values that mean supporting-docs-only (not a full new application).
       DOCS_ONLY_RESUBMISSION_SUBMISSION_TYPES = %w[existing enrollment].freeze
-      DOCS_ONLY_RESUBMISSION_FORM_NUMBERS = %w[10-10D-EXTENDED].freeze
+
+      # form_number values allowed to use the docs-only resubmission path.
+      DOCS_ONLY_RESUBMISSION_FORM_NUMBERS = %w[10-10D-EXTENDED 10-10D-SUPPLEMENTAL].freeze
 
       def submit(form_data = nil)
         Datadog::Tracing.trace('IVC Champva Forms - Submit Form') do
@@ -75,27 +79,47 @@ module IvcChampva
         Datadog::Tracing.trace('IVC Champva Forms - Submit Merged 10-10d + OHI') do
           parsed_form_data = JSON.parse(params.to_json)
 
-          Datadog::Tracing.trace('IVC Champva Forms - Generate OHI Forms for Each Applicant') do
-            form_id = get_form_id
-            apps = applicants_with_ohi(parsed_form_data['applicants'])
-
-            apps.each do |app|
-              # Generate OHI forms for each applicant. Creates one form per 2 policies
-              # to handle overflow when applicant has more than 2 health insurance policies.
-              ohi_forms = generate_ohi_form(app, parsed_form_data)
-              ohi_forms.each do |f|
-                ohi_path = fill_ohi_and_return_path(f)
-                ohi_supporting_doc = create_custom_attachment(f, ohi_path, 'VA form 10-7959c')
-                add_supporting_doc(parsed_form_data, ohi_supporting_doc)
-                f.track_delegate_form(form_id) if f.respond_to?(:track_delegate_form)
-              end
-            end
+          if docs_only_resubmission_flow_enabled?(parsed_form_data)
+            submit_merged_docs_only(parsed_form_data)
+          else
+            process_standard_merged_champva_submission(parsed_form_data)
           end
-
-          submit(parsed_form_data)
         end
+      rescue ArgumentError => e
+        Rails.logger.error "Validation error in IVC ChampVA merged submission: #{e.message}"
+        render json: { error_message: e.message }, status: :unprocessable_entity
       rescue => e
         log_error_and_respond("Error submitting merged form: #{e.message}", e)
+      end
+
+      def submit_merged_docs_only(parsed_form_data)
+        validate_docs_only_resubmission!(parsed_form_data) if parsed_form_data['claim_id'].present?
+        hydrate_docs_only_resubmission_data(parsed_form_data) if parsed_form_data['claim_id'].present?
+        IvcChampva::MetadataValidator.validate_docs_only_resubmission(parsed_form_data)
+
+        response = process_docs_only_resubmission(parsed_form_data)
+        render json: response.fetch(:json), status: response.fetch(:status)
+      end
+
+      def process_standard_merged_champva_submission(parsed_form_data)
+        Datadog::Tracing.trace('IVC Champva Forms - Generate OHI Forms for Each Applicant') do
+          form_id = get_form_id
+          apps = applicants_with_ohi(parsed_form_data['applicants'])
+
+          apps.each do |app|
+            # Generate OHI forms for each applicant. Creates one form per 2 policies
+            # to handle overflow when applicant has more than 2 health insurance policies.
+            ohi_forms = generate_ohi_form(app, parsed_form_data)
+            ohi_forms.each do |f|
+              ohi_path = fill_ohi_and_return_path(f)
+              ohi_supporting_doc = create_custom_attachment(f, ohi_path, 'VA form 10-7959c')
+              add_supporting_doc(parsed_form_data, ohi_supporting_doc)
+              f.track_delegate_form(form_id) if f.respond_to?(:track_delegate_form)
+            end
+          end
+        end
+
+        submit(parsed_form_data)
       end
 
       def submit_docs_only_resubmission
@@ -103,6 +127,7 @@ module IvcChampva
         ensure_docs_only_resubmission_enabled(parsed_form_data)
         validate_docs_only_resubmission!(parsed_form_data)
         hydrate_docs_only_resubmission_data(parsed_form_data)
+        IvcChampva::MetadataValidator.validate_docs_only_resubmission(parsed_form_data)
 
         response = process_docs_only_resubmission(parsed_form_data)
         render json: response.fetch(:json), status: response.fetch(:status)
@@ -427,7 +452,7 @@ module IvcChampva
 
       def submit_supporting_documents # rubocop:disable Metrics/MethodLength
         Datadog::Tracing.trace('IVC Champva Forms - Submit Supporting Document') do
-          if %w[10-10D 10-7959C 10-7959F-2 10-7959A 10-10D-EXTENDED].include?(params[:form_id])
+          if %w[10-10D 10-7959C 10-7959F-2 10-7959A 10-10D-EXTENDED 10-10D-SUPPLEMENTAL].include?(params[:form_id])
             attachment = PersistentAttachments::MilitaryRecords.new(form_id: params[:form_id])
 
             Rails.logger.info "submit_supporting_documents called for form #{params[:form_id]}"
@@ -1375,18 +1400,26 @@ module IvcChampva
             raise ArgumentError, 'supporting documents must resolve to at least one attachment id for upload'
           end
 
-          submission_type = parsed_form_data['submission_type'].to_s.upcase
-          raw_metadata = form.metadata.merge(
-            'uuid' => parsed_form_data['claim_id'].to_s,
+          merge_fields = {
             'submissionType' => parsed_form_data['submission_type'].to_s,
-            'docType' => "#{parsed_form_data['form_number']}-#{submission_type}"
-          )
+            'docType' => parsed_form_data['form_number']
+          }
+          merge_fields['uuid'] = parsed_form_data['claim_id'] if parsed_form_data['claim_id'].present?
+          raw_metadata = form.metadata.merge(merge_fields)
+          enrollment = parsed_form_data['submission_type'].to_s.casecmp('enrollment').zero?
+          backfill_enrollment_metadata!(raw_metadata) if enrollment
           metadata = IvcChampva::MetadataValidator.validate(raw_metadata)
 
           file_paths = docs_only_resubmission_supporting_paths_from_form(form)
 
           [file_paths, metadata.merge({ 'attachment_ids' => attachment_ids })]
         end
+      end
+
+      def backfill_enrollment_metadata!(metadata)
+        metadata['veteranFirstName'] ||= metadata['sponsorFirstName']
+        metadata['veteranMiddleName'] ||= metadata['sponsorMiddleName']
+        metadata['veteranLastName'] ||= metadata['sponsorLastName']
       end
 
       def docs_only_resubmission_supporting_paths_from_form(form)

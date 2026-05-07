@@ -76,5 +76,55 @@ module IvcChampva
       raise ArgumentError, "#{error_label} is missing" unless value
       raise ArgumentError, "#{error_label} is not a string" if value.class != String
     end
+
+    def self.validate_docs_only_resubmission(data)
+      submission_type = data['submission_type'].to_s.strip.downcase
+
+      validate_docs_only_supporting_docs(data['supporting_docs'])
+      validate_docs_only_contact_info(data['primary_contact_info'])
+      validate_docs_only_applicants(data['applicants'], submission_type)
+      validate_docs_only_veteran(data['veteran'], submission_type)
+      validate_presence_and_stringiness(data['certifier_role'], 'certifier_role')
+      validate_presence_and_stringiness(data['statement_of_truth_signature'], 'statement_of_truth_signature')
+      validate_presence_and_stringiness(data.dig('certification', 'date'), 'certification date')
+    end
+
+    def self.validate_docs_only_supporting_docs(docs)
+      raise ArgumentError, 'supporting_docs is missing' if docs.blank?
+
+      docs.each_with_index do |doc, i|
+        validate_presence_and_stringiness(doc['confirmation_code'], "supporting_docs[#{i}] confirmation_code")
+      end
+    end
+
+    def self.validate_docs_only_contact_info(pci)
+      raise ArgumentError, 'primary_contact_info is missing' if pci.blank?
+
+      validate_presence_and_stringiness(pci['email'], 'primary_contact_info email')
+    end
+
+    def self.validate_docs_only_applicants(applicants, submission_type)
+      raise ArgumentError, 'applicants is missing' if applicants.blank?
+
+      applicants.each_with_index do |app, i|
+        validate_presence_and_stringiness(app.dig('applicant_name', 'first'), "applicants[#{i}] first name")
+        validate_presence_and_stringiness(app.dig('applicant_name', 'last'), "applicants[#{i}] last name")
+        validate_presence_and_stringiness(app['applicant_dob'], "applicants[#{i}] applicant_dob")
+        if submission_type == 'enrollment'
+          validate_presence_and_stringiness(app['applicant_member_number'], "applicants[#{i}] applicant_member_number")
+        end
+      end
+    end
+
+    def self.validate_docs_only_veteran(vet, submission_type)
+      raise ArgumentError, 'veteran is missing' if vet.blank?
+
+      return unless submission_type == 'existing'
+
+      validate_presence_and_stringiness(vet.dig('full_name', 'first'), 'veteran first name')
+      validate_presence_and_stringiness(vet.dig('full_name', 'last'), 'veteran last name')
+      validate_presence_and_stringiness(vet['ssn_or_tin'], 'veteran ssn_or_tin')
+      validate_presence_and_stringiness(vet['date_of_birth'], 'veteran date_of_birth')
+    end
   end
 end

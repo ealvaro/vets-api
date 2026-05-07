@@ -138,7 +138,9 @@ RSpec.describe 'Transformation Pega', type: :request do
             attachment_ids: ['vha_10_10d', 'vha_10_10d', 'Birth certificate']
           }.to_json
 
-          allow_any_instance_of(IvcChampva::S3).to receive(:read_file).and_return(metadata_json)
+          allow_any_instance_of(IvcChampva::S3).to receive(:read_file) do |_instance, path|
+            path.to_s.include?('_metadata.json') ? metadata_json : '%PDF-1.4 test stub'
+          end
 
           post '/ivc_champva/v1/forms', params: data
           expect(response).to have_http_status(:ok)
@@ -249,7 +251,9 @@ RSpec.describe 'Transformation Pega', type: :request do
             attachment_ids: ['vha_10_7959c']
           }.to_json
 
-          allow_any_instance_of(IvcChampva::S3).to receive(:read_file).and_return(metadata_json)
+          allow_any_instance_of(IvcChampva::S3).to receive(:read_file) do |_instance, path|
+            path.to_s.include?('_metadata.json') ? metadata_json : '%PDF-1.4 test stub'
+          end
 
           post '/ivc_champva/v1/forms', params: data
           expect(response).to have_http_status(:ok)
@@ -316,7 +320,9 @@ RSpec.describe 'Transformation Pega', type: :request do
             attachment_ids: %w[vha_10_7959a vha_10_7959a 0 1]
           }.to_json
 
-          allow_any_instance_of(IvcChampva::S3).to receive(:read_file).and_return(metadata_json)
+          allow_any_instance_of(IvcChampva::S3).to receive(:read_file) do |_instance, path|
+            path.to_s.include?('_metadata.json') ? metadata_json : '%PDF-1.4 test stub'
+          end
 
           post '/ivc_champva/v1/forms', params: data
           expect(response).to have_http_status(:ok)
@@ -382,7 +388,9 @@ RSpec.describe 'Transformation Pega', type: :request do
             attachment_ids: %w[vha_10_7959f_1]
           }.to_json
 
-          allow_any_instance_of(IvcChampva::S3).to receive(:read_file).and_return(metadata_json)
+          allow_any_instance_of(IvcChampva::S3).to receive(:read_file) do |_instance, path|
+            path.to_s.include?('_metadata.json') ? metadata_json : '%PDF-1.4 test stub'
+          end
 
           post '/ivc_champva/v1/forms', params: data
           expect(response).to have_http_status(:ok)
@@ -448,7 +456,9 @@ RSpec.describe 'Transformation Pega', type: :request do
             attachment_ids: %w[vha_10_7959f_2]
           }.to_json
 
-          allow_any_instance_of(IvcChampva::S3).to receive(:read_file).and_return(metadata_json)
+          allow_any_instance_of(IvcChampva::S3).to receive(:read_file) do |_instance, path|
+            path.to_s.include?('_metadata.json') ? metadata_json : '%PDF-1.4 test stub'
+          end
           allow(IvcChampva::PdfCombiner).to receive(:combine).and_return(pdf_path)
 
           post '/ivc_champva/v1/forms', params: data

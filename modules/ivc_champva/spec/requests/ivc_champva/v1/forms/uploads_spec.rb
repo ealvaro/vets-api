@@ -455,6 +455,26 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     end
   end
 
+  describe '#handle_file_uploads_wrapper' do
+    let(:controller) { IvcChampva::V1::UploadsController.new }
+    let(:docs_only_payload) do
+      { 'form_number' => '10-10D-EXTENDED', 'submission_type' => 'existing' }
+    end
+
+    it 'skips VES when docs-only flow is enabled even if VES flipper is on' do
+      allow(Flipper).to receive(:enabled?).with(:champva_send_to_ves, anything).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:champva_send_7959c_to_ves, anything).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:form1010d_enhanced_flow_enabled, anything).and_return(true)
+
+      expect(controller).not_to receive(:handle_ves_submission)
+      allow(controller).to receive(:handle_file_uploads).with('vha_10_10d', docs_only_payload).and_return([[200], nil])
+      allow(controller).to receive(:build_json).and_return({ json: {}, status: 200 })
+
+      result = controller.send(:handle_file_uploads_wrapper, 'vha_10_10d', docs_only_payload)
+      expect(result[:status]).to eq(200)
+    end
+  end
+
   describe '#submit_to_ves' do
     let(:controller) { IvcChampva::V1::UploadsController.new }
     let(:metadata) { { 'uuid' => 'test-uuid' } }
@@ -911,6 +931,24 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
         form_number: '10-10D-EXTENDED',
         submission_type: 'existing',
         claim_id: claim_uuid,
+        certifier_role: 'sponsor',
+        veteran: {
+          full_name: { first: 'Pat', last: 'Veteran' },
+          ssn_or_tin: '411111111',
+          date_of_birth: '01-01-1958'
+        },
+        applicants: [
+          {
+            applicant_name: { first: 'Sam', last: 'Beneficiary' },
+            applicant_dob: '01-04-2003'
+          }
+        ],
+        primary_contact_info: {
+          email: 'pat@example.com',
+          name: { first: 'Pat', last: 'Contact' }
+        },
+        certification: { date: '04-01-2026' },
+        statement_of_truth_signature: 'Certifier Jones',
         supporting_docs: [
           {
             confirmation_code: 'd1fde9a6-b48f-4763-9cd5-9f06f32a6b56',
@@ -1781,7 +1819,7 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
       _file_paths, metadata = controller.send(:get_docs_only_resubmission_file_paths_and_metadata, parsed_form_data)
 
       expect(metadata['uuid']).to eq(claim_uuid)
-      expect(metadata['docType']).to eq('10-10D-EXTENDED-EXISTING')
+      expect(metadata['docType']).to eq('10-10D-EXTENDED')
       expect(metadata['attachment_ids']).to eq(['Birth certificate'])
     end
   end
