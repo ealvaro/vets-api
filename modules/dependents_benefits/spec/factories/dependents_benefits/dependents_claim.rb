@@ -71,6 +71,7 @@ FactoryBot.define do
           },
           'student_information' => [
             {
+              'relationship_to_student' => 'biological',
               'student_networth_information' => {
                 'savings' => '1.00',
                 'securities' => '10000.00',
