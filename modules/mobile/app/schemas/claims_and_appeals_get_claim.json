@@ -52,7 +52,7 @@
           "properties": {
             "claimTypeBase": { "type": ["string", "null"] },
             "claimTypeCode": { "type": "string" },
-            "claimType": { "type": "string" },
+            "claimType": { "type": ["string", "null"] },
             "contentions": {
               "type": "array",
               "items": {
@@ -129,7 +129,8 @@
                   "documentTypeLabel": { "type": ["string", "null"] },
                   "originalFileName": { "type": ["string", "null"] },
                   "trackedItemId": { "type": ["integer", "null"] },
-                  "uploadDate": { "type": ["string", "null"] }
+                  "uploadDate": { "type": ["string", "null"] },
+                  "uploadDateTime": { "type": ["string", "null"] }
                 }
               }
             },
