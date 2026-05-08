@@ -194,9 +194,9 @@ module PdfFill
         'pin' => 'I would like to use a pin or password',
         'motherBornLocation' => 'The city and state your mother was born in',
         'highSchool' => 'The name of the high school you attended',
-        'petName' => 'Your first pet’s name',
-        'teacherName' => 'Your favorite teacher’s name',
-        'fatherMiddleName' => 'Your father’s middle name'
+        'petName' => 'Your first pet\'s name',
+        'teacherName' => 'Your favorite teacher\'s name',
+        'fatherMiddleName' => 'Your father\'s middle name'
       }.freeze
 
       def merge_fields(_options = {})
@@ -352,6 +352,8 @@ module PdfFill
           @form_data['securityAnswer'] = "#{loc['city']}, #{loc['state']}"
         elsif ans['securityAnswerCreate']
           @form_data['securityAnswer'] = ans['securityAnswerCreate']['answer']
+        else
+          @form_data['securityAnswer'] = ans.to_s
         end
       end
 

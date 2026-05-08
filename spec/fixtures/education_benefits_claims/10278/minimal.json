@@ -57,13 +57,10 @@
     "date": "2025-12-31"
   },
   "securityQuestion": {
-    "question": "motherBornLocation"
+    "question": "petName"
   },
   "securityAnswer": {
-    "securityAnswerLocation": {
-      "city": "Smallville",
-      "state": "KS"
-    }
+    "securityAnswerText": "Dr. Cuddles"
   },
   "privacyAgreementAccepted": true,
   "statementOfTruthSignature": "John Q Doe",

@@ -146,11 +146,11 @@ describe PdfFill::Forms::Va2210278 do
     context 'Security Info' do
       it 'maps standard question' do
         expect(merged_fields['securityQuestion'])
-          .to eq('The city and state your mother was born in')
+          .to eq('Your first pet\'s name')
       end
 
       it 'maps location answer' do
-        expect(merged_fields['securityAnswer']).to eq('Smallville, KS')
+        expect(merged_fields['securityAnswer']).to eq('Dr. Cuddles')
       end
 
       it 'maps create question and answer' do
@@ -182,6 +182,24 @@ describe PdfFill::Forms::Va2210278 do
       it 'handles missing security answer' do
         form_data.delete('securityAnswer')
         expect(merged_fields['securityAnswer']).to be_nil
+      end
+
+      it 'handles an empty answer' do
+        form_data['securityQuestion'] = { 'question' => 'pin' }
+        form_data['securityAnswer'] = { 'securityAnswerText' => '' }
+
+        expect(merged_fields['securityAnswer']).to eq('')
+      end
+
+      it 'handles missing security answer text' do
+        form_data['securityQuestion'] = { 'question' => 'pin' }
+        form_data['securityAnswer'] = {}
+        expect(merged_fields['securityAnswer']).to eq('{}')
+      end
+
+      it 'handles an unknown question key' do
+        form_data['securityQuestion'] = { 'question' => 'not-a-real-key' }
+        expect(merged_fields['securityQuestion']).to be_nil
       end
     end
 
@@ -217,8 +235,8 @@ describe PdfFill::Forms::Va2210278 do
       expect(get_field_value(fields, 'ssn')).to eq '123-45-6789'
       expect(get_field_value(fields, 'dateOfBirth')).to eq '01/01/1980'
       expect(get_field_value(fields, 'emailAddress')).to eq 'john.doe@example.com'
-      expect(get_field_value(fields, 'question')).to eq 'The city and state your mother was born in'
-      expect(get_field_value(fields, 'answer')).to eq 'Smallville, KS'
+      expect(get_field_value(fields, 'question')).to eq 'Your first pet&apos;s name'
+      expect(get_field_value(fields, 'answer')).to eq 'Dr. Cuddles'
       expect(get_field_value(fields, 'statementOfTruthSignature')).to eq 'John Q Doe'
     end
   end
