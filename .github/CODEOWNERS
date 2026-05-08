@@ -259,6 +259,7 @@ app/models/form_profiles/va_212680.rb @software/benefits-optimization-aquia @sof
 app/models/form_profiles/va_214138.rb @software/platform-va-product-forms @software/backend-review-group
 app/models/form_profiles/va_214140.rb @software/benefits-intake-pingwind @software/backend-review-group
 app/models/form_profiles/va_214502.rb @software/benefits-intake-pingwind @software/backend-review-group
+app/models/form_profiles/va_261880.rb @software/va-core-veteran-experiences @software/backend-review-group
 app/models/form_profiles/va_686c674.rb @software/benefits-dependents-management @software/backend-review-group
 app/models/form_profiles/va_686c674v2.rb @software/benefits-dependents-management @software/backend-review-group
 app/models/form_profiles/va_526ez.rb @software/govcio-vfep-codereviewers @software/backend-review-group
@@ -789,6 +790,8 @@ config/form_profile_mappings/22-1995.yml @software/govcio-vfep-codereviewers @so
 config/form_profile_mappings/22-5490.yml @software/govcio-vfep-codereviewers @software/backend-review-group
 config/form_profile_mappings/22-5495.yml @software/govcio-vfep-codereviewers @software/backend-review-group
 config/form_profile_mappings/26-1880.yml @software/health-apps-backend @software/backend-review-group
+config/form_profile_mappings/26-1880v2.yml @software/va-core-veteran-experiences @software/backend-review-group
+config/form_profile_mappings/26-1880v3.yml @software/va-core-veteran-experiences @software/backend-review-group
 config/form_profile_mappings/26-4555.yml @software/platform-va-product-forms @software/backend-review-group
 config/form_profile_mappings/28-1900.yml @software/benefits-non-disability @software/backend-review-group
 config/form_profile_mappings/28-8832.yml @software/benefits-non-disability @software/backend-review-group

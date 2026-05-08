@@ -1,0 +1,9 @@
+fullName: [identity_information, full_name]
+dateOfBirth: [identity_information, date_of_birth]
+ssnLast4: [identity_information, ssn_last_four]
+veteran:
+  mailingAddress: [v2_mailing_address]
+  homePhone: [v2_home_phone]
+  email: [v2_email]
+militaryHistory:
+  periodsOfService: [military_information, tours_of_duty]

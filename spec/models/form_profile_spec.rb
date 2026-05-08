@@ -1171,30 +1171,110 @@ RSpec.describe FormProfile, type: :model do
       new_schema
     end
 
+    def stub_coe_26_1880_flipper_combo!(flipper_actor_matcher, v3_enabled:, v2_enabled:)
+      allow(Flipper).to receive(:enabled?).with(:coe_form_v3_lgy_fields,
+                                                flipper_actor_matcher).and_return(v3_enabled)
+      allow(Flipper).to receive(:enabled?).with(:coe_form_rebuild_cveteam,
+                                                flipper_actor_matcher).and_return(v2_enabled)
+    end
+
+    def stub_coe_26_1880_legacy_prefill_flippers!(flipper_actor_matcher = anything)
+      stub_coe_26_1880_flipper_combo!(flipper_actor_matcher, v3_enabled: false, v2_enabled: false)
+    end
+
+    def stub_coe_26_1880_legacy_prefill_if_form!(form_id, flipper_actor_matcher = anything)
+      return unless form_id == '26-1880'
+
+      stub_coe_26_1880_legacy_prefill_flippers!(flipper_actor_matcher)
+    end
+
+    def json_schema_id_for_prefill_assertions(form_id)
+      base_id = case form_id
+                when '1010ez', 'FORM-MOCK-AE-DESIGN-PATTERNS', 'FORM-MOCK-PREFILL'
+                  '10-10EZ'
+                when '21-526EZ'
+                  '21-526EZ-ALLCLAIMS'
+                else
+                  form_id
+                end
+
+      return base_id unless form_id == '26-1880'
+
+      versioned_form_id, = FormProfiles::VA261880.form_filename_and_version(form_id, user)
+      return versioned_form_id if VetsJsonSchema::SCHEMAS.key?(versioned_form_id)
+
+      base_id
+    end
+
+    def validate_prefilled_against_vejs_schema_for_form(form_id:, prefilled_data:)
+      schema_form_id = json_schema_id_for_prefill_assertions(form_id)
+      schema = strip_required(VetsJsonSchema::SCHEMAS[schema_form_id]).except('anyOf')
+      schema_data = prefilled_data.deep_dup
+      errors = JSON::Validator.fully_validate(
+        schema,
+        schema_data.deep_transform_keys { |key| key.camelize(:lower) }, validate_schema: true
+      )
+
+      expect(errors.empty?).to be(true), "schema errors: #{errors}"
+    end
+
     def expect_prefilled(form_id)
       prefilled_data = Oj.load(described_class.for(form_id:, user:).prefill.to_json)['form_data']
 
-      case form_id
-      when '1010ez', 'FORM-MOCK-AE-DESIGN-PATTERNS', 'FORM-MOCK-PREFILL'
-        '10-10EZ'
-      when '21-526EZ'
-        '21-526EZ-ALLCLAIMS'
-      else
-        form_id
-      end.tap do |schema_form_id|
-        schema = strip_required(VetsJsonSchema::SCHEMAS[schema_form_id]).except('anyOf')
-        schema_data = prefilled_data.deep_dup
-        errors = JSON::Validator.fully_validate(
-          schema,
-          schema_data.deep_transform_keys { |key| key.camelize(:lower) }, validate_schema: true
-        )
-
-        expect(errors.empty?).to be(true), "schema errors: #{errors}"
-      end
+      validate_prefilled_against_vejs_schema_for_form(form_id:, prefilled_data:)
 
       expect(prefilled_data).to eq(
         form_profile.send(:clean!, public_send("v#{form_id.underscore}_expected"))
       )
+    end
+
+    shared_examples '26-1880 COE YAML prefill with toggles enabled' do
+      it 'loads versioned YAML and passes schema', :aggregate_failures do
+        VCR.use_cassette('va_profile/military_personnel/service_history_200_many_episodes',
+                         allow_playback_repeats: true, match_requests_on: %i[uri method body]) do
+          prefilled_data = described_class.for(form_id: '26-1880', user:).prefill[:form_data]
+
+          validate_prefilled_against_vejs_schema_for_form(form_id: '26-1880', prefilled_data:)
+
+          expect(prefilled_data['version']).to eq(expected_coe_26_1880_prefill_version)
+          expected_full_name = v26_1880_expected['fullName'].compact_blank
+          expect(prefilled_data['fullName']).to eq(expected_full_name)
+          expect(prefilled_data).to include(
+            'dateOfBirth' => v26_1880_expected['dateOfBirth'],
+            'ssnLast4' => v26_1880_expected['nonPrefill']['veteranSsnLastFour']
+          )
+
+          expect(prefilled_data).not_to include('applicantAddress', 'contactPhone', 'contactEmail', 'periodsOfService',
+                                                'currentlyActiveDuty', 'activeDuty', 'nonPrefill')
+
+          veteran = prefilled_data['veteran']
+          expect(veteran).to be_a(Hash)
+          expect(veteran).to include('mailingAddress')
+          expect(veteran['email']).to eq('emailAddress' => user.va_profile_email)
+          expect(veteran['mailingAddress']).to include(
+            'addressLine1' => address['street'],
+            'city' => address['city'],
+            'stateCode' => address['state']
+          )
+
+          phone_digits = us_phone.to_s.gsub(/\D/, '')
+          if phone_digits.length == 10
+            expect(veteran['homePhone']).to eq(
+              'areaCode' => phone_digits[0..2],
+              'countryCode' => '1',
+              'phoneNumber' => phone_digits[3..9]
+            )
+          else
+            expect(veteran['homePhone']).to be_nil
+          end
+
+          military_history = prefilled_data['militaryHistory']
+          expect(military_history).to be_a(Hash)
+          periods = military_history['periodsOfService']
+          expect(periods).to be_an(Array)
+          expect(periods).to all(be_a(Hash))
+        end
+      end
     end
 
     context 'with a user that can prefill 10-10EZR' do
@@ -2387,6 +2467,43 @@ RSpec.describe FormProfile, type: :model do
           end
         end
 
+        context 'when prefilling COE form 26-1880 with feature toggles for versioned mappings' do
+          before do
+            expect(user).to receive(:authorize).with(:va_profile, :access_to_v2?).and_return(true).at_least(:once)
+            allow(Flipper).to receive(:enabled?).with(:pension_military_prefill, anything).and_return(false)
+          end
+
+          context 'when coe_form_rebuild_cveteam is enabled' do
+            let(:expected_coe_26_1880_prefill_version) { 2 }
+
+            before do
+              stub_coe_26_1880_flipper_combo!(anything, v3_enabled: false, v2_enabled: true)
+            end
+
+            include_examples '26-1880 COE YAML prefill with toggles enabled'
+          end
+
+          context 'when coe_form_v3_lgy_fields is enabled' do
+            let(:expected_coe_26_1880_prefill_version) { 3 }
+
+            before do
+              stub_coe_26_1880_flipper_combo!(anything, v3_enabled: true, v2_enabled: false)
+            end
+
+            include_examples '26-1880 COE YAML prefill with toggles enabled'
+          end
+
+          context 'when both COE mapping toggles are enabled' do
+            let(:expected_coe_26_1880_prefill_version) { 3 }
+
+            before do
+              stub_coe_26_1880_flipper_combo!(anything, v3_enabled: true, v2_enabled: true)
+            end
+
+            include_examples '26-1880 COE YAML prefill with toggles enabled'
+          end
+        end
+
         %w[
           21P-527EZ
           22-1990
@@ -2411,6 +2528,7 @@ RSpec.describe FormProfile, type: :model do
           it "returns prefilled #{form_id}" do
             expect(user).to receive(:authorize).with(:va_profile, :access_to_v2?).and_return(true).at_least(:once)
             allow(Flipper).to receive(:enabled?).with(:pension_military_prefill, anything).and_return(false)
+            stub_coe_26_1880_legacy_prefill_if_form!(form_id)
             VCR.use_cassette('va_profile/military_personnel/service_history_200_many_episodes',
                              allow_playback_repeats: true, match_requests_on: %i[uri method body]) do
               expect_prefilled(form_id)
@@ -2625,6 +2743,45 @@ RSpec.describe FormProfile, type: :model do
     ].each do |form_id|
       it "routes #{form_id} to FormProfiles::FormUpload" do
         expect(described_class.for(form_id:, user:)).to be_a(FormProfiles::FormUpload)
+      end
+    end
+  end
+
+  describe FormProfiles::VA261880 do
+    describe '.form_filename_and_version' do
+      let(:form_id) { '26-1880' }
+      let(:user) { instance_double(User) }
+
+      it 'returns base form id when COE version flippers are off' do
+        allow(Flipper).to receive(:enabled?).with(:coe_form_v3_lgy_fields, user).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:coe_form_rebuild_cveteam, user).and_return(false)
+
+        versioned_id, = described_class.form_filename_and_version(form_id, user)
+        expect(versioned_id).to eq(form_id)
+      end
+
+      it 'returns v2 id when rebuild flag is enabled' do
+        allow(Flipper).to receive(:enabled?).with(:coe_form_v3_lgy_fields, user).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:coe_form_rebuild_cveteam, user).and_return(true)
+
+        versioned_id, = described_class.form_filename_and_version(form_id, user)
+        expect(versioned_id).to eq("#{form_id}v2")
+      end
+
+      it 'returns v3 id when v3 LGY fields flag is enabled' do
+        allow(Flipper).to receive(:enabled?).with(:coe_form_v3_lgy_fields, user).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:coe_form_rebuild_cveteam, user).and_return(false)
+
+        versioned_id, = described_class.form_filename_and_version(form_id, user)
+        expect(versioned_id).to eq("#{form_id}v3")
+      end
+
+      it 'prefers v3 when both COE version flags are enabled' do
+        allow(Flipper).to receive(:enabled?).with(:coe_form_v3_lgy_fields, user).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:coe_form_rebuild_cveteam, user).and_return(true)
+
+        versioned_id, = described_class.form_filename_and_version(form_id, user)
+        expect(versioned_id).to eq("#{form_id}v3")
       end
     end
   end

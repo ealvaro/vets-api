@@ -764,6 +764,10 @@ features:
     actor_type: user
     description: Enables rebuild of Certificate of Eligibility form
     enable_in_development: true
+  coe_form_v3_lgy_fields:
+    actor_type: user
+    description: When enabled, use COE form profile mapping v3 (LGY-related fields)
+    enable_in_development: true
   combined_debt_portal_access:
     actor_type: user
     description: Enables users to interact with combined debt portal experience
