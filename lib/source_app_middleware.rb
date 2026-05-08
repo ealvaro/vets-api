@@ -111,6 +111,7 @@ class SourceAppMiddleware
     'form-renderer',
     'fry-dea',
     'gi',
+    'gibct',
     'hca',
     'health-care-supply-reordering',
     'income-and-asset-statement',
