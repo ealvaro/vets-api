@@ -3,7 +3,9 @@
 First make sure to follow the common [base setup](https://va.ghe.com/software/vets-api/blob/master/README.md#Base%20setup).
 
 ## ClamAV Antivirus Configuration
+
 ### EKS
+
 Prior to EKS, ClamAV (the virus scanner) was deployed in the same process as Vets API. With EKS, ClamAV has been extracted out into it’s own service. Locally you can see the docker-compose.yml config for clamav.
 
 Note: Running clamav natively, as we did in Vets API master still needs to be configured. For the time being, please run via docker:
@@ -18,12 +20,47 @@ end
 ```
 
 ### Mocking ClamAV Locally
+
 There is an additional choice to "mock" a successful clamav response if you want to receive a quick scanning response for local development. If you choose this path, please set the clamav mock setting to true in the local settings.yml. This will mock the clamav response in the virus_scan code.
 
 ```ruby
 clamav:
   mock: true
 ```
+
+## GitHub Enterprise Authentication
+
+Several gems in the `Gemfile` are sourced from private repositories on `va.ghe.com`. To install them during `docker-compose build`, you need to provide a Personal Access Token (PAT).
+
+### Creating a PAT
+
+1. Go to [https://va.ghe.com/settings/tokens](https://va.ghe.com/settings/tokens)
+2. Click **Generate new token** (classic)
+3. Give it a descriptive name (e.g., `vets-api local dev`)
+4. Select the **`repo`** scope (required for accessing private repositories)
+5. Set an expiration date and click **Generate token**
+6. Copy the token — you won't be able to see it again
+7. **Authorize for SSO:** Back on the tokens list, click the **Configure SSO** button next to your new token and authorize it for the `software` organization.
+
+### Setting the environment variable
+
+Add the following to your shell profile (`~/.zshrc` or `~/.bashrc`):
+
+```bash
+export BUNDLE_VA__GHE__COM="x-access-token:<YOUR_PAT>"
+```
+
+Then reload your shell by sourcing whichever file you edited:
+
+```bash
+source ~/.zshrc  # or source ~/.bashrc
+```
+
+> **Note:** Do not commit your token to the repository. The `docker-compose.yml` reads `BUNDLE_VA__GHE__COM` from your environment at build time — the token value is never stored in any tracked file.
+
+> **Note:** If you see a `403` or `fatal: could not read Username for 'https://va.ghe.com'` error during `make build`, your PAT is either missing, expired, or lacks the `repo` scope.
+
+> **Note:** GitHub Enterprise PATs automatically expire every 90 days. You will need to rotate your token regularly and update `BUNDLE_VA__GHE__COM` in your shell profile when it changes.
 
 ## Makefile
 

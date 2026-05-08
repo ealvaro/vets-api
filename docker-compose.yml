@@ -4,11 +4,13 @@ x-app: &common
   build:
     args:
       BUNDLE_ENTERPRISE__CONTRIBSYS__COM: "${BUNDLE_ENTERPRISE__CONTRIBSYS__COM}"
+      BUNDLE_VA__GHE__COM: "${BUNDLE_VA__GHE__COM}"
       IMAGEMAGICK_IMAGE: "${IMAGEMAGICK_IMAGE:-dpokidov/imagemagick:7.1.1-47-bookworm}"
       RUBY_IMAGE: "${RUBY_IMAGE:-ruby:3.3.6-slim-bookworm}"
     context: .
   environment:
     BUNDLE_ENTERPRISE__CONTRIBSYS__COM: "${BUNDLE_ENTERPRISE__CONTRIBSYS__COM}"
+    BUNDLE_VA__GHE__COM: "${BUNDLE_VA__GHE__COM}"
     SETTINGS__DATABASE_URL: "postgis://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DATABASE:-vets_api_development}?pool=4"
     SETTINGS__TEST_DATABASE_URL: "postgis://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DATABASE:-vets_api_test}"
     SETTINGS__REDIS__APP_DATA__URL: "redis://redis:6379"
