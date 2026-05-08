@@ -13,7 +13,6 @@ Gem::Specification.new do |spec|
 
   spec.metadata['homepage_uri'] = spec.homepage
   spec.metadata['source_code_uri'] = 'https://va.ghe.com/software/vets-api/'
-  spec.metadata['changelog_uri'] = 'https://va.ghe.com/software/vets-api/modules/mocked_authentication/CHANGELOG.md'
 
   spec.files = Dir['{app,config,lib}/**/*', 'Rakefile', 'README.md']
 
