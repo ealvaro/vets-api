@@ -1353,6 +1353,10 @@ features:
     actor_type: user
     description: Enables form 40-10007 email submission error (VaNotify)
     enable_in_development: true
+  form40_1330m_expiration_email:
+    actor_type: user
+    description: Enables form 40-1330M applicant expiration email notification (VaNotify)
+    enable_in_development: true
   form10297_meb_confirmation_email:
     actor_type: user
     description: Enables form 22-10297 VET TEC 2.0 status-based confirmation emails via MEB path (VaNotify)

@@ -87,7 +87,16 @@ module SimpleFormsApi
       def flipper?
         number = form_number
         number = 'vba_21_0966' if form_number.start_with? 'vba_21_0966'
-        Flipper.enabled?(:"form#{number.gsub('vba_', '')}_confirmation_email")
+
+        base = number.gsub('vba_', '')
+
+        if base == '40_1330m'
+          return Flipper.enabled?(:form40_1330m_expiration_email) if notification_type.to_s == 'expiration'
+
+          return Flipper.enabled?(:form40_1330m_confirmation_email)
+        end
+
+        Flipper.enabled?(:"form#{base}_confirmation_email")
       end
 
       def template_id

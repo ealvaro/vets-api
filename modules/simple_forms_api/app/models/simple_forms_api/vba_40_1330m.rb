@@ -39,9 +39,12 @@ module SimpleFormsApi
     def notification_personalization
       {
         'veteran_name' => veteran_full_name_for_notification,
-        'date_submitted' => data['date_submitted'].to_s.presence || Time.zone.now.strftime('%B %d, %Y'),
-        'date_expires' => data['date_expires'].to_s.presence || 1.year.from_now.strftime('%B %d, %Y')
+        'date_expires' => date_expires
       }
+    end
+
+    def date_expires
+      30.days.from_now.strftime('%B %d, %Y')
     end
 
     def zip_code_is_us_based

@@ -883,7 +883,7 @@ describe SimpleFormsApi::Notification::Email do
             )
             JSON.parse(fixture_path.read).merge(
               'date_submitted' => 'April 14, 2026 2:52 p.m. ET',
-              'date_expires' => 'April 14, 2027 2:52 p.m. ET'
+              'date_expires' => 'May 14, 2026 2:52 p.m. ET'
             )
           end
 
@@ -899,11 +899,11 @@ describe SimpleFormsApi::Notification::Email do
               'form40_1330m_confirmation_email_template_id',
               {
                 'first_name' => 'Jane',
-                'date_submitted' => 'April 14, 2026 2:52 p.m. ET',
+                'date_submitted' => Time.zone.today.strftime('%B %d, %Y'),
                 'confirmation_number' => 'confirmation_number',
                 'lighthouse_updated_at' => lighthouse_updated_at,
                 'veteran_name' => 'John Smith',
-                'date_expires' => 'April 14, 2027 2:52 p.m. ET'
+                'date_expires' => 30.days.from_now.strftime('%B %d, %Y')
               },
               a_string_matching(/\S+/),
               a_hash_including(:callback_metadata)
@@ -941,7 +941,7 @@ describe SimpleFormsApi::Notification::Email do
           )
           JSON.parse(fixture_path.read).merge(
             'date_submitted' => 'April 14, 2026 2:52 p.m. ET',
-            'date_expires' => 'April 14, 2027 2:52 p.m. ET'
+            'date_expires' => 'May 14, 2026 2:52 p.m. ET'
           )
         end
 
@@ -958,11 +958,11 @@ describe SimpleFormsApi::Notification::Email do
               'form40_1330m_cemetery_notification_email_template_id',
               {
                 'first_name' => 'Robert',
-                'date_submitted' => 'April 14, 2026 2:52 p.m. ET',
+                'date_submitted' => Time.zone.today.strftime('%B %d, %Y'),
                 'confirmation_number' => 'confirmation_number',
                 'lighthouse_updated_at' => lighthouse_updated_at,
                 'veteran_name' => 'John Smith',
-                'date_expires' => 'April 14, 2027 2:52 p.m. ET'
+                'date_expires' => 30.days.from_now.strftime('%B %d, %Y')
               },
               a_string_matching(/\S+/),
               a_hash_including(:callback_metadata)

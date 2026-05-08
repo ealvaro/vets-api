@@ -463,7 +463,7 @@ RSpec.describe SimpleFormsApi::VBA401330m do
           'last' => 'Smith'
         },
         'date_submitted' => 'April 14, 2026 2:52 p.m. ET',
-        'date_expires' => 'April 14, 2027 2:52 p.m. ET'
+        'date_expires' => 30.days.from_now.strftime('%B %d, %Y')
       }
     end
 
@@ -471,8 +471,7 @@ RSpec.describe SimpleFormsApi::VBA401330m do
       result = described_class.new(data).notification_personalization
       expect(result).to include(
         'veteran_name' => 'John Smith',
-        'date_submitted' => 'April 14, 2026 2:52 p.m. ET',
-        'date_expires' => 'April 14, 2027 2:52 p.m. ET'
+        'date_expires' => 30.days.from_now.strftime('%B %d, %Y')
       )
     end
 
@@ -491,8 +490,7 @@ RSpec.describe SimpleFormsApi::VBA401330m do
         result = described_class.new(data).notification_personalization
         expect(result).to include(
           'veteran_name' => 'John Smith',
-          'date_submitted' => today.strftime('%B %d, %Y'),
-          'date_expires' => (today + 1.year).strftime('%B %d, %Y')
+          'date_expires' => (today + 30.days).strftime('%B %d, %Y')
         )
       end
     end

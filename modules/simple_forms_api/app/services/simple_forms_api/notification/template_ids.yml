@@ -61,6 +61,7 @@ vba_40_10007:
   error: form40_10007_error_email
   received:
 vba_40_1330m:
+  expiration: form40_1330m_expiration_email
   confirmation: form40_1330m_confirmation_email
   cemetery_notification: form40_1330m_cemetery_notification_email
   received:

@@ -1900,6 +1900,7 @@ vanotify:
         form40_10007_error_email: <%= ENV['vanotify__services__va_gov__template_id__form40_10007_error_email'] %>
         form40_1330m_cemetery_notification_email: <%= ENV['vanotify__services__va_gov__template_id__form40_1330m_cemetery_notification_email'] %>
         form40_1330m_confirmation_email: <%= ENV['vanotify__services__va_gov__template_id__form40_1330m_confirmation_email'] %>
+        form40_1330m_expiration_email: <%= ENV['vanotify__services__va_gov__template_id__form40_1330m_expiration_email'] %>
         form526_confirmation_email: <%= ENV['vanotify__services__va_gov__template_id__form526_confirmation_email'] %>
         form526_submission_failed_email: 7efb8dfc-f30c-4072-b900-ae393aa1114b
         form526_submitted_email: <%= ENV['vanotify__services__va_gov__template_id__form526_submitted_email'] %>
