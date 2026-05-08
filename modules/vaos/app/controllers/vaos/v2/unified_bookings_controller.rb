@@ -160,13 +160,20 @@ module VAOS
         end
       end
 
+      # +appointment_id+ (Wellhive draft id) is intentionally NOT permitted.
+      # The Wellhive draft id is a backend-managed implementation detail --
+      # +VAOS::V2::UnifiedSlotsController#maybe_create_draft+ caches a draft id
+      # under +(user_uuid, referral_number)+ and {VAOS::V2::Unified::EpsBookingService}
+      # resolves it from the cache (or mints a fresh one on miss). Trusting a
+      # client-supplied draft id led to a class of +400 invalid appointmentId+
+      # failures when the FE populated this field with the +provider_service_id+
+      # instead of the draft id from the slots response.
       def create_booking_params
         @create_booking_params ||= params.permit(
           :referral_number,
           :network_id,
           :provider_service_id,
           :slot_id,
-          :appointment_id,
           :comment,
           additional_patient_attributes: [
             :phone, :email, :birth_date, :gender,

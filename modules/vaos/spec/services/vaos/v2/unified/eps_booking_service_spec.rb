@@ -22,12 +22,23 @@ RSpec.describe VAOS::V2::Unified::EpsBookingService do
     { referral_number: 'REF-12345' }
   end
   let(:appointment_service) { instance_double(Eps::AppointmentService) }
-  let(:service) { described_class.new(appointment_service:) }
+  let(:redis_client) { instance_double(Eps::RedisClient) }
+  let(:eps_draft_service) { instance_double(VAOS::V2::Unified::EpsDraftService) }
+  let(:service) { described_class.new(appointment_service:, redis_client:, eps_draft_service:) }
 
   before do
     allow(Rails.logger).to receive(:info)
     allow(Rails.logger).to receive(:error)
     allow(StatsD).to receive(:increment)
+
+    # Default to "no cached draft" so legacy tests exercise the create-fresh path
+    # without each one having to opt in. Tests that exercise the cache-hit path
+    # override this to return a stored draft id.
+    allow(redis_client).to receive_messages(
+      fetch_draft_appointment_id: nil,
+      delete_draft_appointment_id: true
+    )
+    allow(eps_draft_service).to receive(:create_for_referral).and_return('eps-draft-1')
   end
 
   describe '#book' do
@@ -44,8 +55,9 @@ RSpec.describe VAOS::V2::Unified::EpsBookingService do
     end
 
     it 'creates a draft with the referral id then submits with mapped EPS fields' do
-      expect(appointment_service).to receive(:create_draft_appointment).with(referral_id: 'REF-12345')
-                                                                       .and_return(draft_response)
+      expect(eps_draft_service).to receive(:create_for_referral) do |referral|
+        expect(referral.referral_number).to eq('REF-12345')
+      end.and_return('eps-draft-1')
 
       expect(appointment_service).to receive(:submit_appointment).with(
         'eps-draft-1',
@@ -71,18 +83,129 @@ RSpec.describe VAOS::V2::Unified::EpsBookingService do
       )
     end
 
-    context 'when appointment_id is provided (draft already exists from slots fetch)' do
-      let(:params_with_draft) { base_params.merge(appointment_id: 'existing-draft-99') }
+    context 'when the client supplies an appointment_id' do
+      # Defends against the FE bug where +appointment_id+ was being populated with
+      # +provider_service_id+ (both are short opaque ids), which Wellhive rejected
+      # at +POST /appointments/{appointment_id}/submit+ with +400 invalid appointmentId+.
+      # The booking service must ignore client-supplied draft ids at every layer.
+      let(:params_with_draft) { base_params.merge(appointment_id: 'provider-svc-99') }
 
-      it 'skips draft creation and uses the existing draft ID' do
-        expect(appointment_service).not_to receive(:create_draft_appointment)
+      it 'ignores the client value and mints a fresh draft through the guarded draft service' do
+        expect(eps_draft_service).to receive(:create_for_referral) do |referral|
+          expect(referral.referral_number).to eq('REF-12345')
+        end.and_return('eps-draft-1')
         expect(appointment_service).to receive(:submit_appointment).with(
-          'existing-draft-99',
+          'eps-draft-1',
           hash_including(referral_number: 'REF-12345')
         ).and_return(submit_response)
 
-        result = service.book(user:, provider:, slot:, params: params_with_draft)
-        expect(result[:appointment_id]).to eq('eps-draft-1')
+        service.book(user:, provider:, slot:, params: params_with_draft)
+      end
+    end
+
+    context 'when a draft id is cached for this (user, referral_number)' do
+      # The slots controller mints a draft to satisfy Wellhive's slots-endpoint
+      # +appointmentId+ query param and stashes that id in Redis. The booking
+      # service must reuse it instead of minting a second draft.
+      before do
+        allow(redis_client).to receive(:fetch_draft_appointment_id)
+          .with(uuid: user.uuid, referral_number: 'REF-12345')
+          .and_return('cached-draft-7')
+      end
+
+      it 'reuses the cached draft id and skips create_draft_appointment' do
+        expect(appointment_service).not_to receive(:create_draft_appointment)
+        expect(appointment_service).to receive(:submit_appointment).with(
+          'cached-draft-7',
+          hash_including(referral_number: 'REF-12345')
+        ).and_return(submit_response)
+
+        service.book(user:, provider:, slot:, params: base_params)
+      end
+
+      it 'invalidates the cached draft id after a successful submit' do
+        expect(appointment_service).to receive(:submit_appointment)
+          .with('cached-draft-7', anything)
+          .and_return(submit_response)
+        expect(redis_client).to receive(:delete_draft_appointment_id)
+          .with(uuid: user.uuid, referral_number: 'REF-12345')
+
+        service.book(user:, provider:, slot:, params: base_params)
+      end
+
+      # Models the abandon-and-pick-a-different-slot UX: user opens slots,
+      # gets a list, picks slot S1, goes to confirmation, navigates back,
+      # picks slot S2 from the same already-loaded list (no re-fetch of
+      # +/provider_slots+), then submits. The cache still holds the original
+      # draft from the initial slots fetch; the FE-supplied slot id is the
+      # new pick. Wellhive accepts (cached draft, new slot) because slot ids
+      # are (network, provider, time, appointment-type)-scoped, not
+      # draft-scoped -- if Wellhive ever changes that contract, this test
+      # is what surfaces it.
+      context 'and the user picks a different slot from a stale list (no slots re-fetch)' do
+        let(:different_slot) do
+          VAOS::V2::Unified::EpsSlot.new(
+            id: 'slot-composite-2-different-time',
+            start: '2026-04-11T15:00:00Z',
+            provider_service_id: 'provider-svc-99'
+          )
+        end
+
+        it 'submits the cached draft with the newly-picked slot id' do
+          expect(appointment_service).not_to receive(:create_draft_appointment)
+          expect(appointment_service).to receive(:submit_appointment).with(
+            'cached-draft-7',
+            hash_including(slot_ids: ['slot-composite-2-different-time'])
+          ).and_return(submit_response)
+
+          service.book(user:, provider:, slot: different_slot, params: base_params)
+        end
+      end
+    end
+
+    context 'when no draft id is cached (normal cache miss)' do
+      it 'runs the guarded draft service and uses that id for submit' do
+        expect(redis_client).to receive(:fetch_draft_appointment_id)
+          .with(uuid: user.uuid, referral_number: 'REF-12345')
+          .and_return(nil)
+        expect(eps_draft_service).to receive(:create_for_referral) do |referral|
+          expect(referral.referral_number).to eq('REF-12345')
+        end.and_return('eps-draft-1')
+        expect(appointment_service).to receive(:submit_appointment)
+          .with('eps-draft-1', anything)
+          .and_return(submit_response)
+
+        service.book(user:, provider:, slot:, params: base_params)
+      end
+
+      # Guards the cache-miss fallback: even when the slots-created draft has
+      # expired from Redis (or the client skipped the slots step), we must not
+      # mint a raw Wellhive draft directly. The fallback has to re-run
+      # +EpsDraftService+ so the legacy "referral already used" precheck still
+      # executes before any new draft is created.
+      it 'does not call Eps::AppointmentService#create_draft_appointment directly' do
+        expect(appointment_service).not_to receive(:create_draft_appointment)
+
+        service.book(user:, provider:, slot:, params: base_params)
+      end
+    end
+
+    context 'when submit fails after a cache hit' do
+      before do
+        allow(redis_client).to receive(:fetch_draft_appointment_id).and_return('cached-draft-7')
+        allow(appointment_service).to receive(:submit_appointment)
+          .and_raise(Common::Exceptions::BackendServiceException.new(nil, {}, 500))
+      end
+
+      # On submit failure we leave the cached draft alone so a legitimate retry
+      # can reuse it; deleting unconditionally would force a second draft creation
+      # for every transient Wellhive blip.
+      it 'does NOT invalidate the cached draft id' do
+        expect(redis_client).not_to receive(:delete_draft_appointment_id)
+
+        expect do
+          service.book(user:, provider:, slot:, params: base_params)
+        end.to raise_error(Common::Exceptions::BackendServiceException)
       end
     end
 
@@ -90,7 +213,9 @@ RSpec.describe VAOS::V2::Unified::EpsBookingService do
       let(:base_params) { { referral_id: 'VA0000001234' } }
 
       it 'passes the same value to draft and submit' do
-        expect(appointment_service).to receive(:create_draft_appointment).with(referral_id: 'VA0000001234')
+        expect(eps_draft_service).to receive(:create_for_referral) do |referral|
+          expect(referral.referral_number).to eq('VA0000001234')
+        end.and_return('eps-draft-1')
         expect(appointment_service).to receive(:submit_appointment).with(
           'eps-draft-1',
           hash_including(referral_number: 'VA0000001234')
@@ -200,8 +325,11 @@ RSpec.describe VAOS::V2::Unified::EpsBookingService do
       end
     end
 
-    context 'when draft response has no id' do
-      let(:draft_response) { OpenStruct.new(state: 'draft') }
+    context 'when guarded draft service reports a missing draft id' do
+      before do
+        allow(eps_draft_service).to receive(:create_for_referral)
+          .and_raise(VAOS::V2::Unified::BookingUpstreamContractError, 'EPS draft response missing appointment id')
+      end
 
       it 'raises BackendServiceException' do
         expect do
@@ -220,9 +348,9 @@ RSpec.describe VAOS::V2::Unified::EpsBookingService do
       end
     end
 
-    context 'when create_draft_appointment raises' do
+    context 'when the guarded draft service raises' do
       before do
-        allow(appointment_service).to receive(:create_draft_appointment)
+        allow(eps_draft_service).to receive(:create_for_referral)
           .and_raise(Common::Exceptions::BackendServiceException.new(nil, {}, 502))
       end
 
@@ -255,7 +383,7 @@ RSpec.describe VAOS::V2::Unified::EpsBookingService do
 
     context 'when submit_appointment raises' do
       before do
-        allow(appointment_service).to receive(:create_draft_appointment).and_return(draft_response)
+        allow(eps_draft_service).to receive(:create_for_referral).and_return('eps-draft-1')
         allow(appointment_service).to receive(:submit_appointment)
           .and_raise(Common::Exceptions::BackendServiceException.new(nil, {}, 500))
       end
@@ -279,22 +407,23 @@ RSpec.describe VAOS::V2::Unified::EpsBookingService do
       end
     end
 
-    context 'when using default Eps::AppointmentService construction' do
+    context 'when using default service construction' do
       let(:service) { described_class.new }
       let(:real_service) { instance_double(Eps::AppointmentService) }
+      let(:real_draft_service) { instance_double(VAOS::V2::Unified::EpsDraftService) }
 
       before do
         allow(Eps::AppointmentService).to receive(:new).with(user).and_return(real_service)
-        allow(real_service).to receive_messages(
-          create_draft_appointment: draft_response,
-          submit_appointment: submit_response
-        )
+        allow(VAOS::V2::Unified::EpsDraftService).to receive(:new).with(user).and_return(real_draft_service)
+        allow(real_draft_service).to receive(:create_for_referral).and_return('eps-draft-1')
+        allow(real_service).to receive(:submit_appointment).and_return(submit_response)
       end
 
-      it 'instantiates Eps::AppointmentService with the user from #book' do
+      it 'instantiates Eps::AppointmentService and EpsDraftService with the user from #book' do
         service.book(user:, provider:, slot:, params: base_params)
 
         expect(Eps::AppointmentService).to have_received(:new).with(user)
+        expect(VAOS::V2::Unified::EpsDraftService).to have_received(:new).with(user)
       end
     end
   end

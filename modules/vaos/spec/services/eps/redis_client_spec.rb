@@ -142,6 +142,109 @@ RSpec.describe Eps::RedisClient do
     end
   end
 
+  describe 'draft appointment id cache' do
+    let(:referral_number) { 'VA0000007419' }
+    let(:draft_appointment_id) { 'eps-draft-abc123' }
+    let(:draft_key) { "#{described_class::DRAFT_CACHE_KEY}:#{uuid}:#{referral_number}" }
+
+    describe '#store_draft_appointment_id' do
+      it 'writes the draft id to the cache under the (uuid, referral) key' do
+        client.store_draft_appointment_id(uuid:, referral_number:, draft_appointment_id:)
+
+        expect(Rails.cache.read(draft_key, namespace: described_class::CACHE_NAMESPACE))
+          .to eq(draft_appointment_id)
+      end
+
+      it 'stores the draft id in plaintext (not PII; encryption skipped)' do
+        client.store_draft_appointment_id(uuid:, referral_number:, draft_appointment_id:)
+
+        expect(Rails.cache.read(draft_key, namespace: described_class::CACHE_NAMESPACE))
+          .to be_a(String).and(eq(draft_appointment_id))
+      end
+
+      # Blank inputs degrade to a no-op rather than raising. The draft cache is
+      # an optimization on top of the always-create-a-fresh-draft path, so a
+      # missing input shouldn't break booking; it should just skip the cache.
+      it 'returns false and writes nothing when uuid is blank' do
+        expect(client.store_draft_appointment_id(uuid: '', referral_number:, draft_appointment_id:))
+          .to be(false)
+        expect(Rails.cache.read(draft_key, namespace: described_class::CACHE_NAMESPACE)).to be_nil
+      end
+
+      it 'returns false and writes nothing when referral_number is blank' do
+        expect(client.store_draft_appointment_id(uuid:, referral_number: '', draft_appointment_id:))
+          .to be(false)
+        expect(Rails.cache.read(draft_key, namespace: described_class::CACHE_NAMESPACE)).to be_nil
+      end
+
+      it 'returns false and writes nothing when draft_appointment_id is blank' do
+        expect(client.store_draft_appointment_id(uuid:, referral_number:, draft_appointment_id: ''))
+          .to be(false)
+        expect(Rails.cache.read(draft_key, namespace: described_class::CACHE_NAMESPACE)).to be_nil
+      end
+    end
+
+    describe '#fetch_draft_appointment_id' do
+      it 'returns the cached draft id on hit' do
+        client.store_draft_appointment_id(uuid:, referral_number:, draft_appointment_id:)
+
+        expect(client.fetch_draft_appointment_id(uuid:, referral_number:)).to eq(draft_appointment_id)
+      end
+
+      it 'returns nil on miss' do
+        expect(client.fetch_draft_appointment_id(uuid:, referral_number: 'VA-NONEXISTENT')).to be_nil
+      end
+
+      it 'returns nil when uuid is blank' do
+        client.store_draft_appointment_id(uuid:, referral_number:, draft_appointment_id:)
+
+        expect(client.fetch_draft_appointment_id(uuid: nil, referral_number:)).to be_nil
+      end
+
+      it 'returns nil when referral_number is blank' do
+        client.store_draft_appointment_id(uuid:, referral_number:, draft_appointment_id:)
+
+        expect(client.fetch_draft_appointment_id(uuid:, referral_number: nil)).to be_nil
+      end
+
+      it 'isolates entries by user uuid' do
+        client.store_draft_appointment_id(uuid:, referral_number:, draft_appointment_id:)
+
+        expect(client.fetch_draft_appointment_id(uuid: 'other-user', referral_number:)).to be_nil
+      end
+    end
+
+    describe '#delete_draft_appointment_id' do
+      it 'removes the cached entry' do
+        client.store_draft_appointment_id(uuid:, referral_number:, draft_appointment_id:)
+        client.delete_draft_appointment_id(uuid:, referral_number:)
+
+        expect(client.fetch_draft_appointment_id(uuid:, referral_number:)).to be_nil
+      end
+
+      it 'is a no-op when nothing is cached' do
+        expect { client.delete_draft_appointment_id(uuid:, referral_number:) }.not_to raise_error
+      end
+
+      it 'returns false when uuid is blank (does not touch cache)' do
+        client.store_draft_appointment_id(uuid:, referral_number:, draft_appointment_id:)
+
+        expect(client.delete_draft_appointment_id(uuid: '', referral_number:)).to be(false)
+        expect(client.fetch_draft_appointment_id(uuid:, referral_number:)).to eq(draft_appointment_id)
+      end
+    end
+
+    it 'passes DRAFT_CACHE_TTL as the cache expiration' do
+      expect(Rails.cache).to receive(:write).with(
+        draft_key,
+        draft_appointment_id,
+        hash_including(expires_in: described_class::DRAFT_CACHE_TTL)
+      )
+
+      client.store_draft_appointment_id(uuid:, referral_number:, draft_appointment_id:)
+    end
+  end
+
   describe '#lockbox' do
     context 'when Settings.lockbox.master_key is a string' do
       it 'creates a Lockbox instance successfully' do

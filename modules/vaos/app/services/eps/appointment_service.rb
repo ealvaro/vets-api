@@ -105,6 +105,22 @@ module Eps
     end
 
     ##
+    # Create a draft appointment AND cache its id under +(user.uuid, referral_id)+ so the
+    # unified booking flow can resume the draft at submit time instead of minting a second
+    # one. Use this from the slots flow, where the draft is created speculatively to satisfy
+    # Wellhive's slots-API +appointmentId+ requirement and may be reused by a later submit.
+    # Use {#create_draft_appointment} directly when the draft is going to be submitted
+    # immediately and the caching round-trip provides no benefit.
+    #
+    # @return OpenStruct response from EPS create draft appointment endpoint
+    #
+    def create_resumable_draft_appointment(referral_id:)
+      draft = create_draft_appointment(referral_id:)
+      cache_draft_appointment_id(referral_id:, draft_id: draft.id)
+      draft
+    end
+
+    ##
     #
     # Submit an appointment to EPS for booking
     #
@@ -122,7 +138,6 @@ module Eps
     def submit_appointment(appointment_id, params = {})
       validate_submit_params!(appointment_id, params)
       payload = build_submit_payload(params)
-      persist_submit_side_effects(appointment_id)
 
       with_monitoring do
         response = perform(:post, "/#{config.base_path}/appointments/#{appointment_id}/submit", payload,
@@ -130,6 +145,16 @@ module Eps
 
         result = OpenStruct.new(response.body)
         check_for_eps_error!(result, response, 'submit_appointment')
+
+        # Persist Redis state and enqueue the status-polling job ONLY after the
+        # submit has actually succeeded (HTTP success AND no +error+ field in
+        # body). Earlier versions ran +persist_submit_side_effects+ before the
+        # POST, which left orphan Redis entries plus a futile
+        # +Eps::AppointmentStatusJob+ retry loop whenever Wellhive 4xx'd --
+        # most visibly during the +invalid appointmentId+ regression fixed in
+        # the parent commit on this branch.
+        persist_submit_side_effects(appointment_id)
+
         result
       end
     rescue Eps::ServiceException => e
@@ -203,6 +228,22 @@ module Eps
 
       appointment_last4 = appointment_id.to_s.last(4)
       Eps::AppointmentStatusJob.perform_async(user.uuid, appointment_last4)
+    end
+
+    ##
+    # Cache a freshly-minted draft id so {VAOS::V2::Unified::EpsBookingService}
+    # can resume the same draft during submit instead of minting a new one.
+    # No-op when +draft_id+ is blank (defensive; +create_draft_appointment+
+    # callers already raise on blank ids before reaching this point).
+    #
+    def cache_draft_appointment_id(referral_id:, draft_id:)
+      return if draft_id.blank?
+
+      redis_client.store_draft_appointment_id(
+        uuid: user.uuid,
+        referral_number: referral_id,
+        draft_appointment_id: draft_id
+      )
     end
 
     ##

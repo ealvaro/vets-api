@@ -418,6 +418,94 @@ describe Eps::AppointmentService do
     end
   end
 
+  describe '#create_resumable_draft_appointment' do
+    let(:referral_id) { 'VA0000007419' }
+    let(:successful_draft_appt_response) do
+      double('Response', status: 200, body: { 'id' => appointment_id,
+                                              'state' => 'draft',
+                                              'patientId' => icn },
+                         response_headers:)
+    end
+
+    context 'when the underlying create succeeds' do
+      before do
+        allow_any_instance_of(VAOS::SessionService).to receive(:perform).and_return(successful_draft_appt_response)
+      end
+
+      it 'returns the draft response from create_draft_appointment' do
+        result = service.create_resumable_draft_appointment(referral_id:)
+
+        expect(result.id).to eq(appointment_id)
+        expect(result.state).to eq('draft')
+      end
+
+      # The whole point of this method (vs. plain +create_draft_appointment+):
+      # cache the freshly-minted draft id so the unified booking flow can
+      # resume the same draft at submit time instead of minting a second one.
+      it 'caches the draft id under (user.uuid, referral_id)' do
+        redis_client = instance_double(Eps::RedisClient)
+        allow(Eps::RedisClient).to receive(:new).and_return(redis_client)
+        expect(redis_client).to receive(:store_draft_appointment_id).with(
+          uuid: user.uuid,
+          referral_number: referral_id,
+          draft_appointment_id: appointment_id
+        )
+
+        service.create_resumable_draft_appointment(referral_id:)
+      end
+    end
+
+    context 'when the underlying create fails' do
+      let(:failed_response) do
+        double('Response', status: 500, body: 'Unknown service exception',
+                           response_headers:)
+      end
+      let(:exception) do
+        Common::Exceptions::BackendServiceException.new(nil, {}, failed_response.status, failed_response.body)
+      end
+
+      before do
+        allow_any_instance_of(VAOS::SessionService).to receive(:perform).and_raise(exception)
+      end
+
+      # If the upstream draft never minted, there's nothing to cache. The
+      # exception must propagate so the slots controller surfaces a 502
+      # rather than silently caching a missing id.
+      it 'propagates the exception and does NOT touch the cache' do
+        redis_client = instance_double(Eps::RedisClient)
+        allow(Eps::RedisClient).to receive(:new).and_return(redis_client)
+        expect(redis_client).not_to receive(:store_draft_appointment_id)
+
+        expect { service.create_resumable_draft_appointment(referral_id:) }
+          .to raise_error(Common::Exceptions::BackendServiceException)
+      end
+    end
+
+    context 'when the upstream returns a draft with a blank id' do
+      let(:blank_id_response) do
+        double('Response', status: 200, body: { 'state' => 'draft', 'patientId' => icn }, response_headers:)
+      end
+
+      before do
+        allow_any_instance_of(VAOS::SessionService).to receive(:perform).and_return(blank_id_response)
+      end
+
+      # Defensive: +Eps::RedisClient#store_draft_appointment_id+ is itself
+      # blank-input safe, but this method's contract is that we don't bother
+      # calling Redis when there's no id to cache. Slots-controller-side
+      # blank-id detection raises the 502; this just locks in that we don't
+      # quietly cache nil.
+      it 'skips the cache write' do
+        redis_client = instance_double(Eps::RedisClient)
+        allow(Eps::RedisClient).to receive(:new).and_return(redis_client)
+        expect(redis_client).not_to receive(:store_draft_appointment_id)
+
+        result = service.create_resumable_draft_appointment(referral_id:)
+        expect(result.id).to be_nil
+      end
+    end
+  end
+
   describe '#submit_appointment' do
     let(:valid_params) do
       {
@@ -541,6 +629,20 @@ describe Eps::AppointmentService do
           service.submit_appointment(appointment_id, valid_params)
         end.to raise_error(Common::Exceptions::BackendServiceException, /VA900/)
       end
+
+      # Locks in the ordering fix: side effects must NOT run on submit failure,
+      # otherwise we'd leak Redis entries and enqueue futile status-polling jobs
+      # for appointments that never got booked on Wellhive's side.
+      it 'does NOT persist Redis state or enqueue status job' do
+        redis_client = instance_double(Eps::RedisClient)
+        allow(Eps::RedisClient).to receive(:new).and_return(redis_client)
+        expect(redis_client).not_to receive(:store_appointment_data)
+        expect(Eps::AppointmentStatusJob).not_to receive(:perform_async)
+
+        expect do
+          service.submit_appointment(appointment_id, valid_params)
+        end.to raise_error(Common::Exceptions::BackendServiceException)
+      end
     end
 
     context 'when response contains error field' do
@@ -560,6 +662,19 @@ describe Eps::AppointmentService do
       end
 
       it 'raises Eps::ServiceException' do
+        expect { service.submit_appointment(appointment_id, valid_params) }
+          .to raise_error(Eps::ServiceException)
+      end
+
+      # Same ordering invariant as the BackendServiceException branch above,
+      # for the case where Wellhive returns 200 OK but with an +error+ field
+      # in the body (their occasional pattern). Side effects must not run.
+      it 'does NOT persist Redis state or enqueue status job' do
+        redis_client = instance_double(Eps::RedisClient)
+        allow(Eps::RedisClient).to receive(:new).and_return(redis_client)
+        expect(redis_client).not_to receive(:store_appointment_data)
+        expect(Eps::AppointmentStatusJob).not_to receive(:perform_async)
+
         expect { service.submit_appointment(appointment_id, valid_params) }
           .to raise_error(Eps::ServiceException)
       end

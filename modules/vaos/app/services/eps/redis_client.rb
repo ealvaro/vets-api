@@ -16,6 +16,15 @@ module Eps
     # which will span approximately 25 hours.
     CACHE_TTL = 26.hours
 
+    # Sized to the typical "select-slot then confirm" UX window, plus headroom
+    # for a user who momentarily steps away. Long enough to absorb a normal
+    # booking flow; short enough that drafts created during one session don't
+    # linger after a user abandons the flow. Wellhive holds drafts for hours
+    # on their side regardless, so a short Redis TTL just means we mint a new
+    # draft on resume rather than reusing a stale one.
+    DRAFT_CACHE_KEY = 'vaos_eps_draft'
+    DRAFT_CACHE_TTL = 15.minutes
+
     # Initializes the RedisClient with settings.
     #
     # @return [Eps::RedisClient] A new instance of RedisClient
@@ -65,6 +74,58 @@ module Eps
       decrypt_data(encrypted_data)
     end
 
+    # Cache a Wellhive draft appointment id under +(uuid, referral_number)+
+    # so the unified booking flow can reuse the draft created during the
+    # slots fetch instead of minting a second one at submit time. Skips the
+    # write (rather than raising) when any input is blank -- the draft id is
+    # an optimization, never load-bearing on correctness, so a missing input
+    # should degrade to the no-cache path silently.
+    #
+    # Draft ids are short opaque tokens, not PII; not encrypted (in contrast
+    # to {#store_appointment_data}, which holds the user's email).
+    #
+    # @param uuid [String] User's UUID
+    # @param referral_number [String] CCRA referral identifier (e.g. "VA0000007419")
+    # @param draft_appointment_id [String] Wellhive draft id from
+    #   {Eps::AppointmentService#create_draft_appointment}
+    # @return [Boolean] +true+ on successful write, +false+ when any input is blank
+    def store_draft_appointment_id(uuid:, referral_number:, draft_appointment_id:)
+      return false if uuid.blank? || referral_number.blank? || draft_appointment_id.blank?
+
+      Rails.cache.write(
+        generate_draft_key(uuid, referral_number),
+        draft_appointment_id.to_s,
+        namespace: CACHE_NAMESPACE,
+        expires_in: DRAFT_CACHE_TTL
+      )
+    end
+
+    # Look up a previously-cached draft appointment id for +(uuid, referral_number)+.
+    # Returns +nil+ on cache miss so callers can fall through to creating a fresh
+    # draft via {Eps::AppointmentService#create_draft_appointment}.
+    #
+    # @param uuid [String] User's UUID
+    # @param referral_number [String] CCRA referral identifier
+    # @return [String, nil] cached draft id, or +nil+ on miss / blank input
+    def fetch_draft_appointment_id(uuid:, referral_number:)
+      return nil if uuid.blank? || referral_number.blank?
+
+      Rails.cache.read(generate_draft_key(uuid, referral_number), namespace: CACHE_NAMESPACE)
+    end
+
+    # Remove a cached draft id once it has been consumed (successful submit) so
+    # that a retry doesn't reuse a Wellhive draft already in +submitted+ state.
+    # Safe to call when no entry exists -- +Rails.cache.delete+ is a no-op then.
+    #
+    # @param uuid [String] User's UUID
+    # @param referral_number [String] CCRA referral identifier
+    # @return [Boolean] cache deletion result
+    def delete_draft_appointment_id(uuid:, referral_number:)
+      return false if uuid.blank? || referral_number.blank?
+
+      Rails.cache.delete(generate_draft_key(uuid, referral_number), namespace: CACHE_NAMESPACE)
+    end
+
     private
 
     # Returns a configured Lockbox instance for encryption/decryption
@@ -110,6 +171,19 @@ module Eps
     def generate_appointment_data_key(uuid, appointment_id)
       appointment_last4 = appointment_id.to_s.last(4).presence || '0000'
       "#{CACHE_KEY}:#{uuid}:#{appointment_last4}"
+    end
+
+    # Generates a consistent cache key for the unified-booking draft id
+    # cache. Keyed by full referral number (CCRA referral numbers are short,
+    # non-sequential opaque identifiers) plus user uuid so two users sharing
+    # a referral can never collide and a single user with multiple referrals
+    # gets one cache slot per referral.
+    #
+    # @param uuid [String] The user's UUID
+    # @param referral_number [String] CCRA referral identifier
+    # @return [String] The generated cache key
+    def generate_draft_key(uuid, referral_number)
+      "#{DRAFT_CACHE_KEY}:#{uuid}:#{referral_number}"
     end
   end
 end

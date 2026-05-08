@@ -191,6 +191,7 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
       end
 
       let(:mock_eps_service) { instance_double(Eps::AppointmentService) }
+      let(:mock_eps_draft_service) { instance_double(VAOS::V2::Unified::EpsDraftService) }
 
       let(:mock_draft_response) { OpenStruct.new(id: 'draft-001', state: 'draft') }
 
@@ -200,8 +201,9 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
 
       before do
         allow(Eps::AppointmentService).to receive(:new).and_return(mock_eps_service)
-        allow(mock_eps_service).to receive_messages(create_draft_appointment: mock_draft_response,
-                                                    submit_appointment: mock_submit_response)
+        allow(VAOS::V2::Unified::EpsDraftService).to receive(:new).and_return(mock_eps_draft_service)
+        allow(mock_eps_draft_service).to receive(:create_for_referral).and_return('draft-001')
+        allow(mock_eps_service).to receive(:submit_appointment).and_return(mock_submit_response)
       end
 
       it 'creates draft, submits, and returns confirmation' do
@@ -216,17 +218,65 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
         expect(body['data']['attributes']['status']).to eq('booked')
       end
 
-      it 'calls create_draft then submit_appointment' do
+      it 'calls the guarded draft service then submit_appointment' do
         post('/vaos/v2/unified_bookings', params: eps_params.to_json, headers:)
 
-        expect(mock_eps_service).to have_received(:create_draft_appointment)
-          .with(referral_id: 'VA0000005678')
+        expect(mock_eps_draft_service).to have_received(:create_for_referral) do |referral|
+          expect(referral.referral_number).to eq('VA0000005678')
+        end
         expect(mock_eps_service).to have_received(:submit_appointment)
           .with('draft-001', hash_including(
                                network_id: 'sandbox-net-1',
                                provider_service_id: 'prov-789',
                                referral_number: 'VA0000005678'
                              ))
+      end
+
+      # Regression tests for the +invalid appointmentId+ production bug, end-to-end.
+      # The FE was populating +appointmentId+ in the booking body with the
+      # +provider_service_id+ instead of the slots-time draft id; the controller
+      # used to permit that field and forward it as the Wellhive draft id,
+      # producing a +400 invalid appointmentId+ from Wellhive.
+      #
+      # The fix has two layers we want locked in here:
+      #   1. Strong params drops the field from the request entirely (no longer
+      #      in +create_booking_params.permit(...)+, so Rails' default
+      #      +action_on_unpermitted_parameters: :log+ silently filters it out --
+      #      no 4xx, no surfacing into the booking service).
+      #   2. The booking service mints/reuses a draft from the referral_number
+      #      regardless of any client-supplied draft id.
+      #
+      # If a future config change ever flips +action_on_unpermitted_parameters+
+      # to +:raise+ in any environment, these tests will fail loudly instead of
+      # the bug silently coming back. We test BOTH the snake_case form (which
+      # is what the controller actually sees in production -- after the
+      # OliveBranch middleware normalizes the body) AND the raw camelCase form
+      # (which is what the FE literally sends, in case the OliveBranch transform
+      # is ever bypassed).
+      it 'silently drops a snake_case appointment_id (post-OliveBranch shape) and mints/reuses the draft itself' do
+        params_with_bogus_draft = eps_params.merge(appointment_id: 'prov-789')
+
+        post('/vaos/v2/unified_bookings', params: params_with_bogus_draft.to_json, headers:)
+
+        expect(response).to have_http_status(:created)
+        expect(mock_eps_draft_service).to have_received(:create_for_referral) do |referral|
+          expect(referral.referral_number).to eq('VA0000005678')
+        end
+        expect(mock_eps_service).to have_received(:submit_appointment)
+          .with('draft-001', anything) # NOT 'prov-789'
+      end
+
+      it 'silently drops a camelCase appointmentId (raw FE shape) and mints/reuses the draft itself' do
+        params_with_bogus_draft = eps_params.merge(appointmentId: 'prov-789')
+
+        post('/vaos/v2/unified_bookings', params: params_with_bogus_draft.to_json, headers:)
+
+        expect(response).to have_http_status(:created)
+        expect(mock_eps_draft_service).to have_received(:create_for_referral) do |referral|
+          expect(referral.referral_number).to eq('VA0000005678')
+        end
+        expect(mock_eps_service).to have_received(:submit_appointment)
+          .with('draft-001', anything) # NOT 'prov-789'
       end
 
       context 'when EPS submit response has no start time and slot_start was supplied' do
@@ -281,7 +331,7 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
 
       context 'when EPS draft creation fails' do
         before do
-          allow(mock_eps_service).to receive(:create_draft_appointment)
+          allow(mock_eps_draft_service).to receive(:create_for_referral)
             .and_raise(Common::Exceptions::BackendServiceException.new('VAOS_502'))
         end
 
@@ -296,8 +346,8 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
 
       context 'when EPS draft response has no appointment id' do
         before do
-          allow(mock_eps_service).to receive(:create_draft_appointment)
-            .and_return(OpenStruct.new(state: 'draft'))
+          allow(mock_eps_draft_service).to receive(:create_for_referral)
+            .and_raise(VAOS::V2::Unified::BookingUpstreamContractError, 'EPS draft response missing appointment id')
         end
 
         it 'returns 502' do

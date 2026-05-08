@@ -21,7 +21,7 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
   let(:headers) { { 'Content-Type' => 'application/json', 'Accept' => 'application/json' } }
 
   let(:mock_referral_service) { instance_double(Ccra::ReferralService) }
-  let(:mock_eps_appt_service) { instance_double(Eps::AppointmentService) }
+  let(:mock_eps_draft_service) { instance_double(VAOS::V2::Unified::EpsDraftService) }
   let(:mock_eps_provider_service) { instance_double(Eps::ProviderService) }
 
   let(:mock_referral) do
@@ -33,7 +33,7 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
     )
   end
 
-  let(:mock_draft_response) { OpenStruct.new(id: 'draft-abc') }
+  let(:draft_id) { 'draft-abc' }
 
   let(:mock_eps_slots_response) do
     OpenStruct.new(
@@ -49,8 +49,8 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
   describe 'GET /vaos/v2/provider_slots' do
     context 'with eps provider type' do
       before do
-        allow(Eps::AppointmentService).to receive(:new).and_return(mock_eps_appt_service)
-        allow(mock_eps_appt_service).to receive(:create_draft_appointment).and_return(mock_draft_response)
+        allow(VAOS::V2::Unified::EpsDraftService).to receive(:new).and_return(mock_eps_draft_service)
+        allow(mock_eps_draft_service).to receive(:create_for_referral).and_return(draft_id)
         allow(Eps::ProviderService).to receive(:new).and_return(mock_eps_provider_service)
         allow(mock_eps_provider_service).to receive(:get_provider_slots).and_return(mock_eps_slots_response)
       end
@@ -85,11 +85,19 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
         expect(data['attributes']['slots'].length).to eq(2)
       end
 
-      it 'creates a draft appointment using the referral number' do
+      # The slots endpoint delegates draft creation to
+      # {VAOS::V2::Unified::EpsDraftService}, which (a) verifies the referral
+      # hasn't already been used, (b) mints a Wellhive draft, and (c) caches
+      # its id under +(user_uuid, referral_number)+ so the booking endpoint
+      # can resume it at submit time. The orchestrator's behavior is
+      # unit-tested in +eps_draft_service_spec.rb+; this test just confirms
+      # the controller delegates instead of touching EPS or Redis directly.
+      it 'delegates draft creation to EpsDraftService with the referral' do
         get('/vaos/v2/provider_slots', params: base_params, headers:)
 
-        expect(mock_eps_appt_service).to have_received(:create_draft_appointment)
-          .with(referral_id: 'VA0000005678')
+        expect(mock_eps_draft_service).to have_received(:create_for_referral) do |arg|
+          expect(arg.referral_number).to eq('VA0000005678')
+        end
       end
 
       it 'passes the draft ID to get_provider_slots' do
@@ -132,7 +140,7 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
 
       context 'when EPS draft creation fails' do
         before do
-          allow(mock_eps_appt_service).to receive(:create_draft_appointment)
+          allow(mock_eps_draft_service).to receive(:create_for_referral)
             .and_raise(Common::Exceptions::BackendServiceException.new('VAOS_502'))
         end
 
@@ -199,12 +207,12 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
       end
 
       it 'does not create a draft appointment' do
-        allow(Eps::AppointmentService).to receive(:new).and_return(mock_eps_appt_service)
+        allow(VAOS::V2::Unified::EpsDraftService).to receive(:new).and_return(mock_eps_draft_service)
 
         get('/vaos/v2/provider_slots', params: base_params, headers:)
 
         expect(data_for(response)['attributes']['draftAppointmentId']).to be_nil
-        expect(Eps::AppointmentService).not_to have_received(:new)
+        expect(VAOS::V2::Unified::EpsDraftService).not_to have_received(:new)
       end
 
       it 'does not call EPS provider service' do

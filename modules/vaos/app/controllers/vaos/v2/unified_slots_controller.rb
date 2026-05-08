@@ -111,20 +111,16 @@ module VAOS
         )
       end
 
+      # Verify the referral isn't already used and mint a resumable Wellhive
+      # draft. Both behaviors are encapsulated in
+      # {VAOS::V2::Unified::EpsDraftService}; the controller stays out of
+      # business logic and Redis concerns.
       def maybe_create_draft(referral)
         return nil unless provider_type == 'eps'
 
-        draft = eps_appointment_service.create_draft_appointment(referral_id: referral.referral_number)
-
-        if draft.id.blank?
-          raise Common::Exceptions::BackendServiceException.new(
-            'VAOS_502',
-            detail: 'EPS draft response missing appointment id'
-          )
-        end
-
+        draft_id = eps_draft_service.create_for_referral(referral)
         StatsD.increment("#{STATSD_KEY_PREFIX}.draft_created")
-        draft.id
+        draft_id
       end
 
       def fetch_slots(provider, referral, draft_id)
@@ -166,8 +162,8 @@ module VAOS
         @slots_service ||= Unified::SlotsService.new(current_user)
       end
 
-      def eps_appointment_service
-        @eps_appointment_service ||= Eps::AppointmentService.new(current_user)
+      def eps_draft_service
+        @eps_draft_service ||= Unified::EpsDraftService.new(current_user)
       end
 
       def log_error(error)
