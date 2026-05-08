@@ -51,6 +51,9 @@ namespace :sm do
 
     Rails.logger.info('Cached MHV account:')
     Rails.logger.info(Rails.cache.read("mhv_account_creation_#{icn}"))
+
+    Rails.logger.info('Updating MHV account creation mock response...')
+    update_mhv_account_creation_mock(mhv_correlation_id)
   end
 
   def get_idme_uuid(number)
@@ -78,5 +81,22 @@ namespace :sm do
   rescue => e
     puts "Something went wrong while trying to cache mhv_account for user with ICN: #{icn}."
     raise e
+  end
+
+  def update_mhv_account_creation_mock(mhv_correlation_id)
+    mock_path = File.join(Settings.betamocks.cache_dir, 'mhv', 'account_creation', 'create_account', 'default.yml')
+    unless File.exist?(mock_path)
+      Rails.logger.warn("Mock file not found at #{mock_path}, skipping mock update")
+      return
+    end
+
+    mock = YAML.safe_load(File.read(mock_path), permitted_classes: [Symbol])
+    body = JSON.parse(mock[:body])
+    body['mhv_userProfileId'] = mhv_correlation_id
+    mock[:body] = body.to_json
+    File.write(mock_path, mock.to_yaml)
+    Rails.logger.info("Updated mock MHV account creation response with mhv_userProfileId: #{mhv_correlation_id}")
+  rescue => e
+    Rails.logger.warn("Failed to update MHV account creation mock: #{e.message}")
   end
 end
