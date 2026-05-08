@@ -20,12 +20,6 @@ jobs:
           role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
           aws-region: "us-gov-west-1"
 
-      - name: Get Bot Token from Parameter Store
-        uses: marvinpinto/action-inject-ssm-secrets@40db08dfe313758837e611cac1679e3a89b35531 # latest
-        with:
-          ssm_parameter: /devops/VA_VSP_BOT_GITHUB_TOKEN
-          env_variable_name: VA_VSP_BOT_GITHUB_TOKEN
-
       - name: Generate cross-repo token for gems
         id: app-token
         uses: actions/create-github-app-token@v3
@@ -51,7 +45,7 @@ jobs:
             CURRENT_TIME = Time.now.to_i
             THRESHOLD_SECONDS = 90 * 24 * 60 * 60 # 90 days in seconds
             REPO = ENV['GITHUB_REPOSITORY']
-            CLIENT = Octokit::Client.new access_token: ENV['VA_VSP_BOT_GITHUB_TOKEN']
+            CLIENT = Octokit::Client.new access_token: ${{ steps.app-token.outputs.token }}
 
             def old_and_unprotected? env
               env[:protection_rules].empty? && CURRENT_TIME - env[:created_at].to_i > THRESHOLD_SECONDS
@@ -86,12 +80,6 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
           aws-region: "us-gov-west-1"
-
-      - name: Get Bot Token from Parameter Store
-        uses: marvinpinto/action-inject-ssm-secrets@40db08dfe313758837e611cac1679e3a89b35531 # latest
-        with:
-          ssm_parameter: /devops/VA_VSP_BOT_GITHUB_TOKEN
-          env_variable_name: VA_VSP_BOT_GITHUB_TOKEN
 
       - name: Delete PR Environments
         run: |

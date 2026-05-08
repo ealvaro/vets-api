@@ -18,7 +18,6 @@ concurrency:
 
 env:
   AWS_REGION: us-gov-west-1
-  SSM_BOT_TOKEN_PATH: /devops/VA_VSP_BOT_GITHUB_TOKEN
 
 jobs:
   backend-approval-check:
@@ -172,13 +171,6 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
           aws-region: ${{ env.AWS_REGION }}
-
-      # VA_VSP_BOT_GITHUB_TOKEN is required to access organization team membership
-      - name: Retrieve bot token from AWS SSM
-        uses: marvinpinto/action-inject-ssm-secrets@40db08dfe313758837e611cac1679e3a89b35531 # latest
-        with:
-          ssm_parameter: ${{ env.SSM_BOT_TOKEN_PATH }}
-          env_variable_name: VA_VSP_BOT_GITHUB_TOKEN
 
       - name: Determine approval status
         id: approval_status

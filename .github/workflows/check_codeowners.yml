@@ -32,11 +32,14 @@ jobs:
         role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
         aws-region: "us-gov-west-1"
 
-    - name: Get GitHub Bot Token
-      uses: marvinpinto/action-inject-ssm-secrets@3bb59520768371a76609c11678e23c2c911899d9 # v1.2.1
+    - name: Generate cross-repo token for actions
+      id: vsp-bot-app-token
+      uses: actions/create-github-app-token@v3
       with:
-        ssm_parameter: /devops/VA_VSP_BOT_GITHUB_TOKEN
-        env_variable_name: VA_VSP_BOT_GITHUB_TOKEN
+        app-id: ${{ vars.VA_VSP_BOT_APP_ID }}
+        private-key: ${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
+        owner: software
+        github-api-url: https://va.ghe.com/api/v3
 
     - name: Check CODEOWNERS exists for new files
       id: check_codeowners
@@ -48,7 +51,7 @@ jobs:
       if: ${{ failure() }}
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+        github-token: ${{ steps.vsp-bot-app-token.outputs.token }}
         script: |
           const prNumber = context.payload.pull_request.number
           const offendingFile = process.env.offending_file
@@ -64,7 +67,7 @@ jobs:
       if: ${{ failure() }}
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+        github-token: ${{ steps.vsp-bot-app-token.outputs.token }}
         script: |
           const prNumber = context.payload.pull_request.number
           await github.rest.issues.addLabels({
@@ -78,7 +81,7 @@ jobs:
       if: ${{ success() }}
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+        github-token: ${{ steps.vsp-bot-app-token.outputs.token }}
         script: |
           const prNumber = context.payload.pull_request.number
           try {
@@ -108,11 +111,14 @@ jobs:
         role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
         aws-region: "us-gov-west-1"
 
-    - name: Get GitHub Bot Token
-      uses: marvinpinto/action-inject-ssm-secrets@3bb59520768371a76609c11678e23c2c911899d9 # v1.2.1
+    - name: Generate cross-repo token for actions
+      id: vsp-bot-app-token
+      uses: actions/create-github-app-token@v3
       with:
-        ssm_parameter: /devops/VA_VSP_BOT_GITHUB_TOKEN
-        env_variable_name: VA_VSP_BOT_GITHUB_TOKEN
+        app-id: ${{ vars.VA_VSP_BOT_APP_ID }}
+        private-key: ${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
+        owner: software
+        github-api-url: https://va.ghe.com/api/v3
 
     - name: Check CODEOWNERS for removal when files deleted
       id: check_deleted_files
@@ -124,7 +130,7 @@ jobs:
       if: ${{ failure() }}
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+        github-token: ${{ steps.vsp-bot-app-token.outputs.token }}
         script: |
           const prNumber = context.payload.pull_request.number
           const offendingFile = process.env.offending_file
@@ -140,7 +146,7 @@ jobs:
       if: ${{ failure() }}
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+        github-token: ${{ steps.vsp-bot-app-token.outputs.token }}
         script: |
           const prNumber = context.payload.pull_request.number
           await github.rest.issues.addLabels({
@@ -154,7 +160,7 @@ jobs:
       if: ${{ success() }}
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+        github-token: ${{ steps.vsp-bot-app-token.outputs.token }}
         script: |
           const prNumber = context.payload.pull_request.number
           try {
