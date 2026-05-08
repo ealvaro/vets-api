@@ -593,7 +593,7 @@ describe UnifiedHealthData::Service, type: :service do
             {
               'id' => '132316417',
               'name' => 'Oxymorphone',
-              'date' => '2019',
+              'date' => '2024-12-17T18:47:21Z',
               'categories' => ['medication'],
               'reactions' => ['Anaphylaxis'],
               'location' => nil,

@@ -70,12 +70,13 @@ module UnifiedHealthData
         name = extract_name(resource)
         return nil if name.blank?
 
-        date_value = resource['onsetDateTime'] || resource['recordedDate'] || nil
+        # Use recordedDate (date entered) to match V1 behavior. onsetDateTime is the
+        # clinical onset date, which can differ significantly (e.g. 23-year gap).
+        date_value = resource['recordedDate']
 
         UnifiedHealthData::Allergy.new(
           id: resource['id'],
           name:,
-          # VistA samples have neither; OH has both but each are different
           date: date_value,
           sort_date: normalize_date_for_sorting(date_value),
           categories: resource['category'] || [],

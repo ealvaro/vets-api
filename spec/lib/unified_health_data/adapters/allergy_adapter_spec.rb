@@ -278,7 +278,7 @@ RSpec.describe 'AllergyAdapter' do
         {
           'id' => '132892323',
           'name' => 'Penicillin',
-          'date' => '2002',
+          'date' => '2025-02-25T17:50:49Z',
           'categories' => ['medication'],
           'reactions' => ['Urticaria (Hives)', 'Sneezing'],
           'location' => nil, # Neither OH nor VistA samples have location names
