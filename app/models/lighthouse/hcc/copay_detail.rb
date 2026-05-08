@@ -65,18 +65,13 @@ module Lighthouse
       end
 
       def assign_associated_statements
-        grouped = sorted_invoices.group_by do |statement|
-          date = statement.dig('resource', 'date')
-          time = Time.iso8601(date)
-          [time.year, time.month]
-        end
-
-        @associated_statements = grouped.values.map(&:first).map do |statement|
+        @associated_statements = grouped_invoices.values.map(&:first).map do |statement|
           resource = statement['resource']
           time = Time.iso8601(resource['date'])
           facility_num = extract_id_from_reference(resource['issuer']['reference'])
           month = time.month
           year = time.year
+          additional_charge_items = statement.dig('resource', '_associated_charge_items') || {}
 
           {
             'id' => resource['id'],
@@ -84,7 +79,7 @@ module Lighthouse
             'date' => format_date(resource['date']),
             'bill_number' => extract_bill_number(resource),
             'charge_items' => resource['charge_items'] || [],
-            'line_items' => sorted_line_items(resource['lineItem'])
+            'line_items' => sorted_line_items(resource['lineItem'], additional_charge_items:)
           }
         end
       end
@@ -94,14 +89,23 @@ module Lighthouse
           resource = statement['resource']
           facility_num = extract_id_from_reference(resource['issuer']['reference'])
           time = Time.iso8601(resource['date'])
+          additional_charge_items = statement.dig('resource', '_associated_charge_items') || {}
 
           {
             'id' => resource['id'],
             'composite_id' => "#{facility_num}-#{time.month}-#{time.year}",
             'date' => format_date(resource['date']),
             'charge_items' => resource['charge_items'] || [],
-            'line_items' => sorted_line_items(resource['lineItem'])
+            'line_items' => sorted_line_items(resource['lineItem'], additional_charge_items:)
           }
+        end
+      end
+
+      def grouped_invoices
+        sorted_invoices.group_by do |statement|
+          date = statement.dig('resource', 'date')
+          time = Time.iso8601(date)
+          [time.year, time.month]
         end
       end
 
@@ -126,11 +130,11 @@ module Lighthouse
           .map(&:first)
       end
 
-      def sorted_line_items(line_items)
+      def sorted_line_items(line_items, additional_charge_items: {})
         return [] if line_items.blank?
 
         line_items
-          .map { |li| build_line_item(li) }
+          .map { |li| build_line_item(li, additional_charge_items:) }
           .partition { |li| li[:date_posted].present? }
           .then do |with_date, without_date|
             with_date.sort_by { |li| li[:date_posted] }.reverse + without_date
@@ -202,9 +206,10 @@ module Lighthouse
         }
       end
 
-      def build_line_item(invoice_line_item)
+      def build_line_item(invoice_line_item, additional_charge_items: {})
+        charge_items = @charge_items.merge(additional_charge_items)
         charge_item_id = extract_id_from_reference(invoice_line_item.dig('chargeItemReference', 'reference'))
-        charge_item = @charge_items[charge_item_id] || {}
+        charge_item = charge_items[charge_item_id] || {}
 
         {
           billing_reference: charge_item_id,

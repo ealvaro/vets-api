@@ -594,4 +594,68 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
       expect(bundle['total']).to eq(0)
     end
   end
+
+  describe '#invoices_for_organization' do
+    let(:service) { described_class.new('123456789V123456') }
+    let(:organization_id) { 'org-test' }
+    let(:current_invoice_id) { 'invoice-open' }
+
+    let(:associated_invoice_entry) do
+      {
+        'resource' => {
+          'id' => 'invoice-associated',
+          'date' => '2025-03-01T12:00:00Z',
+          'issuer' => { 'reference' => "Organization/#{organization_id}" },
+          'lineItem' => [
+            {
+              'chargeItemReference' => {
+                'reference' => 'https://sandbox.fhir/r4/ChargeItem/ci-fhir-id'
+              },
+              'priceComponent' => [{ 'type' => 'base', 'amount' => { 'value' => 50.0 } }]
+            }
+          ]
+        }
+      }
+    end
+
+    let(:charge_item_resource) do
+      {
+        'id' => 'ci-fhir-id',
+        'status' => 'billed',
+        'code' => { 'text' => 'OUTPATIENT CARE' },
+        'enteredDate' => '2025-05-14T15:00:00Z'
+      }
+    end
+
+    before do
+      allow(service).to receive_messages(collect_invoices_in_range:
+        { 'entries' => [associated_invoice_entry],
+          'raw_bundle' => {} }, fetch_charge_items: { 'ci-fhir-id' => charge_item_resource })
+    end
+
+    it 'stores mapped charge_items and raw _associated_charge_items on each org invoice resource' do
+      results = service.send(
+        :invoices_for_organization,
+        described_class::DEFAULT_MONTH_COUNT,
+        described_class::DEFAULT_INVOICE_COUNT,
+        organization_id,
+        current_invoice_id
+      )
+
+      resource = results.first['resource']
+
+      expect(resource['_associated_charge_items']).to eq(
+        'ci-fhir-id' => charge_item_resource
+      )
+
+      expect(resource['charge_items']).to contain_exactly(
+        a_hash_including(
+          id: 'ci-fhir-id',
+          status: 'billed',
+          code: 'OUTPATIENT CARE',
+          entered_date: '2025-05-14T15:00:00Z'
+        )
+      )
+    end
+  end
 end

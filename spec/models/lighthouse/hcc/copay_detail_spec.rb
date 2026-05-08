@@ -113,7 +113,24 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
                     }
                   ]
                 }
-              ]
+              ],
+              '_associated_charge_items' => {
+                '4-6cXQjkA9CC' => {
+                  'id' => '4-6cXQjkA9CC',
+                  'code' => { 'text' => 'OUTPATIENT CARE(NSC)' },
+                  'enteredDate' => '2025-05-14T15:00:00Z'
+                },
+                '4-6cXQm5UhWz' => {
+                  'id' => '4-6cXQm5UhWz',
+                  'code' => { 'text' => 'INTEREST/ADM. CHARGE' },
+                  'enteredDate' => '2025-05-13T12:00:00Z'
+                },
+                '4-6cXQjkAu53' => {
+                  'id' => '4-6cXQjkAu53',
+                  'code' => { 'text' => 'INTEREST/ADM. CHARGE' },
+                  'enteredDate' => '2025-05-12T12:00:00Z'
+                }
+              }
             }
           },
           {
@@ -171,6 +188,14 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
 
       it 'extracts account number from account data' do
         expect(subject.account_number).to eq('ACCT-999')
+      end
+
+      it 'resolves associated statement line item description and date from resource _associated_charge_items' do
+        stmt = subject.associated_statements.find { |s| s['composite_id'] == '4-5pFm5Av0PHt-1-2026' }
+        first = stmt['line_items'].first
+
+        expect(first[:description]).to eq('OUTPATIENT CARE(NSC)')
+        expect(first[:date_posted]).to eq('2025-05-14T15:00:00Z')
       end
 
       it 'creates associated_statements with bill_number from extract_bill_number (same as payments)' do
@@ -394,6 +419,36 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
 
         expect(detail.associated_statements.first['bill_number']).to be_nil
       end
+    end
+  end
+
+  describe '#sorted_line_items' do
+    it 'uses additional_charge_items keyword args for ChargeItem lookup (not positional)' do
+      detail = described_class.new(
+        invoice_data: { 'id' => 'inv', 'date' => '2026-06-01T00:00:00Z' },
+        associated_statements: []
+      )
+
+      line_items = [
+        {
+          'chargeItemReference' => {
+            'reference' => 'https://api.gov/fhir/r4/ChargeItem/ci-from-bundle'
+          },
+          'priceComponent' => [{ 'type' => 'base', 'code' => { 'text' => 'Amount' }, 'amount' => { 'value' => 10.0 } }]
+        }
+      ]
+
+      additional_charge_items = {
+        'ci-from-bundle' => {
+          'code' => { 'text' => 'DESCRIPTION FROM BUNDLE MAP' },
+          'enteredDate' => '2025-05-14T15:00:00Z'
+        }
+      }
+
+      result = detail.send(:sorted_line_items, line_items, additional_charge_items:)
+
+      expect(result.first[:description]).to eq('DESCRIPTION FROM BUNDLE MAP')
+      expect(result.first[:date_posted]).to eq('2025-05-14T15:00:00Z')
     end
   end
 end

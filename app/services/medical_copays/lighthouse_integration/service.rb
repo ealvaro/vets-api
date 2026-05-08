@@ -201,7 +201,6 @@ module MedicalCopays
 
       def invoices_for_organization(month_count, count, organization_id, current_invoice_id)
         result = collect_invoices_in_range(month_count, count:)
-
         filtered_invoices = result['entries'].select do |entry|
           next if entry.dig('resource', 'id') == current_invoice_id
 
@@ -210,14 +209,14 @@ module MedicalCopays
           entry_org_id == organization_id
         end
 
-        # filtered_invoices = result['entries']
-        filtered_invoices.map do |entry|
+        filtered_invoices.each do |entry|
           invoice_data = entry['resource']
-          charge_items = fetch_charge_items(invoice_data)
-
-          invoice_data['charge_items'] = charge_items.values.map { |ci| map_charge_item(ci) }
-          entry
+          charge_items_by_id = fetch_charge_items(invoice_data)
+          # Slim rows for the serialized Invoice (API); full FHIR blobs for CopayDetail line_items merge.
+          invoice_data['charge_items'] = charge_items_by_id.values.map { |ci| map_charge_item(ci) }
+          invoice_data['_associated_charge_items'] = charge_items_by_id
         end
+        filtered_invoices
       end
 
       def map_charge_item(resource)
