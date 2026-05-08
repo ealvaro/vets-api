@@ -61,6 +61,7 @@ module MPI
                                    birth_date:,
                                    email: nil,
                                    address: nil,
+                                   phone_number: nil,
                                    idme_uuid: nil,
                                    logingov_uuid: nil)
       with_monitoring do
@@ -71,6 +72,7 @@ module MPI
                                                             birth_date:,
                                                             email:,
                                                             address:,
+                                                            phone_number:,
                                                             idme_uuid:,
                                                             logingov_uuid:,
                                                             first_name:).perform,
@@ -169,12 +171,14 @@ module MPI
     end
 
     # rubocop:disable Metrics/ParameterLists
+    # rubocop:disable Metrics/MethodLength
     def update_profile(last_name:,
                        ssn:,
                        birth_date:,
                        icn:,
                        email:,
                        address:,
+                       phone_number:,
                        idme_uuid:,
                        logingov_uuid:,
                        edipi:,
@@ -188,6 +192,7 @@ module MPI
                                                   icn:,
                                                   email:,
                                                   address:,
+                                                  phone_number:,
                                                   idme_uuid:,
                                                   logingov_uuid:,
                                                   edipi:,
@@ -201,6 +206,7 @@ module MPI
       MPI::Services::AddPersonResponseCreator.new(type: Constants::UPDATE_PROFILE_TYPE, error: e).perform
     end
     # rubocop:enable Metrics/ParameterLists
+    # rubocop:enable Metrics/MethodLength
 
     def self.service_is_up?
       last_mvi_outage = Breakers::Outage.find_latest(service: MPI::Configuration.instance.breakers_service)

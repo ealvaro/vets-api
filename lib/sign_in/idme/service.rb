@@ -124,7 +124,8 @@ module SignIn
           birth_date: user_info.birth_date,
           first_name: user_info.fname,
           last_name: user_info.lname,
-          address: normalize_address(user_info)
+          address: normalize_address(user_info),
+          phone_number: user_info.phone
         }
       end
 

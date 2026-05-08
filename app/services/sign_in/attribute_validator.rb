@@ -54,6 +54,7 @@ module SignIn
                                                                    birth_date:,
                                                                    email: credential_email,
                                                                    address:,
+                                                                   phone_number:,
                                                                    idme_uuid:,
                                                                    logingov_uuid:)
       unless add_person_response.ok?
@@ -76,6 +77,7 @@ module SignIn
                                                            icn: verified_icn,
                                                            email: credential_email,
                                                            address:,
+                                                           phone_number:,
                                                            idme_uuid:,
                                                            logingov_uuid:,
                                                            edipi:,
@@ -232,6 +234,7 @@ module SignIn
     def birth_date                   = user_attributes[:birth_date]
     def credential_email             = user_attributes[:csp_email]
     def address                      = user_attributes[:address]
+    def phone_number                 = user_attributes[:phone_number]
     def ssn                          = user_attributes[:ssn]
     def mhv_icn                      = user_attributes[:mhv_icn]
     def edipi                        = user_attributes[:edipi]

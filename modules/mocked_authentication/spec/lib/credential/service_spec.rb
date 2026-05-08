@@ -131,6 +131,7 @@ describe MockedAuthentication::Credential::Service do
     let(:auto_uplevel) { false }
     let(:country) { 'USA' }
     let(:phone) { 'some-phone' }
+    let(:phone_number) { 'some-phone' }
     let(:digest) { 'some-digest' }
     let(:digester) { instance_double(SignIn::CredentialAttributesDigester) }
 
@@ -264,6 +265,7 @@ describe MockedAuthentication::Credential::Service do
           first_name:,
           last_name:,
           address: expected_address,
+          phone_number:,
           digest:
         }
       end

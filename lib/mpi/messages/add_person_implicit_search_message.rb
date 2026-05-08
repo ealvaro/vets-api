@@ -8,7 +8,8 @@ require 'mpi/errors/errors'
 module MPI
   module Messages
     class AddPersonImplicitSearchMessage
-      attr_reader :first_name, :last_name, :ssn, :birth_date, :idme_uuid, :logingov_uuid, :email, :address
+      attr_reader :first_name, :last_name, :ssn, :birth_date, :idme_uuid, :logingov_uuid, :email, :address,
+                  :phone_number
 
       # rubocop:disable Metrics/ParameterLists
       def initialize(first_name:,
@@ -17,6 +18,7 @@ module MPI
                      birth_date:,
                      email: nil,
                      address: nil,
+                     phone_number: nil,
                      idme_uuid: nil,
                      logingov_uuid: nil)
         @first_name = first_name
@@ -27,6 +29,7 @@ module MPI
         @birth_date = birth_date
         @idme_uuid = idme_uuid
         @logingov_uuid = logingov_uuid
+        @phone_number = phone_number
       end
       # rubocop:enable Metrics/ParameterLists
 
@@ -89,6 +92,7 @@ module MPI
         element << RequestHelper.build_patient_person_name(given_names: [first_name], family_name: last_name)
         element << RequestHelper.build_patient_person_birth_date(birth_date:)
         element << RequestHelper.build_telecom(type: email_type, value: email)
+        element << RequestHelper.build_telecom(type: phone_number_type, value: phone_number)
         if address.present?
           element << RequestHelper.build_patient_person_address(street: combined_street,
                                                                 state: address[:state],
@@ -136,6 +140,10 @@ module MPI
 
       def email_type
         'H'
+      end
+
+      def phone_number_type
+        'HP'
       end
 
       def identifier_class_code

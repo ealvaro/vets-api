@@ -29,6 +29,7 @@ RSpec.describe SignIn::AttributeValidator do
           last_name:,
           csp_email: email,
           address:,
+          phone_number:,
           service_name:,
           auto_uplevel:,
           mhv_icn:,
@@ -47,6 +48,7 @@ RSpec.describe SignIn::AttributeValidator do
       let(:email) { nil }
       let(:first_name) { nil }
       let(:last_name) { nil }
+      let(:phone_number) { nil }
       let(:address) do
         {
           street:,
@@ -434,6 +436,7 @@ RSpec.describe SignIn::AttributeValidator do
               birth_date:,
               email:,
               address:,
+              phone_number:,
               idme_uuid:,
               logingov_uuid:
             }
@@ -666,6 +669,7 @@ RSpec.describe SignIn::AttributeValidator do
         let(:first_name) { 'some-first-name' }
         let(:last_name) { 'some-last-name' }
         let(:ssn) { '444444758' }
+        let(:phone_number) { '123-456-7890' }
         let(:street) { 'some-street' }
         let(:street2) { 'some-street-2' }
         let(:postal_code) { 'some-postal-code' }
@@ -794,6 +798,7 @@ RSpec.describe SignIn::AttributeValidator do
         let(:first_name) { 'some-first-name' }
         let(:last_name) { 'some-last-name' }
         let(:ssn) { '444444758' }
+        let(:phone_number) { '123-456-7890' }
         let(:street) { 'some-street' }
         let(:street2) { nil }
         let(:state) { 'some-state' }

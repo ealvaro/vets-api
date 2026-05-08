@@ -7,7 +7,8 @@ require 'formatters/date_formatter'
 module MPI
   module Messages
     class UpdateProfileMessage
-      attr_reader :first_name, :last_name, :ssn, :birth_date, :idme_uuid, :logingov_uuid, :icn, :edipi, :email, :address
+      attr_reader :first_name, :last_name, :ssn, :birth_date, :idme_uuid, :logingov_uuid, :icn, :edipi, :email,
+                  :address, :phone_number
 
       # rubocop:disable Metrics/ParameterLists
       def initialize(first_name:,
@@ -17,6 +18,7 @@ module MPI
                      email:,
                      birth_date:,
                      address: nil,
+                     phone_number: nil,
                      idme_uuid: nil,
                      logingov_uuid: nil,
                      edipi: nil)
@@ -30,6 +32,7 @@ module MPI
         @idme_uuid = idme_uuid
         @logingov_uuid = logingov_uuid
         @edipi = edipi
+        @phone_number = phone_number
       end
       # rubocop:enable Metrics/ParameterLists
 
@@ -102,6 +105,7 @@ module MPI
         end
         element << RequestHelper.build_identifier(identifier:, root: identifier_root)
         element << RequestHelper.build_telecom(type: email_type, value: email)
+        element << RequestHelper.build_telecom(type: phone_number_type, value: phone_number)
         if ssn.present?
           element << RequestHelper.build_patient_identifier(identifier: ssn, root: ssn_root, class_code: ssn_class_code)
         end
@@ -155,6 +159,10 @@ module MPI
 
       def email_type
         'H'
+      end
+
+      def phone_number_type
+        'HP'
       end
 
       def identifier_root

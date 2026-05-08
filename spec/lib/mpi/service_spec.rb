@@ -315,6 +315,7 @@ describe MPI::Service do
                                              birth_date:,
                                              email:,
                                              address:,
+                                             phone_number:,
                                              idme_uuid:,
                                              logingov_uuid:,
                                              first_name:)
@@ -334,6 +335,7 @@ describe MPI::Service do
       }
     end
     let(:birth_date) { '18090212' }
+    let(:phone_number) { '123-456-7890' }
     let(:email) { 'some-email' }
     let(:idme_uuid) { 'b2fab2b5-6af0-45e1-a9e2-394347af91ef' }
     let(:logingov_uuid) { nil }
@@ -473,6 +475,7 @@ describe MPI::Service do
                                  icn:,
                                  email:,
                                  address:,
+                                 phone_number:,
                                  idme_uuid:,
                                  logingov_uuid:,
                                  edipi:,
@@ -481,6 +484,7 @@ describe MPI::Service do
 
     let(:statsd_caller) { 'update_profile' }
     let(:last_name) { 'some-last-name' }
+    let(:phone_number) { '123-456-7890' }
     let(:ssn) { 'some-ssn' }
     let(:birth_date) { '19800202' }
     let(:icn) { 'some-icn' }

@@ -65,6 +65,7 @@ describe SignIn::Idme::Service do
   let(:idme_client_id) { 'ef7f1237ed3c396e4b4a2b04b608a7b1' }
   let(:user_uuid) { '88f572d491af46efa393cba6c351e252' }
   let(:birth_date) { '1932-02-05' }
+  let(:phone_number) { '16088527135' }
   let(:phone) { '16088527135' }
   let(:multifactor) { true }
   let(:first_name) { 'HECTOR' }
@@ -514,6 +515,7 @@ describe SignIn::Idme::Service do
             social: ssn,
             lname: last_name,
             street:,
+            phone:,
             zip:,
             state: address_state,
             city:,
@@ -541,6 +543,7 @@ describe SignIn::Idme::Service do
                                              birth_date:,
                                              first_name:,
                                              last_name:,
+                                             phone_number:,
                                              address: expected_address })
       end
 
