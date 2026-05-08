@@ -615,6 +615,7 @@ app/swagger/swagger/requests/claim_documents.rb @software/benefits-non-disabilit
 app/swagger/swagger/requests/claim_letters.rb @software/backend-review-group
 app/swagger/swagger/requests/claim_status.rb @software/backend-review-group
 app/swagger/swagger/requests/coe.rb @software/benefits-non-disability @software/backend-review-group
+app/swagger/swagger/requests/contact_us/inquiries.rb @software/ask-va-team @software/backend-review-group
 app/swagger/swagger/requests/datadog_action.rb @software/backend-review-group
 app/swagger/swagger/requests/debt_letters.rb @software/vsa-debt-resolution @software/backend-review-group
 app/swagger/swagger/requests/debts.rb @software/vsa-debt-resolution @software/backend-review-group

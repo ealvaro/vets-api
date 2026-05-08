@@ -45,7 +45,7 @@ module Swagger
 
         property :form do
           key :type, :string
-          key :description, 'Should conform to vets-json-schema (https://github.com/department-of-veterans-affairs/vets-json-schema)'
+          key :description, 'Should conform to vets-json-schema (https://va.ghe.com/software/vets-json-schema)'
         end
       end
 

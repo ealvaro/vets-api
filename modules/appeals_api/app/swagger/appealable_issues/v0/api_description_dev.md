@@ -19,4 +19,4 @@ The authentication model for the Appealable Issues API uses OAuth 2.0/OpenID Con
 
 ### Test data
 
-Our sandbox environment is populated with [Veteran test data](https://github.com/department-of-veterans-affairs/vets-api-clients/blob/master/test_accounts/appealable_issues_test_accounts.md) that can be used to test various response scenarios. This sandbox data contains no PII or PHI, but mimics real Veteran account information.
+Our sandbox environment is populated with [Veteran test data](https://developer.va.gov/explore/api/appealable-issues/test-users) that can be used to test various response scenarios. This sandbox data contains no PII or PHI, but mimics real Veteran account information.

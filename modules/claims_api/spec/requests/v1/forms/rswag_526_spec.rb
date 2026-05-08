@@ -276,7 +276,7 @@ Rspec.describe 'Disability Claims', openapi_spec: 'modules/claims_api/app/swagge
       let(:Authorization) { 'Bearer token' }
 
       attachment_description = <<~VERBIAGE
-        Attachment contents. Must be provided in binary PDF or [base64 string](https://raw.githubusercontent.com/department-of-veterans-affairs/vets-api/master/modules/claims_api/spec/fixtures/base64pdf) format and less than 11 in x 11 in.
+        Attachment contents. Must be provided in binary PDF or [base64 string](https://va.ghe.com/software/vets-api/blob/master/modules/claims_api/spec/fixtures/base64pdf) format and less than 11 in x 11 in.
       VERBIAGE
       parameter name: :attachment,
                 in: :formData,
@@ -662,7 +662,7 @@ Rspec.describe 'Disability Claims', openapi_spec: 'modules/claims_api/app/swagge
       let(:Authorization) { 'Bearer token' }
 
       attachment_description = <<~VERBIAGE
-        Attachment contents. Must be provided in binary PDF or [base64 string](https://raw.githubusercontent.com/department-of-veterans-affairs/vets-api/master/modules/claims_api/spec/fixtures/base64pdf) format and less than 11 in x 11 in.
+        Attachment contents. Must be provided in binary PDF or [base64 string](https://va.ghe.com/software/vets-api/blob/master/modules/claims_api/spec/fixtures/base64pdf) format and less than 11 in x 11 in.
       VERBIAGE
       parameter name: :attachment1,
                 in: :formData,

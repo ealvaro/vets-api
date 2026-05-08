@@ -2075,7 +2075,7 @@ paths:
         Duplicate events (same user + event combination) are handled during background processing.
 
         <strong>Valid Event Names:</strong> Event names must be from the approved registry of valid events.
-        See <a href='https://github.com/department-of-veterans-affairs/vets-api/blob/master/lib/unique_user_events/event_registry.rb'>EventRegistry</a>
+        See <a href='https://va.ghe.com/software/vets-api/blob/master/lib/unique_user_events/event_registry.rb'>EventRegistry</a>
         for the complete list. Invalid event names are silently filtered out.
       operationId: log_unique_user_metrics
       requestBody:
@@ -2089,7 +2089,7 @@ paths:
           <strong>NOTES:</strong>
           <ul>
             <li>Events are buffered for asynchronous batch processing</li>
-            <li>Event names must be from the approved registry - see <a href='https://github.com/department-of-veterans-affairs/vets-api/blob/master/lib/unique_user_events/event_registry.rb'>EventRegistry</a></li>
+            <li>Event names must be from the approved registry - see <a href='https://va.ghe.com/software/vets-api/blob/master/lib/unique_user_events/event_registry.rb'>EventRegistry</a></li>
             <li>Invalid event names are silently filtered out</li>
             <li>Maximum 50 characters per event name</li>
             <li>At least one event name must be provided</li>
@@ -4960,7 +4960,7 @@ components:
           description: |
             Array of event names to log for the authenticated user. Event names must be from the approved registry
             of valid events defined in the EventRegistry module. See the complete list of valid event names at:
-            https://github.com/department-of-veterans-affairs/vets-api/blob/master/lib/unique_user_events/event_registry.rb
+            https://va.ghe.com/software/vets-api/blob/master/lib/unique_user_events/event_registry.rb
 
             Invalid event names are silently filtered out and will not appear in the response.
           items:
