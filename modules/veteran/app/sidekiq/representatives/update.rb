@@ -125,7 +125,9 @@ module Representatives
                         {}
                       end
 
-      email_attrs = if rep_data['email_changed']
+      email_attrs = if staging?
+                      build_fake_email_attributes(rep_data)
+                    elsif rep_data['email_changed']
                       build_email_attributes(rep_data)
                     else
                       {}
@@ -147,8 +149,16 @@ module Representatives
       build_v3_address(api_response['candidate_addresses'].first)
     end
 
+    def build_fake_email_attributes(rep_data)
+      { email: "representative-#{rep_data['id']}@example.com" }
+    end
+
     def build_email_attributes(rep_data)
       { email: rep_data['email'] }
+    end
+
+    def staging?
+      Settings.vsp_environment.to_s.strip.downcase == 'staging'
     end
 
     def build_phone_attributes(rep_data)

@@ -93,6 +93,7 @@ RSpec.describe Representatives::Update do
     end
 
     before do
+      allow(Settings).to receive(:vsp_environment).and_return('development')
       validation_service = VAProfile::AddressValidation::V3::Service
       allow_any_instance_of(validation_service).to receive(:candidate).and_return(api_response_v3)
     end
@@ -774,6 +775,40 @@ RSpec.describe Representatives::Update do
           expect(subject.slack_messages).to include(
             a_string_matching(/Error enqueueing geocoding jobs: Sidekiq error/)
           )
+        end
+      end
+
+      context 'when in staging environment' do
+        let(:id) { '123abc' }
+        let(:address_exists) { false }
+        let(:address_changed) { true }
+        let(:phone_number_changed) { false }
+        let!(:representative) { create_representative }
+
+        before do
+          allow(Settings).to receive(:vsp_environment).and_return('staging')
+        end
+
+        context 'when email_changed is false' do
+          let(:email_changed) { false }
+
+          it 'replaces email with fake example.com email' do
+            subject.perform(json_data)
+            representative.reload
+
+            expect(representative.email).to eq('representative-123abc@example.com')
+          end
+        end
+
+        context 'when email_changed is true' do
+          let(:email_changed) { true }
+
+          it 'still replaces email with fake example.com email' do
+            subject.perform(json_data)
+            representative.reload
+
+            expect(representative.email).to eq('representative-123abc@example.com')
+          end
         end
       end
     end
