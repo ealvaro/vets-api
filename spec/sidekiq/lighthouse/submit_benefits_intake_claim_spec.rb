@@ -152,11 +152,66 @@ RSpec.describe Lighthouse::SubmitBenefitsIntakeClaim, :uploader_helpers do
   end
 
   describe 'sidekiq_retries_exhausted block' do
-    it 'logs a distinct error when retries are exhausted' do
-      Lighthouse::SubmitBenefitsIntakeClaim.within_sidekiq_retries_exhausted_block do
-        expect(Rails.logger).to receive(:error).exactly(:once)
-        expect(StatsD).to receive(:increment).with('worker.lighthouse.submit_benefits_intake_claim.exhausted',
-                                                   tags: [])
+    let(:monitor) { instance_double(BenefitsIntake::Monitor) }
+
+    before do
+      allow(BenefitsIntake::Monitor).to receive(:new).and_return(monitor)
+      allow(monitor).to receive(:log_silent_failure)
+    end
+
+    context 'when claim_id is not provided (no claim found)' do
+      it 'logs a silent failure with form_id unknown' do
+        Lighthouse::SubmitBenefitsIntakeClaim.within_sidekiq_retries_exhausted_block do
+          allow(SavedClaim).to receive(:find).and_raise(ActiveRecord::RecordNotFound)
+
+          expect(monitor).to receive(:log_silent_failure).with(
+            hash_including(form_id: 'unknown'),
+            nil
+          )
+          expect(Rails.logger).to receive(:error).at_least(:twice)
+          expect(StatsD).to receive(:increment).with(
+            'worker.lighthouse.submit_benefits_intake_claim.exhausted',
+            tags: ['form_id:unknown']
+          )
+        end
+      end
+    end
+
+    context 'when claim_id maps to an existing claim' do
+      it 'logs a silent failure with the correct form_id and user_account_uuid' do
+        Lighthouse::SubmitBenefitsIntakeClaim
+          .within_sidekiq_retries_exhausted_block({ 'args' => [claim.id], 'error_message' => 'timeout' }) do
+            allow(SavedClaim).to receive(:find).with(claim.id).and_return(claim)
+
+            expect(monitor).to receive(:log_silent_failure).with(
+              hash_including(form_id: claim.class::FORM, claim_id: claim.id, error: 'timeout'),
+              claim.user_account_id
+            )
+            expect(Rails.logger).to receive(:error).at_least(:once)
+            expect(StatsD).to receive(:increment).with(
+              'worker.lighthouse.submit_benefits_intake_claim.exhausted',
+              tags: ["form_id:#{claim.class::FORM}"]
+            )
+        end
+      end
+    end
+
+    context 'when claim_id does not match any claim' do
+      it 'logs a silent failure with form_id unknown' do
+        Lighthouse::SubmitBenefitsIntakeClaim
+          .within_sidekiq_retries_exhausted_block({ 'args' => [0], 'error_message' => 'timeout' }) do
+            allow(SavedClaim).to receive(:find).with(0).and_raise(ActiveRecord::RecordNotFound)
+
+            expect(monitor).to receive(:log_silent_failure).with(
+              hash_including(form_id: 'unknown', claim_id: 0, error: 'timeout'),
+              nil
+            )
+            expect(Rails.logger).to receive(:error).at_least(:twice)
+            expect(StatsD).to receive(:increment).with(
+              'worker.lighthouse.submit_benefits_intake_claim.exhausted',
+              tags: ['form_id:unknown']
+            )
+        end
       end
     end
   end

@@ -9,6 +9,7 @@ require 'benefits_intake_service/service'
 require 'lighthouse/benefits_intake/metadata'
 require 'pdf_info'
 require 'ibm/service'
+require 'lighthouse/benefits_intake/monitor'
 
 module Lighthouse
   class SubmitBenefitsIntakeClaim
@@ -27,14 +28,35 @@ module Lighthouse
     sidekiq_options retry: RETRY
 
     sidekiq_retries_exhausted do |msg, _ex|
+      claim_id = msg['args'][0]
+
+      begin
+        claim = SavedClaim.find(claim_id)
+        form_type = claim.class::FORM
+      rescue => e
+        Rails.logger.error('Could not find claim for ZSF monitoring', {
+                             claim_id:,
+                             error: e.message
+                           })
+        claim = nil
+        form_type = 'unknown'
+      end
+
+      ::BenefitsIntake::Monitor.new.log_silent_failure(
+        {
+          form_id: form_type,
+          claim_id:,
+          error: msg['error_message']
+        },
+        claim&.user_account_id
+      )
+
       Rails.logger.error(
         "Failed all retries on Lighthouse::SubmitBenefitsIntakeClaim, last error: #{msg['error_message']}",
-        { retry_count: msg['retry_count'], saved_claim_id: msg['args']&.first }
+        { retry_count: msg['retry_count'], saved_claim_id: claim_id, form_type: }
       )
-      saved_claim_id = msg['args']&.first
-      form_id = saved_claim_id ? SavedClaim.find_by(id: saved_claim_id)&.form_id : nil
-      tags = form_id ? ["form_id:#{form_id}"] : []
-      StatsD.increment("#{STATSD_KEY_PREFIX}.exhausted", tags:)
+
+      StatsD.increment("#{STATSD_KEY_PREFIX}.exhausted", tags: ["form_id:#{form_type}"])
     end
 
     def perform(saved_claim_id)
