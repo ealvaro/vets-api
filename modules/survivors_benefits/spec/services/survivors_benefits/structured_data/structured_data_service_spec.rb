@@ -7,7 +7,6 @@ RSpec.describe SurvivorsBenefits::StructuredData::StructuredDataService do
   # it includes the expected modules
   it 'includes the expected modules' do
     expect(SurvivorsBenefits::StructuredData::StructuredDataService.ancestors).to include(
-      Mms::DataFormatting,
       SurvivorsBenefits::StructuredData::Section01,
       SurvivorsBenefits::StructuredData::Section02,
       SurvivorsBenefits::StructuredData::Section03,
@@ -19,7 +18,9 @@ RSpec.describe SurvivorsBenefits::StructuredData::StructuredDataService do
       SurvivorsBenefits::StructuredData::Section09,
       SurvivorsBenefits::StructuredData::Section10,
       SurvivorsBenefits::StructuredData::Section11,
-      SurvivorsBenefits::StructuredData::Section12
+      SurvivorsBenefits::StructuredData::Section12,
+      Mms::DataFormatting,
+      Mms::Attachments
     )
   end
 
