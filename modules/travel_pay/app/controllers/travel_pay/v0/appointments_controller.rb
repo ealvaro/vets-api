@@ -9,12 +9,24 @@ module TravelPay
 
       def index
         Rails.logger.info(message: 'Travel Pay appointment search START')
-
         appointments = appointments_service.search_appointments(search_params)
-
         Rails.logger.info(message: 'Travel Pay appointment search END')
-
         render json: { data: appointments }, status: :ok
+      rescue Common::Exceptions::BackendServiceException => e
+        Rails.logger.error("TravelPay: BTSSS error searching appointments: #{e.message}")
+        render json: { error: 'Error searching appointments' }, status: e.original_status
+      rescue Faraday::Error => e
+        TravelPay::ServiceError.raise_mapped_error(e)
+      end
+
+      def create
+        Rails.logger.info(message: 'Travel Pay appointment create START')
+        appointment = appointments_service.create_appointment(create_params)
+        Rails.logger.info(message: 'Travel Pay appointment create END')
+        render json: { data: appointment }, status: :created
+      rescue Common::Exceptions::BackendServiceException => e
+        Rails.logger.error("TravelPay: BTSSS error creating appointment: #{e.message}")
+        render json: { error: 'Error creating appointment' }, status: e.original_status
       rescue Faraday::Error => e
         TravelPay::ServiceError.raise_mapped_error(e)
       end
@@ -35,6 +47,15 @@ module TravelPay
           current_user,
           error_message: 'Travel Pay user-created appointments endpoint unavailable per feature toggle'
         )
+      end
+
+      def create_params
+        params.permit(
+          :facility_id,
+          :appointment_name,
+          :appointment_date_time,
+          :completed
+        ).to_h
       end
 
       def search_params

@@ -4,6 +4,7 @@ TravelPay::Engine.routes.draw do
   namespace :v0 do
     resource :contact, only: %i[show]
     get 'facilities/related', to: 'facilities#index'
+    post 'appointments', to: 'appointments#create'
     resources :claims, only: %i[index show create]
     get 'appointments/search', to: 'appointments#index'
 

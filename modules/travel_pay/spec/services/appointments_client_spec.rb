@@ -292,4 +292,53 @@ describe TravelPay::AppointmentsClient do
       end
     end
   end
+
+  context '/appointments (create)' do
+    let(:expected_log_prefix) { 'travel_pay.appointments.response_time' }
+    let(:expected_log_tag) { ['travel_pay:create'] }
+    let(:appointment_id) { '3fa85f64-5717-4562-b3fc-2c963f66afa6' }
+    let(:create_params) do
+      {
+        'facility_id' => appointment_id,
+        'appointment_name' => 'Dermatology appointment',
+        'appointment_date_time' => '2026-03-31T08:00:00Z',
+        'appointment_type' => 'Care',
+        'completed' => true
+      }
+    end
+
+    it 'posts to api/v3/appointments and returns the new appointment ID' do
+      @stubs.post('api/v3/appointments') do
+        [
+          200,
+          {},
+          { 'data' => { 'appointmentId' => appointment_id } }
+        ]
+      end
+
+      client = TravelPay::AppointmentsClient.new
+      response = client.create_appointment(auth_session, create_params)
+
+      expect(response.body['data']['appointmentId']).to eq(appointment_id)
+      expect(StatsD).to have_received(:measure)
+        .with(expected_log_prefix, kind_of(Numeric), tags: expected_log_tag)
+    end
+
+    it 'camelizes snake_case params before sending to the API' do
+      @stubs.post('api/v3/appointments') do |env|
+        body = JSON.parse(env.body)
+        expect(body).to include(
+          'facilityId' => appointment_id,
+          'appointmentName' => 'Dermatology appointment',
+          'appointmentDateTime' => '2026-03-31T08:00:00Z',
+          'appointmentType' => 'Care',
+          'completed' => true
+        )
+        [200, {}, { 'data' => { 'appointmentId' => appointment_id } }]
+      end
+
+      client = TravelPay::AppointmentsClient.new
+      client.create_appointment(auth_session, create_params)
+    end
+  end
 end

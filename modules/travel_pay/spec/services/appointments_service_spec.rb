@@ -311,4 +311,34 @@ describe TravelPay::AppointmentsService do
       end
     end
   end
+
+  context 'create_appointment' do
+    let(:user) { build(:user) }
+    let(:auth_session) { TravelPay::AuthSession.new(veis_token: 'veis_token', btsss_token: 'btsss_token') }
+    let(:auth_manager) { object_double(TravelPay::AuthManager.new(123, user), authorize: auth_session, user:) }
+    let(:service) { TravelPay::AppointmentsService.new(auth_manager) }
+    let(:appointment_id) { '3fa85f64-5717-4562-b3fc-2c963f66afa6' }
+    let(:create_params) do
+      {
+        'facility_id' => appointment_id,
+        'appointment_name' => 'Dermatology appointment',
+        'appointment_date_time' => '2026-03-31T08:00:00Z',
+        'completed' => true
+      }
+    end
+    let(:params_with_type) { create_params.merge('appointment_type' => 'Care') }
+
+    it 'merges appointment_type Care and returns the data object from the client response' do
+      response_data = { 'appointmentId' => appointment_id }
+      faraday_response = Faraday::Response.new(body: { 'data' => response_data })
+
+      allow_any_instance_of(TravelPay::AppointmentsClient)
+        .to receive(:create_appointment)
+        .with(auth_session, params_with_type)
+        .and_return(faraday_response)
+
+      result = service.create_appointment(create_params)
+      expect(result).to eq(response_data)
+    end
+  end
 end

@@ -39,6 +39,12 @@ RSpec.describe TravelPay::V0::AppointmentsController, type: :request do
 
   describe 'GET #index' do
     context 'when the user-created appointments feature flag is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:travel_pay_enable_user_created_appointments, instance_of(User))
+          .and_return(true)
+      end
+
       context 'when appointments are found' do
         before do
           allow_any_instance_of(TravelPay::AppointmentsService)
@@ -87,8 +93,8 @@ RSpec.describe TravelPay::V0::AppointmentsController, type: :request do
           it "maps upstream #{status_code} to #{expected_status}" do
             allow_any_instance_of(TravelPay::AppointmentsService)
               .to receive(:search_appointments)
-              .and_raise(Faraday::ServerError.new(nil,
-                                                  { status: status_code, body: { 'message' => 'upstream error' } }))
+              .and_raise(Common::Exceptions::BackendServiceException.new(nil, { detail: 'upstream error' },
+                                                                         status_code))
 
             get '/travel_pay/v0/appointments/search',
                 headers: { 'Authorization' => 'Bearer vagov_token' }
@@ -108,6 +114,85 @@ RSpec.describe TravelPay::V0::AppointmentsController, type: :request do
       it 'returns 503 service unavailable' do
         get '/travel_pay/v0/appointments/search',
             headers: { 'Authorization' => 'Bearer vagov_token' }
+
+        expect(response).to have_http_status(:service_unavailable)
+      end
+    end
+  end
+
+  describe 'POST #create' do
+    let(:appointment_id) { '3fa85f64-5717-4562-b3fc-2c963f66afa6' }
+    let(:create_params) do
+      {
+        facility_id: appointment_id,
+        appointment_name: 'Dermatology appointment',
+        appointment_date_time: '2026-03-31T08:00:00Z',
+        completed: true
+      }
+    end
+
+    context 'when the user-created appointments feature flag is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:travel_pay_enable_user_created_appointments, instance_of(User))
+          .and_return(true)
+      end
+
+      context 'when the appointment is successfully created' do
+        before do
+          allow_any_instance_of(TravelPay::AppointmentsService)
+            .to receive(:create_appointment)
+            .and_return({ 'appointmentId' => appointment_id })
+        end
+
+        it 'returns 201 with the new appointment ID' do
+          post '/travel_pay/v0/appointments',
+               params: create_params,
+               headers: { 'Authorization' => 'Bearer vagov_token' }
+
+          expect(response).to have_http_status(:created)
+          body = JSON.parse(response.body)
+          expect(body['data']['appointmentId']).to eq(appointment_id)
+        end
+      end
+
+      context 'when the upstream API returns a 5xx error' do
+        [
+          [500, :internal_server_error],
+          [502, :bad_gateway],
+          [503, :service_unavailable],
+          [504, :gateway_timeout]
+        ].each do |status_code, expected_status|
+          it "maps upstream #{status_code} to #{expected_status}" do
+            allow_any_instance_of(TravelPay::AppointmentsService)
+              .to receive(:create_appointment)
+              .and_raise(Common::Exceptions::BackendServiceException.new(nil, { detail: 'upstream error' },
+                                                                         status_code))
+
+            post '/travel_pay/v0/appointments',
+                 params: create_params,
+                 headers: { 'Authorization' => 'Bearer vagov_token' }
+
+            expect(response).to have_http_status(expected_status)
+          end
+        end
+      end
+    end
+
+    context 'when the user-created appointments feature flag is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_user_created_appointments,
+                                                  instance_of(User)).and_return(false)
+      end
+
+      it 'returns 503 and logs the error' do
+        allow(Rails.logger).to receive(:error)
+        expect(Rails.logger).to receive(:error)
+          .with(message: 'Travel Pay user-created appointments endpoint unavailable per feature toggle')
+
+        post '/travel_pay/v0/appointments',
+             params: create_params,
+             headers: { 'Authorization' => 'Bearer vagov_token' }
 
         expect(response).to have_http_status(:service_unavailable)
       end

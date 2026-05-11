@@ -95,6 +95,19 @@ module TravelPay
       response.body['data'] || []
     end
 
+    ##
+    # Creates a new user-created appointment in BTSSS.
+    # Returns the data object from the BTSSS response, which includes the new appointmentId.
+    #
+    # @param params [Hash] snake_case appointment params (see AppointmentsClient#create_appointment)
+    # @return [Hash] appointment data including appointmentId
+    #
+    def create_appointment(params = {})
+      auth_session = @auth_manager.authorize
+      response = client.create_appointment(auth_session, params.merge('appointment_type' => 'Care'))
+      response.body['data']
+    end
+
     BASE_REQUIRED_FIELDS = %w[appointment_date_time facility_station_number].freeze
     V4_REQUIRED_FIELDS = %w[facility_name].freeze
 

@@ -72,6 +72,36 @@ module TravelPay
     end
 
     ##
+    # HTTP POST call to the BTSSS 'appointments' endpoint
+    # Creates a new user-created appointment in BTSSS
+    #
+    # Available @params: (for Travel Pay API) — all required
+    #   facilityId: string (uuid)
+    #   appointmentName: string (minLength: 5, maxLength: 100)
+    #   appointmentDateTime: string ($date-time)
+    #   appointmentType: string (always 'Care', set by AppointmentsService)
+    #   completed: boolean
+    #
+    # @return [Faraday::Response]
+    #
+    def create_appointment(auth_session, params = {})
+      btsss_url = Settings.travel_pay.base_url
+      correlation_id = SecureRandom.uuid
+      Rails.logger.info(message: 'Correlation ID', correlation_id:)
+      url_params = params.transform_keys { |k| k.to_s.camelize(:lower) }
+
+      log_to_statsd('appointments', 'create') do
+        connection(server_url: btsss_url).post('api/v3/appointments') do |req|
+          req.headers['Authorization'] = "Bearer #{auth_session.veis_token}"
+          req.headers['BTSSS-Access-Token'] = auth_session.btsss_token
+          req.headers['X-Correlation-ID'] = correlation_id
+          req.headers.merge!(claim_headers)
+          req.body = url_params.to_json
+        end
+      end
+    end
+
+    ##
     # HTTP POST call to the BTSSS 'appointments/find-or-create' endpoint
     # API responds with BTSSS appointment ID
     #
