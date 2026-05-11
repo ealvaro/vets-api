@@ -467,6 +467,87 @@ describe ClaimsApi::V1::DisabilityCompensationPdfMapper do
         expect(treatments_base[2][:doNotHaveDate]).to be(true)
       end
     end
+
+    context 'dateOfTreatment' do
+      let(:base_treatment) do
+        {
+          'startDate' => nil,
+          'treatedDisabilityNames' => [
+            'Arthritis'
+          ],
+          'center' => {
+            'name' => 'Private Facility Name',
+            'country' => 'USA'
+          }
+        }
+      end
+
+      before do
+        form_attributes['treatments'] = [base_treatment]
+      end
+
+      it 'parses start dates to be in YYYY, or YYYY-MM format even if invalid due to min validations' do
+        # Test with various invalid date formats
+        accepted_dates = %w[2024-02-31 2024-13 9999]
+
+        accepted_dates.each do |invalid_date|
+          form_attributes['treatments'][0]['startDate'] = invalid_date
+          mapper.map_claim
+
+          treatments_base = pdf_data[:data][:attributes][:claimInformation][:treatments]
+
+          year, month, _day = invalid_date.split('-')
+
+          expect(treatments_base[0][:dateOfTreatment]).to eq({ year:, month: }.compact)
+        end
+      end
+
+      it 'does not allow start dates with UTC timestamps' do
+        form_attributes['treatments'][0]['startDate'] = '2024-02-31T00:00:00.000Z'
+        mapper.map_claim
+
+        treatments_base = pdf_data[:data][:attributes][:claimInformation][:treatments]
+
+        expect(treatments_base[0][:dateOfTreatment]).to be_nil
+      end
+
+      it 'does not allow start dates to be in YYYY, or YYYY-MM format with a trailing dash' do
+        # Test with various invalid date formats
+        accepted_dates = %w[2024-02-31- 2024-13- 9999-]
+
+        accepted_dates.each do |invalid_date|
+          form_attributes['treatments'][0]['startDate'] = invalid_date
+          mapper.map_claim
+
+          treatments_base = pdf_data[:data][:attributes][:claimInformation][:treatments]
+
+          expect(treatments_base[0][:dateOfTreatment]).to be_nil
+        end
+      end
+
+      it 'does not allow start dates in invalid date formats' do
+        invalid_formats = %w[invalid-date 02/02/2022]
+
+        invalid_formats.each do |invalid_date|
+          form_attributes['treatments'][0]['startDate'] = invalid_date
+          mapper.map_claim
+
+          treatments_base = pdf_data[:data][:attributes][:claimInformation][:treatments]
+
+          expect(treatments_base[0][:dateOfTreatment]).to be_nil
+        end
+      end
+
+      it 'maps valid start dates as normal' do
+        form_attributes['treatments'][0]['startDate'] = '2023-12-25'
+        mapper.map_claim
+
+        treatments_base = pdf_data[:data][:attributes][:claimInformation][:treatments]
+
+        # V1 only returns month and year for treatment dates (PDF requirement)
+        expect(treatments_base[0][:dateOfTreatment]).to eq({ year: '2023', month: '12' })
+      end
+    end
   end
 
   context 'section 6, service information' do
@@ -710,6 +791,74 @@ describe ClaimsApi::V1::DisabilityCompensationPdfMapper do
       expect(service_pay_base).not_to be_nil
       expect(service_pay_base[:favorTrainingPay]).to be(true)
       expect(service_pay_base[:favorMilitaryRetiredPay]).to be(true)
+    end
+
+    context 'datePaymentReceived' do
+      let(:base_service_pay) do
+        {
+          'separationPay' => {
+            'received' => true,
+            'payment' => {
+              'serviceBranch' => 'Army',
+              'amount' => 1000
+            }
+          }
+        }
+      end
+
+      before do
+        form_attributes['servicePay'] = base_service_pay
+      end
+
+      it 'allows entries that are YYYY, YYYY-MM, or YYYY-MM-DD even if they are invalid due to minimum validations' do
+        # Test with various invalid date formats
+        accepted_dates = %w[9999 2024-13 2024-00 2024-01-32]
+
+        accepted_dates.each do |invalid_date|
+          form_attributes['servicePay']['separationPay']['receivedDate'] = invalid_date
+
+          mapper.map_claim
+
+          year, month, day = invalid_date.split('-')
+
+          expect(
+            pdf_data[:data][:attributes][:servicePay][:separationSeverancePay][:datePaymentReceived]
+          ).to eql({ year:, month:, day: }.compact)
+        end
+      end
+
+      it 'does not allow entries that are YYYY, YYYY-MM, or YYYY-MM-DD with a trailing dash' do
+        # Test with various invalid date formats
+        accepted_dates = %w[9999- 2024-13- 2024-00- 2024-01-32-]
+
+        accepted_dates.each do |invalid_date|
+          form_attributes['servicePay']['separationPay']['receivedDate'] = invalid_date
+          mapper.map_claim
+
+          expect(pdf_data[:data][:attributes][:servicePay][:separationSeverancePay][:datePaymentReceived]).to be_nil
+        end
+      end
+
+      it 'does not allow invalid date formats or dates with UTC timestamps' do
+        invalid_formats = %w[invalid-date 02/02/2022 2022-02-30T12:00:00Z]
+
+        invalid_formats.each do |invalid_date|
+          form_attributes['servicePay']['separationPay']['receivedDate'] = invalid_date
+          mapper.map_claim
+
+          expect(pdf_data[:data][:attributes][:servicePay][:separationSeverancePay][:datePaymentReceived]).to be_nil
+        end
+      end
+
+      it 'maps valid dates correctly' do
+        form_attributes['servicePay']['separationPay']['receivedDate'] = '2000-01-01'
+
+        mapper.map_claim
+
+        expect(
+          pdf_data[:data][:attributes][:servicePay][:separationSeverancePay][:datePaymentReceived]
+        ).to eq({ year: '2000', month: '01', day: '01' })
+      end
     end
   end
 

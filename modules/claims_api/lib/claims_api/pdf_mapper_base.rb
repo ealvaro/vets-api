@@ -2,6 +2,9 @@
 
 module ClaimsApi
   module PdfMapperBase
+    YYYYMMDD_REGEX = /(?<year>\d{4})(?:-(?<month>\d{2}))?(?:-(?<day>\d{2}))?/
+    MMDDYYYY_REGEX = /(?<month>\d{2})?(?:-(?<day>\d{2}))?-?(?<year>\d{4})/
+
     def concatenate_address(address_line_one, address_line_two, address_line_three = nil)
       [address_line_one, address_line_two, address_line_three]
         .compact
@@ -61,15 +64,18 @@ module ClaimsApi
         { month:, year: }
       else
         { year:, month:, day: }
-
       end
     end
 
     def regex_date_conversion(date)
       if date.present?
-        date_match = date.match(/^(?:(?<year>\d{4})(?:-(?<month>\d{2}))?(?:-(?<day>\d{2}))*|(?<month>\d{2})?(?:-(?<day>\d{2}))?-?(?<year>\d{4}))$/) # rubocop:disable Layout/LineLength
+        date_match = extract_ymd_or_mdy_format(date)
         date_match&.values_at(:year, :month, :day)
       end
+    end
+
+    def extract_ymd_or_mdy_format(date)
+      date.match(/\A(?:#{YYYYMMDD_REGEX}|#{MMDDYYYY_REGEX})?\z/)
     end
 
     def format_country(country)

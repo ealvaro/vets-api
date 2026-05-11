@@ -129,43 +129,37 @@ describe ClaimsApi::PdfMapperBase do
   end
 
   describe '#regex_date_conversion' do
+    def regex_date_valid_formats
+      {
+        '2024-12-01' => %w[2024 12 01],
+        '2024-12' => ['2024', '12', nil],
+        '12-2024' => ['2024', '12', nil],
+        '2024' => ['2024', nil, nil],
+        '12-01-2024' => %w[2024 12 01]
+      }.freeze
+    end
+
+    def regex_date_invalid_formats
+      %w[24-12-01 2024-01-15-16-17 invalid-date 2011-12-].freeze
+    end
+
     context 'when date is present and valid' do
-      it 'parses full ISO date format (YYYY-MM-DD)' do
-        result = subject.regex_date_conversion('2024-12-01')
+      it 'parses valid date formats correctly' do
+        regex_date_valid_formats.each do |date_string, expectation|
+          result = subject.regex_date_conversion(date_string)
 
-        expect(result).to eq(%w[2024 12 01])
-      end
-
-      it 'parses year-month format (YYYY-MM)' do
-        result = subject.regex_date_conversion('2024-12')
-
-        expect(result).to eq(['2024', '12', nil])
-      end
-
-      it 'parses month-year format (MM-YYYY)' do
-        result = subject.regex_date_conversion('12-2024')
-
-        expect(result).to eq(['2024', '12', nil])
-      end
-
-      it 'parses year only format (YYYY)' do
-        result = subject.regex_date_conversion('2024')
-
-        expect(result).to eq(['2024', nil, nil])
-      end
-
-      it 'parses month-day-year format (MM-DD-YYYY)' do
-        result = subject.regex_date_conversion('12-01-2024')
-
-        expect(result).to eq(%w[2024 12 01])
+          expect(result).to eq(expectation)
+        end
       end
     end
 
     context 'when date is invalid or does not match pattern' do
-      it 'returns nil for partial invalid format' do
-        result = subject.regex_date_conversion('24-12-01') # 2-digit year
+      it 'returns nil for all invalid formats' do
+        regex_date_invalid_formats.each do |date_string|
+          result = subject.regex_date_conversion(date_string)
 
-        expect(result).to be_nil
+          expect(result).to be_nil
+        end
       end
     end
   end

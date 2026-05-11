@@ -5669,7 +5669,8 @@
                                   "null",
                                   "string"
                                 ],
-                                "example": "2018-03-02"
+                                "pattern": "^(\\d{4}-(\\d{2}-(\\d{2})?)?|\\d{4}-\\d{2}|\\d{4}|)$",
+                                "example": "2018-03-02, 2018-03, or 2018"
                               },
                               "endDate": {
                                 "description": "Date Veteran ended treatment.",
@@ -5677,7 +5678,8 @@
                                   "null",
                                   "string"
                                 ],
-                                "example": "2018-03-02"
+                                "pattern": "^(\\d{4}-(\\d{2}-(\\d{2})?)?|\\d{4}-\\d{2}|\\d{4}|)$",
+                                "example": "2018-03-02, 2018-03, or 2018"
                               },
                               "treatedDisabilityNames": {
                                 "description": "Names of any disabilities for which the Veteran was treated.",
@@ -5866,7 +5868,8 @@
                                 "receivedDate": {
                                   "description": "Approximate date separation pay was received.",
                                   "type": "string",
-                                  "example": "2018-03-02"
+                                  "pattern": "^(\\d{4}-(\\d{2}-(\\d{2})?)?|\\d{4}-\\d{2}|\\d{4}|)$",
+                                  "example": "2018-03-02, 2018-03, or 2018"
                                 }
                               }
                             }
@@ -7503,7 +7506,8 @@
                                     "null",
                                     "string"
                                   ],
-                                  "example": "2018-03-02"
+                                  "pattern": "^(\\d{4}-(\\d{2}-(\\d{2})?)?|\\d{4}-\\d{2}|\\d{4}|)$",
+                                  "example": "2018-03-02, 2018-03, or 2018"
                                 },
                                 "endDate": {
                                   "description": "Date Veteran ended treatment.",
@@ -7511,7 +7515,8 @@
                                     "null",
                                     "string"
                                   ],
-                                  "example": "2018-03-02"
+                                  "pattern": "^(\\d{4}-(\\d{2}-(\\d{2})?)?|\\d{4}-\\d{2}|\\d{4}|)$",
+                                  "example": "2018-03-02, 2018-03, or 2018"
                                 },
                                 "treatedDisabilityNames": {
                                   "description": "Names of any disabilities for which the Veteran was treated.",
@@ -7700,7 +7705,8 @@
                                   "receivedDate": {
                                     "description": "Approximate date separation pay was received.",
                                     "type": "string",
-                                    "example": "2018-03-02"
+                                    "pattern": "^(\\d{4}-(\\d{2}-(\\d{2})?)?|\\d{4}-\\d{2}|\\d{4}|)$",
+                                    "example": "2018-03-02, 2018-03, or 2018"
                                   }
                                 }
                               }
@@ -9721,7 +9727,8 @@
                                     "null",
                                     "string"
                                   ],
-                                  "example": "2018-03-02"
+                                  "pattern": "^(\\d{4}-(\\d{2}-(\\d{2})?)?|\\d{4}-\\d{2}|\\d{4}|)$",
+                                  "example": "2018-03-02, 2018-03, or 2018"
                                 },
                                 "endDate": {
                                   "description": "Date Veteran ended treatment.",
@@ -9729,7 +9736,8 @@
                                     "null",
                                     "string"
                                   ],
-                                  "example": "2018-03-02"
+                                  "pattern": "^(\\d{4}-(\\d{2}-(\\d{2})?)?|\\d{4}-\\d{2}|\\d{4}|)$",
+                                  "example": "2018-03-02, 2018-03, or 2018"
                                 },
                                 "treatedDisabilityNames": {
                                   "description": "Names of any disabilities for which the Veteran was treated.",
@@ -9918,7 +9926,8 @@
                                   "receivedDate": {
                                     "description": "Approximate date separation pay was received.",
                                     "type": "string",
-                                    "example": "2018-03-02"
+                                    "pattern": "^(\\d{4}-(\\d{2}-(\\d{2})?)?|\\d{4}-\\d{2}|\\d{4}|)$",
+                                    "example": "2018-03-02, 2018-03, or 2018"
                                   }
                                 }
                               }

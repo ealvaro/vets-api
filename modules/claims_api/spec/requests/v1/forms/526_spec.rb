@@ -66,8 +66,9 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
 
     describe "'treatments' validations" do
       describe "'treatment.startDate' validations" do
-        let(:treatments) do
-          [
+        def build_treatment_start_date(start_date)
+          params = JSON.parse data
+          params['data']['attributes']['treatments'] = [
             {
               center: {
                 name: 'Some Treatment Center',
@@ -76,21 +77,19 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
               treatedDisabilityNames: [
                 'PTSD (post traumatic stress disorder)'
               ],
-              startDate: treatment_start_date
-            }
+              startDate: start_date
+            }.compact
           ]
+          params.to_json
         end
 
         context "when 'treatment.startDate' is prior to earliest 'servicePeriods.activeDutyBeginDate'" do
-          let(:treatment_start_date) { '1970-01-01' }
+          let(:start_date) { '1970-01-01' }
 
           it 'returns a bad request' do
             mock_acg(scopes) do |auth_header|
               VCR.use_cassette('claims_api/brd/countries') do
-                json_data = JSON.parse data
-                params = json_data
-                params['data']['attributes']['treatments'] = treatments
-                post path, params: params.to_json, headers: headers.merge(auth_header)
+                post path, params: build_treatment_start_date(start_date), headers: headers.merge(auth_header)
                 expect(response).to have_http_status(:bad_request)
               end
             end
@@ -98,16 +97,13 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
         end
 
         context "when 'treatment.startDate' is after earliest 'servicePeriods.activeDutyBeginDate'" do
-          let(:treatment_start_date) { '1985-01-01' }
+          let(:start_date) { '1985-01-01' }
 
           it 'returns a 200' do
             mock_acg(scopes) do |auth_header|
               VCR.use_cassette('claims_api/bgs/claims/claims') do
                 VCR.use_cassette('claims_api/brd/countries') do
-                  json_data = JSON.parse data
-                  params = json_data
-                  params['data']['attributes']['treatments'] = treatments
-                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  post path, params: build_treatment_start_date(start_date), headers: headers.merge(auth_header)
                   expect(response).to have_http_status(:ok)
                 end
               end
@@ -118,7 +114,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
         # relaxed schema validations for FES now allow the startDate to be empty
         # this was a previous failure converted to a success test to validate the relaxed validation
         context "when 'treatment.startDate' is included but empty" do
-          let(:treatment_start_date) { '' }
+          let(:start_date) { '' }
 
           before do
             allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_enable_FES).and_return(true)
@@ -128,10 +124,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
             mock_acg(scopes) do |auth_header|
               VCR.use_cassette('claims_api/bgs/claims/claims') do
                 VCR.use_cassette('claims_api/brd/countries') do
-                  json_data = JSON.parse data
-                  params = json_data
-                  params['data']['attributes']['treatments'] = treatments
-                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  post path, params: build_treatment_start_date(start_date), headers: headers.merge(auth_header)
                   expect(response).to have_http_status(:ok)
                 end
               end
@@ -140,9 +133,8 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
         end
 
         context "when 'treatment.startDate' is not a valid date format" do
-          let(:treatment_start_date) { 'four score and seven years ago' }
+          let(:start_date) { 'four score and seven years ago' }
 
-          # validations relaxed for FES, so toggle needs to be on to use the FES validations
           before do
             allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_enable_FES).and_return(true)
           end
@@ -151,11 +143,43 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
             mock_acg(scopes) do |auth_header|
               VCR.use_cassette('claims_api/bgs/claims/claims') do
                 VCR.use_cassette('claims_api/brd/countries') do
-                  json_data = JSON.parse data
-                  params = json_data
-                  params['data']['attributes']['treatments'] = treatments
-                  post path, params: params.to_json, headers: headers.merge(auth_header)
-                  expect(response).to have_http_status(:ok)
+                  post path, params: build_treatment_start_date(start_date), headers: headers.merge(auth_header)
+                  expect(response).to have_http_status(:unprocessable_content)
+                end
+              end
+            end
+          end
+        end
+
+        context "when 'treatment.startDate' is YYYY, YYYY-MM, or YYYY-MM-DD" do
+          let(:invalid_dates) { %w[9999 2014-23 2014-11-55] }
+          let(:valid_dates) { %w[2014 2026-02 2026-01-05] }
+
+          before do
+            allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_enable_FES).and_return(true)
+          end
+
+          it 'accepts invalid start dates because they are in the correct format' do
+            invalid_dates.each do |date|
+              mock_acg(scopes) do |auth_header|
+                VCR.use_cassette('claims_api/bgs/claims/claims') do
+                  VCR.use_cassette('claims_api/brd/countries') do
+                    post path, params: build_treatment_start_date(date), headers: headers.merge(auth_header)
+                    expect(response).to have_http_status(:ok)
+                  end
+                end
+              end
+            end
+          end
+
+          it 'accepts valid start dates' do
+            valid_dates.each do |date|
+              mock_acg(scopes) do |auth_header|
+                VCR.use_cassette('claims_api/bgs/claims/claims') do
+                  VCR.use_cassette('claims_api/brd/countries') do
+                    post path, params: build_treatment_start_date(date), headers: headers.merge(auth_header)
+                    expect(response).to have_http_status(:ok)
+                  end
                 end
               end
             end
@@ -163,28 +187,13 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
         end
 
         context "when 'treatment.startDate' is not included" do
-          let(:treatments) do
-            [
-              {
-                center: {
-                  name: 'Some Treatment Center',
-                  country: 'United States of America'
-                },
-                treatedDisabilityNames: [
-                  'PTSD (post traumatic stress disorder)'
-                ]
-              }
-            ]
-          end
+          let(:start_date) { nil }
 
           it 'returns a 200' do
             mock_acg(scopes) do |auth_header|
               VCR.use_cassette('claims_api/bgs/claims/claims') do
                 VCR.use_cassette('claims_api/brd/countries') do
-                  json_data = JSON.parse data
-                  params = json_data
-                  params['data']['attributes']['treatments'] = treatments
-                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  post path, params: build_treatment_start_date(start_date), headers: headers.merge(auth_header)
                   expect(response).to have_http_status(:ok)
                 end
               end
@@ -194,8 +203,9 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
       end
 
       describe "'treatment.endDate' validations" do
-        let(:treatments) do
-          [
+        def build_treatment_end_date(treatment_end_date)
+          params = JSON.parse data
+          params['data']['attributes']['treatments'] = [
             {
               center: {
                 name: 'Some Treatment Center',
@@ -206,20 +216,18 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
               ],
               startDate: '1985-01-01',
               endDate: treatment_end_date
-            }
+            }.compact
           ]
+          params.to_json
         end
 
         context "when 'treatment.endDate' is before 'treatment.startDate'" do
-          let(:treatment_end_date) { '1984-01-01' }
+          let(:end_date) { '1984-01-01' }
 
           it 'returns a bad request' do
             mock_acg(scopes) do |auth_header|
               VCR.use_cassette('claims_api/brd/countries') do
-                json_data = JSON.parse data
-                params = json_data
-                params['data']['attributes']['treatments'] = treatments
-                post path, params: params.to_json, headers: headers.merge(auth_header)
+                post path, params: build_treatment_end_date(end_date), headers: headers.merge(auth_header)
                 expect(response).to have_http_status(:bad_request)
               end
             end
@@ -227,16 +235,13 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
         end
 
         context "when 'treatment.endDate' is after 'treatment.startDate'" do
-          let(:treatment_end_date) { '1986-01-01' }
+          let(:end_date) { '1986-01-01' }
 
           it 'returns a 200' do
             mock_acg(scopes) do |auth_header|
               VCR.use_cassette('claims_api/bgs/claims/claims') do
                 VCR.use_cassette('claims_api/brd/countries') do
-                  json_data = JSON.parse data
-                  params = json_data
-                  params['data']['attributes']['treatments'] = treatments
-                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  post path, params: build_treatment_end_date(end_date), headers: headers.merge(auth_header)
                   expect(response).to have_http_status(:ok)
                 end
               end
@@ -245,22 +250,54 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
         end
 
         context "when 'treatment.endDate' is not a valid date format" do
-          let(:treatment_end_date) { 'four score and seven years ago' }
+          let(:end_date) { 'four score and seven years ago' }
 
           # validations relaxed for FES, so toggle needs to be on to use the FES validations
           before do
             allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_enable_FES).and_return(true)
           end
 
-          it 'returns a 200' do
+          it 'returns an unprocessable content' do
             mock_acg(scopes) do |auth_header|
               VCR.use_cassette('claims_api/bgs/claims/claims') do
                 VCR.use_cassette('claims_api/brd/countries') do
-                  json_data = JSON.parse data
-                  params = json_data
-                  params['data']['attributes']['treatments'] = treatments
-                  post path, params: params.to_json, headers: headers.merge(auth_header)
-                  expect(response).to have_http_status(:ok)
+                  post path, params: build_treatment_end_date(end_date), headers: headers.merge(auth_header)
+                  expect(response).to have_http_status(:unprocessable_content)
+                end
+              end
+            end
+          end
+        end
+
+        context "when 'treatment.endDate' is YYYY, YYYY-MM, or YYYY-MM-DD" do
+          let(:invalid_dates) { %w[9999 2014-23 2014-11-55] }
+          let(:valid_dates) { %w[2014 2026-02 2026-01-05] }
+
+          before do
+            allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_enable_FES).and_return(true)
+          end
+
+          it 'accepts invalid end dates because they are in the correct format' do
+            invalid_dates.each do |date|
+              mock_acg(scopes) do |auth_header|
+                VCR.use_cassette('claims_api/bgs/claims/claims') do
+                  VCR.use_cassette('claims_api/brd/countries') do
+                    post path, params: build_treatment_end_date(date), headers: headers.merge(auth_header)
+                    expect(response).to have_http_status(:ok)
+                  end
+                end
+              end
+            end
+          end
+
+          it 'accepts valid end dates' do
+            valid_dates.each do |date|
+              mock_acg(scopes) do |auth_header|
+                VCR.use_cassette('claims_api/bgs/claims/claims') do
+                  VCR.use_cassette('claims_api/brd/countries') do
+                    post path, params: build_treatment_end_date(date), headers: headers.merge(auth_header)
+                    expect(response).to have_http_status(:ok)
+                  end
                 end
               end
             end
@@ -268,29 +305,11 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
         end
 
         context "when 'treatment.endDate' is not provided" do
-          let(:treatments) do
-            [
-              {
-                center: {
-                  name: 'Some Treatment Center',
-                  country: 'United States of America'
-                },
-                treatedDisabilityNames: [
-                  'PTSD (post traumatic stress disorder)'
-                ],
-                startDate: '1985-01-01'
-              }
-            ]
-          end
-
           it 'returns a 200' do
             mock_acg(scopes) do |auth_header|
               VCR.use_cassette('claims_api/bgs/claims/claims') do
                 VCR.use_cassette('claims_api/brd/countries') do
-                  json_data = JSON.parse data
-                  params = json_data
-                  params['data']['attributes']['treatments'] = treatments
-                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  post path, params: build_treatment_end_date(nil), headers: headers.merge(auth_header)
                   expect(response).to have_http_status(:ok)
                 end
               end
@@ -2633,8 +2652,10 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
         end
 
         describe "'receivedDate'" do
-          let(:service_pay_attribute) do
-            {
+          def build_service_pay_attribute(received_date)
+            json_data = JSON.parse data
+            params = json_data
+            params['data']['attributes']['servicePay'] = {
               separationPay: {
                 received: true,
                 receivedDate: received_date,
@@ -2644,6 +2665,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
                 }
               }
             }
+            params.to_json
           end
 
           context "when 'receivedDate' is not in the past" do
@@ -2652,10 +2674,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
             it 'responds with a bad request' do
               mock_acg(scopes) do |auth_header|
                 VCR.use_cassette('claims_api/brd/countries') do
-                  json_data = JSON.parse data
-                  params = json_data
-                  params['data']['attributes']['servicePay'] = service_pay_attribute
-                  post path, params: params.to_json, headers: headers.merge(auth_header)
+                  post path, params: build_service_pay_attribute(received_date), headers: headers.merge(auth_header)
                   expect(response).to have_http_status(:bad_request)
                 end
               end
@@ -2669,11 +2688,60 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
               mock_acg(scopes) do |auth_header|
                 VCR.use_cassette('claims_api/bgs/claims/claims') do
                   VCR.use_cassette('claims_api/brd/countries') do
-                    json_data = JSON.parse data
-                    params = json_data
-                    params['data']['attributes']['servicePay'] = service_pay_attribute
-                    post path, params: params.to_json, headers: headers.merge(auth_header)
+                    post path, params: build_service_pay_attribute(received_date), headers: headers.merge(auth_header)
                     expect(response).to have_http_status(:ok)
+                  end
+                end
+              end
+            end
+          end
+
+          context "when 'receivedDate' is improperly formatted" do
+            let(:received_date) { 'not a date' }
+
+            before do
+              allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_enable_FES).and_return(true)
+            end
+
+            it 'responds with a 422' do
+              mock_acg(scopes) do |auth_header|
+                VCR.use_cassette('claims_api/brd/countries') do
+                  post path, params: build_service_pay_attribute(received_date), headers: headers.merge(auth_header)
+                  expect(response).to have_http_status(:unprocessable_content)
+                end
+              end
+            end
+          end
+
+          context "when 'receivedDate' is YYYY, YYYY-MM, or YYYY-MM-DD" do
+            let(:invalid_dates) { %w[9999 2014-23 2014-11-55] }
+            let(:valid_dates) { %w[2014 2026-02 2026-01-05] }
+
+            before do
+              allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_enable_FES).and_return(true)
+            end
+
+            it 'accepts invalid dates because they are in the correct format' do
+              invalid_dates.each do |date|
+                mock_acg(scopes) do |auth_header|
+                  VCR.use_cassette('claims_api/bgs/claims/claims') do
+                    VCR.use_cassette('claims_api/brd/countries') do
+                      post path, params: build_service_pay_attribute(date), headers: headers.merge(auth_header)
+                      expect(response).to have_http_status(:ok)
+                    end
+                  end
+                end
+              end
+            end
+
+            it 'accepts valid receivedDates' do
+              valid_dates.each do |date|
+                mock_acg(scopes) do |auth_header|
+                  VCR.use_cassette('claims_api/bgs/claims/claims') do
+                    VCR.use_cassette('claims_api/brd/countries') do
+                      post path, params: build_service_pay_attribute(date), headers: headers.merge(auth_header)
+                      expect(response).to have_http_status(:ok)
+                    end
                   end
                 end
               end
@@ -2803,39 +2871,6 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
           let(:separation_payment_amount) { 1_000_000 }
 
           it 'responds with a 200 (no longer validated at schema level)' do
-            mock_acg(scopes) do |auth_header|
-              VCR.use_cassette('claims_api/bgs/claims/claims') do
-                VCR.use_cassette('claims_api/brd/countries') do
-                  json_data = JSON.parse data
-                  params = json_data
-                  params['data']['attributes']['servicePay'] = service_pay_attribute
-                  post path, params: params.to_json, headers: headers.merge(auth_header)
-                  expect(response).to have_http_status(:ok)
-                end
-              end
-            end
-          end
-        end
-      end
-
-      describe "'separationPay.receivedDate' no longer enforces date format pattern" do
-        let(:service_pay_attribute) do
-          {
-            separationPay: {
-              received: true,
-              receivedDate: received_date,
-              payment: {
-                serviceBranch: 'Air Force',
-                amount: 100
-              }
-            }
-          }
-        end
-
-        context "when 'receivedDate' is an arbitrary string" do
-          let(:received_date) { 'invalid-date-format' }
-
-          it 'responds with a 200 (format pattern no longer enforced at schema level)' do
             mock_acg(scopes) do |auth_header|
               VCR.use_cassette('claims_api/bgs/claims/claims') do
                 VCR.use_cassette('claims_api/brd/countries') do
