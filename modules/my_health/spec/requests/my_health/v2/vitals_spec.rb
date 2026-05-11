@@ -128,7 +128,7 @@ RSpec.describe 'MyHealth::V2::AllergiesController', :skip_json_api_validation, t
           get '/my_health/v2/medical_records/vitals',
               headers: { 'X-Key-Inflection' => 'camel' }
         end
-        expect(response).to have_http_status(:bad_gateway)
+        expect(response).to have_http_status(:service_unavailable)
       end
     end
   end

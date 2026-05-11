@@ -93,6 +93,7 @@ RSpec.describe 'MyHealth::V2::ImmunizationsController', :skip_json_api_validatio
 
         before do
           allow_any_instance_of(MyHealth::V2::ImmunizationsController).to receive(:client).and_return(mock_client)
+          allow(StatsD).to receive(:increment).and_call_original
         end
 
         context 'with client error' do
@@ -100,18 +101,12 @@ RSpec.describe 'MyHealth::V2::ImmunizationsController', :skip_json_api_validatio
             allow(mock_client).to receive(:get_immunizations)
               .and_raise(Common::Client::Errors::ClientError.new('FHIR API Error', 500))
 
-            allow(Rails.logger).to receive(:error)
-
             get path, headers: { 'X-Key-Inflection' => 'camel' }
           end
 
           it 'returns bad_gateway status code' do
             expect(response).to have_http_status(:bad_gateway)
-          end
-
-          it 'logs the error with api type and status' do
-            expect(Rails.logger).to have_received(:error)
-              .with(/immunization records FHIR API error \(500\)/, anything)
+            expect(StatsD).to have_received(:increment).with('mhv_medical_records.client_error', anything)
           end
 
           it 'returns formatted error details' do
@@ -131,18 +126,12 @@ RSpec.describe 'MyHealth::V2::ImmunizationsController', :skip_json_api_validatio
               .and_raise(Common::Exceptions::BackendServiceException.new('VA900',
                                                                          detail: 'Backend Service Unavailable'))
 
-            allow(Rails.logger).to receive(:error)
-
             get path, headers: { 'X-Key-Inflection' => 'camel' }
           end
 
           it 'returns bad_gateway status code' do
             expect(response).to have_http_status(:bad_gateway)
-          end
-
-          it 'logs the error with api type' do
-            expect(Rails.logger).to have_received(:error)
-              .with(/immunization records FHIR backend error/, anything)
+            expect(StatsD).to have_received(:increment).with('mhv_medical_records.backend_service_error', anything)
           end
 
           it 'includes error details in the response' do
@@ -155,7 +144,7 @@ RSpec.describe 'MyHealth::V2::ImmunizationsController', :skip_json_api_validatio
           before do
             empty_response = { 'resourceType' => 'Bundle', 'entry' => [] }
             allow(mock_client).to receive(:get_immunizations)
-              .and_return(OpenStruct.new(body: empty_response))
+              .and_return(double('response', body: empty_response))
 
             # Expect StatsD to receive count of 0
             expect(StatsD).to receive(:gauge).with('api.my_health.immunizations.count', 0)
@@ -356,6 +345,7 @@ RSpec.describe 'MyHealth::V2::ImmunizationsController', :skip_json_api_validatio
 
         before do
           allow_any_instance_of(MyHealth::V2::ImmunizationsController).to receive(:uhd_service).and_return(mock_service)
+          allow(StatsD).to receive(:increment).and_call_original
         end
 
         context 'with client error' do
@@ -365,18 +355,12 @@ RSpec.describe 'MyHealth::V2::ImmunizationsController', :skip_json_api_validatio
                            'Internal server error', 500
                          ))
 
-            allow(Rails.logger).to receive(:error)
-
             get path, headers: { 'X-Key-Inflection' => 'camel' }
           end
 
           it 'returns bad_gateway status code' do
             expect(response).to have_http_status(:bad_gateway)
-          end
-
-          it 'logs the error with api type and status' do
-            expect(Rails.logger).to have_received(:error)
-              .with(/immunization records SCDF API error \(500\)/, anything)
+            expect(StatsD).to have_received(:increment).with('mhv_medical_records.client_error', anything)
           end
 
           it 'returns formatted error details' do
@@ -396,18 +380,12 @@ RSpec.describe 'MyHealth::V2::ImmunizationsController', :skip_json_api_validatio
               .and_raise(Common::Exceptions::BackendServiceException.new('VA900',
                                                                          detail: 'Backend Service Unavailable'))
 
-            allow(Rails.logger).to receive(:error)
-
             get path, headers: { 'X-Key-Inflection' => 'camel' }
           end
 
           it 'returns bad_gateway status code' do
             expect(response).to have_http_status(:bad_gateway)
-          end
-
-          it 'logs the error with api type' do
-            expect(Rails.logger).to have_received(:error)
-              .with(/immunization records SCDF backend error/, anything)
+            expect(StatsD).to have_received(:increment).with('mhv_medical_records.backend_service_error', anything)
           end
 
           it 'includes error details in the response' do
@@ -447,11 +425,42 @@ RSpec.describe 'MyHealth::V2::ImmunizationsController', :skip_json_api_validatio
       end
     end
 
+    context 'when immunization is not found in the bundle' do
+      let(:mock_client) { instance_double(Lighthouse::VeteransHealth::Client) }
+      let(:show_path) { "#{path}/non-existent-id" }
+
+      before do
+        allow_any_instance_of(MyHealth::V2::ImmunizationsController).to receive(:client).and_return(mock_client)
+        allow(mock_client).to receive(:get_immunizations)
+          .and_return(double('response', body: { 'entry' => [
+                               { 'resource' => { 'id' => 'some-other-id', 'resourceType' => 'Immunization' } }
+                             ] }))
+
+        get show_path, headers: { 'X-Key-Inflection' => 'camel' }
+      end
+
+      it 'returns 404 not found' do
+        expect(response).to have_http_status(:not_found)
+      end
+
+      it 'returns a formatted error payload' do
+        json_response = JSON.parse(response.body)
+        expect(json_response['errors']).to be_an(Array)
+        expect(json_response['errors'].first).to include(
+          'title' => 'Immunization Not Found',
+          'detail' => 'The requested immunization record was not found',
+          'code' => '404',
+          'status' => 404
+        )
+      end
+    end
+
     context 'error cases' do
       let(:mock_client) { instance_double(Lighthouse::VeteransHealth::Client) }
 
       before do
         allow_any_instance_of(MyHealth::V2::ImmunizationsController).to receive(:client).and_return(mock_client)
+        allow(StatsD).to receive(:increment).and_call_original
       end
 
       context 'with client error' do
@@ -459,18 +468,12 @@ RSpec.describe 'MyHealth::V2::ImmunizationsController', :skip_json_api_validatio
           allow(mock_client).to receive(:get_immunizations)
             .and_raise(Common::Client::Errors::ClientError.new('FHIR API Error', 500))
 
-          allow(Rails.logger).to receive(:error)
-
           get show_path, headers: { 'X-Key-Inflection' => 'camel' }
         end
 
         it 'returns bad_gateway status code' do
           expect(response).to have_http_status(:bad_gateway)
-        end
-
-        it 'logs the error with api type and status' do
-          expect(Rails.logger).to have_received(:error)
-            .with(/immunization records FHIR API error \(500\)/, anything)
+          expect(StatsD).to have_received(:increment).with('mhv_medical_records.client_error', anything)
         end
 
         it 'returns formatted error details' do
@@ -489,32 +492,17 @@ RSpec.describe 'MyHealth::V2::ImmunizationsController', :skip_json_api_validatio
           allow(mock_client).to receive(:get_immunizations)
             .and_raise(Common::Exceptions::BackendServiceException.new('VA900', detail: 'Backend Service Unavailable'))
 
-          allow(Rails.logger).to receive(:error)
-
           get show_path, headers: { 'X-Key-Inflection' => 'camel' }
         end
 
         it 'returns bad_gateway status code' do
           expect(response).to have_http_status(:bad_gateway)
-        end
-
-        it 'logs the error with api type' do
-          expect(Rails.logger).to have_received(:error)
-            .with(/immunization records FHIR backend error/, anything)
+          expect(StatsD).to have_received(:increment).with('mhv_medical_records.backend_service_error', anything)
         end
 
         it 'includes error details in the response' do
           json_response = JSON.parse(response.body)
           expect(json_response).to have_key('errors')
-        end
-      end
-
-      context 'when immunization not found' do
-        before do
-          allow(mock_client).to receive(:get_immunizations)
-            .and_raise(Common::Client::Errors::ClientError.new('Not Found', 404))
-
-          allow(Rails.logger).to receive(:error)
         end
       end
     end

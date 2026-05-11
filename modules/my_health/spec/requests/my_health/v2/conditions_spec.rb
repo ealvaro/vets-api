@@ -127,7 +127,7 @@ RSpec.describe 'MyHealth::V2::ConditionsController', :skip_json_api_validation, 
         VCR.use_cassette('unified_health_data/get_conditions_200') do
           get path, headers: { 'X-Key-Inflection' => 'camel' }
         end
-        expect(response).to have_http_status(:bad_gateway)
+        expect(response).to have_http_status(:service_unavailable)
       end
     end
   end
@@ -184,7 +184,7 @@ RSpec.describe 'MyHealth::V2::ConditionsController', :skip_json_api_validation, 
         VCR.use_cassette('unified_health_data/get_conditions_200') do
           get show_path, headers: { 'X-Key-Inflection' => 'camel' }
         end
-        expect(response).to have_http_status(:bad_gateway)
+        expect(response).to have_http_status(:service_unavailable)
       end
     end
   end

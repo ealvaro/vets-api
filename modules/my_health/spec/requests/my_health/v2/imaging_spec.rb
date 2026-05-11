@@ -173,7 +173,7 @@ RSpec.describe 'MyHealth::V2::ImagingController', :skip_json_api_validation, typ
         VCR.use_cassette('unified_health_data/get_imaging_studies_200', match_requests_on: %i[method path]) do
           get path, headers: { 'X-Key-Inflection' => 'camel' }, params: default_params
         end
-        expect(response).to have_http_status(:bad_gateway)
+        expect(response).to have_http_status(:service_unavailable)
       end
 
       it 'returns a 504 response when upstream times out' do
@@ -241,7 +241,7 @@ RSpec.describe 'MyHealth::V2::ImagingController', :skip_json_api_validation, typ
         VCR.use_cassette('unified_health_data/get_imaging_study_200', match_requests_on: %i[method path]) do
           get thumbnails_path, headers: { 'X-Key-Inflection' => 'camel' }
         end
-        expect(response).to have_http_status(:bad_gateway)
+        expect(response).to have_http_status(:service_unavailable)
       end
     end
   end
@@ -290,7 +290,7 @@ RSpec.describe 'MyHealth::V2::ImagingController', :skip_json_api_validation, typ
         VCR.use_cassette('unified_health_data/get_dicom_zip_200', match_requests_on: %i[method path]) do
           get dicom_path, headers: { 'X-Key-Inflection' => 'camel' }
         end
-        expect(response).to have_http_status(:bad_gateway)
+        expect(response).to have_http_status(:service_unavailable)
       end
     end
   end

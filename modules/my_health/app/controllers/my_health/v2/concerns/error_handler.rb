@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
-require 'datadog'
-
+require 'openssl'
 module MyHealth
   module V2
     module Concerns
@@ -10,33 +9,25 @@ module MyHealth
 
         private
 
-        # Main error handling orchestrator for UHD V2 endpoints.
-        #
-        # Handles three exception families:
-        #   - Common::Exceptions::GatewayTimeout → 504
-        #   - Common::Client::Errors::ClientError → upstream status passed through
-        #   - Common::Exceptions::BackendServiceException → upstream status passed through
-        #   - Anything else → 500
-        #
-        # Every path also:
-        #   1. Logs the error to Rails.logger
-        #   2. Tags the active Datadog span so APM captures the error message and stack trace
-        #
+        # Main error handling orchestrator
         # @param error [Exception] The error to handle
         # @param resource_name [String] The name of the resource (e.g., 'clinical notes', 'vitals')
-        # @param api_type [String] The API type ('FHIR', 'SCDF', or 'S3') — used in log messages and error titles
-        def handle_error(error, resource_name: nil, api_type: 'FHIR')
-          log_error(error, resource_name:, api_type:)
-          tag_datadog_span(error)
+        # @param api_type [String] The API type ('FHIR' or 'SCDF')
+        # @param use_dynamic_status [Boolean] Whether to use dynamic HTTP status based on error status (default: false)
+        # @param include_backtrace [Boolean] Whether to include backtrace in logs (default: false)
+        def handle_error(error, resource_name: nil, api_type: 'FHIR', use_dynamic_status: false,
+                         include_backtrace: false)
+          log_error(error, resource_name:, api_type:, include_backtrace:)
 
           case error
-          when Common::Exceptions::GatewayTimeout
-            render_error('Gateway Timeout', "Upstream #{api_type} service timed out", '504', 504,
-                         :gateway_timeout)
+          when Common::Exceptions::GatewayTimeout, Timeout::Error
+            handle_timeout_error(error)
           when Common::Client::Errors::ClientError
-            handle_client_error(error, api_type)
+            handle_client_error(error, api_type, use_dynamic_status:)
           when Common::Exceptions::BackendServiceException
             handle_backend_service_error(error, api_type)
+          when Breakers::OutageException, SocketError, OpenSSL::SSL::SSLError
+            render_error('Service Unavailable', 'Upstream service unavailable', '503', 503, :service_unavailable)
           else
             handle_generic_error(resource_name)
           end
@@ -45,28 +36,40 @@ module MyHealth
         # Logs errors with contextual information
         # @param error [Exception] The error to log
         # @param resource_name [String] The name of the resource
-        # @param api_type [String] The API type ('FHIR', 'SCDF', or 'S3')
-        def log_error(error, resource_name: nil, api_type: 'FHIR')
-          message = case error
-                    when Common::Exceptions::GatewayTimeout
-                      "#{resource_name} #{api_type} timeout: #{error.message}"
-                    when Common::Client::Errors::ClientError
-                      "#{resource_name} #{api_type} API error (#{error.status}): #{error.message}"
-                    when Common::Exceptions::BackendServiceException
-                      "#{resource_name} #{api_type} backend error (#{error.original_status}): " \
-                      "#{error.errors.first&.detail}"
-                    else
-                      "Unexpected error in #{resource_name} controller: #{error.message}"
-                    end
+        # @param api_type [String] The API type ('FHIR' or 'SCDF')
+        # @param include_backtrace [Boolean] Whether to include backtrace in logs
+        def log_error(error, resource_name: nil, api_type: 'FHIR', include_backtrace: false)
+          message, metric = error_log_attributes(error, resource_name, api_type)
+          normalized_resource = resource_name&.parameterize(separator: '_')
+          tags = ["error_class:#{error.class.name}", "resource:#{normalized_resource}"]
 
-          Rails.logger.error(message, backtrace: error.backtrace&.first(10))
+          monitor.track_request(:error, message, metric, error_class: error.class.name,
+                                                         resource_name:, tags:)
+
+          return unless include_backtrace && error.backtrace
+
+          monitor.track_request(:error, "Backtrace: #{error.backtrace.first(10).join("\n")}",
+                                'mhv_medical_records.error_backtrace', resource_name:, tags:)
         end
 
-        # Tags the active Datadog span so APM captures the error message and stack trace.
-        # Also tags the top-level Rack span so errors appear in the Datadog Error Tracking console.
-        def tag_datadog_span(error)
-          Datadog::Tracing.active_span&.set_error(error)
-          request.env[Datadog::Tracing::Contrib::Rack::Ext::RACK_ENV_REQUEST_SPAN]&.set_error(error)
+        def error_log_attributes(error, resource_name, api_type)
+          case error
+          when Common::Exceptions::GatewayTimeout, Timeout::Error
+            ["#{resource_name} #{api_type} upstream timeout: #{error.message}",
+             'mhv_medical_records.client_error']
+          when Common::Client::Errors::ClientError
+            ["#{resource_name} #{api_type} API error: #{error.message}",
+             'mhv_medical_records.client_error']
+          when Common::Exceptions::BackendServiceException
+            ["Backend service exception: #{error.errors.first&.detail}",
+             'mhv_medical_records.backend_service_error']
+          when Breakers::OutageException, SocketError, OpenSSL::SSL::SSLError
+            ["#{resource_name} #{api_type} service unavailable: #{error.message}",
+             'mhv_medical_records.service_unavailable']
+          else
+            ["Unexpected error in #{resource_name} controller: #{error.message}",
+             'mhv_medical_records.unexpected_error']
+          end
         end
 
         # Renders a standardized error response
@@ -85,30 +88,37 @@ module MyHealth
           render json: { errors: [error] }, status: http_status
         end
 
-        # Maps upstream status to an appropriate vets-api response status.
-        #   - 4xx from upstream → pass through (client error or resource not found)
-        #   - 5xx from upstream → 502 Bad Gateway (upstream is broken)
-        #   - nil/unknown       → 502 Bad Gateway (safe default)
-        #
-        # @param upstream_status [Integer, nil] The original HTTP status from the upstream service
-        # @return [Integer] The mapped HTTP status code
-        def map_upstream_status(upstream_status)
-          return 502 unless upstream_status.is_a?(Integer) && upstream_status.between?(400, 499)
-
-          upstream_status
+        # Maps an upstream HTTP status to the appropriate vets-api response status.
+        # 4xx → pass through, everything else → 502.
+        def upstream_status_or_bad_gateway(status)
+          status.is_a?(Integer) && status.between?(400, 499) ? status : 502
         end
 
-        # Handles Common::Client::Errors::ClientError — the upstream status is on error.status
-        def handle_client_error(error, api_type)
-          status_code = map_upstream_status(error.status)
-          render_error("#{api_type} API Error", error.message, status_code.to_s, status_code, status_code)
+        def integer_status_to_symbol(status)
+          Rack::Utils::SYMBOL_TO_STATUS_CODE.key(status) || :bad_gateway
         end
 
-        # Handles Common::Exceptions::BackendServiceException — the upstream status is on error.original_status
+        def handle_client_error(error, api_type = 'FHIR', use_dynamic_status: false)
+          if error.status.nil? || error.status.to_i.zero?
+            render_error("#{api_type} API Error", error.message, '503', 503, :service_unavailable)
+          else
+            status = use_dynamic_status ? upstream_status_or_bad_gateway(error.status) : 502
+            render_error("#{api_type} API Error", error.message, status.to_s, status, integer_status_to_symbol(status))
+          end
+        end
+
+        def handle_timeout_error(error)
+          if error.respond_to?(:errors)
+            render json: { errors: error.errors }, status: :gateway_timeout
+          else
+            render_error('Gateway Timeout', 'Upstream service timed out', '504', 504, :gateway_timeout)
+          end
+        end
+
         def handle_backend_service_error(error, api_type)
-          status_code = map_upstream_status(error.original_status)
+          status = upstream_status_or_bad_gateway(error.original_status)
           detail = error.errors.first&.detail || error.message
-          render_error("#{api_type} Backend Error", detail, status_code.to_s, status_code, status_code)
+          render_error("#{api_type} Backend Error", detail, status.to_s, status, integer_status_to_symbol(status))
         end
 
         # Handles generic/unexpected errors
@@ -120,6 +130,13 @@ module MyHealth
                            end
 
           render_error('Internal Server Error', detail_message, '500', 500, :internal_server_error)
+        end
+
+        def monitor
+          @monitor ||= Logging::Monitor.new(
+            'mhv-medical-records',
+            allowlist: %i[error_class resource_name]
+          )
         end
       end
     end

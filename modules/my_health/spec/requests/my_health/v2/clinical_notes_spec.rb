@@ -192,7 +192,7 @@ RSpec.describe 'MyHealth::V2::ClinicalNotesController', :skip_json_api_validatio
               headers: { 'X-Key-Inflection' => 'camel' },
               params: default_params
         end
-        expect(response).to have_http_status(:bad_gateway)
+        expect(response).to have_http_status(:service_unavailable)
       end
 
       it 'returns an error when start_date is invalid' do
@@ -347,7 +347,7 @@ RSpec.describe 'MyHealth::V2::ClinicalNotesController', :skip_json_api_validatio
             headers: { 'X-Key-Inflection' => 'camel' },
             params: { source: UnifiedHealthData::SourceConstants::ORACLE_HEALTH }
 
-        expect(response).to have_http_status(:bad_gateway)
+        expect(response).to have_http_status(:service_unavailable)
       end
     end
   end

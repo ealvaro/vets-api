@@ -170,6 +170,8 @@ RSpec.describe 'MyHealth::V2::AllergiesController', :skip_json_api_validation, t
     end
 
     context 'error responses' do
+      before { allow(StatsD).to receive(:increment).and_call_original }
+
       it 'returns a 500 response when there is a server error' do
         allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_allergies)
           .and_raise(Common::Exceptions::InternalServerError.new(Faraday::ServerError.new))
@@ -179,17 +181,20 @@ RSpec.describe 'MyHealth::V2::AllergiesController', :skip_json_api_validation, t
               headers: { 'X-Key-Inflection' => 'camel' }
         end
         expect(response).to have_http_status(:internal_server_error)
+        expect(StatsD).to have_received(:increment).with('mhv_medical_records.unexpected_error', anything)
       end
 
       it 'returns an error response when there is a client error' do
         allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_allergies)
-          .and_raise(Common::Client::Errors::ClientError.new(Faraday::ClientError.new))
+          .and_raise(Common::Client::Errors::ClientError.new('Internal Server Error', 500))
         # This cassette doesn't matter since we're stubbing the service call to raise an error
         VCR.use_cassette('unified_health_data/get_allergies_200') do
           get '/my_health/v2/medical_records/allergies',
               headers: { 'X-Key-Inflection' => 'camel' }
         end
+
         expect(response).to have_http_status(:bad_gateway)
+        expect(StatsD).to have_received(:increment).with('mhv_medical_records.client_error', anything)
       end
     end
   end
@@ -277,7 +282,7 @@ RSpec.describe 'MyHealth::V2::AllergiesController', :skip_json_api_validation, t
           get '/my_health/v2/medical_records/allergies/12345',
               headers: { 'X-Key-Inflection' => 'camel' }
         end
-        expect(response).to have_http_status(:bad_gateway)
+        expect(response).to have_http_status(:service_unavailable)
       end
     end
   end
