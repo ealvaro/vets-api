@@ -2155,6 +2155,15 @@ vha:
     service_name: VHA-SHAREPOINT
     sharepoint_url: dvagov.sharepoint.com
     tenant_id: <%= ENV['vha__sharepoint__tenant_id'] %>
+vha_notification:
+  application_id: <%= ENV['vha_notification__application_id'] %>
+  base_url: <%= ENV['vha_notification__base_url'] %>
+  issuer: <%= ENV['vha_notification__issuer'] %>
+  jwt_secret: <%= ENV['vha_notification__jwt_secret'] %>
+  source: <%= ENV['vha_notification__source'] %>
+  station_id: <%= ENV['vha_notification__station_id'] %>
+  timeout: 30
+  user_id: <%= ENV['vha_notification__user_id'] %>
 vic:
   s3:
     aws_access_key_id: <%= ENV['vic__s3__aws_access_key_id'] %>

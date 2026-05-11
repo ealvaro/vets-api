@@ -957,6 +957,7 @@ lib/common/exceptions/max_array_size_exceeded.rb @software/backend-review-group
 lib/common/exceptions/open_id_service_error.rb @software/lighthouse-pivot
 lib/common/exceptions/service_outage.rb @software/backend-review-group
 lib/common/file_helpers.rb @software/backend-review-group
+lib/common/jwt_generator @software/backend-review-group @software/disability-benefits
 lib/common/models @software/backend-review-group
 lib/common/pdf_helpers.rb @software/benefits-decision-reviews-be @software/backend-review-group
 lib/common/virus_scan.rb @software/backend-review-group
@@ -1179,6 +1180,7 @@ lib/veteran_facing_services @software/benefits-lifestage @software/backend-revie
 lib/veteran_status_card @software/mobile-api-team
 lib/vetext @software/mobile-api-team
 lib/vets @software/backend-review-group
+lib/vha_notification @software/backend-review-group @software/disability-benefits
 lib/vic @software/octo-identity
 lib/vye @software/backend-review-group @software/govcio-vfep-codereviewers
 lib/zero_silent_failures/manual_remediation/saved_claim.rb @software/backend-review-group
@@ -1630,6 +1632,7 @@ spec/lib/common/convert_to_pdf_spec.rb @software/backend-review-group
 spec/lib/common/exceptions/max_array_size_exceeded_spec.rb @software/backend-review-group
 spec/lib/common/exceptions/serializable_error_spec.rb @software/backend-review-group
 spec/lib/common/exceptions/detailed_schema_errors_spec.rb @software/backend-review-group
+spec/lib/common/jwt_generator_spec.rb @software/backend-review-group @software/disability-benefits
 spec/lib/common/models/base_spec.rb @software/backend-review-group
 spec/lib/common/models/collection_spec.rb @software/backend-review-group
 spec/lib/common/models/concerns/cache_aside_spec.rb @software/backend-review-group
@@ -1790,6 +1793,7 @@ spec/lib/veteran_facing_services @software/benefits-lifestage @software/backend-
 spec/lib/veteran_status_card @software/mobile-api-team
 spec/lib/vetext @software/mobile-api-team
 spec/lib/vets @software/backend-review-group
+spec/lib/vha_notification @software/backend-review-group @software/disability-benefits
 spec/lib/vye @software/backend-review-group @software/govcio-vfep-codereviewers
 spec/lib/zero_silent_failures/manual_remediation/saved_claim_spec.rb @software/backend-review-group
 spec/logging/semantic_logger_exceptions_spec.rb @software/backend-review-group

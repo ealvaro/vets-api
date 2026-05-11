@@ -2172,6 +2172,15 @@ vha:
     service_name: VHA-SHAREPOINT
     sharepoint_url: dvagov.sharepoint.com
     tenant_id: fake_sharepoint_tenant_id
+vha_notification:
+  application_id: fake_application_id
+  base_url: "https://vha-notification-api.example.com"
+  issuer: fake_issuer
+  jwt_secret: fake_jwt_secret
+  source: fake_source
+  station_id: fake_station_id
+  timeout: 30
+  user_id: fake_user_id
 vic:
   s3:
     aws_access_key_id: ~
