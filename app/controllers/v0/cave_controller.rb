@@ -29,7 +29,16 @@ module V0
 
     def download
       kvpid = params.require(:kvpid)
-      render json: client.download(document_id, kvpid:, user_id: idp_user_id)
+
+      raw_payload = client.download(document_id, kvpid:, user_id: idp_user_id)
+
+      cave_submission = CaveSubmission.new(cave_response: raw_payload.to_json)
+      cave_submission.save!
+
+      render json: {
+        cave_submission_id: cave_submission.id,
+        raw_payload:
+      }
     end
 
     def diff

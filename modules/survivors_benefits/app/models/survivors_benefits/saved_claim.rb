@@ -82,6 +82,14 @@ module SurvivorsBenefits
       refs = attachment_keys.map { |key| Array(open_struct_form.send(key)) }.flatten
       files = PersistentAttachment.where(guid: refs.map(&:confirmationCode))
       files.find_each { |f| f.update(saved_claim_id: id) }
+
+      artifacts = Array(refs).flat_map { |r| Array(r.idpArtifacts) }
+      cave_submission_ids = artifacts.flat_map { |a| Array(a.caveSubmissionIds) }.compact.uniq
+      return if cave_submission_ids.blank?
+
+      # rubocop:disable Rails/SkipsModelValidations -- reviewer confirmed no callbacks or validations on CaveSubmission
+      CaveSubmission.where(id: cave_submission_ids).update_all(saved_claim_id: id)
+      # rubocop:enable Rails/SkipsModelValidations
     end
 
     ##

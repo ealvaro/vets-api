@@ -43,7 +43,7 @@ module Idp
     if use_live_client?
       Client.new
     else
-      require_relative 'idp/mock_client' unless defined?(MockClient)
+      require Rails.root.join('lib', 'idp', 'mock_client') unless defined?(MockClient)
       MockClient.new
     end
   end
