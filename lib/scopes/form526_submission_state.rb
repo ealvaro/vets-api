@@ -7,7 +7,7 @@ module Scopes
 
     # rubocop:disable Metrics/BlockLength
     # DOCUMENTATION:
-    # https://github.com/department-of-veterans-affairs/va.gov-team/blob/master/products/disability/526ez/engineering_research/526_scopes.md
+    # https://va.ghe.com/software/va.gov-team/blob/master/products/disability/526ez/engineering_research/526_scopes.md
     included do
       scope :pending_backup, lambda {
         where(submitted_claim_id: nil, backup_submitted_claim_status: nil)
@@ -85,7 +85,7 @@ module Scopes
       }
 
       # Documentation describing the purpose of 'paranoid success' and 'success by age'
-      # https://github.com/department-of-veterans-affairs/va.gov-team/blob/master/products/disability/526ez/engineering_research/paranoid_success_submissions.md
+      # https://va.ghe.com/software/va.gov-team/blob/master/products/disability/526ez/engineering_research/paranoid_success_submissions.md
       scope :paranoid_success_type, lambda {
         where.not(backup_submitted_claim_id: nil)
              .where(backup_submitted_claim_status: backup_submitted_claim_statuses[:paranoid_success])

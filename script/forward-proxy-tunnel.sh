@@ -3,8 +3,8 @@
 # Script to start a SSM port forwarding session to the 'forward-proxy' on an app environment
 
 # based on a combination of devops scripts:
-# https://github.com/department-of-veterans-affairs/devops/blob/master/utilities/issue_mfa.sh
-# https://github.com/department-of-veterans-affairs/devops/blob/master/utilities/ssm-portforwarding.sh
+# https://va.ghe.com/software/devops/blob/master/utilities/issue_mfa.sh
+# https://va.ghe.com/software/devops/blob/master/utilities/ssm-portforwarding.sh
 
 USAGE=$(cat <<-END
 ./forward-proxy-tunnel.sh [APP_ENV] [REMOTE_PORT_ON_APP] [LOCAL_PORT]

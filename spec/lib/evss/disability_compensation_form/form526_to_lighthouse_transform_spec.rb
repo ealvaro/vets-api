@@ -14,7 +14,7 @@ RSpec.describe EVSS::DisabilityCompensationForm::Form526ToLighthouseTransform do
 
   def validate_lighthouse_schema(lh_request_body)
     # This validation method mimics the same validation logic used in the actual controller
-    # https://github.com/department-of-veterans-affairs/vets-api/blob/master/modules/claims_api/app/controllers/claims_api/v2/veterans/base.rb#L18
+    # https://va.ghe.com/software/vets-api/blob/master/modules/claims_api/app/controllers/claims_api/v2/veterans/base.rb#L18
     validator = ClaimsApi::FormSchemas.new(schema_version: 'v2')
 
     # Convert the Vets::Model object to a hash and transform keys using the exact same

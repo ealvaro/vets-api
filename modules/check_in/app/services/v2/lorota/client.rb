@@ -7,7 +7,7 @@ module V2
     # {CheckIn::V2::Session} object so that the {ClaimsToken} can be built and passed to LoROTA for
     # authentication on subsequent calls.
     #
-    # @see https://github.com/department-of-veterans-affairs/lorota#lorota-security-details LoROTA security details
+    # @see https://va.ghe.com/software/lorota#lorota-security-details LoROTA security details
     #
     # @example
     #   client = Client.build(check_in: check_in)

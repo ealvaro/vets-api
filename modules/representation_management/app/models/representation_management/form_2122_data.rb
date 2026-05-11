@@ -15,7 +15,7 @@ module RepresentationManagement
       # The values of these four checkboxes are unintuitive.  Our online form experience asks the user to select
       # what details to share with the representative but the actual 21-22 form asks the user to select what
       # details to withhold from the representative.  So we need to invert the values.
-      # See https://github.com/department-of-veterans-affairs/va.gov-team/issues/98295
+      # See https://va.ghe.com/software/va.gov-team/issues/98295
       check_consent_limit_boxes = record_consent && consent_limits.any?
       return 0 if check_consent_limit_boxes == false
 

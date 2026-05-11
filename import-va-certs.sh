@@ -17,7 +17,7 @@
 #   - If a cert URL has permanently changed, update this script and the corresponding
 #     specs in spec/scripts/import_va_certs_spec.rb
 #
-# Related: https://github.com/department-of-veterans-affairs/va.gov-team/issues/136662
+# Related: https://va.ghe.com/software/va.gov-team/issues/136662
 #
 
 set -euo pipefail

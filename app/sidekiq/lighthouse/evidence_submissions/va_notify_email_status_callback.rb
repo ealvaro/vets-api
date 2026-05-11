@@ -21,7 +21,7 @@ module Lighthouse
           # Email delivery failed - do NOT set delete_date so record is retained for manual intervention
           # Treat temporary failures the same as permanent failures for retention policy cleanup since there is
           # currently no retry mechanism in place for temporary failures
-          # See retention policy issue for more details: https://github.com/department-of-veterans-affairs/va.gov-team/issues/128742
+          # See retention policy issue for more details: https://va.ghe.com/software/va.gov-team/issues/128742
           es.update(va_notify_status: BenefitsDocuments::Constants::VANOTIFY_STATUS[:FAILED])
         end
 

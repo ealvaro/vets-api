@@ -40,7 +40,7 @@ module IvcChampva
           .index_with { |k| data[k] },
         Settings.vanotify.services.ivc_champva.api_key,
         # If no callback_klass is provided, should fail safely per va_notify implementation.
-        # See: https://github.com/department-of-veterans-affairs/vets-api/tree/master/modules/va_notify#how-teams-can-integrate-with-callbacks
+        # See: https://va.ghe.com/software/vets-api/tree/master/modules/va_notify#how-teams-can-integrate-with-callbacks
         { callback_klass: data[:callback_klass], callback_metadata: data[:callback_metadata] }
       )
       Rails.logger.info "Pega Status Update Email: #{data[:file_count].to_i} file(s)"

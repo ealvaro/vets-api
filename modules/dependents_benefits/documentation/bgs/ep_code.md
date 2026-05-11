@@ -56,4 +56,4 @@ Submits benefit claim. Requires unique incremental per veteran. Duplicate create
 - `lib/bgs/service.rb` (line 126)
 - `app/sidekiq/bgs/submit_form686c_job.rb`
 - `app/sidekiq/bgs/submit_form674_job.rb`
-- [bgs-ext gem](https://github.com/department-of-veterans-affairs/bgs-ext/blob/9b76bf23abdb6ecd42c668f551c2cedcc4698864/lib/bgs/services/share_standard_data.rb#L20)
+- [bgs-ext gem](https://va.ghe.com/software/bgs-ext/blob/9b76bf23abdb6ecd42c668f551c2cedcc4698864/lib/bgs/services/share_standard_data.rb#L20)

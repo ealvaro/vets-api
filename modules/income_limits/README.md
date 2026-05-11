@@ -1,6 +1,6 @@
 ## Overview
 - Income is one aspect that determine's a Veteran's eligibility for benefits from VA. An existing application allows Veterans, their caregivers, family members, and others to look up the financial thresholds based on location and number of dependents.
-- Please [click here](https://github.com/department-of-veterans-affairs/va.gov-team/tree/master/products/income-limits-app) for a comprehensive explanation.
+- Please [click here](https://va.ghe.com/software/va.gov-team/tree/master/products/income-limits-app) for a comprehensive explanation.
 
 ### Slack Channels
 - [#sitewide-public-websites](https://dsva.slack.com/archives/C52CL1PKQ)
@@ -20,4 +20,4 @@ To get data imported into the postgres database, SideKiq jobs have been created,
 
 The jobs are also scheduled to auto-run via cron on the 1st of every 3rd month, at midnight. See /config/sidekiq_scheduler.yml.
 
-[Click here](https://github.com/department-of-veterans-affairs/va.gov-team/tree/master/products/income-limits-app/data) to learn more about where the Income Limits data is ultimately sourced.
+[Click here](https://va.ghe.com/software/va.gov-team/tree/master/products/income-limits-app/data) to learn more about where the Income Limits data is ultimately sourced.

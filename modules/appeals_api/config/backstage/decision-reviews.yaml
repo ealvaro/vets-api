@@ -17,4 +17,4 @@ spec:
   owner: lighthouse-banana-peels
   system: vets-api
   definition:
-    $text: https://github.com/department-of-veterans-affairs/vets-api/blob/master/modules/appeals_api/app/swagger/appeals_api/v2/swagger.json
+    $text: https://va.ghe.com/software/vets-api/blob/master/modules/appeals_api/app/swagger/appeals_api/v2/swagger.json

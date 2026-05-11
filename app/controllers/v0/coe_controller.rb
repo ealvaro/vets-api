@@ -129,8 +129,8 @@ module V0
     rescue Common::Client::Errors::ClientError => e
       # 502-503 errors happen frequently from LGY endpoint at the time of implementation
       # and have not been corrected yet. We would like to seperate these from our monitoring for now
-      # See https://github.com/department-of-veterans-affairs/va.gov-team/issues/90411
-      # and https://github.com/department-of-veterans-affairs/va.gov-team/issues/91111
+      # See https://va.ghe.com/software/va.gov-team/issues/90411
+      # and https://va.ghe.com/software/va.gov-team/issues/91111
       if [503, 504].include?(e.status)
         log_lgy_unavailable(e, document_data)
       else

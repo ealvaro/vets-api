@@ -7,7 +7,7 @@ module ClaimsApi
     #
     # If you need a particular definition, check for it or add it here.
     # A reference catalog is located at:
-    #   https://github.com/department-of-veterans-affairs/bgs-catalog
+    #   https://va.ghe.com/software/bgs-catalog
     #
     # Request and response shapes are shown in files like these:
     #   `VDC/ManageRepresentativeService/ManageRepresentativePortBinding/readPOARequest/request.xml`
@@ -26,7 +26,7 @@ module ClaimsApi
       # turns out that there is at most a second namespace used for data type
       # definitions. As such, we'll hardcode that notion and allow callers of
       # our BGS client to use an alias for it that we yield to them.
-      #   https://github.com/department-of-veterans-affairs/bgs-catalog/blob/main/namespaces.xml
+      #   https://va.ghe.com/software/bgs-catalog/blob/main/namespaces.xml
       Namespaces =
         Data.define(
           :target,

@@ -11,7 +11,7 @@ module CentralMail
     # this module. It has been superceded by the                   #
     # Lighthouse::BenefitsIntake::Service module:                  #
     #                                                              #
-    #   https://github.com/department-of-veterans-affairs/vets-api/blob/94f88d1bb55d961e036d6fed3117735d6b9074cd/lib/lighthouse/benefits_intake/service.rb
+    #   https://va.ghe.com/software/vets-api/blob/94f88d1bb55d961e036d6fed3117735d6b9074cd/lib/lighthouse/benefits_intake/service.rb
     #
     # The above-linked module sends submissions to Central Mail    #
     # Processing through the Lighthouse Benefits Intake API        #

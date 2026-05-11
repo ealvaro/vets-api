@@ -78,4 +78,4 @@ Used to look up submissions and associate separate 686c/674 forms.
 
 ## References
 
-- **GitHub Issue**: [va.gov-team#123181](https://github.com/department-of-veterans-affairs/va.gov-team/issues/123181)
+- **GitHub Issue**: [va.gov-team#123181](https://va.ghe.com/software/va.gov-team/issues/123181)

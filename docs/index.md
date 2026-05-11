@@ -2,7 +2,7 @@
 
 This project provides common APIs for applications that live on VA.gov (formerly vets.gov APIs).
 
-[![Yard Docs](http://img.shields.io/badge/yard-docs-blue.svg)](https://www.rubydoc.info/github/department-of-veterans-affairs/vets-api)
+[![Yard Docs](https://img.shields.io/badge/yard-docs-blue.svg)](https://www.rubydoc.info/github/department-of-veterans-affairs/vets-api)
 [![License: CC0-1.0](https://img.shields.io/badge/License-CC0%201.0-lightgrey.svg)](https://va.ghe.com/software/vets-api/blob/master/LICENSE.md)
 
 [Build Status](http://jenkins.vfs.va.gov/job/builds/job/vets-api/)

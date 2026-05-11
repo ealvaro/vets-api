@@ -30,7 +30,7 @@ bpds:
 ## Developer Setup
 
 The BPDS forward proxy can be set up locally following the instructions documented here:
-https://github.com/department-of-veterans-affairs/va.gov-team/blob/2f04df4b725cae761f7dda1eaa2ca476bab5af49/products/health-care/digital-health-modernization/engineering/mhv-api-tunnel-setup.md
+https://va.ghe.com/software/va.gov-team/blob/2f04df4b725cae761f7dda1eaa2ca476bab5af49/products/health-care/digital-health-modernization/engineering/mhv-api-tunnel-setup.md
 
 For local setup, replace the bpds.jwt_secret in settings.yml or development.yml with the official dev key in the parameter store. Here is the link to the secret in the parameter store:
 https://us-gov-west-1.console.amazonaws-us-gov.com/systems-manager/parameters/%252Fdsva-vagov%252Fvets-api%252Fdev%252Fenv_vars%252Fbpds%252Fjwt_secret/description?region=us-gov-west-1&tab=Table#list_parameter_filters=Name:Contains:%2Fdsva-vagov%2Fvets-api%2Fdev%2Fenv_vars%2Fbpds%2Fjwt_secret

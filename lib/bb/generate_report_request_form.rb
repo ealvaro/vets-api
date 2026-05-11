@@ -29,7 +29,7 @@ module BB
     # validates :from_date, date: { before: :to_date, message: 'must be before to date' }
     validates :data_classes, presence: true
     # TODO: eventually this should be reenabled,
-    # TODO: See: https://github.com/department-of-veterans-affairs/vets.gov-team/issues/3777
+    # TODO: See: https://va.ghe.com/software/vets.gov-team/issues/3777
     # validate  :data_classes_belongs_to_eligible_data_classes
     def overridden_data_classes
       eligible_data_classes & data_classes
@@ -41,7 +41,7 @@ module BB
     end
 
     # TODO: change this back to data_classes when hack can be properly removed.
-    # TODO: See: https://github.com/department-of-veterans-affairs/vets.gov-team/issues/3777
+    # TODO: See: https://va.ghe.com/software/vets.gov-team/issues/3777
     def params
       { from_date: from_date.try(:httpdate), to_date: to_date.try(:httpdate), data_classes: overridden_data_classes }
     end
@@ -53,7 +53,7 @@ module BB
     end
 
     # TODO: uncomment to re-enable this validation
-    # TODO: See: https://github.com/department-of-veterans-affairs/vets.gov-team/issues/3777
+    # TODO: See: https://va.ghe.com/software/vets.gov-team/issues/3777
     # def data_classes_belongs_to_eligible_data_classes
     #   ineligible_data_classes = data_classes - eligible_data_classes
     #   if ineligible_data_classes.any?

@@ -28,7 +28,7 @@ module BGS
                           "BGS::SubmitForm686cV2Job failed, retries exhausted! Last error: #{msg['error_message']}",
                           'worker.submit_686c_bgs.exhaustion')
       # in some instances, bgs will throw an error with language containing `FABusnsTranRule`
-      # this has been researched and documented here: https://github.com/department-of-veterans-affairs/va.gov-team/issues/128972
+      # this has been researched and documented here: https://va.ghe.com/software/va.gov-team/issues/128972
       # there is nothing at the moment the user can do to prevent this error as it is an rbps related trigger
       # the backup path is the correct path for this bug so that the application can be reviewed manually
       BGS::SubmitForm686cV2Job.send_backup_submission(vet_info, saved_claim_id, user_uuid)

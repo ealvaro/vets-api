@@ -106,7 +106,7 @@ http_interactions:
       X-Content-Type-Options:
       - nosniff
       X-GitHub-Repository:
-      - https://github.com/department-of-veterans-affairs/vets-api
+      - https://va.ghe.com/software/vets-api
       X-Git-SHA:
       - 4f97b33f773aa5a1468b51940ab2595270401675
       Content-Type:
@@ -180,7 +180,7 @@ http_interactions:
       X-Content-Type-Options:
       - nosniff
       X-GitHub-Repository:
-      - https://github.com/department-of-veterans-affairs/vets-api
+      - https://va.ghe.com/software/vets-api
       X-Git-SHA:
       - 4f97b33f773aa5a1468b51940ab2595270401675
       Content-Type:

@@ -208,7 +208,7 @@ module V0
       end&.sort
     end
 
-    # temp: for https://github.com/department-of-veterans-affairs/va.gov-team/issues/97932
+    # temp: for https://va.ghe.com/software/va.gov-team/issues/97932
     # tracking down a possible issue with prefill
     def log_started_form_version(data, location)
       # Handle different data structures from different call sites:

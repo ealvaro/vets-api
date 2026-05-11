@@ -37,7 +37,7 @@ module V0
       end
 
       # Manual status override for certain tracked items
-      # See https://github.com/department-of-veterans-affairs/va.gov-team/issues/101447
+      # See https://va.ghe.com/software/va.gov-team/issues/101447
       # This should be removed when the items are re-categorized by BGS
       # We are not doing this in the Lighthouse service because we want web and mobile to have
       # separate rollouts and testing.
@@ -49,7 +49,7 @@ module V0
         claim
       end
 
-      # https://github.com/department-of-veterans-affairs/va.gov-team/issues/98364
+      # https://va.ghe.com/software/va.gov-team/issues/98364
       # This should be removed when the items are removed by BGS
       def suppress_evidence_requests(claim)
         tracked_items = claim.dig('data', 'attributes', 'trackedItems')

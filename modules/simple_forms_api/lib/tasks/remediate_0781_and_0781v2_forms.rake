@@ -31,7 +31,7 @@ require_relative 'dev/remediation_stubs' if Rails.env.development?
 # For submissions before June 24, 2019, only Form 0781 is processed.
 # For submissions on or after that date, both Form 0781 and Form 0781v2 are processed.
 #
-# Related: https://github.com/department-of-veterans-affairs/evidence-upload-remediation/issues/43
+# Related: https://va.ghe.com/software/evidence-upload-remediation/issues/43
 
 # Context object to reduce parameter count
 ProcessingContext = Struct.new(:job, :results, :submission_id, :form_key, :form_id, :idx, :total_size,

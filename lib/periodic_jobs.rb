@@ -192,7 +192,7 @@ PERIODIC_JOBS = lambda { |mgr| # rubocop:disable Metrics/BlockLength
   mgr.register('0 0 * * *', 'Form1010cg::DeleteOldUploadsJob')
   mgr.register('0 1 * * *', 'TransactionalEmailAnalyticsJob')
 
-  # Disable FeatureCleanerJob. https://github.com/department-of-veterans-affairs/va.gov-team/issues/53538
+  # Disable FeatureCleanerJob. https://va.ghe.com/software/va.gov-team/issues/53538
   # Enabling FeatureCleanerJob for logging
   # Features will not be removed when the job is executed
   mgr.register('0 0 * * *', 'FeatureCleanerJob')

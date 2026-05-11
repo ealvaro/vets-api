@@ -232,7 +232,7 @@ module BenefitsDocuments
         # We should pull the string out of the array for the tracked item since lighthouse gives us an array
         # NOTE there will only be one tracked item here
         # TODO Update this so that we only pass a tracked item instead of an array of tracked items
-        # Created https://github.com/department-of-veterans-affairs/va.gov-team/issues/101200 for this work
+        # Created https://va.ghe.com/software/va.gov-team/issues/101200 for this work
         tracked_item_id: tracked_item_ids,
         document_type:,
         password:

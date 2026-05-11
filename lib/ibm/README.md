@@ -38,7 +38,7 @@ claim = MedicalExpenseReport::SavedClaim.last
 service.upload_form(claim.to_ibm.to_json.to_s, claim.guid)
 ```
 
-- [medical_expense_reports/benefits_intake/submit_claim_job](https://github.com/department-of-veterans-affairs/vets-api/blob/master/modules/medical_expense_reports/lib/medical_expense_reports/benefits_intake/submit_claim_job.rb)
+- [medical_expense_reports/benefits_intake/submit_claim_job](https://va.ghe.com/software/vets-api/blob/master/modules/medical_expense_reports/lib/medical_expense_reports/benefits_intake/submit_claim_job.rb)
 
 ## Testing
 

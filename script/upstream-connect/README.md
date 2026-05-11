@@ -139,7 +139,7 @@ Shows a menu of available services to connect to.
 1. **devops repository**: Must be cloned as a sibling to vets-api (only needed for MFA script)
    ```bash
    cd /path/to/vets-api
-   git clone https://github.com/department-of-veterans-affairs/devops
+   git clone https://va.ghe.com/software/devops
    ```
 
 2. **AWS CLI**: Installed and configured with appropriate credentials
@@ -232,7 +232,7 @@ To add a new service, edit `script/upstream-connect/upstream_service_config.rb` 
 Some services include `mock_mvi` configuration to control whether to use real or mock MVI data:
 
 - **Mock Mode** (`mock_mpi: true`, default): Sets `mvi.mock: true` in identity settings
-- **Real MVI Mode** (`mock_mpi: false`): 
+- **Real MVI Mode** (`mock_mpi: false`):
   - Adds port 4434 forwarding to MVI service
   - Sets `mvi.mock: false` and `mvi.url: https://localhost:4434/psim_webservice/IdMWebService` in `config/identity_settings/settings.local.yml`
 
@@ -281,7 +281,7 @@ Ensure the devops repo is cloned as a sibling directory to vets-api:
 └── vets-api/
 ```
 
-### "AWS authentication required" 
+### "AWS authentication required"
 The script will automatically prompt for your AWS username and MFA token. If you prefer to authenticate manually:
 ```bash
 source ../devops/utilities/issue_mfa.sh YOUR_USERNAME MFA_TOKEN

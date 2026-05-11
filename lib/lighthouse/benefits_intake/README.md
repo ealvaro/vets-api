@@ -103,8 +103,8 @@ To register a handler with the submission status job:
 ::BenefitsIntake::SubmissionStatusJob.register_handler(Pensions::FORM_ID, Pensions::BenefitsIntake::SubmissionHandler)
 ```
 
-- [burials/benefits_intake/submit_claim_job](https://github.com/department-of-veterans-affairs/vets-api/blob/master/modules/burials/lib/burials/benefits_intake/submit_claim_job.rb)
-- [pensions/benefits_intake/submit_claim_job](https://github.com/department-of-veterans-affairs/vets-api/blob/master/modules/pensions/lib/pensions/benefits_intake/submit_claim_job.rb)
+- [burials/benefits_intake/submit_claim_job](https://va.ghe.com/software/vets-api/blob/master/modules/burials/lib/burials/benefits_intake/submit_claim_job.rb)
+- [pensions/benefits_intake/submit_claim_job](https://va.ghe.com/software/vets-api/blob/master/modules/pensions/lib/pensions/benefits_intake/submit_claim_job.rb)
 
 ## API Reference
 

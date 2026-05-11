@@ -18,7 +18,7 @@ By default, engineers will be authorized when developing locally. If you're a Pl
 Add the following to your `settings.local.yml`
 ```yaml
 flipper:
-  github_organization: department-of-veterans-affairs
+  github_organization: software
   github_team: <see below>
   github_oauth_key: <see below>
   github_oauth_secret: <see below>
@@ -26,9 +26,9 @@ flipper:
 
 `github_team` - to give yourself access, provide the id of a team that you belong to (i.e. `backend-review-group`). You can retrieve the id via the github API:
 ```
-curl -H "Authorization: token <personal_access_token>" https://api.github.com/orgs/department-of-veterans-affairs/teams/backend-review-group
+curl -H "Authorization: token <personal_access_token>" https://api.va.ghe.com/software/teams/backend-review-group
 ```
 
 [Creating a Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
 
-`github_oauth_key`/`github_oauth_secret` - These reference the Client ID and Client Secret for the associated Github OAuth App. There are separate apps for each app using github authentication (Flipper, Sidekiq, Coverband, etc) AND for each environment INCLUDING a Test App for use with localhost, `va.gov-flipper-oauth-local-test`. The credentials are stored in the parameter store under `/dsva-vagov/vets-api/local-dev/flipper/github-oauth-key` and `/github-oauth-secret`, respectively. 
+`github_oauth_key`/`github_oauth_secret` - These reference the Client ID and Client Secret for the associated Github OAuth App. There are separate apps for each app using github authentication (Flipper, Sidekiq, Coverband, etc) AND for each environment INCLUDING a Test App for use with localhost, `va.gov-flipper-oauth-local-test`. The credentials are stored in the parameter store under `/dsva-vagov/vets-api/local-dev/flipper/github-oauth-key` and `/github-oauth-secret`, respectively.

@@ -71,7 +71,7 @@ module Dangerfile
 
         **Documentation:**
         - [PII Guidelines](https://depo-platform-documentation.scrollhelp.site/developer-docs/personal-identifiable-information-pii-guidelines)
-        - [Filter Parameter Logging](https://github.com/department-of-veterans-affairs/vets-api/blob/master/config/initializers/filter_parameter_logging.rb)
+        - [Filter Parameter Logging](https://va.ghe.com/software/vets-api/blob/master/config/initializers/filter_parameter_logging.rb)
 
         <details>
           <summary>Modified ALLOWLIST diff</summary>

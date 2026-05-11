@@ -5,7 +5,7 @@ require 'vets/model'
 ##
 # Models a Prescription
 #
-# @see https://github.com/department-of-veterans-affairs/vets.gov-team/blob/master/Products/Rx%20Refills/API/sample_mvh_api_calls
+# @see https://va.ghe.com/software/vets.gov-team/blob/master/Products/Rx%20Refills/API/sample_mvh_api_calls
 #
 # @!attribute prescription_id
 #   @return [Integer]

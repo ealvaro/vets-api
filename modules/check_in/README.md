@@ -19,11 +19,11 @@
 ## Related Documents
 * [Sketch - Editing wireframes](https://www.sketch.com/s/5331b114-280d-4ff5-8d36-ec49b1696b9e)
 * [Sketch - Overall pre-check-in MVP wireframes](https://www.sketch.com/s/e79a827e-42cf-4a82-b554-874c75b5c70e)
-* [Check-In Test Data Setup](https://github.com/department-of-veterans-affairs/va.gov-team/blob/master/products/health-care/checkin/engineering/qa/test-data-setup.md)
-* [Check-In Architecture](https://github.com/department-of-veterans-affairs/va.gov-team/blob/master/products/health-care/checkin/engineering/README.md)
-* [Research Documents](https://github.com/department-of-veterans-affairs/va.gov-team/tree/master/products/health-care/checkin/research)
-* [Engineering Documents](https://github.com/department-of-veterans-affairs/va.gov-team/tree/master/products/health-care/checkin/engineering)
-* [VA.gov Profile](https://github.com/department-of-veterans-affairs/va.gov-team/blob/master/products/identity-personalization/profile/README.md)
+* [Check-In Test Data Setup](https://va.ghe.com/software/va.gov-team/blob/master/products/health-care/checkin/engineering/qa/test-data-setup.md)
+* [Check-In Architecture](https://va.ghe.com/software/va.gov-team/blob/master/products/health-care/checkin/engineering/README.md)
+* [Research Documents](https://va.ghe.com/software/va.gov-team/tree/master/products/health-care/checkin/research)
+* [Engineering Documents](https://va.ghe.com/software/va.gov-team/tree/master/products/health-care/checkin/engineering)
+* [VA.gov Profile](https://va.ghe.com/software/va.gov-team/blob/master/products/identity-personalization/profile/README.md)
 
 ## Table of Contents
 - [Overview](#overview)
@@ -45,14 +45,14 @@
     - [VA Profile](#va-profile)
 
 ## Overview
-- Please [click here](https://github.com/department-of-veterans-affairs/va.gov-team/blob/master/products/health-care/checkin/product/product-outline.md) for a comprehensive explanation.
+- Please [click here](https://va.ghe.com/software/va.gov-team/blob/master/products/health-care/checkin/product/product-outline.md) for a comprehensive explanation.
 
 ## Vets-API
 
 * The Check-In module Rails engine inside the `vets-api` umbrella serves as a general purpose API, and as a service bus to the downstream LoROTA and CHIP APIs for the `vets-website`, the UI for the va.gov site
 * Built with the Ruby on Rails framework
 * Is the main backend service for the `vets-website`
-* [Vets-API Readme](https://github.com/department-of-veterans-affairs/vets-api/#readme)
+* [Vets-API Readme](https://va.ghe.com/software/vets-api/#readme)
 
 ### Code Documentation
 - Swagger documentation can be viewed as JSON locally by running the vets-api application server, and then visiting http://localhost:3000/check_in/v2/apidocs in a browser window. Swagger UI can be accessed via https://department-of-veterans-affairs.github.io/va-digital-services-platform-docs/api-reference/#/ and then searching for https://dev-api.va.gov/check_in/v2/apidocs in the search bar at the top of the page.
@@ -73,7 +73,7 @@ include the `Vets::SharedLogging` module (formerly known as `SentryLogging`) loc
 - The Check-in module is configured using the config gem in the `vets-api` repository. The default configuration is contained in the settings.yml file under the `check_in` key. To customize your setup locally, you can create a `config/settings.local.yml` file, ignored in `.gitignore`, and override the `check_in` key/values to facilitate local development.
 
 ### Miscellaneous
-- vets-api uses a middleware component [olive_branch](https://github.com/vigetlabs/olive_branch) which converts the case of incoming parameters based on the value of a HTTP header X-Key-Inflection. See here: https://github.com/department-of-veterans-affairs/vets-api#api-request-key-formatting. The middleware is configured here: https://github.com/department-of-veterans-affairs/vets-api/blob/d16d87536bf898fc750067749eb9c8ffc7737a39/config/application.rb#L74
+- vets-api uses a middleware component [olive_branch](https://github.com/vigetlabs/olive_branch) which converts the case of incoming parameters based on the value of a HTTP header X-Key-Inflection. See here: https://va.ghe.com/software/vets-api#api-request-key-formatting. The middleware is configured here: https://va.ghe.com/software/vets-api/blob/d16d87536bf898fc750067749eb9c8ffc7737a39/config/application.rb#L74
 Note that OliveBranch only transforms parameters when Content-type is application/json (https://github.com/vigetlabs/olive_branch#troubleshooting). This means that if the front-end library doesn't include that header for GET requests with no body, the query parameters will not be transformed.
 
 ### The Check-In Module Endpoints
@@ -103,20 +103,20 @@ Note that OliveBranch only transforms parameters when Content-type is applicatio
 * Pre-Check-In: This application is going to be filled out by veterans days before the appointment. The veteran will be able to confirm various aspects of their appointment and information.
 * Built with reactJS
 * Uses Vets-API as the main backend API and service bus
-* [Day of Check-In Readme](https://github.com/department-of-veterans-affairs/vets-website/tree/main/src/applications/check-in/day-of#readme)
-* [Pre-Check-In Readme](https://github.com/department-of-veterans-affairs/vets-website/tree/main/src/applications/check-in/pre-check-in#readme)
+* [Day of Check-In Readme](https://va.ghe.com/software/vets-website/tree/main/src/applications/check-in/day-of#readme)
+* [Pre-Check-In Readme](https://va.ghe.com/software/vets-website/tree/main/src/applications/check-in/pre-check-in#readme)
 
 ### CHIP
 
 * Check-In Integration Point API.
 * Provides Veterans with a unified front door experience for preparing for and checking into their clinical appointments.
 * Includes, changing the process for outpatient clinical workflow that improves efficiency and decrease devices requiring publicly accessible shared surfaces that may increase the transmissions of communicable diseases like COVID-19.
-* [CHIP Readme](https://github.com/department-of-veterans-affairs/chip#readme)
+* [CHIP Readme](https://va.ghe.com/software/chip#readme)
 
 ### LoROTA
 
 * Low Risk One Time Authentication, or LoROTA, is a simple service that uses a unique key (UUID)passed between a user and various services to authenticate that user for certain low risk activities, like form submission.
-* [LoROTA Readme](https://github.com/department-of-veterans-affairs/lorota#readme)
+* [LoROTA Readme](https://va.ghe.com/software/lorota#readme)
 
 ### Profile Service
 
@@ -143,14 +143,14 @@ Note that OliveBranch only transforms parameters when Content-type is applicatio
     * Account security
     * Connected apps (managed by the Lighthouse team)
 * References:
-  - [VA.gov Profile](https://github.com/department-of-veterans-affairs/va.gov-team/blob/master/products/identity-personalization/profile/README.md)
+  - [VA.gov Profile](https://va.ghe.com/software/va.gov-team/blob/master/products/identity-personalization/profile/README.md)
 
 ### VA Profile
 * This is a backend system that was formerly known as Vet360.
 * It came about in 2018 to act as a connector between a bunch of VA backends and frontends, so that veterans could update their info in one place and it would save everywhere (or almost everywhere).
 * The VA Profile team is not part of the OCTO/DEPO contracts. They are an entirely separate team that we work with, and they work with a lot of other teams.
 * References:
-  - [VA.gov Profile](https://github.com/department-of-veterans-affairs/va.gov-team/blob/master/products/identity-personalization/profile/README.md)
+  - [VA.gov Profile](https://va.ghe.com/software/va.gov-team/blob/master/products/identity-personalization/profile/README.md)
 
 ## License
 This module is open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).

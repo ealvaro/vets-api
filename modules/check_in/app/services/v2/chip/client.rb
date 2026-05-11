@@ -8,7 +8,7 @@ module V2
     # A service client for handling HTTP requests to the CHIP API.  This needs to be instantiated with a
     # {CheckIn::V2::Session} object so that it can be used in subsequent calls.
     #
-    # @see https://github.com/department-of-veterans-affairs/chip CHIP readme
+    # @see https://va.ghe.com/software/chip CHIP readme
     #
     # @example
     #   client = Client.build(check_in_session: check_in)

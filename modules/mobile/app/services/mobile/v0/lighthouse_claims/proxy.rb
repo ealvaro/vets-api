@@ -29,7 +29,7 @@ module Mobile
         end
 
         # Manual status override for certain tracked items
-        # See https://github.com/department-of-veterans-affairs/va.gov-team/issues/101447
+        # See https://va.ghe.com/software/va.gov-team/issues/101447
         # This should be removed when the items are re-categorized by BGS
         # We are not doing this in the Lighthouse service because we want web and mobile to have
         # separate rollouts and testing.
@@ -37,7 +37,7 @@ module Mobile
           claim = claims_service.get_claim(id)
           validate_response_schema(@user, claim, 'claims_and_appeals_get_claim')
           claim = override_rv1(claim) if Flipper.enabled?(:cst_override_reserve_records_mobile)
-          # https://github.com/department-of-veterans-affairs/va.gov-team/issues/98364
+          # https://va.ghe.com/software/va.gov-team/issues/98364
           # This should be removed when the items are removed by BGS
           claim = suppress_evidence_requests(claim) if Flipper.enabled?(:cst_suppress_evidence_requests_mobile)
           claim

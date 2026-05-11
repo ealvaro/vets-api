@@ -24,7 +24,7 @@ module MHV
   # If the job fails mid-processing, events are still in the buffer for the next retry.
   #
   # @see UniqueUserEvents::Buffer for the buffer API
-  # @see https://github.com/department-of-veterans-affairs/va.gov-team/blob/master/products/health-care/digital-health-modernization/mhv-to-va.gov/metrics-performance-monitoring/Unique-Users/2025-08-unique-user-metrics.md#re-architecture-asynchronous-batch-processing-december-2025
+  # @see https://va.ghe.com/software/va.gov-team/blob/master/products/health-care/digital-health-modernization/mhv-to-va.gov/metrics-performance-monitoring/Unique-Users/2025-08-unique-user-metrics.md#re-architecture-asynchronous-batch-processing-december-2025
   class UniqueUserMetricsProcessorJob
     include Sidekiq::Job
 

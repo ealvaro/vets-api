@@ -30,7 +30,7 @@ module ClaimsApi
     before_save :set_header_hash
 
     def self.find_using_identifier_and_source(primary_identifier, source_name)
-      # md5 deprecated 3/26/2025 due to security: https://github.com/department-of-veterans-affairs/vets-api/security/code-scanning/852
+      # md5 deprecated 3/26/2025 due to security: https://va.ghe.com/software/vets-api/security/code-scanning/852
       # it's possible to have duplicate POAs, so be sure to return the most recently created match
       poas = ClaimsApi::PowerOfAttorney.where(primary_identifier).order(created_at: :desc)
       poas = poas.select { |poa| poa.source_data['name'] == source_name }

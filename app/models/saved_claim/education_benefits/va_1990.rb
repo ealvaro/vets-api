@@ -3,7 +3,7 @@
 class SavedClaim::EducationBenefits::VA1990 < SavedClaim::EducationBenefits
   add_form_and_validation('22-1990')
 
-  # pulled from https://github.com/department-of-veterans-affairs/vets-website/blob/f27b8a5ffe4e2f9357d6c501c9a6a73dacdad0e1/src/applications/edu-benefits/utils/helpers.jsx#L100
+  # pulled from https://va.ghe.com/software/vets-website/blob/f27b8a5ffe4e2f9357d6c501c9a6a73dacdad0e1/src/applications/edu-benefits/utils/helpers.jsx#L100
   BENEFIT_TITLE_FOR_1990 = {
     'chapter30' => 'Montgomery GI Bill (MGIB or Chapter 30) Education Assistance Program',
     'chapter33' => 'Post-9/11 GI Bill (Chapter 33)',
@@ -11,7 +11,7 @@ class SavedClaim::EducationBenefits::VA1990 < SavedClaim::EducationBenefits
     'chapter32' => 'Post-Vietnam Era Veterans’ Educational Assistance Program (VEAP or chapter 32)'
   }.freeze
 
-  # pulled from https://github.com/department-of-veterans-affairs/vets-website/blob/f27b8a5ffe4e2f9357d6c501c9a6a73dacdad0e1/src/applications/edu-benefits/1990/helpers.jsx#L88
+  # pulled from https://va.ghe.com/software/vets-website/blob/f27b8a5ffe4e2f9357d6c501c9a6a73dacdad0e1/src/applications/edu-benefits/1990/helpers.jsx#L88
   BENEFIT_RELINQUISHED_TITLE_FOR_1990 = {
     'unknown' => 'I’m only eligible for the Post-9/11 GI Bill',
     'chapter30' => 'Montgomery GI Bill (MGIB-AD, Chapter 30)',

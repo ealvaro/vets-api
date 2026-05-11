@@ -74,7 +74,7 @@ module Burials
       # This behavior stems from VBA's request to keep boolean fields blank
       # on the PDF if not selected on the online form.
       #
-      # For more context, see this PR: https://github.com/department-of-veterans-affairs/vets-api/pull/22958
+      # For more context, see this PR: https://va.ghe.com/software/vets-api/pull/22958
       #
       # @param value [Boolean, nil]
       #
@@ -169,7 +169,7 @@ module Burials
       # This behavior stems from VBA's requirement that boolean values
       # remain empty on the PDF if not selected on the online form.
       #
-      # For more context, see this PR: https://github.com/department-of-veterans-affairs/vets-api/pull/22958
+      # For more context, see this PR: https://va.ghe.com/software/vets-api/pull/22958
       #
       # @param hash [Hash]
       # @param key [String]

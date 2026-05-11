@@ -34,7 +34,7 @@ module UnifiedHealthData
       #
       # @param resource [Hash] FHIR MedicationRequest resource
       # @return [Symbol] One of the available categories
-      # @see https://github.com/department-of-veterans-affairs/va.gov-team/blob/master/products/health-care/digital-health-modernization/mhv-to-va.gov/medications/requirements/oracle_health_categorization_spec.md
+      # @see https://va.ghe.com/software/va.gov-team/blob/master/products/health-care/digital-health-modernization/mhv-to-va.gov/medications/requirements/oracle_health_categorization_spec.md
       def categorize_medication(resource)
         return :uncategorized if resource.nil?
 

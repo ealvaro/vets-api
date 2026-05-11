@@ -28,7 +28,7 @@ This client is responsible for obtaining a bearer token from the MuleSoft API. I
 
 ```
 {
-  data: ref([10-10CG Data Schema](https://github.com/department-of-veterans-affairs/vets-json-schema/blob/master/dist/10-10CG-schema.json)) as json,
+  data: ref([10-10CG Data Schema](https://va.ghe.com/software/vets-json-schema/blob/master/dist/10-10CG-schema.json)) as json,
   metadata: {
     claimGuid: string;
     claimId: number | null;

@@ -4,7 +4,7 @@ module IvcChampva
   # Callback class used for when we notify a user that their
   # form has been missing a Pega status for > `failure_email_threshold_days`.
   #
-  # Modified from https://github.com/department-of-veterans-affairs/vets-api/tree/master/modules/va_notify#how-teams-can-integrate-with-callbacks
+  # Modified from https://va.ghe.com/software/vets-api/tree/master/modules/va_notify#how-teams-can-integrate-with-callbacks
   #
 
   class ZsfEmailNotificationCallback

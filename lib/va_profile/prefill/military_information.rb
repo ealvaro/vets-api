@@ -65,7 +65,7 @@ module VAProfile
       NOV_1998 = Date.new(1998, 11, 11)
       GULF_WAR_RANGE = (Date.new(1990, 8, 2)..NOV_1998)
 
-      # In https://github.com/department-of-veterans-affairs/va.gov-team/issues/41046
+      # In https://va.ghe.com/software/va.gov-team/issues/41046
       # military service branches were modified to use an updated list from
       # Lighthouse BRD. The list below combines the branches from the former list
       # that was in the previous vets_json_schema, and the new list, from BRD. In

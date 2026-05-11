@@ -4,7 +4,7 @@ module LGY
   module Constants
     # Service branch code mapping for new v2 form format
     # Maps client service branch codes to LGY-accepted values
-    # Based on: https://github.com/department-of-veterans-affairs/vets-website/blob/main/src/platform/forms-system/src/js/web-component-patterns/content/serviceBranch.json
+    # Based on: https://va.ghe.com/software/vets-website/blob/main/src/platform/forms-system/src/js/web-component-patterns/content/serviceBranch.json
     SERVICE_BRANCH_MAPPING = {
       # ARMY mappings
       'AAC' => { branch: 'ARMY', service_type: 'ACTIVE_DUTY' },        # Army Air Corps or Army Air Force

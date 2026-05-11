@@ -8,7 +8,7 @@ class Form526SubmissionFailureEmailJob
   attr_accessor :submission
 
   STATSD_PREFIX = 'api.form_526.veteran_notifications.form526_submission_failure_email'
-  # https://github.com/department-of-veterans-affairs/va.gov-team-sensitive/blob/274bea7fb835e51626259ac16b32c33ab0b2088a/platform/practices/zero-silent-failures/logging-silent-failures.md#capture-silent-failures-state
+  # https://va.ghe.com/software/va.gov-team-sensitive/blob/master/platform/practices/zero-silent-failures/logging-silent-failures.md
   ZSF_DD_TAG_FUNCTION = '526_backup_submission_to_lighthouse'
   VA_NOTIFY_CALLBACK_OPTIONS = {
     callback_metadata: {

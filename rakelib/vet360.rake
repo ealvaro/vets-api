@@ -249,7 +249,7 @@ namespace :vet360 do
     This requires a developer to follow some manual steps.  Here are the
     instructions:
 
-    1.  The full set of error codes are located at:  https://github.com/department-of-veterans-affairs/mdm-cuf-person/blob/development/mdm-cuf-person-server/src/inttest/resources/mdm/cuf/person/testData/error_codes.csv
+    1.  The full set of error codes are located at:  https://va.ghe.com/software/mdm-cuf-person/blob/development/mdm-cuf-person-server/src/inttest/resources/mdm/cuf/person/testData/error_codes.csv
 
     2. Copy and paste this full set of raw error code csv data into
     spec/support/vet360/api_response_error_messages.csv (not just the diff,

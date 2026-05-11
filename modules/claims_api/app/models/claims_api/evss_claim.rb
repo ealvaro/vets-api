@@ -8,7 +8,7 @@ module ClaimsApi
 
     #############################
     # This mapping exists on the front end here:
-    # - https://github.com/department-of-veterans-affairs/vets-website/blob/fcf944bd4319684f5eb3d1901606801d01a9a55e/src/applications/claims-status/utils/helpers.js#L9
+    # - https://va.ghe.com/software/vets-website/blob/fcf944bd4319684f5eb3d1901606801d01a9a55e/src/applications/claims-status/utils/helpers.js#L9
     # As of the time of this comment they exist as the source of truth for this information
     # in the future we'll likely try to make this the source of truth
     #

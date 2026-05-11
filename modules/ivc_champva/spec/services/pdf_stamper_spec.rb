@@ -39,7 +39,7 @@ describe IvcChampva::PdfStamper do
       end
     end
 
-    # Test for https://github.com/department-of-veterans-affairs/va.gov-team/issues/127995
+    # Test for https://va.ghe.com/software/va.gov-team/issues/127995
     context 'when given characters outside of the Windows-1252 character set' do
       let(:data) do
         JSON.parse(File.read("modules/ivc_champva/spec/fixtures/form_json/#{test_payload}.json")).tap do |d|

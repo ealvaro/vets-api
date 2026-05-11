@@ -10,7 +10,7 @@ def nil_name
     {
       'id' => 'P9S4RFU',
       'name' => nil,
-      'description' => 'https://github.com/department-of-veterans-affairs/devops/blob/master/docs/External%20Service%20Integrations/Appeals.md',
+      'description' => 'https://va.ghe.com/software/devops/blob/master/docs/External%20Service%20Integrations/Appeals.md',
       'auto_resolve_timeout' => 14_400,
       'acknowledgement_timeout' => nil,
       'created_at' => '2019-01-10T17:18:09-05:00',
@@ -79,7 +79,7 @@ def invalid_status
     {
       'id' => 'P9S4RFU',
       'name' => 'External: Appeals',
-      'description' => 'https://github.com/department-of-veterans-affairs/devops/blob/master/docs/External%20Service%20Integrations/Appeals.md',
+      'description' => 'https://va.ghe.com/software/devops/blob/master/docs/External%20Service%20Integrations/Appeals.md',
       'auto_resolve_timeout' => 14_400,
       'acknowledgement_timeout' => nil,
       'created_at' => '2019-01-10T17:18:09-05:00',

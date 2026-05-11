@@ -144,7 +144,7 @@ module Openapi
                         example: 'USA'
                         # we cannot validate the country in the schema because it is transformed before it is saved as a
                         # SavedClaim, which also validates against the schema
-                        # fix in https://github.com/department-of-veterans-affairs/va.gov-team/issues/128935
+                        # fix in https://va.ghe.com/software/va.gov-team/issues/128935
                         # enum: COUNTRIES_3
                       },
                       postalCode: {

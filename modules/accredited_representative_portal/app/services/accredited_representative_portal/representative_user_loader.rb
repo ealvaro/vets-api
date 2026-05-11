@@ -3,7 +3,7 @@
 module AccreditedRepresentativePortal
   # NOTE: This class currently only supports 21a Unaccredited Representatives.
   # For 2122, Accredited Representative User Progress, see the below WIP ARP Auth epic:
-  # https://app.zenhub.com/workspaces/accredited-representative-facing-team-65453a97a9cc36069a2ad1d6/issues/gh/department-of-veterans-affairs/va.gov-team/75746
+  # https://va.ghe.com/software/va.gov-team/issues/75746
   class RepresentativeUserLoader
     attr_reader :access_token, :request_ip
 

@@ -9,24 +9,24 @@ contacts:
   - name: benefits-representation-management
     type: slack
     contact: https://dsva.slack.com/archives/C05L6HSJLHM
-description: 'For details, visit: https://github.com/department-of-veterans-affairs/va.gov-team/tree/master/products/accredited-representation-management'
+description: 'For details, visit: https://va.ghe.com/software/va.gov-team/tree/master/products/accredited-representation-management'
 links:
   - name: ARM in vets-api
     type: repo
     provider: github
-    url: https://github.com/department-of-veterans-affairs/vets-api/tree/master/modules/representation_management
+    url: https://va.ghe.com/software/vets-api/tree/master/modules/representation_management
   - name: Appoint a Representative Frontend
     type: repo
     provider: github
-    url: https://github.com/department-of-veterans-affairs/vets-website/tree/main/src/applications/representative-appoint
+    url: https://va.ghe.com/software/vets-website/tree/main/src/applications/representative-appoint
   - name: Find a Representative Frontend
     type: repo
     provider: github
-    url: https://github.com/department-of-veterans-affairs/vets-website/tree/main/src/applications/representative-search
+    url: https://va.ghe.com/software/vets-website/tree/main/src/applications/representative-search
   - name: Representative Status Widget
     type: repo
     provider: github
-    url: https://github.com/department-of-veterans-affairs/vets-website/tree/main/src/applications/static-pages/representative-status
+    url: https://va.ghe.com/software/vets-website/tree/main/src/applications/static-pages/representative-status
 tags:
   - representation-management
 type: web
@@ -46,25 +46,25 @@ contacts:
     type: slack
     contact: https://dsva.slack.com/archives/C06ABHUNBRS
 description: "For details, visit:
-  https://github.com/department-of-veterans-affairs/va.gov-team/tree/master/pro\
+  https://va.ghe.com/software/va.gov-team/tree/master/pro\
   ducts/accredited-representative-facing"
 links:
   - name: ARF Engineering
     type: doc
     provider: GitHub
-    url: https://github.com/department-of-veterans-affairs/va.gov-team/tree/master/products/accredited-representative-facing/engineering
+    url: https://va.ghe.com/software/va.gov-team/tree/master/products/accredited-representative-facing/engineering
   - name: ARP Engine in vets-api
     type: repo
     provider: github
-    url: https://github.com/department-of-veterans-affairs/vets-api/tree/35e2ebe672b7d2d92c16473e336b99c3a372afda/modules/accredited_representative_portal
+    url: https://va.ghe.com/software/vets-api/tree/35e2ebe672b7d2d92c16473e336b99c3a372afda/modules/accredited_representative_portal
   - name: ARP Frontend
     type: repo
     provider: github
-    url: https://github.com/department-of-veterans-affairs/vets-website/tree/5224ca7500fd9292b8fe29d967bcb4ab55f93df3/src/applications/accredited-representative-portal
+    url: https://va.ghe.com/software/vets-website/tree/5224ca7500fd9292b8fe29d967bcb4ab55f93df3/src/applications/accredited-representative-portal
   - name: ARP Layout
     type: repo
     provider: github
-    url: https://github.com/department-of-veterans-affairs/content-build/blob/6c82218da1661c090d2883b26f40cf18e173ff98/src/site/layouts/representative.html
+    url: https://va.ghe.com/software/content-build/blob/6c82218da1661c090d2883b26f40cf18e173ff98/src/site/layouts/representative.html
 tags:
   - accredited-representative-portal
 type: web
@@ -516,7 +516,7 @@ links:
   - name: VASS Engine in vets-api
     type: repo
     provider: github
-    url: https://github.com/department-of-veterans-affairs/vets-api/tree/master/modules/vass
+    url: https://va.ghe.com/software/vets-api/tree/master/modules/vass
 tags:
   - vass
 type: web

@@ -27,7 +27,7 @@ This guide provides step-by-step instructions for requesting, reviewing, and app
 
 1. **Create a PR for Configuration**: Open a pull request to add the configuration for the new S3 bucket(s). Include both staging and production configurations in a single PR where possible.
 2. **Follow Naming Conventions**: Use the standard naming conventions for each environment (see [S3 Bucket Naming Convention](#s3-bucket-naming-convention) below).
-3. **Refer to Examples**: Review [Sample PR #1](https://github.com/department-of-veterans-affairs/devops/pull/14735) and [Sample PR #2](https://github.com/department-of-veterans-affairs/devops/pull/14742) as examples.
+3. **Refer to Examples**: Review [Sample PR #1](https://va.ghe.com/software/devops/pull/14735) and [Sample PR #2](https://va.ghe.com/software/devops/pull/14742) as examples.
 
 ### Review Process
 

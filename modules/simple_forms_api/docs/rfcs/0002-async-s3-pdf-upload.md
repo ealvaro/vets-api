@@ -140,7 +140,7 @@ Currently, PDFs are generated and uploaded synchronously to the `vff-simple-form
 
 ## 8. Appendices/References
 
-1. [Architectural Intent Meeting Notes](https://github.com/department-of-veterans-affairs/va.gov-team/issues/91829)
+1. [Architectural Intent Meeting Notes](https://va.ghe.com/software/va.gov-team/issues/91829)
 1. [Platform PII Handling Best Practices](https://depo-platform-documentation.scrollhelp.site/developer-docs/coding-best-practices-for-pii)
 1. [DataDog Monitoring Guide](https://depo-platform-documentation.scrollhelp.site/developer-docs/get-acquainted-with-datadog)
 1. [Platform Performance Monitoring](https://depo-platform-documentation.scrollhelp.site/developer-docs/monitoring-performance)

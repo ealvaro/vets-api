@@ -78,7 +78,7 @@ module BenefitsClaims
       suppress_filtered_claim!(claim['data'])
 
       # Manual status override for certain tracked items
-      # See https://github.com/department-of-veterans-affairs/va-mobile-app/issues/9671
+      # See https://va.ghe.com/software/va-mobile-app/issues/9671
       # This should be removed when the items are re-categorized by BGS
       override_tracked_items(claim['data'])
       apply_friendlier_language(claim['data'])

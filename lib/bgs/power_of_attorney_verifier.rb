@@ -28,7 +28,7 @@ module BGS
     #   verifier.current_poa_code(respect_expiration: true)
     #   #=> nil (if expired)
     #
-    # @see https://github.com/department-of-veterans-affairs/vets-api/pull/22780
+    # @see https://va.ghe.com/software/vets-api/pull/22780
     #
     # TODO: Refactor other calls so expiration is always checked & argument can be removed
     def current_poa_code(respect_expiration: false)

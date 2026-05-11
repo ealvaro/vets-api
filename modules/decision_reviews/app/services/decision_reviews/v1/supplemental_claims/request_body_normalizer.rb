@@ -26,7 +26,7 @@ module DecisionReviews
 
         private
 
-        # Schema reference: https://github.com/department-of-veterans-affairs/vets-json-schema/blob/master/src/schemas/SC-create-request-body_v1/schema.json#L193-L201
+        # Schema reference: https://va.ghe.com/software/vets-json-schema/blob/master/src/schemas/SC-create-request-body_v1/schema.json#L193-L201
         def set_evidence_types(evidence_submission, has_uploaded_evidence, has_va_evidence)
           evidence_submission['evidenceType'] << 'retrieval' if has_va_evidence
           evidence_submission['evidenceType'] << 'upload' if has_uploaded_evidence
@@ -35,7 +35,7 @@ module DecisionReviews
           evidence_submission
         end
 
-        # Schema reference: https://github.com/department-of-veterans-affairs/vets-json-schema/blob/master/src/schemas/SC-create-request-body_v1/schema.json#L173-L192
+        # Schema reference: https://va.ghe.com/software/vets-json-schema/blob/master/src/schemas/SC-create-request-body_v1/schema.json#L173-L192
         def set_treatment_locations(evidence_submission)
           treatment_locations = @request_body.dig('data', 'attributes', 'treatmentLocations')
           treatment_location_other = @request_body.dig('data', 'attributes', 'treatmentLocationOther')
@@ -56,7 +56,7 @@ module DecisionReviews
           evidence_submission
         end
 
-        # Schema reference: https://github.com/department-of-veterans-affairs/vets-json-schema/blob/master/src/schemas/SC-create-request-body_v1/schema.json#L203-L238
+        # Schema reference: https://va.ghe.com/software/vets-json-schema/blob/master/src/schemas/SC-create-request-body_v1/schema.json#L203-L238
         def set_va_evidence(evidence_submission, va_evidence)
           formatted_va_evidence = format_va_evidence_entries(va_evidence)
           evidence_submission['retrieveFrom'] = formatted_va_evidence

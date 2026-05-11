@@ -7,7 +7,7 @@ module V0
 
     def index
       # the keys of metadata shouldn't be deeply transformed, which might corrupt some keys
-      # see https://github.com/department-of-veterans-affairs/va.gov-team/issues/17595 for more details
+      # See https://va.ghe.com/software/va.gov-team/issues/17595 for more details
       pending_submissions = InProgressForm.submission_pending.for_user(@current_user)
       render json: InProgressFormSerializer.new(pending_submissions)
     end

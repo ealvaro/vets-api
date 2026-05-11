@@ -8,7 +8,7 @@ Accepted
 
 ## Context
 
-Historically, form JSON schemas for VA.gov were maintained in the separate [vets-json-schema](https://github.com/department-of-veterans-affairs/vets-json-schema) repository. This approach made sense when both the frontend (vets-website) and backend (vets-api) needed to share schema definitions for form validation.
+Historically, form JSON schemas for VA.gov were maintained in the separate [vets-json-schema](https://va.ghe.com/software/vets-json-schema) repository. This approach made sense when both the frontend (vets-website) and backend (vets-api) needed to share schema definitions for form validation.
 
 However, the frontend has since migrated away from using vets-json-schema for validation. The backend (vets-api) remains the sole consumer of these schemas, using them to validate form submissions before processing.
 

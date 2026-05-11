@@ -8,7 +8,7 @@ module CheckIn
   # This class implements the VA Notify custom callback pattern to properly
   # track actual delivery status rather than just API request success.
   #
-  # @see https://github.com/department-of-veterans-affairs/vets-api/tree/master/modules/va_notify#custom-callback-handler
+  # @see https://va.ghe.com/software/vets-api/tree/master/modules/va_notify#custom-callback-handler
   class TravelClaimNotificationCallback
     include TravelClaimNotificationUtilities
     ##

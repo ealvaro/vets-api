@@ -9,7 +9,7 @@ module BenefitsClaims
     # These are evidence requests that should not be displayed to the user when:
     # - `cst_suppress_evidence_requests_website` feature flag is enabled
     # - `cst_suppress_evidence_requests_mobile` feature flag is enabled
-    # See https://github.com/department-of-veterans-affairs/va.gov-team/issues/126870
+    # See https://va.ghe.com/software/va.gov-team/issues/126870
     SUPPRESSED_EVIDENCE_REQUESTS = [
       'Admin Decision',
       'ADMINCOD',

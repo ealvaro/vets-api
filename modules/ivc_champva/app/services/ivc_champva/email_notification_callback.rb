@@ -4,7 +4,7 @@ module IvcChampva
   # General purpose callback class used for when we send emails to users.
   # This is used so we can maintain email numbers in DD.
   #
-  # Modified from https://github.com/department-of-veterans-affairs/vets-api/tree/master/modules/va_notify#how-teams-can-integrate-with-callbacks
+  # Modified from https://va.ghe.com/software/vets-api/tree/master/modules/va_notify#how-teams-can-integrate-with-callbacks
   #
 
   class EmailNotificationCallback

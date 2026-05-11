@@ -7,7 +7,7 @@ module Mobile
 
       # deers? vacols? corpDB?
       # lighthouse upstream service documentation:
-      # https://github.com/department-of-veterans-affairs/leeroy-jenkles/wiki/API-Backend-Systems#api-to-va-backend-mapping
+      # https://va.ghe.com/software/leeroy-jenkles/wiki/API-Backend-Systems#api-to-va-backend-mapping
       SERVICE_GRAPH = Mobile::V0::ServiceGraph.new(
         %i[bgs lighthouse],
         %i[mpi lighthouse],

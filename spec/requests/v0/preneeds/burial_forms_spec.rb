@@ -9,7 +9,7 @@ RSpec.describe 'V0::Preneeds::BurialForm', type: :request do
     { application: attributes_for(:burial_form) }
   end
 
-  # /v0/preneeds/burial_forms specs already removed in https://github.com/department-of-veterans-affairs/vets-api/pull/18232
+  # /v0/preneeds/burial_forms specs already removed in https://va.ghe.com/software/vets-api/pull/18232
 
   describe '#send_confirmation_email' do
     subject { V0::Preneeds::BurialFormsController.new }

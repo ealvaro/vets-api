@@ -1,6 +1,6 @@
 site_name: "Vets API"
 site_description: "Documentation for Vets API deployment, setup, and history."
-repo_url: https://github.com/department-of-veterans-affairs/vets-api
+repo_url: https://va.ghe.com/software/vets-api
 edit_uri: edit/master/docs/
 nav:
   - Deployment:

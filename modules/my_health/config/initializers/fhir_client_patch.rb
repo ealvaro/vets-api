@@ -4,7 +4,7 @@
 # Includes:
 # - Custom headers for search, read, and next_page
 #
-# Patched version: department-of-veterans-affairs/fhir_client (fork of 5.0.3)
+# Patched version: software/fhir_client (fork of 5.0.3)
 
 module FHIR
   ##

@@ -10,7 +10,7 @@ with their `case_id` and `status` in the payload.
 ## Key Features
 
 ### VES Integration
-The module includes a VES (Veterans Eligibility System) integration for the 10-10d form submissions. When enabled via feature flags, form data is automatically formatted and submitted to the VES API, which validates and processes CHAMPVA applications. 
+The module includes a VES (Veterans Eligibility System) integration for the 10-10d form submissions. When enabled via feature flags, form data is automatically formatted and submitted to the VES API, which validates and processes CHAMPVA applications.
 
 The VES integration follows a specific workflow:
 
@@ -102,17 +102,17 @@ Current feature flags used to control functionality:
 ## Uploads_Controller
 The uploads_controller.rb file in the IVC Champva module is a key component of the application, responsible for handling file uploads. It contains several private methods that perform various tasks related to file uploads. The get_attachment_ids_and_form method constructs attachment IDs based on the parsed form data and also instantiates a new form object.
 
-The supporting_document_ids method retrieves the IDs of any supporting documents included in the parsed form data. The get_file_paths_and_metadata method generates file paths and metadata for the uploaded files, and also handles any attachments associated with the form. The get_form_id method retrieves the ID of the form being processed. 
+The supporting_document_ids method retrieves the IDs of any supporting documents included in the parsed form data. The get_file_paths_and_metadata method generates file paths and metadata for the uploaded files, and also handles any attachments associated with the form. The get_form_id method retrieves the ID of the form being processed.
 
 ## Helpful Links
 - [Swagger API UI](https://department-of-veterans-affairs.github.io/va-digital-services-platform-docs/api-reference/) then search "https://dev-api.va.gov/v1/apidocs" to see the ivc_champva endpoint
-- [Project MarkDowns](https://github.com/department-of-veterans-affairs/va.gov-team/tree/master/products/health-care/champva)
-  - [Team Resource Repository](https://github.com/department-of-veterans-affairs/va.gov-team/blob/master/products/health-care/champva/team/team-resource-repository.md)
-  - [VES Integration](https://github.com/department-of-veterans-affairs/va.gov-team/blob/master/products/health-care/champva/engineering/ves_use_case_and_objectives.md)
-  - [Missing PEGA Status Playbook](https://github.com/department-of-veterans-affairs/va.gov-team/blob/master/products/health-care/champva/team/ivc-forms-monitoring-playbook.md)
+- [Project MarkDowns](https://va.ghe.com/software/va.gov-team/tree/master/products/health-care/champva)
+  - [Team Resource Repository](https://va.ghe.com/software/va.gov-team/blob/master/products/health-care/champva/team/team-resource-repository.md)
+  - [VES Integration](https://va.ghe.com/software/va.gov-team/blob/master/products/health-care/champva/engineering/ves_use_case_and_objectives.md)
+  - [Missing PEGA Status Playbook](https://va.ghe.com/software/va.gov-team/blob/master/products/health-care/champva/team/ivc-forms-monitoring-playbook.md)
 - [DataDog Dashboard](https://vagov.ddog-gov.com/dashboard/zsa-453-at7/ivc-champva-forms)
-- [Pega Callback API ADR](https://github.com/department-of-veterans-affairs/va.gov-team/blob/master/products/health-care/champva/ADR-callback-api-to-receive-status-from-pega.md)
-- [Pega Callback API Implementation Plan](https://github.com/department-of-veterans-affairs/va.gov-team/blob/master/products/health-care/champva/callback-api-technical-spec.md)
+- [Pega Callback API ADR](https://va.ghe.com/software/va.gov-team/blob/master/products/health-care/champva/ADR-callback-api-to-receive-status-from-pega.md)
+- [Pega Callback API Implementation Plan](https://va.ghe.com/software/va.gov-team/blob/master/products/health-care/champva/callback-api-technical-spec.md)
 
 ## Endpoints
 - `/ivc_champva/v1/forms` - Submit a CHAMPVA form

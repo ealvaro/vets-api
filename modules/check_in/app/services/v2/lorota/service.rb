@@ -52,7 +52,7 @@ module V2
       # Get the token from LoROTA by making a POST call. If the call is successful, the token is saved
       # in Redis as well for subsequent session retrieval.
       #
-      # @see https://github.com/department-of-veterans-affairs/lorota#how-check-in-experience-uses-lorota How
+      # @see https://va.ghe.com/software/lorota#how-check-in-experience-uses-lorota How
       # Check In Experience uses LoROTA
       #
       # @return [Hash] a hash with permission data and the jwt token

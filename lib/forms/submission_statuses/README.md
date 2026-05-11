@@ -11,7 +11,7 @@
 5. [Begin Implementation for Non-Benefits Intake API Forms](#begin-implementation-for-non-benefits-intake-api-forms)
     - [Initial Decisions](#initial-decisions)
     - [Using `restricted_list_of_forms`](#using-restricted_list_of_forms)
-    - [Continue with the restricted approach](#continue-with-the-restricted-approach)    
+    - [Continue with the restricted approach](#continue-with-the-restricted-approach)
 6. [Brand New Form API Connection](#brand-new-form-api-connection)
     - [Restricted vs Unrestricted](#restricted-vs-unrestricted)
     - [Unrestricted Implementation](#unrestricted-implementation)
@@ -26,12 +26,12 @@ Currently, we have two types of forms that are already able to show the Form Sta
 
 Forms can display **four statuses**:
 
-1. **DRAFT**  
-2. **SUBMISSION IN PROGRESS**  
-3. **RECEIVED**  
+1. **DRAFT**
+2. **SUBMISSION IN PROGRESS**
+3. **RECEIVED**
 4. **ACTION NEEDED**
 
-> This guide covers statuses **2–4**, as **DRAFT** is handled by the Save-in-Progress (SiP) implementation.  
+> This guide covers statuses **2–4**, as **DRAFT** is handled by the Save-in-Progress (SiP) implementation.
 > For more details, see the [SiP guide](https://depo-platform-documentation.scrollhelp.site/developer-docs/va-forms-library-how-to-set-up-save-in-progress-si).
 
 
@@ -53,15 +53,15 @@ There are two title/heading display options for the status card, depending on wh
 |-----------------|---------------|
 | <img width="421" height="256" alt="Screenshot 2025-07-24 at 10 26 45" src="https://github.com/user-attachments/assets/712288b1-641e-4688-a392-e8379e35ccc0" /> | <img width="417" height="280" alt="Screenshot 2025-07-16 at 14 24 44" src="https://github.com/user-attachments/assets/cd963ee3-35ad-4c8a-9145-351555e73cd6" /> |
 
-- **Uploadable forms** use a fallback title: `"VA Form XX-XXXX"`  
-- **SiP forms** use the title defined in `vets-website` with a subheading: `"VA Form XX-XXXX"` (for details see [Instructions for teams, step 3](https://depo-platform-documentation.scrollhelp.site/developer-docs/va-forms-library-how-to-set-up-save-in-progress-si))  
+- **Uploadable forms** use a fallback title: `"VA Form XX-XXXX"`
+- **SiP forms** use the title defined in `vets-website` with a subheading: `"VA Form XX-XXXX"` (for details see [Instructions for teams, step 3](https://depo-platform-documentation.scrollhelp.site/developer-docs/va-forms-library-how-to-set-up-save-in-progress-si))
 
 
 ## Form Status Workflow
 
 ### High-Level Workflow
 
-> Refer to the [original diagram](https://github.com/department-of-veterans-affairs/va.gov-team-sensitive/blob/7693b23eafaabac7c52a288ce89ae04d45972170/products/identity-personalization/my-va/form-status/backend_documentation.md#form-status-workflow) for a visual overview.
+> Refer to the [original diagram](https://va.ghe.com/software/va.gov-team-sensitive/blob/master/products/identity-personalization/my-va/form-status/backend_documentation.md#form-status-workflow) for a visual overview.
 
 
 ### `vets-api` Workflow
@@ -146,7 +146,7 @@ sequenceDiagram
 | Application for Burial Benefits                  | 21P-530EZ          |❌              | ⚠️                           | ✅ |
 | Personalized Career Planning and Guidance/Chapter 36 | 27-8832        |❌              | ⚠️                           | ✅ |
 
-> ⚠️ These forms need further investigation on why they're not showing a status card upon successful submission (https://github.com/department-of-veterans-affairs/va.gov-team/issues/117244)
+> ⚠️ These forms need further investigation on why they're not showing a status card upon successful submission (https://va.ghe.com/software/va.gov-team/issues/117244)
 
 ## Begin Implementation for Non-Benefits Intake API Forms
 
@@ -154,17 +154,17 @@ sequenceDiagram
 
 Before implementation, discuss and answer the following:
 
-- Show status for **all forms** in the new Form API or a restricted list?  
-- Use a **Flipper toggle**?  
-- Are you the **first form** for this Form API?  
-  - Existing Gateway & Formatter available?  
-  - Example: `BenefitsIntakeGateway` + `BenefitsIntakeFormatter`  
-- Do your form statuses **match the standard statuses**?  
+- Show status for **all forms** in the new Form API or a restricted list?
+- Use a **Flipper toggle**?
+- Are you the **first form** for this Form API?
+  - Existing Gateway & Formatter available?
+  - Example: `BenefitsIntakeGateway` + `BenefitsIntakeFormatter`
+- Do your form statuses **match the standard statuses**?
   - Map any different statuses in `vets-website/src/applications/personalization/dashboard/helpers.jsx` under `SUBMISSION_STATUS_MAP`.
 
 > Depending on your answers, you will fall into one of two categories:
-> 1. **First form team for this API** (e.g., Form 21-0781 → Lighthouse Documents Intake API)  
-> 2. **Not the first form team** (follow existing restrictions or patterns)  
+> 1. **First form team for this API** (e.g., Form 21-0781 → Lighthouse Documents Intake API)
+> 2. **Not the first form team** (follow existing restrictions or patterns)
 
 ---
 
@@ -173,7 +173,7 @@ Before implementation, discuss and answer the following:
 To use this path, ensure the following exist:
   ```
        ✔️ Gateway matching your Form API
-    
+
        ✔️ Formatter matching your Gateway
    ```
 
@@ -370,9 +370,9 @@ If you are unable to edit this document to add your team's decisions, please let
 
 
 ## Other References:
-- [Project outline: Forms Status on My VA MVP](https://github.com/department-of-veterans-affairs/va.gov-team/tree/master/products/identity-personalization/my-va/forms-status-on-My-VA)
-  - This document will provide context for the MVP of Form Status 
-- [Form Submission Status: Backend Documentation](https://github.com/department-of-veterans-affairs/va.gov-team-sensitive/blob/7693b23eafaabac7c52a288ce89ae04d45972170/products/identity-personalization/my-va/form-status/backend_documentation.md)
+- [Project outline: Forms Status on My VA MVP](https://va.ghe.com/software/va.gov-team/tree/master/products/identity-personalization/my-va/forms-status-on-My-VA)
+  - This document will provide context for the MVP of Form Status
+- [Form Submission Status: Backend Documentation](https://va.ghe.com/software/va.gov-team-sensitive/blob/master/products/identity-personalization/my-va/form-status/backend_documentation.md)
   - This document hold the final and current backend implementation of the Form Status
   - You can reference this document if you want more insight into how we work with the Lighthouse Benefits Intake API to retrieve the status of submitted forms
 - [VA Forms Library - How to set up Save In Progress (SiP)](https://depo-platform-documentation.scrollhelp.site/developer-docs/va-forms-library-how-to-set-up-save-in-progress-si#VAFormsLibrary-HowtosetupSaveInProgress(SiP)-MyVAPage)

@@ -14,7 +14,7 @@ RSpec.describe V1::Post911GIBillStatusesController, type: :controller do
   context 'service is available' do
     it 'returns a 200 success' do
       # valid icn retrieved from
-      # https://github.com/department-of-veterans-affairs/vets-api-clients/blob/master/test_accounts/benefits_test_accounts.md
+      # https://va.ghe.com/software/vets-api-clients/blob/master/test_accounts/benefits_test_accounts.md
       # 001	Tamara	E	Ellis	F	6/19/67	796130115	1012667145V762142
       valid_user = create(:user, :loa3, icn: '1012667145V762142')
       sign_in_as(valid_user)

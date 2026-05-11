@@ -17,7 +17,7 @@ metadata:
       title: Backstage API entity docs
 spec:
   definition:
-    $text: https://github.com/department-of-veterans-affairs/vets-api/blob/master/modules/my_health/docs/openapi_merged.yaml
+    $text: https://va.ghe.com/software/vets-api/blob/master/modules/my_health/docs/openapi_merged.yaml
   lifecycle: production
   owner: vfs-mhv-integration
   system: vets-api

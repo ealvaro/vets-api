@@ -71,7 +71,7 @@ module AccreditedRepresentativePortal
     #
     # Currently, it is a small-ish transformation of the most closely related
     # schema in existence at the time of writing:
-    #   [The schema for 2122 PDF generation](https://github.com/department-of-veterans-affairs/vets-api/blob/124adcfbeb4cba0d17f69e392d2af6189acd4809/modules/representation_management/app/swagger/v0/swagger.json#L749-L948)
+    #   [The schema for 2122 PDF generation](https://va.ghe.com/software/vets-api/blob/124adcfbeb4cba0d17f69e392d2af6189acd4809/modules/representation_management/app/swagger/v0/swagger.json#L749-L948)
     #
     # Of note:
     # - Optional `dependent` property for the non-Veteran claimant (NVC) case

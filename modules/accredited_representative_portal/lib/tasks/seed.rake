@@ -24,7 +24,7 @@ end
 module AccreditedRepresentativePortal
   ##
   # Representative records derived from here:
-  # https://github.com/department-of-veterans-affairs/va.gov-team-sensitive/blob/44b9fdb497587a46837b65f55827e16e1fde6547/products/accredited-representation-management/accredited-entities-test-data.md
+  # https://va.ghe.com/software/va.gov-team-sensitive/blob/master/products/accredited-representation-management/accredited-entities-test-data.md
   #
   module Seed
     class << self

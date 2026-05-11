@@ -62,7 +62,7 @@ Within callback_metadata, if ‘notification_type’ is not provided, no reporti
 ```
 
 VANotify::DefaultCallback does not handle any status other than ‘delivered’ and ‘permanent-failure’, omitting, for example, ‘temporary-failure’ and ‘preferences-declined’, or providing a default catch to other statuses.
-[VANotify Error Table](https://github.com/department-of-veterans-affairs/vanotify-team/blob/main/Support/error_status_reason_mapping.md#error-table)
+[VANotify Error Table](https://va.ghe.com/software/vanotify-team/blob/main/Support/error_status_reason_mapping.md#error-table)
 
 VANotify::DefaultCallback is not general purpose and redundant to VANotify::StatusUpdate.
 

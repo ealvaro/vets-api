@@ -6,7 +6,7 @@ require 'decision_reviews/v1/logging_utils'
 module DecisionReviews
   module V1
     module Helpers
-      # Included in https://github.com/department-of-veterans-affairs/vets-api/pull/13973/files
+      # Included in https://va.ghe.com/software/vets-api/pull/13973/files
       # for backwards compatibility. We may consider keeping these modules completely separate
       # in the future.
       include DecisionReviews::V1::LoggingUtils

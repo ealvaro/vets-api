@@ -382,7 +382,7 @@
       "cwe_id": [
         79
       ],
-      "note": "Explicitly configured years ago in https://github.com/department-of-veterans-affairs/vets-api/commit/c73c8fc5cc23262e8f708fad0f7c1052f9c88a7b"
+      "note": "Explicitly configured years ago in https://va.ghe.com/software/vets-api/commit/c73c8fc5cc23262e8f708fad0f7c1052f9c88a7b"
     }
   ],
   "brakeman_version": "8.0.4"

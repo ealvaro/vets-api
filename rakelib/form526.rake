@@ -444,7 +444,7 @@ namespace :form526 do
     end
   end
 
-  # context in https://github.com/department-of-veterans-affairs/va.gov-team/issues/29651
+  # context in https://va.ghe.com/software/va.gov-team/issues/29651
   desc 'get a csv of all vets affected by BIRLS id mismatch errors since date'
   task :birls_errors, [:start_date] => [:environment] do |_, args|
     start_date = args[:start_date]&.to_date || 30.days.ago.utc
@@ -468,7 +468,7 @@ namespace :form526 do
     puts 'tmp/birls_errors.csv'
   end
 
-  # context in https://github.com/department-of-veterans-affairs/va.gov-team/issues/11353
+  # context in https://va.ghe.com/software/va.gov-team/issues/11353
   desc 'get a csv of all vets affected by payee code errors with multiple corp ids since date'
   task :corp_id_errors, [:start_date] => [:environment] do |_, args|
     start_date = args[:start_date]&.to_date || 30.days.ago.utc

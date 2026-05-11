@@ -3,7 +3,7 @@
 module IvcChampva
   # Callback class used for when we notify Pega about a form missing a Pega status
   #
-  # Modified from https://github.com/department-of-veterans-affairs/vets-api/tree/master/modules/va_notify#how-teams-can-integrate-with-callbacks
+  # Modified from https://va.ghe.com/software/vets-api/tree/master/modules/va_notify#how-teams-can-integrate-with-callbacks
   #
 
   class PegaEmailNotificationCallback

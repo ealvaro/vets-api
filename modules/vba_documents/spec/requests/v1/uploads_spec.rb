@@ -169,7 +169,7 @@ RSpec.describe 'VBADocument::V1::Uploads', retry: 3, type: :request do
 
       # for ticket: https://vajira.max.gov/browse/API-5293
       # production was broken, the pull request below fixes it.  This test ensures it never comes back.
-      # https://github.com/department-of-veterans-affairs/vets-api/pull/6186
+      # https://va.ghe.com/software/vets-api/pull/6186
       it 'succeeds when giving a status on legacy data' do
         @md['businessLine'] = 'CMP'
         @upload_submission.metadata = {}

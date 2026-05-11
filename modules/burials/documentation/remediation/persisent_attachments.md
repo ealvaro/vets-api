@@ -3,7 +3,7 @@
 ## Context
 On 6/11/25 there were changes made to `claim_documents_controller.rb` to remove `PensionBurial` from a conditional in place of a default `ClaimEvidence` model. In doing so,
 KMS decryption got screwed up causing errors for pension and burial submissions. These errors occur when the process attempts to add the saved_claim_id to the `PersistentAttachment` model.
-For more info, see [Burial Submission Failures](https://github.com/department-of-veterans-affairs/va.gov-team-sensitive/blob/master/Postmortems/2025/2025-06-11_Burial_Submission_Failures.md)
+For more info, see [Burial Submission Failures](https://va.ghe.com/software/va.gov-team-sensitive/blob/master/Postmortems/2025/2025-06-11_P%26B_Submission_Failures.md)
 
 ## Recognize the Error
 In the `benefits-pension-burial-notifications`, if you see something along the lines of "Triggered: Benefits 21P-527EZ Pension Metric pensions/v0/claims 500 error >=3" then you'll want to do the steps below

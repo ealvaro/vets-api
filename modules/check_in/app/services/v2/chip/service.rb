@@ -55,7 +55,7 @@ module V2
       # and if it is either not present in Redis or cannot be retrieved from CHIP, an unauthorized
       # message is returned.
       #
-      # @see https://github.com/department-of-veterans-affairs/chip CHIP API details
+      # @see https://va.ghe.com/software/chip CHIP API details
       #
       # @return [Hash] success message if successful
       # @return [Hash] unauthorized message if token is not present
@@ -88,7 +88,7 @@ module V2
       # and if it is either not present in Redis or cannot be retrieved from CHIP, an unauthorized
       # message is returned.
       #
-      # @see https://github.com/department-of-veterans-affairs/chip CHIP API details
+      # @see https://va.ghe.com/software/chip CHIP API details
       #
       # @return [Hash] success message if successful
       # @return [Hash] unauthorized message if token is not present
@@ -109,7 +109,7 @@ module V2
       # A CHIP token is required and if it is either not present in Redis or cannot
       # be retrieved from CHIP, an unauthorized message is returned.
       #
-      # @see https://github.com/department-of-veterans-affairs/chip CHIP API details
+      # @see https://va.ghe.com/software/chip CHIP API details
       #
       # @return [Faraday::Response] response from CHIP
       # @return [Faraday::Response] unauthorized message if token is not present
@@ -127,7 +127,7 @@ module V2
       # A CHIP token is required and if it is either not present in Redis or cannot
       # be retrieved from CHIP, an unauthorized message is returned.
       #
-      # @see https://github.com/department-of-veterans-affairs/chip CHIP API details
+      # @see https://va.ghe.com/software/chip CHIP API details
       #
       # @return [Faraday::Response] response from CHIP
       # @return [Faraday::Response] unauthorized message if token is not present
@@ -145,7 +145,7 @@ module V2
       # and if it is either not present in Redis or cannot be retrieved from CHIP, an unauthorized
       # message is returned.
       #
-      # @see https://github.com/department-of-veterans-affairs/chip CHIP API details
+      # @see https://va.ghe.com/software/chip CHIP API details
       #
       # @return [Hash] success message if successful
       # @return [Hash] unauthorized message if token is not present
@@ -169,7 +169,7 @@ module V2
       # A CHIP token is required and if it is either not present in Redis or cannot
       # be retrieved from CHIP, an unauthorized message is returned.
       #
-      # @see https://github.com/department-of-veterans-affairs/chip CHIP API details
+      # @see https://va.ghe.com/software/chip CHIP API details
       #
       # @return [Faraday::Response] response from CHIP
       # @return [Faraday::Response] unauthorized message if token is not present
@@ -187,7 +187,7 @@ module V2
       # A CHIP token is required and if it is either not present in Redis or cannot
       # be retrieved from CHIP, an unauthorized message is returned.
       #
-      # @see https://github.com/department-of-veterans-affairs/chip CHIP API details
+      # @see https://va.ghe.com/software/chip CHIP API details
       #
       #
       # @return [Faraday::Response] response from CHIP
@@ -206,7 +206,7 @@ module V2
       # A CHIP token is required and if it is either not present in Redis or cannot
       # be retrieved from CHIP, an unauthorized message is returned.
       #
-      # @see https://github.com/department-of-veterans-affairs/chip CHIP API details
+      # @see https://va.ghe.com/software/chip CHIP API details
       #
       # @return [Faraday::Response] response from CHIP
       # @return [Faraday::Response] unauthorized message if token is not present

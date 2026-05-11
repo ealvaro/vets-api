@@ -289,7 +289,7 @@ class SavedClaim < ApplicationRecord
     filename = to_pdf
 
     # @see PdfFill::Filler
-    # https://github.com/department-of-veterans-affairs/vets-api/blob/96510bd1d17b9e5c95fb6c09d74e53f66b0a25be/lib/pdf_fill/filler.rb#L88
+    # https://va.ghe.com/software/vets-api/blob/96510bd1d17b9e5c95fb6c09d74e53f66b0a25be/lib/pdf_fill/filler.rb#L88
     StatsD.increment('saved_claim.pdf.overflow', tags:) if filename.end_with?('_final.pdf')
   rescue => e
     Rails.logger.warn("#{self.class} Error tracking PDF overflow", form_id:, saved_claim_id: id, error: e)

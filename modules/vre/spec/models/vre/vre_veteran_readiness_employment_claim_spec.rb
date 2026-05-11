@@ -79,7 +79,7 @@ RSpec.describe VRE::VREVeteranReadinessEmploymentClaim do
 
     before do
       # TODO(02/2026): Remove stub when VRE::NotificationEmail uses VRE::VREVeteranReadinessEmploymentClaim
-      # See: https://github.com/department-of-veterans-affairs/va-iir/issues/2011
+      # See: https://va.ghe.com/software/va-iir/issues/2011
       allow_any_instance_of(VRE::NotificationEmail).to receive(:claim_class)
         .and_return(VRE::VREVeteranReadinessEmploymentClaim)
     end
