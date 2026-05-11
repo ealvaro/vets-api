@@ -211,8 +211,6 @@ describe ClaimsApi::V2::ClaimsRequests::SupportingDocuments do
     end
 
     before do
-      # exepect toggle to be enabled
-      allow(Flipper).to receive(:enabled?).with(:claims_api_add_document_uuid_to_claim).and_return true
       # stub BD service methods
       allow(ClaimsApi::BD).to receive(:new).and_return(bd_service)
       allow(bd_service).to receive(:search).with(claim_id, participant_id:).and_return(search_data)

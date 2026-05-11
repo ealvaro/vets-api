@@ -1477,11 +1477,7 @@ RSpec.describe 'ClaimsApi::V2::Veterans::Claims', type: :request do
           let(:participant_id) { '600061742' }
           let(:claim_path_by_id) { "/services/claims/v2/veterans/#{veteran_id}/claims/#{claim_id}" }
 
-          context 'when VA document filtering is enabled' do
-            before do
-              allow(Flipper).to receive(:enabled?).with(:claims_api_add_document_uuid_to_claim).and_return(true)
-            end
-
+          context 'VA document filtering' do
             it 'searches using the file number, filters out VA-generated documents, and returns only user documents' do
               mock_ccg(scopes) do |auth_header|
                 # Load data from VCR cassettes using helper method
@@ -1556,36 +1552,6 @@ RSpec.describe 'ClaimsApi::V2::Veterans::Claims', type: :request do
                   # clean up brackets {} for comparison
                   document_uuid = documents[0]['documentUuid'].gsub(/[{}]/, '')
                   expect(letters_data[:data][:documents].pluck(:documentUuid).exclude?(document_uuid)).to be(true)
-                end
-              end
-            end
-          end
-
-          context 'when VA document filtering is disabled' do
-            before do
-              allow(Flipper).to receive(:enabled?).with(:claims_api_add_document_uuid_to_claim).and_return(false)
-            end
-
-            it 'does not filter out VA documents from the document search' do
-              mock_ccg(scopes) do |auth_header|
-                # Load data from VCR cassette using helper method
-                search_data = VcrHelpers.load_vcr_response_data('claims_api/bd/claim_with_mixed_documents_search', 1)
-
-                # Stub BD service methods
-                bd_service = instance_double(ClaimsApi::BD)
-                allow(ClaimsApi::BD).to receive(:new).and_return(bd_service)
-                allow(bd_service).to receive_messages(
-                  search: search_data
-                )
-
-                VCR.use_cassette('claims_api/bgs/claims/claim_with_va_filtering') do
-                  get claim_path_by_id, headers: auth_header
-                  json_response = JSON.parse(response.body)
-                  documents = json_response['data']['attributes']['supportingDocuments']
-                  search_document_ids = search_data[:data][:documents].pluck(:documentUuid)
-                  expect(response).to have_http_status(:ok)
-                  expect(documents).to be_present
-                  expect(documents.pluck('documentUuid')).to match_array(search_document_ids)
                 end
               end
             end

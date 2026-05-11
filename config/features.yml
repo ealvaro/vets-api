@@ -603,10 +603,6 @@ features:
     actor_type: user
     description: Uses local_bgs rather than bgs-ext
     enable_in_development: true
-  claims_api_add_document_uuid_to_claim:
-    actor_type: user
-    description: When enabled, adds the document_uuid field to the Claims API claim show response
-    enable_in_development: true
   claims_api_vanotify_service_migration:
     actor_type: user
     description: Migrates claims api settings location

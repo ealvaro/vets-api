@@ -24,12 +24,10 @@ module ClaimsApi
           return [] if docs.nil? || docs&.dig(:documents).blank?
 
           # use filter service to remove VA-generated documents from the list of supporting documents
-          if Flipper.enabled?(:claims_api_add_document_uuid_to_claim)
-            claims_v2_logging('benefits_documents',
-                              message: 'calling benefits documents api (claim_letters_search) to filter VA ' \
-                                       "generated documents for claim_id #{params[:id]} in claims controller v2")
-            docs.merge!(documents: filter_va_documents(docs[:documents], **identifier))
-          end
+          claims_v2_logging('benefits_documents',
+                            message: 'calling benefits documents api (claim_letters_search) to filter VA ' \
+                                     "generated documents for claim_id #{params[:id]} in claims controller v2")
+          docs.merge!(documents: filter_va_documents(docs[:documents], **identifier))
 
           @supporting_documents = transform_documents(docs)
         end
