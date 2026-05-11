@@ -8,14 +8,20 @@ module UniqueUserEvents
   # This module handles the generation of Oracle Health site-specific events
   # based on user facility registrations and tracked events.
   module OracleHealth
-    # Tracked facility IDs that should generate OH events
-    # Loaded from Settings.unique_user_metrics.oracle_health_tracked_facility_ids
-    # Validates that all IDs are 3-digit numbers (VA facility ID format)
-    # Returns empty array if validation fails to avoid crashing metrics code
-    # Uses Array() to safely handle scalar values from environment variable overrides
-    TRACKED_FACILITY_IDS = begin
-      raw_value = Settings.unique_user_metrics&.oracle_health_tracked_facility_ids
-      ids = Array(raw_value)
+    # Parses and validates a comma-separated facility ID setting from AWS Parameter Store.
+    # Uses ActiveModel::Type::Boolean cast to safely handle nil, false, and 0 values
+    # before string conversion (prevents nil -> "nil", false -> "false").
+    # Validates that all IDs are 3-digit numbers (VA facility ID format).
+    # Returns empty frozen array if the value is falsy or validation fails.
+    #
+    # @param raw_value [String, Integer, nil, Boolean] the raw Settings value
+    # @return [Array<String>] parsed and validated facility IDs (frozen)
+    def self.parse_facility_ids(raw_value)
+      ids = if ActiveModel::Type::Boolean.new.cast(raw_value)
+              raw_value.to_s.split(',').map(&:strip).compact_blank
+            else
+              []
+            end
 
       # Validate facility IDs are 3-digit numbers
       invalid_ids = ids.reject { |id| id.to_s =~ /^\d{3}$/ }
@@ -30,6 +36,12 @@ module UniqueUserEvents
         ids.map(&:to_s).freeze
       end
     end
+
+    # Tracked facility IDs that should generate OH events
+    # Loaded from Settings.unique_user_metrics.oracle_health_tracked_facility_ids
+    TRACKED_FACILITY_IDS = parse_facility_ids(
+      Settings.unique_user_metrics&.oracle_health_tracked_facility_ids
+    )
 
     # Event suffix for Oracle Health facility-specific events (explicit facility context)
     OH_EVENT_SUFFIX = '_oh_'
@@ -103,6 +115,6 @@ module UniqueUserEvents
       cerner_ids & TRACKED_FACILITY_IDS
     end
 
-    private_class_method :get_user_tracked_facilities, :filter_tracked_oh_facilities
+    private_class_method :get_user_tracked_facilities, :filter_tracked_oh_facilities, :parse_facility_ids
   end
 end
