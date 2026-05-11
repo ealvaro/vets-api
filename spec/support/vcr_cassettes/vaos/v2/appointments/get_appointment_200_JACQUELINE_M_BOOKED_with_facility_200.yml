@@ -62,7 +62,7 @@ http_interactions:
   recorded_at: Tue, 11 Jan 2022 18:33:11 GMT
 - request:
     method: get
-    uri: <VA_MOBILE_URL>/facilities/v2/facilities/984
+    uri: <VA_MOBILE_URL>/facilities/v3/facilities/984
     body:
       encoding: US-ASCII
       string: ''

@@ -325,21 +325,15 @@ module VAOS
       end
 
       def scheduling_url
-        if Flipper.enabled?(:va_online_scheduling_use_vpg, user)
-          '/vpg/v1/scheduling/configurations'
-        elsif Flipper.enabled?(:va_online_scheduling_cscs_migration, user)
-          '/cscs/v1/configurations'
-        else
-          '/facilities/v2/scheduling/configurations'
-        end
+        '/vpg/v1/scheduling/configurations'
       end
 
       def facilities_url
-        '/facilities/v2/facilities'
+        '/facilities/v3/facilities'
       end
 
       def facilities_url_with_id(id)
-        "/facilities/v2/facilities/#{id}"
+        "/facilities/v3/facilities/#{id}"
       end
     end
   end

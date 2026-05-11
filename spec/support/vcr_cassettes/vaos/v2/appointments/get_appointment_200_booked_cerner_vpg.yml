@@ -56,7 +56,7 @@ http_interactions:
     recorded_at: Tue, 08 Aug 2023 20:19:59 GMT
   - request:
       method: get
-      uri: https://veterans.va.gov/facilities/v2/facilities/757
+      uri: https://veterans.va.gov/facilities/v3/facilities/757
       body:
         encoding: US-ASCII
         string: ''

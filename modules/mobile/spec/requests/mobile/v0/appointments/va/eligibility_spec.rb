@@ -63,66 +63,31 @@ RSpec.describe 'Mobile::V0::Appointments::VA::Eligibility', type: :request do
              'directEligibleFacilities' => [] }]
         end
 
-        context 'with CSCS' do
-          before do
-            allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_cscs_migration,
-                                                      instance_of(User)).and_return(true)
-            VCR.use_cassette('mobile/va_eligibility/get_scheduling_configurations_cscs_200',
-                             match_requests_on: %i[method uri]) do
-              get '/mobile/v0/appointments/va/eligibility', params:, headers: sis_headers
-            end
-          end
-
-          it 'returns successful response' do
-            expect(response).to have_http_status(:success)
-          end
-
-          it 'matches schema' do
-            assert_schema_conform(200)
-          end
-
-          it 'response properly assigns facilities to services' do
-            services = response.parsed_body.dig('data', 'attributes', 'services')
-
-            expect(services).to eq(services_response)
-          end
-
-          it 'does not include non-cc supported facility in cc_supported ids' do
-            cc_supported_facility_ids = response.parsed_body.dig('data', 'attributes', 'ccSupported')
-
-            expect(cc_supported_facility_ids).to eq([])
+        before do
+          VCR.use_cassette('mobile/va_eligibility/get_scheduling_configurations_mfs_200',
+                           match_requests_on: %i[method uri]) do
+            get '/mobile/v0/appointments/va/eligibility', params:, headers: sis_headers
           end
         end
 
-        context 'with MFS' do
-          before do
-            allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_cscs_migration,
-                                                      instance_of(User)).and_return(false)
-            VCR.use_cassette('mobile/va_eligibility/get_scheduling_configurations_mfs_200',
-                             match_requests_on: %i[method uri]) do
-              get '/mobile/v0/appointments/va/eligibility', params:, headers: sis_headers
-            end
-          end
+        it 'returns successful response' do
+          expect(response).to have_http_status(:success)
+        end
 
-          it 'returns successful response' do
-            expect(response).to have_http_status(:success)
-          end
+        it 'matches schema' do
+          assert_schema_conform(200)
+        end
 
-          it 'matches schema' do
-            assert_schema_conform(200)
-          end
+        it 'response properly assigns facilities to services' do
+          services = response.parsed_body.dig('data', 'attributes', 'services')
 
-          it 'response properly assigns facilities to services' do
-            services = response.parsed_body.dig('data', 'attributes', 'services')
+          expect(services).to eq(services_response)
+        end
 
-            expect(services).to eq(services_response)
-          end
+        it 'does not include non-cc supported facility in cc_supported ids' do
+          cc_supported_facility_ids = response.parsed_body.dig('data', 'attributes', 'ccSupported')
 
-          it 'does not include non-cc supported facility in cc_supported ids' do
-            cc_supported_facility_ids = response.parsed_body.dig('data', 'attributes', 'ccSupported')
-
-            expect(cc_supported_facility_ids).to eq([])
-          end
+          expect(cc_supported_facility_ids).to eq([])
         end
       end
 
@@ -173,67 +138,31 @@ RSpec.describe 'Mobile::V0::Appointments::VA::Eligibility', type: :request do
              'directEligibleFacilities' => [] }]
         end
 
-        context 'with CSCS' do
-          before do
-            allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_cscs_migration,
-                                                      instance_of(User)).and_return(true)
-            VCR.use_cassette('mobile/va_eligibility/get_scheduling_configurations_cscs_200',
-                             match_requests_on: %i[method uri]) do
-              get '/mobile/v0/appointments/va/eligibility', params:, headers: sis_headers
-            end
-          end
-
-          it 'returns successful response' do
-            expect(response).to have_http_status(:success)
-          end
-
-          it 'matches schema' do
-            assert_schema_conform(200)
-          end
-
-          it 'response properly assigns facilities to services' do
-            services = response.parsed_body.dig('data', 'attributes', 'services')
-
-            expect(services).to eq(services_response)
-          end
-
-          it 'groups cc_supported ids' do
-            cc_supported_facility_ids = response.parsed_body.dig('data', 'attributes', 'ccSupported')
-
-            expect(cc_supported_facility_ids).to eq(%w[984])
+        before do
+          VCR.use_cassette('mobile/va_eligibility/get_scheduling_configurations_mfs_200',
+                           match_requests_on: %i[method uri]) do
+            get '/mobile/v0/appointments/va/eligibility', params:, headers: sis_headers
           end
         end
 
-        context 'with MFS' do
-          before do
-            allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_cscs_migration,
-                                                      instance_of(User)).and_return(false)
-            VCR.use_cassette('mobile/va_eligibility/get_scheduling_configurations_mfs_200',
-                             match_requests_on: %i[method uri]) do
-              get '/mobile/v0/appointments/va/eligibility', params:, headers: sis_headers
-            end
-          end
+        it 'returns successful response' do
+          expect(response).to have_http_status(:success)
+        end
 
-          it 'returns successful response' do
-            expect(response).to have_http_status(:success)
-          end
+        it 'matches schema' do
+          assert_schema_conform(200)
+        end
 
-          it 'matches schema' do
-            assert_schema_conform(200)
-          end
+        it 'response properly assigns facilities to services' do
+          services = response.parsed_body.dig('data', 'attributes', 'services')
 
-          it 'response properly assigns facilities to services' do
-            services = response.parsed_body.dig('data', 'attributes', 'services')
+          expect(services).to eq(services_response)
+        end
 
-            expect(services).to eq(services_response)
-          end
+        it 'groups cc_supported ids' do
+          cc_supported_facility_ids = response.parsed_body.dig('data', 'attributes', 'ccSupported')
 
-          it 'groups cc_supported ids' do
-            cc_supported_facility_ids = response.parsed_body.dig('data', 'attributes', 'ccSupported')
-            # binding.pry
-
-            expect(cc_supported_facility_ids).to eq(%w[984])
-          end
+          expect(cc_supported_facility_ids).to eq(%w[984])
         end
       end
 
@@ -285,58 +214,27 @@ RSpec.describe 'Mobile::V0::Appointments::VA::Eligibility', type: :request do
              'directEligibleFacilities' => ['489'] }]
         end
 
-        context 'with CSCS' do
-          before do
-            allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_cscs_migration,
-                                                      instance_of(User)).and_return(true)
-            VCR.use_cassette('mobile/va_eligibility/get_scheduling_configurations_cscs_200_all_enabled',
-                             match_requests_on: %i[method uri]) do
-              get '/mobile/v0/appointments/va/eligibility', params:, headers: sis_headers
-            end
-          end
-
-          it 'returns successful response' do
-            expect(response).to have_http_status(:success)
-          end
-
-          it 'matches schema' do
-            assert_schema_conform(200)
-          end
-
-          it 'all service ids are hit when parsing upstream response except for covid request' do
-            # this is used to ensure that all the service ids in the parser are all matching to
-            # something in the response.
-            services = response.parsed_body.dig('data', 'attributes', 'services')
-
-            expect(services).to eq(services_response)
+        before do
+          VCR.use_cassette('mobile/va_eligibility/get_scheduling_configurations_mfs_200_all_enabled',
+                           match_requests_on: %i[method uri]) do
+            get '/mobile/v0/appointments/va/eligibility', params:, headers: sis_headers
           end
         end
 
-        context 'with MFS' do
-          before do
-            allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_cscs_migration,
-                                                      instance_of(User)).and_return(false)
-            VCR.use_cassette('mobile/va_eligibility/get_scheduling_configurations_mfs_200_all_enabled',
-                             match_requests_on: %i[method uri]) do
-              get '/mobile/v0/appointments/va/eligibility', params:, headers: sis_headers
-            end
-          end
+        it 'returns successful response' do
+          expect(response).to have_http_status(:success)
+        end
 
-          it 'returns successful response' do
-            expect(response).to have_http_status(:success)
-          end
+        it 'matches schema' do
+          assert_schema_conform(200)
+        end
 
-          it 'matches schema' do
-            assert_schema_conform(200)
-          end
+        it 'all service ids are hit when parsing upstream response except for covid request' do
+          # this is used to ensure that all the service ids in the parser are all matching to
+          # something in the response.
+          services = response.parsed_body.dig('data', 'attributes', 'services')
 
-          it 'all service ids are hit when parsing upstream response except for covid request' do
-            # this is used to ensure that all the service ids in the parser are all matching to
-            # something in the response.
-            services = response.parsed_body.dig('data', 'attributes', 'services')
-
-            expect(services).to eq(services_response)
-          end
+          expect(services).to eq(services_response)
         end
       end
 
@@ -387,66 +285,31 @@ RSpec.describe 'Mobile::V0::Appointments::VA::Eligibility', type: :request do
              'directEligibleFacilities' => [] }]
         end
 
-        context 'with CSCS' do
-          before do
-            allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_cscs_migration,
-                                                      instance_of(User)).and_return(true)
-            VCR.use_cassette('mobile/va_eligibility/get_scheduling_configurations_cscs_200_bad_facility',
-                             match_requests_on: %i[method uri]) do
-              get '/mobile/v0/appointments/va/eligibility', params:, headers: sis_headers
-            end
-          end
-
-          it 'returns successful response' do
-            expect(response).to have_http_status(:success)
-          end
-
-          it 'matches schema' do
-            assert_schema_conform(200)
-          end
-
-          it 'upstream service does not check for valid facility and returns no eligibility' do
-            services = response.parsed_body.dig('data', 'attributes', 'services')
-
-            expect(services).to eq(services_response)
-          end
-
-          it 'does not include any cc_supported ids' do
-            cc_supported_facility_ids = response.parsed_body.dig('data', 'attributes', 'ccSupported')
-
-            expect(cc_supported_facility_ids).to eq(%w[])
+        before do
+          VCR.use_cassette('mobile/va_eligibility/get_scheduling_configurations_mfs_200_bad_facility',
+                           match_requests_on: %i[method uri]) do
+            get '/mobile/v0/appointments/va/eligibility', params:, headers: sis_headers
           end
         end
 
-        context 'with MFS' do
-          before do
-            allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_cscs_migration,
-                                                      instance_of(User)).and_return(false)
-            VCR.use_cassette('mobile/va_eligibility/get_scheduling_configurations_mfs_200_bad_facility',
-                             match_requests_on: %i[method uri]) do
-              get '/mobile/v0/appointments/va/eligibility', params:, headers: sis_headers
-            end
-          end
+        it 'returns successful response' do
+          expect(response).to have_http_status(:success)
+        end
 
-          it 'returns successful response' do
-            expect(response).to have_http_status(:success)
-          end
+        it 'matches schema' do
+          assert_schema_conform(200)
+        end
 
-          it 'matches schema' do
-            assert_schema_conform(200)
-          end
+        it 'upstream service does not check for valid facility and returns no eligibility' do
+          services = response.parsed_body.dig('data', 'attributes', 'services')
 
-          it 'upstream service does not check for valid facility and returns no eligibility' do
-            services = response.parsed_body.dig('data', 'attributes', 'services')
+          expect(services).to eq(services_response)
+        end
 
-            expect(services).to eq(services_response)
-          end
+        it 'does not include any cc_supported ids' do
+          cc_supported_facility_ids = response.parsed_body.dig('data', 'attributes', 'ccSupported')
 
-          it 'does not include any cc_supported ids' do
-            cc_supported_facility_ids = response.parsed_body.dig('data', 'attributes', 'ccSupported')
-
-            expect(cc_supported_facility_ids).to eq(%w[])
-          end
+          expect(cc_supported_facility_ids).to eq(%w[])
         end
       end
     end

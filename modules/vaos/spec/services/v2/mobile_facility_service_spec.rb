@@ -17,76 +17,8 @@ describe VAOS::V2::MobileFacilityService do
   end
 
   describe '#get_scheduling_configurations' do
-    context 'using CSCS' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_cscs_migration,
-                                                  instance_of(User)).and_return(true)
-        allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_use_vpg,
-                                                  instance_of(User)).and_return(false)
-      end
-
-      context 'with a single facility id arg' do
-        let(:facility_id) { '489' }
-
-        before do
-          VCR.use_cassette('vaos/v2/mobile_facility_service/get_scheduling_configurations_cscs_200',
-                           cassette_options) do
-            @response = subject.get_scheduling_configurations(facility_id)
-          end
-        end
-
-        it 'returns a scheduling configuration with the correct id' do
-          expect(@response.dig(:data, 0, :facility_id)).to eq(facility_id)
-        end
-      end
-
-      context 'with multiple facility ids arg' do
-        let(:facility_ids) { '489,984' }
-
-        before do
-          VCR.use_cassette('vaos/v2/mobile_facility_service/get_scheduling_configurations_cscs_200',
-                           cassette_options) do
-            @response = subject.get_scheduling_configurations(facility_ids)
-          end
-        end
-
-        it 'returns scheduling configurations with the correct ids' do
-          expect(@response.dig(:data, 0, :facility_id)).to eq('489')
-          expect(@response.dig(:data, 1, :facility_id)).to eq('984')
-        end
-      end
-
-      context 'with multiple facility ids and cc enabled args' do
-        let(:facility_ids) { '489,984' }
-
-        before do
-          VCR.use_cassette('vaos/v2/mobile_facility_service/get_scheduling_configurations_cc_cscs_200',
-                           cassette_options) do
-            @response = subject.get_scheduling_configurations(facility_ids, true)
-          end
-        end
-
-        it 'returns scheduling configuration with the correct id' do
-          expect(@response.dig(:data, 0, :facility_id)).to eq('984')
-        end
-      end
-
-      context 'when the upstream server returns a 500' do
-        it 'raises a backend exception' do
-          VCR.use_cassette('vaos/v2/mobile_facility_service/get_scheduling_configurations_cscs_500',
-                           cassette_options) do
-            expect { subject.get_scheduling_configurations(489, false) }.to raise_error(
-              Common::Exceptions::BackendServiceException
-            )
-          end
-        end
-      end
-    end
-
     context 'using MFS' do
       before do
-        allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_cscs_migration,
-                                                  instance_of(User)).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_use_vpg,
                                                   instance_of(User)).and_return(false)
       end
@@ -148,8 +80,6 @@ describe VAOS::V2::MobileFacilityService do
 
     context 'using VPG' do
       before do
-        allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_cscs_migration,
-                                                  instance_of(User)).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_use_vpg,
                                                   instance_of(User)).and_return(true)
         allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_backend_oh_migration_check,

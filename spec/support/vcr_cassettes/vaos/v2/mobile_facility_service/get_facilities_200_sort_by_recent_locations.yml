@@ -2,7 +2,7 @@
 http_interactions:
 - request:
     method: get
-    uri: https://veteran.apps.va.gov/facilities/v2/facilities?ids=983,983GB,983GC,983GD&pageSize=0&schedulable=true
+    uri: https://veteran.apps.va.gov/facilities/v3/facilities?ids=983,983GB,983GC,983GD&pageSize=0&schedulable=true
     body:
       encoding: US-ASCII
       string: ''
@@ -296,7 +296,7 @@ http_interactions:
   recorded_at: Thu, 31 Aug 2023 22:51:37 GMT
 - request:
     method: get
-    uri: https://veteran.apps.va.gov/facilities/v2/facilities/983
+    uri: https://veteran.apps.va.gov/facilities/v3/facilities/983
     body:
       encoding: US-ASCII
       string: ''
@@ -387,7 +387,7 @@ http_interactions:
   recorded_at: Thu, 31 Aug 2023 22:51:37 GMT
 - request:
     method: get
-    uri: https://veteran.apps.va.gov/facilities/v2/facilities/983GC
+    uri: https://veteran.apps.va.gov/facilities/v3/facilities/983GC
     body:
       encoding: US-ASCII
       string: ''
@@ -467,7 +467,7 @@ http_interactions:
   recorded_at: Thu, 31 Aug 2023 22:51:37 GMT
 - request:
     method: get
-    uri: https://veteran.apps.va.gov/facilities/v2/facilities/984GA
+    uri: https://veteran.apps.va.gov/facilities/v3/facilities/984GA
     body:
       encoding: US-ASCII
       string: ''

@@ -2,7 +2,7 @@
 http_interactions:
 - request:
     method: get
-    uri: https://veteran.apps.va.gov/facilities/v2/facilities/999AA
+    uri: https://veteran.apps.va.gov/facilities/v3/facilities/999AA
     body:
       encoding: US-ASCII
       string: ''
@@ -61,7 +61,7 @@ http_interactions:
   recorded_at: Sat, 01 Jan 2022 19:25:00 GMT
 - request:
     method: get
-    uri: https://veteran.apps.va.gov/facilities/v2/facilities/999AA
+    uri: https://veteran.apps.va.gov/facilities/v3/facilities/999AA
     body:
       encoding: US-ASCII
       string: ''

@@ -2,7 +2,7 @@
 http_interactions:
 - request:
     method: get
-    uri: https://host.va.gov/facilities/v2/facilities?children=false&ids=541QB,541QA,541QE,541QC&pageSize=0
+    uri: https://host.va.gov/facilities/v3/facilities?children=false&ids=541QB,541QA,541QE,541QC&pageSize=0
     body:
       encoding: US-ASCII
       string: ''

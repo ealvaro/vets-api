@@ -63,7 +63,7 @@ http_interactions:
   recorded_at: Thu, 23 Feb 2023 21:53:15 GMT
 - request:
     method: get
-    uri: <VA_MOBILE_URL>/facilities/v2/facilities/983
+    uri: <VA_MOBILE_URL>/facilities/v3/facilities/983
     body:
       encoding: US-ASCII
       string: ''
@@ -155,7 +155,7 @@ http_interactions:
   recorded_at: Mon, 09 Aug 2021 17:48:58 GMT
 - request:
     method: get
-    uri: <VA_MOBILE_URL>/facilities/v2/facilities/983GC
+    uri: <VA_MOBILE_URL>/facilities/v3/facilities/983GC
     body:
       encoding: US-ASCII
       string: ''
@@ -247,7 +247,7 @@ http_interactions:
   recorded_at: Mon, 09 Aug 2021 17:48:58 GMT
 - request:
     method: get
-    uri: <VA_MOBILE_URL>/facilities/v2/facilities/983GB
+    uri: <VA_MOBILE_URL>/facilities/v3/facilities/983GB
     body:
       encoding: US-ASCII
       string: ''
@@ -339,7 +339,7 @@ http_interactions:
   recorded_at: Mon, 09 Aug 2021 17:48:58 GMT
 - request:
     method: get
-    uri: <VA_MOBILE_URL>/facilities/v2/facilities/984
+    uri: <VA_MOBILE_URL>/facilities/v3/facilities/984
     body:
       encoding: US-ASCII
       string: ''
