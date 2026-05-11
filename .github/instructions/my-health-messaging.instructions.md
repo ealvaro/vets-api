@@ -652,7 +652,7 @@ The `MHVMessagingPolicy` controls access to Secure Messaging features using a St
 MHVMessagingPolicy = Struct.new(:user, :mhv_messaging) do
   def access?
     return false unless user.mhv_correlation_id
-    return false if Flipper.enabled?(:mhv_secure_messaging_policy_va_patient) && !user.va_patient?
+    return false unless user.va_patient?
 
     client = SM::Client.new(session: { user_id: user.mhv_correlation_id, user_uuid: user.uuid })
     validate_client(client)
@@ -683,11 +683,8 @@ end
 
 **Access Requirements:**
 1. **MHV Correlation ID:** User must have `mhv_correlation_id`
-2. **VA Patient Status:** If `:mhv_secure_messaging_policy_va_patient` feature flag is enabled, user must be a VA patient
+2. **VA Patient Status:** User must be a VA patient (`user.va_patient?`)
 3. **Valid MHV Session:** SM::Client session must be valid or successfully authenticate
-
-**Feature Flag:**
-- **`:mhv_secure_messaging_policy_va_patient`** - When enabled, restricts access to VA patients only
 
 **Usage in Controllers:**
 ```ruby
