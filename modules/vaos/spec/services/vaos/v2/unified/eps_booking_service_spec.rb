@@ -339,12 +339,29 @@ RSpec.describe VAOS::V2::Unified::EpsBookingService do
     end
 
     context 'when submit response has no id' do
+      # Wellhive's published Swagger does not guarantee +id+ on submit. The appointment lives at
+      # the draft id we just submitted to (POST .../appointments/{draft_id}/submit), so the
+      # confirmation always uses the draft id regardless of whether the submit body echoes it.
       let(:submit_response) { OpenStruct.new(state: 'booked') }
 
-      it 'raises BackendServiceException' do
-        expect do
-          service.book(user:, provider:, slot:, params: base_params)
-        end.to raise_error(VAOS::V2::Unified::BookingUpstreamContractError, /submit response missing/)
+      it 'still returns the draft id as the confirmation appointment id' do
+        result = service.book(user:, provider:, slot:, params: base_params)
+
+        expect(result[:appointment_id]).to eq('eps-draft-1')
+      end
+    end
+
+    context 'when submit response returns a different id than the draft' do
+      # Defensive: even if Wellhive does include +id+ on submit, we ignore it because the
+      # canonical EPS appointment resource is identified by the draft id we POSTed to.
+      let(:submit_response) do
+        OpenStruct.new(id: 'eps-other-id-999', state: 'booked', start: '2026-04-10T15:00:00Z')
+      end
+
+      it 'uses the draft id, not the submit response id' do
+        result = service.book(user:, provider:, slot:, params: base_params)
+
+        expect(result[:appointment_id]).to eq('eps-draft-1')
       end
     end
 

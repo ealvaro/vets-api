@@ -360,17 +360,39 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
       end
 
       context 'when EPS submit response has no appointment id' do
+        # Wellhive's published Swagger does not guarantee +id+ on the submit response. Submit
+        # operates on the draft id in the URL, so vets-api uses the draft id as the canonical
+        # appointment id instead of failing the booking and stranding the user with a created
+        # appointment they can no longer look up.
         before do
           allow(mock_eps_service).to receive(:submit_appointment)
             .and_return(OpenStruct.new(state: 'booked'))
         end
 
-        it 'returns 502' do
+        it 'returns 201 with the draft id as the confirmation appointment id' do
           post('/vaos/v2/unified_bookings', params: eps_params.to_json, headers:)
 
-          expect(response).to have_http_status(:bad_gateway)
+          expect(response).to have_http_status(:created)
           body = JSON.parse(response.body)
-          expect(body['errors']).to be_present
+          expect(body['data']['id']).to eq('draft-001')
+          expect(body['data']['attributes']['appointment_id']).to eq('draft-001')
+        end
+      end
+
+      context 'when EPS submit response returns a different id than the draft' do
+        # Defensive: even if Wellhive does include +id+ on submit, we ignore it. The canonical
+        # appointment resource is identified by the draft id we POSTed to.
+        let(:mock_submit_response) do
+          OpenStruct.new(id: 'eps-other-id-999', state: 'booked', start: '2026-04-15T10:00:00Z')
+        end
+
+        it 'uses the draft id, not the submit response id' do
+          post('/vaos/v2/unified_bookings', params: eps_params.to_json, headers:)
+
+          expect(response).to have_http_status(:created)
+          body = JSON.parse(response.body)
+          expect(body['data']['id']).to eq('draft-001')
+          expect(body['data']['attributes']['appointment_id']).to eq('draft-001')
         end
       end
     end

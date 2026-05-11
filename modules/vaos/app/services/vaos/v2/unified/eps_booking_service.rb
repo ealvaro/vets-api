@@ -51,7 +51,7 @@ module VAOS
           invalidate_cached_draft_id(user:, referral_number:)
 
           build_booking_confirmation(
-            appointment_id: extract_appointment_id(result),
+            appointment_id: draft_id,
             provider_type: provider.provider_type,
             status: extract_status(result),
             start: extract_confirmation_start(result, slot)
@@ -147,20 +147,6 @@ module VAOS
           raise BookingArgumentError, 'slot id is required (params[:slot_id] or slot.id)' if sid.blank?
 
           sid
-        end
-
-        def extract_draft_appointment_id(draft)
-          id = draft.id
-          raise BookingUpstreamContractError, 'EPS draft response missing appointment id' if id.blank?
-
-          id
-        end
-
-        def extract_appointment_id(result)
-          id = result.id
-          raise BookingUpstreamContractError, 'EPS submit response missing appointment id' if id.blank?
-
-          id
         end
 
         def extract_status(result)
