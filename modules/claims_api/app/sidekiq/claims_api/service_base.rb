@@ -269,10 +269,14 @@ module ClaimsApi
     end
 
     def rescue_generic_errors(power_of_attorney, e)
-      power_of_attorney.status = ClaimsApi::PowerOfAttorney::ERRORED
-      power_of_attorney.vbms_error_message = e&.message || e&.original_body
-      power_of_attorney.save
-      ClaimsApi::Logger.log('ServiceBase', message: "In generic rescue, the error is: #{e}")
+      err_msg = e&.message || e&.original_body
+      power_of_attorney.update(
+        status: ClaimsApi::PowerOfAttorney::ERRORED,
+        vbms_error_message: err_msg
+      )
+      ClaimsApi::Logger.log(
+        'ServiceBase', message: "In generic rescue, the error is: #{err_msg}"
+      )
     end
 
     def rescue_file_not_found(power_of_attorney, process = nil)
@@ -285,6 +289,10 @@ module ClaimsApi
                         error_messages: [{ title: "#{self.class.name} Error",
                                            detail: FILE_NOT_FOUND_ERROR_MESSAGE }])
       end
+      ClaimsApi::Logger.log(
+        'ServiceBase',
+        message: "In file_not_found rescue, the error is: #{FILE_NOT_FOUND_ERROR_MESSAGE}"
+      )
     end
   end
 end

@@ -13,10 +13,9 @@ RSpec.describe ClaimsApi::V1::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
     create(:representative, representative_id: '1234', poa_codes: [poa_code], first_name: 'Bob',
                             last_name: 'Representative')
   end
+  let(:bd_client) { instance_double(ClaimsApi::BD) }
 
   before do
-    allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_poa_use_bd).and_return false
-
     Sidekiq::Job.clear_all
     allow_any_instance_of(ClaimsApi::V2::BenefitsDocuments::Service)
       .to receive(:get_auth_token).and_return('some-value-here')
@@ -85,26 +84,13 @@ RSpec.describe ClaimsApi::V1::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
       end
 
       it 'generates the pdf to match example' do
+        allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+        allow(bd_client).to receive(:upload_document).and_return(true)
         allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
         expect(ClaimsApi::V1::PoaPdfConstructor::Individual).to receive(:new).and_call_original
         expect_any_instance_of(ClaimsApi::V1::PoaPdfConstructor::Individual).to receive(:construct).and_call_original
-        subject.new.perform(power_of_attorney.id, action: 'post')
-      end
 
-      it 'Calls the POA updater job upon successful upload to VBMS' do
-        token_response = OpenStruct.new(upload_token: '<{573F054F-E9F7-4BF2-8C66-D43ADA5C62E7}')
-        document_response = OpenStruct.new(upload_document_response: {
-          '@new_document_version_ref_id' => '{52300B69-1D6E-43B2-8BEB-67A7C55346A2}',
-          '@document_series_ref_id' => '{A57EF6CC-2236-467A-BA4F-1FA1EFD4B374}'
-        }.with_indifferent_access)
-
-        allow_any_instance_of(ClaimsApi::VBMSUploader).to receive(:fetch_upload_token).and_return(token_response)
-        allow_any_instance_of(ClaimsApi::VBMSUploader).to receive(:upload_document).and_return(document_response)
-        allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
-
-        expect(ClaimsApi::PoaUpdater).to receive(:perform_async)
-
-        subject.new.perform(power_of_attorney.id, action: 'post')
+        subject.new.perform(power_of_attorney.id, 'post')
       end
     end
 
@@ -115,26 +101,13 @@ RSpec.describe ClaimsApi::V1::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
       end
 
       it 'generates the pdf to match example' do
+        allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+        allow(bd_client).to receive(:upload_document).and_return(true)
         allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
         expect(ClaimsApi::V1::PoaPdfConstructor::Organization).to receive(:new).and_call_original
         expect_any_instance_of(ClaimsApi::V1::PoaPdfConstructor::Organization).to receive(:construct).and_call_original
-        subject.new.perform(power_of_attorney.id, action: 'post')
-      end
 
-      it 'Calls the POA updater job upon successful upload to VBMS' do
-        token_response = OpenStruct.new(upload_token: '<{573F054F-E9F7-4BF2-8C66-D43ADA5C62E7}')
-        document_response = OpenStruct.new(upload_document_response: {
-          '@new_document_version_ref_id' => '{52300B69-1D6E-43B2-8BEB-67A7C55346A2}',
-          '@document_series_ref_id' => '{A57EF6CC-2236-467A-BA4F-1FA1EFD4B374}'
-        }.with_indifferent_access)
-
-        allow_any_instance_of(ClaimsApi::VBMSUploader).to receive(:fetch_upload_token).and_return(token_response)
-        allow_any_instance_of(ClaimsApi::VBMSUploader).to receive(:upload_document).and_return(document_response)
-        allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
-
-        expect(ClaimsApi::PoaUpdater).to receive(:perform_async)
-
-        subject.new.perform(power_of_attorney.id, action: 'post')
+        subject.new.perform(power_of_attorney.id, 'post')
       end
     end
 
@@ -155,7 +128,9 @@ RSpec.describe ClaimsApi::V1::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
       it 'sets the status and store the error' do
         expect_any_instance_of(ClaimsApi::V1::PoaPdfConstructor::Organization).to receive(:construct)
           .and_raise(ClaimsApi::StampSignatureError)
-        subject.new.perform(power_of_attorney.id, action: 'post')
+
+        subject.new.perform(power_of_attorney.id, 'post')
+
         power_of_attorney.reload
         expect(power_of_attorney.status).to eq(ClaimsApi::PowerOfAttorney::ERRORED)
         expect(power_of_attorney.signature_errors).not_to be_empty
@@ -186,33 +161,49 @@ RSpec.describe ClaimsApi::V1::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
     let(:pdf_path) { 'some/path' }
     let(:doc_type) { 'L075' }
 
-    before do
-      allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_poa_use_bd).and_return true
+    it 'calls the POA document service API upload' do
+      expect_any_instance_of(ClaimsApi::PoaDocumentService).to receive(:create_upload)
+
+      subject.new.perform(power_of_attorney.id, 'post')
     end
 
-    it 'calls the POA document service API upload instead of VBMS' do
-      expect_any_instance_of(ClaimsApi::VBMSUploader).not_to receive(:upload_document)
-      expect_any_instance_of(ClaimsApi::PoaDocumentService).to receive(:create_upload)
+    it 'calls the POA updater job upon successful upload' do
+      allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+      allow(bd_client).to receive(:upload_document).and_return(true)
+      allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
+
+      expect(ClaimsApi::PoaUpdater).to receive(:perform_async)
 
       subject.new.perform(power_of_attorney.id, 'post')
     end
 
     context "when the 'put' action param is included" do
       it 'calls the PoaDocumentService upload_document instead of upload' do
-        expect_any_instance_of(ClaimsApi::VBMSUploader).not_to receive(:upload_document)
         expect_any_instance_of(ClaimsApi::PoaDocumentService).to receive(:create_upload).with(
           poa: power_of_attorney,
           pdf_path: anything,
           doc_type: 'L075',
           action: 'put'
         )
+
         subject.new.perform(power_of_attorney.id, 'put')
       end
     end
 
-    it 'rescues errors from PoaDocumentService and sets the status to errored' do
-      allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_poa_use_bd).and_return true
+    context "when the 'post' action param is included" do
+      it 'calls the PoaDocumentService upload_document instead of upload' do
+        expect_any_instance_of(ClaimsApi::PoaDocumentService).to receive(:create_upload).with(
+          poa: power_of_attorney,
+          pdf_path: anything,
+          doc_type: 'L075',
+          action: 'post'
+        )
 
+        subject.new.perform(power_of_attorney.id, 'post')
+      end
+    end
+
+    it 'rescues errors from PoaDocumentService and sets the status to errored' do
       VCR.use_cassette('claims_api/bd/upload_error') do
         subject.new.perform(power_of_attorney.id, 'post')
       rescue
@@ -220,6 +211,21 @@ RSpec.describe ClaimsApi::V1::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
         expect(power_of_attorney.vbms_error_message).to eq(
           'BackendServiceException: {:status=>400, :detail=>nil, :code=>"VA900", :source=>nil}'
         )
+        expect(power_of_attorney.status).to eq(ClaimsApi::PowerOfAttorney::ERRORED)
+      end
+    end
+
+    context 'when a generic exception occurs during upload' do
+      before do
+        allow_any_instance_of(ClaimsApi::PoaDocumentService).to receive(:create_upload)
+          .and_raise(StandardError, 'Upload failed')
+      end
+
+      it 'marks the power of attorney as errored and re-raises for retry' do
+        expect { subject.new.perform(power_of_attorney.id, 'post') }
+          .to raise_error(StandardError)
+
+        power_of_attorney.reload
         expect(power_of_attorney.status).to eq(ClaimsApi::PowerOfAttorney::ERRORED)
       end
     end

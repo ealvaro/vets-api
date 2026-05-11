@@ -12,11 +12,13 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
     create(:representative, representative_id: '1234', poa_codes: [poa_code], first_name: 'Bob',
                             last_name: 'Representative')
   end
+  let(:bd_client) { instance_double(ClaimsApi::BD) }
 
   before do
     Sidekiq::Job.clear_all
+    allow_any_instance_of(ClaimsApi::V2::BenefitsDocuments::Service)
+      .to receive(:get_auth_token).and_return('some-value-here')
     allow_any_instance_of(Flipper).to receive(:enabled?).with(:claims_api_use_person_web_service).and_return false
-    allow_any_instance_of(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_poa_use_bd).and_return false
   end
 
   it 'sets retry_for to 48 hours' do
@@ -101,6 +103,8 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
             }
           )
 
+          allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+          allow(bd_client).to receive(:upload_document).and_return(true)
           allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
           expect_any_instance_of(ClaimsApi::V2::PoaPdfConstructor::Individual)
             .to receive(:construct)
@@ -112,16 +116,10 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
         end
       end
 
-      it 'Calls the POA updater job upon successful upload to VBMS' do
+      it 'calls the POA updater job upon successful upload' do
         VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
-          token_response = OpenStruct.new(upload_token: '<{573F054F-E9F7-4BF2-8C66-D43ADA5C62E7}')
-          document_response = OpenStruct.new(upload_document_response: {
-            '@new_document_version_ref_id' => '{52300B69-1D6E-43B2-8BEB-67A7C55346A2}',
-            '@document_series_ref_id' => '{A57EF6CC-2236-467A-BA4F-1FA1EFD4B374}'
-          }.with_indifferent_access)
-
-          allow_any_instance_of(ClaimsApi::VBMSUploader).to receive(:fetch_upload_token).and_return(token_response)
-          allow_any_instance_of(ClaimsApi::VBMSUploader).to receive(:upload_document).and_return(document_response)
+          allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+          allow(bd_client).to receive(:upload_document).and_return(true)
           allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
 
           expect(ClaimsApi::PoaUpdater).to receive(:perform_async)
@@ -234,6 +232,8 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
 
       it 'generates e-signatures correctly for a non-veteran claimant' do
         VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
+          allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+          allow(bd_client).to receive(:upload_document).and_return(true)
           allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
           expect_any_instance_of(ClaimsApi::V2::PoaPdfConstructor::Individual)
             .to receive(:construct)
@@ -247,7 +247,7 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
 
       it 'calls the PoaAssignDependentClaimantJob job for a dependent filing' do
         allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
-        allow_any_instance_of(ClaimsApi::V2::PoaFormBuilderJob).to receive(:upload_to_vbms).and_return(true)
+        allow_any_instance_of(ClaimsApi::PoaDocumentService).to receive(:create_upload).and_return(true)
         expect(ClaimsApi::PoaAssignDependentClaimantJob).to receive(:perform_async)
 
         subject.new.perform(power_of_attorney.id, '2122A', 'post',
@@ -331,6 +331,8 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
                  }
                )
 
+        allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+        allow(bd_client).to receive(:upload_document).and_return(true)
         allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
         VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
           expect_any_instance_of(ClaimsApi::V2::PoaPdfConstructor::Organization)
@@ -343,17 +345,11 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
         end
       end
 
-      it 'Calls the POA updater job upon successful upload to VBMS' do
-        token_response = OpenStruct.new(upload_token: '<{573F054F-E9F7-4BF2-8C66-D43ADA5C62E7}')
-        document_response = OpenStruct.new(upload_document_response: {
-          '@new_document_version_ref_id' => '{52300B69-1D6E-43B2-8BEB-67A7C55346A2}',
-          '@document_series_ref_id' => '{A57EF6CC-2236-467A-BA4F-1FA1EFD4B374}'
-        }.with_indifferent_access)
-
-        allow_any_instance_of(ClaimsApi::VBMSUploader).to receive(:fetch_upload_token).and_return(token_response)
-        allow_any_instance_of(ClaimsApi::VBMSUploader).to receive(:upload_document).and_return(document_response)
+      it 'Calls the POA updater job upon successful upload' do
         allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
         VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
+          allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+          allow(bd_client).to receive(:upload_document).and_return(true)
           expect(ClaimsApi::PoaUpdater).to receive(:perform_async)
 
           subject.new.perform(power_of_attorney.id, '2122', 'post',
@@ -462,6 +458,8 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
         )
         power_of_attorney.save!
 
+        allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+        allow(bd_client).to receive(:upload_document).and_return(true)
         allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
         VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
           expect_any_instance_of(ClaimsApi::V2::PoaPdfConstructor::Organization)
@@ -479,7 +477,6 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
       let(:output_path) { 'some.pdf' }
 
       before do
-        allow_any_instance_of(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_poa_use_bd).and_return true
         pdf_constructor_double = instance_double(ClaimsApi::V2::PoaPdfConstructor::Organization)
         allow_any_instance_of(ClaimsApi::V2::PoaFormBuilderJob).to receive(:pdf_constructor)
           .and_return(pdf_constructor_double)
@@ -500,7 +497,6 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
     let(:pdf_path) { 'modules/claims_api/spec/fixtures/21-22/signed_filled_final.pdf' }
 
     before do
-      allow_any_instance_of(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_poa_use_bd).and_return true
       pdf_constructor_double = instance_double(ClaimsApi::V2::PoaPdfConstructor::Organization)
       allow_any_instance_of(ClaimsApi::V2::PoaFormBuilderJob).to receive(:pdf_constructor)
         .and_return(pdf_constructor_double)
@@ -531,6 +527,32 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
         subject.new.perform(power_of_attorney.id, '2122', 'post', rep.id)
         expect(ClaimsApi::Process.find_by(processable: power_of_attorney,
                                           step_type: 'PDF_SUBMISSION').step_status).to eq('FAILED')
+      end
+    end
+
+    context 'when a generic exception occurs' do
+      before do
+        allow_any_instance_of(ClaimsApi::PoaDocumentService).to receive(:create_upload)
+          .with(
+            poa: power_of_attorney, pdf_path:, doc_type: 'L190', action: 'post'
+          ).and_raise(StandardError, 'Upload failed')
+      end
+
+      it 'marks the power of attorney as errored' do
+        expect { subject.new.perform(power_of_attorney.id, '2122', 'post', rep.id) }
+          .to raise_error(StandardError)
+
+        power_of_attorney.reload
+        expect(power_of_attorney.status).to eq(ClaimsApi::PowerOfAttorney::ERRORED)
+      end
+
+      it 'leaves the process in IN_PROGRESS status to allow retry' do
+        expect { subject.new.perform(power_of_attorney.id, '2122', 'post', rep.id) }
+          .to raise_error(StandardError)
+
+        expect(ClaimsApi::Process.find_by(
+          processable: power_of_attorney, step_type: 'PDF_SUBMISSION'
+        ).step_status).to eq('IN_PROGRESS')
       end
     end
   end
