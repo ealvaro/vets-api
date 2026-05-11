@@ -37,21 +37,24 @@ module Common
         # @return [MhvFhirSessionClient] instance of `self`
         #
         def authenticate
-          raise 'A user_key is required for session creation' unless user_key
+          validate_user_key
 
           iteration = 0
 
           # Loop unless a complete, valid MHV session exists, or until max_iterations is reached
-          while invalid?(session) && iteration < RETRY_ATTEMPTS
-            break if lock_and_get_session # Break out of the loop once a new session is created.
+          while invalid?(@session) && iteration < RETRY_ATTEMPTS
+            break if lock_and_get_session
 
             sleep(LOCK_RETRY_DELAY)
 
             # Refresh the MHV session reference in case another thread has updated it.
-            refresh_session(session)
+            refresh_session(@session)
             iteration += 1
+
+            # Another thread may have created a valid session while we waited.
+            break unless invalid?(@session)
           end
-          if invalid?(session) && iteration >= RETRY_ATTEMPTS
+          if invalid?(@session) && iteration >= RETRY_ATTEMPTS
             Rails.logger.info("Failed to create #{@client_session} after #{iteration} attempts to acquire lock")
           end
 
@@ -59,7 +62,9 @@ module Common
         end
 
         ##
-        # Override client_session method to use extended ::ClientSession classes
+        # Override client_session method to use extended ::ClientSession classes.
+        # Subclasses must call `client_session SomeSession` to register their session class
+        # before any instance is created, otherwise authenticate will fail.
         #
         class_methods do
           ##
@@ -84,6 +89,22 @@ module Common
 
         private
 
+        def validate_user_key
+          return if user_key.present?
+
+          log_details = {
+            session_class: self.class.client_session.try(:name),
+            session_user_id_present: session.respond_to?(:user_id) && session.user_id.present?,
+            session_icn_present: session.respond_to?(:icn) && session.icn.present?,
+            session_user_uuid_present: session.respond_to?(:user_uuid) && session.user_uuid.present?
+          }
+          statsd_prefix = self.class.const_get(:STATSD_KEY_PREFIX) if self.class.const_defined?(:STATSD_KEY_PREFIX)
+          StatsD.increment("#{statsd_prefix}.authenticate.user_key_missing") if statsd_prefix
+          Rails.logger.error('MHV session creation failed: user_key is blank', log_details)
+          raise Common::Exceptions::Forbidden,
+                detail: 'Unable to access MHV services. Required user identification is missing.'
+        end
+
         ##
         # Attempt to acquire a redis lock, then create a new MHV session. Once the session is created,
         # release the lock.
@@ -91,31 +112,35 @@ module Common
         # return [Boolean] true if a session was created, otherwise false
         #
         def lock_and_get_session
-          redis_lock = obtain_redis_lock
-          if redis_lock
+          if obtain_redis_lock
             begin
               @session = get_session
               return true
             ensure
-              release_redis_lock(redis_lock)
+              release_redis_lock
             end
           end
           false
         end
 
-        def obtain_redis_lock
-          lock_key = "mhv_session_lock:#{user_key}"
-          redis_lock = Redis::Namespace.new(REDIS_CONFIG[session_config_key][:namespace], redis: $redis)
-          success = redis_lock.set(lock_key, 1, nx: true, ex: REDIS_CONFIG[session_config_key][:each_ttl])
-
-          return redis_lock if success
-
-          nil
+        def redis_lock_config
+          @redis_lock_config ||= REDIS_CONFIG[session_config_key]
         end
 
-        def release_redis_lock(redis_lock)
-          lock_key = "mhv_session_lock:#{user_key}"
-          redis_lock.del(lock_key)
+        def redis_lock_namespace
+          @redis_lock_namespace ||= Redis::Namespace.new(redis_lock_config[:namespace], redis: $redis)
+        end
+
+        def lock_key
+          "mhv_session_lock:#{user_key}"
+        end
+
+        def obtain_redis_lock
+          redis_lock_namespace.set(lock_key, 1, nx: true, ex: redis_lock_config[:each_ttl])
+        end
+
+        def release_redis_lock
+          redis_lock_namespace.del(lock_key)
         end
       end
     end

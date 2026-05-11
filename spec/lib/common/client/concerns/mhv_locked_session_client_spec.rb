@@ -6,7 +6,7 @@ require_relative '../../../../../lib/common/client/concerns/mhv_locked_session_c
 
 describe Common::Client::Concerns::MhvLockedSessionClient do
   let(:dummy_class) do
-    Class.new do
+    klass = Class.new do
       include Common::Client::Concerns::MhvLockedSessionClient
 
       # This will override the initialize method in the mixin
@@ -28,6 +28,8 @@ describe Common::Client::Concerns::MhvLockedSessionClient do
         OpenStruct.new(app_token: 'sample_token', base_request_headers: {})
       end
     end
+    klass.const_set(:STATSD_KEY_PREFIX, 'api.mhv.test')
+    klass
   end
 
   let(:dummy_instance) { dummy_class.new(session: session_data) }
@@ -38,6 +40,40 @@ describe Common::Client::Concerns::MhvLockedSessionClient do
     before do
       allow(dummy_instance).to receive_messages(invalid?: true, lock_and_get_session: true)
       allow(dummy_class).to receive(:client_session).and_return(double('ClientSession', find_or_build: session_data))
+    end
+
+    context 'when user_key is nil' do
+      let(:session_data) { OpenStruct.new(icn: nil, expired?: false) }
+
+      it 'logs the error context, increments StatsD, and raises a Forbidden error' do
+        allow(StatsD).to receive(:increment)
+        expect(Rails.logger).to receive(:error).with(
+          'MHV session creation failed: user_key is blank',
+          hash_including(:session_class, :session_user_id_present, :session_icn_present, :session_user_uuid_present)
+        )
+        expect { dummy_instance.authenticate }.to raise_error(Common::Exceptions::Forbidden)
+        expect(StatsD).to have_received(:increment).with('api.mhv.test.authenticate.user_key_missing')
+      end
+    end
+
+    context 'when user_key is an empty string' do
+      let(:session_data) { OpenStruct.new(icn: '', expired?: false) }
+
+      it 'raises a Forbidden error' do
+        allow(StatsD).to receive(:increment)
+        allow(Rails.logger).to receive(:error)
+        expect { dummy_instance.authenticate }.to raise_error(Common::Exceptions::Forbidden)
+      end
+    end
+
+    context 'when user_key is whitespace only' do
+      let(:session_data) { OpenStruct.new(icn: '   ', expired?: false) }
+
+      it 'raises a Forbidden error' do
+        allow(StatsD).to receive(:increment)
+        allow(Rails.logger).to receive(:error)
+        expect { dummy_instance.authenticate }.to raise_error(Common::Exceptions::Forbidden)
+      end
     end
 
     context 'when session is valid' do
@@ -77,7 +113,7 @@ describe Common::Client::Concerns::MhvLockedSessionClient do
 
       expect(dummy_instance).to receive(:obtain_redis_lock).and_return(true)
       expect(dummy_instance).to receive(:get_session)
-      expect(dummy_instance).to receive(:release_redis_lock).with(true)
+      expect(dummy_instance).to receive(:release_redis_lock).with(no_args)
       expect(dummy_instance.send(:lock_and_get_session)).to be_truthy
     end
 
