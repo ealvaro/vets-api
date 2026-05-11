@@ -3,6 +3,12 @@
 require 'json_marshal/marshaller'
 
 class InProgressForm < ApplicationRecord
+  # This is a temporary measure to handle legacy 1010ez forms that have outdated returnUrl values in their metadata.
+  # Once we are confident that all legacy forms have been updated, we can remove this normalization
+  LEGACY_1010EZ_RETURN_URL_REDIRECTS = {
+    '/veteran-information/personal-information' => '/check-your-personal-information'
+  }.freeze
+
   belongs_to :user_account, dependent: nil, optional: false
 
   class CleanUUID < ActiveRecord::Type::String
@@ -85,7 +91,7 @@ class InProgressForm < ApplicationRecord
   end
 
   def metadata
-    data = super || {}
+    data = normalize_metadata_return_url(super || {})
     last_accessed = updated_at || Time.current
     data.merge(
       'createdAt' => created_at&.to_time.to_i,
@@ -126,5 +132,18 @@ class InProgressForm < ApplicationRecord
 
   def serialize_form_data
     self.form_data = form_data.to_json unless form_data.is_a?(String)
+  end
+
+  def normalize_metadata_return_url(metadata)
+    return metadata unless form_id == '1010ez'
+
+    return_url_key = metadata.key?('returnUrl') ? 'returnUrl' : 'return_url'
+    return_url = metadata&.dig('returnUrl') || metadata&.dig('return_url')
+    return metadata unless return_url
+
+    normalized_return_url = LEGACY_1010EZ_RETURN_URL_REDIRECTS[return_url]
+    return metadata if normalized_return_url.blank?
+
+    metadata.merge(return_url_key => normalized_return_url)
   end
 end

@@ -41,6 +41,46 @@ RSpec.describe InProgressForm, type: :model do
       in_progress_form.save
       expect(in_progress_form.metadata['createdAt']).to eq(1_694_736_000)
     end
+
+    it 'normalizes legacy 1010ez returnUrl values' do
+      legacy_return_url_form = create(
+        :in_progress_form,
+        form_id: '1010ez',
+        metadata: { 'returnUrl' => '/veteran-information/personal-information' }
+      )
+
+      expect(legacy_return_url_form.metadata['returnUrl']).to eq('/check-your-personal-information')
+    end
+
+    it 'normalizes legacy 1010ez return_url values' do
+      legacy_return_url_form = create(
+        :in_progress_form,
+        form_id: '1010ez',
+        metadata: { 'return_url' => '/veteran-information/personal-information' }
+      )
+
+      expect(legacy_return_url_form.metadata['return_url']).to eq('/check-your-personal-information')
+    end
+
+    it 'does not modify non-legacy 1010ez returnUrl values' do
+      form = create(
+        :in_progress_form,
+        form_id: '1010ez',
+        metadata: { 'returnUrl' => '/check-your-personal-information' }
+      )
+
+      expect(form.metadata['returnUrl']).to eq('/check-your-personal-information')
+    end
+
+    it 'does not normalize returnUrl values for non-1010ez forms' do
+      form = create(
+        :in_progress_form,
+        form_id: '1010ezr',
+        metadata: { 'returnUrl' => '/veteran-information/personal-information' }
+      )
+
+      expect(form.metadata['returnUrl']).to eq('/veteran-information/personal-information')
+    end
   end
 
   describe '#serialize_form_data' do
