@@ -1031,7 +1031,7 @@ mhv:
     facilities_ready_for_info_alert: 612, 555
     oh_migrations_list: "2026-02-11:[983,Test 1],[984,Test 2];2026-05-01:[518,Cleveland VA]"
     pretransitioned_oh_facilities: 612, 357, 555
-    renewal_flow_blocked_oh_facilities: ''
+    renewal_flow_allowed_oh_facilities: ''
     renewal_flow_rollout_oh_facilities: ''
   rx:
     app_token: ~

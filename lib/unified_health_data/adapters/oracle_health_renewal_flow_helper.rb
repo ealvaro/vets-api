@@ -9,10 +9,10 @@ module UnifiedHealthData
     #
     # Uses a three-tier model:
     #   - Unknown facility (blank station): returns false (fail-safe)
-    #   - Blocked facilities: always returns false
+    #   - Allowed facilities: always returns true
     #   - Rollout facilities: gated by Flipper percentage rollout per user
-    #   - Default (unlisted): always returns true
-    # Blocked takes priority over rollout if a facility appears in both lists.
+    #   - Default (unlisted): always returns false (blocked)
+    # Allowed takes priority over rollout if a facility appears in both lists.
     #
     # @note Designed to be included in OracleHealthPrescriptionAdapter.
     module OracleHealthRenewalFlowHelper
@@ -32,9 +32,9 @@ module UnifiedHealthData
 
         station_tag = "station:#{station}"
 
-        if renewal_flow_blocked_facilities.include?(station)
-          StatsD.increment("#{STATSD_PREFIX}.blocked", tags: [station_tag])
-          return false
+        if renewal_flow_allowed_facilities.include?(station)
+          StatsD.increment("#{STATSD_PREFIX}.enabled", tags: [station_tag])
+          return true
         end
 
         if renewal_flow_rollout_facilities.include?(station)
@@ -43,16 +43,16 @@ module UnifiedHealthData
           return enabled
         end
 
-        StatsD.increment("#{STATSD_PREFIX}.enabled", tags: [station_tag])
-        true
+        StatsD.increment("#{STATSD_PREFIX}.blocked", tags: [station_tag])
+        false
       end
 
       private
 
-      def renewal_flow_blocked_facilities
-        @renewal_flow_blocked_facilities ||=
+      def renewal_flow_allowed_facilities
+        @renewal_flow_allowed_facilities ||=
           MHV::OhFacilitiesHelper::Service.parse_facility_setting(
-            Settings.mhv.oh_facility_checks.renewal_flow_blocked_oh_facilities
+            Settings.mhv.oh_facility_checks.renewal_flow_allowed_oh_facilities
           )
       end
 

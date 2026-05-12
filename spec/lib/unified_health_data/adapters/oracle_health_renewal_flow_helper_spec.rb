@@ -10,7 +10,7 @@ RSpec.describe UnifiedHealthData::Adapters::OracleHealthRenewalFlowHelper do
 
   before do
     allow(Settings.mhv.oh_facility_checks).to receive_messages(
-      renewal_flow_blocked_oh_facilities: '',
+      renewal_flow_allowed_oh_facilities: '',
       renewal_flow_rollout_oh_facilities: ''
     )
     allow(StatsD).to receive(:increment)
@@ -40,19 +40,19 @@ RSpec.describe UnifiedHealthData::Adapters::OracleHealthRenewalFlowHelper do
       end
     end
 
-    context 'when facility is in the blocked list' do
+    context 'when facility is in the allowed list' do
       before do
-        allow(Settings.mhv.oh_facility_checks).to receive(:renewal_flow_blocked_oh_facilities).and_return('648, 757')
+        allow(Settings.mhv.oh_facility_checks).to receive(:renewal_flow_allowed_oh_facilities).and_return('648, 757')
       end
 
-      it 'returns false' do
-        expect(subject.compute_renewal_flow_enabled(true, '648', current_user)).to be false
+      it 'returns true' do
+        expect(subject.compute_renewal_flow_enabled(true, '648', current_user)).to be true
       end
 
-      it 'increments the blocked metric with station tag' do
+      it 'increments the enabled metric with station tag' do
         subject.compute_renewal_flow_enabled(true, '648', current_user)
         expect(StatsD).to have_received(:increment).with(
-          'unified_health_data.prescription.renewal_flow.blocked',
+          'unified_health_data.prescription.renewal_flow.enabled',
           tags: ['station:648']
         )
       end
@@ -98,43 +98,43 @@ RSpec.describe UnifiedHealthData::Adapters::OracleHealthRenewalFlowHelper do
       end
     end
 
-    context 'when facility is not in any list (default)' do
-      it 'returns true' do
-        expect(subject.compute_renewal_flow_enabled(true, '999', current_user)).to be true
+    context 'when facility is not in any list (default blocked)' do
+      it 'returns false' do
+        expect(subject.compute_renewal_flow_enabled(true, '999', current_user)).to be false
       end
 
-      it 'increments the enabled metric with station tag' do
+      it 'increments the blocked metric with station tag' do
         subject.compute_renewal_flow_enabled(true, '999', current_user)
         expect(StatsD).to have_received(:increment).with(
-          'unified_health_data.prescription.renewal_flow.enabled',
+          'unified_health_data.prescription.renewal_flow.blocked',
           tags: ['station:999']
         )
       end
     end
 
-    context 'when facility is in both blocked and rollout lists' do
+    context 'when facility is in both allowed and rollout lists' do
       before do
         allow(Settings.mhv.oh_facility_checks).to receive_messages(
-          renewal_flow_blocked_oh_facilities: '648',
+          renewal_flow_allowed_oh_facilities: '648',
           renewal_flow_rollout_oh_facilities: '648'
         )
       end
 
-      it 'returns false (blocked takes priority)' do
-        expect(subject.compute_renewal_flow_enabled(true, '648', current_user)).to be false
+      it 'returns true (allowed takes priority)' do
+        expect(subject.compute_renewal_flow_enabled(true, '648', current_user)).to be true
       end
     end
 
     context 'when Settings values are empty strings' do
       before do
         allow(Settings.mhv.oh_facility_checks).to receive_messages(
-          renewal_flow_blocked_oh_facilities: '',
+          renewal_flow_allowed_oh_facilities: '',
           renewal_flow_rollout_oh_facilities: ''
         )
       end
 
-      it 'treats all facilities as default (enabled)' do
-        expect(subject.compute_renewal_flow_enabled(true, '648', current_user)).to be true
+      it 'treats all facilities as default (blocked)' do
+        expect(subject.compute_renewal_flow_enabled(true, '648', current_user)).to be false
       end
     end
   end
