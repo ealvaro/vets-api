@@ -15,6 +15,7 @@ RSpec.describe SignIn::AccessTokenJwtEncoder do
       let(:expected_sub) { access_token.user_uuid }
       let(:expected_iss) { SignIn::Constants::AccessToken::ISSUER }
       let(:expected_client_id) { access_token.client_id }
+      let(:expected_azp) { access_token.client_id }
       let(:expected_exp) { access_token.expiration_time.to_i }
       let(:expected_iat) { access_token.created_time.to_i }
       let(:expected_session_handle) { access_token.session_handle }
@@ -35,6 +36,7 @@ RSpec.describe SignIn::AccessTokenJwtEncoder do
         expect(decoded_jwt.sub).to eq expected_sub
         expect(decoded_jwt.iss).to eq expected_iss
         expect(decoded_jwt.client_id).to eq expected_client_id
+        expect(decoded_jwt.azp).to eq expected_azp
         expect(decoded_jwt.exp).to eq expected_exp
         expect(decoded_jwt.iat).to eq expected_iat
         expect(decoded_jwt.session_handle).to eq expected_session_handle

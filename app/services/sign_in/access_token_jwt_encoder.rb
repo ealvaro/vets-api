@@ -19,6 +19,7 @@ module SignIn
         iss: Constants::AccessToken::ISSUER,
         aud: access_token.audience,
         client_id: access_token.client_id,
+        azp: access_token.client_id,
         jti: access_token.uuid,
         sub: access_token.user_uuid,
         exp: access_token.expiration_time.to_i,
