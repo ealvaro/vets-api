@@ -2021,7 +2021,6 @@ spec/requests/v0/form1095_bs_spec.rb @software/va-core-veteran-experiences @soft
 spec/requests/v0/form210779_spec.rb @software/benefits-optimization-aquia @software/backend-review-group
 spec/requests/v0/form212680_spec.rb @software/benefits-optimization-aquia @software/backend-review-group
 spec/requests/v0/multi_party_forms/primary_spec.rb @software/benefits-optimization-aquia @software/backend-review-group
-spec/requests/v0/multi_party_forms/secondary_spec.rb @software/benefits-optimization-aquia @software/backend-review-group
 spec/requests/v0/gi @software/backend-review-group
 spec/requests/v0/health_care_applications_spec.rb @software/health-apps-backend @software/backend-review-group
 spec/requests/v0/id_card/announcement_subscription_spec.rb @software/backend-review-group
