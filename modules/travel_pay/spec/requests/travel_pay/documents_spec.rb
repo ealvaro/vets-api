@@ -12,6 +12,13 @@ RSpec.describe TravelPay::V0::DocumentsController, type: :request do
   let(:valid_document) do
     Rack::Test::UploadedFile.new('modules/travel_pay/spec/fixtures/documents/test.pdf')
   end
+  let(:poa_document) do
+    Rack::Test::UploadedFile.new(
+      'modules/travel_pay/spec/fixtures/documents/test.pdf',
+      'application/pdf',
+      original_filename: 'proof-of-attendance.pdf'
+    )
+  end
 
   before do
     allow_any_instance_of(TravelPay::AuthManager).to receive(:authorize)
@@ -235,6 +242,72 @@ RSpec.describe TravelPay::V0::DocumentsController, type: :request do
 
           expect(response).to have_http_status(:bad_gateway)
           expect(JSON.parse(response.body)['error']).to eq('Error uploading document')
+        end
+      end
+
+      context 'statsd metrics' do
+        before do
+          allow(StatsD).to receive(:increment)
+          allow_any_instance_of(TravelPay::V0::DocumentsController)
+            .to receive(:service).and_return(service)
+        end
+
+        it 'tracks success for non-poa uploads' do
+          allow(service).to receive(:upload_document)
+            .with(claim_id, kind_of(ActionDispatch::Http::UploadedFile))
+            .and_return({ 'documentId' => 'abc-123' })
+
+          post("/travel_pay/v0/claims/#{claim_id}/documents", params: { Document: valid_document })
+
+          expect(response).to have_http_status(:created)
+          expect(StatsD).to have_received(:increment).with('travel_pay.documents.create',
+                                                           tags: ['document_type:other', 'result:success'])
+        end
+
+        it 'tracks success for proof-of-attendance uploads as poa' do
+          allow(service).to receive(:upload_document)
+            .with(claim_id, kind_of(ActionDispatch::Http::UploadedFile))
+            .and_return({ 'documentId' => 'abc-123' })
+
+          post("/travel_pay/v0/claims/#{claim_id}/documents", params: { Document: poa_document })
+
+          expect(response).to have_http_status(:created)
+          expect(StatsD).to have_received(:increment).with('travel_pay.documents.create',
+                                                           tags: ['document_type:poa', 'result:success'])
+        end
+
+        it 'tracks failure when document param is missing' do
+          post("/travel_pay/v0/claims/#{claim_id}/documents", params: {})
+
+          expect(response).to have_http_status(:bad_request)
+          expect(StatsD).to have_received(:increment).with('travel_pay.documents.create',
+                                                           tags: ['document_type:other', 'result:failure'])
+        end
+
+        it 'tracks failure when upload raises resource not found' do
+          exception = Faraday::ResourceNotFound.new('Not found')
+          allow(exception).to receive(:response).and_return(
+            request: { headers: { 'X-Correlation-ID' => 'abc' } }
+          )
+          allow(service).to receive(:upload_document).and_raise(exception)
+
+          post("/travel_pay/v0/claims/#{claim_id}/documents", params: { Document: valid_document })
+
+          expect(response).to have_http_status(:not_found)
+          expect(StatsD).to have_received(:increment).with('travel_pay.documents.create',
+                                                           tags: ['document_type:other', 'result:failure'])
+        end
+
+        it 'tracks failure when upload raises Faraday::Error' do
+          error = Faraday::Error.new('ERROR')
+          allow(error).to receive(:response).and_return({ status: 502 })
+          allow(service).to receive(:upload_document).and_raise(error)
+
+          post("/travel_pay/v0/claims/#{claim_id}/documents", params: { Document: valid_document })
+
+          expect(response).to have_http_status(:bad_gateway)
+          expect(StatsD).to have_received(:increment).with('travel_pay.documents.create',
+                                                           tags: ['document_type:other', 'result:failure'])
         end
       end
     end

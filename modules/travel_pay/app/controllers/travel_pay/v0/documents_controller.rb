@@ -40,10 +40,16 @@ module TravelPay
           message: "Creating attachment for claim #{claim_id.slice(0, 8)}"
         )
         response_data = service.upload_document(claim_id, document)
+        increment_create_statsd(document, 'success')
         render json: { documentId: response_data['documentId'] }, status: :created
+      rescue Common::Exceptions::BadRequest
+        increment_create_statsd(document, 'failure')
+        raise
       rescue Faraday::ResourceNotFound => e
+        increment_create_statsd(document, 'failure')
         handle_resource_not_found_error(e)
       rescue Faraday::Error => e
+        increment_create_statsd(document, 'failure')
         Rails.logger.error("Error uploading document: #{e.message}")
         render json: { error: 'Error uploading document' }, status: e.response[:status]
       end
@@ -96,6 +102,14 @@ module TravelPay
           current_user,
           error_message: 'Travel Pay document endpoint unavailable per feature toggle'
         )
+      end
+
+      def increment_create_statsd(document, result)
+        document_type = File.basename(document&.original_filename.to_s, '.*') == 'proof-of-attendance' ? 'poa' : 'other'
+
+        StatsD.increment('travel_pay.documents.create',
+                         tags: ["document_type:#{document_type}",
+                                "result:#{result}"])
       end
 
       def render_bad_request(e)
