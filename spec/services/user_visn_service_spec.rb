@@ -10,6 +10,7 @@ RSpec.describe UserVisnService do
 
   before do
     allow(user).to receive(:va_treatment_facility_ids).and_return(facility_ids)
+    allow(Flipper).to receive(:enabled?).with(:profile_scheduling_preferences_testing_enabled, user).and_return(false)
   end
 
   describe 'PILOT_VISNS constant' do
@@ -39,6 +40,35 @@ RSpec.describe UserVisnService do
   end
 
   describe '#in_pilot_visn?' do
+    context 'when profile_scheduling_preferences_testing_enabled feature flag is enabled' do
+      let(:facility_ids) { [] }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:profile_scheduling_preferences_testing_enabled,
+                                                  user).and_return(true)
+      end
+
+      context 'when not in production' do
+        before do
+          allow(Settings).to receive(:vsp_environment).and_return('staging')
+        end
+
+        it 'returns true regardless of VISN' do
+          expect(service.in_pilot_visn?).to be true
+        end
+      end
+
+      context 'when in production' do
+        before do
+          allow(Settings).to receive(:vsp_environment).and_return('production')
+        end
+
+        it 'does not short-circuit and checks VISN instead' do
+          expect(service.in_pilot_visn?).to be false
+        end
+      end
+    end
+
     context 'when user has no treatment facilities' do
       let(:facility_ids) { [] }
 

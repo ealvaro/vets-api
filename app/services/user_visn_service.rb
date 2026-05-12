@@ -10,6 +10,9 @@ class UserVisnService
   end
 
   def in_pilot_visn?
+    return true if Flipper.enabled?(:profile_scheduling_preferences_testing_enabled,
+                                    @user) && Settings.vsp_environment != 'production'
+
     return false unless @user.va_treatment_facility_ids.any?
 
     user_visns = @user.va_treatment_facility_ids.filter_map do |facility_id|

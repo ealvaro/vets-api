@@ -296,8 +296,6 @@ module Users
 
     def scheduling_preferences_pilot_eligible
       return false unless Flipper.enabled?(:profile_scheduling_preferences, user)
-      return true if Flipper.enabled?(:profile_scheduling_preferences_testing_enabled,
-                                      user) && Settings.vsp_environment != 'production'
 
       UserVisnService.new(user).in_pilot_visn?
     rescue => e

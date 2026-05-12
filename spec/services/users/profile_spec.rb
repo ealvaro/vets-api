@@ -819,8 +819,6 @@ RSpec.describe Users::Profile do
 
       before do
         allow(UserVisnService).to receive(:new).with(user).and_return(visn_service)
-        allow(Flipper).to receive(:enabled?).with(:profile_scheduling_preferences_testing_enabled,
-                                                  user).and_return(false)
       end
 
       context 'when profile_scheduling_preferences feature flag is disabled' do
@@ -837,34 +835,6 @@ RSpec.describe Users::Profile do
       context 'when profile_scheduling_preferences feature flag is enabled' do
         before do
           allow(Flipper).to receive(:enabled?).with(:profile_scheduling_preferences, user).and_return(true)
-        end
-
-        context 'when profile_scheduling_preferences_testing_enabled feature flag is enabled' do
-          before do
-            allow(Flipper).to receive(:enabled?).with(:profile_scheduling_preferences_testing_enabled,
-                                                      user).and_return(true)
-          end
-
-          context 'when not in production' do
-            before do
-              allow(Settings).to receive(:vsp_environment).and_return('staging')
-            end
-
-            it 'returns true regardless of VISN' do
-              expect(result).to be true
-            end
-          end
-
-          context 'when in production' do
-            before do
-              allow(Settings).to receive(:vsp_environment).and_return('production')
-            end
-
-            it 'does not short-circuit and checks VISN instead' do
-              allow(visn_service).to receive(:in_pilot_visn?).and_return(false)
-              expect(result).to be false
-            end
-          end
         end
 
         context 'when user is in pilot VISN' do
