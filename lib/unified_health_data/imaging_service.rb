@@ -14,7 +14,7 @@ module UnifiedHealthData
       @user = user
     end
 
-    def get_imaging_studies(start_date:, end_date:, imaging_study_type: 'ALL', site_ids: [])
+    def get_imaging_studies(start_date:, end_date:, imaging_study_type: 'RADIOLOGY', site_ids: [])
       with_monitoring do
         response = uhd_client.get_imaging_studies(
           patient_id: @user.icn,

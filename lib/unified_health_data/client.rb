@@ -91,10 +91,10 @@ module UnifiedHealthData
       perform(:get, path, nil, request_headers)
     end
 
-    def get_imaging_studies(patient_id:, start_date:, end_date:, imaging_study_type: 'ALL', site_ids: [])
+    def get_imaging_studies(patient_id:, start_date:, end_date:, imaging_study_type: 'RADIOLOGY', site_ids: [])
       path = "#{config.base_path}imaging-studies?patientId=#{patient_id}&startDate=#{start_date}&endDate=#{end_date}"
       body = { siteIds: site_ids }
-      body[:imagingStudyType] = imaging_study_type if imaging_study_type != 'ALL'
+      body[:imagingStudyType] = imaging_study_type
       perform(:post, path, body.to_json, request_headers(include_content_type: true))
     end
 

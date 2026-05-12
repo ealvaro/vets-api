@@ -42,14 +42,14 @@ describe UnifiedHealthData::ImagingService, type: :service do
       )
     end
 
-    it 'defaults imaging_study_type to ALL and site_ids to empty' do
+    it 'defaults imaging_study_type to RADIOLOGY and site_ids to empty' do
       service.get_imaging_studies(**date_params)
 
       expect(client).to have_received(:get_imaging_studies).with(
         patient_id: user.icn,
         start_date: '2024-01-01',
         end_date: '2025-01-01',
-        imaging_study_type: 'ALL',
+        imaging_study_type: 'RADIOLOGY',
         site_ids: []
       )
     end

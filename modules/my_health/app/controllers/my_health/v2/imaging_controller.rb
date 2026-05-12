@@ -18,7 +18,7 @@ module MyHealth
           service.get_imaging_studies(
             start_date: params[:start_date],
             end_date: params[:end_date],
-            imaging_study_type: params[:imaging_study_type].presence || 'ALL',
+            imaging_study_type: params[:imaging_study_type].presence || 'RADIOLOGY',
             site_ids: user_site_ids
           ),
           params[:sort]
