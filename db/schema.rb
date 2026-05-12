@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_05_01_142940) do
+ActiveRecord::Schema[7.2].define(version: 2026_05_04_191346) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -1355,6 +1355,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_01_142940) do
     t.boolean "needs_kms_rotation", default: false, null: false
     t.text "request_json_ciphertext"
     t.string "submitted_by_icn", comment: "ICN of the authenticated user who submitted the form. Null for unauthenticated submissions or forms created before this column existed."
+    t.uuid "transaction_uuid"
     t.index ["form_uuid"], name: "index_ivc_champva_forms_on_form_uuid"
     t.index ["needs_kms_rotation"], name: "index_ivc_champva_forms_on_needs_kms_rotation"
   end
