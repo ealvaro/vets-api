@@ -1686,6 +1686,7 @@ spec/lib/gi/lcpe/response_spec.rb @software/govcio-vfep-codereviewers @software/
 spec/lib/gi/search_client_spec.rb @software/govcio-vfep-codereviewers @software/backend-review-group
 spec/lib/gi/search_configuration_spec.rb @software/govcio-vfep-codereviewers @software/backend-review-group
 spec/lib/github_authentication @software/octo-identity
+spec/lib/github_authentication/coverband_reporters_web_spec.rb @software/backend-review-group
 spec/lib/hca @software/health-apps-backend @software/backend-review-group
 spec/lib/iam_ssoe_oauth @software/octo-identity
 spec/lib/ibm @software/bio-huntridge @software/backend-review-group

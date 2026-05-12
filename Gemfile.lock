@@ -767,6 +767,8 @@ GEM
       racc (~> 1.4)
     nokogiri (1.19.3-aarch64-linux-gnu)
       racc (~> 1.4)
+    nokogiri (1.19.3-arm64-darwin)
+      racc (~> 1.4)
     nokogiri (1.19.3-java)
       racc (~> 1.4)
     nokogiri (1.19.3-x64-mingw-ucrt)
@@ -880,7 +882,7 @@ GEM
     raabro (1.4.0)
     racc (1.8.1)
     racc (1.8.1-java)
-    rack (3.2.5)
+    rack (3.2.6)
     rack-attack (6.8.0)
       rack (>= 1.0, < 4)
     rack-cors (2.0.2)
@@ -889,7 +891,7 @@ GEM
       base64 (>= 0.1.0)
       logger (>= 1.6.0)
       rack (>= 3.0.0, < 4)
-    rack-session (2.1.1)
+    rack-session (2.1.2)
       base64 (>= 0.1.0)
       rack (>= 3.0.0)
     rack-test (2.2.0)
@@ -1225,11 +1227,12 @@ GEM
       xmlmapper (>= 0.7.3)
     xmlmapper (0.8.1)
       nokogiri (~> 1.11)
-    yard (0.9.41)
+    yard (0.9.42)
     zeitwerk (2.7.5)
 
 PLATFORMS
   aarch64-linux
+  arm64-darwin
   java
   ruby
   x64-mingw-ucrt

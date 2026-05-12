@@ -20,6 +20,7 @@ describe GithubAuthentication::CoverbandReportersWeb do
   let(:user) { Warden::GitHub::User.new(default_attrs) }
 
   before do
+    allow(Rack::Static).to receive(:new).and_return(double('rack_static', call: [404, {}, []]))
     allow_any_instance_of(Warden::Proxy).to receive(:authenticate!).and_return(user)
     allow_any_instance_of(Warden::Proxy).to receive(:user).and_return(user)
     allow_any_instance_of(ActionDispatch::Request).to receive(:session) { { coverband_user: user } }
