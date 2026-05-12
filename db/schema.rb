@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_05_04_191346) do
+ActiveRecord::Schema[7.2].define(version: 2026_05_11_142631) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -1434,6 +1434,16 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_04_191346) do
     t.datetime "updated_at", null: false
     t.index ["feature"], name: "index_mhv_opt_in_flags_on_feature"
     t.index ["user_account_id"], name: "index_mhv_opt_in_flags_on_user_account_id"
+  end
+
+  create_table "mobile_survey_responses", force: :cascade do |t|
+    t.string "survey_type", null: false
+    t.string "user_uuid", null: false
+    t.text "encrypted_kms_key"
+    t.text "survey_data_ciphertext", null: false
+    t.jsonb "metadata"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "mobile_users", force: :cascade do |t|
