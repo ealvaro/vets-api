@@ -20,7 +20,12 @@ module UnifiedHealthData
                  :series_count,
                  :image_count,
                  :series,
-                 :dicom_zip_url
+                 :dicom_zip_url,
+                 :dicom_size_bytes,
+                 :dicom_status,
+                 :dicom_progress_phase,
+                 :dicom_progress_completed_count,
+                 :dicom_progress_total_count
     end
   end
 end

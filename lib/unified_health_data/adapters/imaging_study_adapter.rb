@@ -19,7 +19,13 @@ module UnifiedHealthData
           entry.dig('resource', 'resourceType') == 'ImagingStudy'
         end
 
-        parsed = filtered.map { |entry| parse_single_study(entry['resource']) }
+        tasks = extract_tasks(records)
+
+        parsed = filtered.map do |entry|
+          study = parse_single_study(entry['resource'])
+          apply_task_data(study, tasks) if study
+          study
+        end
         parsed.compact
       end
 
@@ -47,11 +53,67 @@ module UnifiedHealthData
           series_count: resource['numberOfSeries'] || series_data.size,
           image_count: resource['numberOfInstances'] || count_images(series_data),
           series: parse_series(series_data),
-          dicom_zip_url: extract_presigned_url(resource)
+          dicom_zip_url: extract_presigned_url(resource),
+          dicom_size_bytes: extract_dicom_size_bytes(resource)
         )
       end
 
       private
+
+      # Extracts Task resources from the Bundle entries, keyed by their focus ImagingStudy ID.
+      #
+      # @param records [Array<Hash>] Array of FHIR Bundle entry records
+      # @return [Hash<String, Hash>] Task resources keyed by ImagingStudy ID
+      def extract_tasks(records)
+        records.each_with_object({}) do |entry, hash|
+          resource = entry['resource'] || {}
+          next unless resource['resourceType'] == 'Task'
+
+          study_id = extract_id_from_reference(resource.dig('focus', 'reference'))
+          hash[study_id] = resource if study_id
+        end
+      end
+
+      # Applies Task progress data to an ImagingStudy object.
+      #
+      # @param study [UnifiedHealthData::ImagingStudy] the parsed study
+      # @param tasks [Hash<String, Hash>] Task resources keyed by ImagingStudy ID
+      def apply_task_data(study, tasks)
+        task = tasks[study.id]
+        return unless task
+
+        study.dicom_status = task['status']
+        study.dicom_progress_phase = extract_task_extension(task, 'imagingstudy-dicom-zip-progress-phase')
+        study.dicom_progress_completed_count = extract_task_extension(
+          task, 'imagingstudy-dicom-zip-progress-completed-count'
+        )&.to_i
+        study.dicom_progress_total_count = extract_task_extension(
+          task, 'imagingstudy-dicom-zip-progress-total-count'
+        )&.to_i
+      end
+
+      # Extracts a value from a Task's extensions by matching the URL suffix.
+      #
+      # @param task [Hash] FHIR Task resource
+      # @param url_suffix [String] the suffix of the extension URL to match
+      # @return [String, Integer, nil] the extension value
+      def extract_task_extension(task, url_suffix)
+        extensions = task['extension'] || []
+        ext = extensions.find { |e| e['url']&.end_with?(url_suffix) }
+        ext&.values_at('valueString', 'valueInteger', 'valueDecimal')&.compact&.first
+      end
+
+      # Extracts the DICOM zip size in bytes from ImagingStudy extensions.
+      #
+      # @param resource [Hash] FHIR ImagingStudy resource
+      # @return [Integer, nil] the size in bytes or nil
+      def extract_dicom_size_bytes(resource)
+        extensions = resource['extension'] || []
+        ext = extensions.find do |e|
+          e['url'] == 'http://va.gov/mhv/fhir/StructureDefinition/dicom-zip-size-bytes'
+        end
+        ext&.dig('valueDecimal')&.to_i
+      end
 
       # Extracts the event ID from the reasonReference field.
       # The reasonReference contains a reference to a DiagnosticReport

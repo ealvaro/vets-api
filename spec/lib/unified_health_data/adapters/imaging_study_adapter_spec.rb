@@ -193,6 +193,10 @@ RSpec.describe UnifiedHealthData::Adapters::ImagingStudyAdapter do
                 {
                   'url' => 'http://va.gov/mhv/fhir/StructureDefinition/presigned-url',
                   'valueUrl' => 'https://test-cvix-zips.s3.amazonaws.com/hashed-abc/hashed-def.zip?sig=xyz'
+                },
+                {
+                  'url' => 'http://va.gov/mhv/fhir/StructureDefinition/dicom-zip-size-bytes',
+                  'valueDecimal' => 5_646_813
                 }
               ],
               'series' => []
@@ -207,10 +211,135 @@ RSpec.describe UnifiedHealthData::Adapters::ImagingStudyAdapter do
         expect(result.dicom_zip_url).to eq('https://test-cvix-zips.s3.amazonaws.com/hashed-abc/hashed-def.zip?sig=xyz')
       end
 
+      it 'extracts dicom_size_bytes from study-level extensions' do
+        result = adapter.parse(response_with_dicom_zip).first
+
+        expect(result.dicom_size_bytes).to eq(5_646_813)
+      end
+
       it 'returns nil dicom_zip_url when study-level extension is absent' do
         result = adapter.parse(imaging_study_response).first
 
         expect(result.dicom_zip_url).to be_nil
+      end
+
+      it 'returns nil dicom_size_bytes when study-level extension is absent' do
+        result = adapter.parse(imaging_study_response).first
+
+        expect(result.dicom_size_bytes).to be_nil
+      end
+    end
+
+    context 'with Task resource for DICOM progress' do
+      let(:response_with_task) do
+        [
+          {
+            'resource' => {
+              'resourceType' => 'ImagingStudy',
+              'id' => '13',
+              'status' => 'available',
+              'series' => []
+            }
+          },
+          {
+            'resource' => {
+              'resourceType' => 'Task',
+              'id' => '4',
+              'extension' => [
+                {
+                  'url' => 'http://va.gov/mhv/fhir/StructureDefinition/imagingstudy-dicom-zip-progress-completed-count',
+                  'valueInteger' => 2
+                },
+                {
+                  'url' => 'http://va.gov/mhv/fhir/StructureDefinition/imagingstudy-dicom-zip-progress-total-count',
+                  'valueInteger' => 5
+                },
+                {
+                  'url' => 'http://va.gov/mhv/fhir/StructureDefinition/imagingstudy-dicom-zip-progress-phase',
+                  'valueString' => 'fetching'
+                }
+              ],
+              'status' => 'in-progress',
+              'focus' => { 'reference' => 'ImagingStudy/13' }
+            }
+          }
+        ]
+      end
+
+      it 'applies Task progress fields to the matching ImagingStudy' do
+        result = adapter.parse(response_with_task).first
+
+        expect(result.dicom_status).to eq('in-progress')
+        expect(result.dicom_progress_phase).to eq('fetching')
+        expect(result.dicom_progress_completed_count).to eq(2)
+        expect(result.dicom_progress_total_count).to eq(5)
+      end
+
+      it 'leaves progress fields nil when no Task is present' do
+        result = adapter.parse(imaging_study_response).first
+
+        expect(result.dicom_status).to be_nil
+        expect(result.dicom_progress_phase).to be_nil
+        expect(result.dicom_progress_completed_count).to be_nil
+        expect(result.dicom_progress_total_count).to be_nil
+      end
+
+      it 'ignores a Task whose focus does not match any ImagingStudy' do
+        unmatched = [
+          { 'resource' => { 'resourceType' => 'ImagingStudy', 'id' => '13', 'status' => 'available', 'series' => [] } },
+          {
+            'resource' => {
+              'resourceType' => 'Task', 'id' => '99', 'status' => 'in-progress',
+              'extension' => [
+                { 'url' => 'http://va.gov/mhv/fhir/StructureDefinition/imagingstudy-dicom-zip-progress-phase',
+                  'valueString' => 'fetching' }
+              ],
+              'focus' => { 'reference' => 'ImagingStudy/999' }
+            }
+          }
+        ]
+        result = adapter.parse(unmatched).first
+
+        expect(result.dicom_status).to be_nil
+        expect(result.dicom_progress_phase).to be_nil
+      end
+
+      it 'ignores a Task with no focus field' do
+        no_focus = [
+          { 'resource' => { 'resourceType' => 'ImagingStudy', 'id' => '13', 'status' => 'available', 'series' => [] } },
+          {
+            'resource' => {
+              'resourceType' => 'Task', 'id' => '99', 'status' => 'completed',
+              'extension' => [
+                { 'url' => 'http://va.gov/mhv/fhir/StructureDefinition/imagingstudy-dicom-zip-progress-phase',
+                  'valueString' => 'completed' }
+              ]
+            }
+          }
+        ]
+        result = adapter.parse(no_focus).first
+
+        expect(result.dicom_status).to be_nil
+        expect(result.dicom_progress_phase).to be_nil
+      end
+
+      it 'returns nil for missing Task extensions while preserving Task status' do
+        sparse_task = [
+          { 'resource' => { 'resourceType' => 'ImagingStudy', 'id' => '13', 'status' => 'available', 'series' => [] } },
+          {
+            'resource' => {
+              'resourceType' => 'Task', 'id' => '4', 'status' => 'in-progress',
+              'extension' => [],
+              'focus' => { 'reference' => 'ImagingStudy/13' }
+            }
+          }
+        ]
+        result = adapter.parse(sparse_task).first
+
+        expect(result.dicom_status).to eq('in-progress')
+        expect(result.dicom_progress_phase).to be_nil
+        expect(result.dicom_progress_completed_count).to be_nil
+        expect(result.dicom_progress_total_count).to be_nil
       end
     end
 

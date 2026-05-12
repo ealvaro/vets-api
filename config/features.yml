@@ -1857,6 +1857,10 @@ features:
     actor_type: user
     description: Pulls images out of Labs & Tests into its own top-level domain
     enable_in_development: true
+  mhv_medical_records_imaging_manual_request:
+    actor_type: user
+    description: Enables manual request of SCDF imaging studies (no longer automatic)
+    enable_in_development: false
   mhv_medical_records_imaging_site_id_logging:
     actor_type: user
     description: >

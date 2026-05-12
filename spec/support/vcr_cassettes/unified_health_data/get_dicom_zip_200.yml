@@ -86,6 +86,10 @@ http_interactions:
                               {
                                   "url": "http://va.gov/mhv/fhir/StructureDefinition/presigned-url",
                                   "valueUrl": "https://test-cvix-zips.s3.us-gov-west-1.amazonaws.com/hashed-test-hash1/hashed-test-hash2.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20260213T162000Z&X-Amz-Expires=1800&X-Amz-Signature=test-signature-dicom-zip"
+                              },
+                              {
+                                  "url": "http://va.gov/mhv/fhir/StructureDefinition/dicom-zip-size-bytes",
+                                  "valueDecimal": 5646813
                               }
                           ],
                           "identifier": [
@@ -136,6 +140,45 @@ http_interactions:
                       },
                       "search": {
                           "mode": "match"
+                      }
+                  },
+                  {
+                      "resource": {
+                          "resourceType": "Task",
+                          "id": "4",
+                          "meta": {
+                              "versionId": "7",
+                              "lastUpdated": "2026-02-04T10:21:50.931-05:00"
+                          },
+                          "extension": [
+                              {
+                                  "url": "http://va.gov/mhv/fhir/StructureDefinition/imagingstudy-dicom-zip-request-id",
+                                  "valueString": "d69563ee-2261-46e8-bc9c-abf7831d12ec"
+                              },
+                              {
+                                  "url": "http://va.gov/mhv/fhir/StructureDefinition/imagingstudy-dicom-zip-progress-completed-count",
+                                  "valueInteger": 1
+                              },
+                              {
+                                  "url": "http://va.gov/mhv/fhir/StructureDefinition/imagingstudy-dicom-zip-progress-total-count",
+                                  "valueInteger": 1
+                              },
+                              {
+                                  "url": "http://va.gov/mhv/fhir/StructureDefinition/imagingstudy-dicom-zip-progress-phase",
+                                  "valueString": "completed"
+                              }
+                          ],
+                          "identifier": [
+                              {
+                                  "system": "http://va.gov/mhv/fhir/identifier/imaging-dicom-zip-task",
+                                  "value": "urn-vastudy-200CRNR-CM-4-ezA1LTQ4LTc5LTQxLWQ5LTc5LTRjLWMxLWJjLTJ"
+                              }
+                          ],
+                          "status": "completed",
+                          "intent": "order",
+                          "focus": {
+                              "reference": "ImagingStudy/13"
+                          }
                       }
                   },
                   {

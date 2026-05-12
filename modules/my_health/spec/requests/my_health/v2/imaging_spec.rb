@@ -271,6 +271,13 @@ RSpec.describe 'MyHealth::V2::ImagingController', :skip_json_api_validation, typ
         expect(json_response.first['attributes']['dicomZipUrl']).to start_with(
           'https://test-cvix-zips.s3.us-gov-west-1.amazonaws.com/'
         )
+
+        # Verify DICOM progress fields from the Task resource
+        expect(json_response.first['attributes']['dicomStatus']).to eq('completed')
+        expect(json_response.first['attributes']['dicomProgressPhase']).to eq('completed')
+        expect(json_response.first['attributes']['dicomProgressCompletedCount']).to eq(1)
+        expect(json_response.first['attributes']['dicomProgressTotalCount']).to eq(1)
+        expect(json_response.first['attributes']['dicomSizeBytes']).to eq(5_646_813)
       end
     end
 
