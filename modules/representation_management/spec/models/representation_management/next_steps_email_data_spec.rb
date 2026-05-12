@@ -12,6 +12,126 @@ RSpec.describe RepresentationManagement::NextStepsEmailData, type: :model do
     it { expect(subject).to validate_presence_of(:form_number) }
     it { expect(subject).to validate_presence_of(:entity_type) }
     it { expect(subject).to validate_presence_of(:entity_id) }
+
+    describe 'email_address format' do
+      it 'rejects an invalid email format' do
+        subject.email_address = 'not-an-email'
+        subject.valid?
+        expect(subject.errors[:email_address]).to be_present
+      end
+
+      it 'accepts a valid email address' do
+        subject.email_address = 'veteran@example.com'
+        subject.valid?
+        expect(subject.errors[:email_address]).to be_empty
+      end
+
+      it 'rejects an email address over 254 characters' do
+        subject.email_address = "#{'a' * 245}@example.com"
+        subject.valid?
+        expect(subject.errors[:email_address]).to be_present
+      end
+    end
+
+    describe 'form_number inclusion' do
+      it 'accepts 21-22' do
+        subject.form_number = '21-22'
+        subject.valid?
+        expect(subject.errors[:form_number]).to be_empty
+      end
+
+      it 'accepts 21-22A' do
+        subject.form_number = '21-22A'
+        subject.valid?
+        expect(subject.errors[:form_number]).to be_empty
+      end
+
+      it 'rejects an unrecognized form number' do
+        subject.form_number = 'not-a-form'
+        subject.valid?
+        expect(subject.errors[:form_number]).to be_present
+      end
+    end
+
+    describe 'entity_type inclusion' do
+      it 'accepts individual' do
+        subject.entity_type = 'individual'
+        subject.valid?
+        expect(subject.errors[:entity_type]).to be_empty
+      end
+
+      it 'accepts organization' do
+        subject.entity_type = 'organization'
+        subject.valid?
+        expect(subject.errors[:entity_type]).to be_empty
+      end
+
+      it 'rejects an unrecognized entity_type' do
+        subject.entity_type = 'bogus'
+        subject.valid?
+        expect(subject.errors[:entity_type]).to be_present
+      end
+    end
+
+    describe 'entity_id length' do
+      it 'rejects an entity_id over 36 characters' do
+        subject.entity_id = 'a' * 37
+        subject.valid?
+        expect(subject.errors[:entity_id]).to be_present
+      end
+
+      it 'accepts an entity_id of 36 characters' do
+        subject.entity_id = 'a' * 36
+        subject.valid?
+        expect(subject.errors[:entity_id]).to be_empty
+      end
+    end
+
+    describe 'first_name format' do
+      it 'rejects a first_name containing a newline' do
+        subject.first_name = "Bob\nEvil"
+        subject.valid?
+        expect(subject.errors[:first_name]).to be_present
+      end
+
+      it 'rejects a first_name containing a carriage return' do
+        subject.first_name = "Bob\rEvil"
+        subject.valid?
+        expect(subject.errors[:first_name]).to be_present
+      end
+
+      it 'accepts a first_name with Unicode characters' do
+        subject.first_name = 'José María'
+        subject.valid?
+        expect(subject.errors[:first_name]).to be_empty
+      end
+
+      it 'rejects a first_name containing a null byte' do
+        subject.first_name = "Bob\x00Evil"
+        subject.valid?
+        expect(subject.errors[:first_name]).to be_present
+      end
+    end
+
+    describe 'form_name format' do
+      it 'rejects a form_name containing a newline' do
+        subject.form_name = "Form\nName"
+        subject.valid?
+        expect(subject.errors[:form_name]).to be_present
+      end
+
+      it 'rejects a form_name containing a null byte' do
+        subject.form_name = "Form\x00Name"
+        subject.valid?
+        expect(subject.errors[:form_name]).to be_present
+      end
+
+      it 'accepts a form_name with normal characters' do
+        subject.form_name = 'Form 21-22: Appoint a Representative'
+        subject.valid?
+        expect(subject.errors[:form_name]).to be_empty
+      end
+    end
   end
 
   describe '#entity' do
@@ -91,6 +211,27 @@ RSpec.describe RepresentationManagement::NextStepsEmailData, type: :model do
                                                                           entity_id: accredited_organization.id)
       expect(next_steps_email_data_organization.entity_display_type).to eq('Veterans Service Organization')
       expect(next_steps_email_data_accredited_organization.entity_display_type).to eq('Veterans Service Organization')
+    end
+  end
+
+  describe '#entity_display_type with nil entity' do
+    it 'returns an empty string when entity is nil' do
+      next_steps_email_data = described_class.new(entity_type: 'individual', entity_id: 0)
+      expect(next_steps_email_data.entity_display_type).to eq('')
+    end
+  end
+
+  describe '#entity_name with nil entity' do
+    it 'returns an empty string when entity is nil' do
+      next_steps_email_data = described_class.new(entity_type: 'individual', entity_id: 0)
+      expect(next_steps_email_data.entity_name).to eq('')
+    end
+  end
+
+  describe '#entity_address with nil entity' do
+    it 'returns an empty string when entity is nil' do
+      next_steps_email_data = described_class.new(entity_type: 'individual', entity_id: 0)
+      expect(next_steps_email_data.entity_address).to eq('')
     end
   end
 

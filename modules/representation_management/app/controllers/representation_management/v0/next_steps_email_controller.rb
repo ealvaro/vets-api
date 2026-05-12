@@ -18,7 +18,9 @@ module RepresentationManagement
           enqueue_email(data)
           render json: { message: 'Email enqueued' }, status: :ok
         else
-          render json: { errors: data.errors.full_messages }, status: :unprocessable_entity
+          # Generic message prevents entity ID enumeration oracle and leaks no
+          # field-level detail to unauthenticated callers.
+          render json: { errors: ['Invalid request parameters'] }, status: :unprocessable_entity
         end
       end
 
@@ -57,7 +59,7 @@ module RepresentationManagement
       end
 
       def feature_enabled
-        routing_error unless Flipper.enabled?(:appoint_a_representative_enable_pdf)
+        routing_error unless Flipper.enabled?(:appoint_a_representative_enable_confirmation_email)
       end
 
       def email_delivery_callback(data)

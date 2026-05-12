@@ -130,6 +130,30 @@ class Rack::Attack
     req.remote_ip if req.path.starts_with?('/v0/multi_party_forms')
   end
 
+  # Rate-limit the unauthenticated next_steps_email endpoint.
+  # This endpoint sends VA-branded emails via VA Notify. Without throttling it
+  # is an open relay. 5 req/min per IP is generous for a "just completed a form" flow.
+  throttle('representation_management/next_steps_email/ip', limit: 5, period: 1.minute) do |req|
+    req.remote_ip if req.path == '/representation_management/v0/next_steps_email' && req.post?
+  end
+
+  # Per-destination throttle prevents flooding a single recipient from distributed IPs.
+  # Handles both camelCase (vets-website) and snake_case request bodies.
+  throttle('representation_management/next_steps_email/email', limit: 3, period: 1.hour) do |req|
+    if req.path == '/representation_management/v0/next_steps_email' && req.post?
+      begin
+        body = req.body&.read(2048).to_s
+        req.body&.rewind
+        parsed = JSON.parse(body)
+        email = parsed.dig('nextStepsEmail', 'emailAddress') ||
+                parsed.dig('next_steps_email', 'email_address')
+        email ? Digest::SHA256.hexdigest(email.downcase.strip) : req.remote_ip
+      rescue JSON::ParserError, IOError, NoMethodError
+        req.remote_ip
+      end
+    end
+  end
+
   # Always allow requests from below IP addresses for load testing
   # `100.103.248.0 - 100.103.248.255`
   # `100.103.251.128 - 100.103.251.255`

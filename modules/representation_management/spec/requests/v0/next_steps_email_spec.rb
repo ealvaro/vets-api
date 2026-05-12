@@ -16,7 +16,7 @@ RSpec.describe 'NextStepsEmailController', type: :request do
           email_address: 'email@example.com',
           first_name: 'First',
           form_name: 'Form Name',
-          form_number: 'Form Number',
+          form_number: '21-22',
           entity_type: 'individual',
           entity_id: accredited_individual.id
         }
@@ -53,7 +53,7 @@ RSpec.describe 'NextStepsEmailController', type: :request do
             # template.
             'first_name' => 'First',
             'form name' => 'Form Name',
-            'form number' => 'Form Number',
+            'form number' => '21-22',
             'representative type' => 'attorney',
             'representative name' => 'Bob Law',
             'representative address' => '123 Fake St Bldg 2 Suite 3 Portland, OR 97214 USA'
@@ -61,7 +61,7 @@ RSpec.describe 'NextStepsEmailController', type: :request do
           'fake_secret',
           { callback_klass: 'AccreditedRepresentativePortal::EmailDeliveryStatusCallback',
             callback_metadata: {
-              form_number: 'Form Number',
+              form_number: '21-22',
               statsd_tags: {
                 service: 'representation-management',
                 function: 'appoint_a_representative_confirmation_email'
@@ -84,7 +84,7 @@ RSpec.describe 'NextStepsEmailController', type: :request do
             {
               'first_name' => 'First',
               'form name' => 'Form Name',
-              'form number' => 'Form Number',
+              'form number' => '21-22',
               'representative type' => 'attorney',
               'representative name' => 'Bob Law',
               'representative address' => '123 Fake St Bldg 2 Suite 3 Portland, OR 97214 USA'
@@ -92,7 +92,7 @@ RSpec.describe 'NextStepsEmailController', type: :request do
             'fake_secret',
             { callback_klass: 'AccreditedRepresentativePortal::EmailDeliveryStatusCallback',
               callback_metadata: {
-                form_number: 'Form Number',
+                form_number: '21-22',
                 statsd_tags: {
                   service: 'representation-management',
                   function: 'appoint_a_representative_confirmation_email'
@@ -118,7 +118,7 @@ RSpec.describe 'NextStepsEmailController', type: :request do
             {
               'first_name' => 'First',
               'form name' => 'Form Name',
-              'form number' => 'Form Number',
+              'form number' => '21-22',
               'representative type' => 'attorney',
               'representative name' => 'Bob Law',
               'representative address' => '123 Fake St Bldg 2 Suite 3 Portland, OR 97214 USA'
@@ -126,7 +126,7 @@ RSpec.describe 'NextStepsEmailController', type: :request do
             'Settings.vanotify.services.va_gov.api_key',
             { callback_klass: 'AccreditedRepresentativePortal::EmailDeliveryStatusCallback',
               callback_metadata: {
-                form_number: 'Form Number',
+                form_number: '21-22',
                 statsd_tags: {
                   service: 'representation-management',
                   function: 'appoint_a_representative_confirmation_email'
@@ -149,8 +149,8 @@ RSpec.describe 'NextStepsEmailController', type: :request do
           expect(response).to have_http_status(:unprocessable_entity)
         end
 
-        it 'responds with the expected body' do
-          expect(response.body).to eq({ errors: ["Email address can't be blank"] }.to_json)
+        it 'responds with a generic error body that does not leak field details' do
+          expect(response.body).to eq({ errors: ['Invalid request parameters'] }.to_json)
         end
       end
 
@@ -165,20 +165,76 @@ RSpec.describe 'NextStepsEmailController', type: :request do
           expect(response).to have_http_status(:unprocessable_entity)
         end
 
-        it 'responds with the expected body' do
-          expect(response.body).to include("Email address can't be blank")
-          expect(response.body).to include("First name can't be blank")
+        it 'responds with the same generic error body regardless of how many fields are invalid' do
+          expect(response.body).to eq({ errors: ['Invalid request parameters'] }.to_json)
+        end
+      end
+
+      context 'when submitting an invalid email format' do
+        before do
+          params[:next_steps_email][:email_address] = 'not-an-email'
+          post(base_path, params:)
+        end
+
+        it 'responds with an unprocessable entity status' do
+          expect(response).to have_http_status(:unprocessable_entity)
+        end
+
+        it 'responds with a generic error body' do
+          expect(response.body).to eq({ errors: ['Invalid request parameters'] }.to_json)
+        end
+      end
+
+      context 'when submitting an invalid form_number' do
+        before do
+          params[:next_steps_email][:form_number] = 'not-a-valid-form'
+          post(base_path, params:)
+        end
+
+        it 'responds with an unprocessable entity status' do
+          expect(response).to have_http_status(:unprocessable_entity)
+        end
+
+        it 'responds with a generic error body' do
+          expect(response.body).to eq({ errors: ['Invalid request parameters'] }.to_json)
+        end
+      end
+
+      context 'when submitting an invalid entity_type' do
+        before do
+          params[:next_steps_email][:entity_type] = 'bogus'
+          post(base_path, params:)
+        end
+
+        it 'responds with an unprocessable entity status' do
+          expect(response).to have_http_status(:unprocessable_entity)
+        end
+
+        it 'responds with a generic error body' do
+          expect(response.body).to eq({ errors: ['Invalid request parameters'] }.to_json)
+        end
+      end
+
+      context 'when entity_id does not resolve to an existing entity' do
+        before do
+          params[:next_steps_email][:entity_id] = 0
+          post(base_path, params:)
+        end
+
+        it 'responds with an unprocessable entity status' do
+          expect(response).to have_http_status(:unprocessable_entity)
+        end
+
+        it 'responds with the same generic error body as other failures — no oracle signal' do
+          expect(response.body).to eq({ errors: ['Invalid request parameters'] }.to_json)
         end
       end
     end
 
-    context "when the feature flag 'appoint_a_representative_enable_pdf' is disabled" do
+    context "when the feature flag 'appoint_a_representative_enable_confirmation_email' is disabled" do
       before do
-        allow(Flipper).to receive(:enabled?).with(:appoint_a_representative_enable_pdf).and_return(false)
-      end
-
-      after do
-        allow(Flipper).to receive(:enabled?).with(:appoint_a_representative_enable_pdf).and_return(true)
+        allow(Flipper).to receive(:enabled?)
+          .with(:appoint_a_representative_enable_confirmation_email).and_return(false)
       end
 
       it 'returns a 404' do

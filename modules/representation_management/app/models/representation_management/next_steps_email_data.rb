@@ -4,30 +4,32 @@ module RepresentationManagement
   class NextStepsEmailData
     include ActiveModel::Model
 
-    next_steps_email_attrs = %i[
-      email_address
-      first_name
-      form_name
-      form_number
-      entity_type
-      entity_id
-    ]
+    VALID_FORM_NUMBERS = %w[21-22 21-22A].freeze
+    VALID_ENTITY_TYPES = %w[individual organization].freeze
 
-    attr_accessor(*next_steps_email_attrs)
+    attr_accessor :email_address, :first_name, :form_name, :form_number, :entity_type, :entity_id
 
-    validates :email_address, presence: true
-    validates :first_name, presence: true
-    validates :form_name, presence: true
-    validates :form_number, presence: true
-    validates :entity_type, presence: true
-    validates :entity_id, presence: true
+    validates :email_address, presence: true,
+                              format: { with: URI::MailTo::EMAIL_REGEXP },
+                              length: { maximum: 254 }
+    validates :first_name, presence: true, length: { maximum: 100 },
+                           format: { with: /\A[^\r\n\x00]*\z/ }
+    validates :form_name, presence: true, length: { maximum: 200 },
+                          format: { with: /\A[^\r\n\x00]*\z/ }
+    validates :form_number, presence: true, inclusion: { in: VALID_FORM_NUMBERS }
+    validates :entity_type, presence: true, inclusion: { in: VALID_ENTITY_TYPES }
+    validates :entity_id, presence: true, length: { maximum: 36 }
     validate :entity_exists?
 
     def entity
-      @entity ||= find_entity
+      return @entity if defined?(@entity)
+
+      @entity = find_entity
     end
 
     def entity_display_type
+      return '' unless entity
+
       if entity.is_a?(Veteran::Service::Representative) || entity.is_a?(AccreditedIndividual)
         representative_type
       else
@@ -36,14 +38,20 @@ module RepresentationManagement
     end
 
     def entity_name
+      return '' unless entity
+
       if entity_type == 'individual'
-        entity.full_name.strip
+        entity.full_name&.strip.to_s
       elsif entity_type == 'organization'
-        entity.name.strip
+        entity.name&.strip.to_s
+      else
+        ''
       end
     end
 
     def entity_address
+      return '' unless entity
+
       <<~ADDRESS.squish
         #{entity.address_line1}
         #{entity.address_line2}
@@ -64,9 +72,9 @@ module RepresentationManagement
     end
 
     def entity_exists?
-      return unless entity.nil?
+      return if entity_type.blank? || entity_id.blank? || VALID_ENTITY_TYPES.exclude?(entity_type)
 
-      errors.add(:entity, 'Entity not found')
+      errors.add(:base, 'The specified entity could not be found') if entity.nil?
     end
 
     def find_representative
@@ -80,22 +88,12 @@ module RepresentationManagement
     end
 
     def representative_type
-      if entity.is_a?(Veteran::Service::Representative)
-        type_string = entity.user_types.first
-      elsif entity.is_a?(AccreditedIndividual)
-        type_string = entity.individual_type
-      end
-      return '' if type_string.blank?
-
+      type_string = entity.is_a?(Veteran::Service::Representative) ? entity.user_types.first : entity.individual_type
       case type_string
-      when 'claims_agent', 'claim_agents'
-        'claims agent'
-      when 'representative', 'veteran_service_officer'
-        'VSO representative'
-      when 'attorney'
-        'attorney'
-      else
-        ''
+      when 'claims_agent', 'claim_agents' then 'claims agent'
+      when 'representative', 'veteran_service_officer' then 'VSO representative'
+      when 'attorney' then 'attorney'
+      else ''
       end
     end
   end

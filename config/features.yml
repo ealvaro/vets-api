@@ -1201,6 +1201,12 @@ features:
   form526_include_document_upload_list_in_overflow_text:
     actor_type: user
     description: Appends a list of SupportingEvidenceAttachment filenames the veteran uploaded for a Form 526 into the overflow text in the form submission
+  appoint_a_representative_enable_confirmation_email:
+    actor_type: cookie_id
+    description: >-
+      Enables the next steps confirmation email endpoint for the appoint a representative flow.
+      Independent kill switch for the email endpoint without affecting PDF generation.
+    enable_in_development: true
   appoint_a_representative_enable_frontend:
     actor_type: cookie_id
     description: Enables Appoint a Representative frontend
