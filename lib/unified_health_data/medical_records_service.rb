@@ -107,7 +107,7 @@ module UnifiedHealthData
         log_raw_source_counts(body)
         combined_records = fetch_combined_records(body)
         doc_ref_records = combined_records.select { |record| record['resource']['resourceType'] == 'DocumentReference' }
-        parsed_notes = parse_notes(doc_ref_records)
+        parsed_notes = clinical_notes_adapter.parse(doc_ref_records)
 
         # Filter by date range on parsed notes (single source of truth for what we return).
         # SCDF may return notes outside the requested range; this ensures only in-range notes are returned.
@@ -326,20 +326,7 @@ module UnifiedHealthData
 
       record = { 'resource' => doc_ref }
       record['source'] = source
-      clinical_notes_adapter.parse(record)
-    end
-
-    def parse_notes(records)
-      return [] if records.blank?
-
-      parsed = records.map { |record| parse_single_note(record) }
-      parsed.compact
-    end
-
-    def parse_single_note(record)
-      return nil if record.blank?
-
-      clinical_notes_adapter.parse(record)
+      clinical_notes_adapter.parse_single_note(record)
     end
 
     def allergy_adapter

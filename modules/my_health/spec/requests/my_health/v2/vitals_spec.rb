@@ -5,7 +5,7 @@ require 'support/mr_client_helpers'
 require 'medical_records/client'
 require 'medical_records/bb_internal/client'
 require 'support/shared_examples_for_mhv'
-require 'unified_health_data/service'
+require 'unified_health_data/medical_records_service'
 require 'support/shared_contexts/uhd_security_endpoint'
 
 RSpec.describe 'MyHealth::V2::AllergiesController', :skip_json_api_validation, type: :request do
@@ -110,7 +110,7 @@ RSpec.describe 'MyHealth::V2::AllergiesController', :skip_json_api_validation, t
 
     context 'error responses' do
       it 'returns a 500 response when there is a server error' do
-        allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_vitals)
+        allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_vitals)
           .and_raise(Common::Exceptions::InternalServerError.new(Faraday::ServerError.new))
         # This cassette doesn't matter since we're stubbing the service call to raise an error
         VCR.use_cassette('unified_health_data/get_vitals_200') do
@@ -121,7 +121,7 @@ RSpec.describe 'MyHealth::V2::AllergiesController', :skip_json_api_validation, t
       end
 
       it 'returns an error response when there is a client error' do
-        allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_vitals)
+        allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_vitals)
           .and_raise(Common::Client::Errors::ClientError.new(Faraday::ClientError.new))
         # This cassette doesn't matter since we're stubbing the service call to raise an error
         VCR.use_cassette('unified_health_data/get_vitals_200') do

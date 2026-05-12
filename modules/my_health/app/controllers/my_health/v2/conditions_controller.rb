@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'unified_health_data/service'
+require 'unified_health_data/medical_records_service'
 require 'unified_health_data/serializers/condition_serializer'
 require 'unique_user_events'
 
@@ -55,7 +55,7 @@ module MyHealth
       private
 
       def service
-        @service ||= UnifiedHealthData::Service.new(@current_user)
+        @service ||= UnifiedHealthData::MedicalRecordsService.new(@current_user)
       end
 
       def warnings_present?

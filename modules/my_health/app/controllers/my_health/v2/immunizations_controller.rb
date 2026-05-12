@@ -3,7 +3,7 @@
 require 'lighthouse/veterans_health/client'
 require 'lighthouse/veterans_health/models/immunization'
 require 'lighthouse/veterans_health/serializers/immunization_serializer'
-require 'unified_health_data/service'
+require 'unified_health_data/medical_records_service'
 require 'unified_health_data/serializers/immunization_serializer'
 require 'common/client/errors'
 require 'common/exceptions'
@@ -103,7 +103,7 @@ module MyHealth
       end
 
       def uhd_service
-        @uhd_service ||= UnifiedHealthData::Service.new(current_user)
+        @uhd_service ||= UnifiedHealthData::MedicalRecordsService.new(current_user)
       end
 
       def warnings_present?

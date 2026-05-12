@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 require 'unified_health_data/concerns/conditions_logging'
-require 'unified_health_data/source_constants'
+require 'unified_health_data/constants'
 require 'medical_records/medical_records_log'
 
 RSpec.describe UnifiedHealthData::Concerns::ConditionsLogging do

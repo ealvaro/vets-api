@@ -90,7 +90,7 @@ module MedicalRecords
   #
   # 5. *Include the concern* in your service class:
   #
-  #      class UnifiedHealthData::Service
+  #      class UnifiedHealthData::MedicalRecordsService
   #        include UnifiedHealthData::Concerns::AllergiesLogging
   #      end
   #

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../models/ccd'
-require_relative '../source_constants'
+require_relative '../constants'
 
 module UnifiedHealthData
   module Adapters

@@ -4,11 +4,11 @@ require 'common/client/base'
 require 'common/exceptions/upstream_partial_failure'
 require_relative 'configuration'
 require_relative 'operation_outcome_detector'
-require_relative 'source_constants'
+require_relative 'constants'
 
 module UnifiedHealthData
   class Client < Common::Client::Base
-    STATSD_KEY_PREFIX = 'api.uhd'
+    include Constants
     include Common::Client::Concerns::Monitoring
 
     configuration UnifiedHealthData::Configuration
@@ -214,7 +214,7 @@ module UnifiedHealthData
     # request, attributing that job to VAHB is intentional.
     def client_application
       source = RequestStore.store.dig('additional_request_attributes', 'source')
-      source == 'va-health-benefits-app' ? SourceConstants::VAHB : SourceConstants::VAGOV
+      source == 'va-health-benefits-app' ? CLIENT_APPLICATION_VAHB : CLIENT_APPLICATION_VAGOV
     end
   end
 end

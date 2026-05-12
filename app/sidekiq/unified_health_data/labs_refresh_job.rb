@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'unified_health_data/service'
+require 'unified_health_data/medical_records_service'
 
 ##
 # Background job to load lab data from the Unified Health Data service
@@ -43,7 +43,7 @@ module UnifiedHealthData
     end
 
     def fetch_labs_data(user, start_date, end_date)
-      uhd_service = UnifiedHealthData::Service.new(user)
+      uhd_service = UnifiedHealthData::MedicalRecordsService.new(user)
       result = uhd_service.get_labs(
         start_date: start_date.strftime('%Y-%m-%d'),
         end_date: end_date.strftime('%Y-%m-%d'),

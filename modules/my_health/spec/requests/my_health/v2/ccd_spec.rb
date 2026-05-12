@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'unified_health_data/service'
+require 'unified_health_data/ccd_service'
 require 'support/shared_contexts/uhd_security_endpoint'
 
 RSpec.describe 'MyHealth::V2::CcdController', type: :request do
@@ -47,13 +47,13 @@ RSpec.describe 'MyHealth::V2::CcdController', type: :request do
     end
 
     context 'when SCDF API error occurs' do
-      let(:service_double) { instance_double(UnifiedHealthData::Service) }
+      let(:service_double) { instance_double(UnifiedHealthData::CcdService) }
       let(:client_error) do
         Common::Client::Errors::ClientError.new('SCDF service unavailable', 503)
       end
 
       before do
-        allow(UnifiedHealthData::Service).to receive(:new).and_return(service_double)
+        allow(UnifiedHealthData::CcdService).to receive(:new).and_return(service_double)
         allow(service_double).to receive(:initiate_ccd).and_raise(client_error)
       end
 
@@ -67,10 +67,10 @@ RSpec.describe 'MyHealth::V2::CcdController', type: :request do
     end
 
     context 'when backend service exception occurs' do
-      let(:service_double) { instance_double(UnifiedHealthData::Service) }
+      let(:service_double) { instance_double(UnifiedHealthData::CcdService) }
 
       before do
-        allow(UnifiedHealthData::Service).to receive(:new).and_return(service_double)
+        allow(UnifiedHealthData::CcdService).to receive(:new).and_return(service_double)
         allow(service_double).to receive(:initiate_ccd)
           .and_raise(Common::Exceptions::BackendServiceException.new(nil, {}, 502, 'Backend failure'))
       end
@@ -85,10 +85,10 @@ RSpec.describe 'MyHealth::V2::CcdController', type: :request do
     end
 
     context 'when unexpected error occurs' do
-      let(:service_double) { instance_double(UnifiedHealthData::Service) }
+      let(:service_double) { instance_double(UnifiedHealthData::CcdService) }
 
       before do
-        allow(UnifiedHealthData::Service).to receive(:new).and_return(service_double)
+        allow(UnifiedHealthData::CcdService).to receive(:new).and_return(service_double)
         allow(service_double).to receive(:initiate_ccd).and_raise(StandardError, 'Unexpected client error')
       end
 
@@ -155,13 +155,13 @@ RSpec.describe 'MyHealth::V2::CcdController', type: :request do
     end
 
     context 'when SCDF API error occurs' do
-      let(:service_double) { instance_double(UnifiedHealthData::Service) }
+      let(:service_double) { instance_double(UnifiedHealthData::CcdService) }
       let(:client_error) do
         Common::Client::Errors::ClientError.new('SCDF service unavailable', 503)
       end
 
       before do
-        allow(UnifiedHealthData::Service).to receive(:new).and_return(service_double)
+        allow(UnifiedHealthData::CcdService).to receive(:new).and_return(service_double)
         allow(service_double).to receive(:get_ccd_status).and_raise(client_error)
       end
 
@@ -175,10 +175,10 @@ RSpec.describe 'MyHealth::V2::CcdController', type: :request do
     end
 
     context 'when backend service exception occurs' do
-      let(:service_double) { instance_double(UnifiedHealthData::Service) }
+      let(:service_double) { instance_double(UnifiedHealthData::CcdService) }
 
       before do
-        allow(UnifiedHealthData::Service).to receive(:new).and_return(service_double)
+        allow(UnifiedHealthData::CcdService).to receive(:new).and_return(service_double)
         allow(service_double).to receive(:get_ccd_status)
           .and_raise(Common::Exceptions::BackendServiceException.new(nil, {}, 502, 'Backend failure'))
       end
@@ -193,10 +193,10 @@ RSpec.describe 'MyHealth::V2::CcdController', type: :request do
     end
 
     context 'when unexpected error occurs' do
-      let(:service_double) { instance_double(UnifiedHealthData::Service) }
+      let(:service_double) { instance_double(UnifiedHealthData::CcdService) }
 
       before do
-        allow(UnifiedHealthData::Service).to receive(:new).and_return(service_double)
+        allow(UnifiedHealthData::CcdService).to receive(:new).and_return(service_double)
         allow(service_double).to receive(:get_ccd_status).and_raise(StandardError, 'Unexpected client error')
       end
 
@@ -281,10 +281,10 @@ RSpec.describe 'MyHealth::V2::CcdController', type: :request do
     end
 
     context 'when presigned URL is nil (CCD not found)' do
-      let(:service_double) { instance_double(UnifiedHealthData::Service) }
+      let(:service_double) { instance_double(UnifiedHealthData::CcdService) }
 
       before do
-        allow(UnifiedHealthData::Service).to receive(:new).and_return(service_double)
+        allow(UnifiedHealthData::CcdService).to receive(:new).and_return(service_double)
         allow(service_double).to receive(:get_ccd_url)
           .with(job_id:, format: 'xml').and_return(nil)
       end
@@ -308,11 +308,11 @@ RSpec.describe 'MyHealth::V2::CcdController', type: :request do
     end
 
     context 'when S3 URL is not on the allowlist' do
-      let(:service_double) { instance_double(UnifiedHealthData::Service) }
+      let(:service_double) { instance_double(UnifiedHealthData::CcdService) }
       let(:disallowed_url) { 'https://evil-bucket.s3.amazonaws.com/malicious.xml' }
 
       before do
-        allow(UnifiedHealthData::Service).to receive(:new).and_return(service_double)
+        allow(UnifiedHealthData::CcdService).to receive(:new).and_return(service_double)
         allow(service_double).to receive(:get_ccd_url)
           .with(job_id:, format: 'xml').and_return(disallowed_url)
       end
@@ -340,13 +340,13 @@ RSpec.describe 'MyHealth::V2::CcdController', type: :request do
     end
 
     context 'when service raises a client error' do
-      let(:service_double) { instance_double(UnifiedHealthData::Service) }
+      let(:service_double) { instance_double(UnifiedHealthData::CcdService) }
       let(:client_error) do
         Common::Client::Errors::ClientError.new('SCDF service unavailable', 503)
       end
 
       before do
-        allow(UnifiedHealthData::Service).to receive(:new).and_return(service_double)
+        allow(UnifiedHealthData::CcdService).to receive(:new).and_return(service_double)
         allow(service_double).to receive(:get_ccd_url).and_raise(client_error)
       end
 
@@ -360,10 +360,10 @@ RSpec.describe 'MyHealth::V2::CcdController', type: :request do
     end
 
     context 'when unexpected error occurs' do
-      let(:service_double) { instance_double(UnifiedHealthData::Service) }
+      let(:service_double) { instance_double(UnifiedHealthData::CcdService) }
 
       before do
-        allow(UnifiedHealthData::Service).to receive(:new).and_return(service_double)
+        allow(UnifiedHealthData::CcdService).to receive(:new).and_return(service_double)
         allow(service_double).to receive(:get_ccd_url).and_raise(StandardError, 'Unexpected client error')
       end
 

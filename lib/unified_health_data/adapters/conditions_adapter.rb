@@ -2,12 +2,12 @@
 
 require 'medical_records/medical_records_log'
 require_relative '../models/condition'
-require_relative 'date_normalizer'
+require_relative 'date_time_helpers'
 
 module UnifiedHealthData
   module Adapters
     class ConditionsAdapter
-      include DateNormalizer
+      include DateTimeHelpers
 
       def initialize(user: nil)
         @mr_log = MedicalRecords::MedicalRecordsLog.new(user:)

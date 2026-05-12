@@ -5,20 +5,13 @@ require 'unified_health_data/concerns/facility_cache_warming'
 require 'unified_health_data/facility_service'
 
 RSpec.describe UnifiedHealthData::Concerns::FacilityCacheWarming do
-  subject(:instance) { test_class.new(adapter) }
+  subject(:instance) { test_class.new }
 
-  let(:adapter) { double('LabOrTestAdapter') }
   let(:facility_service) { instance_double(UnifiedHealthData::FacilityService) }
 
   let(:test_class) do
     Class.new do
       include UnifiedHealthData::Concerns::FacilityCacheWarming
-
-      attr_reader :lab_or_test_adapter
-
-      def initialize(adapter)
-        @lab_or_test_adapter = adapter
-      end
     end
   end
 
@@ -48,15 +41,10 @@ RSpec.describe UnifiedHealthData::Concerns::FacilityCacheWarming do
     context 'when records have station numbers' do
       let(:records) do
         [
-          { 'resource' => { 'id' => '1' } },
-          { 'resource' => { 'id' => '2' } },
-          { 'resource' => { 'id' => '3' } }
+          build_record_with_station('358'),
+          build_record_with_station('358'),
+          build_record_with_station('442')
         ]
-      end
-
-      before do
-        allow(adapter).to receive(:extract_station_number_from_record)
-          .and_return('358', '358', '442')
       end
 
       it 'fetches each unique station number once' do
@@ -92,14 +80,9 @@ RSpec.describe UnifiedHealthData::Concerns::FacilityCacheWarming do
     context 'when some records lack station numbers' do
       let(:records) do
         [
-          { 'resource' => { 'id' => '1' } },
-          { 'resource' => { 'id' => '2' } }
+          build_record_with_station('358'),
+          build_record_without_station
         ]
-      end
-
-      before do
-        allow(adapter).to receive(:extract_station_number_from_record)
-          .and_return('358', nil)
       end
 
       it 'only fetches for records with station numbers' do
@@ -116,5 +99,34 @@ RSpec.describe UnifiedHealthData::Concerns::FacilityCacheWarming do
           .with('api.uhd.facility.station_number_coverage', 50.0, tags: ['source:labs'])
       end
     end
+  end
+
+  # Helper methods to build realistic test records that work with StationHelpers
+  def build_record_with_station(station_number)
+    {
+      'resource' => {
+        'id' => SecureRandom.uuid,
+        'contained' => [
+          {
+            'resourceType' => 'Organization',
+            'identifier' => [
+              {
+                'system' => 'urn:oid:2.16.840.1.113883.4.349',
+                'value' => station_number
+              }
+            ]
+          }
+        ]
+      }
+    }
+  end
+
+  def build_record_without_station
+    {
+      'resource' => {
+        'id' => SecureRandom.uuid,
+        'contained' => []
+      }
+    }
   end
 end

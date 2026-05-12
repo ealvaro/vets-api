@@ -3,96 +3,29 @@
 require_relative '../models/lab_or_test'
 require_relative '../reference_range_formatter'
 require_relative '../facility_service'
-require_relative '../source_constants'
-require_relative 'date_normalizer'
+require_relative '../constants'
+require_relative '../concerns/labs_and_tests_logging'
+require_relative 'date_time_helpers'
 require_relative 'fhir_helpers'
-require_relative 'facility_name_resolver'
+require_relative 'station_helpers'
 require 'medical_records/medical_records_log'
 
 module UnifiedHealthData
   module Adapters
-    class LabOrTestAdapter # rubocop:disable Metrics/ClassLength
-      include DateNormalizer
+    class LabOrTestAdapter
+      include Concerns::LabsAndTestsLogging
+      include UnifiedHealthData::Constants
+      include DateTimeHelpers
       include FhirHelpers
+      include StationHelpers
 
       ALLOWED_STATUSES = %w[final amended corrected appended].freeze
       VISTA_HOSTNAME_PATTERN = /\.MED\.VA\.GOV$/i
-      VA_STATION_OID = 'urn:oid:2.16.840.1.113883.4.349'
-      LABS = MedicalRecords::MedicalRecordsLog::LABS_AND_TESTS
 
       # @param mr_log [MedicalRecords::MedicalRecordsLog, nil] Structured logger (nil = Rails.logger fallback)
       def initialize(mr_log: nil)
         @mr_log = mr_log
       end
-
-      # HL7 v2-0074 diagnostic service section codes and LOINC codes to user-friendly display names
-      TEST_CODE_DISPLAY_MAP = {
-        'CH' => 'Chemistry and hematology',
-        'MI' => 'Microbiology',
-        'MB' => 'Microbiology',
-        'SP' => 'Surgical Pathology',
-        'CY' => 'Cytology',
-        'EM' => 'Electron Microscopy',
-        'LP29684-5' => 'Radiology'
-      }.freeze
-
-      #
-      # Interpretation code map based on https://terminology.hl7.org/3.1.0/CodeSystem-v3-ObservationInterpretation.html
-      #
-
-      INTERPRETATION_MAP = {
-        'CAR' => 'Carrier',
-        'CARRIER' => 'Carrier',
-        '<' => 'Off scale low',
-        '>' => 'Off scale high',
-        'A' => 'Abnormal',
-        'AA' => 'Critical abnormal',
-        'AC' => 'Anti-complementary substances present',
-        'B' => 'Better',
-        'D' => 'Significant change down',
-        'DET' => 'Detected',
-        'E' => 'Equivocal',
-        'EX' => 'Outside threshold',
-        'EXP' => 'Expected',
-        'H' => 'High',
-        'H*' => 'Critical high',
-        'HH' => 'Critical high',
-        'HU' => 'Significantly high',
-        'H>' => 'Significantly high',
-        'HM' => 'Hold for Medical Review',
-        'HX' => 'Above high threshold',
-        'I' => 'Intermediate',
-        'IE' => 'Insufficient evidence',
-        'IND' => 'Indeterminate',
-        'L' => 'Low',
-        'L*' => 'Critical low',
-        'LL' => 'Critical low',
-        'LU' => 'Significantly low',
-        'L<' => 'Significantly low',
-        'LX' => 'Below low threshold',
-        'MS' => 'Moderately susceptible',
-        'N' => 'Normal',
-        'NCL' => 'No CLSI defined breakpoint',
-        'ND' => 'Not detected',
-        'NEG' => 'Negative',
-        'NR' => 'Non-reactive',
-        'NS' => 'Non-susceptible',
-        'OBX' => 'Interpretation qualifiers in separate OBX segments',
-        'POS' => 'Positive',
-        'QCF' => 'Quality control failure',
-        'R' => 'Resistant',
-        'RR' => 'Reactive',
-        'S' => 'Susceptible',
-        'SDD' => 'Susceptible-dose dependent',
-        'SYN-R' => 'Synergy - resistant',
-        'SYN-S' => 'Synergy - susceptible',
-        'TOX' => 'Cytotoxic substance present',
-        'U' => 'Significant change up',
-        'UNE' => 'Unexpected',
-        'VS' => 'Very susceptible',
-        'W' => 'Worse',
-        'WR' => 'Weakly reactive'
-      }.freeze
 
       def parse_labs(records)
         return [] if records.blank?
@@ -108,18 +41,6 @@ module UnifiedHealthData
           log_record_parse_failure(record, e)
           nil
         end
-      end
-
-      # Public method to extract station number from a record's contained resources.
-      # Used by Service layer for cache pre-warming.
-      #
-      # @param record [Hash] A UHD record with 'resource' > 'contained'
-      # @return [String, nil] Station number or nil if not found
-      def extract_station_number_from_record(record)
-        return nil if record.nil?
-
-        contained = record.dig('resource', 'contained')
-        extract_station_number(contained)
       end
 
       private
@@ -154,15 +75,6 @@ module UnifiedHealthData
         ALLOWED_STATUSES.include?(status)
       end
 
-      # Dual-path logging: structured mr_log when available, Rails.logger fallback otherwise.
-      def log_adapter(level, structured_opts, fallback_message, fallback_opts = {})
-        if @mr_log
-          @mr_log.public_send(level, **structured_opts)
-        else
-          Rails.logger.public_send(level, fallback_message, fallback_opts.presence)
-        end
-      end
-
       def build_lab_or_test(record, code, encoded_data, observations, contained) # rubocop:disable Metrics/MethodLength
         resource = record['resource']
         date_completed_value, facility_timezone = resolve_date_and_timezone(resource, contained)
@@ -188,113 +100,17 @@ module UnifiedHealthData
         )
       end # rubocop:enable Metrics/MethodLength
 
+      # TODO: See if we can tap into the memoized version in Rx expiration helper
+      # (see facility_timezone_for method in oracle_health_expiration_helper)
+      #
       # Resolves date_completed and facility_timezone by extracting station number
       # and converting UTC to facility local time when possible
       def resolve_date_and_timezone(resource, contained)
         raw_date = get_date_completed(resource)
         station_number = extract_station_number(contained)
-        facility_timezone = get_facility_timezone(station_number)
+        facility_timezone = facility_service.get_facility_timezone(station_number)
         date_completed = convert_to_facility_time(raw_date, facility_timezone)
         [date_completed, facility_timezone]
-      end
-
-      def log_warnings(record, encoded_data, observations)
-        log_final_status_warning(record, record['resource']['status'], encoded_data, observations)
-        log_missing_date_warning(record)
-      end
-
-      def log_filtered_diagnostic_report(record, reason)
-        resource = record['resource']
-        log_adapter(
-          :info,
-          { resource: LABS, action: 'filter', report_id: resource['id'],
-            status: resource['status'], reason:, filtering: true },
-          "Filtered DiagnosticReport: id=#{resource['id']}, status=#{resource['status']}, reason=#{reason}",
-          { service: 'unified_health_data', filtering: true }
-        )
-        StatsD.increment('unified_health_data.lab_or_test.filtered_diagnostic_report',
-                         tags: ["reason:#{reason}"])
-      end
-
-      def log_filtered_observations(record, filtered_count, total_count)
-        resource = record['resource']
-        log_adapter(
-          :info,
-          { resource: LABS, action: 'filter_observations', report_id: resource['id'],
-            filtered: filtered_count, total: total_count, filtering: true },
-          "Filtered #{filtered_count}/#{total_count} Observations from DiagnosticReport #{resource['id']}",
-          { service: 'unified_health_data', filtering: true }
-        )
-        # Increment the counter once per DiagnosticReport that has filtered observations
-        StatsD.increment('unified_health_data.lab_or_test.filtered_observations')
-      end
-
-      # Logs when an individual record fails to parse. Isolates one bad record from
-      # killing the entire batch so the veteran still sees the rest of their results.
-      def log_record_parse_failure(record, error)
-        report_id = record.dig('resource', 'id')
-        log_adapter(
-          :error,
-          { resource: LABS, action: 'parse', anomaly: 'record_parse_failure',
-            report_id:, error_class: error.class.name, error_message: error.message },
-          "Failed to parse DiagnosticReport #{report_id}: #{error.class} - #{error.message}",
-          { service: 'unified_health_data' }
-        )
-        StatsD.increment('unified_health_data.lab_or_test.parse_failure')
-      end
-
-      # Logs when an individual observation within a DiagnosticReport fails to parse.
-      # Isolates one bad observation so the rest of the record's observations are still returned.
-      def log_observation_parse_failure(record, obs, error)
-        report_id = record.dig('resource', 'id')
-        observation_id = obs['id']
-        log_adapter(
-          :error,
-          { resource: LABS, action: 'parse', anomaly: 'observation_parse_failure',
-            report_id:, observation_id:, error_class: error.class.name, error_message: error.message },
-          "Failed to parse Observation #{observation_id} in DiagnosticReport #{report_id}: " \
-          "#{error.class} - #{error.message}",
-          { service: 'unified_health_data' }
-        )
-        StatsD.increment('unified_health_data.lab_or_test.observation_parse_failure')
-      end
-
-      def log_final_status_warning(record, status, encoded_data, observations)
-        return unless status == 'final' && encoded_data.blank? && observations.blank?
-
-        report_id = record['resource']['id']
-        if @mr_log
-          @mr_log.warn(resource: LABS, action: 'parse', anomaly: 'final_status_empty_data', report_id:)
-        else
-          patient_ref = record['resource']&.dig('subject', 'reference')
-          patient_last_four = patient_ref&.split('/')&.last&.last(4) || 'unknown'
-          Rails.logger.warn(
-            "DiagnosticReport #{report_id} has status 'final' but is missing " \
-            "both encoded data and observations (Patient: #{patient_last_four})",
-            { service: 'unified_health_data' }
-          )
-        end
-        StatsD.increment('unified_health_data.lab_or_test.final_status_empty_data')
-      end
-
-      def log_missing_date_warning(record)
-        resource = record['resource']
-        effective_date_time = resource['effectiveDateTime']
-        effective_period = resource['effectivePeriod']
-
-        detail = if effective_date_time.blank? && effective_period.blank?
-                   'missing effectiveDateTime and effectivePeriod'
-                 elsif effective_period.present? && effective_period['start'].blank?
-                   'missing effectivePeriod.start'
-                 end
-        return unless detail
-
-        log_adapter(
-          :warn,
-          { resource: LABS, action: 'parse', anomaly: 'missing_date', report_id: resource['id'], detail: },
-          "DiagnosticReport #{resource['id']} is #{detail}",
-          { service: 'unified_health_data' }
-        )
       end
 
       def get_location(record)
@@ -333,31 +149,6 @@ module UnifiedHealthData
         else
           resource['name']
         end
-      end
-
-      def resolve_hostname_location(organization)
-        identifier = organization&.dig('identifier')&.find { |id| id['system'] == VA_STATION_OID }
-        station_number = identifier&.dig('value')
-        return nil if station_number.blank?
-
-        facility_name_resolver.lookup(station_number)
-      rescue => e
-        Rails.logger.warn(
-          'Failed to resolve facility name for hostname location ' \
-          "(organization_id=#{organization['id']}, station_number=#{station_number}, " \
-          "error_class=#{e.class}): #{e.message}",
-          {
-            service: 'unified_health_data',
-            organization_id: organization['id'],
-            station_number:,
-            error_class: e.class.to_s
-          }
-        )
-        nil
-      end
-
-      def facility_name_resolver
-        @facility_name_resolver ||= UnifiedHealthData::Adapters::FacilityNameResolver.new
       end
 
       def get_code(record)
@@ -704,108 +495,8 @@ module UnifiedHealthData
         end
       end
 
-      # Extracts station number from contained resources using multiple fallback strategies
-      # Fallback chain:
-      #   1. Practitioner SN=XXX format (most explicit, Oracle Health)
-      #   2. Practitioner plain 3-digit number with "OTHER" type (Oracle Health)
-      #   3. Organization with VA OID system (VistA data via UHD)
-      #
-      # @param contained [Array<Hash>] Array of contained FHIR resources
-      # @return [String, nil] Station number (e.g., '668') or nil if not found
-      def extract_station_number(contained)
-        return nil if contained.blank?
-
-        # Try Practitioner identifiers first (Oracle Health data)
-        station_number = extract_station_from_practitioner(contained)
-        return station_number if station_number.present?
-
-        # Fallback: Try Organization identifiers (VistA data via UHD)
-        extract_station_from_organization(contained)
-      end
-
-      # Extracts station number from Practitioner identifiers
-      # Used primarily for Oracle Health data
-      # Priority: SN=XXX format > plain 3-digit with OTHER type
-      #
-      # @param contained [Array<Hash>] Array of contained FHIR resources
-      # @return [String, nil] Station number or nil if not found
-      def extract_station_from_practitioner(contained)
-        practitioner = contained.find { |r| r['resourceType'] == 'Practitioner' }
-        return nil unless practitioner&.dig('identifier')
-
-        identifiers = practitioner['identifier']
-
-        # Priority 1: SN=XXX format (most explicit)
-        sn_identifier = identifiers.find { |i| (val = i['value']).present? && val.start_with?('SN=') }
-        return sn_identifier['value'].sub('SN=', '') if sn_identifier
-
-        # Priority 2: Station number with "OTHER" type (3 digits, optionally with letter suffix like 668A, 668GC)
-        plain_identifier = identifiers.find do |i|
-          (val = i['value']).present? && i.dig('type', 'text') == 'OTHER' && val.match?(/^\d{3}[A-Z]{0,2}$/i)
-        end
-        plain_identifier&.dig('value')
-      end
-
-      # Extracts station number from Organization identifiers
-      # Used primarily for VistA data coming through UHD
-      # Looks for identifiers with the VA OID system (urn:oid:2.16.840.1.113883.4.349)
-      #
-      # @param contained [Array<Hash>] Array of contained FHIR resources
-      # @return [String, nil] Station number or nil if not found
-      def extract_station_from_organization(contained)
-        organization = contained.find { |r| r['resourceType'] == 'Organization' }
-        return nil unless organization&.dig('identifier')
-
-        organization['identifier'].each do |identifier|
-          system = identifier['system']
-          value = identifier['value']
-
-          # VA OID system identifier contains station number
-          # Example: {"system": "urn:oid:2.16.840.1.113883.4.349", "value": "989"}
-          next unless system.to_s.include?('2.16.840.1.113883.4.349') && value.present?
-
-          return value
-        end
-
-        nil
-      end
-
-      # Gets the facility timezone using the UHD FacilityService
-      #
-      # @param station_number [String] The station number (e.g., '668')
-      # @return [String, nil] IANA timezone ID (e.g., 'America/Los_Angeles') or nil if not found
-      def get_facility_timezone(station_number)
-        return nil if station_number.blank?
-
-        facility_service.get_facility_timezone(station_number)
-      end
-
       def facility_service
         @facility_service ||= UnifiedHealthData::FacilityService.new
-      end
-
-      # Converts a UTC datetime string to facility local time
-      #
-      # @param date_string [String] ISO 8601 datetime string (e.g., '2023-11-06T18:32:00+00:00')
-      # @param timezone [String] IANA timezone ID (e.g., 'America/Los_Angeles')
-      # @return [String] ISO 8601 datetime string in facility local time, or original if conversion fails
-      def convert_to_facility_time(date_string, timezone)
-        return date_string if date_string.blank? || timezone.blank?
-
-        begin
-          # Parse the datetime and convert to the facility timezone
-          parsed_time = DateTime.parse(date_string).to_time.utc
-          local_time = parsed_time.in_time_zone(timezone)
-          local_time.iso8601
-        rescue ArgumentError, TypeError, TZInfo::InvalidTimezoneIdentifier, TZInfo::UnknownTimezone => e
-          log_adapter(
-            :warn,
-            { resource: LABS, action: 'timezone_conversion', error_message: e.message, date_string:, timezone: },
-            "Failed to convert time to facility timezone: #{e.message}",
-            { service: 'unified_health_data', date_string:, timezone: }
-          )
-          date_string
-        end
       end
     end
   end

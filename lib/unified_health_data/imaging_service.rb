@@ -2,17 +2,12 @@
 
 require 'common/client/base'
 require_relative 'adapters/imaging_study_adapter'
+require_relative 'base_service'
 require_relative 'client'
 
 module UnifiedHealthData
-  class ImagingService
-    STATSD_KEY_PREFIX = 'api.uhd'
+  class ImagingService < UnifiedHealthData::BaseService
     include Common::Client::Concerns::Monitoring
-
-    def initialize(user)
-      super()
-      @user = user
-    end
 
     def get_imaging_studies(start_date:, end_date:, imaging_study_type: 'RADIOLOGY', site_ids: [])
       with_monitoring do

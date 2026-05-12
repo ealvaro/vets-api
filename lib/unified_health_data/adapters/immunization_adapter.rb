@@ -2,12 +2,12 @@
 
 require 'medical_records/medical_records_log'
 require_relative '../models/immunization'
-require_relative 'date_normalizer'
+require_relative 'date_time_helpers'
 
 module UnifiedHealthData
   module Adapters
     class ImmunizationAdapter
-      include DateNormalizer
+      include DateTimeHelpers
 
       FILTERED_STATUSES = %w[entered-in-error].freeze
 

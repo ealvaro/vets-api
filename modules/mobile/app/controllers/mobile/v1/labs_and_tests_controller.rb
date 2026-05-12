@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'unified_health_data/service'
+require 'unified_health_data/medical_records_service'
 require 'unified_health_data/serializers/lab_or_test_serializer'
 require 'unique_user_events'
 
@@ -42,7 +42,7 @@ module Mobile
       end
 
       def service
-        UnifiedHealthData::Service.new(@current_user)
+        UnifiedHealthData::MedicalRecordsService.new(@current_user)
       end
     end
   end

@@ -1,11 +1,14 @@
 # frozen_string_literal: true
 
+require_relative '../adapters/station_helpers'
+
 module UnifiedHealthData
   module Concerns
     # Facility cache pre-warming for lab records.
     # Extracted from Service to keep class length manageable.
     module FacilityCacheWarming
       extend ActiveSupport::Concern
+      include Adapters::StationHelpers
 
       private
 
@@ -14,7 +17,7 @@ module UnifiedHealthData
       def prewarm_facility_cache(records)
         return if records.blank?
 
-        all_station_numbers = records.map { |r| lab_or_test_adapter.extract_station_number_from_record(r) }
+        all_station_numbers = records.map { |r| extract_station_number_from_record(r) }
         station_numbers = all_station_numbers.compact.uniq
 
         log_facility_cache_metrics(records.size, all_station_numbers, station_numbers)

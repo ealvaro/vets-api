@@ -4,37 +4,14 @@ require 'medical_records/medical_records_log'
 require_relative '../models/clinical_notes'
 require_relative '../models/avs'
 require_relative '../models/binary_data'
-require_relative '../source_constants'
-require_relative 'date_normalizer'
+require_relative '../constants'
+require_relative 'date_time_helpers'
 
 module UnifiedHealthData
   module Adapters
     class ClinicalNotesAdapter
-      include DateNormalizer
-      LOINC_CODES = {
-        '11506-3' => 'physician_procedure_note',
-        '11488-4' => 'consult_result',
-        '18842-5' => 'discharge_summary'
-      }.freeze
-
-      AVS_LOINC_CODE_MAPPING = {
-        '96345-4' => 'ambulatory_patient_summary',
-        '68834-1' => 'primary_care_note',
-        '18842-5' => 'discharge_summary',
-        '96339-7' => 'inpatient_patient_summary',
-        '78583-2' => 'pharmacology_discharge_instructions'
-      }.freeze
-
-      FHIR_RESOURCE_TYPES = {
-        BINARY: 'Binary',
-        BUNDLE: 'Bundle',
-        DIAGNOSTIC_REPORT: 'DiagnosticReport',
-        DOCUMENT_REFERENCE: 'DocumentReference',
-        LOCATION: 'Location',
-        OBSERVATION: 'Observation',
-        ORGANIZATION: 'Organization',
-        PRACTITIONER: 'Practitioner'
-      }.freeze
+      include DateTimeHelpers
+      include UnifiedHealthData::Constants
 
       AVS_CONTENT_TYPES = ['application/pdf', 'text/plain'].freeze
 
@@ -44,9 +21,17 @@ module UnifiedHealthData
         @mr_log = MedicalRecords::MedicalRecordsLog.new(user:)
       end
 
-      def parse(note)
+      def parse(records)
+        return [] if records.blank?
+
+        parsed = records.map { |record| parse_single_note(record) }
+        parsed.compact
+      end
+
+      def parse_single_note(note)
+        return nil unless note && note['resource']
+
         record = note['resource']
-        return nil unless record
 
         unless allowed_doc_status?(record['docStatus'])
           reason = record['docStatus'].blank? ? 'missing_doc_status' : 'disallowed_doc_status'

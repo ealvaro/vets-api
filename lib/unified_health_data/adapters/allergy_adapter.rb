@@ -2,21 +2,12 @@
 
 require 'medical_records/medical_records_log'
 require_relative '../models/allergy'
-require_relative 'date_normalizer'
+require_relative 'date_time_helpers'
 
 module UnifiedHealthData
   module Adapters
     class AllergyAdapter
-      include DateNormalizer
-      FHIR_RESOURCE_TYPES = {
-        BUNDLE: 'Bundle',
-        DIAGNOSTIC_REPORT: 'DiagnosticReport',
-        DOCUMENT_REFERENCE: 'DocumentReference',
-        LOCATION: 'Location',
-        OBSERVATION: 'Observation',
-        ORGANIZATION: 'Organization',
-        PRACTITIONER: 'Practitioner'
-      }.freeze
+      include DateTimeHelpers
 
       def initialize(user: nil)
         @mr_log = MedicalRecords::MedicalRecordsLog.new(user:)

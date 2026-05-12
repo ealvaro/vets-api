@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 require_relative '../models/imaging_study'
-require_relative 'date_normalizer'
+require_relative 'date_time_helpers'
 
 module UnifiedHealthData
   module Adapters
     class ImagingStudyAdapter
-      include DateNormalizer
+      include DateTimeHelpers
 
       # Parses imaging study records from FHIR ImagingStudy resources
       #

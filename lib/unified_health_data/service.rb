@@ -577,7 +577,7 @@ module UnifiedHealthData
     def parse_single_note(record)
       return nil if record.blank?
 
-      clinical_notes_adapter.parse(record)
+      clinical_notes_adapter.parse_single_note(record)
     end
 
     # Fetches a single Oracle Health note directly via the SCDF source-specific endpoint.

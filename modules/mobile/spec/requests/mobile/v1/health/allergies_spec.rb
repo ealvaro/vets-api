@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'unified_health_data/service'
+require 'unified_health_data/medical_records_service'
 require 'support/shared_contexts/uhd_security_endpoint'
 
 require_relative '../../../../support/helpers/rails_helper'
@@ -84,7 +84,7 @@ RSpec.describe 'Mobile::V1::AllergyIntolerances', :skip_json_api_validation, typ
 
     context 'error responses' do
       it 'returns a 500 response when there is a server error' do
-        allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_allergies)
+        allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_allergies)
           .and_raise(Common::Exceptions::InternalServerError.new(Faraday::ServerError.new))
         # This cassette doesn't matter since we're stubbing the service call to raise an error
         VCR.use_cassette('unified_health_data/get_allergies_200') do
@@ -95,7 +95,7 @@ RSpec.describe 'Mobile::V1::AllergyIntolerances', :skip_json_api_validation, typ
       end
 
       it 'returns an error response when there is a client error' do
-        allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_allergies)
+        allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_allergies)
           .and_raise(Common::Client::Errors::ClientError.new(Faraday::ClientError.new))
         # This cassette doesn't matter since we're stubbing the service call to raise an error
         VCR.use_cassette('unified_health_data/get_allergies_200') do

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'unified_health_data/service'
+require 'unified_health_data/medical_records_service'
 
 describe VAOS::V2::AppointmentsService do
   include ActiveSupport::Testing::TimeHelpers
@@ -2879,7 +2879,7 @@ describe VAOS::V2::AppointmentsService do
 
     context 'when UHD Service successfully retrieved the binaries' do
       it 'returns the fetched PDF binaries' do
-        allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_avs_binary_data)
+        allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_avs_binary_data)
           .with(doc_id: 'doc1', appt_id: 'appt').and_return(avs_pdf)
         result = subject.send(:fetch_avs_binaries, 'appt', ['doc1'])
         expect(result).to eq([{
@@ -2891,7 +2891,7 @@ describe VAOS::V2::AppointmentsService do
 
     context 'when an error occurs' do
       it 'logs the error and sets the error field' do
-        allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_avs_binary_data)
+        allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_avs_binary_data)
           .with(doc_id: 'doc1', appt_id: 'appt')
           .and_raise(Common::Exceptions::BackendServiceException)
         expect(Rails.logger).to receive(:error)
@@ -2905,7 +2905,7 @@ describe VAOS::V2::AppointmentsService do
 
     context 'when there is no available binary' do
       it 'sets the error field' do
-        allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_avs_binary_data)
+        allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_avs_binary_data)
           .with(doc_id: 'doc1', appt_id: 'appt').and_return(nil)
         result = subject.send(:fetch_avs_binaries, 'appt', ['doc1'])
         expect(result).to eq([{
@@ -2917,12 +2917,12 @@ describe VAOS::V2::AppointmentsService do
 
     context 'when there are mixed results' do
       it 'returns both successful binaries and error fields' do
-        allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_avs_binary_data)
+        allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_avs_binary_data)
           .with(doc_id: 'doc1', appt_id: 'appt').and_return(avs_pdf)
-        allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_avs_binary_data)
+        allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_avs_binary_data)
           .with(doc_id: 'doc2', appt_id: 'appt')
           .and_raise(Common::Exceptions::BackendServiceException)
-        allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_avs_binary_data)
+        allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_avs_binary_data)
           .with(doc_id: 'doc3', appt_id: 'appt').and_return(nil)
 
         expect(Rails.logger).to receive(:error)
@@ -3675,7 +3675,7 @@ describe VAOS::V2::AppointmentsService do
 
     context 'when include_avs is false' do
       it 'returns an empty hash without checking flippers or calling UHD service' do
-        expect_any_instance_of(UnifiedHealthData::Service).not_to receive(:get_all_avs_metadata)
+        expect_any_instance_of(UnifiedHealthData::MedicalRecordsService).not_to receive(:get_all_avs_metadata)
         result = subject.send(:fetch_all_avs_metadata, start_date_dt, [cerner_appt], include_avs: false)
         expect(result).to eq({})
       end
@@ -3688,7 +3688,7 @@ describe VAOS::V2::AppointmentsService do
       end
 
       it 'returns an empty hash without calling UHD service' do
-        expect_any_instance_of(UnifiedHealthData::Service).not_to receive(:get_all_avs_metadata)
+        expect_any_instance_of(UnifiedHealthData::MedicalRecordsService).not_to receive(:get_all_avs_metadata)
         result = subject.send(:fetch_all_avs_metadata, start_date_dt, [cerner_appt], include_avs: true)
         expect(result).to eq({})
       end
@@ -3701,7 +3701,7 @@ describe VAOS::V2::AppointmentsService do
       end
 
       it 'returns an empty hash without calling UHD service' do
-        expect_any_instance_of(UnifiedHealthData::Service).not_to receive(:get_all_avs_metadata)
+        expect_any_instance_of(UnifiedHealthData::MedicalRecordsService).not_to receive(:get_all_avs_metadata)
         result = subject.send(:fetch_all_avs_metadata, start_date_dt, [cerner_appt], include_avs: true)
         expect(result).to eq({})
       end
@@ -3714,13 +3714,13 @@ describe VAOS::V2::AppointmentsService do
       end
 
       it 'returns an empty hash for VistA-only appointments' do
-        expect_any_instance_of(UnifiedHealthData::Service).not_to receive(:get_all_avs_metadata)
+        expect_any_instance_of(UnifiedHealthData::MedicalRecordsService).not_to receive(:get_all_avs_metadata)
         result = subject.send(:fetch_all_avs_metadata, start_date_dt, [vista_appt], include_avs: true)
         expect(result).to eq({})
       end
 
       it 'returns an empty hash for an empty appointments list' do
-        expect_any_instance_of(UnifiedHealthData::Service).not_to receive(:get_all_avs_metadata)
+        expect_any_instance_of(UnifiedHealthData::MedicalRecordsService).not_to receive(:get_all_avs_metadata)
         result = subject.send(:fetch_all_avs_metadata, start_date_dt, [], include_avs: true)
         expect(result).to eq({})
       end
@@ -3751,7 +3751,7 @@ describe VAOS::V2::AppointmentsService do
 
       context 'when the UHD service returns data' do
         it 'builds and returns the appointment-indexed hash of AfterVisitSummary objects' do
-          allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_all_avs_metadata)
+          allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_all_avs_metadata)
             .and_return([[document_reference], [encounter]])
           result = subject.send(:fetch_all_avs_metadata, start_date_dt, [cerner_appt], include_avs: true)
           expect(result['appt-123']).to be_an(Array)
@@ -3765,7 +3765,7 @@ describe VAOS::V2::AppointmentsService do
 
       context 'when the UHD service raises an error' do
         it 'logs the error and returns an empty hash' do
-          allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_all_avs_metadata)
+          allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_all_avs_metadata)
             .and_raise(Common::Exceptions::BackendServiceException)
           expect(Rails.logger).to receive(:error).with(a_string_including('Error retrieving AVS metadata'))
           result = subject.send(:fetch_all_avs_metadata, start_date_dt, [cerner_appt], include_avs: true)

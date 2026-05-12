@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 require 'unified_health_data/concerns/clinical_notes_logging'
-require 'unified_health_data/source_constants'
+require 'unified_health_data/constants'
 require 'unified_health_data/models/clinical_notes'
 require 'medical_records/medical_records_log'
 

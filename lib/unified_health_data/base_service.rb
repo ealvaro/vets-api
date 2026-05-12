@@ -8,8 +8,8 @@ require_relative 'constants'
 
 module UnifiedHealthData
   class BaseService
-    STATSD_KEY_PREFIX = 'api.uhd'
     include Common::Client::Concerns::Monitoring
+    include Constants
 
     def initialize(user)
       super()
@@ -38,11 +38,11 @@ module UnifiedHealthData
     def fetch_combined_records(body)
       return [] if body.nil?
 
-      vista_records = (body.dig(Constants::Source::VISTA, 'entry') || []).map do |r|
-        r.merge('source' => Constants::Source::VISTA)
+      vista_records = (body.dig(SourceConstants::VISTA, 'entry') || []).map do |r|
+        r.merge('source' => SourceConstants::VISTA)
       end
-      oracle_health_records = (body.dig(Constants::Source::ORACLE_HEALTH, 'entry') || []).map do |r|
-        r.merge('source' => Constants::Source::ORACLE_HEALTH)
+      oracle_health_records = (body.dig(SourceConstants::ORACLE_HEALTH, 'entry') || []).map do |r|
+        r.merge('source' => SourceConstants::ORACLE_HEALTH)
       end
       vista_records + oracle_health_records
     end
@@ -61,7 +61,7 @@ module UnifiedHealthData
     end
 
     def remap_vista_identifier(records)
-      records[Constants::Source::VISTA]['entry']&.each do |allergy|
+      records[SourceConstants::VISTA]['entry']&.each do |allergy|
         vista_identifier = allergy['resource']['identifier']&.find do |id|
           id['system'].starts_with?('https://va.gov/systems/')
         end
@@ -72,7 +72,7 @@ module UnifiedHealthData
     end
 
     def remap_vista_uid(records)
-      records[Constants::Source::VISTA]['entry']&.each do |note|
+      records[SourceConstants::VISTA]['entry']&.each do |note|
         vista_uid_identifier = note['resource']['identifier']&.find { |id| id['system'] == 'vista-uid' }
         next unless vista_uid_identifier && vista_uid_identifier['value']
 

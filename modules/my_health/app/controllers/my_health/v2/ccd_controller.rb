@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'unified_health_data/service'
+require 'unified_health_data/ccd_service'
 require 'unified_health_data/serializers/ccd_serializer'
 
 module MyHealth
@@ -129,7 +129,7 @@ module MyHealth
       end
 
       def service
-        @service ||= UnifiedHealthData::Service.new(@current_user)
+        @service ||= UnifiedHealthData::CcdService.new(@current_user)
       end
     end
   end

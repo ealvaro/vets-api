@@ -341,7 +341,7 @@ RSpec.describe 'MyHealth::V2::ImmunizationsController', :skip_json_api_validatio
       end
 
       context 'error cases' do
-        let(:mock_service) { instance_double(UnifiedHealthData::Service) }
+        let(:mock_service) { instance_double(UnifiedHealthData::MedicalRecordsService) }
 
         before do
           allow_any_instance_of(MyHealth::V2::ImmunizationsController).to receive(:uhd_service).and_return(mock_service)

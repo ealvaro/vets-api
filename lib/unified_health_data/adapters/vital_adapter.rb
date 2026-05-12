@@ -1,55 +1,17 @@
 # frozen_string_literal: true
 
 require 'medical_records/medical_records_log'
+require_relative '../constants'
 require_relative '../models/vital'
-require_relative 'date_normalizer'
+require_relative 'date_time_helpers'
 
 module UnifiedHealthData
   module Adapters
     class VitalAdapter
-      include DateNormalizer
+      include UnifiedHealthData::Constants
+      include DateTimeHelpers
 
       FILTERED_STATUSES = %w[entered-in-error].freeze
-
-      FHIR_RESOURCE_TYPES = {
-        BUNDLE: 'Bundle',
-        DIAGNOSTIC_REPORT: 'DiagnosticReport',
-        DOCUMENT_REFERENCE: 'DocumentReference',
-        LOCATION: 'Location',
-        OBSERVATION: 'Observation',
-        ORGANIZATION: 'Organization',
-        PRACTITIONER: 'Practitioner'
-      }.freeze
-
-      VITAL_LOINC_CODES = {
-        '85354-9' => 'BLOOD_PRESSURE',
-        '9279-1' => 'RESPIRATION',
-        '8302-2' => 'HEIGHT',
-        '8310-5' => 'TEMPERATURE',
-        '29463-7' => 'WEIGHT',
-        '3141-9' => 'WEIGHT',
-        '8480-6' => 'SYSTOLIC',
-        '8462-4' => 'DIASTOLIC',
-        '8867-4' => 'PULSE',
-        '59408-5' => 'PULSE_OXIMETRY',
-        '2708-6' => 'PULSE_OXIMETRY'
-      }.freeze
-
-      VITAL_UNIT_DISPLAY_TEXT = {
-        BLOOD_PRESSURE: '',
-        PULSE: ' beats per minute',
-        HEART_RATE: ' beats per minute',
-        RESPIRATION: ' breaths per minute',
-        RESPIRATORY_RATE: ' breaths per minute',
-        PULSE_OXIMETRY: '%',
-        TEMPERATURE: ' °F',
-        WEIGHT: ' pounds',
-        BODY_WEIGHT: ' pounds',
-        HEIGHT_FT: ' feet',
-        HEIGHT_IN: ' inches',
-        BODY_HEIGHT: ' inches',
-        PAIN_SEVERITY: ''
-      }.freeze
 
       def initialize(user: nil)
         @mr_log = MedicalRecords::MedicalRecordsLog.new(user:)

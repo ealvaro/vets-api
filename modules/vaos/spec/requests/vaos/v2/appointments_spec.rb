@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'unified_health_data/service'
+require 'unified_health_data/medical_records_service'
 require 'unique_user_events'
 
 RSpec.describe 'VAOS::V2::Appointments', :skip_mvi, type: :request do
@@ -1478,12 +1478,12 @@ RSpec.describe 'VAOS::V2::Appointments', :skip_mvi, type: :request do
         end
 
         it 'has access and returns appointment with OH avs' do
-          allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_avs_binary_data)
+          allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_avs_binary_data)
             .with(doc_id: 'doc0', appt_id: 'appt123').and_return(avs_binary)
-          allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_avs_binary_data)
+          allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_avs_binary_data)
             .with(doc_id: 'doc1', appt_id: 'appt123')
             .and_raise(Common::Exceptions::BackendServiceException)
-          allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_avs_binary_data)
+          allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_avs_binary_data)
             .with(doc_id: 'doc2', appt_id: 'appt123').and_return(nil)
           get '/vaos/v2/appointments/avs_binaries/appt123?doc_ids=doc0,doc1,doc2', headers: inflection_header
           expect(response).to have_http_status(:ok)

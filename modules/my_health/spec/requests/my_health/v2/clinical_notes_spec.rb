@@ -5,7 +5,7 @@ require 'support/mr_client_helpers'
 require 'medical_records/client'
 require 'medical_records/bb_internal/client'
 require 'support/shared_examples_for_mhv'
-require 'unified_health_data/service'
+require 'unified_health_data/medical_records_service'
 require 'unique_user_events'
 require 'support/shared_contexts/uhd_security_endpoint'
 
@@ -172,7 +172,7 @@ RSpec.describe 'MyHealth::V2::ClinicalNotesController', :skip_json_api_validatio
 
     context 'error responses' do
       it 'returns a 500 response when there is a server error' do
-        allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_care_summaries_and_notes)
+        allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_care_summaries_and_notes)
           .and_raise(Common::Exceptions::InternalServerError.new(Faraday::ServerError.new))
         # This cassette doesn't matter since we're stubbing the service call to raise an error
         VCR.use_cassette('unified_health_data/get_clinical_notes_200') do
@@ -184,7 +184,7 @@ RSpec.describe 'MyHealth::V2::ClinicalNotesController', :skip_json_api_validatio
       end
 
       it 'returns an error response when there is a client error' do
-        allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_care_summaries_and_notes)
+        allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_care_summaries_and_notes)
           .and_raise(Common::Client::Errors::ClientError.new(Faraday::ClientError.new))
         # This cassette doesn't matter since we're stubbing the service call to raise an error
         VCR.use_cassette('unified_health_data/get_clinical_notes_200') do
@@ -226,7 +226,7 @@ RSpec.describe 'MyHealth::V2::ClinicalNotesController', :skip_json_api_validatio
       it 'returns a successful response for a single note' do
         # This is currently only in place for OH notes
         # TODO: get an OH note sample response that has an appended note
-        expect_any_instance_of(UnifiedHealthData::Service)
+        expect_any_instance_of(UnifiedHealthData::MedicalRecordsService)
           .to receive(:get_single_summary_or_note)
           .with('15249697279', source: UnifiedHealthData::SourceConstants::ORACLE_HEALTH)
           .and_return(UnifiedHealthData::ClinicalNotes.new(
@@ -266,7 +266,7 @@ RSpec.describe 'MyHealth::V2::ClinicalNotesController', :skip_json_api_validatio
       end
 
       it 'passes source param to the service when provided' do
-        expect_any_instance_of(UnifiedHealthData::Service)
+        expect_any_instance_of(UnifiedHealthData::MedicalRecordsService)
           .to receive(:get_single_summary_or_note)
           .with('15249697279', source: UnifiedHealthData::SourceConstants::ORACLE_HEALTH)
           .and_return(UnifiedHealthData::ClinicalNotes.new(
@@ -303,7 +303,7 @@ RSpec.describe 'MyHealth::V2::ClinicalNotesController', :skip_json_api_validatio
       end
 
       it 'returns a 404 when note is not found in source' do
-        expect_any_instance_of(UnifiedHealthData::Service)
+        expect_any_instance_of(UnifiedHealthData::MedicalRecordsService)
           .to receive(:get_single_summary_or_note)
           .with('12345', source: UnifiedHealthData::SourceConstants::ORACLE_HEALTH)
           .and_return(nil)
@@ -329,7 +329,7 @@ RSpec.describe 'MyHealth::V2::ClinicalNotesController', :skip_json_api_validatio
 
     context 'error responses' do
       it 'returns a 500 response when there is a server error' do
-        allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_single_summary_or_note)
+        allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_single_summary_or_note)
           .and_raise(Common::Exceptions::InternalServerError.new(Faraday::ServerError.new))
 
         get '/my_health/v2/medical_records/clinical_notes/12345',
@@ -340,7 +340,7 @@ RSpec.describe 'MyHealth::V2::ClinicalNotesController', :skip_json_api_validatio
       end
 
       it 'returns an error response when there is a client error' do
-        allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_single_summary_or_note)
+        allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_single_summary_or_note)
           .and_raise(Common::Client::Errors::ClientError.new(Faraday::ClientError.new))
 
         get '/my_health/v2/medical_records/clinical_notes/12345',

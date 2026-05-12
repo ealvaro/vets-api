@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'unique_user_events'
-require 'unified_health_data/service'
+require 'unified_health_data/medical_records_service'
 require 'unified_health_data/serializers/immunization_serializer'
 
 module Mobile
@@ -88,7 +88,7 @@ module Mobile
       end
 
       def uhd_service
-        @uhd_service ||= UnifiedHealthData::Service.new(@current_user)
+        @uhd_service ||= UnifiedHealthData::MedicalRecordsService.new(@current_user)
       end
 
       def pagination_params

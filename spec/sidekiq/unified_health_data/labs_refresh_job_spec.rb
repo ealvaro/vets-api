@@ -1,19 +1,19 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'unified_health_data/service'
+require 'unified_health_data/medical_records_service'
 
 Sidekiq::Testing.fake!
 
 RSpec.describe UnifiedHealthData::LabsRefreshJob, type: :job do
   let(:user) { create(:user, :loa3) }
-  let(:uhd_service) { instance_double(UnifiedHealthData::Service) }
+  let(:uhd_service) { instance_double(UnifiedHealthData::MedicalRecordsService) }
   let(:labs_data) { [instance_double(UnifiedHealthData::LabOrTest)] }
   let(:labs_result) { { records: labs_data, warnings: [] } }
 
   before do
     allow(User).to receive(:find).with(user.uuid).and_return(user)
-    allow(UnifiedHealthData::Service).to receive(:new).with(user).and_return(uhd_service)
+    allow(UnifiedHealthData::MedicalRecordsService).to receive(:new).with(user).and_return(uhd_service)
     allow(uhd_service).to receive(:get_labs).and_return(labs_result)
     allow(StatsD).to receive(:gauge)
   end

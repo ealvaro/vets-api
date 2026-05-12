@@ -50,9 +50,24 @@ RSpec.describe 'ClinicalNotesAdapter' do
   end
 
   describe '#parse' do
+    it 'returns empty array when records is nil' do
+      expect(adapter.parse(nil)).to eq([])
+    end
+
+    it 'returns empty array when records is empty' do
+      expect(adapter.parse([])).to eq([])
+    end
+
+    it 'compacts out nil values from parse failures' do
+      result = adapter.parse([nil, nil])
+      expect(result).to eq([])
+    end
+  end
+
+  describe '#parse_single_note' do
     it 'returns the expected fields for happy path for vista note with all fields' do
       note = find_vista_entry(vista_standard_note_id).merge('source' => 'vista')
-      parsed_note = adapter.parse(note)
+      parsed_note = adapter.parse_single_note(note)
 
       expect(parsed_note).to have_attributes(
         {
@@ -74,7 +89,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
 
     it 'returns the expected fields for happy path for OH note with all fields' do
       note = find_oh_entry(oh_note_id).merge('source' => 'oracle-health')
-      parsed_note = adapter.parse(note)
+      parsed_note = adapter.parse_single_note(note)
 
       expect(parsed_note).to have_attributes(
         {
@@ -96,7 +111,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
     end
 
     it 'returns the expected fields with alternate fallbacks for all fields' do
-      parsed_note = adapter.parse(
+      parsed_note = adapter.parse_single_note(
         notes_methods_fallback_response['oracle-health']['entry'][0].merge('source' => 'oracle-health')
       )
 
@@ -123,7 +138,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
 
     it 'returns nil for addenda on a standard (non-addendum) note' do
       note = find_vista_entry(vista_standard_note_id).merge('source' => 'vista')
-      parsed_note = adapter.parse(note)
+      parsed_note = adapter.parse_single_note(note)
 
       expect(parsed_note.addenda).to be_nil
     end
@@ -131,7 +146,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
     context 'single addendum note' do
       it 'parses original note content and a single addendum entry' do
         note = find_vista_entry(vista_single_addendum_note_id).merge('source' => 'vista')
-        parsed_note = adapter.parse(note)
+        parsed_note = adapter.parse_single_note(note)
 
         # The outer record is the addendum; the contained doc is the original note.
         # Original note date should be the oldest (contained doc's date).
@@ -152,7 +167,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
 
     context 'multiple addendum note' do
       let(:note) { find_vista_entry(vista_multi_addendum_note_id).merge('source' => 'vista') }
-      let(:parsed_note) { adapter.parse(note) }
+      let(:parsed_note) { adapter.parse_single_note(note) }
 
       it 'parses original note content and multiple addenda entries in chronological order' do
         # The outer record (9b7034fd) is the newest addendum (THIRD addendum).
@@ -229,7 +244,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
     end
 
     it 'private methods fail gracefully and returns the expected fields with nil for missing values' do
-      parsed_note = adapter.parse(notes_methods_fallback_response['vista']['entry'][0])
+      parsed_note = adapter.parse_single_note(notes_methods_fallback_response['vista']['entry'][0])
 
       expect(parsed_note).to have_attributes(
         {
@@ -250,7 +265,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
     end
 
     it 'returns a parsed note with nil note field when there is no note data' do
-      parsed_note = adapter.parse(notes_methods_fallback_response['vista']['entry'][1])
+      parsed_note = adapter.parse_single_note(notes_methods_fallback_response['vista']['entry'][1])
 
       expect(parsed_note).not_to be_nil
       expect(parsed_note.note).to be_nil
@@ -259,7 +274,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
     it 'returns a parsed note with nil note field for oracle-health records without binary content' do
       note = find_oh_entry(oh_note_id).deep_dup.merge('source' => 'oracle-health')
       note['resource']['content'].each { |c| c['attachment'].delete('data') }
-      parsed_note = adapter.parse(note)
+      parsed_note = adapter.parse_single_note(note)
 
       expect(parsed_note).not_to be_nil
       expect(parsed_note.note).to be_nil
@@ -271,7 +286,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
       it 'returns a parsed note when docStatus is final' do
         note = find_vista_entry(vista_standard_note_id).deep_dup
         note['resource']['docStatus'] = 'final'
-        parsed_note = adapter.parse(note)
+        parsed_note = adapter.parse_single_note(note)
 
         expect(parsed_note).not_to be_nil
         expect(parsed_note.id).to eq('76ad925b-0c2c-4401-ac0a-13542d6b6ef5')
@@ -280,7 +295,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
       it 'returns a parsed note when docStatus is amended' do
         note = find_vista_entry(vista_standard_note_id).deep_dup
         note['resource']['docStatus'] = 'amended'
-        parsed_note = adapter.parse(note)
+        parsed_note = adapter.parse_single_note(note)
 
         expect(parsed_note).not_to be_nil
         expect(parsed_note.id).to eq('76ad925b-0c2c-4401-ac0a-13542d6b6ef5')
@@ -289,7 +304,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
       it 'is case insensitive for docStatus' do
         note = find_vista_entry(vista_standard_note_id).deep_dup
         note['resource']['docStatus'] = 'Final'
-        parsed_note = adapter.parse(note)
+        parsed_note = adapter.parse_single_note(note)
 
         expect(parsed_note).not_to be_nil
         expect(parsed_note.id).to eq('76ad925b-0c2c-4401-ac0a-13542d6b6ef5')
@@ -298,7 +313,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
       it 'returns nil when docStatus is preliminary' do
         note = find_vista_entry(vista_standard_note_id).deep_dup
         note['resource']['docStatus'] = 'preliminary'
-        parsed_note = adapter.parse(note)
+        parsed_note = adapter.parse_single_note(note)
 
         expect(parsed_note).to be_nil
       end
@@ -306,7 +321,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
       it 'returns nil when docStatus is entered-in-error' do
         note = find_vista_entry(vista_standard_note_id).deep_dup
         note['resource']['docStatus'] = 'entered-in-error'
-        parsed_note = adapter.parse(note)
+        parsed_note = adapter.parse_single_note(note)
 
         expect(parsed_note).to be_nil
       end
@@ -314,7 +329,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
       it 'returns nil when docStatus is nil' do
         note = find_vista_entry(vista_standard_note_id).deep_dup
         note['resource'].delete('docStatus')
-        parsed_note = adapter.parse(note)
+        parsed_note = adapter.parse_single_note(note)
 
         expect(parsed_note).to be_nil
       end
@@ -339,7 +354,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
           tags: ['reason:disallowed_doc_status']
         )
 
-        adapter.parse(note)
+        adapter.parse_single_note(note)
       end
 
       it 'logs filtered clinical notes with missing docStatus' do
@@ -361,7 +376,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
           tags: ['reason:missing_doc_status']
         )
 
-        adapter.parse(note)
+        adapter.parse_single_note(note)
       end
 
       it 'does not log but still increments StatsD when toggle is disabled' do
@@ -378,7 +393,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
           tags: ['reason:disallowed_doc_status']
         )
 
-        result = adapter.parse(note)
+        result = adapter.parse_single_note(note)
         expect(result).to be_nil
       end
     end
@@ -400,7 +415,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
         )
         expect(StatsD).to receive(:increment).with('unified_health_data.clinical_note.empty_content')
 
-        parsed = adapter.parse(note)
+        parsed = adapter.parse_single_note(note)
         expect(parsed).not_to be_nil
         expect(parsed.note).to be_nil
       end
@@ -411,7 +426,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
         expect(Rails.logger).not_to receive(:warn)
         expect(StatsD).not_to receive(:increment).with('unified_health_data.clinical_note.empty_content')
 
-        parsed = adapter.parse(note)
+        parsed = adapter.parse_single_note(note)
         expect(parsed.note).not_to be_nil
       end
 
@@ -431,7 +446,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
         )
         expect(StatsD).to receive(:increment).with('unified_health_data.clinical_note.unknown_loinc_code')
 
-        parsed = adapter.parse(note)
+        parsed = adapter.parse_single_note(note)
         expect(parsed.note_type).to eq('other')
       end
 
@@ -448,7 +463,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
         )
         expect(StatsD).to receive(:increment).with('unified_health_data.clinical_note.unknown_loinc_code')
 
-        parsed = adapter.parse(note)
+        parsed = adapter.parse_single_note(note)
         expect(parsed.note_type).to eq('other')
       end
 
@@ -460,14 +475,14 @@ RSpec.describe 'ClinicalNotesAdapter' do
         )
         expect(StatsD).not_to receive(:increment).with('unified_health_data.clinical_note.unknown_loinc_code')
 
-        adapter.parse(note)
+        adapter.parse_single_note(note)
       end
     end
 
     context 'OH encounter-based date derivation' do
       it 'uses context.period.end as date when present for OH standard note' do
         note = find_oh_entry(oh_note_id).deep_dup.merge('source' => 'oracle-health')
-        parsed_note = adapter.parse(note)
+        parsed_note = adapter.parse_single_note(note)
 
         # context.period.end is '2025-07-29T17:48:41Z', DocumentReference.date is '2025-05-15T17:48:51Z'
         expect(parsed_note.date).to eq('2025-07-29T17:48:41Z')
@@ -477,7 +492,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
         note = find_oh_entry(oh_note_id).deep_dup.merge('source' => 'oracle-health')
         note['resource']['context']['period']['start'] = '2025-07-28T10:00:00Z'
 
-        parsed_note = adapter.parse(note)
+        parsed_note = adapter.parse_single_note(note)
 
         expect(parsed_note.date).to eq('2025-07-28T10:00:00Z')
       end
@@ -486,7 +501,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
         note = find_oh_entry(oh_note_id).deep_dup.merge('source' => 'oracle-health')
         note['resource']['context'].delete('period')
 
-        parsed_note = adapter.parse(note)
+        parsed_note = adapter.parse_single_note(note)
 
         expect(parsed_note.date).to eq('2025-05-15T17:48:51Z')
       end
@@ -498,7 +513,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
           { 'reference' => 'Practitioner/14883417', 'display' => 'Contributor_system, HX_VA_TIU_SYS' }
         ]
 
-        parsed_note = adapter.parse(note)
+        parsed_note = adapter.parse_single_note(note)
 
         expect(parsed_note.date).to be_nil
       end
@@ -509,7 +524,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
           { 'reference' => 'Practitioner/14883417', 'display' => 'Contributor_system, HX_VA_TIU_SYS' }
         ]
 
-        parsed_note = adapter.parse(note)
+        parsed_note = adapter.parse_single_note(note)
 
         # context.period.end should still be used
         expect(parsed_note.date).to eq('2025-07-29T17:48:41Z')
@@ -517,7 +532,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
 
       it 'does not change VistA note date behavior' do
         note = find_vista_entry(vista_standard_note_id).merge('source' => 'vista')
-        parsed_note = adapter.parse(note)
+        parsed_note = adapter.parse_single_note(note)
 
         # VistA notes should continue using DocumentReference.date
         expect(parsed_note.date).to eq('2025-01-14T09:18:00.000+00:00')
@@ -525,7 +540,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
 
       it 'sets sort_date from the encounter-derived date' do
         note = find_oh_entry(oh_note_id).deep_dup.merge('source' => 'oracle-health')
-        parsed_note = adapter.parse(note)
+        parsed_note = adapter.parse_single_note(note)
 
         # sort_date should be normalized from the encounter-derived date, not DocRef.date
         expect(parsed_note.sort_date).to eq(adapter.send(:normalize_date_for_sorting, '2025-07-29T17:48:41Z'))
@@ -645,7 +660,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
         # Stub build_addendum_entry to return nil (simulating blank content / rescued error)
         allow(adapter).to receive(:build_addendum_entry).and_return(nil)
 
-        parsed_note = adapter.parse(note)
+        parsed_note = adapter.parse_single_note(note)
         expect(parsed_note).not_to be_nil
         expect(parsed_note.addenda).to eq([])
       end
@@ -667,7 +682,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
         )
 
         # The note still parses — appended docs are empty, falls back to standard behavior
-        parsed_note = adapter.parse(note)
+        parsed_note = adapter.parse_single_note(note)
         expect(parsed_note).not_to be_nil
       end
     end
@@ -912,7 +927,7 @@ RSpec.describe 'ClinicalNotesAdapter' do
             'content' => [{ 'attachment' => { 'contentType' => 'text/plain', 'data' => 'dGVzdA==' } }]
           }
         }
-        parsed = adapter.parse(note)
+        parsed = adapter.parse_single_note(note)
         expect(parsed).not_to be_nil
         expect(parsed.note_type).to eq('other')
       end

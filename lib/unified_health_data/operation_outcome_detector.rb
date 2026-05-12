@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'source_constants'
+require_relative 'constants'
 
 module UnifiedHealthData
   # Detects OperationOutcome resources in SCDF responses, distinguishing between
@@ -69,8 +69,8 @@ module UnifiedHealthData
     private
 
     def detect_issues
-      detect_issues_in_source('vista')
-      detect_issues_in_source('oracle-health')
+      detect_issues_in_source(SourceConstants::VISTA)
+      detect_issues_in_source(SourceConstants::ORACLE_HEALTH)
     end
 
     def detect_issues_in_source(source)

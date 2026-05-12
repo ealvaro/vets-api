@@ -991,7 +991,7 @@ module VAOS
       end
 
       def unified_health_data_service
-        @unified_health_data_service ||= UnifiedHealthData::Service.new(user)
+        @unified_health_data_service ||= UnifiedHealthData::MedicalRecordsService.new(user)
       end
 
       def clinical_notes_adapter

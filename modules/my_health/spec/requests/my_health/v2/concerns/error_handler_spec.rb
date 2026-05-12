@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'unified_health_data/service'
+require 'unified_health_data/medical_records_service'
 require 'support/shared_contexts/uhd_security_endpoint'
 
 RSpec.describe MyHealth::V2::Concerns::ErrorHandler, :skip_json_api_validation, type: :request do
@@ -25,7 +25,7 @@ RSpec.describe MyHealth::V2::Concerns::ErrorHandler, :skip_json_api_validation, 
 
   # Helper to stub service and make request
   def stub_and_request(error)
-    allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_allergies).and_raise(error)
+    allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_allergies).and_raise(error)
     VCR.use_cassette('unified_health_data/get_allergies_200') do
       get path, headers: { 'X-Key-Inflection' => 'camel' }
     end

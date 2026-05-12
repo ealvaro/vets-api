@@ -6,7 +6,7 @@ module UnifiedHealthData
     # Data-source identifiers that appear in the SCDF API response envelope
     # (e.g. body['vista'], body['oracle-health']) and are tagged onto each
     # record's 'source' attribute for downstream consumers.
-    module Source
+    module SourceConstants
       VISTA = 'vista'
       ORACLE_HEALTH = 'oracle-health'
     end
@@ -113,7 +113,37 @@ module UnifiedHealthData
     }.freeze
   end
 
+  VITAL_LOINC_CODES = {
+    '85354-9' => 'BLOOD_PRESSURE',
+    '9279-1' => 'RESPIRATION',
+    '8302-2' => 'HEIGHT',
+    '8310-5' => 'TEMPERATURE',
+    '29463-7' => 'WEIGHT',
+    '3141-9' => 'WEIGHT',
+    '8480-6' => 'SYSTOLIC',
+    '8462-4' => 'DIASTOLIC',
+    '8867-4' => 'PULSE',
+    '59408-5' => 'PULSE_OXIMETRY',
+    '2708-6' => 'PULSE_OXIMETRY'
+  }.freeze
+
+  VITAL_UNIT_DISPLAY_TEXT = {
+    BLOOD_PRESSURE: '',
+    PULSE: ' beats per minute',
+    HEART_RATE: ' beats per minute',
+    RESPIRATION: ' breaths per minute',
+    RESPIRATORY_RATE: ' breaths per minute',
+    PULSE_OXIMETRY: '%',
+    TEMPERATURE: ' °F',
+    WEIGHT: ' pounds',
+    BODY_WEIGHT: ' pounds',
+    HEIGHT_FT: ' feet',
+    HEIGHT_IN: ' inches',
+    BODY_HEIGHT: ' inches',
+    PAIN_SEVERITY: ''
+  }.freeze
+
   # Backward-compatible alias so existing references to SourceConstants still work.
-  # But don't use until the other files/adapters/services are all updated
-  # SourceConstants = Constants::Source
+  # Uncomment after source_constants removed for real
+  SourceConstants = Constants::SourceConstants
 end
