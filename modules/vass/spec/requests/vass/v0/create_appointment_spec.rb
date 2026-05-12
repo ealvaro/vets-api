@@ -44,7 +44,8 @@ RSpec.describe 'Vass::V0::Appointments - Create Appointment', type: :request do
       {
         topics: %w[67e0bd9f-5e53-f011-bec2-001dd806389e 78f1ce0a-6f64-g122-cfd3-112ee917462f],
         dt_start_utc: '2026-01-10T10:00:00Z',
-        dt_end_utc: '2026-01-10T10:30:00Z'
+        dt_end_utc: '2026-01-10T10:30:00Z',
+        veteran_time_zone: 'America/New_York'
       }
     end
 
@@ -286,6 +287,75 @@ RSpec.describe 'Vass::V0::Appointments - Create Appointment', type: :request do
           expect(json_response['errors']).to be_present
           expect(json_response['errors'].first['code']).to eq('missing_parameter')
           expect(json_response['errors'].first['detail']).to eq('Required parameter is missing')
+        end
+      end
+
+      context 'when veteran_time_zone is missing' do
+        let(:invalid_params) do
+          appointment_params.except(:veteran_time_zone)
+        end
+
+        it 'returns bad request' do
+          redis_client = Vass::RedisClient.build
+          redis_client.store_booking_session(
+            veteran_id:,
+            data: { appointment_id: 'cohort-current-123' }
+          )
+
+          post('/vass/v0/appointment',
+               params: invalid_params.to_json,
+               headers:)
+
+          expect(response).to have_http_status(:bad_request)
+          json_response = JSON.parse(response.body)
+
+          expect(json_response['errors']).to be_present
+          expect(json_response['errors'].first['code']).to eq('missing_parameter')
+          expect(json_response['errors'].first['detail']).to eq('Required parameter is missing')
+        end
+      end
+
+      context 'when veteran_time_zone is not a valid IANA zone' do
+        before do
+          redis_client = Vass::RedisClient.build
+          redis_client.store_booking_session(
+            veteran_id:,
+            data: { appointment_id: 'cohort-current-123' }
+          )
+        end
+
+        it 'returns bad request with invalid_veteran_time_zone' do
+          post('/vass/v0/appointment',
+               params: appointment_params.merge(veteran_time_zone: 'Not/A_Real_Zone').to_json,
+               headers:)
+
+          expect(response).to have_http_status(:bad_request)
+          json_response = JSON.parse(response.body)
+
+          expect(json_response['errors'].first['code']).to eq('invalid_veteran_time_zone')
+          expect(json_response['errors'].first['detail']).to eq('Unknown veteran time zone')
+        end
+      end
+
+      context 'when veteran_time_zone is valid IANA but unmapped for VASS' do
+        before do
+          redis_client = Vass::RedisClient.build
+          redis_client.store_booking_session(
+            veteran_id:,
+            data: { appointment_id: 'cohort-current-123' }
+          )
+        end
+
+        it 'returns bad request with invalid_veteran_time_zone' do
+          post('/vass/v0/appointment',
+               params: appointment_params.merge(veteran_time_zone: 'Pacific/Kiritimati').to_json,
+               headers:)
+
+          expect(response).to have_http_status(:bad_request)
+          json_response = JSON.parse(response.body)
+
+          expect(json_response['errors'].first['code']).to eq('invalid_veteran_time_zone')
+          expect(json_response['errors'].first['detail']).to eq('Unsupported veteran time zone')
         end
       end
 

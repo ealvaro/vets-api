@@ -5,7 +5,7 @@ http_interactions:
       uri: <VASS_API_URL>/api/SaveAppointment
       body:
         encoding: UTF-8
-        string: '{"correlationId":"test-correlation-id","veteranId":"vet-uuid-123","timeStartUTC":"2026-01-10T10:00:00Z","timeEndUTC":"2026-01-10T10:30:00Z","appointmentId":"cohort-current-123","selectedAgentSkills":["67e0bd9f-5e53-f011-bec2-001dd806389e","78f1ce0a-6f64-g122-cfd3-112ee917462f"]}'
+        string: '{"correlationId":"test-correlation-id","veteranId":"vet-uuid-123","timeStartUTC":"2026-01-10T10:00:00Z","timeEndUTC":"2026-01-10T10:30:00Z","appointmentId":"cohort-current-123","selectedAgentSkills":["67e0bd9f-5e53-f011-bec2-001dd806389e","78f1ce0a-6f64-g122-cfd3-112ee917462f"],"veteranTimeZone":"Eastern Standard Time"}'
       headers:
         Content-Type:
           - application/json

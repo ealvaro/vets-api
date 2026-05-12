@@ -12,6 +12,9 @@ module Vass
     class RedisError < BaseError; end
     class ValidationError < BaseError; end
 
+    # Raised when +veteranTimeZone+ is missing, unknown IANA, or unmapped for upstream SaveAppointment.
+    class InvalidVeteranTimeZoneError < ValidationError; end
+
     class AuthenticationError < BaseError
       # Safe message constants for authentication errors.
       # These are the only messages that will be rendered to clients.

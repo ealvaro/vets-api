@@ -168,7 +168,7 @@ module Vass
       #     "topics": ["67e0bd9f-5e53-f011-bec2-001dd806389e", "78f1ce0a-6f64-g122-cfd3-112ee917462f"],
       #     "dtStartUtc": "2026-01-10T10:00:00Z",
       #     "dtEndUtc": "2026-01-10T10:30:00Z",
-      #     "timeZone": "America/New_York"
+      #     "veteranTimeZone": "America/New_York"
       #   }
       #
       # @example Response
@@ -179,20 +179,15 @@ module Vass
       #   }
       #
       def create
-        validate_required_params!(:topics, :dt_start_utc, :dt_end_utc)
+        validate_required_params!(:topics, :dt_start_utc, :dt_end_utc, :veteran_time_zone)
 
         appointment_id = retrieve_appointment_id_from_session
         return handle_missing_appointment_id unless appointment_id
 
-        response = save_appointment_with_service(appointment_id)
-        track_success(APPOINTMENTS_CREATE)
-        render_vass_response(
-          response,
-          success_data: ->(r) { { appointment_id: r.dig('data', 'appointment_id') } },
-          error_code: 'appointment_save_failed',
-          error_message: 'Failed to save appointment',
-          error_status: :unprocessable_content
-        )
+        render_booking_response(save_appointment_with_service(appointment_id))
+      rescue Vass::Errors::InvalidVeteranTimeZoneError => e
+        track_failure(APPOINTMENTS_CREATE, error_type: 'invalid_veteran_time_zone')
+        render_error('invalid_veteran_time_zone', e.message, :bad_request)
       rescue Vass::Errors::VassApiError,
              Vass::Errors::ServiceError,
              Vass::Errors::AuthenticationError,
@@ -305,7 +300,7 @@ module Vass
       # @return [ActionController::Parameters] Permitted parameters
       #
       def permitted_params
-        params.permit(:correlation_id, :appointment_id, :dt_start_utc, :dt_end_utc, :time_zone, topics: [])
+        params.permit(:correlation_id, :appointment_id, :dt_start_utc, :dt_end_utc, :veteran_time_zone, topics: [])
       end
 
       ##
@@ -403,6 +398,20 @@ module Vass
       end
 
       ##
+      # @param response [Hash] Parsed SaveAppointment response from VASS API
+      #
+      def render_booking_response(response)
+        track_success(APPOINTMENTS_CREATE)
+        render_vass_response(
+          response,
+          success_data: ->(r) { { appointment_id: r.dig('data', 'appointment_id') } },
+          error_code: 'appointment_save_failed',
+          error_message: 'Failed to save appointment',
+          error_status: :unprocessable_content
+        )
+      end
+
+      ##
       # Saves appointment via service layer.
       #
       # @param appointment_id [String] Appointment ID from session
@@ -417,7 +426,7 @@ module Vass
             appointment_id:,
             selected_agent_skills: permitted_params[:topics],
             veteran_contact_email: @veteran_contact_email,
-            time_zone: permitted_params[:time_zone]
+            veteran_time_zone: permitted_params[:veteran_time_zone]
           }
         )
       end

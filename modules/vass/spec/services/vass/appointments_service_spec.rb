@@ -79,7 +79,9 @@ describe Vass::AppointmentsService do
       it 'creates a new appointment' do
         VCR.use_cassette('vass/oauth_token_success') do
           VCR.use_cassette('vass/appointments/save_appointment_success') do
-            result = subject.save_appointment(appointment_params:)
+            result = subject.save_appointment(
+              appointment_params: appointment_params.merge(veteran_time_zone: 'America/New_York')
+            )
 
             expect(result['success']).to be true
             expect(result['data']['appointment_id']).to eq('e61e1a40-1e63-f011-bec2-001dd80351ea')
@@ -88,7 +90,7 @@ describe Vass::AppointmentsService do
       end
     end
 
-    context 'when veteran_contact_email and time_zone are provided' do
+    context 'when veteran_contact_email and veteran_time_zone are provided' do
       let(:client) { instance_double(Vass::Client) }
       let(:service_with_mock_client) do
         service = described_class.build(edipi:, correlation_id:)
@@ -99,16 +101,16 @@ describe Vass::AppointmentsService do
       let(:params_with_contact) do
         appointment_params.merge(
           veteran_contact_email: 'veteran@example.com',
-          time_zone: 'America/New_York'
+          veteran_time_zone: 'America/New_York'
         )
       end
 
-      it 'includes veteranContactEmail and timeZone in the request' do
+      it 'includes veteranContactEmail and veteranTimeZone Windows id in the request' do
         expect(client).to receive(:save_appointment).with(
           edipi:,
           appointment_data: hash_including(
             veteranContactEmail: 'veteran@example.com',
-            timeZone: 'America/New_York'
+            veteranTimeZone: 'Eastern Standard Time'
           )
         ).and_return(double(body: { 'success' => true, 'data' => { 'appointment_id' => 'appt-123' } }))
 
@@ -116,7 +118,7 @@ describe Vass::AppointmentsService do
       end
     end
 
-    context 'when veteran_contact_email and time_zone are nil' do
+    context 'when veteran_contact_email and veteran_time_zone are nil' do
       let(:client) { instance_double(Vass::Client) }
       let(:service_with_mock_client) do
         service = described_class.build(edipi:, correlation_id:)
@@ -124,14 +126,52 @@ describe Vass::AppointmentsService do
         service
       end
 
-      it 'excludes veteranContactEmail and timeZone from the request via compact' do
+      it 'excludes veteranContactEmail and veteranTimeZone from the request via compact' do
         expect(client).to receive(:save_appointment) do |args|
           expect(args[:appointment_data]).not_to have_key(:veteranContactEmail)
-          expect(args[:appointment_data]).not_to have_key(:timeZone)
+          expect(args[:appointment_data]).not_to have_key(:veteranTimeZone)
           double(body: { 'success' => true, 'data' => { 'appointment_id' => 'appt-123' } })
         end
 
         service_with_mock_client.save_appointment(appointment_params:)
+      end
+    end
+
+    context 'when veteran_time_zone is an unknown IANA identifier' do
+      let(:client) { instance_double(Vass::Client) }
+      let(:service_with_mock_client) do
+        service = described_class.build(edipi:, correlation_id:)
+        allow(service).to receive(:client).and_return(client)
+        service
+      end
+
+      it 'raises InvalidVeteranTimeZoneError and does not call the client' do
+        expect(client).not_to receive(:save_appointment)
+
+        expect do
+          service_with_mock_client.save_appointment(
+            appointment_params: appointment_params.merge(veteran_time_zone: 'Not/A_Real_Zone')
+          )
+        end.to raise_error(Vass::Errors::InvalidVeteranTimeZoneError, 'Unknown veteran time zone')
+      end
+    end
+
+    context 'when veteran_time_zone is valid IANA but unmapped in YAML' do
+      let(:client) { instance_double(Vass::Client) }
+      let(:service_with_mock_client) do
+        service = described_class.build(edipi:, correlation_id:)
+        allow(service).to receive(:client).and_return(client)
+        service
+      end
+
+      it 'raises InvalidVeteranTimeZoneError and does not call the client' do
+        expect(client).not_to receive(:save_appointment)
+
+        expect do
+          service_with_mock_client.save_appointment(
+            appointment_params: appointment_params.merge(veteran_time_zone: 'Etc/GMT+3')
+          )
+        end.to raise_error(Vass::Errors::InvalidVeteranTimeZoneError, 'Unsupported veteran time zone')
       end
     end
   end

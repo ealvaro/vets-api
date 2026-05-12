@@ -99,7 +99,8 @@ module Vass
     # @option appointment_params [String] :appointment_id Appointment ID (optional)
     # @option appointment_params [Array<String>] :selected_agent_skills Selected agent skill IDs
     # @option appointment_params [String] :veteran_contact_email Veteran's contact email for notifications
-    # @option appointment_params [String] :time_zone Veteran's time zone (e.g., "America/New_York")
+    # @option appointment_params [String] :veteran_time_zone Browser IANA zone (e.g. "America/New_York").
+    #   Converted to a Windows id for upstream SaveAppointment +veteranTimeZone+.
     #
     # @return [Hash] Created appointment data with appointment ID
     #
@@ -122,7 +123,7 @@ module Vass
         appointmentId: appointment_params[:appointment_id],
         selectedAgentSkills: appointment_params[:selected_agent_skills],
         veteranContactEmail: appointment_params[:veteran_contact_email],
-        timeZone: appointment_params[:time_zone]
+        veteranTimeZone: windows_veteran_time_zone_for(appointment_params[:veteran_time_zone])
       }.compact
 
       response = client.save_appointment(
@@ -298,6 +299,18 @@ module Vass
     end
 
     private
+
+    ##
+    # @param veteran_time_zone_raw [String, nil] IANA id from the client
+    # @return [String, nil] Windows time zone id for the upstream API, or nil if absent
+    # @raise [Vass::Errors::InvalidVeteranTimeZoneError] when present but invalid or unmapped
+    #
+    def windows_veteran_time_zone_for(veteran_time_zone_raw)
+      iana = veteran_time_zone_raw.to_s.strip.presence
+      return unless iana
+
+      Vass::IanaToWindowsTimeZone.windows_id_for!(iana)
+    end
 
     ##
     # Maps topics from the VASS client format to the frontend format.
