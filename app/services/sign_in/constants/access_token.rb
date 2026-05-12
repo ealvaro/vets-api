@@ -3,6 +3,7 @@
 module SignIn
   module Constants
     module AccessToken
+      API_TOKEN_TYPE = 'Bearer'
       VALIDITY_LENGTHS = [VALIDITY_LENGTH_SHORT_MINUTES = 5.minutes, VALIDITY_LENGTH_LONG_MINUTES = 30.minutes].freeze
       JWT_ENCODE_ALGORITHM = 'RS256'
 

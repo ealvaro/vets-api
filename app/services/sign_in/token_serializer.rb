@@ -72,6 +72,7 @@ module SignIn
 
     def token_json_payload
       payload = {}
+      payload[:token_type] = Constants::AccessToken::API_TOKEN_TYPE
       payload[:refresh_token] = encrypted_refresh_token unless web_sso_client?
       payload[:access_token] = encoded_access_token
       payload[:anti_csrf_token] = anti_csrf_token if anti_csrf_enabled_client?

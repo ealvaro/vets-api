@@ -144,7 +144,7 @@ RSpec.describe SignIn::TokenSerializer do
 
       context 'and client is not configured with shared sessions' do
         let(:token_payload) do
-          { access_token: encoded_access_token, refresh_token: encrypted_refresh_token }
+          { access_token: encoded_access_token, refresh_token: encrypted_refresh_token, token_type: SignIn::Constants::AccessToken::API_TOKEN_TYPE }
         end
 
         it 'returns expected json payload without device_secret' do
@@ -155,7 +155,8 @@ RSpec.describe SignIn::TokenSerializer do
       context 'and client is configured with shared sessions' do
         let(:shared_sessions) { true }
         let(:token_payload) do
-          { access_token: encoded_access_token, refresh_token: encrypted_refresh_token, device_secret: }
+          { access_token: encoded_access_token, refresh_token: encrypted_refresh_token, device_secret:,
+            token_type: SignIn::Constants::AccessToken::API_TOKEN_TYPE }
         end
 
         it 'returns expected json payload with device_secret' do
@@ -165,7 +166,9 @@ RSpec.describe SignIn::TokenSerializer do
 
       context 'and client is not configured to check for anti csrf' do
         let(:anti_csrf) { false }
-        let(:token_payload) { { access_token: encoded_access_token, refresh_token: encrypted_refresh_token } }
+        let(:token_payload) do
+          { access_token: encoded_access_token, refresh_token: encrypted_refresh_token, token_type: SignIn::Constants::AccessToken::API_TOKEN_TYPE }
+        end
 
         it 'returns expected json payload without anti csrf token' do
           expect(subject).to eq(expected_json_payload)
@@ -178,7 +181,8 @@ RSpec.describe SignIn::TokenSerializer do
           {
             access_token: encoded_access_token,
             refresh_token: encrypted_refresh_token,
-            anti_csrf_token:
+            anti_csrf_token:,
+            token_type: SignIn::Constants::AccessToken::API_TOKEN_TYPE
           }
         end
 
@@ -193,7 +197,8 @@ RSpec.describe SignIn::TokenSerializer do
         let(:token_payload) do
           {
             access_token: encoded_access_token,
-            refresh_token: encrypted_refresh_token
+            refresh_token: encrypted_refresh_token,
+            token_type: SignIn::Constants::AccessToken::API_TOKEN_TYPE
           }
         end
 
@@ -208,7 +213,8 @@ RSpec.describe SignIn::TokenSerializer do
         let(:token_payload) do
           {
             access_token: encoded_access_token,
-            refresh_token: encrypted_refresh_token
+            refresh_token: encrypted_refresh_token,
+            token_type: SignIn::Constants::AccessToken::API_TOKEN_TYPE
           }
         end
 
@@ -295,7 +301,9 @@ RSpec.describe SignIn::TokenSerializer do
 
       context 'and client is not configured to check for anti csrf' do
         let(:anti_csrf) { false }
-        let(:token_payload) { { access_token: encoded_access_token, refresh_token: encrypted_refresh_token } }
+        let(:token_payload) do
+          { access_token: encoded_access_token, refresh_token: encrypted_refresh_token, token_type: SignIn::Constants::AccessToken::API_TOKEN_TYPE }
+        end
 
         it 'returns expected json payload without anti csrf token' do
           expect(subject).to eq(expected_json_payload)
@@ -313,7 +321,8 @@ RSpec.describe SignIn::TokenSerializer do
           {
             access_token: encoded_access_token,
             refresh_token: encrypted_refresh_token,
-            anti_csrf_token:
+            anti_csrf_token:,
+            token_type: SignIn::Constants::AccessToken::API_TOKEN_TYPE
           }
         end
 
