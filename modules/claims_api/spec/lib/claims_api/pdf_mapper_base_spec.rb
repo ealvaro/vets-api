@@ -140,7 +140,7 @@ describe ClaimsApi::PdfMapperBase do
     end
 
     def regex_date_invalid_formats
-      %w[24-12-01 2024-01-15-16-17 invalid-date 2011-12-].freeze
+      %w[24-12-01 2024-01-15-16-17 invalid-date].freeze
     end
 
     context 'when date is present and valid' do

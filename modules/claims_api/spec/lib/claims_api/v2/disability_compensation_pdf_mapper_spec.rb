@@ -760,6 +760,59 @@ describe ClaimsApi::V2::DisabilityCompensationPdfMapper do
         treatment_details = treatment_info[0][:treatmentDetails]
         expect(treatment_details).to eq(details)
       end
+
+      context 'dateOfTreatment dates' do
+        let(:base_treatment) do
+          {
+            'beginDate' => nil,
+            'treatedDisabilityNames' => [
+              'Arthritis'
+            ],
+            'center' => {
+              'name' => 'Private Facility Name',
+              'city' => 'Charleston',
+              'state' => 'SC'
+            }
+          }
+        end
+
+        before do
+          form_attributes['treatments'] = [base_treatment]
+        end
+
+        it 'allows entries that YYYY-MM-DD, YYYY-MM, or YYYY format even if invalid' do
+          # Test with various invalid date formats
+          invalid_dates = %w[2024-02-31 2024-13 9999]
+
+          invalid_dates.each do |invalid_date|
+            form_attributes['treatments'][0]['beginDate'] = invalid_date
+            mapper.map_claim
+
+            treatments_base = pdf_data[:data][:attributes][:claimInformation][:treatments]
+
+            year, month, day = invalid_date.split('-')
+
+            expect(treatments_base[0][:dateOfTreatment]).to eq({ year:, month:, day: }.compact)
+          end
+        end
+
+        it 'does not allow entries that are not in a valid date format' do
+          form_attributes['treatments'][0]['beginDate'] = 'invalid-date'
+          mapper.map_claim
+          treatments_base = pdf_data[:data][:attributes][:claimInformation][:treatments]
+
+          expect(treatments_base[0][:dateOfTreatment]).to be_nil
+        end
+
+        it 'maps valid dates as normal' do
+          form_attributes['treatments'][0]['beginDate'] = '2023-12-25'
+          mapper.map_claim
+
+          treatments_base = pdf_data[:data][:attributes][:claimInformation][:treatments]
+
+          expect(treatments_base[0][:dateOfTreatment]).to eq({ year: '2023', month: '12', day: '25' })
+        end
+      end
     end
 
     context '526 section 5, treatment centers null data' do
@@ -1040,9 +1093,62 @@ describe ClaimsApi::V2::DisabilityCompensationPdfMapper do
         expect(receiving_mil_retired_pay).to eq('NO')
         expect(branch_of_service).to eq('Army')
       end
+
+      context 'datePaymentReceived' do
+        let(:base_service_pay) do
+          {
+            'separationSeverancePay' => {
+              'datePaymentReceived' => nil,
+              'branchOfService' => 'Army',
+              'preTaxAmountReceived' => 1000
+            }
+          }
+        end
+
+        before do
+          form_attributes['servicePay'] = base_service_pay
+        end
+
+        it 'allows entries that are YYYY-MM or YYYY even if invalid due to minimum validations' do
+          # Test with various invalid date formats
+          invalid_dates = %w[2024-15 9999]
+
+          invalid_dates.each do |invalid_date|
+            form_attributes['servicePay']['separationSeverancePay']['datePaymentReceived'] = invalid_date
+
+            year, month = invalid_date.split('-')
+
+            mapper.map_claim
+
+            expect(
+              pdf_data[:data][:attributes][:servicePay][:separationSeverancePay][:datePaymentReceived]
+            ).to eql({ year:, month: }.compact)
+          end
+        end
+
+        it 'does not allow entries that are not in a valid date format' do
+          form_attributes['servicePay']['separationSeverancePay']['datePaymentReceived'] = 'invalid-date'
+
+          mapper.map_claim
+
+          expect(
+            pdf_data[:data][:attributes][:servicePay][:separationSeverancePay][:datePaymentReceived]
+          ).to be_nil
+        end
+
+        it 'maps valid dates correctly' do
+          form_attributes['servicePay']['separationSeverancePay']['datePaymentReceived'] = '2000-01-01'
+
+          mapper.map_claim
+
+          expect(
+            pdf_data[:data][:attributes][:servicePay][:separationSeverancePay][:datePaymentReceived]
+          ).to eq({ year: '2000', month: '01', day: '01' })
+        end
+      end
     end
 
-    context '526 section 8, direct deposot' do
+    context '526 section 8, direct deposit' do
       it 'maps the attributes correctly' do
         mapper.map_claim
 

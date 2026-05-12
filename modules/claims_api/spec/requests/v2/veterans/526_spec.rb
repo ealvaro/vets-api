@@ -376,8 +376,9 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
 
     describe "'treatments' validations" do
       describe 'when FES is enabled' do
-        let(:treatments) do
-          [
+        def treatment_data_with_date(date_value)
+          temp = JSON.parse(data)
+          temp['data']['attributes']['treatments'] = [
             {
               center: {
                 name: 'Some Treatment Center',
@@ -387,9 +388,10 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
               treatedDisabilityNames: [
                 'PTSD (post traumatic stress disorder)'
               ],
-              beginDate: treatment_begin_date
+              beginDate: date_value
             }
           ]
+          temp.to_json
         end
 
         before do
@@ -397,15 +399,12 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
         end
 
         context 'it does not require the treatment beginDate to be after the earliest activeDutyBeginDate' do
-          let(:treatment_begin_date) { '1970-01-01' }
+          let(:treatment_begin_date) { '1970-01' }
 
           it 'returns a 202' do
             mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
               VCR.use_cassette('claims_api/disability_comp') do
-                temp = JSON.parse(data)
-                temp['data']['attributes']['treatments'] = treatments
-                test_data = temp.to_json
-                post synchronous_path, params: test_data, headers: auth_header
+                post synchronous_path, params: treatment_data_with_date(treatment_begin_date), headers: auth_header
                 expect(response).to have_http_status(:accepted)
               end
             end
@@ -418,10 +417,7 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
           it 'returns a 202' do
             mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
               VCR.use_cassette('claims_api/disability_comp') do
-                temp = JSON.parse(data)
-                temp['data']['attributes']['treatments'] = treatments
-                test_data = temp.to_json
-                post synchronous_path, params: test_data, headers: auth_header
+                post synchronous_path, params: treatment_data_with_date(treatment_begin_date), headers: auth_header
                 expect(response).to have_http_status(:accepted)
               end
             end
@@ -434,27 +430,48 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
           it 'returns a 202' do
             mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
               VCR.use_cassette('claims_api/disability_comp') do
-                temp = JSON.parse(data)
-                temp['data']['attributes']['treatments'] = treatments
-                test_data = temp.to_json
-                post synchronous_path, params: test_data, headers: auth_header
+                post synchronous_path, params: treatment_data_with_date(treatment_begin_date), headers: auth_header
                 expect(response).to have_http_status(:accepted)
               end
             end
           end
         end
 
-        context 'it allows the treatment begin date not be a valid date format' do
-          let(:treatment_begin_date) { 'four score and seven years ago' }
+        context 'and the treatment date is in an invalid format' do
+          let(:invalid_date) { 'four score and seven years ago' }
 
-          it 'returns a 202' do
+          it 'returns a 422' do
             mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
               VCR.use_cassette('claims_api/disability_comp') do
-                temp = JSON.parse(data)
-                temp['data']['attributes']['treatments'] = treatments
-                test_data = temp.to_json
-                post synchronous_path, params: test_data, headers: auth_header
-                expect(response).to have_http_status(:accepted)
+                post synchronous_path, params: treatment_data_with_date(invalid_date), headers: auth_header
+                expect(response).to have_http_status(:unprocessable_content)
+              end
+            end
+          end
+        end
+
+        context 'and treatment date is YYYY, or YYYY-MM' do
+          let(:invalid_dates) { %w[9999 2014-23] }
+          let(:valid_dates) { %w[2014 2026-02] }
+
+          it 'accepts invalid dates because they are in the correct format' do
+            invalid_dates.each do |date|
+              mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+                VCR.use_cassette('claims_api/disability_comp') do
+                  post synchronous_path, params: treatment_data_with_date(date), headers: auth_header
+                  expect(response).to have_http_status(:accepted)
+                end
+              end
+            end
+          end
+
+          it 'accepts valid dates' do
+            valid_dates.each do |date|
+              mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+                VCR.use_cassette('claims_api/disability_comp') do
+                  post synchronous_path, params: treatment_data_with_date(date), headers: auth_header
+                  expect(response).to have_http_status(:accepted)
+                end
               end
             end
           end
@@ -677,15 +694,15 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
         end
       end
 
-      describe "'separationSeverancePay.datePaymentReceived' no longer enforces date format pattern" do
-        let(:service_pay_data) do
+      describe "'separationSeverancePay.datePaymentReceived' validations" do
+        def service_pay_data_with_date(date_value)
           temp = JSON.parse(data)
           temp['data']['attributes']['servicePay'] = {
             'receivingMilitaryRetiredPay' => 'NO',
             'futureMilitaryRetiredPay' => 'NO',
             'receivedSeparationOrSeverancePay' => 'YES',
             'separationSeverancePay' => {
-              'datePaymentReceived' => date_received,
+              'datePaymentReceived' => date_value,
               'branchOfService' => 'Army',
               'preTaxAmountReceived' => 100
             },
@@ -697,11 +714,11 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
         context "when 'datePaymentReceived' is an arbitrary string" do
           let(:date_received) { 'invalid-date-format' }
 
-          it 'returns a 202 accepted (format pattern no longer enforced at schema level)' do
+          it 'returns a 422 unprocessable content' do
             mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
               VCR.use_cassette('claims_api/disability_comp') do
-                post synchronous_path, params: service_pay_data, headers: auth_header
-                expect(response).to have_http_status(:accepted)
+                post synchronous_path, params: service_pay_data_with_date(date_received), headers: auth_header
+                expect(response).to have_http_status(:unprocessable_content)
               end
             end
           end
@@ -713,8 +730,35 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
           it 'returns a 202 accepted (field is nullable)' do
             mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
               VCR.use_cassette('claims_api/disability_comp') do
-                post synchronous_path, params: service_pay_data, headers: auth_header
+                post synchronous_path, params: service_pay_data_with_date(date_received), headers: auth_header
                 expect(response).to have_http_status(:accepted)
+              end
+            end
+          end
+        end
+
+        context "when 'datePaymentReceived' is YYYY, YYYY-MM, or YYYY-MM-DD" do
+          let(:invalid_dates) { %w[9999 2014-23 2014-11-55] }
+          let(:valid_dates) { %w[2014 2026-02 2026-01-05] }
+
+          it 'accepts invalid dates because they are in the correct format' do
+            invalid_dates.each do |date|
+              mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+                VCR.use_cassette('claims_api/disability_comp') do
+                  post synchronous_path, params: service_pay_data_with_date(date), headers: auth_header
+                  expect(response).to have_http_status(:accepted)
+                end
+              end
+            end
+          end
+
+          it 'accepts valid dates' do
+            valid_dates.each do |date|
+              mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+                VCR.use_cassette('claims_api/disability_comp') do
+                  post synchronous_path, params: service_pay_data_with_date(date), headers: auth_header
+                  expect(response).to have_http_status(:accepted)
+                end
               end
             end
           end
