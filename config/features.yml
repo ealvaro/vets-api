@@ -1801,10 +1801,6 @@ features:
   mhv_secure_messaging_recipient_combobox:
     actor_type: user
     description: Disables/Enables Secure Messaging combobox in recipient dropdown on Start a new message page
-  mhv_secure_messaging_read_receipts:
-    actor_type: user
-    description: Disables/Enables Secure Messaging read receipts
-    enable_in_development: true
   mhv_secure_messaging_custom_folders_redesign:
     actor_type: user
     description: Disables/Enables Secure Messaging Custom Folders Redesign
