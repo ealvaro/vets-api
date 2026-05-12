@@ -763,6 +763,7 @@ config/form_profile_mappings/21-22.yml @software/accredited-representative-crew 
 config/form_profile_mappings/21-22A.yml @software/accredited-representative-crew @software/backend-review-group
 config/form_profile_mappings/21-2680.yml @software/benefits-optimization-aquia @software/backend-review-group
 config/form_profile_mappings/21-4140.yml @software/benefits-intake-pingwind @software/backend-review-group
+config/form_profile_mappings/21-4502.yml @software/benefits-intake-pingwind @software/backend-review-group
 config/form_profile_mappings/21-526EZ.yml @software/disability-benefits @software/backend-review-group
 config/form_profile_mappings/21-686C.yml @software/disability-benefits @software/backend-review-group
 config/form_profile_mappings/21-4138.yml @software/platform-va-product-forms @software/backend-review-group

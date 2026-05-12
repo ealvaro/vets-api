@@ -1430,6 +1430,9 @@ features:
   form214502:
     actor_type: user
     description: Enable the form 21-4502
+  form214502_prefill_enabled:
+    actor_type: user
+    description: Enables the Prefill experience for form 21-4502
     enable_in_development: true
   form2110210:
     actor_type: user

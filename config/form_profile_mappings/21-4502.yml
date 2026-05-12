@@ -1,0 +1,10 @@
+veteran:
+  address: [contact_information, address]
+  alternatePhone: [contact_information, mobile_phone]
+  dateOfBirth: [identity_information, date_of_birth]
+  fullName: [identity_information, full_name]
+  ssn: [identity_information, ssn]
+  vaFileNumber: [va_file_number]
+  serviceNumber: [military_information, service_number]
+  homePhone: [contact_information, us_phone]
+  email: [contact_information, email]
