@@ -43,14 +43,35 @@ module SurvivorsBenefits
             'custodian' => { key: 'form1[0].#subform[160].Surviving_Spouse[1]' },
             'child' => { key: 'form1[0].#subform[160].Child_Specify[0]' },
             'custodianSpouse' => { key: 'form1[0].#subform[160].Child_Specify[1]' },
-            'recipientName' => { key: 'form1[0].#subform[160].Name_Of_Child[0]' },
+            'recipientName' => {
+              limit: 28,
+              question_num: 9,
+              question_suffix: 'I',
+              question_label: 'Recipient name 1',
+              question_text: 'RECIPIENT NAME 1',
+              key: 'form1[0].#subform[160].Name_Of_Child[0]'
+            },
             'socialSecurity' => { key: 'form1[0].#subform[160].Social_Security[0]' },
             'interestDividends' => { key: 'form1[0].#subform[160].Interest_Dividends[0]' },
             'civilService' => { key: 'form1[0].#subform[160].Civil_Service[0]' },
             'pensionRetirement' => { key: 'form1[0].#subform[160].Pension_Retirement[0]' },
             'other' => { key: 'form1[0].#subform[160].Other_Specify_Type_Of_Income[0]' },
-            'incomeTypeOther' => { key: 'form1[0].#subform[160].Specify_Type_Of_Income[3]' },
-            'incomePayer' => { key: 'form1[0].#subform[160].Income_Payer[0]' },
+            'incomeTypeOther' => {
+              limit: 28,
+              question_num: 9,
+              question_suffix: 'I',
+              question_label: 'Type of income 1',
+              question_text: 'TYPE OF INCOME 1',
+              key: 'form1[0].#subform[160].Specify_Type_Of_Income[3]'
+            },
+            'incomePayer' => {
+              limit: 24,
+              question_num: 9,
+              question_suffix: 'I',
+              question_label: 'Income payer 1',
+              question_text: 'INCOME PAYER 1',
+              key: 'form1[0].#subform[160].Income_Payer[0]'
+            },
             'monthlyIncome' => { key: 'form1[0].#subform[160].VETERANS_SERVICE_NUMBER[1]' }
           },
           'incomeEntryTwo' => {
@@ -58,14 +79,35 @@ module SurvivorsBenefits
             'custodian' => { key: 'form1[0].#subform[160].Surviving_Spouse[3]' },
             'child' => { key: 'form1[0].#subform[160].Child_Specify[2]' },
             'custodianSpouse' => { key: 'form1[0].#subform[160].Child_Specify[3]' },
-            'recipientName' => { key: 'form1[0].#subform[160].Name_Of_Child[1]' },
+            'recipientName' => {
+              limit: 28,
+              question_num: 9,
+              question_suffix: 'J',
+              question_label: 'Recipient name 2',
+              question_text: 'RECIPIENT NAME 2',
+              key: 'form1[0].#subform[160].Name_Of_Child[1]'
+            },
             'socialSecurity' => { key: 'form1[0].#subform[160].Social_Security[1]' },
             'interestDividends' => { key: 'form1[0].#subform[160].Interest_Dividends[1]' },
             'civilService' => { key: 'form1[0].#subform[160].Civil_Service[1]' },
             'pensionRetirement' => { key: 'form1[0].#subform[160].Pension_Retirement[1]' },
             'other' => { key: 'form1[0].#subform[160].Other_Specify_Type_Of_Income[1]' },
-            'incomeTypeOther' => { key: 'form1[0].#subform[160].Specify_Type_Of_Income[0]' },
-            'incomePayer' => { key: 'form1[0].#subform[160].Income_Payer[1]' },
+            'incomeTypeOther' => {
+              limit: 28,
+              question_num: 9,
+              question_suffix: 'J',
+              question_label: 'Type of income 2',
+              question_text: 'TYPE OF INCOME 2',
+              key: 'form1[0].#subform[160].Specify_Type_Of_Income[0]'
+            },
+            'incomePayer' => {
+              limit: 24,
+              question_num: 9,
+              question_suffix: 'J',
+              question_label: 'Income payer 2',
+              question_text: 'INCOME PAYER 2',
+              key: 'form1[0].#subform[160].Income_Payer[1]'
+            },
             'monthlyIncome' => { key: 'form1[0].#subform[160].VETERANS_SERVICE_NUMBER[2]' }
           },
           'incomeEntryThree' => {
@@ -73,14 +115,35 @@ module SurvivorsBenefits
             'custodian' => { key: 'form1[0].#subform[160].Surviving_Spouse[5]' },
             'child' => { key: 'form1[0].#subform[160].Child_Specify[4]' },
             'custodianSpouse' => { key: 'form1[0].#subform[160].Child_Specify[5]' },
-            'recipientName' => { key: 'form1[0].#subform[160].Name_Of_Child[2]' },
+            'recipientName' => {
+              limit: 28,
+              question_num: 9,
+              question_suffix: 'K',
+              question_label: 'Recipient name 3',
+              question_text: 'RECIPIENT NAME 3',
+              key: 'form1[0].#subform[160].Name_Of_Child[2]'
+            },
             'socialSecurity' => { key: 'form1[0].#subform[160].Social_Security[2]' },
             'interestDividends' => { key: 'form1[0].#subform[160].Interest_Dividend[0]' },
             'civilService' => { key: 'form1[0].#subform[160].Civil_Service[2]' },
             'pensionRetirement' => { key: 'form1[0].#subform[160].Pension_Retirement[2]' },
             'other' => { key: 'form1[0].#subform[160].Other_Type_Of_Income[0]' },
-            'incomeTypeOther' => { key: 'form1[0].#subform[160].Specify_Type_Of_Income[1]' },
-            'incomePayer' => { key: 'form1[0].#subform[160].Income_Payer[2]' },
+            'incomeTypeOther' => {
+              limit: 28,
+              question_num: 9,
+              question_suffix: 'K',
+              question_label: 'Type of income 3',
+              question_text: 'TYPE OF INCOME 3',
+              key: 'form1[0].#subform[160].Specify_Type_Of_Income[1]'
+            },
+            'incomePayer' => {
+              limit: 24,
+              question_num: 9,
+              question_suffix: 'K',
+              question_label: 'Income payer 3',
+              question_text: 'INCOME PAYER 3',
+              key: 'form1[0].#subform[160].Income_Payer[2]'
+            },
             'monthlyIncome' => { key: 'form1[0].#subform[160].VETERANS_SERVICE_NUMBER[3]' }
           },
           'incomeEntryFour' => {
@@ -88,14 +151,35 @@ module SurvivorsBenefits
             'custodian' => { key: 'form1[0].#subform[160].Surviving_Spouse[7]' },
             'child' => { key: 'form1[0].#subform[160].Child_Specify[6]' },
             'custodianSpouse' => { key: 'form1[0].#subform[160].Child_Specify[7]' },
-            'recipientName' => { key: 'form1[0].#subform[160].Name_Of_Child[3]' },
+            'recipientName' => {
+              limit: 28,
+              question_num: 9,
+              question_suffix: 'L',
+              question_label: 'Recipient name 4',
+              question_text: 'RECIPIENT NAME 4',
+              key: 'form1[0].#subform[160].Name_Of_Child[3]'
+            },
             'socialSecurity' => { key: 'form1[0].#subform[160].Social_Security[3]' },
             'interestDividends' => { key: 'form1[0].#subform[160].Interest_Dividends[2]' },
             'civilService' => { key: 'form1[0].#subform[160].Civil_Service[3]' },
             'pensionRetirement' => { key: 'form1[0].#subform[160].Pension_Retirement[3]' },
             'other' => { key: 'form1[0].#subform[160].Other_Specify_Type_Of_Income[2]' },
-            'incomeTypeOther' => { key: 'form1[0].#subform[160].Specify_Type_Of_Income[2]' },
-            'incomePayer' => { key: 'form1[0].#subform[160].Income_Payer[3]' },
+            'incomeTypeOther' => {
+              limit: 28,
+              question_num: 9,
+              question_suffix: 'L',
+              question_label: 'Specify type of income 4 (if other)',
+              question_text: 'SPECIFY TYPE OF INCOME 4 (IF OTHER)',
+              key: 'form1[0].#subform[160].Specify_Type_Of_Income[2]'
+            },
+            'incomePayer' => {
+              limit: 24,
+              question_num: 9,
+              question_suffix: 'L',
+              question_label: 'Income payer 4',
+              question_text: 'INCOME PAYER 4',
+              key: 'form1[0].#subform[160].Income_Payer[3]'
+            },
             'monthlyIncome' => { key: 'form1[0].#subform[160].VETERANS_SERVICE_NUMBER[4]' }
           }
         }.freeze

@@ -24,9 +24,19 @@ module SurvivorsBenefits
           },
           'treatmentFacilityOne' => {
             'facilityName' => {
+              limit: 40,
+              question_num: 7,
+              question_suffix: 'B',
+              question_label: 'Name Of VA Medical Center 1',
+              question_text: 'NAME OF VA MEDICAL CENTER 1',
               key: 'form1[0].#subform[156].Name_And_Location_Of_VA_Medical_Center[0]'
             },
             'facilityLocation' => {
+              limit: 20,
+              question_num: 7,
+              question_suffix: 'B',
+              question_label: 'Location Of VA Medical Center 1',
+              question_text: 'LOCATION OF VA MEDICAL CENTER 1',
               key: 'form1[0].#subform[156].Name_And_Location_Of_VA_Medical_Center[3]'
             },
             'startDate' => {
@@ -54,9 +64,19 @@ module SurvivorsBenefits
           },
           'treatmentFacilityTwo' => {
             'facilityName' => {
+              limit: 40,
+              question_num: 7,
+              question_suffix: 'B',
+              question_label: 'Name Of VA Medical Center 2',
+              question_text: 'NAME OF VA MEDICAL CENTER 2',
               key: 'form1[0].#subform[156].Name_And_Location_Of_VA_Medical_Center[1]'
             },
             'facilityLocation' => {
+              limit: 20,
+              question_num: 7,
+              question_suffix: 'B',
+              question_label: 'Location Of VA Medical Center 2',
+              question_text: 'LOCATION OF VA MEDICAL CENTER 2',
               key: 'form1[0].#subform[156].Name_And_Location_Of_VA_Medical_Center[4]'
             },
             'startDate' => {
@@ -84,9 +104,19 @@ module SurvivorsBenefits
           },
           'treatmentFacilityThree' => {
             'facilityName' => {
+              limit: 40,
+              question_num: 7,
+              question_suffix: 'B',
+              question_label: 'Name Of VA Medical Center 3',
+              question_text: 'NAME OF VA MEDICAL CENTER 3',
               key: 'form1[0].#subform[156].Name_And_Location_Of_VA_Medical_Center[2]'
             },
             'facilityLocation' => {
+              limit: 20,
+              question_num: 7,
+              question_suffix: 'B',
+              question_label: 'Location Of VA Medical Center 3',
+              question_text: 'LOCATION OF VA MEDICAL CENTER 3',
               key: 'form1[0].#subform[156].Name_And_Location_Of_VA_Medical_Center[5]'
             },
             'startDate' => {
