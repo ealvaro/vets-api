@@ -35,7 +35,8 @@ module ClaimsApi
       end
 
       def claim_meta
-        @fes_claim[:claimDate] = @data[:claimDate].presence || @auto_claim.created_at.strftime('%Y-%m-%d')
+        raw_date = @data[:claimDate].presence || @auto_claim.created_at.strftime('%Y-%m-%d')
+        @fes_claim[:claimDate] = normalize_claim_date(raw_date)
       end
 
       # a 'disability' is required via the schema

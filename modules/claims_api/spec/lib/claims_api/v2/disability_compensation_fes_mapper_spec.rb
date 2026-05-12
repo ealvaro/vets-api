@@ -473,6 +473,20 @@ describe ClaimsApi::V2::DisabilityCompensationFesMapper do
 
           expect(fes_data[:data][:form526][:claimDate]).to eq(Date.current.strftime('%Y-%m-%d'))
         end
+
+        it 'strips the time component when claimDate is an ISO 8601 timestamp with UTC offset' do
+          form_data['data']['attributes']['claimDate'] = '2024-01-15T19:53:45+00:00'
+          fes_data = map_claim_with_modified_data(form_data)
+
+          expect(fes_data[:data][:form526][:claimDate]).to eq('2024-01-15')
+        end
+
+        it 'strips the time component when claimDate is an ISO 8601 timestamp with Z suffix' do
+          form_data['data']['attributes']['claimDate'] = '2024-01-15T00:00:00Z'
+          fes_data = map_claim_with_modified_data(form_data)
+
+          expect(fes_data[:data][:form526][:claimDate]).to eq('2024-01-15')
+        end
       end
     end
   end

@@ -78,6 +78,22 @@ describe ClaimsApi::V1::DisabilityCompensationFesMapper do
             expect(form526[:claimDate]).to eq(expected_date)
           end
         end
+
+        context 'when claimDate is an ISO 8601 timestamp with UTC offset' do
+          it 'strips the time component and sends only the date to FES' do
+            form_data['data']['attributes']['claimDate'] = '2023-05-15T19:53:45+00:00'
+
+            expect(form526[:claimDate]).to eq('2023-05-15')
+          end
+        end
+
+        context 'when claimDate is an ISO 8601 timestamp with Z suffix' do
+          it 'strips the time component and sends only the date to FES' do
+            form_data['data']['attributes']['claimDate'] = '2023-05-15T00:00:00Z'
+
+            expect(form526[:claimDate]).to eq('2023-05-15')
+          end
+        end
       end
 
       describe 'veteran information' do

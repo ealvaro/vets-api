@@ -4,6 +4,15 @@ module ClaimsApi
   module FesMapperBase
     MAX_LINE_LENGTH_ADDRESS_LINE_ONE = 20
 
+    def normalize_claim_date(raw_date)
+      # ISO 8601 timestamps include 'T' as the date/time separator (e.g. '2018-08-28T19:53:45+00:00').
+      # FES only accepts YYYY-MM-DD, so strip the time component when present.
+      # Input is guaranteed valid by schema regex and cast_claim_date! before reaching this point.
+      return raw_date unless raw_date.present? && raw_date.include?('T')
+
+      Date.parse(raw_date).strftime('%Y-%m-%d')
+    end
+
     def map_separation_location_code
       @fes_claim[:serviceInformation][:separationLocationCode] = return_separation_location_code
     end

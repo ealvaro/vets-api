@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
+require_relative '../fes_mapper_base'
 require_relative '../lighthouse_military_address_validator'
 
 module ClaimsApi
   module V2
     class DisabilityCompensationFesMapper
+      include FesMapperBase
       include LighthouseMilitaryAddressValidator
 
       def initialize(auto_claim)
@@ -247,7 +249,8 @@ module ClaimsApi
       end
 
       def claim_meta
-        @fes_claim[:claimDate] = @data[:claimDate].presence || @auto_claim.created_at.strftime('%Y-%m-%d')
+        raw_date = @data[:claimDate].presence || @auto_claim.created_at.strftime('%Y-%m-%d')
+        @fes_claim[:claimDate] = normalize_claim_date(raw_date)
       end
 
       def wrap_in_request_structure
