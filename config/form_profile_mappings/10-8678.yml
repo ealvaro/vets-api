@@ -1,0 +1,6 @@
+fullName: [identity_information, full_name]
+ssn: [identity_information, ssn]
+address: [contact_information, address]
+phone: [contact_information, us_phone]
+emailAddress: [contact_information, email]
+disabilityOptions: [rated_disabilities_information, rated_disabilities]

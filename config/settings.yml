@@ -30,6 +30,8 @@ active_record_encryption:
   primary_key:  <%= ENV['active_record_encryption__primary_key'] %>
 adapted_housing:
   prefill: true
+annual_clothing_allowance:
+  prefill: true
 argocd:
   slack:
     api_key: <%= ENV['argocd__slack__api_key'] %>

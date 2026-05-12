@@ -91,6 +91,7 @@ class FormProfile
   ALL_FORMS = {
     acc_rep_management: %w[21-22 21-22A],
     adapted_housing: ['26-4555'],
+    annual_clothing_allowance: ['10-8678'],
     coe: ['26-1880'],
     decision_review: %w[20-0995 20-0996 10182 21-4138],
     dependents: %w[686C-674 686C-674-V2],

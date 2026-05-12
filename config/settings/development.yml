@@ -30,6 +30,8 @@ active_record_encryption:
   primary_key: Jhm5UbpDiP08qT2pW6EguvojkLSZjJdw
 adapted_housing:
   prefill: true
+annual_clothing_allowance:
+  prefill: true
 argocd:
   slack:
     api_key: ~
