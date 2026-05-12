@@ -19,6 +19,16 @@ class Lighthouse::SubmissionAttempt < SubmissionAttempt
 
   STATS_KEY = 'api.lighthouse.submission_attempt'
 
+  # List of allowed context keys for logging/metrics
+  MONITOR_ALLOWLIST = %w[
+    submission_id
+    claim_id
+    form_type
+    from_state
+    to_state
+    benefits_intake_uuid
+  ].freeze
+
   def fail!
     failure!
     log_hash = status_change_hash
@@ -55,7 +65,7 @@ class Lighthouse::SubmissionAttempt < SubmissionAttempt
   end
 
   def monitor
-    @monitor ||= Logging::Monitor.new('lighthouse_submission_attempt')
+    @monitor ||= Logging::Monitor.new('lighthouse_submission_attempt', allowlist: MONITOR_ALLOWLIST)
   end
 
   def status_change_hash
