@@ -4,7 +4,7 @@ require 'rails_helper'
 require 'sign_in/idme/service'
 require 'sign_in/logingov/service'
 
-RSpec.describe V0::SignInController, '#callback', type: :controller do
+RSpec.describe V0::SignIn::CallbackController, type: :controller do
   describe 'GET callback' do
     subject { get(:callback, params: {}.merge(code).merge(state).merge(error)) }
 

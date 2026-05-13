@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module V0
-  class EventBusGatewayController < SignIn::ServiceAccountApplicationController
+  class EventBusGatewayController < ::SignIn::ServiceAccountApplicationController
     service_tag 'event_bus_gateway'
 
     def self.deployment_environment

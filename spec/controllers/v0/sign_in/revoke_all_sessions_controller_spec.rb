@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe V0::SignInController, '#revoke_all_sessions', type: :controller do
+RSpec.describe V0::SignIn::RevokeAllSessionsController, type: :controller do
   describe 'GET revoke_all_sessions' do
     subject { get(:revoke_all_sessions) }
 

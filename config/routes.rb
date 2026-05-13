@@ -13,16 +13,16 @@ Rails.application.routes.draw do
       constraints: ->(request) { V1::SessionsController::REDIRECT_URLS.include?(request.path_parameters[:type]) }
   get '/v1/sessions/ssoe_logout', to: 'v1/sessions#ssoe_slo_callback'
 
-  get '/v0/sign_in/authorize', to: 'v0/sign_in#authorize'
-  get '/v0/sign_in/authorize_sso', to: 'v0/sign_in#authorize_sso'
-  get '/v0/sign_in/callback', to: 'v0/sign_in#callback'
-  post '/v0/sign_in/refresh', to: 'v0/sign_in#refresh'
-  post '/v0/sign_in/revoke', to: 'v0/sign_in#revoke'
-  post '/v0/sign_in/token', to: 'v0/sign_in#token'
-  get '/v0/sign_in/logout', to: 'v0/sign_in#logout'
-  get '/v0/sign_in/logingov_logout_proxy', to: 'v0/sign_in#logingov_logout_proxy'
-  get '/v0/sign_in/revoke_all_sessions', to: 'v0/sign_in#revoke_all_sessions'
-  get '/v0/sign_in/error', to: 'v0/sign_in#error', as: :sign_in_error
+  get  '/v0/sign_in/authorize',             to: 'v0/sign_in/authorize#authorize'
+  get  '/v0/sign_in/authorize_sso',         to: 'v0/sign_in/authorize_sso#authorize_sso'
+  get  '/v0/sign_in/callback',              to: 'v0/sign_in/callback#callback'
+  post '/v0/sign_in/token',                 to: 'v0/sign_in/token#token'
+  post '/v0/sign_in/refresh',               to: 'v0/sign_in/refresh#refresh'
+  post '/v0/sign_in/revoke',                to: 'v0/sign_in/revoke#revoke'
+  get  '/v0/sign_in/revoke_all_sessions',   to: 'v0/sign_in/revoke_all_sessions#revoke_all_sessions'
+  get  '/v0/sign_in/logout',                to: 'v0/sign_in/logout#logout'
+  get  '/v0/sign_in/logingov_logout_proxy', to: 'v0/sign_in/logingov_logout_proxy#logingov_logout_proxy'
+  get  '/v0/sign_in/error',                 to: 'v0/sign_in/error#error', as: :sign_in_error
 
   namespace :sign_in do
     get '/openid_connect/certs', to: 'openid_connect_certificates#index'

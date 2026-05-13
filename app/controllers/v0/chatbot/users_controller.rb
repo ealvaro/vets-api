@@ -2,7 +2,7 @@
 
 module V0
   module Chatbot
-    class UsersController < SignIn::ServiceAccountApplicationController
+    class UsersController < ::SignIn::ServiceAccountApplicationController
       service_tag 'identity'
 
       before_action :authenticate_one_time_code

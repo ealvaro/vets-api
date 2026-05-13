@@ -9,7 +9,7 @@ require 'vets/shared_logging'
 
 module V0
   module Chatbot
-    class ClaimStatusController < SignIn::ServiceAccountApplicationController
+    class ClaimStatusController < ::SignIn::ServiceAccountApplicationController
       include IgnoreNotFound
       include Vets::SharedLogging
       include ::Chatbot::RequiresEdipi

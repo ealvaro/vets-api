@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe V0::SignInController, '#error', type: :controller do
+RSpec.describe V0::SignIn::ErrorController, type: :controller do
   describe 'GET error' do
     subject { get(:error, params:) }
 

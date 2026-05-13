@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe V0::SignInController, '#logout', type: :controller do
+RSpec.describe V0::SignIn::LogoutController, type: :controller do
   describe 'GET logout' do
     subject { get(:logout, params: logout_params) }
 

@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe V0::SignInController, '#authorize', type: :controller do
+RSpec.describe V0::SignIn::AuthorizeController, type: :controller do
   describe 'GET authorize' do
     subject do
       get(:authorize, params: authorize_params)

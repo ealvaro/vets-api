@@ -3,7 +3,7 @@
 require 'rails_helper'
 require 'sign_in/logingov/service'
 
-RSpec.describe V0::SignInController, '#logingov_logout_proxy', type: :controller do
+RSpec.describe V0::SignIn::LogingovLogoutProxyController, type: :controller do
   describe 'GET logingov_logout_proxy' do
     subject { get(:logingov_logout_proxy, params: logingov_logout_proxy_params) }
 

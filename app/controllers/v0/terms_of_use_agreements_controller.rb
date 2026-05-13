@@ -99,7 +99,7 @@ module V0
     end
 
     def authenticate_one_time_terms_code
-      terms_code_container = SignIn::TermsCodeContainer.find(params[:terms_code])
+      terms_code_container = ::SignIn::TermsCodeContainer.find(params[:terms_code])
       return unless terms_code_container
 
       @user_account = UserAccount.find(terms_code_container.user_account_uuid)

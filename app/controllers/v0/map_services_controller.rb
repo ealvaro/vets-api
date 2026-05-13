@@ -3,7 +3,7 @@
 require 'map/security_token/service'
 
 module V0
-  class MapServicesController < SignIn::ServiceAccountApplicationController
+  class MapServicesController < ::SignIn::ServiceAccountApplicationController
     service_tag 'identity'
     # POST /v0/map_services/:application/token
     def token

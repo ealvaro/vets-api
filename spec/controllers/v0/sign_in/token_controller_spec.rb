@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe V0::SignInController, '#token', type: :controller do
+RSpec.describe V0::SignIn::TokenController, type: :controller do
   describe 'POST token' do
     subject do
       get(:token,

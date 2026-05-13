@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe V0::SignInController, '#refresh', type: :controller do
+RSpec.describe V0::SignIn::RefreshController, type: :controller do
   describe 'POST refresh' do
     subject { post(:refresh, params: {}.merge(refresh_token_param).merge(anti_csrf_token_param)) }
 
