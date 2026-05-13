@@ -117,7 +117,7 @@ module PdfFill
           key: 'authorizing_initials_3'
         },
         'acknowledgement10a' => {
-          'financiallySound' => {
+          'isFinanciallySound' => {
             key: 'is_financially_sound'
           },
           'financialSoundnessExplanation' => {
@@ -258,8 +258,14 @@ module PdfFill
       end
 
       def format_acknowledgements(form_data)
-        form_data['acknowledgement10a']['financiallySound'] =
-          form_data['acknowledgement10a']['financiallySound'] ? 'YES' : 'NO'
+        # Optional initials / acknowledgements: client may omit acknowledgement10a entirely.
+        form_data['acknowledgement10a'] ||= {}
+        form_data['acknowledgement10a']['isFinanciallySound'] =
+          case form_data['acknowledgement10a']['financiallySound']
+          when nil then ''
+          when true then 'YES'
+          else 'NO'
+          end
       end
 
       def format_faculty(form_data)

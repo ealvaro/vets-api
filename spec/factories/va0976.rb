@@ -8,4 +8,11 @@ FactoryBot.define do
   factory :va0976_overflow, class: 'SavedClaim::EducationBenefits::VA0976', parent: :education_benefits do
     form { Rails.root.join('spec', 'fixtures', 'education_benefits_claims', '0976', 'overflow.json').read }
   end
+
+  factory :va0976_no_acknowledgement, class: 'SavedClaim::EducationBenefits::VA0976', parent: :education_benefits do
+    form { Rails.root.join('spec', 'fixtures', 'education_benefits_claims', '0976', 'minimal_no_ack.json').read }
+  end
+  factory :va0976_no, class: 'SavedClaim::EducationBenefits::VA0976', parent: :education_benefits do
+    form { Rails.root.join('spec', 'fixtures', 'education_benefits_claims', '0976', 'minimal_no.json').read }
+  end
 end
