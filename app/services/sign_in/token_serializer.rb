@@ -75,6 +75,7 @@ module SignIn
       payload[:token_type] = Constants::AccessToken::API_TOKEN_TYPE
       payload[:refresh_token] = encrypted_refresh_token unless web_sso_client?
       payload[:access_token] = encoded_access_token
+      payload[:id_token] = encoded_id_token if api_authentication_client?
       payload[:anti_csrf_token] = anti_csrf_token if anti_csrf_enabled_client?
       payload[:device_secret] = device_secret if device_secret_enabled_client?
       payload
@@ -123,6 +124,10 @@ module SignIn
 
     def encoded_access_token
       @encoded_access_token ||= AccessTokenJwtEncoder.new(access_token: session_container.access_token).perform
+    end
+
+    def encoded_id_token
+      @encoded_id_token ||= IdTokenJwtEncoder.new(access_token: session_container.access_token).perform
     end
 
     def anti_csrf_token
