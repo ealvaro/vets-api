@@ -245,38 +245,83 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
   end
 
   describe 'summary' do
+    # Swagger: GET /v1/medical_copays/summary — JSON:API-shaped JSON, empty `data`, rollups in `meta`
+    # (`total_amount_due`, `total_copays`, `month_window`); no `isCerner` (Lighthouse-only path).
     let(:service) { instance_double(MedicalCopays::LighthouseIntegration::Service) }
+    let(:summary_meta) do
+      {
+        total_amount_due: 125.50,
+        total_copays: 3,
+        month_window: 6
+      }
+    end
+    let(:summary_result) { { entries: [], meta: summary_meta } }
 
     before do
+      allow(MedicalCopays::CernerFacilities).to receive(:cerner_copay_user?).and_return(false)
       allow(MedicalCopays::LighthouseIntegration::Service)
         .to receive(:new)
         .with(current_user.icn)
         .and_return(service)
+      allow(service).to receive(:summary).and_return(summary_result)
     end
 
-    it 'returns summarized copay data with default month window' do
-      allow(service).to receive(:summary).with(month_count: 6, status: nil).and_return(
-        {
-          entries: [],
-          meta: {
-            total_amount_due: 125.50,
-            total_copays: 3,
-            month_window: 6
-          }
-        }
-      )
-
+    it 'returns 200 with swagger meta fields and empty data (default month window)' do
       get '/v1/medical_copays/summary'
+
+      expect(service).to have_received(:summary).with(month_count: 6, status: nil)
       expect(response).to have_http_status(:ok)
 
       body = JSON.parse(response.body)
 
       expect(body['data']).to eq([])
+      expect(body['meta'].keys)
+        .to match_array(%w[total_amount_due total_copays month_window])
       expect(body['meta']).to eq(
         'total_amount_due' => 125.5,
         'total_copays' => 3,
         'month_window' => 6
       )
+      expect(body).not_to have_key('isCerner')
+    end
+
+    it 'passes months query param through as month_count' do
+      meta_twelve = summary_meta.merge(month_window: 12)
+      allow(service).to receive(:summary).with(month_count: 12, status: nil).and_return(
+        { entries: [], meta: meta_twelve }
+      )
+
+      get '/v1/medical_copays/summary', params: { months: 12 }
+
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)
+      expect(body['meta']['month_window']).to eq(12)
+    end
+
+    context 'when summary raises ServiceError' do
+      before do
+        allow(service).to receive(:summary)
+          .and_raise(MedicalCopays::LighthouseIntegration::Service::ServiceError.new('External service error'))
+      end
+
+      it 'returns 502 with error payload' do
+        get '/v1/medical_copays/summary'
+
+        expect(response).to have_http_status(:bad_gateway)
+        expect(JSON.parse(response.body)).to eq('error' => 'External service error')
+      end
+    end
+
+    context 'when user has no ICN' do
+      before do
+        allow_any_instance_of(User).to receive(:icn).and_return(nil)
+      end
+
+      it 'returns forbidden' do
+        get '/v1/medical_copays/summary'
+
+        expect(response).to have_http_status(:forbidden)
+      end
     end
   end
 end

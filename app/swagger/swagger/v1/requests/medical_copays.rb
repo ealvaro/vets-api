@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# Large union schema (Lighthouse + VBS shapes on one class); split would obscure Swagger::Blocks DSL.
+# rubocop:disable Metrics/ClassLength
 class Swagger::V1::Requests::MedicalCopays
   include Swagger::Blocks
 
@@ -171,11 +173,109 @@ class Swagger::V1::Requests::MedicalCopays
             end
           end
 
-          # Only in Lighthouse response (conditionally returned based on Cerner location(s))c
+          # Only in Lighthouse response (conditionally returned based on Cerner location(s))
           property :meta, type: :object do
             property :total, type: :integer, example: 50
             property :page, type: :integer, example: 1
             property :per_page, type: :integer, example: 10
+
+            property :copay_summary, type: :object,
+                                     description: 'Rollups computed from the resolved Invoice list' do
+              property :total_current_balance,
+                       type: :number,
+                       format: :float,
+                       example: 450.25,
+                       description: 'Sum of current balances across listed invoices'
+
+              property :copay_bill_count,
+                       type: :integer,
+                       example: 4,
+                       description: 'Number of invoices included in the response window'
+
+              property :last_updated_on,
+                       type: :string,
+                       format: :'date-time',
+                       description: 'Latest `meta.lastUpdated` among invoices; null when not available',
+                       example: '2025-08-01T12:00:00Z'
+            end
+          end
+
+          property :links, type: :object,
+                           description: 'JSON:API pagination links (from FHIR Bundle.link), when present' do
+            property :self, type: :string
+            property :first, type: :string
+            property :prev, type: :string
+            property :next, type: :string
+            property :last, type: :string
+          end
+        end
+      end
+    end
+  end
+
+  swagger_path '/v1/medical_copays/summary' do
+    operation :get do
+      key :description,
+          'Aggregate medical copay totals over a recent month window ' \
+          '(same HCCC Invoice search as GET /v1/medical_copays). ' \
+          'Returns JSON:API-shaped JSON with **empty `data`** and rollups in **`meta`** ' \
+          '(`total_amount_due`, `total_copays`, `month_window`). ' \
+          'Does not include `isCerner` (Lighthouse-only path).'
+      key :operationId, 'getMedicalCopaysSummary'
+      key :tags, %w[medical_copays]
+
+      parameter :authorization
+
+      parameter do
+        key :name, :months
+        key :in, :query
+        key :description,
+            'Number of whole months to look back from the current date for including invoices (default: 6)'
+        key :required, false
+        key :type, :integer
+      end
+
+      response 200 do
+        key :description, 'Successful summary'
+
+        schema do
+          property :data, type: :array, description: 'Always empty in current implementation.' do
+            items do
+              property :id, type: :string, example: '675-K3FD983'
+              property :type, type: :string, example: 'medical_copays'
+
+              property :attributes, type: :object do
+                property :externalId, type: :string
+                property :facility, type: :string
+                property :city, type: :string
+                property :invoiceDate, type: :string
+                property :facilityId, type: :string
+                property :latestBillingRef, type: :string
+                property :currentBalance, type: :number, format: :float
+                property :previousBalance, type: :number, format: :float
+                property :previousUnpaidBalance, type: :number, format: :float
+                property :lastUpdatedAt, type: :string, format: :'date-time'
+                property :url, type: :string
+              end
+            end
+          end
+
+          property :meta, type: :object do
+            property :total_amount_due,
+                     type: :number,
+                     format: :float,
+                     example: 125.5,
+                     description: 'Sum of current balances for invoices in the month window'
+
+            property :total_copays,
+                     type: :integer,
+                     example: 3,
+                     description: 'Count of invoices in the window'
+
+            property :month_window,
+                     type: :integer,
+                     example: 6,
+                     description: 'Lookback in months (from `months` query or default 6)'
           end
         end
       end
@@ -227,9 +327,9 @@ class Swagger::V1::Requests::MedicalCopays
                 property :name, type: :string, example: 'TEST VAMC'
 
                 property :address, type: :object do
-                  property :addressLine1, type: :string, example: '151 KNOLLCROFT ROAD'
-                  property :addressLine2, type: :string
-                  property :addressLine3, type: :string
+                  property :address_line1, type: :string, example: '151 KNOLLCROFT ROAD'
+                  property :address_line2, type: :string
+                  property :address_line3, type: :string
                   property :city, type: :string, example: 'LYONS'
                   property :state, type: :string, example: 'NJ'
                   property :postalCode, type: :string, example: '07939-5001'
@@ -237,14 +337,14 @@ class Swagger::V1::Requests::MedicalCopays
               end
 
               property :patient, type: :object do
-                property :firstName, type: :string, example: 'Travis'
-                property :middleName, type: :string
-                property :lastName, type: :string, example: 'Jones'
+                property :first_name, type: :string, example: 'Travis'
+                property :middle_name, type: :string
+                property :last_name, type: :string, example: 'Jones'
 
                 property :address, type: :object do
-                  property :addressLine1, type: :string, example: '909 Rohan Highlands'
-                  property :addressLine2, type: :string
-                  property :addressLine3, type: :string
+                  property :address_line1, type: :string, example: '909 Rohan Highlands'
+                  property :address_line2, type: :string
+                  property :address_line3, type: :string
                   property :city, type: :string, example: 'Mesa'
                   property :state, type: :string, example: 'AZ'
                   property :postalCode, type: :string, example: '85120'
@@ -314,9 +414,9 @@ class Swagger::V1::Requests::MedicalCopays
                 items type: :object do
                   property :id, type: :string
                   property :date, type: :string
-                  property :compositeId, type: :string
+                  property :composite_id, type: :string
                   property :bill_number, type: :string, example: '573-K3FDDA0'
-                  property :chargeItems, type: :array do
+                  property :charge_items, type: :array do
                     items type: :object do
                       property :id, type: :string
                       property :lastUpdatedAt, type: :string
@@ -341,6 +441,13 @@ class Swagger::V1::Requests::MedicalCopays
                           property :amount, type: :number, format: :float
                         end
                       end
+
+                      property :medication, type: :object do
+                        property :medicationName, type: :string
+                        property :rxNumber, type: :string
+                        property :quantity, type: :number, format: :float
+                        property :daysSupply, type: :integer
+                      end
                     end
                   end
                 end
@@ -350,9 +457,9 @@ class Swagger::V1::Requests::MedicalCopays
                 items type: :object do
                   property :id, type: :string
                   property :date, type: :string
-                  property :compositeId, type: :string
+                  property :composite_id, type: :string
 
-                  property :chargeItems, type: :array do
+                  property :charge_items, type: :array do
                     items type: :object do
                       property :id, type: :string
                       property :lastUpdatedAt, type: :string
@@ -376,6 +483,13 @@ class Swagger::V1::Requests::MedicalCopays
                           property :code, type: :string
                           property :amount, type: :number, format: :float
                         end
+                      end
+
+                      property :medication, type: :object do
+                        property :medicationName, type: :string
+                        property :rxNumber, type: :string
+                        property :quantity, type: :number, format: :float
+                        property :daysSupply, type: :integer
                       end
                     end
                   end
@@ -395,6 +509,13 @@ class Swagger::V1::Requests::MedicalCopays
                       property :code, type: :string
                       property :amount, type: :number, format: :float
                     end
+                  end
+
+                  property :medication, type: :object do
+                    property :medicationName, type: :string
+                    property :rxNumber, type: :string
+                    property :quantity, type: :number, format: :float
+                    property :daysSupply, type: :integer
                   end
                 end
               end
@@ -419,10 +540,10 @@ class Swagger::V1::Requests::MedicalCopays
               end
             end
 
-            # Response meta
+            # Resource-level meta (`CopayDetailSerializer` — snake_case keys)
             property :meta, type: :object do
-              property :lineItemCount, type: :integer, example: 3
-              property :paymentCount, type: :integer, example: 1
+              property :line_item_count, type: :integer, example: 3
+              property :payment_count, type: :integer, example: 1
             end
           end
         end
@@ -430,3 +551,4 @@ class Swagger::V1::Requests::MedicalCopays
     end
   end
 end
+# rubocop:enable Metrics/ClassLength
