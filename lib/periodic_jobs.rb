@@ -71,6 +71,9 @@ PERIODIC_JOBS = lambda { |mgr| # rubocop:disable Metrics/BlockLength
   # Update Facilities data cache
   mgr.register('0 0 * * *', 'Crm::FacilitiesDataJob')
 
+  # Purge retained Ask VA inquiry submission payload records older than 60 days
+  mgr.register('30 4 * * *', 'AskVAApi::DeleteOldInquirySubmissionsJob')
+
   # Update FormSubmissionAttempt status from Lighthouse Benefits Intake API
   mgr.register('0 0 * * *', 'BenefitsIntakeStatusJob')
   mgr.register('0 0 * * *', '::BenefitsIntake::SubmissionStatusJob')
