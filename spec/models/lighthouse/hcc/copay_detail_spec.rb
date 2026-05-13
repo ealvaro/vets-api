@@ -39,8 +39,9 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
         [
           {
             'resource' => {
-              'id' => '123', 'date' => '2026-01-01T14:32:00-05:00',
-              'identifier' => [{ 'type' => { 'text' => 'Bill Number' }, 'value' => '573-JAN-TEST' }],
+              'id' => 'assoc-may',
+              'date' => '2025-05-15T12:00:00Z',
+              'identifier' => [{ 'type' => { 'text' => 'Bill Number' }, 'value' => '573-MAY-TEST' }],
               'issuer' => {
                 'reference' => 'https://api.gov/services/health-care-costs-coverage/v0/r4/Organization/4-5pFm5Av0PHt',
                 'display' => 'TEST VAMC'
@@ -135,8 +136,9 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
           },
           {
             'resource' => {
-              'id' => '123', 'date' => '2026-02-01T14:32:00-05:00',
-              'identifier' => [{ 'type' => { 'text' => 'Bill Number' }, 'value' => '573-FEB-TEST' }],
+              'id' => 'assoc-apr',
+              'date' => '2025-04-10T12:00:00Z',
+              'identifier' => [{ 'type' => { 'text' => 'Bill Number' }, 'value' => '573-APR-TEST' }],
               'issuer' => {
                 'reference' => 'https://api.gov/services/health-care-costs-coverage/v0/r4/Organization/4-5pFm5Av0PHt',
                 'display' => 'TEST VAMC'
@@ -202,20 +204,20 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
         expect(subject.associated_statements).to match(
           [
             {
-              'id' => '123',
-              'composite_id' => '4-5pFm5Av0PHt-2-2026',
-              'date' => 'February 1, 2026',
-              'bill_number' => '573-FEB-TEST',
-              'charge_items' => [],
-              'line_items' => []
-            },
-            {
-              'id' => '123',
-              'composite_id' => '4-5pFm5Av0PHt-1-2026',
-              'date' => 'January 1, 2026',
-              'bill_number' => '573-JAN-TEST',
+              'id' => 'assoc-may',
+              'composite_id' => '4-5pFm5Av0PHt-5-2025',
+              'date' => 'May 15, 2025',
+              'bill_number' => '573-MAY-TEST',
               'charge_items' => array_including(a_hash_including('id' => '4-6c9ZE23XQjkALyz')),
               'line_items' => a_collection_including(a_hash_including(billing_reference: '4-6cXQjkA9CC'))
+            },
+            {
+              'id' => 'assoc-apr',
+              'composite_id' => '4-5pFm5Av0PHt-4-2025',
+              'date' => 'April 10, 2025',
+              'bill_number' => '573-APR-TEST',
+              'charge_items' => [],
+              'line_items' => []
             }
           ]
         )
@@ -225,16 +227,9 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
         expect(subject.associated_invoices).to match(
           [
             a_hash_including(
-              'id' => '123',
-              'composite_id' => '4-5pFm5Av0PHt-2-2026',
-              'date' => 'February 1, 2026',
-              'charge_items' => an_instance_of(Array),
-              'line_items' => an_instance_of(Array)
-            ),
-            a_hash_including(
-              'id' => '123',
-              'composite_id' => '4-5pFm5Av0PHt-1-2026',
-              'date' => 'January 1, 2026',
+              'id' => 'assoc-may',
+              'composite_id' => '4-5pFm5Av0PHt-5-2025',
+              'date' => 'May 15, 2025',
               'charge_items' => a_collection_including(
                 a_hash_including('id' => '4-6c9ZE23XQjkALyz')
               ),
@@ -243,9 +238,57 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
                   billing_reference: '4-6cXQjkA9CC'
                 )
               )
+            ),
+            a_hash_including(
+              'id' => 'assoc-apr',
+              'composite_id' => '4-5pFm5Av0PHt-4-2025',
+              'date' => 'April 10, 2025',
+              'charge_items' => [],
+              'line_items' => []
             )
           ]
         )
+      end
+
+      it 'keeps only associated invoices older than the detail invoice date (excludes newer)' do
+        invoice_data = {
+          'id' => 'invoice-123',
+          'issuer' => { 'display' => 'VA Medical Center', 'reference' => 'Organization/4-5pFm5Av0PHt' },
+          'identifier' => [{ 'value' => 'BILL-001' }],
+          'status' => 'issued',
+          '_status' => { 'valueCodeableConcept' => { 'text' => 'Active' } },
+          'date' => '2025-06-01T20:29:47Z'
+        }
+        mixed_associated = [
+          {
+            'resource' => {
+              'id' => 'newer-same-org',
+              'date' => '2025-07-01T12:00:00Z',
+              'issuer' => {
+                'reference' => 'https://api.gov/services/health-care-costs-coverage/v0/r4/Organization/4-5pFm5Av0PHt'
+              },
+              'identifier' => [{ 'type' => { 'text' => 'Bill Number' }, 'value' => '573-NEWER' }],
+              'charge_items' => [],
+              'lineItem' => []
+            }
+          },
+          {
+            'resource' => {
+              'id' => 'older-same-org',
+              'date' => '2025-05-01T12:00:00Z',
+              'issuer' => {
+                'reference' => 'https://api.gov/services/health-care-costs-coverage/v0/r4/Organization/4-5pFm5Av0PHt'
+              },
+              'identifier' => [{ 'type' => { 'text' => 'Bill Number' }, 'value' => '573-OLDER' }],
+              'charge_items' => [],
+              'lineItem' => []
+            }
+          }
+        ]
+        detail = described_class.new(invoice_data:, associated_statements: mixed_associated)
+
+        expect(detail.associated_invoices.map { |h| h['id'] }).to eq(['older-same-org'])
+        expect(detail.associated_statements.map { |h| h['id'] }).to eq(['older-same-org'])
       end
 
       it 'calculates payment due date as invoice date plus 30 days' do
@@ -408,7 +451,7 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
           {
             'resource' => {
               'id' => 'assoc-1',
-              'date' => '2026-03-01T12:00:00Z',
+              'date' => '2025-05-01T12:00:00Z',
               'issuer' => { 'reference' => 'Organization/4-5pFm5Av0PHt' },
               'charge_items' => [],
               'lineItem' => []

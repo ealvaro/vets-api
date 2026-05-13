@@ -121,7 +121,7 @@ module Lighthouse
           next if date_str.blank?
 
           time = Time.iso8601(date_str)
-          [statement, time] if time > invoice_time
+          [statement, time] if time < invoice_time
         end
 
         filtered

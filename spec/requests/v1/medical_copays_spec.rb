@@ -110,7 +110,10 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
 
     it 'returns copay detail for authenticated user' do
       VCR.use_cassette('lighthouse/hcc/copay_detail_success', vcr_options) do
-        travel_to Time.utc(2025, 8, 1) do
+        # Use June so `collect_invoices_in_range` (6-month window) includes the Jan 2025
+        # invoice; with Aug 1 that row falls just outside the window. Associated rows must
+        # be older than the detail invoice (March 2025) per CopayDetail#sorted_invoices.
+        travel_to Time.utc(2025, 6, 1) do
           allow(Auth::ClientCredentials::JWTGenerator).to receive(:generate_token).and_return('fake-jwt')
           allow(MedicalCopays::CernerFacilities).to receive(:cerner_copay_user?).and_return(false)
 
@@ -154,11 +157,11 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
           expect(facility['name']).to be_present
           expect(facility['address']).to be_a(Hash)
           expect(data.dig('attributes', 'associatedStatements').pluck('id'))
-            .to eq(%w[4-1abZUKu7LncRZi])
+            .to eq(%w[4-1abZUKu7LpqlAw 4-1abZUKu7LncAWg])
           expect(data.dig('attributes', 'associatedStatements').pluck('bill_number'))
-            .to eq(%w[573-K3FDDA0])
+            .to eq(%w[573-K3FE740 573-K3FEDF3])
           expect(data.dig('attributes', 'associatedInvoices').pluck('composite_id'))
-            .to eq(%w[4-5pFm5Av0PHt-4-2025])
+            .to eq(%w[4-5pFm5Av0PHt-1-2025 4-5pFm5Av0PHt-12-2024])
           address = facility['address']
           expect(address['address_line1']).to eq('3000 CORAL HILLS DR')
           expect(address['city']).to eq('CORAL SPRINGS')
