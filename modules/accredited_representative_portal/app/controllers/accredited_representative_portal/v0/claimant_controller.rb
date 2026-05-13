@@ -9,7 +9,6 @@ module AccreditedRepresentativePortal
       ERROR_METRIC   = 'ar.claimant.show.error'
 
       before_action :validate_benefit_type!, only: :show
-      before_action :ensure_claimant_details_enabled!, only: :show
       before_action { authorize nil, policy_class: ClaimantPolicy }
 
       def search # rubocop:disable Metrics/MethodLength
@@ -98,12 +97,6 @@ module AccreditedRepresentativePortal
           .includes(:resolution, resolution: :resolving)
           .not_withdrawn
           .where(claimant: { icn: })
-      end
-
-      def ensure_claimant_details_enabled!
-        return if Flipper.enabled?(:accredited_representative_portal_claimant_details, current_user)
-
-        routing_error
       end
 
       def validate_benefit_type!

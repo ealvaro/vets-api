@@ -58,11 +58,6 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantClaimSubmissionsContr
       create(:saved_claim_claimant_representative, :dependent, claimant_id: search_identifier_b)
     end
 
-    before do
-      allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_claimant_details)
-                                          .and_return(true)
-    end
-
     around do |example|
       VCR.use_cassette('lighthouse/benefits_claims/power_of_attorney/200_response') do
         example.run
@@ -185,20 +180,6 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantClaimSubmissionsContr
               get '/accredited_representative_portal/v0/claimant_claim_submissions/bogus'
               expect(response).to have_http_status(:not_found)
             end
-          end
-        end
-      end
-
-      context 'claimant details feature flag is off' do
-        before do
-          allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_claimant_details)
-                                              .and_return(false)
-        end
-
-        it 'returns a 400 error' do
-          VCR.use_cassette('mpi/find_candidate/find_profile_with_identifier') do
-            get "/accredited_representative_portal/v0/claimant_claim_submissions/#{search_identifier}"
-            expect(response).to have_http_status(:bad_request)
           end
         end
       end

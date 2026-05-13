@@ -13,11 +13,6 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantController, type: :re
 
     allow(Flipper)
       .to receive(:enabled?)
-      .with(:accredited_representative_portal_claimant_details, anything)
-      .and_return(feature_flag_state)
-
-    allow(Flipper)
-      .to receive(:enabled?)
       .with(:accredited_representative_portal_individual_accept_backend)
       .and_return(false)
   end
@@ -50,7 +45,6 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantController, type: :re
   let(:time) { '2024-12-21T04:45:37.000Z' }
   let(:time_plus_one_day) { '2024-12-22T04:45:37.000Z' }
 
-  let(:feature_flag_state) { true }
   let(:monitoring) { instance_double(AccreditedRepresentativePortal::Monitoring) }
 
   describe 'GET /accredited_representative_portal/v0/claimant/search' do
@@ -237,15 +231,6 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantController, type: :re
       )
       allow(AccreditedRepresentativePortal::Monitoring).to receive(:new).and_return monitoring
       allow(monitoring).to receive(:track_count)
-    end
-
-    context 'when feature flag is disabled' do
-      let(:feature_flag_state) { false }
-
-      it 'returns 404 not found (routing error)' do
-        get(path, params: { benefitType: benefit_type }, headers: json_headers)
-        expect(response).to have_http_status(:not_found)
-      end
     end
 
     context 'when benefitType is invalid' do

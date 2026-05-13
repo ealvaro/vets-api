@@ -13,10 +13,6 @@ module AccreditedRepresentativePortal
         monitoring = ar_monitoring
         monitoring.track_count(ATTEMPT_METRIC, tags: default_tags)
 
-        if params[:id].present? && !Flipper.enabled?(:accredited_representative_portal_claimant_details)
-          raise Common::Exceptions::BadRequest.new(detail: 'Claimant details is not enabled.')
-        end
-
         authorize nil, policy_class: SavedClaimClaimantRepresentativePolicy
         serializer = SavedClaimClaimantRepresentativeSerializer.new(claim_submissions)
         render json: ({

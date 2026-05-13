@@ -6,10 +6,6 @@ module AccreditedRepresentativePortal
       class NotFound < StandardError; end
 
       def show
-        unless Flipper.enabled?(:accredited_representative_portal_claimant_details)
-          raise Common::Exceptions::BadRequest.new(detail: 'Claimant details is not enabled.')
-        end
-
         authorize nil, policy_class: SavedClaimClaimantRepresentativePolicy
         serializer = SavedClaimClaimantRepresentativeSerializer.new(claim_submissions)
         render json: ({
