@@ -11,15 +11,15 @@ module ClaimsApi
     YYYY_YYYYMM_REGEX = '^(?:19|20)[0-9][0-9]$|^(?:19|20)[0-9][0-9]-(0[1-9]|1[0-2])$'
     YYYY_MM_DD_REGEX = '^(?:[0-9]{4})-(?:0[1-9]|1[0-2])-(?:0[1-9]|[1-2][0-9]|3[0-1])$'
     DATE_STRING_FORMAT_REGEX = /^[\d-]+$/
-    VALID_NEW_DISABILITY_NAME_REGEX = %r{^(?!.* {2})[a-zA-Z0-9',. /()-]+$}
+    VALID_DISABILITY_NAME_REGEX = %r{^[a-zA-Z0-9'",.#&;:%<>/()\[\]\\ -]+$}
 
-    # Validates disability name format for NEW disabilities
-    # Regex pattern from FES: ^(?!.* {2})[a-zA-Z0-9',. /()-]+$
-    def valid_disability_name_for_new_action?(name, action_type)
-      return true unless action_type == 'NEW'
+    # Validates disability name format for all disabilities
+    # Regex pattern from FES: "^[a-zA-Z0-9'\",.#&;:%<>/()\\[\\]\\\\ -]+$"
+    # FES Source: DisabilitiesValidator.java:45
+    def valid_disability_name?(name)
       return false if name.blank?
 
-      name.match?(VALID_NEW_DISABILITY_NAME_REGEX)
+      name.match?(VALID_DISABILITY_NAME_REGEX)
     end
 
     def eligible_for_future_end_date?(max_period, service_periods)

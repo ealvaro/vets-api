@@ -847,7 +847,7 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
                   secondaryDisabilities: [
                     {
                       disabilityActionType: 'SECONDARY',
-                      name: 'hearing loss @home',
+                      name: 'hearing loss @home!',
                       serviceRelevance: 'Caused by a service-connected disability.'
                     }
                   ]
@@ -864,11 +864,14 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
         end
       end
 
-      context 'when secondary disability name contains valid characters' do
-        it 'accepts secondary disability name with allowed special characters' do
+      context 'when secondary disability name contains all FES-valid characters' do
+        it 'accepts the secondary disability name' do
           mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
             VCR.use_cassette('claims_api/disability_comp') do
               json_data = JSON.parse(data)
+              # Covers all FES-allowed chars: alphanumeric, space, hyphen, apostrophe, double quote,
+              # comma, period, hash, ampersand, semicolon, colon, percent, angle brackets,
+              # slash, parens, square brackets, backslash
               disabilities = [
                 {
                   disabilityActionType: 'NONE',
@@ -877,7 +880,7 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
                   secondaryDisabilities: [
                     {
                       disabilityActionType: 'SECONDARY',
-                      name: "hearing loss, tinnitus-related (O'Brien's case)",
+                      name: "hearing loss \"type\" #1: 50% [right] & left-ear; <acute> (O'Brien's), test/case\\injury",
                       serviceRelevance: 'Caused by a service-connected disability.'
                     }
                   ]
@@ -892,7 +895,7 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
       end
 
       context 'when secondary disability name contains double spaces' do
-        it 'returns an error for secondary disability name with consecutive spaces' do
+        it 'accepts secondary disability name with consecutive spaces' do
           mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
             VCR.use_cassette('claims_api/disability_comp') do
               json_data = JSON.parse(data)
@@ -912,10 +915,7 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
               ]
               json_data['data']['attributes']['disabilities'] = disabilities
               post synchronous_path, params: json_data.to_json, headers: auth_header
-              expect(response).to have_http_status(:unprocessable_content)
-              parsed_response = JSON.parse(response.body)
-              expect(parsed_response['errors']).to be_present
-              expect(parsed_response['errors'][0]['detail']).to include('secondaryDisabilities')
+              expect(response).to have_http_status(:accepted)
             end
           end
         end

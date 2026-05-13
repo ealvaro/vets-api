@@ -157,6 +157,8 @@ describe AltTestDisabilityCompensationValidationClass, vcr: 'brd/countries' do
     end
 
     describe '#alt_rev_validate_disability_name' do
+      let(:expected_pattern) { ClaimsApi::DisabilityCompensationValidationsHelper::VALID_DISABILITY_NAME_REGEX.source }
+
       context 'when disability name is blank' do
         it 'collects an error' do
           test_526_validation_instance.form_attributes['disabilities'] = [
@@ -171,10 +173,14 @@ describe AltTestDisabilityCompensationValidationClass, vcr: 'brd/countries' do
       end
 
       context 'when disabilityActionType is NEW' do
-        context 'with valid characters' do
+        context 'with all valid characters' do
           it 'does not collect an error' do
+            # Covers all FES-allowed chars: alphanumeric, space, hyphen, apostrophe, double quote,
+            # comma, period, hash, ampersand, semicolon, colon, percent, angle brackets,
+            # slash, parens, square brackets, backslash (FES DisabilitiesValidator regex)
+            name = "PTSD \"type\" #1: 50% [right] & left-ear; <acute> (O'Brien's), test/case\\injury"
             test_526_validation_instance.form_attributes['disabilities'] = [
-              { 'name' => "PTSD (post-traumatic stress)', period.", 'disabilityActionType' => 'NEW' }
+              { 'name' => name, 'disabilityActionType' => 'NEW' }
             ]
 
             subject.send(:alt_rev_validate_disability_name)
@@ -184,44 +190,44 @@ describe AltTestDisabilityCompensationValidationClass, vcr: 'brd/countries' do
         end
 
         context 'with consecutive spaces' do
-          it 'collects an error' do
+          it 'does not collect an error' do
             test_526_validation_instance.form_attributes['disabilities'] = [
               { 'name' => 'PTSD  double space', 'disabilityActionType' => 'NEW' }
             ]
 
             subject.send(:alt_rev_validate_disability_name)
 
-            expect(current_error_array.count).to eq(1)
-            expect(current_error_array[0][:detail])
-              .to eq("disabilities[0].name must match pattern: ^(?!.* {2})[a-zA-Z0-9',. /()-]+$")
+            expect(current_error_array).to be_nil
           end
         end
 
         context 'with invalid special characters' do
           it 'collects an error' do
             test_526_validation_instance.form_attributes['disabilities'] = [
-              { 'name' => 'PTSD@invalid', 'disabilityActionType' => 'NEW' }
+              { 'name' => 'PTSD@invalid!', 'disabilityActionType' => 'NEW' }
             ]
 
             subject.send(:alt_rev_validate_disability_name)
 
             expect(current_error_array.count).to eq(1)
             expect(current_error_array[0][:detail])
-              .to eq("disabilities[0].name must match pattern: ^(?!.* {2})[a-zA-Z0-9',. /()-]+$")
+              .to eq("disabilities[0].name must match pattern: #{expected_pattern}")
           end
         end
       end
 
       context 'when disabilityActionType is INCREASE' do
         context 'with invalid characters' do
-          it 'does not validate pattern for non-NEW disability' do
+          it 'validates pattern for non-NEW disability' do
             test_526_validation_instance.form_attributes['disabilities'] = [
               { 'name' => 'PTSD@invalid', 'disabilityActionType' => 'INCREASE' }
             ]
 
             subject.send(:alt_rev_validate_disability_name)
 
-            expect(current_error_array).to be_nil
+            expect(current_error_array.count).to eq(1)
+            expect(current_error_array[0][:detail])
+              .to eq("disabilities[0].name must match pattern: #{expected_pattern}")
           end
         end
       end
@@ -758,6 +764,39 @@ describe AltTestDisabilityCompensationValidationClass, vcr: 'brd/countries' do
         subject.form_attributes['veteranIdentification']['mailingAddress']['state'] = nil
         res = test_526_validation_instance.send(:alt_rev_validate_form_526_current_mailing_address_zip)
         expect(res).to be_nil
+      end
+    end
+  end
+
+  describe '#alt_rev_validate_form_526_service_number' do
+    context 'when serviceNumber is nil' do
+      it 'does not collect an error' do
+        subject.form_attributes['veteranIdentification']['serviceNumber'] = nil
+
+        test_526_validation_instance.send(:alt_rev_validate_form_526_service_number)
+
+        expect(current_error_array).to be_nil
+      end
+    end
+
+    context 'when serviceNumber is valid (9 or fewer characters)' do
+      it 'does not collect an error' do
+        subject.form_attributes['veteranIdentification']['serviceNumber'] = '123456789'
+
+        test_526_validation_instance.send(:alt_rev_validate_form_526_service_number)
+
+        expect(current_error_array).to be_nil
+      end
+    end
+
+    context 'when serviceNumber is too long (more than 9 characters)' do
+      it 'collects an error' do
+        subject.form_attributes['veteranIdentification']['serviceNumber'] = '1234567890'
+
+        test_526_validation_instance.send(:alt_rev_validate_form_526_service_number)
+
+        expect(current_error_array.count).to eq(1)
+        expect(current_error_array[0][:detail]).to eq('serviceNumber is too long.')
       end
     end
   end

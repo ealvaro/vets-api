@@ -900,6 +900,8 @@ RSpec.describe ClaimsApi::RevisedDisabilityCompensationValidations do
   end
 
   describe '#validate_form_526_disability_name!' do
+    let(:expected_pattern) { ClaimsApi::DisabilityCompensationValidationsHelper::VALID_DISABILITY_NAME_REGEX.source }
+
     context 'when disability name is blank' do
       let(:form_attributes) { { 'disabilities' => [{ 'name' => '', 'disabilityActionType' => 'NEW' }] } }
 
@@ -912,10 +914,13 @@ RSpec.describe ClaimsApi::RevisedDisabilityCompensationValidations do
     end
 
     context 'when disabilityActionType is NEW' do
-      context 'with valid characters' do
+      context 'with all valid characters' do
+        # Covers all FES-allowed chars: alphanumeric, space, hyphen, apostrophe, double quote,
+        # comma, period, hash, ampersand, semicolon, colon, percent, angle brackets,
+        # slash, parens, square brackets, backslash (FES DisabilitiesValidator regex)
         let(:form_attributes) do
-          { 'disabilities' => [{ 'name' => "PTSD (post-traumatic stress)', period.",
-                                 'disabilityActionType' => 'NEW' }] }
+          name = "PTSD \"type\" #1: 50% [right] & left-ear; <acute> (O'Brien's), test/case\\injury"
+          { 'disabilities' => [{ 'name' => name, 'disabilityActionType' => 'NEW' }] }
         end
 
         it 'does not raise an error' do
@@ -928,25 +933,21 @@ RSpec.describe ClaimsApi::RevisedDisabilityCompensationValidations do
           { 'disabilities' => [{ 'name' => 'PTSD  double space', 'disabilityActionType' => 'NEW' }] }
         end
 
-        it 'raises an UnprocessableEntity error with pattern requirement' do
-          expect { subject.validate_form_526_disability_name! }
-            .to raise_error(Common::Exceptions::UnprocessableEntity) do |error|
-              expect(error.errors.first.detail)
-                .to eq("disabilities[0].name must match pattern: ^(?!.* {2})[a-zA-Z0-9',. /()-]+$")
-            end
+        it 'does not raise an error' do
+          expect { subject.validate_form_526_disability_name! }.not_to raise_error
         end
       end
 
       context 'with invalid special characters' do
         let(:form_attributes) do
-          { 'disabilities' => [{ 'name' => 'PTSD@invalid', 'disabilityActionType' => 'NEW' }] }
+          { 'disabilities' => [{ 'name' => 'PTSD@invalid!', 'disabilityActionType' => 'NEW' }] }
         end
 
         it 'raises an UnprocessableEntity error with pattern requirement' do
           expect { subject.validate_form_526_disability_name! }
             .to raise_error(Common::Exceptions::UnprocessableEntity) do |error|
               expect(error.errors.first.detail)
-                .to eq("disabilities[0].name must match pattern: ^(?!.* {2})[a-zA-Z0-9',. /()-]+$")
+                .to eq("disabilities[0].name must match pattern: #{expected_pattern}")
             end
         end
       end
@@ -958,8 +959,12 @@ RSpec.describe ClaimsApi::RevisedDisabilityCompensationValidations do
           { 'disabilities' => [{ 'name' => 'PTSD@invalid', 'disabilityActionType' => 'INCREASE' }] }
         end
 
-        it 'does not validate pattern for non-NEW disability' do
-          expect { subject.validate_form_526_disability_name! }.not_to raise_error
+        it 'raises an UnprocessableEntity error for invalid name' do
+          expect { subject.validate_form_526_disability_name! }
+            .to raise_error(Common::Exceptions::UnprocessableEntity) do |error|
+              expect(error.errors.first.detail)
+                .to eq("disabilities[0].name must match pattern: #{expected_pattern}")
+            end
         end
       end
     end

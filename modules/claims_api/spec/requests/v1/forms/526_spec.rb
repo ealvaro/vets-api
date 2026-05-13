@@ -3119,7 +3119,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
           allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_enable_FES).and_return(true)
         end
 
-        it 'raises an exception if name is not valid structure' do
+        it 'raises an exception if name contains invalid characters' do
           mock_acg(scopes) do |auth_header|
             VCR.use_cassette('claims_api/brd/countries') do
               json_data = JSON.parse data
@@ -3132,7 +3132,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
                   secondaryDisabilities: [
                     {
                       disabilityActionType: 'SECONDARY',
-                      name: 'PTSD @home',
+                      name: 'PTSD @home!',
                       serviceRelevance: 'Caused by a service-connected disability.'
                     }
                   ]

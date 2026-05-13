@@ -792,7 +792,7 @@
             "example": "NEW"
           },
           "name": {
-            "description": "What the Disability is called.",
+            "description": "What the Disability is called.\nWhen disabilityActionType is NEW or INCREASE, name must match pattern:\n^[a-zA-Z0-9'\\\",.#&;:%<>/()\\[\\]\\\\ -]+$",
             "type": "string",
             "example": "PTSD (post traumatic stress disorder)",
             "maxLength": 255
@@ -825,7 +825,7 @@
                 "name": {
                   "description": "What the Disability is called.",
                   "type": "string",
-                  "pattern": "^(?!.* {2})[a-zA-Z0-9',. /()-]+$",
+                  "pattern": "^[a-zA-Z0-9'\",.#&;:%<>/()\\[\\]\\\\ -]+$",
                   "maxLength": 255,
                   "example": "PTSD"
                 },

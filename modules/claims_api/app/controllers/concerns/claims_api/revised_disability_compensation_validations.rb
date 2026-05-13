@@ -276,8 +276,9 @@ module ClaimsApi
 
     def validate_form_526_disability_name!
       form_attributes['disabilities'].each_with_index do |disability, index|
+        next if disability['disabilityActionType'] == 'NONE'
+
         disability_name = disability['name']
-        disability_action_type = disability['disabilityActionType']
 
         if disability_name.blank?
           raise ::Common::Exceptions::InvalidFieldValue.new(
@@ -286,9 +287,9 @@ module ClaimsApi
           )
         end
 
-        unless valid_disability_name_for_new_action?(disability_name, disability_action_type)
+        unless valid_disability_name?(disability_name)
           raise ::Common::Exceptions::UnprocessableEntity.new(
-            detail: "disabilities[#{index}].name must match pattern: #{VALID_NEW_DISABILITY_NAME_REGEX.source}"
+            detail: "disabilities[#{index}].name must match pattern: #{VALID_DISABILITY_NAME_REGEX.source}"
           )
         end
       end

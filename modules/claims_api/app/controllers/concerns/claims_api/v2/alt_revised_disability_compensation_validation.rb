@@ -282,16 +282,17 @@ module ClaimsApi
 
       def alt_rev_validate_disability_name
         form_attributes['disabilities'].each_with_index do |disability, idx|
+          next if disability&.dig('disabilityActionType') == 'NONE'
+
           disability_name = disability&.dig('name')
           if disability_name.blank?
             collect_error_messages(source: "/disabilities/#{idx}/name",
                                    detail: "disabilities[#{idx}].name is required")
           else
-            disability_action_type = disability&.dig('disabilityActionType')
-            unless valid_disability_name_for_new_action?(disability_name, disability_action_type)
+            unless valid_disability_name?(disability_name)
               collect_error_messages(
                 source: "/disabilities/#{idx}/name",
-                detail: "disabilities[#{idx}].name must match pattern: #{VALID_NEW_DISABILITY_NAME_REGEX.source}"
+                detail: "disabilities[#{idx}].name must match pattern: #{VALID_DISABILITY_NAME_REGEX.source}"
               )
             end
           end
