@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_05_11_142631) do
+ActiveRecord::Schema[7.2].define(version: 2026_05_11_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -1903,6 +1903,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_11_142631) do
     t.boolean "hidden", default: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "metadata", default: {}, null: false
     t.index ["user_account_id", "tooltip_name"], name: "index_tooltips_on_user_account_id_and_tooltip_name", unique: true
     t.index ["user_account_id"], name: "index_tooltips_on_user_account_id"
   end
