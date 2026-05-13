@@ -193,7 +193,7 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
       end
 
       it 'resolves associated statement line item description and date from resource _associated_charge_items' do
-        stmt = subject.associated_statements.find { |s| s['composite_id'] == '4-5pFm5Av0PHt-1-2026' }
+        stmt = subject.associated_statements.find { |s| s['composite_id'] == '4-5pFm5Av0PHt-5-2025' }
         first = stmt['line_items'].first
 
         expect(first[:description]).to eq('OUTPATIENT CARE(NSC)')
