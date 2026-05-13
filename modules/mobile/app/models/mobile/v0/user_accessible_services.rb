@@ -29,6 +29,7 @@ module Mobile
             :event_bus_gateway_letter_ready_push_notifications, icn_actor
           ),
           claims: access?(lighthouse: :access?),
+          cstLettersContentUpdates: Flipper.enabled?(:cst_letters_content_updates, @user),
           cstMultiClaimProvider: @user.icn.present? && Flipper.enabled?(
             :cst_multi_claim_provider_mobile, icn_actor
           ),

@@ -12,6 +12,7 @@ RSpec.describe 'Mobile::V0::User', type: :request do
   end
 
   before do
+    allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:event_bus_gateway_letter_ready_push_notifications, instance_of(Flipper::Actor)).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:cst_multi_claim_provider_mobile, instance_of(Flipper::Actor)).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:mhv_medications_cerner_pilot, instance_of(User)).and_return(false)
@@ -83,7 +84,7 @@ RSpec.describe 'Mobile::V0::User', type: :request do
         expect(attributes.dig('profile', 'contactEmail', 'id')).to eq(318_927)
       end
 
-      it 'includes the users contact email addrss' do
+      it 'includes the users contact email address' do
         expect(attributes.dig('profile', 'contactEmail', 'emailAddress')).to match(/person\d+@example.com/)
       end
 
@@ -207,6 +208,7 @@ RSpec.describe 'Mobile::V0::User', type: :request do
             appointments
             benefitsPushNotification
             claims
+            cstLettersContentUpdates
             cstMultiClaimProvider
             decisionLetters
             directDepositBenefits

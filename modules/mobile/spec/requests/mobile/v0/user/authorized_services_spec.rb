@@ -13,6 +13,7 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
   describe 'GET /mobile/v0/user/authorized-services' do
     before do
       allow(Flipper).to receive(:enabled?).with(:event_bus_gateway_letter_ready_push_notifications, instance_of(Flipper::Actor)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:cst_multi_claim_provider_mobile, instance_of(Flipper::Actor)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_medications_cerner_pilot, instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_cerner_pilot,
@@ -40,6 +41,7 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
           'appointments' => true,
           'benefitsPushNotification' => false,
           'claims' => true,
+          'cstLettersContentUpdates' => false,
           'cstMultiClaimProvider' => false,
           'decisionLetters' => true,
           'directDepositBenefits' => true,
@@ -130,6 +132,7 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
   describe 'when event_bus_gateway_letter_ready_push_notifications flag is enabled' do
     before do
       allow(Flipper).to receive(:enabled?).with(:event_bus_gateway_letter_ready_push_notifications, instance_of(Flipper::Actor)).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:cst_multi_claim_provider_mobile, instance_of(Flipper::Actor)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_medications_cerner_pilot, instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_cerner_pilot, instance_of(User)).and_return(false)
@@ -164,9 +167,40 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
     end
   end
 
+  describe 'cst_letters_content_updates flag' do
+    context 'when cst_letters_content_updates is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?).with(:event_bus_gateway_letter_ready_push_notifications, instance_of(Flipper::Actor)).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:cst_multi_claim_provider_mobile, instance_of(Flipper::Actor)).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:mhv_medications_cerner_pilot, instance_of(User)).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_cerner_pilot,
+                                                  instance_of(User)).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_allergies_enabled,
+                                                  instance_of(User)).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_labs_and_tests_enabled,
+                                                  instance_of(User)).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_enabled,
+                                                  instance_of(User)).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass,
+                                                  instance_of(User)).and_return(false)
+      end
+
+      it 'returns true for cstLettersContentUpdates' do
+        get '/mobile/v0/user/authorized-services', headers: sis_headers,
+                                                   params: { 'appointmentIEN' => '123', 'locationId' => '123' }
+        assert_schema_conform(200)
+
+        expect(attributes['authorizedServices']['cstLettersContentUpdates']).to be true
+      end
+    end
+  end
+
   describe 'when cst_multi_claim_provider_mobile flag is enabled' do
     before do
       allow(Flipper).to receive(:enabled?).with(:event_bus_gateway_letter_ready_push_notifications, instance_of(Flipper::Actor)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:cst_multi_claim_provider_mobile, instance_of(Flipper::Actor)).and_return(true)
       allow(Flipper).to receive(:enabled?).with(:mhv_medications_cerner_pilot, instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_cerner_pilot, instance_of(User)).and_return(false)
@@ -204,6 +238,7 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
   describe 'when OH flippers are enabled' do
     before do
       allow(Flipper).to receive(:enabled?).with(:event_bus_gateway_letter_ready_push_notifications, instance_of(Flipper::Actor)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:cst_multi_claim_provider_mobile, instance_of(Flipper::Actor)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_medications_cerner_pilot, instance_of(User)).and_return(true)
       allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_cerner_pilot,
@@ -231,6 +266,7 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
           'appointments' => true,
           'benefitsPushNotification' => false,
           'claims' => true,
+          'cstLettersContentUpdates' => false,
           'cstMultiClaimProvider' => false,
           'decisionLetters' => true,
           'directDepositBenefits' => true,
@@ -262,6 +298,7 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
           'appointments' => true,
           'benefitsPushNotification' => false,
           'claims' => true,
+          'cstLettersContentUpdates' => false,
           'cstMultiClaimProvider' => false,
           'decisionLetters' => true,
           'directDepositBenefits' => true,
@@ -295,6 +332,7 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
           'appointments' => true,
           'benefitsPushNotification' => false,
           'claims' => true,
+          'cstLettersContentUpdates' => false,
           'cstMultiClaimProvider' => false,
           'decisionLetters' => true,
           'directDepositBenefits' => true,
@@ -326,6 +364,7 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
           'appointments' => true,
           'benefitsPushNotification' => false,
           'claims' => true,
+          'cstLettersContentUpdates' => false,
           'cstMultiClaimProvider' => false,
           'decisionLetters' => true,
           'directDepositBenefits' => true,
@@ -357,6 +396,7 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
           'appointments' => true,
           'benefitsPushNotification' => false,
           'claims' => true,
+          'cstLettersContentUpdates' => false,
           'cstMultiClaimProvider' => false,
           'decisionLetters' => true,
           'directDepositBenefits' => true,
