@@ -92,8 +92,6 @@ app/controllers/v0/form212680_controller.rb @software/benefits-optimization-aqui
 app/controllers/v0/form210779_controller.rb @software/benefits-optimization-aquia @software/backend-review-group
 app/controllers/v0/form214192_controller.rb @software/benefits-optimization-aquia @software/backend-review-group
 app/controllers/v0/form21p530a_controller.rb @software/benefits-optimization-aquia @software/backend-review-group
-app/controllers/v0/multi_party_forms/primary_controller.rb @software/benefits-optimization-aquia @software/backend-review-group
-app/controllers/v0/multi_party_forms/secondary_controller.rb @software/benefits-optimization-aquia @software/backend-review-group
 app/controllers/v0/forms_controller.rb @software/backend-review-group @software/vfs-public-websites-frontend
 app/controllers/v0/gi_bill_feedbacks_controller.rb @software/backend-review-group @software/govcio-vfep-codereviewers
 app/controllers/v0/gids @software/govcio-vfep-codereviewers @software/backend-review-group
@@ -305,7 +303,6 @@ app/models/mhv_opt_in_flag.rb @software/vfs-mhv-integration @software/backend-re
 app/models/mhv_user_account.rb @software/octo-identity
 app/models/mhv/mr @software/vfs-mhv-integration @software/backend-review-group
 app/models/mpi_data.rb @software/octo-identity
-app/models/multi_party_form_submission.rb @software/benefits-optimization-aquia @software/backend-review-group
 app/models/old_email.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 app/models/onsite_notification.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 app/models/payment_history.rb @software/vfs-authenticated-experience-backend @software/vsa-debt-resolution @software/backend-review-group
@@ -587,7 +584,6 @@ app/sidekiq/lighthouse/submit_career_counseling_job.rb @software/backend-review-
 app/sidekiq/load_average_days_for_claim_completion_job.rb @software/benefits-microservices @software/backend-review-group
 app/sidekiq/mhv @software/vfs-mhv-integration @software/backend-review-group
 app/sidekiq/mhv/account_creator_job.rb @software/octo-identity
-app/sidekiq/multi_party_forms/ @software/benefits-optimization-aquia @software/backend-review-group
 app/sidekiq/pager_duty @software/backend-review-group
 app/sidekiq/preneeds @software/bah-mbs-selfserv @software/backend-review-group
 app/sidekiq/schema_contract @software/backend-review-group
@@ -885,7 +881,6 @@ config/preneeds @software/bah-mbs-selfserv @software/backend-review-group
 config/puma.rb @software/backend-review-group
 config/redis.yml @software/backend-review-group
 config/routes.rb @software/backend-review-group
-config/schemas/21-2680-PRIMARY.json @software/benefits-optimization-aquia @software/backend-review-group
 config/settings @software/backend-review-group
 config/settings.local.yml.example @software/backend-review-group
 config/settings.yml @software/backend-review-group
@@ -1462,7 +1457,6 @@ spec/factories/military_service_episodes.rb @software/vfs-authenticated-experien
 spec/factories/mpi @software/octo-identity
 spec/factories/mvi_profile_relationships.rb @software/octo-identity
 spec/factories/mvi_profiles.rb @software/octo-identity
-spec/factories/multi_party_form_submissions.rb @software/benefits-optimization-aquia @software/backend-review-group
 spec/factories/onsite_notifications.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 spec/factories/organizations.rb @software/accredited-representative-crew @software/backend-review-group
 spec/factories/pagerduty_services.rb @software/backend-review-group
@@ -1902,7 +1896,6 @@ spec/models/mhv_opt_in_flag_spec.rb @software/vfs-mhv-integration @software/back
 spec/models/mhv_user_account_spec.rb @software/octo-identity
 spec/models/mhv/mr @software/vfs-mhv-integration @software/backend-review-group
 spec/models/mpi_data_spec.rb @software/octo-identity
-spec/models/multi_party_form_submission_spec.rb @software/benefits-optimization-aquia @software/backend-review-group
 spec/models/onsite_notification_spec.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 spec/models/persistent_attachments @software/benefits-non-disability @software/pension-and-burials @software/backend-review-group
 spec/models/personal_information_log_spec.rb @software/backend-review-group
@@ -2025,7 +2018,6 @@ spec/requests/v0/form1010cg @software/health-apps-backend @software/backend-revi
 spec/requests/v0/form1095_bs_spec.rb @software/va-core-veteran-experiences @software/backend-review-group
 spec/requests/v0/form210779_spec.rb @software/benefits-optimization-aquia @software/backend-review-group
 spec/requests/v0/form212680_spec.rb @software/benefits-optimization-aquia @software/backend-review-group
-spec/requests/v0/multi_party_forms/primary_spec.rb @software/benefits-optimization-aquia @software/backend-review-group
 spec/requests/v0/gi @software/backend-review-group
 spec/requests/v0/health_care_applications_spec.rb @software/health-apps-backend @software/backend-review-group
 spec/requests/v0/id_card/announcement_subscription_spec.rb @software/backend-review-group
@@ -2217,7 +2209,6 @@ spec/sidekiq/lighthouse/submit_career_counseling_job_spec.rb @software/backend-r
 spec/sidekiq/load_average_days_for_claim_completion_job_spec.rb @software/benefits-microservices @software/backend-review-group
 spec/sidekiq/mhv @software/vfs-mhv-integration @software/backend-review-group
 spec/sidekiq/mhv/account_creator_job_spec.rb @software/octo-identity
-spec/sidekiq/multi_party_forms/ @software/benefits-optimization-aquia @software/backend-review-group
 spec/sidekiq/pager_duty @software/backend-review-group
 spec/sidekiq/preneeds @software/bah-mbs-selfserv @software/backend-review-group
 spec/sidekiq/process_file_job_spec.rb @software/backend-review-group

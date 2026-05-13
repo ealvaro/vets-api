@@ -123,13 +123,6 @@ class Rack::Attack
     req.remote_ip if req.path == '/ask_va_api/v0/diagnostics' && req.get?
   end
 
-  # Multi-Party Forms throttling by IP address
-  # Rate limit: 60 requests per minute per IP
-  # Applies to all Primary Party and Secondary Party endpoints
-  throttle('multi_party_forms/ip', limit: 60, period: 1.minute) do |req|
-    req.remote_ip if req.path.starts_with?('/v0/multi_party_forms')
-  end
-
   # Rate-limit the unauthenticated next_steps_email endpoint.
   # This endpoint sends VA-branded emails via VA Notify. Without throttling it
   # is an open relay. 5 req/min per IP is generous for a "just completed a form" flow.
