@@ -30,7 +30,9 @@ module SignIn
                           LOGIN_GOV_IAL2_PREFERRED = 'urn:acr.login.gov:verified-facial-match-preferred'].freeze
       ANTI_CSRF_COOKIE_NAME = 'vagov_anti_csrf_token'
       AUTHENTICATION_TYPES = [COOKIE = 'cookie', API = 'api', MOCK = 'mock'].freeze
+      AUTHORIZE_ROUTE_PATH = '/v0/sign_in/authorize'
       BROKER_CODE = 'sis'
+      CERTS_ROUTE_PATH = '/sign_in/openid_connect/certs'
       CLIENT_STATE_MINIMUM_LENGTH = 22
       CODE_CHALLENGE_METHOD = 'S256'
       CSP_TYPES = [IDME = 'idme', LOGINGOV = 'logingov', MHV = 'mhv'].freeze
@@ -51,11 +53,17 @@ module SignIn
       INFO_COOKIE_NAME = 'vagov_info_token'
       JWT_ENCODE_ALGORITHM = 'RS256'
       LOA = [LOA_ONE = 1, LOA_THREE = 3].freeze
+      LOGOUT_ROUTE_PATH = '/v0/sign_in/logout'
       REFRESH_ROUTE_PATH = '/v0/sign_in/refresh'
       REFRESH_TOKEN_COOKIE_NAME = 'vagov_refresh_token'
+      RESPONSE_TYPES_SUPPORTED = ['code'].freeze
+      REVOKE_ROUTE_PATH = '/v0/sign_in/revoke'
       SERVICE_ACCOUNT_ACCESS_TOKEN_COOKIE_NAME = 'service_account_access_token'
       SCOPES = [DEVICE_SSO = 'device_sso'].freeze
+      SUBJECT_TYPES_SUPPORTED = ['public'].freeze
+      TOKEN_ENDPOINT_AUTH_METHODS = %w[private_key_jwt none].freeze
       TOKEN_ROUTE_PATH = '/v0/sign_in/token'
+      USERINFO_ROUTE_PATH = '/sign_in/user_info'
     end
   end
 end

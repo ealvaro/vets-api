@@ -27,6 +27,7 @@ Rails.application.routes.draw do
   namespace :sign_in do
     get '/openid_connect/certs', to: 'openid_connect_certificates#index'
     get '/user_info', to: 'user_info#show'
+    get '/.well-known/openid-configuration', to: 'openid_configuration#show'
 
     namespace :webhooks do
       post 'logingov/risc', to: 'logingov#risc'
