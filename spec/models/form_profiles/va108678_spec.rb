@@ -34,7 +34,7 @@ RSpec.describe FormProfiles::VA108678 do
             'postalCode' => '20011'
           },
           'phone' => '3035551234',
-          'emailAddress' => 'person100@example.com'
+          'emailAddress' => profile.send(:contact_information).email
         }
       )
     end
