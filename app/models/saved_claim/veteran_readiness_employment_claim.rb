@@ -161,26 +161,55 @@ class SavedClaim::VeteranReadinessEmploymentClaim < SavedClaim
   # @return None
   def upload_to_vbms(user:, doc_type: '1167')
     form_path = PdfFill::Filler.fill_form(self, nil, { created_at: })
+    va_file_number = parsed_form['veteranInformation']['VAFileNumber']
+    ssn = parsed_form['veteranInformation']['ssn']
 
+    if Flipper.enabled? :vre_use_claims_evidence_api
+      upload_to_claims_evidence_api(form_path:, va_file_number:, ssn:, user:, doc_type:)
+    else
+      upload_to_legacy_vbms(form_path:, va_file_number:, ssn:, user:, doc_type:)
+    end
+  rescue => e
+    Rails.logger.error('Error uploading VRE claim to VBMS.', { user_uuid: user&.uuid, messsage: e.message })
+    send_to_lighthouse!(user)
+  end
+
+  def upload_to_claims_evidence_api(form_path:, va_file_number:, ssn:, user:, doc_type:)
+    folder_identifier = va_file_number.present? ? "VETERAN:FILENUMBER:#{va_file_number}" : "VETERAN:SSN:#{ssn}"
+    ce_uploader = ClaimsEvidenceApi::Uploader.new(folder_identifier)
+
+    log_to_statsd('claims_evidence_api') do
+      Rails.logger.info('Uploading VRE claim via Claims Evidence API', { user_uuid: user&.uuid })
+      file_uuid = ce_uploader.upload_evidence(
+        id,
+        file_path: Rails.root.join(form_path).to_s,
+        form_id: '28-1900',
+        doctype: doc_type
+      )
+      persist_document_id(file_uuid)
+    end
+  end
+
+  def upload_to_legacy_vbms(form_path:, va_file_number:, ssn:, user:, doc_type:)
     uploader = ClaimsApi::VBMSUploader.new(
       filepath: Rails.root.join(form_path),
-      file_number: parsed_form['veteranInformation']['VAFileNumber'] || parsed_form['veteranInformation']['ssn'],
+      file_number: va_file_number.presence || ssn,
       doc_type:
     )
 
     log_to_statsd('vbms') do
       Rails.logger.info('Uploading VRE claim to VBMS', { user_uuid: user&.uuid })
       response = uploader.upload!
-
-      if response[:vbms_document_series_ref_id].present?
-        updated_form = parsed_form
-        updated_form['documentId'] = response[:vbms_document_series_ref_id]
-        update!(form: updated_form.to_json)
-      end
+      persist_document_id(response[:vbms_document_series_ref_id])
     end
-  rescue => e
-    Rails.logger.error('Error uploading VRE claim to VBMS.', { user_uuid: user&.uuid, messsage: e.message })
-    send_to_lighthouse!(user)
+  end
+
+  def persist_document_id(document_id)
+    return if document_id.blank?
+
+    updated_form = parsed_form
+    updated_form['documentId'] = document_id
+    update!(form: updated_form.to_json)
   end
 
   def to_pdf(file_name = nil)
@@ -347,6 +376,9 @@ class SavedClaim::VeteranReadinessEmploymentClaim < SavedClaim
     yield
     elapsed_time = Time.current - start_time
     StatsD.measure("api.1900.#{service}.response_time", elapsed_time, tags: {})
+  rescue => e
+    StatsD.increment("api.1900.#{service}.error")
+    raise e
   end
 
   def validate_required_fields

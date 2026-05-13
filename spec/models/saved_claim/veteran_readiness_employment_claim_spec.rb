@@ -128,7 +128,10 @@ RSpec.describe SavedClaim::VeteranReadinessEmploymentClaim do
     end
 
     context 'when VBMS upload is successful' do
-      before { expect(ClaimsApi::VBMSUploader).to receive(:new) { OpenStruct.new(upload!: {}) } }
+      before do
+        allow(Flipper).to receive(:enabled?).with(:vre_use_claims_evidence_api).and_return(false)
+        expect(ClaimsApi::VBMSUploader).to receive(:new) { OpenStruct.new(upload!: {}) }
+      end
 
       context 'submission to VRE' do
         before do
@@ -472,6 +475,133 @@ RSpec.describe SavedClaim::VeteranReadinessEmploymentClaim do
 
         expect(claim).not_to be_valid
         expect(claim.errors.attribute_names).to include(:'/privacyAgreementAccepted')
+      end
+    end
+  end
+
+  describe '#upload_to_vbms' do
+    let(:upload_user) { build(:user) }
+    let(:form_path) { 'tmp/test_vre_form.pdf' }
+
+    let(:veteran_information) { { 'VAFileNumber' => '123456789', 'ssn' => '987654321' } }
+    let(:base_parsed_form) do
+      claim.parsed_form.merge(
+        'veteranInformation' => claim.parsed_form.fetch('veteranInformation', {}).merge(veteran_information)
+      )
+    end
+
+    before do
+      allow(PdfFill::Filler).to receive(:fill_form).and_return(form_path)
+      allow(claim).to receive(:parsed_form).and_return(base_parsed_form)
+    end
+
+    context 'when vre_use_claims_evidence_api flipper is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).and_return(false)
+      end
+
+      it 'uses ClaimsApi::VBMSUploader and stores the document series ref id as documentId' do
+        allow_any_instance_of(ClaimsApi::VBMSUploader).to receive(:upload!)
+          .and_return({ vbms_document_series_ref_id: 'DOC-SERIES-001' })
+
+        claim.upload_to_vbms(user: upload_user)
+
+        expect(claim.parsed_form['documentId']).to eq('DOC-SERIES-001')
+      end
+
+      it 'uses VAFileNumber as file_number when present' do
+        vbms_uploader = instance_double(ClaimsApi::VBMSUploader)
+        allow(vbms_uploader).to receive(:upload!).and_return({ vbms_document_series_ref_id: 'X' })
+        expect(ClaimsApi::VBMSUploader).to receive(:new).with(
+          filepath: Rails.root.join(form_path),
+          file_number: '123456789',
+          doc_type: '1167'
+        ).and_return(vbms_uploader)
+
+        claim.upload_to_vbms(user: upload_user)
+      end
+
+      it 'falls back to SSN as file_number when VAFileNumber is blank' do
+        allow(claim).to receive(:parsed_form)
+          .and_return(
+            base_parsed_form.merge(
+              'veteranInformation' => base_parsed_form.fetch('veteranInformation', {}).merge('VAFileNumber' => '')
+            )
+          )
+
+        vbms_uploader = instance_double(ClaimsApi::VBMSUploader)
+        allow(vbms_uploader).to receive(:upload!).and_return({ vbms_document_series_ref_id: 'X' })
+        expect(ClaimsApi::VBMSUploader).to receive(:new).with(
+          filepath: Rails.root.join(form_path),
+          file_number: '987654321',
+          doc_type: '1167'
+        ).and_return(vbms_uploader)
+
+        claim.upload_to_vbms(user: upload_user)
+      end
+
+      it 'falls back to send_to_lighthouse! on upload error' do
+        allow_any_instance_of(ClaimsApi::VBMSUploader).to receive(:upload!)
+          .and_raise(StandardError, 'VBMS unavailable')
+        expect(claim).to receive(:send_to_lighthouse!).with(upload_user)
+
+        claim.upload_to_vbms(user: upload_user)
+      end
+    end
+
+    context 'when vre_use_claims_evidence_api flipper is enabled' do
+      let(:ce_uploader) { instance_double(ClaimsEvidenceApi::Uploader) }
+
+      before do
+        allow(Flipper).to receive(:enabled?).and_return(true)
+        allow(ClaimsEvidenceApi::Uploader).to receive(:new).and_return(ce_uploader)
+        allow(ce_uploader).to receive(:upload_evidence).and_return('uuid-001')
+      end
+
+      it 'uses ClaimsEvidenceApi::Uploader and stores the file uuid as documentId' do
+        claim.upload_to_vbms(user: upload_user)
+
+        expect(claim.parsed_form['documentId']).to eq('uuid-001')
+      end
+
+      it 'builds a FILENUMBER folder identifier when VAFileNumber is present' do
+        expect(ClaimsEvidenceApi::Uploader).to receive(:new)
+          .with('VETERAN:FILENUMBER:123456789').and_return(ce_uploader)
+
+        claim.upload_to_vbms(user: upload_user)
+      end
+
+      it 'builds an SSN folder identifier when VAFileNumber is blank' do
+        allow(claim).to receive(:parsed_form)
+          .and_return(
+            base_parsed_form.merge(
+              'veteranInformation' => base_parsed_form.fetch('veteranInformation', {}).merge('VAFileNumber' => '')
+            )
+          )
+
+        expect(ClaimsEvidenceApi::Uploader).to receive(:new)
+          .with('VETERAN:SSN:987654321').and_return(ce_uploader)
+
+        claim.upload_to_vbms(user: upload_user)
+      end
+
+      it 'calls upload_evidence with the correct parameters' do
+        expect(ce_uploader).to receive(:upload_evidence).with(
+          claim.id,
+          file_path: Rails.root.join(form_path).to_s,
+          form_id: '28-1900',
+          doctype: '1167'
+        ).and_return('uuid-001')
+
+        claim.upload_to_vbms(user: upload_user)
+      end
+
+      it 'falls back to send_to_lighthouse! on upload error' do
+        allow(ce_uploader).to receive(:upload_evidence)
+          .and_raise(StandardError, 'Claims Evidence API unavailable')
+        expect(claim).to receive(:send_to_lighthouse!).with(upload_user)
+
+        claim.upload_to_vbms(user: upload_user)
       end
     end
   end
