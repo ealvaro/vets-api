@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_05_11_180000) do
+ActiveRecord::Schema[7.2].define(version: 2026_05_13_191343) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -1444,6 +1444,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_11_180000) do
     t.jsonb "metadata"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "needs_kms_rotation", default: false, null: false
   end
 
   create_table "mobile_users", force: :cascade do |t|
