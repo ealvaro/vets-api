@@ -119,6 +119,7 @@ Mobile::Engine.routes.draw do
     get '/vet_verification_status', to: 'vet_verification_statuses#show'
     resource :veteran_status_card, only: :show
     resources :tooltips, only: %i[index create update], controller: 'tooltips', defaults: { format: :json }
+    post '/survey', to: 'surveys#create'
   end
 
   namespace :v1 do

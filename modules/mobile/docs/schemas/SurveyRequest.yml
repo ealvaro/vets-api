@@ -1,0 +1,56 @@
+description: A request to submit survey response data.
+type: object
+additionalProperties: false
+required:
+  - surveyType
+  - surveyData
+  - metadata
+properties:
+  surveyType:
+    type: string
+    enum:
+      - giveFeedback
+      - RxIntercept
+    description: Type of survey being submitted
+    example: 'giveFeedback'
+  surveyData:
+    type: object
+    description: Survey question data with responses
+    example:
+      q01:
+        type: 'free_response'
+        label: 'Explain your issue'
+        value: 'This is my response'
+      q02:
+        type: 'multiple_choice'
+        label: 'Rate from 1-5'
+        value: '4'
+        color: 'purple'
+    additionalProperties:
+      type: object
+      required:
+        - type
+        - label
+        - value
+      properties:
+        type:
+          type: string
+          description: Question type
+        label:
+          type: string
+          description: Question text/label
+        value:
+          type:
+            - string
+            - 'null'
+          description: User's answer/response
+      additionalProperties: true
+  metadata:
+    type:
+      - object
+      - 'null'
+    description: Additional survey metadata
+    additionalProperties: true
+    example:
+      os: 'iOS'
+      version: '15.0'

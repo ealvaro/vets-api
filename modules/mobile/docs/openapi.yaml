@@ -4631,6 +4631,40 @@ paths:
       security:
         - Bearer: []
       summary: /v0/travel-pay/claims/{claim_id}/documents/{document_id}
+  /v0/survey:
+    post:
+      description: Submit survey response data.
+      parameters:
+        - $ref: '#/components/parameters/InflectionHeader'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/SurveyRequest.yml
+        description: Survey response data
+        required: true
+      responses:
+        '204':
+          description: No Content
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '422':
+          $ref: '#/components/responses/422'
+        '500':
+          $ref: '#/components/responses/500'
+        '502':
+          $ref: '#/components/responses/502'
+        '503':
+          $ref: '#/components/responses/503'
+        '504':
+          $ref: '#/components/responses/504'
+      security:
+        - Bearer: []
+      summary: /v0/survey
   /v0/user:
     get:
       description: |

@@ -8074,6 +8074,62 @@
         "summary": "/v0/travel-pay/claims/{claim_id}/documents/{document_id}"
       }
     },
+    "/v0/survey": {
+      "post": {
+        "description": "Submit survey response data.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/InflectionHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SurveyRequest"
+              }
+            }
+          },
+          "description": "Survey response data",
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "422": {
+            "$ref": "#/components/responses/422"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "502": {
+            "$ref": "#/components/responses/502"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          },
+          "504": {
+            "$ref": "#/components/responses/504"
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "summary": "/v0/survey"
+      }
+    },
     "/v0/user": {
       "get": {
         "description": "Returns the user profile, including the user's addresses and the services the user has the requisite ids to access. Meta data for this endpoint returns all the services available in the API.\n",
@@ -26547,6 +26603,82 @@
             "type": "string",
             "nullable": false,
             "example": "2025-03-12T20:27:14.088Z"
+          }
+        }
+      },
+      "SurveyRequest": {
+        "description": "A request to submit survey response data.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "surveyType",
+          "surveyData",
+          "metadata"
+        ],
+        "properties": {
+          "surveyType": {
+            "type": "string",
+            "enum": [
+              "giveFeedback",
+              "RxIntercept"
+            ],
+            "description": "Type of survey being submitted",
+            "example": "giveFeedback"
+          },
+          "surveyData": {
+            "type": "object",
+            "description": "Survey question data with responses",
+            "example": {
+              "q01": {
+                "type": "free_response",
+                "label": "Explain your issue",
+                "value": "This is my response"
+              },
+              "q02": {
+                "type": "multiple_choice",
+                "label": "Rate from 1-5",
+                "value": "4",
+                "color": "purple"
+              }
+            },
+            "additionalProperties": {
+              "type": "object",
+              "required": [
+                "type",
+                "label",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Question type"
+                },
+                "label": {
+                  "type": "string",
+                  "description": "Question text/label"
+                },
+                "value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "User's answer/response"
+                }
+              },
+              "additionalProperties": true
+            }
+          },
+          "metadata": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Additional survey metadata",
+            "additionalProperties": true,
+            "example": {
+              "os": "iOS",
+              "version": "15.0"
+            }
           }
         }
       },
