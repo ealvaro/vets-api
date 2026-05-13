@@ -1606,6 +1606,10 @@ features:
     actor_type: user
     description: Dole 210 updates to form 22-1990, 22-1990e, 22-5490, 22-10297
     enable_in_development: false
+  meb_supplemental_coe:
+    actor_type: user
+    description: Display updates for supplemental COE work
+    enable_in_development: false
   show_mbs_preneed_change_va_4010007:
     actor_type: user
     description: Updates to text in form VA 40-10007
