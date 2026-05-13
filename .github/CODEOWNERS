@@ -1183,6 +1183,7 @@ lib/vha_notification @software/backend-review-group @software/disability-benefit
 lib/vic @software/octo-identity
 lib/vye @software/backend-review-group @software/govcio-vfep-codereviewers
 lib/zero_silent_failures/manual_remediation/saved_claim.rb @software/backend-review-group
+catalog-info.yaml @software/backend-review-group
 Makefile @software/backend-review-group
 mkdocs.yaml @software/backend-review-group
 modules/accredited_representative_portal @software/accredited-representative-crew @software/backend-review-group

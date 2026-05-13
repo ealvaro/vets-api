@@ -5,7 +5,7 @@ metadata:
   name: vets-api
   description: This project provides common APIs for applications that live on VA.gov (formerly vets.gov APIs).
   annotations:
-    github.com/project-slug: department-of-veterans-affairs/vets-api
+    va.ghe.com/project-slug: software/vets-api
     # project slug for the VSP sentry project
     sentry.io/project-slug: platform-api
     backstage.io/techdocs-ref: dir:.

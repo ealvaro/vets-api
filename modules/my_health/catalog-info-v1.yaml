@@ -2,7 +2,7 @@ apiVersion: backstage.io/v1alpha1
 kind: API
 metadata:
   annotations:
-    github.com/project-slug: department-of-veterans-affairs/vets-api
+    va.ghe.com/project-slug: software/vets-api
   description: APIs for the MyHealth namespace within vets-api
   namespace: vagov-platform
   name: my-health-api
