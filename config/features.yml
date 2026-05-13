@@ -2671,6 +2671,16 @@ features:
       so we can see which non-PC referrals are being rerouted. When ENABLED,
       CCRA categories use their explicit CCRA_TO_TARGETS entry; categories with
       no entry still fall back to primaryCare with logging.
+  va_online_scheduling_unified_eps_next_available:
+    actor_type: user
+    enable_in_development: false
+    description: >-
+      Owned by VAOS (Oracle Health Unified Scheduling). POC kill switch for
+      polling Wellhive for each EPS provider's earliest open slot at unified
+      provider-search time. ONE draft appointment per (uuid, referral_number)
+      is reused across all slot queries for that referral. Disable if Wellhive
+      latency is unacceptable; the FE then renders "Schedule to view
+      availability" instead of a date.
   va_online_scheduling_unified_name_filter:
     actor_type: user
     enable_in_development: true

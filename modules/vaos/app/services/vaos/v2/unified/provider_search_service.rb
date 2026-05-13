@@ -71,6 +71,13 @@ module VAOS
             user_address:, referral:, radius:
           )
 
+          StatsD.measure("#{STATSD_KEY_PREFIX}.va_next_available_enrichment.duration") do
+            enrich_va_next_available!(va_providers)
+          end
+          StatsD.measure("#{STATSD_KEY_PREFIX}.eps_next_available_enrichment.duration") do
+            enrich_eps_next_available!(eps_providers, referral)
+          end
+
           combine_and_sort(va_providers, eps_providers, referral)
         end
 
@@ -181,6 +188,201 @@ module VAOS
               provider
             end
           end
+        end
+
+        # Window (in days from today) used when asking VPG for each VA clinic's
+        # earliest open slot. Mirrors what the FE used to fan out per-clinic.
+        NEXT_AVAILABLE_WINDOW_DAYS = 90
+
+        ##
+        # For every VA provider in +va_providers+, attempt to populate
+        # +next_available_date+ (YYYY-MM-DD in the clinic's local offset) by calling
+        # +VAOS::V2::SystemsService#get_next_available_slots+ once per VistA site
+        # with the full set of clinic IENs at that site. Calls fan out in parallel
+        # across sites. Per-clinic failures, per-site failures, and missing
+        # +start+ values all degrade silently to +nil+ -- the FE renders blank in
+        # that case. Mutates the providers in place.
+        def enrich_va_next_available!(va_providers)
+          return if va_providers.blank?
+
+          start_date = Time.current.utc.iso8601
+          end_date = (Time.current.utc + NEXT_AVAILABLE_WINDOW_DAYS.days).iso8601
+
+          providers_by_location = va_providers.group_by(&:location_id)
+          futures = providers_by_location.map do |location_id, location_providers|
+            Concurrent::Promises.future do
+              [location_id, fetch_next_available_for_site(location_id, location_providers, start_date, end_date)]
+            end
+          end
+
+          next_available_by_location = resolve_next_available_futures(futures)
+
+          va_providers.each do |provider|
+            provider.next_available_date = next_available_by_location.dig(provider.location_id, provider.id.to_s)
+          end
+        end
+
+        def resolve_next_available_futures(futures)
+          futures.to_h(&:value!)
+        rescue => e
+          Rails.logger.warn(
+            "#{log_prefix}: next-available enrichment failed",
+            { error_class: e.class.name, user_uuid: @cached_user_uuid }.compact
+          )
+          StatsD.increment("#{STATSD_KEY_PREFIX}.next_available_enrichment.failure")
+          {}
+        end
+
+        # Returns a Hash mapping clinic IEN (String) -> ISO8601 date String for the
+        # earliest available slot, omitting any clinic that didn't return a usable
+        # slot. On any upstream/parse failure returns +{}+ so the providers just
+        # render with blank dates.
+        def fetch_next_available_for_site(location_id, location_providers, start_date, end_date)
+          clinic_ids = location_providers.map { |p| p.id.to_s }.uniq
+          slots = systems_service.get_next_available_slots(
+            location_id:,
+            clinic_ids:,
+            on_or_after: start_date,
+            before: end_date
+          )
+          build_clinic_date_map(slots)
+        rescue => e
+          log_next_available_failure(location_id, e)
+          {}
+        end
+
+        def build_clinic_date_map(slots)
+          Array(slots).each_with_object({}) do |slot, acc|
+            next unless slot.respond_to?(:status) && slot.status.to_s == 'success'
+
+            has_avail = slot.try(:has_availability)
+            next unless has_avail == true || has_avail.to_s.casecmp('true').zero?
+
+            start_value = slot.try(:start)
+            next if start_value.blank?
+
+            date_string = parse_date_string(start_value)
+            acc[slot.clinic_id.to_s] = date_string if date_string
+          end
+        end
+
+        def log_next_available_failure(location_id, error)
+          Rails.logger.warn(
+            "#{log_prefix}: next-available-slot fetch failed for site #{location_id}",
+            { error_class: error.class.name, user_uuid: @cached_user_uuid }.compact
+          )
+          StatsD.increment("#{STATSD_KEY_PREFIX}.next_available_slot.failure")
+        end
+
+        # Preserves the clinic's local date (no UTC shift) by parsing the offset
+        # in the upstream ISO8601 string and converting to a Date in that offset.
+        # Logs on parse failure (rather than silently degrading) so STG can
+        # surface upstream date-format regressions before they go unnoticed.
+        def parse_date_string(value)
+          Time.iso8601(value.to_s).to_date.iso8601
+        rescue ArgumentError, TypeError => e
+          Rails.logger.warn(
+            "#{log_prefix}: next-available slot start could not be parsed as ISO8601",
+            { error_class: e.class.name, user_uuid: @cached_user_uuid }.compact
+          )
+          StatsD.increment("#{STATSD_KEY_PREFIX}.next_available_date_parse.failure")
+          nil
+        end
+
+        # POC: gated EPS slot polling. ONE draft per +(uuid, referral_number)+
+        # is reused for slot queries across all candidate providers on the
+        # referral; Wellhive ties slots to +appointmentId+, not to provider id.
+        # Flag off -> FE renders "Schedule to view availability".
+        def enrich_eps_next_available!(eps_providers, referral)
+          return if eps_providers.blank?
+          return unless Flipper.enabled?(:va_online_scheduling_unified_eps_next_available, current_user)
+
+          referral_number = referral.try(:referral_number)
+          return if referral_number.blank?
+
+          draft_id = resolve_eps_draft_id(referral_number)
+          return if draft_id.blank?
+
+          start_date = Time.current.utc.iso8601
+          end_date = (Time.current.utc + NEXT_AVAILABLE_WINDOW_DAYS.days).iso8601
+          futures = eps_providers.map do |provider|
+            Concurrent::Promises.future do
+              [provider.id.to_s, fetch_next_available_for_eps_provider(provider, draft_id, start_date, end_date)]
+            end
+          end
+          next_available_by_provider = resolve_eps_next_available_futures(futures)
+          eps_providers.each { |p| p.next_available_date = next_available_by_provider[p.id.to_s] }
+        end
+
+        # Prefers a cached draft from an earlier slots step; on miss, mints one
+        # and writes it back so a later submit reuses it instead of orphaning.
+        def resolve_eps_draft_id(referral_number)
+          redis = Eps::RedisClient.new
+          cached = redis.fetch_draft_appointment_id(uuid: current_user.uuid, referral_number:)
+          return cached if cached.present?
+
+          draft_id = eps_appointment_service.create_draft_appointment(referral_id: referral_number)&.id
+          return nil if draft_id.blank?
+
+          redis.store_draft_appointment_id(
+            uuid: current_user.uuid, referral_number:, draft_appointment_id: draft_id
+          )
+          draft_id
+        rescue => e
+          log_eps_draft_resolution_failure(e)
+          nil
+        end
+
+        def fetch_next_available_for_eps_provider(provider, draft_id, start_date, end_date)
+          appointment_type_id = provider.first_self_schedulable_appointment_type_id!
+          response = eps_provider_service.get_provider_slots(
+            provider.provider_service_id.presence || provider.id,
+            appointmentTypeId: appointment_type_id,
+            startOnOrAfter: start_date,
+            startBefore: end_date,
+            appointmentId: draft_id
+          )
+          earliest_eps_slot_date(response&.slots)
+        rescue => e
+          log_eps_next_available_failure(provider, e)
+          nil
+        end
+
+        def earliest_eps_slot_date(slots)
+          starts = Array(slots).map do |slot|
+            hash = slot.is_a?(OpenStruct) ? slot.to_h : slot
+            hash[:start] || hash['start']
+          end.compact_blank
+          return nil if starts.empty?
+
+          parse_date_string(starts.min)
+        end
+
+        def resolve_eps_next_available_futures(futures)
+          futures.to_h(&:value!)
+        rescue => e
+          Rails.logger.warn(
+            "#{log_prefix}: EPS next-available enrichment failed",
+            { error_class: e.class.name, user_uuid: @cached_user_uuid }.compact
+          )
+          StatsD.increment("#{STATSD_KEY_PREFIX}.eps_next_available_enrichment.failure")
+          {}
+        end
+
+        def log_eps_next_available_failure(provider, error)
+          Rails.logger.warn(
+            "#{log_prefix}: EPS next-available-slot fetch failed for provider #{provider.id}",
+            { error_class: error.class.name, user_uuid: @cached_user_uuid }.compact
+          )
+          StatsD.increment("#{STATSD_KEY_PREFIX}.eps_next_available_slot.failure")
+        end
+
+        def log_eps_draft_resolution_failure(error)
+          Rails.logger.warn(
+            "#{log_prefix}: EPS draft resolution failed for next-available enrichment",
+            { error_class: error.class.name, user_uuid: @cached_user_uuid }.compact
+          )
+          StatsD.increment("#{STATSD_KEY_PREFIX}.eps_draft_resolution.failure")
         end
 
         def fetch_eps_providers(user_address, radius, eps_client:, specialty_ids:, name_patterns:)
@@ -355,6 +557,10 @@ module VAOS
 
         def eps_provider_service
           @eps_provider_service ||= Eps::ProviderService.new(current_user)
+        end
+
+        def eps_appointment_service
+          @eps_appointment_service ||= Eps::AppointmentService.new(current_user)
         end
 
         def log_prefix

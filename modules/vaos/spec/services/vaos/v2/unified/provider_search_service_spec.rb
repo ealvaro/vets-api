@@ -93,7 +93,13 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
 
       allow(lighthouse_client).to receive(:get_facilities).and_return([lighthouse_facility])
       allow(eps_provider_service).to receive(:search_by_location).and_return([eps_provider_hash])
-      allow(systems_service).to receive(:get_facility_clinics).and_return([urology_clinic])
+      # Default the next-available enrichment to a no-op so the bulk of the
+      # structural tests don't have to stub VPG. Tests under the "next available
+      # date enrichment" describe block stub this explicitly with real data.
+      allow(systems_service).to receive_messages(
+        get_facility_clinics: [urology_clinic],
+        get_next_available_slots: []
+      )
 
       # Default the regex post-filter OFF for the structural tests that aren't
       # exercising it (otherwise PC default patterns drop the UROLOGY EPS
@@ -326,6 +332,301 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
       expect(lighthouse_client).to have_received(:get_facilities).with(
         hash_including(radius: 25)
       )
+    end
+
+    describe 'next available date enrichment' do
+      let(:second_urology_clinic) do
+        OpenStruct.new(id: '456', station_id: '983', service_name: 'CHY UROLOGY 2', physical_location: nil)
+      end
+
+      let(:second_facility) do
+        double(
+          'Facility',
+          id: 'vha_984', unique_id: '984', name: 'Other VA',
+          address: nil, phone: nil, lat: 28.12, long: -80.65,
+          facility_type: 'va_health_facility',
+          services: { 'health' => [{ 'serviceId' => 'urology' }] }
+        )
+      end
+
+      def slot(ien:, status: 'success', has_availability: true, start: '2026-06-10T08:00:00-04:00')
+        OpenStruct.new(
+          id: ien,
+          clinic_id: ien,
+          status:,
+          has_availability:,
+          slot_id: nil,
+          start:,
+          end: nil
+        )
+      end
+
+      it 'populates next_available_date on VA providers from the VPG response' do
+        allow(systems_service).to receive(:get_next_available_slots).with(
+          hash_including(location_id: '983', clinic_ids: ['455'])
+        ).and_return([slot(ien: '455', start: '2026-06-10T08:00:00-04:00')])
+
+        results = service.search(referral:)
+        va = results.find { |p| p.provider_type == 'va' }
+
+        expect(va.next_available_date).to eq('2026-06-10')
+      end
+
+      it 'leaves next_available_date nil for VA clinics whose VPG entry reports status != success' do
+        allow(systems_service).to receive(:get_next_available_slots).and_return(
+          [slot(ien: '455', status: 'failure', has_availability: false, start: nil)]
+        )
+
+        results = service.search(referral:)
+        va = results.find { |p| p.provider_type == 'va' }
+
+        expect(va.next_available_date).to be_nil
+      end
+
+      it 'leaves next_available_date nil when VPG reports has_availability false' do
+        allow(systems_service).to receive(:get_next_available_slots).and_return(
+          [slot(ien: '455', has_availability: false, start: nil)]
+        )
+
+        results = service.search(referral:)
+        va = results.find { |p| p.provider_type == 'va' }
+
+        expect(va.next_available_date).to be_nil
+      end
+
+      it 'never sets next_available_date on EPS providers' do
+        allow(systems_service).to receive(:get_next_available_slots).and_return(
+          [slot(ien: '455', start: '2026-06-10T08:00:00-04:00')]
+        )
+
+        results = service.search(referral:)
+        eps = results.find { |p| p.provider_type == 'eps' }
+
+        expect(eps.next_available_date).to be_nil
+      end
+
+      it 'fans out one VPG call per VistA site when results span multiple sites' do
+        allow(lighthouse_client).to receive(:get_facilities).and_return([lighthouse_facility, second_facility])
+        allow(systems_service).to receive(:get_facility_clinics) do |location_id:, **|
+          location_id == '983' ? [urology_clinic, second_urology_clinic] : [urology_clinic]
+        end
+        allow(systems_service).to receive(:get_next_available_slots) do |location_id:, clinic_ids:, **|
+          case location_id
+          when '983'
+            expect(clinic_ids.sort).to eq(%w[455 456])
+            [
+              slot(ien: '455', start: '2026-06-10T08:00:00-04:00'),
+              slot(ien: '456', start: '2026-06-11T08:00:00-04:00')
+            ]
+          when '984'
+            [slot(ien: '455', start: '2026-06-12T08:00:00-04:00')]
+          end
+        end
+
+        results = service.search(referral:)
+        va_providers = results.select { |p| p.provider_type == 'va' }
+
+        expect(va_providers.size).to eq(3)
+        by_key = va_providers.to_h { |p| [[p.location_id, p.id], p.next_available_date] }
+        expect(by_key[%w[983 455]]).to eq('2026-06-10')
+        expect(by_key[%w[983 456]]).to eq('2026-06-11')
+        expect(by_key[%w[984 455]]).to eq('2026-06-12')
+      end
+
+      it 'degrades to nil dates when the VPG call raises (does not surface the failure)' do
+        allow(systems_service).to receive(:get_next_available_slots)
+          .and_raise(Common::Exceptions::BackendServiceException.new('VA_900'))
+
+        expect { service.search(referral:) }.not_to raise_error
+        results = service.search(referral:)
+        va = results.find { |p| p.provider_type == 'va' }
+        expect(va.next_available_date).to be_nil
+      end
+
+      it 'preserves the clinic local date when the upstream slot is near a UTC day boundary' do
+        # 23:30 in -04:00 is 03:30 the *next* day in UTC; we should keep the
+        # clinic-local date, not the UTC-shifted one.
+        allow(systems_service).to receive(:get_next_available_slots).and_return(
+          [slot(ien: '455', start: '2026-06-10T23:30:00-04:00')]
+        )
+
+        results = service.search(referral:)
+        va = results.find { |p| p.provider_type == 'va' }
+
+        expect(va.next_available_date).to eq('2026-06-10')
+      end
+
+      it 'queries VPG with a now -> now + 90 day window' do
+        Timecop.freeze(Time.utc(2026, 5, 11, 19, 26, 28)) do
+          allow(systems_service).to receive(:get_next_available_slots).and_return([])
+
+          service.search(referral:)
+
+          expect(systems_service).to have_received(:get_next_available_slots).with(
+            hash_including(
+              on_or_after: '2026-05-11T19:26:28Z',
+              before: '2026-08-09T19:26:28Z'
+            )
+          )
+        end
+      end
+    end
+
+    describe 'EPS next available date enrichment (gated POC)' do
+      # EpsProvider#first_self_schedulable_appointment_type_id! reads
+      # appointment_types off the provider; the default eps_provider_hash above
+      # has none, so override it for this block to one that's self-schedulable.
+      let(:eps_provider_hash) do
+        {
+          id: '9mN718pH',
+          name: 'Dr. Bones @ Melbourne Medical',
+          individual_providers: [{ name: 'Dr. Bones', npi: '91560381x' }],
+          location: {
+            address: '1105 Palmetto Ave, Melbourne, FL, 32901, US',
+            latitude: 28.08061,
+            longitude: -80.60322
+          },
+          network_ids: ['network-1'],
+          specialties: [{ id: '208800000X', name: 'Urology' }],
+          features: { is_digital: true, direct_booking: { is_enabled: true } },
+          appointment_types: [{ id: 'apt-type-1', is_self_schedulable: true }]
+        }
+      end
+
+      let(:referral) do
+        double('Referral',
+               category_of_care: 'UROLOGY',
+               provider_npi: '91560381x',
+               referral_number: 'VA0000007419')
+      end
+
+      let(:eps_appointment_service) { instance_double(Eps::AppointmentService) }
+      let(:redis_client) { instance_double(Eps::RedisClient) }
+
+      before do
+        allow(Eps::AppointmentService).to receive(:new).with(user).and_return(eps_appointment_service)
+        allow(Eps::RedisClient).to receive(:new).and_return(redis_client)
+        allow(Flipper).to receive(:enabled?)
+          .with(:va_online_scheduling_unified_eps_next_available, user).and_return(true)
+        # Default to cache miss + successful draft mint so individual tests can
+        # override one piece without re-stubbing the world.
+        allow(redis_client).to receive_messages(
+          fetch_draft_appointment_id: nil, store_draft_appointment_id: true
+        )
+        allow(eps_appointment_service).to receive(:create_draft_appointment)
+          .with(referral_id: 'VA0000007419')
+          .and_return(OpenStruct.new(id: 'draft-abc'))
+        allow(eps_provider_service).to receive(:get_provider_slots).and_return(
+          OpenStruct.new(slots: [{ id: 'slot-1', start: '2026-06-15T09:00:00-04:00' }], count: 1)
+        )
+      end
+
+      it 'populates next_available_date on EPS providers when the flag is on' do
+        results = service.search(referral:)
+        eps = results.find { |p| p.provider_type == 'eps' }
+        expect(eps.next_available_date).to eq('2026-06-15')
+      end
+
+      it 'creates one draft and reuses it across all EPS slot calls' do
+        # Add a second EPS provider so we can prove the draft is reused.
+        second_hash = eps_provider_hash.merge(id: 'second-id')
+        allow(eps_provider_service).to receive(:search_by_location)
+          .and_return([eps_provider_hash, second_hash])
+
+        service.search(referral:)
+
+        expect(eps_appointment_service).to have_received(:create_draft_appointment).once
+        expect(eps_provider_service).to have_received(:get_provider_slots).twice
+        expect(eps_provider_service).to have_received(:get_provider_slots)
+          .with('9mN718pH', hash_including(appointmentId: 'draft-abc'))
+        expect(eps_provider_service).to have_received(:get_provider_slots)
+          .with('second-id', hash_including(appointmentId: 'draft-abc'))
+      end
+
+      it 'reuses a cached draft id from a prior slots step (no new draft created)' do
+        allow(redis_client).to receive(:fetch_draft_appointment_id)
+          .with(uuid: user.uuid, referral_number: 'VA0000007419')
+          .and_return('cached-draft-xyz')
+
+        service.search(referral:)
+
+        expect(eps_appointment_service).not_to have_received(:create_draft_appointment)
+        expect(eps_provider_service).to have_received(:get_provider_slots)
+          .with(anything, hash_including(appointmentId: 'cached-draft-xyz'))
+      end
+
+      it 'writes the freshly minted draft id back to Redis' do
+        service.search(referral:)
+
+        expect(redis_client).to have_received(:store_draft_appointment_id).with(
+          uuid: user.uuid, referral_number: 'VA0000007419', draft_appointment_id: 'draft-abc'
+        )
+      end
+
+      it 'picks the earliest slot when multiple are returned' do
+        allow(eps_provider_service).to receive(:get_provider_slots).and_return(
+          OpenStruct.new(
+            slots: [
+              { id: 'slot-late', start: '2026-07-20T10:00:00-04:00' },
+              { id: 'slot-early', start: '2026-06-15T09:00:00-04:00' },
+              { id: 'slot-mid', start: '2026-07-01T09:00:00-04:00' }
+            ],
+            count: 3
+          )
+        )
+
+        results = service.search(referral:)
+        eps = results.find { |p| p.provider_type == 'eps' }
+        expect(eps.next_available_date).to eq('2026-06-15')
+      end
+
+      it 'leaves next_available_date nil when no slots come back' do
+        allow(eps_provider_service).to receive(:get_provider_slots)
+          .and_return(OpenStruct.new(slots: [], count: 0))
+
+        results = service.search(referral:)
+        eps = results.find { |p| p.provider_type == 'eps' }
+        expect(eps.next_available_date).to be_nil
+      end
+
+      it 'degrades to nil when slot fetch raises (no error surfaces)' do
+        allow(eps_provider_service).to receive(:get_provider_slots)
+          .and_raise(Common::Exceptions::BackendServiceException.new('EPS_900'))
+
+        expect { service.search(referral:) }.not_to raise_error
+        results = service.search(referral:)
+        eps = results.find { |p| p.provider_type == 'eps' }
+        expect(eps.next_available_date).to be_nil
+      end
+
+      it 'degrades to nil when draft creation raises (no error surfaces)' do
+        allow(eps_appointment_service).to receive(:create_draft_appointment)
+          .and_raise(Common::Exceptions::BackendServiceException.new('EPS_900'))
+
+        expect { service.search(referral:) }.not_to raise_error
+        expect(eps_provider_service).not_to have_received(:get_provider_slots)
+      end
+
+      it 'is a no-op when the flag is off (no draft, no slot calls)' do
+        allow(Flipper).to receive(:enabled?)
+          .with(:va_online_scheduling_unified_eps_next_available, user).and_return(false)
+
+        results = service.search(referral:)
+        eps = results.find { |p| p.provider_type == 'eps' }
+
+        expect(eps.next_available_date).to be_nil
+        expect(eps_appointment_service).not_to have_received(:create_draft_appointment)
+        expect(eps_provider_service).not_to have_received(:get_provider_slots)
+      end
+
+      it 'is a no-op when the referral has no referral_number (no draft, no slot calls)' do
+        bare_referral = double('Referral', category_of_care: 'UROLOGY', provider_npi: '91560381x')
+
+        service.search(referral: bare_referral)
+
+        expect(eps_appointment_service).not_to have_received(:create_draft_appointment)
+        expect(eps_provider_service).not_to have_received(:get_provider_slots)
+      end
     end
 
     describe 'staging facility-id translation' do

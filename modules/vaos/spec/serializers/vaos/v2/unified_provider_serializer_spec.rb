@@ -115,5 +115,35 @@ RSpec.describe VAOS::V2::UnifiedProviderSerializer do
       expect(result[0][:attributes][:sortOrder]).to eq(0)
       expect(result[1][:attributes][:sortOrder]).to eq(1)
     end
+
+    context 'nextAvailableDate' do
+      it 'emits nextAvailableDate when populated on a VA provider' do
+        va_provider.next_available_date = '2026-06-10'
+        result = serializer.serialize([va_provider]).first
+
+        expect(result[:attributes][:nextAvailableDate]).to eq('2026-06-10')
+      end
+
+      it 'emits nextAvailableDate as nil for VA providers without enrichment' do
+        result = serializer.serialize([va_provider]).first
+
+        expect(result[:attributes]).to have_key(:nextAvailableDate)
+        expect(result[:attributes][:nextAvailableDate]).to be_nil
+      end
+
+      it 'emits nextAvailableDate when populated on an EPS provider' do
+        eps_provider.next_available_date = '2026-06-15'
+        result = serializer.serialize([eps_provider]).first
+
+        expect(result[:attributes][:nextAvailableDate]).to eq('2026-06-15')
+      end
+
+      it 'emits nextAvailableDate as nil for EPS providers without enrichment (flag off / no slots)' do
+        result = serializer.serialize([eps_provider]).first
+
+        expect(result[:attributes]).to have_key(:nextAvailableDate)
+        expect(result[:attributes][:nextAvailableDate]).to be_nil
+      end
+    end
   end
 end

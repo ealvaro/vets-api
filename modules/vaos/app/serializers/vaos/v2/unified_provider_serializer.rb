@@ -15,6 +15,7 @@ module VAOS
             latitude: provider.latitude,
             longitude: provider.longitude,
             distanceInMiles: provider.distance_from_user&.round(1),
+            nextAvailableDate: provider.next_available_date,
             sortOrder: index
           }.merge(type_specific_attributes(provider))
 

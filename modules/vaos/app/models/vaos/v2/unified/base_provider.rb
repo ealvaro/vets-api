@@ -5,7 +5,7 @@ module VAOS
     module Unified
       class BaseProvider
         attr_accessor :id, :name, :facility_name, :address, :phone, :latitude, :longitude,
-                      :provider_type, :distance_from_user
+                      :provider_type, :distance_from_user, :next_available_date
 
         def initialize(attrs = {})
           attrs.each { |key, value| send(:"#{key}=", value) if respond_to?(:"#{key}=") }
