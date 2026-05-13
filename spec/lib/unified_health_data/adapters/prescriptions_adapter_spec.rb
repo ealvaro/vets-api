@@ -573,10 +573,9 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
         }
       end
 
-      it 'includes outpatient prescriptions' do
+      it 'excludes clinic-administered outpatient prescriptions' do
         prescriptions = subject.parse(response_with_outpatient)[:prescriptions]
-        expect(prescriptions.size).to eq(1)
-        expect(prescriptions.first.category).to eq(['outpatient'])
+        expect(prescriptions).to be_empty
       end
     end
 

@@ -61,7 +61,7 @@ module UnifiedHealthData
         category = categorize_medication(resource)
 
         # Filter out medications that should not be visible to Veterans
-        return nil if %i[pharmacy_charges inpatient].include?(category)
+        return nil if %i[pharmacy_charges inpatient clinic_administered].include?(category)
 
         log_uncategorized_medication(resource) if category == :uncategorized
 

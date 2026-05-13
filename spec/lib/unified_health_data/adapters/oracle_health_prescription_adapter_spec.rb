@@ -101,6 +101,15 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
         expect(subject.parse(resource)).to be_nil
       end
 
+      it 'filters out clinic-administered medications' do
+        resource = base_fhir_resource.merge(
+          'reportedBoolean' => false,
+          'intent' => 'order',
+          'category' => [{ 'coding' => [{ 'code' => 'outpatient' }] }]
+        )
+        expect(subject.parse(resource)).to be_nil
+      end
+
       it 'filters out cancelled medications by default' do
         resource = base_fhir_resource.merge('status' => 'cancelled')
         expect(subject.parse(resource)).to be_nil
