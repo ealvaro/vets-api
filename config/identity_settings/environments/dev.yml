@@ -45,6 +45,7 @@ session_cookie:
 sign_in:
   cookies_secure: true
   info_cookie_domain: va.gov
+  issuer: https://dev-api.va.gov/sign_in
   jwt_encode_key: /srv/vets-api/secret/sign-in-service-token-signing-lowers-key.pem
   jwt_old_encode_key: /srv/vets-api/secret/sign-in-service-token-signing-lowers-key-old.pem
   mock_auth_url: https://dev-api.va.gov/mocked_authentication/profiles

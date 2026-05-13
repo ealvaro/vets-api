@@ -63,6 +63,7 @@ sign_in:
   arp_client_id: fe0d4b2cac7935e7eec5946b8ee31643
   cookies_secure: true
   info_cookie_domain: va.gov
+  issuer: https://api.va.gov/sign_in
   jwt_encode_key: /srv/vets-api/secret/sign-in-service-token-signing-prod-key.pem
   jwt_old_encode_key: /srv/vets-api/secret/sign-in-service-token-signing-prod-key-old.pem
   sts_client:

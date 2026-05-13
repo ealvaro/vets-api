@@ -75,6 +75,7 @@ sign_in:
   cookies_secure: false
   credential_attributes_digester:
     pepper: ~
+  issuer: http://localhost:3000/sign_in
   info_cookie_domain: localhost
   jwt_encode_key: spec/fixtures/sign_in/privatekey.pem
   jwt_old_encode_key: spec/fixtures/sign_in/privatekey_old.pem
