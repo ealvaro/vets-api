@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative '../../support/digital_forms_api/submission_fuzz_helpers'
 
 RSpec.describe DigitalFormsApi::SubmissionsController, type: :controller do
   routes { DigitalFormsApi::Engine.routes }
@@ -254,6 +255,185 @@ RSpec.describe DigitalFormsApi::SubmissionsController, type: :controller do
 
         retrieve_submission!
         expect(response).to have_http_status(:internal_server_error)
+      end
+    end
+
+    # ------------------------------------------------------------------ #
+    # Fuzz / randomized-data tests
+    # Replay a failure: DF_FUZZ_SEED=<seed> bundle exec rspec <this file>
+    # ------------------------------------------------------------------ #
+    context 'fuzz: randomized submission payloads', :fuzz do
+      include DigitalFormsApi::SubmissionFuzzHelpers
+
+      let(:rng) { fuzz_rng }
+
+      before do
+        allow(Rails.logger).to receive(:warn)
+        allow(monitor).to receive(:track_show)
+        allow(monitor).to receive(:track_template_version)
+      end
+
+      after do |example|
+        puts "\n[fuzz] DF_FUZZ_SEED=#{fuzz_seed}" if example.exception && ENV['DF_FUZZ_SEED'].blank?
+      end
+
+      context 'with randomized veteranId shapes' do
+        it 'returns only expected status codes' do
+          fuzz_iterations(rng, matching_participant_id: participant_id) do |body, veteran_id, denial|
+            stub_fuzz_services(body, denial:)
+
+            get(:show, params: { id: 'abc123' })
+
+            expect(response.status).to(
+              be_in([200, 403]),
+              "[seed=#{fuzz_seed}] unexpected status #{response.status} " \
+              "for veteranId=#{veteran_id.inspect}"
+            )
+          end
+        end
+
+        it 'never leaks veteranId value into the response' do
+          fuzz_iterations(rng, matching_participant_id: participant_id) do |body, veteran_id, denial|
+            stub_fuzz_services(body, denial:)
+
+            get(:show, params: { id: 'abc123' })
+
+            next unless veteran_id.is_a?(Hash) && veteran_id['value']
+
+            expect(response.body.to_s).not_to(
+              include(veteran_id['value']),
+              "[seed=#{fuzz_seed}] PII leaked for veteranId value"
+            )
+          end
+        end
+
+        it 'never leaks PII in 403 responses' do
+          fuzz_iterations(rng, matching_participant_id: participant_id) do |body, _veteran_id, denial|
+            stub_fuzz_services(body, denial:)
+
+            get(:show, params: { id: 'abc123' })
+
+            next unless response.status == 403
+
+            vet_info = body.dig('envelope', 'payload', 'veteranInformation') || {}
+            pii_values = {
+              'first name' => vet_info.dig('fullName', 'first'),
+              'last name' => vet_info.dig('fullName', 'last'),
+              'date of birth' => vet_info['dateOfBirth'],
+              'SSN' => vet_info['ssn']
+            }.compact
+
+            resp_json = response.body.to_s
+            pii_values.each do |label, value|
+              expect(resp_json).not_to(
+                include(value),
+                "[seed=#{fuzz_seed}] PII leaked in 403 response: #{label}"
+              )
+            end
+          end
+        end
+
+        it 'includes error key in all 403 responses' do
+          fuzz_iterations(rng, matching_participant_id: participant_id) do |body, _veteran_id, denial|
+            stub_fuzz_services(body, denial:)
+
+            get(:show, params: { id: 'abc123' })
+
+            next unless response.status == 403
+
+            parsed = JSON.parse(response.body)
+            expect(parsed).to(
+              have_key('error'),
+              "[seed=#{fuzz_seed}] 403 response missing error key"
+            )
+          end
+        end
+
+        it 'includes submission and template in all 200 responses' do
+          fuzz_iterations(rng, matching_participant_id: participant_id) do |body, _veteran_id, denial|
+            stub_fuzz_services(body, denial:)
+
+            get(:show, params: { id: 'abc123' })
+
+            next unless response.status == 200
+
+            parsed = JSON.parse(response.body)
+            expect(parsed).to(
+              have_key('submission'),
+              "[seed=#{fuzz_seed}] 200 response missing submission"
+            )
+            expect(parsed).to(
+              have_key('template'),
+              "[seed=#{fuzz_seed}] 200 response missing template"
+            )
+          end
+        end
+      end
+
+      context 'with randomized participant_id on the user' do
+        it 'returns 200 only when IDs match and 403 otherwise' do
+          # Fixed valid veteranId, vary the user's participant_id
+          valid_pid = '12345'
+          pids = [valid_pid, nil, '', '99999', Faker::Number.number(digits: 8).to_s]
+
+          pids.each do |pid|
+            body = build(:fuzz_submission_body, rng:, matching_participant_id: valid_pid)
+            stub_fuzz_services(body)
+
+            allow_any_instance_of(User).to receive(:participant_id).and_return(pid)
+
+            get(:show, params: { id: 'abc123' })
+
+            if pid == valid_pid
+              expect(response.status).to(
+                eq(200),
+                "[seed=#{fuzz_seed}] expected 200 for matching pid=#{pid}, got #{response.status}"
+              )
+            else
+              expect(response.status).to(
+                eq(403),
+                "[seed=#{fuzz_seed}] expected 403 for pid=#{pid.inspect}, got #{response.status}"
+              )
+            end
+          end
+        end
+      end
+
+      context 'with every denial style explicitly' do
+        %i[malformed wrong_type mismatch].each do |style|
+          it "returns 403 for veteranId style=#{style}" do
+            fuzz_iterations(rng, count: 5, veteran_id_style: style) do |body, veteran_id, _denial|
+              stub_fuzz_services(body, denial: true)
+
+              get(:show, params: { id: 'abc123' })
+
+              expect(response.status).to(
+                eq(403),
+                "[seed=#{fuzz_seed}] expected 403 for style=#{style}, " \
+                "veteranId=#{veteran_id.inspect}, " \
+                "got #{response.status}"
+              )
+            end
+          end
+        end
+      end
+
+      context 'monitor tracking invariants' do
+        it 'always calls track_show with required keys' do
+          fuzz_iterations(rng, count: 15, matching_participant_id: participant_id) do |body, _veteran_id, denial|
+            stub_fuzz_services(body, denial:)
+
+            expect(monitor).to receive(:track_show).with(
+              hash_including(
+                http_status: kind_of(Integer),
+                submission_id: 'abc123',
+                form_id: '21-686c'
+              )
+            )
+
+            get(:show, params: { id: 'abc123' })
+          end
+        end
       end
     end
   end
