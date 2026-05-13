@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'date_time_helpers'
 require_relative 'fhir_helpers'
 
 module UnifiedHealthData
@@ -7,6 +8,7 @@ module UnifiedHealthData
     # Medication-dispense-specific FHIR helpers for prescriptions.
     # Used by OracleHealthPrescriptionAdapter and its helper concerns.
     module MedicationDispenseHelpers
+      include DateTimeHelpers
       include FhirHelpers
 
       # Extracts NDC (National Drug Code) from FHIR MedicationDispense

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'unified_health_data/service'
+require 'unified_health_data/prescription_service'
 require 'mhv/prescriptions/refill_request_tracker'
 require 'unique_user_events'
 require 'support/shared_contexts/uhd_security_endpoint'
@@ -302,12 +302,12 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
       end
 
       context 'duplicate refill suppression' do
-        let(:mock_service) { instance_double(UnifiedHealthData::Service) }
+        let(:mock_service) { instance_double(UnifiedHealthData::PrescriptionService) }
         let(:cache_store) { ActiveSupport::Cache::MemoryStore.new }
 
         before do
           allow(Rails).to receive(:cache).and_return(cache_store)
-          allow(UnifiedHealthData::Service).to receive(:new).and_return(mock_service)
+          allow(UnifiedHealthData::PrescriptionService).to receive(:new).and_return(mock_service)
           allow(mock_service).to receive(:get_prescriptions).and_return(
             {
               prescriptions: [build_prescription],
@@ -417,11 +417,11 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
       end
 
       context 'OH facility refill blocking' do
-        let(:mock_service) { instance_double(UnifiedHealthData::Service) }
+        let(:mock_service) { instance_double(UnifiedHealthData::PrescriptionService) }
         let(:mock_oh_helper) { instance_double(MHV::OhFacilitiesHelper::Service) }
 
         before do
-          allow(UnifiedHealthData::Service).to receive(:new).and_return(mock_service)
+          allow(UnifiedHealthData::PrescriptionService).to receive(:new).and_return(mock_service)
           allow(MHV::OhFacilitiesHelper::Service).to receive(:new).and_return(mock_oh_helper)
           allow(UniqueUserEvents).to receive(:log_event)
         end

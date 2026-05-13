@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../../support/helpers/rails_helper'
-require 'unified_health_data/service'
+require 'unified_health_data/prescription_service'
 require 'unique_user_events'
 require 'support/shared_contexts/uhd_security_endpoint'
 
@@ -190,7 +190,7 @@ RSpec.describe 'Mobile::V1::Health::Prescriptions', type: :request do
             end
 
             before do
-              allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_prescriptions)
+              allow_any_instance_of(UnifiedHealthData::PrescriptionService).to receive(:get_prescriptions)
                 .and_return({ prescriptions: [rx_va, rx_non_va], metadata: { has_failed_stations: false } })
             end
 
@@ -234,7 +234,7 @@ RSpec.describe 'Mobile::V1::Health::Prescriptions', type: :request do
             end
 
             before do
-              allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_prescriptions)
+              allow_any_instance_of(UnifiedHealthData::PrescriptionService).to receive(:get_prescriptions)
                 .and_return({ prescriptions: [rx_va1, rx_va2], metadata: { has_failed_stations: false } })
             end
 
@@ -288,7 +288,7 @@ RSpec.describe 'Mobile::V1::Health::Prescriptions', type: :request do
 
         context 'when upstream identity resolution raises TypeError' do
           before do
-            allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_prescriptions)
+            allow_any_instance_of(UnifiedHealthData::PrescriptionService).to receive(:get_prescriptions)
               .and_raise(TypeError, 'Unsupported command argument type: NilClass')
             allow(StatsD).to receive(:increment).and_call_original
           end
@@ -314,7 +314,7 @@ RSpec.describe 'Mobile::V1::Health::Prescriptions', type: :request do
 
         context 'when an unrelated TypeError occurs' do
           before do
-            allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_prescriptions)
+            allow_any_instance_of(UnifiedHealthData::PrescriptionService).to receive(:get_prescriptions)
               .and_raise(TypeError, 'no implicit conversion of Symbol into Integer')
           end
 
@@ -329,7 +329,7 @@ RSpec.describe 'Mobile::V1::Health::Prescriptions', type: :request do
 
         context 'when UHD service raises BackendServiceException' do
           before do
-            allow_any_instance_of(UnifiedHealthData::Service).to receive(:get_prescriptions)
+            allow_any_instance_of(UnifiedHealthData::PrescriptionService).to receive(:get_prescriptions)
               .and_raise(Common::Exceptions::BackendServiceException, 'MOBL_502_upstream_error')
           end
 
@@ -519,10 +519,10 @@ RSpec.describe 'Mobile::V1::Health::Prescriptions', type: :request do
         end
 
         context 'refill response handling' do
-          let(:mock_service) { instance_double(UnifiedHealthData::Service) }
+          let(:mock_service) { instance_double(UnifiedHealthData::PrescriptionService) }
 
           before do
-            allow(UnifiedHealthData::Service).to receive(:new).and_return(mock_service)
+            allow(UnifiedHealthData::PrescriptionService).to receive(:new).and_return(mock_service)
           end
 
           it 'handles empty success and failed arrays correctly' do
@@ -641,11 +641,11 @@ RSpec.describe 'Mobile::V1::Health::Prescriptions', type: :request do
         end
 
         context 'OH facility refill blocking' do
-          let(:mock_service) { instance_double(UnifiedHealthData::Service) }
+          let(:mock_service) { instance_double(UnifiedHealthData::PrescriptionService) }
           let(:mock_oh_helper) { instance_double(MHV::OhFacilitiesHelper::Service) }
 
           before do
-            allow(UnifiedHealthData::Service).to receive(:new).and_return(mock_service)
+            allow(UnifiedHealthData::PrescriptionService).to receive(:new).and_return(mock_service)
             allow(MHV::OhFacilitiesHelper::Service).to receive(:new).and_return(mock_oh_helper)
             allow(UniqueUserEvents).to receive(:log_event)
           end

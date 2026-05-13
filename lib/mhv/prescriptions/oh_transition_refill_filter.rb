@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 require 'mhv/oh_facilities_helper/service'
-require 'unified_health_data/service'
+require 'unified_health_data/constants'
+require 'unified_health_data/prescription_service'
 
 module MHV
   module Prescriptions
@@ -15,7 +16,7 @@ module MHV
     #
     # Gated by the :mhv_medications_oh_transition_refill_block Flipper flag.
     class OhTransitionRefillFilter
-      STATSD_KEY_PREFIX = "#{UnifiedHealthData::Service::STATSD_KEY_PREFIX}.oh_transition".freeze
+      STATSD_KEY_PREFIX = "#{UnifiedHealthData::Constants::STATSD_KEY_PREFIX}.oh_transition".freeze
       BLOCKED_PHASES = %w[p4 p5].freeze
       BLOCKED_ERROR_MESSAGE = 'Refill blocked: facility is transitioning to Oracle Health'
 

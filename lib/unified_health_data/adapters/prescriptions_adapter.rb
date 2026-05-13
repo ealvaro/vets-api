@@ -3,7 +3,7 @@
 require_relative 'vista_prescription_adapter'
 require_relative 'oracle_health_prescription_adapter'
 require_relative 'v2_status_mapping'
-require_relative '../source_constants'
+require_relative '../constants'
 require_relative '../operation_outcome_detector'
 
 module UnifiedHealthData

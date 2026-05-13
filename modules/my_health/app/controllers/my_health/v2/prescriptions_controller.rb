@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-require 'unified_health_data/service'
+require 'unified_health_data/constants'
+require 'unified_health_data/prescription_service'
 require 'unified_health_data/serializers/prescriptions_refills_serializer'
 require 'mhv/prescriptions/oh_transition_refill_filter'
 require 'mhv/prescriptions/refill_request_tracker'
@@ -124,19 +125,19 @@ module MyHealth
       private
 
       def service
-        @service ||= UnifiedHealthData::Service.new(@current_user)
+        @service ||= UnifiedHealthData::PrescriptionService.new(@current_user)
       end
 
       def increment_uhd_refill(count)
-        StatsD.increment("#{UnifiedHealthData::Service::STATSD_KEY_PREFIX}.refills.requested", count,
+        StatsD.increment("#{UnifiedHealthData::Constants::STATSD_KEY_PREFIX}.refills.requested", count,
                          tags: ["source_app:#{request.env['SOURCE_APP']}"])
       end
 
       def track_refills_requested_by_station(orders)
         station_counts = orders.map { |o| o['stationNumber'] }.compact.tally
         station_counts.each do |station, count|
-          StatsD.increment("#{UnifiedHealthData::Service::STATSD_KEY_PREFIX}.refills.requested_by_station", count,
-                           tags: ["station_number:#{station}", "source_app:#{request.env['SOURCE_APP']}"])
+          StatsD.increment("#{UnifiedHealthData::Constants::STATSD_KEY_PREFIX}.refills.requested_by_station",
+                           count, tags: ["station_number:#{station}", "source_app:#{request.env['SOURCE_APP']}"])
         end
       end
 

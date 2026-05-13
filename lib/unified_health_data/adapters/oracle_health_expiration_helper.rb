@@ -73,6 +73,9 @@ module UnifiedHealthData
         nil
       end
 
+      # TODO: see if we can extract this for use also with labs
+      # (see resolve_date_and_timezone method in lab_or_test_adapter)
+      #
       # Memoizes timezone lookups per station number within the adapter instance
       # to avoid redundant remote Redis/cache round-trips when multiple
       # prescriptions share the same station.

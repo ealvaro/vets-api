@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'facility_name_resolver'
-require_relative 'fhir_helpers'
+require_relative 'date_time_helpers'
 require_relative 'medication_dispense_helpers'
 require_relative 'oracle_health_categorizer'
 require_relative 'oracle_health_expiration_helper'
@@ -14,7 +14,7 @@ require_relative 'oracle_health_tracking_helper'
 module UnifiedHealthData
   module Adapters
     class OracleHealthPrescriptionAdapter
-      include FhirHelpers
+      include DateTimeHelpers
       include MedicationDispenseHelpers
       include OracleHealthCategorizer
       include OracleHealthExpirationHelper

@@ -36,15 +36,33 @@ lib/unified_health_data/
 
 ## Available Methods
 
-### UnifiedHealthData::Service
+### UnifiedHealthData::{Domain}Service
 
-The main service class provides the following public methods:
+The `MedicalRecordsService` class provides the following public methods:
 
-- `get_labs(start_date:, end_date:)` - Retrieve lab results for date range
-- `get_care_summaries_and_notes` - Retrieve clinical notes and care summaries
-- `get_prescriptions` - Retrieve prescriptions from all data sources
-- `refill_prescription(prescription_ids)` - Submit prescription refill requests
-- `get_single_summary_or_note(note_id)` - Retrieve a single clinical note by ID
+- `get_labs(start_date:, end_date:, caller: nil)` - Retrieve lab results for date range
+- `get_conditions` - Retrieve health conditions
+- `get_single_condition(condition_id)` - Retrieve a single condition by ID
+- `get_care_summaries_and_notes(start_date:, end_date:)` - Retrieve clinical notes and care summaries
+- `get_single_summary_or_note(note_id, source:)` - Retrieve a single clinical note by ID
+- `get_vitals` - Retrieve vital signs
+- `get_allergies` - Retrieve allergies
+- `get_single_allergy(allergy_id)` - Retrieve a single allergy by ID
+- `get_immunizations` - Retrieve immunizations/vaccines
+- `get_all_avs_metadata(start_date:, end_date:)` - Retrieve After Visit Summary metadata
+- `get_avs_binary_data(doc_id:, appt_id:)` - Retrieve After Visit Summary binary data (PDF)
+
+The `PrescriptionService` class provides the following public methods:
+
+- `get_prescriptions(current_only:)` - Retrieve prescriptions from all data sources
+- `refill_prescription(orders)` - Submit prescription refill requests
+
+The `CcdService` class provides the following public methods:
+
+- `initiate_ccd` - Initiate CCD (Continuity of Care Document) generation
+- `get_ccd_status(job_id:)` - Check status of a CCD generation job
+- `get_ccd_url(job_id:, format:)` - Get the URL to download a generated CCD
+- `get_ccd_jobs` - Retrieve list of CCD jobs for the user
 
 ## Data Sources
 
@@ -118,7 +136,7 @@ The VistA response contains additional fields that are not currently mapped but 
 
 ```ruby
 # Initialize service for a user
-service = UnifiedHealthData::Service.new(current_user)
+service = UnifiedHealthData::PrescriptionService.new(current_user)
 
 # Get prescriptions
 prescriptions = service.get_prescriptions
@@ -156,7 +174,7 @@ class PrescriptionsController < ApplicationController
   before_action :authenticate_user!
 
   def index
-    service = UnifiedHealthData::Service.new(current_user)
+    service = UnifiedHealthData::PrescriptionService.new(current_user)
     
     prescriptions = service.get_prescriptions
     
@@ -166,7 +184,7 @@ class PrescriptionsController < ApplicationController
   end
 
   def refill
-    service = UnifiedHealthData::Service.new(current_user)
+    service = UnifiedHealthData::PrescriptionService.new(current_user)
     prescription_ids = refill_params[:prescriptions].map { |p| p[:id] }
     
     result = service.refill_prescription(prescription_ids)
@@ -287,7 +305,7 @@ Accepts an optional `mr_log:` parameter injected by the service. Uses a `log_ada
 | `lib/unified_health_data/adapters/lab_or_test_adapter.rb`              | Adapter-level dual-path logging        |
 | `spec/lib/unified_health_data/concerns/labs_and_tests_logging_spec.rb` | Concern specs (29 examples)            |
 | `spec/lib/unified_health_data/adapters/lab_or_test_adapter_spec.rb`    | Adapter specs (209 examples)           |
-| `spec/lib/unified_health_data/service_spec.rb`                         | Integration tests for toggle fallback  |
+| `spec/lib/unified_health_data/medical_records_service_spec.rb`         | Integration tests for toggle fallback  |
 
 ## Data Source System Tracking
 
@@ -397,7 +415,7 @@ module MyHealth
           flipper_id: '12345'
         )
         # Instantiate the service with your `test_user` rather than the `@current_user`
-        UnifiedHealthData::Service.new(test_user)
+        UnifiedHealthData::MedicalRecordsService.new(test_user)
       end
     end
   end

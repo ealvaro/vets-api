@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'medical_records/medical_records_log'
+require_relative '../constants'
 require_relative '../models/allergy'
 require_relative 'date_time_helpers'
 

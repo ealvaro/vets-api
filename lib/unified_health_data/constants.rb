@@ -144,6 +144,5 @@ module UnifiedHealthData
   }.freeze
 
   # Backward-compatible alias so existing references to SourceConstants still work.
-  # Uncomment after source_constants removed for real
   SourceConstants = Constants::SourceConstants
 end
