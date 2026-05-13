@@ -12,7 +12,7 @@ module ClaimsApi
       # FES Java uses nullSafeConciseToString() which does not escape quotes,
       # and always wraps values in single quotes (never double quotes).
       # This pattern matches the quoted value so it can be redacted.
-      SPRING_FIELD_VALUE_PATTERN = /= '[^']*':/
+      SPRING_FIELD_VALUE_PATTERN = Regexp.new("= '[^']*':")
       SPRING_FIELD_VALUE_REPLACEMENT = "= '[REDACTED]':"
 
       def initialize(request = nil, use_mock: nil)
