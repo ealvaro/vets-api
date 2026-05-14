@@ -963,5 +963,88 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
         expect(result.expiration_date).to be_nil
       end
     end
+
+    context 'with facility phone from shipping-info extension' do
+      let(:resource_with_phone) do
+        resource = fhir_resource(status: 'active', refills: 3, expiration: 1.year.from_now)
+        resource['contained'] = [
+          {
+            'resourceType' => 'MedicationDispense',
+            'id' => 'dispense-1',
+            'status' => 'completed',
+            'whenHandedOver' => '2025-01-15T10:00:00Z',
+            'location' => { 'display' => '648' },
+            'extension' => [
+              {
+                'url' => 'http://va.gov/fhir/StructureDefinition/shipping-info',
+                'extension' => [
+                  { 'url' => 'Facility Phone', 'valueString' => '(800) 784-8381' }
+                ]
+              }
+            ]
+          }
+        ]
+        resource
+      end
+
+      it 'populates facility_phone_number from extension' do
+        result = subject.parse(resource_with_phone)
+        expect(result.facility_phone_number).to eq('(800) 784-8381')
+      end
+
+      it 'populates cmop_division_phone from extension' do
+        result = subject.parse(resource_with_phone)
+        expect(result.cmop_division_phone).to eq('(800) 784-8381')
+      end
+
+      it 'populates dial_cmop_division_phone as digits only' do
+        result = subject.parse(resource_with_phone)
+        expect(result.dial_cmop_division_phone).to eq('8007848381')
+      end
+    end
+
+    context 'without facility phone in extensions' do
+      it 'sets phone fields to nil' do
+        result = subject.parse(base_fhir_resource)
+        expect(result.facility_phone_number).to be_nil
+        expect(result.cmop_division_phone).to be_nil
+        expect(result.dial_cmop_division_phone).to be_nil
+      end
+    end
+
+    describe '#strip_phone_to_digits' do
+      let(:adapter) { described_class.new }
+
+      it 'strips formatting from a phone number' do
+        expect(adapter.send(:strip_phone_to_digits, '(800) 784-8381')).to eq('8007848381')
+      end
+
+      it 'truncates at extension characters' do
+        expect(adapter.send(:strip_phone_to_digits, '(800) 784-8381 x1234')).to eq('8007848381')
+        expect(adapter.send(:strip_phone_to_digits, '800-784-8381#5')).to eq('8007848381')
+      end
+
+      it 'returns nil for blank input' do
+        expect(adapter.send(:strip_phone_to_digits, nil)).to be_nil
+        expect(adapter.send(:strip_phone_to_digits, '')).to be_nil
+      end
+
+      it 'handles digits-only input' do
+        expect(adapter.send(:strip_phone_to_digits, '8007848381')).to eq('8007848381')
+      end
+    end
+
+    context 'is_renewal_flow_enabled when facility cannot be resolved' do
+      before do
+        allow(HealthFacility).to receive(:find_by).and_return(nil)
+        allow_any_instance_of(Lighthouse::Facilities::V1::Client).to receive(:get_facilities).and_return([])
+      end
+
+      it 'returns false even when medication is renewable' do
+        resource = fhir_resource(status: 'active', refills: 0, expiration: 30.days.from_now)
+        result = subject.parse(resource)
+        expect(result.is_renewal_flow_enabled).to be false
+      end
+    end
   end
 end

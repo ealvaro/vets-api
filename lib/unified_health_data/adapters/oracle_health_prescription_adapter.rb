@@ -161,11 +161,12 @@ module UnifiedHealthData
       def build_contact_and_source_attributes(resource, dispenses_data = [])
         refill_status = extract_refill_status(resource, dispenses_data)
         prescription_source = extract_prescription_source(resource)
+        facility_phone = extract_facility_phone_from_extensions(resource)
         {
           instructions: extract_instructions(resource),
-          facility_phone_number: nil, # Not typically available in standard FHIR MedicationRequest
-          cmop_division_phone: nil,
-          dial_cmop_division_phone: nil,
+          facility_phone_number: facility_phone,
+          cmop_division_phone: facility_phone,
+          dial_cmop_division_phone: strip_phone_to_digits(facility_phone),
           prescription_source:,
           category: extract_category(resource),
           disclaimer: nil,
@@ -523,6 +524,22 @@ module UnifiedHealthData
         return nil if note_texts.empty?
 
         note_texts.join(' ')
+      end
+
+      # Strips a phone number to digits only, truncating at extension characters.
+      # Mirrors WebUtility.getPhoneNumberDialFormat() in mhv-np-rxrefill-api, which
+      # truncates at extension chars (x, X, e, E, #) then strips formatting.
+      # For VistA prescriptions, MHV's rxrefill API computes this server-side via
+      # PrescriptionDTO.getDialCmopDivisionPhone(). For Oracle Health prescriptions
+      # there is no rxrefill API in the path, so we replicate that logic here.
+      #
+      # @param phone [String, nil] Formatted phone number (e.g., '(800) 784-8381')
+      # @return [String, nil] Digits-only string (e.g., '8007848381') or nil
+      def strip_phone_to_digits(phone)
+        return nil if phone.blank?
+
+        # Truncate at extension characters (x, X, e, E, #) then strip non-digits
+        phone.split(/[xXeE#]/).first&.gsub(/\D/, '').presence
       end
 
       def facility_resolver

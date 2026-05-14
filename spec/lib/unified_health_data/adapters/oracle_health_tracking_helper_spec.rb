@@ -332,4 +332,149 @@ describe UnifiedHealthData::Adapters::OracleHealthTrackingHelper do
       end
     end
   end
+
+  describe '#extract_facility_phone_from_extensions' do
+    context 'when a dispense has a Facility Phone in shipping-info extension' do
+      let(:resource) do
+        {
+          'contained' => [
+            {
+              'resourceType' => 'MedicationDispense',
+              'extension' => [
+                {
+                  'url' => 'http://va.gov/fhir/StructureDefinition/shipping-info',
+                  'extension' => [
+                    { 'url' => 'Facility Phone', 'valueString' => '(800) 784-8381' },
+                    { 'url' => 'Tracking Number', 'valueString' => 'TRACK-001' }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      end
+
+      it 'returns the facility phone number' do
+        expect(helper.extract_facility_phone_from_extensions(resource)).to eq('(800) 784-8381')
+      end
+    end
+
+    context 'when multiple dispenses exist and only the second has a phone' do
+      let(:resource) do
+        {
+          'contained' => [
+            {
+              'resourceType' => 'MedicationDispense',
+              'whenHandedOver' => '2025-02-01T10:00:00Z',
+              'extension' => [
+                {
+                  'url' => 'http://va.gov/fhir/StructureDefinition/shipping-info',
+                  'extension' => [
+                    { 'url' => 'Tracking Number', 'valueString' => 'TRACK-001' }
+                  ]
+                }
+              ]
+            },
+            {
+              'resourceType' => 'MedicationDispense',
+              'whenHandedOver' => '2025-03-01T10:00:00Z',
+              'extension' => [
+                {
+                  'url' => 'http://va.gov/fhir/StructureDefinition/shipping-info',
+                  'extension' => [
+                    { 'url' => 'Facility Phone', 'valueString' => '(503) 220-8262' }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      end
+
+      it 'returns the phone from the most recent dispense that has one' do
+        expect(helper.extract_facility_phone_from_extensions(resource)).to eq('(503) 220-8262')
+      end
+    end
+
+    context 'when multiple dispenses have phones and the most recent differs' do
+      let(:resource) do
+        {
+          'contained' => [
+            {
+              'resourceType' => 'MedicationDispense',
+              'whenHandedOver' => '2025-03-15T10:00:00Z',
+              'extension' => [
+                {
+                  'url' => 'http://va.gov/fhir/StructureDefinition/shipping-info',
+                  'extension' => [
+                    { 'url' => 'Facility Phone', 'valueString' => '(503) 220-8262' }
+                  ]
+                }
+              ]
+            },
+            {
+              'resourceType' => 'MedicationDispense',
+              'whenHandedOver' => '2025-01-10T10:00:00Z',
+              'extension' => [
+                {
+                  'url' => 'http://va.gov/fhir/StructureDefinition/shipping-info',
+                  'extension' => [
+                    { 'url' => 'Facility Phone', 'valueString' => '(800) 111-2222' }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      end
+
+      it 'returns the phone from the most recent dispense, not the first in array order' do
+        expect(helper.extract_facility_phone_from_extensions(resource)).to eq('(503) 220-8262')
+      end
+    end
+
+    context 'when no dispenses have a Facility Phone extension' do
+      let(:resource) do
+        {
+          'contained' => [
+            {
+              'resourceType' => 'MedicationDispense',
+              'extension' => [
+                {
+                  'url' => 'http://va.gov/fhir/StructureDefinition/shipping-info',
+                  'extension' => [
+                    { 'url' => 'Tracking Number', 'valueString' => 'TRACK-001' }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      end
+
+      it 'returns nil' do
+        expect(helper.extract_facility_phone_from_extensions(resource)).to be_nil
+      end
+    end
+
+    context 'when no shipping-info extension exists' do
+      let(:resource) do
+        {
+          'contained' => [
+            { 'resourceType' => 'MedicationDispense' }
+          ]
+        }
+      end
+
+      it 'returns nil' do
+        expect(helper.extract_facility_phone_from_extensions(resource)).to be_nil
+      end
+    end
+
+    context 'when resource has no contained resources' do
+      it 'returns nil' do
+        expect(helper.extract_facility_phone_from_extensions({})).to be_nil
+      end
+    end
+  end
 end

@@ -27,6 +27,30 @@ module UnifiedHealthData
         end
       end
 
+      # Extracts the facility phone number from the most recent MedicationDispense
+      # (by whenHandedOver) that has a shipping-info extension with a Facility Phone.
+      #
+      # @param resource [Hash] FHIR MedicationRequest resource
+      # @return [String, nil] Facility phone number or nil if not found
+      def extract_facility_phone_from_extensions(resource)
+        contained_resources = resource['contained'] || []
+        dispenses = contained_resources.select { |c| c['resourceType'] == 'MedicationDispense' }
+
+        # Sort by whenHandedOver descending so we prefer the most recent dispense's phone
+        sorted_dispenses = dispenses.sort_by { |d| d['whenHandedOver'] || '' }.reverse
+
+        sorted_dispenses.each do |dispense|
+          shipping_extension = find_shipping_extension(dispense)
+          next unless shipping_extension
+
+          nested_extensions = shipping_extension['extension'] || []
+          phone = find_extension_value(nested_extensions, 'Facility Phone')
+          return phone if phone.present?
+        end
+
+        nil
+      end
+
       private
 
       # Builds tracking information from MedicationDispense extension array (new format)
