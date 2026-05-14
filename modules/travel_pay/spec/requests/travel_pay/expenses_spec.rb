@@ -113,7 +113,7 @@ RSpec.describe TravelPay::V0::ExpensesController, type: :request do
              params: invalid_expense_params,
              headers: { 'Authorization' => 'Bearer vagov_token' }
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         response_body = JSON.parse(response.body)
         expect(response_body['errors']).to be_present
         expect(response_body['errors'].first['detail']).to include("can't be blank")
@@ -355,7 +355,7 @@ RSpec.describe TravelPay::V0::ExpensesController, type: :request do
                params: expense_params_with_heic,
                headers: { 'Authorization' => 'Bearer vagov_token' }
 
-          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response).to have_http_status(:unprocessable_content)
         end
       end
     end
@@ -418,7 +418,7 @@ RSpec.describe TravelPay::V0::ExpensesController, type: :request do
               params: invalid_expense_params,
               headers: { 'Authorization' => 'Bearer vagov_token' }
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         response_body = JSON.parse(response.body)
         expect(response_body['errors']).to be_present
         expect(response_body['errors'].first['detail']).to include("can't be blank")
@@ -442,7 +442,7 @@ RSpec.describe TravelPay::V0::ExpensesController, type: :request do
     context 'when request body is empty' do
       it 'returns bad request' do
         patch expense_path('other'), params: {}
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
     end
 

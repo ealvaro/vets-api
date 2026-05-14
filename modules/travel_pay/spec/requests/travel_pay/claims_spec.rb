@@ -8,6 +8,7 @@ RSpec.describe TravelPay::V0::ClaimsController, type: :request do
 
   before do
     sign_in(user)
+    allow(Flipper).to receive(:enabled?).with(:travel_pay_power_switch, instance_of(User)).and_return(true)
   end
 
   describe '#index' do
@@ -74,7 +75,6 @@ RSpec.describe TravelPay::V0::ClaimsController, type: :request do
   describe '#show' do
     before do
       allow(Flipper).to receive(:enabled?).with(:travel_pay_view_claim_details, instance_of(User)).and_return(true)
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_power_switch, instance_of(User)).and_return(true)
       allow(Flipper).to receive(:enabled?).with(:travel_pay_claims_management, instance_of(User)).and_return(false)
     end
 
@@ -105,7 +105,6 @@ RSpec.describe TravelPay::V0::ClaimsController, type: :request do
 
     it 'appends document information if claims management flipper is on' do
       allow(Flipper).to receive(:enabled?).with(:travel_pay_view_claim_details, instance_of(User)).and_return(true)
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_power_switch, instance_of(User)).and_return(true)
       allow(Flipper).to receive(:enabled?).with(:travel_pay_claims_management, instance_of(User)).and_return(true)
 
       VCR.use_cassette('travel_pay/show/success_details', match_requests_on: %i[method path]) do
@@ -120,7 +119,6 @@ RSpec.describe TravelPay::V0::ClaimsController, type: :request do
 
     it 'returns a ServiceUnavailable response if feature flag turned off' do
       allow(Flipper).to receive(:enabled?).with(:travel_pay_view_claim_details, instance_of(User)).and_return(false)
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_power_switch, instance_of(User)).and_return(true)
       allow(Flipper).to receive(:enabled?).with(:travel_pay_claims_management, instance_of(User)).and_return(false)
 
       get '/travel_pay/v0/claims/123', headers: { 'Authorization' => 'Bearer vagov_token' }
@@ -131,13 +129,11 @@ RSpec.describe TravelPay::V0::ClaimsController, type: :request do
   describe '#create' do
     before do
       allow(Flipper).to receive(:enabled?).with(:travel_pay_submit_mileage_expense, instance_of(User)).and_return(true)
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_power_switch, instance_of(User)).and_return(true)
       allow(Flipper).to receive(:enabled?).with(:travel_pay_appt_add_v4_upgrade, instance_of(User)).and_return(false)
     end
 
     it 'returns a ServiceUnavailable response if feature flag turned off' do
       allow(Flipper).to receive(:enabled?).with(:travel_pay_submit_mileage_expense, instance_of(User)).and_return(false)
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_power_switch, instance_of(User)).and_return(true)
 
       headers = { 'Authorization' => 'Bearer vagov_token' }
       params = {}

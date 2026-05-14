@@ -31,6 +31,7 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
                                              btsss_token: 'btsss_token'))
     sign_in(user)
     allow_any_instance_of(TravelPay::V0::ComplexClaimsController).to receive(:current_user).and_return(user)
+    allow(Flipper).to receive(:enabled?).with(:travel_pay_power_switch, instance_of(User)).and_return(true)
   end
 
   # POST /travel_pay/v0/complex_claims/

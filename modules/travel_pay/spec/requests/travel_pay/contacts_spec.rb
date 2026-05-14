@@ -11,6 +11,7 @@ RSpec.describe TravelPay::V0::ContactsController, type: :request do
   before do
     sign_in(user)
     allow_any_instance_of(TravelPay::AuthManager).to receive(:authorize).and_return(auth_session)
+    allow(Flipper).to receive(:enabled?).with(:travel_pay_power_switch, instance_of(User)).and_return(true)
   end
 
   describe 'GET /travel_pay/v0/contact' do

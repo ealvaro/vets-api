@@ -25,6 +25,7 @@ RSpec.describe TravelPay::V0::DocumentsController, type: :request do
       .and_return(TravelPay::AuthSession.new(veis_token: 'veis_token',
                                              btsss_token: 'btsss_token'))
     sign_in(user)
+    allow(Flipper).to receive(:enabled?).with(:travel_pay_power_switch, instance_of(User)).and_return(true)
   end
 
   # GET /travel_pay/v0/claims/:claim_id/documents/:id
