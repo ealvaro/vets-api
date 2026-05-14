@@ -1472,6 +1472,9 @@ features:
     actor_type: user
     description: If enabled shows the digital form experience for form 10-10d merged with form 10-7959c
     enable_in_development: true
+  form1010d_tricare_check_enabled:
+    actor_type: user
+    description: Enables tricare eligibility flow for form 10-10d (IVC-CHAMPVA)
   form107959a_browser_monitoring_enabled:
     actor_type: user
     description: Datadog RUM monitoring for form 10-7959a (IVC CHAMPVA)
