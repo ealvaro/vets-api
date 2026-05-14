@@ -19,6 +19,17 @@ module BPDS
       errors
       lookup_service
       tags
+      participant_id_present
+      file_number_present
+      ssn_present
+      icn_present
+      edipi_present
+      user_is_present
+      user_is_nil
+      user_class
+      user_has_icn
+      claim_has_user_account_id
+      claim_has_user_account
     ].freeze
 
     def initialize
@@ -42,13 +53,18 @@ module BPDS
     # Track submission request started
     #
     # @param claim_id [Integer] the SavedClaim id
-    def track_submit_begun(claim_id)
+    def track_submit_begun(claim_id, payload_metrics)
       context = { claim_id: }
       track_request(
         :info,
         "#{SERVICE_NAME} submit begun for saved_claim ##{claim_id}",
         "#{STATSD_KEY_PREFIX}.submit_json.begun",
         call_location: caller_locations.first,
+        participant_id_present: payload_metrics[:participant_id_present],
+        file_number_present: payload_metrics[:file_number_present],
+        ssn_present: payload_metrics[:ssn_present],
+        icn_present: payload_metrics[:icn_present],
+        edipi_present: payload_metrics[:edipi_present],
         **context
       )
     end
@@ -182,11 +198,24 @@ module BPDS
     # Tracks and logs the event when a BPDS job is skipped due to a missing user identifier.
     #
     # @param claim_id [Integer, String] The ID of the saved claim for which the BPDS job was skipped.
-    def track_skip_bpds_job(claim_id)
-      context = { claim_id: }
+    # @param user [Object] The current user
+    def track_skip_bpds_job(claim_id, user)
+      claim = SavedClaim.find_by(id: claim_id) # find_by to not raise an error
+      context = {
+        claim_id:,
+        user_is_present: user.present?,
+        user_is_nil: user.nil?,
+        user_class: user.class.name,
+        user_has_icn: user&.icn.present?,
+        claim_has_user_account_id: claim&.user_account_id.present?,
+        claim_has_user_account: claim&.user_account.present?
+      }
+
+      extra_message = (' but user is present' if context[:user_is_present])
+
       track_request(
         :info,
-        "#{SERVICE_NAME} No user identifier found, skipping BPDS job for saved_claim #{claim_id}",
+        "#{SERVICE_NAME} No user identifier found#{extra_message}, skipping BPDS job for saved_claim #{claim_id}",
         "#{STATSD_KEY_PREFIX}.job_skipped_missing_identifier",
         call_location: caller_locations.first,
         **context

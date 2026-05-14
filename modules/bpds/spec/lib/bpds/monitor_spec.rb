@@ -34,9 +34,21 @@ RSpec.describe BPDS::Monitor do
         "#{BPDS::Monitor::SERVICE_NAME} submit begun for saved_claim ##{claim_id}",
         'api.bpds_service.submit_json.begun',
         call_location: instance_of(Thread::Backtrace::Location),
-        claim_id:
+        claim_id:,
+        edipi_present: true,
+        file_number_present: true,
+        icn_present: false,
+        participant_id_present: true,
+        ssn_present: false
       )
-      monitor.track_submit_begun(claim_id)
+
+      monitor.track_submit_begun(claim_id, {
+                                   participant_id_present: true,
+                                   file_number_present: true,
+                                   ssn_present: false,
+                                   icn_present: false,
+                                   edipi_present: true
+                                 })
     end
   end
 
@@ -166,15 +178,49 @@ RSpec.describe BPDS::Monitor do
   end
 
   describe '#track_skip_bpds_job' do
-    it 'tracks the skip_bpds_job event' do
-      expect(monitor).to receive(:track_request).with(
-        :info,
-        "#{BPDS::Monitor::SERVICE_NAME} No user identifier found, skipping BPDS job for saved_claim #{claim_id}",
-        'api.bpds_service.job_skipped_missing_identifier',
-        call_location: instance_of(Thread::Backtrace::Location),
-        claim_id:
-      )
-      monitor.track_skip_bpds_job(claim_id)
+    context 'with a nil user' do
+      it 'tracks the skip_bpds_job event' do
+        expect(monitor).to receive(:track_request).with(
+          :info,
+          "#{BPDS::Monitor::SERVICE_NAME} No user identifier found, skipping BPDS job for saved_claim #{claim_id}",
+          'api.bpds_service.job_skipped_missing_identifier',
+          call_location: instance_of(Thread::Backtrace::Location),
+          claim_id:,
+          user_is_present: false,
+          user_is_nil: true,
+          user_class: 'NilClass',
+          user_has_icn: false,
+          claim_has_user_account_id: false,
+          claim_has_user_account: false
+        )
+        monitor.track_skip_bpds_job(claim_id, nil)
+      end
+    end
+
+    context 'with a non-nil user' do
+      let(:user) { build(:user) }
+
+      it 'tracks the skip_bpds_job event' do
+        # doing this "multi-line" string thing just to get around
+        # rubocop line length rule
+        expected_message = "#{BPDS::Monitor::SERVICE_NAME} No user identifier found but user is present,"
+        expected_message += " skipping BPDS job for saved_claim #{claim_id}"
+
+        expect(monitor).to receive(:track_request).with(
+          :info,
+          expected_message,
+          'api.bpds_service.job_skipped_missing_identifier',
+          call_location: instance_of(Thread::Backtrace::Location),
+          claim_id:,
+          user_is_present: true,
+          user_is_nil: false,
+          user_class: 'User',
+          user_has_icn: true,
+          claim_has_user_account_id: false,
+          claim_has_user_account: false
+        )
+        monitor.track_skip_bpds_job(claim_id, user)
+      end
     end
   end
 end

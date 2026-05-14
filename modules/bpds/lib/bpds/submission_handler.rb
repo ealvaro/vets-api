@@ -54,12 +54,12 @@ module BPDS
       }.merge(retrieve_user_identifier_for_bpds || {}).compact_blank
 
       if payload.blank? # no identifiers could be found from any source
-        bpds_monitor.track_skip_bpds_job(claim_id)
+        bpds_monitor.track_skip_bpds_job(claim_id, user)
         return false
       end
 
       encrypted_payload = KmsEncrypted::Box.new.encrypt(payload.to_json)
-      bpds_monitor.track_submit_begun(claim_id)
+      bpds_monitor.track_submit_begun(claim_id, extract_payload_metrics(payload))
       BPDS::Sidekiq::SubmitToBPDSJob.perform_async(claim_id, encrypted_payload)
 
       true
@@ -140,6 +140,21 @@ module BPDS
       bpds_monitor.track_get_user_identifier_file_number_result(file_number.present?)
 
       { participant_id:, file_number:, ssn: }.compact_blank
+    end
+
+    ##
+    # Returns a hash of the presence/absence for payload sent to BPDS
+    #
+    # @return [Hash] key:value pairs for the presence/absence of keys in the BPDS payload
+    #
+    def extract_payload_metrics(payload)
+      {
+        participant_id_present: payload[:participant_id].present?,
+        file_number_present: payload[:file_number].present?,
+        ssn_present: payload[:ssn].present?,
+        icn_present: payload[:icn].present?,
+        edipi_present: payload[:edipi].present?
+      }
     end
 
     ##

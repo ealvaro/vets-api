@@ -44,7 +44,7 @@ RSpec.describe BPDS::SubmissionHandler do
 
       it 'tracks skip event and returns false' do
         expect(bpds_monitor).to receive(:track_service_begun).with(claim.id)
-        expect(bpds_monitor).to receive(:track_skip_bpds_job).with(claim.id)
+        expect(bpds_monitor).to receive(:track_skip_bpds_job).with(claim.id, nil)
         expect(controller.submit_claim_to_bpds(claim.id)).to be false
       end
     end
@@ -60,8 +60,15 @@ RSpec.describe BPDS::SubmissionHandler do
       end
 
       it 'queues job with encrypted payload' do
+        expected_hash = {
+          participant_id_present: true,
+          file_number_present: true,
+          ssn_present: true,
+          icn_present: true,
+          edipi_present: true
+        }
         expect(bpds_monitor).to receive(:track_service_begun).with(claim.id)
-        expect(bpds_monitor).to receive(:track_submit_begun).with(claim.id)
+        expect(bpds_monitor).to receive(:track_submit_begun).with(claim.id, hash_including(expected_hash))
         expect(BPDS::Sidekiq::SubmitToBPDSJob).to receive(:perform_async).with(claim.id, 'encrypted')
         expect(controller.submit_claim_to_bpds(claim.id)).to be true
       end
@@ -78,8 +85,16 @@ RSpec.describe BPDS::SubmissionHandler do
       end
 
       it 'queues job with encrypted payload' do
+        expected_hash = {
+          edipi_present: false,
+          file_number_present: true,
+          icn_present: true,
+          participant_id_present: false,
+          ssn_present: true
+
+        }
         expect(bpds_monitor).to receive(:track_service_begun).with(claim.id)
-        expect(bpds_monitor).to receive(:track_submit_begun).with(claim.id)
+        expect(bpds_monitor).to receive(:track_submit_begun).with(claim.id, hash_including(expected_hash))
         expect(BPDS::Sidekiq::SubmitToBPDSJob).to receive(:perform_async).with(claim.id, 'encrypted')
         expect(controller.submit_claim_to_bpds(claim.id)).to be true
       end
