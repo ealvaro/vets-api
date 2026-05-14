@@ -2,7 +2,7 @@
 http_interactions:
 - request:
     method: get
-    uri: https://staging-api.va.gov/services/benefits-reference-data/v1/intake-sites
+    uri: <CLAIMS_API_BD_URL>/services/benefits-reference-data/v1/intake-sites
     body:
       encoding: US-ASCII
       string: ''
@@ -30,7 +30,7 @@ http_interactions:
       - max-age=16000000; includeSubDomains; preload;
     body:
       encoding: UTF-8
-      string: '{"totalItems":324,"totalPages":1,"links":[{"href":"https://sandbox-api.va.gov/services/benefits-reference-data/v1/intake-sites","rel":"self"}],"items":[{"id":98283,"description":"AF
+      string: '{"totalItems":324,"totalPages":1,"links":[{"href":"https://fake_sandbox_url/services/benefits-reference-data/v1/intake-sites","rel":"self"}],"items":[{"id":98283,"description":"AF
         Academy"},{"id":123558,"description":"ANG Hub"},{"id":98282,"description":"Aberdeen
         Proving Ground"},{"id":123657,"description":"Al Udeid, Qatar"},{"id":123578,"description":"Alameda
         Coast Guard"},{"id":98284,"description":"Albuquerque"},{"id":98285,"description":"Altus
