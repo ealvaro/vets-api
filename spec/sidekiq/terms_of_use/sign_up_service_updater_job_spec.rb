@@ -79,6 +79,23 @@ RSpec.describe TermsOfUse::SignUpServiceUpdaterJob, type: :job do
       end
     end
 
+    context 'when MPI profile lookup fails' do
+      let(:find_profile_response) { nil }
+      let(:expected_log) { '[TermsOfUse][SignUpServiceUpdaterJob] MPI profile lookup failed' }
+
+      before do
+        allow(Rails.logger).to receive(:error)
+      end
+
+      it 'logs an error and raises an exception' do
+        expect do
+          job.perform(user_account_uuid, version)
+        end.to raise_error('MPI profile lookup failed')
+
+        expect(Rails.logger).to have_received(:error).with(expected_log, { icn: })
+      end
+    end
+
     context 'when sec_id is present' do
       let(:status) { { opt_out: false, agreement_signed: false } }
 

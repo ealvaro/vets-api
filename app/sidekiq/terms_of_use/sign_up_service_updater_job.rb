@@ -105,8 +105,16 @@ module TermsOfUse
     end
 
     def mpi_profile
-      @mpi_profile ||= MPI::Service.new.find_profile_by_identifier(identifier: user_account.icn,
-                                                                   identifier_type: MPI::Constants::ICN)&.profile
+      @mpi_profile ||= begin
+        response = MPI::Service.new.find_profile_by_identifier(identifier: user_account.icn,
+                                                               identifier_type: MPI::Constants::ICN)
+        if response.nil?
+          Rails.logger.error("#{LOG_TITLE} MPI profile lookup failed", { icn: user_account.icn })
+          raise 'MPI profile lookup failed'
+        end
+
+        response.profile
+      end
     end
   end
 end
