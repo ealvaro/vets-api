@@ -1799,10 +1799,6 @@ features:
     actor_type: user
     description: Enables/disables the EHR transition crosswalk banner showing VistA to Oracle Health triage group name mappings
     enable_in_development: false
-  mhv_secure_messaging_filter_accordion:
-    actor_type: user
-    description: Enables/disables Secure Messaging Filter Accordion re-design updates on VA.gov
-    enable_in_development: true
   mhv_secure_messaging_triage_group_plain_language:
     actor_type: user
     description: Disables/Enables Secure Messaging recipients group plain language design
@@ -1814,10 +1810,6 @@ features:
   mhv_secure_messaging_recipient_combobox:
     actor_type: user
     description: Disables/Enables Secure Messaging combobox in recipient dropdown on Start a new message page
-  mhv_secure_messaging_custom_folders_redesign:
-    actor_type: user
-    description: Disables/Enables Secure Messaging Custom Folders Redesign
-    enable_in_development: true
   mhv_secure_messaging_large_attachments:
     actor_type: user
     description: Disables/Enables sending large attachments in Secure Messaging using AWS S3 upload method for all eligible messages to Vista or OH recipients
