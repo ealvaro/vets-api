@@ -2,17 +2,7 @@
 
 module Crm
   class Service
-    extend Forwardable
-
-    attr_reader :icn, :logger, :settings, :token
-
-    def_delegators :settings,
-                   :base_url,
-                   :veis_api_path,
-                   :ocp_apim_subscription_key,
-                   :service_name,
-                   :e_subscription_key,
-                   :s_subscription_key
+    attr_reader :icn, :logger, :token
 
     def self.crm_env
       env = {
@@ -34,7 +24,6 @@ module Crm
     end
 
     def initialize(icn:, logger: LogService.new)
-      @settings = Settings.ask_va_api.crm_api
       @icn = icn
       @token = CrmToken.new.call
       @logger = logger
@@ -42,16 +31,11 @@ module Crm
 
     # Calls the CRM API with given method, endpoint, and optional payload
     def call(endpoint:, method: :get, payload: {})
-      organization = self.class.crm_env[vsp_environment]
-
-      uri = build_uri(endpoint, method, organization)
-      response = conn(url: base_url).public_send(method, uri, request_body(method, payload, organization)) do |req|
-        req.headers = request_headers
-      end
+      response = connection.request(method:, endpoint:, payload:, organization:)
 
       parse_response(response.body)
     rescue => e
-      log_error(uri, service_name)
+      log_error(endpoint, @connection&.service_name || 'VEIS-API')
 
       Faraday::Response.new(
         response_body: extract_body_from(e),
@@ -61,52 +45,13 @@ module Crm
 
     private
 
-    def conn(url:)
-      Faraday.new(url:) do |f|
-        f.use(:breakers, service_name:)
-        f.response :raise_custom_error, error_prefix: service_name
-        f.adapter Faraday.default_adapter
-      end
+    def connection
+      @connection ||= Crm::Connection.new(icn:, token:)
     end
 
-    def vsp_environment
-      Settings.vsp_environment
-    end
-
-    def build_uri(endpoint, method, organization)
-      uri = URI.parse("#{veis_api_path}/#{endpoint}")
-      uri.query = URI.encode_www_form(organizationName: organization) if method == :put
-      uri.to_s
-    end
-
-    def request_body(method, payload, organization)
-      case method
-      when :get
-        { organizationName: organization }.merge(payload)
-      when :post, :patch, :put
-        payload.to_json
-      end
-    end
-
-    def request_headers
-      base = {
-        'Content-Type' => 'application/json',
-        'Authorization' => "Bearer #{token}",
-        'X-VA-ICN' => icn
-      }
-
-      env_headers = if vsp_environment == 'production'
-                      {
-                        'OCP-APIM-Subscription-Key-E' => e_subscription_key,
-                        'OCP-APIM-Subscription-Key-S' => s_subscription_key
-                      }
-                    else
-                      {
-                        'OCP-APIM-Subscription-Key' => ocp_apim_subscription_key
-                      }
-                    end
-
-      base.merge(env_headers)
+    def organization
+      env = Settings.vsp_environment.to_s.downcase
+      @organization ||= self.class.crm_env.fetch(env, 'iris-dev')
     end
 
     def parse_response(body)
