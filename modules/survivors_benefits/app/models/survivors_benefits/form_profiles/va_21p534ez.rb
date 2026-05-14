@@ -13,7 +13,7 @@ module SurvivorsBenefits
       {
         version: 0,
         prefill: true,
-        returnUrl: '/veteran'
+        returnUrl: '/claimant-relationship'
       }
     end
 
