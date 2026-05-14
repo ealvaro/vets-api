@@ -39,7 +39,7 @@ module TravelPay
       btsss_url = Settings.travel_pay.base_url
       correlation_id = SecureRandom.uuid
       params.symbolize_keys => { claim_id:, doc_id: }
-      Rails.logger.debug(message: 'Correlation ID', correlation_id:)
+      Rails.logger.info(message: 'Correlation ID', correlation_id:)
       log_to_statsd('documents', 'get_document_binary') do
         connection(server_url: btsss_url).get("api/v2/claims/#{claim_id}/documents/#{doc_id}") do |req|
           req.headers['Authorization'] = "Bearer #{auth_session.veis_token}"
@@ -66,7 +66,7 @@ module TravelPay
       claim_id = params[:claim_id]
       document = params[:document]
 
-      Rails.logger.debug(message: 'Correlation ID', correlation_id:)
+      Rails.logger.info(message: 'Correlation ID', correlation_id:)
       log_to_statsd('documents', 'add_document') do
         connection(server_url: btsss_url, multipart: true)
           .post("api/v3/claims/#{claim_id}/documents/form-data") do |req|
@@ -97,7 +97,7 @@ module TravelPay
       btsss_url = Settings.travel_pay.base_url
       correlation_id = SecureRandom.uuid
       params.symbolize_keys => { claim_id:, document_id: }
-      Rails.logger.debug(message: 'Correlation ID', correlation_id:)
+      Rails.logger.info(message: 'Correlation ID', correlation_id:)
       log_to_statsd('documents', 'delete_document') do
         connection(server_url: btsss_url).delete("api/v1/claims/#{claim_id}/documents/#{document_id}") do |req|
           req.headers['Authorization'] = "Bearer #{auth_session.veis_token}"
