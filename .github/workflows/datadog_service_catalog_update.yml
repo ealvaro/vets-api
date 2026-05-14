@@ -80,7 +80,7 @@ jobs:
           service=${{steps.parse_service_name.outputs.result}}
           schema=${{steps.parse_schema_version.outputs.result}}
           echo "Updating $service@$schema to Datadog Service Catalog"
-          curl --location --request POST "https://api.ddog-gov.com/api/v2/services/definitions?schema_version=$schema" \
+          curl --fail-with-body --location --request POST "https://api.ddog-gov.com/api/v2/services/definitions?schema_version=$schema" \
           --header 'Accept: application/json' \
           --header 'DD-API-KEY: ${{ secrets.DD_API_KEY }}' \
           --header 'DD-APPLICATION-KEY: ${{ secrets.DD_APP_KEY }}' \
