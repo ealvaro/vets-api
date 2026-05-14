@@ -350,12 +350,55 @@ RSpec.describe EVSS::DisabilityCompensationForm::Form526ToLighthouseTransform do
     let(:submission) { create(:form526_submission, :with_everything) }
     let(:data) { submission.form['form526'] }
 
-    it 'sets change of address correctly' do
+    it 'sets currently homeless fields correctly' do
       result = transformer.send(:transform_homeless, data['form526']['veteran'])
       expect(result.point_of_contact).to eq('Jane Doe')
       expect(result.currently_homeless).not_to be_nil
       expect(result.risk_of_becoming_homeless).to be_nil
       expect(result.point_of_contact_number).not_to be_nil
+      expect(result.is_currently_homeless).to be(true)
+      expect(result.is_at_risk_of_becoming_homeless).to be(false)
+    end
+
+    context 'when veteran is not homeless' do
+      let(:veteran) do
+        { 'homelessness' => { 'notHomeless' => true } }
+      end
+
+      it 'sets is_currently_homeless and is_at_risk_of_becoming_homeless to false' do
+        result = transformer.send(:transform_homeless, veteran)
+        expect(result.is_currently_homeless).to be(false)
+        expect(result.is_at_risk_of_becoming_homeless).to be(false)
+        expect(result.currently_homeless).to be_nil
+        expect(result.risk_of_becoming_homeless).to be_nil
+        expect(result.point_of_contact).to be_nil
+      end
+    end
+
+    context 'when veteran is at risk of becoming homeless' do
+      let(:veteran) do
+        {
+          'homelessness' => {
+            'homelessnessRisk' => {
+              'homelessnessRiskSituationType' => 'HOUSING_WILL_BE_LOST_IN_30_DAYS',
+              'otherLivingSituation' => nil
+            },
+            'pointOfContact' => {
+              'pointOfContactName' => 'John Smith',
+              'primaryPhone' => { 'areaCode' => '555', 'phoneNumber' => '1234567' }
+            }
+          }
+        }
+      end
+
+      it 'sets at risk fields correctly' do
+        result = transformer.send(:transform_homeless, veteran)
+        expect(result.is_at_risk_of_becoming_homeless).to be(true)
+        expect(result.is_currently_homeless).to be(false)
+        expect(result.risk_of_becoming_homeless).not_to be_nil
+        expect(result.currently_homeless).to be_nil
+        expect(result.point_of_contact).to eq('John Smith')
+      end
     end
   end
 

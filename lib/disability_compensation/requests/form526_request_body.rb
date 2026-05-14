@@ -234,6 +234,8 @@ module Requests
   class Homeless
     include Vets::Model
 
+    attribute :is_currently_homeless, Bool
+    attribute :is_at_risk_of_becoming_homeless, Bool
     attribute :point_of_contact, String
     attribute :point_of_contact_number, ContactNumber
     attribute :currently_homeless, CurrentlyHomeless

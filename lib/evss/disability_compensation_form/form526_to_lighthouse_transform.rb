@@ -200,9 +200,14 @@ module EVSS
         homeless = Requests::Homeless.new
         homelessness = veteran['homelessness']
 
-        fill_currently_homeless(homelessness, homeless) if homelessness['currentlyHomeless'].present?
-
-        fill_risk_of_becoming_homeless(homelessness, homeless) if homelessness['homelessnessRisk'].present?
+        if homelessness['currentlyHomeless'].present?
+          fill_currently_homeless(homelessness, homeless)
+        elsif homelessness['homelessnessRisk'].present?
+          fill_risk_of_becoming_homeless(homelessness, homeless)
+        elsif homelessness['notHomeless']
+          homeless.is_currently_homeless = false
+          homeless.is_at_risk_of_becoming_homeless = false
+        end
 
         homeless
       end
@@ -795,6 +800,8 @@ module EVSS
 
       # only needs currentlyHomeless from 'homelessness' source
       def fill_currently_homeless(source, target)
+        target.is_currently_homeless = true
+        target.is_at_risk_of_becoming_homeless = false
         options = source['currentlyHomeless']['homelessSituationType']&.strip
         send_other_description = options == 'OTHER'
         other_description = source['currentlyHomeless']['otherLivingSituation'] || nil
@@ -811,6 +818,8 @@ module EVSS
 
       # needs whole `homelessness` object source
       def fill_risk_of_becoming_homeless(source, target)
+        target.is_at_risk_of_becoming_homeless = true
+        target.is_currently_homeless = false
         target.risk_of_becoming_homeless = Requests::RiskOfBecomingHomeless.new(
           living_situation_options: source['homelessnessRisk']['homelessnessRiskSituationType'],
           other_description: source['homelessnessRisk']['otherLivingSituation']

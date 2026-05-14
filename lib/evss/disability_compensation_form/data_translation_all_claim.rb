@@ -493,8 +493,8 @@ module EVSS
 
       def translate_homelessness
         case input_form['homelessOrAtRisk']
-        when 'no' || nil
-          nil
+        when 'no'
+          { 'notHomeless' => true }
         when 'homeless'
           homeless
         when 'atRisk'

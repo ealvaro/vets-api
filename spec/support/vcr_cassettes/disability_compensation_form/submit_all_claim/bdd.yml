@@ -98,6 +98,8 @@ http_interactions:
               },
               "changeOfAddress": null,
               "homeless": {
+                "isCurrentlyHomeless": true,
+                "isAtRiskOfBecomingHomeless": false,
                 "pointOfContact": "Jon Doe",
                 "pointOfContactNumber": {
                   "telephone": "4105551234",
@@ -276,6 +278,8 @@ http_interactions:
               },
               "changeOfAddress": null,
               "homeless": {
+                "isCurrentlyHomeless": true,
+                "isAtRiskOfBecomingHomeless": false,
                 "pointOfContact": "Jon Doe",
                 "pointOfContactNumber": {
                   "telephone": "4105551234",

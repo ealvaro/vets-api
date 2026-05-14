@@ -1268,8 +1268,8 @@ describe EVSS::DisabilityCompensationForm::DataTranslationAllClaim do
         }
       end
 
-      it 'returns nil' do
-        expect(subject.send(:translate_homelessness)).to be_nil
+      it 'returns notHomeless hash' do
+        expect(subject.send(:translate_homelessness)).to eq({ 'notHomeless' => true })
       end
     end
 
