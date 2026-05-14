@@ -188,6 +188,84 @@ describe TravelPay::AppointmentsService do
       )
     end
 
+    let(:response_with_cancelled_first) do
+      Faraday::Response.new(
+        body: {
+          'data' => [
+            {
+              'id' => 'cancelled-uuid',
+              'appointmentSource' => 'API',
+              'appointmentDateTime' => '2024-01-01T16:45:34.465Z',
+              'appointmentName' => 'string',
+              'appointmentType' => 'EnvironmentalHealth',
+              'facilityName' => 'Cheyenne VA Medical Center',
+              'serviceConnectedDisability' => 30,
+              'currentStatus' => 'string',
+              'appointmentStatus' => 'Cancelled',
+              'externalAppointmentId' => '12345678-0000-0000-0000-000000000001',
+              'associatedClaimId' => nil,
+              'associatedClaimNumber' => nil,
+              'isCompleted' => false
+            },
+            {
+              'id' => 'active-uuid',
+              'appointmentSource' => 'API',
+              'appointmentDateTime' => '2024-01-01T16:45:34.465Z',
+              'appointmentName' => 'string',
+              'appointmentType' => 'EnvironmentalHealth',
+              'facilityName' => 'Cheyenne VA Medical Center',
+              'serviceConnectedDisability' => 30,
+              'currentStatus' => 'string',
+              'appointmentStatus' => 'Completed',
+              'externalAppointmentId' => '12345678-0000-0000-0000-000000000002',
+              'associatedClaimId' => nil,
+              'associatedClaimNumber' => nil,
+              'isCompleted' => true
+            }
+          ]
+        }
+      )
+    end
+
+    let(:response_with_all_cancelled) do
+      Faraday::Response.new(
+        body: {
+          'data' => [
+            {
+              'id' => 'cancelled-uuid-1',
+              'appointmentSource' => 'API',
+              'appointmentDateTime' => '2024-01-01T16:45:34.465Z',
+              'appointmentName' => 'string',
+              'appointmentType' => 'EnvironmentalHealth',
+              'facilityName' => 'Cheyenne VA Medical Center',
+              'serviceConnectedDisability' => 30,
+              'currentStatus' => 'string',
+              'appointmentStatus' => 'Canceled',
+              'externalAppointmentId' => '12345678-0000-0000-0000-000000000001',
+              'associatedClaimId' => nil,
+              'associatedClaimNumber' => nil,
+              'isCompleted' => false
+            },
+            {
+              'id' => 'cancelled-uuid-2',
+              'appointmentSource' => 'API',
+              'appointmentDateTime' => '2024-01-01T16:45:34.465Z',
+              'appointmentName' => 'string',
+              'appointmentType' => 'EnvironmentalHealth',
+              'facilityName' => 'Cheyenne VA Medical Center',
+              'serviceConnectedDisability' => 30,
+              'currentStatus' => 'string',
+              'appointmentStatus' => 'cancelled',
+              'externalAppointmentId' => '12345678-0000-0000-0000-000000000002',
+              'associatedClaimId' => nil,
+              'associatedClaimNumber' => nil,
+              'isCompleted' => false
+            }
+          ]
+        }
+      )
+    end
+
     let(:auth_session) { TravelPay::AuthSession.new(veis_token: 'veis_token', btsss_token: 'btsss_token', contact_id: 'contact_id') }
     let(:auth_manager) { object_double(TravelPay::AuthManager.new(123, user), authorize: auth_session, user:) }
     let(:service) { TravelPay::AppointmentsService.new(auth_manager) }
@@ -308,6 +386,72 @@ describe TravelPay::AppointmentsService do
 
         expect { service.find_or_create_appointment(params) }
           .to raise_error(Common::Exceptions::BadRequest)
+      end
+    end
+
+    context 'when multiple appointments are returned and one is cancelled' do
+      let(:params) do
+        { 'appointment_date_time' => '2024-01-01T12:45:00',
+          'facility_station_number' => '123',
+          'appointment_type' => 'Other',
+          'is_complete' => false }
+      end
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:travel_pay_appt_add_v4_upgrade, user).and_return(false)
+      end
+
+      it 'skips the cancelled appointment and returns the non-cancelled one' do
+        allow_any_instance_of(TravelPay::AppointmentsClient)
+          .to receive(:find_or_create)
+          .and_return(response_with_cancelled_first)
+
+        appt = service.find_or_create_appointment(params)
+
+        expect(appt[:data]['id']).to eq('active-uuid')
+      end
+
+      it 'handles case-insensitive cancelled status variations' do
+        allow_any_instance_of(TravelPay::AppointmentsClient)
+          .to receive(:find_or_create)
+          .and_return(response_with_all_cancelled)
+
+        appt = service.find_or_create_appointment(params)
+
+        expect(appt[:data]['id']).to eq('cancelled-uuid-1')
+      end
+    end
+
+    context 'when no appointments are returned' do
+      let(:params) do
+        { 'appointment_date_time' => '2024-01-01T12:45:00',
+          'facility_station_number' => '123',
+          'appointment_type' => 'Other',
+          'is_complete' => false }
+      end
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:travel_pay_appt_add_v4_upgrade, user).and_return(false)
+      end
+
+      it 'returns nil data when the response contains an empty array' do
+        allow_any_instance_of(TravelPay::AppointmentsClient)
+          .to receive(:find_or_create)
+          .and_return(Faraday::Response.new(body: { 'data' => [] }))
+
+        appt = service.find_or_create_appointment(params)
+
+        expect(appt[:data]).to be_nil
+      end
+
+      it 'returns nil data when the response contains nil' do
+        allow_any_instance_of(TravelPay::AppointmentsClient)
+          .to receive(:find_or_create)
+          .and_return(Faraday::Response.new(body: { 'data' => nil }))
+
+        appt = service.find_or_create_appointment(params)
+
+        expect(appt[:data]).to be_nil
       end
     end
   end

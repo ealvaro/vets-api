@@ -61,19 +61,16 @@ module TravelPay
         # Ensure the date is valid
         DateUtils.try_parse_date(params['appointment_date_time'])
 
-        auth_session = @auth_manager.authorize
+        appointments = fetch_find_or_create_appointments(params)
 
-        # Use feature flag to determine API version
-        use_v4_api = !!(@auth_manager.user && Flipper.enabled?(:travel_pay_appt_add_v4_upgrade, @auth_manager.user))
+        non_cancelled = appointments&.find do |appt|
+          !appt['appointmentStatus']&.downcase&.include?('cancel')
+        end
 
-        validate_required_params!(params, use_v4_api:)
-
-        faraday_response = client.find_or_create(auth_session, params, use_v4_api:)
-        appointments = faraday_response.body['data']
+        log_find_or_create_result(appointments, non_cancelled, params)
 
         {
-          # this returns an array of matching appointments - just return the first one
-          data: appointments[0]
+          data: non_cancelled || appointments&.first
         }
       end
     rescue ArgumentError => e
@@ -126,6 +123,32 @@ module TravelPay
     end
 
     private
+
+    def fetch_find_or_create_appointments(params)
+      auth_session = @auth_manager.authorize
+      use_v4_api = @auth_manager.user.present? && Flipper.enabled?(:travel_pay_appt_add_v4_upgrade, @auth_manager.user)
+      validate_required_params!(params, use_v4_api:)
+      faraday_response = client.find_or_create(auth_session, params, use_v4_api:)
+      faraday_response.body['data']
+    end
+
+    def log_find_or_create_result(appointments, non_cancelled, params)
+      log_params = {
+        appointment_date_time: params['appointment_date_time'],
+        facility_station_number: params['facility_station_number']
+      }
+
+      if appointments.blank?
+        Rails.logger.warn(log_params.merge(message: 'No appointments returned from find-or-add'))
+      elsif appointments.length > 1
+        Rails.logger.info(log_params.merge(message: 'Multiple appointments returned from find-or-add',
+                                           count: appointments.length))
+        if non_cancelled.nil?
+          Rails.logger.warn(log_params.merge(message: 'All appointments returned from find-or-add are cancelled',
+                                             count: appointments.length))
+        end
+      end
+    end
 
     def find_by_date_time(date_string, appointments)
       if date_string.nil?
