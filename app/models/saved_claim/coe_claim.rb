@@ -86,11 +86,12 @@ class SavedClaim::CoeClaim < SavedClaim
         'vaLoanIndicator' => get_value_by_form_version('vaLoanIndicator'),
         'vaHomeOwnIndicator' => get_value_by_form_version('vaHomeOwnIndicator'),
         'activeDutyIndicator' => get_value_by_form_version('identity') == 'ADSM',
-        'disabilityIndicator' => get_value_by_form_version('disabilityIndicator')
+        'disabilityIndicator' => get_value_by_form_version('disabilityIndicator') || false
       },
       'relevantPriorLoans' => [],
       'periodsOfService' => []
     }
+
     if parsed_form.key?('relevantPriorLoans') || parsed_form['loanHistory']&.key?('relevantPriorLoans')
       relevant_prior_loans(form_copy)
     end
@@ -267,7 +268,7 @@ class SavedClaim::CoeClaim < SavedClaim
         'releasedActiveDuty' => service_info['dateRange']['to'],
         'militaryBranch' => military_branch,
         'serviceType' => service_type,
-        'disabilityIndicator' => get_value_by_form_version('disabilityIndicator')
+        'disabilityIndicator' => get_value_by_form_version('disabilityIndicator') || false
       }
     end
   end
