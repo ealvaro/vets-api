@@ -31,6 +31,7 @@ module SignIn
       ANTI_CSRF_COOKIE_NAME = 'vagov_anti_csrf_token'
       AUTHENTICATION_TYPES = [COOKIE = 'cookie', API = 'api', MOCK = 'mock'].freeze
       AUTHORIZE_ROUTE_PATH = '/v0/sign_in/authorize'
+      AUTHORIZE_SSO_ROUTE_PATH = '/v0/sign_in/authorize_sso'
       BROKER_CODE = 'sis'
       CERTS_ROUTE_PATH = '/sign_in/openid_connect/certs'
       CLIENT_STATE_MINIMUM_LENGTH = 22

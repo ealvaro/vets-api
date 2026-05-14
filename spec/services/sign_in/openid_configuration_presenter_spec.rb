@@ -13,7 +13,7 @@ RSpec.describe SignIn::OpenidConfigurationPresenter do
     end
 
     it 'returns the expected authorization_endpoint' do
-      expect(subject[:authorization_endpoint]).to eq("#{base_url}#{SignIn::Constants::Auth::AUTHORIZE_ROUTE_PATH}")
+      expect(subject[:authorization_endpoint]).to eq("#{base_url}#{SignIn::Constants::Auth::AUTHORIZE_SSO_ROUTE_PATH}")
     end
 
     it 'returns the expected token_endpoint' do
