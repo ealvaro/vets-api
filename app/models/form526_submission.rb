@@ -17,6 +17,7 @@ class Form526Submission < ApplicationRecord
                     :submit_form_4142,
                     :submit_uploads,
                     :submit_form_0781,
+                    :submit_mst_consent,
                     :submit_form_8940,
                     :upload_bdd_instructions,
                     :submit_flashes,
@@ -319,6 +320,7 @@ class Form526Submission < ApplicationRecord
       submit_uploads if form[FORM_526_UPLOADS].present?
       conditionally_submit_form_4142
       submit_form_0781 if form[FORM_0781].present?
+      submit_mst_consent if form[FORM_0781].present?
       submit_form_8940 if form[FORM_8940].present?
       upload_bdd_instructions if bdd?
       submit_flashes if form[FLASHES].present?
@@ -574,6 +576,12 @@ class Form526Submission < ApplicationRecord
 
   def submit_form_0781
     EVSS::DisabilityCompensationForm::SubmitForm0781.perform_async(id)
+  end
+
+  def submit_mst_consent
+    return unless Flipper.enabled?(:form526_0781_automate_mst_consent, OpenStruct.new({ flipper_id: user_uuid }))
+
+    VHANotification::SendMstConsentJob.perform_async(id, 'primary')
   end
 
   def submit_form_8940

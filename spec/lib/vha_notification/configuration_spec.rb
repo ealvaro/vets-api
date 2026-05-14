@@ -3,7 +3,7 @@
 require 'rails_helper'
 require 'vha_notification/configuration'
 
-RSpec.describe VhaNotification::Configuration do
+RSpec.describe VHANotification::Configuration do
   subject(:config) { described_class.instance }
 
   describe '#base_path' do
@@ -13,8 +13,8 @@ RSpec.describe VhaNotification::Configuration do
   end
 
   describe '#service_name' do
-    it 'returns VhaNotification' do
-      expect(config.service_name).to eq('VhaNotification')
+    it 'returns VHANotification' do
+      expect(config.service_name).to eq('VHANotification')
     end
   end
 

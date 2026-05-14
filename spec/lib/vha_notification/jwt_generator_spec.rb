@@ -3,7 +3,7 @@
 require 'rails_helper'
 require 'vha_notification/jwt_generator'
 
-RSpec.describe VhaNotification::JwtGenerator do
+RSpec.describe VHANotification::JwtGenerator do
   let(:jwt_secret) { 'test-jwt-secret' }
   let(:issuer) { 'vha-notify-issuer' }
   let(:user_id) { 'vha-user-123' }

@@ -2,7 +2,7 @@
 
 require 'common/jwt_generator'
 
-module VhaNotification
+module VHANotification
   class JwtGenerator
     # static method
     # @see #encode_jwt

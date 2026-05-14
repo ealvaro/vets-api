@@ -601,6 +601,7 @@ app/sidekiq/unified_health_data/labs_refresh_job.rb @software/va-cto-health-prod
 app/sidekiq/user_actions_cleanup_job.rb @software/octo-identity
 app/sidekiq/va_notify_dd_email_job.rb @software/va-notify-write @software/backend-review-group
 app/sidekiq/va_notify_email_job.rb @software/va-notify-write @software/backend-review-group
+app/sidekiq/vha_notification/send_mst_consent_job.rb @software/disability-benefits @software/backend-review-group
 app/sidekiq/vre_vbms_document_upload_log_job.rb @software/va-core-veteran-experiences @software/backend-review-group
 app/sidekiq/vre_vbms_document_upload_job.rb @software/va-core-veteran-experiences @software/backend-review-group
 app/sidekiq/vre/submit1900_job.rb @software/benefits-non-disability @software/backend-review-group
@@ -2231,6 +2232,7 @@ spec/sidekiq/user_actions_cleanup_job_spec.rb @software/octo-identity
 spec/sidekiq/va_notify_dd_email_job_spec.rb @software/va-notify-write @software/backend-review-group
 spec/sidekiq/va_notify_email_job_spec.rb @software/va-notify-write @software/backend-review-group
 spec/sidekiq/va_notify/v2/queue_email_job_spec.rb @software/va-notify-write @software/backend-review-group
+spec/sidekiq/vha_notification/send_mst_consent_job_spec.rb @software/disability-benefits @software/backend-review-group
 spec/sidekiq/vrevbms_document_upload_job_spec.rb @software/va-core-veteran-experiences @software/backend-review-group
 spec/sidekiq/vrevbms_document_upload_log_job_spec.rb @software/va-core-veteran-experiences @software/backend-review-group
 spec/sidekiq/vre/submit1900_job_spec.rb @software/benefits-non-disability @software/backend-review-group

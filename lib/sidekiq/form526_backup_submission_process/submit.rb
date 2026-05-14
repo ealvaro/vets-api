@@ -75,14 +75,11 @@ module Sidekiq
       def perform(form526_submission_id)
         return unless Settings.form526_backup.enabled
 
-        Form526Submission.find(form526_submission_id).benefits_intake_api!
-        job_status = Form526JobStatus.find_or_initialize_by(job_id: jid)
-        job_status.assign_attributes(form526_submission_id:,
-                                     job_class: 'BackupSubmission',
-                                     status: 'pending')
-        job_status.save!
+        submission = Form526Submission.find(form526_submission_id)
+        submission.benefits_intake_api!
+        job_status = initialize_job_status(form526_submission_id, jid)
 
-        Processor.new(form526_submission_id).process!
+        process_submission(form526_submission_id, submission)
         job_status.update(status: Form526JobStatus::STATUS[:success])
       rescue => e
         ::Rails.logger.warn(
@@ -91,11 +88,32 @@ module Sidekiq
           backtrace: e.backtrace,
           submission_id: form526_submission_id
         )
-        update_job_status_bgjob_errors(job_status, e)
+        update_job_status_bgjob_errors(job_status, e) if job_status
         raise e
       end
 
       private
+
+      def initialize_job_status(form526_submission_id, sidekiq_jid)
+        job_id = sidekiq_jid.presence || SecureRandom.uuid
+        job_status = Form526JobStatus.find_or_initialize_by(job_id:)
+        job_status.assign_attributes(form526_submission_id:,
+                                     job_class: 'BackupSubmission',
+                                     status: 'pending')
+        job_status.save!
+        job_status
+      end
+
+      def process_submission(form526_submission_id, submission)
+        Processor.new(form526_submission_id).process!
+        if submission.form[Form526Submission::FORM_0781].present? && mst_consent_feature_enabled?(submission)
+          VHANotification::SendMstConsentJob.perform_async(form526_submission_id, 'backup')
+        end
+      end
+
+      def mst_consent_feature_enabled?(submission)
+        Flipper.enabled?(:form526_0781_automate_mst_consent, OpenStruct.new({ flipper_id: submission.user_uuid }))
+      end
 
       def update_job_status_bgjob_errors(job_status, e)
         bgjob_errors = job_status.bgjob_errors || {}

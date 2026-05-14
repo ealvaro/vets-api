@@ -6,7 +6,7 @@ require 'vha_notification/configuration'
 require 'vha_notification/constants'
 require 'vha_notification/jwt_generator'
 
-describe VhaNotification::Service do
+describe VHANotification::Service do
   subject { described_class.new }
 
   let(:pid) { '1234567890' }
@@ -17,14 +17,14 @@ describe VhaNotification::Service do
     context 'with valid pid and consent_data' do
       before do
         allow(StatsD).to receive(:increment)
-        allow(VhaNotification::JwtGenerator).to receive(:encode_jwt).and_return(bearer_token)
-        allow_any_instance_of(VhaNotification::Configuration).to receive(:post_consent_update)
+        allow(VHANotification::JwtGenerator).to receive(:encode_jwt).and_return(bearer_token)
+        allow_any_instance_of(VHANotification::Configuration).to receive(:post_consent_update)
           .and_return(double(status: 200, body: { success: true }))
         allow(Rails.logger).to receive(:info)
       end
 
       it 'successfully sends consent to VHA API' do
-        expect_any_instance_of(VhaNotification::Configuration).to receive(:post_consent_update).with(
+        expect_any_instance_of(VHANotification::Configuration).to receive(:post_consent_update).with(
           pid,
           {
             source: subject.send(:source),
@@ -43,9 +43,9 @@ describe VhaNotification::Service do
       it 'increments success metrics' do
         subject.send_mst_consent(pid, consent_data)
 
-        expect(StatsD).to have_received(:increment).with(VhaNotification::Constants::STATSD_SEND_CONSENT_SUCCESS_KEY)
-        expect(StatsD).to have_received(:increment).with(VhaNotification::Constants::STATSD_SEND_CONSENT_TOTAL_KEY)
-        expect(StatsD).to have_received(:increment).with(VhaNotification::Constants::STATSD_GET_TOKEN_SUCCESS_KEY)
+        expect(StatsD).to have_received(:increment).with(VHANotification::Constants::STATSD_SEND_CONSENT_SUCCESS_KEY)
+        expect(StatsD).to have_received(:increment).with(VHANotification::Constants::STATSD_SEND_CONSENT_TOTAL_KEY)
+        expect(StatsD).to have_received(:increment).with(VHANotification::Constants::STATSD_GET_TOKEN_SUCCESS_KEY)
       end
 
       it 'logs the successful consent update' do
@@ -53,7 +53,7 @@ describe VhaNotification::Service do
 
         expect(Rails.logger).to have_received(:info).with(
           'VHA Notification: MST consent successfully sent',
-          hash_including(service: 'VhaNotification')
+          hash_including(service: 'VHANotification')
         )
       end
 
@@ -63,7 +63,7 @@ describe VhaNotification::Service do
         end
 
         it 'falls back to ibm source' do
-          expect_any_instance_of(VhaNotification::Configuration).to receive(:post_consent_update).with(
+          expect_any_instance_of(VHANotification::Configuration).to receive(:post_consent_update).with(
             pid,
             hash_including(source: 'ibm'),
             bearer_token
@@ -78,13 +78,13 @@ describe VhaNotification::Service do
       it 'raises ServiceError when pid is blank' do
         expect do
           subject.send_mst_consent('', consent_data)
-        end.to raise_error(VhaNotification::ServiceError, 'PID is required')
+        end.to raise_error(VHANotification::ServiceError, 'PID is required')
       end
 
       it 'raises ServiceError when pid is not a string' do
         expect do
           subject.send_mst_consent(123, consent_data)
-        end.to raise_error(VhaNotification::ServiceError, 'PID must be a string')
+        end.to raise_error(VHANotification::ServiceError, 'PID must be a string')
       end
     end
 
@@ -92,13 +92,13 @@ describe VhaNotification::Service do
       it 'raises ServiceError when consent_data is blank' do
         expect do
           subject.send_mst_consent(pid, nil)
-        end.to raise_error(VhaNotification::ServiceError, 'Consent data is required')
+        end.to raise_error(VHANotification::ServiceError, 'Consent data is required')
       end
 
       it 'raises ServiceError when consent_data is not a boolean' do
         expect do
           subject.send_mst_consent(pid, 'invalid')
-        end.to raise_error(VhaNotification::ServiceError, 'Consent data must be a boolean')
+        end.to raise_error(VHANotification::ServiceError, 'Consent data must be a boolean')
       end
     end
 
@@ -106,32 +106,32 @@ describe VhaNotification::Service do
       before do
         allow(StatsD).to receive(:increment)
         allow(Rails.logger).to receive(:error)
-        allow(VhaNotification::JwtGenerator).to receive(:encode_jwt)
+        allow(VHANotification::JwtGenerator).to receive(:encode_jwt)
           .and_raise(StandardError.new('JWT generation failed'))
       end
 
       it 'raises ServiceError' do
         expect do
           subject.send_mst_consent(pid, consent_data)
-        end.to raise_error(VhaNotification::ServiceError, VhaNotification::Constants::TOKEN_RETRIEVAL_ERROR)
+        end.to raise_error(VHANotification::ServiceError, VHANotification::Constants::TOKEN_RETRIEVAL_ERROR)
       end
 
       it 'increments fail metrics' do
         begin
           subject.send_mst_consent(pid, consent_data)
-        rescue VhaNotification::ServiceError
+        rescue VHANotification::ServiceError
           # Expected
         end
 
-        expect(StatsD).to have_received(:increment).with(VhaNotification::Constants::STATSD_GET_TOKEN_FAIL_KEY)
-        expect(StatsD).to have_received(:increment).with(VhaNotification::Constants::STATSD_SEND_CONSENT_FAIL_KEY)
-        expect(StatsD).to have_received(:increment).with(VhaNotification::Constants::STATSD_SEND_CONSENT_TOTAL_KEY)
+        expect(StatsD).to have_received(:increment).with(VHANotification::Constants::STATSD_GET_TOKEN_FAIL_KEY)
+        expect(StatsD).to have_received(:increment).with(VHANotification::Constants::STATSD_SEND_CONSENT_FAIL_KEY)
+        expect(StatsD).to have_received(:increment).with(VHANotification::Constants::STATSD_SEND_CONSENT_TOTAL_KEY)
       end
 
       it 'logs the error' do
         begin
           subject.send_mst_consent(pid, consent_data)
-        rescue VhaNotification::ServiceError
+        rescue VHANotification::ServiceError
           # Expected
         end
 
@@ -146,32 +146,32 @@ describe VhaNotification::Service do
       before do
         allow(StatsD).to receive(:increment)
         allow(Rails.logger).to receive(:error)
-        allow(VhaNotification::JwtGenerator).to receive(:encode_jwt).and_return(bearer_token)
-        allow_any_instance_of(VhaNotification::Configuration).to receive(:post_consent_update)
+        allow(VHANotification::JwtGenerator).to receive(:encode_jwt).and_return(bearer_token)
+        allow_any_instance_of(VHANotification::Configuration).to receive(:post_consent_update)
           .and_raise(Faraday::ClientError.new('Consent endpoint error'))
       end
 
       it 'raises ServiceError' do
         expect do
           subject.send_mst_consent(pid, consent_data)
-        end.to raise_error(VhaNotification::ServiceError)
+        end.to raise_error(VHANotification::ServiceError)
       end
 
       it 'increments fail metrics' do
         begin
           subject.send_mst_consent(pid, consent_data)
-        rescue VhaNotification::ServiceError
+        rescue VHANotification::ServiceError
           # Expected
         end
 
-        expect(StatsD).to have_received(:increment).with(VhaNotification::Constants::STATSD_SEND_CONSENT_FAIL_KEY)
-        expect(StatsD).to have_received(:increment).with(VhaNotification::Constants::STATSD_SEND_CONSENT_TOTAL_KEY)
+        expect(StatsD).to have_received(:increment).with(VHANotification::Constants::STATSD_SEND_CONSENT_FAIL_KEY)
+        expect(StatsD).to have_received(:increment).with(VHANotification::Constants::STATSD_SEND_CONSENT_TOTAL_KEY)
       end
 
       it 'logs the error details' do
         begin
           subject.send_mst_consent(pid, consent_data)
-        rescue VhaNotification::ServiceError
+        rescue VHANotification::ServiceError
           # Expected
         end
 
@@ -180,7 +180,7 @@ describe VhaNotification::Service do
           hash_including(
             error: 'Consent endpoint error',
             error_class: 'Faraday::ClientError',
-            service: 'VhaNotification'
+            service: 'VHANotification'
           )
         )
       end

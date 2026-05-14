@@ -3,7 +3,7 @@
 require 'common/client/configuration/rest'
 require 'vha_notification/constants'
 
-module VhaNotification
+module VHANotification
   class Configuration < Common::Client::Configuration::REST
     VHA_CONSENT_ENDPOINT = '/api/v1/cfapivhanotificationapi/vha-consent-and-enrollment'
 
@@ -18,7 +18,7 @@ module VhaNotification
     end
 
     def service_name
-      'VhaNotification'
+      'VHANotification'
     end
 
     def base_path

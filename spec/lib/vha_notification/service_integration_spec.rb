@@ -6,7 +6,7 @@ require 'vha_notification/configuration'
 require 'vha_notification/constants'
 require 'vha_notification/jwt_generator'
 
-describe VhaNotification::Service do
+describe VHANotification::Service do
   subject { described_class.new }
 
   let(:pid) { '123456789' }
@@ -28,9 +28,9 @@ describe VhaNotification::Service do
   before do
     allow(Settings).to receive(:vha_notification).and_return(settings)
     allow(StatsD).to receive(:increment)
-    allow(VhaNotification::JwtGenerator).to receive(:encode_jwt).and_return('jwt-token')
-    if VhaNotification::Configuration.instance_variable_defined?(:@conn)
-      VhaNotification::Configuration.instance_variable_set(:@conn, nil)
+    allow(VHANotification::JwtGenerator).to receive(:encode_jwt).and_return('jwt-token')
+    if VHANotification::Configuration.instance_variable_defined?(:@conn)
+      VHANotification::Configuration.instance_variable_set(:@conn, nil)
     end
   end
 
@@ -50,12 +50,12 @@ describe VhaNotification::Service do
 
   describe 'VHA Notification API Error Handling' do
     it 'handles token retrieval errors gracefully' do
-      allow(VhaNotification::JwtGenerator).to receive(:encode_jwt)
+      allow(VHANotification::JwtGenerator).to receive(:encode_jwt)
         .and_raise(StandardError.new('JWT generation failed'))
 
       expect do
         subject.send_mst_consent(pid, consent_data)
-      end.to raise_error(VhaNotification::ServiceError, VhaNotification::Constants::TOKEN_RETRIEVAL_ERROR)
+      end.to raise_error(VHANotification::ServiceError, VHANotification::Constants::TOKEN_RETRIEVAL_ERROR)
     end
   end
 
@@ -67,7 +67,7 @@ describe VhaNotification::Service do
 
       expect do
         subject.send_mst_consent(pid, consent_data)
-      end.to raise_error(VhaNotification::ServiceError, /#{Regexp.escape(VhaNotification::Constants::CONSENT_UPDATE_ERROR)}/)
+      end.to raise_error(VHANotification::ServiceError, /#{Regexp.escape(VHANotification::Constants::CONSENT_UPDATE_ERROR)}/)
     end
   end
 end

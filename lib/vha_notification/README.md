@@ -8,10 +8,10 @@ The VHA Notification Service sends MST consent information to the VHA API when a
 
 ## Architecture
 
-- **Service**: `VhaNotification::Service` - Main service for sending consent updates
-- **Configuration**: `VhaNotification::Configuration` - Handles API connection setup and consent update requests
-- **JWT Generator**: `VhaNotification::JwtGenerator` - VHA-specific wrapper that creates bearer tokens by delegating to `Common::JwtGenerator`
-- **Constants**: `VhaNotification::Constants` - error messages, and StatsD metrics
+- **Service**: `VHANotification::Service` - Main service for sending consent updates
+- **Configuration**: `VHANotification::Configuration` - Handles API connection setup and consent update requests
+- **JWT Generator**: `VHANotification::JwtGenerator` - VHA-specific wrapper that creates bearer tokens by delegating to `Common::JwtGenerator`
+- **Constants**: `VHANotification::Constants` - error messages, and StatsD metrics
 
 ## API Endpoints
 
@@ -51,16 +51,16 @@ Environment variables must be provisioned for:
 - `vha_notification__station_id` - VHA station identifier (used in JWT claim)
 - `vha_notification__user_id` - VHA user identifier (used in JWT claim)
 - `vha_notification__issuer` - JWT issuer claim value
-- `vha_notification__jwt_secret` - Signing secret used by `VhaNotification::JwtGenerator` (which delegates to `Common::JwtGenerator`)
+- `vha_notification__jwt_secret` - Signing secret used by `VHANotification::JwtGenerator` (which delegates to `Common::JwtGenerator`)
 
-The bearer token used for the `Authorization` header is generated in service code via `VhaNotification::JwtGenerator.encode_jwt`, which delegates to `Common::JwtGenerator` using the settings above.
+The bearer token used for the `Authorization` header is generated in service code via `VHANotification::JwtGenerator.encode_jwt`, which delegates to `Common::JwtGenerator` using the settings above.
 
 ## Usage
 
 ### Basic Example
 
 ```ruby
-service = VhaNotification::Service.new
+service = VHANotification::Service.new
 pid = '1234567890'
 consent_data = true
 
@@ -74,12 +74,12 @@ end
 
 ### Error Handling
 
-The service raises `VhaNotification::ServiceError` on failures:
+The service raises `VHANotification::ServiceError` on failures:
 
 ```ruby
 begin
   result = service.send_mst_consent(pid, consent_data)
-rescue VhaNotification::ServiceError => e
+rescue VHANotification::ServiceError => e
   Rails.logger.error("Failed to send MST consent: #{e.message}")
 end
 ```
@@ -147,9 +147,9 @@ All operations are logged to Rails.logger with context including:
 Example logs:
 
 ```
-VHA Notification: MST consent successfully sent (status: 200, service: VhaNotification)
-VHA Notification: Failed to send MST consent (error: "Connection timeout", error_class: "Faraday::TimeoutError", service: VhaNotification)
-VHA Notification: Failed to generate bearer token (error: "Invalid JWT secret", error_class: "VhaNotification::ServiceError")
+VHA Notification: MST consent successfully sent (status: 200, service: VHANotification)
+VHA Notification: Failed to send MST consent (error: "Connection timeout", error_class: "Faraday::TimeoutError", service: VHANotification)
+VHA Notification: Failed to generate bearer token (error: "Invalid JWT secret", error_class: "VHANotification::ServiceError")
 ```
 
 ## Error Handling & Resilience

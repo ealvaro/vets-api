@@ -1123,6 +1123,30 @@ RSpec.describe Form526Submission do
           subject.perform_ancillary_jobs(first_name)
         end.to change(EVSS::DisabilityCompensationForm::SubmitForm0781.jobs, :size).by(1)
       end
+
+      context 'when mst consent feature flag is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:form526_0781_automate_mst_consent, anything).and_return(true)
+        end
+
+        it 'queues an independent VHA MST consent job' do
+          expect do
+            subject.perform_ancillary_jobs(first_name)
+          end.to change(VHANotification::SendMstConsentJob.jobs, :size).by(1)
+        end
+      end
+
+      context 'when mst consent feature flag is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:form526_0781_automate_mst_consent, anything).and_return(false)
+        end
+
+        it 'does not queue a VHA MST consent job' do
+          expect do
+            subject.perform_ancillary_jobs(first_name)
+          end.not_to change(VHANotification::SendMstConsentJob.jobs, :size)
+        end
+      end
     end
 
     context 'with form 8940' do

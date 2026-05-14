@@ -91,7 +91,7 @@ Rails.application.reloader.to_prepare do
     MebApi::DGI::Configuration.instance.breakers_service,
     MebApi::DGI::Letters::Configuration.instance.breakers_service,
     UnifiedHealthData::Configuration.instance.breakers_service,
-    VhaNotification::Configuration.instance.breakers_service,
+    VHANotification::Configuration.instance.breakers_service,
     MDOT::Configuration.instance.breakers_service,
     Eps::Configuration.instance.breakers_service,
     Ccra::Configuration.instance.breakers_service

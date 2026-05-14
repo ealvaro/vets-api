@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module VhaNotification
+module VHANotification
   class Constants
     # StatsD Keys
     STATSD_KEY_PREFIX = 'api.vha_notification'

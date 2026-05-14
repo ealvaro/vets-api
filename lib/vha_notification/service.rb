@@ -5,9 +5,9 @@ require 'vha_notification/configuration'
 require 'vha_notification/constants'
 require 'vha_notification/jwt_generator'
 
-module VhaNotification
+module VHANotification
   class Service < Common::Client::Base
-    configuration VhaNotification::Configuration
+    configuration VHANotification::Configuration
     STATSD_KEY_PREFIX = 'api.vha_notification'
 
     ##
@@ -29,7 +29,7 @@ module VhaNotification
       StatsD.increment(Constants::STATSD_SEND_CONSENT_SUCCESS_KEY)
 
       { success: true, response: response.body }
-    rescue VhaNotification::ServiceError
+    rescue VHANotification::ServiceError
       StatsD.increment(Constants::STATSD_SEND_CONSENT_FAIL_KEY)
       raise
     rescue => e
@@ -47,7 +47,7 @@ module VhaNotification
     # @return [String] Bearer token
     #
     def get_bearer_token
-      token = VhaNotification::JwtGenerator.encode_jwt
+      token = VHANotification::JwtGenerator.encode_jwt
       StatsD.increment(Constants::STATSD_GET_TOKEN_SUCCESS_KEY)
       token
     rescue => e
@@ -56,32 +56,32 @@ module VhaNotification
         'VHA Notification: Failed to generate bearer token',
         { error: e.message, error_class: e.class.to_s }
       )
-      raise VhaNotification::ServiceError, Constants::TOKEN_RETRIEVAL_ERROR
+      raise VHANotification::ServiceError, Constants::TOKEN_RETRIEVAL_ERROR
     end
 
     ##
     # Validates PID format
     #
     # @param [String] pid - Veteran's PID
-    # @raise [VhaNotification::ServiceError] If PID is invalid
+    # @raise [VHANotification::ServiceError] If PID is invalid
     #
     def validate_pid(pid)
-      raise VhaNotification::ServiceError, 'PID is required' if pid.blank?
-      raise VhaNotification::ServiceError, 'PID must be a string' unless pid.is_a?(String)
+      raise VHANotification::ServiceError, 'PID is required' if pid.blank?
+      raise VHANotification::ServiceError, 'PID must be a string' unless pid.is_a?(String)
     end
 
     ##
     # Validates consent data value
     #
     # @param [Boolean] consent_data - Consent boolean value
-    # @raise [VhaNotification::ServiceError] If consent data is invalid
+    # @raise [VHANotification::ServiceError] If consent data is invalid
     #
     def validate_consent_data(consent_data)
-      raise VhaNotification::ServiceError, 'Consent data is required' if consent_data.nil?
+      raise VHANotification::ServiceError, 'Consent data is required' if consent_data.nil?
 
       return if consent_data.is_a?(TrueClass) || consent_data.is_a?(FalseClass)
 
-      raise VhaNotification::ServiceError, 'Consent data must be a boolean'
+      raise VHANotification::ServiceError, 'Consent data must be a boolean'
     end
 
     def build_consent_payload(pid, consent_data)
@@ -107,7 +107,7 @@ module VhaNotification
     def log_success(response)
       ::Rails.logger.info(
         'VHA Notification: MST consent successfully sent',
-        { status: response.status, service: 'VhaNotification' }
+        { status: response.status, service: 'VHANotification' }
       )
     end
 
@@ -130,11 +130,11 @@ module VhaNotification
         {
           error: error.message,
           error_class: error.class.to_s,
-          service: 'VhaNotification'
+          service: 'VHANotification'
         }
       )
 
-      raise VhaNotification::ServiceError, error_message
+      raise VHANotification::ServiceError, error_message
     end
   end
 
