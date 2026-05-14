@@ -276,18 +276,18 @@
     {
       "warning_type": "File Access",
       "warning_code": 16,
-      "fingerprint": "3746d850d7239d0a46314d4ab6399b9eedc0f1c46321cc1b896d883854159bd2",
+      "fingerprint": "8b9f9c71700e11e716b6dbade220045a90260e1562064f23c73066775fb49499",
       "check_name": "FileAccess",
       "message": "Model attribute used in file name",
       "file": "app/controllers/v0/form214192_controller.rb",
-      "line": 55,
+      "line": 39,
       "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
       "code": "File.read(SavedClaim::Form214192.find_by!(:guid => params[:guid]).to_pdf)",
       "render_path": null,
       "location": {
         "type": "method",
         "class": "V0::Form214192Controller",
-        "method": "download_pdf_by_guid"
+        "method": "download_pdf"
       },
       "user_input": "SavedClaim::Form214192.find_by!(:guid => params[:guid]).to_pdf",
       "confidence": "Medium",
@@ -299,18 +299,18 @@
     {
       "warning_type": "File Access",
       "warning_code": 16,
-      "fingerprint": "6c4aad8ac7e3077fdc12c6aee3c1809ae484daade1e1e5ed4e1e8650cd314619",
+      "fingerprint": "20700494a362b7d7e8163f6ae9dd03dcf594f31d2c3becf29cdb1f9d9c8904c2",
       "check_name": "FileAccess",
       "message": "Model attribute used in file name",
       "file": "app/controllers/v0/form214192_controller.rb",
-      "line": 64,
+      "line": 48,
       "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
       "code": "File.delete(SavedClaim::Form214192.find_by!(:guid => params[:guid]).to_pdf)",
       "render_path": null,
       "location": {
         "type": "method",
         "class": "V0::Form214192Controller",
-        "method": "download_pdf_by_guid"
+        "method": "download_pdf"
       },
       "user_input": "SavedClaim::Form214192.find_by!(:guid => params[:guid]).to_pdf",
       "confidence": "Medium",
@@ -322,18 +322,18 @@
     {
       "warning_type": "File Access",
       "warning_code": 16,
-      "fingerprint": "84a3d5e59f247f2563202ab8fdfb22ecebc7e197c537e5a094e5ce18f5d953f3",
+      "fingerprint": "54c4b1508674569d82fd0a3ee36d4bfc190e96b874e94006bc6c8ac87a666e00",
       "check_name": "FileAccess",
       "message": "Model attribute used in file name",
       "file": "app/controllers/v0/form21p530a_controller.rb",
-      "line": 61,
+      "line": 40,
       "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
       "code": "File.read(SavedClaim::Form21p530a.find_by!(:guid => params[:guid]).to_pdf)",
       "render_path": null,
       "location": {
         "type": "method",
         "class": "V0::Form21p530aController",
-        "method": "download_pdf_by_guid"
+        "method": "download_pdf"
       },
       "user_input": "SavedClaim::Form21p530a.find_by!(:guid => params[:guid]).to_pdf",
       "confidence": "Medium",
@@ -345,18 +345,18 @@
     {
       "warning_type": "File Access",
       "warning_code": 16,
-      "fingerprint": "3b16a97ca45429f456303ab40d32dd733e6b3618a0c16e180f8a7e22242a1225",
+      "fingerprint": "caf466d7e775aa0a4630d8fdfe1230feaed26b588fc711a15c4a868643b327d5",
       "check_name": "FileAccess",
       "message": "Model attribute used in file name",
       "file": "app/controllers/v0/form21p530a_controller.rb",
-      "line": 70,
+      "line": 49,
       "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
       "code": "File.delete(SavedClaim::Form21p530a.find_by!(:guid => params[:guid]).to_pdf)",
       "render_path": null,
       "location": {
         "type": "method",
         "class": "V0::Form21p530aController",
-        "method": "download_pdf_by_guid"
+        "method": "download_pdf"
       },
       "user_input": "SavedClaim::Form21p530a.find_by!(:guid => params[:guid]).to_pdf",
       "confidence": "Medium",

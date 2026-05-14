@@ -64,14 +64,12 @@ Rails.application.routes.draw do
 
     resources :form214192, only: [:create] do
       collection do
-        post :download_pdf
-        get 'download_pdf/:guid', action: :download_pdf_by_guid
+        get('download_pdf/:guid', action: :download_pdf, as: :download_pdf)
       end
     end
     resources :form21p530a, only: [:create] do
       collection do
-        post :download_pdf
-        get 'download_pdf/:guid', action: :download_pdf_by_guid
+        get('download_pdf/:guid', action: :download_pdf, as: :download_pdf)
       end
     end
 

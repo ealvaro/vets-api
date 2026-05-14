@@ -32,13 +32,6 @@ RSpec.describe V0::Form214192Controller, type: :controller do
           expect(response).to have_http_status(:unauthorized)
         end
       end
-
-      describe 'POST #download_pdf' do
-        it 'requires authentication' do
-          post(:download_pdf, body: form_data.to_json, as: :json)
-          expect(response).to have_http_status(:unauthorized)
-        end
-      end
     end
 
     context 'when aquia_bio_auth_required is disabled' do
@@ -49,28 +42,6 @@ RSpec.describe V0::Form214192Controller, type: :controller do
       describe 'POST #create' do
         it 'allows unauthenticated access' do
           post(:create, body: valid_payload.to_json, as: :json)
-          expect(response).to have_http_status(:ok)
-        end
-      end
-
-      describe 'POST #download_pdf' do
-        let(:temp_file_path) { '/tmp/test_pdf.pdf' }
-
-        before do
-          allow(monitor).to receive(:track_pdf_generation_success)
-          allow(monitor).to receive(:track_pdf_generation_failure)
-          allow(PdfFill::Filler).to receive(:fill_ancillary_form).and_return(temp_file_path)
-          allow(PdfFill::Forms::Va214192).to receive(:stamp_signature).and_return(temp_file_path)
-          allow(File).to receive(:read).and_call_original
-          allow(File).to receive(:read).with(temp_file_path).and_return('PDF_CONTENT')
-          allow(File).to receive(:exist?).and_call_original
-          allow(File).to receive(:exist?).with(temp_file_path).and_return(true)
-          allow(File).to receive(:delete).and_call_original
-          allow(File).to receive(:delete).with(temp_file_path)
-        end
-
-        it 'allows unauthenticated access' do
-          post(:download_pdf, body: form_data.to_json, as: :json)
           expect(response).to have_http_status(:ok)
         end
       end
@@ -183,163 +154,10 @@ RSpec.describe V0::Form214192Controller, type: :controller do
 
           post(:create, body: invalid_payload.to_json, as: :json)
         end
-
-        it 'tracks PDF generation success' do
-          temp_pdf = '/tmp/test.pdf'
-          allow(PdfFill::Filler).to receive(:fill_ancillary_form).and_return(temp_pdf)
-          allow(PdfFill::Forms::Va214192).to receive(:stamp_signature).and_return(temp_pdf)
-          allow(File).to receive(:read).and_call_original
-          allow(File).to receive(:read).with(temp_pdf).and_return('PDF_CONTENT')
-          allow(File).to receive(:exist?).and_call_original
-          allow(File).to receive(:exist?).with(temp_pdf).and_return(true)
-          allow(File).to receive(:delete).and_call_original
-          allow(File).to receive(:delete).with(temp_pdf)
-
-          expect(monitor).to receive(:track_pdf_generation_success).with(
-            kind_of(Time),
-            hash_including(user_uuid: user.uuid)
-          )
-
-          post(:download_pdf, body: form_data.to_json, as: :json)
-        end
-
-        it 'tracks PDF generation failure' do
-          allow(PdfFill::Filler).to receive(:fill_ancillary_form).and_raise(StandardError, 'PDF error')
-          expect(monitor).to receive(:track_pdf_generation_failure).with(
-            kind_of(StandardError),
-            hash_including(user_uuid: user.uuid)
-          )
-
-          post(:download_pdf, body: form_data.to_json, as: :json)
-          expect(response).to have_http_status(:internal_server_error)
-        end
       end
     end
 
-    describe 'POST #download_pdf' do
-      let(:pdf_content) { 'PDF_BINARY_CONTENT' }
-      let(:temp_file_path) { '/tmp/test_pdf.pdf' }
-      let(:monitor) { instance_double(Form214192::Monitor) }
-
-      before do
-        allow(Form214192::Monitor).to receive(:new).and_return(monitor)
-        allow(monitor).to receive(:track_request_code)
-        allow(monitor).to receive(:track_pdf_generation_success)
-        allow(monitor).to receive(:track_pdf_generation_failure)
-
-        allow(PdfFill::Filler).to receive(:fill_ancillary_form).and_return(temp_file_path)
-        allow(PdfFill::Forms::Va214192).to receive(:stamp_signature).and_return(temp_file_path)
-        allow(File).to receive(:read).and_call_original
-        allow(File).to receive(:read).with(temp_file_path).and_return(pdf_content)
-        allow(File).to receive(:exist?).and_call_original
-        allow(File).to receive(:exist?).with(temp_file_path).and_return(true)
-        allow(File).to receive(:delete).and_call_original
-        allow(File).to receive(:delete).with(temp_file_path)
-      end
-
-      it 'generates and downloads PDF' do
-        post(:download_pdf, body: form_data.to_json, as: :json)
-
-        expect(response).to have_http_status(:ok)
-        expect(response.headers['Content-Type']).to eq('application/pdf')
-        expect(response.body).to eq(pdf_content)
-      end
-
-      it 'includes proper filename with UUID' do
-        post(:download_pdf, body: form_data.to_json, as: :json)
-
-        expect(response.headers['Content-Disposition']).to include('attachment')
-        expect(response.headers['Content-Disposition']).to include('21-4192_')
-        expect(response.headers['Content-Disposition']).to match(/21-4192_[a-f0-9-]+\.pdf/)
-      end
-
-      it 'generates unique filename for each request' do
-        post(:download_pdf, body: form_data.to_json, as: :json)
-        first_filename = response.headers['Content-Disposition']
-
-        post(:download_pdf, body: form_data.to_json, as: :json)
-        second_filename = response.headers['Content-Disposition']
-
-        expect(first_filename).not_to eq(second_filename)
-      end
-
-      it 'calls PDF filler with correct parameters' do
-        expect(PdfFill::Filler).to receive(:fill_ancillary_form)
-          .with(hash_including('employmentInformation' => hash_including('employerName' => 'Acme Corporation')),
-                anything,
-                '21-4192')
-          .and_return(temp_file_path)
-
-        post(:download_pdf, body: form_data.to_json, as: :json)
-      end
-
-      it 'calls stamp_signature with the PDF path and form data' do
-        expect(PdfFill::Forms::Va214192).to receive(:stamp_signature)
-          .with(temp_file_path, hash_including('employmentInformation' => anything))
-          .and_return(temp_file_path)
-
-        post(:download_pdf, body: form_data.to_json, as: :json)
-      end
-
-      it 'deletes temporary PDF file after sending' do
-        expect(File).to receive(:delete).with(temp_file_path)
-        post(:download_pdf, body: form_data.to_json, as: :json)
-      end
-
-      it 'deletes temporary file even when PDF generation fails' do
-        allow(PdfFill::Filler).to receive(:fill_ancillary_form).and_raise(StandardError, 'PDF generation error')
-        # File.delete should not be called since source_file_path is nil
-        expect(File).not_to receive(:delete)
-
-        post(:download_pdf, body: form_data.to_json, as: :json)
-        expect(response).to have_http_status(:internal_server_error)
-
-        json = JSON.parse(response.body)
-        expect(json['errors']).to be_present
-        expect(json['errors'].first['title']).to eq('PDF Generation Failed')
-        expect(json['errors'].first['status']).to eq('500')
-      end
-
-      it 'deletes temporary file even when file read fails' do
-        allow(File).to receive(:read).with(temp_file_path).and_raise(StandardError, 'Read error')
-        expect(File).to receive(:delete).with(temp_file_path)
-
-        post(:download_pdf, body: form_data.to_json, as: :json)
-        expect(response).to have_http_status(:internal_server_error)
-
-        json = JSON.parse(response.body)
-        expect(json['errors']).to be_present
-        expect(json['errors'].first['title']).to eq('PDF Generation Failed')
-      end
-
-      context 'when feature flag is disabled' do
-        before do
-          allow(Flipper).to receive(:enabled?).with(:form_4192_enabled, anything).and_return(false)
-        end
-
-        it 'returns 404 Not Found (routing error)' do
-          post(:download_pdf, body: form_data.to_json, as: :json)
-          expect(response).to have_http_status(:not_found)
-        end
-      end
-
-      context 'error handling' do
-        it 'returns 500 for PDF generation failures' do
-          allow(PdfFill::Filler).to receive(:fill_ancillary_form).and_raise(StandardError, 'PDF error')
-
-          post(:download_pdf, body: form_data.to_json, as: :json)
-
-          expect(response).to have_http_status(:internal_server_error)
-
-          json = JSON.parse(response.body)
-          expect(json['errors']).to be_present
-          expect(json['errors'].first['title']).to eq('PDF Generation Failed')
-          expect(json['errors'].first['status']).to eq('500')
-        end
-      end
-    end
-
-    describe 'GET #download_pdf_by_guid' do
+    describe 'GET #download_pdf' do
       let(:claim) do
         SavedClaim::Form214192.create!(
           form: form_data.to_json,
@@ -372,7 +190,7 @@ RSpec.describe V0::Form214192Controller, type: :controller do
       end
 
       it 'generates and downloads PDF by GUID' do
-        get(:download_pdf_by_guid, params: { guid: claim.guid })
+        get(:download_pdf, params: { guid: claim.guid })
 
         expect(response).to have_http_status(:ok)
         expect(response.headers['Content-Type']).to eq('application/pdf')
@@ -380,7 +198,7 @@ RSpec.describe V0::Form214192Controller, type: :controller do
       end
 
       it 'includes proper filename with veteran name' do
-        get(:download_pdf_by_guid, params: { guid: claim.guid })
+        get(:download_pdf, params: { guid: claim.guid })
 
         expect(response.headers['Content-Disposition']).to include('attachment')
         expect(response.headers['Content-Disposition']).to include('21-4192_')
@@ -388,10 +206,10 @@ RSpec.describe V0::Form214192Controller, type: :controller do
       end
 
       it 'uses same filename for same claim' do
-        get(:download_pdf_by_guid, params: { guid: claim.guid })
+        get(:download_pdf, params: { guid: claim.guid })
         first_filename = response.headers['Content-Disposition']
 
-        get(:download_pdf_by_guid, params: { guid: claim.guid })
+        get(:download_pdf, params: { guid: claim.guid })
         second_filename = response.headers['Content-Disposition']
 
         expect(first_filename).to eq(second_filename)
@@ -401,7 +219,7 @@ RSpec.describe V0::Form214192Controller, type: :controller do
         allow(File).to receive(:exist?).and_call_original
         allow(File).to receive(:exist?).with(temp_file_path).and_return(true)
         expect(File).to receive(:delete).with(temp_file_path)
-        get(:download_pdf_by_guid, params: { guid: claim.guid })
+        get(:download_pdf, params: { guid: claim.guid })
       end
 
       it 'deletes temporary file even when file read fails' do
@@ -409,7 +227,7 @@ RSpec.describe V0::Form214192Controller, type: :controller do
         # File should still be deleted in ensure block (file was created by Filler)
         expect(File).to receive(:delete).with(temp_file_path)
 
-        get(:download_pdf_by_guid, params: { guid: claim.guid })
+        get(:download_pdf, params: { guid: claim.guid })
         expect(response).to have_http_status(:internal_server_error)
 
         json = JSON.parse(response.body)
@@ -418,7 +236,7 @@ RSpec.describe V0::Form214192Controller, type: :controller do
       end
 
       it 'returns 404 for invalid GUID' do
-        get(:download_pdf_by_guid, params: { guid: SecureRandom.uuid })
+        get(:download_pdf, params: { guid: SecureRandom.uuid })
         expect(response).to have_http_status(:not_found)
       end
 
@@ -428,7 +246,7 @@ RSpec.describe V0::Form214192Controller, type: :controller do
                                                                          hash_including(user_uuid: user.uuid,
                                                                                         claim_guid: claim.guid))
 
-          get(:download_pdf_by_guid, params: { guid: claim.guid })
+          get(:download_pdf, params: { guid: claim.guid })
         end
 
         it 'tracks PDF generation failure for errors' do
@@ -437,7 +255,7 @@ RSpec.describe V0::Form214192Controller, type: :controller do
                                                                          hash_including(user_uuid: user.uuid,
                                                                                         claim_guid: claim.guid))
 
-          get(:download_pdf_by_guid, params: { guid: claim.guid })
+          get(:download_pdf, params: { guid: claim.guid })
           expect(response).to have_http_status(:internal_server_error)
         end
       end
@@ -448,7 +266,7 @@ RSpec.describe V0::Form214192Controller, type: :controller do
         end
 
         it 'returns 404 Not Found (routing error)' do
-          get(:download_pdf_by_guid, params: { guid: claim.guid })
+          get(:download_pdf, params: { guid: claim.guid })
           expect(response).to have_http_status(:not_found)
         end
       end
@@ -469,7 +287,7 @@ RSpec.describe V0::Form214192Controller, type: :controller do
         end
 
         it 'accepts street2 with exactly 30 characters' do
-          get(:download_pdf_by_guid, params: { guid: claim.guid })
+          get(:download_pdf, params: { guid: claim.guid })
 
           expect(response).to have_http_status(:ok)
           expect(response.headers['Content-Type']).to eq('application/pdf')
@@ -493,31 +311,6 @@ RSpec.describe V0::Form214192Controller, type: :controller do
           expect(response).to have_http_status(:ok)
           json = JSON.parse(response.body)
           expect(json['data']['attributes']['confirmation_number']).to be_present
-        end
-
-        it 'accepts street2 values up to 30 characters for PDF generation' do
-          # Stub monitor for this test
-          monitor_stub = instance_double(Form214192::Monitor)
-          allow(Form214192::Monitor).to receive(:new).and_return(monitor_stub)
-          allow(monitor_stub).to receive(:track_request_code)
-          allow(monitor_stub).to receive(:track_pdf_generation_success)
-          allow(monitor_stub).to receive(:track_pdf_generation_failure)
-
-          # Stub PDF generation
-          temp_file = '/tmp/test.pdf'
-          allow(PdfFill::Filler).to receive(:fill_ancillary_form).and_return(temp_file)
-          allow(PdfFill::Forms::Va214192).to receive(:stamp_signature).and_return(temp_file)
-          allow(File).to receive(:read).and_call_original
-          allow(File).to receive(:read).with(temp_file).and_return('PDF_CONTENT')
-          allow(File).to receive(:exist?).and_call_original
-          allow(File).to receive(:exist?).with(temp_file).and_return(true)
-          allow(File).to receive(:delete).and_call_original
-          allow(File).to receive(:delete).with(temp_file)
-
-          post(:download_pdf, body: payload_with_long_street2.to_json, as: :json)
-
-          expect(response).to have_http_status(:ok)
-          expect(response.headers['Content-Type']).to eq('application/pdf')
         end
       end
 

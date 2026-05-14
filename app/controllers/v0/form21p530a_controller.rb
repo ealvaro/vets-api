@@ -4,7 +4,6 @@ require 'form21p530a/monitor'
 
 module V0
   class Form21p530aController < ApplicationController
-    include RetriableConcern
     include PdfFill::Forms::FormHelper
 
     service_tag 'state-tribal-interment-allowance'
@@ -29,29 +28,8 @@ module V0
       raise
     end
 
-    def download_pdf
-      pdf_start_time = Time.current
-      parsed_form = parse_and_transform_payload
-      source_file_path = generate_pdf(parsed_form)
-      source_file_path = PdfFill::Forms::Va21p530a.stamp_signature(source_file_path, parsed_form)
-
-      user_uuid = current_user&.uuid
-      claim_guid = parsed_form['claimGuid']
-      monitor.track_pdf_generation_success(pdf_start_time, user_uuid:, claim_guid:)
-
-      client_file_name = "21P-530a_#{SecureRandom.uuid}.pdf"
-      file_contents = File.read(source_file_path)
-      send_data file_contents, filename: client_file_name, type: 'application/pdf', disposition: 'attachment'
-    rescue Common::Exceptions::ValidationErrors
-      raise
-    rescue => e
-      handle_pdf_generation_error(e, parsed_form)
-    ensure
-      File.delete(source_file_path) if source_file_path && File.exist?(source_file_path)
-    end
-
     # GET /v0/form21p530a/download_pdf/:guid - Download PDF from saved claim by GUID
-    def download_pdf_by_guid
+    def download_pdf
       pdf_start_time = Time.current
       claim_guid = params[:guid]
       claim = SavedClaim::Form21p530a.find_by!(guid: claim_guid)
@@ -109,18 +87,6 @@ module V0
       payload = request.raw_post
       transformed_payload = transform_country_codes(payload)
       SavedClaim::Form21p530a.new(form: transformed_payload)
-    end
-
-    def parse_and_transform_payload
-      raw_payload = request.raw_post
-      transformed_payload = transform_country_codes(raw_payload)
-      JSON.parse(transformed_payload)
-    end
-
-    def generate_pdf(parsed_form)
-      with_retries('Generate 21P-530A PDF') do
-        PdfFill::Filler.fill_ancillary_form(parsed_form, SecureRandom.uuid, '21P-530A')
-      end
     end
 
     def monitor

@@ -4,8 +4,6 @@ require 'form214192/monitor'
 
 module V0
   class Form214192Controller < ApplicationController
-    include RetriableConcern
-
     service_tag 'employment-information'
     skip_before_action :authenticate, unless: :auth_required?
     before_action :load_user, unless: :auth_required?
@@ -29,24 +27,8 @@ module V0
       raise
     end
 
-    def download_pdf
-      pdf_start_time = Time.current
-      parsed_form = JSON.parse(request.raw_post)
-      source_file_path = generate_and_stamp_pdf(parsed_form)
-
-      monitor.track_pdf_generation_success(pdf_start_time, user_uuid: current_user&.uuid)
-
-      client_file_name = "21-4192_#{SecureRandom.uuid}.pdf"
-      file_contents = File.read(source_file_path)
-      send_data file_contents, filename: client_file_name, type: 'application/pdf', disposition: 'attachment'
-    rescue => e
-      handle_pdf_generation_error(e, user_uuid: current_user&.uuid)
-    ensure
-      File.delete(source_file_path) if source_file_path && File.exist?(source_file_path)
-    end
-
     # GET /v0/form214192/download_pdf/:guid - Download PDF from saved claim by GUID
-    def download_pdf_by_guid
+    def download_pdf
       pdf_start_time = Time.current
       claim_guid = params[:guid]
       claim = SavedClaim::Form214192.find_by!(guid: claim_guid)
@@ -94,13 +76,6 @@ module V0
     def build_claim
       payload = request.raw_post
       SavedClaim::Form214192.new(form: payload)
-    end
-
-    def generate_and_stamp_pdf(parsed_form)
-      source_file_path = with_retries('Generate 21-4192 PDF') do
-        PdfFill::Filler.fill_ancillary_form(parsed_form, SecureRandom.uuid, '21-4192')
-      end
-      PdfFill::Forms::Va214192.stamp_signature(source_file_path, parsed_form)
     end
 
     def auth_required?
