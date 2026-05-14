@@ -6,10 +6,11 @@ RSpec.describe SignIn::AccessTokenJwtEncoder do
   describe '#perform' do
     subject { SignIn::AccessTokenJwtEncoder.new(access_token:).perform }
 
-    let(:access_token) { create(:access_token, client_id:) }
+    let(:access_token) { create(:access_token, client_id:, nonce:) }
     let(:client_id) { client_config.client_id }
     let(:client_config) { create(:client_config, access_token_attributes:) }
     let(:access_token_attributes) { [] }
+    let(:nonce) { nil }
 
     context 'when input object is an access token' do
       let(:expected_sub) { access_token.user_uuid }

@@ -11,7 +11,8 @@ RSpec.describe SignIn::CodeContainer, type: :model do
            user_verification_id:,
            user_attributes:,
            device_sso:,
-           web_sso_session_id:)
+           web_sso_session_id:,
+           nonce:)
   end
 
   let(:code_challenge) { Base64.urlsafe_encode64(SecureRandom.hex) }
@@ -26,6 +27,7 @@ RSpec.describe SignIn::CodeContainer, type: :model do
   end
   let(:device_sso) { false }
   let(:web_sso_session_id) { nil }
+  let(:nonce) { nil }
 
   describe 'validations' do
     describe '#code' do
@@ -77,6 +79,24 @@ RSpec.describe SignIn::CodeContainer, type: :model do
         it 'raises validation error' do
           expect { subject }.to raise_error(expected_error, expected_error_message)
         end
+      end
+    end
+  end
+
+  describe '#nonce' do
+    subject { code_container.nonce }
+
+    context 'when nonce is provided' do
+      let(:nonce) { 'test-nonce-value' }
+
+      it 'stores the nonce' do
+        expect(subject).to eq('test-nonce-value')
+      end
+    end
+
+    context 'when nonce is not provided' do
+      it 'is nil' do
+        expect(subject).to be_nil
       end
     end
   end

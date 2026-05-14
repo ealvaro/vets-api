@@ -159,4 +159,34 @@ RSpec.describe SignIn::StatePayload, type: :model do
       end
     end
   end
+
+  describe '#nonce' do
+    subject { state_payload.nonce }
+
+    context 'when nonce is provided' do
+      let(:state_payload) do
+        create(:state_payload,
+               code_challenge:,
+               client_id:,
+               type:,
+               acr:,
+               code:,
+               client_state:,
+               created_at:,
+               scope:,
+               operation:,
+               nonce: 'test-nonce-value')
+      end
+
+      it 'stores the nonce' do
+        expect(subject).to eq('test-nonce-value')
+      end
+    end
+
+    context 'when nonce is not provided' do
+      it 'is nil' do
+        expect(subject).to be_nil
+      end
+    end
+  end
 end

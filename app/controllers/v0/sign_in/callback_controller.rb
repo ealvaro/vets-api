@@ -79,7 +79,8 @@ module V0
                                                      client_config: client_config(state_payload.client_id),
                                                      type: state_payload.type,
                                                      client_state: state_payload.client_state,
-                                                     operation: state_payload.operation).perform
+                                                     operation: state_payload.operation,
+                                                     nonce: state_payload.nonce).perform
         render body: auth_service(state_payload.type, state_payload.client_id).render_auth(state:, acr: acr_for_type),
                content_type: 'text/html'
       end

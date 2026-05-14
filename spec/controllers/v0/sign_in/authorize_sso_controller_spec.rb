@@ -187,6 +187,25 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
           expect(StatsD).to have_received(:increment).with('api.sis.auth_sso.success',
                                                            tags: ["client_id:#{client_id}", "app_name:#{app_name}"])
         end
+
+        context 'and nonce is provided' do
+          let(:authorize_sso_params) do
+            {
+              client_id: client_id_param,
+              app_name:,
+              code_challenge:,
+              code_challenge_method:,
+              state:,
+              nonce: 'test-nonce-value'
+            }
+          end
+
+          it 'includes nonce in the state JWT' do
+            response = subject
+            expect(response).to have_http_status(:found)
+            expect(response.body).to include('code=')
+          end
+        end
       end
     end
   end

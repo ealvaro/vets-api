@@ -24,7 +24,8 @@ module SignIn
         code: decoded_jwt.code,
         created_at: decoded_jwt.created_at,
         scope: decoded_jwt.scope,
-        operation: decoded_jwt.operation
+        operation: decoded_jwt.operation,
+        nonce: decoded_jwt.nonce
       )
     end
 

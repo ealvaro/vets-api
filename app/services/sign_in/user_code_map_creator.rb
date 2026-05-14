@@ -64,7 +64,8 @@ module SignIn
                         credential_email:,
                         user_attributes: access_token_attributes,
                         device_sso:,
-                        web_sso_session_id:).save!
+                        web_sso_session_id:,
+                        nonce: state_payload.nonce).save!
     end
 
     def device_sso

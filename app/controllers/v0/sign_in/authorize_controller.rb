@@ -14,6 +14,7 @@ module V0
         acr = params[:acr].presence
         operation = params[:operation].presence || ::SignIn::Constants::Auth::AUTHORIZE
         scope = params[:scope].presence
+        nonce = params[:nonce].presence
 
         validate_authorize_params(type, client_id, acr, operation)
 
@@ -27,7 +28,8 @@ module V0
                                                      type:,
                                                      operation:,
                                                      client_state:,
-                                                     scope:).perform
+                                                     scope:,
+                                                     nonce:).perform
         context = { type:, client_id:, acr:, operation: }
 
         sign_in_logger.info('authorize', context)

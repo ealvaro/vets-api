@@ -49,6 +49,20 @@ RSpec.describe SignIn::IdTokenJwtEncoder do
           expect(serialized_attributes['last_name']).to eq(expected_last_name)
         end
       end
+
+      context 'when nonce is provided' do
+        let(:access_token) { create(:access_token, client_id:, nonce: 'test-nonce-value') }
+
+        it 'includes nonce on the encoded id token' do
+          expect(decoded_jwt['nonce']).to eq('test-nonce-value')
+        end
+      end
+
+      context 'when nonce is not provided' do
+        it 'does not include nonce on the encoded id token' do
+          expect(decoded_jwt['nonce']).to be_nil
+        end
+      end
     end
   end
 end

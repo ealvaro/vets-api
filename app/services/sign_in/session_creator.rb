@@ -74,7 +74,8 @@ module SignIn
         anti_csrf_token:,
         last_regeneration_time: refresh_created_time,
         user_attributes:,
-        device_secret_hash: hashed_device_secret
+        device_secret_hash: hashed_device_secret,
+        nonce: validated_credential.nonce
       )
     end
 

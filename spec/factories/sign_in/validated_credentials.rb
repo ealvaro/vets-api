@@ -15,6 +15,7 @@ FactoryBot.define do
     end
     device_sso { false }
     web_sso_session_id { Faker::Internet.uuid }
+    nonce { nil }
 
     initialize_with do
       new(user_verification:,
@@ -22,7 +23,8 @@ FactoryBot.define do
           credential_email:,
           user_attributes:,
           device_sso:,
-          web_sso_session_id:)
+          web_sso_session_id:,
+          nonce:)
     end
   end
 end

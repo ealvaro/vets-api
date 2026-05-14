@@ -274,6 +274,14 @@ RSpec.describe V0::SignIn::AuthorizeController, type: :controller do
 
           it_behaves_like 'error response'
         end
+
+        context 'and nonce is provided' do
+          let(:authorize_params) do
+            super().merge(nonce: { nonce: 'test-nonce-value' })
+          end
+
+          it_behaves_like 'expected response with optional scope'
+        end
       end
 
       context 'when type param is not given' do

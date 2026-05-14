@@ -16,7 +16,8 @@ RSpec.describe SignIn::StatePayloadJwtDecoder do
                                          code_challenge:,
                                          client_state:,
                                          scope:,
-                                         operation:).perform
+                                         operation:,
+                                         nonce:).perform
     end
     let(:code_challenge) { Base64.urlsafe_encode64('some-safe-code-challenge') }
     let(:code_challenge_method) { SignIn::Constants::Auth::CODE_CHALLENGE_METHOD }
@@ -29,6 +30,7 @@ RSpec.describe SignIn::StatePayloadJwtDecoder do
     let(:shared_sessions) { true }
     let(:scope) { SignIn::Constants::Auth::DEVICE_SSO }
     let(:operation) { SignIn::Constants::Auth::VERIFY_CTA_AUTHENTICATED }
+    let(:nonce) { nil }
 
     let(:client_state_minimum_length) { SignIn::Constants::Auth::CLIENT_STATE_MINIMUM_LENGTH }
 
@@ -82,6 +84,16 @@ RSpec.describe SignIn::StatePayloadJwtDecoder do
         expect(decoded_state_payload.created_at).to eq(created_at)
         expect(decoded_state_payload.scope).to eq(scope)
         expect(decoded_state_payload.operation).to eq(operation)
+        expect(decoded_state_payload.nonce).to eq(nonce)
+      end
+    end
+
+    context 'when state payload jwt includes nonce' do
+      let(:nonce) { 'test-nonce-value' }
+
+      it 'returns a State Payload with nonce' do
+        decoded_state_payload = subject
+        expect(decoded_state_payload.nonce).to eq('test-nonce-value')
       end
     end
   end

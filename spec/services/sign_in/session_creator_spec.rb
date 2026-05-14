@@ -315,6 +315,24 @@ RSpec.describe SignIn::SessionCreator do
             end
           end
         end
+
+        context 'expected nonce on access token' do
+          context 'when validated credential includes a nonce' do
+            let(:validated_credential) do
+              create(:validated_credential, client_config:, device_sso:, nonce: 'test-nonce-value')
+            end
+
+            it 'returns a Session Container with nonce on the access token' do
+              expect(subject.access_token.nonce).to eq('test-nonce-value')
+            end
+          end
+
+          context 'when validated credential does not include a nonce' do
+            it 'returns a Session Container without nonce on the access token' do
+              expect(subject.access_token.nonce).to be_nil
+            end
+          end
+        end
       end
 
       context 'when validated credential is set up to enable device_sso' do

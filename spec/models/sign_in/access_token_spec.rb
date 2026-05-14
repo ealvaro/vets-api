@@ -17,7 +17,8 @@ RSpec.describe SignIn::AccessToken, type: :model do
            version:,
            created_time:,
            user_attributes:,
-           device_secret_hash:)
+           device_secret_hash:,
+           nonce:)
   end
 
   let(:session_handle) { create(:oauth_session).handle }
@@ -43,6 +44,7 @@ RSpec.describe SignIn::AccessToken, type: :model do
   let(:email) { Faker::Internet.email }
   let(:device_secret_hash) { SecureRandom.hex }
   let(:user_attributes) { { 'first_name' => first_name, 'last_name' => last_name, 'email' => email } }
+  let(:nonce) { nil }
 
   describe 'validations' do
     describe '#session_handle' do
@@ -240,6 +242,24 @@ RSpec.describe SignIn::AccessToken, type: :model do
 
         it 'sets an empty hash object in the access token' do
           expect(subject).to eq({})
+        end
+      end
+    end
+
+    describe '#nonce' do
+      subject { access_token.nonce }
+
+      context 'when nonce is provided' do
+        let(:nonce) { 'test-nonce-value' }
+
+        it 'stores the nonce' do
+          expect(subject).to eq('test-nonce-value')
+        end
+      end
+
+      context 'when nonce is not provided' do
+        it 'is nil' do
+          expect(subject).to be_nil
         end
       end
     end

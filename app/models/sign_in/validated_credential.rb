@@ -10,7 +10,8 @@ module SignIn
       :client_config,
       :user_attributes,
       :device_sso,
-      :web_sso_session_id
+      :web_sso_session_id,
+      :nonce
     )
 
     validates(
@@ -24,13 +25,15 @@ module SignIn
                    credential_email:,
                    user_attributes:,
                    device_sso:,
-                   web_sso_session_id:)
+                   web_sso_session_id:,
+                   nonce: nil)
       @user_verification = user_verification
       @client_config = client_config
       @credential_email = credential_email
       @user_attributes = user_attributes
       @device_sso = device_sso
       @web_sso_session_id = web_sso_session_id
+      @nonce = nonce
 
       validate!
     end

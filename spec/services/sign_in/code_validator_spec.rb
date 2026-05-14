@@ -98,6 +98,21 @@ RSpec.describe SignIn::CodeValidator do
             it 'returns a validated credential object with expected expected_user_attributes' do
               expect(subject.user_attributes).to eq(expected_user_attributes)
             end
+
+            context 'and code container includes a nonce' do
+              let!(:code_container) do
+                create(:code_container,
+                       code: code_container_code,
+                       code_challenge:,
+                       client_id:,
+                       user_verification_id:,
+                       nonce: 'test-nonce-value')
+              end
+
+              it 'returns a validated credential object with the nonce' do
+                expect(subject.nonce).to eq('test-nonce-value')
+              end
+            end
           end
         end
       end

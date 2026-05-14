@@ -16,6 +16,7 @@ FactoryBot.define do
     expiration_time { Time.zone.now + SignIn::Constants::AccessToken::VALIDITY_LENGTH_SHORT_MINUTES }
     created_time { Time.zone.now }
     device_secret_hash { SecureRandom.hex }
+    nonce { nil }
     user_attributes do
       { 'first_name' => Faker::Name.first_name,
         'last_name' => Faker::Name.last_name,
@@ -35,7 +36,8 @@ FactoryBot.define do
           expiration_time:,
           created_time:,
           user_attributes:,
-          device_secret_hash:)
+          device_secret_hash:,
+          nonce:)
     end
   end
 end

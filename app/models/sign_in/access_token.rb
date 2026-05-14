@@ -18,7 +18,8 @@ module SignIn
       :expiration_time,
       :created_time,
       :user_attributes,
-      :device_secret_hash
+      :device_secret_hash,
+      :nonce
     )
 
     validates(
@@ -52,7 +53,8 @@ module SignIn
                    expiration_time: nil,
                    created_time: nil,
                    user_attributes: nil,
-                   device_secret_hash: nil)
+                   device_secret_hash: nil,
+                   nonce: nil)
       @uuid = uuid || create_uuid
       @session_handle = session_handle
       @client_id = client_id
@@ -67,6 +69,7 @@ module SignIn
       @created_time = created_time || set_created_time
       @user_attributes = filter_user_attributes(user_attributes:)
       @device_secret_hash = device_secret_hash
+      @nonce = nonce
 
       validate!
     end

@@ -9,7 +9,8 @@ RSpec.describe SignIn::ValidatedCredential, type: :model do
            credential_email:,
            client_config:,
            user_attributes:,
-           device_sso:)
+           device_sso:,
+           nonce:)
   end
 
   let(:user_verification) { create(:user_verification) }
@@ -21,6 +22,7 @@ RSpec.describe SignIn::ValidatedCredential, type: :model do
       email: Faker::Internet.email }
   end
   let(:device_sso) { false }
+  let(:nonce) { nil }
 
   describe 'validations' do
     describe '#user_verification' do
@@ -44,6 +46,24 @@ RSpec.describe SignIn::ValidatedCredential, type: :model do
         it 'raises validation error' do
           expect { subject }.to raise_error(expected_error, expected_error_message)
         end
+      end
+    end
+  end
+
+  describe '#nonce' do
+    subject { validated_credential.nonce }
+
+    context 'when nonce is provided' do
+      let(:nonce) { 'test-nonce-value' }
+
+      it 'stores the nonce' do
+        expect(subject).to eq('test-nonce-value')
+      end
+    end
+
+    context 'when nonce is not provided' do
+      it 'is nil' do
+        expect(subject).to be_nil
       end
     end
   end

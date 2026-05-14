@@ -13,6 +13,7 @@ FactoryBot.define do
     created_at { Time.zone.now.to_i }
     scope { SignIn::Constants::Auth::DEVICE_SSO }
     operation { SignIn::Constants::Auth::VERIFY_CTA_AUTHENTICATED }
+    nonce { nil }
 
     initialize_with do
       new(acr:,
@@ -23,7 +24,8 @@ FactoryBot.define do
           code:,
           created_at:,
           scope:,
-          operation:)
+          operation:,
+          nonce:)
     end
   end
 end

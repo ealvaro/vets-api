@@ -2,11 +2,21 @@
 
 module SignIn
   class StatePayloadJwtEncoder
-    attr_reader :acr, :client_config, :type, :code_challenge, :code_challenge_method, :client_state, :scope, :operation
+    attr_reader(
+      :acr,
+      :client_config,
+      :type,
+      :code_challenge,
+      :code_challenge_method,
+      :client_state,
+      :scope,
+      :operation,
+      :nonce
+    )
 
     # rubocop:disable Metrics/ParameterLists
     def initialize(code_challenge:, code_challenge_method:, acr:, client_config:, type:, operation:, scope: nil,
-                   client_state: nil)
+                   client_state: nil, nonce: nil)
       @acr = acr
       @client_config = client_config
       @type = type
@@ -15,6 +25,7 @@ module SignIn
       @client_state = client_state
       @scope = scope
       @operation = operation
+      @nonce = nonce
     end
     # rubocop:enable Metrics/ParameterLists
 
@@ -71,7 +82,8 @@ module SignIn
         code: state_payload.code,
         created_at: state_payload.created_at,
         scope: state_payload.scope,
-        operation: state_payload.operation
+        operation: state_payload.operation,
+        nonce: state_payload.nonce
       }
     end
 
@@ -83,7 +95,8 @@ module SignIn
                                           code: state_code,
                                           client_state:,
                                           scope:,
-                                          operation:)
+                                          operation:,
+                                          nonce:)
     end
 
     def state_code

@@ -23,8 +23,9 @@ module SignIn
         exp: access_token.expiration_time.to_i,
         iat: access_token.created_time.to_i,
         auth_time: access_token.created_time.to_i,
-        user_attributes: access_token.user_attributes
-      }
+        user_attributes: access_token.user_attributes,
+        nonce: access_token.nonce
+      }.compact
     end
 
     def jwt_encode_id_token

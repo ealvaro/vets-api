@@ -14,6 +14,7 @@ module SignIn
     attribute :user_attributes, Hash
     attribute :device_sso, Boolean
     attribute :web_sso_session_id, Integer
+    attribute :nonce, String
 
     validates(:code, :user_verification_id, presence: true)
 

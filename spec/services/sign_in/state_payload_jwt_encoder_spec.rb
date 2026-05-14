@@ -12,7 +12,8 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
                                          acr:,
                                          scope:,
                                          client_config:,
-                                         operation:).perform
+                                         operation:,
+                                         nonce:).perform
     end
 
     let(:code_challenge) { 'some-code-challenge' }
@@ -21,6 +22,7 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
     let(:acr) { 'some-acr' }
     let(:type) { 'some-type' }
     let(:scope) { nil }
+    let(:nonce) { nil }
     let(:client_config) { create(:client_config, pkce:, shared_sessions:, authentication:) }
     let(:pkce) { true }
     let(:shared_sessions) { false }
@@ -55,6 +57,7 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
           expect(decoded_jwt.created_at).to eq(created_at)
           expect(decoded_jwt.scope).to eq(scope)
           expect(decoded_jwt.operation).to eq(operation)
+          expect(decoded_jwt.nonce).to eq(nonce)
         end
 
         it 'saves a StateCode in redis' do
@@ -200,6 +203,29 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
       let(:code_challenge) { nil }
 
       it_behaves_like 'validated code challenge state payload jwt'
+    end
+
+    context 'when nonce is provided' do
+      let(:pkce) { false }
+      let(:code_challenge) { nil }
+      let(:nonce) { 'test-nonce-value' }
+      let(:code) { 'some-state-code-value' }
+      let(:client_id) { client_config.client_id }
+      let(:acr) { SignIn::Constants::Auth::ACR_VALUES.first }
+      let(:type) { SignIn::Constants::Auth::CSP_TYPES.first }
+      let(:client_state) { SecureRandom.alphanumeric(SignIn::Constants::Auth::CLIENT_STATE_MINIMUM_LENGTH + 1) }
+
+      before do
+        allow(SecureRandom).to receive(:hex).and_return(code)
+        Timecop.freeze
+      end
+
+      after { Timecop.return }
+
+      it 'includes nonce in the JWT' do
+        decoded_jwt = OpenStruct.new(JWT.decode(subject, false, nil).first)
+        expect(decoded_jwt.nonce).to eq('test-nonce-value')
+      end
     end
   end
 end
