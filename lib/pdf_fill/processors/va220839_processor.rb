@@ -28,8 +28,9 @@ module PdfFill
         merged_form_data = FORM_CLASS.new(@form_data).merge_fields
         hash_converter = HashConverter.new(FORM_CLASS.date_strftime, ExtrasGenerator.new)
 
-        us_schools = merged_form_data['usSchools']
-        foreign_schools = merged_form_data['foreignSchools']
+        # us_schools and foreign_schools can be nil if agreement type is withdrawal
+        us_schools = merged_form_data['usSchools'] || []
+        foreign_schools = merged_form_data['foreignSchools'] || []
         branch_locations = merged_form_data['branchCampuses']
 
         if us_schools.size <= DEFAULT_US_SCHOOLS_LIMIT &&

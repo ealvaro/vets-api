@@ -99,7 +99,17 @@ describe PdfFill::Processors::VA220839Processor do
         expect(get_field_value(fields, 'institution_name')).to eq 'Test University'
         expect(get_field_value(fields, 'institution_facility_code')).to eq '12345678'
         expect(get_field_value(fields, 'branch_campus_0_facility_code')).to eq '87654321'
-        expect(get_field_value(fields, 'num_eligible_students')).to eq ''
+        expect(get_field_value(fields, 'num_eligible_students')).to be_nil
+      end
+
+      it 'leaves as nil the fields not associated with withdrawal' do
+        processor.process
+        fields = PdfForms.new(Settings.binaries.pdftk).get_fields('tmp/pdfs/22-0839_abc.pdf')
+        present_fields = fields.select(&:value).map(&:name)
+        expect(present_fields).to eq(%w[institution_address institution_facility_code institution_name
+                                        agreement_type_new agreement_type_existing agreement_type_withdrawal
+                                        branch_campus_0_name branch_campus_0_facility_code ao_signature ao_name ao_phone
+                                        date_signed authenticated_user_statement ao_title])
       end
     end
 
