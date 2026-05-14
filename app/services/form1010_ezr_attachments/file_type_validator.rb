@@ -40,9 +40,10 @@ module Form1010EzrAttachments
 
     private
 
-    # These MIME types correspond to the extensions accepted by enrollment system: PDF,WORD,JPG,RTF
+    # These MIME types correspond to enrollment-accepted extensions: PDF, WORD, JPG, RTF
+    # (HEIC/HEIF uploads are accepted and converted to JPG downstream).
     def mime_subtype_allow_list
-      %w[pdf msword vnd.openxmlformats-officedocument.wordprocessingml.document jpeg rtf png]
+      %w[pdf msword vnd.openxmlformats-officedocument.wordprocessingml.document jpeg rtf png heic heif]
     end
   end
 end

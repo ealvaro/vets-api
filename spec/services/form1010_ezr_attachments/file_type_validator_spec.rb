@@ -10,6 +10,20 @@ RSpec.describe Form1010EzrAttachments::FileTypeValidator do
     )
   end
 
+  let(:heic_attachment) do
+    Rack::Test::UploadedFile.new(
+      Rails.root.join('spec', 'fixtures', 'files', 'steelers.heic'),
+      'image/heic'
+    )
+  end
+
+  let(:heif_attachment) do
+    Rack::Test::UploadedFile.new(
+      Rails.root.join('spec', 'fixtures', 'files', 'steelers.heif'),
+      'image/heif'
+    )
+  end
+
   describe '#validate' do
     context 'when an exception occurs' do
       before do
@@ -35,6 +49,14 @@ RSpec.describe Form1010EzrAttachments::FileTypeValidator do
     end
 
     context 'when no exception occurs' do
+      it 'allows HEIC files' do
+        expect { described_class.new(heic_attachment).validate }.not_to raise_error
+      end
+
+      it 'allows HEIF files' do
+        expect { described_class.new(heif_attachment).validate }.not_to raise_error
+      end
+
       it 'increments StatsD and raises an error' do
         allow(StatsD).to receive(:increment)
         expect(StatsD).to receive(:increment).with('api.1010ezr.attachments.invalid_file_type')

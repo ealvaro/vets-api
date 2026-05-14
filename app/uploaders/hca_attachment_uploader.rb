@@ -26,13 +26,10 @@ class HCAAttachmentUploader < CarrierWave::Uploader::Base
     end
   end
 
-  # accepted by enrollment system: PDF,WORD,JPG,RTF
+  # accepted by enrollment system: PDF, WORD, JPG, RTF
+  # (HEIC/HEIF uploads are accepted and converted to JPG).
   def extension_allowlist
-    if Flipper.enabled?(:hca_heif_attachments_enabled)
-      %w[pdf doc docx jpg jpeg rtf png heic heif]
-    else
-      %w[pdf doc docx jpg jpeg rtf png]
-    end
+    %w[pdf doc docx jpg jpeg rtf png heic heif]
   end
 
   def store_dir
@@ -46,10 +43,10 @@ class HCAAttachmentUploader < CarrierWave::Uploader::Base
   private
 
   def png?(file)
-    file.content_type == 'image/png'
+    file.content_type.to_s.downcase == 'image/png'
   end
 
   def heic?(file)
-    file.content_type =~ %r{^image/(heic|heif)$}
+    file.content_type.to_s.downcase =~ %r{^image/(heic|heif)$}
   end
 end
