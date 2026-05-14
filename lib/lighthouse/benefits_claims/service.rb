@@ -25,8 +25,6 @@ module BenefitsClaims
       130YR100PMC
       290AFED
       290DRASED
-      290ELIG
-      290ELIGPMC
       290HE7131R
       290LGYBDD
       290LGYIDES
