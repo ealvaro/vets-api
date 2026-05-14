@@ -6,6 +6,11 @@ asdf plugin update ruby
 asdf install ruby $( cat .ruby-version )
 asdf global ruby $( cat .ruby-version )
 
+# Configure GHE authentication for bundler
+if [ -n "$GHE_TOKEN" ]; then
+  export BUNDLE_VA__GHE__COM="x-access-token:${GHE_TOKEN}"
+fi
+
 echo "Ensuring packages are up to date..."
 bundle install
 

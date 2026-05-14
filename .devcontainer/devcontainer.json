@@ -1,6 +1,6 @@
 {
   "name": "native",
-  "image": "mcr.microsoft.com/devcontainers/base:bookworm",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
 
   "customizations": {
     "codespaces": {
@@ -14,6 +14,36 @@
             "contents": "read",
             "pull_requests": "write"
           }
+        },
+        "software/betamocks": {
+          "permissions": {
+            "contents": "read"
+          }
+        },
+        "software/bgs-ext": {
+          "permissions": {
+            "contents": "read"
+          }
+        },
+        "software/fhir_client": {
+          "permissions": {
+            "contents": "read"
+          }
+        },
+        "software/govdelivery-tms-ruby": {
+          "permissions": {
+            "contents": "read"
+          }
+        },
+        "software/vets-json-schema": {
+          "permissions": {
+            "contents": "read"
+          }
+        },
+        "software/apivore": {
+          "permissions": {
+            "contents": "read"
+          }
         }
       }
     },
@@ -23,7 +53,7 @@
   },
 
   "features": {
-    "ghcr.io/devcontainers-extra/features/ruby-asdf:0": {
+    "ghcr.io/devcontainers/features/ruby:1": {
       "version": "3.3.6"
     },
     "ghcr.io/robbert229/devcontainer-features/postgresql-client:1": {

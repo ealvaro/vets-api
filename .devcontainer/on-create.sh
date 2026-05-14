@@ -5,14 +5,18 @@
 echo "on-create start"
 echo "$(date +'%Y-%m-%d %H:%M:%S')    on-create start" >> "$HOME/status"
 
-# Homebrew/asdf paths to zsh
-{
-  echo "source \"\$HOME/.asdf/asdf.sh\""
-} >> ~/.zshrc
+# Register the RVM-installed Ruby with rbenv so tooling (e.g. Ruby LSP) can find it
+RUBY_VERSION=$(cat .ruby-version)
+if [ -d "/usr/local/rvm/rubies/ruby-${RUBY_VERSION}" ]; then
+  mkdir -p "$(rbenv root)/versions"
+  ln -sfn "/usr/local/rvm/rubies/ruby-${RUBY_VERSION}" "$(rbenv root)/versions/${RUBY_VERSION}"
+fi
 
-export PATH="${HOME}/.asdf/shims:${HOME}/.asdf/bin:${PATH}"
-asdf install ruby $( cat .ruby-version )
-asdf global ruby $( cat .ruby-version )
+# Configure GHE authentication for git and bundler
+if [ -n "$GHE_TOKEN" ]; then
+  git config --global url."https://x-access-token:${GHE_TOKEN}@va.ghe.com/".insteadOf "https://va.ghe.com/"
+  export BUNDLE_VA__GHE__COM="x-access-token:${GHE_TOKEN}"
+fi
 
 # Clone needed repos and set permission to the dev-container user
 sudo mkdir -p /workspaces/vets-api-mockdata
