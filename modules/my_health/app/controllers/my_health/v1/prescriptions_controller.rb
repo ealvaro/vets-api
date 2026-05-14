@@ -48,7 +48,10 @@ module MyHealth
 
       def show
         id = params[:id].try(:to_i)
-        resource = get_single_rx_from_grouped_list(collection_resource.data, id)
+        all_data = collection_resource.data
+        # Filter out discontinued non-VA meds before searching
+        filtered_data = filter_discontinued_non_va_meds(all_data)
+        resource = get_single_rx_from_grouped_list(filtered_data, id)
         raise Common::Exceptions::RecordNotFound, id if resource.blank?
 
         options = { meta: client.get_rx_details(id).metadata }
@@ -113,11 +116,13 @@ module MyHealth
 
       def list_refillable_prescriptions
         resource = collection_resource
-        recently_requested = get_recently_requested_prescriptions(resource.data)
-        resource.records = filter_data_by_refill_and_renew(resource.data)
+        # Filter out discontinued non-VA meds before calculating metadata and refillability
+        filtered_data = filter_discontinued_non_va_meds(resource.data)
+        recently_requested = get_recently_requested_prescriptions(filtered_data)
+        resource.records = filter_data_by_refill_and_renew(filtered_data)
 
         options = { meta: resource.metadata.merge(recently_requested:) }
-        render json: MyHealth::V1::PrescriptionDetailsSerializer.new(resource.data, options)
+        render json: MyHealth::V1::PrescriptionDetailsSerializer.new(resource.records, options)
       rescue => e
         log_rx_controller_error('Rx list refillable prescriptions failed', e)
         raise
@@ -199,7 +204,9 @@ module MyHealth
                              # TODO: remove this line when PF and PD are allowed on va.gov
                              resource.records = remove_pf_pd(resource.data)
                            end
-        resource.records = group_prescriptions(resource.data)
+        # Filter out discontinued non-VA meds
+        resource.records = filter_discontinued_non_va_meds(resource.records)
+        resource.records = group_prescriptions(resource.records)
       end
 
       def build_filter_metadata(list, all_medications_count)

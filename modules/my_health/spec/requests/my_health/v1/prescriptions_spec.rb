@@ -749,6 +749,70 @@ RSpec.describe 'MyHealth::V1::Prescriptions', type: :request do
     end
   end
 
+  context 'discontinued non-VA medication filtering' do
+    let(:va_patient) { true }
+    let(:current_user) do
+      build(:user, :mhv, authn_context: LOA::IDME_LOA3_VETS,
+                         va_patient:,
+                         sign_in: { service_name: SignIn::Constants::Auth::IDME })
+    end
+    let(:rx_client_instance) do
+      Rx::Client.new(
+        session: { user_id: 123,
+                   expires_at: Time.current + (60 * 60),
+                   token: Rx::ClientHelpers::TOKEN },
+        upstream_request: instance_double(ActionDispatch::Request, env: { 'SOURCE_APP' => 'myapp' })
+      )
+    end
+
+    let(:va_rx) { build(:prescription_details, prescription_id: 1, prescription_number: '1000001', prescription_source: 'RX', refill_status: 'active', is_refillable: true, disp_status: 'Active') }
+    let(:nv_discontinued_rx) { build(:prescription_details, prescription_id: 2, prescription_number: '1000002', prescription_source: 'NV', refill_status: 'discontinued', is_refillable: true, disp_status: 'Discontinued') }
+    let(:nv_active_rx) { build(:prescription_details, prescription_id: 3, prescription_number: '1000003', prescription_source: 'NV', refill_status: 'active', is_refillable: true, disp_status: 'Active') }
+
+    let(:mock_collection) do
+      collection = Common::Collection.new(PrescriptionDetails, data: [va_rx, nv_discontinued_rx, nv_active_rx])
+      collection.metadata = {}
+      # Add records accessor since controller uses resource.records =
+      collection.define_singleton_method(:records) { @records || data }
+      collection.define_singleton_method(:records=) { |val| @records = val }
+      collection
+    end
+
+    before do
+      allow_any_instance_of(User).to receive(:mhv_user_account).and_return(OpenStruct.new(patient: va_patient))
+      allow_any_instance_of(User).to receive(:mhv_correlation_id).and_return('12345678901')
+      allow(Rx::Client).to receive(:new).and_return(rx_client_instance)
+      allow(rx_client_instance).to receive(:get_all_rxs).and_return(mock_collection)
+      sign_in_as(current_user, stub_mhv_account: true)
+    end
+
+    it 'excludes discontinued non-VA medications from index while preserving active non-VA medications' do
+      get '/my_health/v1/prescriptions'
+
+      expect(response).to be_successful
+      prescription_ids = JSON.parse(response.body)['data'].map { |rx| rx['id'].to_i }
+
+      expect(prescription_ids).to include(1, 3)
+      expect(prescription_ids).not_to include(2)
+    end
+
+    it 'excludes discontinued non-VA medications from refillable list while preserving active non-VA medications' do
+      get '/my_health/v1/prescriptions/list_refillable_prescriptions'
+
+      expect(response).to be_successful
+      prescription_ids = JSON.parse(response.body)['data'].map { |rx| rx['id'].to_i }
+
+      expect(prescription_ids).to include(1, 3)
+      expect(prescription_ids).not_to include(2)
+    end
+
+    it 'returns 404 when requesting a discontinued non-VA medication by id' do
+      get '/my_health/v1/prescriptions/2'
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
   # Isolated from "when user is authorized" so Rx::Client.new is not stubbed twice. Re-raised errors are
   # still handled by ApplicationController's rescue_from Exception (mapped to 500), so examples assert
   # internal_server_error plus structured Rails.logger.error — not raise_error on the request block.

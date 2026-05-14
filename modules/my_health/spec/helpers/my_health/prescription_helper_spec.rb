@@ -11,6 +11,7 @@ RSpec.describe MyHealth::PrescriptionHelper::Filtering do
     defaults = {
       prescription_name: 'Test Med',
       disp_status: 'Active',
+      refill_status: 'active',
       is_refillable: false,
       refill_remaining: 0,
       rx_rf_records: nil,
@@ -143,6 +144,29 @@ RSpec.describe MyHealth::PrescriptionHelper::Filtering do
       ]
 
       expect { helper_instance.send(:filter_data_by_refill_and_renew, items) }.not_to raise_error
+    end
+  end
+
+  describe '#filter_discontinued_non_va_meds' do
+    it 'filters only non-VA discontinued meds, keeping VA discontinued and non-VA active' do
+      items = [
+        build_prescription(prescription_source: 'VA', refill_status: 'discontinued'),
+        build_prescription(prescription_source: 'NV', refill_status: 'Discontinued'),
+        build_prescription(prescription_source: 'NV', refill_status: 'active'),
+        build_prescription(prescription_source: 'VA', refill_status: 'active')
+      ]
+
+      result = helper_instance.send(:filter_discontinued_non_va_meds, items)
+      expect(result.length).to eq(3)
+      expect(result.none? { |r| r.prescription_source == 'NV' && r.refill_status&.downcase == 'discontinued' })
+        .to be true
+    end
+
+    it 'keeps non-VA medications with nil refill_status' do
+      items = [build_prescription(prescription_source: 'NV', refill_status: nil)]
+
+      result = helper_instance.send(:filter_discontinued_non_va_meds, items)
+      expect(result.length).to eq(1)
     end
   end
 end

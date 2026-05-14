@@ -25,6 +25,14 @@ module MyHealth
         data.reject { |item| item.prescription_source == 'NV' && item.disp_status != 'Active: Non-VA' }
       end
 
+      # Filters out discontinued Non-VA medications.
+      #
+      # @param data [Array<PrescriptionDetails>] list of prescriptions
+      # @return [Array<PrescriptionDetails>] filtered list excluding discontinued Non-VA meds
+      def filter_discontinued_non_va_meds(data)
+        data.reject { |item| item.prescription_source == 'NV' && item.refill_status&.downcase == 'discontinued' }
+      end
+
       # Filters prescriptions to only those that are refillable or renewable.
       #
       # @param data [Array<PrescriptionDetails>] list of prescriptions
@@ -75,6 +83,7 @@ module MyHealth
 
       module_function :collection_resource,
                       :filter_data_by_refill_and_renew,
+                      :filter_discontinued_non_va_meds,
                       :filter_non_va_meds,
                       :renewable
     end
