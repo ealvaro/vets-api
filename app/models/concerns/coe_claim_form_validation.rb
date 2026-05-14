@@ -1,7 +1,16 @@
 # frozen_string_literal: true
 
+require 'common/validations_patterns'
+
 module CoeClaimFormValidation
   extend ActiveSupport::Concern
+
+  include Helpers
+  include FullName
+  include VeteranContact
+
+  COE_STATE_CODES = Common::ValidationsPatterns::COE_STATE_CODES
+  POSTAL_CODE_PATTERN = Common::ValidationsPatterns::COE_POSTAL_CODE_PATTERN
 
   private
 
@@ -9,6 +18,7 @@ module CoeClaimFormValidation
     validate_coe_required_fields
     validate_coe_types
     validate_full_name
+    validate_veteran_contact
 
     return if errors.empty?
 
@@ -34,26 +44,5 @@ module CoeClaimFormValidation
     end
     periods = parsed_form.dig('militaryHistory', 'periodsOfService')
     errors.add('/militaryHistory/periodsOfService', 'must be an array') if periods.present? && !periods.is_a?(Array)
-  end
-
-  def validate_full_name
-    name = parsed_form['fullName']
-    return unless name.is_a?(Hash)
-
-    %w[first last].each { |part| validate_full_name_part(name, part, required: true) }
-    %w[middle suffix].each { |part| validate_full_name_part(name, part, required: false) }
-  end
-
-  def validate_full_name_part(name, part, required:)
-    value = name[part]
-    fragment = "/fullName/#{part}"
-    if value.blank?
-      errors.add(fragment, 'is required') if required
-      return
-    end
-    errors.add(fragment, 'must be a string') unless value.is_a?(String)
-    return unless value.is_a?(String) && value.length > 30
-
-    errors.add(fragment, 'must be 30 characters or less')
   end
 end

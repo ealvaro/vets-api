@@ -202,6 +202,7 @@ app/models/claims_api/claim_submission.rb @software/backend-review-group
 app/models/concerns/async_request.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 app/models/concerns/authorization.rb @software/backend-review-group @software/octo-identity
 app/models/concerns/coe_claim_form_validation.rb @software/va-core-veteran-experiences @software/backend-review-group
+app/models/concerns/coe_claim_form_validation/ @software/va-core-veteran-experiences @software/backend-review-group
 app/models/concerns/form526_claim_fast_tracking_concern.rb @software/disability-benefits @software/backend-review-group
 app/models/concerns/ibm_data_dictionary.rb @software/benefits-optimization-aquia @software/backend-review-group
 app/models/concerns/form526_mpi_concern.rb @software/disability-benefits @software/backend-review-group

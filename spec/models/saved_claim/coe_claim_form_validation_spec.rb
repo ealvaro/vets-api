@@ -139,5 +139,90 @@ RSpec.describe SavedClaim::CoeClaim, type: :model do
         expect(error_attributes(claim)).to include('/fullName/first')
       end
     end
+
+    context 'when veteran home phone is not 10 digits' do
+      let(:form_json) do
+        mutate_form do |h|
+          h['veteran']['homePhone'] = { 'areaCode' => '800', 'countryCode' => '1', 'phoneNumber' => '55512345' }
+        end
+      end
+
+      it 'records a phone format error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/veteran/homePhone')
+      end
+    end
+
+    context 'when homePhone areaCode is not a string' do
+      let(:form_json) { mutate_form { |h| h['veteran']['homePhone']['areaCode'] = 800 } }
+
+      it 'records a type error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/veteran/homePhone/areaCode')
+      end
+    end
+
+    context 'when veteran email is not a valid address' do
+      let(:form_json) { mutate_form { |h| h['veteran']['email']['emailAddress'] = 'not-an-email' } }
+
+      it 'records an email format error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/veteran/email/emailAddress')
+      end
+    end
+
+    context 'when veteran email is too long' do
+      let(:form_json) { mutate_form { |h| h['veteran']['email']['emailAddress'] = "#{'a' * 251}@x.com" } }
+
+      it 'records a length error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/veteran/email/emailAddress')
+      end
+    end
+
+    context 'when veteran emailAddress is not a string' do
+      let(:form_json) { mutate_form { |h| h['veteran']['email']['emailAddress'] = 12_345 } }
+
+      it 'records a type error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/veteran/email/emailAddress')
+      end
+    end
+
+    context 'when veteran mailingAddress stateCode is not a valid code' do
+      let(:form_json) { mutate_form { |h| h['veteran']['mailingAddress']['stateCode'] = 'ZZ' } }
+
+      it 'records a state error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/veteran/mailingAddress/stateCode')
+      end
+    end
+
+    context 'when veteran mailingAddress zipCode is invalid' do
+      let(:form_json) { mutate_form { |h| h['veteran']['mailingAddress']['zipCode'] = 'bad' } }
+
+      it 'records a postal error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/veteran/mailingAddress/zipCode')
+      end
+    end
+
+    context 'when veteran mailingAddress addressLine1 is too long' do
+      let(:form_json) { mutate_form { |h| h['veteran']['mailingAddress']['addressLine1'] = 'x' * 101 } }
+
+      it 'records a length error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/veteran/mailingAddress/addressLine1')
+      end
+    end
+
+    context 'when veteran mailingAddress addressLine2 is not a string' do
+      let(:form_json) { mutate_form { |h| h['veteran']['mailingAddress']['addressLine2'] = 12_345 } }
+
+      it 'records a type error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/veteran/mailingAddress/addressLine2')
+      end
+    end
   end
 end
