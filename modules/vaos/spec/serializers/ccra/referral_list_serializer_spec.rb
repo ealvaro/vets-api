@@ -15,6 +15,7 @@ RSpec.describe Ccra::ReferralListSerializer do
           station_id: '528A6'
         )
         ref.uuid = 'encrypted-984_646372'
+        ref.has_appointments = true
         ref
       end
       let(:podiatry_referral) do
@@ -27,6 +28,7 @@ RSpec.describe Ccra::ReferralListSerializer do
           station_id: '528A7'
         )
         ref.uuid = 'encrypted-984_646373'
+        ref.has_appointments = false
         ref
       end
       let(:optometry_referral) do
@@ -39,6 +41,7 @@ RSpec.describe Ccra::ReferralListSerializer do
           station_id: '528A8'
         )
         ref.uuid = 'encrypted-984_646374'
+        ref.has_appointments = false
         ref
       end
       let(:referrals) { [cardiology_referral, podiatry_referral, optometry_referral] }
@@ -59,6 +62,7 @@ RSpec.describe Ccra::ReferralListSerializer do
         expect(serialized_data[:data][0][:attributes][:expirationDate]).to eq('2024-05-27')
         expect(serialized_data[:data][0][:attributes][:uuid]).to eq('encrypted-984_646372')
         expect(serialized_data[:data][0][:attributes][:stationId]).to eq('528A6')
+        expect(serialized_data[:data][0][:attributes][:hasAppointments]).to be(true)
 
         expect(serialized_data[:data][1][:id]).to eq('encrypted-984_646373')
         expect(serialized_data[:data][1][:type]).to eq(:referrals)
@@ -67,6 +71,7 @@ RSpec.describe Ccra::ReferralListSerializer do
         expect(serialized_data[:data][1][:attributes][:expirationDate]).to eq('2024-05-27')
         expect(serialized_data[:data][1][:attributes][:uuid]).to eq('encrypted-984_646373')
         expect(serialized_data[:data][1][:attributes][:stationId]).to eq('528A7')
+        expect(serialized_data[:data][1][:attributes][:hasAppointments]).to be(false)
 
         expect(serialized_data[:data][2][:id]).to eq('encrypted-984_646374')
         expect(serialized_data[:data][2][:type]).to eq(:referrals)
@@ -75,6 +80,7 @@ RSpec.describe Ccra::ReferralListSerializer do
         expect(serialized_data[:data][2][:attributes][:expirationDate]).to eq('2024-05-27')
         expect(serialized_data[:data][2][:attributes][:uuid]).to eq('encrypted-984_646374')
         expect(serialized_data[:data][2][:attributes][:stationId]).to eq('528A8')
+        expect(serialized_data[:data][2][:attributes][:hasAppointments]).to be(false)
       end
     end
 

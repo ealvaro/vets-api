@@ -36,6 +36,8 @@ RSpec.describe 'VAOS V2 Referrals', type: :request do
     context 'when user is authenticated' do
       before do
         sign_in_as(user)
+        allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:get_active_appointments_for_referral)
+          .and_return({ EPS: { data: [] }, VAOS: { data: [] } })
       end
 
       it 'returns referrals list in JSON:API format' do

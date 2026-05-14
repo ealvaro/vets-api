@@ -50,12 +50,15 @@ RSpec.describe VAOS::V2::ReferralsController, type: :request do
     context 'when called with authorization' do
       let(:user) { build(:user, :vaos, :loa3, icn:) }
       let(:referral_list_entries) { build_list(:ccra_referral_list_entry, 3) }
+      let(:empty_appointments_response) { { EPS: { data: [] }, VAOS: { data: [] } } }
 
       before do
         sign_in_as(user)
         allow_any_instance_of(Ccra::ReferralService).to receive(:get_vaos_referral_list)
           .with(icn, referral_statuses)
           .and_return(referral_list_entries)
+        allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:get_active_appointments_for_referral)
+          .and_return(empty_appointments_response)
       end
 
       it 'returns a list of referrals in JSON:API format' do
@@ -76,6 +79,7 @@ RSpec.describe VAOS::V2::ReferralsController, type: :request do
         expect(first_referral['attributes']['referralNumber']).to eq('5682')
         expect(first_referral['attributes']['referralConsultId']).to eq(referral_consult_id)
         expect(first_referral['attributes']['expirationDate']).to eq((Date.current + 60.days).strftime('%Y-%m-%d'))
+        expect(first_referral['attributes']['hasAppointments']).to be(false)
       end
 
       it 'logs multiple referrals count with JSON structured format and records StatsD gauge' do
@@ -284,6 +288,110 @@ RSpec.describe VAOS::V2::ReferralsController, type: :request do
           response_data = JSON.parse(response.body)
           expect(response_data['data']).to be_an(Array)
           expect(response_data['data']).to be_empty
+        end
+      end
+
+      context 'when annotating has_appointments per referral' do
+        let(:referral_a) do
+          build(:ccra_referral_list_entry, referral_number: 'REF-A', referral_consult_id: 'consult-a')
+        end
+        let(:referral_b) do
+          build(:ccra_referral_list_entry, referral_number: 'REF-B', referral_consult_id: 'consult-b')
+        end
+        let(:mixed_referrals) { [referral_a, referral_b] }
+
+        before do
+          allow(VAOS::ReferralEncryptionService).to receive(:encrypt).with('consult-a').and_return('encrypted-a')
+          allow(VAOS::ReferralEncryptionService).to receive(:encrypt).with('consult-b').and_return('encrypted-b')
+          allow_any_instance_of(Ccra::ReferralService).to receive(:get_vaos_referral_list)
+            .with(icn, referral_statuses)
+            .and_return(mixed_referrals)
+        end
+
+        context 'when a referral has an active appointment' do
+          before do
+            allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:get_active_appointments_for_referral)
+              .with('REF-A')
+              .and_return({
+                            EPS: { data: [{ id: 'eps-1', status: 'active', start: '2026-06-01T10:00:00Z' }] },
+                            VAOS: { data: [] }
+                          })
+            allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:get_active_appointments_for_referral)
+              .with('REF-B')
+              .and_return(empty_appointments_response)
+          end
+
+          it 'sets hasAppointments to true only for that referral' do
+            get '/vaos/v2/referrals'
+
+            expect(response).to have_http_status(:ok)
+            data = JSON.parse(response.body)['data']
+            attrs_a = data.find { |d| d['attributes']['referralNumber'] == 'REF-A' }['attributes']
+            attrs_b = data.find { |d| d['attributes']['referralNumber'] == 'REF-B' }['attributes']
+            expect(attrs_a['hasAppointments']).to be(true)
+            expect(attrs_b['hasAppointments']).to be(false)
+          end
+        end
+
+        context 'when a referral has only cancelled appointments' do
+          before do
+            allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:get_active_appointments_for_referral)
+              .and_return({
+                            EPS: { data: [{ id: 'eps-1', status: 'cancelled', start: '2026-06-01T10:00:00Z' }] },
+                            VAOS: { data: [{ id: 'vaos-1', status: 'cancelled', start: '2026-06-02T10:00:00Z' }] }
+                          })
+          end
+
+          it 'sets hasAppointments to false' do
+            get '/vaos/v2/referrals'
+
+            expect(response).to have_http_status(:ok)
+            data = JSON.parse(response.body)['data']
+            expect(data.map { |d| d['attributes']['hasAppointments'] }).to all(be(false))
+          end
+        end
+
+        context 'when the appointments service raises for one referral' do
+          let(:failure_metric) { 'api.vaos.referral_list.has_appointments_lookup.failure' }
+
+          before do
+            allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:get_active_appointments_for_referral)
+              .with('REF-A')
+              .and_raise(Common::Exceptions::BackendServiceException.new('VAOS_502', { source: 'EPS' }))
+            allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:get_active_appointments_for_referral)
+              .with('REF-B')
+              .and_return({
+                            EPS: { data: [{ id: 'eps-1', status: 'active', start: '2026-06-01T10:00:00Z' }] },
+                            VAOS: { data: [] }
+                          })
+          end
+
+          it 'returns 200 with all referrals, leaves the failing one as nil, and logs a PII-safe warning' do
+            allow(StatsD).to receive(:increment)
+            allow(StatsD).to receive(:gauge)
+            expect(Rails.logger).to receive(:warn) do |message, payload|
+              expect(message).to eq(
+                'Community Care Appointments: Failed to fetch appointments for referral list entry'
+              )
+              expect(payload.keys).to contain_exactly(:error_class, :station_id, :user_uuid)
+              expect(payload[:error_class]).to eq('Common::Exceptions::BackendServiceException')
+              expect(payload[:user_uuid]).to eq(user.uuid)
+              expect(payload).not_to have_key(:referral_number)
+              expect(payload).not_to have_key(:referral_consult_id)
+              expect(payload).not_to have_key(:uuid)
+            end
+            expect(StatsD).to receive(:increment).with(failure_metric)
+
+            get '/vaos/v2/referrals'
+
+            expect(response).to have_http_status(:ok)
+            data = JSON.parse(response.body)['data']
+            expect(data.size).to eq(2)
+            attrs_a = data.find { |d| d['attributes']['referralNumber'] == 'REF-A' }['attributes']
+            attrs_b = data.find { |d| d['attributes']['referralNumber'] == 'REF-B' }['attributes']
+            expect(attrs_a['hasAppointments']).to be_nil
+            expect(attrs_b['hasAppointments']).to be(true)
+          end
         end
       end
     end
@@ -544,6 +652,20 @@ RSpec.describe VAOS::V2::ReferralsController, type: :request do
 
             expect(response).to have_http_status(:ok)
           end
+        end
+      end
+
+      context 'when the appointments service raises a BackendServiceException' do
+        before do
+          allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:get_active_appointments_for_referral)
+            .with(referral_number)
+            .and_raise(Common::Exceptions::BackendServiceException.new('VAOS_502', { source: 'EPS' }))
+        end
+
+        it 'lets the exception bubble up instead of rescuing it' do
+          get "/vaos/v2/referrals/#{encrypted_referral_consult_id}"
+
+          expect(response).to have_http_status(:bad_gateway)
         end
       end
     end

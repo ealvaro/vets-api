@@ -27,6 +27,8 @@ module VAOS
         response = filter_expired_referrals(response)
         # Add encrypted UUIDs to the referrals for URL usage
         add_referral_uuids(response)
+        # Annotate each referral with whether it has any active appointments
+        add_has_appointments_to_referrals(response)
 
         render json: Ccra::ReferralListSerializer.new(response)
       end
@@ -65,10 +67,36 @@ module VAOS
           }
         }
 
-        # Only set has_appointments to true if there are appointments with status "active"
-        eps_has_active = eps_appointments.any? { |appt| appt[:status] == 'active' }
-        vaos_has_active = vaos_appointments.any? { |appt| appt[:status] == 'active' }
-        referral.has_appointments = eps_has_active || vaos_has_active
+        referral.has_appointments = any_active_appointment?(eps_appointments, vaos_appointments)
+      end
+
+      # Iterates each list entry and sets has_appointments. Rescues per-referral so
+      # that one failed lookup does not blank out the whole list response.
+      #
+      # @param referrals [Array<Ccra::ReferralListEntry>] The collection of referrals
+      # @return [Array<Ccra::ReferralListEntry>] The same collection, annotated in place
+      def add_has_appointments_to_referrals(referrals)
+        return referrals unless referrals.respond_to?(:each)
+
+        referrals.each { |referral| set_has_appointments(referral) }
+      end
+
+      def set_has_appointments(referral)
+        result = appointments_service.get_active_appointments_for_referral(referral.referral_number)
+        referral.has_appointments = any_active_appointment?(result[:EPS][:data], result[:VAOS][:data])
+      rescue Common::Exceptions::BackendServiceException => e
+        # PII-safe payload: never log referral_number, referral_consult_id, or uuid
+        Rails.logger.warn(
+          'Community Care Appointments: Failed to fetch appointments for referral list entry',
+          { error_class: e.class.name, station_id: referral.station_id, user_uuid: current_user.uuid }
+        )
+        StatsD.increment("#{STATSD_PREFIX}.referral_list.has_appointments_lookup.failure")
+        referral.has_appointments = nil
+      end
+
+      def any_active_appointment?(eps_appointments, vaos_appointments)
+        eps_appointments.any? { |appt| appt[:status] == 'active' } ||
+          vaos_appointments.any? { |appt| appt[:status] == 'active' }
       end
 
       def appointments_service
