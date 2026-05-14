@@ -36,7 +36,7 @@ module SignIn
     def address_state       = address[:state]
     def address_country     = address[:country]
     def address_postal_code = address[:postal_code]
-    def phone_number        = user.home_phone
+    def phone_number        = home_phone
     def person_types        = user.person_types&.join('|') || ''
     def icn                 = user.icn
     def sec_id              = user.sec_id
@@ -66,17 +66,30 @@ module SignIn
       @address ||= user.address.compact_blank.presence || mpi_correlation_address
     end
 
+    def home_phone
+      @phone_number ||= user.home_phone || mpi_correlation_phone_number
+    end
+
     def mpi_correlation_address
-      response = MPI::Service.new.find_profile_by_identifier(
+      return {} unless mpi_correlation_response.ok?
+
+      address = mpi_correlation_response.profile&.address
+      address ? address.attributes.symbolize_keys : {}
+    end
+
+    def mpi_correlation_phone_number
+      return nil unless mpi_correlation_response.ok?
+
+      phone_number = mpi_correlation_response.profile&.home_phone
+      phone_number || nil
+    end
+
+    def mpi_correlation_response
+      @mpi_correlation_response ||= MPI::Service.new.find_profile_by_identifier(
         identifier: csp_uuid,
         identifier_type: user_verification.credential_type,
         view_type: MPI::Constants::CORRELATION_VIEW
       )
-
-      return {} unless response.ok?
-
-      address = response.profile&.address
-      address ? address.attributes.symbolize_keys : {}
     end
 
     def filter_gcids

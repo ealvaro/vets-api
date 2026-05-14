@@ -219,6 +219,78 @@ RSpec.describe SignIn::UserInfoGenerator do
         end
       end
 
+      context 'when user phone number is blank and fallback is MPI' do
+        let(:user_phone_number) {}
+        let(:mpi_home_phone) { '123-456-789' }
+
+        let(:mpi_profile) { build(:mpi_profile, home_phone: mpi_home_phone) }
+        let(:status) { MPI::Responses::FindProfileResponse::OK }
+        let(:find_profile_response) { build(:find_profile_response, profile: mpi_profile, status:) }
+
+        before do
+          allow(user).to receive(:home_phone).and_return(user_phone_number)
+          allow_any_instance_of(MPI::Service)
+            .to receive(:find_profile_by_identifier)
+            .and_return(find_profile_response)
+        end
+
+        context 'when MPI response is ok' do
+          it 'returns the MPI phone number' do
+            user_info = generator.perform
+
+            expect(user_info.phone_number).to eq(mpi_home_phone)
+          end
+
+          it 'calls MPI with correct parameters' do
+            expect_any_instance_of(MPI::Service)
+              .to receive(:find_profile_by_identifier)
+              .with(
+                identifier: credential_uuid,
+                identifier_type: user_verification.credential_type,
+                view_type: MPI::Constants::CORRELATION_VIEW
+              )
+
+            generator.perform
+          end
+        end
+
+        context 'when MPI response is not ok' do
+          let(:status) { MPI::Responses::FindProfileResponse::SERVER_ERROR }
+
+          it 'returns empty phone number' do
+            user_info = generator.perform
+            expect(user_info.phone_number).to be_nil
+          end
+        end
+
+        context 'when MPI correlation profile has no phone number' do
+          let(:mpi_profile) { build(:mpi_profile, home_phone: nil) }
+
+          it 'returns empty phone number' do
+            user_info = generator.perform
+
+            expect(user_info.phone_number).to be_nil
+          end
+        end
+
+        context 'when MPI correlation profile phone number is nil' do
+          let(:mpi_profile) { build(:mpi_profile, address: nil) }
+
+          it 'returns empty phone number without raising an error' do
+            user_info = nil
+
+            expect { user_info = generator.perform }.not_to raise_error
+
+            expect(user_info.address_street1).to be_nil
+            expect(user_info.address_street2).to be_nil
+            expect(user_info.address_city).to be_nil
+            expect(user_info.address_state).to be_nil
+            expect(user_info.address_country).to be_nil
+            expect(user_info.address_postal_code).to be_nil
+          end
+        end
+      end
+
       context 'when the gcids are valid' do
         let(:expected_gcids) do
           '1000123456V123456^NI^200M^USVHA^P|12345^PI^516^USVHA^PCE|2^PI^553^USVHA^PCE'
