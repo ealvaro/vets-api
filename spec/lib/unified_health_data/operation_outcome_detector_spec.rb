@@ -536,4 +536,269 @@ RSpec.describe UnifiedHealthData::OperationOutcomeDetector do
       end
     end
   end
+
+  describe '#recoverable_failure?' do
+    context 'when source has error/exception + error/incomplete' do
+      let(:body) do
+        {
+          'vista' => {
+            'entry' => [
+              { 'resource' => { 'resourceType' => 'AllergyIntolerance', 'id' => '123' } }
+            ]
+          },
+          'oracle-health' => {
+            'entry' => [
+              {
+                'resource' => {
+                  'resourceType' => 'OperationOutcome',
+                  'issue' => [
+                    { 'severity' => 'error', 'code' => 'exception',
+                      'diagnostics' => '502 Bad Gateway: Microsoft-Azure-Application-Gateway/v2' },
+                    { 'severity' => 'error', 'code' => 'incomplete',
+                      'diagnostics' => 'Response is incomplete due to source outage' }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      end
+
+      it 'returns true' do
+        expect(detector.recoverable_failure?).to be true
+      end
+
+      it 'populates recoverable_sources' do
+        expect(detector.recoverable_sources).to eq(['oracle-health'])
+      end
+
+      it 'still populates failed_sources' do
+        expect(detector.failed_sources).to eq(['oracle-health'])
+      end
+    end
+
+    context 'when source has error/exception without incomplete' do
+      let(:body) do
+        {
+          'vista' => {
+            'entry' => [
+              { 'resource' => { 'resourceType' => 'AllergyIntolerance', 'id' => '123' } }
+            ]
+          },
+          'oracle-health' => {
+            'entry' => [
+              {
+                'resource' => {
+                  'resourceType' => 'OperationOutcome',
+                  'issue' => [
+                    { 'severity' => 'error', 'code' => 'exception',
+                      'diagnostics' => 'Data validation failure' }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      end
+
+      it 'returns false' do
+        expect(detector.recoverable_failure?).to be false
+      end
+
+      it 'does not populate recoverable_sources' do
+        expect(detector.recoverable_sources).to be_empty
+      end
+    end
+
+    context 'when both sources have error + incomplete' do
+      let(:body) do
+        {
+          'vista' => {
+            'entry' => [
+              {
+                'resource' => {
+                  'resourceType' => 'OperationOutcome',
+                  'issue' => [
+                    { 'severity' => 'error', 'code' => 'exception', 'diagnostics' => 'VistA timeout' },
+                    { 'severity' => 'error', 'code' => 'incomplete', 'diagnostics' => 'Incomplete' }
+                  ]
+                }
+              }
+            ]
+          },
+          'oracle-health' => {
+            'entry' => [
+              {
+                'resource' => {
+                  'resourceType' => 'OperationOutcome',
+                  'issue' => [
+                    { 'severity' => 'error', 'code' => 'exception', 'diagnostics' => 'OH timeout' },
+                    { 'severity' => 'error', 'code' => 'incomplete', 'diagnostics' => 'Incomplete' }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      end
+
+      it 'returns true' do
+        expect(detector.recoverable_failure?).to be true
+      end
+
+      it 'populates recoverable_sources with both sources' do
+        expect(detector.recoverable_sources).to contain_exactly('vista', 'oracle-health')
+      end
+    end
+
+    context 'when one source is recoverable and the other is not' do
+      let(:body) do
+        {
+          'vista' => {
+            'entry' => [
+              {
+                'resource' => {
+                  'resourceType' => 'OperationOutcome',
+                  'issue' => [
+                    { 'severity' => 'error', 'code' => 'exception', 'diagnostics' => 'VistA timeout' },
+                    { 'severity' => 'error', 'code' => 'incomplete', 'diagnostics' => 'Incomplete' }
+                  ]
+                }
+              }
+            ]
+          },
+          'oracle-health' => {
+            'entry' => [
+              {
+                'resource' => {
+                  'resourceType' => 'OperationOutcome',
+                  'issue' => [
+                    { 'severity' => 'error', 'code' => 'exception', 'diagnostics' => 'Processing error' }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      end
+
+      it 'returns false' do
+        expect(detector.recoverable_failure?).to be false
+      end
+    end
+
+    context 'when no partial failure exists' do
+      let(:body) do
+        {
+          'vista' => { 'entry' => [] },
+          'oracle-health' => { 'entry' => [] }
+        }
+      end
+
+      it 'returns false' do
+        expect(detector.recoverable_failure?).to be false
+      end
+    end
+  end
+
+  describe '#all_sources_failed?' do
+    context 'when only one source fails' do
+      let(:body) do
+        {
+          'vista' => {
+            'entry' => [
+              { 'resource' => { 'resourceType' => 'AllergyIntolerance', 'id' => '123' } }
+            ]
+          },
+          'oracle-health' => {
+            'entry' => [
+              {
+                'resource' => {
+                  'resourceType' => 'OperationOutcome',
+                  'issue' => [{ 'severity' => 'error', 'code' => 'exception' }]
+                }
+              }
+            ]
+          }
+        }
+      end
+
+      it 'returns false' do
+        expect(detector.all_sources_failed?).to be false
+      end
+    end
+
+    context 'when both sources fail' do
+      let(:body) do
+        {
+          'vista' => {
+            'entry' => [
+              {
+                'resource' => {
+                  'resourceType' => 'OperationOutcome',
+                  'issue' => [{ 'severity' => 'error', 'code' => 'timeout' }]
+                }
+              }
+            ]
+          },
+          'oracle-health' => {
+            'entry' => [
+              {
+                'resource' => {
+                  'resourceType' => 'OperationOutcome',
+                  'issue' => [{ 'severity' => 'error', 'code' => 'exception' }]
+                }
+              }
+            ]
+          }
+        }
+      end
+
+      it 'returns true' do
+        expect(detector.all_sources_failed?).to be true
+      end
+    end
+
+    context 'when one source key is missing from body' do
+      let(:body) do
+        {
+          'vista' => {
+            'entry' => [
+              {
+                'resource' => {
+                  'resourceType' => 'OperationOutcome',
+                  'issue' => [{ 'severity' => 'error', 'code' => 'exception' }]
+                }
+              }
+            ]
+          }
+        }
+      end
+
+      it 'returns true since only present source failed' do
+        expect(detector.all_sources_failed?).to be true
+      end
+    end
+
+    context 'when no sources are present in body' do
+      let(:body) { {} }
+
+      it 'returns false' do
+        expect(detector.all_sources_failed?).to be false
+      end
+    end
+
+    context 'when neither source has errors' do
+      let(:body) do
+        {
+          'vista' => { 'entry' => [] },
+          'oracle-health' => { 'entry' => [] }
+        }
+      end
+
+      it 'returns false' do
+        expect(detector.all_sources_failed?).to be false
+      end
+    end
+  end
 end

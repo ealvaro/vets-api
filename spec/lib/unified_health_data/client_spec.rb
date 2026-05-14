@@ -184,6 +184,191 @@ RSpec.describe UnifiedHealthData::Client do
         end.not_to raise_error
       end
     end
+
+    context 'when feature flag is ON and single source is recoverable (has incomplete)' do
+      let(:recoverable_body) do
+        {
+          'vista' => {
+            'entry' => [
+              { 'resource' => { 'resourceType' => 'AllergyIntolerance', 'id' => '123' } }
+            ]
+          },
+          'oracle-health' => {
+            'entry' => [
+              {
+                'resource' => {
+                  'resourceType' => 'OperationOutcome',
+                  'issue' => [
+                    { 'severity' => 'error', 'code' => 'exception',
+                      'diagnostics' => '502 Bad Gateway' },
+                    { 'severity' => 'error', 'code' => 'incomplete',
+                      'diagnostics' => 'Response is incomplete due to source outage' }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      end
+      let(:response) { Faraday::Response.new(body: recoverable_body) }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_partial_failure_handling).and_return(true)
+        allow(Rails.logger).to receive(:warn)
+        allow(StatsD).to receive(:increment)
+      end
+
+      it 'does not raise an exception' do
+        expect do
+          client.send(:check_for_operation_outcomes!, response, '/uhd/v1/allergies?patientId=123')
+        end.not_to raise_error
+      end
+
+      it 'injects failure_details as _warnings into the response body' do
+        client.send(:check_for_operation_outcomes!, response, '/uhd/v1/allergies?patientId=123')
+        expect(response.body['_warnings']).to be_an(Array)
+        expect(response.body['_warnings']).to include(
+          hash_including(source: 'oracle-health', code: 'exception'),
+          hash_including(source: 'oracle-health', code: 'incomplete')
+        )
+      end
+
+      it 'still logs and tracks metrics' do
+        client.send(:check_for_operation_outcomes!, response, '/uhd/v1/allergies?patientId=123')
+
+        expect(Rails.logger).to have_received(:warn).with(
+          hash_including(message: 'UHD upstream source returned OperationOutcome error')
+        )
+        expect(StatsD).to have_received(:increment).with(
+          'api.uhd.partial_failure',
+          tags: ['source:oracle-health', 'resource_type:allergies']
+        )
+      end
+    end
+
+    context 'when feature flag is ON and single source is NOT recoverable (no incomplete code)' do
+      let(:non_recoverable_body) do
+        {
+          'vista' => {
+            'entry' => [
+              { 'resource' => { 'resourceType' => 'AllergyIntolerance', 'id' => '123' } }
+            ]
+          },
+          'oracle-health' => {
+            'entry' => [
+              {
+                'resource' => {
+                  'resourceType' => 'OperationOutcome',
+                  'issue' => [
+                    { 'severity' => 'error', 'code' => 'exception',
+                      'diagnostics' => 'Data validation failure' }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      end
+      let(:response) { Faraday::Response.new(body: non_recoverable_body) }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_partial_failure_handling).and_return(true)
+        allow(Rails.logger).to receive(:warn)
+        allow(StatsD).to receive(:increment)
+      end
+
+      it 'raises UpstreamPartialFailure' do
+        expect do
+          client.send(:check_for_operation_outcomes!, response, '/uhd/v1/allergies?patientId=123')
+        end.to raise_error(Common::Exceptions::UpstreamPartialFailure)
+      end
+    end
+
+    context 'when feature flag is ON and both sources are recoverable' do
+      let(:both_failed_body) do
+        {
+          'vista' => {
+            'entry' => [
+              {
+                'resource' => {
+                  'resourceType' => 'OperationOutcome',
+                  'issue' => [
+                    { 'severity' => 'error', 'code' => 'exception', 'diagnostics' => 'VistA timeout' },
+                    { 'severity' => 'error', 'code' => 'incomplete', 'diagnostics' => 'Incomplete' }
+                  ]
+                }
+              }
+            ]
+          },
+          'oracle-health' => {
+            'entry' => [
+              {
+                'resource' => {
+                  'resourceType' => 'OperationOutcome',
+                  'issue' => [
+                    { 'severity' => 'error', 'code' => 'exception', 'diagnostics' => 'OH timeout' },
+                    { 'severity' => 'error', 'code' => 'incomplete', 'diagnostics' => 'Incomplete' }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      end
+      let(:response) { Faraday::Response.new(body: both_failed_body) }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_partial_failure_handling).and_return(true)
+        allow(Rails.logger).to receive(:warn)
+        allow(StatsD).to receive(:increment)
+      end
+
+      it 'raises UpstreamPartialFailure because all sources failed' do
+        expect do
+          client.send(:check_for_operation_outcomes!, response, '/uhd/v1/allergies?patientId=123')
+        end.to raise_error(Common::Exceptions::UpstreamPartialFailure)
+      end
+    end
+
+    context 'when feature flag is OFF and single source is recoverable' do
+      let(:recoverable_body) do
+        {
+          'vista' => {
+            'entry' => [
+              { 'resource' => { 'resourceType' => 'AllergyIntolerance', 'id' => '123' } }
+            ]
+          },
+          'oracle-health' => {
+            'entry' => [
+              {
+                'resource' => {
+                  'resourceType' => 'OperationOutcome',
+                  'issue' => [
+                    { 'severity' => 'error', 'code' => 'exception',
+                      'diagnostics' => '502 Bad Gateway' },
+                    { 'severity' => 'error', 'code' => 'incomplete',
+                      'diagnostics' => 'Response is incomplete due to source outage' }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      end
+      let(:response) { Faraday::Response.new(body: recoverable_body) }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_partial_failure_handling).and_return(false)
+        allow(Rails.logger).to receive(:warn)
+        allow(StatsD).to receive(:increment)
+      end
+
+      it 'raises UpstreamPartialFailure (existing behavior preserved)' do
+        expect do
+          client.send(:check_for_operation_outcomes!, response, '/uhd/v1/allergies?patientId=123')
+        end.to raise_error(Common::Exceptions::UpstreamPartialFailure)
+      end
+    end
   end
 
   describe '#fetch_access_token' do

@@ -196,6 +196,188 @@ RSpec.describe 'MyHealth::V2::AllergiesController', :skip_json_api_validation, t
         expect(response).to have_http_status(:bad_gateway)
         expect(StatsD).to have_received(:increment).with('mhv_medical_records.client_error', anything)
       end
+
+      it 'returns 502 when UpstreamPartialFailure is raised' do
+        allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_allergies)
+          .and_raise(Common::Exceptions::UpstreamPartialFailure.new(
+                       failed_sources: ['vista'],
+                       failure_details: [{ source: 'vista', code: 'exception',
+                                           diagnostics: '502 Bad Gateway' }]
+                     ))
+        VCR.use_cassette('unified_health_data/get_allergies_200') do
+          get '/my_health/v2/medical_records/allergies',
+              headers: { 'X-Key-Inflection' => 'camel' }
+        end
+        expect(response).to have_http_status(:bad_gateway)
+        json_response = JSON.parse(response.body)
+        expect(json_response['errors'].first['code']).to eq('502')
+        expect(json_response['errors'].first['detail']).to include('vista')
+      end
+    end
+
+    context 'recoverable partial failures' do
+      let(:recoverable_warnings) do
+        [
+          { source: 'oracle-health', code: 'exception', severity: 'error',
+            diagnostics: '502 Bad Gateway' },
+          { source: 'oracle-health', code: 'incomplete', severity: 'error',
+            diagnostics: 'Response is incomplete due to source outage' }
+        ]
+      end
+
+      let(:partial_allergy) do
+        UnifiedHealthData::Allergy.new(
+          id: '123', name: 'Penicillin', date: '2024-06-01',
+          categories: ['medication'], reactions: [], notes: []
+        )
+      end
+
+      context 'when flag is ON and single source is recoverable' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medical_records_partial_failure_handling).and_return(true)
+          allow(UniqueUserEvents).to receive(:log_events)
+          allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_allergies)
+            .and_return({ records: [partial_allergy], warnings: recoverable_warnings })
+        end
+
+        it 'returns 206 with partial records and warnings in meta' do
+          get '/my_health/v2/medical_records/allergies', headers: { 'X-Key-Inflection' => 'camel' }
+
+          expect(response).to have_http_status(:partial_content)
+          json_response = JSON.parse(response.body)
+          expect(json_response['data']).to be_an(Array)
+          expect(json_response['data'].size).to eq(1)
+          expect(json_response['data'].first['attributes']['name']).to eq('Penicillin')
+          expect(json_response['meta']['warnings']).to be_an(Array)
+          expect(json_response['meta']['warnings'].size).to eq(2)
+        end
+      end
+
+      context 'when flag is ON and failure is not recoverable' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medical_records_partial_failure_handling).and_return(true)
+          error = Common::Exceptions::UpstreamPartialFailure.new(
+            failed_sources: ['oracle-health'],
+            failure_details: [{ source: 'oracle-health', code: 'exception',
+                                diagnostics: 'Data validation failure' }]
+          )
+          allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_allergies).and_raise(error)
+        end
+
+        it 'returns 502' do
+          VCR.use_cassette('unified_health_data/get_allergies_200') do
+            get '/my_health/v2/medical_records/allergies',
+                headers: { 'X-Key-Inflection' => 'camel' }
+          end
+          expect(response).to have_http_status(:bad_gateway)
+        end
+      end
+
+      context 'when flag is ON and both sources are recoverable (all failed)' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medical_records_partial_failure_handling).and_return(true)
+          error = Common::Exceptions::UpstreamPartialFailure.new(
+            failed_sources: %w[vista oracle-health],
+            failure_details: [
+              { source: 'vista', code: 'incomplete', diagnostics: 'Incomplete' },
+              { source: 'oracle-health', code: 'incomplete', diagnostics: 'Incomplete' }
+            ]
+          )
+          allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_allergies).and_raise(error)
+        end
+
+        it 'returns 502' do
+          VCR.use_cassette('unified_health_data/get_allergies_200') do
+            get '/my_health/v2/medical_records/allergies',
+                headers: { 'X-Key-Inflection' => 'camel' }
+          end
+          expect(response).to have_http_status(:bad_gateway)
+        end
+      end
+
+      context 'when flag is OFF' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medical_records_partial_failure_handling).and_return(false)
+          error = Common::Exceptions::UpstreamPartialFailure.new(
+            failed_sources: ['vista'],
+            failure_details: [{ source: 'vista', code: 'exception',
+                                diagnostics: '502 Bad Gateway' }]
+          )
+          allow_any_instance_of(UnifiedHealthData::MedicalRecordsService).to receive(:get_allergies).and_raise(error)
+        end
+
+        it 'returns 502 (not 500)' do
+          VCR.use_cassette('unified_health_data/get_allergies_200') do
+            get '/my_health/v2/medical_records/allergies',
+                headers: { 'X-Key-Inflection' => 'camel' }
+          end
+          expect(response).to have_http_status(:bad_gateway)
+        end
+      end
+    end
+
+    context 'recoverable partial failures (VCR integration)' do
+      context 'when flag is ON and single source has incomplete signal' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medical_records_partial_failure_handling).and_return(true)
+          allow(UniqueUserEvents).to receive(:log_events)
+        end
+
+        it 'returns 206 with VistA records and warnings from oracle-health' do
+          VCR.use_cassette('unified_health_data/get_allergies_recoverable_partial_failure',
+                           match_requests_on: %i[method path]) do
+            get '/my_health/v2/medical_records/allergies', headers: { 'X-Key-Inflection' => 'camel' }
+          end
+
+          expect(response).to have_http_status(:partial_content)
+          json_response = JSON.parse(response.body)
+          expect(json_response['data']).to be_an(Array)
+          expect(json_response['data'].size).to eq(1)
+          expect(json_response['data'].first['attributes']['name']).to eq('TRAZODONE')
+          expect(json_response['meta']['warnings']).to be_an(Array)
+          expect(json_response['meta']['warnings'].size).to be >= 1
+        end
+      end
+
+      context 'when flag is ON and all sources have incomplete signal' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medical_records_partial_failure_handling).and_return(true)
+        end
+
+        it 'returns 502 because all sources failed' do
+          VCR.use_cassette('unified_health_data/get_allergies_all_sources_recoverable_failure',
+                           match_requests_on: %i[method path]) do
+            get '/my_health/v2/medical_records/allergies', headers: { 'X-Key-Inflection' => 'camel' }
+          end
+
+          expect(response).to have_http_status(:bad_gateway)
+          json_response = JSON.parse(response.body)
+          expect(json_response['errors']).to be_an(Array)
+          expect(json_response['errors'].first['code']).to eq('502')
+        end
+      end
+
+      context 'when flag is OFF and single source has incomplete signal' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medical_records_partial_failure_handling).and_return(false)
+        end
+
+        it 'returns 502 because flag is off (falls through to raise)' do
+          VCR.use_cassette('unified_health_data/get_allergies_recoverable_partial_failure',
+                           match_requests_on: %i[method path]) do
+            get '/my_health/v2/medical_records/allergies', headers: { 'X-Key-Inflection' => 'camel' }
+          end
+
+          expect(response).to have_http_status(:bad_gateway)
+        end
+      end
     end
   end
 

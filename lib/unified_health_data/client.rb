@@ -141,19 +141,31 @@ module UnifiedHealthData
 
       if detector.partial_failure?
         detector.log_and_track(resource_type:)
-        # NOTE: If errors and warnings co-exist (e.g., VistA times out but Oracle Health has a
-        # missing Binary warning), the error takes precedence and warnings are not surfaced.
-        # This is intentional — a source-level failure already triggers UpstreamPartialFailure
-        # handling, and the warning about a missing attachment is secondary.
+        handle_partial_failure!(detector, response)
+      elsif detector.warnings? && response.body.is_a?(Hash)
+        detector.log_and_track_warnings(resource_type:)
+        response.body['_warnings'] = detector.warning_details
+      end
+    end
+
+    # Handles partial failure detection: either injects warnings for recoverable
+    # single-source failures or raises UpstreamPartialFailure.
+    #
+    # NOTE: If errors and warnings co-exist (e.g., VistA times out but Oracle Health has a
+    # missing Binary warning), the error takes precedence and warnings are not surfaced.
+    # This is intentional — a source-level failure already triggers UpstreamPartialFailure
+    # handling, and the warning about a missing attachment is secondary.
+    def handle_partial_failure!(detector, response)
+      if Flipper.enabled?(:mhv_medical_records_partial_failure_handling) &&
+         detector.recoverable_failure? && !detector.all_sources_failed?
+        # Recoverable single-source failure: inject failure details as warnings
+        # so downstream services/controllers render partial data with 206
+        response.body['_warnings'] = detector.failure_details if response.body.is_a?(Hash)
+      else
         raise Common::Exceptions::UpstreamPartialFailure.new(
           failed_sources: detector.failed_sources,
           failure_details: detector.failure_details
         )
-      end
-
-      if detector.warnings? && response.body.is_a?(Hash)
-        detector.log_and_track_warnings(resource_type:)
-        response.body['_warnings'] = detector.warning_details
       end
     end
 

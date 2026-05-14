@@ -26,6 +26,9 @@ module MyHealth
             handle_client_error(error, api_type, use_dynamic_status:)
           when Common::Exceptions::BackendServiceException
             handle_backend_service_error(error, api_type)
+          when Common::Exceptions::UpstreamPartialFailure
+            detail = error.errors.first&.detail || error.message
+            render_error("#{api_type} Upstream Partial Failure", detail, '502', 502, :bad_gateway)
           when Breakers::OutageException, SocketError, OpenSSL::SSL::SSLError
             render_error('Service Unavailable', 'Upstream service unavailable', '503', 503, :service_unavailable)
           else
@@ -63,6 +66,9 @@ module MyHealth
           when Common::Exceptions::BackendServiceException
             ["Backend service exception: #{error.errors.first&.detail}",
              'mhv_medical_records.backend_service_error']
+          when Common::Exceptions::UpstreamPartialFailure
+            ["#{resource_name} #{api_type} upstream partial failure: #{error.message}",
+             'mhv_medical_records.upstream_partial_failure']
           when Breakers::OutageException, SocketError, OpenSSL::SSL::SSLError
             ["#{resource_name} #{api_type} service unavailable: #{error.message}",
              'mhv_medical_records.service_unavailable']
@@ -79,13 +85,7 @@ module MyHealth
         # @param status [Integer, String] The status code
         # @param http_status [Symbol] The HTTP status symbol
         def render_error(title, detail, code, status, http_status)
-          error = {
-            title:,
-            detail:,
-            code:,
-            status:
-          }
-          render json: { errors: [error] }, status: http_status
+          render json: { errors: [{ title:, detail:, code:, status: }] }, status: http_status
         end
 
         # Maps an upstream HTTP status to the appropriate vets-api response status.
@@ -123,13 +123,12 @@ module MyHealth
 
         # Handles generic/unexpected errors
         def handle_generic_error(resource_name)
-          detail_message = if resource_name
-                             "An unexpected error occurred while retrieving #{resource_name}."
-                           else
-                             'An unexpected error occurred.'
-                           end
-
-          render_error('Internal Server Error', detail_message, '500', 500, :internal_server_error)
+          detail = if resource_name
+                     "An unexpected error occurred while retrieving #{resource_name}."
+                   else
+                     'An unexpected error occurred.'
+                   end
+          render_error('Internal Server Error', detail, '500', 500, :internal_server_error)
         end
 
         def monitor

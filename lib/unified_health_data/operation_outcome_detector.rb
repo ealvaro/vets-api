@@ -24,8 +24,9 @@ module UnifiedHealthData
     STATSD_WARNING_KEY_PREFIX = 'api.uhd.partial_warning'
     ERROR_SEVERITIES = %w[error fatal].freeze
     WARNING_SEVERITIES = %w[warning].freeze
+    RECOVERABLE_CODES = %w[incomplete].freeze
 
-    attr_reader :body, :failure_details, :failed_sources, :warning_details
+    attr_reader :body, :failure_details, :failed_sources, :warning_details, :recoverable_sources
 
     # @param body [Hash] The response body from SCDF containing vista and oracle-health keys
     def initialize(body)
@@ -33,6 +34,7 @@ module UnifiedHealthData
       @failed_sources = []
       @failure_details = []
       @warning_details = []
+      @recoverable_sources = []
       detect_issues if @body.is_a?(Hash)
     end
 
@@ -44,6 +46,18 @@ module UnifiedHealthData
     # @return [Boolean] true if any OperationOutcome with warning severity was found
     def warnings?
       @warning_details.any?
+    end
+
+    # @return [Boolean] true if all failed sources have the `incomplete` signal,
+    #   indicating recoverable source outages (not processing errors)
+    def recoverable_failure?
+      partial_failure? && @failed_sources.all? { |source| @recoverable_sources.include?(source) }
+    end
+
+    # @return [Boolean] true if every source present in the response body is in @failed_sources
+    def all_sources_failed?
+      present_sources = [SourceConstants::VISTA, SourceConstants::ORACLE_HEALTH].select { |s| @body&.key?(s) }
+      present_sources.any? && present_sources.all? { |source| @failed_sources.include?(source) }
     end
 
     # Logs the partial failure details and increments StatsD metrics
@@ -107,6 +121,7 @@ module UnifiedHealthData
         if ERROR_SEVERITIES.include?(issue['severity'])
           @failure_details << detail
           @failed_sources << source unless @failed_sources.include?(source)
+          add_recoverable_source(source, issue['code'])
         elsif WARNING_SEVERITIES.include?(issue['severity'])
           @warning_details << detail
         end
@@ -153,6 +168,10 @@ module UnifiedHealthData
           tags: ["source:#{source}", "resource_type:#{resource_type}"]
         )
       end
+    end
+
+    def add_recoverable_source(source, code)
+      @recoverable_sources << source if RECOVERABLE_CODES.include?(code) && @recoverable_sources.exclude?(source)
     end
   end
 end
