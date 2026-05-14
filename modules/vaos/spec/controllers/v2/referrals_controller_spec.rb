@@ -59,6 +59,10 @@ RSpec.describe VAOS::V2::ReferralsController, type: :request do
           .and_return(referral_list_entries)
         allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:get_active_appointments_for_referral)
           .and_return(empty_appointments_response)
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?)
+          .with(:va_online_scheduling_referral_list_has_appointments, anything)
+          .and_return(true)
       end
 
       it 'returns a list of referrals in JSON:API format' do
@@ -392,6 +396,27 @@ RSpec.describe VAOS::V2::ReferralsController, type: :request do
             expect(attrs_a['hasAppointments']).to be_nil
             expect(attrs_b['hasAppointments']).to be(true)
           end
+        end
+      end
+
+      context 'when va_online_scheduling_referral_list_has_appointments is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:va_online_scheduling_referral_list_has_appointments, anything)
+            .and_return(false)
+        end
+
+        it 'skips the appointments lookup and leaves hasAppointments as nil' do
+          expect_any_instance_of(VAOS::V2::AppointmentsService)
+            .not_to receive(:get_active_appointments_for_referral)
+
+          get '/vaos/v2/referrals'
+
+          expect(response).to have_http_status(:ok)
+          data = JSON.parse(response.body)['data']
+          expect(data).not_to be_empty
+          expect(data.map { |d| d['attributes']['hasAppointments'] }).to all(be_nil)
         end
       end
     end

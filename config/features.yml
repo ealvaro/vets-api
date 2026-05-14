@@ -2658,6 +2658,15 @@ features:
       Use referring_provider_npi from CCRA for EPS provider lookups.
       Default is treating_provider_npi (root level). Falls back to nested provider_npi if selected NPI is blank.
       Primary care flag takes priority if both are enabled.
+  va_online_scheduling_referral_list_has_appointments:
+    actor_type: user
+    enable_in_development: false
+    description: >-
+      Owned by Community Care Appointments. When enabled, the GET /vaos/v2/referrals
+      index endpoint annotates each entry with hasAppointments by querying EPS and
+      VAOS for active appointments per referral. When disabled, hasAppointments is
+      null on every entry. Gate exists for performance rollback — the lookup is
+      O(N) external calls and has been observed to cause timeouts.
   va_online_scheduling_unified_non_primary_care:
     actor_type: user
     enable_in_development: false

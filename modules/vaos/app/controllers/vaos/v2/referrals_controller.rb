@@ -77,6 +77,7 @@ module VAOS
       # @return [Array<Ccra::ReferralListEntry>] The same collection, annotated in place
       def add_has_appointments_to_referrals(referrals)
         return referrals unless referrals.respond_to?(:each)
+        return referrals unless Flipper.enabled?(:va_online_scheduling_referral_list_has_appointments, current_user)
 
         referrals.each { |referral| set_has_appointments(referral) }
       end
