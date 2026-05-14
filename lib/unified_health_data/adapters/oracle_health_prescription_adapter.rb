@@ -337,10 +337,8 @@ module UnifiedHealthData
           normalize_active_status(refills_remaining, expiration_date, has_in_progress_dispense, resource)
         when 'on-hold'
           STATUS_PROVIDER_HOLD
-        when 'cancelled', 'entered-in-error', 'stopped'
+        when 'cancelled', 'entered-in-error', 'stopped', 'completed'
           STATUS_DISCONTINUED
-        when 'completed'
-          normalize_completed_status(expiration_date)
         when 'draft'
           STATUS_PENDING
         when 'unknown'
@@ -391,18 +389,6 @@ module UnifiedHealthData
 
         # Default: active
         STATUS_ACTIVE
-      end
-
-      # Determines VistA status for 'completed' MedicationRequest
-      #
-      # @param expiration_date [Time, nil] Parsed UTC expiration date
-      # @return [String] VistA status value ('expired' or 'discontinued')
-      def normalize_completed_status(expiration_date)
-        if expiration_date.nil?
-          STATUS_DISCONTINUED
-        else
-          STATUS_EXPIRED
-        end
       end
 
       def extract_facility_name(resource)

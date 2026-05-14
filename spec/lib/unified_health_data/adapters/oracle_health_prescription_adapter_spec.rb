@@ -343,10 +343,10 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
         expect(result.disp_status).to eq('Expired')
       end
 
-      it 'maps completed to "expired" when expired more than 120 days ago' do
+      it 'maps completed to "discontinued" when expired more than 120 days ago' do
         result = subject.parse(fhir_resource(status: 'completed', refills: 0, expiration: 150.days.ago, source: 'VA'))
-        expect(result.refill_status).to eq('expired')
-        expect(result.disp_status).to eq('Expired')
+        expect(result.refill_status).to eq('discontinued')
+        expect(result.disp_status).to eq('Discontinued')
       end
 
       it 'maps completed to "discontinued" when expiration date is nil' do
