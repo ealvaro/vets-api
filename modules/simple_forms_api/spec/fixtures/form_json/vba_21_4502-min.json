@@ -1,0 +1,23 @@
+{
+  "form_number": "21-4502",
+  "full_name": {
+    "first": "Jane",
+    "last": "Doe"
+  },
+  "email": "jane.doe@example.com",
+  "current_mailing_address": {
+    "street": "1 Main St",
+    "city": "Anytown",
+    "state": "VA",
+    "postal_code": "22301",
+    "country": "US"
+  },
+  "branch_of_service": "NAVY",
+  "vehicle_type": "VAN",
+  "statement_of_truth_signature": "Jane Doe",
+  "signature_date": {
+    "month": "01",
+    "day": "15",
+    "year": "2026"
+  }
+}

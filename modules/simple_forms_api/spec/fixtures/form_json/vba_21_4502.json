@@ -70,5 +70,9 @@
   },
   "previous_application_location": "some text info",
   "statement_of_truth_signature": "Taylor A Veteran",
-  "signature_date": "11-21-2026"
+  "signature_date": {
+    "month": "11",
+    "day": "21",
+    "year": "2026"
+  }
 }
