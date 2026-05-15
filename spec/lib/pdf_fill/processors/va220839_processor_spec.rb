@@ -40,6 +40,7 @@ describe PdfFill::Processors::VA220839Processor do
         expect(get_field_value(fields, 'academic_year')).to eq '2025 to 2025'
         expect(get_field_value(fields, 'poc_name')).to eq 'Jane Doe'
         expect(get_field_value(fields, 'sco_name')).to eq 'Jane Doe2'
+        expect(get_field_value(fields, 'date_signed')).to eq '03/10/2025'
       end
     end
 

@@ -149,6 +149,7 @@ module PdfFill
         end
         format_institutions(form_data)
         format_agreement_type(form_data)
+        format_signed_date(form_data)
 
         form_data['authenticatedUser'] =
           form_data['isAuthenticated'] ? 'Filled out by authenticated user' : 'Filled out by unauthenticated user'
@@ -245,6 +246,16 @@ module PdfFill
         end
 
         school_data
+      end
+
+      def format_signed_date(form_data)
+        form_data['dateSigned'] = format_date(form_data['dateSigned'])
+      end
+
+      def format_date(date_string)
+        Date.parse(date_string).strftime('%m/%d/%Y')
+      rescue
+        date_string
       end
     end
   end
