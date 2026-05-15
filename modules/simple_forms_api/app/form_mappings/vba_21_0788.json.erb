@@ -1,0 +1,68 @@
+{
+  <%# Section 1 (VETERAN'S IDENTIFICATION INFORMATION) %>
+
+  "form1[0].Page_1[0].NAMEVETERAN[0]": "<%= form.full_name %>",
+  "form1[0].Page_1[0].NAMEVETERAN2[0]": "<%= form.ssn %>",
+  "form1[0].Page_1[0].VAFileNumber[0]": "<%= form.file_number %>",
+  "form1[0].Page_1[0].VAFileNumber[1]": "<%= form.data['date_of_birth'] %>",
+
+  <%# Section 2 (INFORMATION ON CLAIMANT OR INDIVIDUAL ACTING ON BEHALF OF A MINOR CHILD) %>
+
+  "form1[0].Page_1[0].NAMEVETERAN[1]": "<%= form.on_behalf_of_child %>",
+
+  "form1[0].Page_1[0].RadioButtonList[0]":
+    "<%= form.relationship == 'spouse' ? '0' : 'Off' %>",
+
+  "form1[0].Page_1[0].RadioButtonList[1]":
+    "<%= form.relationship == 'child_18_23' ? '0' : 'Off' %>",
+
+  "form1[0].Page_1[0].RadioButtonList[2]":
+    "<%= form.relationship == 'custodian' ? '0' : 'Off' %>",
+
+  "form1[0].Page_1[0].RadioButtonList[3]":
+    "<%= form.relationship == 'parent' ? '0' : 'Off' %>",
+
+  "form1[0].Page_1[0].RadioButtonList[4]":
+    "<%= form.relationship == 'child_disabled' ? '0' : 'Off' %>",
+
+  "form1[0].Page_1[0].RadioButtonList[5]":
+    "<%= form.relationship == 'other' ? '0' : 'Off' %>",
+
+  "form1[0].Page_1[0].NAMEVETERAN[2]": "<%= form.full_address %>",
+  "form1[0].Page_1[0].NAMEVETERAN2[1]": "<%= form.phone %>",
+  "form1[0].Page_1[0].Email[0]": "<%= form.email %>",
+
+  <%# SECTION III (APPORTIONMENT) %>
+
+  <% form.apportionment_fields.each do |k, v| %>
+    "<%= k %>": "<%= v %>",
+  <% end %>
+
+  <%# 11 - 12 %>
+
+  "form1[0].Page_1[0].RadioButtonList[14]":
+    "<%= form.stepchild_living_in_household? ? '1' : 'Off' %>",
+
+  "form1[0].Page_1[0].RadioButtonList[15]":
+    "<%= form.stepchild_living_in_household? ? 'Off' : '1' %>",
+
+  "form1[0].Page_2[0].RadioButtonList[0]":
+    "<%= form.legally_adopted? ? '1' : 'Off' %>",
+
+  "form1[0].Page_2[0].RadioButtonList[1]":
+    "<%= form.legally_adopted? ? 'Off' : '1' %>",
+
+  <%# 13A %>
+
+  <% form.incarceration_fields.each do |k, v| %>
+    "<%= k %>": "<%= v %>",
+  <% end %>
+
+  "form1[0].Page_2[0].NAMEVETERAN[0]": "<%= form.facility_name %>",
+  "form1[0].Page_2[0].NAMEVETERAN[1]": "<%= form.facility_address %>",
+
+  <%# FINAL %>
+
+  "form1[0].Page_2[0].Remarks[0]": "<%= form.remarks %>",
+  "form1[0].Page_2[0].DateSigned[0]": "<%= form.signature_date %>"
+}

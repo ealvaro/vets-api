@@ -1,0 +1,228 @@
+# frozen_string_literal: true
+
+require_rel '../form_engine'
+
+module SimpleFormsApi
+  class VBA210788 < BaseForm
+    STATS_KEY = 'api.simple_forms_api.21_0788'
+
+    APPORTIONMENT_RADIOS = [
+      [7, 6],
+      [12, 10],
+      [8, 9],
+      [13, 11]
+    ].freeze
+
+    INCARCERATION_BLOCKS = {
+      veteran_incarcerated: {
+        main: 2,
+        felony: 3,
+        misdemeanor: 4
+      },
+      spouse_or_child_incarcerated: {
+        main: 5,
+        felony: 6,
+        misdemeanor: 7
+      }
+    }.freeze
+
+    SINGLE_REASONS = {
+      veteran_incompetent_no_fiduciary: 8,
+      veteran_pension_care_facility: 9,
+      enemy_territory_resident: 10,
+      veteran_disappeared: 11
+    }.freeze
+
+    attr_reader :address
+
+    def initialize(data)
+      super
+
+      @address = FormEngine::Address.new(
+        address_line1: data.dig('address', 'street'),
+        address_line2: data.dig('address', 'street2'),
+        city: data.dig('address', 'city'),
+        country_code_iso3: data.dig('address', 'country'),
+        state_code: data.dig('address', 'state'),
+        zip_code: data.dig('address', 'postal_code')
+      )
+    end
+
+    def full_name
+      [
+        data.dig('full_name', 'first'),
+        data.dig('full_name', 'middle'),
+        data.dig('full_name', 'last')
+      ].compact.join(' ')
+    end
+
+    def ssn
+      data['ssn']
+    end
+
+    def file_number
+      data['va_file_number']
+    end
+
+    def full_address
+      [
+        @address.address_line1,
+        @address.address_line2,
+        @address.city,
+        @address.state_code,
+        @address.zip_code
+      ].compact.join(', ')
+    end
+
+    def phone
+      format_phone(data['phone'])
+    end
+
+    def email
+      data['email']
+    end
+
+    def stepchild_living_in_household?
+      data['stepchild_living_in_household']
+    end
+
+    def relationship
+      data['relationship_to_veteran']
+    end
+
+    def legally_adopted?
+      data['legally_adopted']
+    end
+
+    def on_behalf_of_child
+      data['on_behalf_of_child']
+    end
+
+    def facility_name
+      data['facility_name']
+    end
+
+    def facility_address
+      data['facility_address']
+    end
+
+    def remarks
+      data['remarks']
+    end
+
+    def signature
+      data['statement_of_truth_signature']
+    end
+
+    def signature_date
+      return nil unless data['signature_date']
+
+      Date.parse(data['signature_date']).strftime('%m/%d/%Y')
+    end
+
+    def people
+      data['apportionment_people'] || []
+    end
+
+    def apportionment_fields
+      mapped = {}
+
+      people.first(4).each_with_index do |person, i|
+        mapped["form1[0].Page_1[0].NAMEVETERAN[#{3 + i}]"] = person['full_name']
+        mapped["form1[0].Page_1[0].NAMEVETERAN[#{7 + i}]"] = person['ssn']
+        mapped["form1[0].Page_1[0].NAMEVETERAN[#{11 + i}]"] = person['relationship']
+
+        yes_idx, no_idx = APPORTIONMENT_RADIOS[i]
+
+        if person['currently_receiving']
+          mapped["form1[0].Page_1[0].RadioButtonList[#{yes_idx}]"] = '1'
+        else
+          mapped["form1[0].Page_1[0].RadioButtonList[#{no_idx}]"] = '1'
+        end
+      end
+
+      mapped
+    end
+
+    def incarceration_fields
+      mapped = {}
+
+      (2..11).each do |i|
+        mapped["form1[0].Page_2[0].RadioButtonList[#{i}]"] = 'Off'
+      end
+
+      reason = data['reason']
+      incarceration = data['incarceration'] || {}
+
+      block = INCARCERATION_BLOCKS[reason&.to_sym]
+
+      if block
+        mapped["form1[0].Page_2[0].RadioButtonList[#{block[:main]}]"] = '0'
+
+        mapped["form1[0].Page_2[0].RadioButtonList[#{block[:felony]}]"] =
+          incarceration['felony'] ? '0' : 'Off'
+
+        mapped["form1[0].Page_2[0].RadioButtonList[#{block[:misdemeanor]}]"] =
+          incarceration['misdemeanor'] ? '0' : 'Off'
+      end
+
+      SINGLE_REASONS.each do |key, idx|
+        mapped["form1[0].Page_2[0].RadioButtonList[#{idx}]"] =
+          reason == key.to_s ? '0' : 'Off'
+      end
+
+      mapped
+    end
+
+    # -------------------------
+    # Stamping
+    # -------------------------
+
+    def desired_stamps
+      return [] if signature.blank?
+
+      [{
+        coords: [50, 340],
+        text: signature,
+        page: 1
+      }]
+    end
+
+    def submission_date_stamps(timestamp = Time.current)
+      [
+        {
+          coords: [460, 690],
+          text: 'Application Submitted:',
+          page: 0,
+          font_size: 12
+        },
+        {
+          coords: [460, 670],
+          text: timestamp.in_time_zone('UTC').strftime('%H:%M %Z %D'),
+          page: 0,
+          font_size: 12
+        }
+      ]
+    end
+
+    # -------------------------
+    # Metadata
+    # -------------------------
+
+    def metadata
+      {
+        'veteranFullName' => full_name,
+        'fileNumber' => file_number,
+        'source' => 'VA Platform Digital Forms',
+        'docType' => "StructuredData:#{data['form_number']}",
+        'businessLine' => 'CMP'
+      }
+    end
+
+    def format_phone(phone)
+      return nil if phone.nil?
+
+      "#{phone[0...-7]}-#{phone[-7...-4]}-#{phone[-4..]}"
+    end
+  end
+end
