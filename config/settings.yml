@@ -814,7 +814,7 @@ lighthouse:
       - system/Patient.read
       - launch
     timeout: 30
-    use_mocks: false
+    use_mocks: <%= ENV['lighthouse__healthcare_cost_and_coverage__use_mocks'] %>
   letters_generator:
     access_token:
       aud_claim_url: <%= ENV['lighthouse__letters_generator__access_token__aud_claim_url'] %>
