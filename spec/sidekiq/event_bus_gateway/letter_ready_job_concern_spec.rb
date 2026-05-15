@@ -95,6 +95,51 @@ RSpec.describe EventBusGateway::LetterReadyJobConcern, type: :job do
         expect { test_instance.send(:get_mpi_profile, participant_id) }
           .to raise_error(EventBusGateway::Errors::MpiProfileNotFoundError, 'Failed to fetch MPI profile')
       end
+
+      it 'logs nil MPI response with participant_id before raising' do
+        expect_any_instance_of(Logging::Monitor).to receive(:track_request)
+          .with(:error, /MPI returned nil response/,
+                'event_bus_gateway.letter_ready.mpi_nil_response',
+                participant_id:)
+        expect { test_instance.send(:get_mpi_profile, participant_id) }
+          .to raise_error(EventBusGateway::Errors::MpiProfileNotFoundError)
+      end
+    end
+
+    context 'when MPI service returns server error' do
+      let(:mpi_profile_response) { create(:find_profile_server_error_response) }
+
+      it 'raises BackendServiceException' do
+        expect { test_instance.send(:get_mpi_profile, participant_id) }
+          .to raise_error(Common::Exceptions::BackendServiceException)
+      end
+
+      it 'logs server error with participant_id before raising' do
+        expect_any_instance_of(Logging::Monitor).to receive(:track_request)
+          .with(:error, /MPI service returned server error/,
+                'event_bus_gateway.letter_ready.mpi_server_error',
+                participant_id:)
+        expect { test_instance.send(:get_mpi_profile, participant_id) }
+          .to raise_error(Common::Exceptions::BackendServiceException)
+      end
+    end
+
+    context 'when MPI service returns not found response' do
+      let(:mpi_profile_response) { create(:find_profile_not_found_response) }
+
+      it 'raises MpiProfileNotFoundError' do
+        expect { test_instance.send(:get_mpi_profile, participant_id) }
+          .to raise_error(EventBusGateway::Errors::MpiProfileNotFoundError, 'MPI profile not found for participant')
+      end
+
+      it 'logs not found with participant_id before raising' do
+        expect_any_instance_of(Logging::Monitor).to receive(:track_request)
+          .with(:error, /MPI profile not found/,
+                'event_bus_gateway.letter_ready.mpi_not_found',
+                participant_id:)
+        expect { test_instance.send(:get_mpi_profile, participant_id) }
+          .to raise_error(EventBusGateway::Errors::MpiProfileNotFoundError)
+      end
     end
 
     context 'when MPI service returns response with nil profile' do
@@ -103,6 +148,15 @@ RSpec.describe EventBusGateway::LetterReadyJobConcern, type: :job do
       it 'raises the correct error message' do
         expect { test_instance.send(:get_mpi_profile, participant_id) }
           .to raise_error(EventBusGateway::Errors::MpiProfileNotFoundError, 'Failed to fetch MPI profile')
+      end
+
+      it 'logs unexpected state with participant_id before raising' do
+        expect_any_instance_of(Logging::Monitor).to receive(:track_request)
+          .with(:error, /MPI unexpected response state/,
+                'event_bus_gateway.letter_ready.mpi_unexpected_state',
+                participant_id:)
+        expect { test_instance.send(:get_mpi_profile, participant_id) }
+          .to raise_error(EventBusGateway::Errors::MpiProfileNotFoundError)
       end
     end
   end

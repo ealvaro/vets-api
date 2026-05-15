@@ -335,7 +335,9 @@ RSpec.describe EventBusGateway::LetterReadyEmailJob, type: :job do
     end
 
     it 'logs the skipped notification' do
-      expect(Rails.logger).to receive(:error).with(
+      subject.new.perform(participant_id, template_id)
+
+      expect(Rails.logger).to have_received(:error).with(
         'LetterReadyEmailJob email skipped',
         {
           notification_type: 'email',
@@ -343,17 +345,15 @@ RSpec.describe EventBusGateway::LetterReadyEmailJob, type: :job do
           template_id:
         }
       )
-
-      subject.new.perform(participant_id, template_id)
     end
 
     it 'increments the skipped metric' do
-      expect(StatsD).to receive(:increment).with(
+      subject.new.perform(participant_id, template_id)
+
+      expect(StatsD).to have_received(:increment).with(
         "#{described_class::STATSD_METRIC_PREFIX}.skipped",
         tags: EventBusGateway::Constants::DD_TAGS + ['notification_type:email', 'reason:first_name_not_available']
       )
-
-      subject.new.perform(participant_id, template_id)
     end
   end
 

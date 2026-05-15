@@ -340,7 +340,9 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
         end
 
         it 'logs skipped email notification due to missing first_name' do
-          expect(Rails.logger).to receive(:error).with(
+          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+
+          expect(Rails.logger).to have_received(:error).with(
             'LetterReadyNotificationJob email skipped',
             {
               notification_type: 'email',
@@ -348,17 +350,15 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
               template_id: email_template_id
             }
           )
-
-          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
         end
 
         it 'increments skipped metric for email' do
-          expect(StatsD).to receive(:increment).with(
+          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+
+          expect(StatsD).to have_received(:increment).with(
             'event_bus_gateway.letter_ready_notification.skipped',
             tags: EventBusGateway::Constants::DD_TAGS + ['notification_type:email', 'reason:first_name_not_present']
           )
-
-          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
         end
       end
     end

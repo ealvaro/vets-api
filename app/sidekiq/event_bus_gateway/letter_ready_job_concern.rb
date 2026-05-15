@@ -28,26 +28,36 @@ module EventBusGateway
           ssn: person[:ssn_nbr]
         )
 
-        handle_mpi_response(mpi_response)
+        handle_mpi_response(mpi_response, participant_id)
       end
     end
 
-    def handle_mpi_response(mpi_response)
-      raise Errors::MpiProfileNotFoundError, 'Failed to fetch MPI profile' if mpi_response.nil?
+    def handle_mpi_response(mpi_response, participant_id)
+      if mpi_response.nil?
+        log_mpi_failure('mpi_nil_response', 'returned nil response', participant_id)
+        raise Errors::MpiProfileNotFoundError, 'Failed to fetch MPI profile'
+      end
 
       return mpi_response.profile if mpi_response.ok? && mpi_response.profile.present?
 
       if mpi_response.server_error?
+        log_mpi_failure('mpi_server_error', 'service returned server error', participant_id)
         raise Common::Exceptions::BackendServiceException.new(
-          'MPI_502',
-          detail: 'MPI service returned a server error'
+          'MPI_502', detail: 'MPI service returned a server error'
         )
       elsif mpi_response.not_found?
+        log_mpi_failure('mpi_not_found', 'profile not found', participant_id)
         raise Errors::MpiProfileNotFoundError, 'MPI profile not found for participant'
       else
-        # Unexpected state
+        log_mpi_failure('mpi_unexpected_state', 'unexpected response state', participant_id)
         raise Errors::MpiProfileNotFoundError, 'Failed to fetch MPI profile'
       end
+    end
+
+    def log_mpi_failure(metric_suffix, message, participant_id)
+      monitor.track_request(:error, "LetterReadyJob MPI #{message}",
+                            "event_bus_gateway.letter_ready.#{metric_suffix}",
+                            participant_id:)
     end
 
     def get_first_name_from_participant_id(participant_id)
@@ -69,6 +79,10 @@ module EventBusGateway
 
     def user_account(icn)
       UserAccount.find_by(icn:)
+    end
+
+    def monitor
+      @monitor ||= Logging::Monitor.new('event-bus-gateway-letter-ready')
     end
   end
 end
