@@ -98,9 +98,8 @@ module MedicalCopays
         end
       rescue => e
         StatsD.increment("#{STATSD_KEY_PREFIX}.detail.failure")
-        Rails.logger.error(
-          "MedicalCopays::LighthouseIntegration::Service#get_detail error for invoice #{id}: #{e.class}"
-        )
+        message = 'MedicalCopays::LighthouseIntegration::Service#get_detail error for invoice:'
+        Rails.logger.error("#{message} #{id}", exception: e)
         raise e
       end
 
@@ -358,7 +357,12 @@ module MedicalCopays
           end
         end
 
-        fetch_and_index('medication dispenses', dispense_ids, medication_dispense_service)
+        return {} if dispense_ids.blank?
+
+        dispense_ids.each_with_object({}) do |id, hash|
+          result = fetch_and_index('medication dispenses', [id], medication_dispense_service)
+          hash.merge!(result)
+        end
       end
 
       def fetch_medications(medication_dispenses)
@@ -367,13 +371,16 @@ module MedicalCopays
           extract_id_from_reference(ref) if ref
         end
 
-        fetch_and_index('medications', medication_ids, medication_service)
+        medication_ids.each_with_object({}) do |id, hash|
+          result = fetch_and_index('medications', [id], medication_service)
+          hash.merge!(result)
+        end
       end
 
       def fetch_and_index(data_type, ids, service)
         return {} if ids.empty?
 
-        response = service.list(id: ids.join(','))
+        response = service.list(id: ids&.join(','))
         entries = response['entry'] || []
         entries.each_with_object({}) do |entry, hash|
           resource = entry['resource']
