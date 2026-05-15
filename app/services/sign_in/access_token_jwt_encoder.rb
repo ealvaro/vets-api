@@ -16,7 +16,7 @@ module SignIn
 
     def payload
       {
-        iss: Constants::AccessToken::ISSUER,
+        iss: access_token.issuer,
         aud: access_token.audience,
         client_id: access_token.client_id,
         azp: access_token.client_id,

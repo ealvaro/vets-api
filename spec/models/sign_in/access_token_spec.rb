@@ -24,7 +24,7 @@ RSpec.describe SignIn::AccessToken, type: :model do
   let(:session_handle) { create(:oauth_session).handle }
   let(:user_uuid) { create(:user_account).id }
   let!(:client_config) do
-    create(:client_config, authentication:, access_token_duration:, access_token_attributes:)
+    create(:client_config, authentication:, access_token_duration:, access_token_attributes:, oidc:)
   end
   let(:access_token_duration) { SignIn::Constants::AccessToken::VALIDITY_LENGTH_SHORT_MINUTES }
   let(:access_token_attributes) { SignIn::Constants::AccessToken::USER_ATTRIBUTES }
@@ -45,6 +45,7 @@ RSpec.describe SignIn::AccessToken, type: :model do
   let(:device_secret_hash) { SecureRandom.hex }
   let(:user_attributes) { { 'first_name' => first_name, 'last_name' => last_name, 'email' => email } }
   let(:nonce) { nil }
+  let(:oidc) { false }
 
   describe 'validations' do
     describe '#session_handle' do
@@ -284,6 +285,24 @@ RSpec.describe SignIn::AccessToken, type: :model do
 
     it 'returns a hash of expected values' do
       expect(subject).to eq(expected_hash)
+    end
+  end
+
+  describe '#issuer' do
+    subject { access_token.issuer }
+
+    context 'when client config is not oidc' do
+      it 'returns the standard issuer constant' do
+        expect(subject).to eq(SignIn::Constants::AccessToken::ISSUER)
+      end
+    end
+
+    context 'when client config is oidc' do
+      let(:oidc) { true }
+
+      it 'returns the oidc issuer from settings' do
+        expect(subject).to eq(IdentitySettings.sign_in.oidc_issuer)
+      end
     end
   end
 end

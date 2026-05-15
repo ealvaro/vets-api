@@ -52,7 +52,7 @@ session_cookie:
 sign_in:
   arp_client_id: ce6db4d7974daf061dccdd21ba9add14
   cookies_secure: true
-  issuer: https://staging-api.va.gov/sign_in
+  oidc_issuer: https://staging-api.va.gov/sign_in
   info_cookie_domain: va.gov
   jwt_encode_key: /srv/vets-api/secret/sign-in-service-token-signing-lowers-key.pem
   jwt_old_encode_key: /srv/vets-api/secret/sign-in-service-token-signing-lowers-key-old.pem

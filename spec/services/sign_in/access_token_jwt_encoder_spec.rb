@@ -8,13 +8,14 @@ RSpec.describe SignIn::AccessTokenJwtEncoder do
 
     let(:access_token) { create(:access_token, client_id:, nonce:) }
     let(:client_id) { client_config.client_id }
-    let(:client_config) { create(:client_config, access_token_attributes:) }
+    let(:client_config) { create(:client_config, access_token_attributes:, oidc:) }
     let(:access_token_attributes) { [] }
     let(:nonce) { nil }
+    let(:oidc) { false }
 
     context 'when input object is an access token' do
       let(:expected_sub) { access_token.user_uuid }
-      let(:expected_iss) { SignIn::Constants::AccessToken::ISSUER }
+      let(:expected_iss) { access_token.issuer }
       let(:expected_client_id) { access_token.client_id }
       let(:expected_azp) { access_token.client_id }
       let(:expected_exp) { access_token.expiration_time.to_i }
@@ -48,6 +49,22 @@ RSpec.describe SignIn::AccessTokenJwtEncoder do
         expect(decoded_jwt.version).to eq expected_version
         expect(decoded_jwt.jti).to eq expected_jti
         expect(decoded_jwt.aud).to eq expected_aud
+      end
+
+      context 'when client is not oidc' do
+        it 'includes the standard issuer' do
+          decoded_jwt = OpenStruct.new(JWT.decode(subject, false, nil).first)
+          expect(decoded_jwt.iss).to eq(SignIn::Constants::AccessToken::ISSUER)
+        end
+      end
+
+      context 'when client is oidc' do
+        let(:oidc) { true }
+
+        it 'includes the oidc issuer' do
+          decoded_jwt = OpenStruct.new(JWT.decode(subject, false, nil).first)
+          expect(decoded_jwt.iss).to eq(IdentitySettings.sign_in.oidc_issuer)
+        end
       end
 
       context 'expected user_attributes on encoded access token' do

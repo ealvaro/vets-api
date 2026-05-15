@@ -11,7 +11,7 @@ module SignIn
         CURRENT_VERSION = 'V0'
       ].freeze
 
-      ISSUER = IdentitySettings.sign_in.issuer
+      ISSUER = 'va.gov sign in'
       USER_ATTRIBUTES = %w[first_name last_name email all_emails].freeze
     end
   end

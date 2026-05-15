@@ -93,6 +93,10 @@ module SignIn
       }
     end
 
+    def issuer
+      client_config.oidc ? IdentitySettings.sign_in.oidc_issuer : Constants::AccessToken::ISSUER
+    end
+
     private
 
     def create_uuid

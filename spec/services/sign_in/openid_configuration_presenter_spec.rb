@@ -9,7 +9,7 @@ RSpec.describe SignIn::OpenidConfigurationPresenter do
     let(:base_url) { IdentitySettings.sign_in.sts_client.base_url }
 
     it 'returns the expected issuer' do
-      expect(subject[:issuer]).to eq(SignIn::Constants::AccessToken::ISSUER)
+      expect(subject[:issuer]).to eq(IdentitySettings.sign_in.oidc_issuer)
     end
 
     it 'returns the expected authorization_endpoint' do

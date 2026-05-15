@@ -20,15 +20,16 @@ RSpec.describe SignIn::TokenSerializer do
     end
     let(:cookies) { {} }
     let(:refresh_token) { create(:refresh_token) }
-    let(:access_token) { create(:access_token) }
+    let(:access_token) { create(:access_token, client_id: client_config.client_id) }
     let(:anti_csrf_token) { 'some-anti-csrf-token' }
     let(:client_config) do
-      create(:client_config, authentication:, anti_csrf:, shared_sessions:, json_api_compatibility:)
+      create(:client_config, authentication:, anti_csrf:, shared_sessions:, json_api_compatibility:, oidc:)
     end
     let(:anti_csrf) { false }
     let(:json_api_compatibility) { true }
     let(:authentication) { SignIn::Constants::Auth::API }
     let(:device_secret) { 'some-device-secret' }
+    let(:oidc) { false }
     let(:shared_sessions) { false }
     let(:encoded_access_token) do
       SignIn::AccessTokenJwtEncoder.new(access_token:).perform
@@ -224,6 +225,22 @@ RSpec.describe SignIn::TokenSerializer do
         end
 
         it 'returns expected json payload' do
+          expect(subject).to eq(expected_json_payload)
+        end
+      end
+
+      context 'and client is configured as oidc' do
+        let(:oidc) { true }
+        let(:token_payload) do
+          {
+            access_token: encoded_access_token,
+            refresh_token: encrypted_refresh_token,
+            id_token: encoded_id_token,
+            token_type: SignIn::Constants::AccessToken::API_TOKEN_TYPE
+          }
+        end
+
+        it 'returns expected json payload with id_token' do
           expect(subject).to eq(expected_json_payload)
         end
       end

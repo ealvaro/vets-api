@@ -8,13 +8,14 @@ RSpec.describe SignIn::IdTokenJwtEncoder do
 
     let(:access_token) { create(:access_token, client_id:) }
     let(:client_id) { client_config.client_id }
-    let(:client_config) { create(:client_config, access_token_attributes:) }
+    let(:client_config) { create(:client_config, access_token_attributes:, oidc:) }
     let(:access_token_attributes) { [] }
+    let(:oidc) { false }
     let(:decoded_jwt) { JWT.decode(subject, false, nil).first }
 
     context 'when input object is an access token' do
       let(:expected_sub) { access_token.user_uuid }
-      let(:expected_iss) { SignIn::Constants::AccessToken::ISSUER }
+      let(:expected_iss) { access_token.issuer }
       let(:expected_azp) { access_token.client_id }
       let(:expected_exp) { access_token.expiration_time.to_i }
       let(:expected_iat) { access_token.created_time.to_i }
@@ -29,6 +30,20 @@ RSpec.describe SignIn::IdTokenJwtEncoder do
         expect(decoded_jwt['iat']).to eq expected_iat
         expect(decoded_jwt['auth_time']).to eq expected_auth_time
         expect(decoded_jwt['aud']).to eq expected_aud
+      end
+
+      context 'when client is not oidc' do
+        it 'includes the standard issuer' do
+          expect(decoded_jwt['iss']).to eq(SignIn::Constants::AccessToken::ISSUER)
+        end
+      end
+
+      context 'when client is oidc' do
+        let(:oidc) { true }
+
+        it 'includes the oidc issuer' do
+          expect(decoded_jwt['iss']).to eq(IdentitySettings.sign_in.oidc_issuer)
+        end
       end
 
       it 'does not include session-specific claims' do
