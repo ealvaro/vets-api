@@ -10,7 +10,7 @@ module Tooltips
 
     def index
       tooltips = @user_account.tooltips
-      render json: tooltips
+      render json: TooltipSerializer.new(tooltips)
     end
 
     def create
@@ -18,7 +18,7 @@ module Tooltips
       tooltip.last_signed_in = current_user.last_signed_in
       tooltip.counter += 1
       tooltip.save!
-      render json: tooltip, status: :created
+      render json: TooltipSerializer.new(tooltip), status: :created
     rescue ActiveRecord::RecordInvalid => e
       render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
     rescue => e
@@ -34,12 +34,12 @@ module Tooltips
 
       if params[:tooltip].present?
         if @tooltip.update(tooltip_params)
-          render json: @tooltip
+          render json: TooltipSerializer.new(@tooltip)
         else
           render json: { errors: @tooltip.errors.full_messages }, status: :unprocessable_entity
         end
       else
-        render json: @tooltip
+        render json: TooltipSerializer.new(@tooltip)
       end
     rescue ActiveRecord::RecordNotFound => e
       log_and_render_error(e, 'Tooltip not found')
@@ -61,9 +61,9 @@ module Tooltips
       render json: { error: 'Tooltip not found' }, status: :not_found unless @tooltip
     end
 
-    # only allow the tooltip_name, hidden, & counter(to reset) attributes to be modified via params object.
+    # only allow the tooltip_name, hidden, counter(to reset), & metadata attributes to be modified via params object.
     def tooltip_params
-      params.require(:tooltip).permit(:tooltip_name, :hidden, :counter)
+      params.require(:tooltip).permit(:tooltip_name, :hidden, :counter, metadata: {})
     end
 
     def increment_counter_if_new_session(tooltip)

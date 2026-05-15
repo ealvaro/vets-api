@@ -480,6 +480,7 @@ app/serializers/separation_location_serializer.rb @software/disability-benefits 
 app/serializers/service_history_serializer.rb @software/disability-benefits @software/backend-review-group
 app/serializers/submission_status_serializer.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 app/serializers/supporting_evidence_attachment_serializer.rb @software/disability-benefits @software/backend-review-group
+app/serializers/tooltip_serializer.rb @software/vfs-mhv-integration @software/backend-review-group
 app/serializers/tsa_letter_serializer.rb @software/va-core-veteran-experiences @software/backend-review-group
 app/serializers/user_action_event_serializer.rb @software/octo-identity
 app/serializers/user_action_serializer.rb @software/octo-identity
@@ -2120,6 +2121,7 @@ spec/serializers/separation_location_serializer_spec.rb @software/vfs-authentica
 spec/serializers/service_history_serializer_spec.rb @software/disability-benefits @software/backend-review-group
 spec/serializers/shared_examples_evss_claim_spec.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 spec/serializers/supporting_evidence_attachment_serializer_spec.rb @software/disability-benefits @software/backend-review-group
+spec/serializers/tooltip_serializer_spec.rb @software/vfs-mhv-integration @software/backend-review-group
 spec/serializers/user_serializer_spec.rb @software/octo-identity
 spec/serializers/user_verification_serializer_spec.rb @software/octo-identity
 spec/serializers/valid_va_file_number_serializer_spec.rb @software/vfs-authenticated-experience-backend @software/backend-review-group

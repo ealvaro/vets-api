@@ -375,5 +375,115 @@ RSpec.describe 'MyHealth::V1::Tooltips', type: :request do
       expect(tooltip.counter).to eq(0)
       expect(tooltip.user_account_id).to eq(user_account.id) # unchanged
     end
+
+    it 'allows storing metadata with dismissedIds on update' do
+      tooltip = create(:tooltip, user_account:, tooltip_name: 'test_tooltip')
+
+      params = {
+        tooltip: {
+          hidden: true,
+          metadata: { dismissed_ids: [123, 456] }
+        }
+      }
+
+      patch "/my_health/v1/tooltips/#{tooltip.id}", params:, headers:, as: :json
+
+      expect(response).to be_successful
+      json_response = JSON.parse(response.body)
+      expect(json_response['metadata']).to eq({ 'dismissed_ids' => [123, 456] })
+
+      tooltip.reload
+      expect(tooltip.metadata).to eq({ 'dismissed_ids' => [123, 456] })
+    end
+
+    it 'returns metadata in GET index response' do
+      create(:tooltip, user_account:, tooltip_name: 'with_meta', metadata: { 'dismissed_ids' => [789] })
+
+      get('/my_health/v1/tooltips', headers: headers.merge(inflection_header))
+
+      expect(response).to be_successful
+      json_response = JSON.parse(response.body)
+      tooltip_with_meta = json_response.find { |t| t['tooltipName'] == 'with_meta' }
+      expect(tooltip_with_meta['metadata']).to eq({ 'dismissedIds' => [789] })
+    end
+
+    it 'defaults metadata to empty hash when not provided' do
+      post '/my_health/v1/tooltips',
+           params: { tooltip: { tooltip_name: 'no_meta', hidden: false } },
+           headers:,
+           as: :json
+
+      expect(response).to have_http_status(:created)
+      json_response = JSON.parse(response.body)
+      expect(json_response['metadata']).to eq({})
+    end
+
+    context 'with metadata edge cases' do
+      let!(:tooltip) { create(:tooltip, user_account:, tooltip_name: 'edge_case_tooltip') }
+
+      it 'handles empty dismissed_ids array' do
+        params = { tooltip: { metadata: { dismissed_ids: [] } } }
+
+        patch "/my_health/v1/tooltips/#{tooltip.id}", params:, headers:, as: :json
+
+        expect(response).to be_successful
+        tooltip.reload
+        expect(tooltip.metadata).to eq({ 'dismissed_ids' => [] })
+      end
+
+      it 'handles string values in dismissed_ids array' do
+        params = { tooltip: { metadata: { dismissed_ids: %w[abc 123] } } }
+
+        patch "/my_health/v1/tooltips/#{tooltip.id}", params:, headers:, as: :json
+
+        expect(response).to be_successful
+        tooltip.reload
+        expect(tooltip.metadata).to eq({ 'dismissed_ids' => %w[abc 123] })
+      end
+
+      it 'strips null values from dismissed_ids array' do
+        params = { tooltip: { metadata: { dismissed_ids: [1, nil, 3] } } }
+
+        patch "/my_health/v1/tooltips/#{tooltip.id}", params:, headers:, as: :json
+
+        expect(response).to be_successful
+        tooltip.reload
+        # Rails strong params strips nil values from arrays
+        expect(tooltip.metadata).to eq({ 'dismissed_ids' => [1, 3] })
+      end
+
+      it 'handles large dismissed_ids array' do
+        large_array = (1..1000).to_a
+        params = { tooltip: { metadata: { dismissed_ids: large_array } } }
+
+        patch "/my_health/v1/tooltips/#{tooltip.id}", params:, headers:, as: :json
+
+        expect(response).to be_successful
+        tooltip.reload
+        expect(tooltip.metadata['dismissed_ids'].length).to eq(1000)
+      end
+
+      it 'allows storing arbitrary metadata keys' do
+        params = { tooltip: { metadata: { dismissed_ids: [1, 2], other_key: 'value' } } }
+
+        patch "/my_health/v1/tooltips/#{tooltip.id}", params:, headers:, as: :json
+
+        expect(response).to be_successful
+        tooltip.reload
+        expect(tooltip.metadata).to eq({ 'dismissed_ids' => [1, 2], 'other_key' => 'value' })
+      end
+
+      it 'rejects metadata exceeding size limit' do
+        # Create metadata larger than 4KB limit
+        oversized_array = (1..1000).map { |i| "long_string_value_#{i}" }
+        params = { tooltip: { metadata: { dismissed_ids: oversized_array } } }
+
+        patch "/my_health/v1/tooltips/#{tooltip.id}", params:, headers:, as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        json_response = JSON.parse(response.body)
+        expect(json_response['errors'].first).to include('Metadata is too large')
+      end
+    end
   end
 end
