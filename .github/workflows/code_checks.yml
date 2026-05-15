@@ -805,38 +805,36 @@ jobs:
             ]
           channel_id: "C0APA867M0V"
 
-      - name: Comment Coverage on PR
-        if: needs.tests.result == 'success' && github.event_name == 'pull_request' && fromJSON(steps.coverage.outputs.percent) < 90
-        uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          header: coverage
-          message: |
-              ## :x: Critical: Test Coverage Too Low
-              **Coverage:** ${{ steps.coverage.outputs.percent }}%
-              Your test coverage is **below the required minimum of 90%**.
-              Please add additional tests before this PR can be considered for merge.
-              Once coverage is improved, push another commit or rerun the workflow to update this report.
-              **View detailed coverage:** [Open test run](https://va.ghe.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) → Scroll to **Artifacts** → Download **Coverage Report** → Open **index.html**
+      - name: Sticky coverage comment on PR
+        if: needs.tests.result == 'success' && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_HOST: va.ghe.com
+          PCT: ${{ steps.coverage.outputs.percent }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          RUN_URL: https://va.ghe.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          MARKER='<!-- sticky-pr-comment: coverage -->'
 
-      - name: Comment Coverage on PR
-        if: needs.tests.result == 'success' && github.event_name == 'pull_request' && fromJSON(steps.coverage.outputs.percent) >= 90 && fromJSON(steps.coverage.outputs.percent) < 93
-        uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          header: coverage
-          message: |
-            ## :warning: Warning: Low Coverage Report
-            **Coverage:** ${{ steps.coverage.outputs.percent }}%
+          existing_id=$(gh api --paginate "repos/$REPO/issues/$PR/comments" \
+            --jq "[.[] | select(.body | startswith(\"$MARKER\"))][0].id // empty")
 
-            Please add or expand tests to improve coverage before merging.
+          if awk "BEGIN { exit !($PCT < 90) }"; then
+            body=$(printf '%s\n## :x: Critical: Test Coverage Too Low\n**Coverage:** %s%%\nYour test coverage is **below the required minimum of 90%%**.\nPlease add additional tests before this PR can be considered for merge.\nOnce coverage is improved, push another commit or rerun the workflow to update this report.\n**View detailed coverage:** [Open test run](%s) → Scroll to **Artifacts** → Download **Coverage Report** → Open **index.html**\n' "$MARKER" "$PCT" "$RUN_URL")
+          elif awk "BEGIN { exit !($PCT < 93) }"; then
+            body=$(printf '%s\n## :warning: Warning: Low Coverage Report\n**Coverage:** %s%%\n\nPlease add or expand tests to improve coverage before merging.\n\n**View detailed coverage:** [Open test run](%s) → Scroll to **Artifacts** → Download **Coverage Report** → Open **index.html**\n' "$MARKER" "$PCT" "$RUN_URL")
+          else
+            body=''
+          fi
 
-            **View detailed coverage:** [Open test run](https://va.ghe.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) → Scroll to **Artifacts** → Download **Coverage Report** → Open **index.html**
-
-      - name: Remove coverage comment when coverage is healthy
-        if: needs.tests.result == 'success' && github.event_name == 'pull_request' && fromJSON(steps.coverage.outputs.percent) >= 93
-        uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          header: coverage
-          delete: true
+          if [ -z "$body" ]; then
+            if [ -n "$existing_id" ]; then
+              gh api -X DELETE "repos/$REPO/issues/comments/$existing_id"
+            fi
+          elif [ -n "$existing_id" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$existing_id" -f body="$body"
+          else
+            gh api -X POST "repos/$REPO/issues/$PR/comments" -f body="$body"
+          fi
