@@ -31,18 +31,27 @@ module IvcChampva
     def send_email
       return false unless valid_environment?
 
-      VANotify::EmailJob.perform_async(
-        data[:email],
-        data[:template_id] ? EMAIL_TEMPLATE_MAP[data[:template_id]] : EMAIL_TEMPLATE_MAP[data[:form_number]],
-        # Create a subset of `data` - Using .index_with rather than .slice so that keys
-        # default to `nil` if not present in `data`. This helps us w/ testing.
-        %i[first_name last_name file_count pega_status date_submitted form_uuid]
-          .index_with { |k| data[k] },
-        Settings.vanotify.services.ivc_champva.api_key,
-        # If no callback_klass is provided, should fail safely per va_notify implementation.
-        # See: https://va.ghe.com/software/vets-api/tree/master/modules/va_notify#how-teams-can-integrate-with-callbacks
-        { callback_klass: data[:callback_klass], callback_metadata: data[:callback_metadata] }
-      )
+      template_id = EMAIL_TEMPLATE_MAP[data[:template_id]] || EMAIL_TEMPLATE_MAP[data[:form_number]]
+      unless template_id
+        Rails.logger.warn(
+          'IvcChampva::Email: missing or unmapped key, unable to send email',
+          template_id: data[:template_id],
+          form_number: data[:form_number]
+        )
+        return false
+      end
+
+      # Create a subset of `data` - Using .index_with rather than .slice so that keys
+      # default to `nil` if not present in `data`. This helps us w/ testing.
+      personalisation = %i[first_name last_name file_count pega_status date_submitted form_uuid]
+                        .index_with { |k| data[k] }
+
+      # If no callback_klass is provided, should fail safely per va_notify implementation.
+      # See: https://github.com/department-of-veterans-affairs/vets-api/tree/master/modules/va_notify#how-teams-can-integrate-with-callbacks
+      callback_options = { callback_klass: data[:callback_klass], callback_metadata: data[:callback_metadata] }
+
+      perform_email_send(template_id, personalisation, callback_options)
+
       Rails.logger.info "Pega Status Update Email: #{data[:file_count].to_i} file(s)"
 
       true
@@ -52,6 +61,26 @@ module IvcChampva
     end
 
     private
+
+    def perform_email_send(template_id, personalisation, callback_options)
+      if Flipper.enabled?(:va_notify_v2_ivc_champva_email)
+        VANotify::V2::QueueEmailJob.enqueue(
+          data[:email],
+          template_id,
+          personalisation,
+          'Settings.vanotify.services.ivc_champva.api_key',
+          callback_options
+        )
+      else
+        VANotify::EmailJob.perform_async(
+          data[:email],
+          template_id,
+          personalisation,
+          Settings.vanotify.services.ivc_champva.api_key,
+          callback_options
+        )
+      end
+    end
 
     def valid_environment?
       %w[production staging].include?(Rails.env)
