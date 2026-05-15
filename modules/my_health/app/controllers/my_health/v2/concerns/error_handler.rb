@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'datadog'
 require 'openssl'
 module MyHealth
   module V2
@@ -18,6 +19,7 @@ module MyHealth
         def handle_error(error, resource_name: nil, api_type: 'FHIR', use_dynamic_status: false,
                          include_backtrace: false)
           log_error(error, resource_name:, api_type:, include_backtrace:)
+          tag_datadog_span(error)
 
           case error
           when Common::Exceptions::GatewayTimeout, Timeout::Error
@@ -119,6 +121,12 @@ module MyHealth
           status = upstream_status_or_bad_gateway(error.original_status)
           detail = error.errors.first&.detail || error.message
           render_error("#{api_type} Backend Error", detail, status.to_s, status, integer_status_to_symbol(status))
+        end
+
+        # Tags the active Datadog span and Rack span so errors appear in APM and Error Tracking.
+        def tag_datadog_span(error)
+          Datadog::Tracing.active_span&.set_error(error)
+          request.env[Datadog::Tracing::Contrib::Rack::Ext::RACK_ENV_REQUEST_SPAN]&.set_error(error)
         end
 
         # Handles generic/unexpected errors

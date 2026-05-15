@@ -31,6 +31,54 @@ RSpec.describe MyHealth::V2::Concerns::ErrorHandler, :skip_json_api_validation, 
     end
   end
 
+  describe 'Datadog span tagging' do
+    let(:active_span) { instance_double(Datadog::Tracing::Span).as_null_object }
+    let(:rack_span) { instance_double(Datadog::Tracing::Span).as_null_object }
+    let(:error) { StandardError.new('something unexpected') }
+
+    before do
+      allow(Datadog::Tracing).to receive(:active_span).and_return(active_span)
+    end
+
+    it 'tags the active Datadog tracing span with the error' do
+      allow_any_instance_of(ActionDispatch::Request).to receive(:env).and_wrap_original do |m, *args|
+        env = m.call(*args)
+        env[Datadog::Tracing::Contrib::Rack::Ext::RACK_ENV_REQUEST_SPAN] = rack_span
+        env
+      end
+
+      stub_and_request(error)
+
+      expect(active_span).to have_received(:set_error).with(error)
+    end
+
+    it 'tags the Rack request span with the error' do
+      allow_any_instance_of(ActionDispatch::Request).to receive(:env).and_wrap_original do |m, *args|
+        env = m.call(*args)
+        env[Datadog::Tracing::Contrib::Rack::Ext::RACK_ENV_REQUEST_SPAN] = rack_span
+        env
+      end
+
+      stub_and_request(error)
+
+      expect(rack_span).to have_received(:set_error).with(error)
+    end
+
+    it 'does not raise when no active span exists' do
+      allow(Datadog::Tracing).to receive(:active_span).and_return(nil)
+
+      stub_and_request(error)
+
+      expect(response).to have_http_status(:internal_server_error)
+    end
+
+    it 'does not raise when no Rack span exists in the request env' do
+      stub_and_request(error)
+
+      expect(response).to have_http_status(:internal_server_error)
+    end
+  end
+
   describe 'status code mapping' do
     context 'when upstream times out (GatewayTimeout)' do
       it 'returns 504' do
