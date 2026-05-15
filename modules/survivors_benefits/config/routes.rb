@@ -4,6 +4,7 @@ SurvivorsBenefits::Engine.routes.draw do
   namespace :v0, defaults: { format: :json } do
     post 'form534ez', to: 'claims#create'
     get 'form534ez/:id', to: 'claims#show'
+    get 'facilities/:state', to: 'facilities#index'
 
     resources :claims, only: %i[create show]
   end
