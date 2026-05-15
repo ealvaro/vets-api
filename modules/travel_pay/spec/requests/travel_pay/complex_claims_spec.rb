@@ -142,6 +142,76 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
             end
           end
 
+          context 'when appt_id is provided directly (UGA flow)' do
+            let(:provided_appt_id) { 'bb1f63e0-5fa7-4d74-a17a-a6f510dbf69f' }
+
+            before do
+              # Claims service should be called directly with the provided appt_id
+              claims_service_double = instance_double(TravelPay::ClaimsService)
+              allow(claims_service_double).to receive(:create_new_claim)
+                .with({ 'btsss_appt_id' => provided_appt_id })
+                .and_return({ 'claimId' => claim_id })
+              allow_any_instance_of(TravelPay::V0::ComplexClaimsController)
+                .to receive(:claims_service).and_return(claims_service_double)
+            end
+
+            it 'skips find_or_create_appt_id and creates claim with provided appt_id' do
+              expect_any_instance_of(TravelPay::V0::ComplexClaimsController)
+                .not_to receive(:appts_service)
+
+              post('/travel_pay/v0/complex_claims',
+                   params: params_v2.merge(appt_id: provided_appt_id),
+                   as: :json)
+
+              expect(response).to have_http_status(:created)
+              expect(JSON.parse(response.body)).to eq('claimId' => claim_id)
+            end
+
+            it 'tracks StatsD with user-generated appointment_source' do
+              allow(StatsD).to receive(:increment)
+
+              post('/travel_pay/v0/complex_claims?appointment_source=user-generated',
+                   params: params_v2.merge(appt_id: provided_appt_id),
+                   as: :json)
+
+              expect(response).to have_http_status(:created)
+              expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
+                                                               tags: ['appointment_source:user-generated',
+                                                                      'result:success'])
+            end
+
+            it 'returns bad request when appt_id is not a valid UUID' do
+              post('/travel_pay/v0/complex_claims',
+                   params: params_v2.merge(appt_id: 'invalid$'),
+                   as: :json)
+
+              expect(response).to have_http_status(:bad_request)
+              body = JSON.parse(response.body)
+              expect(body['errors'].first['detail']).to eq('Appointment ID is invalid')
+            end
+
+            it 'still validates required params even when appt_id is provided' do
+              incomplete_params = params_v2.except('appointment_date_time')
+                                           .merge(appt_id: provided_appt_id)
+
+              post('/travel_pay/v0/complex_claims', params: { complex_claim: incomplete_params }, as: :json)
+
+              expect(response).to have_http_status(:bad_request)
+              body = JSON.parse(response.body)
+              expect(body['errors'].first['detail']).to eq('Missing required params: appointment_date_time')
+            end
+
+            it 'still validates datetime format even when appt_id is provided' do
+              bad_params = params_v2.merge('appointment_date_time' => 'not-a-date', appt_id: provided_appt_id)
+
+              post('/travel_pay/v0/complex_claims', params: bad_params, as: :json)
+
+              expect(response).to have_http_status(:bad_request)
+              expect(JSON.parse(response.body)['errors'].first['detail'])
+                .to eq('Appointment date time must be a valid datetime')
+            end
+          end
+
           context 'when appointment_source query param is invalid' do
             it 'returns bad request for an unrecognized appointment_source' do
               post('/travel_pay/v0/complex_claims?appointment_source=invalid', params: params_v2, as: :json)
@@ -350,6 +420,76 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
 
               expect(response).to have_http_status(:created)
               expect(JSON.parse(response.body)).to eq('claimId' => claim_id)
+            end
+          end
+
+          context 'when appt_id is provided directly (UGA flow)' do
+            let(:provided_appt_id) { 'bb1f63e0-5fa7-4d74-a17a-a6f510dbf69f' }
+
+            before do
+              # Claims service should be called directly with the provided appt_id
+              claims_service_double = instance_double(TravelPay::ClaimsService)
+              allow(claims_service_double).to receive(:create_new_claim)
+                .with({ 'btsss_appt_id' => provided_appt_id })
+                .and_return({ 'claimId' => claim_id })
+              allow_any_instance_of(TravelPay::V0::ComplexClaimsController)
+                .to receive(:claims_service).and_return(claims_service_double)
+            end
+
+            it 'skips find_or_create_appt_id and creates claim with provided appt_id' do
+              expect_any_instance_of(TravelPay::V0::ComplexClaimsController)
+                .not_to receive(:appts_service)
+
+              post('/travel_pay/v0/complex_claims',
+                   params: params_v4.merge(appt_id: provided_appt_id),
+                   as: :json)
+
+              expect(response).to have_http_status(:created)
+              expect(JSON.parse(response.body)).to eq('claimId' => claim_id)
+            end
+
+            it 'tracks StatsD with user-generated appointment_source' do
+              allow(StatsD).to receive(:increment)
+
+              post('/travel_pay/v0/complex_claims?appointment_source=user-generated',
+                   params: params_v4.merge(appt_id: provided_appt_id),
+                   as: :json)
+
+              expect(response).to have_http_status(:created)
+              expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
+                                                               tags: ['appointment_source:user-generated',
+                                                                      'result:success'])
+            end
+
+            it 'returns bad request when appt_id is not a valid UUID' do
+              post('/travel_pay/v0/complex_claims',
+                   params: params_v4.merge(appt_id: 'invalid$'),
+                   as: :json)
+
+              expect(response).to have_http_status(:bad_request)
+              body = JSON.parse(response.body)
+              expect(body['errors'].first['detail']).to eq('Appointment ID is invalid')
+            end
+
+            it 'still validates required params even when appt_id is provided' do
+              incomplete_params = params_v4.except('appointment_date_time')
+                                           .merge(appt_id: provided_appt_id)
+
+              post('/travel_pay/v0/complex_claims', params: { complex_claim: incomplete_params }, as: :json)
+
+              expect(response).to have_http_status(:bad_request)
+              body = JSON.parse(response.body)
+              expect(body['errors'].first['detail']).to eq('Missing required params: appointment_date_time')
+            end
+
+            it 'still validates datetime format even when appt_id is provided' do
+              bad_params = params_v4.merge('appointment_date_time' => 'not-a-date', appt_id: provided_appt_id)
+
+              post('/travel_pay/v0/complex_claims', params: bad_params, as: :json)
+
+              expect(response).to have_http_status(:bad_request)
+              expect(JSON.parse(response.body)['errors'].first['detail'])
+                .to eq('Appointment date time must be a valid datetime')
             end
           end
 

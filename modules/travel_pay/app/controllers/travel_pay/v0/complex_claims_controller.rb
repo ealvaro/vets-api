@@ -39,7 +39,7 @@ module TravelPay
         validate_required_params!(permitted_params)
         validate_datetime_format!(permitted_params[:appointment_date_time])
 
-        appt_id = find_or_create_appt_id!('Complex', permitted_params)
+        appt_id = resolve_appt_id!(permitted_params)
         claim_id = create_claim(appt_id, 'Complex')
         increment_statsd(appointment_source, 'success')
         render json: { claimId: claim_id }, status: :created
@@ -64,6 +64,18 @@ module TravelPay
       def increment_statsd(appointment_source, result)
         StatsD.increment('travel_pay.claims.complex.create',
                          tags: ["appointment_source:#{appointment_source}", "result:#{result}"])
+      end
+
+      def resolve_appt_id!(permitted_params)
+        appt_id = params[:appt_id]
+
+        if appt_id.present?
+          validate_uuid_exists!(appt_id, 'Appointment')
+          Rails.logger.info('ComplexClaimsController#create: appt_id provided, skipping find_or_create_appt_id!')
+          return appt_id
+        end
+
+        find_or_create_appt_id!('Complex', permitted_params)
       end
 
       def base_required_fields
