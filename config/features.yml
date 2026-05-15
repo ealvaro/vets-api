@@ -1315,6 +1315,9 @@ features:
   form21_4142_confirmation_email:
     actor_type: user
     description: Enables form 21-4142 email submission confirmation (VaNotify)
+  form21_4502_confirmation_email:
+    actor_type: user
+    description: Enables form 21-4502 email submission confirmation (VaNotify)
   form_218940_address_and_phone_validation:
     actor_type: user
     description: Enable the address and phone number validation on the 21-8940
