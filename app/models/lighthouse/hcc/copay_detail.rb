@@ -72,12 +72,14 @@ module Lighthouse
           month = time.month
           year = time.year
           additional_charge_items = statement.dig('resource', '_associated_charge_items') || {}
+          total_price_components = @invoice_data['totalPriceComponent'] || []
 
           {
             'id' => resource['id'],
             'composite_id' => "#{facility_num}-#{month}-#{year}",
             'date' => format_date(resource['date']),
             'bill_number' => extract_bill_number(resource),
+            'original_amount' => find_amount(total_price_components, 'Original Amount'),
             'charge_items' => resource['charge_items'] || [],
             'line_items' => sorted_line_items(resource['lineItem'], additional_charge_items:)
           }

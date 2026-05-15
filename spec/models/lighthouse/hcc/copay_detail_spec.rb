@@ -16,7 +16,10 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
           'identifier' => [{ 'value' => 'BILL-001' }],
           'status' => 'issued',
           '_status' => { 'valueCodeableConcept' => { 'text' => 'Active' } },
-          'date' => '2025-06-01T20:29:47Z'
+          'date' => '2025-06-01T20:29:47Z',
+          'totalPriceComponent' => [
+            { 'code' => { 'text' => 'Original Amount' }, 'amount' => { 'value' => 100.5 } }
+          ]
         }
       end
 
@@ -200,6 +203,11 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
         expect(first[:date_posted]).to eq('2025-05-14T15:00:00Z')
       end
 
+      it 'sets original_amount on each associated statement from the detail invoice totalPriceComponent' do
+        expect(subject.original_amount).to eq(100.5)
+        expect(subject.associated_statements.pluck('original_amount')).to eq([100.5, 100.5])
+      end
+
       it 'creates associated_statements with bill_number from extract_bill_number (same as payments)' do
         expect(subject.associated_statements).to match(
           [
@@ -208,6 +216,7 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
               'composite_id' => '4-5pFm5Av0PHt-5-2025',
               'date' => 'May 15, 2025',
               'bill_number' => '573-MAY-TEST',
+              'original_amount' => 100.5,
               'charge_items' => array_including(a_hash_including('id' => '4-6c9ZE23XQjkALyz')),
               'line_items' => a_collection_including(a_hash_including(billing_reference: '4-6cXQjkA9CC'))
             },
@@ -216,6 +225,7 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
               'composite_id' => '4-5pFm5Av0PHt-4-2025',
               'date' => 'April 10, 2025',
               'bill_number' => '573-APR-TEST',
+              'original_amount' => 100.5,
               'charge_items' => [],
               'line_items' => []
             }
@@ -461,6 +471,7 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
         detail = described_class.new(invoice_data:, associated_statements:)
 
         expect(detail.associated_statements.first['bill_number']).to be_nil
+        expect(detail.associated_statements.first['original_amount']).to be_nil
       end
     end
   end

@@ -416,6 +416,12 @@ class Swagger::V1::Requests::MedicalCopays
                   property :date, type: :string
                   property :composite_id, type: :string
                   property :bill_number, type: :string, example: '573-K3FDDA0'
+                  property :original_amount,
+                           type: :number,
+                           format: :float,
+                           description: 'Original amount from the detail invoice totalPriceComponent ' \
+                                        '(same value as top-level originalAmount).',
+                           example: 86.21
                   property :charge_items, type: :array do
                     items type: :object do
                       property :id, type: :string
