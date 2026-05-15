@@ -35,18 +35,9 @@ module Mobile
 
       attribute :name, Types::String
       attribute :letter_type, LETTER_TYPE
+      attribute :description, Types::Hash.optional.default(nil)
       attribute :reference_number, Types::String.optional.default(nil) # only for COE home loan letters
       attribute :coe_status, Types::String.optional.default(nil) # only for COE home loan letters
-
-      def initialize(attributes)
-        if attributes[:letter_type] == 'benefit_summary'
-          attributes[:name] = 'Benefit Summary and Service Verification Letter'
-        elsif attributes[:letter_type] == 'foreign_medical_program'
-          attributes[:name] = 'Foreign Medical Program Enrollment Letter'
-        end
-
-        super
-      end
 
       def displayable?(user = nil)
         return false unless self.class::VISIBLE_TYPES.include?(letter_type)

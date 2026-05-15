@@ -24,6 +24,7 @@ module Lighthouse
         'benefit_summary' => 'Benefits and service verification',
         'benefit_verification' => 'Proof of VA income',
         'certificate_of_eligibility' => 'Home loan Certificate of Eligibility (COE)',
+        'certificate_of_eligibility_home_loan' => 'Home loan Certificate of Eligibility (COE)',
         'proof_of_service' => 'Proof of service card',
         'civil_service' => 'Civil service preference',
         'minimum_essential_coverage' => 'Proof of minimum essential coverage',

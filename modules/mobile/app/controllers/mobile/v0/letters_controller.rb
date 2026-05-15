@@ -2,6 +2,7 @@
 
 require 'common/exceptions/record_not_found'
 require 'lgy/service'
+require 'lighthouse/letters_generator/content'
 require 'lighthouse/letters_generator/service'
 
 module Mobile
@@ -42,13 +43,26 @@ module Mobile
           # The following letters need to be filtered out due to outdated content
           next if FILTERED_LETTER_TYPES.include? letter[:letterType]
 
-          Mobile::V0::Letter.new(letter_type: letter[:letterType], name: letter[:name])
+          # Apply legacy name overrides when flag is off
+          name = letter[:name]
+          unless Flipper.enabled?(:cst_letters_content_updates, @current_user)
+            name = 'Benefit Summary and Service Verification Letter' if letter[:letterType] == 'benefit_summary'
+            name = 'Foreign Medical Program Enrollment Letter' if letter[:letterType] == 'foreign_medical_program'
+          end
+
+          Mobile::V0::Letter.new(letter_type: letter[:letterType], name:,
+                                 description: letter[:description])
         end
         response.append(get_coe_letter_type).compact! if Flipper.enabled?(:mobile_coe_letter_use_lgy_service,
                                                                           @current_user) && coe_app_version?
 
         displayable_letters = response.select { |letter| letter.displayable?(@current_user) }
-        render json: Mobile::V0::LettersSerializer.new(@current_user, displayable_letters.sort_by(&:name))
+
+        if Flipper.enabled?(:cst_letters_content_updates, @current_user)
+          render json: Mobile::V0::LettersSerializer.new(@current_user, displayable_letters)
+        else
+          render json: Mobile::V0::LettersSerializer.new(@current_user, displayable_letters.sort_by(&:name))
+        end
       end
 
       # returns options and info needed to create user form required for benefit letter download
@@ -92,9 +106,17 @@ module Mobile
         increment_coe_counter(coe_status)
 
         if coe_status[:status].in?(COE_STATUSES)
+          if Flipper.enabled?(:cst_letters_content_updates, @current_user)
+            name = Lighthouse::LettersGenerator::Content::LETTER_NAME_OVERRIDES['certificate_of_eligibility_home_loan']
+            description = Lighthouse::LettersGenerator::Content::LETTER_DESCRIPTIONS['certificate_of_eligibility_home_loan']
+          else
+            name = 'Certificate of Eligibility for Home Loan Letter'
+            description = nil
+          end
+
           Mobile::V0::Letter.new(
-            letter_type: COE_LETTER_TYPE, name: 'Certificate of Eligibility for Home Loan Letter',
-            reference_number: coe_status[:reference_number], coe_status: coe_status[:status]
+            letter_type: COE_LETTER_TYPE, name:,
+            reference_number: coe_status[:reference_number], coe_status: coe_status[:status], description:
           )
         end
       rescue => e

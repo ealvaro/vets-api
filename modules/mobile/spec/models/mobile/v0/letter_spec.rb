@@ -66,26 +66,50 @@ RSpec.describe Mobile::V0::Letter, type: :model do
     end
   end
 
-  describe '#initialize' do
-    context 'when letter_type is benefit_summary' do
-      it 'sets custom name' do
-        letter = described_class.new(letter_type: 'benefit_summary', name: 'Original Name')
-        expect(letter.name).to eq('Benefit Summary and Service Verification Letter')
-      end
+  describe 'name attribute' do
+    it 'accepts the name provided' do
+      letter = described_class.new(letter_type: 'commissary', name: 'Commissary Letter')
+      expect(letter.name).to eq('Commissary Letter')
     end
 
-    context 'when letter_type is foreign_medical_program' do
-      it 'sets custom name' do
-        letter = described_class.new(letter_type: 'foreign_medical_program', name: 'Original Name')
-        expect(letter.name).to eq('Foreign Medical Program Enrollment Letter')
-      end
+    it 'accepts any name regardless of letter type' do
+      letter = described_class.new(letter_type: 'benefit_summary', name: 'Custom Name')
+      expect(letter.name).to eq('Custom Name')
+    end
+  end
+
+  describe 'description attribute' do
+    it 'accepts a hash description' do
+      description = { 'paragraphs' => ['Some text'], 'lists' => [{ 'title' => 'Title', 'items' => ['Item 1'] }] }
+      letter = described_class.new(
+        letter_type: 'proof_of_service',
+        name: 'Proof of Service Letter',
+        description:
+      )
+      expect(letter.description).to eq(description)
     end
 
-    context 'when letter_type is other' do
-      it 'keeps original name' do
-        letter = described_class.new(letter_type: 'commissary', name: 'Commissary Letter')
-        expect(letter.name).to eq('Commissary Letter')
-      end
+    it 'defaults to nil when description is not provided' do
+      letter = described_class.new(letter_type: 'commissary', name: 'Commissary Letter')
+      expect(letter.description).to be_nil
+    end
+
+    it 'accepts nil description explicitly' do
+      letter = described_class.new(
+        letter_type: 'service_verification',
+        name: 'Service Verification Letter',
+        description: nil
+      )
+      expect(letter.description).to be_nil
+    end
+
+    it 'accepts empty hash description' do
+      letter = described_class.new(
+        letter_type: 'benefit_summary',
+        name: 'Benefit Summary Letter',
+        description: {}
+      )
+      expect(letter.description).to eq({})
     end
   end
 end

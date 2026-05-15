@@ -7,18 +7,28 @@ properties:
   name:
     type: string
     enum:
-      - Commissary Letter
-      - Proof of Service Letter
-      - Proof of Creditable Prescription Drug Coverage Letter
-      - Proof of Minimum Essential Coverage Letter
-      - Service Verification Letter
-      - Civil Service Preference Letter
-      - Benefit Summary Letter
       - Benefit Summary and Service Verification Letter
-      - Dependent Benefit Summary Letter
+      - Benefits and service verification
+      - Benefit Summary Letter
       - Benefit Verification Letter
       - Certificate of Eligibility for Home Loan Letter
+      - Civil Service Preference Letter
+      - Civil service preference
+      - Commissary Letter
+      - Commissary eligibility
+      - Creditable prescription drug coverage
+      - Dependent Benefit Summary Letter
+      - Foreign Medical Program enrollment
       - Foreign Medical Program Enrollment Letter
+      - Home loan Certificate of Eligibility (COE)
+      - Proof of Creditable Prescription Drug Coverage Letter
+      - Proof of Minimum Essential Coverage Letter
+      - Proof of minimum essential coverage
+      - Proof of Service Letter
+      - Proof of service card
+      - Proof of VA income
+      - Service Verification Letter
+      - TSA PreCheck application fee waiver
   letterType:
     type: string
     enum:
@@ -42,3 +52,7 @@ properties:
     type: string
     description: Only for COE home loan letters
     example: "ELIGIBLE"
+  description:
+    type: object
+    description: Optional structured description when content updates are enabled
+    additionalProperties: true

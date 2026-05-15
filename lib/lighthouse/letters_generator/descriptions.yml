@@ -23,7 +23,11 @@ benefit_verification:
 
 certificate_of_eligibility:
   paragraphs:
-    - This letter shows that you're eligible for a VA home loan.
+    - This letter shows that you’re eligible for a VA home loan.
+
+certificate_of_eligibility_home_loan:
+  paragraphs:
+    - This letter shows that you’re eligible for a VA home loan.
 
 proof_of_service:
   paragraphs:
@@ -38,14 +42,14 @@ proof_of_service:
 
 civil_service:
   paragraphs:
-    - This letter confirms that you're a disabled Veteran and may qualify for preference in civil service jobs.
+    - This letter confirms that you’re a disabled Veteran and may qualify for preference in civil service jobs.
     - 'When to use this letter:'
   lists:
     - type: unordered
       items:
         - Applying for a federal government job
         - Applying for state or local civil service positions
-        - Providing documentation supporting Veterans' hiring preference
+        - Providing documentation supporting Veterans’ hiring preference
         - Submitting materials through USAJOBS or similar public-sector hiring systems
 
 minimum_essential_coverage:
@@ -65,7 +69,7 @@ medicare_partd:
 
 commissary:
   paragraphs:
-    - This letter confirms that you're eligible to shop at a military commissary or exchange.
+    - This letter confirms that you’re eligible to shop at a military commissary or exchange.
     - 'When to use this letter:'
   lists:
     - type: unordered
