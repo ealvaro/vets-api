@@ -43,6 +43,28 @@ module CheckIn
               facility_service.get_clinic_with_cache(facility_id: appt[:locationId], clinic_id: appt[:clinic])
           end
         end
+
+        track_clinic_key_observability(appointments) if clinic_key_observability_enabled?
+      end
+
+      def clinic_key_observability_enabled?
+        Flipper.enabled?(:check_in_experience_appointments_clinic_observability_enabled)
+      end
+
+      def track_clinic_key_observability(appointments)
+        with_location = appointments.select { |appt| appt[:locationId].present? }
+        total = with_location.size
+        present = with_location.count { |appt| appt[:clinic].present? }
+        missing_or_empty = total - present
+
+        StatsD.increment(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_OBSERVABILITY_TOTAL, total)
+        StatsD.increment(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_KEY_PRESENT, present)
+        StatsD.increment(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_KEY_MISSING_OR_EMPTY, missing_or_empty)
+
+        logger.info('HCE-Check-In') do
+          "appointments_clinic_key_observability with_location_total=#{total} clinic_present=#{present} " \
+            "clinic_missing_or_empty=#{missing_or_empty}"
+        end
       end
 
       def check_in_session

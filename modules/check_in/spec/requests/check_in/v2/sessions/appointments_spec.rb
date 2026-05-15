@@ -222,6 +222,55 @@ RSpec.describe 'CheckIn::V2::Sessions::Appointments', type: :request do
           expect(response).to have_http_status(:ok)
           expect(response.body).to eq(appts_response)
         end
+
+        it 'does not increment clinic id observability metrics when flipper is disabled' do
+          allow(Flipper).to receive(:enabled?).and_wrap_original do |original, flag, *rest|
+            flag == :check_in_experience_appointments_clinic_observability_enabled ? false : original.call(flag, *rest)
+          end
+          allow(StatsD).to receive(:increment)
+          VCR.use_cassette 'check_in/clinics/get_clinics_200' do
+            VCR.use_cassette 'check_in/facilities/get_facilities_200' do
+              VCR.use_cassette 'check_in/appointments/get_appointments_200' do
+                VCR.use_cassette 'map/security_token_service_200_response' do
+                  get "/check_in/v2/sessions/#{id}/appointments", params: { start: start_date, end: end_date }
+                end
+              end
+            end
+          end
+
+          expect(StatsD).not_to have_received(:increment).with(
+            CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_OBSERVABILITY_TOTAL, anything
+          )
+        end
+
+        context 'when clinic observability flipper is enabled' do
+          before do
+            obs_flag = :check_in_experience_appointments_clinic_observability_enabled
+            allow(Flipper).to receive(:enabled?).and_wrap_original do |original, flag, *rest|
+              flag == obs_flag ? true : original.call(flag, *rest)
+            end
+          end
+
+          it 'increments total, present, and missing-or-empty clinic key metrics' do
+            allow(StatsD).to receive(:increment)
+            VCR.use_cassette 'check_in/clinics/get_clinics_200' do
+              VCR.use_cassette 'check_in/facilities/get_facilities_200' do
+                VCR.use_cassette 'check_in/appointments/get_appointments_200' do
+                  VCR.use_cassette 'map/security_token_service_200_response' do
+                    get "/check_in/v2/sessions/#{id}/appointments", params: { start: start_date, end: end_date }
+                  end
+                end
+              end
+            end
+
+            expect(StatsD).to have_received(:increment)
+              .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_OBSERVABILITY_TOTAL, 2).once
+            expect(StatsD).to have_received(:increment)
+              .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_KEY_PRESENT, 2).once
+            expect(StatsD).to have_received(:increment)
+              .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_KEY_MISSING_OR_EMPTY, 0).once
+          end
+        end
       end
 
       context 'when appointment service returns successfully without location id for single appointment' do
@@ -398,6 +447,33 @@ RSpec.describe 'CheckIn::V2::Sessions::Appointments', type: :request do
 
           expect(response).to have_http_status(:ok)
           expect(response.body).to eq(appts_response)
+        end
+
+        context 'when clinic observability flipper is enabled' do
+          before do
+            obs_flag = :check_in_experience_appointments_clinic_observability_enabled
+            allow(Flipper).to receive(:enabled?).and_wrap_original do |original, flag, *rest|
+              flag == obs_flag ? true : original.call(flag, *rest)
+            end
+          end
+
+          it 'increments total and missing-or-empty clinic key metrics when clinic is absent' do
+            allow(StatsD).to receive(:increment)
+            VCR.use_cassette 'check_in/facilities/get_facilities_200' do
+              VCR.use_cassette 'check_in/appointments/get_appointments_without_clinic_200' do
+                VCR.use_cassette 'map/security_token_service_200_response' do
+                  get "/check_in/v2/sessions/#{id}/appointments", params: { start: start_date, end: end_date }
+                end
+              end
+            end
+
+            expect(StatsD).to have_received(:increment)
+              .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_OBSERVABILITY_TOTAL, 2).once
+            expect(StatsD).to have_received(:increment)
+              .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_KEY_PRESENT, 0).once
+            expect(StatsD).to have_received(:increment)
+              .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_KEY_MISSING_OR_EMPTY, 2).once
+          end
         end
       end
 

@@ -81,5 +81,10 @@ module CheckIn
     STATSD_CHECKIN_DATA_RETRIEVED = 'api.check_in.data.retrieved'
     STATSD_CHECKIN_ELIGIBILITY = 'api.check_in.appointment.eligibility'
     STATSD_CHECKIN_DEMOGRAPHICS_STATUS = 'api.check_in.demographics.status'
+
+    # V2 appointments with locationId: VAOS top-level `clinic` (Flipper clinic_observability_enabled)
+    STATSD_V2_APPOINTMENTS_CLINIC_OBSERVABILITY_TOTAL = 'api.check_in.v2.appointments.clinic_key.observability.total'
+    STATSD_V2_APPOINTMENTS_CLINIC_KEY_PRESENT = 'api.check_in.v2.appointments.clinic_key.present'
+    STATSD_V2_APPOINTMENTS_CLINIC_KEY_MISSING_OR_EMPTY = 'api.check_in.v2.appointments.clinic_key.missing_or_empty'
   end
 end
