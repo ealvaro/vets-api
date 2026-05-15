@@ -188,4 +188,63 @@ RSpec.describe FormSubmissionAttempt, type: :model do
       expect(logger).to have_received(:info)
     end
   end
+
+  context 'is a dual-list form (in both FORM_NUMBER_MAP and FormUploadEmail::SUPPORTED_FORMS)' do
+    context 'generated-PDF submission (form_data has top-level form_number key)' do
+      let(:form_data) do
+        { 'form_number' => '21P-601',
+          'claimant' => { 'email' => 'a@b.com', 'full_name' => { 'first' => 'X' } } }.to_json
+      end
+      let(:form_submission) { build(:form_submission, form_type: '21P-601', form_data:) }
+      let(:form_submission_attempt) { create(:form_submission_attempt, form_submission:) }
+
+      it 'enqueues with the mapped vba_* form number so notifications route to Email' do
+        allow(SimpleFormsApi::Notification::SendNotificationEmailJob).to receive(:perform_async)
+        form_submission_attempt.fail!
+        expect(SimpleFormsApi::Notification::SendNotificationEmailJob).to have_received(:perform_async).with(
+          form_submission_attempt.benefits_intake_uuid,
+          'vba_21p_601'
+        )
+      end
+    end
+
+    context 'scanned-upload submission (form_data lacks top-level form_number key)' do
+      let(:form_data) { { 'email' => 'a@b.com', 'full_name' => { 'first' => 'X' } }.to_json }
+      let(:form_submission) { build(:form_submission, form_type: '21P-601', form_data:) }
+      let(:form_submission_attempt) { create(:form_submission_attempt, form_submission:) }
+
+      it 'enqueues with the raw form_type so notifications route to FormUploadEmail' do
+        allow(SimpleFormsApi::Notification::SendNotificationEmailJob).to receive(:perform_async)
+        form_submission_attempt.fail!
+        expect(SimpleFormsApi::Notification::SendNotificationEmailJob).to have_received(:perform_async).with(
+          form_submission_attempt.benefits_intake_uuid,
+          '21P-601'
+        )
+      end
+    end
+  end
+
+  context 'pure scanned-upload form (only in FormUploadEmail::SUPPORTED_FORMS)' do
+    let(:form_submission) { build(:form_submission, form_type: '21-509', form_data: {}.to_json) }
+    let(:form_submission_attempt) { create(:form_submission_attempt, form_submission:) }
+
+    it 'enqueues with the raw form_type' do
+      allow(SimpleFormsApi::Notification::SendNotificationEmailJob).to receive(:perform_async)
+      form_submission_attempt.fail!
+      expect(SimpleFormsApi::Notification::SendNotificationEmailJob).to have_received(:perform_async).with(
+        form_submission_attempt.benefits_intake_uuid,
+        '21-509'
+      )
+    end
+  end
+
+  context 'when form_data is malformed JSON' do
+    let(:form_submission) { build(:form_submission, form_type: '21P-601', form_data: 'not-json{') }
+    let(:form_submission_attempt) { create(:form_submission_attempt, form_submission:) }
+
+    it 'falls through safely without raising' do
+      allow(SimpleFormsApi::Notification::SendNotificationEmailJob).to receive(:perform_async)
+      expect { form_submission_attempt.fail! }.not_to raise_error
+    end
+  end
 end

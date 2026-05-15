@@ -155,14 +155,42 @@ class FormSubmissionAttempt < ApplicationRecord
   def simple_forms_form_number
     return nil if form_submission.saved_claim_id.present?
 
-    @simple_forms_form_number ||=
-      if (
-        SimpleFormsApi::Notification::Email::TEMPLATE_IDS.keys +
-        SimpleFormsApi::Notification::FormUploadEmail::SUPPORTED_FORMS
-      ).include? form_submission.form_type
-        form_submission.form_type
-      else
-        SimpleFormsApi::V1::UploadsController::FORM_NUMBER_MAP[form_submission.form_type]
-      end
+    @simple_forms_form_number ||= resolve_simple_forms_form_number
+  end
+
+  # Determines the form_number to pass to SendNotificationEmailJob, which the job
+  # uses to route to either Email (for generated-PDF submissions) or FormUploadEmail
+  # (for scanned uploads).
+  #
+  # Some form_types (e.g. "21P-601") legitimately appear in BOTH FORM_NUMBER_MAP
+  # (generated-PDF path via SimpleFormsApi::V1::UploadsController) and
+  # FormUploadEmail::SUPPORTED_FORMS (scanned-upload path). For these, we need to
+  # disambiguate which path a given submission came from so the notification
+  # routes to a class that understands the form_data shape:
+  #   - Generated submissions store nested form_data (e.g. claimant.email) that
+  #     only the Email class can handle (via SimpleFormsApi::Vba* form models).
+  #   - Scanned uploads store flat form_data with top-level email/full_name that
+  #     FormUploadEmail expects directly.
+  #
+  # Generated submissions include `form_number` at the top level of form_data;
+  # scanned uploads do not. We use that as the discriminator.
+  def resolve_simple_forms_form_number
+    form_type = form_submission.form_type
+    mapped = SimpleFormsApi::V1::UploadsController::FORM_NUMBER_MAP[form_type]
+
+    return mapped if mapped && (generated_pdf_submission? || !email_class_supports?(form_type))
+
+    form_type if email_class_supports?(form_type)
+  end
+
+  def email_class_supports?(form_type)
+    SimpleFormsApi::Notification::Email::TEMPLATE_IDS.key?(form_type) ||
+      SimpleFormsApi::Notification::FormUploadEmail::SUPPORTED_FORMS.include?(form_type)
+  end
+
+  def generated_pdf_submission?
+    JSON.parse(form_submission.form_data.presence || '{}').key?('form_number')
+  rescue JSON::ParserError
+    false
   end
 end
