@@ -137,8 +137,10 @@ RSpec.describe VAOS::V2::Unified::SlotsService do
       end
 
       let(:eps_service) { instance_double(Eps::ProviderService) }
-      let(:start_dt) { '2025-01-01T00:00:00Z' }
-      let(:end_dt) { '2025-01-02T00:00:00Z' }
+      # Far-future fixture date keeps the slot well outside any business-day
+      # lead-time floor regardless of when this spec runs.
+      let(:start_dt) { '2099-01-01T00:00:00Z' }
+      let(:end_dt) { '2099-01-02T00:00:00Z' }
       let(:appointment_id) { 'draft-1' }
 
       before do
@@ -147,7 +149,7 @@ RSpec.describe VAOS::V2::Unified::SlotsService do
 
       it 'returns normalized EpsSlot records and passes EPS slot params' do
         allow(eps_service).to receive(:get_provider_slots).and_return(
-          OpenStruct.new(slots: [{ id: 'eps-slot', start: '2025-01-01T12:00:00Z', provider_service_id: '9mN718pH' }])
+          OpenStruct.new(slots: [{ id: 'eps-slot', start: '2099-01-01T12:00:00Z', provider_service_id: '9mN718pH' }])
         )
 
         slots = service.slots_for(
@@ -209,6 +211,22 @@ RSpec.describe VAOS::V2::Unified::SlotsService do
             appointment_id: nil
           )
         end.to raise_error(Common::Exceptions::ParameterMissing)
+      end
+
+      context 'with the CC 3-business-day lead-time filter' do
+        let(:near_slot) { { id: 'near', start: '2026-05-13T12:00:00-04:00', provider_service_id: '9mN718pH' } } # Wed
+        let(:far_slot)  { { id: 'far',  start: '2026-05-15T12:00:00-04:00', provider_service_id: '9mN718pH' } } # Fri
+
+        it 'drops slots fewer than 3 business days out (Mon ref -> Thu cutoff)' do
+          allow(eps_service).to receive(:get_provider_slots).and_return(
+            OpenStruct.new(slots: [near_slot, far_slot])
+          )
+
+          Timecop.freeze(Time.zone.parse('2026-05-11T10:00:00-04:00')) do
+            slots = service.slots_for(provider:, start_dt:, end_dt:, appointment_id:)
+            expect(slots.map(&:id)).to eq(['far'])
+          end
+        end
       end
     end
   end

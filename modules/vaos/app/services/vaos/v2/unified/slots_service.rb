@@ -81,8 +81,11 @@ module VAOS
             appointmentId: appointment_id
           }
           response = eps_provider_service.get_provider_slots(provider_id, opts)
-          slots = response&.slots
-          Array(slots).map { |slot| EpsSlot.from_eps_slot(slot) }
+          slots = Array(response&.slots).map { |slot| EpsSlot.from_eps_slot(slot) }
+          # CC providers need ~3 business days to accept and prep for a
+          # referral; Wellhive doesn't apply this floor for us, so any slot
+          # within the cutoff is one the provider will reject.
+          CCLeadTimeFilter.filter(slots)
         end
 
         def systems_service

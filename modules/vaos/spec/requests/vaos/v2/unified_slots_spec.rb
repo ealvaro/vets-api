@@ -66,23 +66,25 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
       end
 
       it 'returns slots, draft ID, and provider reference via UnifiedProviderSerializer' do
-        get('/vaos/v2/provider_slots', params: base_params, headers:)
+        Timecop.freeze(DateTime.new(2026, 4, 15).utc) do
+          get('/vaos/v2/provider_slots', params: base_params, headers:)
 
-        expect(response).to have_http_status(:ok)
+          expect(response).to have_http_status(:ok)
 
-        data = data_for(response)
-        expect(data['id']).to eq('prov-789')
-        expect(data['type']).to eq('provider_slots')
+          data = data_for(response)
+          expect(data['id']).to eq('prov-789')
+          expect(data['type']).to eq('provider_slots')
 
-        provider = data['attributes']['provider']
-        expect(provider['id']).to eq('prov-789')
-        expect(provider['type']).to eq('unified_provider')
-        expect(provider['attributes']['providerType']).to eq('eps')
-        expect(provider['attributes']['providerServiceId']).to eq('prov-789')
-        expect(provider['attributes']['networkId']).to eq('sandboxnetwork-5vuTac8v')
+          provider = data['attributes']['provider']
+          expect(provider['id']).to eq('prov-789')
+          expect(provider['type']).to eq('unified_provider')
+          expect(provider['attributes']['providerType']).to eq('eps')
+          expect(provider['attributes']['providerServiceId']).to eq('prov-789')
+          expect(provider['attributes']['networkId']).to eq('sandboxnetwork-5vuTac8v')
 
-        expect(data['attributes']['draftAppointmentId']).to eq('draft-abc')
-        expect(data['attributes']['slots'].length).to eq(2)
+          expect(data['attributes']['draftAppointmentId']).to eq('draft-abc')
+          expect(data['attributes']['slots'].length).to eq(2)
+        end
       end
 
       # The slots endpoint delegates draft creation to
