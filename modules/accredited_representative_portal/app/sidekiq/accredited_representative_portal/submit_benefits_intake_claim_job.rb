@@ -61,6 +61,10 @@ module AccreditedRepresentativePortal
     end
 
     def stamping_form_class
+      unless @claim.class.const_defined?(:STAMPING_FORM_CLASS, false)
+        raise ArgumentError, "No stamping form class found for form_id=#{@claim.form_id}"
+      end
+
       @claim.class::STAMPING_FORM_CLASS
     end
 

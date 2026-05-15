@@ -162,6 +162,37 @@ RSpec.describe AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob do
           perform
         end
       end
+
+      it 'resolves the stamping form class from the claim form_id' do
+        claim_class = AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DependencyClaim
+
+        claim = double('claim', form_id: '21-686C')
+
+        allow(claim).to receive(:class).and_return(claim_class)
+
+        job = described_class.new
+
+        job.instance_variable_set(:@claim, claim)
+
+        expect(job.send(:stamping_form_class)).to eq(SimpleFormsApi::VBA21686C)
+      end
+
+      it 'raises when the claim class has no stamping from form class' do
+        claim_class = Class.new
+
+        claim = double('claim', form_id: '21-686C')
+
+        allow(claim).to receive(:class).and_return(claim_class)
+
+        job = described_class.new
+
+        job.instance_variable_set(:@claim, claim)
+
+        expect { job.send(:stamping_form_class) }.to raise_error(
+          ArgumentError,
+          'No stamping form class found for form_id=21-686C'
+        )
+      end
     end
   end
 end
