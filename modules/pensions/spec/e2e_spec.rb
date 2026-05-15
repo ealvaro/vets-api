@@ -26,6 +26,7 @@ RSpec.describe 'Pensions End to End', type: :request do
     allow(Flipper).to receive(:enabled?).with(anything).and_call_original
     allow(Flipper).to receive(:enabled?).with(:pension_submitted_email_notification).and_return true
     allow(Flipper).to receive(:enabled?).with(:benefits_intake_submission_status_job).and_return true
+    allow(Flipper).to receive(:enabled?).with(:pension_enable_controller_authentication).and_return false
   end
 
   it 'successfully completes the submission process' do

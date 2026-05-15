@@ -16,6 +16,7 @@ module Pensions
 
       skip_before_action(:authenticate)
       before_action :load_user, only: :create
+      before_action :authenticate_if_feature_flag_enabled, only: :create
 
       service_tag 'pension-application'
 
@@ -177,6 +178,25 @@ module Pensions
       #
       def monitor
         @monitor ||= Pensions::Monitor.new
+      end
+
+      ##
+      # Conditionally use the standard `authenticate` method based on a flipper flag
+      # The front-end should enable authentication, but it's always a good idea to
+      # have the back-end be the final arbiter.
+      #
+      # @return [void]
+      #
+      def authenticate_if_feature_flag_enabled
+        if Flipper.enabled?(:pension_enable_controller_authentication)
+          monitor.track_request(
+            :info,
+            'Pensions controller authentication check',
+            'api.pension_claim.auth_check',
+            user_uuid: current_user&.uuid
+          )
+          authenticate
+        end
       end
     end
   end

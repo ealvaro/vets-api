@@ -458,6 +458,7 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
 
     it 'supports adding a pension claim' do
       allow(SecureRandom).to receive(:uuid).and_return('c3fa0769-70cb-419a-b3a6-d2563e7b8502')
+      allow(Flipper).to receive(:enabled?).with(:pension_enable_controller_authentication).and_return(false)
 
       VCR.use_cassette(
         'mpi/find_candidate/find_profile_with_attributes',

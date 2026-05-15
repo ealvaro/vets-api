@@ -15,11 +15,11 @@ RSpec.describe Pensions::V0::ClaimsController, type: :controller do
   let(:user) { create(:user) }
 
   before do
-    sign_in_as(user)
     allow(Pensions::Monitor).to receive(:new).and_return(monitor)
     allow(monitor).to receive_messages(track_show404: nil, track_show_error: nil, track_create_attempt: nil,
                                        track_create_error: nil, track_create_success: nil,
-                                       track_create_validation_error: nil, track_process_attachment_error: nil)
+                                       track_create_validation_error: nil, track_process_attachment_error: nil,
+                                       track_request: nil)
   end
 
   it_behaves_like 'a controller that deletes an InProgressForm', 'pension_claim', 'pensions_saved_claim',
@@ -31,56 +31,85 @@ RSpec.describe Pensions::V0::ClaimsController, type: :controller do
     let(:form_id) { '21P-527EZ' }
     let(:user) { create(:user) }
 
-    it 'logs validation errors' do
-      allow(Pensions::SavedClaim).to receive(:new).and_return(claim)
-      allow(claim).to receive_messages(save: false, errors: 'mock error')
+    context 'as an authenticated user' do
+      before do
+        sign_in_as(user)
+        allow(Flipper).to receive(:enabled?).with(:pension_enable_controller_authentication).and_return(false)
+      end
 
-      expect(monitor).to receive(:track_create_attempt).once
-      expect(monitor).to receive(:track_create_validation_error).once
-      expect(monitor).to receive(:track_create_error).once
-      expect(claim).not_to receive(:process_attachments!)
-      expect(Pensions::BenefitsIntake::SubmitClaimJob).not_to receive(:perform_async)
-      expect(BPDS::Sidekiq::SubmitToBPDSJob).not_to receive(:perform_async)
-      expect(Kafka::EventBusSubmissionJob).not_to receive(:perform_async)
+      it 'logs validation errors' do
+        allow(Pensions::SavedClaim).to receive(:new).and_return(claim)
+        allow(claim).to receive_messages(save: false, errors: 'mock error')
 
-      response = post(:create, params: { param_name => { form: claim.form } })
+        expect(monitor).to receive(:track_create_attempt).once
+        expect(monitor).to receive(:track_create_validation_error).once
+        expect(monitor).to receive(:track_create_error).once
+        expect(claim).not_to receive(:process_attachments!)
+        expect(Pensions::BenefitsIntake::SubmitClaimJob).not_to receive(:perform_async)
+        expect(BPDS::Sidekiq::SubmitToBPDSJob).not_to receive(:perform_async)
+        expect(Kafka::EventBusSubmissionJob).not_to receive(:perform_async)
 
-      expect(response.status).to eq(500)
+        response = post(:create, params: { param_name => { form: claim.form } })
+
+        expect(response.status).to eq(500)
+      end
+
+      it('returns a serialized claim') do
+        allow(Pensions::SavedClaim).to receive(:new).and_return(claim)
+        allow(Flipper).to receive(:enabled?).with(:bpds_service_enabled).and_return(true)
+
+        expect(monitor).to receive(:track_create_attempt).once
+        expect(monitor).to receive(:track_create_success).once
+        expect(claim).to receive(:process_attachments!).once
+        expect(Pensions::BenefitsIntake::SubmitClaimJob).to receive(:perform_async).once
+        expect(BPDS::Sidekiq::SubmitToBPDSJob).to receive(:perform_async).with(claim.id, /^v1:insecure\+data\+.+/).once
+        expect(Kafka).to receive(:submit_event).once
+
+        response = post(:create, params: { param_name => { form: claim.form } })
+
+        expect(response).to have_http_status(:success)
+      end
+
+      it 'passes participant_id to SubmitClaimJob' do
+        pid = '99887766'
+        user = create(:user, participant_id: pid)
+        sign_in_as(user)
+
+        allow(Pensions::SavedClaim).to receive(:new).and_return(claim)
+        allow(claim).to receive(:process_attachments!)
+
+        expect(Pensions::BenefitsIntake::SubmitClaimJob).to receive(:perform_async)
+          .with(anything, user.user_account_uuid, user.participant_id)
+
+        response = post(:create, params: { param_name => { form: claim.form } })
+        expect(response).to have_http_status(:success)
+      end
     end
 
-    it('returns a serialized claim') do
-      allow(Pensions::SavedClaim).to receive(:new).and_return(claim)
-      allow(Flipper).to receive(:enabled?).with(:bpds_service_enabled).and_return(true)
+    context 'as an unauthenticated user, with the authentication feature flag enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:pension_enable_controller_authentication).and_return(true)
+      end
 
-      expect(monitor).to receive(:track_create_attempt).once
-      expect(monitor).to receive(:track_create_success).once
-      expect(claim).to receive(:process_attachments!).once
-      expect(Pensions::BenefitsIntake::SubmitClaimJob).to receive(:perform_async).once
-      expect(BPDS::Sidekiq::SubmitToBPDSJob).to receive(:perform_async).with(claim.id, /^v1:insecure\+data\+.+/).once
-      expect(Kafka).to receive(:submit_event).once
+      it 'returns an error' do
+        allow(Pensions::SavedClaim).to receive(:new).and_return(claim)
+        allow(Flipper).to receive(:enabled?).with(:bpds_service_enabled).and_return(true)
 
-      response = post(:create, params: { param_name => { form: claim.form } })
+        expect(Pensions::SavedClaim).not_to receive(:new)
+        expect(Pensions::BenefitsIntake::SubmitClaimJob).not_to receive(:perform_async)
 
-      expect(response).to have_http_status(:success)
-    end
+        response = post(:create, params: { param_name => { form: claim.form } })
 
-    it 'passes participant_id to SubmitClaimJob' do
-      user = create(:user)
-      pid = '99887766'
-      allow(Pensions::SavedClaim).to receive(:new).and_return(claim)
-      allow(subject).to receive(:current_user).and_return(user) # rubocop:disable RSpec/SubjectStub
-      allow(user).to receive(:participant_id).and_return(pid)
-      allow(claim).to receive(:process_attachments!)
-
-      expect(Pensions::BenefitsIntake::SubmitClaimJob).to receive(:perform_async)
-        .with(anything, user.user_account_uuid, pid)
-
-      response = post(:create, params: { param_name => { form: claim.form } })
-      expect(response).to have_http_status(:success)
+        expect(response).to have_http_status(:unauthorized)
+      end
     end
   end
 
   describe '#show' do
+    before do
+      sign_in_as(user)
+    end
+
     it 'logs an error if no claim found' do
       expect(monitor).to receive(:track_show404).once
 
