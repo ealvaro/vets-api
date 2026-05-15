@@ -1211,11 +1211,13 @@ class AppealsApi::RswagConfig
           },
           date: {
             anyOf: [
-              nullable: true,
-              type: 'string',
-              format: 'date',
-              description: 'The date of the most recent decision on the issue',
-              example: '2016-05-30'
+              {
+                nullable: true,
+                type: 'string',
+                format: 'date',
+                description: 'The date of the most recent decision on the issue',
+                example: '2016-05-30'
+              }
             ]
           }
         }

@@ -99,7 +99,7 @@ describe Mobile::V0::Adapters::Appeal, :aggregate_failures do
 
   context 'when docket does not exist' do
     it 'creates empty hash value for docket' do
-      appeal = appeal_by_id('3294289', without: [key: 'docket', at: 'attributes'])
+      appeal = appeal_by_id('3294289', without: [{ key: 'docket', at: 'attributes' }])
 
       expect(appeal.docket.to_json).to eq('{}')
     end
@@ -117,7 +117,7 @@ describe Mobile::V0::Adapters::Appeal, :aggregate_failures do
 
   context 'when alerts does not exist' do
     it 'sets alert to an empty array' do
-      appeal = appeal_by_id('3294289', without: [key: 'alerts', at: 'attributes'])
+      appeal = appeal_by_id('3294289', without: [{ key: 'alerts', at: 'attributes' }])
 
       expect(appeal.alerts).to eq([])
     end

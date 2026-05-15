@@ -146,9 +146,9 @@ RSpec.describe FacilitiesApi::V2::PPMS::Client, team: :facilities, vcr: vcr_opti
     it 'raises BackendUnhandledException when PPMS raises a stack trace' do
       expect { FacilitiesApi::V2::PPMS::Client.new.provider_locator(params.merge(specialties: ['213E00000X'])) }
         .to raise_error(Common::Exceptions::BackendServiceException) do |e|
-          error_response[:source] = 'Operation is not valid due to the current state of the object.'
-          expect(e.response_values).to match(error_response)
-          expect(e.message).to match(/PPMS_502/)
+        error_response[:source] = 'Operation is not valid due to the current state of the object.'
+        expect(e.response_values).to match(error_response)
+        expect(e.message).to match(/PPMS_502/)
       end
     end
   end

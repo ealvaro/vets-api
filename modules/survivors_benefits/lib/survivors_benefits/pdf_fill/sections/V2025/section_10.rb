@@ -37,9 +37,9 @@ module SurvivorsBenefits
             'recipientSurvivingSpouse' => { key: 'form1[0].#subform[160].#field[291]' },
             'recipientOther' => { key: 'form1[0].#subform[160].#field[290]' },
             'recipientName' => overflow_hash(18, 10, 'B', 'Care expense Recipient 1', 'CARE EXPENSE RECIPIENT 1')
-              .merge!(key: 'form1[0].#subform[160].OTHER_Specify[0]'),
+                               .merge!(key: 'form1[0].#subform[160].OTHER_Specify[0]'),
             'provider' => overflow_hash(16, 10, 'B', 'Care expense Provider 1', 'CARE EXPENSE PROVIDER 1')
-              .merge!(key: 'form1[0].#subform[160].Name_Of_Provider_And_Type_Of_Care[0]'),
+                          .merge!(key: 'form1[0].#subform[160].Name_Of_Provider_And_Type_Of_Care[0]'),
             'careNursingHome' => { key: 'form1[0].#subform[160].#field[346]' },
             'careResidential' => { key: 'form1[0].#subform[160].#field[347]' },
             'careAdultDayCare' => { key: 'form1[0].#subform[160].#field[288]' },
@@ -65,9 +65,9 @@ module SurvivorsBenefits
             'recipientSurvivingSpouse' => { key: 'form1[0].#subform[161].#field[361]' },
             'recipientOther' => { key: 'form1[0].#subform[161].#field[362]' },
             'recipientName' => overflow_hash(18, 10, 'C', 'Care expense Recipient 2', 'CARE EXPENSE RECIPIENT 2')
-              .merge!(key: 'form1[0].#subform[161].Other_Specify[1]'),
+                               .merge!(key: 'form1[0].#subform[161].Other_Specify[1]'),
             'provider' => overflow_hash(16, 10, 'C', 'Care expense Provider 2', 'CARE EXPENSE PROVIDER 2')
-              .merge!(key: 'form1[0].#subform[161].Name_Of_Provider_And_Type_Of_Care[1]'),
+                          .merge!(key: 'form1[0].#subform[161].Name_Of_Provider_And_Type_Of_Care[1]'),
             'careNursingHome' => { key: 'form1[0].#subform[161].#field[403]' },
             'careResidential' => { key: 'form1[0].#subform[161].#field[404]' },
             'careAdultDayCare' => { key: 'form1[0].#subform[161].#field[402]' },
@@ -93,9 +93,9 @@ module SurvivorsBenefits
             'recipientSurvivingSpouse' => { key: 'form1[0].#subform[161].#field[354]' },
             'recipientOther' => { key: 'form1[0].#subform[161].#field[353]' },
             'recipientName' => overflow_hash(18, 10, 'D', 'Care expense Recipient 3', 'CARE EXPENSE RECIPIENT 3')
-              .merge!(key: 'form1[0].#subform[161].Other_Specify[0]'),
+                               .merge!(key: 'form1[0].#subform[161].Other_Specify[0]'),
             'provider' => overflow_hash(16, 10, 'D', 'Care expense Provider 3', 'CARE EXPENSE PROVIDER 3')
-              .merge!(key: 'form1[0].#subform[161].Name_Of_Provider_And_Type_Of_Care[2]'),
+                          .merge!(key: 'form1[0].#subform[161].Name_Of_Provider_And_Type_Of_Care[2]'),
             'careNursingHome' => { key: 'form1[0].#subform[161].#field[414]' },
             'careResidential' => { key: 'form1[0].#subform[161].#field[415]' },
             'careAdultDayCare' => { key: 'form1[0].#subform[161].#field[412]' },
@@ -123,11 +123,11 @@ module SurvivorsBenefits
             'veteran' => { key: 'form1[0].#subform[161].SURVIVING_SPOUSE[1]' },
             'child' => { key: 'form1[0].#subform[161].CHILD_Specify[0]' },
             'childName' => overflow_hash(24, 10, 'E', 'Med expense Child name 1', 'MED EXPENSE CHILD NAME 1')
-              .merge!(key: 'form1[0].#subform[161].CHILD_EXPENSES[0]'),
+                           .merge!(key: 'form1[0].#subform[161].CHILD_EXPENSES[0]'),
             'provider' => overflow_hash(50, 10, 'E', 'Med expense Provider 1', 'MED EXPENSE PROVIDER 1')
-              .merge!(key: 'form1[0].#subform[161].Name_Of_Provider[0]'),
+                          .merge!(key: 'form1[0].#subform[161].Name_Of_Provider[0]'),
             'purpose' => overflow_hash(50, 10, 'E', 'Med expense Purpose 1', 'MED EXPENSE PURPOSE 1')
-              .merge!(key: 'form1[0].#subform[161].PURPOSE[0]'),
+                         .merge!(key: 'form1[0].#subform[161].PURPOSE[0]'),
             'monthly' => { key: 'form1[0].#subform[161].MONTHLY[0]' },
             'annually' => { key: 'form1[0].#subform[161].ANNUALLY[0]' },
             'oneTime' => { key: 'form1[0].#subform[161].ONE-TIME[0]' },
@@ -143,12 +143,12 @@ module SurvivorsBenefits
             'veteran' => { key: 'form1[0].#subform[161].SURVIVING_SPOUSE[3]' },
             'child' => { key: 'form1[0].#subform[161].CHILD_Specify[1]' },
             'childName' => overflow_hash(24, 10, 'F', 'Med expense Child name 2', 'MED EXPENSE CHILD NAME 2')
-              .merge!(key: 'form1[0].#subform[161].CHILD_EXPENSES[1]'),
+                           .merge!(key: 'form1[0].#subform[161].CHILD_EXPENSES[1]'),
             'provider' =>
             overflow_hash(50, 10, 'F', 'Med expense Provider 2', 'MED EXPENSE PROVIDER 2')
-              .merge!(key: 'form1[0].#subform[161].Name_Of_Provider[1]'),
+            .merge!(key: 'form1[0].#subform[161].Name_Of_Provider[1]'),
             'purpose' => overflow_hash(50, 10, 'F', 'Med expense Purpose 2', 'MED EXPENSE PURPOSE 2')
-              .merge!(key: 'form1[0].#subform[161].PURPOSE[1]'),
+                         .merge!(key: 'form1[0].#subform[161].PURPOSE[1]'),
             'monthly' => { key: 'form1[0].#subform[161].MONTHLY[1]' },
             'annually' => { key: 'form1[0].#subform[161].ANNUALLY[1]' },
             'oneTime' => { key: 'form1[0].#subform[161].ONE-TIME[1]' },
@@ -164,11 +164,11 @@ module SurvivorsBenefits
             'veteran' => { key: 'form1[0].#subform[161].SURVIVING_SPOUSE[5]' },
             'child' => { key: 'form1[0].#subform[161].CHILD_Specify[2]' },
             'childName' => overflow_hash(24, 10, 'G', 'Med expense Child name 3', 'MED EXPENSE CHILD NAME 3')
-              .merge!(key: 'form1[0].#subform[161].CHILD_EXPENSES[2]'),
+                           .merge!(key: 'form1[0].#subform[161].CHILD_EXPENSES[2]'),
             'provider' => overflow_hash(50, 10, 'G', 'Med expense Provider 3', 'MED EXPENSE PROVIDER 3')
-              .merge!(key: 'form1[0].#subform[161].Name_Of_Provider[2]'),
+                          .merge!(key: 'form1[0].#subform[161].Name_Of_Provider[2]'),
             'purpose' => overflow_hash(50, 10, 'G', 'Med expense Purpose 3', 'MED EXPENSE PURPOSE 3')
-              .merge!(key: 'form1[0].#subform[161].PURPOSE[2]'),
+                         .merge!(key: 'form1[0].#subform[161].PURPOSE[2]'),
             'monthly' => { key: 'form1[0].#subform[161].MONTHLY[2]' },
             'annually' => { key: 'form1[0].#subform[161].ANNUALLY[2]' },
             'oneTime' => { key: 'form1[0].#subform[161].ONE-TIME[2]' },
@@ -184,11 +184,11 @@ module SurvivorsBenefits
             'veteran' => { key: 'form1[0].#subform[162].SURVIVING_SPOUSE[7]' },
             'child' => { key: 'form1[0].#subform[162].CHILD_Specify[3]' },
             'childName' => overflow_hash(24, 10, 'H', 'Med expense Child name 4', 'MED EXPENSE CHILD NAME 4')
-              .merge!(key: 'form1[0].#subform[162].CHILD_EXPENSES[3]'),
+                           .merge!(key: 'form1[0].#subform[162].CHILD_EXPENSES[3]'),
             'provider' => overflow_hash(50, 10, 'H', 'Med expense Provider 4', 'MED EXPENSE PROVIDER 4')
-              .merge!(key: 'form1[0].#subform[162].Name_Of_Provider[4]'),
+                          .merge!(key: 'form1[0].#subform[162].Name_Of_Provider[4]'),
             'purpose' => overflow_hash(50, 10, 'H', 'Med expense Purpose 4', 'MED EXPENSE PURPOSE 4')
-              .merge!(key: 'form1[0].#subform[162].PURPOSE[4]'),
+                         .merge!(key: 'form1[0].#subform[162].PURPOSE[4]'),
             'monthly' => { key: 'form1[0].#subform[162].MONTHLY[5]' },
             'annually' => { key: 'form1[0].#subform[162].ANNUALLY[5]' },
             'oneTime' => { key: 'form1[0].#subform[162].RadioButtonList[29]' },
@@ -204,11 +204,11 @@ module SurvivorsBenefits
             'veteran' => { key: 'form1[0].#subform[162].SURVIVING_SPOUSE[9]' },
             'child' => { key: 'form1[0].#subform[162].CHILD_Specify[4]' },
             'childName' => overflow_hash(24, 10, 'I', 'Med expense Child name 5', 'MED EXPENSE CHILD NAME 5')
-              .merge!(key: 'form1[0].#subform[162].CHILD_EXPENSES[4]'),
+                           .merge!(key: 'form1[0].#subform[162].CHILD_EXPENSES[4]'),
             'provider' => overflow_hash(50, 10, 'I', 'Med expense Provider 5', 'MED EXPENSE PROVIDER 5')
-              .merge!(key: 'form1[0].#subform[162].Name_Of_Provider[5]'),
+                          .merge!(key: 'form1[0].#subform[162].Name_Of_Provider[5]'),
             'purpose' => overflow_hash(50, 10, 'I', 'Med expense Purpose 5', 'MED EXPENSE PURPOSE 5')
-              .merge!(key: 'form1[0].#subform[162].PURPOSE[5]'),
+                         .merge!(key: 'form1[0].#subform[162].PURPOSE[5]'),
             'monthly' => { key: 'form1[0].#subform[162].MONTHLY[3]' },
             'annually' => { key: 'form1[0].#subform[162].ANNUALLY[3]' },
             'oneTime' => { key: 'form1[0].#subform[162].ONE-TIME[3]' },
@@ -224,11 +224,11 @@ module SurvivorsBenefits
             'veteran' => { key: 'form1[0].#subform[162].VETERAN[0]' },
             'child' => { key: 'form1[0].#subform[162].CHILD_Specify[5]' },
             'childName' => overflow_hash(24, 10, 'J', 'Med expense Child name 6', 'MED EXPENSE CHILD NAME 6')
-              .merge!(key: 'form1[0].#subform[162].CHILD_EXPENSES[5]'),
+                           .merge!(key: 'form1[0].#subform[162].CHILD_EXPENSES[5]'),
             'provider' => overflow_hash(50, 10, 'J', 'Med expense Provider 6', 'MED EXPENSE PROVIDER 6')
-              .merge!(key: 'form1[0].#subform[162].Name_Of_Provider[3]'),
+                          .merge!(key: 'form1[0].#subform[162].Name_Of_Provider[3]'),
             'purpose' => overflow_hash(50, 10, 'J', 'Med expense Purpose 6', 'MED EXPENSE PURPOSE 6')
-              .merge!(key: 'form1[0].#subform[162].PURPOSE[3]'),
+                         .merge!(key: 'form1[0].#subform[162].PURPOSE[3]'),
             'monthly' => { key: 'form1[0].#subform[162].MONTHLY[4]' },
             'annually' => { key: 'form1[0].#subform[162].ANNUALLY[4]' },
             'oneTime' => { key: 'form1[0].#subform[162].ONE-TIME[4]' },

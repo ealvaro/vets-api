@@ -345,7 +345,7 @@ RSpec.describe SimpleFormsApi::ScannedFormProcessor do
 
       expect { processor.process! }
         .to raise_error(SimpleFormsApi::ScannedFormProcessor::PersistenceError) do |error|
-          expect(error.errors.first[:detail]).to include('save your file')
+        expect(error.errors.first[:detail]).to include('save your file')
       end
     end
   end
@@ -481,7 +481,7 @@ RSpec.describe SimpleFormsApi::ScannedFormProcessor do
 
       expect { processor.process! }
         .to raise_error(SimpleFormsApi::ScannedFormProcessor::ConversionError) do |error|
-          expect(error.errors.first[:title]).to eq('File conversion error')
+        expect(error.errors.first[:title]).to eq('File conversion error')
       end
 
       not_a_pdf.unlink

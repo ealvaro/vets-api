@@ -4,7 +4,6 @@ module Avs
   class V0::Schemas::Avs
     include Swagger::Blocks
 
-    # rubocop:disable Metrics/BlockLength
     swagger_schema :Avs do
       key :required, [:data]
 
@@ -143,8 +142,6 @@ module Avs
         property :moreHelpAndInformation, type: :string
       end
     end
-    # rubocop:enable Metrics/BlockLength
-
     swagger_schema :clinicVisited do
       property :T, type: :string
       property :date, type: :string

@@ -31,9 +31,11 @@ module Sidekiq
         :instantiate_upload_info_from_lighthouse,
         :get_from_non_breakered_service,
         additional_instance_logs: [
-          submission_id: %i[submission_id],
-          initial_upload_uuid: %i[initial_upload_uuid],
-          initial_upload_location: %i[initial_upload_location]
+          {
+            submission_id: %i[submission_id],
+            initial_upload_uuid: %i[initial_upload_uuid],
+            initial_upload_location: %i[initial_upload_location]
+          }
         ]
       )
 

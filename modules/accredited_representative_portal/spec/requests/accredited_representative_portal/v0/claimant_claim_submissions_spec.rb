@@ -127,7 +127,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantClaimSubmissionsContr
                         'packet' => false,
                         'confirmationNumber' =>
                           saved_claim_claimant_representative_a.saved_claim
-                            .latest_submission_attempt.benefits_intake_uuid,
+                          .latest_submission_attempt.benefits_intake_uuid,
                         'vbmsStatus' => 'awaiting_receipt',
                         'vbmsReceivedDate' => nil,
                         'id' => saved_claim_claimant_representative_a.id
@@ -142,7 +142,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantClaimSubmissionsContr
                         'packet' => false,
                         'confirmationNumber' =>
                           saved_claim_claimant_representative_b.saved_claim
-                            .latest_submission_attempt.benefits_intake_uuid,
+                          .latest_submission_attempt.benefits_intake_uuid,
                         'vbmsStatus' => 'awaiting_receipt',
                         'vbmsReceivedDate' => nil,
                         'id' => saved_claim_claimant_representative_b.id

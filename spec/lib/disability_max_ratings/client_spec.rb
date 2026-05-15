@@ -17,7 +17,7 @@ RSpec.describe DisabilityMaxRatings::Client do
             'disability max ratings response', status: 200,
                                                body: {
                                                  ratings: [
-                                                   diagnostic_code: 1234, max_rating: 100
+                                                   { diagnostic_code: 1234, max_rating: 100 }
                                                  ]
                                                }.as_json
           )

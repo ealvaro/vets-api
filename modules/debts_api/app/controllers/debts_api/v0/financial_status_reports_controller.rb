@@ -254,18 +254,24 @@ module DebtsApi
                 street city state country postal_code
               ],
               employment_history: [
-                veteran: [
-                  employment_records: [
-                    :type, :from, :to, :is_current, :employer_name, :gross_monthly_income,
-                    { deductions: %i[name amount] }
+                {
+                  veteran: [
+                    {
+                      employment_records: [
+                        :type, :from, :to, :is_current, :employer_name, :gross_monthly_income,
+                        { deductions: %i[name amount] }
+                      ]
+                    }
+                  ],
+                  spouse: [
+                    {
+                      sp_employment_records: [
+                        :type, :from, :to, :is_current, :employer_name, :gross_monthly_income,
+                        { deductions: %i[name amount] }
+                      ]
+                    }
                   ]
-                ],
-                spouse: [
-                  sp_employment_records: [
-                    :type, :from, :to, :is_current, :employer_name, :gross_monthly_income,
-                    { deductions: %i[name amount] }
-                  ]
-                ]
+                }
               ]
             }
           ],
@@ -342,10 +348,12 @@ module DebtsApi
             { station: {} }
           ],
           additional_income: [
-            addl_inc_records: %i[name amount],
-            spouse: [
-              sp_addl_income: %i[name amount]
-            ]
+            {
+              addl_inc_records: %i[name amount],
+              spouse: [
+                { sp_addl_income: %i[name amount] }
+              ]
+            }
           ],
           expenses: [
             :monthly_housing_expenses,

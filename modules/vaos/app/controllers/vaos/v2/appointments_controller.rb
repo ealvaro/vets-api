@@ -331,7 +331,7 @@ module VAOS
               :text, { coding: %i[system code display] }
             ],
             slot: %i[id start end],
-            contact: [telecom: %i[type value]],
+            contact: [{ telecom: %i[type value] }],
             practitioner_ids: %i[system value],
             requested_periods: %i[start end],
             practitioners: [

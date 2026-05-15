@@ -2,7 +2,6 @@
 
 require 'appeals_api/form_schemas'
 
-# rubocop:disable Layout/LineLength, Metrics/ClassLength
 class AppealsApi::V1::NoticeOfDisagreementsControllerSwagger
   include Swagger::Blocks
 
@@ -670,4 +669,3 @@ class AppealsApi::V1::NoticeOfDisagreementsControllerSwagger
     end
   end
 end
-# rubocop:enable Layout/LineLength, Metrics/ClassLength

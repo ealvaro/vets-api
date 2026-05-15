@@ -42,7 +42,7 @@ module VAProfile
         {
           bio: {
             genderIdentity: [
-              genderIdentityCode: @code
+              { genderIdentityCode: @code }
             ],
             sourceDate: @source_date,
             originatingSourceSystem: SOURCE_SYSTEM,

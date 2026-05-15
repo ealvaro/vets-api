@@ -206,7 +206,7 @@ FactoryBot.define do
       status { 'booked' }
       reason_code do
         { 'coding' => [
-            code: 'Routine Follow-up'
+            { code: 'Routine Follow-up' }
           ],
           text: 'testing' }
       end
@@ -286,7 +286,7 @@ FactoryBot.define do
       va_proposed_base
       reason_code do
         { 'codeing' => [
-            code: 'Routine Follow-up'
+            { code: 'Routine Follow-up' }
           ],
           text: 'testing' }
       end

@@ -36,26 +36,26 @@ module DependentsHelper
   end
 
   def current_and_pending_decisions(diaries)
-    # Filter by eligible minor child or school attendance types and if they are the current or future decisions
     decisions = dependency_decisions(diaries)
                 .filter do |dec|
-                  (START_EVENTS.include?(dec[:dependency_decision_type]) && !in_future(dec)) ||
-                    (END_EVENTS.include?(dec[:dependency_decision_type]) && in_future(dec))
+      decision_type = dec[:dependency_decision_type]
+      (START_EVENTS.include?(decision_type) && !in_future(dec)) ||
+        (END_EVENTS.include?(decision_type) && in_future(dec))
     end
 
     decisions.group_by { |dec| dec[:person_id] }
              .transform_values do |decs|
-               # get only most recent active decision and add back to array
-               active =
-                 decs.filter do |dec|
-                   START_EVENTS.include?(dec[:dependency_decision_type]) &&
-                     decs.any? { |d| still_pending(d, dec[:award_event_id]) }
-                 end
-               most_recent = active.max { |a, b| max_time(a, b) }
-               # include all future events (including school attendance begins)
-               (decs.filter do |dec|
-                 FUTURE_EVENTS.include?(dec[:dependency_decision_type]) && in_future(dec)
-               end + [most_recent]).compact
+      active =
+        decs.filter do |dec|
+          decision_type = dec[:dependency_decision_type]
+          START_EVENTS.include?(decision_type) &&
+            decs.any? { |d| still_pending(d, dec[:award_event_id]) }
+        end
+      most_recent = active.max { |a, b| max_time(a, b) }
+
+      (decs.filter do |dec|
+        FUTURE_EVENTS.include?(dec[:dependency_decision_type]) && in_future(dec)
+      end + [most_recent]).compact
     end
   end
 

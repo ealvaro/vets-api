@@ -181,17 +181,17 @@ RSpec.describe Lighthouse::SubmitBenefitsIntakeClaim, :uploader_helpers do
       it 'logs a silent failure with the correct form_id and user_account_uuid' do
         Lighthouse::SubmitBenefitsIntakeClaim
           .within_sidekiq_retries_exhausted_block({ 'args' => [claim.id], 'error_message' => 'timeout' }) do
-            allow(SavedClaim).to receive(:find).with(claim.id).and_return(claim)
+          allow(SavedClaim).to receive(:find).with(claim.id).and_return(claim)
 
-            expect(monitor).to receive(:log_silent_failure).with(
-              hash_including(form_id: claim.class::FORM, claim_id: claim.id, error: 'timeout'),
-              claim.user_account_id
-            )
-            expect(Rails.logger).to receive(:error).at_least(:once)
-            expect(StatsD).to receive(:increment).with(
-              'worker.lighthouse.submit_benefits_intake_claim.exhausted',
-              tags: ["form_id:#{claim.class::FORM}"]
-            )
+          expect(monitor).to receive(:log_silent_failure).with(
+            hash_including(form_id: claim.class::FORM, claim_id: claim.id, error: 'timeout'),
+            claim.user_account_id
+          )
+          expect(Rails.logger).to receive(:error).at_least(:once)
+          expect(StatsD).to receive(:increment).with(
+            'worker.lighthouse.submit_benefits_intake_claim.exhausted',
+            tags: ["form_id:#{claim.class::FORM}"]
+          )
         end
       end
     end
@@ -200,17 +200,17 @@ RSpec.describe Lighthouse::SubmitBenefitsIntakeClaim, :uploader_helpers do
       it 'logs a silent failure with form_id unknown' do
         Lighthouse::SubmitBenefitsIntakeClaim
           .within_sidekiq_retries_exhausted_block({ 'args' => [0], 'error_message' => 'timeout' }) do
-            allow(SavedClaim).to receive(:find).with(0).and_raise(ActiveRecord::RecordNotFound)
+          allow(SavedClaim).to receive(:find).with(0).and_raise(ActiveRecord::RecordNotFound)
 
-            expect(monitor).to receive(:log_silent_failure).with(
-              hash_including(form_id: 'unknown', claim_id: 0, error: 'timeout'),
-              nil
-            )
-            expect(Rails.logger).to receive(:error).at_least(:twice)
-            expect(StatsD).to receive(:increment).with(
-              'worker.lighthouse.submit_benefits_intake_claim.exhausted',
-              tags: ['form_id:unknown']
-            )
+          expect(monitor).to receive(:log_silent_failure).with(
+            hash_including(form_id: 'unknown', claim_id: 0, error: 'timeout'),
+            nil
+          )
+          expect(Rails.logger).to receive(:error).at_least(:twice)
+          expect(StatsD).to receive(:increment).with(
+            'worker.lighthouse.submit_benefits_intake_claim.exhausted',
+            tags: ['form_id:unknown']
+          )
         end
       end
     end

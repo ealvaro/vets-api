@@ -73,10 +73,12 @@ module DebtsApi
             },
             {
               spouse: [
-                sp_addl_income: %i[
-                  name
-                  amount
-                ]
+                {
+                  sp_addl_income: %i[
+                    name
+                    amount
+                  ]
+                }
               ]
             }
           ],

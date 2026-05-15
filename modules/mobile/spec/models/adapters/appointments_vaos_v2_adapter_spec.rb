@@ -489,7 +489,7 @@ describe Mobile::V0::Adapters::VAOSV2Appointments, :aggregate_failures do
         no_timezone_appt = appointment_by_id(
           booked_va_id,
           overrides: { location_id: '358' },
-          without: [key: :time_zone, at: :location]
+          without: [{ key: :time_zone, at: :location }]
         )
         expect(no_timezone_appt.time_zone).to eq('Asia/Manila')
       end
@@ -700,7 +700,7 @@ describe Mobile::V0::Adapters::VAOSV2Appointments, :aggregate_failures do
     context 'when service category is present' do
       it 'is set to the first service category text' do
         # none of the fixture data contains this
-        appt = appointment_by_id(booked_cc_id, overrides: { service_category: [text: 'therapy'] })
+        appt = appointment_by_id(booked_cc_id, overrides: { service_category: [{ text: 'therapy' }] })
         expect(appt.service_category_name).to eq('therapy')
       end
     end

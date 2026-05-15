@@ -52,7 +52,7 @@ RSpec.describe 'VBADocuments::SlackInflightNotifier', type: :job do
           class: 'VBADocuments::SlackInflightNotifier',
           alert: 'Submissions Exceeding Thresholds',
           details: include("Status 'received': 1 submissions exceed thresholds")
-                     .and(include("GUID: #{upload_submission.guid} | Status: received | Duration: 5 days"))
+                   .and(include("GUID: #{upload_submission.guid} | Status: received | Duration: 5 days"))
         }
       )
       expect(slack_messenger).to have_received(:notify!).once
@@ -144,8 +144,8 @@ RSpec.describe 'VBADocuments::SlackInflightNotifier', type: :job do
           class: 'VBADocuments::SlackInflightNotifier',
           alert: 'Submissions Exceeding Thresholds',
           details: include("GUID: #{uploaded_submission.guid} | Status: uploaded")
-                     .and(include("GUID: #{processing_submission.guid} | Status: processing"))
-                     .and(include("GUID: #{upload_submission.guid} | Status: received"))
+                   .and(include("GUID: #{processing_submission.guid} | Status: processing"))
+                   .and(include("GUID: #{upload_submission.guid} | Status: received"))
         }
       )
       expect(slack_messenger).to have_received(:notify!).once
@@ -169,7 +169,7 @@ RSpec.describe 'VBADocuments::SlackInflightNotifier', type: :job do
             class: 'VBADocuments::SlackInflightNotifier',
             alert: 'Submissions Exceeding Thresholds',
             details: include("Status 'received': 1 submissions exceed thresholds")
-                       .and(include("GUID: #{upload_submission.guid} | Status: received | Duration: 5 days"))
+                     .and(include("GUID: #{upload_submission.guid} | Status: received | Duration: 5 days"))
           }
         )
         expect(slack_messenger).to have_received(:notify!).once
@@ -194,9 +194,9 @@ RSpec.describe 'VBADocuments::SlackInflightNotifier', type: :job do
             class: 'VBADocuments::SlackInflightNotifier',
             alert: 'Submissions Exceeding Thresholds',
             details: include("Status 'uploaded': 1 submissions exceed thresholds")
-                       .and(include("GUID: #{appeals_submission.guid} | Status: uploaded | Duration: 2 days"))
-                       .and(include("Status 'received': 1 submissions exceed thresholds"))
-                       .and(include("GUID: #{upload_submission.guid} | Status: received | Duration: 5 days"))
+                     .and(include("GUID: #{appeals_submission.guid} | Status: uploaded | Duration: 2 days"))
+                     .and(include("Status 'received': 1 submissions exceed thresholds"))
+                     .and(include("GUID: #{upload_submission.guid} | Status: received | Duration: 5 days"))
           }
         )
         expect(slack_messenger).to have_received(:notify!).once
@@ -317,8 +317,8 @@ RSpec.describe 'VBADocuments::SlackInflightNotifier', type: :job do
       allow(Flipper).to receive(:enabled?).with(:decision_review_delay_evidence).and_return(true)
       VBADocuments::UploadSubmission.create(status: 'uploaded', consumer_name: 'appeals_api_sc_evidence_submission')
                                     .tap do |sub|
-                                      sub.metadata['status']['uploaded']['start'] = 200.minutes.ago.to_i
-                                      sub.save!
+        sub.metadata['status']['uploaded']['start'] = 200.minutes.ago.to_i
+        sub.save!
       end
       @job.send(:fetch_settings)
     end
