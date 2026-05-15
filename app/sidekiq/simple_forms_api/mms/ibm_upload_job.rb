@@ -51,11 +51,11 @@ module SimpleFormsApi
       private
 
       def handle_response(ibm_response)
-        return if ibm_response&.status == 200
+        return if ibm_response == true || ibm_response&.status == 200
 
         reason =
           if ibm_response
-            "IBM upload returned status #{ibm_response.status}"
+            "IBM upload returned status #{ibm_response&.status}"
           else
             'IBM upload returned no response'
           end
