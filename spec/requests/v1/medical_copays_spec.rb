@@ -48,6 +48,7 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
                 previousBalance
                 previousUnpaidBalance
                 invoiceDate
+                lineItems
               ]
             )
         end
@@ -96,6 +97,56 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
           response_body = JSON.parse(response.body)
           expect(response_body).to eq({ 'data' => [], 'status' => 200, 'isCerner' => true })
         end
+      end
+    end
+
+    context 'include_line_items (Lighthouse index)' do
+      let(:invoice_bundle) do
+        instance_double(
+          Lighthouse::HCC::Bundle,
+          entries: [],
+          links: {},
+          meta: { total: 0, page: 1, per_page: 50,
+                  copay_summary: { 'total_current_balance' => 0.0, 'copay_bill_count' => 0, 'last_updated_on' => nil } }
+        )
+      end
+
+      before do
+        allow(MedicalCopays::CernerFacilities).to receive(:cerner_copay_user?).and_return(false)
+      end
+
+      it 'passes include_line_items as nil when the param is omitted' do
+        copay_service = instance_double(MedicalCopays::LighthouseIntegration::Service)
+        allow(MedicalCopays::LighthouseIntegration::Service)
+          .to receive(:new).with(current_user.icn).and_return(copay_service)
+        allow(copay_service).to receive(:list_months).and_return(invoice_bundle)
+        allow(Lighthouse::HCC::InvoiceSerializer).to receive(:new).and_return(
+          double(serializable_hash: { 'data' => [], 'meta' => {} })
+        )
+
+        get '/v1/medical_copays'
+
+        expect(copay_service).to have_received(:list_months).with(
+          status: nil,
+          include_line_items: nil
+        )
+      end
+
+      it 'passes include_line_items through from params when provided' do
+        copay_service = instance_double(MedicalCopays::LighthouseIntegration::Service)
+        allow(MedicalCopays::LighthouseIntegration::Service)
+          .to receive(:new).with(current_user.icn).and_return(copay_service)
+        allow(copay_service).to receive(:list_months).and_return(invoice_bundle)
+        allow(Lighthouse::HCC::InvoiceSerializer).to receive(:new).and_return(
+          double(serializable_hash: { 'data' => [], 'meta' => {} })
+        )
+
+        get '/v1/medical_copays', params: { include_line_items: 'true', status: 'issued' }
+
+        expect(copay_service).to have_received(:list_months).with(
+          status: 'issued',
+          include_line_items: 'true'
+        )
       end
     end
   end

@@ -18,7 +18,8 @@ module V1
         render json: copays
       else
         invoice_bundle = medical_copay_service.list_months(
-          status: params[:status]
+          status: params[:status],
+          include_line_items: params[:include_line_items]
         )
         serialized = Lighthouse::HCC::InvoiceSerializer.new(
           invoice_bundle.entries, links: invoice_bundle.links, meta: invoice_bundle.meta

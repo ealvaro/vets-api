@@ -14,6 +14,7 @@ require 'concurrent-ruby'
 module MedicalCopays
   module LighthouseIntegration
     class Service
+      include MedicalCopays::LighthouseIntegration::InvoiceEntryChargeItemHelper
       # Encounter API lacks _id filter; fetch all and filter client-side
       ENCOUNTER_FETCH_LIMIT = 200
       CHARGE_ITEM_FETCH_LIMIT = 100
@@ -74,7 +75,7 @@ module MedicalCopays
         raise ServiceError, 'External service error'
       end
 
-      def list_months(month_count: 6, status: nil)
+      def list_months(month_count: 6, status: nil, include_line_items: false)
         result = collect_invoices_in_range(month_count, status:)
         raw_bundle = result['raw_bundle']
         filtered_entries = result['entries']
@@ -84,6 +85,8 @@ module MedicalCopays
           'total' => filtered_entries.length,
           'link' => []
         )
+
+        add_line_items_to_invoices!(filtered_entries) if include_line_items && filtered_entries.any?
 
         formatted_entries = filtered_entries.empty? ? [] : build_invoice_entries(new_bundle)
 
@@ -200,6 +203,7 @@ module MedicalCopays
 
       def invoices_for_organization(month_count, count, organization_id, current_invoice_id)
         result = collect_invoices_in_range(month_count, count:)
+
         filtered_invoices = result['entries'].select do |entry|
           next if entry.dig('resource', 'id') == current_invoice_id
 

@@ -16,6 +16,7 @@ module Lighthouse
       attribute :invoice_date, String
       attribute :last_credit_debit, Float
       attribute :url, String
+      attribute :line_items, Hash, array: true
 
       def initialize(params)
         @params = params
@@ -36,18 +37,17 @@ module Lighthouse
         @last_updated_at = @params.dig('resource', 'meta', 'lastUpdated')
 
         @current_balance = calculate_current_balance ? calculate_current_balance.compact.sum : 0.0
-        @previous_balance = @params['resource']['totalPriceComponent'].find do |c|
-          c['type'] == 'informational' && c.dig('code', 'text') == 'Original Amount'
-        end&.dig('amount', 'value')&.to_f
-
-        @previous_unpaid_balance = @params['resource']['totalPriceComponent']
-                                   .select { |c| %w[base surcharge].include?(c['type']) }
-                                   .sum { |c| c.dig('amount', 'value').to_f }
+        @previous_balance = get_previous_balance
+        @previous_unpaid_balance = get_previous_unpaid_balance
 
         @url = @params.dig('resource', 'fullUrl')
         @external_id = @params.dig('resource', 'id')
         @invoice_date = @params.dig('resource', 'date')
+
+        @line_items = @params.dig('resource', 'line_items') || []
       end
+
+      private
 
       def calculate_current_balance
         @params.dig('resource', 'totalPriceComponent')&.map do |tpc|
@@ -55,6 +55,18 @@ module Lighthouse
 
           tpc['amount']['value']
         end
+      end
+
+      def get_previous_balance
+        @params['resource']['totalPriceComponent'].find do |c|
+          c['type'] == 'informational' && c.dig('code', 'text') == 'Original Amount'
+        end&.dig('amount', 'value')&.to_f
+      end
+
+      def get_previous_unpaid_balance
+        @params['resource']['totalPriceComponent']
+          .select { |c| %w[base surcharge].include?(c['type']) }
+          .sum { |c| c.dig('amount', 'value').to_f }
       end
     end
   end

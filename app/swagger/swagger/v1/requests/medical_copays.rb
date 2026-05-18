@@ -82,6 +82,11 @@ class Swagger::V1::Requests::MedicalCopays
                          type: :string,
                          format: :'date-time',
                          example: '2012-11-01T04:00:00.000+00:00'
+
+                property :chargeItems,
+                         type: :object,
+                         description: 'Included when include_line_items is used. Maps ChargeItem id to FHIR ' \
+                                      'ChargeItem resource JSON.'
               end
 
               # VBS response (conditionally returned based on Cerner location(s))

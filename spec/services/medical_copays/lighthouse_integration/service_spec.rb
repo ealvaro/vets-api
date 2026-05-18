@@ -308,12 +308,83 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
   end
 
   describe '#list_months' do
+    it 'declares an optional include_line_items keyword defaulting to false' do
+      params = described_class.instance_method(:list_months).parameters
+      expect(params).to include(%i[key include_line_items])
+    end
+
+    it 'does not call add_line_items_to_invoices! when include_line_items is omitted (default false)' do
+      service = described_class.new('123')
+      entry = {
+        'resource' => {
+          'id' => 'inv-1',
+          'date' => Time.current.utc.iso8601,
+          'issuer' => { 'reference' => 'Organization/org-1' }
+        }
+      }
+      expect(service).not_to receive(:add_line_items_to_invoices!)
+      collect_stub = {
+        'raw_bundle' => { 'entry' => [entry], 'link' => [], 'total' => 1 },
+        'entries' => [entry]
+      }
+      allow(service).to receive_messages(collect_invoices_in_range: collect_stub, build_invoice_entries: [])
+      allow(Lighthouse::HCC::Bundle).to receive(:new).and_return(instance_double(Lighthouse::HCC::Bundle, entries: []))
+
+      service.list_months
+    end
+
+    it 'attaches charge_items and built line_items from paged ChargeItem search when include_line_items is true' do
+      service = described_class.new('123456789V123456')
+      entry = {
+        'resource' => {
+          'id' => 'inv-1',
+          'date' => Time.current.utc.iso8601,
+          'issuer' => { 'reference' => 'Organization/org-1' },
+          'lineItem' => [
+            {
+              'chargeItemReference' => { 'reference' => 'ChargeItem/ci-1' },
+              'priceComponent' => [{ 'type' => 'base', 'amount' => { 'value' => 5.0 } }]
+            },
+            {
+              'chargeItemReference' => { 'reference' => 'ChargeItem/ci-2' },
+              'priceComponent' => [{ 'type' => 'base', 'amount' => { 'value' => 12.0 } }]
+            }
+          ]
+        }
+      }
+      charge_item_rows = {
+        'ci-1' => { 'id' => 'ci-1', 'status' => 'billable', 'occurrenceDateTime' => '2025-01-01T00:00:00Z' },
+        'ci-2' => { 'id' => 'ci-2', 'status' => 'billable', 'occurrenceDateTime' => '2025-06-01T00:00:00Z' }
+      }
+      paginated_charge_items = instance_double(MedicalCopays::LighthouseIntegration::PaginatedService::ChargeItemService)
+      allow(MedicalCopays::LighthouseIntegration::PaginatedService::ChargeItemService).to receive(:new)
+        .with('123456789V123456').and_return(paginated_charge_items)
+      allow(paginated_charge_items).to receive(:fetch_paginated_charge_items)
+        .with(%w[ci-1 ci-2]).and_return(charge_item_rows)
+      collect_stub = {
+        'raw_bundle' => { 'entry' => [entry], 'link' => [], 'total' => 1 },
+        'entries' => [entry]
+      }
+      allow(service).to receive_messages(collect_invoices_in_range: collect_stub, build_invoice_entries: [])
+      allow(Lighthouse::HCC::Bundle).to receive(:new).and_return(instance_double(Lighthouse::HCC::Bundle, entries: []))
+
+      service.list_months(include_line_items: true)
+
+      expect(entry.dig('resource', 'charge_items')).to eq(charge_item_rows)
+      expect(entry.dig('resource', 'line_items')).to contain_exactly(
+        hash_including(billing_reference: 'ci-1', price_components: array_including(hash_including(amount: 5.0))),
+        hash_including(billing_reference: 'ci-2', price_components: array_including(hash_including(amount: 12.0)))
+      )
+    end
+
     it 'returns invoices from the last 6 months' do
       Timecop.freeze(Time.zone.parse('2025-09-01')) do
         VCR.use_cassette('lighthouse/hcc/copay_list_by_month', match_requests_on: %i[method path query]) do
           allow(Auth::ClientCredentials::JWTGenerator).to receive(:generate_token).and_return('fake-jwt')
 
           service = MedicalCopays::LighthouseIntegration::Service.new('123')
+
+          # Default include_line_items: false — Invoice cassette only.
           response = service.list_months
 
           from = 6.months.ago.utc
@@ -524,6 +595,99 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
         expect(result[:meta][:total_amount_due]).to eq(0.0)
         expect(result[:meta][:total_copays]).to eq(0)
       end
+    end
+  end
+
+  describe '#fetch_charge_items' do
+    let(:icn) { '123456789V123456' }
+    let(:service) { described_class.new(icn) }
+    let(:charge_item_client) { instance_double(Lighthouse::HealthcareCostAndCoverage::ChargeItem::Service) }
+
+    let(:hccc_charge_item) { Lighthouse::HealthcareCostAndCoverage::ChargeItem::Service }
+
+    before do
+      allow(hccc_charge_item).to receive(:new).with(icn).and_return(charge_item_client)
+    end
+
+    it 'returns an empty hash when ids are empty' do
+      expect(service.send(:fetch_charge_items, {})).to eq({})
+      expect(hccc_charge_item).not_to have_received(:new)
+    end
+
+    it 'calls Lighthouse once with count and keeps only ChargeItems referenced by line items' do
+      invoice_data = {
+        'lineItem' => [
+          { 'chargeItemReference' => { 'reference' => 'ChargeItem/want-this' } }
+        ]
+      }
+
+      allow(charge_item_client).to receive(:list).with(count: described_class::CHARGE_ITEM_FETCH_LIMIT).and_return(
+        'entry' => [
+          { 'resource' => { 'id' => 'want-this', 'status' => 'billable' } },
+          { 'resource' => { 'id' => 'other', 'status' => 'billable' } }
+        ]
+      )
+
+      result = service.send(:fetch_charge_items, invoice_data)
+
+      expect(result.keys).to contain_exactly('want-this')
+      expect(result['want-this']['status']).to eq('billable')
+      expect(charge_item_client).to have_received(:list).with(count: described_class::CHARGE_ITEM_FETCH_LIMIT).once
+    end
+
+    it 'collects distinct ChargeItems when an invoice has multiple line items (one reference per line item)' do
+      invoice_data = {
+        'lineItem' => [
+          { 'chargeItemReference' => { 'reference' => 'ChargeItem/ci-1' } },
+          { 'chargeItemReference' => { 'reference' => 'ChargeItem/ci-2' } }
+        ]
+      }
+
+      allow(charge_item_client).to receive(:list).with(count: described_class::CHARGE_ITEM_FETCH_LIMIT).and_return(
+        'entry' => [
+          { 'resource' => { 'id' => 'ci-1', 'status' => 'billable' } },
+          { 'resource' => { 'id' => 'ci-2', 'status' => 'billed' } },
+          { 'resource' => { 'id' => 'not-on-invoice', 'status' => 'billable' } }
+        ]
+      )
+
+      result = service.send(:fetch_charge_items, invoice_data)
+
+      expect(result.keys).to contain_exactly('ci-1', 'ci-2')
+      expect(result['ci-1']['status']).to eq('billable')
+      expect(result['ci-2']['status']).to eq('billed')
+    end
+
+    it 'ignores bundle entries without a resource id' do
+      invoice_data = {
+        'lineItem' => [
+          { 'chargeItemReference' => { 'reference' => 'ChargeItem/ci-1' } }
+        ]
+      }
+
+      allow(charge_item_client).to receive(:list).with(count: described_class::CHARGE_ITEM_FETCH_LIMIT).and_return(
+        'entry' => [
+          { 'resource' => { 'status' => 'billable' } },
+          { 'resource' => { 'id' => 'ci-1', 'status' => 'billable' } }
+        ]
+      )
+
+      result = service.send(:fetch_charge_items, invoice_data)
+
+      expect(result.keys).to eq(['ci-1'])
+    end
+
+    it 'returns an empty hash when the ChargeItem list raises' do
+      invoice_data = {
+        'lineItem' => [
+          { 'chargeItemReference' => { 'reference' => 'ChargeItem/x' } }
+        ]
+      }
+
+      allow(charge_item_client).to receive(:list).and_raise(StandardError.new('API error'))
+      allow(Rails.logger).to receive(:warn)
+
+      expect(service.send(:fetch_charge_items, invoice_data)).to eq({})
     end
   end
 
