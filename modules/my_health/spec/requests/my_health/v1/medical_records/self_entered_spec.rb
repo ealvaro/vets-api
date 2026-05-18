@@ -16,6 +16,7 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::SelfEntered', type: :request do
   let(:aal_client) { instance_spy(AAL::MRClient) }
 
   before do
+    remove_instance_variable(:@current_user) if instance_variable_defined?(:@current_user)
     allow(AAL::MRClient).to receive(:new).and_return(aal_client)
 
     bb_internal_client = BBInternal::Client.new(
@@ -28,7 +29,6 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::SelfEntered', type: :request do
     )
 
     allow(MedicalRecords::Client).to receive(:new).and_return(authenticated_client)
-    allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_new_eligibility_check).and_return(false)
     allow(BBInternal::Client).to receive(:new).and_return(bb_internal_client)
     sign_in_as(current_user, stub_mhv_account: true)
   end

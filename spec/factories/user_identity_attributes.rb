@@ -16,7 +16,6 @@ FactoryBot.define do
       zip { '17325' }
       ssn { '796111863' }
       mhv_icn { nil }
-      mhv_account_type { nil }
       sign_in { [[:service_name, SignIn::Constants::Auth::IDME]].to_h }
       loa { [[:current, LOA::ONE], [:highest, LOA::THREE]].to_h }
 
@@ -37,7 +36,6 @@ FactoryBot.define do
       zip { nil }
       ssn { nil }
       mhv_icn { nil }
-      mhv_account_type { 'Basic' }
       sign_in { [[:service_name, SignIn::Constants::Auth::MHV]].to_h }
       loa { [[:current, LOA::ONE], [:highest, LOA::THREE]].to_h }
     end

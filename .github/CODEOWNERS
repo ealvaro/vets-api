@@ -512,7 +512,6 @@ app/services/idp @software/bio-huntridge @software/backend-review-group
 app/services/idp.rb @software/bio-huntridge @software/backend-review-group
 app/services/login @software/octo-identity
 app/services/medical_copays @software/vsa-debt-resolution @software/backend-review-group
-app/services/mhv_account_type_service.rb @software/octo-identity
 app/services/mhv/user_account @software/octo-identity
 app/services/rapid_ready_for_decision @software/disability-benefits @software/backend-review-group
 app/services/remediation/ @software/octo-benefits-portfolio-code-reviewers @software/backend-review-group
@@ -1959,7 +1958,9 @@ spec/policies/hca_disability_rating_policy_spec.rb @software/vfs-authenticated-e
 spec/policies/lighthouse_policy_spec.rb @software/backend-review-group
 spec/policies/meb_policy_spec.rb @software/my-education-benefits @software/backend-review-group
 spec/policies/medical_copays_policy_spec.rb @software/vsa-debt-resolution @software/backend-review-group
+spec/policies/mhv_messaging_policy_spec.rb @software/vfs-mhv-integration @software/backend-review-group
 spec/policies/mhv_medical_records_policy_spec.rb @software/vfs-mhv-integration @software/backend-review-group
+spec/policies/mhv_health_records_policy_spec.rb @software/vfs-mhv-integration @software/backend-review-group
 spec/policies/mhv_prescriptions_policy_spec.rb @software/vfs-mhv-integration @software/backend-review-group
 spec/policies/mhv_user_account_policy_spec.rb @software/octo-identity
 spec/policies/mpi_policy_spec.rb @software/octo-identity
@@ -2138,7 +2139,6 @@ spec/services/idp @software/bio-huntridge @software/backend-review-group
 spec/services/idp_spec.rb @software/bio-huntridge @software/backend-review-group
 spec/services/login @software/octo-identity
 spec/services/medical_copays @software/vsa-debt-resolution @software/backend-review-group
-spec/services/mhv_account_type_service_spec.rb @software/octo-identity
 spec/services/mhv/user_account @software/octo-identity
 spec/services/rapid_ready_for_decision @software/disability-benefits @software/backend-review-group
 spec/services/remediation/ @software/octo-benefits-portfolio-code-reviewers @software/backend-review-group
@@ -2274,6 +2274,7 @@ spec/support/helpers/fhir_resource_builder.rb @software/vfs-mhv-integration @sof
 spec/support/matchers @software/backend-review-group
 spec/support/mdot_helpers.rb @software/va-cto-health-products @software/backend-review-group
 spec/support/medical_copays @software/vsa-debt-resolution @software/backend-review-group
+spec/support/mhv_user_account @software/vfs-mhv-integration @software/octo-identity
 spec/support/model_helpers.rb @software/backend-review-group
 spec/support/models/shared_examples @software/benefits-lifestage @software/backend-review-group
 spec/support/mpi @software/octo-identity
@@ -2545,7 +2546,6 @@ spec/support/vcr_cassettes/mail_automation @software/backend-review-group
 spec/support/vcr_cassettes/map @software/octo-identity
 spec/support/vcr_cassettes/mdot @software/va-cto-health-products @software/backend-review-group
 spec/support/vcr_cassettes/mhv_account_creation @software/octo-identity
-spec/support/vcr_cassettes/mhv_account_type_service @software/octo-identity
 spec/support/vcr_cassettes/mhv_logging_client @software/vfs-mhv-integration @software/backend-review-group
 spec/support/vcr_cassettes/mhv/account_creation @software/octo-identity
 spec/support/vcr_cassettes/mobile @software/mobile-api-team

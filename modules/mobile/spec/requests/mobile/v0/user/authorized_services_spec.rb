@@ -6,7 +6,7 @@ require_relative '../../../../support/helpers/committee_helper'
 RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
   include CommitteeHelper
 
-  let!(:user) { sis_user(vha_facility_ids: [402, 555]) }
+  let!(:user) { sis_user(vha_facility_ids: [402, 555], mhv_account_creation: { sm_account_created: nil }) }
   let(:attributes) { response.parsed_body.dig('data', 'attributes') }
   let(:meta) { response.parsed_body['meta'] }
 

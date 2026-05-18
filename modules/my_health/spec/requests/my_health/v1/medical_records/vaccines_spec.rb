@@ -13,11 +13,10 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::Vaccines', type: :request do
 
   let(:user_id) { '11898795' }
   let(:va_patient) { true }
-  let(:current_user) { build(:user, :mhv, va_patient:, mhv_account_type:) }
+  let(:current_user) { build(:user, :mhv, va_patient:) }
 
   before do
     allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_support_new_model_vaccine).and_return(false)
-    allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_new_eligibility_check).and_return(false)
     allow(MedicalRecords::Client).to receive(:new).and_return(authenticated_client)
     allow(BBInternal::Client).to receive(:new).and_return(authenticated_client)
     sign_in_as(current_user, stub_mhv_account: true)
@@ -27,39 +26,20 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::Vaccines', type: :request do
                    '/my_health/v1/medical_records/vaccines',
                    'mr_client/get_a_list_of_vaccines'
 
-  context 'Basic User' do
-    let(:mhv_account_type) { 'Basic' }
-
+  context 'not a va patient' do
     before { get '/my_health/v1/medical_records/vaccines' }
 
-    include_examples 'for user account level', message: 'You do not have access to medical records'
-    include_examples 'for non va patient user', authorized: false, message: 'You do not have access to medical records'
-  end
-
-  context 'Advanced User' do
-    let(:mhv_account_type) { 'Advanced' }
-
-    before { get '/my_health/v1/medical_records/vaccines' }
-
-    include_examples 'for user account level', message: 'You do not have access to medical records'
-    include_examples 'for non va patient user', authorized: false, message: 'You do not have access to medical records'
-  end
-
-  context 'Premium User' do
-    let(:mhv_account_type) { 'Premium' }
-
-    context 'not a va patient' do
-      before { get '/my_health/v1/medical_records/vaccines' }
-
-      let(:va_patient) { false }
-      let(:current_user) do
-        build(:user, :mhv, :no_vha_facilities, va_patient:, mhv_account_type:)
-      end
-
-      include_examples 'for non va patient user', authorized: false,
-                                                  message: 'You do not have access to medical records'
+    let(:va_patient) { false }
+    let(:current_user) do
+      build(:user, :mhv, :no_vha_facilities, va_patient:,
+                                             mhv_account_creation: { patient: false })
     end
 
+    include_examples 'for non va patient user', authorized: false,
+                                                message: 'You do not have access to medical records'
+  end
+
+  context 'For a VA patient' do
     it 'responds to GET #index' do
       VCR.use_cassette('mr_client/get_a_list_of_vaccines') do
         get '/my_health/v1/medical_records/vaccines'

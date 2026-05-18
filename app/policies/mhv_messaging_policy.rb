@@ -1,42 +1,42 @@
 # frozen_string_literal: true
 
-require 'sm/client'
-
 MHVMessagingPolicy = Struct.new(:user, :mhv_messaging) do
   def access?
-    return false unless user.mhv_correlation_id
-    return false unless user.va_patient?
+    unless user.mhv_correlation_id && user.va_patient?
+      log_access_denied
+      return false
+    end
 
-    client = SM::Client.new(session: { user_id: user.mhv_correlation_id, user_uuid: user.uuid })
-    validate_client(client)
+    return true if user.mhv_user_account&.sm_account_created == true
+
+    log_access_denied
+    false
   end
 
   def mobile_access?
-    return false unless user.mhv_correlation_id && user.va_patient?
-
-    client = Mobile::V0::Messaging::Client.new(session: { user_id: user.mhv_correlation_id, user_uuid: user.uuid })
-    validate_client(client)
+    access?
   end
 
   private
 
-  def validate_client(client)
-    if client.session.expired?
-      client.authenticate
-      !client.session.expired?
-    else
-      true
-    end
-  rescue
-    log_denial_details
-    false
+  def denial_reason
+    return 'no_mhv_correlation_id' unless user.mhv_correlation_id
+    return 'not_va_patient' unless user.va_patient?
+    return 'sm_account_not_created' unless user.mhv_user_account&.sm_account_created == true
+
+    'unknown'
   end
 
-  def log_denial_details
-    Rails.logger.info('SM ACCESS DENIED IN MOBILE POLICY',
-                      mhv_id: user.mhv_correlation_id.presence || 'false',
-                      sign_in_service: user.identity.sign_in[:service_name],
-                      va_facilities: user.va_treatment_facility_ids.length,
-                      va_patient: user.va_patient?)
+  def log_access_denied
+    Rails.logger.info(self.class::SM_ACCESS_LOG_MESSAGE,
+                      denial_reason:,
+                      mhv_account_nil: user.mhv_user_account.nil?,
+                      mhv_account_patient: user.mhv_user_account&.patient,
+                      va_patient: user.va_patient?,
+                      sm_account_created: user.mhv_user_account&.sm_account_created,
+                      user_uuid: user.uuid,
+                      mhv_id: user.mhv_correlation_id.presence || 'false')
   end
 end
+
+MHVMessagingPolicy::SM_ACCESS_LOG_MESSAGE = 'SM ACCESS DENIED'

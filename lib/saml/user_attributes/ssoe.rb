@@ -10,7 +10,7 @@ module SAML
       include Identity::Parsers::GCIds
       SERIALIZABLE_ATTRIBUTES = %i[email first_name middle_name last_name gender ssn birth_date
                                    idme_uuid logingov_uuid verified_at sec_id mhv_icn
-                                   mhv_credential_uuid mhv_account_type edipi loa sign_in multifactor icn].freeze
+                                   mhv_credential_uuid edipi loa sign_in multifactor icn].freeze
       INBOUND_AUTHN_CONTEXT = 'urn:oasis:names:tc:SAML:2.0:ac:classes:Password'
 
       attr_reader :attributes, :authn_context, :tracker_uuid, :warnings
@@ -93,10 +93,6 @@ module SAML
         safe_attr('va_eauth_mhvuuid') || mvi_ids[:mhv_ien]
       end
 
-      def mhv_account_type
-        safe_attr('va_eauth_mhvassurance')
-      end
-
       def edipi
         edipi_ids[:edipi]
       end
@@ -118,16 +114,9 @@ module SAML
         @loa_current = 1
       end
 
-      def mhv_loa_highest
-        mhv_assurance = mhv_account_type
-        LOA::MHV_PREMIUM_VERIFIED.include?(mhv_assurance) ? 3 : nil
-      end
-
       # This is the ID.me highest level of assurance attained
       def loa_highest
-        result = mhv_loa_highest
-        result ||= %w[2 classic_loa3].include?(safe_attr('va_eauth_ial_idme_highest')) ? 3 : 1
-        result
+        %w[2 classic_loa3].include?(safe_attr('va_eauth_ial_idme_highest')) ? 3 : 1
       end
 
       def multifactor
@@ -136,12 +125,6 @@ module SAML
         else
           safe_attr('va_eauth_multifactor')&.downcase == 'true'
         end
-      end
-
-      def account_type
-        result = mhv_account_type
-        result ||= 'N/A'
-        result
       end
 
       def loa
@@ -166,7 +149,7 @@ module SAML
                   else
                     SAML::User::AUTHN_CONTEXTS.fetch(authn_context).fetch(:sign_in)
                   end
-        sign_in.merge(account_type:,
+        sign_in.merge(account_type: 'N/A',
                       auth_broker: SAML::URLService::BROKER_CODE,
                       client_id: tracker&.payload_attr(:application))
       end

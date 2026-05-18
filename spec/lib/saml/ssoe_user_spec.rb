@@ -128,7 +128,6 @@ RSpec.describe SAML::User do
           sec_id: nil,
           mhv_icn: nil,
           mhv_credential_uuid: nil,
-          mhv_account_type: nil,
           edipi: nil,
           loa: { current: 1, highest: 1 },
           sign_in:,
@@ -161,7 +160,6 @@ RSpec.describe SAML::User do
           ssn: '123123123',
           mhv_icn: '1200049153V217987',
           mhv_credential_uuid: '123456',
-          mhv_account_type: nil,
           edipi: nil,
           email: 'vets.gov.user+1000@example.com',
           idme_uuid: nil,
@@ -200,7 +198,6 @@ RSpec.describe SAML::User do
           ssn: nil,
           mhv_icn: nil,
           mhv_credential_uuid: nil,
-          mhv_account_type: nil,
           edipi: nil,
           email: 'vets.gov.user+262@example.com',
           idme_uuid: '54e78de6140d473f87960f211be49c08',
@@ -234,7 +231,6 @@ RSpec.describe SAML::User do
           ssn: nil,
           mhv_icn: nil,
           mhv_credential_uuid: nil,
-          mhv_account_type: nil,
           edipi: nil,
           email: 'vets.gov.user+262@example.com',
           idme_uuid: '54e78de6140d473f87960f211be49c08',
@@ -269,7 +265,6 @@ RSpec.describe SAML::User do
           ssn: '666271152',
           mhv_icn: '1008830476V316605',
           mhv_credential_uuid: nil,
-          mhv_account_type: nil,
           edipi: nil,
           email: 'vets.gov.user+262@example.com',
           idme_uuid: '54e78de6140d473f87960f211be49c08',
@@ -294,7 +289,7 @@ RSpec.describe SAML::User do
       let(:saml_attributes) { build(:ssoe_idme_mhv_advanced) }
       let(:multifactor) { true }
       let(:service_name) { 'mhv' }
-      let(:account_type) { 'Advanced' }
+      let(:account_type) { 'N/A' }
 
       it 'has various important attributes' do
         expect(subject.to_hash).to eq(
@@ -308,7 +303,6 @@ RSpec.describe SAML::User do
           ssn: nil,
           mhv_icn: nil,
           mhv_credential_uuid: nil,
-          mhv_account_type: 'Advanced',
           email: 'alexmac_0@example.com',
           idme_uuid: '881571066e5741439652bc80759dd88c',
           logingov_uuid: nil,
@@ -320,12 +314,6 @@ RSpec.describe SAML::User do
           multifactor:
         )
       end
-
-      it 'has an mhv_account_type set' do
-        expect(subject.to_hash).to include(
-          mhv_account_type: 'Advanced'
-        )
-      end
     end
 
     context 'MHV non premium user who verifies' do
@@ -334,7 +322,7 @@ RSpec.describe SAML::User do
       let(:saml_attributes) { build(:ssoe_idme_mhv_loa3) }
       let(:multifactor) { true }
       let(:service_name) { 'mhv' }
-      let(:account_type) { 'Advanced' }
+      let(:account_type) { 'N/A' }
 
       it 'has various important attributes' do
         expect(subject.to_hash).to eq(
@@ -348,7 +336,6 @@ RSpec.describe SAML::User do
           ssn: '230595111',
           mhv_icn: '1013183292V131165',
           mhv_credential_uuid: '15001594',
-          mhv_account_type: 'Advanced',
           email: 'alexmac_0@example.com',
           idme_uuid: '881571066e5741439652bc80759dd88c',
           logingov_uuid: nil,
@@ -368,7 +355,7 @@ RSpec.describe SAML::User do
       let(:saml_attributes) { build(:ssoe_idme_mhv_basic_multifactor) }
       let(:multifactor) { false }
       let(:service_name) { 'mhv' }
-      let(:account_type) { 'Basic' }
+      let(:account_type) { 'N/A' }
 
       it 'has various important attributes' do
         expect(subject.to_hash).to eq(
@@ -382,7 +369,6 @@ RSpec.describe SAML::User do
           ssn: nil,
           mhv_icn: nil,
           mhv_credential_uuid: nil,
-          mhv_account_type: 'Basic',
           email: 'pv+mhvtestb@example.com',
           idme_uuid: '72782a87a807407f83e8a052d804d7f7',
           logingov_uuid: nil,
@@ -406,7 +392,7 @@ RSpec.describe SAML::User do
       let(:saml_attributes) { build(:ssoe_idme_mhv_premium) }
       let(:multifactor) { true }
       let(:service_name) { 'mhv' }
-      let(:account_type) { 'Premium' }
+      let(:account_type) { 'N/A' }
 
       it 'has various important attributes' do
         expect(subject.to_hash).to eq(
@@ -420,7 +406,6 @@ RSpec.describe SAML::User do
           ssn: '666811850',
           mhv_icn: '1012853550V207686',
           mhv_credential_uuid: '12345748',
-          mhv_account_type: 'Premium',
           email: 'k+tristanmhv@example.com',
           idme_uuid: '0e1bb5723d7c4f0686f46ca4505642ad',
           logingov_uuid: nil,
@@ -445,7 +430,7 @@ RSpec.describe SAML::User do
       end
       let(:multifactor) { true }
       let(:service_name) { 'mhv' }
-      let(:account_type) { 'Premium' }
+      let(:account_type) { 'N/A' }
 
       it 'has various important attributes' do
         expect(subject.to_hash).to eq(
@@ -459,7 +444,6 @@ RSpec.describe SAML::User do
           ssn: '666811850',
           mhv_icn: '1012853550V207686',
           mhv_credential_uuid: '12345748',
-          mhv_account_type: 'Premium',
           email: 'k+tristanmhv@example.com',
           idme_uuid: nil,
           logingov_uuid: nil,
@@ -869,7 +853,6 @@ RSpec.describe SAML::User do
           ssn: '666872589',
           mhv_icn: '1013062086V794840',
           mhv_credential_uuid: '15093546',
-          mhv_account_type: nil,
           email: nil,
           idme_uuid: '53f065475a794e14a32d707bfd9b215f',
           logingov_uuid: nil,
@@ -906,7 +889,6 @@ RSpec.describe SAML::User do
           ssn: '666271152',
           mhv_icn: '1012827134V054550',
           mhv_credential_uuid: '10894456',
-          mhv_account_type: nil,
           email: 'vets.gov.user+262@gmail.com',
           idme_uuid: '54e78de6140d473f87960f211be49c08',
           logingov_uuid: 'aa478abc-e494-4ae1-8f87-d002f8fe1bbd',

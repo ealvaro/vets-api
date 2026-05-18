@@ -8,15 +8,13 @@ RSpec.describe 'V0::User', type: :request do
   include SM::ClientHelpers
 
   context 'GET /v0/user - when an LOA 3 user is logged in' do
-    let(:mhv_user) { build(:user, :mhv) }
+    let(:mhv_user) { build(:user, :mhv, mhv_account_creation: { patient: true }) }
     let(:v0_user_request_headers) { {} }
     let(:edipi) { '1005127153' }
     let!(:mhv_user_verification) { create(:mhv_user_verification, mhv_uuid: mhv_user.mhv_credential_uuid) }
 
     before do
       allow(SM::Client).to receive(:new).and_return(authenticated_client)
-      allow_any_instance_of(MHVAccountTypeService).to receive(:mhv_account_type).and_return('Premium')
-      allow_any_instance_of(User).to receive(:mhv_user_account).and_return(build(:mhv_user_account))
       sign_in_as(mhv_user)
       allow_any_instance_of(User).to receive(:edipi).and_return(edipi)
       VCR.use_cassette('va_profile/veteran_status/va_profile_veteran_status_200', allow_playback_repeats: true) do
@@ -133,11 +131,13 @@ RSpec.describe 'V0::User', type: :request do
     end
 
     context 'with missing MHV accounts' do
-      let(:mhv_user) { build(:user, :mhv, mhv_ids: nil, active_mhv_ids: nil, mhv_credential_uuid: nil) }
+      let(:mhv_user) do
+        build(:user, :mhv, mhv_ids: nil, active_mhv_ids: nil, mhv_credential_uuid: nil,
+                           mhv_user_account: nil, skip_mhv_user_account_preload: true)
+      end
       let!(:mhv_user_verification) { create(:mhv_user_verification, backing_idme_uuid: mhv_user.idme_uuid) }
 
       before do
-        allow_any_instance_of(User).to receive(:mhv_user_account).and_return(nil)
         sign_in_as(mhv_user)
         get v0_user_url, params: nil
       end

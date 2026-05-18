@@ -241,7 +241,7 @@ describe Mobile::V0::UserAccessibleServices, :aggregate_failures, type: :model d
 
     describe 'prescriptions' do
       context 'when user does not have mhv_prescriptions access' do
-        let(:user) { build(:user, skip_mhv_user_account_preload: true) }
+        let(:user) { build(:user, mhv_account_creation: { patient: false, champ_va: false }) }
 
         it 'is false' do
           expect(user_services.service_auth_map[:prescriptions]).to be(false)
@@ -250,10 +250,6 @@ describe Mobile::V0::UserAccessibleServices, :aggregate_failures, type: :model d
 
       context 'when user does have mhv_prescriptions access' do
         let(:user) { build(:user, :mhv) }
-
-        before do
-          allow_any_instance_of(User).to receive(:mhv_user_account).and_return(OpenStruct.new(patient: true))
-        end
 
         it 'is true' do
           expect(user_services.service_auth_map[:prescriptions]).to be_truthy
@@ -280,10 +276,9 @@ describe Mobile::V0::UserAccessibleServices, :aggregate_failures, type: :model d
     end
 
     describe 'secureMessaging' do
-      before { Timecop.freeze(Time.zone.parse('2017-05-01T19:25:00Z')) }
-      after { Timecop.return }
-
       context 'when user does not have mhv_messaging access' do
+        let(:user) { build(:user, :with_terms_of_use_agreement, mhv_account_creation: { sm_account_created: false }) }
+
         it 'is false' do
           expect(user_services.service_auth_map[:secureMessaging]).to be(false)
         end
@@ -291,9 +286,7 @@ describe Mobile::V0::UserAccessibleServices, :aggregate_failures, type: :model d
 
       context 'when user does have mhv_messaging access' do
         it 'is true' do
-          VCR.use_cassette('sm_client/session') do
-            expect(user_services.service_auth_map[:secureMessaging]).to be_truthy
-          end
+          expect(user_services.service_auth_map[:secureMessaging]).to be_truthy
         end
       end
     end

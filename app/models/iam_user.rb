@@ -59,10 +59,6 @@ class IAMUser < User
     identity.iam_sec_id || sec_id
   end
 
-  def mhv_account_type
-    MHVAccountTypeService.new(self).mhv_account_type
-  end
-
   # This is not the correct way of determining VA patient status,
   # but it works for authorizing access for existing MHV premium users
   # If we are going to enable account creation/upgrade, then we'll need

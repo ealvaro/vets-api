@@ -55,8 +55,7 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::MilitaryServiceController', type: 
 
     context 'with no ICN' do
       let(:user_id) { '21207668' }
-      let(:current_user) { build(:user, :mhv, mhv_account_type:, edipi: '1234567890', icn: nil) }
-      let(:mhv_account_type) { 'Premium' }
+      let(:current_user) { build(:user, :mhv, edipi: '1234567890', icn: nil) }
 
       before do
         sign_in_as(current_user, stub_mhv_account: true)
@@ -78,8 +77,7 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::MilitaryServiceController', type: 
 
   context 'Authorized User' do
     let(:user_id) { '21207668' }
-    let(:current_user) { build(:user, :mhv, mhv_account_type:, edipi: '1234567890') }
-    let(:mhv_account_type) { 'Premium' }
+    let(:current_user) { build(:user, :mhv, edipi: '1234567890') }
 
     context 'retrieving a standalone report' do
       it 'responds to GET #index and logs an AAL' do

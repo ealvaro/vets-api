@@ -3,18 +3,16 @@
 require 'rx/client'
 
 MHVPrescriptionsPolicy = Struct.new(:user, :mhv_prescriptions) do
-  RX_ACCESS_LOG_MESSAGE = 'RX ACCESS DENIED'
-
   def access?
     unless user.loa3?
-      log_access_denied(RX_ACCESS_LOG_MESSAGE, nil)
+      log_access_denied(self.class::RX_ACCESS_LOG_MESSAGE, nil)
       return false
     end
 
     account = user.mhv_user_account
     return true if account&.patient || account&.champ_va
 
-    log_access_denied(RX_ACCESS_LOG_MESSAGE, account)
+    log_access_denied(self.class::RX_ACCESS_LOG_MESSAGE, account)
     false
   end
 
@@ -42,3 +40,5 @@ MHVPrescriptionsPolicy = Struct.new(:user, :mhv_prescriptions) do
                       va_patient: user.va_patient?)
   end
 end
+
+MHVPrescriptionsPolicy::RX_ACCESS_LOG_MESSAGE = 'RX ACCESS DENIED'

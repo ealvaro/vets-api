@@ -1,24 +1,17 @@
 # frozen_string_literal: true
 
 MHVMedicalRecordsPolicy = Struct.new(:user, :mhv_medical_records) do
-  MR_ACCOUNT_TYPES = %w[Premium].freeze
-  MR_ACCESS_LOG_MESSAGE = 'MR ACCESS DENIED'
-
   def access?
-    if Flipper.enabled?(:mhv_medical_records_new_eligibility_check)
-      unless user.loa3?
-        log_access_denied(MR_ACCESS_LOG_MESSAGE, nil)
-        return false
-      end
-
-      account = user.mhv_user_account
-      return true if account&.patient
-
-      log_access_denied(MR_ACCESS_LOG_MESSAGE, account)
-      false
-    else
-      MR_ACCOUNT_TYPES.include?(user.mhv_account_type) && user.va_patient?
+    unless user.loa3?
+      log_access_denied(self.class::MR_ACCESS_LOG_MESSAGE, nil)
+      return false
     end
+
+    account = user.mhv_user_account
+    return true if account&.patient
+
+    log_access_denied(self.class::MR_ACCESS_LOG_MESSAGE, account)
+    false
   end
 
   private
@@ -42,3 +35,5 @@ MHVMedicalRecordsPolicy = Struct.new(:user, :mhv_medical_records) do
                       va_patient: user.va_patient?)
   end
 end
+
+MHVMedicalRecordsPolicy::MR_ACCESS_LOG_MESSAGE = 'MR ACCESS DENIED'

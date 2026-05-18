@@ -3,7 +3,7 @@
 require_relative '../../../support/helpers/rails_helper'
 RSpec.describe 'Mobile::V0::Tooltips', type: :request do
   let(:user_account) { create(:user_account) }
-  let!(:user) { sis_user(:mhv, mhv_account_type: 'Premium') }
+  let!(:user) { sis_user(:mhv) }
   let!(:user_verification) { create(:user_verification, user_account:, idme_uuid: user.idme_uuid) }
 
   describe 'GET /v0/tooltips' do

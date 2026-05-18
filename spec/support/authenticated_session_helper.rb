@@ -2,7 +2,13 @@
 
 module AuthenticatedSessionHelper
   def sign_in(user = FactoryBot.build(:user, :loa3), token = nil, raw = false, stub_mhv_account: false)
-    user = User.create(user) unless user.persisted?
+    has_preloaded_mhv_account = user.instance_variable_defined?(:@mhv_user_account)
+    preloaded_mhv_account = user.instance_variable_get(:@mhv_user_account)
+
+    unless user.persisted?
+      user = User.create(user)
+      user.instance_variable_set(:@mhv_user_account, preloaded_mhv_account) if has_preloaded_mhv_account
+    end
 
     stub_mhv_creator(user) if stub_mhv_account
 

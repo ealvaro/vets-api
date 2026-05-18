@@ -6,7 +6,7 @@ require 'sm/client'
 RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
   include SchemaMatchers
 
-  let!(:user) { sis_user(:mhv, mhv_correlation_id: '123', mhv_account_type: 'Premium') }
+  let!(:user) { sis_user(:mhv, mhv_correlation_id: '123') }
   let(:care_systems_stub) { [{ station_number: '977', health_care_system_name: 'Manila VA Clinic' }] }
 
   before do
@@ -18,11 +18,10 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
   end
 
   context 'when not authorized' do
+    let!(:user) { sis_user(:mhv, mhv_account_creation: { sm_account_created: false }) }
+
     it 'responds with 403 error' do
-      VCR.use_cassette('mobile/messages/session_error') do
-        get '/mobile/v0/messaging/health/allrecipients', headers: sis_headers
-      end
-      expect(response).not_to be_successful
+      get '/mobile/v0/messaging/health/allrecipients', headers: sis_headers
       expect(response).to have_http_status(:forbidden)
     end
   end

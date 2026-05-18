@@ -5,7 +5,7 @@ require_relative '../../../support/helpers/committee_helper'
 
 RSpec.describe 'Mobile::V0::Surveys', type: :request do
   include CommitteeHelper
-  let!(:user) { sis_user(:mhv, mhv_account_type: 'Premium') }
+  let!(:user) { sis_user(:mhv) }
 
   describe 'POST /mobile/v0/survey' do
     let(:survey_data) do

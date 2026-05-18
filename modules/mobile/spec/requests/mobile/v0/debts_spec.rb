@@ -4,6 +4,7 @@ require_relative '../../../support/helpers/rails_helper'
 require_relative '../../../support/helpers/committee_helper'
 
 require 'debt_management_center/models/debt_store'
+require 'debt_management_center/debts_service'
 
 RSpec.describe 'Mobile::V0::Debts', type: :request do
   include CommitteeHelper

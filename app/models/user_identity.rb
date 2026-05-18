@@ -30,7 +30,6 @@ class UserIdentity < Common::RedisStore
   attribute :sec_id
   attribute :mhv_icn # only needed by B/E not serialized in user_serializer
   attribute :mhv_credential_uuid
-  attribute :mhv_account_type # this is only available for MHV sign-in users
   attribute :edipi
   attribute :sign_in, Hash # original sign_in (see sso_service#mergable_identity_attributes)
   attribute :icn_with_aaid

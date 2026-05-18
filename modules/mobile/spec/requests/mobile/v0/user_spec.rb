@@ -312,6 +312,7 @@ RSpec.describe 'Mobile::V0::User', type: :request do
             preferredName
             prescriptions
             scheduleAppointments
+            secureMessaging
             secureMessagingOracleHealthEnabled
             userProfileUpdate
           ]
@@ -348,13 +349,14 @@ RSpec.describe 'Mobile::V0::User', type: :request do
             preferredName
             prescriptions
             scheduleAppointments
+            secureMessaging
             secureMessagingOracleHealthEnabled
             userProfileUpdate
           ]
         )
       end
 
-      it 'includes no OH services when flags are enabled but app version is not high enough' do
+      it 'includes no version-gated OH services when flags are enabled but app version is not high enough' do
         VCR.use_cassette('mobile/va_profile/demographics/demographics') do
           VCR.use_cassette('mr_client/bb_internal/session_auth.yml') do
             VCR.use_cassette(
@@ -381,6 +383,7 @@ RSpec.describe 'Mobile::V0::User', type: :request do
             preferredName
             prescriptions
             scheduleAppointments
+            secureMessaging
             secureMessagingOracleHealthEnabled
             userProfileUpdate
           ]

@@ -11,7 +11,6 @@ FactoryBot.define do
     birth_date { '1809-02-12' }
     ssn { '796111863' }
     mhv_icn { nil }
-    mhv_account_type { nil }
     icn_with_aaid { nil }
     edipi { nil }
     search_token { nil }
@@ -44,7 +43,6 @@ FactoryBot.define do
     birth_date { nil }
     ssn { nil }
     mhv_icn { nil }
-    mhv_account_type { 'Basic' }
 
     sign_in do
       {
@@ -72,7 +70,6 @@ FactoryBot.define do
     birth_date { nil }
     ssn { nil }
     mhv_icn { nil }
-    mhv_account_type { nil }
 
     sign_in do
       {

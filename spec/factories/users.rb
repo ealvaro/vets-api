@@ -36,7 +36,6 @@ FactoryBot.define do
       active_mhv_ids { [mhv_credential_uuid] }
       mhv_correlation_id { mhv_credential_uuid }
       mhv_credential_uuid { Faker::Number.number(digits: 9) }
-      mhv_account_type { nil }
       edipi { '384759483' }
       va_patient { nil }
       search_token { nil }
@@ -93,7 +92,6 @@ FactoryBot.define do
           loa:,
           multifactor:,
           mhv_credential_uuid:,
-          mhv_account_type:,
           edipi:,
           sign_in: }
       end
@@ -140,6 +138,7 @@ FactoryBot.define do
       user_identity = create(:user_identity, t.user_identity)
       user.instance_variable_set(:@identity, user_identity)
       user.instance_variable_set(:@needs_accepted_terms_of_use, t.needs_accepted_terms_of_use)
+      stub_mhv_user_account(t.mhv_user_account) if t.mhv_user_account.present?
       stub_mpi(t.mpi_profile) unless t.should_stub_mpi == false
 
       if t.loa[:current] == LOA::THREE && !t.needs_accepted_terms_of_use && !t.skip_mhv_user_account_preload
@@ -162,7 +161,6 @@ FactoryBot.define do
       idme_uuid { nil }
       logingov_uuid { nil }
       verified_at { nil }
-      mhv_account_type { nil }
       va_patient { nil }
       loa { nil }
     end
@@ -412,7 +410,6 @@ FactoryBot.define do
       birth_date { Faker::Date.between(from: 40.years.ago, to: 10.years.ago) }
       ssn { '796111864' }
       multifactor { true }
-      mhv_account_type { 'Premium' }
       va_patient { true }
       cerner_id {}
       cerner_facility_ids { [] }
@@ -454,7 +451,6 @@ FactoryBot.define do
       birth_date { Faker::Time.between(from: 40.years.ago, to: 10.years.ago) }
       ssn { '796111864' }
       multifactor { true }
-      mhv_account_type { nil }
       va_patient { true }
       icn { '1000123456V123456' }
       mhv_ids { %w[12345678901] }

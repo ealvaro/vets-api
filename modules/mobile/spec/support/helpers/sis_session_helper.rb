@@ -27,18 +27,27 @@ module SISSessionHelper
       traits |= [:api_auth]
       user = create(:user, *traits, **user_attributes)
 
-      # stub MHV UserAccount linked to User record
-      allow_any_instance_of(MHV::UserAccount::Creator).to receive(:perform).and_wrap_original do |method, *method_args|
-        creator = method.receiver
-
-        if creator.user_verification&.id == user.user_verification_id
-          FactoryBot.build(:mhv_user_account)
-        else
-          method.call(*method_args)
-        end
-      end
+      stub_mhv_account_for_user(user)
 
       user
+    end
+  end
+
+  private
+
+  def stub_mhv_account_for_user(user)
+    allow_any_instance_of(MHV::UserAccount::Creator).to receive(:perform).and_wrap_original do |method, *method_args|
+      creator = method.receiver
+
+      if creator.user_verification&.id == user.user_verification_id
+        if user.instance_variable_defined?(:@mhv_user_account)
+          user.instance_variable_get(:@mhv_user_account)
+        else
+          FactoryBot.build(:mhv_user_account)
+        end
+      else
+        method.call(*method_args)
+      end
     end
   end
 

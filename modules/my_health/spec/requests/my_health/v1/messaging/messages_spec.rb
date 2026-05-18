@@ -25,13 +25,10 @@ RSpec.describe 'MyHealth::V1::Messaging::Messages', type: :request do
   end
 
   context 'when NOT authorized' do
-    before do
-      VCR.insert_cassette('sm_client/session_error')
-      get "/my_health/v1/messaging/messages/#{message_id}"
-    end
+    let(:current_user) { build(:user, :mhv, mhv_account_creation: { sm_account_created: false }) }
 
-    after do
-      VCR.eject_cassette
+    before do
+      get "/my_health/v1/messaging/messages/#{message_id}"
     end
 
     include_examples 'for user account level', message: 'You do not have access to messaging'

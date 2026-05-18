@@ -12,13 +12,12 @@ RSpec.describe MyHealth::V1::MedicalRecords::CcdController, type: :request do
   let(:user_id) { 11_375_034 }
   let(:va_patient) { true }
   let(:current_user) do
-    build(:user, :mhv, va_patient:, mhv_account_type:, icn: '1012740022V620959', last_name: 'TESTUSER')
+    build(:user, :mhv, va_patient:, icn: '1012740022V620959', last_name: 'TESTUSER')
   end
   let(:aal_client) { instance_spy(AAL::MRClient) }
 
   before do
     allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_enable_aal_integration).and_return(true)
-    allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_new_eligibility_check).and_return(false)
 
     allow(MedicalRecords::Client).to receive(:new).and_return(authenticated_client)
     allow(AAL::MRClient).to receive(:new).and_return(aal_client)
@@ -37,8 +36,6 @@ RSpec.describe MyHealth::V1::MedicalRecords::CcdController, type: :request do
   end
 
   context 'Authorized user' do
-    let(:mhv_account_type) { 'Premium' }
-
     describe 'GET #generate' do
       it 'succeeds' do
         VCR.use_cassette('mr_client/get_ccd_generate') do

@@ -7,6 +7,6 @@ FactoryBot.define do
     champ_va { true }
     patient { true }
     sm_account_created { true }
-    message { 'Success' }
+    message { 'some-message' }
   end
 end

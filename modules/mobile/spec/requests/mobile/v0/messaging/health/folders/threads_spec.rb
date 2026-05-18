@@ -6,7 +6,7 @@ require 'unique_user_events'
 RSpec.describe 'Mobile::V0::Messaging::Health::Folders::Threads', type: :request do
   include SchemaMatchers
 
-  let!(:user) { sis_user(:mhv, mhv_correlation_id: '123', mhv_account_type: 'Premium') }
+  let!(:user) { sis_user(:mhv, mhv_correlation_id: '123') }
   let(:inbox_id) { 0 }
 
   before do
@@ -18,13 +18,12 @@ RSpec.describe 'Mobile::V0::Messaging::Health::Folders::Threads', type: :request
   end
 
   context 'when not authorized' do
+    let!(:user) { sis_user(:mhv, mhv_account_creation: { sm_account_created: false }) }
+
     it 'responds with 403 error' do
-      VCR.use_cassette('mobile/messages/session_error') do
-        get "/mobile/v0/messaging/health/folders/#{inbox_id}/threads",
-            headers: sis_headers,
-            params: { page_size: '5', page: '1', sort_field: 'SENDER_NAME', sort_order: 'ASC' }
-      end
-      expect(response).not_to be_successful
+      get "/mobile/v0/messaging/health/folders/#{inbox_id}/threads",
+          headers: sis_headers,
+          params: { page_size: '5', page: '1', sort_field: 'SENDER_NAME', sort_order: 'ASC' }
       expect(response).to have_http_status(:forbidden)
     end
   end

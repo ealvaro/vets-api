@@ -5,7 +5,7 @@ require_relative '../../../../../support/helpers/rails_helper'
 RSpec.describe 'Mobile::V0::Messaging::Health::EhrCrosswalk', type: :request do
   include SchemaMatchers
 
-  let!(:user) { sis_user(:mhv, mhv_correlation_id: '123', mhv_account_type: 'Premium') }
+  let!(:user) { sis_user(:mhv, mhv_correlation_id: '123') }
 
   before do
     Timecop.freeze(Time.zone.parse('2017-05-01T19:25:00Z'))
@@ -16,10 +16,11 @@ RSpec.describe 'Mobile::V0::Messaging::Health::EhrCrosswalk', type: :request do
   end
 
   context 'when not authorized' do
+    let!(:user) { sis_user(:mhv, mhv_account_creation: { sm_account_created: false }) }
+
     it 'responds with 403 error' do
-      VCR.use_cassette('mobile/messages/session_error') do
-        get '/mobile/v0/messaging/health/recipients/crosswalk', headers: sis_headers
-      end
+      get '/mobile/v0/messaging/health/recipients/crosswalk', headers: sis_headers
+
       expect(response).not_to be_successful
       expect(response).to have_http_status(:forbidden)
     end

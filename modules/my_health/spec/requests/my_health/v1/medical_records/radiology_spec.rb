@@ -10,8 +10,7 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::Radiology', type: :request do
   include SchemaMatchers
 
   let(:va_patient) { true }
-  let(:mhv_account_type) { 'Premium' }
-  let(:current_user) { build(:user, :mhv, va_patient:, mhv_account_type:) }
+  let(:current_user) { build(:user, :mhv, va_patient:) }
 
   before do
     bb_internal_client = BBInternal::Client.new(
@@ -24,8 +23,7 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::Radiology', type: :request do
     )
     allow(MedicalRecords::Client).to receive(:new).and_return(authenticated_client)
     allow(BBInternal::Client).to receive(:new).and_return(bb_internal_client)
-    allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_new_eligibility_check).and_return(false)
-    sign_in_as(current_user, stub_mhv_account: true)
+    sign_in_as(current_user)
   end
 
   it 'responds to GET #index' do

@@ -9,15 +9,14 @@ RSpec.describe 'Mobile::V1::Health::Prescriptions', type: :request do
   include JsonSchemaMatchers
   include_context 'uhd legacy security endpoint'
 
-  let!(:user) { sis_user(:mhv, mhv_account_type:) }
-  let(:mhv_account_type) { 'Premium' }
+  let(:mhv_account_creation) { { patient: } }
+  let!(:user) { sis_user(:mhv, mhv_account_creation:) }
   let(:va_patient) { true }
   let(:current_user) { user }
   let(:patient) { false }
 
   before do
     allow_any_instance_of(User).to receive(:va_patient?).and_return(va_patient)
-    allow_any_instance_of(User).to receive(:mhv_user_account).and_return(OpenStruct.new(patient:))
     sign_in_as(user)
     allow(Flipper).to receive(:enabled?).with(:mhv_medications_cerner_pilot, anything).and_return(true)
     # Freeze today so service default_end_date is deterministic for VCR cassettes
@@ -35,7 +34,7 @@ RSpec.describe 'Mobile::V1::Health::Prescriptions', type: :request do
     end
 
     context 'when user does not have mhv access' do
-      let!(:user) { sis_user }
+      let!(:user) { sis_user(:mhv, mhv_account_creation: { patient: false, champ_va: false }) }
 
       it 'returns a 403 forbidden response' do
         VCR.use_cassette('unified_health_data/get_prescriptions_success') do
@@ -347,7 +346,7 @@ RSpec.describe 'Mobile::V1::Health::Prescriptions', type: :request do
 
   describe 'PUT /mobile/v1/health/rx/prescriptions/refill' do
     context 'when user does not have mhv access' do
-      let!(:user) { sis_user }
+      let!(:user) { sis_user(:mhv, mhv_account_creation: { patient: false, champ_va: false }) }
 
       it 'returns a 403 forbidden response' do
         put '/mobile/v1/health/rx/prescriptions/refill',

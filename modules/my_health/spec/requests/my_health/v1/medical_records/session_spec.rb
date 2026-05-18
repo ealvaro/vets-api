@@ -11,15 +11,13 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::Session', type: :request do
   include SchemaMatchers
 
   let(:va_patient) { true }
-  let(:mhv_account_type) { 'Premium' }
-  let(:current_user) { build(:user, :mhv, va_patient:, mhv_account_type:) }
+  let(:current_user) { build(:user, :mhv, va_patient:) }
 
   before do
     allow(MedicalRecords::Client).to receive(:new).and_return(authenticated_client)
     allow(BBInternal::Client).to receive(:new).and_return(authenticated_client)
     allow(PHRMgr::Client).to receive(:new).and_return(PHRMgr::Client.new(12_345))
-    allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_new_eligibility_check).and_return(false)
-    sign_in_as(current_user, stub_mhv_account: true)
+    sign_in_as(current_user)
   end
 
   it 'responds to POST #create' do

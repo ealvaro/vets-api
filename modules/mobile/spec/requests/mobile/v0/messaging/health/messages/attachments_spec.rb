@@ -3,7 +3,7 @@
 require_relative '../../../../../../support/helpers/rails_helper'
 
 RSpec.describe 'Mobile::V0::Messaging::Health::Messages::Attachments', :skip_json_api_validation, type: :request do
-  let!(:user) { sis_user(:mhv, mhv_account_type: 'Premium') }
+  let!(:user) { sis_user(:mhv) }
   let(:user_id) { '10616687' }
   let(:inbox_id) { 0 }
   let(:message_id) { 573_302 }
@@ -17,11 +17,10 @@ RSpec.describe 'Mobile::V0::Messaging::Health::Messages::Attachments', :skip_jso
   end
 
   context 'when not authorized' do
+    let!(:user) { sis_user(:mhv, mhv_account_creation: { sm_account_created: false }) }
+
     it 'responds with 403 error' do
-      VCR.use_cassette('mobile/messages/session_error') do
-        get '/mobile/v0/messaging/health/messages/629999/attachments/629993', headers: sis_headers
-      end
-      expect(response).not_to be_successful
+      get '/mobile/v0/messaging/health/messages/629999/attachments/629993', headers: sis_headers
       expect(response).to have_http_status(:forbidden)
     end
   end

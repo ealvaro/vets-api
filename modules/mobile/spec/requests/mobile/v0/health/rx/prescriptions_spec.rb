@@ -10,14 +10,13 @@ RSpec.describe 'health/rx/prescriptions', type: :request do
   include CommitteeHelper
   include Rx::ClientHelpers
 
-  let!(:user) { sis_user(:mhv, mhv_account_type:) }
-  let(:mhv_account_type) { 'Premium' }
+  let(:mhv_account_creation) { { patient: true } }
+  let!(:user) { sis_user(:mhv, mhv_account_creation:) }
   let(:upstream_mhv_history_url) { 'https://mhv-api.example.com/v1/pharmacy/ess/medications' }
 
   before do
     allow(Settings.mhv.rx).to receive(:collection_caching_enabled).and_return(true)
     allow(Rx::Client).to receive(:new).and_return(authenticated_client)
-    allow_any_instance_of(User).to receive(:mhv_user_account).and_return(OpenStruct.new(patient: true))
     Timecop.freeze(Time.zone.parse('2025-04-21T00:00:00.000Z'))
   end
 
@@ -179,11 +178,7 @@ RSpec.describe 'health/rx/prescriptions', type: :request do
     end
 
     context 'when user does not have mhv access' do
-      let!(:user) { sis_user }
-
-      before do
-        allow_any_instance_of(User).to receive(:mhv_user_account).and_return(OpenStruct.new(patient: false))
-      end
+      let!(:user) { sis_user(:mhv, mhv_account_creation: { patient: false, champ_va: false }) }
 
       it 'returns a 403 forbidden response' do
         VCR.use_cassette('rx_client/prescriptions/gets_a_list_of_all_prescriptions_v1') do

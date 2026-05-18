@@ -4,7 +4,7 @@ require 'rails_helper'
 require 'mhv/account_creation/service'
 
 describe V0::User::MHVUserAccountsController, type: :controller do
-  let(:user) { build(:user, :loa3, icn:, skip_mhv_user_account_preload: true) }
+  let(:user) { build(:user, :loa3, icn:, mhv_user_account: nil) }
   let(:icn) { '10101V964144' }
   let(:user_account) { user.user_account }
   let(:user_verification) { user.user_verification }

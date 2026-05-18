@@ -121,10 +121,6 @@ class User < Common::RedisStore
     identity&.loa || {}
   end
 
-  def mhv_account_type
-    identity.mhv_account_type || MHVAccountTypeService.new(self).mhv_account_type
-  end
-
   def mhv_correlation_id
     return unless can_create_mhv_account?
     return mhv_user_account.id if mhv_user_account.present?

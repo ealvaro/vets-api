@@ -26,13 +26,10 @@ RSpec.describe 'MyHealth::V1::Messaging::MessageDrafts', type: :request do
   end
 
   context 'when NOT authorized' do
-    before do
-      VCR.insert_cassette('sm_client/session_error')
-      post '/my_health/v1/messaging/message_drafts', params:
-    end
+    let(:current_user) { build(:user, :mhv, mhv_account_creation: { sm_account_created: false }) }
 
-    after do
-      VCR.eject_cassette
+    before do
+      post '/my_health/v1/messaging/message_drafts', params:
     end
 
     include_examples 'for user account level', message: 'You do not have access to messaging'

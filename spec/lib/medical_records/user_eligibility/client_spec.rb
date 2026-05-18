@@ -9,10 +9,6 @@ describe UserEligibility::Client do
     let(:user_id) { '10000000' }
     let(:client) { UserEligibility::Client.new(user_id, icn) }
 
-    before do
-      allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_new_eligibility_check).and_return(true)
-    end
-
     context 'when user ID and ICN are valid' do
       let(:expected_response_message) { 'MHV Premium SM account with Logins in past 26 months' }
 
@@ -57,16 +53,6 @@ describe UserEligibility::Client do
         VCR.use_cassette 'user_eligibility_client/perform_an_eligibility_check_on_a_patient_who_is_not_premium' do
           expect { client.get_is_valid_sm_user }.to raise_error(Common::Exceptions::BackendServiceException)
         end
-      end
-    end
-
-    context 'when new eligibility check feature flag is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_new_eligibility_check).and_return(false)
-      end
-
-      it 'does not perform an eligibility check on the user' do
-        expect(a_request(:get, %r{v1/usermgmt/usereligibility/isValidSMUser})).not_to have_been_made
       end
     end
 

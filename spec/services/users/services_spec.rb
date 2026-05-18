@@ -9,6 +9,10 @@ RSpec.describe Users::Services do
     let(:user) { build(:user, :loa3) }
 
     context 'with initialized user' do
+      before do
+        allow(user).to receive(:va_patient?).and_return(false)
+      end
+
       it 'returns an array of services authorized to the initialized user',
          :aggregate_failures do
         expect(subject.class).to eq Array
@@ -24,12 +28,13 @@ RSpec.describe Users::Services do
             appeals-status
             form-save-in-progress
             form-prefill
-            rx
-            medical-records
             identity-proofed
             vet360
             dgi
             power-of-attorney
+            rx
+            medical-records
+            health-records
           ]
         )
       end
@@ -49,27 +54,6 @@ RSpec.describe Users::Services do
             form-prefill
           ]
         )
-      end
-    end
-
-    context 'with an MHV Premium user' do
-      let(:user) { build(:user, :mhv) }
-
-      before do
-        allow(user).to receive(:mhv_user_account).and_return(build(:mhv_user_account))
-        Timecop.freeze(Time.zone.parse('2017-05-01T19:25:00Z'))
-        VCR.insert_cassette('sm_client/session')
-      end
-
-      after do
-        VCR.eject_cassette(name: 'sm_client/session')
-        Timecop.return
-      end
-
-      it 'returns an array including the MHV services' do
-        %w[health-records medical-records messaging rx].each do |service|
-          expect(subject).to include(service)
-        end
       end
     end
   end

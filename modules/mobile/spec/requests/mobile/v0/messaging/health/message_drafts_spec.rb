@@ -5,7 +5,7 @@ require_relative '../../../../../support/helpers/rails_helper'
 RSpec.describe 'Mobile::V0::Messaging::Health::MessageDrafts', type: :request do
   include SchemaMatchers
 
-  let!(:user) { sis_user(:mhv, mhv_account_type: 'Premium') }
+  let!(:user) { sis_user(:mhv) }
   let(:reply_id)               { 674_874 }
   let(:created_draft_id)       { 674_942 }
   let(:created_draft_reply_id) { 674_944 }
@@ -22,21 +22,11 @@ RSpec.describe 'Mobile::V0::Messaging::Health::MessageDrafts', type: :request do
   end
 
   context 'when user does not have access' do
-    let!(:user) { sis_user(:mhv, mhv_account_type: 'Free') }
+    let!(:user) { sis_user(:mhv, mhv_account_creation: { sm_account_created: false }) }
 
     it 'returns forbidden' do
       post('/mobile/v0/messaging/health/message_drafts', headers: sis_headers, params:)
 
-      expect(response).to have_http_status(:forbidden)
-    end
-  end
-
-  context 'when not authorized' do
-    it 'responds with 403 error' do
-      VCR.use_cassette('mobile/messages/session_error') do
-        post('/mobile/v0/messaging/health/message_drafts', headers: sis_headers, params:)
-      end
-      expect(response).not_to be_successful
       expect(response).to have_http_status(:forbidden)
     end
   end

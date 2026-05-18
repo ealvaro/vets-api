@@ -28,8 +28,7 @@ RSpec.describe 'MyHealth::V1::AALController', type: :request do
 
   context 'Authorized User' do
     let(:user_id) { '21207668' }
-    let(:current_user) { build(:user, :mhv, mhv_account_type:) }
-    let(:mhv_account_type) { 'Premium' }
+    let(:current_user) { build(:user, :mhv) }
     let(:valid_params) do
       {
         aal: {

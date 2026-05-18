@@ -192,6 +192,7 @@ RSpec.describe 'Mobile::V1::User', type: :request do
             preferredName
             prescriptions
             scheduleAppointments
+            secureMessaging
             userProfileUpdate
           ]
         )
@@ -304,6 +305,7 @@ RSpec.describe 'Mobile::V1::User', type: :request do
               preferredName
               prescriptions
               scheduleAppointments
+              secureMessaging
               secureMessagingOracleHealthEnabled
               userProfileUpdate
             ]
@@ -336,13 +338,14 @@ RSpec.describe 'Mobile::V1::User', type: :request do
               preferredName
               prescriptions
               scheduleAppointments
+              secureMessaging
               secureMessagingOracleHealthEnabled
               userProfileUpdate
             ]
           )
         end
 
-        it 'does not include the OH services when flags are enabled and app version is too low' do
+        it 'does not include version-gated OH services when flags are enabled and app version is too low' do
           VCR.use_cassette('lighthouse/facilities/v1/200_facilities_757_358') do
             VCR.use_cassette('mobile/va_profile/demographics/demographics') do
               get '/mobile/v1/user', headers: sis_headers({ 'App-Version' => '1.0.0' })
@@ -365,6 +368,7 @@ RSpec.describe 'Mobile::V1::User', type: :request do
               preferredName
               prescriptions
               scheduleAppointments
+              secureMessaging
               secureMessagingOracleHealthEnabled
               userProfileUpdate
             ]

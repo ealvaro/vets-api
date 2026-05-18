@@ -11,7 +11,7 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::ImagingController', type: :request
 
   let(:user_id) { '11375034' }
   let(:va_patient) { true }
-  let(:current_user) { build(:user, :mhv, va_patient:, mhv_account_type:, icn:) }
+  let(:current_user) { build(:user, :mhv, va_patient:, icn:) }
 
   before do
     bb_internal_client = BBInternal::Client.new(
@@ -25,8 +25,7 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::ImagingController', type: :request
 
     allow(MedicalRecords::Client).to receive(:new).and_return(authenticated_client)
     allow(BBInternal::Client).to receive(:new).and_return(bb_internal_client)
-    allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_new_eligibility_check).and_return(false)
-    sign_in_as(current_user, stub_mhv_account: true)
+    sign_in_as(current_user)
   end
 
   RSpec.shared_context 'redis setup' do
@@ -49,8 +48,6 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::ImagingController', type: :request
 
   context 'Premium User' do
     include_context 'redis setup'
-
-    let(:mhv_account_type) { 'Premium' }
 
     describe 'GET #request_download' do
       let(:icn) { '1012740022V620959' }

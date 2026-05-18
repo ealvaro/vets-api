@@ -2,34 +2,18 @@
 
 require 'rails_helper'
 require 'flipper'
-require 'ostruct'
 require 'mhv_prescriptions_policy'
 require 'mhv/account_creation/service'
 
 describe MHVPrescriptionsPolicy do
   let(:mhv_prescriptions) { double('mhv_prescriptions') }
-  let(:mhv_response) do
-    {
-      user_profile_id: '12345678',
-      premium: true,
-      champ_va:,
-      patient:,
-      sm_account_created: true,
-      message: 'some-message'
-    }
-  end
   let(:patient) { false }
   let(:champ_va) { false }
-  let(:mhv_client) { MHV::AccountCreation::Service.new }
-
-  before do
-    allow(MHV::AccountCreation::Service).to receive(:new).and_return(mhv_client)
-    allow(mhv_client).to receive(:create_account).and_return(mhv_response)
-  end
+  let(:mhv_account_creation) { { patient:, champ_va:, sm_account_created: true } }
 
   describe '#access?' do
     context 'when user is verified' do
-      let(:user) { create(:user, :loa3, :with_terms_of_use_agreement, skip_mhv_user_account_preload: true) }
+      let(:user) { create(:user, :loa3, :with_terms_of_use_agreement, mhv_account_creation:) }
 
       context 'when user is a patient' do
         let(:patient) { true }
@@ -59,6 +43,10 @@ describe MHVPrescriptionsPolicy do
       context 'when user is not a patient or champ_va eligible' do
         let(:patient) { false }
         let(:champ_va) { false }
+        let(:user) do
+          create(:user, :loa3, :with_terms_of_use_agreement,
+                 mhv_account_creation: { patient: false, champ_va: false })
+        end
 
         it 'returns false and logs access denial with diagnostic fields' do
           expect(Rails.logger).to receive(:info).with(
@@ -81,10 +69,14 @@ describe MHVPrescriptionsPolicy do
       end
 
       context 'when mhv_user_account is nil due to validation error' do
+        let(:user) do
+          user = create(:user, :loa3, :with_terms_of_use_agreement)
+          allow(user).to receive_messages(mhv_user_account: nil, mhv_user_account_error: 'validation')
+          user
+        end
+
         before do
           allow(Rails.logger).to receive(:info)
-          allow(mhv_client).to receive(:create_account)
-            .and_raise(MHV::UserAccount::Errors::ValidationError, 'Current terms of use agreement must be present')
         end
 
         it 'returns false and logs nil account with validation error category' do
@@ -104,10 +96,14 @@ describe MHVPrescriptionsPolicy do
       end
 
       context 'when mhv_user_account is nil due to MHV client error' do
+        let(:user) do
+          user = create(:user, :loa3, :with_terms_of_use_agreement)
+          allow(user).to receive_messages(mhv_user_account: nil, mhv_user_account_error: 'client')
+          user
+        end
+
         before do
           allow(Rails.logger).to receive(:info)
-          allow(mhv_client).to receive(:create_account)
-            .and_raise(Common::Client::Errors::ClientError.new('MHV API failure', 500))
         end
 
         it 'returns false and logs nil account with client error category' do

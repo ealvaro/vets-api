@@ -7,7 +7,7 @@ require 'unique_user_events'
 RSpec.describe 'Mobile::V0::Messaging::Health::Folders', :skip_json_api_validation, type: :request do
   include SchemaMatchers
 
-  let!(:user) { sis_user(:mhv, mhv_correlation_id: '123', mhv_account_type: 'Premium') }
+  let!(:user) { sis_user(:mhv, mhv_correlation_id: '123') }
   let(:inbox_id) { 0 }
 
   before do
@@ -19,11 +19,10 @@ RSpec.describe 'Mobile::V0::Messaging::Health::Folders', :skip_json_api_validati
   end
 
   context 'when not authorized' do
+    let!(:user) { sis_user(:mhv, mhv_account_creation: { sm_account_created: false }) }
+
     it 'responds with 403 error' do
-      VCR.use_cassette('mobile/messages/session_error') do
-        get '/mobile/v0/messaging/health/folders', headers: sis_headers
-      end
-      expect(response).not_to be_successful
+      get '/mobile/v0/messaging/health/folders', headers: sis_headers
       expect(response).to have_http_status(:forbidden)
     end
   end

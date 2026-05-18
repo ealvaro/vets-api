@@ -472,31 +472,8 @@ The `MHVMedicalRecordsPolicy` controls access to Medical Records features:
 
 ```ruby
 MHVMedicalRecordsPolicy = Struct.new(:user, :mhv_medical_records) do
-  MR_ACCOUNT_TYPES = %w[Premium].freeze
-
   def access?
-    if Flipper.enabled?(:mhv_medical_records_new_eligibility_check)
-      begin
-        client = UserEligibility::Client.new(user.mhv_correlation_id, user.icn)
-        response = client.get_is_valid_sm_user
-        validate_client(response) && user.va_patient?
-      rescue => e
-        log_denial_details('ERROR FETCHING SM USER ELIGIBILITY', e)
-        false
-      end
-    else
-      MR_ACCOUNT_TYPES.include?(user.mhv_account_type) && user.va_patient?
-    end
-  end
-
-  private
-
-  def validate_client(response)
-    [
-      'MHV Premium SM account with no logins in past 26 months',
-      'MHV Premium SM account with Logins in past 26 months',
-      'MHV Premium account with no SM'
-    ].any? { |substring| response['accountStatus'].include?(substring) }
+    user.loa3? && user.mhv_user_account&.patient
   end
 end
 ```
