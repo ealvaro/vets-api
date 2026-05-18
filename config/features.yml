@@ -3696,3 +3696,6 @@ features:
     actor_type: user
     description: Switches the MCEQ Vendor Portal AccessVA link to use the Okta URL
     enable_in_development: false
+  identity_passkey_enabled:
+    actor_type: user
+    description: Enables passkey functionality for selected users and phased rollout.
