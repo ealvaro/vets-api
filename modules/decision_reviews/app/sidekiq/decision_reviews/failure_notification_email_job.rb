@@ -56,11 +56,11 @@ module DecisionReviews
     def get_callback_config(email_type, appeal_type)
       case email_type
       when :form
-        [DecisionReviews::FormNotificationCallback, 'form submission', DecisionReviews::V1::FORM_TEMPLATE_IDS[appeal_type]]
+        [DecisionReviews::FormNotificationCallback, 'form_submission_to_lighthouse', DecisionReviews::V1::FORM_TEMPLATE_IDS[appeal_type]]
       when :evidence
-        [DecisionReviews::EvidenceNotificationCallback, 'evidence submission to lighthouse', DecisionReviews::V1::EVIDENCE_TEMPLATE_IDS[appeal_type]]
+        [DecisionReviews::EvidenceNotificationCallback, 'evidence_submission_to_lighthouse', DecisionReviews::V1::EVIDENCE_TEMPLATE_IDS[appeal_type]]
       when :secondary_form
-        [DecisionReviews::EvidenceNotificationCallback, 'secondary form submission to lighthouse', DecisionReviews::V1::SECONDARY_FORM_TEMPLATE_ID]
+        [DecisionReviews::EvidenceNotificationCallback, 'secondary_form_submission_to_lighthouse', DecisionReviews::V1::SECONDARY_FORM_TEMPLATE_ID]
       end
     end
 
@@ -228,7 +228,7 @@ module DecisionReviews
       StatsD.increment("#{STATSD_KEY_PREFIX}.form.error", tags: ["appeal_type:#{appeal_type}"])
 
       tags = ["service:#{DecisionReviews::V1::APPEAL_TYPE_TO_SERVICE_MAP[appeal_type]}",
-              'function: form submission to Lighthouse']
+              'function:form_submission_to_lighthouse']
       StatsD.increment('silent_failure', tags:)
     end
 
@@ -254,7 +254,7 @@ module DecisionReviews
       StatsD.increment("#{STATSD_KEY_PREFIX}.secondary_form.error", tags: ["appeal_type:#{appeal_type}"])
 
       tags = ["service:#{DecisionReviews::V1::APPEAL_TYPE_TO_SERVICE_MAP[appeal_type]}",
-              'function: secondary form submission to Lighthouse']
+              'function:secondary_form_submission_to_lighthouse']
       StatsD.increment('silent_failure', tags:)
     end
 
@@ -284,7 +284,7 @@ module DecisionReviews
       StatsD.increment("#{STATSD_KEY_PREFIX}.evidence.error", tags: ["appeal_type:#{appeal_type}"])
 
       tags = ["service:#{DecisionReviews::V1::APPEAL_TYPE_TO_SERVICE_MAP[appeal_type]}",
-              'function: evidence submission to Lighthouse']
+              'function:evidence_submission_to_lighthouse']
       StatsD.increment('silent_failure', tags:)
     end
 

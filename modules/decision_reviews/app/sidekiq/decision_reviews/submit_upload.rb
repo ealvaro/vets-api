@@ -196,7 +196,7 @@ module DecisionReviews
       StatsD.increment("#{STATSD_KEY_PREFIX}.retries_exhausted.email_error", tags: ["appeal_type:#{appeal_type}"])
 
       service_name = DecisionReviews::V1::APPEAL_TYPE_TO_SERVICE_MAP[appeal_type]
-      tags = ["service:#{service_name}", 'function: evidence submission to Lighthouse']
+      tags = ["service:#{service_name}", 'function:evidence_submission_to_lighthouse']
       StatsD.increment('silent_failure', tags:)
     end
     private_class_method :record_email_send_failure

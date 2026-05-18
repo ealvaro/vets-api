@@ -24,11 +24,11 @@ describe DecisionReviews::EvidenceNotificationCallback do
       callback_metadata: {
         email_type: :error,
         service_name: 'supplemental-claims',
-        function: 'evidence submission to lighthouse',
+        function: 'evidence_submission_to_lighthouse',
         submitted_appeal_uuid:,
         email_template_id:,
         reference:,
-        statsd_tags: ['service:supplemental-claims', 'function:evidence submission to lighthouse']
+        statsd_tags: ['service:supplemental-claims', 'function:evidence_submission_to_lighthouse']
       }
     )
   end
@@ -49,7 +49,7 @@ describe DecisionReviews::EvidenceNotificationCallback do
       expect(Rails.logger).to receive(:error) do |message, payload|
         expect(message).to eq('Silent failure avoided')
         expect(payload[:service]).to eq('supplemental-claims')
-        expect(payload[:function]).to eq('evidence submission to lighthouse')
+        expect(payload[:function]).to eq('evidence_submission_to_lighthouse')
         expect(payload[:additional_context][:callback_metadata][:submitted_appeal_uuid]).to eq(submitted_appeal_uuid)
       end
       expect(Rails.logger).to receive(:info).with('DecisionReviews::EvidenceNotificationCallback: Delivered',
@@ -65,7 +65,7 @@ describe DecisionReviews::EvidenceNotificationCallback do
       )
 
       statsd = 'api.veteran_facing_services.notification_callback.delivered'
-      tags = include('service:supplemental-claims', 'function:evidence submission to lighthouse')
+      tags = include('service:supplemental-claims', 'function:evidence_submission_to_lighthouse')
       expect(StatsD).to have_received(:increment).with(statsd, tags:).exactly(1).time
       expect(StatsD).to have_received(:increment).with('silent_failure_avoided', tags:).exactly(1).time
     end
@@ -79,7 +79,7 @@ describe DecisionReviews::EvidenceNotificationCallback do
       expect(Rails.logger).to receive(:error) do |message, payload|
         expect(message).to eq('Silent failure!')
         expect(payload[:service]).to eq('supplemental-claims')
-        expect(payload[:function]).to eq('evidence submission to lighthouse')
+        expect(payload[:function]).to eq('evidence_submission_to_lighthouse')
         expect(payload[:additional_context][:callback_metadata][:submitted_appeal_uuid]).to eq(submitted_appeal_uuid)
       end
       expect(Rails.logger).to receive(:error).with('DecisionReviews::EvidenceNotificationCallback: Permanent Failure',
@@ -95,7 +95,7 @@ describe DecisionReviews::EvidenceNotificationCallback do
       )
 
       statsd = 'api.veteran_facing_services.notification_callback.permanent_failure'
-      tags = include('service:supplemental-claims', 'function:evidence submission to lighthouse')
+      tags = include('service:supplemental-claims', 'function:evidence_submission_to_lighthouse')
       expect(StatsD).to have_received(:increment).with(statsd, tags:).exactly(1).time
       expect(StatsD).to have_received(:increment).with('silent_failure', tags:).exactly(1).time
     end
@@ -119,7 +119,7 @@ describe DecisionReviews::EvidenceNotificationCallback do
       )
 
       statsd = 'api.veteran_facing_services.notification_callback.temporary_failure'
-      tags = include('service:supplemental-claims', 'function:evidence submission to lighthouse')
+      tags = include('service:supplemental-claims', 'function:evidence_submission_to_lighthouse')
       expect(StatsD).to have_received(:increment).with(statsd, tags:).exactly(1).time
     end
   end

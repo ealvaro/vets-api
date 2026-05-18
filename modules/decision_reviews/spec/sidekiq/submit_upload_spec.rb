@@ -280,7 +280,7 @@ RSpec.describe DecisionReviews::SubmitUpload, type: :job do
           }
         end
 
-        let(:tags) { ['service:board-appeal', 'function: evidence submission to Lighthouse'] }
+        let(:tags) { ['service:board-appeal', 'function:evidence_submission_to_lighthouse'] }
         let(:email_address) { 'testuser@test.com' }
         let(:form) do
           {

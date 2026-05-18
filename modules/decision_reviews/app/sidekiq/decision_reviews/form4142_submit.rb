@@ -107,7 +107,7 @@ module DecisionReviews
       Rails.logger.error('DecisionReviews::Form4142Submit retries exhausted email error', params)
       StatsD.increment("#{STATSD_KEY_PREFIX}.retries_exhausted.email_error", tags: ["appeal_type:#{appeal_type}"])
 
-      tags = ['service:supplemental-claims', 'function: secondary form submission to Lighthouse']
+      tags = ['service:supplemental-claims', 'function:secondary_form_submission_to_lighthouse']
       StatsD.increment('silent_failure', tags:)
     end
     private_class_method :record_email_send_failure

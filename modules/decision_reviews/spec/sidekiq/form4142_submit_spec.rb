@@ -137,7 +137,7 @@ RSpec.describe DecisionReviews::Form4142Submit, type: :job do
             'error_message' => 'An error occurred for sidekiq job'
           }
         end
-        let(:tags) { ['service:supplemental-claims', 'function: secondary form submission to Lighthouse'] }
+        let(:tags) { ['service:supplemental-claims', 'function:secondary_form_submission_to_lighthouse'] }
         let(:email_address) { 'testuser@test.com' }
         let(:form) do
           {
