@@ -48,8 +48,7 @@ module MyHealth
           normalized_resource = resource_name&.parameterize(separator: '_')
           tags = ["error_class:#{error.class.name}", "resource:#{normalized_resource}"]
 
-          monitor.track_request(:error, message, metric, error_class: error.class.name,
-                                                         resource_name:, tags:)
+          monitor.track_request(:error, message, metric, error_class: error.class.name, resource_name:, tags:)
 
           return unless include_backtrace && error.backtrace
 
