@@ -32,14 +32,16 @@ module ClaimsApi
             filter:
           )
 
-          poa_list = service.get_poa_list
-          raise Common::Exceptions::Lighthouse::BadGateway unless poa_list
+          result = service.get_poa_list
+          raise Common::Exceptions::Lighthouse::BadGateway unless result
 
-          poa_list_with_dependent_data = add_dependent_data_to_poa_response(poa_list)
+          poa_list_with_dependent_data = add_dependent_data_to_poa_response(result[:list])
 
-          render json: ClaimsApi::V2::Blueprints::PowerOfAttorneyRequestBlueprint.render(
+          response_data = ClaimsApi::V2::Blueprints::PowerOfAttorneyRequestBlueprint.render_as_hash(
             poa_list_with_dependent_data, view: :shared_response, root: :data
-          ), status: :ok
+          ).merge(build_pagination_meta(result[:total_records]))
+
+          render json: response_data, status: :ok
         end
 
         def show
@@ -333,6 +335,19 @@ module ClaimsApi
           return 0 if number <= 0
 
           number - 1
+        end
+
+        def build_pagination_meta(total_records)
+          {
+            meta: {
+              pagination: {
+                pageNumber: @page_number_param,
+                pageSize: @page_size_param,
+                pages: @page_size_param.positive? ? (total_records.to_f / @page_size_param).ceil : 0,
+                records: total_records
+              }
+            }
+          }
         end
 
         def build_bgs_attributes(form_attributes)

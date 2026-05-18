@@ -23,7 +23,8 @@ describe ClaimsApi::PowerOfAttorneyRequestService::Index do
         'poaRequestRespondReturnVOList' => {
           'poaCode' => '002',
           'procID' => proc_ids[0]
-        }
+        },
+        'totalNbrOfRecords' => '1'
       }
     end
 
@@ -35,7 +36,8 @@ describe ClaimsApi::PowerOfAttorneyRequestService::Index do
         }, {
           'poaCode' => '002',
           'procID' => proc_ids[1]
-        }]
+        }],
+        'totalNbrOfRecords' => '2'
       }
     end
 
@@ -53,9 +55,9 @@ describe ClaimsApi::PowerOfAttorneyRequestService::Index do
       end
 
       it 'does not return an error when page_size is 1' do
-        expect do
-          subject.get_poa_list
-        end.not_to raise_error
+        result = subject.get_poa_list
+        expect(result[:list]).to be_an(Array)
+        expect(result[:total_records]).to eq(1)
       end
     end
 
@@ -66,9 +68,9 @@ describe ClaimsApi::PowerOfAttorneyRequestService::Index do
       end
 
       it 'still works as expected when page_size is > 1' do
-        expect do
-          subject.get_poa_list
-        end.not_to raise_error
+        result = subject.get_poa_list
+        expect(result[:list]).to be_an(Array)
+        expect(result[:total_records]).to eq(2)
       end
     end
 

@@ -14,18 +14,24 @@ module ClaimsApi
         proc_ids = poa_list.pluck('procID')
         poa_requests = ClaimsApi::PowerOfAttorneyRequest.where(proc_id: proc_ids).select(:id, :proc_id, :claimant_icn)
         poa_requests_by_proc_id = build_list_hash(poa_requests)
-        map_list_data(poa_requests_by_proc_id)
+        {
+          list: map_list_data(poa_requests_by_proc_id),
+          total_records: poa_request_response['totalNbrOfRecords'].to_i
+        }
       end
 
       private
 
+      def poa_request_response
+        @poa_request_response ||= manage_representative_service.read_poa_request(poa_codes: @poa_codes,
+                                                                                 page_size: @page_size,
+                                                                                 page_index: @page_index,
+                                                                                 filter: @filter,
+                                                                                 use_mocks: true)
+      end
+
       def poa_list
-        @poa_list ||= manage_representative_service.read_poa_request(poa_codes: @poa_codes,
-                                                                     page_size: @page_size,
-                                                                     page_index: @page_index,
-                                                                     filter: @filter,
-                                                                     use_mocks: true)
-        list = @poa_list['poaRequestRespondReturnVOList']
+        list = poa_request_response['poaRequestRespondReturnVOList']
         list.is_a?(Array) ? list : [list].compact
       end
 

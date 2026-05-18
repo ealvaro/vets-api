@@ -10654,12 +10654,21 @@
                         "recordConsent": true
                       }
                     }
-                  ]
+                  ],
+                  "meta": {
+                    "pagination": {
+                      "pageNumber": 1,
+                      "pageSize": 10,
+                      "pages": 1,
+                      "records": 3
+                    }
+                  }
                 },
                 "schema": {
                   "type": "object",
                   "required": [
-                    "data"
+                    "data",
+                    "meta"
                   ],
                   "properties": {
                     "data": {
@@ -10794,6 +10803,41 @@
                                   false
                                 ]
                               }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "required": [
+                        "pagination"
+                      ],
+                      "properties": {
+                        "pagination": {
+                          "type": "object",
+                          "required": [
+                            "pageNumber",
+                            "pageSize",
+                            "pages",
+                            "records"
+                          ],
+                          "properties": {
+                            "pageNumber": {
+                              "description": "Current page number.",
+                              "type": "integer"
+                            },
+                            "pageSize": {
+                              "description": "Number of results per page.",
+                              "type": "integer"
+                            },
+                            "pages": {
+                              "description": "Total number of pages.",
+                              "type": "integer"
+                            },
+                            "records": {
+                              "description": "Total number of records.",
+                              "type": "integer"
                             }
                           }
                         }

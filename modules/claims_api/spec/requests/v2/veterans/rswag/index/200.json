@@ -1,6 +1,6 @@
 {
   "type": "object",
-  "required": ["data"],
+  "required": ["data", "meta"],
   "properties": {
     "data": {
       "type": "array",
@@ -119,6 +119,34 @@
                 "type": ["boolean", "null"],
                 "enum": [true, false, null]
               }
+            }
+          }
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "required": ["pagination"],
+      "properties": {
+        "pagination": {
+          "type": "object",
+          "required": ["pageNumber", "pageSize", "pages", "records"],
+          "properties": {
+            "pageNumber": {
+              "description": "Current page number.",
+              "type": "integer"
+            },
+            "pageSize": {
+              "description": "Number of results per page.",
+              "type": "integer"
+            },
+            "pages": {
+              "description": "Total number of pages.",
+              "type": "integer"
+            },
+            "records": {
+              "description": "Total number of records.",
+              "type": "integer"
             }
           }
         }

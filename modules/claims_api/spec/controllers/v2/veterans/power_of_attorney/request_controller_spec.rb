@@ -62,14 +62,22 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
             index_request_with(poa_codes:, auth_header:)
 
             expect(response).to have_http_status(:ok)
-            parsed_response = JSON.parse(response.body)['data']
-            veteran = parsed_response[0]['attributes']['veteran']
-            claimant = parsed_response[0]['attributes']['claimant']
-            address = parsed_response[2]['attributes']['address']
+            parsed_response = JSON.parse(response.body)
+            data = parsed_response['data']
+            veteran = data[0]['attributes']['veteran']
+            claimant = data[0]['attributes']['claimant']
+            address = data[2]['attributes']['address']
             expect(veteran).to eq(veteran_expected)
             expect(claimant).to eq(claimant_expected)
             expect(address).to eq(address_expected)
-            expect(parsed_response.size).to eq(3)
+            expect(data.size).to eq(3)
+
+            meta = parsed_response['meta']
+            expect(meta).to be_present
+            expect(meta['pagination']['pageNumber']).to eq(1)
+            expect(meta['pagination']['pageSize']).to eq(10)
+            expect(meta['pagination']['records']).to eq(3)
+            expect(meta['pagination']['pages']).to eq(1)
           end
         end
       end
@@ -155,7 +163,8 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
         {
           'poaRequestRespondReturnVOList' => [
             { 'some_filtered_key' => 'some_filtered_value' }
-          ]
+          ],
+          'totalNbrOfRecords' => '1'
         }
       end
 
