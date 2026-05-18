@@ -20,12 +20,6 @@ module ClaimsApi
         'Active' => 'ACTIVE'
       }.freeze
 
-      DATE_FORMATS = {
-        10 => :convert_date_string_to_format_mdy,
-        7 => :convert_date_string_to_format_my,
-        4 => :convert_date_string_to_format_yyyy
-      }.freeze
-
       BDD_LOWER_LIMIT = 90
       BDD_UPPER_LIMIT = 180
 
@@ -651,7 +645,6 @@ module ClaimsApi
           reserves[:unitPhoneNumber] = (area_code + phone_number) if area_code && phone_number
           reserves.delete(:unitPhone)
 
-          reserves[:receivingInactiveDutyTrainingPay] = handle_yes_no(reserves[:receivingInactiveDutyTrainingPay])
           @pdf_data[:data][:attributes][:serviceInformation][:reservesNationalGuardService] = reserves
         end
       end
@@ -706,7 +699,6 @@ module ClaimsApi
           servicePay: @auto_claim&.dig('servicePay')&.deep_symbolize_keys
         )
         service_pay = @pdf_data&.dig(:data, :attributes, :servicePay)
-        handle_service_pay if service_pay.present?
         handle_military_retired_pay if service_pay&.dig(:militaryRetiredPay).present?
         handle_seperation_severance_pay if service_pay&.dig(:separationSeverancePay).present?
 
@@ -721,13 +713,6 @@ module ClaimsApi
 
       def handle_branch(branch)
         { branch: }
-      end
-
-      def handle_service_pay
-        service_pay = @pdf_data&.dig(:data, :attributes, :servicePay)
-        service_pay[:receivingMilitaryRetiredPay] = handle_yes_no(service_pay[:receivingMilitaryRetiredPay])
-        service_pay[:futureMilitaryRetiredPay] = handle_yes_no(service_pay[:futureMilitaryRetiredPay])
-        service_pay[:receivedSeparationOrSeverancePay] = handle_yes_no(service_pay[:receivedSeparationOrSeverancePay])
       end
 
       def handle_military_retired_pay
@@ -745,37 +730,6 @@ module ClaimsApi
           seperation_severance_pay[:datePaymentReceived] =
             make_date_object(date, date.length)
         end
-      end
-
-      def convert_date_to_object(date_string)
-        return '' if date_string.blank?
-
-        date_format = DATE_FORMATS[date_string.length]
-        send(date_format, date_string) if date_format
-      end
-
-      def convert_date_string_to_format_mdy(date_string)
-        arr = date_string.split('-')
-        {
-          month: arr[0].to_s,
-          day: arr[1].to_s,
-          year: arr[2].to_s
-        }
-      end
-
-      def convert_date_string_to_format_my(date_string)
-        arr = date_string.split('-')
-        {
-          month: arr[0].to_s,
-          year: arr[1].to_s
-        }
-      end
-
-      def convert_date_string_to_format_yyyy(date_string)
-        date = Date.strptime(date_string, '%Y')
-        {
-          year: date.year
-        }
       end
 
       def additional_identification_info

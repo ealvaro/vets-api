@@ -1235,7 +1235,7 @@ describe ClaimsApi::V2::DisabilityCompensationPdfMapper do
         form_attributes['servicePay']['militaryRetiredPay']['monthlyAmount'] = nil
         form_attributes['servicePay']['militaryRetiredPay']['branchOfService'] = ''
         form_attributes['servicePay']['futureMilitaryRetiredPay'] = nil
-        form_attributes['servicePay']['receivedSeparationOrSeverancePay'] = ''
+        form_attributes['servicePay']['receivedSeparationOrSeverancePay'] = nil
         form_attributes['servicePay']['retiredStatus'] = ''
         form_attributes['servicePay']['separationSeverancePay']['preTaxAmountReceived'] = nil
         form_attributes['servicePay']['separationSeverancePay']['datePaymentReceived'] = nil
@@ -1243,9 +1243,7 @@ describe ClaimsApi::V2::DisabilityCompensationPdfMapper do
         mapper.map_claim
 
         service_pay = pdf_data[:data][:attributes][:servicePay]
-        expected = { receivingMilitaryRetiredPay: 'NO', futureMilitaryRetiredPay: 'NO',
-                     futureMilitaryRetiredPayExplanation: 'ABCDEFGHIJKLMNOPQRSTUVW',
-                     receivedSeparationOrSeverancePay: 'YES',
+        expected = { futureMilitaryRetiredPayExplanation: 'ABCDEFGHIJKLMNOPQRSTUVW',
                      separationSeverancePay: { branchOfService: { branch: 'Naval Academy' } } }
 
         expect(service_pay).to eq(expected)
