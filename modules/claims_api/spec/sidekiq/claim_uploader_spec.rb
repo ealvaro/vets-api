@@ -7,7 +7,6 @@ RSpec.describe ClaimsApi::ClaimUploader, type: :job do
 
   before do
     Sidekiq::Job.clear_all
-    allow(Flipper).to receive(:enabled?).with(:claims_api_bd_refactor).and_return false
     allow(Flipper).to receive(:enabled?).with(:claims_load_testing).and_return false
   end
 
@@ -91,7 +90,9 @@ RSpec.describe ClaimsApi::ClaimUploader, type: :job do
   end
 
   it 'submits successfully with BD' do
-    expect_any_instance_of(ClaimsApi::BD).to receive(:upload).and_return true
+    expect_any_instance_of(
+      ClaimsApi::DisabilityCompensation::DisabilityDocumentService
+    ).to receive(:create_upload).and_return true
 
     subject.new.perform(supporting_document.id, 'document')
     supporting_document.reload
@@ -111,7 +112,9 @@ RSpec.describe ClaimsApi::ClaimUploader, type: :job do
       allow(Tempfile).to receive(:new).and_return tf
 
       args = { claim: auto_claim, doc_type: 'L122', original_filename: 'extras.pdf', pdf_path: tf.path }
-      expect_any_instance_of(ClaimsApi::BD).to receive(:upload).with(args).and_return true
+      expect_any_instance_of(
+        ClaimsApi::DisabilityCompensation::DisabilityDocumentService
+      ).to receive(:create_upload).with(args).and_return true
       subject.new.perform(auto_claim.id, 'claim')
     end
 
@@ -121,7 +124,9 @@ RSpec.describe ClaimsApi::ClaimUploader, type: :job do
 
       args = { claim: supporting_document.auto_established_claim, doc_type: 'L023',
                original_filename: 'extras.pdf', pdf_path: tf.path }
-      expect_any_instance_of(ClaimsApi::BD).to receive(:upload).with(args).and_return true
+      expect_any_instance_of(
+        ClaimsApi::DisabilityCompensation::DisabilityDocumentService
+      ).to receive(:create_upload).with(args).and_return true
       subject.new.perform(supporting_document.id, 'document')
     end
 
@@ -138,10 +143,10 @@ RSpec.describe ClaimsApi::ClaimUploader, type: :job do
       }
       args = { claim: supporting_document.auto_established_claim, doc_type: 'L023',
                original_filename: 'extras.pdf', pdf_path: tf.path }
-      allow_any_instance_of(ClaimsApi::BD).to(
-        receive(:upload).with(args).and_raise(Common::Exceptions::BackendServiceException.new(
-                                                '', {}, 500, body
-                                              ))
+      allow_any_instance_of(
+        ClaimsApi::DisabilityCompensation::DisabilityDocumentService
+      ).to(
+        receive(:create_upload).with(args).and_raise(Common::Exceptions::BackendServiceException.new('', {}, 500, body))
       )
       expect do
         subject.new.perform(supporting_document.id, 'document')

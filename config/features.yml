@@ -587,10 +587,6 @@ features:
     actor_type: user
     description: Enables poa vbms updater to use local_bgs
     enable_in_development: true
-  claims_api_bd_refactor:
-    actor_type: user
-    description: Diverts codepath to use refactored BD methods
-    enable_in_development: true
   claims_api_ews_updater_enables_local_bgs:
     actor_type: user
     description: Uses local_bgs rather than bgs-ext

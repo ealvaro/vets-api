@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require 'evss/documents_service'
-require 'bd/bd'
-
 module ClaimsApi
   class ClaimUploader < ClaimsApi::ServiceBase
     sidekiq_options retry: true, unique_until: :success
@@ -43,12 +40,8 @@ module ClaimsApi
     end
 
     def claim_bd_upload_document(claim, doc_type, pdf_path, original_filename) # rubocop:disable Metrics/MethodLength
-      if Flipper.enabled? :claims_api_bd_refactor
-        DisabilityCompensation::DisabilityDocumentService.new.create_upload(claim:, pdf_path:, doc_type:,
-                                                                            original_filename:)
-      else
-        ClaimsApi::BD.new.upload(claim:, doc_type:, pdf_path:, original_filename:)
-      end
+      DisabilityCompensation::DisabilityDocumentService.new.create_upload(claim:, pdf_path:, doc_type:,
+                                                                          original_filename:)
     # Temporary errors (returning HTML, connection timeout), retry call
     rescue Faraday::ParsingError, Faraday::TimeoutError => e
       message = get_error_message(e)
