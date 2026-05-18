@@ -3491,6 +3491,9 @@ features:
     actor_type: cookie_id
     enable_in_development: true
     description: "Toggle the sending of data to IBM GOVCIO for form (Form 21P-534EZ)"
+  survivors_benefits_facility_selector:
+    actor_type: user
+    description: Enables facility selector for survivors benefits form (Form 21P-534EZ)
   sob_claimant_service:
     actor_type: user
     description: If enabled, use the new claimant service for SOB
