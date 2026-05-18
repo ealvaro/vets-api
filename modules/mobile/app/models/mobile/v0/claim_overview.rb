@@ -5,12 +5,6 @@ require 'common/models/resource'
 module Mobile
   module V0
     class ClaimOverview < Common::Resource
-      CACHE_VERSION = 1
-
-      include Mobile::V0::Concerns::RedisCaching
-
-      redis_config REDIS_CONFIG[:mobile_app_claims_store], CACHE_VERSION
-
       attribute :id, Types::String
       attribute :type, Types::String
       attribute :subtype, Types::String

@@ -22,7 +22,7 @@ module Mobile
           # For now, just grab the records and return them
           records = result[:records]
         else
-          records = lh_immunizations
+          records = immunizations_adapter.parse(service.get_immunizations)
         end
 
         log_immunization_access
@@ -62,8 +62,7 @@ module Mobile
 
       def serialize_immunizations(immunizations)
         if uhd_enabled?
-          # Hardcode pagination for backwards compatibility in the app FE
-          meta = {
+          meta = { # Hardcode pagination for backwards compatibility in the app FE
             pagination: {
               current_page: 1,
               per_page: 5000,
@@ -92,28 +91,10 @@ module Mobile
       end
 
       def pagination_params
-        @pagination_params ||= Mobile::V0::Contracts::Immunizations.new.call(
+        @pagination_params ||= Mobile::V0::Contracts::PaginationBase.new.call(
           page_number: params.dig(:page, :number),
-          page_size: params.dig(:page, :size),
-          use_cache: use_cache_param
+          page_size: params.dig(:page, :size)
         )
-      end
-
-      def use_cache_param
-        return true unless params.key?(:useCache)
-
-        ActiveModel::Type::Boolean.new.cast(params[:useCache])
-      end
-
-      def lh_immunizations
-        immunizations = Mobile::V0::Immunization.get_cached(@current_user) if pagination_params[:use_cache]
-
-        unless immunizations
-          immunizations = immunizations_adapter.parse(service.get_immunizations)
-          Mobile::V0::Immunization.set_cached(@current_user, immunizations)
-        end
-
-        immunizations
       end
     end
   end

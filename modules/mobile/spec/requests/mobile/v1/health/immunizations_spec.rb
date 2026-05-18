@@ -321,47 +321,11 @@ RSpec.describe 'Mobile::V1::Health::Immunizations', :skip_json_api_validation, t
         end
       end
 
-      describe 'caching' do
-        context 'when data is not cached' do
-          it 'calls service' do
-            expect_any_instance_of(Mobile::V0::LighthouseHealth::Service).to receive(:get_immunizations)
+      it 'calls service' do
+        expect_any_instance_of(Mobile::V0::LighthouseHealth::Service).to receive(:get_immunizations)
 
-            VCR.use_cassette('mobile/lighthouse_health/get_immunizations', match_requests_on: %i[method uri]) do
-              get '/mobile/v1/health/immunizations', headers: sis_headers, params: {}
-            end
-          end
-
-          it 'calls service even when useCache is true' do
-            expect_any_instance_of(Mobile::V0::LighthouseHealth::Service).to receive(:get_immunizations)
-
-            VCR.use_cassette('mobile/lighthouse_health/get_immunizations', match_requests_on: %i[method uri]) do
-              get '/mobile/v1/health/immunizations', headers: sis_headers, params: { useCache: true }
-            end
-          end
-        end
-
-        context 'when cache is set' do
-          before do
-            VCR.use_cassette('mobile/lighthouse_health/get_immunizations', match_requests_on: %i[method uri]) do
-              get '/mobile/v1/health/immunizations', headers: sis_headers, params: {}
-            end
-          end
-
-          it 'uses cached data instead of calling service' do
-            expect_any_instance_of(Mobile::V0::LighthouseHealth::Service).not_to receive(:get_immunizations)
-
-            VCR.use_cassette('mobile/lighthouse_health/get_immunizations', match_requests_on: %i[method uri]) do
-              get '/mobile/v1/health/immunizations', headers: sis_headers, params: {}
-            end
-          end
-
-          it 'does not use cache when useCache is false' do
-            expect_any_instance_of(Mobile::V0::LighthouseHealth::Service).to receive(:get_immunizations)
-
-            VCR.use_cassette('mobile/lighthouse_health/get_immunizations', match_requests_on: %i[method uri]) do
-              get '/mobile/v1/health/immunizations', headers: sis_headers, params: { useCache: false }
-            end
-          end
+        VCR.use_cassette('mobile/lighthouse_health/get_immunizations', match_requests_on: %i[method uri]) do
+          get '/mobile/v1/health/immunizations', headers: sis_headers, params: {}
         end
       end
 

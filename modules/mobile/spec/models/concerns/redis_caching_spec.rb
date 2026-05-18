@@ -7,8 +7,8 @@ describe Mobile::V0::Concerns::RedisCaching do
 
   describe '#get_cached' do
     it 'returns nil when nil value was set' do
-      Mobile::V0::ClaimOverview.set_cached(user, nil)
-      expect(Mobile::V0::ClaimOverview.get_cached(user)).to be_nil
+      Mobile::V0::LighthouseSession.set_cached(user, nil)
+      expect(Mobile::V0::LighthouseSession.get_cached(user)).to be_nil
     end
   end
 end
