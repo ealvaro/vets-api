@@ -105,6 +105,53 @@ RSpec.describe ClaimsApi::ServiceBase do
     end
   end
 
+  describe '#set_evss_response' do
+    it 'replaces existing evss_response errors instead of appending' do
+      claim.evss_response = ['stale error']
+      claim.save!
+
+      service.send(:set_evss_response, claim, StandardError.new('fresh error'))
+
+      claim.reload
+      expect(claim.evss_response).to eq(['fresh error'])
+    end
+
+    it 'stores original_body array errors as-is' do
+      backend_error = Common::Exceptions::BackendServiceException.new(
+        'pdf.error',
+        {},
+        500,
+        [{ 'detail' => 'service failure' }]
+      )
+
+      service.send(:set_evss_response, claim, backend_error)
+
+      claim.reload
+      expect(claim.evss_response).to eq([{ 'detail' => 'service failure' }])
+    end
+
+    it 'stores original_body hash errors as a single array element' do
+      backend_error = Common::Exceptions::BackendServiceException.new(
+        'pdf.error',
+        {},
+        500,
+        { 'detail' => 'single error payload' }
+      )
+
+      service.send(:set_evss_response, claim, backend_error)
+
+      claim.reload
+      expect(claim.evss_response).to eq([{ 'detail' => 'single error payload' }])
+    end
+
+    it 'stores a standard error message as a one-element array' do
+      service.send(:set_evss_response, claim, StandardError.new('Unexpected error occurred'))
+
+      claim.reload
+      expect(claim.evss_response).to eq(['Unexpected error occurred'])
+    end
+  end
+
   describe '#save_auto_claim!' do
     it 'saves claim with the validation_method property of v2' do
       service.send(:save_auto_claim!, claim, claim.status)

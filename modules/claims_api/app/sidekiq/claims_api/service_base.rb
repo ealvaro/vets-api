@@ -109,19 +109,26 @@ module ClaimsApi
 
       if error_responds_to_original_body?(error)
         if error&.original_body.present?
-          errors_to_add.concat(error.original_body)
+          normalized_original_body = error.original_body.is_a?(Array) ? error.original_body : [error.original_body]
+          errors_to_add.concat(normalized_original_body)
         else
           # This is a default catch all
           # Since the error could theoretically respond_to the
           # original_body method but still not have it
           errors_to_add << error
         end
-      elsif error&.errors.present?
-        errors_to_add.concat(error.errors)
+      elsif error.respond_to?(:errors) && error.errors.present?
+        errors = error.errors
+        normalized_errors = errors.is_a?(Array) ? errors : [errors]
+        errors_to_add.concat(normalized_errors)
+      else
+        error_message = get_error_message(error)
+        normalized_error_message = error_message.is_a?(Array) ? error_message : [error_message]
+        errors_to_add.concat(normalized_error_message.compact)
       end
 
-      # Add all collected errors to the auto_claim evss_response
-      auto_claim.evss_response.concat(errors_to_add)
+      # Set collected errors to the auto_claim evss_response
+      auto_claim.evss_response = errors_to_add
 
       auto_claim.save!
     end

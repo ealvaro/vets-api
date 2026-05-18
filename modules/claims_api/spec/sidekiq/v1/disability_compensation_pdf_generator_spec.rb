@@ -168,6 +168,22 @@ RSpec.describe ClaimsApi::V1::DisabilityCompensationPdfGenerator, type: :job do
                                                                           )).ordered
             expect(service).to have_received(:log_job_progress).twice
           end
+
+          it 'sets claim status to errored and populates evss_response' do
+            allow(service).to receive(:start_docker_container_job).and_raise(
+              Faraday::ParsingError.new(errors)
+            )
+
+            expect do
+              service.perform(claim.id, middle_initial)
+            end.to raise_error(Faraday::ParsingError)
+
+            claim.reload
+            expect(claim.status).to eq('errored')
+            expect(claim.evss_response).to include(
+              a_string_including('Operation failed')
+            )
+          end
         end
 
         context '::Common::Exceptions::BackendServiceException' do
@@ -201,6 +217,20 @@ RSpec.describe ClaimsApi::V1::DisabilityCompensationPdfGenerator, type: :job do
                                                                           )).ordered
             expect(service).to have_received(:log_job_progress).twice
           end
+
+          it 'sets claim status to errored and populates evss_response with error details' do
+            allow(service).to receive(:start_docker_container_job).and_raise(
+              Common::Exceptions::BackendServiceException.new('pdf.error', {}, 500, errors)
+            )
+
+            expect do
+              service.perform(claim.id, middle_initial)
+            end.to raise_error(Common::Exceptions::BackendServiceException)
+
+            claim.reload
+            expect(claim.status).to eq('errored')
+            expect(claim.evss_response).to eq(errors)
+          end
         end
 
         context 'General Rescue' do
@@ -229,6 +259,22 @@ RSpec.describe ClaimsApi::V1::DisabilityCompensationPdfGenerator, type: :job do
                                                                                NoMethodError
                                                                              )).ordered
             expect(service).to have_received(:log_job_progress).twice
+          end
+
+          it 'sets claim status to errored and populates evss_response with error message' do
+            allow(service).to receive(:start_docker_container_job).and_raise(
+              StandardError.new('Unexpected error occurred')
+            )
+
+            expect do
+              service.perform(claim.id, middle_initial)
+            end.to raise_error(StandardError)
+
+            claim.reload
+            expect(claim.status).to eq('errored')
+            expect(claim.evss_response).to be_present
+            expect(claim.evss_response).to be_a(Array)
+            expect(claim.evss_response[0]).to include('Unexpected error occurred')
           end
         end
       end
