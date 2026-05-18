@@ -16,20 +16,6 @@ module BBInternal
   #
   class Configuration < Common::Client::Configuration::REST
     ##
-    # Setter for thread-local variable custom_base_path
-    #
-    def self.custom_base_path=(value)
-      Thread.current[:custom_base_path] = value
-    end
-
-    ##
-    # Getter for thread-local variable custom_base_path
-    #
-    def self.custom_base_path
-      Thread.current[:custom_base_path]
-    end
-
-    ##
     # BB Internal uses the same app token as Rx.
     # @return [String] Client token set in `settings.yml` via credstash
     #
@@ -46,7 +32,7 @@ module BBInternal
     # @return [String] Base path for dependent URLs
     #
     def base_path
-      self.class.custom_base_path || "#{Settings.mhv.api_gateway.hosts.bluebutton}/v1/"
+      "#{Settings.mhv.api_gateway.hosts.bluebutton}/v1/"
     end
 
     def base_path_non_gateway
@@ -75,15 +61,22 @@ module BBInternal
     end
 
     ##
-    # @return [Faraday::Connection] a Faraday connection instance
+    # @return [Faraday::Connection] a Faraday connection instance configured for the given base path
     #
-    def connection
-      Faraday.new(base_path, headers: base_request_headers, request: request_options) do |conn|
+    def build_connection(custom_base_path)
+      Faraday.new(custom_base_path, headers: base_request_headers, request: request_options) do |conn|
         COMMON_STACK.call(conn, service_name)
         conn.response :raise_custom_error, error_prefix: service_name
         conn.response :mhv_xml_html_errors
         conn.adapter Faraday.default_adapter
       end
+    end
+
+    ##
+    # @return [Faraday::Connection] a Faraday connection instance using the default base path
+    #
+    def connection
+      build_connection(base_path)
     end
 
     ##
@@ -104,11 +97,18 @@ module BBInternal
     ##
     # @return [Faraday::Connection] a Faraday connection instance supporting parallel requests
     #
-    def parallel_connection
-      Faraday.new(base_path, headers: base_request_headers, request: request_options) do |conn|
+    def build_parallel_connection(custom_base_path)
+      Faraday.new(custom_base_path, headers: base_request_headers, request: request_options) do |conn|
         COMMON_STACK.call(conn, service_name)
         conn.adapter :typhoeus
       end
+    end
+
+    ##
+    # @return [Faraday::Connection] a parallel connection using the default base path
+    #
+    def parallel_connection
+      build_parallel_connection(base_path)
     end
   end
 end

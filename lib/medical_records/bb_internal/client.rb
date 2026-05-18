@@ -36,17 +36,15 @@ module BBInternal
     # @return [Hash, Faraday::Response]
     #
     def get_patient(conn: nil, raw: false)
-      with_custom_base_path(USERMGMT_BASE_PATH) do
-        connection = conn || config.connection
-        response = connection.get("usermgmt/patient/uid/#{@session.user_id}", nil, token_headers)
+      connection = conn || usermgmt_connection
+      response = connection.get("usermgmt/patient/uid/#{@session.user_id}", nil, token_headers)
 
-        return response if raw # For use with parallel connections (i.e. SEI)
+      return response if raw # For use with parallel connections (i.e. SEI)
 
-        patient = response.body
-        raise Common::Exceptions::ServiceError.new(detail: 'Patient not found') if patient.blank?
+      patient = response.body
+      raise Common::Exceptions::ServiceError.new(detail: 'Patient not found') if patient.blank?
 
-        patient
-      end
+      patient
     end
 
     # Retrieves the BBMI notification setting for the user.
@@ -54,10 +52,8 @@ module BBInternal
     #   - flag [Boolean]: Indicates whether the BBMI notification setting is enabled (true) or disabled (false)
     #
     def get_bbmi_notification_setting
-      with_custom_base_path(USERMGMT_BASE_PATH) do
-        response = perform(:get, 'usermgmt/notification/bbmi', nil, token_headers)
-        response.body
-      end
+      response = usermgmt_connection.get('usermgmt/notification/bbmi', nil, token_headers)
+      response.body
     end
 
     ################################################################################
@@ -71,10 +67,8 @@ module BBInternal
     # @return [Hash] The radiology report list from MHV
     #
     def list_radiology
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        response = perform(:get, "bluebutton/radiology/phrList/#{session.patient_id}", nil, token_headers)
-        response.body
-      end
+      response = bluebutton_connection.get("bluebutton/radiology/phrList/#{session.patient_id}", nil, token_headers)
+      response.body
     end
 
     ##
@@ -84,11 +78,9 @@ module BBInternal
     # @return [Hash] The radiology study list from MHV
     #
     def list_imaging_studies
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        response = perform(:get, "bluebutton/study/#{session.patient_id}", nil, token_headers)
-        data = response.body
-        map_study_ids(data)
-      end
+      response = bluebutton_connection.get("bluebutton/study/#{session.patient_id}", nil, token_headers)
+      data = response.body
+      map_study_ids(data)
     end
 
     ##
@@ -101,22 +93,19 @@ module BBInternal
     # @return [Hash] The status of the image request, including percent complete
     #
     def request_study(icn, id)
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        # Fetch the original studyIdUrn from the Redis cache
-        study_id = get_study_id_from_cache(id)
+      # Fetch the original studyIdUrn from the Redis cache
+      study_id = get_study_id_from_cache(id)
 
-        # Perform the API call with the original studyIdUrn
-        response = perform(
-          :get, "bluebutton/studyjob/#{session.patient_id}/icn/#{icn}/studyid/#{study_id}", nil,
-          token_headers
-        )
-        data = response.body
+      response = bluebutton_connection.get(
+        "bluebutton/studyjob/#{session.patient_id}/icn/#{icn}/studyid/#{study_id}", nil,
+        token_headers
+      )
+      data = response.body
 
-        # Transform the response to replace the studyIdUrn with the UUID
-        data['studyIdUrn'] = id if data.is_a?(Hash) && data['studyIdUrn'] == study_id
+      # Transform the response to replace the studyIdUrn with the UUID
+      data['studyIdUrn'] = id if data.is_a?(Hash) && data['studyIdUrn'] == study_id
 
-        data
-      end
+      data
     end
 
     ##
@@ -127,14 +116,12 @@ module BBInternal
     # @return [Hash] The list of images from MHV
     #
     def list_images(id)
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        study_id = get_study_id_from_cache(id)
-        response = perform(
-          :get, "bluebutton/studyjob/zip/preview/list/#{session.patient_id}/studyidUrn/#{study_id}", nil,
-          token_headers
-        )
-        response.body
-      end
+      study_id = get_study_id_from_cache(id)
+      response = bluebutton_connection.get(
+        "bluebutton/studyjob/zip/preview/list/#{session.patient_id}/studyidUrn/#{study_id}", nil,
+        token_headers
+      )
+      response.body
     end
 
     ##
@@ -149,12 +136,10 @@ module BBInternal
     # body via the provided yielder.
     #
     def get_image(id, series, image, header_callback, yielder)
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        study_id = get_study_id_from_cache(id)
-        uri = URI.join(config.base_path,
-                       "bluebutton/external/studyjob/image/studyidUrn/#{study_id}/series/#{series}/image/#{image}")
-        streaming_get(uri, token_headers, header_callback, yielder)
-      end
+      study_id = get_study_id_from_cache(id)
+      uri = URI.join(BLUEBUTTON_BASE_PATH,
+                     "bluebutton/external/studyjob/image/studyidUrn/#{study_id}/series/#{series}/image/#{image}")
+      streaming_get(uri, token_headers, header_callback, yielder)
     end
 
     ##
@@ -178,11 +163,11 @@ module BBInternal
     # @return JSON [{ dateGenerated, status, patientId }]
     #
     def get_generate_ccd(icn, last_name)
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        escaped_last_name = URI::DEFAULT_PARSER.escape(last_name)
-        response = perform(:get, "bluebutton/healthsummary/#{icn}/#{escaped_last_name}/xml", nil, token_headers)
-        response.body
-      end
+      escaped_last_name = URI::DEFAULT_PARSER.escape(last_name)
+      response = bluebutton_connection.get(
+        "bluebutton/healthsummary/#{icn}/#{escaped_last_name}/xml", nil, token_headers
+      )
+      response.body
     end
 
     ##
@@ -209,11 +194,9 @@ module BBInternal
     #   startDate: 1729777818853, endDate}]
     #
     def get_study_status
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        response = perform(:get, "bluebutton/studyjob/#{session.patient_id}", nil, token_headers)
-        data = response.body
-        map_study_ids(data)
-      end
+      response = bluebutton_connection.get("bluebutton/studyjob/#{session.patient_id}", nil, token_headers)
+      data = response.body
+      map_study_ids(data)
     end
 
     ################################################################################
@@ -221,141 +204,118 @@ module BBInternal
     ################################################################################
 
     def get_all_sei_data
-      sei_calls = sei_call_lambdas
-      result = execute_parallel_calls(sei_calls)
+      bb_result = execute_parallel_calls(
+        sei_bluebutton_call_lambdas, config.build_parallel_connection(BLUEBUTTON_BASE_PATH)
+      )
+      um_result = execute_parallel_calls(
+        sei_usermgmt_call_lambdas, config.build_parallel_connection(USERMGMT_BASE_PATH)
+      )
+
+      responses = bb_result[:responses].merge(um_result[:responses])
+      errors = bb_result[:errors].merge(um_result[:errors])
 
       # Extract just the patient.userProfile and assign to demographics
-      patient = result[:responses].delete(:demographics)
-      result[:responses][:demographics] = patient['userProfile'] if patient && patient['userProfile']
+      patient = responses.delete(:demographics)
+      responses[:demographics] = patient['userProfile'] if patient && patient['userProfile']
 
-      result
+      { responses:, errors: }
     end
 
     def get_sei_vital_signs_summary(conn: nil, raw: false)
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        connection = conn || config.connection
-        response = connection.get("vitals/summary/#{@session.user_id}", nil, token_headers)
-        raw ? response : response.body
-      end
+      connection = conn || bluebutton_connection
+      response = connection.get("vitals/summary/#{@session.user_id}", nil, token_headers)
+      raw ? response : response.body
     end
 
     def get_sei_allergies(conn: nil, raw: false)
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        connection = conn || config.connection
-        response = connection.get("healthhistory/allergy/#{@session.user_id}", nil, token_headers)
-        raw ? response : response.body
-      end
+      connection = conn || bluebutton_connection
+      response = connection.get("healthhistory/allergy/#{@session.user_id}", nil, token_headers)
+      raw ? response : response.body
     end
 
     def get_sei_family_health_history(conn: nil, raw: false)
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        connection = conn || config.connection
-        response = connection.get("healthhistory/healthHistory/#{@session.user_id}", nil, token_headers)
-        raw ? response : response.body
-      end
+      connection = conn || bluebutton_connection
+      response = connection.get("healthhistory/healthHistory/#{@session.user_id}", nil, token_headers)
+      raw ? response : response.body
     end
 
     def get_sei_immunizations(conn: nil, raw: false)
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        connection = conn || config.connection
-        response = connection.get("healthhistory/immunization/#{@session.user_id}", nil, token_headers)
-        raw ? response : response.body
-      end
+      connection = conn || bluebutton_connection
+      response = connection.get("healthhistory/immunization/#{@session.user_id}", nil, token_headers)
+      raw ? response : response.body
     end
 
     def get_sei_test_entries(conn: nil, raw: false)
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        connection = conn || config.connection
-        response = connection.get("healthhistory/testEntry/#{@session.user_id}", nil, token_headers)
-        raw ? response : response.body
-      end
+      connection = conn || bluebutton_connection
+      response = connection.get("healthhistory/testEntry/#{@session.user_id}", nil, token_headers)
+      raw ? response : response.body
     end
 
     def get_sei_medical_events(conn: nil, raw: false)
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        connection = conn || config.connection
-        response = connection.get("healthhistory/medicalEvent/#{@session.user_id}", nil, token_headers)
-        raw ? response : response.body
-      end
+      connection = conn || bluebutton_connection
+      response = connection.get("healthhistory/medicalEvent/#{@session.user_id}", nil, token_headers)
+      raw ? response : response.body
     end
 
     def get_sei_military_history(conn: nil, raw: false)
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        connection = conn || config.connection
-        response = connection.get("healthhistory/militaryHistory/#{@session.user_id}", nil, token_headers)
-        raw ? response : response.body
-      end
+      connection = conn || bluebutton_connection
+      response = connection.get("healthhistory/militaryHistory/#{@session.user_id}", nil, token_headers)
+      raw ? response : response.body
     end
 
     def get_sei_healthcare_providers(conn: nil, raw: false)
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        connection = conn || config.connection
-        response = connection.get("getcare/healthCareProvider/#{@session.user_id}", nil, token_headers)
-        raw ? response : response.body
-      end
+      connection = conn || bluebutton_connection
+      response = connection.get("getcare/healthCareProvider/#{@session.user_id}", nil, token_headers)
+      raw ? response : response.body
     end
 
     def get_sei_health_insurance(conn: nil, raw: false)
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        connection = conn || config.connection
-        response = connection.get("getcare/healthInsurance/#{@session.user_id}", nil, token_headers)
-        raw ? response : response.body
-      end
+      connection = conn || bluebutton_connection
+      response = connection.get("getcare/healthInsurance/#{@session.user_id}", nil, token_headers)
+      raw ? response : response.body
     end
 
     def get_sei_treatment_facilities(conn: nil, raw: false)
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        connection = conn || config.connection
-        response = connection.get("getcare/treatmentFacility/#{@session.user_id}", nil, token_headers)
-        raw ? response : response.body
-      end
+      connection = conn || bluebutton_connection
+      response = connection.get("getcare/treatmentFacility/#{@session.user_id}", nil, token_headers)
+      raw ? response : response.body
     end
 
     def get_sei_food_journal(conn: nil, raw: false)
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        connection = conn || config.connection
-        response = connection.get("journal/journals/#{@session.user_id}", nil, token_headers)
-        raw ? response : response.body
-      end
+      connection = conn || bluebutton_connection
+      response = connection.get("journal/journals/#{@session.user_id}", nil, token_headers)
+      raw ? response : response.body
     end
 
     def get_sei_activity_journal(conn: nil, raw: false)
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        connection = conn || config.connection
-        response = connection.get("journal/activityjournals/#{@session.user_id}", nil, token_headers)
-        raw ? response : response.body
-      end
+      connection = conn || bluebutton_connection
+      response = connection.get("journal/activityjournals/#{@session.user_id}", nil, token_headers)
+      raw ? response : response.body
     end
 
     def get_sei_medications(conn: nil, raw: false)
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        connection = conn || config.connection
-        response = connection.get("pharmacy/medications/#{@session.user_id}", nil, token_headers)
-        raw ? response : response.body
-      end
+      connection = conn || bluebutton_connection
+      response = connection.get("pharmacy/medications/#{@session.user_id}", nil, token_headers)
+      raw ? response : response.body
     end
 
     # Retrieves the patient demographic information
     # @return [Hash] A hash containing the patient's demographic information
     #
     def get_demographic_info
-      with_custom_base_path(BLUEBUTTON_BASE_PATH) do
-        response = perform(:get, 'bluebutton/external/phrdemographic', nil, token_headers)
-        response.body
-      end
+      response = bluebutton_connection.get('bluebutton/external/phrdemographic', nil, token_headers)
+      response.body
     end
 
     def get_sei_emergency_contacts(conn: nil, raw: false)
-      with_custom_base_path(USERMGMT_BASE_PATH) do
-        connection = conn || config.connection
-        response = connection.get("usermgmt/emergencycontacts/#{@session.user_id}", nil, token_headers)
-        raw ? response : response.body
-      end
+      connection = conn || usermgmt_connection
+      response = connection.get("usermgmt/emergencycontacts/#{@session.user_id}", nil, token_headers)
+      raw ? response : response.body
     end
 
     private
 
-    def sei_call_lambdas
+    def sei_bluebutton_call_lambdas
       {
         vitals: ->(conn) { get_sei_vital_signs_summary(conn:, raw: true) },
         allergies: ->(conn) { get_sei_allergies(conn:, raw: true) },
@@ -369,17 +329,21 @@ module BBInternal
         treatment_facilities: ->(conn) { get_sei_treatment_facilities(conn:, raw: true) },
         food_journal: ->(conn) { get_sei_food_journal(conn:, raw: true) },
         activity_journal: ->(conn) { get_sei_activity_journal(conn:, raw: true) },
-        medications: ->(conn) { get_sei_medications(conn:, raw: true) },
+        medications: ->(conn) { get_sei_medications(conn:, raw: true) }
+      }
+    end
+
+    def sei_usermgmt_call_lambdas
+      {
         emergency_contacts: ->(conn) { get_sei_emergency_contacts(conn:, raw: true) },
         demographics: ->(conn) { get_patient(conn:, raw: true) }
       }
     end
 
-    def execute_parallel_calls(call_lambdas)
+    def execute_parallel_calls(call_lambdas, conn)
       deferred = {} # Faraday::Response objects
       errors   = {}
 
-      conn = config.parallel_connection
       conn.in_parallel do
         call_lambdas.each do |key, request_lambda|
           deferred[key] = request_lambda.call(conn)
@@ -405,9 +369,12 @@ module BBInternal
       { responses:, errors: }
     end
 
-    def with_custom_base_path(custom_base_path)
-      BBInternal::Configuration.custom_base_path = custom_base_path
-      yield
+    def usermgmt_connection
+      @usermgmt_connection ||= config.build_connection(USERMGMT_BASE_PATH)
+    end
+
+    def bluebutton_connection
+      @bluebutton_connection ||= config.build_connection(BLUEBUTTON_BASE_PATH)
     end
 
     def token_headers
@@ -539,9 +506,7 @@ module BBInternal
     # Overriding MHVSessionBasedClient's method, because we need more control over the path.
     #
     def get_session_tagged
-      with_custom_base_path(USERMGMT_BASE_PATH) do
-        perform(:get, 'usermgmt/auth/session', nil, auth_headers)
-      end
+      usermgmt_connection.get('usermgmt/auth/session', nil, auth_headers).env
     end
   end
 end

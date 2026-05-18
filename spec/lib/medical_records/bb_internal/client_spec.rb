@@ -193,16 +193,14 @@ describe BBInternal::Client do
     end
 
     it 'ensures the URL contains no spaces by escaping them' do
-      # Mock the `perform` method to intercept the URL
-      allow(client).to receive(:perform).and_wrap_original do |_original_method, _method, url, _body, _headers|
-        # Verify the URL contains no spaces
+      mock_conn = instance_double(Faraday::Connection)
+      allow(client).to receive(:bluebutton_connection).and_return(mock_conn)
+      allow(mock_conn).to receive(:get) do |url, _params, _headers|
         expect(url).to include(expected_escaped_last_name)
         expect(url).not_to include(' ')
-        # Return a mock response to satisfy the method call
-        double('Response', body: [])
+        instance_double(Faraday::Response, body: [])
       end
 
-      # Call the method
       client.get_generate_ccd(icn, last_name_with_space)
     end
   end
