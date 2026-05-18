@@ -246,6 +246,10 @@ module IvcChampva
       beneficiary_data = map_ohi_beneficiary(applicant_data)
       medicare_array = applicant_data['medicare'] || []
 
+      if parsed_form_data['certifier_role'] == 'applicant'
+        beneficiary_data[:email_address] ||= parsed_form_data['certifier_email']
+      end
+
       {
         application_uuid: form_uuid,
         beneficiary_medicare: beneficiary_data.merge(
@@ -413,6 +417,7 @@ module IvcChampva
       {
         signature: form_data['statement_of_truth_signature'],
         signature_date: format_date(certification['date'] || form_data['certification_date']),
+        certifier_role: form_data['certifier_role'],
         first_name: transliterate_and_strip(certification['first_name']),
         last_name: transliterate_and_strip(certification['last_name']),
         middle_initial: certification['middle_initial'],

@@ -816,6 +816,106 @@ describe IvcChampva::VesDataFormatter do
       end
     end
 
+    describe 'certifier email flows through to OHI beneficiaryMedicare.emailAddress' do
+      let(:standalone_form_data) do
+        JSON.parse(File.read('modules/ivc_champva/spec/fixtures/form_json/vha_10_7959c_rev2025.json'))
+      end
+
+      context 'standalone 7959c with certifier_role applicant and no applicant email' do
+        it 'uses certifier_email as beneficiary email in the VES request' do
+          data = standalone_form_data.deep_dup
+          data['certifier_role'] = 'applicant'
+          data['certifier_email'] = 'certifier@email.gov'
+          data['applicants'].first.delete('applicant_email')
+          data['applicants'].first.delete('applicant_email_address')
+
+          ohi_requests = IvcChampva::VesDataFormatter.format_for_ohi_request(data, form_uuid:)
+          beneficiary = ohi_requests.first.beneficiary_medicare
+
+          expect(beneficiary.email_address).to eq('certifier@email.gov')
+        end
+      end
+
+      context 'standalone 7959c with certifier_role other' do
+        it 'does not assign certifier_email when applicant has no email' do
+          data = standalone_form_data.deep_dup
+          data['certifier_role'] = 'other'
+          data['certifier_email'] = 'certifier@email.gov'
+          data['applicants'].first.delete('applicant_email')
+          data['applicants'].first.delete('applicant_email_address')
+
+          ohi_requests = IvcChampva::VesDataFormatter.format_for_ohi_request(data, form_uuid:)
+          beneficiary = ohi_requests.first.beneficiary_medicare
+
+          expect(beneficiary.email_address).to be_nil
+        end
+      end
+
+      context 'standalone 7959c where applicant has their own email' do
+        it 'preserves applicant email even when certifier_role is applicant' do
+          data = standalone_form_data.deep_dup
+          data['certifier_role'] = 'applicant'
+          data['certifier_email'] = 'certifier@email.gov'
+
+          ohi_requests = IvcChampva::VesDataFormatter.format_for_ohi_request(data, form_uuid:)
+          beneficiary = ohi_requests.first.beneficiary_medicare
+
+          expect(beneficiary.email_address).to eq('applicant@email.gov')
+        end
+      end
+
+      context '10-10D-EXTENDED with certifier_role applicant fallback' do
+        it 'falls back to certifier_email for applicants without email' do
+          data = extended_form_data.deep_dup
+          data['certifier_role'] = 'applicant'
+          data['certifier_email'] = 'certifier@email.gov'
+          data['applicants'].first.delete('applicant_email_address')
+          data['applicants'].first.delete('applicant_email')
+
+          ves_request = IvcChampva::VesDataFormatter.format_for_extended_request(data, form_uuid:)
+          ohi_beneficiary = ves_request.subforms.first[:request].beneficiary_medicare
+
+          expect(ohi_beneficiary.email_address).to eq('certifier@email.gov')
+        end
+      end
+    end
+
+    describe 'OHI certification signedByOther derives from certifier_role' do
+      let(:standalone_form_data) do
+        JSON.parse(File.read('modules/ivc_champva/spec/fixtures/form_json/vha_10_7959c_rev2025.json'))
+      end
+
+      it 'sets signedByOther to false when certifier_role is applicant' do
+        data = standalone_form_data.deep_dup
+        data['certifier_role'] = 'applicant'
+
+        ohi_requests = IvcChampva::VesDataFormatter.format_for_ohi_request(data, form_uuid:)
+        cert = ohi_requests.first.certification
+
+        expect(cert.signed_by_other).to be(false)
+      end
+
+      it 'sets signedByOther to true when certifier_role is other' do
+        data = standalone_form_data.deep_dup
+        data['certifier_role'] = 'other'
+
+        ohi_requests = IvcChampva::VesDataFormatter.format_for_ohi_request(data, form_uuid:)
+        cert = ohi_requests.first.certification
+
+        expect(cert.signed_by_other).to be(true)
+      end
+
+      it 'sets signedByOther to true when certifier_role is sponsor' do
+        data = standalone_form_data.deep_dup
+        data['certifier_role'] = 'sponsor'
+
+        ohi_requests = IvcChampva::VesDataFormatter.format_for_ohi_request(data, form_uuid:)
+        cert = ohi_requests.first.certification
+
+        expect(cert.signed_by_other).to be(true)
+      end
+    end
+
     describe '.map_medicare_parts' do
       it 'returns empty array for nil input' do
         expect(IvcChampva::VesDataFormatter.map_medicare_parts(nil)).to eq([])
