@@ -40,17 +40,13 @@ module Mobile
       def index
         letters = lighthouse_service.get_eligible_letter_types(icn, @current_user)[:letters]
         response = letters.filter_map do |letter|
-          # The following letters need to be filtered out due to outdated content
-          next if FILTERED_LETTER_TYPES.include? letter[:letterType]
-
-          # Apply legacy name overrides when flag is off
-          name = letter[:name]
-          unless Flipper.enabled?(:cst_letters_content_updates, @current_user)
-            name = 'Benefit Summary and Service Verification Letter' if letter[:letterType] == 'benefit_summary'
-            name = 'Foreign Medical Program Enrollment Letter' if letter[:letterType] == 'foreign_medical_program'
+          # The following letters need to be filtered out due to outdated content when flag is off
+          if !Flipper.enabled?(:cst_letters_content_updates,
+                               @current_user) && FILTERED_LETTER_TYPES.include?(letter[:letterType])
+            next
           end
 
-          Mobile::V0::Letter.new(letter_type: letter[:letterType], name:,
+          Mobile::V0::Letter.new(letter_type: letter[:letterType], name: apply_name_override(letter),
                                  description: letter[:description])
         end
         response.append(get_coe_letter_type).compact! if Flipper.enabled?(:mobile_coe_letter_use_lgy_service,
@@ -124,6 +120,15 @@ module Mobile
         StatsD.increment('mobile.letters.coe_status.failure')
         Rails.logger.error('LGY COE status check failed', error: e.message)
         nil
+      end
+
+      def apply_name_override(letter)
+        name = letter[:name]
+        return name if Flipper.enabled?(:cst_letters_content_updates, @current_user)
+
+        name = 'Benefit Summary and Service Verification Letter' if letter[:letterType] == 'benefit_summary'
+        name = 'Foreign Medical Program Enrollment Letter' if letter[:letterType] == 'foreign_medical_program'
+        name
       end
 
       def download_lighthouse_letters(params)

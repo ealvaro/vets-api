@@ -280,6 +280,14 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
               expect(letter_names).to eq(letter_names.sort)
             end
           end
+
+          it 'filters out medicare_partd and minimum_essential_coverage letters' do
+            VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
+              get '/mobile/v0/letters', headers: sis_headers
+              letter_types = JSON.parse(response.body).dig('data', 'attributes', 'letters').map { |l| l['letterType'] }
+              expect(letter_types).not_to include('medicare_partd', 'minimum_essential_coverage')
+            end
+          end
         end
 
         context 'when :cst_letters_content_updates is enabled' do
@@ -329,9 +337,17 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
               expect(letter_names).not_to eq(letter_names.sort)
               # Verify it follows the service order
               expect(letters.map { |l| l['letterType'] }).to eq(
-                %w[benefit_summary benefit_verification proof_of_service civil_service commissary
-                   service_verification]
+                %w[benefit_summary benefit_verification proof_of_service civil_service
+                   minimum_essential_coverage medicare_partd commissary service_verification]
               )
+            end
+          end
+
+          it 'includes medicare_partd and minimum_essential_coverage letters' do
+            VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
+              get '/mobile/v0/letters', headers: sis_headers
+              letter_types = JSON.parse(response.body).dig('data', 'attributes', 'letters').map { |l| l['letterType'] }
+              expect(letter_types).to include('medicare_partd', 'minimum_essential_coverage')
             end
           end
         end

@@ -2,6 +2,7 @@
 
 require 'claims_evidence_api/service/search'
 require 'claims_evidence_api/service/files'
+require 'lighthouse/letters_generator/content'
 
 module V0
   class TsaLetterController < ApplicationController
@@ -73,16 +74,30 @@ module V0
         b_time = DateTime.parse(b.dig('currentVersion', 'providerData', 'modifiedDateTime'))
         a_time <=> b_time
       end
-      document_id = latest['uuid']
-      document_version = latest['currentVersionUuid']
-      modified_datetime = latest.dig('currentVersion', 'providerData', 'modifiedDateTime')
-      tsa_letter_metadata = OpenStruct.new(document_id:, document_version:, modified_datetime:)
+
+      attributes = build_letter_attributes(latest)
+      tsa_letter_metadata = OpenStruct.new(attributes)
       TsaLetterSerializer.new(tsa_letter_metadata)
     rescue Date::Error
       datetimes = files.map { |file| file.dig('currentVersion', 'providerData', 'modifiedDateTime') }
       raise Common::Exceptions::UnprocessableEntity,
             detail: "Invalid datetime format found in TSA letters data: #{datetimes.join(', ')}",
             source: self.class.name
+    end
+
+    def build_letter_attributes(latest)
+      attributes = {
+        document_id: latest['uuid'],
+        document_version: latest['currentVersionUuid'],
+        modified_datetime: latest.dig('currentVersion', 'providerData', 'modifiedDateTime')
+      }
+
+      return attributes unless Flipper.enabled?(:cst_letters_content_updates, current_user)
+
+      attributes.merge(
+        name: Lighthouse::LettersGenerator::Content::LETTER_NAME_OVERRIDES['tsa'],
+        description: Lighthouse::LettersGenerator::Content::LETTER_DESCRIPTIONS['tsa']
+      )
     end
 
     def request_data_with_error_handling(description, &data_request)

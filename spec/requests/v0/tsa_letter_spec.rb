@@ -10,16 +10,55 @@ RSpec.describe 'VO::TsaLetter', type: :request do
   end
 
   describe 'GET /v0/tsa_letter' do
-    it 'renders the most recent tsa letter metadata' do
-      VCR.use_cassette('tsa_letters/show_success', { match_requests_on: %i[method uri body] }) do
-        get '/v0/tsa_letter'
-        expect(response).to have_http_status(:ok)
-        expect(response.body).to eq({ data: { id: '', type: 'tsa_letter',
-                                              attributes: {
-                                                document_id: 'c75438b4-47f8-44d3-9e35-798158591456',
-                                                document_version: '920debba-cc65-479c-ab47-db9b2a5cd95f',
-                                                modified_datetime: '2025-09-09T14:18:53'
-                                              } } }.to_json)
+    context 'when cst_letters_content_updates flag is off' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(false)
+      end
+
+      it 'renders the most recent tsa letter metadata without name and description' do
+        VCR.use_cassette('tsa_letters/show_success', { match_requests_on: %i[method uri body] }) do
+          get '/v0/tsa_letter'
+          expect(response).to have_http_status(:ok)
+          expect(response.body).to eq({ data: { id: '', type: 'tsa_letter',
+                                                attributes: {
+                                                  document_id: 'c75438b4-47f8-44d3-9e35-798158591456',
+                                                  document_version: '920debba-cc65-479c-ab47-db9b2a5cd95f',
+                                                  modified_datetime: '2025-09-09T14:18:53'
+                                                } } }.to_json)
+        end
+      end
+    end
+
+    context 'when cst_letters_content_updates flag is on' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(true)
+      end
+
+      it 'renders the most recent tsa letter metadata with name and description' do
+        VCR.use_cassette('tsa_letters/show_success', { match_requests_on: %i[method uri body] }) do
+          get '/v0/tsa_letter'
+          expect(response).to have_http_status(:ok)
+
+          response_json = JSON.parse(response.body)
+          attributes = response_json.dig('data', 'attributes')
+
+          # Verify existing fields are unchanged
+          expect(attributes['document_id']).to eq('c75438b4-47f8-44d3-9e35-798158591456')
+          expect(attributes['document_version']).to eq('920debba-cc65-479c-ab47-db9b2a5cd95f')
+          expect(attributes['modified_datetime']).to eq('2025-09-09T14:18:53')
+
+          # Verify new fields from Content module
+          expect(attributes['name']).to eq('TSA PreCheck application fee waiver')
+          expected_description = {
+            'paragraphs' => [
+              'This letter confirms that you are eligible for a ' \
+              'TSA PreCheck application fee waiver.',
+              'You can use this letter to qualify for a ' \
+              'TSA PreCheck application fee waiver.'
+            ]
+          }
+          expect(attributes['description']).to eq(expected_description)
+        end
       end
     end
 
