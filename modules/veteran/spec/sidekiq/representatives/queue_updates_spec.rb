@@ -36,6 +36,8 @@ RSpec.describe Representatives::QueueUpdates, type: :job do
     let(:sensitive_repo_fetcher) { instance_double(SensitiveRepoXlsxFileFetcher) }
 
     before do
+      allow(Settings).to receive(:vsp_environment).and_return('development')
+
       stub_const('Sidekiq::Batch', Class.new) unless defined?(Sidekiq::Batch)
       Veteran::Service::Representative.create(representative_id: '123', poa_codes: ['A1'])
       Veteran::Service::Representative.create(representative_id: '234', poa_codes: ['A1'])
@@ -91,6 +93,76 @@ RSpec.describe Representatives::QueueUpdates, type: :job do
 
         expect(rep.raw_address).to eq(raw_address123)
         expect(rep.updated_at).to eq(initial_updated_at)
+      end
+    end
+
+    context 'when staging email masking is needed' do
+      let(:real_email) { 'real.representative@lawfirm.com' }
+      let(:no_diff_row) do
+        {
+          id: '123',
+          address: {},
+          email: real_email,
+          phone_number: '123-456-7890',
+          raw_address: raw_address123
+        }
+      end
+      let(:processed_data) do
+        {
+          'Agents' => [no_diff_row],
+          'Attorneys' => [],
+          'Representatives' => []
+        }
+      end
+
+      before do
+        Veteran::Service::Representative.find('123').update!(
+          email: real_email,
+          phone_number: '123-456-7890',
+          raw_address: raw_address123
+        )
+      end
+
+      context 'in staging' do
+        before do
+          allow(Settings).to receive(:vsp_environment).and_return('staging')
+        end
+
+        it 'queues a representative with no data diff when the stored email is real' do
+          subject.perform
+
+          expect(Representatives::Update.jobs.size).to eq(1)
+
+          queued_rows = JSON.parse(Representatives::Update.jobs.first['args'].first)
+          expect(queued_rows.first).to include(
+            'id' => '123',
+            'email_changed' => false,
+            'phone_number_changed' => false,
+            'address_changed' => false
+          )
+        end
+      end
+
+      context 'outside staging' do
+        it 'does not queue a representative with no data diff when the stored email is real' do
+          subject.perform
+
+          expect(Representatives::Update.jobs).to be_empty
+        end
+      end
+
+      context 'when the staging email is already fake' do
+        let(:real_email) { 'representative-123@example.com' }
+
+        before do
+          allow(Settings).to receive(:vsp_environment).and_return('staging')
+        end
+
+        it 'does not queue a representative with no data diff' do
+          subject.perform
+
+          expect(Representatives::Update.jobs).to be_empty
+        end
       end
     end
 

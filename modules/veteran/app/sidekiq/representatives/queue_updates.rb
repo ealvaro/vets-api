@@ -75,11 +75,20 @@ module Representatives
         # Update raw_address for every record to keep it in sync with XLSX source
         rep.update(raw_address: row[:raw_address]) if rep.raw_address != row[:raw_address]
 
-        row.merge(diff.merge({ address_exists: rep.location.present? })) if diff.values.any?
+        should_queue = diff.values.any? || staging_email_needs_masking?(rep)
+        row.merge(diff.merge({ address_exists: rep.location.present? })) if should_queue
       rescue ActiveRecord::RecordNotFound => e
         log_error("Error: Representative not found #{e.message}")
         nil
       end.compact
+    end
+
+    def staging_email_needs_masking?(rep)
+      staging? && rep.email.present? && !rep.email.match?(/@example\.com\z/i)
+    end
+
+    def staging?
+      Settings.vsp_environment.to_s.strip.downcase == 'staging'
     end
 
     def log_error(message)

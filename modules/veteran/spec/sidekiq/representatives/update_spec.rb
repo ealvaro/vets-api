@@ -183,10 +183,15 @@ RSpec.describe Representatives::Update do
       let!(:representative) { create_representative }
 
       it 'updates the email without attempting address validation' do
+        validation_service = VAProfile::AddressValidation::V3::Service
+        expect(validation_service).not_to receive(:new)
+
         subject.perform(json_data)
         representative.reload
 
         expect(representative.email).to eq('test@example.com')
+        expect(representative.phone_number).to eq('111-111-1111')
+        expect(representative.address_line1).to eq('123 East Main St')
       end
     end
 
@@ -199,10 +204,15 @@ RSpec.describe Representatives::Update do
       let!(:representative) { create_representative }
 
       it 'updates the phone number without attempting address validation' do
+        validation_service = VAProfile::AddressValidation::V3::Service
+        expect(validation_service).not_to receive(:new)
+
         subject.perform(json_data)
         representative.reload
 
         expect(representative.phone_number).to eq('999-999-9999')
+        expect(representative.email).to eq('email@example.com')
+        expect(representative.address_line1).to eq('123 East Main St')
       end
     end
 
@@ -841,6 +851,52 @@ RSpec.describe Representatives::Update do
             expect(representative.email).to eq('representative-123abc@example.com')
           end
         end
+      end
+    end
+
+    context 'when the representative has no update diff outside staging' do
+      let(:id) { '123abc' }
+      let(:address_exists) { false }
+      let(:address_changed) { false }
+      let(:email_changed) { false }
+      let(:phone_number_changed) { false }
+      let!(:representative) { create_representative }
+
+      it 'does not update the representative' do
+        validation_service = VAProfile::AddressValidation::V3::Service
+        expect(validation_service).not_to receive(:new)
+
+        subject.perform(json_data)
+        representative.reload
+
+        expect(representative.email).to eq('email@example.com')
+        expect(representative.phone_number).to eq('111-111-1111')
+        expect(representative.address_line1).to eq('123 East Main St')
+      end
+    end
+
+    context 'when in staging and the representative has no update diff' do
+      let(:id) { '123abc' }
+      let(:address_exists) { false }
+      let(:address_changed) { false }
+      let(:email_changed) { false }
+      let(:phone_number_changed) { false }
+      let!(:representative) { create_representative }
+
+      before do
+        allow(Settings).to receive(:vsp_environment).and_return('staging')
+      end
+
+      it 'still updates the representative email to a fake example.com email without attempting address validation' do
+        validation_service = VAProfile::AddressValidation::V3::Service
+        expect(validation_service).not_to receive(:new)
+
+        subject.perform(json_data)
+        representative.reload
+
+        expect(representative.email).to eq('representative-123abc@example.com')
+        expect(representative.phone_number).to eq('111-111-1111')
+        expect(representative.address_line1).to eq('123 East Main St')
       end
     end
   end
