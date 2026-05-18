@@ -112,5 +112,21 @@ describe IvcChampva::PdfCombiner do
         end
       end
     end
+
+    context 'when combining PDFs that fail validation' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:champva_use_hexapdf_to_combine_pdfs,
+                                                  anything).and_return(true)
+      end
+
+      it 'combines PDF with missing FontName successfully' do
+        validation_failure_pdf_path = 'modules/ivc_champva/spec/fixtures/pdfs/pdf_for_hexapdf_validation_failure.pdf'
+        pages = [validation_failure_pdf_path]
+        expect(described_class.combine(@merged_path, pages)).to eq(@merged_path)
+
+        merged_pdf = CombinePDF.load(@merged_path, allow_optional_content: true)
+        expect(merged_pdf.pages.count).to eq(1)
+      end
+    end
   end
 end

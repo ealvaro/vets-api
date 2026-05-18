@@ -51,7 +51,8 @@ module IvcChampva
       end
 
       # Write the combined document to the output path
-      target.write(merged_pdf_path, optimize: true)
+      # Do not perform validation, we want to merge the files as-is and not fail on minor issues
+      target.write(merged_pdf_path, optimize: true, validate: false)
 
       merged_pdf_path
     end
