@@ -4,7 +4,6 @@ module PdfFill
   module Forms
     class Va2210272 < FormBase
       include FormHelper
-      include FormHelper::PhoneNumberFormatting
 
       BENEFIT_PROGRAMS = %w[chapter33 chapter35].freeze
 
@@ -42,22 +41,19 @@ module PdfFill
           question_num: 3,
           limit: 54
         },
-        'phone' => {
-          question_text: 'TELEPHONE NUMBER (Include Area Code)',
-          'mobilePhone' => {
-            key: 'mobilePhone',
-            question_text: 'MOBILE',
-            question_num: 4,
-            question_suffix: 'A',
-            limit: 26
-          },
-          'homePhone' => {
-            key: 'homePhone',
-            question_text: 'HOME',
-            question_num: 4,
-            question_suffix: 'B',
-            limit: 34
-          }
+        'mobilePhone' => {
+          key: 'mobilePhone',
+          question_text: 'MOBILE',
+          question_num: 4,
+          question_suffix: 'A',
+          limit: 26
+        },
+        'homePhone' => {
+          key: 'homePhone',
+          question_text: 'HOME',
+          question_num: 4,
+          question_suffix: 'B',
+          limit: 34
         },
         'vaFileNumber' => {
           key: 'vaFileNumber',
