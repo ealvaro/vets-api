@@ -1337,3 +1337,20 @@
     - :method: :post
       :path: "/api/v1/rest/submissions"
       :file_path: "digital_forms/submissions/created"
+
+# VYE/DGI
+- :name: "VYE"
+  :base_uri: <%= "#{URI(Settings.dgi.vye.vets.url).host}:#{URI(Settings.dgi.vye.vets.url).port}" %>
+  :endpoints:
+    - :method: :post
+      :path: "/dgi/vye/claimantLookup"
+      :file_path: "dgi/vye/claimant"
+      :cache_multiple_responses:
+        :uid_location: body
+        :uid_locator: 'ssn":"(\w+)"'
+    - :method: :get
+      :path: "/verifications/vye/*/verification-record"
+      :file_path: "dgi/vye/verification"
+      :cache_multiple_responses:
+        :uid_location: url
+        :uid_locator: '\/verifications\/vye\/(.+)\/verification-record'
