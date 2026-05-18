@@ -22,6 +22,7 @@ module IvcChampva
                                .where.not(ves_status: [nil, 'ok'])
                                .select('DISTINCT ON (form_uuid) *')
                                .order(:form_uuid, created_at: :desc)
+                               .to_a
 
       return unless failed_ves_submissions.any?
 
