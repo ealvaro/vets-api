@@ -64,7 +64,8 @@ module Representatives
     end
 
     def record_can_be_updated?(rep_data)
-      rep_data['address_exists'] || rep_data['address_changed']
+      rep_data['address_exists'] || rep_data['address_changed'] ||
+        rep_data['email_changed'] || rep_data['phone_number_changed']
     end
 
     # Constructs a validation address object from the provided address data.

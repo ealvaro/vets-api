@@ -115,9 +115,14 @@ module RepresentationManagement
         next if processed_ids[registration_number]
 
         state_code = get_value(row, column_map, INDIVIDUAL_STATE_COLUMN)
-        next unless US_STATES_TERRITORIES[state_code]
 
-        data << build_individual_hash(row, column_map, type, sheet_name, ogc_id_column)
+        if US_STATES_TERRITORIES[state_code]
+          data << build_individual_hash(row, column_map, type, sheet_name, ogc_id_column)
+        else
+          contact_data = build_individual_contact_only_hash(row, column_map, type, sheet_name, ogc_id_column)
+          data << contact_data if contact_data[:email].present? || contact_data[:phone_number].present?
+        end
+
         processed_ids[registration_number] = true
       end
 
@@ -138,9 +143,14 @@ module RepresentationManagement
         next if processed_poa_codes[poa_code]
 
         state_code = get_value(row, column_map, ORG_STATE_COLUMN)
-        next unless US_STATES_TERRITORIES[state_code]
 
-        data << build_organization_hash(row, column_map, ogc_id_column)
+        if US_STATES_TERRITORIES[state_code]
+          data << build_organization_hash(row, column_map, ogc_id_column)
+        else
+          contact_data = build_organization_contact_only_hash(row, column_map, ogc_id_column)
+          data << contact_data if contact_data[:phone].present?
+        end
+
         processed_poa_codes[poa_code] = true
       end
 
@@ -169,6 +179,29 @@ module RepresentationManagement
         phone: get_value(row, column_map, 'OrganizationPhoneNumber'),
         address:,
         raw_address: build_raw_address(address)
+      }
+    end
+
+    def build_individual_contact_only_hash(row, column_map, type, sheet_name, ogc_id_column)
+      {
+        ogc_id: get_value(row, column_map, ogc_id_column),
+        registration_number: normalize_numeric(row[column_map['Number']]),
+        individual_type: type,
+        email: get_value(row, column_map, email_column_name(sheet_name)),
+        phone_number: get_value(row, column_map, 'WorkNumber'),
+        address: nil,
+        raw_address: nil
+      }
+    end
+
+    def build_organization_contact_only_hash(row, column_map, ogc_id_column)
+      {
+        ogc_id: get_value(row, column_map, ogc_id_column),
+        poa_code: row[column_map['POA']]&.to_s&.strip&.rjust(3, '0'),
+        name: get_value(row, column_map, 'OrganizationName'),
+        phone: get_value(row, column_map, 'OrganizationPhoneNumber'),
+        address: nil,
+        raw_address: nil
       }
     end
 

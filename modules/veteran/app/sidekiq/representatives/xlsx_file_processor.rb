@@ -102,9 +102,13 @@ module Representatives
 
         state_code = get_value(row, column_map, 'WorkState')
 
-        next unless US_STATES_TERRITORIES[state_code]
+        if US_STATES_TERRITORIES[state_code]
+          data << process_row(row, sheet_name, column_map)
+        else
+          contact_data = build_contact_only_hash(row, sheet_name, column_map)
+          data << contact_data if contact_data[:email].present? || contact_data[:phone_number].present?
+        end
 
-        data << process_row(row, sheet_name, column_map)
         processed_rep_ids[row[column_map['Number']]] = true
       end
 
@@ -156,6 +160,16 @@ module Representatives
         phone_number: get_value(row, column_map, 'WorkNumber'),
         address:,
         raw_address: build_raw_address(address)
+      }
+    end
+
+    def build_contact_only_hash(row, sheet_name, column_map)
+      {
+        id: row[column_map['Number']],
+        email: get_value(row, column_map, email_address_column_name(sheet_name)),
+        phone_number: get_value(row, column_map, 'WorkNumber'),
+        address: nil,
+        raw_address: nil
       }
     end
 

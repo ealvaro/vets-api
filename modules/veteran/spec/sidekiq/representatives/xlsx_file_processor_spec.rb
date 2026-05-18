@@ -108,16 +108,100 @@ RSpec.describe Representatives::XlsxFileProcessor do
     end
 
     context 'with state code validation' do
-      it 'processes only rows with valid state codes' do
+      it 'processes only US-state rows with full address data' do
         valid_states = Representatives::XlsxFileProcessor::US_STATES_TERRITORIES.keys
 
         result.each_value do |value_array|
           value_array.each do |row|
-            state_code = row.dig('request_address', 'state_province', 'code')
+            next if row[:address].nil? # Skip contact-only rows
 
+            state_code = row.dig(:address, :state, :state_code)
             expect(valid_states).to include(state_code) unless state_code.nil?
           end
         end
+      end
+    end
+
+    context 'with foreign state codes' do
+      let(:header_row) do
+        %w[Number FirstName LastName WorkAddress1 WorkAddress2
+           WorkAddress3 WorkCity WorkState WorkZip WorkNumber
+           WorkEmailAddress]
+      end
+      let(:us_row) do
+        ['111', 'Jane', 'Doe', '123 Main St', nil, nil,
+         'Arlington', 'VA', '22201', '703-555-1234', 'jane@example.com']
+      end
+      let(:foreign_row_with_email) do
+        ['222', 'Hans', 'Mueller', 'Berliner Str 1', nil, nil,
+         'Berlin', 'BE', '10115', '030-555-1234', 'hans@example.de']
+      end
+      let(:foreign_row_no_contact) do
+        ['333', 'Pierre', 'Dupont', 'Rue de Rivoli 1', nil, nil,
+         'Paris', 'FR', '75001', nil, nil]
+      end
+      let(:foreign_row_phone_only) do
+        ['444', 'Yuki', 'Tanaka', 'Shibuya 1-1', nil, nil,
+         'Tokyo', 'TK', '150-0002', '03-1234-5678', nil]
+      end
+      let(:mock_sheet) do
+        sheet = double('sheet')
+        allow(sheet).to receive(:row).with(1).and_return(header_row)
+        allow(sheet).to receive(:each_with_index)
+          .and_yield(header_row, 0)
+          .and_yield(us_row, 1)
+          .and_yield(foreign_row_with_email, 2)
+          .and_yield(foreign_row_no_contact, 3)
+          .and_yield(foreign_row_phone_only, 4)
+        sheet
+      end
+      let(:mock_xlsx) do
+        xlsx = double('xlsx')
+        allow(xlsx).to receive(:sheet).and_return(mock_sheet)
+        xlsx
+      end
+      let(:result) { described_class.new('').process }
+
+      before do
+        allow(Roo::Spreadsheet).to receive(:open).and_return(mock_xlsx)
+      end
+
+      it 'includes foreign rows with valid email as contact-only data' do
+        reps = result['Representatives']
+        foreign_rep = reps.find { |r| r[:id] == '222' }
+
+        expect(foreign_rep).to be_present
+        expect(foreign_rep[:email]).to eq('hans@example.de')
+        expect(foreign_rep[:phone_number]).to eq('030-555-1234')
+        expect(foreign_rep[:address]).to be_nil
+        expect(foreign_rep[:raw_address]).to be_nil
+      end
+
+      it 'includes US rows with full address data' do
+        reps = result['Representatives']
+        us_rep = reps.find { |r| r[:id] == '111' }
+
+        expect(us_rep).to be_present
+        expect(us_rep[:email]).to eq('jane@example.com')
+        expect(us_rep[:address]).to be_present
+        expect(us_rep[:raw_address]).to be_present
+      end
+
+      it 'excludes foreign rows with no email or phone' do
+        reps = result['Representatives']
+        no_contact_rep = reps.find { |r| r[:id] == '333' }
+
+        expect(no_contact_rep).to be_nil
+      end
+
+      it 'includes foreign rows with phone only' do
+        reps = result['Representatives']
+        phone_only_rep = reps.find { |r| r[:id] == '444' }
+
+        expect(phone_only_rep).to be_present
+        expect(phone_only_rep[:email]).to be_nil
+        expect(phone_only_rep[:phone_number]).to eq('03-1234-5678')
+        expect(phone_only_rep[:address]).to be_nil
       end
     end
   end

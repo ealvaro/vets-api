@@ -277,5 +277,131 @@ RSpec.describe RepresentationManagement::XlsxFileProcessor do
         expect(result).to eq({})
       end
     end
+
+    context 'foreign state codes for individuals' do
+      let(:header_row) do
+        %w[Number FirstName LastName WorkAddress1 WorkAddress2
+           WorkAddress3 WorkCity WorkState WorkZip WorkNumber
+           EmailAddress AccrAttorneyId]
+      end
+      let(:us_row) do
+        ['111', 'Jane', 'Doe', '123 Main St', nil, nil,
+         'Arlington', 'VA', '22201', '703-555-1234',
+         'jane@example.com', 'att-uuid-1']
+      end
+      let(:foreign_row_with_email) do
+        ['222', 'Hans', 'Mueller', 'Berliner Str 1', nil, nil,
+         'Berlin', 'BE', '10115', '030-555-1234',
+         'hans@example.de', 'att-uuid-2']
+      end
+      let(:foreign_row_no_contact) do
+        ['333', 'Pierre', 'Dupont', 'Rue de Rivoli', nil, nil,
+         'Paris', 'FR', '75001', nil, nil, 'att-uuid-3']
+      end
+      let(:mock_sheet) do
+        sheet = double('sheet')
+        allow(sheet).to receive(:row).with(1).and_return(header_row)
+        allow(sheet).to receive(:each_with_index)
+          .and_yield(header_row, 0)
+          .and_yield(us_row, 1)
+          .and_yield(foreign_row_with_email, 2)
+          .and_yield(foreign_row_no_contact, 3)
+        sheet
+      end
+      let(:mock_xlsx) do
+        xlsx = double('xlsx')
+        allow(xlsx).to receive(:sheet).and_return(mock_sheet)
+        xlsx
+      end
+      let(:result) { described_class.new('', ['attorney']).process }
+
+      before do
+        allow(Roo::Spreadsheet).to receive(:open).and_return(mock_xlsx)
+      end
+
+      it 'includes foreign rows with email as contact-only data' do
+        attorneys = result['attorney']
+        foreign = attorneys.find { |r| r[:registration_number] == '222' }
+
+        expect(foreign).to be_present
+        expect(foreign[:email]).to eq('hans@example.de')
+        expect(foreign[:address]).to be_nil
+        expect(foreign[:raw_address]).to be_nil
+      end
+
+      it 'includes US rows with full address data' do
+        attorneys = result['attorney']
+        us_rep = attorneys.find { |r| r[:registration_number] == '111' }
+
+        expect(us_rep).to be_present
+        expect(us_rep[:address]).to be_present
+        expect(us_rep[:raw_address]).to be_present
+      end
+
+      it 'excludes foreign rows with no email or phone' do
+        attorneys = result['attorney']
+        no_contact = attorneys.find { |r| r[:registration_number] == '333' }
+
+        expect(no_contact).to be_nil
+      end
+    end
+
+    context 'foreign state codes for organizations' do
+      let(:header_row) do
+        %w[POA OrganizationName OrganizationAddressLine1
+           OrganizationAddressLine2 OrganizationAddressLine3
+           OrganizationCity OrganizationState
+           OrganizationZipCode OrganizationPhoneNumber VSOID]
+      end
+      let(:us_org) do
+        ['A01', 'US Org', '123 Main St', nil, nil,
+         'DC', 'DC', '20001', '202-555-1234', 'org-uuid-1']
+      end
+      let(:foreign_org_with_phone) do
+        ['B02', 'Foreign Org', 'Berliner Str', nil, nil,
+         'Berlin', 'BE', '10115', '030-555-1234', 'org-uuid-2']
+      end
+      let(:foreign_org_no_phone) do
+        ['C03', 'No Phone Org', 'Rue de Rivoli', nil, nil,
+         'Paris', 'FR', '75001', nil, 'org-uuid-3']
+      end
+      let(:mock_sheet) do
+        sheet = double('sheet')
+        allow(sheet).to receive(:row).with(1).and_return(header_row)
+        allow(sheet).to receive(:each_with_index)
+          .and_yield(header_row, 0)
+          .and_yield(us_org, 1)
+          .and_yield(foreign_org_with_phone, 2)
+          .and_yield(foreign_org_no_phone, 3)
+        sheet
+      end
+      let(:mock_xlsx) do
+        xlsx = double('xlsx')
+        allow(xlsx).to receive(:sheet).and_return(mock_sheet)
+        xlsx
+      end
+      let(:result) { described_class.new('', ['organization']).process }
+
+      before do
+        allow(Roo::Spreadsheet).to receive(:open).and_return(mock_xlsx)
+      end
+
+      it 'includes foreign orgs with phone as contact-only data' do
+        orgs = result['organization']
+        foreign = orgs.find { |r| r[:poa_code] == 'B02' }
+
+        expect(foreign).to be_present
+        expect(foreign[:phone]).to eq('030-555-1234')
+        expect(foreign[:address]).to be_nil
+        expect(foreign[:raw_address]).to be_nil
+      end
+
+      it 'excludes foreign orgs with no phone' do
+        orgs = result['organization']
+        no_phone = orgs.find { |r| r[:poa_code] == 'C03' }
+
+        expect(no_phone).to be_nil
+      end
+    end
   end
 end

@@ -174,6 +174,38 @@ RSpec.describe Representatives::Update do
       end
     end
 
+    context 'when only email_changed is true (no address change or existing address)' do
+      let(:id) { '123abc' }
+      let(:address_exists) { false }
+      let(:address_changed) { false }
+      let(:email_changed) { true }
+      let(:phone_number_changed) { false }
+      let!(:representative) { create_representative }
+
+      it 'updates the email without attempting address validation' do
+        subject.perform(json_data)
+        representative.reload
+
+        expect(representative.email).to eq('test@example.com')
+      end
+    end
+
+    context 'when only phone_number_changed is true (no address change or existing address)' do
+      let(:id) { '123abc' }
+      let(:address_exists) { false }
+      let(:address_changed) { false }
+      let(:email_changed) { false }
+      let(:phone_number_changed) { true }
+      let!(:representative) { create_representative }
+
+      it 'updates the phone number without attempting address validation' do
+        subject.perform(json_data)
+        representative.reload
+
+        expect(representative.phone_number).to eq('999-999-9999')
+      end
+    end
+
     context 'address validation retries' do
       let(:id) { '123abc' }
       let(:address_exists) { true }
@@ -586,6 +618,16 @@ RSpec.describe Representatives::Update do
 
     context 'when only email or phone changes (not address)' do
       let(:id) { '123abc' }
+      let(:original_raw_address) do
+        {
+          'address_line1' => '123 Original St',
+          'address_line2' => nil,
+          'address_line3' => nil,
+          'city' => 'Original City',
+          'state_code' => 'CA',
+          'zip_code' => '90210'
+        }
+      end
       let(:json_email_only) do
         [
           {
@@ -616,17 +658,6 @@ RSpec.describe Representatives::Update do
       let(:email_changed) { true }
       let(:phone_number_changed) { false }
       let!(:representative) { create_representative }
-
-      let(:original_raw_address) do
-        {
-          'address_line1' => '123 Original St',
-          'address_line2' => nil,
-          'address_line3' => nil,
-          'city' => 'Original City',
-          'state_code' => 'CA',
-          'zip_code' => '90210'
-        }
-      end
 
       before do
         representative.update(raw_address: original_raw_address)
