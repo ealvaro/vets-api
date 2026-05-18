@@ -80,6 +80,68 @@ RSpec.describe RuboCop::Cop::DangerousExceptionLogging, :config do
     RUBY
   end
 
+  it 'registers an offense when exception class and message are interpolated in the logger message string' do
+    expect_offense(<<~RUBY)
+      begin
+        something
+      rescue => ex
+        Rails.logger.error("Job failed: \#{ex.class} - \#{ex.message}")
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ #{described_class::MSG_DSTR}
+      end
+    RUBY
+  end
+
+  it 'registers an offense when backtrace is interpolated in the logger message string' do
+    expect_offense(<<~RUBY)
+      begin
+        something
+      rescue => ex
+        Rails.logger.error("Job failed: \#{ex.backtrace.join('\\n')}")
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ #{described_class::MSG_DSTR}
+      end
+    RUBY
+  end
+
+  it 'does not register an offense when only non-exception data is interpolated in the logger message string' do
+    expect_no_offenses(<<~RUBY)
+      begin
+        something
+      rescue => ex
+        Rails.logger.error("Job \#{job_name} failed on attempt \#{attempt}")
+      end
+    RUBY
+  end
+
+  it 'does not register an offense when .class and .message are on different receivers' do
+    expect_no_offenses(<<~RUBY)
+      begin
+        something
+      rescue => ex
+        Rails.logger.error("Job \#{job.class} failed with message \#{msg.message}")
+      end
+    RUBY
+  end
+
+  it 'does not register an offense for only .message interpolated in the logger message string' do
+    expect_no_offenses(<<~RUBY)
+      begin
+        something
+      rescue => ex
+        Rails.logger.error("Failed: \#{ex.message}")
+      end
+    RUBY
+  end
+
+  it 'does not register an offense for only .class interpolated in the logger message string' do
+    expect_no_offenses(<<~RUBY)
+      begin
+        something
+      rescue => ex
+        Rails.logger.error("Failed: \#{ex.class}")
+      end
+    RUBY
+  end
+
   # Safe patterns - should NOT register offenses
 
   it 'does not register an offense for exception: e (passing Exception object)' do

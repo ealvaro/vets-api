@@ -6,6 +6,53 @@
 # Note that changes in the inspected code, or installation of new
 # versions of RuboCop, may require this file to be generated again.
 
+# Offense count: 51
+Cop/DangerousExceptionLogging:
+  Exclude:
+    - 'app/controllers/concerns/form_attachment_create.rb'
+    - 'app/controllers/concerns/tooltips.rb'
+    - 'app/models/saved_claim/education_benefits.rb'
+    - 'app/services/medical_copays/lighthouse_integration/service.rb'
+    - 'app/sidekiq/copay_notifications/new_statement_notification_job.rb'
+    - 'app/sidekiq/copay_notifications/parse_new_statements_job.rb'
+    - 'app/sidekiq/hca/health_facilities_import_job.rb'
+    - 'app/sidekiq/simple_forms_api/form_remediation/upload_retry_job.rb'
+    - 'app/sidekiq/simple_forms_api/mms/ibm_upload_job.rb'
+    - 'app/sidekiq/unified_health_data/facility_name_cache_job.rb'
+    - 'config/initializers/sidekiq.rb'
+    - 'lib/debt_management_center/sidekiq/va_notify_email_job.rb'
+    - 'lib/lighthouse/benefits_claims/tracked_item_content.rb'
+    - 'lib/logging/helper/data_scrubber.rb'
+    - 'lib/mhv/prescriptions/refill_request_tracker.rb'
+    - 'lib/unified_health_data/adapters/station_helpers.rb'
+    - 'modules/accredited_representative_portal/app/controllers/accredited_representative_portal/v0/form21a_controller.rb'
+    - 'modules/accredited_representative_portal/app/controllers/accredited_representative_portal/v0/intent_to_file_controller.rb'
+    - 'modules/accredited_representative_portal/app/models/accredited_representative_portal/power_of_attorney_request_decision.rb'
+    - 'modules/accredited_representative_portal/app/models/accredited_representative_portal/power_of_attorney_request.rb'
+    - 'modules/accredited_representative_portal/app/services/accredited_representative_portal/power_of_attorney_request_service/accept.rb'
+    - 'modules/accredited_representative_portal/app/sidekiq/accredited_representative_portal/expire_power_of_attorney_requests_job.rb'
+    - 'modules/accredited_representative_portal/app/sidekiq/accredited_representative_portal/redact_power_of_attorney_requests_job.rb'
+    - 'modules/accredited_representative_portal/lib/tasks/poa_redaction_dry_run.rake'
+    - 'modules/appeals_api/app/services/appeals_api/central_mail_updater.rb'
+    - 'modules/claims_api/lib/tasks/claims_tasks.rake'
+    - 'modules/debts_api/app/controllers/debts_api/v0/digital_disputes_controller.rb'
+    - 'modules/debts_api/app/sidekiq/debts_api/v0/digital_dispute_job.rb'
+    - 'modules/debts_api/app/sidekiq/debts_api/v0/form5655/send_confirmation_email_job.rb'
+    - 'modules/debts_api/app/sidekiq/debts_api/v0/form5655/vba_submission_job.rb'
+    - 'modules/debts_api/app/sidekiq/debts_api/v0/form5655/vha/sharepoint_submission_job.rb'
+    - 'modules/debts_api/app/sidekiq/debts_api/v0/form5655/vha/vbs_submission_job.rb'
+    - 'modules/debts_api/lib/debts_api/v0/digital_dispute_dmc_service.rb'
+    - 'modules/mobile/app/controllers/mobile/v0/travel_pay_claims_controller.rb'
+    - 'modules/mobile/app/controllers/mobile/v1/allergy_intolerances_controller.rb'
+    - 'modules/my_health/app/controllers/my_health/v2/imaging_controller.rb'
+    - 'modules/representation_management/lib/tasks/manual_vso_reloader.rake'
+    - 'modules/simple_forms_api/app/services/simple_forms_api/overflow_108678.rb'
+    - 'modules/simple_forms_api/app/services/simple_forms_api/overflow_4502.rb'
+    - 'modules/simple_forms_api/app/services/simple_forms_api/overflow_pdf_generator.rb'
+    - 'modules/vaos/app/services/vaos/v2/appointments_service.rb'
+    - 'spec/logging/semantic_logger_exceptions_spec.rb'
+
+
 # Offense count: 54
 # Configuration parameters: AllowedMethods.
 # AllowedMethods: enums

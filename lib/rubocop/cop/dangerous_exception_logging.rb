@@ -31,10 +31,17 @@ module RuboCop
             '`exception: e.to_s`, or string interpolation. SemanticLogger ' \
             'extracts class, message, and backtrace automatically.'
 
+      MSG_DSTR = 'Avoid embedding exception details (class, message, backtrace) in the ' \
+                 'logger message string via interpolation. Pass the Exception object ' \
+                 'using `exception: e` instead — SemanticLogger extracts these automatically.'
+
       LOG_METHODS = %i[debug info warn error fatal].freeze
 
       def on_send(node)
         return unless logger_call?(node)
+
+        first_arg = node.arguments.first
+        check_message_dstr(first_arg) if first_arg&.dstr_type?
 
         node.arguments.each do |arg|
           case arg.type
@@ -125,6 +132,30 @@ module RuboCop
       # send chains that coerce an Exception to a String
       def string_coercion?(node)
         node.send_type? && %i[message to_s name inspect].include?(node.method_name)
+      end
+
+      def check_message_dstr(dstr_node)
+        add_offense(dstr_node, message: MSG_DSTR) if exception_dstr_pattern?(dstr_node)
+      end
+
+      # True when a dstr interpolates .backtrace on any receiver, or both
+      # .class and .message on the *same* receiver. Requiring the same receiver
+      # avoids false positives like "#{job.class} failed: #{msg.message}" where
+      # neither object is an exception.
+      def exception_dstr_pattern?(dstr_node)
+        interpolated_receivers_for(dstr_node, :backtrace).any? ||
+          interpolated_receivers_for(dstr_node, :class)
+            .intersect?(interpolated_receivers_for(dstr_node, :message))
+      end
+
+      # Returns the source strings of receivers for all sends of +method_name+
+      # found inside string interpolations in the dstr.
+      def interpolated_receivers_for(dstr_node, method_name)
+        dstr_node.each_descendant(:begin).flat_map do |interp|
+          interp.each_descendant(:send)
+                .select { |s| s.method_name == method_name }
+                .map { |s| s.receiver&.source }
+        end.compact
       end
 
       # Check if this exception: pair is nested inside a context: hash
