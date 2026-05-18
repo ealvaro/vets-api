@@ -134,14 +134,14 @@ class PegaStatusChecker
   end
 
   def filter_pega_processable_files(form_records)
-    # Exclude VES JSON files since they're sent to VES, not Pega
-    form_records.reject { |record| ves_json_file?(record.file_name) }
+    form_records.select { |record| pega_processable?(record) }
   end
 
-  def ves_json_file?(file_name)
-    return false if file_name.blank?
+  def pega_processable?(record)
+    return false if record.s3_status.blank?
+    return false if record.file_name&.include?('_ves.json')
 
-    file_name.include?('_ves.json')
+    record.s3_status.include?('200')
   end
 
   def check_file_counts(form_records, pega_reports, form_uuid)

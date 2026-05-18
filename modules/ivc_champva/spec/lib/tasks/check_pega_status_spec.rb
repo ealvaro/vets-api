@@ -350,6 +350,45 @@ RSpec.describe 'ivc_champva:check_pega_status', type: :task do
       # Should be marked as fully processed
       expect(output).to match(/Found 1 UUIDs with all files processed by Pega/)
     end
+
+    it 'excludes records with nil s3_status from Pega count comparison' do
+      uuid_with_combined = SecureRandom.uuid
+      combined_record = create(:ivc_champva_form,
+                               form_uuid: uuid_with_combined,
+                               file_name: "#{uuid_with_combined}_duty_to_assist_0_0_combined.pdf",
+                               s3_status: '[200]',
+                               created_at: 1.hour.ago)
+      shadow_record1 = create(:ivc_champva_form,
+                              form_uuid: uuid_with_combined,
+                              file_name: "#{uuid_with_combined}_supporting_doc_0.pdf",
+                              s3_status: nil,
+                              created_at: 1.hour.ago)
+      shadow_record2 = create(:ivc_champva_form,
+                              form_uuid: uuid_with_combined,
+                              file_name: "#{uuid_with_combined}_supporting_doc_1.pdf",
+                              s3_status: nil,
+                              created_at: 1.hour.ago)
+
+      ENV['FORM_UUIDS'] = uuid_with_combined
+
+      allow(pega_api_client).to receive(:record_has_matching_report).and_return([
+                                                                                  {
+                                                                                    'Creation Date' => '2024-12-03T07:04:20.156000',
+                                                                                    'PEGA Case ID' => 'D-COMBINED-1',
+                                                                                    'Status' => 'Processed',
+                                                                                    'UUID' => "#{uuid_with_combined[0...-1]}+"
+                                                                                  }
+                                                                                ])
+
+      output = capture_stdout { task.invoke }
+
+      # Only the combined PDF (s3_status: '[200]') should count as pega_processable
+      expect(output).to match(/Found 1 local record\(s\)/)
+      expect(output).to match(/File counts match \(1 local, 1 Pega\)/)
+      expect(output).to match(/Found 1 UUIDs with all files processed by Pega/)
+
+      [combined_record, shadow_record1, shadow_record2].each(&:destroy)
+    end
   end
 
   describe 'with single UUID scenarios' do

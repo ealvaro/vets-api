@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'datadog'
 require 'ivc_champva/monitor'
 
 module IvcChampva
@@ -26,6 +27,20 @@ module IvcChampva
           attachment_ids: ['Front of insurance card', 'Back of insurance card'],
           merged_attachment_id: 'Insurance card',
           max_docs_merged: 2
+        }
+      },
+      'vha_10_7959a' => {
+        'cva_bene_response' => {
+          flipper_toggle: 'champva_docmerge_10_7959a_cva_bene_response',
+          attachment_ids: ['CVA Bene Response'],
+          merged_attachment_id: 'CVA Bene Response',
+          max_docs_merged: nil
+        },
+        'duty_to_assist' => {
+          flipper_toggle: 'champva_docmerge_10_7959a_duty_to_assist',
+          attachment_ids: ['Duty to Assist'],
+          merged_attachment_id: 'Duty to Assist',
+          max_docs_merged: nil
         }
       }
     }.freeze
@@ -65,19 +80,19 @@ module IvcChampva
     #     updated_attachment_ids: Array of attachment_ids for merged files
     #   }
     def process
-      Rails.logger.info "IVC ChampVA DocumentMerger - Starting merge process for form #{@form_id} " \
+      Rails.logger.info "IVC ChampVA DocumentMerger - Starting combine process for form #{@form_id} " \
                         "with #{@file_paths.length} files"
 
-      # Return original files if no merge rules apply
       return build_no_merge_result unless should_merge?
 
-      grouped_files = group_files_by_merge_rules
-      merged_results = process_grouped_files(grouped_files)
-      build_merge_result(merged_results)
+      Datadog::Tracing.trace('IVC Champva Forms - DocumentMerger Combine') do
+        grouped_files = group_files_by_merge_rules
+        merged_results = process_grouped_files(grouped_files)
+        build_merge_result(merged_results)
+      end
     rescue => e
-      Rails.logger.error("IVC ChampVA DocumentMerger - Error during merge process: #{e.message}")
+      Rails.logger.error("IVC ChampVA DocumentMerger - Error during combine process for #{@uuid}", e)
       monitor.track_merge_error(@uuid, e.message)
-      # Return original files on error as fallback
       build_no_merge_result
     end
 
@@ -300,11 +315,19 @@ module IvcChampva
     # Builds the final result hash from merge results
     #
     # @param [Array] merged_results Array of merge result hashes
-    # @return [Hash] Final result hash
+    # @return [Hash] Final result hash with merge_map for shadow record insertion
     def build_merge_result(merged_results)
+      merge_map = {}
+      merged_results.each do |r|
+        next unless r[:original_files]&.length&.> 1
+
+        merge_map[r[:merged_file_path]] = r[:original_files]
+      end
+
       {
         merged_file_paths: merged_results.map { |r| r[:merged_file_path] },
-        updated_attachment_ids: merged_results.map { |r| r[:merged_attachment_id] }
+        updated_attachment_ids: merged_results.map { |r| r[:merged_attachment_id] },
+        merge_map:
       }
     end
 
@@ -315,7 +338,8 @@ module IvcChampva
     def build_no_merge_result
       {
         merged_file_paths: @file_paths,
-        updated_attachment_ids: @attachment_ids
+        updated_attachment_ids: @attachment_ids,
+        merge_map: {}
       }
     end
 

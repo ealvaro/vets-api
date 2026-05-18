@@ -26,6 +26,7 @@ module IvcChampva
       @file_paths = Array(file_paths)
       @insert_db_row = options.fetch(:insert_db_row, false)
       @current_user = options[:current_user]
+      @merge_map = {}
       @parsed_form_data = if options[:parsed_form_data] && Flipper.enabled?(:champva_store_request_json, @current_user)
                             options[:parsed_form_data]
                           end
@@ -83,8 +84,23 @@ module IvcChampva
       if Flipper.enabled?(:champva_fmp_single_file_upload, @current_user) && @form_id == 'vha_10_7959f_2'
         handle_combined_uploads
       else
+        apply_document_combining
         handle_iterative_uploads
       end
+    end
+
+    ##
+    # Pre-processes files through DocumentMerger to combine eligible documents by type.
+    # Updates @file_paths, @metadata['attachment_ids'], and @merge_map in place.
+    # No-op when feature flags are off or no merge rules match the current form.
+    def apply_document_combining
+      merge_result = IvcChampva::DocumentMerger.new(
+        @form_id, @file_paths, @metadata['attachment_ids'],
+        @current_user, { uuid: @metadata['uuid'] }
+      ).process
+      @file_paths = merge_result[:merged_file_paths]
+      @metadata['attachment_ids'] = merge_result[:updated_attachment_ids]
+      @merge_map = merge_result[:merge_map]
     end
 
     ##
@@ -107,6 +123,8 @@ module IvcChampva
         else
           insert_form(file_name, response_status) if @insert_db_row # rubocop:disable Style/IfInsideElse
         end
+
+        insert_combined_docs(file_path)
 
         response_status
       end.compact
@@ -154,8 +172,24 @@ module IvcChampva
           next if file_path.blank?
 
           original_file_name = File.basename(file_path).gsub('-tmp', '')
-          insert_form(original_file_name, response_status)
+          insert_form(original_file_name, nil)
         end
+      end
+    end
+
+    ##
+    # Inserts DB records for each original file that was combined into the given PDF.
+    # These records exist for email counting (file_name contains 'supporting_doc')
+    # but have nil s3_status since they were not individually uploaded to S3.
+    # No-op when DB insertion is disabled or the file wasn't produced by combining.
+    #
+    # @param [String] file_path Path to the combined file (key in @merge_map)
+    def insert_combined_docs(file_path)
+      return unless @insert_db_row && @merge_map.key?(file_path)
+
+      @merge_map[file_path].each do |file_info|
+        original_name = File.basename(file_info[:file_path]).gsub('-tmp', '')
+        insert_form(original_name, nil)
       end
     end
 
@@ -195,7 +229,7 @@ module IvcChampva
     # @return [IvcChampvaForm]
     def insert_form(file_name, response_status)
       Datadog::Tracing.trace('IVC Champva Forms - Insert Form') do
-        pega_status = response_status.first == 200 ? 'Submitted' : nil
+        pega_status = response_status&.first == 200 ? 'Submitted' : nil
         IvcChampvaForm.create!(
           form_uuid: @metadata['uuid'],
           email: validate_email(@metadata&.dig('primaryContactInfo', 'email')),
@@ -204,7 +238,7 @@ module IvcChampva
           submitted_by_icn: @current_user&.icn,
           form_number: @metadata['docType'],
           file_name:,
-          s3_status: response_status.to_s,
+          s3_status: response_status&.to_s,
           pega_status:,
           request_json: @parsed_form_data&.to_json
         )

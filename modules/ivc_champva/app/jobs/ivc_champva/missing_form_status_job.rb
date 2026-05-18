@@ -210,43 +210,27 @@ module IvcChampva
     private
 
     ##
-    # Filters batch to only include files that Pega actually processes.
-    # Excludes VES JSON files (sent to VES, not Pega) and for FMP combined submissions,
-    # only counts the combined PDF (not the individual files that were combined into it).
+    # Filters batch to only include files that were actually uploaded to S3 for Pega to process.
+    # Records with a successful s3_status (200) represent files sent to Pega.
+    # Records without s3_status are original files preserved for email counting after combining.
+    # VES JSON files are excluded as a safety net for historical records.
     #
     # @param batch [Array<IvcChampvaForm>] An array of IVC CHAMPVA form objects
     # @return [Array<IvcChampvaForm>] Filtered array of Pega-processable files
     def filter_pega_processable_files(batch)
-      # Check if this is an FMP combined submission (has a _combined.pdf file)
-      has_combined_pdf = batch.any? { |record| combined_pdf_file?(record.file_name) }
-
-      if has_combined_pdf
-        # For FMP combined submissions, only the combined PDF was sent to Pega
-        batch.select { |record| combined_pdf_file?(record.file_name) }
-      else
-        # For regular submissions, exclude only VES JSON files
-        batch.reject { |record| ves_json_file?(record.file_name) }
-      end
+      batch.select { |record| pega_processable?(record) }
     end
 
     ##
-    # Determines if a file is a VES JSON file based on its filename
+    # Determines if a record represents a file that was sent to Pega
     #
-    # @param file_name [String] The name of the file to check
-    # @return [Boolean] true if the file is a VES JSON file, false otherwise
-    def ves_json_file?(file_name)
-      return false if file_name.blank?
+    # @param record [IvcChampvaForm] The form record to check
+    # @return [Boolean] true if the file was uploaded to S3 for Pega processing
+    def pega_processable?(record)
+      return false if record.s3_status.blank?
+      return false if record.file_name&.include?('_ves.json')
 
-      file_name.include?('_ves.json')
-    end
-
-    ##
-    # Determines if a file is a combined PDF (FMP single-file upload) based on its filename
-    #
-    # @param file_name [String] The name of the file to check
-    # @return [Boolean] true if the file is a combined PDF, false otherwise
-    def combined_pdf_file?(file_name)
-      IvcChampva::FileNaming.combined_pdf?(file_name)
+      record.s3_status.include?('200')
     end
   end
 end

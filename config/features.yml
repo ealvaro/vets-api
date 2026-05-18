@@ -409,6 +409,15 @@ features:
   champva_fmp_single_file_upload:
     actor_type: user
     description: Enables the ability to upload a single merged PDF file for FMP claims
+  champva_document_merging:
+    actor_type: user
+    description: Master toggle for CHAMPVA document combining functionality
+  champva_docmerge_10_7959a_cva_bene_response:
+    actor_type: user
+    description: Enables combining CVA Bene Response documents for 10-7959a submissions
+  champva_docmerge_10_7959a_duty_to_assist:
+    actor_type: user
+    description: Enables combining Duty to Assist documents for 10-7959a submissions
   champva_mpi_validation:
     actor_type: user
     description: Enables MPI veteran and benefificiary validation for IVC CHAMPVA form submissions

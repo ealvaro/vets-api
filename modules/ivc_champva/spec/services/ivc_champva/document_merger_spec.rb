@@ -355,4 +355,143 @@ describe IvcChampva::DocumentMerger do
       end
     end
   end
+
+  describe 'merge_map' do
+    before do
+      allow(Flipper).to receive(:enabled?).with('champva_docmerge_10_7959c_medicare', current_user).and_return(true)
+    end
+
+    it 'includes combined files with their original file info' do
+      result = merger.process
+
+      expect(result[:merge_map]).to be_a(Hash)
+      expect(result[:merge_map].size).to eq(1)
+
+      combined_path = result[:merge_map].keys.first
+      originals = result[:merge_map][combined_path]
+
+      expect(originals.length).to eq(2)
+      expect(originals.map { |f| f[:attachment_id] }).to contain_exactly(
+        'Front of Medicare card', 'Back of Medicare card'
+      )
+    end
+
+    it 'is empty when no merging occurs' do
+      allow(Flipper).to receive(:enabled?).with(:champva_document_merging, current_user).and_return(false)
+
+      result = merger.process
+
+      expect(result[:merge_map]).to eq({})
+    end
+
+    it 'is empty when no rules match' do
+      no_match_merger = described_class.new(
+        form_id, [eob_document, other_document], ['EOB', 'Birth Certificate'],
+        current_user, { uuid: }
+      )
+      result = no_match_merger.process
+
+      expect(result[:merge_map]).to eq({})
+    end
+  end
+
+  describe '10-7959a document combining' do
+    let(:form_id) { 'vha_10_7959a' }
+    let(:main_form) { medicare_front }
+    let(:supporting_doc0) { medicare_back }
+    let(:supporting_doc1) { eob_document }
+    let(:supporting_doc2) { other_document }
+
+    context 'with Duty to Assist submissions' do
+      let(:file_paths) { [main_form, supporting_doc0, supporting_doc1, supporting_doc2] }
+      let(:attachment_ids) { Array.new(4) { 'Duty to Assist' } }
+      let(:dta_merger) do
+        described_class.new(form_id, file_paths, attachment_ids, current_user, { uuid: })
+      end
+
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with('champva_docmerge_10_7959a_duty_to_assist', current_user).and_return(true)
+      end
+
+      it 'combines all DTA files into a single PDF' do
+        result = dta_merger.process
+
+        expect(result[:merged_file_paths].length).to eq(1)
+        expect(result[:updated_attachment_ids]).to eq(['Duty to Assist'])
+
+        combined_file = result[:merged_file_paths].first
+        expect(File.basename(combined_file)).to include('duty_to_assist')
+        expect(File.basename(combined_file)).to end_with(IvcChampva::FileNaming::COMBINED_PDF_SUFFIX)
+        expect(File.exist?(combined_file)).to be(true)
+      end
+
+      it 'populates merge_map with all original files' do
+        result = dta_merger.process
+
+        combined_path = result[:merged_file_paths].first
+        originals = result[:merge_map][combined_path]
+
+        expect(originals.length).to eq(4)
+        expect(originals.map { |f| f[:file_path] }).to eq(file_paths)
+        expect(originals.map { |f| f[:attachment_id] }).to all(eq('Duty to Assist'))
+      end
+
+      it 'does not combine when the DTA flag is disabled' do
+        allow(Flipper).to receive(:enabled?)
+          .with('champva_docmerge_10_7959a_duty_to_assist', current_user).and_return(false)
+
+        result = dta_merger.process
+
+        expect(result[:merged_file_paths]).to eq(file_paths)
+        expect(result[:updated_attachment_ids]).to eq(attachment_ids)
+        expect(result[:merge_map]).to eq({})
+      end
+
+      it 'falls back to original files when PdfCombiner raises an error' do
+        allow(IvcChampva::PdfCombiner).to receive(:combine).and_raise(StandardError.new('combine failed'))
+        allow_any_instance_of(IvcChampva::Monitor).to receive(:track_merge_error)
+
+        result = dta_merger.process
+
+        expect(result[:merged_file_paths].length).to eq(4)
+        expect(result[:merged_file_paths]).to match_array(file_paths)
+        expect(result[:merge_map]).to eq({})
+      end
+    end
+
+    context 'with CVA Bene Response submissions' do
+      let(:file_paths) { [main_form, supporting_doc0, supporting_doc1] }
+      let(:attachment_ids) { Array.new(3) { 'CVA Bene Response' } }
+      let(:pdi_merger) do
+        described_class.new(form_id, file_paths, attachment_ids, current_user, { uuid: })
+      end
+
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with('champva_docmerge_10_7959a_cva_bene_response', current_user).and_return(true)
+      end
+
+      it 'combines all CVA Bene Response files into a single PDF' do
+        result = pdi_merger.process
+
+        expect(result[:merged_file_paths].length).to eq(1)
+        expect(result[:updated_attachment_ids]).to eq(['CVA Bene Response'])
+
+        combined_file = result[:merged_file_paths].first
+        expect(File.basename(combined_file)).to include('cva_bene_response')
+        expect(File.basename(combined_file)).to end_with(IvcChampva::FileNaming::COMBINED_PDF_SUFFIX)
+      end
+
+      it 'populates merge_map with all original files' do
+        result = pdi_merger.process
+
+        combined_path = result[:merged_file_paths].first
+        originals = result[:merge_map][combined_path]
+
+        expect(originals.length).to eq(3)
+        expect(originals.map { |f| f[:attachment_id] }).to all(eq('CVA Bene Response'))
+      end
+    end
+  end
 end

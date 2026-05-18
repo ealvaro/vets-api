@@ -266,15 +266,20 @@ RSpec.describe 'IvcChampva::MissingFormStatusJob', type: :job do
     batch.each(&:destroy)
   end
 
-  it 'reconciles all records when combined PDF submission matches single Pega report' do
-    # For combined submissions, multiple docs are combined into a single _combined.pdf
-    # Pega only sees the combined file, but we store individual records for each original doc
+  it 'reconciles all records when combined PDF submission matches Pega report count' do
+    # For combined submissions, the combined PDF has s3_status '[200]' (uploaded to S3),
+    # while original file records have s3_status nil (not individually uploaded).
+    # Only records with s3_status containing '200' are considered pega_processable.
     form_uuid = SecureRandom.uuid
     batch = [
-      create(:ivc_champva_form, form_uuid:, file_name: "#{form_uuid}_vha_10_7959f_2_combined.pdf", pega_status: nil),
-      create(:ivc_champva_form, form_uuid:, file_name: "#{form_uuid}_vha_10_7959f_2.pdf", pega_status: nil),
-      create(:ivc_champva_form, form_uuid:, file_name: "#{form_uuid}_supporting_doc_0.pdf", pega_status: nil),
-      create(:ivc_champva_form, form_uuid:, file_name: "#{form_uuid}_supporting_doc_1.pdf", pega_status: nil)
+      create(:ivc_champva_form, form_uuid:, file_name: "#{form_uuid}_vha_10_7959f_2_combined.pdf",
+                                pega_status: nil, s3_status: '[200]'),
+      create(:ivc_champva_form, form_uuid:, file_name: "#{form_uuid}_vha_10_7959f_2.pdf",
+                                pega_status: nil, s3_status: nil),
+      create(:ivc_champva_form, form_uuid:, file_name: "#{form_uuid}_supporting_doc_0.pdf",
+                                pega_status: nil, s3_status: nil),
+      create(:ivc_champva_form, form_uuid:, file_name: "#{form_uuid}_supporting_doc_1.pdf",
+                                pega_status: nil, s3_status: nil)
     ]
 
     # Pega only reports the single combined PDF
@@ -285,14 +290,47 @@ RSpec.describe 'IvcChampva::MissingFormStatusJob', type: :job do
     allow(job.pega_api_client).to receive(:record_has_matching_report).and_return(pega_reports)
     allow(job.missing_status_cleanup).to receive(:manually_process_batch)
 
-    # Should return true: 1 combined PDF locally matches 1 Pega report
+    # Should return true: 1 pega_processable record (combined PDF) matches 1 Pega report
     result = job.num_docs_match_reports?(batch)
 
     expect(result).to be true
-    # All 4 records should be passed for status update
+    # All 4 records should be passed for status update (including shadow records)
     expect(job.missing_status_cleanup).to have_received(:manually_process_batch).with(batch)
 
     # Clean up test data
+    batch.each(&:destroy)
+  end
+
+  it 'excludes records with nil s3_status from pega_processable count' do
+    # When documents are combined, original files get nil s3_status.
+    # These should not count toward the Pega comparison.
+    form_uuid = SecureRandom.uuid
+    batch = [
+      create(:ivc_champva_form, form_uuid:, file_name: 'main_form.pdf',
+                                pega_status: nil, s3_status: '[200]'),
+      create(:ivc_champva_form, form_uuid:, file_name: 'combined_duty_to_assist_0_0_combined.pdf',
+                                pega_status: nil, s3_status: '[200]'),
+      create(:ivc_champva_form, form_uuid:, file_name: 'supporting_doc_0.pdf',
+                                pega_status: nil, s3_status: nil),
+      create(:ivc_champva_form, form_uuid:, file_name: 'supporting_doc_1.pdf',
+                                pega_status: nil, s3_status: nil)
+    ]
+
+    # Pega sees 2 files: main_form.pdf + combined PDF
+    pega_reports = [
+      { 'UUID' => form_uuid, 'Status' => 'Processed' },
+      { 'UUID' => form_uuid, 'Status' => 'Processed' }
+    ]
+
+    allow(job.pega_api_client).to receive(:record_has_matching_report).and_return(pega_reports)
+    allow(job.missing_status_cleanup).to receive(:manually_process_batch)
+
+    # 2 pega_processable records match 2 Pega reports
+    result = job.num_docs_match_reports?(batch)
+
+    expect(result).to be true
+    expect(job.missing_status_cleanup).to have_received(:manually_process_batch).with(batch)
+
     batch.each(&:destroy)
   end
 
