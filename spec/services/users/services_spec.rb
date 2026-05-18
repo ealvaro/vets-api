@@ -29,6 +29,7 @@ RSpec.describe Users::Services do
             identity-proofed
             vet360
             dgi
+            power-of-attorney
           ]
         )
       end

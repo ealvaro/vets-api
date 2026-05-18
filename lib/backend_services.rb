@@ -25,6 +25,7 @@ class BackendServices
   IDENTITY_PROOFED = 'identity-proofed'
   VET360 = 'vet360'
   DGI = 'dgi' # Digital GI Bill
+  POWER_OF_ATTORNEY = 'power-of-attorney'
 
   # MHV services
   RX = 'rx'

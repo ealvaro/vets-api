@@ -31,6 +31,7 @@ module Users
       @list << BackendServices::IDENTITY_PROOFED if user.loa3?
       @list << BackendServices::VET360 if user.can_access_vet360?
       @list << BackendServices::DGI if user.authorize :dgi, :access?
+      @list << BackendServices::POWER_OF_ATTORNEY if user.authorize :power_of_attorney, :access?
 
       @list
     end
