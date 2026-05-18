@@ -116,7 +116,7 @@ module AppealsApi
         appeal_id: appeal.id,
         appeal_status: appeal.status,
         attempted_status: status,
-        exception: e.class.to_s,
+        exception: e,
         exception_message: e.message
       }
 

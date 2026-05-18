@@ -17,12 +17,8 @@ module DebtsApi
       submission = DebtsApi::V0::Form5655Submission.find(submission_id)
       submission.register_failure("SharePoint Submission Failed: #{job['error_message']}.")
 
-      Rails.logger.error <<~LOG
-        V0::Form5655::VHA::SharepointSubmissionJob retries exhausted:
-        submission_id: #{submission_id}
-        Exception: #{ex.message}
-        Backtrace: #{ex.backtrace.join("\n")}
-      LOG
+      Rails.logger.error('V0::Form5655::VHA::SharepointSubmissionJob retries exhausted',
+                         submission_id:, exception: ex)
     end
 
     #

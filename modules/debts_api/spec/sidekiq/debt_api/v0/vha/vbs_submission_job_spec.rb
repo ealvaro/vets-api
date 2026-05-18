@@ -42,13 +42,6 @@ RSpec.describe DebtsApi::V0::Form5655::VHA::VBSSubmissionJob, type: :worker do
       end
 
       it 'increments the retries exhausted counter and logs error information' do
-        expected_log_message = <<~LOG
-          V0::Form5655::VHA::VBSSubmissionJob retries exhausted:
-          submission_id: #{form_submission.id} | user_id: 123-abc
-          Exception: #{standard_exception.class} - #{standard_exception.message}
-          Backtrace: #{standard_exception.backtrace.join("\n")}
-        LOG
-
         statsd_key = DebtsApi::V0::Form5655::VHA::VBSSubmissionJob::STATS_KEY
 
         [
@@ -65,7 +58,10 @@ RSpec.describe DebtsApi::V0::Form5655::VHA::VBSSubmissionJob, type: :worker do
           "Form5655Submission id: #{form_submission.id} failed", 'VBS Submission Failed: abc-123'
         )
 
-        expect(Rails.logger).to receive(:error).with(expected_log_message)
+        expect(Rails.logger).to receive(:error).with(
+          'V0::Form5655::VHA::VBSSubmissionJob retries exhausted',
+          submission_id: form_submission.id, user_id: '123-abc', exception: standard_exception
+        )
         config.sidekiq_retries_exhausted_block.call(msg, standard_exception)
         expect(form_submission.reload.error_message).to eq('VBS Submission Failed: abc-123')
       end

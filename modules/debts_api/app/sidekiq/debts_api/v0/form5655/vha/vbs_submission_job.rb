@@ -20,12 +20,8 @@ module DebtsApi
       submission = DebtsApi::V0::Form5655Submission.find(submission_id)
       submission.register_failure("VBS Submission Failed: #{ex.message}")
 
-      Rails.logger.error <<~LOG
-        V0::Form5655::VHA::VBSSubmissionJob retries exhausted:
-        submission_id: #{submission_id} | user_id: #{user_uuid}
-        Exception: #{ex.class} - #{ex.message}
-        Backtrace: #{ex.backtrace.join("\n")}
-      LOG
+      Rails.logger.error('V0::Form5655::VHA::VBSSubmissionJob retries exhausted',
+                         submission_id:, user_id: user_uuid, exception: ex)
     end
 
     def perform(submission_id, user_uuid)

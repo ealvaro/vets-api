@@ -84,7 +84,7 @@ RSpec.describe FormAttachmentCreate, type: :controller do
         {
           phase: 'FAC_validate',
           klass: 'String',
-          exception: 'Invalid field value'
+          exception: an_instance_of(Common::Exceptions::InvalidFieldValue)
         }
       )
       post(:create, params: { hca_attachment: { file_data: } })
@@ -108,7 +108,7 @@ RSpec.describe FormAttachmentCreate, type: :controller do
           has_pass: false,
           ext: File.extname(file_data).last(5),
           phase: 'FAC_cloud',
-          exception: 'Unprocessable Entity'
+          exception: an_instance_of(Common::Exceptions::UnprocessableEntity)
         }
       )
 
@@ -136,7 +136,7 @@ RSpec.describe FormAttachmentCreate, type: :controller do
         {
           phase: 'FAC_db',
           errors: 'error text',
-          exception: 'Record invalid'
+          exception: an_instance_of(ActiveRecord::RecordInvalid)
         }
       )
 

@@ -14,11 +14,7 @@ module CopayNotifications
 
     sidekiq_retries_exhausted do |_msg, ex|
       StatsD.increment("#{STATSD_KEY_PREFIX}.retries_exhausted")
-      Rails.logger.error <<~LOG
-        CopayNotifications::ParseNewStatementsJob retries exhausted:
-        Exception: #{ex.class} - #{ex.message}
-        Backtrace: #{ex.backtrace.join("\n")}
-      LOG
+      Rails.logger.error('CopayNotifications::ParseNewStatementsJob retries exhausted', exception: ex)
     end
 
     def perform(statements_json_byte)

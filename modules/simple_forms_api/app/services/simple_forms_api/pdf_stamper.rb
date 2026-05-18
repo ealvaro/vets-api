@@ -213,7 +213,7 @@ module SimpleFormsApi
 
     def log_and_raise_error(message, e)
       monitor = Logging::Monitor.new('veteran-facing-forms')
-      monitor.track_request(:error, message, 'api.simple_forms.error', exception: e.message, backtrace: e.backtrace)
+      monitor.track_request(:error, message, 'api.simple_forms.error', exception: e, backtrace: e.backtrace)
       raise e
     end
   end

@@ -210,7 +210,7 @@ RSpec.describe SimpleFormsApi::FormRemediation::UploadRetryJob, type: :worker do
         hash_including(
           temp_path:,
           s3_directory: directory,
-          exception: "#{exception.class} - #{exception.message}"
+          exception:
         )
       )
     end

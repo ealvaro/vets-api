@@ -865,7 +865,6 @@ config/initializers/renderers.rb @software/vfs-facilities-frontend @software/bac
 config/initializers/rgeo.rb @software/backend-review-group
 config/initializers/rswag-ui.rb @software/backend-review-group
 config/initializers/rubyzip.rb @software/backend-review-group
-config/initializers/safe_semantic_logging.rb @software/backend-review-group
 config/initializers/saml.rb @software/octo-identity
 config/initializers/sentry.rb @software/backend-review-group
 config/initializers/session_store.rb @software/backend-review-group
@@ -1800,7 +1799,6 @@ spec/lib/vets @software/backend-review-group
 spec/lib/vha_notification @software/backend-review-group @software/disability-benefits
 spec/lib/vye @software/backend-review-group @software/govcio-vfep-codereviewers
 spec/lib/zero_silent_failures/manual_remediation/saved_claim_spec.rb @software/backend-review-group
-spec/logging/semantic_logger_exceptions_spec.rb @software/backend-review-group
 spec/mailers/bio_submission_status_report_mailer_spec.rb @software/benefits-optimization-aquia @software/backend-review-group
 spec/mailers/create_daily_spool_files_mailer_spec.rb @software/backend-review-group @software/govcio-vfep-codereviewers
 spec/mailers/create_excel_files_mailer_spec.rb @software/govcio-vfep-codereviewers @software/backend-review-group

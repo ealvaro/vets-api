@@ -137,19 +137,14 @@ RSpec.describe DebtManagementCenter::VANotifyEmailJob, type: :worker do
     end
     let(:exhausted_job) { { 'args' => [nil, nil, nil, {}] } }
 
-    it 'logs the error with exception class, message, and backtrace' do
-      expected_log_message = <<~LOG
-        VANotifyEmailJob retries exhausted:
-        Exception: #{exception.class} - #{exception.message}
-        Backtrace: #{exception.backtrace.join("\n")}
-      LOG
+    it 'logs the error with exception details' do
       expect(StatsD).to receive(:increment).with(
         "#{DebtManagementCenter::VANotifyEmailJob::STATS_KEY}.retries_exhausted"
       )
       expect(StatsD).not_to receive(:increment).with(
         "#{DebtsApi::V0::Form5655Submission::STATS_KEY}.send_failed_form_email.failure"
       )
-      expect(Rails.logger).to receive(:error).with(expected_log_message)
+      expect(Rails.logger).to receive(:error).with('VANotifyEmailJob retries exhausted', exception:)
       config.sidekiq_retries_exhausted_block.call(exhausted_job, exception)
     end
 

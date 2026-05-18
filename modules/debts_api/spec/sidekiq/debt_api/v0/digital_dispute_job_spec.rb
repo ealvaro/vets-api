@@ -100,13 +100,6 @@ RSpec.describe DebtsApi::V0::DigitalDisputeJob, type: :worker do
     end
 
     it 'increments StatsD, registers failure, and logs details' do
-      expected_log = <<~LOG
-        V0::DigitalDisputeJob retries exhausted:
-        submission_id: #{submission.id}
-        Exception: #{ex.class} - #{ex.message}
-        Backtrace: #{ex.backtrace.join("\n")}
-      LOG
-
       # StatsD key used by the job
       stub_const('DebtsApi::V0::DigitalDisputeSubmission::STATS_KEY', 'debts_api.v0.digital_dispute')
       expect(StatsD).to receive(:increment).with('debts_api.v0.digital_dispute.retries_exhausted')
@@ -116,7 +109,10 @@ RSpec.describe DebtsApi::V0::DigitalDisputeJob, type: :worker do
       expect_any_instance_of(DebtsApi::V0::DigitalDisputeSubmission)
         .to receive(:register_failure).with('DigitalDisputeJob#perform: kaput')
 
-      expect(Rails.logger).to receive(:error).with(expected_log)
+      expect(Rails.logger).to receive(:error).with(
+        'V0::DigitalDisputeJob retries exhausted',
+        submission_id: submission.id, exception: ex
+      )
 
       # Call the hook directly, like your other job spec
       config.sidekiq_retries_exhausted_block.call(msg, ex)

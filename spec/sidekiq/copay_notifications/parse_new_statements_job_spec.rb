@@ -72,17 +72,13 @@ RSpec.describe CopayNotifications::ParseNewStatementsJob, type: :worker do
       end
 
       it 'logs the error' do
-        expected_log_message = <<~LOG
-          CopayNotifications::ParseNewStatementsJob retries exhausted:
-          Exception: #{exception.class} - #{exception.message}
-          Backtrace: #{exception.backtrace.join("\n")}
-        LOG
-
         expect(StatsD).to receive(:increment).with(
           "#{CopayNotifications::ParseNewStatementsJob::STATSD_KEY_PREFIX}.retries_exhausted"
         )
-
-        expect(Rails.logger).to receive(:error).with(expected_log_message)
+        expect(Rails.logger).to receive(:error).with(
+          'CopayNotifications::ParseNewStatementsJob retries exhausted',
+          exception:
+        )
         config.sidekiq_retries_exhausted_block.call(statements_json_byte, exception)
       end
     end

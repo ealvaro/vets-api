@@ -25,12 +25,8 @@ module DebtsApi
       StatsD.increment("#{stats_key}.retries_exhausted")
       user_uuid = args['user_uuid']
 
-      Rails.logger.error <<~LOG
-        V0::Form5655::SendConfirmationEmailJob (#{submission_type}) retries exhausted:
-        user_id: #{user_uuid}
-        Exception: #{ex.class} - #{ex.message}
-        Backtrace: #{ex.backtrace.join("\n")}
-      LOG
+      Rails.logger.error("V0::Form5655::SendConfirmationEmailJob (#{submission_type}) retries exhausted",
+                         user_id: user_uuid, exception: ex)
 
       Sidekiq::AttrPackage.delete(cache_key) if cache_key
     end

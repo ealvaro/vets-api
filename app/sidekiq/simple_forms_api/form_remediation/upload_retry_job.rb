@@ -33,7 +33,7 @@ module SimpleFormsApi
           'SimpleFormsApi::FormRemediation::UploadRetryJob retries exhausted - ' \
           'manual remediation required. Temp file preserved for recovery.',
           {
-            exception: "#{ex.class} - #{ex.message}",
+            exception: ex,
             backtrace: ex.backtrace&.first(10)&.join("\n").to_s,
             temp_path:,
             s3_directory: s3_dir

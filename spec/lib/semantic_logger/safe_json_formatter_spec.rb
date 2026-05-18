@@ -28,6 +28,12 @@ RSpec.describe SafeJsonFormatter do
       expect { formatter.call(log, logger_context) }.not_to raise_error
     end
 
+    it 'does not raise when exception is nil' do
+      log = build_log(message: 'no exception attached', exception: nil)
+
+      expect { formatter.call(log, logger_context) }.not_to raise_error
+    end
+
     it 'handles string exception and invalid UTF-8 in payload together' do
       invalid_bytes = +"\xA1x"
       invalid_bytes.force_encoding(Encoding::ASCII_8BIT)
@@ -109,6 +115,22 @@ RSpec.describe SafeJsonFormatter do
       expect(parsed.dig('exception', 'name')).to eq('RuntimeError')
       expect(parsed.dig('exception', 'message')).to eq('Exception!')
       expect(parsed).not_to have_key('safe_json_formatter_fallback')
+    end
+  end
+
+  describe 'integration via Rails.logger' do
+    it 'does not emit appender failures for nil, Exception, or string exception values' do
+      appender_errors = []
+      allow_any_instance_of(SemanticLogger::Appender::File).to receive(:error) do |_appender, message, _error|
+        appender_errors << message
+      end
+
+      Rails.logger.error('with nil exception', exception: nil)
+      Rails.logger.error('with real exception', exception: RuntimeError.new('real'))
+      Rails.logger.error('with string exception', exception: 'string value')
+
+      failed_to_log = appender_errors.grep(/failed to log/i)
+      expect(failed_to_log).to be_empty, "Expected no 'Failed to log' appender errors, got: #{failed_to_log}"
     end
   end
 

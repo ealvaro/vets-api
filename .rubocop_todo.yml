@@ -6,14 +6,6 @@
 # Note that changes in the inspected code, or installation of new
 # versions of RuboCop, may require this file to be generated again.
 
-# Offense count: 6
-Cop/DangerousExceptionLogging:
-  Exclude:
-    - 'app/controllers/concerns/form_attachment_create.rb'
-    - 'app/sidekiq/simple_forms_api/form_remediation/upload_retry_job.rb'
-    - 'modules/appeals_api/app/services/appeals_api/central_mail_updater.rb'
-    - 'spec/logging/semantic_logger_exceptions_spec.rb'
-
 # Offense count: 54
 # Configuration parameters: AllowedMethods.
 # AllowedMethods: enums

@@ -22,7 +22,7 @@ module PDFUtilities
     # @raise [Error] same error class as `e` with combined message and same backtrace
     def log_and_raise_error(message, e, stats_key)
       combined_message = "#{message}: #{e.message}"
-      monitor.track_request(:error, combined_message, stats_key, exception: e.message, backtrace: e.backtrace)
+      monitor.track_request(:error, combined_message, stats_key, exception: e, backtrace: e.backtrace)
 
       raise e.class, combined_message, e.backtrace
     end

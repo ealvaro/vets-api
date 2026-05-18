@@ -12,12 +12,7 @@ module DebtsApi
       submission = DebtsApi::V0::DigitalDisputeSubmission.find(submission_id)
       submission&.register_failure("DigitalDisputeJob#perform: #{ex.message}")
 
-      Rails.logger.error <<~LOG
-        V0::DigitalDisputeJob retries exhausted:
-        submission_id: #{submission_id}
-        Exception: #{ex.class} - #{ex.message}
-        Backtrace: #{ex.backtrace.join("\n")}
-      LOG
+      Rails.logger.error('V0::DigitalDisputeJob retries exhausted', submission_id:, exception: ex)
     end
 
     def perform(submission_id)

@@ -45,14 +45,8 @@ RSpec.describe DebtsApi::V0::Form5655::VHA::SharepointSubmissionJob, type: :work
           "Form5655Submission id: #{form_submission.id} failed", 'SharePoint Submission Failed: .'
         )
         expect(Rails.logger).to receive(:error).with(
-          a_string_matching(
-            /
-              V0::Form5655::VHA::SharepointSubmissionJob\ retries\ exhausted:\n
-              submission_id:\ #{form_submission.id}\n
-              Exception:\ .*\n
-              Backtrace:.*
-            /x
-          )
+          'V0::Form5655::VHA::SharepointSubmissionJob retries exhausted',
+          submission_id: form_submission.id, exception: standard_exception
         )
 
         config.sidekiq_retries_exhausted_block.call(msg, standard_exception)

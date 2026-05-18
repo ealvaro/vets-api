@@ -31,11 +31,7 @@ module DebtManagementCenter
         StatsD.increment("#{DebtsApi::V0::Form5655Submission::STATS_KEY}.send_failed_form_email.failure")
         StatsD.increment('silent_failure', tags: %w[service:debt-resolution function:sidekiq_retries_exhausted])
       end
-      Rails.logger.error <<~LOG
-        VANotifyEmailJob retries exhausted:
-        Exception: #{ex.class} - #{ex.message}
-        Backtrace: #{ex.backtrace.join("\n")}
-      LOG
+      Rails.logger.error('VANotifyEmailJob retries exhausted', exception: ex)
 
       Sidekiq::AttrPackage.delete(cache_key) if cache_key
     end

@@ -99,7 +99,7 @@ RSpec.describe PDFUtilities::DatestampPdf do
             :error,
             /Failed to generate/,
             'api.datestamp_pdf.error',
-            hash_including(exception: /bad news bears/)
+            hash_including(exception: have_attributes(message: /bad news bears/))
           )
           expect(instance).not_to receive(:stamp_pdf)
           expect { run }.to raise_error(RuntimeError, /bad news bears/)

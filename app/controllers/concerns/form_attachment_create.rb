@@ -40,7 +40,7 @@ module FormAttachmentCreate
     Rails.logger.info('form attachment error 1 - validate class',
                       { phase: 'FAC_validate',
                         klass: filtered_params[:file_data].class.name,
-                        exception: e.message })
+                        exception: e })
     raise e
   end
 
@@ -51,7 +51,7 @@ module FormAttachmentCreate
                       { has_pass: filtered_params[:password].present?,
                         ext: File.extname(filtered_params[:file_data]).last(5),
                         phase: 'FAC_cloud',
-                        exception: e.message })
+                        exception: e })
     raise e
   end
 
@@ -61,7 +61,7 @@ module FormAttachmentCreate
     Rails.logger.info('form attachment error 3 - save to db',
                       { phase: 'FAC_db',
                         errors: form_attachment.errors,
-                        exception: e.message })
+                        exception: e })
 
     raise e
   end

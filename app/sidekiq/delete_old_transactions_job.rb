@@ -16,7 +16,7 @@ class DeleteOldTransactionsJob
       log_message_to_sentry(
         'DeleteOldTransactionsJob raised an exception',
         :error,
-        { model: self.class.to_s, transaction_id: tx.id, exception: e.message }
+        { model: self.class.to_s, transaction_id: tx.id, exception: e }
       )
       end
   end

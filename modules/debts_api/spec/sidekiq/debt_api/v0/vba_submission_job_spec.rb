@@ -151,13 +151,6 @@ RSpec.describe DebtsApi::V0::Form5655::VBASubmissionJob, type: :worker do
       end
 
       it 'handles MissingUserAttributesError' do
-        expected_log_message = <<~LOG
-          V0::Form5655::VBASubmissionJob retries exhausted:
-          submission_id: #{form_submission.id} | user_id: 123-abc
-          Exception: #{missing_attributes_exception.class} - #{missing_attributes_exception.message}
-          Backtrace: #{missing_attributes_exception.backtrace.join("\n")}
-        LOG
-
         expect(StatsD).to receive(:increment).with(
           "#{DebtsApi::V0::Form5655::VBASubmissionJob::STATS_KEY}.retries_exhausted"
         )
@@ -169,19 +162,15 @@ RSpec.describe DebtsApi::V0::Form5655::VBASubmissionJob, type: :worker do
         expect(Rails.logger).to receive(:error).with(
           "Form5655Submission id: #{form_submission.id} failed", 'VBASubmissionJob#perform: abc-123'
         )
-        expect(Rails.logger).to receive(:error).with(expected_log_message)
+        expect(Rails.logger).to receive(:error).with(
+          'V0::Form5655::VBASubmissionJob retries exhausted',
+          submission_id: form_submission.id, user_id: '123-abc', exception: missing_attributes_exception
+        )
         config.sidekiq_retries_exhausted_block.call(msg, missing_attributes_exception)
         expect(form_submission.reload.error_message).to eq('VBASubmissionJob#perform: abc-123')
       end
 
       it 'handles unexpected errors' do
-        expected_log_message = <<~LOG
-          V0::Form5655::VBASubmissionJob retries exhausted:
-          submission_id: #{form_submission.id} | user_id: 123-abc
-          Exception: #{standard_exception.class} - #{standard_exception.message}
-          Backtrace: #{standard_exception.backtrace.join("\n")}
-        LOG
-
         expect(StatsD).to receive(:increment).with(
           "#{DebtsApi::V0::Form5655::VBASubmissionJob::STATS_KEY}.retries_exhausted"
         )
@@ -193,7 +182,10 @@ RSpec.describe DebtsApi::V0::Form5655::VBASubmissionJob, type: :worker do
         expect(Rails.logger).to receive(:error).with(
           "Form5655Submission id: #{form_submission.id} failed", 'VBASubmissionJob#perform: abc-123'
         )
-        expect(Rails.logger).to receive(:error).with(expected_log_message)
+        expect(Rails.logger).to receive(:error).with(
+          'V0::Form5655::VBASubmissionJob retries exhausted',
+          submission_id: form_submission.id, user_id: '123-abc', exception: standard_exception
+        )
         config.sidekiq_retries_exhausted_block.call(msg, standard_exception)
         expect(form_submission.reload.error_message).to eq('VBASubmissionJob#perform: abc-123')
       end
