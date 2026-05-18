@@ -174,7 +174,6 @@ module PdfFill
       def merge_identification_helpers
         format_applicant_name(@form_data['applicantName'])
         format_address(@form_data['mailingAddress'])
-        format_phone
         format_va_file_number
       end
 
@@ -188,11 +187,6 @@ module PdfFill
         @country = address['country']
         normalize_mailing_address(address)
         @form_data['mailingAddress'] = combine_full_address_extras(address)
-      end
-
-      def format_phone
-        @form_data['phone'] = @form_data.slice('homePhone', 'mobilePhone')
-        @form_data['phone'].transform_values!(&method(:format_us_phone)) if domestic?(@country)
       end
 
       def format_va_file_number

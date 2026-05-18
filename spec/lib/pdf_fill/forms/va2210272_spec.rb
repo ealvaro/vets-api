@@ -28,19 +28,6 @@ describe PdfFill::Forms::Va2210272 do
       expect(merged_fields['mailingAddress']).to eq(form.combine_full_address_extras(mailing_address))
     end
 
-    it 'formats phone if domestic' do
-      home, mobile = merged_fields['phone'].values
-      expect(home).to eq(form.format_us_phone(form_data['homePhone']))
-      expect(mobile).to eq(form.format_us_phone(form_data['mobilePhone']))
-    end
-
-    it 'does not format phone if international' do
-      form_data['mailingAddress']['country'] = 'MEX'
-      home, mobile = merged_fields['phone'].values
-      expect(home).to eq(form_data['homePhone'])
-      expect(mobile).to eq(form_data['mobilePhone'])
-    end
-
     it 'formats va file number without payee number if not chapter 35' do
       form_data['vaBenefitProgram'] = 'chapter33'
       formatted_file_number = form_data['vaFileNumber'].gsub(/(\d{3})(\d{2})(\d{4})/, '\1-\2-\3')
