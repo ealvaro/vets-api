@@ -448,6 +448,10 @@ features:
   champva_foreign_address_fix:
     actor_type: user
     description: Enables the fix for foreign address fields on form submissions
+  champva_heif_attachments_enabled:
+    actor_type: user
+    enable_in_development: true
+    description: Enables HEIC/HEIF image files as supporting document attachments for IVC CHAMPVA forms.
   champva_form_versioning:
     actor_type: user
     description: Enables the form versioning for IVC CHAMPVA form submissions

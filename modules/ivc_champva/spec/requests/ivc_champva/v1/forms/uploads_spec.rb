@@ -1185,6 +1185,112 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     end
   end
 
+  describe 'HEIC/HEIF upload support' do
+    let(:clamscan) { double(safe?: true) }
+    let(:source_pdf_path) { Rails.root.join('spec', 'fixtures', 'files', 'attachment.pdf').to_s }
+
+    before do
+      allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
+      allow(Flipper).to receive(:enabled?).and_return(false)
+    end
+
+    context 'when champva_heif_attachments_enabled is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:champva_heif_attachments_enabled, anything).and_return(true)
+      end
+
+      it 'accepts HEIC files as supporting documents' do
+        heic_file = fixture_file_upload('test_fixture.heic', 'image/heic')
+
+        post '/ivc_champva/v1/forms/submit_supporting_documents',
+             params: { form_id: '10-10D', file: heic_file }
+
+        expect(response).to have_http_status(:ok)
+        expect(PersistentAttachment.last).to be_a(PersistentAttachments::MilitaryRecords)
+      end
+
+      it 'accepts HEIF files as supporting documents' do
+        heif_file = fixture_file_upload('test_fixture.heif', 'image/heif')
+
+        post '/ivc_champva/v1/forms/submit_supporting_documents',
+             params: { form_id: '10-10D', file: heif_file }
+
+        expect(response).to have_http_status(:ok)
+        expect(PersistentAttachment.last).to be_a(PersistentAttachments::MilitaryRecords)
+      end
+
+      context 'with convert_to_pdf_on_upload enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:champva_convert_to_pdf_on_upload, anything).and_return(true)
+        end
+
+        it 'converts HEIC to PDF at upload time' do
+          heic_file = fixture_file_upload('test_fixture.heic', 'image/heic')
+
+          temp_pdf = Tempfile.new(['converted', '.pdf'])
+          FileUtils.cp(source_pdf_path, temp_pdf.path)
+          allow_any_instance_of(Common::ConvertToPdf).to receive(:run).and_return(temp_pdf.path)
+
+          post '/ivc_champva/v1/forms/submit_supporting_documents',
+               params: { form_id: '10-10D', file: heic_file }
+
+          expect(response).to have_http_status(:ok)
+
+          attachment = PersistentAttachment.last
+          expect(attachment.file.content_type).to eq('application/pdf')
+          expect(attachment.original_filename).to end_with('.pdf')
+        ensure
+          temp_pdf&.close
+          temp_pdf&.unlink
+        end
+      end
+    end
+
+    context 'when champva_heif_attachments_enabled is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:champva_heif_attachments_enabled, anything).and_return(false)
+      end
+
+      it 'rejects HEIC files' do
+        heic_file = fixture_file_upload('test_fixture.heic', 'image/heic')
+
+        post '/ivc_champva/v1/forms/submit_supporting_documents',
+             params: { form_id: '10-10D', file: heic_file }
+
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+
+      it 'rejects HEIF files' do
+        heif_file = fixture_file_upload('test_fixture.heif', 'image/heif')
+
+        post '/ivc_champva/v1/forms/submit_supporting_documents',
+             params: { form_id: '10-10D', file: heif_file }
+
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+    end
+  end
+
+  describe '#content_type_from_extension' do
+    let(:controller) { IvcChampva::V1::UploadsController.new }
+
+    it 'returns image/heic for .heic' do
+      expect(controller.send(:content_type_from_extension, '.heic')).to eq('image/heic')
+    end
+
+    it 'returns image/heif for .heif' do
+      expect(controller.send(:content_type_from_extension, '.heif')).to eq('image/heif')
+    end
+
+    it 'returns image/jpeg for .jpg' do
+      expect(controller.send(:content_type_from_extension, '.jpg')).to eq('image/jpeg')
+    end
+
+    it 'returns application/octet-stream for unknown extensions' do
+      expect(controller.send(:content_type_from_extension, '.xyz')).to eq('application/octet-stream')
+    end
+  end
+
   describe '#get_form_id' do
     let(:controller) { IvcChampva::V1::UploadsController.new }
 

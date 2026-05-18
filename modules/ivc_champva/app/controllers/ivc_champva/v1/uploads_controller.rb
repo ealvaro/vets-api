@@ -478,6 +478,7 @@ module IvcChampva
         Datadog::Tracing.trace('IVC Champva Forms - Submit Supporting Document') do
           if %w[10-10D 10-7959C 10-7959F-2 10-7959A 10-10D-EXTENDED 10-10D-SUPPLEMENTAL].include?(params[:form_id])
             attachment = PersistentAttachments::MilitaryRecords.new(form_id: params[:form_id])
+            attachment.heif_enabled = Flipper.enabled?(:champva_heif_attachments_enabled, @current_user)
 
             Rails.logger.info "submit_supporting_documents called for form #{params[:form_id]}"
 
@@ -970,6 +971,10 @@ module IvcChampva
           'image/jpeg'
         when '.png'
           'image/png'
+        when '.heic'
+          'image/heic'
+        when '.heif'
+          'image/heif'
         else
           'application/octet-stream'
         end

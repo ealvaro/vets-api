@@ -15,7 +15,11 @@ class ClaimDocumentation::Uploader < VetsShrine
     validate_virus_free
     validate_max_size 100.megabytes
     validate_min_size 1.kilobyte
-    validate_mime_type_inclusion %w[image/jpg image/jpeg image/png application/pdf]
+
+    allowed_types = %w[image/jpg image/jpeg image/png application/pdf]
+    allowed_types += %w[image/heic image/heif] if record.respond_to?(:heif_enabled) && record.heif_enabled
+    validate_mime_type_inclusion allowed_types
+
     validate_max_width 5616 if get.width
     validate_max_height 7272 if get.height
     validate_unlocked_pdf
