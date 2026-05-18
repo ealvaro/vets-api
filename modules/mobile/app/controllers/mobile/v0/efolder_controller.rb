@@ -23,6 +23,17 @@ module Mobile
         raise_vbms_bad_gateway('VBMS document request exceeded size limit')
       rescue VBMS::HTTPError
         raise_vbms_bad_gateway('VBMS service error')
+      rescue Common::Exceptions::ExternalServerInternalServerError => e
+        raise Common::Exceptions::BadGateway.new(detail: e.message)
+      end
+
+      def search
+        raw_documents = retrieve_all_documents
+        documents = participant_documents_adapter.parse(raw_documents, filter_ids: requested_document_ids)
+
+        render json: Mobile::V0::EfolderSerializer.new(documents)
+      rescue Common::Exceptions::ExternalServerInternalServerError => e
+        raise Common::Exceptions::BadGateway.new(detail: e.message)
       end
 
       def download
@@ -50,6 +61,15 @@ module Mobile
       end
 
       private
+
+      def requested_document_ids
+        requested = params.permit(documents: %i[document_id filename]).fetch(:documents, [])
+        requested.filter_map { |doc| normalize_id(doc[:document_id]) }.to_set
+      end
+
+      def normalize_id(id)
+        id.to_s.delete('{}').downcase
+      end
 
       def retrieve_all_documents
         all_documents = []

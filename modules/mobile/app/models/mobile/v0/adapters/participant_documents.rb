@@ -4,12 +4,16 @@ module Mobile
   module V0
     module Adapters
       class ParticipantDocuments
-        def self.parse(documents)
+        # Optionally filter by a Set of normalized document ids (lowercased, braces stripped)
+        def self.parse(documents, filter_ids: nil)
           return [] if documents.empty?
 
-          documents.map do |document|
+          documents.filter_map do |document|
+            uuid = document['documentUuid']
+            next if filter_ids&.exclude?(uuid.to_s.delete('{}').downcase)
+
             Mobile::V0::ParticipantDocument.new(
-              id: document['documentUuid'],
+              id: uuid,
               doc_type: document['docTypeId'].to_s,
               type_description: document['documentTypeLabel'],
               received_at: document['receivedAt']

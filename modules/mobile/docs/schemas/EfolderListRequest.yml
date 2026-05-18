@@ -1,0 +1,21 @@
+type: object
+required:
+  - documents
+properties:
+  documents:
+    type: array
+    description: List of documents to cross-reference against the user's efolder
+    items:
+      type: object
+      required:
+        - documentId
+        - filename
+      properties:
+        documentId:
+          type: string
+          description: Document UUID, optionally wrapped in braces
+          example: '{62b181b8-1683-40e2-b894-f83048a83398}'
+        filename:
+          type: string
+          description: Filename associated with the document
+          example: 'multifile.pdf'

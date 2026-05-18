@@ -139,10 +139,7 @@ module MyHealth
         end
 
         def monitor
-          @monitor ||= Logging::Monitor.new(
-            'mhv-medical-records',
-            allowlist: %i[error_class resource_name]
-          )
+          @monitor ||= Logging::Monitor.new('mhv-medical-records', allowlist: %i[error_class resource_name])
         end
       end
     end

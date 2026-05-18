@@ -284,6 +284,113 @@ RSpec.describe 'Mobile::V0::Efolder', type: :request do
                                                               'status' => '400' }] })
         end
       end
+
+      context 'when Lighthouse returns a 500' do
+        before do
+          benefits_document_service_double = instance_double(BenefitsDocuments::Service)
+          allow(BenefitsDocuments::Service).to receive(:new).and_return(benefits_document_service_double)
+          allow(benefits_document_service_double).to receive(:participant_documents_search)
+            .and_raise(Common::Exceptions::ExternalServerInternalServerError.new)
+        end
+
+        it 'returns a 502 instead of a 500' do
+          get '/mobile/v0/efolder/documents', headers: sis_headers
+
+          assert_schema_conform(502)
+          expect(response).to have_http_status(:bad_gateway)
+        end
+      end
+    end
+  end
+
+  describe 'POST /v0/efolder/documents/search' do
+    let!(:user) { sis_user }
+
+    let(:lighthouse_documents) do
+      {
+        data: {
+          documents: [
+            { docTypeId: 137,
+              documentUuid: '{12345678-ABCD-0123-CDEF-124345679ABC}',
+              documentTypeLabel: 'Doc A',
+              receivedAt: '2024-02-04' },
+            { docTypeId: 137,
+              documentUuid: '{12345678-ABCD-0123-CDEF-124345679ABD}',
+              documentTypeLabel: 'Doc B',
+              receivedAt: '2024-02-05' },
+            { docTypeId: 137,
+              documentUuid: '{12345678-ABCD-0123-CDEF-124345679ABE}',
+              documentTypeLabel: 'Doc C',
+              receivedAt: '2024-02-06' }
+          ]
+        },
+        pagination: { pageNumber: 1, pageSize: 100 }
+      }
+    end
+
+    before do
+      benefits_document_service_double = instance_double(BenefitsDocuments::Service)
+      allow(BenefitsDocuments::Service).to receive(:new).and_return(benefits_document_service_double)
+      allow(benefits_document_service_double).to receive(:participant_documents_search)
+        .and_return(Faraday::Response.new(status: 200, body: lighthouse_documents.as_json))
+    end
+
+    it 'returns only documents matching the request payload' do
+      payload = {
+        documents: [
+          { documentId: '{12345678-abcd-0123-cdef-124345679abc}', filename: 'a.pdf' },
+          { documentId: '{12345678-abcd-0123-cdef-124345679abe}', filename: 'c.pdf' }
+        ]
+      }
+
+      post '/mobile/v0/efolder/documents/search',
+           params: payload.to_json,
+           headers: sis_headers(json: true)
+
+      assert_schema_conform(200)
+      ids = response.parsed_body['data'].pluck('id')
+      expect(ids).to contain_exactly(
+        '{12345678-ABCD-0123-CDEF-124345679ABC}',
+        '{12345678-ABCD-0123-CDEF-124345679ABE}'
+      )
+    end
+
+    it 'returns an empty list when no ids match' do
+      payload = { documents: [{ documentId: '{00000000-0000-0000-0000-000000000000}', filename: 'x.pdf' }] }
+
+      post '/mobile/v0/efolder/documents/search',
+           params: payload.to_json,
+           headers: sis_headers(json: true)
+
+      assert_schema_conform(200)
+      expect(response.parsed_body['data']).to eq([])
+    end
+
+    it 'returns an empty list when documents is empty' do
+      post '/mobile/v0/efolder/documents/search',
+           params: { documents: [] }.to_json,
+           headers: sis_headers(json: true)
+
+      assert_schema_conform(200)
+      expect(response.parsed_body['data']).to eq([])
+    end
+
+    context 'when Lighthouse returns a 500' do
+      before do
+        benefits_document_service_double = instance_double(BenefitsDocuments::Service)
+        allow(BenefitsDocuments::Service).to receive(:new).and_return(benefits_document_service_double)
+        allow(benefits_document_service_double).to receive(:participant_documents_search)
+          .and_raise(Common::Exceptions::ExternalServerInternalServerError.new)
+      end
+
+      it 'returns a 502 instead of a 500' do
+        post '/mobile/v0/efolder/documents/search',
+             params: { documents: [{ documentId: '{abc}', filename: 'a.pdf' }] }.to_json,
+             headers: sis_headers(json: true)
+
+        assert_schema_conform(502)
+        expect(response).to have_http_status(:bad_gateway)
+      end
     end
   end
 
