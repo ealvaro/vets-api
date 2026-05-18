@@ -94,6 +94,8 @@ describe IvcChampva::FileUploader do
         allow(uploader).to receive(:upload).and_return([200])
         allow(Flipper).to receive(:enabled?).with(:champva_bypass_metadata_json_file_for_1010d,
                                                   @current_user).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:form1010d_enhanced_flow_enabled,
+                                                  @current_user).and_return(false)
       end
 
       it 'generates and uploads meta JSON' do
@@ -109,15 +111,35 @@ describe IvcChampva::FileUploader do
         allow(uploader).to receive(:upload).and_return([200])
         allow(Flipper).to receive(:enabled?).with(:champva_bypass_metadata_json_file_for_1010d,
                                                   @current_user).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:form1010d_enhanced_flow_enabled,
+                                                  @current_user).and_return(false)
       end
 
       it 'skips generating and uploading meta JSON' do
         expect(uploader).not_to receive(:generate_and_upload_meta_json)
         result = uploader.handle_uploads
 
-        # Be sure to still return a successful result even if we skip the meta JSON upload because
-        # calling code expects it.
         expect(result).to eq([200, nil])
+      end
+    end
+
+    context 'when enhanced flow is enabled and docType is 10-10D-SUPPLEMENTAL' do
+      let(:form_id) { 'vha_10_10d' }
+      let(:metadata) do
+        { 'uuid' => '4171e61a-03b5-49f3-8717-dbf340310473',
+          'docType' => '10-10D-SUPPLEMENTAL',
+          'attachment_ids' => ['Birth certificate'] }
+      end
+
+      before do
+        allow(uploader).to receive(:upload).and_return([200])
+        allow(Flipper).to receive(:enabled?).with(:form1010d_enhanced_flow_enabled,
+                                                  @current_user).and_return(true)
+      end
+
+      it 'generates and uploads meta JSON for supplemental submissions' do
+        expect(uploader).to receive(:generate_and_upload_meta_json).and_return([200, nil])
+        uploader.handle_uploads
       end
     end
 

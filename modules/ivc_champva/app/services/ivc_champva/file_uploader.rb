@@ -54,8 +54,8 @@ module IvcChampva
         end
 
         if all_success
-          if Flipper.enabled?(:champva_bypass_metadata_json_file_for_1010d, @current_user) && @form_id == 'vha_10_10d'
-            [200, nil] # Return success for metadata upload without actually uploading
+          if bypass_metadata_json?
+            [200, nil]
           else
             generate_and_upload_meta_json
           end
@@ -69,6 +69,13 @@ module IvcChampva
     end
 
     private
+
+    def bypass_metadata_json?
+      return false if Flipper.enabled?(:form1010d_enhanced_flow_enabled, @current_user) &&
+                      @metadata['docType']&.start_with?('10-10D-SUPPLEMENTAL')
+
+      Flipper.enabled?(:champva_bypass_metadata_json_file_for_1010d, @current_user) && @form_id == 'vha_10_10d'
+    end
 
     ##
     # Determines whether to handle uploads iteratively or as a combined PDF based on form type and feature flag.

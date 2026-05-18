@@ -1523,12 +1523,7 @@ module IvcChampva
             raise ArgumentError, 'supporting documents must resolve to at least one attachment id for upload'
           end
 
-          merge_fields = {
-            'submissionType' => parsed_form_data['submission_type'].to_s,
-            'docType' => parsed_form_data['form_number']
-          }
-          merge_fields['uuid'] = parsed_form_data['claim_id'] if parsed_form_data['claim_id'].present?
-          raw_metadata = form.metadata.merge(merge_fields)
+          raw_metadata = form.metadata.merge(docs_only_resubmission_merge_fields(parsed_form_data))
           enrollment = parsed_form_data['submission_type'].to_s.casecmp('enrollment').zero?
           backfill_enrollment_metadata!(raw_metadata) if enrollment
           metadata = IvcChampva::MetadataValidator.validate(raw_metadata)
@@ -1537,6 +1532,16 @@ module IvcChampva
 
           [file_paths, metadata.merge({ 'attachment_ids' => attachment_ids })]
         end
+      end
+
+      def docs_only_resubmission_merge_fields(parsed_form_data)
+        fields = {
+          'submissionType' => parsed_form_data['submission_type'].to_s,
+          'docType' => parsed_form_data['form_number'],
+          'standalone-flag' => true # kebab-case per downstream Pega requirement
+        }
+        fields['uuid'] = parsed_form_data['claim_id'] if parsed_form_data['claim_id'].present?
+        fields
       end
 
       def backfill_enrollment_metadata!(metadata)
