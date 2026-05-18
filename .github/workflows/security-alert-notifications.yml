@@ -21,7 +21,7 @@ jobs:
           aws-region: us-gov-west-1
 
       - name: Get Slack bot token
-        uses: software/action-inject-ssm-secrets@d8e6de3bde4dd728c9d732baef58b3c854b8c4bb # latest
+        uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
         with:
           ssm_parameter: /devops/github_actions_slack_bot_user_token
           env_variable_name: SLACK_BOT_TOKEN

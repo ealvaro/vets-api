@@ -126,12 +126,12 @@ jobs:
           persist-credentials: false
           path: ./.github/actions/vsp-github-actions
 
-      - uses: software/action-inject-ssm-secrets@d8e6de3bde4dd728c9d732baef58b3c854b8c4bb # latest
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
         with:
           ssm_parameter: /devops/github_actions_slack_socket_token
           env_variable_name: SLACK_APP_TOKEN
 
-      - uses: software/action-inject-ssm-secrets@d8e6de3bde4dd728c9d732baef58b3c854b8c4bb # latest
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
         with:
           ssm_parameter: /devops/github_actions_slack_bot_user_token
           env_variable_name: SLACK_BOT_TOKEN
