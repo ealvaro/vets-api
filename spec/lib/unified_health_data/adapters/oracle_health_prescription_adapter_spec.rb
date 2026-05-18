@@ -964,6 +964,49 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
       end
     end
 
+    describe 'quantity formatting' do
+      it 'removes trailing zeros from quantity' do
+        resource = fhir_resource(source: 'VA')
+        resource['dispenseRequest']['quantity'] = { 'value' => 60.0 }
+
+        result = subject.parse(resource)
+        expect(result.quantity).to eq('60')
+      end
+
+      it 'removes trailing zeros after decimal while preserving significant digits' do
+        resource = fhir_resource(source: 'VA')
+        resource['dispenseRequest']['quantity'] = { 'value' => 1.50 }
+
+        result = subject.parse(resource)
+        expect(result.quantity).to eq('1.5')
+      end
+
+      it 'preserves significant decimals' do
+        resource = fhir_resource(source: 'VA')
+        resource['dispenseRequest']['quantity'] = { 'value' => 2.25 }
+
+        result = subject.parse(resource)
+        expect(result.quantity).to eq('2.25')
+      end
+
+      it 'returns nil when quantity is not present' do
+        resource = fhir_resource(source: 'VA')
+        resource['dispenseRequest'].delete('quantity')
+        resource['contained'] = []
+
+        result = subject.parse(resource)
+        expect(result.quantity).to be_nil
+      end
+
+      it 'returns unformatted string when BigDecimal conversion fails' do
+        resource = fhir_resource(source: 'VA')
+        resource['dispenseRequest']['quantity'] = { 'value' => 'invalid-quantity' }
+
+        result = subject.parse(resource)
+        expect(result.quantity).to eq('invalid-quantity')
+      end
+    end
+
     context 'with facility phone from shipping-info extension' do
       let(:resource_with_phone) do
         resource = fhir_resource(status: 'active', refills: 3, expiration: 1.year.from_now)

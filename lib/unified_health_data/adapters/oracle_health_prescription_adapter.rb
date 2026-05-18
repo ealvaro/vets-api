@@ -189,7 +189,7 @@ module UnifiedHealthData
             when_handed_over: dispense['whenHandedOver'],
             facility_name: facility_resolver.resolve_facility_name(dispense),
             instructions: extract_sig_from_dispense(dispense),
-            quantity: dispense.dig('quantity', 'value'),
+            quantity: format_quantity(dispense.dig('quantity', 'value')),
             prescription_name: dispense.dig('medicationCodeableConcept', 'text'),
             id: dispense['id'],
             refill_submit_date: nil,
@@ -399,13 +399,26 @@ module UnifiedHealthData
       def extract_quantity(resource)
         # Primary: dispenseRequest.quantity.value
         quantity = resource.dig('dispenseRequest', 'quantity', 'value')
-        return quantity if quantity
+        return format_quantity(quantity) if quantity
 
         # Fallback: check contained MedicationDispense
         dispense = find_most_recent_medication_dispense(resource)
-        return dispense.dig('quantity', 'value') if dispense
+        return format_quantity(dispense.dig('quantity', 'value')) if dispense
 
         nil
+      end
+
+      # Formats a quantity value by removing trailing zeros.
+      # @param value [Numeric, String, nil] The quantity value to format
+      # @return [String, nil] The formatted quantity string without trailing zeros, or nil if value is nil.
+      #   Returns the original value as a string if BigDecimal conversion fails.
+      def format_quantity(value)
+        return nil if value.nil?
+
+        # Convert to BigDecimal for precise handling, then to string without trailing zeros
+        BigDecimal(value.to_s).to_s('F').sub(/\.?0+$/, '')
+      rescue ArgumentError
+        value.to_s
       end
 
       def extract_prescription_number(resource)

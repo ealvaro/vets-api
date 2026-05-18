@@ -847,7 +847,7 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
         expect(first_dispense[:refill_date]).to eq('2025-01-15T10:00:00Z')
         expect(first_dispense[:facility_name]).to eq('Portland VA Medical Center')
         expect(first_dispense[:instructions]).to eq('See Instructions, daily, 1 EA, 0 Refill(s)')
-        expect(first_dispense[:quantity]).to eq(30)
+        expect(first_dispense[:quantity]).to eq('30')
         expect(first_dispense[:prescription_name]).to eq('amLODIPine (amLODIPine 5 mg tablet)')
         expect(first_dispense[:id]).to eq('dispense-1')
         # Verify Vista-only fields are nil for Oracle Health

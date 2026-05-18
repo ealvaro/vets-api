@@ -112,7 +112,7 @@ describe UnifiedHealthData::PrescriptionService, type: :service do
           expect(oracle_prescription.refill_remaining).to eq(1)
           expect(oracle_prescription.facility_name).to eq('Ambulatory Pharmacy')
           expect(oracle_prescription.ordered_date).to eq('2025-11-17T21:21:48Z')
-          expect(oracle_prescription.quantity).to eq('18.0')
+          expect(oracle_prescription.quantity).to eq('18')
           expect(oracle_prescription.expiration_date).to eq('2026-11-16T12:00:00.000Z')
           expect(oracle_prescription.prescription_number).to be_nil # No prescription identifier exists
           expect(oracle_prescription.prescription_name).to eq('albuterol (albuterol 90 mcg inhaler [18g])')
