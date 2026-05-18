@@ -39,13 +39,13 @@ module ClaimsApi
         set_evss_response(auto_claim, e)
         error_status = get_error_status_code(e)
         log_job_progress(claim_id,
-                         "Form 526 Est. job errored #{e.class}: #{error_status} #{auto_claim&.evss_response}")
+                         "Form 526 Est. job errored #{e.class}: #{error_status}")
         raise e
       rescue ::Common::Exceptions::BackendServiceException => e
         set_errored_state_on_claim(auto_claim)
         set_evss_response(auto_claim, e)
         log_job_progress(claim_id,
-                         "Form 526 Est. job errored #{e.class}: #{auto_claim&.evss_response}")
+                         "Form 526 Est. job errored #{e.class}")
         log_exception_to_rails e
         if will_retry?(auto_claim, e)
           raise e
@@ -57,7 +57,7 @@ module ClaimsApi
         set_errored_state_on_claim(auto_claim)
         set_evss_response(auto_claim, e) if auto_claim.evss_response.blank?
         log_job_progress(claim_id,
-                         "Form 526 Est. job errored #{e.class}: #{e&.detailed_message}")
+                         "Form 526 Est. job errored #{e.class}")
         log_exception_to_rails e
 
         raise e
