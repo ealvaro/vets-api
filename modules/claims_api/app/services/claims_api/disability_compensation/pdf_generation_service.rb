@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'claims_api/v2/error/lighthouse_error_handler'
 require 'claims_api/v2/disability_compensation_pdf_mapper'
 require 'pdf_generator_service/pdf_client'
 
@@ -47,11 +48,15 @@ module ClaimsApi
         log_job_progress(auto_claim.id, '526EZ PDF generator job finished', auto_claim.transaction_id)
 
         auto_claim.status
+      rescue ::ClaimsApi::Common::Exceptions::Lighthouse::UnprocessableEntity => e
+        set_errored_state_on_claim(auto_claim)
+        set_evss_response(auto_claim, e)
+        raise e
       end
 
       def generate_mapped_claim(auto_claim, middle_initial)
         pdf_mapper_service(auto_claim.form_data, get_pdf_data, auto_claim.auth_headers,
-                           middle_initial, auto_claim.created_at).map_claim
+                           middle_initial, auto_claim.created_at.strftime('%Y-%m-%d').to_s).map_claim
       end
 
       private

@@ -12,6 +12,27 @@ describe ClaimsApi::PdfMapperBase do
     end
   end
 
+  describe '#date_signed' do
+    context 'returns a Date value' do
+      it 'for the claim date sent' do
+        date_str = '2024-01-03'
+
+        result = subject.date_signed(date_str)
+
+        expect(result).to eq(Date.parse(date_str))
+      end
+
+      # possible value in V1
+      it 'for the claim date when included in UTC format' do
+        date_str = '2023-11-01T08:00:00Z'
+
+        result = subject.date_signed(date_str)
+
+        expect(result).to eq(Date.parse(date_str))
+      end
+    end
+  end
+
   describe '#concatenate_address' do
     it 'concatenates all three address lines with spaces' do
       result = subject.concatenate_address('123 Main St', 'Apt 2', 'Floor 3')

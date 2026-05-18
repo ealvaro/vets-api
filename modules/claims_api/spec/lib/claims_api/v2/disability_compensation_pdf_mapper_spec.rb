@@ -1169,15 +1169,35 @@ describe ClaimsApi::V2::DisabilityCompensationPdfMapper do
     end
 
     context '526 section 9, date and signature' do
-      it 'maps the attributes correctly' do
-        auto_claim['data']['attributes']['claim_date'] = Timecop.freeze(Time.zone.parse('2023-11-01T08:00:00Z'))
-        mapper.map_claim
+      # V1 has the option for a string with time added
+      context '526 v1' do
+        let(:date_str) { '2023-11-01T08:00:00Z' }
 
-        signature = pdf_data[:data][:attributes][:claimCertificationAndSignature][:signature]
-        date = pdf_data[:data][:attributes][:claimCertificationAndSignature][:dateSigned]
+        it 'maps the attributes correctly' do
+          auto_claim['data']['attributes']['claimDate'] = date_str
+          mapper.map_claim
 
-        expect(date).to eq({ month: '11', day: '01', year: '2023' })
-        expect(signature).to eq('abraham lincoln')
+          signature = pdf_data[:data][:attributes][:claimCertificationAndSignature][:signature]
+          date = pdf_data[:data][:attributes][:claimCertificationAndSignature][:dateSigned]
+
+          expect(date).to eq({ month: '11', day: '01', year: '2023' })
+          expect(signature).to eq('abraham lincoln')
+        end
+      end
+
+      context '526 v2' do
+        let(:date_str) { '2023-11-01' }
+
+        it 'maps the attributes correctly' do
+          auto_claim['data']['attributes']['claimDate'] = date_str
+          mapper.map_claim
+
+          signature = pdf_data[:data][:attributes][:claimCertificationAndSignature][:signature]
+          date = pdf_data[:data][:attributes][:claimCertificationAndSignature][:dateSigned]
+
+          expect(date).to eq({ month: '11', day: '01', year: '2023' })
+          expect(signature).to eq('abraham lincoln')
+        end
       end
     end
 

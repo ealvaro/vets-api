@@ -47,7 +47,7 @@ module ClaimsApi
             get_pdf_data_wrapper,
             auth_headers,
             veteran_middle_initial,
-            Time.zone.now
+            Date.current
           ).map_claim
           # Calling after target_veteran is created via auth_headers call above
           validate_veteran_name(false)
@@ -128,7 +128,7 @@ module ClaimsApi
 
         def generate_pdf_mapper_service(form_data, pdf_data_wrapper, auth_headers, middle_initial, created_at)
           ClaimsApi::V2::DisabilityCompensationPdfMapper.new(
-            form_data, pdf_data_wrapper, auth_headers, middle_initial, created_at
+            form_data, pdf_data_wrapper, auth_headers, middle_initial, created_at.strftime('%Y-%m-%d').to_s
           )
         end
 

@@ -34,7 +34,12 @@ module ClaimsApi
         @pdf_data = pdf_data
         @auth_headers = auth_headers&.deep_symbolize_keys
         @middle_initial = middle_initial
-        @created_at = created_at.strftime('%Y-%m-%d').to_s
+        @created_at = created_at
+        @claim_date = date_signed(determine_claim_date)
+      end
+
+      def determine_claim_date
+        @auto_claim&.dig('claimDate').presence || @created_at
       end
 
       def map_claim
@@ -404,15 +409,14 @@ module ClaimsApi
 
       def date_of_release
         if @pdf_data[:data][:attributes][:claimProcessType] == 'BDD_PROGRAM_CLAIM'
-          claim_date = Date.parse(@created_at.to_s)
           service_information = @auto_claim['serviceInformation']
 
           active_dates = service_information['servicePeriods']&.pluck('activeDutyEndDate')
           active_dates << service_information&.dig('federalActivation', 'anticipatedSeparationDate')
 
           end_or_separation_date = active_dates.compact.find do |a|
-            Date.strptime(a, '%Y-%m-%d').between?(claim_date.next_day(BDD_LOWER_LIMIT),
-                                                  claim_date.next_day(BDD_UPPER_LIMIT))
+            Date.strptime(a, '%Y-%m-%d').between?(@claim_date.next_day(BDD_LOWER_LIMIT),
+                                                  @claim_date.next_day(BDD_UPPER_LIMIT))
           end
           if end_or_separation_date.present?
             @pdf_data[:data][:attributes][:identificationInformation][:dateOfReleaseFromActiveDuty] =
@@ -689,20 +693,12 @@ module ClaimsApi
         first_name = @auth_headers[:va_eauth_firstName]
         last_name = @auth_headers[:va_eauth_lastName]
         name = "#{first_name} #{last_name}"
-        date_signed = get_date_signed
+        date_signed = make_date_object(@claim_date.strftime('%m-%d-%Y'), @claim_date.strftime('%m-%d-%Y').length)
         @pdf_data[:data][:attributes].merge!(claimCertificationAndSignature: {
                                                dateSigned: date_signed,
                                                signature: name
                                              })
         @pdf_data[:data][:attributes].delete(:claimDate)
-      end
-
-      def get_date_signed
-        # generate_pdf allows for an optional claimDate on its schema
-        claim_date_value = @pdf_data.dig(:data, :attributes, :claimDate)
-        claim_date_obj = make_date_object(claim_date_value, claim_date_value.length) if claim_date_value.present?
-        date = make_date_object(@created_at, @created_at.length) if @created_at.present?
-        claim_date_obj || date
       end
 
       def get_service_pay
