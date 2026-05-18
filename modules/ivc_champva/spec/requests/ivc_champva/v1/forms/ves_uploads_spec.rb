@@ -298,4 +298,80 @@ RSpec.describe 'IvcChampva::V1::Forms::VesUploads', type: :request do
       end
     end
   end
+
+  describe 'OHI VES JSON to Pega integration' do
+    let(:controller) { IvcChampva::V1::UploadsController.new }
+    let(:mock_form) { double('Form', form_id: 'vha_10_7959c', uuid: 'test-uuid-456') }
+    let(:mock_ohi_request) do
+      double('VesOhiRequest', to_json: '{"beneficiary_medicare": {"first_name": "Jane"}}')
+    end
+
+    before do
+      allow(controller).to receive(:instance_variable_get).with('@current_user').and_return(nil)
+      allow(IvcChampva::VesDataFormatter).to receive(:format_for_ohi_request).and_return([mock_ohi_request])
+      allow(File).to receive(:write)
+      allow(Rails.logger).to receive(:info)
+      allow(Rails.logger).to receive(:error)
+    end
+
+    describe '#write_ohi_ves_json_files' do
+      it 'generates one JSON file per OHI request' do
+        results = controller.send(:write_ohi_ves_json_files, mock_form, { 'form_number' => '10-7959C' })
+
+        expect(results.size).to eq(1)
+        expect(results.first[:attachment_id]).to eq('VES OHI JSON')
+        expect(results.first[:path]).to end_with('_ohi_ves_0.json')
+        expect(File).to have_received(:write).once
+      end
+
+      it 'returns empty array when no OHI requests' do
+        allow(IvcChampva::VesDataFormatter).to receive(:format_for_ohi_request).and_return([])
+
+        results = controller.send(:write_ohi_ves_json_files, mock_form, { 'form_number' => '10-7959C' })
+
+        expect(results).to eq([])
+        expect(File).not_to have_received(:write)
+      end
+
+      it 'handles individual OHI request failures gracefully' do
+        failing_request = double('VesOhiRequest')
+        allow(failing_request).to receive(:to_json).and_raise(StandardError.new('json error'))
+        allow(IvcChampva::VesDataFormatter).to receive(:format_for_ohi_request)
+          .and_return([mock_ohi_request, failing_request])
+
+        results = controller.send(:write_ohi_ves_json_files, mock_form, { 'form_number' => '10-7959C' })
+
+        expect(results.size).to eq(1)
+        expect(results.first[:attachment_id]).to eq('VES OHI JSON')
+        expect(Rails.logger).to have_received(:error).with(/Error writing OHI VES JSON 1/)
+      end
+    end
+
+    describe '#write_1010d_ves_json' do
+      let(:mock_ves_request) { double('VesRequest', to_json: '{"application_uuid": "test"}') }
+
+      before do
+        allow(IvcChampva::VesDataFormatter).to receive(:format_for_request).and_return(mock_ves_request)
+      end
+
+      it 'generates a VES JSON file and returns results array' do
+        results = controller.send(:write_1010d_ves_json, mock_form, { 'form_number' => '10-10D' })
+
+        expect(results.size).to eq(1)
+        expect(results.first[:path]).to end_with("#{mock_form.uuid}_#{mock_form.form_id}_ves.json")
+        expect(results.first[:attachment_id]).to eq('VES JSON')
+        expect(File).to have_received(:write)
+      end
+
+      it 'returns empty array on error' do
+        allow(IvcChampva::VesDataFormatter).to receive(:format_for_request)
+          .and_raise(StandardError.new('format error'))
+
+        results = controller.send(:write_1010d_ves_json, mock_form, { 'form_number' => '10-10D' })
+
+        expect(results).to eq([])
+        expect(Rails.logger).to have_received(:error).with(/Error writing 1010d VES JSON/)
+      end
+    end
+  end
 end

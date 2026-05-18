@@ -172,14 +172,12 @@ module IvcChampva
         statuses, error_messages = upload_form(form_id, file_paths, metadata)
         response = build_json(statuses, error_messages)
 
-        if should_generate_ves_json?(form_id)
-          ves_json_file = file_paths.find { |path| path.end_with?('_ves.json') }
-          FileUtils.rm_f(ves_json_file) if ves_json_file
-        end
-
         submit_to_ves(ves_request, metadata) if response[:status] == 200
 
         response
+      ensure
+        ves_json_files = file_paths&.select { |p| p.end_with?('_ves.json') } || []
+        ves_json_files.each { |f| FileUtils.rm_f(f) }
       end
 
       # Routes VES submission based on request type.
@@ -258,6 +256,32 @@ module IvcChampva
         # Don't raise - we don't want VES JSON generation failure to break the entire submission
         Rails.logger.error "Error generating VES JSON file for form #{form.form_id}: #{e.message}"
         nil
+      end
+
+      ##
+      # Generates VES JSON files for all forms in a submission under the new OHI flag.
+      # Branches by form_number, mirroring prepare_ves_request. Produces one file per form.
+      #
+      # @param [Object] form The form instance with proper UUID and form_id
+      # @param [Hash] parsed_form_data complete form submission data object
+      # @return [Array<Hash>] Array of { path:, attachment_id: } hashes
+      def generate_ves_json_files(form, parsed_form_data)
+        Datadog::Tracing.trace('IVC Champva Forms - Generate VES JSON Files') do
+          case parsed_form_data['form_number']
+          when '10-10D'
+            write_1010d_ves_json(form, parsed_form_data)
+          when '10-10D-EXTENDED'
+            write_1010d_ves_json(form, parsed_form_data)
+              .concat(write_ohi_ves_json_files(form, parsed_form_data))
+          when '10-7959C'
+            write_ohi_ves_json_files(form, parsed_form_data)
+          else
+            []
+          end
+        end
+      rescue => e
+        Rails.logger.error "Error generating VES JSON file(s) for form #{form.form_id}: #{e.message}"
+        []
       end
 
       # Prepares data for VES based on form type and feature flags.
@@ -621,6 +645,112 @@ module IvcChampva
       end
 
       private
+
+      ##
+      # Generates a 10-10D VES request JSON file.
+      #
+      # @param [Object] form The form instance
+      # @param [Hash] parsed_form_data complete form submission data
+      # @return [Array<Hash>] Array of { path:, attachment_id: } hashes (empty on failure)
+      def write_1010d_ves_json(form, parsed_form_data)
+        ves_data = IvcChampva::VesDataFormatter.format_for_request(parsed_form_data, form_uuid: form.uuid)
+        path = Rails.root.join("tmp/#{form.uuid}_#{form.form_id}_ves.json").to_s
+        File.write(path, ves_data.to_json)
+        Rails.logger.info "VES JSON file generated for form #{form.form_id}: #{path}"
+        [{ path:, attachment_id: 'VES JSON' }]
+      rescue => e
+        Rails.logger.error "Error writing 1010d VES JSON: #{e.message}"
+        []
+      end
+
+      ##
+      # Generates one OHI VES JSON file per applicant with OHI data.
+      #
+      # @param [Object] form The form instance
+      # @param [Hash] parsed_form_data complete form submission data
+      # @return [Array<Hash>] Array of { path:, attachment_id: } hashes
+      def write_ohi_ves_json_files(form, parsed_form_data)
+        ohi_requests = IvcChampva::VesDataFormatter.format_for_ohi_request(parsed_form_data, form_uuid: form.uuid)
+        return [] if ohi_requests.blank?
+
+        ohi_requests.each_with_index.filter_map do |ohi_request, index|
+          ohi_json = JSON.parse(ohi_request.to_json)
+          path = Rails.root.join("tmp/#{form.uuid}_#{form.form_id}_ohi_ves_#{index}.json").to_s
+          File.write(path, ohi_json.to_json)
+          Rails.logger.info "OHI VES JSON file #{index} generated for form #{form.form_id}: #{path}"
+          { path:, attachment_id: 'VES OHI JSON' }
+        rescue => e
+          Rails.logger.error "Error writing OHI VES JSON #{index}: #{e.message}"
+          nil
+        end
+      end
+
+      ##
+      # Builds a mapping of file names to per-file metadata overrides.
+      # FileUploader merges these overrides into each file's S3 metadata during upload.
+      #
+      # @param [Array<String>] file_paths all file paths including PDFs and VES JSONs
+      # @param [Array<String>] attachment_ids positionally correlated with file_paths
+      # @param [Array<Hash>] ves_json_results results from generate_ves_json_files
+      # @param [String] legacy_form_id the legacy form ID (e.g., 'vha_10_10d')
+      # @return [Hash] mapping of file names to metadata override hashes
+      def build_additional_file_metadata(file_paths, attachment_ids, ves_json_results, legacy_form_id)
+        additional = {}
+        ves_json = ves_json_results.find { |r| r[:attachment_id] == 'VES JSON' }
+        ohi_jsons = ves_json_results.select { |r| r[:attachment_id] == 'VES OHI JSON' }
+
+        map_form_pdfs_to_ves_json(additional, file_paths, attachment_ids, ves_json, legacy_form_id) if ves_json
+        map_ohi_pdfs_to_ves_json(additional, file_paths, attachment_ids, ohi_jsons)
+
+        additional
+      end
+
+      def append_ves_json_files(form, parsed_form_data, collections)
+        file_paths, attachment_ids, metadata, legacy_form_id = collections
+
+        if Flipper.enabled?(:champva_send_ohi_ves_to_pega, @current_user)
+          ves_json_results = generate_ves_json_files(form, parsed_form_data)
+          ves_json_results.each do |result|
+            file_paths << result[:path]
+            attachment_ids << result[:attachment_id]
+          end
+          afm = build_additional_file_metadata(file_paths, attachment_ids, ves_json_results, legacy_form_id)
+          metadata['additional_file_metadata'] = afm if afm.any?
+        elsif should_generate_ves_json?(form.form_id)
+          ves_json_path = generate_ves_json_file(form, parsed_form_data)
+          if ves_json_path
+            file_paths << ves_json_path
+            attachment_ids << 'VES JSON'
+          end
+        end
+      end
+
+      def map_form_pdfs_to_ves_json(additional, file_paths, attachment_ids, ves_json, legacy_form_id)
+        ves_basename = File.basename(ves_json[:path])
+        file_paths.each_with_index do |fp, i|
+          next if fp.end_with?('.json')
+          next unless attachment_ids[i] == legacy_form_id
+
+          clean_name = File.basename(fp).gsub('-tmp', '')
+          additional[clean_name] = (additional[clean_name] || {}).merge('ves_json_metadata_file' => ves_basename)
+        end
+      end
+
+      def map_ohi_pdfs_to_ves_json(additional, file_paths, attachment_ids, ohi_jsons)
+        ohi_pdf_paths = file_paths.each_with_index.select do |_fp, i|
+          attachment_ids[i] == 'VA form 10-7959c'
+        end.map(&:first)
+
+        ohi_jsons.each_with_index do |ohi_result, index|
+          ohi_pdf = ohi_pdf_paths[index]
+          next unless ohi_pdf
+
+          clean_name = File.basename(ohi_pdf).gsub('-tmp', '')
+          additional[clean_name] = (additional[clean_name] || {}).merge(
+            'ves_json_metadata_file' => File.basename(ohi_result[:path])
+          )
+        end
+      end
 
       def parse_docs_only_payload
         parsed_form_data = JSON.parse(params.to_json)
@@ -1291,14 +1421,7 @@ module IvcChampva
 
           file_paths = form.handle_attachments(file_path)
 
-          # Generate VES JSON file and add to file_paths if conditions are met
-          if should_generate_ves_json?(form.form_id)
-            ves_json_path = generate_ves_json_file(form, parsed_form_data)
-            if ves_json_path
-              file_paths << ves_json_path
-              attachment_ids << 'VES JSON'
-            end
-          end
+          append_ves_json_files(form, parsed_form_data, [file_paths, attachment_ids, metadata, legacy_form_id])
 
           [file_paths, metadata.merge({ 'attachment_ids' => attachment_ids })]
         end

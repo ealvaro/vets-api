@@ -94,11 +94,11 @@ module IvcChampva
         }"
 
         file_name = File.basename(file_path).gsub('-tmp', '')
-        response_status = upload(file_name, file_path, metadata_for_s3(attachment_id))
+        response_status = upload(file_name, file_path, metadata_for_s3(attachment_id, file_path))
         if bypass_ves_json_flag
-          insert_form(file_name, response_status.to_s) if @insert_db_row && file_name.exclude?('_ves.json')
+          insert_form(file_name, response_status) if @insert_db_row && file_name.exclude?('_ves.json')
         else
-          insert_form(file_name, response_status.to_s) if @insert_db_row # rubocop:disable Style/IfInsideElse
+          insert_form(file_name, response_status) if @insert_db_row # rubocop:disable Style/IfInsideElse
         end
 
         response_status
@@ -141,30 +141,39 @@ module IvcChampva
 
     def insert_combined_pdf_and_docs(file_name, response_status)
       Datadog::Tracing.trace('IVC Champva Forms - Insert Combined PDF and Docs') do
-        response_status_string = response_status.to_s
-        # insert the combined PDF
-        insert_form(file_name, response_status_string)
+        insert_form(file_name, response_status)
 
-        # insert individual records for every original pre-combine file (main form + all attachments)
         @file_paths.each do |file_path|
           next if file_path.blank?
 
           original_file_name = File.basename(file_path).gsub('-tmp', '')
-          insert_form(original_file_name, response_status_string)
+          insert_form(original_file_name, response_status)
         end
       end
     end
 
     ##
     # Creates a modified metadata hash to be attached to individual files upon upload to S3.
+    # When per_file_metadata is present and a file_path is provided, merges any
+    # file-specific metadata overrides for the current file.
     #
     # @param [Integer, String] attachment_id Either a number or a string describing the file,
     # e.g., 'Social Security card'
+    # @param [String, nil] file_path Optional file path for per-file metadata lookup
     #
     # @return [Hash] modified metadata object
-    def metadata_for_s3(attachment_id)
+    def metadata_for_s3(attachment_id, file_path = nil)
       key = attachment_id.is_a?(Integer) ? 'claim_id' : 'attachment_id'
-      @metadata.except('primaryContactInfo', 'attachment_ids').merge({ key => attachment_id.to_s })
+      result = @metadata.except('primaryContactInfo', 'attachment_ids', 'additional_file_metadata')
+                        .merge({ key => attachment_id.to_s })
+
+      if file_path && @metadata['additional_file_metadata']
+        file_name = File.basename(file_path).gsub('-tmp', '')
+        file_overrides = @metadata['additional_file_metadata'][file_name]
+        result.merge!(file_overrides) if file_overrides
+      end
+
+      result
     end
 
     ##
@@ -188,7 +197,7 @@ module IvcChampva
           submitted_by_icn: @current_user&.icn,
           form_number: @metadata['docType'],
           file_name:,
-          s3_status: response_status,
+          s3_status: response_status.to_s,
           pega_status:,
           request_json: @parsed_form_data&.to_json
         )

@@ -1762,6 +1762,7 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
 
     before do
       allow(Flipper).to receive(:enabled?).with(:champva_send_ves_to_pega, anything).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:champva_send_ohi_ves_to_pega, anything).and_return(false)
     end
 
     form_numbers_and_classes.each do |form_number, form_class|
@@ -2147,6 +2148,133 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     end
   end
 
+  describe '#generate_ves_json_files' do
+    let(:controller) { IvcChampva::V1::UploadsController.new }
+    let(:mock_form) { double('Form', form_id: 'vha_10_10d', uuid: 'test-uuid-123') }
+    let(:mock_ves_request) { double('VesRequest') }
+    let(:mock_ohi_request) { double('VesOhiRequest') }
+
+    before do
+      allow(controller).to receive(:instance_variable_get).with('@current_user').and_return(nil)
+      allow(mock_ves_request).to receive(:to_json).and_return('{"test": "1010d_data"}')
+      allow(mock_ohi_request).to receive(:to_json).and_return('{"test": "ohi_data"}')
+      allow(IvcChampva::VesDataFormatter).to receive_messages(format_for_request: mock_ves_request,
+                                                              format_for_ohi_request: [mock_ohi_request])
+      allow(File).to receive(:write)
+      allow(Rails.logger).to receive(:info)
+      allow(Rails.logger).to receive(:error)
+    end
+
+    context 'with form_number 10-10D' do
+      let(:parsed_form_data) { { 'form_number' => '10-10D' } }
+
+      it 'generates a single VES JSON file' do
+        results = controller.send(:generate_ves_json_files, mock_form, parsed_form_data)
+
+        expect(results.size).to eq(1)
+        expect(results.first[:attachment_id]).to eq('VES JSON')
+        expect(results.first[:path]).to end_with('_ves.json')
+        expect(IvcChampva::VesDataFormatter).to have_received(:format_for_request)
+      end
+    end
+
+    context 'with form_number 10-10D-EXTENDED' do
+      let(:parsed_form_data) { { 'form_number' => '10-10D-EXTENDED' } }
+
+      it 'generates VES JSON + OHI VES JSON files' do
+        results = controller.send(:generate_ves_json_files, mock_form, parsed_form_data)
+
+        expect(results.size).to eq(2)
+        expect(results.first[:attachment_id]).to eq('VES JSON')
+        expect(results.last[:attachment_id]).to eq('VES OHI JSON')
+      end
+
+      context 'with no OHI applicants' do
+        before do
+          allow(IvcChampva::VesDataFormatter).to receive(:format_for_ohi_request).and_return([])
+        end
+
+        it 'returns only the 10-10D VES JSON' do
+          results = controller.send(:generate_ves_json_files, mock_form, parsed_form_data)
+
+          expect(results.size).to eq(1)
+          expect(results.first[:attachment_id]).to eq('VES JSON')
+        end
+      end
+    end
+
+    context 'with form_number 10-7959C' do
+      let(:parsed_form_data) { { 'form_number' => '10-7959C' } }
+
+      it 'generates OHI VES JSON files only' do
+        results = controller.send(:generate_ves_json_files, mock_form, parsed_form_data)
+
+        expect(results.size).to eq(1)
+        expect(results.first[:attachment_id]).to eq('VES OHI JSON')
+        expect(results.first[:path]).to include('_ohi_ves_')
+        expect(IvcChampva::VesDataFormatter).not_to have_received(:format_for_request)
+      end
+
+      context 'with no OHI applicants' do
+        before do
+          allow(IvcChampva::VesDataFormatter).to receive(:format_for_ohi_request).and_return([])
+        end
+
+        it 'returns empty array' do
+          results = controller.send(:generate_ves_json_files, mock_form, parsed_form_data)
+
+          expect(results).to eq([])
+        end
+      end
+
+      context 'with multiple OHI applicants' do
+        let(:second_ohi_request) { double('VesOhiRequest2') }
+
+        before do
+          allow(second_ohi_request).to receive(:to_json).and_return('{"test": "ohi_data_2"}')
+          allow(IvcChampva::VesDataFormatter).to receive(:format_for_ohi_request)
+            .and_return([mock_ohi_request, second_ohi_request])
+        end
+
+        it 'generates one file per OHI applicant' do
+          results = controller.send(:generate_ves_json_files, mock_form, parsed_form_data)
+
+          expect(results.size).to eq(2)
+          expect(results.all? { |r| r[:attachment_id] == 'VES OHI JSON' }).to be true
+          expect(results.first[:path]).to include('_ohi_ves_0')
+          expect(results.last[:path]).to include('_ohi_ves_1')
+        end
+      end
+    end
+
+    context 'with unknown form_number' do
+      let(:parsed_form_data) { { 'form_number' => '10-7959A' } }
+
+      it 'returns empty array' do
+        results = controller.send(:generate_ves_json_files, mock_form, parsed_form_data)
+
+        expect(results).to eq([])
+      end
+    end
+
+    context 'when write_1010d_ves_json fails' do
+      let(:parsed_form_data) { { 'form_number' => '10-10D' } }
+
+      before do
+        allow(IvcChampva::VesDataFormatter).to receive(:format_for_request)
+          .and_raise(StandardError.new('formatting error'))
+      end
+
+      it 'logs the error via the helper and returns empty results' do
+        results = controller.send(:generate_ves_json_files, mock_form, parsed_form_data)
+
+        expect(results).to eq([])
+        expect(Rails.logger).to have_received(:error)
+          .with(/Error writing 1010d VES JSON: formatting error/)
+      end
+    end
+  end
+
   describe '#get_file_paths_and_metadata VES JSON integration' do
     let(:controller) { IvcChampva::V1::UploadsController.new }
     let(:parsed_form_data) do
@@ -2159,13 +2287,14 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
       allow(controller).to receive_messages(get_attachment_ids_and_form: [['doc1'], mock_form],
                                             should_generate_ves_json?: false)
       allow(controller).to receive(:generate_ves_json_file)
+      allow(Flipper).to receive(:enabled?).with(:champva_send_ohi_ves_to_pega, nil).and_return(false)
       allow(IvcChampva::FormVersionManager).to receive(:get_legacy_form_id).and_return('vha_10_10d')
       allow_any_instance_of(IvcChampva::PdfFiller).to receive(:generate).and_return('test_path.pdf')
       allow(IvcChampva::MetadataValidator).to receive(:validate).and_return({})
       allow(mock_form).to receive(:handle_attachments).and_return(['test_path.pdf'])
     end
 
-    context 'when VES JSON generation conditions are met' do
+    context 'when VES JSON generation conditions are met (old flag path)' do
       let(:expected_ves_path) { Rails.root.join('tmp', 'test-uuid-123_vha_10_10d_ves.json').to_s }
 
       before do
@@ -2198,7 +2327,7 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
       end
     end
 
-    context 'when VES JSON generation fails' do
+    context 'when VES JSON generation fails (old flag path)' do
       before do
         allow(controller).to receive(:should_generate_ves_json?).with('vha_10_10d').and_return(true)
         allow(controller).to receive(:generate_ves_json_file).and_return(nil)
@@ -2210,6 +2339,129 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
         expect(controller).to have_received(:generate_ves_json_file).with(mock_form, parsed_form_data)
         expect(file_paths).not_to include(nil)
         expect(metadata['attachment_ids']).not_to include('VES JSON')
+      end
+    end
+
+    context 'when champva_send_ohi_ves_to_pega is enabled (new flag path)' do
+      let(:ves_json_path) { Rails.root.join('tmp', 'test-uuid-123_vha_10_10d_ves.json').to_s }
+      let(:ohi_json_path) { Rails.root.join('tmp', 'test-uuid-123_vha_10_10d_ohi_ves_0.json').to_s }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:champva_send_ohi_ves_to_pega, nil).and_return(true)
+        allow(controller).to receive_messages(
+          get_attachment_ids_and_form: [['vha_10_10d'], mock_form]
+        )
+        allow(mock_form).to receive(:handle_attachments).and_return(['test-uuid-123_vha_10_10d-tmp.pdf'])
+        allow(controller).to receive(:generate_ves_json_files)
+          .and_return([{ path: ves_json_path, attachment_id: 'VES JSON' }])
+      end
+
+      it 'calls generate_ves_json_files and builds additional_file_metadata' do
+        file_paths, metadata = controller.send(:get_file_paths_and_metadata, parsed_form_data)
+
+        expect(controller).to have_received(:generate_ves_json_files).with(mock_form, parsed_form_data)
+        expect(file_paths).to include(ves_json_path)
+        expect(metadata['attachment_ids']).to include('VES JSON')
+        expect(metadata['additional_file_metadata']).to eq(
+          'test-uuid-123_vha_10_10d.pdf' => { 'ves_json_metadata_file' => 'test-uuid-123_vha_10_10d_ves.json' }
+        )
+      end
+
+      it 'does not call the old generate_ves_json_file' do
+        controller.send(:get_file_paths_and_metadata, parsed_form_data)
+
+        expect(controller).not_to have_received(:generate_ves_json_file)
+      end
+
+      context 'with multiple VES JSON files (EXTENDED)' do
+        before do
+          allow(controller).to receive(:generate_ves_json_files)
+            .and_return([
+                          { path: ves_json_path, attachment_id: 'VES JSON' },
+                          { path: ohi_json_path, attachment_id: 'VES OHI JSON' }
+                        ])
+        end
+
+        it 'adds all files and builds additional_file_metadata' do
+          file_paths, metadata = controller.send(:get_file_paths_and_metadata, parsed_form_data)
+
+          expect(file_paths).to include(ves_json_path, ohi_json_path)
+          expect(metadata['attachment_ids']).to include('VES JSON', 'VES OHI JSON')
+          pdf_meta = metadata.dig('additional_file_metadata', 'test-uuid-123_vha_10_10d.pdf')
+          expect(pdf_meta).to include('ves_json_metadata_file' => 'test-uuid-123_vha_10_10d_ves.json')
+        end
+      end
+
+      context 'with two OHI PDFs matched by attachment_id (EXTENDED)' do
+        let(:ohi_pdf_one) { 'test-uuid-123_vha_10_10d_supporting_doc-1.pdf' }
+        let(:ohi_pdf_two) { 'test-uuid-123_vha_10_10d_supporting_doc-2.pdf' }
+        let(:ohi_json_one) do
+          Rails.root.join('tmp', 'test-uuid-123_vha_10_10d_ohi_ves_0.json').to_s
+        end
+        let(:ohi_json_two) do
+          Rails.root.join('tmp', 'test-uuid-123_vha_10_10d_ohi_ves_1.json').to_s
+        end
+
+        before do
+          allow(controller).to receive_messages(
+            get_attachment_ids_and_form: [
+              ['vha_10_10d', 'VA form 10-7959c', 'VA form 10-7959c'], mock_form
+            ]
+          )
+          allow(mock_form).to receive(:handle_attachments)
+            .and_return(['test-uuid-123_vha_10_10d-tmp.pdf', ohi_pdf_one, ohi_pdf_two])
+          allow(controller).to receive(:generate_ves_json_files)
+            .and_return([
+                          { path: ves_json_path, attachment_id: 'VES JSON' },
+                          { path: ohi_json_one, attachment_id: 'VES OHI JSON' },
+                          { path: ohi_json_two, attachment_id: 'VES OHI JSON' }
+                        ])
+        end
+
+        it 'maps each PDF to its corresponding VES JSON by position' do
+          _file_paths, metadata = controller.send(:get_file_paths_and_metadata, parsed_form_data)
+          afm = metadata['additional_file_metadata']
+
+          expect(afm.dig('test-uuid-123_vha_10_10d.pdf', 'ves_json_metadata_file'))
+            .to eq('test-uuid-123_vha_10_10d_ves.json')
+          expect(afm.dig(ohi_pdf_one, 'ves_json_metadata_file'))
+            .to eq('test-uuid-123_vha_10_10d_ohi_ves_0.json')
+          expect(afm.dig(ohi_pdf_two, 'ves_json_metadata_file'))
+            .to eq('test-uuid-123_vha_10_10d_ohi_ves_1.json')
+        end
+      end
+
+      context 'when generate_ves_json_files returns empty' do
+        before do
+          allow(controller).to receive(:generate_ves_json_files).and_return([])
+        end
+
+        it 'does not add additional_file_metadata to metadata' do
+          _file_paths, metadata = controller.send(:get_file_paths_and_metadata, parsed_form_data)
+
+          expect(metadata).not_to have_key('additional_file_metadata')
+        end
+      end
+    end
+
+    context 'rollback safety: new flag off falls back to old flag path' do
+      let(:expected_ves_path) { Rails.root.join('tmp', 'test-uuid-123_vha_10_10d_ves.json').to_s }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:champva_send_ohi_ves_to_pega, nil).and_return(false)
+        allow(controller).to receive(:should_generate_ves_json?).with('vha_10_10d').and_return(true)
+        allow(controller).to receive(:generate_ves_json_file).and_return(expected_ves_path)
+      end
+
+      it 'uses old generate_ves_json_file, not generate_ves_json_files' do
+        allow(controller).to receive(:generate_ves_json_files)
+        file_paths, metadata = controller.send(:get_file_paths_and_metadata, parsed_form_data)
+
+        expect(controller).not_to have_received(:generate_ves_json_files)
+        expect(controller).to have_received(:generate_ves_json_file).with(mock_form, parsed_form_data)
+        expect(file_paths).to include(expected_ves_path)
+        expect(metadata['attachment_ids']).to include('VES JSON')
+        expect(metadata).not_to have_key('additional_file_metadata')
       end
     end
   end

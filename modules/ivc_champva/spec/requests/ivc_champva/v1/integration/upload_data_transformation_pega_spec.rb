@@ -71,6 +71,9 @@ RSpec.describe 'Transformation Pega', type: :request do
             .with(:champva_send_ves_to_pega, @current_user)
             .and_return(false)
           allow(Flipper).to receive(:enabled?)
+            .with(:champva_send_ohi_ves_to_pega, @current_user)
+            .and_return(false)
+          allow(Flipper).to receive(:enabled?)
             .with(:champva_bypass_metadata_json_file_for_1010d, @current_user)
             .and_return(false)
         end
@@ -559,6 +562,107 @@ RSpec.describe 'Transformation Pega', type: :request do
             )
           )
         end
+      end
+    end
+  end
+
+  describe 'additional_file_metadata with champva_send_ohi_ves_to_pega' do
+    let(:controller) { IvcChampva::V1::UploadsController.new }
+    let(:mock_form) { double('Form', form_id: 'vha_10_10d', uuid:, data: {}, metadata: {}) }
+    let(:mock_ves_request) { double('VesRequest', to_json: '{"test":"data"}') }
+    let(:pdf_path) { "#{uuid}_vha_10_10d-tmp.pdf" }
+
+    before do
+      allow(controller).to receive(:instance_variable_get).with('@current_user').and_return(nil)
+      allow(controller).to receive_messages(get_attachment_ids_and_form: [['vha_10_10d'], mock_form])
+      allow(IvcChampva::FormVersionManager).to receive(:get_legacy_form_id).and_return('vha_10_10d')
+      allow_any_instance_of(IvcChampva::PdfFiller).to receive(:generate).and_return(pdf_path)
+      allow(IvcChampva::MetadataValidator).to receive(:validate).and_return({})
+      allow(mock_form).to receive(:handle_attachments).and_return([pdf_path])
+      allow(IvcChampva::VesDataFormatter).to receive(:format_for_request).and_return(mock_ves_request)
+      allow(File).to receive(:write)
+    end
+
+    context 'when flag is enabled' do
+      let(:parsed_form_data) do
+        JSON.parse(
+          Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json', 'vha_10_10d.json').read
+        )
+      end
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:champva_send_ohi_ves_to_pega, nil).and_return(true)
+      end
+
+      it 'includes additional_file_metadata mapping PDF to VES JSON' do
+        _file_paths, metadata = controller.send(:get_file_paths_and_metadata, parsed_form_data)
+
+        expect(metadata).to have_key('additional_file_metadata')
+        pdf_meta = metadata['additional_file_metadata']["#{uuid}_vha_10_10d.pdf"]
+        expect(pdf_meta).to be_present
+        expect(pdf_meta['ves_json_metadata_file']).to include('_ves.json')
+      end
+    end
+
+    context 'when flag is enabled with two OHI PDFs (EXTENDED)' do
+      let(:ohi_pdf_one) { "#{uuid}_vha_10_10d_supporting_doc-1.pdf" }
+      let(:ohi_pdf_two) { "#{uuid}_vha_10_10d_supporting_doc-2.pdf" }
+      let(:mock_ohi_request_a) { double('VesOhiRequestA', to_json: '{"ohi":"a"}') }
+      let(:mock_ohi_request_b) { double('VesOhiRequestB', to_json: '{"ohi":"b"}') }
+      let(:parsed_form_data) do
+        data = JSON.parse(
+          Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json', 'vha_10_10d.json').read
+        )
+        data['form_number'] = '10-10D-EXTENDED'
+        data
+      end
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:champva_send_ohi_ves_to_pega, nil).and_return(true)
+        allow(controller).to receive_messages(
+          get_attachment_ids_and_form: [
+            ['vha_10_10d', 'VA form 10-7959c', 'VA form 10-7959c'], mock_form
+          ]
+        )
+        allow(mock_form).to receive(:handle_attachments)
+          .and_return([pdf_path, ohi_pdf_one, ohi_pdf_two])
+        allow(IvcChampva::VesDataFormatter).to receive(:format_for_ohi_request)
+          .and_return([mock_ohi_request_a, mock_ohi_request_b])
+      end
+
+      it 'maps 10-10D PDF to 10-10D VES JSON' do
+        _file_paths, metadata = controller.send(:get_file_paths_and_metadata, parsed_form_data)
+        tenten_meta = metadata.dig('additional_file_metadata', "#{uuid}_vha_10_10d.pdf")
+
+        expect(tenten_meta['ves_json_metadata_file']).to include('_ves.json')
+        expect(tenten_meta['ves_json_metadata_file']).not_to include('_ohi_')
+      end
+
+      it 'maps each OHI PDF to its own VES OHI JSON by position' do
+        _file_paths, metadata = controller.send(:get_file_paths_and_metadata, parsed_form_data)
+        afm = metadata['additional_file_metadata']
+
+        expect(afm.dig(ohi_pdf_one, 'ves_json_metadata_file')).to include('_ohi_ves_0')
+        expect(afm.dig(ohi_pdf_two, 'ves_json_metadata_file')).to include('_ohi_ves_1')
+      end
+    end
+
+    context 'when flag is disabled' do
+      let(:parsed_form_data) do
+        JSON.parse(
+          Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json', 'vha_10_10d.json').read
+        )
+      end
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:champva_send_ohi_ves_to_pega, nil).and_return(false)
+        allow(controller).to receive(:should_generate_ves_json?).and_return(false)
+      end
+
+      it 'does not include additional_file_metadata' do
+        _file_paths, metadata = controller.send(:get_file_paths_and_metadata, parsed_form_data)
+
+        expect(metadata).not_to have_key('additional_file_metadata')
       end
     end
   end

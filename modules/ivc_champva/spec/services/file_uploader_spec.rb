@@ -346,11 +346,11 @@ describe IvcChampva::FileUploader do
 
       it 'uploads the _ves.json file but does not insert it into the database' do
         expect(uploader).to receive(:upload).exactly(3).times
-        expect(uploader).to receive(:insert_form).with('file1.pdf', '[200]')
-        expect(uploader).to receive(:insert_form).with('file2.png', '[200]')
+        expect(uploader).to receive(:insert_form).with('file1.pdf', [200])
+        expect(uploader).to receive(:insert_form).with('file2.png', [200])
         expect(uploader).not_to receive(:insert_form).with(
           '4171e61a-03b5-49f3-8717-dbf340310473_vha_10_10d_ves.json',
-          '[200]'
+          [200]
         )
 
         uploader.send(:handle_iterative_uploads)
@@ -366,14 +366,96 @@ describe IvcChampva::FileUploader do
 
       it 'uploads the _ves.json file and inserts it into the database' do
         expect(uploader).to receive(:upload).exactly(3).times
-        expect(uploader).to receive(:insert_form).with('file1.pdf', '[200]')
-        expect(uploader).to receive(:insert_form).with('file2.png', '[200]')
+        expect(uploader).to receive(:insert_form).with('file1.pdf', [200])
+        expect(uploader).to receive(:insert_form).with('file2.png', [200])
         expect(uploader).to receive(:insert_form).with(
           '4171e61a-03b5-49f3-8717-dbf340310473_vha_10_10d_ves.json',
-          '[200]'
+          [200]
         )
 
         uploader.send(:handle_iterative_uploads)
+      end
+    end
+  end
+
+  describe '#metadata_for_s3' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:champva_store_request_json, nil).and_return(false)
+    end
+
+    context 'without additional_file_metadata' do
+      it 'returns metadata with attachment_id, excluding primaryContactInfo and attachment_ids' do
+        meta_with_extra = metadata.merge('primaryContactInfo' => { 'name' => 'Test' })
+        uploader = IvcChampva::FileUploader.new(form_id, meta_with_extra, file_paths)
+
+        result = uploader.send(:metadata_for_s3, 'Social Security card')
+
+        expect(result).to have_key('attachment_id')
+        expect(result['attachment_id']).to eq('Social Security card')
+        expect(result).not_to have_key('primaryContactInfo')
+        expect(result).not_to have_key('attachment_ids')
+        expect(result).not_to have_key('ves_json_metadata_file')
+      end
+
+      it 'does not add per-file overrides even with file_path' do
+        uploader = IvcChampva::FileUploader.new(form_id, metadata, file_paths)
+
+        result = uploader.send(:metadata_for_s3, 'Social Security card', 'tmp/file1.pdf')
+
+        expect(result).not_to have_key('ves_json_metadata_file')
+      end
+    end
+
+    context 'with additional_file_metadata' do
+      let(:afm_metadata) do
+        metadata.merge('additional_file_metadata' => {
+                         'file1.pdf' => { 'ves_json_metadata_file' => 'uuid_vha_10_10d_ves.json' },
+                         'file2.png' => { 'ves_json_metadata_file' => 'uuid_vha_10_10d_ves.json' }
+                       })
+      end
+
+      it 'merges per-file overrides for files in the map' do
+        uploader = IvcChampva::FileUploader.new(form_id, afm_metadata, file_paths)
+
+        result = uploader.send(:metadata_for_s3, 'Social Security card', 'tmp/file1.pdf')
+
+        expect(result['ves_json_metadata_file']).to eq('uuid_vha_10_10d_ves.json')
+      end
+
+      it 'strips -tmp from file path when looking up in map' do
+        custom_metadata = metadata.merge(
+          'additional_file_metadata' => { 'myform.pdf' => { 'ves_json_metadata_file' => 'ves.json' } }
+        )
+        uploader = IvcChampva::FileUploader.new(form_id, custom_metadata, file_paths)
+
+        result = uploader.send(:metadata_for_s3, 'doc1', 'tmp/myform-tmp.pdf')
+
+        expect(result['ves_json_metadata_file']).to eq('ves.json')
+      end
+
+      it 'does not add overrides for files not in the map' do
+        uploader = IvcChampva::FileUploader.new(form_id, afm_metadata, file_paths)
+        ves_json_path = 'tmp/4171e61a-03b5-49f3-8717-dbf340310473_vha_10_10d_ves.json'
+
+        result = uploader.send(:metadata_for_s3, 'VES JSON', ves_json_path)
+
+        expect(result).not_to have_key('ves_json_metadata_file')
+      end
+
+      it 'does not add overrides when file_path is nil' do
+        uploader = IvcChampva::FileUploader.new(form_id, afm_metadata, file_paths)
+
+        result = uploader.send(:metadata_for_s3, 'Social Security card')
+
+        expect(result).not_to have_key('ves_json_metadata_file')
+      end
+
+      it 'strips additional_file_metadata from the returned metadata' do
+        uploader = IvcChampva::FileUploader.new(form_id, afm_metadata, file_paths)
+
+        result = uploader.send(:metadata_for_s3, 'Social Security card', 'tmp/file1.pdf')
+
+        expect(result).not_to have_key('additional_file_metadata')
       end
     end
   end
