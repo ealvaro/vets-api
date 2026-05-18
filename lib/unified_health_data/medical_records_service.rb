@@ -29,6 +29,7 @@ module UnifiedHealthData
     def get_labs(start_date:, end_date:, caller: nil)
       validate_icn!
       @labs_caller = caller
+      start_date, end_date = normalize_date_range(start_date, end_date)
       with_monitoring do
         response = uhd_client.get_labs_by_date(patient_id: @user.icn, start_date:, end_date:)
         body = response.body

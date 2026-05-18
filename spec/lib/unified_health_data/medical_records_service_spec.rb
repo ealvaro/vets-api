@@ -279,6 +279,58 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
           .with('api.uhd.labs_and_tests.error', tags: [])
       end
     end
+
+    context 'date validation via normalize_date_range' do
+      it 'passes valid dates through unchanged' do
+        expect_any_instance_of(UnifiedHealthData::Client)
+          .to receive(:get_labs_by_date)
+          .with(patient_id: user.icn, start_date: '2025-01-01', end_date: '2025-12-31')
+          .and_return(sample_client_response)
+
+        service.get_labs(start_date: '2025-01-01', end_date: '2025-12-31')
+      end
+
+      it 'raises ArgumentError for invalid start_date' do
+        expect do
+          service.get_labs(start_date: 'any', end_date: '2025-12-31')
+        end.to raise_error(ArgumentError, "Invalid start_date: 'any'. Expected format: YYYY-MM-DD")
+      end
+
+      it 'raises ArgumentError for invalid end_date' do
+        expect do
+          service.get_labs(start_date: '2025-01-01', end_date: 'any')
+        end.to raise_error(ArgumentError, "Invalid end_date: 'any'. Expected format: YYYY-MM-DD")
+      end
+
+      it 'defaults nil start_date to 1900-01-01' do
+        expect_any_instance_of(UnifiedHealthData::Client)
+          .to receive(:get_labs_by_date)
+          .with(patient_id: user.icn, start_date: '1900-01-01', end_date: '2025-12-31')
+          .and_return(sample_client_response)
+
+        service.get_labs(start_date: nil, end_date: '2025-12-31')
+      end
+
+      it 'defaults nil end_date to today' do
+        freeze_time do
+          expect_any_instance_of(UnifiedHealthData::Client)
+            .to receive(:get_labs_by_date)
+            .with(patient_id: user.icn, start_date: '2025-01-01', end_date: Time.zone.today.to_s)
+            .and_return(sample_client_response)
+
+          service.get_labs(start_date: '2025-01-01', end_date: nil)
+        end
+      end
+
+      it 'defaults blank start_date to 1900-01-01' do
+        expect_any_instance_of(UnifiedHealthData::Client)
+          .to receive(:get_labs_by_date)
+          .with(patient_id: user.icn, start_date: '1900-01-01', end_date: '2025-12-31')
+          .and_return(sample_client_response)
+
+        service.get_labs(start_date: '', end_date: '2025-12-31')
+      end
+    end
   end
 
   # Allergies
