@@ -79,8 +79,6 @@ module UniqueUserEvents
     #   and TRACKED_EVENTS validation is bypassed (caller is responsible for appropriate usage).
     # @return [Array<String>] Array of facility-specific event names to be logged
     def self.generate_events(user:, event_name:, event_facility_ids: nil)
-      return [] unless Flipper.enabled?(:mhv_oh_unique_user_metrics_logging)
-
       if event_facility_ids
         matching_facilities = filter_tracked_oh_facilities(event_facility_ids, user)
         matching_facilities.map { |facility_id| "#{event_name}#{OH_EVENT_SUFFIX}#{facility_id}" }

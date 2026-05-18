@@ -9,24 +9,7 @@ RSpec.describe UniqueUserEvents::OracleHealth do
   let(:event_name) { UniqueUserEvents::EventRegistry::MEDICAL_RECORDS_ALLERGIES_ACCESSED }
   let(:non_tracked_event) { 'some_other_event' }
 
-  before do
-    allow(Flipper).to receive(:enabled?).with(:mhv_oh_unique_user_metrics_logging).and_return(true)
-  end
-
   describe '.generate_events' do
-    context 'when mhv_oh_unique_user_metrics_logging is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:mhv_oh_unique_user_metrics_logging).and_return(false)
-        allow(user).to receive(:cerner_facility_ids).and_return(%w[757])
-      end
-
-      it 'returns empty array without generating OH events' do
-        result = described_class.generate_events(user:, event_name:)
-
-        expect(result).to eq([])
-      end
-    end
-
     context 'when event is tracked for Oracle Health' do
       context 'when user has matching facilities' do
         before do
@@ -189,23 +172,6 @@ RSpec.describe UniqueUserEvents::OracleHealth do
 
   describe '.generate_events with event_facility_ids' do
     let(:event_name) { 'prescriptions_refill_requested' }
-
-    context 'when mhv_oh_unique_user_metrics_logging is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:mhv_oh_unique_user_metrics_logging).and_return(false)
-        allow(user).to receive(:cerner_facility_ids).and_return(%w[757])
-      end
-
-      it 'returns empty array without generating OH events' do
-        result = described_class.generate_events(
-          user:,
-          event_name:,
-          event_facility_ids: %w[757 688]
-        )
-
-        expect(result).to eq([])
-      end
-    end
 
     context 'when facility IDs match tracked facilities and user cerner_facility_ids' do
       before do
