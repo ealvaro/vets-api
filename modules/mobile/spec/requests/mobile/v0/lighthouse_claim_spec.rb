@@ -28,12 +28,6 @@ RSpec.describe 'Mobile::V0::Claim', type: :request do
         allow(Flipper).to receive(:enabled?).with(:cst_suppress_evidence_requests_mobile).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:cst_override_reserve_records_mobile).and_return(false)
         allow(Flipper).to receive(:enabled?)
-          .with(
-            Mobile::V0::Adapters::LighthouseIndividualClaims::FEATURE_EVIDENCE_REQUESTS_CONTENT_OVERRIDE,
-            anything
-          )
-          .and_return(false)
-        allow(Flipper).to receive(:enabled?)
           .with(:efolder_use_lighthouse_benefits_documents_service, anything)
           .and_return(false)
         allow(Flipper).to receive(:enabled?).with('schema_contract_claims_and_appeals_get_claim').and_return(false)
@@ -106,7 +100,7 @@ RSpec.describe 'Mobile::V0::Claim', type: :request do
         end
       end
 
-      context "when the 'cst_evidence_requests_content_override_mobile' feature flag is enabled" do
+      context 'when tracked item content overrides are available' do
         let(:mock_content) do
           {
             friendlyName: 'Test Friendly Name',
@@ -126,12 +120,6 @@ RSpec.describe 'Mobile::V0::Claim', type: :request do
         end
 
         before do
-          allow(Flipper).to receive(:enabled?)
-            .with(
-              Mobile::V0::Adapters::LighthouseIndividualClaims::FEATURE_EVIDENCE_REQUESTS_CONTENT_OVERRIDE,
-              anything
-            )
-            .and_return(true)
           allow(BenefitsClaims::TrackedItemContent).to receive(:find_by_display_name)
             .and_return(mock_content)
         end
@@ -158,32 +146,6 @@ RSpec.describe 'Mobile::V0::Claim', type: :request do
           expect(tracked_item['hideClaimLetterSection']).to be(true)
           expect(tracked_item['longDescription']).to be_a(Hash)
           expect(tracked_item['nextSteps']).to be_a(Hash)
-        end
-      end
-
-      context "when the 'cst_evidence_requests_content_override_mobile' feature flag is disabled" do
-        it 'does not include content override fields in tracked item events' do
-          VCR.use_cassette('mobile/lighthouse_claims/show/200_response') do
-            get '/mobile/v0/claim/600117255', headers: sis_headers
-          end
-
-          tracked_item = response.parsed_body.dig('data', 'attributes', 'eventsTimeline').find do |event|
-            event['trackedItemId'].present?
-          end
-
-          expect(tracked_item['friendlyName']).to be_nil
-          expect(tracked_item['shortDescription']).to be_nil
-          expect(tracked_item['activityDescription']).to be_nil
-          expect(tracked_item['supportAliases']).to be_nil
-          expect(tracked_item['canUploadFile']).to be_nil
-          expect(tracked_item['noActionNeeded']).to be_nil
-          expect(tracked_item['isDbq']).to be_nil
-          expect(tracked_item['isProperNoun']).to be_nil
-          expect(tracked_item['isSensitive']).to be_nil
-          expect(tracked_item['noProvidePrefix']).to be_nil
-          expect(tracked_item['hideClaimLetterSection']).to be_nil
-          expect(tracked_item['longDescription']).to be_nil
-          expect(tracked_item['nextSteps']).to be_nil
         end
       end
 

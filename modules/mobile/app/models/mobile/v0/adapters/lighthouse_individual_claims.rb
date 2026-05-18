@@ -48,8 +48,6 @@ module Mobile
 
         UPLOADED_STATUSES = %w[ACCEPTED INITIAL_REVIEW_COMPLETE SUBMITTED_AWAITING_REVIEW].freeze
 
-        FEATURE_EVIDENCE_REQUESTS_CONTENT_OVERRIDE = 'cst_evidence_requests_content_override_mobile'
-
         DEFAULT_DATE = Date.new
 
         def initialize(user = nil)
@@ -182,10 +180,7 @@ module Mobile
           documents = create_documents(tracked_item_documents)
           event = build_tracked_item_event(tracked_item, tracked_item_documents, documents)
 
-          # Add content overrides if feature is enabled
-          if Flipper.enabled?(FEATURE_EVIDENCE_REQUESTS_CONTENT_OVERRIDE, @user)
-            merge_tracked_item_content_overrides!(event, tracked_item['displayName'])
-          end
+          merge_tracked_item_content_overrides!(event, tracked_item['displayName'])
 
           event[:date] = Date.strptime(event.slice(*EVENT_DATE_FIELDS).values.compact.first, '%Y-%m-%d')
           ClaimEventTimeline.new(event)

@@ -95,8 +95,6 @@ describe Mobile::V0::Adapters::LighthouseIndividualClaims, :aggregate_failures d
                                      document_type: nil,
                                      filename: nil,
                                      document_id: nil,
-                                     # Content override fields should be nil when the feature flag
-                                     # is disabled, except for can_upload_file
                                      activity_description: nil,
                                      can_upload_file: true,
                                      friendly_name: nil,
@@ -291,96 +289,58 @@ describe Mobile::V0::Adapters::LighthouseIndividualClaims, :aggregate_failures d
       }
     end
 
-    context "when the 'cst_evidence_requests_content_override_mobile' feature flag is enabled" do
-      before do
-        allow(Flipper).to receive(:enabled?)
-          .with(Mobile::V0::Adapters::LighthouseIndividualClaims::FEATURE_EVIDENCE_REQUESTS_CONTENT_OVERRIDE, anything)
-          .and_return(true)
-        allow(BenefitsClaims::TrackedItemContent).to receive(:find_by_display_name)
-          .and_return(content_override_mock)
+    before do
+      allow(BenefitsClaims::TrackedItemContent).to receive(:find_by_display_name)
+        .and_return(content_override_mock)
+    end
+
+    it 'maps content override fields to tracked item events' do
+      tracked_item = test_claim[:events_timeline].find do |event|
+        %w[still_need_from_you_list received_from_you_list].include?(event[:type].to_s)
       end
 
-      it 'maps content override fields to tracked item events' do
+      expect(tracked_item.friendly_name).to eq(content_override_mock[:friendlyName])
+      expect(tracked_item.short_description).to eq(content_override_mock[:shortDescription])
+      expect(tracked_item.activity_description).to eq(content_override_mock[:activityDescription])
+      expect(tracked_item.support_aliases).to eq(content_override_mock[:supportAliases])
+      expect(tracked_item.can_upload_file).to eq(content_override_mock[:canUploadFile])
+      expect(tracked_item.no_action_needed).to eq(content_override_mock[:noActionNeeded])
+      expect(tracked_item.is_dbq).to eq(content_override_mock[:isDBQ])
+      expect(tracked_item.is_proper_noun).to eq(content_override_mock[:isProperNoun])
+      expect(tracked_item.is_sensitive).to eq(content_override_mock[:isSensitive])
+      expect(tracked_item.no_provide_prefix).to eq(content_override_mock[:noProvidePrefix])
+      expect(tracked_item.hide_claim_letter_section).to eq(content_override_mock[:hideClaimLetterSection])
+      expect(tracked_item.long_description).to eq(content_override_mock[:longDescription])
+      expect(tracked_item.next_steps).to eq(content_override_mock[:nextSteps])
+    end
+
+    context 'when TrackedItemContent has no entry for the display name' do
+      before do
+        allow(BenefitsClaims::TrackedItemContent).to receive(:find_by_display_name).and_return(nil)
+      end
+
+      it 'sets can_upload_file to true and does not merge other override fields' do
         tracked_item = test_claim[:events_timeline].find do |event|
           %w[still_need_from_you_list received_from_you_list].include?(event[:type].to_s)
         end
 
-        expect(tracked_item.friendly_name).to eq(content_override_mock[:friendlyName])
-        expect(tracked_item.short_description).to eq(content_override_mock[:shortDescription])
-        expect(tracked_item.activity_description).to eq(content_override_mock[:activityDescription])
-        expect(tracked_item.support_aliases).to eq(content_override_mock[:supportAliases])
-        expect(tracked_item.can_upload_file).to eq(content_override_mock[:canUploadFile])
-        expect(tracked_item.no_action_needed).to eq(content_override_mock[:noActionNeeded])
-        expect(tracked_item.is_dbq).to eq(content_override_mock[:isDBQ])
-        expect(tracked_item.is_proper_noun).to eq(content_override_mock[:isProperNoun])
-        expect(tracked_item.is_sensitive).to eq(content_override_mock[:isSensitive])
-        expect(tracked_item.no_provide_prefix).to eq(content_override_mock[:noProvidePrefix])
-        expect(tracked_item.hide_claim_letter_section).to eq(content_override_mock[:hideClaimLetterSection])
-        expect(tracked_item.long_description).to eq(content_override_mock[:longDescription])
-        expect(tracked_item.next_steps).to eq(content_override_mock[:nextSteps])
-      end
-
-      context 'when TrackedItemContent has no entry for the display name' do
-        before do
-          allow(BenefitsClaims::TrackedItemContent).to receive(:find_by_display_name).and_return(nil)
-        end
-
-        it 'sets can_upload_file to true and does not merge other override fields' do
-          tracked_item = test_claim[:events_timeline].find do |event|
-            %w[still_need_from_you_list received_from_you_list].include?(event[:type].to_s)
-          end
-
-          expect(tracked_item.can_upload_file).to be true
-          expect(tracked_item.friendly_name).to be_nil
-        end
-      end
-
-      context 'when TrackedItemContent entry sets canUploadFile to false' do
-        before do
-          allow(BenefitsClaims::TrackedItemContent).to receive(:find_by_display_name)
-            .and_return(content_override_mock.merge(canUploadFile: false))
-        end
-
-        it 'sets can_upload_file to false' do
-          tracked_item = test_claim[:events_timeline].find do |event|
-            %w[still_need_from_you_list received_from_you_list].include?(event[:type].to_s)
-          end
-
-          expect(tracked_item.can_upload_file).to be false
-        end
+        expect(tracked_item.can_upload_file).to be true
+        expect(tracked_item.friendly_name).to be_nil
       end
     end
 
-    context "when the 'cst_evidence_requests_content_override_mobile' feature flag is disabled" do
+    context 'when TrackedItemContent entry sets canUploadFile to false' do
       before do
-        allow(Flipper).to receive(:enabled?)
-          .with(Mobile::V0::Adapters::LighthouseIndividualClaims::FEATURE_EVIDENCE_REQUESTS_CONTENT_OVERRIDE, anything)
-          .and_return(false)
+        allow(BenefitsClaims::TrackedItemContent).to receive(:find_by_display_name)
+          .and_return(content_override_mock.merge(canUploadFile: false))
       end
 
-      it 'does not include content override fields in tracked item events' do
+      it 'sets can_upload_file to false' do
         tracked_item = test_claim[:events_timeline].find do |event|
           %w[still_need_from_you_list received_from_you_list].include?(event[:type].to_s)
         end
 
-        expect(tracked_item.friendly_name).to be_nil
-        expect(tracked_item.short_description).to be_nil
-        expect(tracked_item.activity_description).to be_nil
-        expect(tracked_item.support_aliases).to be_nil
-        expect(tracked_item.can_upload_file).to be_nil
-        expect(tracked_item.no_action_needed).to be_nil
-        expect(tracked_item.is_dbq).to be_nil
-        expect(tracked_item.is_proper_noun).to be_nil
-        expect(tracked_item.is_sensitive).to be_nil
-        expect(tracked_item.no_provide_prefix).to be_nil
-        expect(tracked_item.hide_claim_letter_section).to be_nil
-        expect(tracked_item.long_description).to be_nil
-        expect(tracked_item.next_steps).to be_nil
-      end
-
-      it 'does not call TrackedItemContent lookup' do
-        expect(BenefitsClaims::TrackedItemContent).not_to receive(:find_by_display_name)
-        test_claim
+        expect(tracked_item.can_upload_file).to be false
       end
     end
   end
