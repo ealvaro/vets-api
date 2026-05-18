@@ -101,16 +101,19 @@ module IvcChampva
       identity = data['certifier_role']
       current_user_loa = current_user&.loa&.[](:current) || 0
       email_used = metadata&.dig('primaryContactInfo', 'email') ? 'yes' : 'no'
+      sub_type = data['submission_type'].presence || 'new'
       StatsD.increment("#{STATS_KEY}.submission", tags: [
                          "identity:#{identity}",
                          "current_user_loa:#{current_user_loa}",
                          "email_used:#{email_used}",
-                         "form_version:#{FORM_VERSION}"
+                         "form_version:#{FORM_VERSION}",
+                         "submission_type:#{sub_type}"
                        ])
       Rails.logger.info('IVC ChampVA Forms - 10-10D-2027 Submission', identity:,
                                                                       current_user_loa:,
                                                                       email_used:,
-                                                                      form_version: FORM_VERSION)
+                                                                      form_version: FORM_VERSION,
+                                                                      submission_type: sub_type)
     end
 
     def method_missing(_, *args)
