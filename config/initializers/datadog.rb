@@ -18,10 +18,9 @@ Datadog.configure do |c|
     end
 
     # Enable instruments
-    c.tracing.instrument :rails
+    c.tracing.instrument :rails, service_name: 'vets-api-controllers'
     c.tracing.instrument :sidekiq, service_name: 'vets-api-sidekiq'
     c.tracing.instrument :active_support, cache_service: 'vets-api-cache'
-    c.tracing.instrument :action_pack, service_name: 'vets-api-controllers'
     c.tracing.instrument :active_record, service_name: 'vets-api-db'
     c.tracing.instrument :redis, service_name: 'vets-api-redis'
     c.tracing.instrument :pg, service_name: 'vets-api-pg'
@@ -33,5 +32,9 @@ Datadog.configure do |c|
     # Enable ASM
     c.appsec.enabled = true
     c.appsec.instrument :rails
+
+    # Suppress Datadog's own internal log noise
+    c.logger.level = Logger::WARN
+
   end
 end
