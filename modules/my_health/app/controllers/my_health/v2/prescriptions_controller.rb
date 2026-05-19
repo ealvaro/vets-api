@@ -21,13 +21,16 @@ module MyHealth
       service_tag 'mhv-medications'
 
       ACTIVE_STATUSES_V1 = [
-        'Active', 'Active: Refill in Process', 'Active: Non-VA', 'Active: On hold',
+        'Active', 'Active: Refill in Process', 'Active: Non-VA',
         'Active: Parked', 'Active: Submitted'
       ].freeze
       ACTIVE_STATUSES_V2 = ['Active'].freeze
 
       IN_PROGRESS_STATUSES_V1 = ['Active: Refill in Process', 'Active: Submitted'].freeze
       IN_PROGRESS_STATUSES_V2 = ['In progress'].freeze
+
+      NON_ACTIVE_STATUSES_V1 = ['Expired', 'Discontinued', 'Active: On hold'].freeze
+      NON_ACTIVE_STATUSES_V2 = ['Inactive'].freeze
 
       UNKNOWN_STATUS_V1 = 'Unknown'
       UNKNOWN_STATUS_V2 = 'Status not available'
@@ -346,9 +349,8 @@ module MyHealth
       end
 
       def count_non_active_medications(list)
-        # When cernerPilot and v2StatusMapping flags are enabled,
-        # Expired, Discontinued, and OnHold are already mapped to 'Inactive'
-        list.count { |rx| rx.respond_to?(:disp_status) && rx.disp_status == 'Inactive' }
+        non_active_statuses = v2_status_mapping_enabled? ? NON_ACTIVE_STATUSES_V2 : NON_ACTIVE_STATUSES_V1
+        list.count { |rx| rx.respond_to?(:disp_status) && non_active_statuses.include?(rx.disp_status) }
       end
 
       def count_shipped_medications(list)

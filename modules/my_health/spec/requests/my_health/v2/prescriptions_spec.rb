@@ -714,6 +714,51 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
         end
       end
 
+      context 'filter_count inactive with mhv_medications_v2_status_mapping enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:mhv_medications_v2_status_mapping, anything).and_return(true)
+        end
+
+        it 'counts prescriptions with Inactive status as inactive' do
+          VCR.use_cassette('unified_health_data/get_prescriptions_success', match_requests_on: %i[method path]) do
+            get('/my_health/v2/prescriptions', headers:)
+
+            json_response = JSON.parse(response.body)
+            filter_count = json_response['meta']['filter_count']
+            prescriptions = json_response['data']
+
+            expected_inactive = prescriptions.count do |rx|
+              rx['attributes']['disp_status'] == 'Inactive'
+            end
+
+            expect(filter_count['inactive']).to eq(expected_inactive)
+          end
+        end
+      end
+
+      context 'filter_count inactive with mhv_medications_v2_status_mapping disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:mhv_medications_v2_status_mapping, anything).and_return(false)
+        end
+
+        it 'counts prescriptions with Expired, Discontinued, or Active: On hold statuses as inactive' do
+          VCR.use_cassette('unified_health_data/get_prescriptions_success', match_requests_on: %i[method path]) do
+            get('/my_health/v2/prescriptions', headers:)
+
+            json_response = JSON.parse(response.body)
+            filter_count = json_response['meta']['filter_count']
+            prescriptions = json_response['data']
+
+            legacy_non_active = ['Expired', 'Discontinued', 'Active: On hold']
+            expected_inactive = prescriptions.count do |rx|
+              legacy_non_active.include?(rx['attributes']['disp_status'])
+            end
+
+            expect(filter_count['inactive']).to eq(expected_inactive)
+          end
+        end
+      end
+
       it 'includes Oracle/UHD data' do
         VCR.use_cassette('unified_health_data/get_prescriptions_success', match_requests_on: %i[method path]) do
           get('/my_health/v2/prescriptions', headers:)
