@@ -45,11 +45,11 @@
     cat ~/.ssh/id_ed25519.pub
     ```
 
-7. Go to GitHub SSH settings, click create new SSH key, create a name for the key, paste the key contents and save the key.
+7. Go to your [GHEC-US SSH settings](https://va.ghe.com/settings/keys), click create new SSH key, create a name for the key, paste the key contents and save the key.
 8. Validate SSH is working by running:
 
     ```bash
-    ssh -T git@github.com
+    ssh -T git@va.ghe.com
     ```
 
     The output will be:
@@ -61,7 +61,7 @@
 9. When cloning repos, run the SSH commands instead of HTTPS:
 
     ```bash
-    git clone git@github.com:owner/repo.git
+    git clone git@va.ghe.com:software/repo.git
     ```
 
 ## Setup asdf or RVM (Ruby Version Manager) for Ruby version management
