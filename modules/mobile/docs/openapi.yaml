@@ -4070,6 +4070,40 @@ paths:
       security:
         - Bearer: []
       summary: /v0/pensions
+  /v0/power_of_attorney:
+    get:
+      description: Retrieves the Power of Attorney for a veteran, if any.
+      operationId: getPowerOfAttorney
+      parameters:
+        - $ref: '#/components/parameters/InflectionHeader'
+      responses:
+        '200':
+          description: Successfully checked for Power of Attorney information. Returns Power of Attorney details if available; otherwise, returns an empty object.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: ./schemas/PowerOfAttorney.yml
+                  - type: object
+                    description: An empty JSON object indicating no Power of Attorney exists.
+                    example: {}
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '422':
+          $ref: '#/components/responses/422'
+        '500':
+          $ref: '#/components/responses/500'
+        '502':
+          $ref: '#/components/responses/502'
+        '503':
+          $ref: '#/components/responses/503'
+        '504':
+          $ref: '#/components/responses/504'
+      security:
+        - Bearer: []
+      summary: /v0/power_of_attorney
   /v0/push/prefs/{endpointSid}:
     get:
       description: Get the user's push notification preferences
