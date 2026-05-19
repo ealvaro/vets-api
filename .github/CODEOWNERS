@@ -1310,6 +1310,7 @@ spec/concerns/pdf_filename_generator_spec.rb @software/health-apps-backend @soft
 spec/concerns/rated_disabilities_fetch_concern_spec.rb @software/disability-benefits @software/backend-review-group
 spec/concerns/retriable_concern_spec.rb @software/health-apps-backend @software/backend-review-group
 spec/concerns/traceable_spec.rb @software/backend-review-group
+spec/config/initializers/betamocks_spec.rb @software/backend-review-group
 spec/config/initializers/committee_spec.rb @software/backend-review-group
 spec/config/initializers/staccato_spec.rb @software/health-apps-backend @software/backend-review-group
 spec/controllers/application_controller_spec.rb @software/backend-review-group @software/octo-identity

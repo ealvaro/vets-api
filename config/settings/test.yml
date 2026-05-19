@@ -360,7 +360,7 @@ dgi:
       public_key_path: modules/vye/spec/fixtures/dgi_public_test.pem
     vets:
       mock: false
-      url: ''
+      url: http://localhost:3000
 dhp:
   fitbit:
     client_id: ''
