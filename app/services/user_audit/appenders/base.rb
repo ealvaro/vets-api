@@ -68,6 +68,14 @@ module UserAudit
         @acting_user_agent = tags[:user_agent]
       end
 
+      def acting_visit_id
+        @acting_visit_id = tags[:visit_id]
+      end
+
+      def acting_device_id
+        @acting_device_id = tags[:device_id]
+      end
+
       def log_success(message, **log_payload)
         Rails.logger.info("[UserAudit][Logger] success: #{message}", log_payload)
       end

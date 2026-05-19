@@ -7,6 +7,8 @@ FactoryBot.define do
     status { 'initial' }
     acting_ip_address { Faker::Internet.ip_v4_address }
     acting_user_agent { Faker::Internet.user_agent }
+    acting_visit_id { Faker::Alphanumeric.unique.alphanumeric(number: 16) }
+    acting_device_id { Faker::Internet.uuid }
     association :acting_user_verification, factory: :user_verification
   end
 end

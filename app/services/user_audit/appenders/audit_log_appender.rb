@@ -49,7 +49,7 @@ module UserAudit
       end
 
       def message
-        mask_payload(payload).merge({ acting_ip_address:, acting_user_agent: })
+        mask_payload(payload).merge({ acting_ip_address:, acting_user_agent:, acting_visit_id:, acting_device_id: })
       end
 
       def acting_user_account

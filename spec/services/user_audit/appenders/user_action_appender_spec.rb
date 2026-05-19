@@ -12,7 +12,8 @@ RSpec.describe UserAudit::Appenders::UserActionAppender do
   let!(:user_action_event) { create(:user_action_event, identifier:) }
 
   let(:named_tags) do
-    { remote_ip: Faker::Internet.ip_v4_address, user_agent: Faker::Internet.user_agent }
+    { remote_ip: Faker::Internet.ip_v4_address, user_agent: Faker::Internet.user_agent,
+      visit_id: Faker::Alphanumeric.unique.alphanumeric(number: 16), device_id: Faker::Internet.uuid }
   end
 
   let(:payload) do
@@ -52,6 +53,8 @@ RSpec.describe UserAudit::Appenders::UserActionAppender do
         expect(user_action.status).to eq(status)
         expect(user_action.acting_ip_address).to eq(named_tags[:remote_ip])
         expect(user_action.acting_user_agent).to eq(named_tags[:user_agent])
+        expect(user_action.acting_visit_id).to eq(named_tags[:visit_id])
+        expect(user_action.acting_device_id).to eq(named_tags[:device_id])
 
         expect(Rails.logger).to have_received(:info).with(
           '[UserAudit][Logger] success: UserAction created',

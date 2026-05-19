@@ -18,7 +18,8 @@ RSpec.describe UserAudit::Appenders::Base do
   let(:user_action_event) { create(:user_action_event, identifier:) }
 
   let(:named_tags) do
-    { remote_ip: Faker::Internet.ip_v4_address, user_agent: Faker::Internet.user_agent }
+    { remote_ip: Faker::Internet.ip_v4_address, user_agent: Faker::Internet.user_agent,
+      visit_id: Faker::Alphanumeric.unique.alphanumeric(number: 16), device_id: Faker::Internet.uuid }
   end
 
   let(:payload) do

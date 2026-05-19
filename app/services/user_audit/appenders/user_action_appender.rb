@@ -12,7 +12,9 @@ module UserAudit
           subject_user_verification:,
           status:,
           acting_ip_address:,
-          acting_user_agent:
+          acting_user_agent:,
+          acting_device_id:,
+          acting_visit_id:
         )
 
         log_success('UserAction created', event_id: user_action_event.id,
