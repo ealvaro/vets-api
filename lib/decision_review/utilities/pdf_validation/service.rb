@@ -12,31 +12,63 @@ module DecisionReview
 
       configuration DecisionReview::PdfValidation::Configuration
 
+      STATSD_KEY_PREFIX = 'api.decision_review.pdf_validation'
       LH_ERROR_KEY = 'errors'
       LH_ERROR_DETAIL_KEY = 'detail'
       GENERIC_FAILURE_MESSAGE = 'Something went wrong...'
 
       def validate_pdf_with_lighthouse(file)
-        perform(:post, 'uploads/validate_document',
-                file.read,
-                { 'Content-Type' => 'application/pdf', 'Transfer-Encoding' => 'chunked' })
+        with_monitoring do
+          perform(:post, 'uploads/validate_document',
+                  file.read,
+                  { 'Content-Type' => 'application/pdf', 'Transfer-Encoding' => 'chunked' })
+        end
       rescue Common::Client::Errors::ClientError => e
-        emsg = 'Decision Review Upload failed PDF validation.'
-        validation_failure_detail = e.body[LH_ERROR_KEY].map { |d| d[LH_ERROR_DETAIL_KEY] }.join("\n")
-        error_details = { message: emsg, error: e, validation_failure_detail: }
-        ::Rails.logger.error(emsg, error_details)
+        handle_client_error(e)
+      rescue => e
+        handle_unexpected_error(e)
+      end
+
+      private
+
+      def handle_client_error(error)
+        validation_failure_detail = extract_error_detail(error)
+        monitor.track_request(
+          :error,
+          'Decision Review Upload failed PDF validation.',
+          "#{STATSD_KEY_PREFIX}.validate_pdf_with_lighthouse.pdf_validation_failure",
+          call_location: caller_locations.first,
+          error: error.message,
+          validation_failure_detail:
+        )
         raise Common::Exceptions::UnprocessableEntity.new(
           detail: validation_failure_detail,
           source: 'FormAttachment.lighthouse_validation.invalid_pdf'
         )
-      rescue => e
-        emsg = 'Decision Review Upload failed with an unexpected failure case. Investigation Required.'
-        error_details = { message: emsg, error: e }
-        ::Rails.logger.error(emsg, error_details)
+      end
+
+      def handle_unexpected_error(error)
+        monitor.track_request(
+          :error,
+          'Decision Review Upload failed with an unexpected failure case. Investigation Required.',
+          "#{STATSD_KEY_PREFIX}.validate_pdf_with_lighthouse.unexpected_failure",
+          call_location: caller_locations.first,
+          error: error.message
+        )
         raise Common::Exceptions::UnprocessableEntity.new(
           detail: GENERIC_FAILURE_MESSAGE,
           source: 'FormAttachment.lighthouse_validation.unknown_error'
         )
+      end
+
+      def extract_error_detail(error)
+        detail = error.body&.dig(LH_ERROR_KEY)&.map { |d| d[LH_ERROR_DETAIL_KEY] }&.join("\n")
+        detail.presence || GENERIC_FAILURE_MESSAGE
+      end
+
+      def monitor
+        @monitor ||= Logging::Monitor.new('decision_review_pdf_validation',
+                                          allowlist: %w[validation_failure_detail error])
       end
     end
   end
