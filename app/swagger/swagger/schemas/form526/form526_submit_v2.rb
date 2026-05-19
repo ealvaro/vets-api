@@ -262,7 +262,7 @@ module Swagger
           property :city,
                    type: :string,
                    maxLength: 30,
-                   pattern: /^([-a-zA-Z0-9'.#]([-a-zA-Z0-9'.# ])?)+$/
+                   pattern: /\A[-a-zA-Z0-9'.#]( ?[-a-zA-Z0-9'.#])*\z/
           # See link for state enum
           # https://va.ghe.com/software/vets-json-schema/blob/76083e33f175fb00392e31f1f5f90654d05f1fd2/dist/21-526EZ-ALLCLAIMS-schema.json#L286-L353
           property :state, type: :string, example: 'OR'
@@ -420,7 +420,7 @@ module Swagger
             property :city,
                      type: :string,
                      maxLength: 30,
-                     pattern: /^([-a-zA-Z0-9'.#]([-a-zA-Z0-9'.# ])?)+$/
+                     pattern: /\A[-a-zA-Z0-9'.#]( ?[-a-zA-Z0-9'.#])*\z/
             # See link for state enum
             # https://va.ghe.com/software/vets-json-schema/blob/76083e33f175fb00392e31f1f5f90654d05f1fd2/dist/21-526EZ-ALLCLAIMS-schema.json#L286-L353
             property :state, type: :string, example: 'OR'
