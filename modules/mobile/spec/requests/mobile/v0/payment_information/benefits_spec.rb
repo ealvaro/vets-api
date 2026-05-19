@@ -241,7 +241,10 @@ Payment account info missing for user #{user.uuid}",
       it 'logs a message with Rails Logger' do
         VCR.use_cassette('lighthouse/direct_deposit/update/200_valid') do
           expect_any_instance_of(User).to receive(:all_emails).and_return([])
-          expect(Rails.logger).to receive(:info).once
+          expect(Rails.logger).to receive(:info).at_least(:once)
+          expect(UserAudit.logger).to receive(:success).with(
+            hash_including(event: :update_direct_deposit)
+          )
 
           put '/mobile/v0/payment-information/benefits', params: payment_info_request,
                                                          headers: sis_headers(json: true)
@@ -265,6 +268,16 @@ Payment account info missing for user #{user.uuid}",
                                                          headers: sis_headers(json: true)
         end
         expect(response).to have_http_status(:unprocessable_entity)
+      end
+
+      it 'does not log a failed direct deposit update audit event' do
+        expect(UserAudit.logger).not_to receive(:error)
+
+        VCR.use_cassette('lighthouse/direct_deposit/update/400_invalid_account_number') do
+          put '/mobile/v0/payment-information/benefits',
+              params: payment_info_request,
+              headers: sis_headers(json: true)
+        end
       end
     end
 
@@ -333,6 +346,63 @@ Payment account info missing for user #{user.uuid}",
         allow_any_instance_of(Faraday::Connection).to receive(:put).and_raise(Faraday::TimeoutError)
         put '/mobile/v0/payment-information/benefits', params: payment_info_request, headers: sis_headers(json: true)
         expect(response).to have_http_status(:gateway_timeout)
+      end
+    end
+
+    context 'when logging audit events' do
+      before do
+        allow(UserAudit.logger).to receive(:success)
+        allow(UserAudit.logger).to receive(:error)
+      end
+
+      it 'logs a success audit event' do
+        VCR.use_cassette('lighthouse/direct_deposit/update/200_valid') do
+          put '/mobile/v0/payment-information/benefits',
+              params: payment_info_request,
+              headers: sis_headers(json: true)
+        end
+
+        expect(UserAudit.logger).to have_received(:success).with(
+          {
+            event: :update_direct_deposit,
+            user_verification: user.user_verification,
+            account_type: 'Checking',
+            account_number_last_four: '5678',
+            routing_number_last_four: '0021'
+          }
+        )
+      end
+
+      it 'logs an error audit event' do
+        VCR.use_cassette('mobile/direct_deposit/update/403_forbidden') do
+          put '/mobile/v0/payment-information/benefits',
+              params: payment_info_request,
+              headers: sis_headers(json: true)
+        end
+
+        expect(UserAudit.logger).to have_received(:error).with(
+          {
+            event: :update_direct_deposit,
+            user_verification: user.user_verification,
+            account_type: 'Checking',
+            account_number_last_four: '5678',
+            routing_number_last_four: '0021',
+            error_code: 'direct.deposit.generic.error',
+            error_message: 'Forbidden'
+          }
+        )
+      end
+    end
+
+    context 'when user is not authenticated' do
+      before { allow_any_instance_of(Mobile::V0::PaymentInformationController).to receive(:current_user).and_return(nil) }
+
+      it 'does not log an audit event' do
+        expect(UserAudit.logger).not_to receive(:error)
+        expect(UserAudit.logger).not_to receive(:success)
+
+        put '/mobile/v0/payment-information/benefits', params: payment_info_request,
+                                                       headers: sis_headers(json: true)
       end
     end
   end

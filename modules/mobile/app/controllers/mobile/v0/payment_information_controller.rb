@@ -25,16 +25,43 @@ module Mobile
 
       def update
         data = lighthouse_service.update_payment_info(pay_info)
+
+        log_audit_event(data)
+
         adapted_data = lighthouse_adapter.parse(data, current_user.uuid)
         payment_information = Mobile::V0::PaymentInformation.new(adapted_data)
         render json: Mobile::V0::PaymentInformationSerializer.new(payment_information)
       rescue Common::Exceptions::BaseError => e
         error = { status: e.status_code, body: e.errors.first }
         lh_error_response = Mobile::V0::Adapters::LighthouseDirectDepositError.parse(error)
+
+        log_audit_event(lh_error_response)
+
         render status: lh_error_response.status, json: lh_error_response.body
       end
 
       private
+
+      def log_audit_event(response)
+        return unless current_user
+
+        payload = {
+          event: :update_direct_deposit,
+          user_verification: current_user.user_verification,
+          account_type: @pay_info&.account_type,
+          account_number_last_four: @pay_info&.account_number&.last(4),
+          routing_number_last_four: @pay_info&.routing_number&.last(4)
+        }
+
+        if response.error?
+          payload[:error_code] = response.code
+          payload[:error_message] = response.detail
+
+          UserAudit.logger.error(payload)
+        else
+          UserAudit.logger.success(payload)
+        end
+      end
 
       def payment_information_params
         params[:routing_number] = params[:financial_institution_routing_number]

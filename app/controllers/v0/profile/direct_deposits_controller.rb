@@ -17,6 +17,8 @@ module V0
         error = { status: exception.status_code, body: exception.errors.first }
         response = Lighthouse::DirectDeposit::ErrorParser.parse(error)
 
+        log_audit_event(response)
+
         if response.status.between?(500, 599)
           Rails.logger.error("Direct Deposit API error: #{exception.message}", {
                                error_class: exception.class.to_s,
@@ -38,12 +40,36 @@ module V0
         set_payment_account(payment_account_params)
 
         response = client.update_payment_info(@payment_account)
+
+        log_audit_event(response)
+
         send_confirmation_email
 
         render json: DirectDepositsSerializer.new(response.body), status: response.status
       end
 
       private
+
+      def log_audit_event(response)
+        return unless current_user
+
+        payload = {
+          event: :update_direct_deposit,
+          user_verification: current_user.user_verification,
+          account_type: @payment_account&.account_type,
+          account_number_last_four: @payment_account&.account_number&.last(4),
+          routing_number_last_four: @payment_account&.routing_number&.last(4)
+        }
+
+        if response.error?
+          payload[:error_code] = response.code
+          payload[:error_message] = response.detail
+
+          UserAudit.logger.error(payload)
+        else
+          UserAudit.logger.success(payload)
+        end
+      end
 
       def client
         @client ||= DirectDeposit::Client.new(@current_user.icn)

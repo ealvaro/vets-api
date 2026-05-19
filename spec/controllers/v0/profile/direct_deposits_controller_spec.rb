@@ -12,6 +12,8 @@ RSpec.describe V0::Profile::DirectDepositsController, feature: :direct_deposit,
     token = 'abcdefghijklmnop'
     allow_any_instance_of(DirectDeposit::Configuration).to receive(:access_token).and_return(token)
     allow(Rails.logger).to receive(:info)
+    allow(UserAudit.logger).to receive(:success)
+    allow(UserAudit.logger).to receive(:error)
   end
 
   describe '#show' do
@@ -216,6 +218,15 @@ RSpec.describe V0::Profile::DirectDepositsController, feature: :direct_deposit,
         }
       }
     end
+    let(:expected_log_payload) do
+      {
+        event: :update_direct_deposit,
+        user_verification: user.user_verification,
+        account_type: 'Checking',
+        account_number_last_four: '7890',
+        routing_number_last_four: '0503'
+      }
+    end
 
     it 'returns a status of 200' do
       VCR.use_cassette('lighthouse/direct_deposit/update/200_valid') do
@@ -264,6 +275,16 @@ RSpec.describe V0::Profile::DirectDepositsController, feature: :direct_deposit,
 
           put(:update, params:)
           expect(response).to have_http_status(:ok)
+        end
+      end
+    end
+
+    context 'when a direct deposit audit log is logged' do
+      it 'logs a correct masked audit payload' do
+        expect(UserAudit.logger).to receive(:success).with(expected_log_payload)
+
+        VCR.use_cassette('lighthouse/direct_deposit/update/200_valid') do
+          put(:update, params:)
         end
       end
     end
@@ -384,84 +405,94 @@ RSpec.describe V0::Profile::DirectDepositsController, feature: :direct_deposit,
     end
 
     context 'when user profile info is invalid' do
-      it 'returns a day phone number error' do
-        VCR.use_cassette('lighthouse/direct_deposit/update/400_invalid_day_phone_number') do
-          put(:update, params:)
+      context 'an invalid day phone number' do
+        it 'returns an error' do
+          VCR.use_cassette('lighthouse/direct_deposit/update/400_invalid_day_phone_number') do
+            put(:update, params:)
+          end
+
+          expect(response).to have_http_status(:bad_request)
+
+          json = JSON.parse(response.body)
+          e = json['errors'].first
+
+          expect(e).not_to be_nil
+          expect(e['title']).to eq('Bad Request')
+          expect(e['code']).to eq('direct.deposit.day.phone.number.invalid')
+          expect(e['source']).to eq('Lighthouse Direct Deposit')
         end
-
-        expect(response).to have_http_status(:bad_request)
-
-        json = JSON.parse(response.body)
-        e = json['errors'].first
-
-        expect(e).not_to be_nil
-        expect(e['title']).to eq('Bad Request')
-        expect(e['code']).to eq('direct.deposit.day.phone.number.invalid')
-        expect(e['source']).to eq('Lighthouse Direct Deposit')
       end
 
-      it 'returns an mailing address error' do
-        VCR.use_cassette('lighthouse/direct_deposit/update/400_invalid_mailing_address') do
-          put(:update, params:)
+      context 'an invalid mailing address' do
+        it 'returns an error' do
+          VCR.use_cassette('lighthouse/direct_deposit/update/400_invalid_mailing_address') do
+            put(:update, params:)
+          end
+
+          expect(response).to have_http_status(:bad_request)
+
+          json = JSON.parse(response.body)
+          e = json['errors'].first
+
+          expect(e).not_to be_nil
+          expect(e['title']).to eq('Bad Request')
+          expect(e['code']).to eq('direct.deposit.mailing.address.invalid')
+          expect(e['source']).to eq('Lighthouse Direct Deposit')
         end
-
-        expect(response).to have_http_status(:bad_request)
-
-        json = JSON.parse(response.body)
-        e = json['errors'].first
-
-        expect(e).not_to be_nil
-        expect(e['title']).to eq('Bad Request')
-        expect(e['code']).to eq('direct.deposit.mailing.address.invalid')
-        expect(e['source']).to eq('Lighthouse Direct Deposit')
       end
 
-      it 'returns a routing number checksum error' do
-        VCR.use_cassette('lighthouse/direct_deposit/update/400_routing_number_checksum') do
-          put(:update, params:)
+      context 'an invalid routing number checksum' do
+        it 'returns an error' do
+          VCR.use_cassette('lighthouse/direct_deposit/update/400_routing_number_checksum') do
+            put(:update, params:)
+          end
+
+          expect(response).to have_http_status(:bad_request)
+
+          json = JSON.parse(response.body)
+          e = json['errors'].first
+
+          expect(e).not_to be_nil
+          expect(e['title']).to eq('Bad Request')
+          expect(e['code']).to eq('direct.deposit.routing.number.invalid.checksum')
+          expect(e['source']).to eq('Lighthouse Direct Deposit')
         end
-
-        expect(response).to have_http_status(:bad_request)
-
-        json = JSON.parse(response.body)
-        e = json['errors'].first
-
-        expect(e).not_to be_nil
-        expect(e['title']).to eq('Bad Request')
-        expect(e['code']).to eq('direct.deposit.routing.number.invalid.checksum')
-        expect(e['source']).to eq('Lighthouse Direct Deposit')
       end
 
-      it 'returns a potential fraud error from code GUIE50041' do
-        VCR.use_cassette('lighthouse/direct_deposit/update/400_potential_fraud_GUIE50041') do
-          put(:update, params:)
+      context 'a potential fraud from code GUIE50041' do
+        it 'returns a potential fraud error from code GUIE50041' do
+          VCR.use_cassette('lighthouse/direct_deposit/update/400_potential_fraud_GUIE50041') do
+            put(:update, params:)
+          end
+
+          expect(response).to have_http_status(:bad_request)
+
+          json = JSON.parse(response.body)
+          e = json['errors'].first
+
+          expect(e).not_to be_nil
+          expect(e['title']).to eq('Bad Request')
+          expect(e['code']).to eq('direct.deposit.potential.fraud')
+          expect(e['source']).to eq('Lighthouse Direct Deposit')
         end
-
-        expect(response).to have_http_status(:bad_request)
-
-        json = JSON.parse(response.body)
-        e = json['errors'].first
-
-        expect(e).not_to be_nil
-        expect(e['title']).to eq('Bad Request')
-        expect(e['code']).to eq('direct.deposit.potential.fraud')
-        expect(e['source']).to eq('Lighthouse Direct Deposit')
       end
 
-      it 'returns a potential fraud error from code GUIE50022' do
-        VCR.use_cassette('lighthouse/direct_deposit/update/400_potential_fraud_GUIE50022') do
-          put(:update, params:)
+      context 'a potential fraud from code GUIE50022' do
+        it 'returns a potential fraud error from code GUIE50022' do
+          VCR.use_cassette('lighthouse/direct_deposit/update/400_potential_fraud_GUIE50022') do
+            put(:update, params:)
+          end
+
+          expect(response).to have_http_status(:bad_request)
+
+          json = JSON.parse(response.body)
+          e = json['errors'].first
+
+          expect(e).not_to be_nil
+          expect(e['title']).to eq('Bad Request')
+          expect(e['code']).to eq('direct.deposit.potential.fraud')
+          expect(e['source']).to eq('Lighthouse Direct Deposit')
         end
-
-        expect(response).to have_http_status(:bad_request)
-
-        json = JSON.parse(response.body)
-        e = json['errors'].first
-
-        expect(e).not_to be_nil
-        expect(e['title']).to eq('Bad Request')
-        expect(e['code']).to eq('direct.deposit.potential.fraud')
-        expect(e['source']).to eq('Lighthouse Direct Deposit')
       end
     end
 
@@ -497,6 +528,42 @@ RSpec.describe V0::Profile::DirectDepositsController, feature: :direct_deposit,
           expect(Rails.logger).not_to receive(:error)
           expect(response).to have_http_status(:bad_request)
         end
+      end
+    end
+
+    context 'when user is not authenticated' do
+      before { allow(controller).to receive(:current_user).and_return(nil) }
+
+      it 'does not log an audit event' do
+        expect(UserAudit.logger).not_to receive(:error)
+        expect(UserAudit.logger).not_to receive(:success)
+
+        put(:update, params:)
+      end
+    end
+
+    context 'when an audit error is logged' do
+      before do
+        allow(UserAudit.logger).to receive(:success)
+        allow(UserAudit.logger).to receive(:error)
+      end
+
+      it 'logs a masked error audit payload' do
+        VCR.use_cassette('lighthouse/direct_deposit/update/400_invalid_account_number') do
+          put(:update, params:)
+        end
+
+        expect(UserAudit.logger).to have_received(:error).with(
+          hash_including(
+            event: :update_direct_deposit,
+            user_verification: user.user_verification,
+            account_type: 'Checking',
+            account_number_last_four: '5678',
+            routing_number_last_four: '0503',
+            error_code: 'direct.deposit.account.number.invalid',
+            error_message: a_string_including('payment.accountNumber.invalid')
+          )
+        )
       end
     end
   end
