@@ -567,13 +567,13 @@ jobs:
       # above already fetched them into "Test Results Group N/" directories.
       # The generated log is cached (below) for the next workflow run.
       - name: Generate parallel_test runtime log from JUnit XML
-        if: always()
+        if: needs.tests.result == 'success'
         run: |
           mkdir -p tmp
           ruby script/junit_to_runtime_log.rb tmp/parallel_runtime_rspec.log "Test Results Group*/*.xml"
 
       - name: Save runtime log to cache
-        if: always()
+        if: needs.tests.result == 'success'
         uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
           path: tmp/parallel_runtime_rspec.log
