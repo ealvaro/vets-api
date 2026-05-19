@@ -36,5 +36,9 @@ Datadog.configure do |c|
     # Suppress Datadog's own internal log noise
     c.logger.level = Logger::WARN
 
+    # Use TCP transport for sidekiq to avoid APM socket race condition on startup
+    # Race condition was introduced in Datadog 2.32.0
+    c.agent.host = 'localhost'
+    c.agent.port = 8126
   end
 end
