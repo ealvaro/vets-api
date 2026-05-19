@@ -16,7 +16,7 @@ class FormProfiles::VA261880 < FormProfile
     @contact_information = initialize_contact_information
     @military_information = initialize_military_information
 
-    versioned_form_id, version_number = self.class.form_filename_and_version(form_id, @current_user)
+    versioned_form_id, version_number = self.class.form_filename_and_version(form_id, @user)
 
     mappings = self.class.mappings_for_form(versioned_form_id)
     form_data = generate_prefill(mappings)
