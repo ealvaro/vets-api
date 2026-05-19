@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_05_14_174408) do
+ActiveRecord::Schema[7.2].define(version: 2026_05_18_230147) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -754,6 +754,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_14_174408) do
     t.string "credential_service_providers", default: ["logingov", "idme", "mhv"], array: true
     t.boolean "json_api_compatibility", default: true, null: false
     t.boolean "oidc", default: false, null: false
+    t.string "client_secret_digest"
     t.index ["client_id"], name: "index_client_configs_on_client_id", unique: true
   end
 
