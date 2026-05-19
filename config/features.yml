@@ -1877,6 +1877,10 @@ features:
     actor_type: user
     description: Enables fetching imaging studies from SCDF for Medical Records
     enable_in_development: false
+  mhv_medical_records_get_accelerated_vista_notes_from_v1:
+    actor_type: user
+    description: For acc care notes, fetch VistA notes from the v1 PHR API instead of SCDF
+    enable_in_development: false
   mhv_medical_records_images_domain:
     actor_type: user
     description: Pulls images out of Labs & Tests into its own top-level domain
