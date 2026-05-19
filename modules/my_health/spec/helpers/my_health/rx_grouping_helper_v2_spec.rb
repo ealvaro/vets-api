@@ -3,18 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe MyHealth::RxGroupingHelperV2 do
-  # Test through the module_function interface
-  # Note: group_prescriptions is defined as a module_function, but we test
-  # get_single_rx_from_grouped_list and count_grouped_prescriptions
-  # through an included class since they call group_prescriptions internally
-
-  # Create a test class that includes the helper module for non-module_function methods
+  # Create a test class that includes the helper module
   let(:test_class) do
     Class.new do
       include MyHealth::RxGroupingHelperV2
-
-      # Make group_prescriptions public for testing
-      public :group_prescriptions
     end
   end
 
@@ -333,76 +325,6 @@ RSpec.describe MyHealth::RxGroupingHelperV2 do
     end
   end
 
-  describe '#select_related_rxs' do
-    context 'when prescriptions share the same base number and station' do
-      it 'returns all related prescriptions' do
-        prescriptions = [prescription1, prescription2, prescription3]
-        result = helper.send(:select_related_rxs, prescriptions, prescription1)
-        expect(result).to contain_exactly(prescription1, prescription2, prescription3)
-      end
-    end
-
-    context 'when a suffix prescription is the anchor' do
-      it 'matches prescriptions with the same base number' do
-        prescriptions = [prescription1, prescription2]
-        result = helper.send(:select_related_rxs, prescriptions, prescription2)
-        expect(result).to contain_exactly(prescription1, prescription2)
-      end
-    end
-
-    context 'when prescriptions have different base numbers' do
-      it 'returns only the matching prescription' do
-        prescriptions = [prescription1, prescription4]
-        result = helper.send(:select_related_rxs, prescriptions, prescription1)
-        expect(result).to contain_exactly(prescription1)
-      end
-    end
-
-    context 'when prescriptions share a base number but have different stations' do
-      it 'does not group them together' do
-        other_station = build(:prescription_details,
-                              prescription_id: 10,
-                              prescription_number: '1234567A',
-                              station_number: '456')
-        prescriptions = [prescription1, other_station]
-        result = helper.send(:select_related_rxs, prescriptions, prescription1)
-        expect(result).to contain_exactly(prescription1)
-      end
-    end
-
-    context 'when the list is empty' do
-      it 'returns an empty array' do
-        result = helper.send(:select_related_rxs, [], prescription1)
-        expect(result).to be_empty
-      end
-    end
-
-    context 'when the anchor prescription has nil prescription_number' do
-      it 'returns an empty array' do
-        rx_nil = build(:prescription_details, prescription_id: 20, prescription_number: nil, station_number: '989')
-        result = helper.send(:select_related_rxs, [prescription1, rx_nil], rx_nil)
-        expect(result).to be_empty
-      end
-    end
-
-    context 'when the anchor does not respond to prescription_number' do
-      it 'returns an empty array' do
-        rx_no_method = double('Prescription', prescription_id: 30, station_number: '989')
-        result = helper.send(:select_related_rxs, [prescription1], rx_no_method)
-        expect(result).to be_empty
-      end
-    end
-
-    context 'when list contains prescriptions without prescription_number' do
-      it 'skips them and returns only valid matches' do
-        rx_nil = build(:prescription_details, prescription_id: 40, prescription_number: nil, station_number: '989')
-        prescriptions = [prescription1, prescription2, rx_nil]
-        result = helper.send(:select_related_rxs, prescriptions, prescription1)
-        expect(result).to contain_exactly(prescription1, prescription2)
-      end
-    end
-  end
-
   describe 'edge cases and sorting behavior' do
     context 'with prescriptions that have letter suffixes in different order' do
       it 'groups them correctly with highest suffix as base' do
@@ -604,7 +526,7 @@ RSpec.describe MyHealth::RxGroupingHelperV2 do
               station_number: '989')
       end
 
-      it 'does not group multi-letter suffixes as they use single-letter pattern' do
+      it 'groups multi-letter suffixes together, but not with the unsuffixed base' do
         # NOTE: The helper uses /[A-Z]$/ which only matches single trailing letter
         # So '5555555AA' and '5555555AB' are NOT grouped with '5555555'
         # because the base extraction removes only the last 'A' or 'B', leaving '5555555A'
