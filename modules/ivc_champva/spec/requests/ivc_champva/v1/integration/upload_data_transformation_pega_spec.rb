@@ -53,10 +53,16 @@ RSpec.describe 'Transformation Pega', type: :request do
         allow(IvcChampva::PdfStamper).to receive(:stamp_metadata_items)
 
         allow(s3_client).to receive(:put_object).and_return({ success: true })
-        allow(aws_client).to receive(:put_object).and_return(
+        allow(aws_client).to receive(:put_object) do |params|
+          params[:metadata]&.each do |key, value|
+            unless value.is_a?(String)
+              raise ArgumentError,
+                    "expected params[:metadata][\"#{key}\"] to be a String, got class #{value.class} instead."
+            end
+          end
           double('response',
                  context: double('context', http_response: double('http_response', status_code: 200)))
-        )
+        end
         allow_any_instance_of(IvcChampva::S3).to receive(:client).and_return(aws_client)
       end
 

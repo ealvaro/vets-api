@@ -1543,7 +1543,7 @@ module IvcChampva
         fields = {
           'submissionType' => parsed_form_data['submission_type'].to_s,
           'docType' => parsed_form_data['form_number'],
-          'standalone-flag' => true # kebab-case per downstream Pega requirement
+          'standalone-flag' => 'true' # kebab-case per downstream Pega requirement
         }
         fields['uuid'] = parsed_form_data['claim_id'] if parsed_form_data['claim_id'].present?
         fields
