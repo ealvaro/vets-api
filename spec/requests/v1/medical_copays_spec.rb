@@ -22,6 +22,24 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
     it 'returns a formatted hash response' do
       travel_to Time.utc(2025, 8, 1) do
         VCR.use_cassette('lighthouse/hcc/copay_list_by_month', match_requests_on: %i[method path query]) do
+          # Mock account data to avoid MissingAccountError
+          allow_any_instance_of(MedicalCopays::LighthouseIntegration::Service)
+            .to receive(:fetch_accounts_for_invoices)
+            .and_return(
+              {
+                '4-O3d8XK44ejMS' => {
+                  'id' => '4-O3d8XK44ejMS',
+                  'status' => 'active',
+                  'balance' => 75.72
+                },
+                '4-Nsb4Vwsulhk8' => {
+                  'id' => '4-Nsb4Vwsulhk8',
+                  'status' => 'active',
+                  'balance' => 100.0
+                }
+              }
+            )
+
           get '/v1/medical_copays'
 
           response_body = JSON.parse(response.body)
@@ -49,6 +67,7 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
                 previousUnpaidBalance
                 invoiceDate
                 lineItems
+                statementGeneratedDay
               ]
             )
         end
@@ -167,6 +186,23 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
         travel_to Time.utc(2025, 6, 1) do
           allow(Auth::ClientCredentials::JWTGenerator).to receive(:generate_token).and_return('fake-jwt')
           allow(MedicalCopays::CernerFacilities).to receive(:cerner_copay_user?).and_return(false)
+          # Mock account data to avoid MissingAccountError
+          allow_any_instance_of(MedicalCopays::LighthouseIntegration::Service)
+            .to receive(:fetch_accounts_for_invoices)
+            .and_return(
+              {
+                '4-O3d8XK44ejMS' => {
+                  'id' => '4-O3d8XK44ejMS',
+                  'status' => 'active',
+                  'balance' => 75.72
+                },
+                '4-Nsb4Vwsulhk8' => {
+                  'id' => '4-Nsb4Vwsulhk8',
+                  'status' => 'active',
+                  'balance' => 100.0
+                }
+              }
+            )
 
           get '/v1/medical_copays/4-1abZUKu7LnbcQc'
 
@@ -199,6 +235,7 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
               payments
               associatedStatements
               associatedInvoices
+              statementGeneratedDay
             ]
           )
           expect(data['meta'].keys).to match_array(%w[line_item_count payment_count])
@@ -256,6 +293,23 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
       VCR.use_cassette('lighthouse/hcc/copay_detail_success', vcr_options) do
         allow(Auth::ClientCredentials::JWTGenerator).to receive(:generate_token).and_return('fake-jwt')
         allow(MedicalCopays::CernerFacilities).to receive(:cerner_copay_user?).and_return(false)
+        # Mock account data to avoid MissingAccountError
+        allow_any_instance_of(MedicalCopays::LighthouseIntegration::Service)
+          .to receive(:fetch_accounts_for_invoices)
+          .and_return(
+            {
+              '4-O3d8XK44ejMS' => {
+                'id' => '4-O3d8XK44ejMS',
+                'status' => 'active',
+                'balance' => 75.72
+              },
+              '4-Nsb4Vwsulhk8' => {
+                'id' => '4-Nsb4Vwsulhk8',
+                'status' => 'active',
+                'balance' => 100.0
+              }
+            }
+          )
 
         get '/v1/medical_copays/4-1abZUKu7LnbcQc'
 
@@ -355,7 +409,7 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
     context 'when summary raises ServiceError' do
       before do
         allow(service).to receive(:summary)
-          .and_raise(MedicalCopays::LighthouseIntegration::Service::ServiceError.new('External service error'))
+          .and_raise(MedicalCopays::LighthouseIntegration::Exceptions::ServiceError.new('External service error'))
       end
 
       it 'returns 502 with error payload' do

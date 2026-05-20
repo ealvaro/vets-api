@@ -4,6 +4,7 @@ module Lighthouse
   module HCC
     class Invoice
       include Vets::Model
+      include MedicalCopays::LighthouseIntegration::DataExtractor
       attribute :external_id, String
       attribute :facility, String
       attribute :facility_id, String
@@ -17,6 +18,7 @@ module Lighthouse
       attribute :last_credit_debit, Float
       attribute :url, String
       attribute :line_items, Hash, array: true
+      attribute :statement_generated_day, Integer
 
       def initialize(params)
         @params = params
@@ -25,9 +27,6 @@ module Lighthouse
 
       def assign_attributes
         line_item = @params.dig('resource', 'lineItem')&.first
-        @facility = @params.dig('resource', 'issuer', 'display')
-        @facility_id = @params.dig('resource', 'facility_id')
-        @city = @params.dig('resource', 'city')
         @latest_billing_ref = line_item
                               &.dig('chargeItemReference', 'reference')
                               &.split('/')
@@ -45,6 +44,19 @@ module Lighthouse
         @invoice_date = @params.dig('resource', 'date')
 
         @line_items = @params.dig('resource', 'line_items') || []
+        assign_facility_attr
+        assign_account_attr
+      end
+
+      def assign_account_attr
+        account_data = @params.dig('resource', 'account')
+        @statement_generated_day = extract_statement_generated_day(account_data)
+      end
+
+      def assign_facility_attr
+        @facility = @params.dig('resource', 'issuer', 'display')
+        @facility_id = @params.dig('resource', 'facility_id')
+        @city = @params.dig('resource', 'city')
       end
 
       private

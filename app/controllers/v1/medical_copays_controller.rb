@@ -1,12 +1,13 @@
 # frozen_string_literal: true
 
 require 'medical_copays/cerner_facilities'
+require_relative '../../services/medical_copays/lighthouse_integration/exceptions'
 
 module V1
   class MedicalCopaysController < ApplicationController
     service_tag 'debt-resolution'
     before_action :authorize_icn
-    rescue_from MedicalCopays::LighthouseIntegration::Service::ServiceError, with: :service_error
+    rescue_from MedicalCopays::LighthouseIntegration::Exceptions::ServiceError, with: :service_error
     rescue_from MedicalCopays::VBS::Service::StatementNotFound, with: :not_found
     rescue_from MedicalCopays::VBS::Service::ServiceError, with: :service_error
 

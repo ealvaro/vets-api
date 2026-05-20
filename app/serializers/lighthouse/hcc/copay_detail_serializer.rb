@@ -18,6 +18,7 @@ module Lighthouse
                  :invoice_date,
                  :payment_due_date,
                  :account_number,
+                 :statement_generated_day,
                  :original_amount,
                  :principal_balance,
                  :interest_balance,

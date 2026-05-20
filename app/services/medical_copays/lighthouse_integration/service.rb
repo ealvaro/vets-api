@@ -10,11 +10,14 @@ require 'lighthouse/healthcare_cost_and_coverage/payment_reconciliation/service'
 require 'lighthouse/healthcare_cost_and_coverage/organization/service'
 require 'lighthouse/healthcare_cost_and_coverage/patient/service'
 require 'concurrent-ruby'
+require_relative 'data_extractor'
+require_relative 'exceptions'
 
 module MedicalCopays
   module LighthouseIntegration
     class Service
       include MedicalCopays::LighthouseIntegration::InvoiceEntryChargeItemHelper
+      include DataExtractor
       # Encounter API lacks _id filter; fetch all and filter client-side
       ENCOUNTER_FETCH_LIMIT = 200
       CHARGE_ITEM_FETCH_LIMIT = 100
@@ -24,11 +27,6 @@ module MedicalCopays
       DEFAULT_MONTH_COUNT = 6
       DEFAULT_INVOICE_COUNT = 50
       ALLOWED_INVOICE_STATUSES = %w[draft issued balanced cancelled entered-in-error].freeze
-
-      class MissingOrganizationIdError < StandardError; end
-      class MissingOrganizationRefError < StandardError; end
-      class MissingCityError < StandardError; end
-      class ServiceError < StandardError; end
 
       def initialize(icn)
         @icn = icn
@@ -72,7 +70,7 @@ module MedicalCopays
       rescue => e
         StatsD.increment("#{STATSD_KEY_PREFIX}.summary.failure")
         Rails.logger.error("MedicalCopays::LighthouseIntegration::Service#summary error: #{e.class}: #{e.message}")
-        raise ServiceError, 'External service error'
+        raise MedicalCopays::LighthouseIntegration::Exceptions::ServiceError, 'External service error'
       end
 
       def list_months(month_count: 6, status: nil, include_line_items: false)
@@ -234,24 +232,39 @@ module MedicalCopays
       end
 
       def build_invoice_entries(raw_invoices)
-        raw_invoices.fetch('entry').map do |entry|
+        entries = raw_invoices.fetch('entry')
+        accounts_by_id = fetch_accounts_for_invoices(entries)
+
+        entries.map do |entry|
           resource = entry.fetch('resource')
-
-          org_ref = resource.dig('issuer', 'reference').to_s
-          parts = org_ref.split('/')
-
-          org_id = parts.include?('Organization') ? parts.last : nil
-          raise MissingOrganizationIdError, 'Missing org_id for invoice entry' if org_id.blank?
-
-          org_address = retrieve_organization_address(org_id)
-          org_city = org_address[:city] if org_address
-          raise MissingCityError, "Missing city for org_id #{org_id}" if org_city.blank?
+          org_id, org_city = gather_org_info(resource)
+          account_ref = resource.dig('account', 'reference')
+          account_id = account_ref ? extract_id_from_reference(account_ref) : nil
+          account_data = account_id ? accounts_by_id[account_id] : nil
+          if account_data.blank?
+            raise MedicalCopays::LighthouseIntegration::Exceptions::MissingAccountError,
+                  "Missing account data for account_id #{account_id}"
+          end
 
           enriched_resource = resource.merge('city' => org_city, 'facility_id' => org_id)
+          enriched_resource = enriched_resource.merge('account' => account_data) if account_data
           enriched_entry = entry.merge('resource' => enriched_resource)
 
           Lighthouse::HCC::Invoice.new(enriched_entry)
         end
+      end
+
+      def gather_org_info(resource)
+        org_id = extract_org_id_from_invoice(resource)
+        # No need to check org_id.blank? here - already handled in extract_org_id_from_invoice
+        org_address = retrieve_organization_address(org_id)
+        org_city = org_address[:city] if org_address
+        if org_city.blank?
+          raise MedicalCopays::LighthouseIntegration::Exceptions::MissingCityError,
+                "Missing city for org_id #{org_id}"
+        end
+
+        [org_id, org_city]
       end
 
       def retrieve_organization_address(org_id)
@@ -289,6 +302,31 @@ module MedicalCopays
         }
       end
 
+      def fetch_accounts_for_invoices(invoice_entries)
+        uniq_accounts = invoice_entries.filter_map do |entry|
+          account = entry.dig('resource', 'account')
+          account ? { 'account' => { 'reference' => account['reference'] } } : nil
+        end.uniq
+
+        return {} if uniq_accounts.empty?
+
+        account_futures = uniq_accounts.map do |account|
+          Concurrent::Promises.future { fetch_account(account) }
+        end
+
+        accounts_by_id = {}
+        uniq_accounts.zip(account_futures) do |account, future|
+          account_ref = account['account']['reference']
+          account_id = extract_id_from_reference(account_ref)
+          accounts_by_id[account_id] = future.value!
+        end
+
+        accounts_by_id.compact
+      rescue => e
+        Rails.logger.warn { "Failed to fetch accounts: #{e.class}" }
+        {}
+      end
+
       def fetch_charge_item_dependencies(charge_items)
         encounters_future = Concurrent::Promises.future { fetch_encounters(charge_items) }
         medication_dispenses_future = Concurrent::Promises.future { fetch_medication_dispenses(charge_items) }
@@ -306,8 +344,10 @@ module MedicalCopays
         account_id = extract_id_from_reference(account_ref)
         return nil unless account_id
 
-        response = account_service.list(id: account_id)
-        response.dig('entry', 0, 'resource')
+        Rails.cache.fetch("lighthouse:account:#{account_id}", expires_in: 24.hours) do
+          response = account_service.list(id: account_id)
+          response.dig('entry', 0, 'resource')
+        end
       rescue => e
         Rails.logger.warn { "Failed to fetch account #{account_id}: #{e.class}" }
         nil
@@ -418,32 +458,6 @@ module MedicalCopays
 
         ref = target_ext.dig('valueReference', 'reference')
         extract_id_from_reference(ref)
-      end
-
-      def extract_charge_item_ids(invoice_data)
-        line_items = invoice_data['lineItem'] || []
-        line_items.filter_map do |li|
-          ref = li.dig('chargeItemReference', 'reference')
-          extract_id_from_reference(ref) if ref
-        end
-      end
-
-      def extract_id_from_reference(reference)
-        return nil unless reference
-
-        reference.split('/').last
-      end
-
-      def extract_org_id_from_invoice(invoice_data, optional_org_data: false)
-        org_ref = invoice_data.dig('issuer', 'reference')
-        return nil if optional_org_data && org_ref.blank?
-
-        raise MissingOrganizationRefError, 'No organization reference found' unless org_ref
-
-        org_id = org_ref.split('/').last
-        raise MissingOrganizationIdError, 'No organization ID found' unless org_id
-
-        org_id
       end
 
       def summary_output(total_amount, count, month_count)

@@ -18,5 +18,6 @@ class Lighthouse::HCC::InvoiceSerializer
              :previous_unpaid_balance,
              :last_updated_at,
              :invoice_date,
-             :line_items
+             :line_items,
+             :statement_generated_day
 end

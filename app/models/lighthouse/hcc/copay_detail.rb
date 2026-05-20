@@ -4,6 +4,7 @@ module Lighthouse
   module HCC
     class CopayDetail
       include Vets::Model
+      include MedicalCopays::LighthouseIntegration::DataExtractor
 
       PAYMENT_DUE_DAYS = 30
 
@@ -16,6 +17,7 @@ module Lighthouse
       attribute :invoice_date, String
       attribute :payment_due_date, String
       attribute :account_number, String
+      attribute :statement_generated_day, Integer
 
       attribute :original_amount, Float
       attribute :principal_balance, Float
@@ -54,6 +56,7 @@ module Lighthouse
         @invoice_date = @invoice_data['date']
         @payment_due_date = calculate_payment_due_date
         @account_number = @account_data&.dig('identifier', 0, 'value')
+        @statement_generated_day = extract_statement_generated_day(@account_data)
 
         assign_balances
         assign_line_items

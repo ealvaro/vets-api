@@ -3,6 +3,26 @@
 require 'rails_helper'
 
 RSpec.describe MedicalCopays::LighthouseIntegration::Service do
+  let(:mock_accounts) do
+    {
+      'account-123' => {
+        'id' => 'account-123',
+        'status' => 'active',
+        'balance' => 100.0
+      },
+      '4-O3d8XK44ejMS' => {
+        'id' => '4-O3d8XK44ejMS',
+        'status' => 'active',
+        'balance' => 75.72
+      },
+      '4-Nsb4Vwsulhk8' => {
+        'id' => '4-Nsb4Vwsulhk8',
+        'status' => 'active',
+        'balance' => 100.0
+      }
+    }
+  end
+
   describe 'StatsD metrics' do
     let(:service) { described_class.new('123') }
 
@@ -13,7 +33,8 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
             {
               'resource' => {
                 'id' => 'invoice-1',
-                'issuer' => { 'reference' => 'Organization/org-123' }
+                'issuer' => { 'reference' => 'Organization/org-123' },
+                'account' => { 'reference' => 'Account/account-123' }
               }
             }
           ],
@@ -27,6 +48,7 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
         before do
           allow(service).to receive_messages(
             invoice_service: double(list: raw_invoices),
+            fetch_accounts_for_invoices: mock_accounts,
             retrieve_organization_address: {
               city: 'Tampa',
               address_line1: '123 Test St',
@@ -217,6 +239,9 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
 
         service = MedicalCopays::LighthouseIntegration::Service.new('123')
 
+        # Mock account data to avoid MissingAccountError
+        allow(service).to receive(:fetch_accounts_for_invoices).and_return(mock_accounts)
+
         # TODO: Remove client-side filter testing once Lighthouse HCCC honors the
         # `status` FHIR search parameter. Then test the FHIR search parameter directly.
         # Currently the sandbox silently ignores it and returns unfiltered results.
@@ -247,6 +272,9 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
 
         service = MedicalCopays::LighthouseIntegration::Service.new('123')
 
+        # Mock empty account data
+        allow(service).to receive(:fetch_accounts_for_invoices).and_return({})
+
         response = service.list(count: 50, page: 1)
 
         expect(response.entries).to be_empty
@@ -267,7 +295,14 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
     context 'Errors' do
       let(:service) { MedicalCopays::LighthouseIntegration::Service.new('123') }
       let(:raw_invoices) do
-        { 'entry' => [{ 'resource' => { 'issuer' => { 'reference' => 'Organization/4-O3d8XK44ejMS' } } }] }
+        {
+          'entry' => [{
+            'resource' => {
+              'issuer' => { 'reference' => 'Organization/4-O3d8XK44ejMS' },
+              'account' => { 'reference' => 'Account/account-123' }
+            }
+          }]
+        }
       end
 
       it 'raises BadRequest for a 400 from Lighthouse' do
@@ -281,27 +316,64 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
         end
       end
 
-      it 'raises MissingOrganizationIdError' do
-        raw_invoices['entry'].first['resource']['issuer']['reference'] = nil
+      it 'raises MissingOrganizationRefError' do
+        raw_invoices_with_nil_issuer = raw_invoices.deep_dup
+        raw_invoices_with_nil_issuer['entry'].first['resource']['issuer']['reference'] = nil
 
-        allow(service).to receive(:invoice_service).and_return(double(list: raw_invoices))
+        allow(service).to receive_messages(
+          invoice_service: double(list: raw_invoices_with_nil_issuer),
+          fetch_accounts_for_invoices: mock_accounts
+        )
 
         expect { service.list(count: 10, page: 1) }
           .to raise_error(
-            MedicalCopays::LighthouseIntegration::Service::MissingOrganizationIdError,
-            'Missing org_id for invoice entry'
+            MedicalCopays::LighthouseIntegration::Exceptions::MissingOrganizationRefError,
+            'No organization reference found'
           )
       end
 
       it 'raises MissingCityError' do
-        allow(service).to receive(:invoice_service).and_return(double(list: raw_invoices))
-
+        allow(service).to receive_messages(
+          invoice_service: double(list: raw_invoices),
+          fetch_accounts_for_invoices: mock_accounts
+        )
         allow(service).to receive(:retrieve_organization_address).with('4-O3d8XK44ejMS').and_return(nil)
 
         expect { service.list(count: 10, page: 1) }
           .to raise_error(
-            MedicalCopays::LighthouseIntegration::Service::MissingCityError,
+            MedicalCopays::LighthouseIntegration::Exceptions::MissingCityError,
             'Missing city for org_id 4-O3d8XK44ejMS'
+          )
+      end
+
+      it 'raises MissingAccountError when account reference exists but account_data is nil' do
+        allow(service).to receive_messages(
+          invoice_service: double(list: raw_invoices),
+          retrieve_organization_address: { city: 'Tampa' }
+        )
+        # Mock fetch_accounts_for_invoices to return empty hash (account_data is nil)
+        allow(service).to receive(:fetch_accounts_for_invoices).and_return({})
+
+        expect { service.list(count: 10, page: 1) }
+          .to raise_error(
+            MedicalCopays::LighthouseIntegration::Exceptions::MissingAccountError,
+            'Missing account data for account_id account-123'
+          )
+      end
+
+      it 'raises MissingAccountError when account reference is nil (account_id is nil)' do
+        invoice_without_account = raw_invoices.deep_dup
+        invoice_without_account['entry'].first['resource']['account'] = nil
+
+        allow(service).to receive_messages(
+          invoice_service: double(list: invoice_without_account),
+          retrieve_organization_address: { city: 'Tampa' }
+        )
+
+        expect { service.list(count: 10, page: 1) }
+          .to raise_error(
+            MedicalCopays::LighthouseIntegration::Exceptions::MissingAccountError,
+            'Missing account data for account_id '
           )
       end
     end
@@ -383,6 +455,8 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
           allow(Auth::ClientCredentials::JWTGenerator).to receive(:generate_token).and_return('fake-jwt')
 
           service = MedicalCopays::LighthouseIntegration::Service.new('123')
+
+          allow(service).to receive(:fetch_accounts_for_invoices).and_return(mock_accounts)
 
           # Default include_line_items: false — Invoice cassette only.
           response = service.list_months
