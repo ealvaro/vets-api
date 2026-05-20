@@ -694,6 +694,12 @@ jobs:
       #     min_coverage: 90
       #     token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Delete Docker image cache entry
+        if: needs.tests.result == 'success'
+        run: gh cache delete docker-image-${{ github.event.pull_request.merge_commit_sha || github.sha }} || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Configure AWS Credentials
         if: needs.tests.result == 'success' && github.event_name != 'pull_request'
         uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6
