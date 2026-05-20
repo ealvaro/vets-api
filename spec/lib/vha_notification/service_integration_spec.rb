@@ -29,9 +29,10 @@ describe VHANotification::Service do
     allow(Settings).to receive(:vha_notification).and_return(settings)
     allow(StatsD).to receive(:increment)
     allow(VHANotification::JwtGenerator).to receive(:encode_jwt).and_return('jwt-token')
-    if VHANotification::Configuration.instance_variable_defined?(:@conn)
-      VHANotification::Configuration.instance_variable_set(:@conn, nil)
-    end
+
+    # Stub at the method level instead of mutating class state
+    allow_any_instance_of(VHANotification::Configuration)
+      .to receive(:base_path).and_return(base_url)
   end
 
   describe 'VHA Notification API Integration' do
