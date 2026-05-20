@@ -330,7 +330,7 @@ features:
   hca_status_card_enabled:
     actor_type: user
     description: Enables myVA 1010EZ status card functionality.
-    enable_in_development: false   
+    enable_in_development: false
   ezr_browser_monitoring_enabled:
     actor_type: user
     description: Enables browser monitoring for the 10-10EZR application.
@@ -1449,6 +1449,10 @@ features:
   form214502_prefill_enabled:
     actor_type: user
     description: Enables the Prefill experience for form 21-4502
+    enable_in_development: true
+  form214502_service_date_validation:
+    actor_type: user
+    description: Enables date validations on entry/exit for form 21-4502
     enable_in_development: true
   form2110210:
     actor_type: user
