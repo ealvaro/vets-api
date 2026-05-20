@@ -195,7 +195,10 @@ module LGY
     private
 
     def increment_coe_status_counter(suffix)
-      StatsD.increment("#{STATSD_KEY_PREFIX}.coe_status.#{suffix}")
+      StatsD.increment(
+        "#{STATSD_KEY_PREFIX}.coe_status_response",
+        tags: ["status:#{suffix}"]
+      )
     end
 
     def end_point
