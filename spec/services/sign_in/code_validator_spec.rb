@@ -8,13 +8,17 @@ RSpec.describe SignIn::CodeValidator do
       SignIn::CodeValidator.new(code:,
                                 code_verifier:,
                                 client_assertion:,
-                                client_assertion_type:).perform
+                                client_assertion_type:,
+                                client_id: provided_client_id,
+                                client_secret:).perform
     end
 
     let(:code) { 'some-code' }
     let(:code_verifier) { 'some-code-verifier' }
     let(:client_assertion) { 'some-client-assertion' }
     let(:client_assertion_type) { 'some-client-assertion-type' }
+    let(:provided_client_id) { nil }
+    let(:client_secret) { nil }
     let(:token_path) { "https://#{Settings.hostname}#{SignIn::Constants::Auth::TOKEN_ROUTE_PATH}" }
     let(:aud) { token_path }
 
@@ -272,6 +276,57 @@ RSpec.describe SignIn::CodeValidator do
                   end
                 end
               end
+            end
+          end
+        end
+      end
+
+      context 'and client is configured with client secret authentication type' do
+        let(:pkce) { false }
+        let(:stored_client_secret) { 'super-secret-client-secret' }
+        let(:client_secret) { stored_client_secret }
+        let(:client_config) { create(:client_config, pkce:, client_secret: stored_client_secret) }
+
+        context 'and provided client id does not match the code container client id' do
+          let(:provided_client_id) { 'some-other-client-id' }
+          let(:expected_error) { SignIn::Errors::ClientSecretInvalidError }
+          let(:expected_error_message) { 'Client secret is not valid' }
+
+          it 'raises a client secret invalid error' do
+            expect { subject }.to raise_error(expected_error, expected_error_message)
+          end
+        end
+
+        context 'and provided client secret does not match the stored digest' do
+          let(:provided_client_id) { client_config.client_id }
+          let(:client_secret) { 'some-arbitrary-client-secret' }
+          let(:expected_error) { SignIn::Errors::ClientSecretInvalidError }
+          let(:expected_error_message) { 'Client secret is not valid' }
+
+          it 'raises a client secret invalid error' do
+            expect { subject }.to raise_error(expected_error, expected_error_message)
+          end
+        end
+
+        context 'and provided client credentials are valid' do
+          let(:provided_client_id) { client_config.client_id }
+
+          context 'and user verification uuid in code container does not match a user verification' do
+            let(:user_verification_id) { 'some-arbitrary-user-verification-uuid' }
+            let(:expected_error) { ActiveRecord::RecordNotFound }
+            let(:expected_error_message) { "Couldn't find UserVerification with 'id'=\"#{user_verification_id}\"" }
+
+            it 'raises a user verification not found error' do
+              expect { subject }.to raise_exception(expected_error, expected_error_message)
+            end
+          end
+
+          context 'and user verification uuid in code container does match an existing user verification' do
+            let(:user_verification) { create(:user_verification) }
+            let(:user_verification_id) { user_verification.id }
+
+            it 'returns a validated credential object with expected client_config' do
+              expect(subject.client_config).to eq(client_config)
             end
           end
         end

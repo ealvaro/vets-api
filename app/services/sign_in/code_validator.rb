@@ -2,13 +2,15 @@
 
 module SignIn
   class CodeValidator
-    attr_reader :code, :code_verifier, :client_assertion, :client_assertion_type
+    attr_reader :code, :code_verifier, :client_assertion, :client_assertion_type, :client_id, :client_secret
 
-    def initialize(code:, code_verifier:, client_assertion:, client_assertion_type:)
+    def initialize(code:, code_verifier:, client_assertion:, client_assertion_type:, client_id:, client_secret:) # rubocop:disable Metrics/ParameterLists
       @code = code
       @code_verifier = code_verifier
       @client_assertion = client_assertion
       @client_assertion_type = client_assertion_type
+      @client_id = client_id
+      @client_secret = client_secret
     end
 
     def perform
@@ -24,9 +26,15 @@ module SignIn
       validate_code_container
       if client_config.pkce?
         validate_code_challenge
+      elsif client_config.client_secret_configured?
+        validate_client_secret
       else
         validate_client_assertion
       end
+    end
+
+    def validate_client_secret
+      SignIn::ClientSecretValidator.new(client_id:, client_secret:, client_config:).perform
     end
 
     def validate_client_assertion

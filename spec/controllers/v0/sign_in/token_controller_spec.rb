@@ -5,6 +5,9 @@ require 'rails_helper'
 RSpec.describe V0::SignIn::TokenController, type: :controller do
   describe 'POST token' do
     subject do
+      request.env['HTTP_AUTHORIZATION'] = authorization_header.presence
+      request.headers['Authorization'] = authorization_header.presence
+
       get(:token,
           params: {}
                   .merge(code)
@@ -44,7 +47,8 @@ RSpec.describe V0::SignIn::TokenController, type: :controller do
     let(:grant_type_value) { SignIn::Constants::Auth::AUTH_CODE_GRANT }
     let(:client_assertion) { { client_assertion: client_assertion_value } }
     let(:client_assertion_type) { { client_assertion_type: client_assertion_type_value } }
-    let(:client_assertion_value) { 'some-client-assertion' }
+    let(:authorization_header) { nil }
+    let(:client_assertion_value) { nil }
     let(:client_assertion_type_value) { nil }
     let(:type) { nil }
     let(:client_id) { client_config.client_id }
@@ -385,6 +389,7 @@ RSpec.describe V0::SignIn::TokenController, type: :controller do
             let(:pkce) { false }
 
             context 'and client_assertion_type does not match expected value' do
+              let(:client_assertion_value) { 'some-client-assertion' }
               let(:client_assertion_type_value) { 'some-client-assertion-type' }
               let(:expected_error) { 'Client assertion type is not valid' }
 
@@ -571,6 +576,71 @@ RSpec.describe V0::SignIn::TokenController, type: :controller do
                     expect { subject }.to trigger_statsd_increment(statsd_token_success)
                   end
                 end
+              end
+            end
+          end
+
+          context 'and client is configured with client secret authentication type' do
+            let(:pkce) { false }
+            let(:client_id_param) { {} }
+            let(:client_assertion) { {} }
+            let(:client_assertion_type) { {} }
+            let(:client_secret_plain) { 'super-secret-client-secret' }
+            let!(:client_config) do
+              create(:client_config, authentication:, anti_csrf:, pkce:, enforced_terms:, shared_sessions:,
+                                     client_secret: client_secret_plain)
+            end
+
+            context 'and the authorization header is malformed' do
+              let(:authorization_header) { 'Basic not-base64' }
+              let(:expected_error) { 'Authorization header is malformed' }
+
+              it_behaves_like 'error response'
+            end
+
+            context 'and the authorization header contains an invalid secret' do
+              let(:authorization_header) do
+                encoded_credentials = Base64.strict_encode64("#{client_config.client_id}:some-invalid-secret")
+                "Basic #{encoded_credentials}"
+              end
+              let(:expected_error) { 'Client secret is not valid' }
+
+              it_behaves_like 'error response'
+            end
+
+            context 'and the authorization header contains valid client credentials' do
+              let(:authorization_header) do
+                encoded_credentials = Base64.strict_encode64("#{client_config.client_id}:#{client_secret_plain}")
+                "Basic #{encoded_credentials}"
+              end
+              let(:user_verification_id) { user_verification.id }
+              let(:user_verification) { create(:user_verification) }
+              let(:expected_log) { '[SignInService] [V0::SignInController] token' }
+              let(:expected_generator_log) { '[SignInService] [SignIn::TokenResponseGenerator] session created' }
+
+              before { allow(Rails.logger).to receive(:info) }
+
+              it 'creates an OAuthSession' do
+                expect { subject }.to change(SignIn::OAuthSession, :count).by(1)
+              end
+
+              it 'returns ok status' do
+                expect(subject).to have_http_status(:ok)
+              end
+
+              it 'returns expected body with access token' do
+                expect(JSON.parse(subject.body)['data']).to have_key('access_token')
+              end
+
+              it 'logs the successful token request' do
+                subject
+
+                expect(Rails.logger).to have_received(:info).with(expected_log, {})
+                expect(Rails.logger).to have_received(:info).with(expected_generator_log, kind_of(Hash))
+              end
+
+              it 'updates StatsD with a token request success' do
+                expect { subject }.to trigger_statsd_increment(statsd_token_success)
               end
             end
           end

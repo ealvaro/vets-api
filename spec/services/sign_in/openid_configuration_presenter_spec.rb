@@ -60,6 +60,10 @@ RSpec.describe SignIn::OpenidConfigurationPresenter do
       expect(subject[:token_endpoint_auth_methods_supported]).to eq(SignIn::Constants::Auth::TOKEN_ENDPOINT_AUTH_METHODS)
     end
 
+    it 'includes client_secret_basic in token_endpoint_auth_methods_supported' do
+      expect(subject[:token_endpoint_auth_methods_supported]).to include('client_secret_basic')
+    end
+
     it 'returns the expected token_endpoint_auth_signing_alg_values_supported' do
       expect(subject[:token_endpoint_auth_signing_alg_values_supported]).to eq([SignIn::Constants::Auth::ASSERTION_ENCODE_ALGORITHM])
     end

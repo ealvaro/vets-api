@@ -3,14 +3,62 @@
 require 'rails_helper'
 
 RSpec.describe SignIn::TokenResponseGenerator do
-  subject(:generator) { described_class.new(params:, cookies:, request_attributes:) }
+  subject(:generator) do
+    described_class.new(params:, cookies:, request_attributes:, client_secret_basic_credentials:)
+  end
 
   let(:request_attributes) { { remote_ip: } }
   let(:remote_ip) { Faker::Internet.ip_v4_address }
   let(:cookies) { double('cookies') }
+  let(:client_secret_basic_credentials) { {} }
 
   before do
     allow(Rails.logger).to receive(:info)
+  end
+
+  describe '#initialize' do
+    let(:grant_type) { SignIn::Constants::Auth::AUTH_CODE_GRANT }
+    let(:params) do
+      {
+        grant_type:,
+        code: 'some-code'
+      }
+    end
+
+    context 'when client_secret_basic credentials are passed separately and client_id is omitted' do
+      let(:client_secret_basic_credentials) do
+        {
+          client_id: 'basic-client-id',
+          client_secret: 'basic-client-secret'
+        }
+      end
+
+      it 'stores the basic credentials for the auth code flow' do
+        expect(generator.client_id).to eq('basic-client-id')
+        expect(generator.client_secret).to eq('basic-client-secret')
+      end
+    end
+
+    context 'when client_id is also provided in params' do
+      let(:params) do
+        {
+          grant_type:,
+          code: 'some-code',
+          client_id: 'params-client-id'
+        }
+      end
+      let(:client_secret_basic_credentials) do
+        {
+          client_id: 'basic-client-id',
+          client_secret: 'basic-client-secret'
+        }
+      end
+
+      it 'prefers the explicit param client_id and keeps the basic client_secret separate' do
+        expect(generator.client_id).to eq('params-client-id')
+        expect(generator.client_secret).to eq('basic-client-secret')
+      end
+    end
   end
 
   describe '#perform' do
@@ -58,6 +106,31 @@ RSpec.describe SignIn::TokenResponseGenerator do
       it 'logs the expected message' do
         subject.perform
         expect(Rails.logger).to have_received(:info).with(expected_log_message, access_token.to_s)
+      end
+
+      context 'when client_secret_basic credentials are passed separately' do
+        let(:params) do
+          {
+            grant_type:,
+            code: 'some-code'
+          }
+        end
+        let(:client_secret_basic_credentials) do
+          {
+            client_id: 'basic-client-id',
+            client_secret: 'basic-client-secret'
+          }
+        end
+
+        it 'passes the explicit basic credentials to CodeValidator' do
+          subject.perform
+
+          expect(SignIn::CodeValidator).to have_received(:new).with(code: 'some-code', code_verifier: nil,
+                                                                    client_assertion: nil,
+                                                                    client_assertion_type: nil,
+                                                                    client_id: 'basic-client-id',
+                                                                    client_secret: 'basic-client-secret')
+        end
       end
 
       context 'when UserAudit logger is called' do

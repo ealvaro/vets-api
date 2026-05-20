@@ -61,14 +61,20 @@ module V0
       def validate_authorize_sso_params!
         errors = [].tap do |err|
           err << 'client_id' if authorize_sso_params[:client_id].blank?
-          err << 'code_challenge' if authorize_sso_params[:code_challenge].blank?
+          if pkce_client?
+            err << 'code_challenge' if authorize_sso_params[:code_challenge].blank?
 
-          unless authorize_sso_params[:code_challenge_method] == ::SignIn::Constants::Auth::CODE_CHALLENGE_METHOD
-            err << 'code_challenge_method'
+            unless authorize_sso_params[:code_challenge_method] == ::SignIn::Constants::Auth::CODE_CHALLENGE_METHOD
+              err << 'code_challenge_method'
+            end
           end
         end
 
         raise ::SignIn::Errors::MalformedParamsError.new(message: "Invalid params: #{errors.join(', ')}") if errors.any?
+      end
+
+      def pkce_client?
+        client_config(authorize_sso_params[:client_id])&.pkce?
       end
 
       def redirect_to_usip

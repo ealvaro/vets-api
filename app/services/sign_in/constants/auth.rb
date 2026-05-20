@@ -62,7 +62,7 @@ module SignIn
       SERVICE_ACCOUNT_ACCESS_TOKEN_COOKIE_NAME = 'service_account_access_token'
       SCOPES = [DEVICE_SSO = 'device_sso'].freeze
       SUBJECT_TYPES_SUPPORTED = ['public'].freeze
-      TOKEN_ENDPOINT_AUTH_METHODS = %w[private_key_jwt none].freeze
+      TOKEN_ENDPOINT_AUTH_METHODS = %w[private_key_jwt client_secret_basic none].freeze
       TOKEN_ROUTE_PATH = '/v0/sign_in/token'
       USERINFO_ROUTE_PATH = '/sign_in/user_info'
     end

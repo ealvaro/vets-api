@@ -3,10 +3,10 @@
 module SignIn
   class TokenResponseGenerator
     attr_reader :grant_type, :code, :code_verifier, :client_assertion, :client_assertion_type, :assertion,
-                :subject_token, :subject_token_type, :actor_token, :actor_token_type, :client_id, :cookies,
-                :request_attributes
+                :subject_token, :subject_token_type, :actor_token, :actor_token_type, :client_id,
+                :client_secret, :cookies, :request_attributes
 
-    def initialize(params:, cookies:, request_attributes:)
+    def initialize(params:, cookies:, request_attributes:, client_secret_basic_credentials: {})
       @grant_type = params[:grant_type]
       @code = params[:code]
       @code_verifier = params[:code_verifier]
@@ -17,7 +17,8 @@ module SignIn
       @subject_token_type = params[:subject_token_type]
       @actor_token = params[:actor_token]
       @actor_token_type = params[:actor_token_type]
-      @client_id = params[:client_id]
+      @client_id = params[:client_id].presence || client_secret_basic_credentials[:client_id]
+      @client_secret = client_secret_basic_credentials[:client_secret]
       @cookies = cookies
       @request_attributes = request_attributes
     end
@@ -38,8 +39,8 @@ module SignIn
     private
 
     def generate_client_tokens
-      validated_credential = CodeValidator.new(code:, code_verifier:, client_assertion:,
-                                               client_assertion_type:).perform
+      validated_credential = CodeValidator.new(code:, code_verifier:, client_assertion:, client_assertion_type:,
+                                               client_id:, client_secret:).perform
       session_container = SessionCreator.new(validated_credential:).perform
 
       UserAudit.logger.success(event: :sign_in, user_verification: validated_credential.user_verification)

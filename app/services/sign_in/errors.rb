@@ -28,6 +28,7 @@ module SignIn
     class ClientAssertionMalformedJWTError < StandardError; end
     class ClientAssertionSignatureMismatchError < StandardError; end
     class ClientAssertionTypeInvalidError < StandardError; end
+    class ClientSecretInvalidError < StandardError; end
     class CodeChallengeMalformedError < StandardError; end
     class CodeChallengeMethodMismatchError < StandardError; end
     class CodeChallengeMismatchError < StandardError; end

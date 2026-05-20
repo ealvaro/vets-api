@@ -26,8 +26,9 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
     end
 
     let(:shared_sessions) { true }
+    let(:pkce) { true }
     let!(:client_config) do
-      create(:client_config, shared_sessions:, json_api_compatibility: false, client_id:)
+      create(:client_config, shared_sessions:, json_api_compatibility: false, client_id:, pkce:)
     end
 
     let!(:user_account) { create(:user_account) }
@@ -102,48 +103,52 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
       end
     end
 
-    context 'when required params are invalid' do
-      context 'when client_id is not given' do
+    context 'when authentication fails' do
+      context 'when there is no existing access token' do
+        let(:expected_error_message) { 'Access token JWT is malformed' }
+
+        before { request.cookies.clear }
+
+        it_behaves_like 'a redirect to USIP'
+      end
+
+      context 'when the access token is expired' do
+        let(:existing_access_token) { create(:access_token, expiration_time: 1.day.ago) }
+        let(:expected_error_message) { 'Access token has expired' }
+
+        it_behaves_like 'a redirect to USIP'
+      end
+    end
+
+    context 'when authentication succeeds' do
+      context 'and client_id is not given' do
         let(:client_id_param) { nil }
         let(:expected_error_message) { 'Invalid params: client_id' }
 
         it_behaves_like 'an error response'
       end
 
-      context 'when code_challenge is not given' do
-        let(:code_challenge) { nil }
-        let(:expected_error_message) { 'Invalid params: code_challenge' }
+      context 'and the client is configured for pkce authentication' do
+        let(:pkce) { true }
 
-        it_behaves_like 'an error response'
-      end
+        context 'and required pkce params are invalid' do
+          context 'when code_challenge is not given' do
+            let(:code_challenge) { nil }
+            let(:expected_error_message) { 'Invalid params: code_challenge' }
 
-      context 'when code_challenge_method is invalid' do
-        let(:code_challenge_method) { 'invalid-method' }
-        let(:expected_error_message) { 'Invalid params: code_challenge_method' }
-
-        it_behaves_like 'an error response'
-      end
-    end
-
-    context 'when required params are valid' do
-      context 'and there is an error' do
-        context 'when there is no existing access token' do
-          let(:expected_error_message) { 'Access token JWT is malformed' }
-
-          before { request.cookies.clear }
-
-          it_behaves_like 'a redirect to USIP'
-        end
-
-        context 'when there is an existing access token' do
-          context 'and the access token is expired' do
-            let(:existing_access_token) { create(:access_token, expiration_time: 1.day.ago) }
-            let(:expected_error_message) { 'Access token has expired' }
-
-            it_behaves_like 'a redirect to USIP'
+            it_behaves_like 'an error response'
           end
 
-          context 'and there is an error in the validator' do
+          context 'when code_challenge_method is invalid' do
+            let(:code_challenge_method) { 'invalid-method' }
+            let(:expected_error_message) { 'Invalid params: code_challenge_method' }
+
+            it_behaves_like 'an error response'
+          end
+        end
+
+        context 'and required params are valid' do
+          context 'and there is a downstream error' do
             context 'when the session is not found' do
               let(:expected_error_message) { 'Session not authorized' }
 
@@ -173,37 +178,36 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
               it_behaves_like 'a redirect to USIP'
             end
           end
+
+          context 'and there are no errors' do
+            it 'renders an html response with a redirect to the client' do
+              response = subject
+              expect(response).to have_http_status(:found)
+              expect(response.content_type).to eq('text/html; charset=utf-8')
+              expect(response.body).to include("URL=#{client_config.redirect_uri}")
+              expect(response.body).to include('code=')
+              expect(response.body).to include("state=#{state}")
+              expect(StatsD).to have_received(:increment).with('api.sis.auth_sso.success',
+                                                               tags: ["client_id:#{client_id}", "app_name:#{app_name}"])
+            end
+          end
         end
       end
 
-      context 'and there are no errors' do
-        it 'renders an html response with a redirect to the client' do
-          response = subject
-          expect(response).to have_http_status(:found)
-          expect(response.content_type).to eq('text/html; charset=utf-8')
-          expect(response.body).to include("URL=#{client_config.redirect_uri}")
-          expect(response.body).to include('code=')
-          expect(response.body).to include("state=#{state}")
-          expect(StatsD).to have_received(:increment).with('api.sis.auth_sso.success',
-                                                           tags: ["client_id:#{client_id}", "app_name:#{app_name}"])
-        end
+      context 'and the client is not configured for pkce authentication' do
+        let(:pkce) { false }
+        let(:code_challenge) { nil }
+        let(:code_challenge_method) { nil }
 
-        context 'and nonce is provided' do
-          let(:authorize_sso_params) do
-            {
-              client_id: client_id_param,
-              app_name:,
-              code_challenge:,
-              code_challenge_method:,
-              state:,
-              nonce: 'test-nonce-value'
-            }
-          end
+        context 'and required params are valid' do
+          context 'and there are no errors' do
+            it 'does not require a code challenge' do
+              response = subject
 
-          it 'includes nonce in the state JWT' do
-            response = subject
-            expect(response).to have_http_status(:found)
-            expect(response.body).to include('code=')
+              expect(response).to have_http_status(:found)
+              expect(response.body).to include("URL=#{client_config.redirect_uri}")
+              expect(response.body).to include('code=')
+            end
           end
         end
       end

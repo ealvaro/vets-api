@@ -5,7 +5,7 @@ module SignIn
     include ActiveModel::Validations
 
     attr_reader :grant_type, :code, :code_verifier, :client_assertion, :client_assertion_type, :assertion,
-                :subject_token, :subject_token_type, :actor_token, :actor_token_type, :client_id
+                :subject_token, :subject_token_type, :actor_token, :actor_token_type, :client_id, :client_secret
 
     # rubocop:disable Rails/I18nLocaleTexts
     validates :grant_type, inclusion: {
@@ -21,11 +21,13 @@ module SignIn
       validates :client_assertion_type, inclusion: {
         in: [Constants::Urn::JWT_BEARER_CLIENT_AUTHENTICATION],
         message: 'is not valid'
-      }, if: :client_assertion_type_present?
+      }, if: :client_assertion_present?
 
-      validates :code, :client_assertion, :client_assertion_type, presence: true, if: :client_assertion_type_present?
+      validates :code, :client_assertion, :client_assertion_type, presence: true, if: :client_assertion_present?
 
-      validates :code, :code_verifier, presence: true, unless: :client_assertion_type_present?
+      validates :code, :client_id, :client_secret, presence: true, if: :client_secret_present?
+
+      validates :code, :code_verifier, presence: true, unless: :client_authentication_present?
     end
     # rubocop:enable Rails/I18nLocaleTexts
 
@@ -37,7 +39,7 @@ module SignIn
       validates :subject_token, :subject_token_type, :actor_token, :actor_token_type, :client_id, presence: true
     end
 
-    def initialize(params:)
+    def initialize(params:, client_secret_basic_credentials: {})
       @grant_type = params[:grant_type]
       @code = params[:code]
       @code_verifier = params[:code_verifier]
@@ -48,7 +50,8 @@ module SignIn
       @subject_token_type = params[:subject_token_type]
       @actor_token = params[:actor_token]
       @actor_token_type = params[:actor_token_type]
-      @client_id = params[:client_id]
+      @client_id = params[:client_id].presence || client_secret_basic_credentials[:client_id]
+      @client_secret = client_secret_basic_credentials[:client_secret]
     end
 
     def perform
@@ -73,8 +76,16 @@ module SignIn
       grant_type == Constants::Auth::TOKEN_EXCHANGE_GRANT
     end
 
-    def client_assertion_type_present?
-      client_assertion_type.present?
+    def client_assertion_present?
+      client_assertion.present? || client_assertion_type.present?
+    end
+
+    def client_secret_present?
+      client_secret.present?
+    end
+
+    def client_authentication_present?
+      client_assertion_present? || client_secret_present?
     end
 
     def log_error_and_raise(message)

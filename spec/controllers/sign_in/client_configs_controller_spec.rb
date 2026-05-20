@@ -59,6 +59,20 @@ RSpec.describe SignIn::ClientConfigsController, type: :controller do
         expect(response).to have_http_status(:created)
         expect(response_body['client_id']).to eq(valid_attributes[:client_id])
       end
+
+      it 'stores a client secret digest without exposing it in the response' do
+        secret = 'super-secret-value'
+
+        post :create,
+             params: { client_config: valid_attributes.merge(pkce: false, client_secret: secret) },
+             as: :json
+
+        created_client_config = SignIn::ClientConfig.find_by!(client_id: valid_attributes[:client_id])
+
+        expect(response).to have_http_status(:created)
+        expect(created_client_config.authenticate_client_secret(secret)).to be(true)
+        expect(response_body).not_to have_key('client_secret_digest')
+      end
     end
 
     context 'with invalid params' do
@@ -128,6 +142,19 @@ RSpec.describe SignIn::ClientConfigsController, type: :controller do
         put :update, params: { client_id:, client_config: new_attributes }, as: :json
         client_config.reload
         expect(client_config.client_id).to eq('new_client_id')
+      end
+
+      it 'updates the client secret digest without exposing it in the response' do
+        secret_client_config = create(:client_config, pkce: false)
+        secret = 'updated-super-secret'
+
+        put :update,
+            params: { client_id: secret_client_config.client_id, client_config: { client_secret: secret } },
+            as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect(secret_client_config.reload.authenticate_client_secret(secret)).to be(true)
+        expect(response_body).not_to have_key('client_secret_digest')
       end
     end
 

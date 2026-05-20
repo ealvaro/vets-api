@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe SignIn::TokenParamsValidator, type: :model do
-  subject(:validator) { described_class.new(params:) }
+  subject(:validator) { described_class.new(params:, client_secret_basic_credentials:) }
 
   describe '#perform' do
     shared_examples 'invalid params' do
@@ -43,6 +43,7 @@ RSpec.describe SignIn::TokenParamsValidator, type: :model do
     let(:code_verifier) { nil }
     let(:client_assertion) { nil }
     let(:client_assertion_type) { nil }
+    let(:client_secret_basic_credentials) { {} }
     let(:assertion) { nil }
     let(:subject_token) { nil }
     let(:subject_token_type) { nil }
@@ -59,6 +60,40 @@ RSpec.describe SignIn::TokenParamsValidator, type: :model do
         let(:client_assertion_type) { nil }
 
         it_behaves_like 'valid params'
+
+        context 'when client_secret_basic credentials are present' do
+          let(:code_verifier) { nil }
+          let(:client_secret_basic_credentials) do
+            {
+              client_id: 'some-client-id',
+              client_secret: 'some-client-secret'
+            }
+          end
+
+          it_behaves_like 'valid params'
+
+          context 'when client_id is missing' do
+            let(:client_secret_basic_credentials) do
+              {
+                client_secret: 'some-client-secret'
+              }
+            end
+            let(:expected_error_message) { "Client can't be blank" }
+
+            it_behaves_like 'invalid params'
+          end
+
+          context 'when client_secret is missing' do
+            let(:client_secret_basic_credentials) do
+              {
+                client_id: 'some-client-id'
+              }
+            end
+            let(:expected_error_message) { "Code verifier can't be blank" }
+
+            it_behaves_like 'invalid params'
+          end
+        end
 
         context 'when code is missing' do
           let(:code) { nil }

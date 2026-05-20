@@ -4,6 +4,7 @@ module SignIn
   class ClientConfig < ApplicationRecord
     attribute :access_token_duration, :interval
     attribute :refresh_token_duration, :interval
+    has_secure_password :client_secret, validations: false
 
     has_many :config_certificates, as: :config, dependent: :destroy, inverse_of: :config, index_errors: true
     has_many :certs, through: :config_certificates, source: :cert, index_errors: true
@@ -31,6 +32,7 @@ module SignIn
     validates :credential_service_providers, presence: true,
                                              inclusion: { in: Constants::Auth::CSP_TYPES, allow_nil: false }
     validates :json_api_compatibility, inclusion: [true, false]
+    validate :validate_client_secret_configuration
 
     def self.valid_client_id?(client_id:)
       find_by(client_id:).present?
@@ -68,6 +70,22 @@ module SignIn
       cookie_auth? && shared_sessions
     end
 
+    def client_secret=(secret)
+      return if secret.blank?
+
+      super(secret)
+    end
+
+    def authenticate_client_secret(secret)
+      super(secret).present?
+    rescue BCrypt::Errors::InvalidHash
+      false
+    end
+
+    def client_secret_configured?
+      client_secret_digest.present?
+    end
+
     def certs_attributes=(attributes)
       normalized_attributes = attributes.is_a?(Hash) ? attributes.values : Array(attributes)
       self.config_certificates_attributes = normalized_attributes.map do |cert_attrs|
@@ -99,16 +117,29 @@ module SignIn
       config_certificates.joins(:cert).where(sign_in_certificates: { pem: }).pick(:id)
     end
 
-    def as_json(options = {})
-      super(options).tap do |hash|
-        hash['certs'] = certs.map(&:as_json)
-      end
+    def as_json(options = nil)
+      options = (options || {}).dup
+      options[:except] = Array(options[:except]).map(&:to_s) | ['client_secret_digest']
+      options[:include] = Array(options[:include]) | [:certs]
+
+      super(options)
     end
 
     private
 
+    def active_config_certificates?
+      config_certificates.any?
+    end
+
     def appropriate_mock_environment?
       %w[test localhost development].include?(Settings.vsp_environment)
+    end
+
+    def validate_client_secret_configuration
+      return unless client_secret_configured?
+
+      errors.add(:client_secret, 'cannot be configured for PKCE clients') if pkce?
+      errors.add(:client_secret, 'cannot be configured alongside certificates') if active_config_certificates?
     end
   end
 end
