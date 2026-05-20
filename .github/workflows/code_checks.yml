@@ -69,7 +69,6 @@ jobs:
         with:
           bundler-cache: true
 
-
       - name: Check for Gemfile changes
         id: gemfile_changes
         if: github.event_name == 'pull_request'
@@ -200,7 +199,6 @@ jobs:
       - name: Fail job if bundle-audit found CVEs
         if: steps.bundle_audit.outcome == 'failure'
         run: exit 1
-
 
       - name: Run Rubocop
         run: bundle exec rubocop --parallel --format github
@@ -336,7 +334,33 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        test_group: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
+        test_group:
+          [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+          ]
     env:
       BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
       ECR_REGISTRY_WITH_SLASH: "${{ secrets.ECR_REGISTRY }}/"
@@ -388,18 +412,16 @@ jobs:
       - name: Load Docker image
         run: zstd -d /tmp/vets-api.tar.zst --stdout | docker load
 
-      # Shard balancing: if a runtime log exists (cached from a previous run),
-      # parallel_test uses --group-by runtime to distribute specs by actual
-      # measured execution time. Otherwise it falls back to --group-by filesize.
-      # The runtime log is generated in publish_results from JUnit XML timing
-      # data and cached for subsequent runs.
+      # Shard balancing: generate_shard_manifest.rb uses the ParallelTests Ruby
+      # API to assign spec files to each group. When a runtime log is present it
+      # uses runtime-based balancing; otherwise it falls back to filesize.
+      # The manifest is cached by run_id+group so that reruns of a single group
+      # always execute the exact same file set.
       #
-      # Cache key priority:
-      #   1. This branch's most recent run
+      # Runtime log cache key priority:
+      #   1. This branch's most recent successful run
       #   2. master branch (so new PRs get balanced shards immediately)
       #   3. Any previous run (catch-all fallback)
-      # If no cache exists at all (e.g. first-ever run), parallel_test uses
-      # filesize grouping automatically.
       - name: Restore runtime log from cache
         uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
@@ -410,16 +432,48 @@ jobs:
             parallel-runtime-log-refs/heads/master-
             parallel-runtime-log-
 
-      - name: Determine shard grouping strategy
-        id: grouping
+      - name: Restore shard manifest from cache
+        id: shard_manifest_restore
+        uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: tmp/shard-manifest-group-${{ matrix.test_group }}.txt
+          key: shard-manifest-${{ github.run_id }}-group-${{ matrix.test_group }}
+
+      - name: Generate shard manifest for group
+        if: steps.shard_manifest_restore.outputs.cache-hit != 'true'
         run: |
-          if [ -s tmp/parallel_runtime_rspec.log ]; then
-            echo "strategy=runtime" >> $GITHUB_OUTPUT
-            echo "Runtime log found, using runtime-based shard balancing"
-          else
-            echo "strategy=filesize" >> $GITHUB_OUTPUT
-            echo "No runtime log found, falling back to filesize grouping"
+          mkdir -p tmp
+          manifest_path="tmp/shard-manifest-group-${{ matrix.test_group }}.txt"
+
+          # Use the ParallelTests Ruby API directly (no CLI output parsing).
+          # Passes the runtime log when present so grouping mirrors what a normal
+          # first-attempt run would do, then freezes those file assignments.
+          ${{ env.COMPOSE_BASH_CMD }} \
+            "bundle exec ruby script/generate_shard_manifest.rb \
+              ${{ matrix.test_group }} 24 $manifest_path \
+              tmp/parallel_runtime_rspec.log"
+
+          if [ ! -s "$manifest_path" ]; then
+            echo "Failed to build shard manifest for group ${{ matrix.test_group }}"
+            exit 1
           fi
+
+          echo "Built shard manifest with $(wc -l < "$manifest_path") files"
+
+      - name: Save shard manifest to cache
+        if: steps.shard_manifest_restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: tmp/shard-manifest-group-${{ matrix.test_group }}.txt
+          key: shard-manifest-${{ github.run_id }}-group-${{ matrix.test_group }}
+
+      - name: Upload Shard Manifest
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: Shard Manifest Group ${{ matrix.test_group }}
+          path: tmp/shard-manifest-group-${{ matrix.test_group }}.txt
+          if-no-files-found: warn
 
       - name: Setup Database
         uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
@@ -429,7 +483,7 @@ jobs:
           max_attempts: 3
           command: >
             ${{ env.COMPOSE_BASH_CMD }}
-            "bundle exec rails db:test:prepare"
+            "TEST_ENV_NUMBER=${{ matrix.test_group }} bundle exec rails db:test:prepare"
 
       - name: Setup system tmp dir
         run: >
@@ -440,9 +494,19 @@ jobs:
         timeout-minutes: 15
         env:
           TEST_ENV_NUMBER: ${{ matrix.test_group }}
-        run: >
-          ${{ env.COMPOSE_BASH_CMD }}
-          "TEST_ENV_NUMBER=${{ matrix.test_group }} TMPDIR=tmp/systmp bundle exec parallel_test spec modules --group-by ${{ steps.grouping.outputs.strategy }} --type rspec --only-group ${{ matrix.test_group }} -n 24 -o '--profile 20'"
+        run: |
+          manifest_path="tmp/shard-manifest-group-${{ matrix.test_group }}.txt"
+
+          if [ ! -s "$manifest_path" ]; then
+            echo "Missing shard manifest: $manifest_path"
+            exit 1
+          fi
+
+          # Run rspec directly with the frozen file list from the manifest.
+          # Using xargs keeps the command length bounded for large shards.
+          ${{ env.COMPOSE_BASH_CMD }} \
+            "TEST_ENV_NUMBER=${{ matrix.test_group }} TMPDIR=tmp/systmp \
+             xargs -a $manifest_path bundle exec rspec --profile 20"
 
       - name: Prepare SimpleCov shard payload
         if: always()
