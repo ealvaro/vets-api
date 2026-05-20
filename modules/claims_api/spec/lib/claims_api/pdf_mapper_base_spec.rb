@@ -13,22 +13,33 @@ describe ClaimsApi::PdfMapperBase do
   end
 
   describe '#date_signed' do
-    context 'returns a Date value' do
-      it 'for the claim date sent' do
+    context 'when the date is a valid string' do
+      it 'returns the parsed claim date' do
         date_str = '2024-01-03'
 
         result = subject.date_signed(date_str)
 
         expect(result).to eq(Date.parse(date_str))
       end
+    end
 
+    context 'when the date is iso8601' do
       # possible value in V1
-      it 'for the claim date when included in UTC format' do
+      it 'returns the parsed claim date' do
         date_str = '2023-11-01T08:00:00Z'
 
         result = subject.date_signed(date_str)
 
         expect(result).to eq(Date.parse(date_str))
+      end
+    end
+
+    context 'when the date is malformed' do
+      it 'raises an unprocessable entity error' do
+        expect { subject.date_signed('invalid-date') }
+          .to raise_error(ClaimsApi::Common::Exceptions::Lighthouse::UnprocessableEntity) { |error|
+            expect(error.errors.first[:detail]).to eq('Invalid claim date provided')
+          }
       end
     end
   end
