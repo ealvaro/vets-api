@@ -292,6 +292,8 @@ GEM
     base64 (0.3.0)
     bcp47 (0.3.3)
       i18n
+    bcrypt (3.1.22)
+    bcrypt (3.1.22-java)
     benchmark (0.5.0)
     bigdecimal (3.3.1)
     bigdecimal (3.3.1-java)
@@ -1267,6 +1269,7 @@ DEPENDENCIES
   aws-sdk-s3 (~> 1)
   aws-sdk-sns (~> 1)
   banners!
+  bcrypt (~> 3.1.7)
   betamocks!
   bgs_ext!
   bio_heart_api!
