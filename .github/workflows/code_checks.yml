@@ -300,6 +300,15 @@ jobs:
           owner: software
           github-api-url: https://va.ghe.com/api/v3
 
+      - name: Generate cross-repo token for actions
+        id: vsp-bot-app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.VA_VSP_BOT_APP_ID }}
+          private-key: ${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
+          owner: software
+          github-api-url: https://va.ghe.com/api/v3
+
       - name: Build and Cache Docker Image
         uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
         env:
@@ -308,6 +317,7 @@ jobs:
           build-args: |
             BUNDLE_ENTERPRISE__CONTRIBSYS__COM=${{ env.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
             BUNDLE_VA__GHE__COM=x-access-token:${{ steps.app-token.outputs.token }}
+            GHEC_GIT_TOKEN=x-access-token:${{ steps.vsp-bot-app-token.outputs.token }}
             USER_ID=1001
           context: .
           push: false

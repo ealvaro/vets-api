@@ -30,7 +30,7 @@ set -euo pipefail
         echo "✗ DigiCert TLS RSA SHA256 2020 CA1-1 download failed"
         exit 1
     fi
-    if ! curl --fail --show-error --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 5 -LO https://digicert.tbs-certificats.com/DigiCertGlobalG2TLSRSASHA2562020CA1.crt; then
+    if ! curl --fail --show-error --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 5 -L -o DigiCertGlobalG2TLSRSASHA2562020CA1.crt https://cacerts.digicert.com/DigiCertGlobalG2TLSRSASHA2562020CA1.crt.pem; then
         echo "✗ DigiCert Global G2 TLS RSA SHA256 2020 CA1 download failed"
         exit 1
     fi
@@ -78,7 +78,7 @@ set -euo pipefail
         echo "✓ VA certificates downloaded from aia.pki.va.gov"
     else
         echo "⚠ aia.pki.va.gov unreachable, falling back to GitHub mirror..."
-        VA_CERT_REPO="https://raw.githubusercontent.com/department-of-veterans-affairs/platform-va-ca-certificate/main"
+        VA_CERT_REPO="https://raw.va.ghe.com/software/platform-va-ca-certificate/main"
         for cert in \
             VA-Internal-S2-ICA1-v1 VA-Internal-S2-ICA2-v1 VA-Internal-S2-ICA3-v1 \
             VA-Internal-S2-ICA4 VA-Internal-S2-ICA5 VA-Internal-S2-ICA6 \
@@ -94,8 +94,16 @@ set -euo pipefail
             VA-Internal-S2-ICA34 \
             VA-Internal-S2-RCA1-v1 VA-Internal-S2-RCA2 VA-Internal-S2-RCA3
         do
-            curl --silent --show-error --fail --connect-timeout 10 --max-time 30 --retry 2 \
-                -o "${cert}.cer" "${VA_CERT_REPO}/${cert}.cer" || echo "Warning: Failed to download ${cert}.cer"
+            if [ -n "${GHEC_GIT_TOKEN:-}" ]; then
+                curl --silent --show-error --fail --connect-timeout 10 --max-time 30 --retry 2 \
+                    -H "Authorization: Bearer ${GHEC_GIT_TOKEN}" \
+                    -H "Accept: application/vnd.github.raw+json" \
+                    -o "${cert}.cer" "https://va.ghe.com/api/v3/repos/software/platform-va-ca-certificate/contents/${cert}.cer?ref=main" \
+                    || echo "Warning: Failed to download ${cert}.cer"
+            else
+                curl --silent --show-error --fail --connect-timeout 10 --max-time 30 --retry 2 \
+                    -o "${cert}.cer" "${VA_CERT_REPO}/${cert}.cer" || echo "Warning: Failed to download ${cert}.cer"
+            fi
         done
         echo "✓ VA certificates downloaded from GitHub mirror"
     fi

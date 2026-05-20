@@ -20,6 +20,7 @@ FROM rubyimg
 # Allow for setting ENV vars via --build-arg
 ARG BUNDLE_ENTERPRISE__CONTRIBSYS__COM \
   BUNDLE_VA__GHE__COM \
+  GHEC_GIT_TOKEN \
   RAILS_ENV=development \
   USER_ID=1000
 ENV RAILS_ENV=$RAILS_ENV \
@@ -61,7 +62,7 @@ RUN update-ca-certificates
 
 # Download VA Certs
 COPY ./import-va-certs.sh .
-RUN ./import-va-certs.sh
+RUN GHEC_GIT_TOKEN="$GHEC_GIT_TOKEN" ./import-va-certs.sh
 
 COPY config/clamd.conf /etc/clamav/clamd.conf
 
