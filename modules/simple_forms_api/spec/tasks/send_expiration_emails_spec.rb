@@ -5,14 +5,17 @@ require 'rake'
 require SimpleFormsApi::Engine.root.join('spec', 'spec_helper.rb')
 
 RSpec.describe 'simple_forms_api:send_expiration_emails', type: :task do
-  load File.expand_path('../../lib/tasks/send_expiration_emails.rake', __dir__)
-
   let(:task) { Rake::Task['simple_forms_api:send_expiration_emails'] }
   let(:notification_email) { double(send: nil) }
 
-  before do
+  before(:all) do
     Rake::Task.define_task(:environment)
+    unless Rake::Task.task_defined?('simple_forms_api:send_expiration_emails')
+      load File.expand_path('../../lib/tasks/send_expiration_emails.rake', __dir__)
+    end
+  end
 
+  before do
     # PR 27541 is merged; this should exist in CI now.
     expect(
       FormSubmission.connection.column_exists?(:form_submissions, :expiration_email_sent_at)
