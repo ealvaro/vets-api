@@ -33,6 +33,8 @@ Datadog.configure do |c|
     c.appsec.enabled = true
     c.appsec.instrument :rails
 
+    c.logger.instance = SemanticLogger['Datadog']
+
     # Suppress Datadog's own internal log noise
     c.logger.level = Logger::WARN
 
