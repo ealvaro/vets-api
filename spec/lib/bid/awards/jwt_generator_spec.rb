@@ -14,7 +14,7 @@ RSpec.describe BID::Awards::JwtGenerator do
       expect(decoded_jwt.keys)
         .to include('iss', 'jti', 'expires', 'iat', 'applicationID', 'userID', 'stationID')
       expect(decoded_jwt['iss']).to eq('VAGOV')
-      expect(decoded_jwt['applicationID']).to eq('VAGOV')
+      expect(decoded_jwt['applicationID']).to eq('VBMS')
       expect(decoded_jwt['userID']).to eq('VAGOVSYSACCT')
       expect(decoded_jwt['stationID']).to eq('283')
     end

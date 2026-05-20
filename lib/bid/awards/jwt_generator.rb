@@ -20,6 +20,10 @@ module BID
       # Station for above user
       STATION_ID = '283'
 
+      # Application user is registered under
+      # @see https://va.ghe.com/software/va.gov-team/issues/139913
+      APPLICATION_ID = 'VBMS'
+
       # static method
       # @see #encode_jwt
       def self.encode_jwt
@@ -45,8 +49,7 @@ module BID
           iat: created_time.to_i,
           expires: expiration_time.to_i,
           iss: ISSUER,
-          # applicationID MUST be the same as the issuer for tracking purposes
-          applicationID: ISSUER,
+          applicationID: APPLICATION_ID,
           userID: USER_ID,
           stationID: STATION_ID
         }
