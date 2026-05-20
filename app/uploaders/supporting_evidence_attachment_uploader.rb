@@ -95,7 +95,6 @@ class SupportingEvidenceAttachmentUploader < EVSSClaimDocumentUploaderBase
   ).freeze
 
   def validate_with_benefits_intake_constraints(file)
-    return unless Flipper.enabled?(:disability_compensation_upload_dual_api_validation)
     return unless File.extname(file.path).casecmp('.pdf').zero?
 
     result = PDFUtilities::PDFValidator::Validator.new(
@@ -108,11 +107,9 @@ class SupportingEvidenceAttachmentUploader < EVSSClaimDocumentUploaderBase
     raise CarrierWave::IntegrityError, error_message
   end
 
-  # Override to gate virus scanning behind the feature toggle and convert VirusFoundError
-  # into a CarrierWave::IntegrityError so it surfaces as a 422 with a safe message.
+  # Override to convert VirusFoundError into a CarrierWave::IntegrityError
+  # so it surfaces as a 422 with a safe message.
   def validate_virus_free(file)
-    return unless Flipper.enabled?(:disability_compensation_upload_dual_api_validation)
-
     super
   rescue UploaderVirusScan::VirusFoundError
     log_upload_rejection('virus_detected', 'Virus or malware detected in uploaded file',

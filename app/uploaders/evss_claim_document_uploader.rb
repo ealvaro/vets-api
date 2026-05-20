@@ -2,6 +2,7 @@
 
 # Files that will be associated with a previously submitted claim, from the Claim Status tool
 class EVSSClaimDocumentUploader < EVSSClaimDocumentUploaderBase
+  include UploaderVirusScan
   def initialize(user_uuid, ids)
     # carrierwave allows only 2 arguments, which they will pass onto
     # different versions by calling the initialize function again,

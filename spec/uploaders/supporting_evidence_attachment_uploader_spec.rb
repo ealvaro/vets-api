@@ -204,253 +204,217 @@ RSpec.describe SupportingEvidenceAttachmentUploader, :uploader_helpers do
   describe '#validate_with_benefits_intake_constraints' do
     let(:mock_file) { double('file', path: file_path) }
 
-    context 'when feature toggle is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:disability_compensation_upload_dual_api_validation).and_return(false)
-      end
+    context 'with a non-PDF file' do
+      let(:file_path) { 'spec/fixtures/files/va.gif' }
 
-      it 'skips validation for a valid PDF' do
-        file_path = 'spec/fixtures/files/doctors-note.pdf'
-        mock_file = double('file', path: file_path)
-
+      it 'skips validation entirely' do
         expect(PDFUtilities::PDFValidator::Validator).not_to receive(:new)
         subject.send(:validate_with_benefits_intake_constraints, mock_file)
       end
+    end
 
-      it 'skips validation for an oversized-page PDF' do
-        file_path = 'spec/fixtures/pdf_utilities/pdf_validator/79x10.pdf'
-        mock_file = double('file', path: file_path)
+    context 'with a valid PDF' do
+      let(:file_path) { 'spec/fixtures/files/doctors-note.pdf' }
 
-        expect(PDFUtilities::PDFValidator::Validator).not_to receive(:new)
-        expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.not_to raise_error
-      end
-
-      it 'skips validation for an encrypted PDF' do
-        file_path = 'spec/fixtures/pdf_utilities/pdf_validator/encrypted.pdf'
-        mock_file = double('file', path: file_path)
-
-        expect(PDFUtilities::PDFValidator::Validator).not_to receive(:new)
+      it 'does not raise an error' do
         expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.not_to raise_error
       end
     end
 
-    context 'when feature toggle is enabled' do
+    context 'with a PDF that has oversized pages (width exceeds 78in)' do
+      let(:file_path) { 'spec/fixtures/pdf_utilities/pdf_validator/79x10.pdf' }
+
+      it 'raises a CarrierWave::IntegrityError with page size message' do
+        expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
+          CarrierWave::IntegrityError, /page size limit/i
+        )
+      end
+
+      it 'increments the StatsD rejection metric with reason tag' do
+        expect(StatsD).to receive(:increment).with(
+          'api.disability_compensation.upload_validation.rejected',
+          tags: ['reason:benefits_intake_pdf_invalid']
+        )
+        expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
+          CarrierWave::IntegrityError
+        )
+      end
+
+      it 'logs the rejection with structured details' do
+        allow(Rails.logger).to receive(:warn)
+        expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
+          CarrierWave::IntegrityError
+        )
+        expect(Rails.logger).to have_received(:warn).with(
+          hash_including(
+            message: 'Form 526 upload validation rejected',
+            reason: 'benefits_intake_pdf_invalid',
+            file_extension: '.pdf',
+            guid: '1234'
+          )
+        )
+      end
+    end
+
+    context 'with a PDF that has oversized pages (height exceeds 101in)' do
+      let(:file_path) { 'spec/fixtures/pdf_utilities/pdf_validator/10x102.pdf' }
+
+      it 'raises a CarrierWave::IntegrityError with page size message' do
+        expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
+          CarrierWave::IntegrityError, /page size limit/i
+        )
+      end
+
+      it 'increments the StatsD rejection metric' do
+        expect(StatsD).to receive(:increment).with(
+          'api.disability_compensation.upload_validation.rejected',
+          tags: ['reason:benefits_intake_pdf_invalid']
+        )
+        expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
+          CarrierWave::IntegrityError
+        )
+      end
+    end
+
+    context 'with a PDF within page limits (21x21)' do
+      let(:file_path) { 'spec/fixtures/pdf_utilities/pdf_validator/21x21.pdf' }
+
+      it 'does not raise an error' do
+        expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.not_to raise_error
+      end
+    end
+
+    context 'with an owner-password encrypted PDF' do
+      let(:file_path) { 'spec/fixtures/pdf_utilities/pdf_validator/encrypted.pdf' }
+
+      it 'does not raise an error (encryption checking is deferred to ValidatePdf)' do
+        expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.not_to raise_error
+      end
+    end
+
+    context 'with a user-password locked PDF' do
+      let(:file_path) { 'spec/fixtures/pdf_utilities/pdf_validator/locked.pdf' }
+
+      # User-password PDFs cause a PdfInfo::MetadataReadError during metadata read, which
+      # PDFValidator always catches (not gated by check_encryption). In practice, ValidatePdf
+      # fires first in the callback chain and rejects these before our code runs.
+      it 'still catches it (metadata read failure is not gated by check_encryption)' do
+        expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
+          CarrierWave::IntegrityError, /locked with a user password/i
+        )
+      end
+
+      it 'increments the StatsD rejection metric' do
+        expect(StatsD).to receive(:increment).with(
+          'api.disability_compensation.upload_validation.rejected',
+          tags: ['reason:benefits_intake_pdf_invalid']
+        )
+        expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
+          CarrierWave::IntegrityError
+        )
+      end
+    end
+
+    context 'with a PDF exceeding the 100MB size limit' do
+      let(:file_path) { 'spec/fixtures/files/doctors-note.pdf' }
+
       before do
-        allow(Flipper).to receive(:enabled?).with(:disability_compensation_upload_dual_api_validation).and_return(true)
+        allow(File).to receive(:size).with(file_path).and_return(101.megabytes)
       end
 
-      context 'with a non-PDF file' do
-        let(:file_path) { 'spec/fixtures/files/va.gif' }
-
-        it 'skips validation entirely' do
-          expect(PDFUtilities::PDFValidator::Validator).not_to receive(:new)
-          subject.send(:validate_with_benefits_intake_constraints, mock_file)
-        end
+      it 'raises a CarrierWave::IntegrityError with file size message' do
+        expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
+          CarrierWave::IntegrityError, /file size limit/i
+        )
       end
 
-      context 'with a valid PDF' do
-        let(:file_path) { 'spec/fixtures/files/doctors-note.pdf' }
+      it 'increments the StatsD rejection metric' do
+        expect(StatsD).to receive(:increment).with(
+          'api.disability_compensation.upload_validation.rejected',
+          tags: ['reason:benefits_intake_pdf_invalid']
+        )
+        expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
+          CarrierWave::IntegrityError
+        )
+      end
+    end
 
-        it 'does not raise an error' do
-          expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.not_to raise_error
-        end
+    context 'with an invalid (non-PDF) file disguised with .pdf extension' do
+      let(:file_path) { 'spec/fixtures/pdf_utilities/pdf_validator/metadata.json' }
+
+      before do
+        # Pretend the file has a .pdf extension
+        allow(File).to receive(:extname).with(file_path).and_return('.pdf')
+        allow(mock_file).to receive(:path).and_return(file_path)
       end
 
-      context 'with a PDF that has oversized pages (width exceeds 78in)' do
-        let(:file_path) { 'spec/fixtures/pdf_utilities/pdf_validator/79x10.pdf' }
-
-        it 'raises a CarrierWave::IntegrityError with page size message' do
-          expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
-            CarrierWave::IntegrityError, /page size limit/i
-          )
-        end
-
-        it 'increments the StatsD rejection metric with reason tag' do
-          expect(StatsD).to receive(:increment).with(
-            'api.disability_compensation.upload_validation.rejected',
-            tags: ['reason:benefits_intake_pdf_invalid']
-          )
-          expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
-            CarrierWave::IntegrityError
-          )
-        end
-
-        it 'logs the rejection with structured details' do
-          allow(Rails.logger).to receive(:warn)
-          expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
-            CarrierWave::IntegrityError
-          )
-          expect(Rails.logger).to have_received(:warn).with(
-            hash_including(
-              message: 'Form 526 upload validation rejected',
-              reason: 'benefits_intake_pdf_invalid',
-              file_extension: '.pdf',
-              guid: '1234'
-            )
-          )
-        end
+      it 'raises a CarrierWave::IntegrityError with invalid PDF message' do
+        expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
+          CarrierWave::IntegrityError, /not a valid PDF/i
+        )
       end
 
-      context 'with a PDF that has oversized pages (height exceeds 101in)' do
-        let(:file_path) { 'spec/fixtures/pdf_utilities/pdf_validator/10x102.pdf' }
+      it 'increments the StatsD rejection metric' do
+        expect(StatsD).to receive(:increment).with(
+          'api.disability_compensation.upload_validation.rejected',
+          tags: ['reason:benefits_intake_pdf_invalid']
+        )
+        expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
+          CarrierWave::IntegrityError
+        )
+      end
+    end
 
-        it 'raises a CarrierWave::IntegrityError with page size message' do
-          expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
-            CarrierWave::IntegrityError, /page size limit/i
-          )
-        end
+    context 'when PDFValidator returns multiple errors' do
+      let(:file_path) { 'spec/fixtures/files/doctors-note.pdf' }
+      let(:mock_result) { double('result', valid_pdf?: false, errors: ['Error one', 'Error two']) }
+      let(:mock_validator) { double('validator', validate: mock_result) }
 
-        it 'increments the StatsD rejection metric' do
-          expect(StatsD).to receive(:increment).with(
-            'api.disability_compensation.upload_validation.rejected',
-            tags: ['reason:benefits_intake_pdf_invalid']
-          )
-          expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
-            CarrierWave::IntegrityError
-          )
-        end
+      before do
+        allow(PDFUtilities::PDFValidator::Validator).to receive(:new).and_return(mock_validator)
       end
 
-      context 'with a PDF within page limits (21x21)' do
-        let(:file_path) { 'spec/fixtures/pdf_utilities/pdf_validator/21x21.pdf' }
-
-        it 'does not raise an error' do
-          expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.not_to raise_error
-        end
+      it 'joins all errors in the exception message' do
+        expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
+          CarrierWave::IntegrityError, 'Error one. Error two'
+        )
       end
 
-      context 'with an owner-password encrypted PDF' do
-        let(:file_path) { 'spec/fixtures/pdf_utilities/pdf_validator/encrypted.pdf' }
-
-        it 'does not raise an error (encryption checking is deferred to ValidatePdf)' do
-          expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.not_to raise_error
-        end
+      it 'includes the joined errors in the log' do
+        allow(Rails.logger).to receive(:warn)
+        expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
+          CarrierWave::IntegrityError
+        )
+        expect(Rails.logger).to have_received(:warn).with(
+          hash_including(error_detail: 'Error one. Error two')
+        )
       end
+    end
 
-      context 'with a user-password locked PDF' do
-        let(:file_path) { 'spec/fixtures/pdf_utilities/pdf_validator/locked.pdf' }
+    it 'uses BENEFITS_INTAKE_VALIDATOR_OPTIONS (check_encryption disabled)' do
+      file_path = 'spec/fixtures/files/doctors-note.pdf'
+      mock_file = double('file', path: file_path)
 
-        # User-password PDFs cause a PdfInfo::MetadataReadError during metadata read, which
-        # PDFValidator always catches (not gated by check_encryption). In practice, ValidatePdf
-        # fires first in the callback chain and rejects these before our code runs.
-        it 'still catches it (metadata read failure is not gated by check_encryption)' do
-          expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
-            CarrierWave::IntegrityError, /locked with a user password/i
-          )
-        end
+      expect(PDFUtilities::PDFValidator::Validator).to receive(:new).with(
+        file_path, described_class::BENEFITS_INTAKE_VALIDATOR_OPTIONS
+      ).and_call_original
 
-        it 'increments the StatsD rejection metric' do
-          expect(StatsD).to receive(:increment).with(
-            'api.disability_compensation.upload_validation.rejected',
-            tags: ['reason:benefits_intake_pdf_invalid']
-          )
-          expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
-            CarrierWave::IntegrityError
-          )
-        end
-      end
+      subject.send(:validate_with_benefits_intake_constraints, mock_file)
+    end
 
-      context 'with a PDF exceeding the 100MB size limit' do
-        let(:file_path) { 'spec/fixtures/files/doctors-note.pdf' }
+    it 'has check_encryption disabled' do
+      expect(described_class::BENEFITS_INTAKE_VALIDATOR_OPTIONS[:check_encryption]).to be(false)
+    end
 
-        before do
-          allow(File).to receive(:size).with(file_path).and_return(101.megabytes)
-        end
+    it 'inherits all other options from BenefitsIntake::Service::PDF_VALIDATOR_OPTIONS' do
+      intake_opts = BenefitsIntake::Service::PDF_VALIDATOR_OPTIONS
+      validator_opts = described_class::BENEFITS_INTAKE_VALIDATOR_OPTIONS
 
-        it 'raises a CarrierWave::IntegrityError with file size message' do
-          expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
-            CarrierWave::IntegrityError, /file size limit/i
-          )
-        end
+      intake_opts.each_key do |key|
+        next if key == :check_encryption
 
-        it 'increments the StatsD rejection metric' do
-          expect(StatsD).to receive(:increment).with(
-            'api.disability_compensation.upload_validation.rejected',
-            tags: ['reason:benefits_intake_pdf_invalid']
-          )
-          expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
-            CarrierWave::IntegrityError
-          )
-        end
-      end
-
-      context 'with an invalid (non-PDF) file disguised with .pdf extension' do
-        let(:file_path) { 'spec/fixtures/pdf_utilities/pdf_validator/metadata.json' }
-
-        before do
-          # Pretend the file has a .pdf extension
-          allow(File).to receive(:extname).with(file_path).and_return('.pdf')
-          allow(mock_file).to receive(:path).and_return(file_path)
-        end
-
-        it 'raises a CarrierWave::IntegrityError with invalid PDF message' do
-          expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
-            CarrierWave::IntegrityError, /not a valid PDF/i
-          )
-        end
-
-        it 'increments the StatsD rejection metric' do
-          expect(StatsD).to receive(:increment).with(
-            'api.disability_compensation.upload_validation.rejected',
-            tags: ['reason:benefits_intake_pdf_invalid']
-          )
-          expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
-            CarrierWave::IntegrityError
-          )
-        end
-      end
-
-      context 'when PDFValidator returns multiple errors' do
-        let(:file_path) { 'spec/fixtures/files/doctors-note.pdf' }
-        let(:mock_result) { double('result', valid_pdf?: false, errors: ['Error one', 'Error two']) }
-        let(:mock_validator) { double('validator', validate: mock_result) }
-
-        before do
-          allow(PDFUtilities::PDFValidator::Validator).to receive(:new).and_return(mock_validator)
-        end
-
-        it 'joins all errors in the exception message' do
-          expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
-            CarrierWave::IntegrityError, 'Error one. Error two'
-          )
-        end
-
-        it 'includes the joined errors in the log' do
-          allow(Rails.logger).to receive(:warn)
-          expect { subject.send(:validate_with_benefits_intake_constraints, mock_file) }.to raise_error(
-            CarrierWave::IntegrityError
-          )
-          expect(Rails.logger).to have_received(:warn).with(
-            hash_including(error_detail: 'Error one. Error two')
-          )
-        end
-      end
-
-      it 'uses BENEFITS_INTAKE_VALIDATOR_OPTIONS (check_encryption disabled)' do
-        file_path = 'spec/fixtures/files/doctors-note.pdf'
-        mock_file = double('file', path: file_path)
-
-        expect(PDFUtilities::PDFValidator::Validator).to receive(:new).with(
-          file_path, described_class::BENEFITS_INTAKE_VALIDATOR_OPTIONS
-        ).and_call_original
-
-        subject.send(:validate_with_benefits_intake_constraints, mock_file)
-      end
-
-      it 'has check_encryption disabled' do
-        expect(described_class::BENEFITS_INTAKE_VALIDATOR_OPTIONS[:check_encryption]).to be(false)
-      end
-
-      it 'inherits all other options from BenefitsIntake::Service::PDF_VALIDATOR_OPTIONS' do
-        intake_opts = BenefitsIntake::Service::PDF_VALIDATOR_OPTIONS
-        validator_opts = described_class::BENEFITS_INTAKE_VALIDATOR_OPTIONS
-
-        intake_opts.each_key do |key|
-          next if key == :check_encryption
-
-          expect(validator_opts[key]).to eq(intake_opts[key]),
-                                         "Expected #{key} to be #{intake_opts[key]} but got #{validator_opts[key]}"
-        end
+        expect(validator_opts[key]).to eq(intake_opts[key]),
+                                       "Expected #{key} to be #{intake_opts[key]} but got #{validator_opts[key]}"
       end
     end
   end
@@ -458,119 +422,103 @@ RSpec.describe SupportingEvidenceAttachmentUploader, :uploader_helpers do
   describe '#validate_virus_free' do
     stub_virus_scan
 
-    context 'when feature toggle is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:disability_compensation_upload_dual_api_validation).and_return(false)
-      end
+    # Stubbing Rails.env.production? causes SupportingEvidenceAttachmentUploader#initialize
+    # to call set_aws_config, which permanently mutates self.class.storage = :aws.
+    # Without this around block, that class-level mutation leaks into subsequent tests,
+    # causing "No region was provided" errors when CarrierWave tries to connect to S3.
+    around do |example|
+      previous_storage = described_class._storage
+      example.run
+    ensure
+      described_class.storage previous_storage
+    end
 
-      it 'skips virus scanning entirely' do
-        mock_file = double('file')
+    before do
+      allow(Rails.env).to receive(:production?).and_return(true)
+    end
 
-        expect(Common::VirusScan).not_to receive(:scan)
-        subject.send(:validate_virus_free, mock_file)
+    context 'when no virus is detected' do
+      it 'does not raise an error' do
+        file = Rack::Test::UploadedFile.new('spec/fixtures/files/va.gif', 'image/gif')
+
+        expect { subject.send(:validate_virus_free, file) }.not_to raise_error
       end
     end
 
-    context 'when feature toggle is enabled' do
-      # Stubbing Rails.env.production? causes SupportingEvidenceAttachmentUploader#initialize
-      # to call set_aws_config, which permanently mutates self.class.storage = :aws.
-      # Without this around block, that class-level mutation leaks into subsequent tests,
-      # causing "No region was provided" errors when CarrierWave tries to connect to S3.
-      around do |example|
-        previous_storage = described_class._storage
-        example.run
-      ensure
-        described_class.storage previous_storage
-      end
-
+    context 'when a virus is detected' do
       before do
-        allow(Flipper).to receive(:enabled?).with(:disability_compensation_upload_dual_api_validation).and_return(true)
-        allow(Rails.env).to receive(:production?).and_return(true)
+        allow(Common::VirusScan).to receive(:scan).and_return(false)
       end
 
-      context 'when no virus is detected' do
-        it 'does not raise an error' do
-          file = Rack::Test::UploadedFile.new('spec/fixtures/files/va.gif', 'image/gif')
+      it 'raises a CarrierWave::IntegrityError instead of VirusFoundError' do
+        file = Rack::Test::UploadedFile.new('spec/fixtures/files/va.gif', 'image/gif')
+        allow(file).to receive(:delete)
 
-          expect { subject.send(:validate_virus_free, file) }.not_to raise_error
-        end
+        expect { subject.send(:validate_virus_free, file) }.to raise_error(
+          CarrierWave::IntegrityError,
+          'We were unable to process your file. Please try again.'
+        )
       end
 
-      context 'when a virus is detected' do
-        before do
-          allow(Common::VirusScan).to receive(:scan).and_return(false)
-        end
+      it 'does not raise VirusFoundError' do
+        file = Rack::Test::UploadedFile.new('spec/fixtures/files/va.gif', 'image/gif')
+        allow(file).to receive(:delete)
 
-        it 'raises a CarrierWave::IntegrityError instead of VirusFoundError' do
-          file = Rack::Test::UploadedFile.new('spec/fixtures/files/va.gif', 'image/gif')
-          allow(file).to receive(:delete)
+        expect { subject.send(:validate_virus_free, file) }.to raise_error(CarrierWave::IntegrityError)
+      end
 
-          expect { subject.send(:validate_virus_free, file) }.to raise_error(
-            CarrierWave::IntegrityError,
-            'We were unable to process your file. Please try again.'
-          )
-        end
+      it 'does not mention virus in the error message' do
+        file = Rack::Test::UploadedFile.new('spec/fixtures/files/va.gif', 'image/gif')
+        allow(file).to receive(:delete)
 
-        it 'does not raise VirusFoundError' do
-          file = Rack::Test::UploadedFile.new('spec/fixtures/files/va.gif', 'image/gif')
-          allow(file).to receive(:delete)
-
-          expect { subject.send(:validate_virus_free, file) }.to raise_error(CarrierWave::IntegrityError)
-        end
-
-        it 'does not mention virus in the error message' do
-          file = Rack::Test::UploadedFile.new('spec/fixtures/files/va.gif', 'image/gif')
-          allow(file).to receive(:delete)
-
-          expect { subject.send(:validate_virus_free, file) }.to raise_error(CarrierWave::IntegrityError) do |error|
-            expect(error.message).not_to match(/virus/i)
-            expect(error.message).not_to match(/malware/i)
-          end
-        end
-
-        it 'increments the StatsD rejection metric with virus_detected reason' do
-          file = Rack::Test::UploadedFile.new('spec/fixtures/files/va.gif', 'image/gif')
-          allow(file).to receive(:delete)
-
-          expect(StatsD).to receive(:increment).with(
-            'api.disability_compensation.upload_validation.rejected',
-            tags: ['reason:virus_detected']
-          )
-          expect { subject.send(:validate_virus_free, file) }.to raise_error(CarrierWave::IntegrityError)
-        end
-
-        it 'logs the virus rejection with structured details' do
-          file = Rack::Test::UploadedFile.new('spec/fixtures/files/va.gif', 'image/gif')
-          allow(file).to receive(:delete)
-          allow(Rails.logger).to receive(:warn)
-
-          expect { subject.send(:validate_virus_free, file) }.to raise_error(CarrierWave::IntegrityError)
-          expect(Rails.logger).to have_received(:warn).with(
-            hash_including(
-              message: 'Form 526 upload validation rejected',
-              reason: 'virus_detected',
-              guid: '1234'
-            )
-          )
+        expect { subject.send(:validate_virus_free, file) }.to raise_error(CarrierWave::IntegrityError) do |error|
+          expect(error.message).not_to match(/virus/i)
+          expect(error.message).not_to match(/malware/i)
         end
       end
 
-      context 'when not in production' do
-        before do
-          allow(Rails.env).to receive(:production?).and_return(false)
-        end
+      it 'increments the StatsD rejection metric with virus_detected reason' do
+        file = Rack::Test::UploadedFile.new('spec/fixtures/files/va.gif', 'image/gif')
+        allow(file).to receive(:delete)
 
-        it 'skips the virus scan' do
-          file = Rack::Test::UploadedFile.new('spec/fixtures/files/va.gif', 'image/gif')
+        expect(StatsD).to receive(:increment).with(
+          'api.disability_compensation.upload_validation.rejected',
+          tags: ['reason:virus_detected']
+        )
+        expect { subject.send(:validate_virus_free, file) }.to raise_error(CarrierWave::IntegrityError)
+      end
 
-          expect(Common::VirusScan).not_to receive(:scan)
-          expect { subject.send(:validate_virus_free, file) }.not_to raise_error
-        end
+      it 'logs the virus rejection with structured details' do
+        file = Rack::Test::UploadedFile.new('spec/fixtures/files/va.gif', 'image/gif')
+        allow(file).to receive(:delete)
+        allow(Rails.logger).to receive(:warn)
+
+        expect { subject.send(:validate_virus_free, file) }.to raise_error(CarrierWave::IntegrityError)
+        expect(Rails.logger).to have_received(:warn).with(
+          hash_including(
+            message: 'Form 526 upload validation rejected',
+            reason: 'virus_detected',
+            guid: '1234'
+          )
+        )
+      end
+    end
+
+    context 'when not in production' do
+      before do
+        allow(Rails.env).to receive(:production?).and_return(false)
+      end
+
+      it 'skips the virus scan' do
+        file = Rack::Test::UploadedFile.new('spec/fixtures/files/va.gif', 'image/gif')
+
+        expect(Common::VirusScan).not_to receive(:scan)
+        expect { subject.send(:validate_virus_free, file) }.not_to raise_error
       end
     end
   end
 
-  describe 'feature toggle gating' do
+  describe 'store! integration' do
     stub_virus_scan
 
     around do |example|
@@ -586,33 +534,12 @@ RSpec.describe SupportingEvidenceAttachmentUploader, :uploader_helpers do
       allow_any_instance_of(described_class).to receive(:validate_pdf)
     end
 
-    context 'when toggle is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:disability_compensation_upload_dual_api_validation).and_return(false)
-      end
+    it 'rejects oversized PDFs during store' do
+      file = Rack::Test::UploadedFile.new(
+        'spec/fixtures/pdf_utilities/pdf_validator/79x10.pdf', 'application/pdf'
+      )
 
-      it 'does not run Benefits Intake PDF validation during store' do
-        file = Rack::Test::UploadedFile.new(
-          'spec/fixtures/pdf_utilities/pdf_validator/79x10.pdf', 'application/pdf'
-        )
-
-        expect(PDFUtilities::PDFValidator::Validator).not_to receive(:new)
-        expect { subject.store!(file) }.not_to raise_error
-      end
-    end
-
-    context 'when toggle is enabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:disability_compensation_upload_dual_api_validation).and_return(true)
-      end
-
-      it 'runs Benefits Intake PDF validation during store and rejects oversized pages' do
-        file = Rack::Test::UploadedFile.new(
-          'spec/fixtures/pdf_utilities/pdf_validator/79x10.pdf', 'application/pdf'
-        )
-
-        expect { subject.store!(file) }.to raise_error(CarrierWave::IntegrityError, /page size limit/i)
-      end
+      expect { subject.store!(file) }.to raise_error(CarrierWave::IntegrityError, /page size limit/i)
     end
   end
 end

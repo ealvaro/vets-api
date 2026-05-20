@@ -10,6 +10,31 @@ RSpec.describe FormAttachment do
       expect(preneed_attachment.parsed_file_data['filename']).to eq('extras.pdf')
     end
 
+    context 'when a virus is detected' do
+      let(:uploader_double) { instance_double(PreneedAttachmentUploader) }
+
+      before do
+        allow(preneed_attachment).to receive(:get_attachment_uploader).and_return(uploader_double)
+        allow(uploader_double).to receive(:store!).and_raise(UploaderVirusScan::VirusFoundError)
+      end
+
+      it 'raises UnprocessableEntity with a safe message' do
+        file = Rack::Test::UploadedFile.new(Rails.root.join('spec', 'fixtures', 'preneeds', 'extras.pdf'))
+        expect { preneed_attachment.set_file_data!(file) }.to raise_error(
+          Common::Exceptions::UnprocessableEntity
+        ) do |e|
+          expect(e.errors.first.detail).to eq('We were unable to process your file. Please try again.')
+        end
+      end
+
+      it 'logs a warning' do
+        allow(Rails.logger).to receive(:warn)
+        file = Rack::Test::UploadedFile.new(Rails.root.join('spec', 'fixtures', 'preneeds', 'extras.pdf'))
+        expect { preneed_attachment.set_file_data!(file) }.to raise_error(Common::Exceptions::UnprocessableEntity)
+        expect(Rails.logger).to have_received(:warn).with(/virus detected/)
+      end
+    end
+
     describe '#unlock_pdf' do
       let(:file_name) { 'locked_pdf_password_is_test.Pdf' }
       let(:bad_password) { 'bad_pw' }

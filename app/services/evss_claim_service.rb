@@ -66,21 +66,21 @@ class EVSSClaimService
     headers = auth_headers.clone
     headers_supplemented = supplement_auth_headers(evss_claim_document.evss_claim_id, headers)
 
-    evidence_submission_id = nil
-    if Flipper.enabled?(:cst_send_evidence_submission_failure_emails)
-      evidence_submission_id = create_initial_evidence_submission(evss_claim_document).id
-    end
+    evidence_submission_id = initial_evidence_submission_id(evss_claim_document)
     job_id = EVSS::DocumentUpload.perform_async(headers, @user.user_account_uuid,
                                                 evss_claim_document.to_serializable_hash, evidence_submission_id)
     record_workaround('document_upload', evss_claim_document.evss_claim_id, job_id) if headers_supplemented
 
     job_id
+  rescue UploaderVirusScan::VirusFoundError
+    raise Common::Exceptions::UnprocessableEntity.new(
+      detail: 'We were unable to process your file. Please try again.',
+      source: 'EVSSClaimService.upload_document'
+    )
   rescue CarrierWave::IntegrityError => e
     log_exception_to_sentry(e, nil, nil, 'warn')
 
-    raise Common::Exceptions::UnprocessableEntity.new(
-      detail: e.message, source: 'EVSSClaimService.upload_document'
-    )
+    raise Common::Exceptions::UnprocessableEntity.new(detail: e.message, source: 'EVSSClaimService.upload_document')
   end
 
   private
@@ -172,5 +172,11 @@ class EVSSClaimService
     end
     claim.update(list_data: raw_claim)
     claim
+  end
+
+  def initial_evidence_submission_id(evss_claim_document)
+    return unless Flipper.enabled?(:cst_send_evidence_submission_failure_emails)
+
+    create_initial_evidence_submission(evss_claim_document).id
   end
 end

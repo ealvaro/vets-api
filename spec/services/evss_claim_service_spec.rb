@@ -195,6 +195,23 @@ RSpec.describe EVSSClaimService do
       doc_args = job['args'][2]
       expect(doc_args['file_name']).to match(/filewithspaces.*\.txt/)
     end
+
+    context 'when a virus is detected' do
+      let(:uploader_double) { instance_double(EVSSClaimDocumentUploader) }
+
+      before do
+        allow(EVSSClaimDocumentUploader).to receive(:new).and_return(uploader_double)
+        allow(uploader_double).to receive(:store!).and_raise(UploaderVirusScan::VirusFoundError)
+      end
+
+      it 'raises UnprocessableEntity with a safe message' do
+        expect { subject.upload_document(document) }.to raise_error(
+          Common::Exceptions::UnprocessableEntity
+        ) do |e|
+          expect(e.errors.first.detail).to eq('We were unable to process your file. Please try again.')
+        end
+      end
+    end
   end
 
   context 'when EVSS client has an outage' do

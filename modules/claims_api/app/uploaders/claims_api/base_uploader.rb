@@ -4,6 +4,7 @@ module ClaimsApi
   class BaseUploader < CarrierWave::Uploader::Base
     include SetAWSConfig
     include ValidatePdf
+    include UploaderVirusScan
 
     def size_range
       (1.byte)...(25.megabytes)

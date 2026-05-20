@@ -15,6 +15,12 @@ class FormAttachment < ApplicationRecord
     file = unlock_pdf(file, file_password) if File.extname(file).downcase == '.pdf' && file_password.present?
     attachment_uploader.store!(file)
     self.file_data = { filename: attachment_uploader.filename }.to_json
+  rescue UploaderVirusScan::VirusFoundError
+    Rails.logger.warn("#{self.class.name}#set_file_data!: virus detected in upload")
+    raise Common::Exceptions::UnprocessableEntity.new(
+      detail: 'We were unable to process your file. Please try again.',
+      source: 'FormAttachment.set_file_data'
+    )
   rescue CarrierWave::IntegrityError => e
     Rails.logger.warn("FormAttachment.set_file_data error: #{e.message}")
     raise Common::Exceptions::UnprocessableEntity.new(detail: e.message, source: 'FormAttachment.set_file_data')

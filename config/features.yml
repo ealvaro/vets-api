@@ -1059,12 +1059,6 @@ features:
     actor_type: user
     description: enables the job that reports new conditions workflow in-progress form stats to Datadog
     enable_in_development: true
-  disability_compensation_upload_dual_api_validation:
-    actor_type: user
-    description: >
-      Enables additional file upload validation for Form 526 supporting evidence to satisfy
-      both Benefits Documents API and Benefits Intake API constraints, including PDF page
-      dimension checks, and virus scanning with user-friendly error handling.
   disability_526_send_form526_submitted_email:
     actor_type: user
     description: enables sending submitted email in both primary and backup paths

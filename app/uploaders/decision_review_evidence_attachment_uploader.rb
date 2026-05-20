@@ -3,6 +3,7 @@
 # Files uploaded as part of a Notice of Disagreement submission that will be sent to Lighthouse upon form submission.
 class DecisionReviewEvidenceAttachmentUploader < CarrierWave::Uploader::Base
   include SetAWSConfig
+  include UploaderVirusScan
 
   def size_range
     (1.byte)...(100_000_000.bytes)
