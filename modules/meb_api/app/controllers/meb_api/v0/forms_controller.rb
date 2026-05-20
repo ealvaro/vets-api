@@ -116,6 +116,7 @@ module MebApi
         @form_type = case params['type']
                      when 'ToeSubmission' then 'toe'
                      when 'Chapter35Submission' then 'Chapter35'
+                     when 'VetTec' then 'VetTec'
                      else params['type']&.capitalize
                      end
       end

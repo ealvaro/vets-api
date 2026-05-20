@@ -372,6 +372,18 @@ RSpec.describe 'MebApi::V0 Forms', type: :request do
         expect(response.body).to eq('Error content')
       end
     end
+
+    context 'when requesting VetTec letter' do
+      it 'preserves VetTec casing and returns a PDF' do
+        travel_to Time.zone.local(2024, 1, 15, 10, 30, 0) do
+          get '/meb_api/v0/forms_claim_letter', params: { type: 'VetTec' }
+          expect(response).to have_http_status(:ok)
+          expect(response.headers['Content-Type']).to eq('application/pdf')
+          # Verify the claimant service was called with 'VetTec' (not 'Vettec')
+          expect(claimant_service).to have_received(:get_claimant_info).with('VetTec')
+        end
+      end
+    end
   end
 
   describe 'POST /meb_api/v0/forms_submit_claim' do
