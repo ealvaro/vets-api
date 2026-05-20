@@ -55,7 +55,7 @@ module Mobile
         displayable_letters = response.select { |letter| letter.displayable?(@current_user) }
 
         if Flipper.enabled?(:cst_letters_content_updates, @current_user)
-          render json: Mobile::V0::LettersSerializer.new(@current_user, displayable_letters)
+          render json: Mobile::V0::LettersSerializer.new(@current_user, sort_by_letter_order(displayable_letters))
         else
           render json: Mobile::V0::LettersSerializer.new(@current_user, displayable_letters.sort_by(&:name))
         end
@@ -93,6 +93,17 @@ module Mobile
       end
 
       private
+
+      # Re-apply the canonical letter order after appending COE. The Lighthouse service already
+      # sorts by LETTER_ORDER, but the COE letter comes from a separate service (LGY) and is
+      # appended afterward, so it would otherwise land at the bottom of the list.
+      def sort_by_letter_order(letters)
+        ordered = Lighthouse::LettersGenerator::Content::LETTER_ORDER.filter_map do |letter_type|
+          letters.find { |letter| letter.letter_type == letter_type }
+        end
+
+        ordered + (letters - ordered)
+      end
 
       def get_coe_letter_type
         StatsD.increment('mobile.letters.coe_status.total')

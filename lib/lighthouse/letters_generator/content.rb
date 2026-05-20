@@ -9,7 +9,7 @@ module Lighthouse
       LETTER_ORDER = %w[
         benefit_summary
         benefit_verification
-        certificate_of_eligibility
+        certificate_of_eligibility_home_loan
         proof_of_service
         civil_service
         minimum_essential_coverage

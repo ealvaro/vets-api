@@ -395,6 +395,25 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                 end
               end
             end
+
+            context 'when :cst_letters_content_updates is disabled' do
+              it 'returns the letters alphabetically sorted by name with COE included' do
+                VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
+                  VCR.use_cassette('mobile/lgy/determination_eligible', match_requests_on: %i[method uri]) do
+                    VCR.use_cassette('mobile/lgy/application_200_status_submitted',
+                                     match_requests_on: %i[method uri]) do
+                      get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => '2.59.0' })
+                      expect(response).to have_http_status(:ok)
+                      letters = JSON.parse(response.body).dig('data', 'attributes', 'letters')
+                      expect(letters.map { |l| l['letterType'] }).to eq(
+                        %w[benefit_summary benefit_verification certificate_of_eligibility_home_loan
+                           civil_service commissary proof_of_service]
+                      )
+                    end
+                  end
+                end
+              end
+            end
           end
 
           context 'with a user that has an eligible COE letter' do
@@ -553,10 +572,13 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                   # Verify COE-specific fields
                   expect(coe_letter['referenceNumber']).to eq('16934344')
                   expect(coe_letter['coeStatus']).to eq('AVAILABLE')
-                  # Verify COE letter is positioned last since it's appended after lighthouse letters
-                  letter_types = letters.map { |l| l['letterType'] }
-                  coe_index = letter_types.index('certificate_of_eligibility_home_loan')
-                  expect(coe_index).to eq(letter_types.length - 1)
+                  # Verify COE letter lands in its canonical LETTER_ORDER position rather than at
+                  # the bottom, even though it's appended after the Lighthouse letters.
+                  expect(letters.map { |l| l['letterType'] }).to eq(
+                    %w[benefit_summary benefit_verification certificate_of_eligibility_home_loan
+                       proof_of_service civil_service minimum_essential_coverage medicare_partd
+                       commissary]
+                  )
                   assert_schema_conform(200)
                 end
               end
