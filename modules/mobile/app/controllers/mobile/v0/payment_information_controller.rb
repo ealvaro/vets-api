@@ -57,9 +57,9 @@ module Mobile
           payload[:error_code] = response.code
           payload[:error_message] = response.detail
 
-          UserAudit.logger.error(payload)
+          UserAudit.logger.error(**payload)
         else
-          UserAudit.logger.success(payload)
+          UserAudit.logger.success(**payload)
         end
       end
 
