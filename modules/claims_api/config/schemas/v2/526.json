@@ -1093,6 +1093,12 @@
       "type": ["string", "null"],
       "description": "An optional notes section.",
       "maxLength": 4000
+    },
+    "claimDate": {
+      "description": "Date when claim is being submitted to the VA. Date cannot be in the future.",
+      "type": "string",
+      "pattern": "^(?:[0-9]{4})-(?:0[1-9]|1[0-2])-(?:0[1-9]|[1-2][0-9]|3[0-1])$",
+      "example": "2018-06-04"
     }
   }
 }

@@ -26,7 +26,7 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
   before do
     Timecop.freeze(Time.zone.now)
     allow_any_instance_of(ClaimsApi::EVSSService::Base).to receive(:submit).and_return OpenStruct.new(claimId: 1337)
-    allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v2_enable_FES).and_return(false)
+    allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v2_enable_FES).and_return(true)
   end
 
   after do
@@ -259,6 +259,106 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
                 expect(parsed_res).not_to have_key('meta')
                 expect(response).to have_http_status(:accepted)
               end
+            end
+          end
+        end
+      end
+
+      context 'claimDate', vcr: 'claims_api/disability_comp' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v2_enable_FES).and_return(false)
+        end
+
+        context 'present' do
+          it 'accepts the submission with valid string' do
+            mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+              temp = JSON.parse(data)
+              temp['data']['attributes']['claimDate'] = (Date.current - 1.day).to_s
+              data = temp.to_json
+
+              post synchronous_path, params: data, headers: auth_header
+
+              expect(response).to have_http_status(:accepted)
+            end
+          end
+
+          context 'rejects the submission' do
+            let(:partial_err_message) { 'The property /claimDate did not match the following requirements:' }
+
+            it 'with an invalid string YYYY' do
+              mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+                temp = JSON.parse(data)
+                temp['data']['attributes']['claimDate'] = '2024'
+                data = temp.to_json
+
+                post synchronous_path, params: data, headers: auth_header
+
+                parsed_res = JSON.parse(response.body)
+                parsed_errors = parsed_res['errors']
+                expect(parsed_errors.count).to eq(1)
+                expect(response).to have_http_status(:unprocessable_content)
+                expect(parsed_errors[0]['detail']).to include(partial_err_message)
+              end
+            end
+
+            it 'with an invalid string YYYY-MM' do
+              mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+                temp = JSON.parse(data)
+                temp['data']['attributes']['claimDate'] = '2024-06'
+                data = temp.to_json
+
+                post synchronous_path, params: data, headers: auth_header
+
+                parsed_res = JSON.parse(response.body)
+                parsed_errors = parsed_res['errors']
+                expect(parsed_errors.count).to eq(1)
+                expect(response).to have_http_status(:unprocessable_content)
+                expect(parsed_errors[0]['detail']).to include(partial_err_message)
+              end
+            end
+
+            it 'with an invalid string' do
+              mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+                temp = JSON.parse(data)
+                temp['data']['attributes']['claimDate'] = 'strings-like-this-are-invalid'
+                data = temp.to_json
+
+                post synchronous_path, params: data, headers: auth_header
+
+                parsed_res = JSON.parse(response.body)
+                parsed_errors = parsed_res['errors']
+                expect(parsed_errors.count).to eq(1)
+                expect(response).to have_http_status(:unprocessable_content)
+                expect(parsed_errors[0]['detail']).to include(partial_err_message)
+              end
+            end
+
+            it 'rejects the submission when claimDate is in the future' do
+              mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+                temp = JSON.parse(data)
+                temp['data']['attributes']['claimDate'] = (Date.current + 1.day).to_s
+                data = temp.to_json
+
+                post synchronous_path, params: data, headers: auth_header
+
+                parsed_res = JSON.parse(response.body)
+                parsed_errors = parsed_res['errors']
+                expect(parsed_errors.count).to eq(1)
+                expect(response).to have_http_status(:unprocessable_content)
+                expect(parsed_errors[0]['detail']).to eq(
+                  'claimDate must not be in the future.'
+                )
+              end
+            end
+          end
+        end
+
+        context 'absent' do
+          it 'accepts the submission when optional claimDate not provided' do
+            mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+              post synchronous_path, params: data, headers: auth_header
+
+              expect(response).to have_http_status(:accepted)
             end
           end
         end
