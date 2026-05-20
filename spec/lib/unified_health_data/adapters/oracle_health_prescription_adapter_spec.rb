@@ -681,6 +681,57 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
       end
     end
 
+    context 'with completed dispense without tracking data logging' do
+      it 'logs warning when completed dispenses exist without tracking data' do
+        resource = fhir_resource(status: 'active', dispense_status: 'completed')
+        resource['contained'] = [
+          { 'resourceType' => 'MedicationDispense', 'id' => 'dispense-1',
+            'status' => 'completed', 'whenHandedOver' => '2025-01-15T10:00:00Z' }
+        ]
+
+        expect(Rails.logger).to receive(:warn).with(
+          hash_including(
+            message: 'Completed dispenses without tracking data',
+            service: 'unified_health_data'
+          )
+        )
+        expect(StatsD).to receive(:increment)
+          .with('unified_health_data.prescriptions.completed_dispense_without_tracking')
+
+        subject.parse(resource)
+      end
+
+      it 'does not log when tracking data exists' do
+        resource = fhir_resource(status: 'active', dispense_status: 'completed')
+        resource['contained'] = [
+          { 'resourceType' => 'MedicationDispense', 'id' => 'dispense-1',
+            'status' => 'completed', 'whenHandedOver' => '2025-01-15T10:00:00Z',
+            'extension' => [{
+              'url' => 'http://va.gov/fhir/StructureDefinition/shipping-info',
+              'extension' => [
+                { 'url' => 'Tracking Number', 'valueString' => '9400111899223100000001' }
+              ]
+            }] }
+        ]
+
+        expect(Rails.logger).not_to receive(:warn).with(
+          hash_including(message: 'Completed dispenses without tracking data')
+        )
+
+        subject.parse(resource)
+      end
+
+      it 'does not log when no completed dispenses exist' do
+        resource = fhir_resource(status: 'active', dispense_status: 'in-progress')
+
+        expect(Rails.logger).not_to receive(:warn).with(
+          hash_including(message: 'Completed dispenses without tracking data')
+        )
+
+        subject.parse(resource)
+      end
+    end
+
     context 'with NDC code extraction' do
       it 'extracts NDC from medicationCodeableConcept coding' do
         resource = {

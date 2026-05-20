@@ -98,6 +98,9 @@ module UnifiedHealthData
         refill_metadata = extract_refill_submission_metadata_from_tasks(resource, dispenses_data)
         renewal_metadata = extract_renewal_submission_metadata_from_tasks(resource)
 
+        # monitoring for dispenses without tracking data, which may indicate CMOP issues
+        log_completed_dispense_without_tracking(resource, tracking_data, dispenses_data)
+
         build_core_attributes(resource, dispenses_data)
           .merge(build_tracking_attributes(tracking_data))
           .merge(build_contact_and_source_attributes(resource, dispenses_data))
@@ -369,6 +372,35 @@ module UnifiedHealthData
           has_in_progress_dispense:,
           service: 'unified_health_data'
         )
+      end
+
+      # Logs and tracks when we have completed dispenses but no tracking info.
+      # This may indicate CMOP marked the dispense as filled but never shipped.
+      # @param resource [Hash] FHIR MedicationRequest resource
+      # @param tracking_data [Array] Tracking information
+      # @param dispenses_data [Array<Hash>] Dispense information
+      #
+      def log_completed_dispense_without_tracking(resource, tracking_data, dispenses_data)
+        return if tracking_data.any?
+
+        completed_dispenses = dispenses_data.select do |d|
+          d[:status] == 'completed'
+        end
+        return if completed_dispenses.empty?
+
+        prescription_id_suffix = resource['id']&.to_s&.last(3) || 'unknown'
+        dispense_ids = completed_dispenses.map do |d|
+          d[:id]
+        end.join(', ')
+
+        Rails.logger.warn(
+          message: 'Completed dispenses without tracking data',
+          prescription_id_suffix:,
+          dispense_ids:,
+          service: 'unified_health_data'
+        )
+
+        StatsD.increment('unified_health_data.prescriptions.completed_dispense_without_tracking')
       end
 
       # Determines VistA status for 'active' MedicationRequest based on business rules
