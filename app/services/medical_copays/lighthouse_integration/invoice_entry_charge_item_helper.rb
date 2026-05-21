@@ -13,11 +13,26 @@ module MedicalCopays
           resource = entry['resource'] || {}
           charge_items = invoices_charge_items[invoice_id] || {}
           resource['charge_items'] = charge_items
-          resource['line_items'] = copay_line_items_for_invoice(resource['lineItem'], charge_items)
+          resource['line_items'] = merge_bill_number(
+            copay_line_items_for_invoice(resource['lineItem'], charge_items),
+            resource
+          )
           entry['resource'] = resource
         end
 
         entries
+      end
+
+      def merge_bill_number(line_items, resource)
+        bill_number = extract_bill_number(resource)
+        return line_items if bill_number.blank?
+
+        line_items.map { |li| li.merge(bill_number:) }
+      end
+
+      def extract_bill_number(resource)
+        identifiers = resource['identifier'] || []
+        identifiers.find { |i| i.dig('type', 'text') == 'Bill Number' }&.dig('value')
       end
 
       def copay_line_items_for_invoice(fhir_line_items, additional_charge_items)

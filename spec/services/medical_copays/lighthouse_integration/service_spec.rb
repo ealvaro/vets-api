@@ -412,6 +412,7 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
           'id' => 'inv-1',
           'date' => Time.current.utc.iso8601,
           'issuer' => { 'reference' => 'Organization/org-1' },
+          'identifier' => [{ 'type' => { 'text' => 'Bill Number' }, 'value' => 'BN-001' }],
           'lineItem' => [
             {
               'chargeItemReference' => { 'reference' => 'ChargeItem/ci-1' },
@@ -444,9 +445,49 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
 
       expect(entry.dig('resource', 'charge_items')).to eq(charge_item_rows)
       expect(entry.dig('resource', 'line_items')).to contain_exactly(
-        hash_including(billing_reference: 'ci-1', price_components: array_including(hash_including(amount: 5.0))),
-        hash_including(billing_reference: 'ci-2', price_components: array_including(hash_including(amount: 12.0)))
+        hash_including(billing_reference: 'ci-1', bill_number: 'BN-001',
+                       price_components: array_including(hash_including(amount: 5.0))),
+        hash_including(billing_reference: 'ci-2', bill_number: 'BN-001',
+                       price_components: array_including(hash_including(amount: 12.0)))
       )
+    end
+
+    it 'omits bill_number from line_items when no Bill Number identifier is present' do
+      service = described_class.new('123456789V123456')
+      entry = {
+        'resource' => {
+          'id' => 'inv-1',
+          'date' => Time.current.utc.iso8601,
+          'issuer' => { 'reference' => 'Organization/org-1' },
+          'lineItem' => [
+            {
+              'chargeItemReference' => { 'reference' => 'ChargeItem/ci-1' },
+              'priceComponent' => [{ 'type' => 'base', 'amount' => { 'value' => 5.0 } }]
+            }
+          ]
+        }
+      }
+      charge_item_rows = {
+        'ci-1' => { 'id' => 'ci-1', 'status' => 'billable', 'occurrenceDateTime' => '2025-01-01T00:00:00Z' }
+      }
+      paginated_charge_items = instance_double(MedicalCopays::LighthouseIntegration::PaginatedService::ChargeItemService)
+      allow(MedicalCopays::LighthouseIntegration::PaginatedService::ChargeItemService).to receive(:new)
+        .with('123456789V123456').and_return(paginated_charge_items)
+      allow(paginated_charge_items).to receive(:fetch_paginated_charge_items)
+        .with(%w[ci-1]).and_return(charge_item_rows)
+      collect_stub = {
+        'raw_bundle' => { 'entry' => [entry], 'link' => [], 'total' => 1 },
+        'entries' => [entry]
+      }
+      allow(service).to receive_messages(collect_invoices_in_range: collect_stub, build_invoice_entries: [])
+      allow(Lighthouse::HCC::Bundle).to receive(:new).and_return(instance_double(Lighthouse::HCC::Bundle, entries: []))
+
+      service.list_months(include_line_items: true)
+
+      expect(entry.dig('resource', 'line_items')).to contain_exactly(
+        hash_including(billing_reference: 'ci-1')
+      )
+      expect(entry.dig('resource', 'line_items', 0)).not_to have_key(:bill_number)
     end
 
     it 'returns invoices from the last 6 months' do

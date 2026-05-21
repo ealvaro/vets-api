@@ -87,6 +87,32 @@ class Swagger::V1::Requests::MedicalCopays
                          type: :object,
                          description: 'Included when include_line_items is used. Maps ChargeItem id to FHIR ' \
                                       'ChargeItem resource JSON.'
+
+                property :lineItems, type: :array,
+                                     description: 'Included when include_line_items is used.' do
+                  items do
+                    property :billingReference, type: :string
+                    property :billNumber, type: :string, example: 'BN-001'
+                    property :datePosted, type: :string
+                    property :description, type: :string
+                    property :providerName, type: :string
+
+                    property :priceComponents, type: :array do
+                      items do
+                        property :type, type: :string
+                        property :code, type: :string
+                        property :amount, type: :number, format: :float
+                      end
+                    end
+
+                    property :medication, type: :object do
+                      property :medicationName, type: :string
+                      property :rxNumber, type: :string
+                      property :quantity, type: :number, format: :float
+                      property :daysSupply, type: :integer
+                    end
+                  end
+                end
               end
 
               # VBS response (conditionally returned based on Cerner location(s))
