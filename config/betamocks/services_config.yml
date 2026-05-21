@@ -10,6 +10,15 @@
       :path: "/VDC/ManageRepresentativeService"
       :file_path: "/bgs/manage_representative_service/read_poa_request/default"
 
+# Claims Evidence API
+# eFolder document search; used by the TSA letter endpoint (V0::TsaLetterController)
+- :name: "Claims Evidence API"
+  :base_uri: <%= "#{URI(Settings.claims_evidence_api.base_url).host}:#{URI(Settings.claims_evidence_api.base_url).port}" %>
+  :endpoints:
+    - :method: :post
+      :path: "/api/v1/rest/folders/files:search"
+      :file_path: "claims_evidence_api/search/default"
+
 # BID Awards  
 - :name: "BID Awards"
   :base_uri: "bid-api-test.dev.bip.va.gov:443"
