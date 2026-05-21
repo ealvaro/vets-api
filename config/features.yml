@@ -2424,6 +2424,10 @@ features:
   meb_1606_30_automation:
     actor_type: user
     description: Enables MEB form to handle Chapter 1606/30 forms as well as Chapter 33.
+  meb_1606_30_confirmation_pages:
+    actor_type: user
+    description: Enables confirmation page features for MEB 1606/30 forms
+    enable_in_development: true
   meb_exclusion_period_enabled:
     actor_type: user
     description: enables exclusion period checks
