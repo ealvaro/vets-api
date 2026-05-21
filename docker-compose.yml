@@ -16,7 +16,6 @@ x-app: &common
     SETTINGS__REDIS__APP_DATA__URL: "redis://redis:6379"
     SETTINGS__REDIS__SIDEKIQ__URL: "redis://redis:6379"
     SETTINGS__REDIS__RAILS_CACHE__URL: "redis://redis:6379"
-    GHEC_GIT_TOKEN: "${GHEC_GIT_TOKEN}"
   image: vets-api:${DOCKER_IMAGE:-latest}
   volumes:
     - "../vets-api-mockdata:/cache"

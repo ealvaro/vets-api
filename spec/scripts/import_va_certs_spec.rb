@@ -165,7 +165,7 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
       script_content = File.read(script_path)
 
       expect(script_content).to include('https://cacerts.digicert.com/DigiCertTLSRSASHA2562020CA1-1.crt.pem')
-      expect(script_content).to include('https://cacerts.digicert.com/DigiCertGlobalG2TLSRSASHA2562020CA1.crt.pem')
+      expect(script_content).to include('https://digicert.tbs-certificats.com/DigiCertGlobalG2TLSRSASHA2562020CA1.crt')
 
       # Verify curl uses --fail to catch HTTP errors
       expect(script_content).to include('curl --fail')

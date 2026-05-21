@@ -4,8 +4,6 @@ x-app: &common
   build:
     args:
       BUNDLE_ENTERPRISE__CONTRIBSYS__COM: "${BUNDLE_ENTERPRISE__CONTRIBSYS__COM}"
-      BUNDLE_VA__GHE__COM: "${BUNDLE_VA__GHE__COM}"
-      GHEC_GIT_TOKEN: "${GHEC_GIT_TOKEN}"
       USER_ID: ${VETS_API_USER_ID}
       IMAGEMAGICK_IMAGE: "${IMAGEMAGICK_IMAGE:-dpokidov/imagemagick:7.1.1-47-bookworm}"
       RUBY_IMAGE: "${RUBY_IMAGE:-public.ecr.aws/docker/library/ruby:3.3.6-slim-bookworm}"
@@ -21,7 +19,6 @@ x-app: &common
     SETTINGS__SAML_SSOE__IDP_METADATA_FILE: "config/ssoe_idp_sqa_metadata_isam.xml"
     IDENTITY_SETTINGS__SAML_SSOE__IDP_METADATA_FILE: "config/ssoe_idp_sqa_metadata_isam.xml"
     SETTINGS__BETAMOCKS__CACHE_DIR: "config/vets-api-mockdata"
-    GHEC_GIT_TOKEN: "${GHEC_GIT_TOKEN}"
   image: vets-api:${DOCKER_IMAGE:-latest}
   restart: unless-stopped
   volumes:
