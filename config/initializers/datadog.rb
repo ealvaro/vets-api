@@ -18,7 +18,8 @@ Datadog.configure do |c|
     end
 
     # Enable instruments
-    c.tracing.instrument :rails, service_name: 'vets-api-controllers'
+    c.tracing.instrument :rails
+    c.tracing.instrument :action_pack, service_name: 'vets-api-controllers'
     c.tracing.instrument :sidekiq, service_name: 'vets-api-sidekiq'
     c.tracing.instrument :active_support, cache_service: 'vets-api-cache'
     c.tracing.instrument :active_record, service_name: 'vets-api-db'
@@ -34,9 +35,6 @@ Datadog.configure do |c|
     c.appsec.instrument :rails
 
     c.logger.instance = SemanticLogger['Datadog']
-
-    # Suppress Datadog's own internal log noise
-    c.logger.level = Logger::WARN
 
   end
 end
