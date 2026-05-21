@@ -65,6 +65,8 @@ module SignIn
       TOKEN_ENDPOINT_AUTH_METHODS = %w[private_key_jwt client_secret_basic none].freeze
       TOKEN_ROUTE_PATH = '/v0/sign_in/token'
       USERINFO_ROUTE_PATH = '/sign_in/user_info'
+      REVIEW_INSTANCES_HOST = 'vfs.va.gov'
+      REVIEW_INSTANCES_CALLBACK_PATH = '/auth/login/callback'
     end
   end
 end

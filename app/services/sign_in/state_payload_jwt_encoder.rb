@@ -11,21 +11,23 @@ module SignIn
       :client_state,
       :scope,
       :operation,
-      :nonce
+      :nonce,
+      :redirect_uri
     )
 
     # rubocop:disable Metrics/ParameterLists
     def initialize(code_challenge:, code_challenge_method:, acr:, client_config:, type:, operation:, scope: nil,
-                   client_state: nil, nonce: nil)
+                   client_state: nil, nonce: nil, redirect_uri: nil)
       @acr = acr
       @client_config = client_config
-      @type = type
+      @client_state = client_state
       @code_challenge = code_challenge
       @code_challenge_method = code_challenge_method
-      @client_state = client_state
+      @type = type
       @scope = scope
       @operation = operation
       @nonce = nonce
+      @redirect_uri = redirect_uri || set_redirect_uri
     end
     # rubocop:enable Metrics/ParameterLists
 
@@ -83,7 +85,8 @@ module SignIn
         created_at: state_payload.created_at,
         scope: state_payload.scope,
         operation: state_payload.operation,
-        nonce: state_payload.nonce
+        nonce: state_payload.nonce,
+        redirect_uri: state_payload.redirect_uri
       }
     end
 
@@ -96,11 +99,19 @@ module SignIn
                                           client_state:,
                                           scope:,
                                           operation:,
-                                          nonce:)
+                                          nonce:,
+                                          redirect_uri:)
     end
 
     def state_code
       @state_code ||= SecureRandom.hex
+    end
+
+    def set_redirect_uri
+      if Settings.review_instance_slug.present?
+        URI::HTTPS.build(host: "#{Settings.review_instance_slug}.#{Constants::Auth::REVIEW_INSTANCES_HOST}",
+                         path: Constants::Auth::REVIEW_INSTANCES_CALLBACK_PATH).to_s
+      end
     end
 
     def sso_not_enabled_for_device_sso_scope?

@@ -25,7 +25,8 @@ module SignIn
         created_at: decoded_jwt.created_at,
         scope: decoded_jwt.scope,
         operation: decoded_jwt.operation,
-        nonce: decoded_jwt.nonce
+        nonce: decoded_jwt.nonce,
+        redirect_uri: decoded_jwt.redirect_uri
       )
     end
 

@@ -14,6 +14,7 @@ FactoryBot.define do
     scope { SignIn::Constants::Auth::DEVICE_SSO }
     operation { SignIn::Constants::Auth::VERIFY_CTA_AUTHENTICATED }
     nonce { nil }
+    redirect_uri { nil }
 
     initialize_with do
       new(acr:,
@@ -25,7 +26,8 @@ FactoryBot.define do
           created_at:,
           scope:,
           operation:,
-          nonce:)
+          nonce:,
+          redirect_uri:)
     end
   end
 end

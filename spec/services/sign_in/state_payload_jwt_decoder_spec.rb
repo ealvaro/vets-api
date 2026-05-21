@@ -17,7 +17,8 @@ RSpec.describe SignIn::StatePayloadJwtDecoder do
                                          client_state:,
                                          scope:,
                                          operation:,
-                                         nonce:).perform
+                                         nonce:,
+                                         redirect_uri:).perform
     end
     let(:code_challenge) { Base64.urlsafe_encode64('some-safe-code-challenge') }
     let(:code_challenge_method) { SignIn::Constants::Auth::CODE_CHALLENGE_METHOD }
@@ -31,6 +32,7 @@ RSpec.describe SignIn::StatePayloadJwtDecoder do
     let(:scope) { SignIn::Constants::Auth::DEVICE_SSO }
     let(:operation) { SignIn::Constants::Auth::VERIFY_CTA_AUTHENTICATED }
     let(:nonce) { nil }
+    let(:redirect_uri) { nil }
 
     let(:client_state_minimum_length) { SignIn::Constants::Auth::CLIENT_STATE_MINIMUM_LENGTH }
 
@@ -52,7 +54,8 @@ RSpec.describe SignIn::StatePayloadJwtDecoder do
           client_id:,
           created_at:,
           scope:,
-          operation:
+          operation:,
+          redirect_uri:
         }
       end
       let(:expected_error) { SignIn::Errors::StatePayloadSignatureMismatchError }
@@ -85,6 +88,7 @@ RSpec.describe SignIn::StatePayloadJwtDecoder do
         expect(decoded_state_payload.scope).to eq(scope)
         expect(decoded_state_payload.operation).to eq(operation)
         expect(decoded_state_payload.nonce).to eq(nonce)
+        expect(decoded_state_payload.redirect_uri).to eq(redirect_uri)
       end
     end
 
@@ -94,6 +98,15 @@ RSpec.describe SignIn::StatePayloadJwtDecoder do
       it 'returns a State Payload with nonce' do
         decoded_state_payload = subject
         expect(decoded_state_payload.nonce).to eq('test-nonce-value')
+      end
+    end
+
+    context 'when state payload jwt includes redirect_uri' do
+      let(:redirect_uri) { 'test-nonce-value' }
+
+      it 'returns a State Payload with redirect_uri' do
+        decoded_state_payload = subject
+        expect(decoded_state_payload.redirect_uri).to eq('test-nonce-value')
       end
     end
   end

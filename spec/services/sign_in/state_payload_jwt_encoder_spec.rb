@@ -13,7 +13,8 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
                                          scope:,
                                          client_config:,
                                          operation:,
-                                         nonce:).perform
+                                         nonce:,
+                                         redirect_uri:).perform
     end
 
     let(:code_challenge) { 'some-code-challenge' }
@@ -29,6 +30,7 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
     let(:authentication) { SignIn::Constants::Auth::API }
     let(:client_state_minimum_length) { SignIn::Constants::Auth::CLIENT_STATE_MINIMUM_LENGTH }
     let(:operation) { SignIn::Constants::Auth::VERIFY_CTA_AUTHENTICATED }
+    let(:redirect_uri) { nil }
 
     shared_context 'validated code challenge state payload jwt' do
       let(:code) { 'some-state-code-value' }
@@ -58,6 +60,7 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
           expect(decoded_jwt.scope).to eq(scope)
           expect(decoded_jwt.operation).to eq(operation)
           expect(decoded_jwt.nonce).to eq(nonce)
+          expect(decoded_jwt.redirect_uri).to eq(redirect_uri)
         end
 
         it 'saves a StateCode in redis' do
@@ -225,6 +228,30 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
       it 'includes nonce in the JWT' do
         decoded_jwt = OpenStruct.new(JWT.decode(subject, false, nil).first)
         expect(decoded_jwt.nonce).to eq('test-nonce-value')
+      end
+    end
+
+    context 'redirect_uri is provided when Settings.review_instance_slug.present' do
+      let(:pkce) { false }
+      let(:code_challenge) { nil }
+      let(:review_slug) { 'review_123' }
+      let(:code) { 'some-state-code-value' }
+      let(:client_id) { client_config.client_id }
+      let(:acr) { SignIn::Constants::Auth::ACR_VALUES.first }
+      let(:type) { SignIn::Constants::Auth::CSP_TYPES.first }
+      let(:client_state) { SecureRandom.alphanumeric(SignIn::Constants::Auth::CLIENT_STATE_MINIMUM_LENGTH + 1) }
+
+      before do
+        allow(Settings).to receive(:review_instance_slug).and_return(:review_slug)
+        allow(SecureRandom).to receive(:hex).and_return(code)
+        Timecop.freeze
+      end
+
+      after { Timecop.return }
+
+      it 'includes redirect_uri in the JWT' do
+        decoded_jwt = OpenStruct.new(JWT.decode(subject, false, nil).first)
+        expect(decoded_jwt.redirect_uri).to eq('https://review_slug.vfs.va.gov/auth/login/callback')
       end
     end
   end

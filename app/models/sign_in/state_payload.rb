@@ -4,7 +4,8 @@ module SignIn
   class StatePayload
     include ActiveModel::Validations
 
-    attr_reader :acr, :client_id, :type, :code_challenge, :client_state, :code, :scope, :created_at, :operation, :nonce
+    attr_reader :acr, :client_id, :type, :code_challenge, :client_state, :code, :scope, :created_at, :operation,
+                :nonce, :redirect_uri
 
     validates :code, :created_at, presence: true
     validates :acr, inclusion: Constants::Auth::ACR_VALUES
@@ -24,7 +25,8 @@ module SignIn
                    code_challenge: nil,
                    client_state: nil,
                    created_at: nil,
-                   nonce: nil)
+                   nonce: nil,
+                   redirect_uri: nil)
       @acr = acr
       @client_id = client_id
       @type = type
@@ -35,7 +37,7 @@ module SignIn
       @created_at = created_at || Time.zone.now.to_i
       @operation = operation
       @nonce = nonce
-
+      @redirect_uri = redirect_uri
       validate!
     end
     # rubocop:enable Metrics/ParameterLists
