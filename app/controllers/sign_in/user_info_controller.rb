@@ -9,7 +9,7 @@ module SignIn
       user_info = SignIn::UserInfoGenerator.new(user: current_user).perform
 
       if user_info.valid?
-        render json: user_info.serializable_hash, status: :ok
+        render json: serialized_user_info(user_info), status: :ok
       else
         error = user_info.errors.full_messages.join(', ')
 
@@ -20,8 +20,12 @@ module SignIn
 
     private
 
-    def user_verification
-      current_user.user_verification
+    def serialized_user_info(user_info)
+      client_config.oidc? ? user_info.oidc_serializable_hash : user_info.serializable_hash
+    end
+
+    def client_config
+      @client_config ||= SignIn::ClientConfig.find_by(client_id: access_token.client_id)
     end
   end
 end

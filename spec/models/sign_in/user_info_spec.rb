@@ -14,6 +14,8 @@ RSpec.describe SignIn::UserInfo do
   describe 'attributes' do
     subject(:user_info) { described_class.new(attributes) }
 
+    let(:gcids) { '1000123456V123456^NI^200M^USVHA^P' }
+
     let(:attributes) do
       {
         sub: 'some-sub',
@@ -256,6 +258,34 @@ RSpec.describe SignIn::UserInfo do
             expect(user_info.errors[:gcids]).to include(expected_error_message)
           end
         end
+      end
+    end
+
+    describe '#oidc_serializable_hash' do
+      let(:expected_oidc_hash) do
+        {
+          sub: 'some-sub',
+          name: 'some-full-name',
+          given_name: 'some-first-name',
+          middle_name: 'some-middle-name',
+          family_name: 'some-last-name',
+          email: 'some-email',
+          birthdate: 'some-birth-date',
+          gender: 'some-gender',
+          phone_number: 'some-phone-number',
+          address: {
+            formatted: "some-street1 some-street2\nsome-city, some-state some-postal-code\nsome-country",
+            street_address: 'some-street1 some-street2',
+            locality: 'some-city',
+            region: 'some-state',
+            postal_code: 'some-postal-code',
+            country: 'some-country'
+          }
+        }
+      end
+
+      it 'returns the standard oidc user info hash' do
+        expect(user_info.oidc_serializable_hash).to eq(expected_oidc_hash)
       end
     end
   end

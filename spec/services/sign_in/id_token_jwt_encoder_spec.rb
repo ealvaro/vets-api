@@ -54,14 +54,16 @@ RSpec.describe SignIn::IdTokenJwtEncoder do
       end
 
       context 'when there are user attributes on the correlated ClientConfig access_token_attributes' do
-        let(:access_token_attributes) { %w[first_name last_name] }
-        let(:expected_first_name) { access_token.user_attributes['first_name'] }
-        let(:expected_last_name) { access_token.user_attributes['last_name'] }
+        let(:access_token_attributes) { %w[first_name last_name email] }
+        let(:expected_first_name) { access_token.user_attributes[:first_name] }
+        let(:expected_last_name) { access_token.user_attributes[:last_name] }
+        let(:expected_email) { access_token.user_attributes[:email] }
 
         it 'includes those attributes on the encoded id token' do
           serialized_attributes = decoded_jwt['user_attributes']
-          expect(serialized_attributes['first_name']).to eq(expected_first_name)
-          expect(serialized_attributes['last_name']).to eq(expected_last_name)
+          expect(serialized_attributes['given_name']).to eq(expected_first_name)
+          expect(serialized_attributes['family_name']).to eq(expected_last_name)
+          expect(serialized_attributes['email']).to eq(expected_email)
         end
       end
 

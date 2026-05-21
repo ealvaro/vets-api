@@ -3,9 +3,10 @@
 require 'rails_helper'
 
 describe SignIn::UserInfoController do
-  let!(:client_config) { create(:client_config, client_id:) }
+  let!(:client_config) { create(:client_config, client_id:, oidc:) }
   let(:client_id) { 'some-client-id' }
   let(:user_info_clients) { [client_id] }
+  let(:oidc) { false }
   let!(:session) { create(:oauth_session, client_id:, user_account:, user_verification:) }
 
   let(:user_account) { create(:user_account, icn:) }
@@ -69,41 +70,96 @@ describe SignIn::UserInfoController do
   describe 'GET #show' do
     context 'when the client_id is in the list of valid clients' do
       context 'when the user has valid attributes' do
-        it 'returns the key user info fields' do
-          get :show
+        context 'when the client is not oidc' do
+          let(:expected_response_body) do
+            {
+              sub: credential_uuid,
+              ial: SignIn::Constants::Auth::IAL_TWO.to_s,
+              aal: 'http://idmanagement.gov/ns/assurance/aal/2',
+              csp_type: MPI::Constants::IDME_IDENTIFIER,
+              csp_uuid: credential_uuid,
+              email: credential_email,
+              first_name: user.first_name,
+              middle_name: user.middle_name,
+              last_name: user.last_name,
+              full_name: user.full_name_normalized.values.compact.join(' '),
+              birth_date: user.birth_date,
+              ssn: user.ssn,
+              gender: user.gender,
+              address_street1: user.address[:street],
+              address_street2: user.address[:street2],
+              address_city: user.address[:city],
+              address_state: user.address[:state],
+              address_country: user.address[:country],
+              address_postal_code: user.address[:postal_code],
+              phone_number: user.home_phone,
+              person_types: user.person_types.join('|'),
+              icn: user.icn,
+              edipi: user.edipi,
+              mhv_ien: user.mhv_ien,
+              sec_id: user.sec_id,
+              sec_id_history: user.sec_id_history.join('|'),
+              npi_id: user.npi_id,
+              cerner_id: user.cerner_id,
+              corp_id: user.participant_id,
+              birls: user.birls_id,
+              gcids: gcids.join('|')
+            }
+          end
 
-          expect(response).to have_http_status(:ok)
+          it 'returns the expected response body' do
+            get :show
 
-          body = JSON.parse(response.body)
-          expect(body['sub']).to eq(credential_uuid)
-          expect(body['ial']).to eq(SignIn::Constants::Auth::IAL_TWO.to_s)
-          expect(body['aal']).to eq('http://idmanagement.gov/ns/assurance/aal/2')
-          expect(body['csp_type']).to eq(MPI::Constants::IDME_IDENTIFIER)
-          expect(body['csp_uuid']).to eq(credential_uuid)
-          expect(body['email']).to eq(credential_email)
-          expect(body['first_name']).to eq(user.first_name)
-          expect(body['middle_name']).to eq(user.middle_name)
-          expect(body['last_name']).to eq(user.last_name)
-          expect(body['full_name']).to eq(user.full_name_normalized.values.compact.join(' '))
-          expect(body['birth_date']).to eq(user.birth_date)
-          expect(body['ssn']).to eq(user.ssn)
-          expect(body['gender']).to eq(user.gender)
-          expect(body['address_street1']).to eq(user.address[:street])
-          expect(body['address_street2']).to eq(user.address[:street2])
-          expect(body['address_city']).to eq(user.address[:city])
-          expect(body['address_state']).to eq(user.address[:state])
-          expect(body['address_country']).to eq(user.address[:country])
-          expect(body['address_postal_code']).to eq(user.address[:postal_code])
-          expect(body['phone_number']).to eq(user.home_phone)
-          expect(body['person_types']).to eq(user.person_types.join('|'))
-          expect(body['icn']).to eq(user.icn)
-          expect(body['edipi']).to eq(user.edipi)
-          expect(body['mhv_ien']).to eq(user.mhv_ien)
-          expect(body['sec_id']).to eq(user.sec_id)
-          expect(body['cerner_id']).to eq(user.cerner_id)
-          expect(body['corp_id']).to eq(user.participant_id)
-          expect(body['birls']).to eq(user.birls_id)
-          expect(body['gcids']).to eq(gcids.join('|'))
+            expect(response).to have_http_status(:ok)
+
+            expect(JSON.parse(response.body, symbolize_names: true)).to eq(expected_response_body)
+          end
+        end
+
+        context 'when the client is oidc' do
+          let(:oidc) { true }
+
+          let(:expected_formatted_address) do
+            <<~ADDRESS.strip
+              #{user.address[:street]} #{user.address[:street2]}
+              #{user.address[:city]}, #{user.address[:state]} #{user.address[:postal_code]}
+              #{user.address[:country]}
+            ADDRESS
+          end
+
+          let(:expected_address) do
+            {
+              formatted: expected_formatted_address,
+              street_address: "#{user.address[:street]} #{user.address[:street2]}",
+              locality: user.address[:city],
+              region: user.address[:state],
+              postal_code: user.address[:postal_code],
+              country: user.address[:country]
+            }
+          end
+
+          let(:expected_response_body) do
+            {
+              sub: credential_uuid,
+              name: "#{user.first_name} #{user.middle_name} #{user.last_name}".squish,
+              given_name: user.first_name,
+              middle_name: user.middle_name,
+              family_name: user.last_name,
+              email: credential_email,
+              birthdate: user.birth_date,
+              gender: user.gender,
+              phone_number: user.home_phone,
+              address: expected_address
+            }
+          end
+
+          it 'returns the oidc serializable hash' do
+            get :show
+
+            expect(response).to have_http_status(:ok)
+
+            expect(JSON.parse(response.body, symbolize_names: true)).to eq(expected_response_body)
+          end
         end
       end
 

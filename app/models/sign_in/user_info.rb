@@ -60,7 +60,46 @@ module SignIn
 
     validate :gcids_have_approved_identifier
 
+    def oidc_serializable_hash
+      {
+        sub:,
+        name: full_name,
+        given_name: first_name,
+        middle_name:,
+        family_name: last_name,
+        email:,
+        birthdate: birth_date,
+        gender:,
+        phone_number:,
+        address: oidc_address_hash
+      }
+    end
+
     private
+
+    def oidc_address_hash
+      {
+        formatted: oidc_formatted_address,
+        street_address: oidc_street_address,
+        locality: address_city,
+        region: address_state,
+        postal_code: address_postal_code,
+        country: address_country
+      }.compact.presence
+    end
+
+    def oidc_formatted_address
+      [oidc_street_address, oidc_city_state_postal, address_country].compact_blank.join("\n").presence
+    end
+
+    def oidc_street_address
+      [address_street1, address_street2].compact_blank.join(' ').presence
+    end
+
+    def oidc_city_state_postal
+      city_state = [address_city, address_state].compact_blank.join(', ')
+      [city_state, address_postal_code].compact_blank.join(' ').presence
+    end
 
     def gcids_have_approved_identifier
       value = gcids
