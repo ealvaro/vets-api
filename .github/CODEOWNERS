@@ -109,6 +109,7 @@ app/controllers/v0/intent_to_files_controller.rb @software/disability-benefits @
 app/controllers/v0/intents_to_file_controller.rb @software/benefits-management-tools-be @software/backend-review-group
 app/controllers/v0/letters_discrepancy_controller.rb @software/benefits-management-tools-be @software/backend-review-group
 app/controllers/v0/letters_generator_controller.rb @software/benefits-management-tools-be @software/backend-review-group
+app/controllers/v0/maintenance_window_diagnostics_controller.rb @software/backend-review-group
 app/controllers/v0/maintenance_windows_controller.rb @software/backend-review-group
 app/controllers/v0/map_services_controller.rb @software/octo-identity
 app/controllers/v0/mdot @software/va-cto-health-products @software/backend-review-group
@@ -2034,6 +2035,7 @@ spec/requests/v0/in_progress_forms_controller_spec.rb @software/vfs-authenticate
 spec/requests/v0/in_progress_forms/5655_spec.rb @software/vsa-debt-resolution @software/backend-review-group
 spec/requests/v0/intent_to_file_spec.rb @software/disability-benefits @software/benefits-lifestage @software/pension-and-burials @software/backend-review-group
 spec/requests/v0/intents_to_file_spec.rb @software/benefits-management-tools-be @software/backend-review-group
+spec/requests/v0/maintenance_window_diagnostics_spec.rb @software/backend-review-group
 spec/requests/v0/maintenance_windows_spec.rb @software/backend-review-group
 spec/requests/v0/map_services_spec.rb @software/octo-identity
 spec/requests/v0/medical_copays_spec.rb @software/vsa-debt-resolution @software/backend-review-group

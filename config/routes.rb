@@ -238,6 +238,7 @@ Rails.application.routes.draw do
     post 'event_bus_gateway/send_notifications', to: 'event_bus_gateway#send_notifications'
 
     resources :maintenance_windows, only: [:index]
+    get 'maintenance_windows/diagnostics', to: 'maintenance_window_diagnostics#index'
 
     resources :appeals, only: :index
 
