@@ -551,9 +551,13 @@ RSpec.describe SavedClaim::VeteranReadinessEmploymentClaim do
 
     context 'when vre_use_claims_evidence_api flipper is enabled' do
       let(:ce_uploader) { instance_double(ClaimsEvidenceApi::Uploader) }
+      let(:search_service) { instance_double(ClaimsEvidenceApi::Service::Search) }
 
       before do
         allow(Flipper).to receive(:enabled?).and_return(true)
+        allow(ClaimsEvidenceApi::Service::Search).to receive(:new).and_return(search_service)
+        allow(search_service).to receive(:folder_identifier=)
+        allow(search_service).to receive(:find).and_return(double(body: { 'files' => [] }))
         allow(ClaimsEvidenceApi::Uploader).to receive(:new).and_return(ce_uploader)
         allow(ce_uploader).to receive(:upload_evidence).and_return('uuid-001')
       end
@@ -590,10 +594,66 @@ RSpec.describe SavedClaim::VeteranReadinessEmploymentClaim do
           claim.id,
           file_path: Rails.root.join(form_path).to_s,
           form_id: '28-1900',
-          doctype: '1167'
+          doctype: 1167
         ).and_return('uuid-001')
 
         claim.upload_to_vbms(user: upload_user)
+      end
+
+      it 'checks that the Claims Evidence folder exists before uploading' do
+        expect(search_service).to receive(:folder_identifier=).with('VETERAN:FILENUMBER:123456789')
+        expect(search_service).to receive(:find).with(filters: {})
+
+        claim.upload_to_vbms(user: upload_user)
+      end
+
+      it 'falls back to legacy VBMS when Claims Evidence folder is missing' do
+        allow(search_service).to receive(:find).and_raise(
+          Common::Client::Errors::ClientError.new(
+            'Unable to retrieve folder of Type: VETERAN using Identifier: SSN.',
+            403,
+            { 'code' => 'VEFSERR40302' }
+          )
+        )
+        vbms_uploader = instance_double(ClaimsApi::VBMSUploader)
+        allow(vbms_uploader).to receive(:upload!).and_return({ vbms_document_series_ref_id: 'DOC-SERIES-001' })
+
+        expect(ClaimsEvidenceApi::Uploader).not_to receive(:new)
+        expect(ClaimsApi::VBMSUploader).to receive(:new).and_return(vbms_uploader)
+
+        claim.upload_to_vbms(user: upload_user)
+      end
+
+      it 'tries SSN folder identifier when FILENUMBER folder lookup fails' do
+        missing_folder_error = Common::Client::Errors::ClientError.new(
+          'Unable to retrieve folder of Type: VETERAN using Identifier: FILENUMBER.',
+          403,
+          { 'code' => 'VEFSERR40302' }
+        )
+
+        expect(search_service).to receive(:folder_identifier=)
+          .with('VETERAN:FILENUMBER:123456789').ordered
+        expect(search_service).to receive(:find)
+          .with(filters: {}).ordered.and_raise(missing_folder_error)
+        expect(search_service).to receive(:folder_identifier=).with('VETERAN:SSN:987654321').ordered
+        expect(search_service).to receive(:find)
+          .with(filters: {}).ordered.and_return(double(body: { 'files' => [] }))
+
+        expect(ClaimsEvidenceApi::Uploader).to receive(:new)
+          .with('VETERAN:SSN:987654321').and_return(ce_uploader)
+
+        claim.upload_to_vbms(user: upload_user)
+      end
+
+      it 'falls back to default Claims Evidence doctype when given invalid doctype' do
+        expect(ce_uploader).to receive(:upload_evidence).with(
+          claim.id,
+          file_path: Rails.root.join(form_path).to_s,
+          form_id: '28-1900',
+          doctype: 1167
+        ).and_return('uuid-001')
+
+        claim.upload_to_vbms(user: upload_user, doc_type: 'invalid-doctype')
       end
 
       it 'falls back to send_to_lighthouse! on upload error' do

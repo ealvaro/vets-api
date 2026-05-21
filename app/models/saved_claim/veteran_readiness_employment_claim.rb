@@ -6,6 +6,7 @@ require 'vre/notification_email'
 
 class SavedClaim::VeteranReadinessEmploymentClaim < SavedClaim
   include Vets::SharedLogging
+  include ::VREClaimsEvidenceUpload
 
   FORM = '28-1900'
   # We will be adding numbers here and eventually completeley removing this and the caller to open up VRE submissions
@@ -172,22 +173,6 @@ class SavedClaim::VeteranReadinessEmploymentClaim < SavedClaim
   rescue => e
     Rails.logger.error('Error uploading VRE claim to VBMS.', { user_uuid: user&.uuid, messsage: e.message })
     send_to_lighthouse!(user)
-  end
-
-  def upload_to_claims_evidence_api(form_path:, va_file_number:, ssn:, user:, doc_type:)
-    folder_identifier = va_file_number.present? ? "VETERAN:FILENUMBER:#{va_file_number}" : "VETERAN:SSN:#{ssn}"
-    ce_uploader = ClaimsEvidenceApi::Uploader.new(folder_identifier)
-
-    log_to_statsd('claims_evidence_api') do
-      Rails.logger.info('Uploading VRE claim via Claims Evidence API', { user_uuid: user&.uuid })
-      file_uuid = ce_uploader.upload_evidence(
-        id,
-        file_path: Rails.root.join(form_path).to_s,
-        form_id: '28-1900',
-        doctype: doc_type
-      )
-      persist_document_id(file_uuid)
-    end
   end
 
   def upload_to_legacy_vbms(form_path:, va_file_number:, ssn:, user:, doc_type:)

@@ -214,6 +214,8 @@ app/models/concerns/redis_form.rb @software/backend-review-group
 app/models/concerns/set_guid.rb @software/backend-review-group
 app/models/concerns/signature_required.rb @software/vfs-mhv-integration @software/backend-review-group
 app/models/concerns/temp_form_validation.rb @software/backend-review-group
+app/models/concerns/vre_claims_evidence_folder_helpers.rb @software/backend-review-group @software/va-core-veteran-experiences
+app/models/concerns/vre_claims_evidence_upload.rb @software/backend-review-group @software/va-core-veteran-experiences
 app/models/datadog_metrics.rb @software/backend-review-group
 app/models/decision_review_evidence_attachment.rb @software/benefits-decision-reviews-be @software/backend-review-group
 app/models/decision_review_notification_audit_log.rb @software/benefits-decision-reviews-be @software/backend-review-group
