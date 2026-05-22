@@ -139,7 +139,7 @@ app/controllers/v0/user @software/octo-identity
 app/controllers/v0/user_actions_controller.rb @software/octo-identity
 app/controllers/v0/users_controller.rb @software/octo-identity
 app/controllers/v0/veteran_onboardings_controller.rb @software/backend-review-group @software/va-core-veteran-experiences
-app/controllers/v0/veteran_readiness_employment_claims_controller.rb @software/backend-review-group @software/va-core-veteran-experiences
+app/controllers/v0/veteran_readiness_employment_claims_controller.rb @software/backend-review-group @software/govcio-vfep-codereviewers
 app/controllers/v0/veteran_status_cards_controller.rb @software/mobile-api-team
 app/controllers/v1/apidocs_controller.rb @software/backend-review-group
 app/controllers/v1/gids @software/govcio-vfep-codereviewers @software/backend-review-group
@@ -361,7 +361,7 @@ app/models/saved_claim/form21p530a.rb @software/benefits-optimization-aquia @sof
 app/models/saved_claim/higher_level_review.rb @software/benefits-decision-reviews-be @software/backend-review-group
 app/models/saved_claim/notice_of_disagreement.rb @software/benefits-decision-reviews-be @software/backend-review-group
 app/models/saved_claim/supplemental_claim.rb @software/benefits-decision-reviews-be @software/backend-review-group
-app/models/saved_claim/veteran_readiness_employment_claim.rb @software/backend-review-group @software/va-core-veteran-experiences
+app/models/saved_claim/veteran_readiness_employment_claim.rb @software/backend-review-group @software/govcio-vfep-codereviewers
 app/models/schema_contract @software/backend-review-group
 app/models/secondary_appeal_form.rb @software/benefits-decision-reviews-be @software/backend-review-group
 app/models/session.rb @software/octo-identity
@@ -603,9 +603,9 @@ app/sidekiq/unified_health_data/labs_refresh_job.rb @software/va-cto-health-prod
 app/sidekiq/user_actions_cleanup_job.rb @software/octo-identity
 app/sidekiq/va_notify_dd_email_job.rb @software/va-notify-write @software/backend-review-group
 app/sidekiq/va_notify_email_job.rb @software/va-notify-write @software/backend-review-group
+app/sidekiq/vre_vbms_document_upload_log_job.rb @software/backend-review-group @software/govcio-vfep-codereviewers
+app/sidekiq/vre_vbms_document_upload_job.rb @software/backend-review-group @software/govcio-vfep-codereviewers
 app/sidekiq/vha_notification/send_mst_consent_job.rb @software/disability-benefits @software/backend-review-group
-app/sidekiq/vre_vbms_document_upload_log_job.rb @software/va-core-veteran-experiences @software/backend-review-group
-app/sidekiq/vre_vbms_document_upload_job.rb @software/va-core-veteran-experiences @software/backend-review-group
 app/sidekiq/vre/submit1900_job.rb @software/benefits-non-disability @software/backend-review-group
 app/swagger/readme.md @software/backend-review-group
 app/swagger/swagger/requests/backend_statuses.rb @software/backend-review-group
@@ -666,7 +666,7 @@ app/swagger/swagger/requests/terms_of_use_agreements.rb @software/octo-identity
 app/swagger/swagger/requests/travel_pay.rb @software/travel-pay-integration @software/backend-review-group
 app/swagger/swagger/requests/upload_supporting_evidence.rb @software/disability-benefits @software/backend-review-group
 app/swagger/swagger/requests/user.rb @software/octo-identity
-app/swagger/swagger/requests/veteran_readiness_employment_claims.rb @software/backend-review-group @software/va-core-veteran-experiences
+app/swagger/swagger/requests/veteran_readiness_employment_claims.rb @software/backend-review-group @software/govcio-vfep-codereviewers
 app/swagger/swagger/requests/veteran_status_cards.rb @software/mobile-api-team
 app/swagger/swagger/responses/authentication_error.rb @software/octo-identity
 app/swagger/swagger/responses/service_unavailable_error.rb @software/backend-review-group
@@ -1259,7 +1259,7 @@ modules/vaos @software/vfs-vaos @software/backend-review-group
 modules/vaos/app/services/vaos/v2 @software/vfs-vaos @software/backend-review-group
 modules/vba_documents @software/lighthouse-banana-peels @software/backend-review-group
 modules/veteran @software/lighthouse-dash @software/lighthouse-pivot @software/accredited-representative-crew
-modules/vre @software/backend-review-group @software/va-core-veteran-experiences @software/govcio-vfep-codereviewers
+modules/vre @software/backend-review-group @software/govcio-vfep-codereviewers
 modules/vye @software/backend-review-group @software/govcio-vfep-codereviewers
 postman/Dockerfile @software/backend-review-group
 postman/vets-api.pm-collection.json @software/backend-review-group
@@ -1290,9 +1290,9 @@ rakelib/mockdata_synchronize.rake @software/octo-identity
 rakelib/payment_history_status.rake @software/benefits-management-tools-be @software/vsa-debt-resolution @software/backend-review-group
 rakelib/piilog_repl @software/backend-review-group
 rakelib/prod @software/vfs-vaos @software/backend-review-group
-rakelib/prod/reupload_vre_claims_with_corrected_signature_dates.rake @software/backend-review-group @software/va-core-veteran-experiences
+rakelib/prod/reupload_vre_claims_with_corrected_signature_dates.rake @software/backend-review-group @software/govcio-vfep-codereviewers
 rakelib/prod/user_credential.rake @software/octo-identity
-rakelib/prod/vre_claims_batch_log.rake @software/backend-review-group @software/va-core-veteran-experiences
+rakelib/prod/vre_claims_batch_log.rake @software/backend-review-group @software/govcio-vfep-codereviewers
 rakelib/remove_va1995s_records.rake @software/govcio-vfep-codereviewers @software/backend-review-group
 rakelib/routes_csv.rake @software/backend-review-group
 rakelib/rswag.rake @software/backend-review-group
@@ -1378,7 +1378,7 @@ spec/controllers/v0/user @software/octo-identity
 spec/controllers/v0/user_actions_controller_spec.rb @software/octo-identity
 spec/controllers/v0/users_controller_spec.rb @software/octo-identity
 spec/controllers/v0/veteran_onboardings_controller_spec.rb @software/backend-review-group @software/va-core-veteran-experiences
-spec/controllers/v0/veteran_readiness_employment_claims_controller_spec.rb @software/backend-review-group @software/va-core-veteran-experiences
+spec/controllers/v0/veteran_readiness_employment_claims_controller_spec.rb @software/backend-review-group @software/govcio-vfep-codereviewers
 spec/controllers/v1/gids @software/govcio-vfep-codereviewers @software/backend-review-group
 spec/controllers/v1/post911_gi_bill_statuses_controller_spec.rb @software/backend-review-group @software/govcio-vfep-codereviewers
 spec/controllers/v1/profile @software/vfs-authenticated-experience-backend @software/backend-review-group
@@ -1524,7 +1524,7 @@ spec/factories/va526ez.rb @software/govcio-vfep-codereviewers @software/backend-
 spec/factories/va5490.rb @software/govcio-vfep-codereviewers @software/backend-review-group
 spec/factories/va5495.rb @software/govcio-vfep-codereviewers @software/backend-review-group
 spec/factories/veteran_onboardings.rb @software/backend-review-group @software/va-core-veteran-experiences
-spec/factories/veteran_readiness_employment_claim.rb @software/backend-review-group @software/va-core-veteran-experiences
+spec/factories/veteran_readiness_employment_claim.rb @software/backend-review-group @software/govcio-vfep-codereviewers
 spec/fixtures/ask @software/ask-va-team @software/backend-review-group
 spec/fixtures/bgs @software/benefits-dependents-management @software/backend-review-group
 spec/fixtures/carma @software/health-apps-backend @software/backend-review-group
@@ -1748,7 +1748,7 @@ spec/lib/periodic_jobs_spec.rb @software/govcio-vfep-codereviewers @software/bac
 spec/lib/persistent_attachments/sanitizer_spec.rb @software/benefits-lifestage @software/pension-and-burials @software/backend-review-group
 spec/lib/preneeds @software/bah-mbs-selfserv @software/backend-review-group
 spec/lib/request_context_middleware_spec.rb @software/octo-identity
-spec/lib/res/ch31_form_spec.rb @software/backend-review-group @software/va-core-veteran-experiences
+spec/lib/res/ch31_form_spec.rb @software/backend-review-group @software/govcio-vfep-codereviewers
 spec/lib/rubocop @software/backend-review-group
 spec/lib/rx @software/vfs-mhv-integration @software/backend-review-group
 spec/lib/rx/client_request_spec.rb @software/vfs-mhv-integration @software/mobile-api-team
@@ -1981,11 +1981,11 @@ spec/rakelib/payment_history_status_rake_spec.rb @software/benefits-management-t
 spec/rakelib/piilog_repl @software/backend-review-group
 spec/rakelib/piilog_repl/piilog_helpers_spec.rb @software/backend-review-group
 spec/rakelib/remediation_batch_upload_spec.rb @software/octo-benefits-portfolio-code-reviewers @software/backend-review-group
-spec/rakelib/reupload_vre_claims_with_corrected_signature_dates_rake_spec.rb @software/va-core-veteran-experiences @software/backend-review-group
+spec/rakelib/reupload_vre_claims_with_corrected_signature_dates_rake_spec.rb @software/backend-review-group @software/govcio-vfep-codereviewers
 spec/rakelib/secure_messaging_spec.rb @software/vfs-mhv-integration @software/backend-review-group
 spec/rakelib/user_credential_spec.rb @software/octo-identity
 spec/rakelib/vet360_spec.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
-spec/rakelib/vre_claims_batch_log_rake_spec.rb @software/va-core-veteran-experiences @software/backend-review-group
+spec/rakelib/vre_claims_batch_log_rake_spec.rb @software/backend-review-group @software/govcio-vfep-codereviewers
 spec/requests/admin_controller_spec.rb @software/backend-review-group
 spec/requests/authentication/standard_authentication_spec.rb @software/octo-identity
 spec/requests/breakers_integration_spec.rb @software/backend-review-group
@@ -2235,9 +2235,9 @@ spec/sidekiq/user_actions_cleanup_job_spec.rb @software/octo-identity
 spec/sidekiq/va_notify_dd_email_job_spec.rb @software/va-notify-write @software/backend-review-group
 spec/sidekiq/va_notify_email_job_spec.rb @software/va-notify-write @software/backend-review-group
 spec/sidekiq/va_notify/v2/queue_email_job_spec.rb @software/va-notify-write @software/backend-review-group
+spec/sidekiq/vrevbms_document_upload_job_spec.rb @software/backend-review-group @software/govcio-vfep-codereviewers
+spec/sidekiq/vrevbms_document_upload_log_job_spec.rb @software/backend-review-group @software/govcio-vfep-codereviewers
 spec/sidekiq/vha_notification/send_mst_consent_job_spec.rb @software/disability-benefits @software/backend-review-group
-spec/sidekiq/vrevbms_document_upload_job_spec.rb @software/va-core-veteran-experiences @software/backend-review-group
-spec/sidekiq/vrevbms_document_upload_log_job_spec.rb @software/va-core-veteran-experiences @software/backend-review-group
 spec/sidekiq/vre/submit1900_job_spec.rb @software/benefits-non-disability @software/backend-review-group
 spec/simplecov_helper.rb @software/backend-review-group
 spec/spec_helper.rb @software/backend-review-group
@@ -2435,7 +2435,7 @@ spec/support/schemas/user_loa3.json @software/octo-identity
 spec/support/schemas/va_profile @software/vfs-authenticated-experience-backend @software/backend-review-group
 spec/support/schemas/vaos @software/vfs-vaos @software/backend-review-group
 spec/support/schemas/veteran_verification @software/vfs-authenticated-experience-backend @software/backend-review-group
-spec/support/schemas/vre @software/govcio-vfep-codereviewers @software/va-core-veteran-experiences @software/backend-review-group
+spec/support/schemas/vre @software/govcio-vfep-codereviewers @software/backend-review-group
 spec/support/serializer_spec_helper.rb @software/backend-review-group
 spec/support/shared_contexts/uhd_security_endpoint.rb @software/vfs-mhv-integration @software/backend-review-group
 spec/support/shared_examples_for_labs_and_tests.rb @software/va-cto-health-products @software/vfs-mhv-integration @software/backend-review-group
@@ -2598,7 +2598,7 @@ spec/support/vcr_cassettes/vetext @software/mobile-api-team
 spec/support/vcr_cassettes/verbose_logging @software/backend-review-group
 spec/support/vcr_cassettes/vha/sharepoint/update_list_item_fields_400.yml @software/vsa-debt-resolution @software/backend-review-group
 spec/support/vcr_cassettes/vha/sharepoint/upload_pdf_400_response.yml @software/vsa-debt-resolution @software/backend-review-group
-spec/support/vcr_cassettes/vre @software/govcio-vfep-codereviewers @software/va-core-veteran-experiences @software/backend-review-group
+spec/support/vcr_cassettes/vre @software/govcio-vfep-codereviewers @software/backend-review-group
 spec/support/vcr_multipart_matcher_helper.rb @software/backend-review-group
 spec/support/vcr_cassettes/lighthouse/hcc/ @software/vsa-debt-resolution @software/backend-review-group
 spec/support/vcr.rb @software/backend-review-group
