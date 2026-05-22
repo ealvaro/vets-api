@@ -36,8 +36,8 @@ RSpec.describe 'VAOS V2 Referrals', type: :request do
     context 'when user is authenticated' do
       before do
         sign_in_as(user)
-        allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:get_active_appointments_for_referral)
-          .and_return({ EPS: { data: [] }, VAOS: { data: [] } })
+        allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:active_appointment_for_referral?)
+          .and_return(false)
       end
 
       it 'returns referrals list in JSON:API format' do
@@ -56,6 +56,69 @@ RSpec.describe 'VAOS V2 Referrals', type: :request do
         expect(first_referral).to have_key('attributes')
         expect(first_referral['attributes']).to have_key('categoryOfCare')
         expect(first_referral['attributes']).to have_key('referralNumber')
+      end
+    end
+
+    context 'when annotating has_appointments per referral' do
+      let(:referrals) do
+        [
+          build(:ccra_referral_list_entry, referral_number: 'REF-A', referral_consult_id: 'consult-a'),
+          build(:ccra_referral_list_entry, referral_number: 'REF-B', referral_consult_id: 'consult-b'),
+          build(:ccra_referral_list_entry, referral_number: 'REF-C', referral_consult_id: 'consult-c')
+        ]
+      end
+
+      before { sign_in_as(user) }
+
+      context 'and the va_online_scheduling_referral_list_has_appointments flag is enabled' do
+        before do
+          # Flag is auto-enabled in test env via config/initializers/flipper.rb;
+          # stub explicitly so the test documents the scenario it exercises.
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:va_online_scheduling_referral_list_has_appointments, anything)
+            .and_return(true)
+          allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:active_appointment_for_referral?)
+            .with('REF-A').and_return(true)
+          allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:active_appointment_for_referral?)
+            .with('REF-B').and_return(false)
+          allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:active_appointment_for_referral?)
+            .with('REF-C').and_return(false)
+        end
+
+        it 'serializes hasAppointments per referral based on the service response' do
+          get '/vaos/v2/referrals'
+
+          expect(response).to have_http_status(:ok)
+          response_data = JSON.parse(response.body)
+          has_appts_by_number = response_data['data'].each_with_object({}) do |item, hash|
+            hash[item['attributes']['referralNumber']] = item['attributes']['hasAppointments']
+          end
+
+          expect(has_appts_by_number['REF-A']).to be(true)
+          expect(has_appts_by_number['REF-B']).to be(false)
+          expect(has_appts_by_number['REF-C']).to be(false)
+        end
+      end
+
+      context 'and the va_online_scheduling_referral_list_has_appointments flag is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:va_online_scheduling_referral_list_has_appointments, anything)
+            .and_return(false)
+        end
+
+        it 'leaves hasAppointments nil and does not invoke the appointments service' do
+          expect_any_instance_of(VAOS::V2::AppointmentsService)
+            .not_to receive(:active_appointment_for_referral?)
+
+          get '/vaos/v2/referrals'
+
+          expect(response).to have_http_status(:ok)
+          response_data = JSON.parse(response.body)
+          expect(response_data['data'].map { |d| d['attributes']['hasAppointments'] }).to all(be_nil)
+        end
       end
     end
 

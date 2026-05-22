@@ -83,8 +83,7 @@ module VAOS
       end
 
       def set_has_appointments(referral)
-        result = appointments_service.get_active_appointments_for_referral(referral.referral_number)
-        referral.has_appointments = any_active_appointment?(result[:EPS][:data], result[:VAOS][:data])
+        referral.has_appointments = appointments_service.active_appointment_for_referral?(referral.referral_number)
       rescue Common::Exceptions::BackendServiceException => e
         # PII-safe payload: never log referral_number, referral_consult_id, or uuid
         Rails.logger.warn(

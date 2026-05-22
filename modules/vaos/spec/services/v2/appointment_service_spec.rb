@@ -2138,6 +2138,187 @@ describe VAOS::V2::AppointmentsService do
         end
       end
     end
+
+    context 'StatsD histograms' do
+      it 'emits eps_duration, vaos_duration, and aggregate duration' do
+        allow(StatsD).to receive(:histogram)
+
+        VCR.use_cassette('vaos/v2/appointments/get_appointments_200_v2',
+                         match_requests_on: %i[method query]) do
+          VCR.use_cassette('vaos/eps/token/token_200',
+                           match_requests_on: %i[method path],
+                           allow_playback_repeats: true, tag: :force_utf8) do
+            VCR.use_cassette('vaos/eps/get_appointments/200_empty',
+                             match_requests_on: %i[method path],
+                             allow_playback_repeats: true, tag: :force_utf8) do
+              subject.get_active_appointments_for_referral('ref-150')
+            end
+          end
+        end
+
+        expect(StatsD).to have_received(:histogram)
+          .with('vaos.get_active_appointments_for_referral.eps_duration', anything).once
+        expect(StatsD).to have_received(:histogram)
+          .with('vaos.get_active_appointments_for_referral.vaos_duration', anything).once
+      end
+    end
+
+    context 'when invoked multiple times within the same service instance' do
+      let(:appointments_service) { described_class.new(user) }
+
+      it 'fetches all VAOS appointments only once and reuses the response per referral' do
+        allow(appointments_service).to receive(:get_all_appointments).and_call_original
+        allow(StatsD).to receive(:histogram)
+
+        VCR.use_cassette('vaos/v2/appointments/get_appointments_200_v2',
+                         match_requests_on: %i[method query]) do
+          VCR.use_cassette('vaos/eps/token/token_200',
+                           match_requests_on: %i[method path],
+                           allow_playback_repeats: true, tag: :force_utf8) do
+            VCR.use_cassette('vaos/eps/get_appointments/200_empty',
+                             match_requests_on: %i[method path],
+                             allow_playback_repeats: true, tag: :force_utf8) do
+              appointments_service.get_active_appointments_for_referral('ref-150')
+              appointments_service.get_active_appointments_for_referral('ref-151')
+              appointments_service.get_active_appointments_for_referral('ref-152')
+            end
+          end
+        end
+
+        expect(appointments_service).to have_received(:get_all_appointments).once
+        expect(StatsD).to have_received(:histogram)
+          .with('vaos.get_active_appointments_for_referral.vaos_duration', anything).once
+      end
+    end
+  end
+
+  describe '#active_appointment_for_referral?' do
+    before do
+      Timecop.freeze(DateTime.parse('2021-09-02T14:00:00Z'))
+      allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_use_vpg,
+                                                instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with('schema_contract_appointments_index').and_return(true)
+      # Test env auto-enables every feature via config/initializers/flipper.rb; pin
+      # the vaos-only diagnostic flag to false so each context can opt in explicitly.
+      allow(Flipper).to receive(:enabled?)
+        .with(:va_online_scheduling_referral_list_vaos_appointments_only, anything)
+        .and_return(false)
+    end
+
+    after do
+      Timecop.return
+    end
+
+    let(:appointments_service) { described_class.new(user) }
+    let(:active_vaos_appt) { { id: 'vaos-1', status: 'active', start: '2024-11-21T10:00:00Z' } }
+    let(:cancelled_vaos_appt) { { id: 'vaos-2', status: 'cancelled', start: '2024-11-22T18:00:00Z' } }
+    let(:active_eps_appt) { { id: 'eps-1', status: 'active', start: '2024-11-20T17:00:00Z' } }
+    let(:cancelled_eps_appt) { { id: 'eps-2', status: 'cancelled', start: '2024-11-19T18:00:00Z' } }
+
+    # StatsD.measure is called with a block; let the block execute so the method
+    # under test still returns its computed value. Accepts any positional/keyword
+    # args since other code paths (e.g. Breakers::StatsdPlugin) also call measure
+    # with sample_rate/tags.
+    let(:measure_yields) { ->(*_args, **_kwargs, &block) { block&.call } }
+
+    context 'when VAOS has an active appointment for the referral' do
+      before do
+        allow(appointments_service).to receive(:fetch_and_normalize_vaos_appointments)
+          .with('ref-123').and_return([active_vaos_appt])
+        allow(appointments_service).to receive(:fetch_and_normalize_eps_appointments)
+      end
+
+      it 'returns true, skips the EPS lookup, and increments eps_skipped' do
+        allow(StatsD).to receive(:increment)
+        allow(StatsD).to receive(:measure, &measure_yields)
+
+        expect(appointments_service.active_appointment_for_referral?('ref-123')).to be(true)
+        expect(appointments_service).not_to have_received(:fetch_and_normalize_eps_appointments)
+        expect(StatsD).to have_received(:increment)
+          .with('vaos.active_appointment_for_referral.eps_skipped')
+        expect(StatsD).to have_received(:measure)
+          .with('vaos.active_appointment_for_referral.duration')
+      end
+    end
+
+    context 'when VAOS has no active appointment but EPS does' do
+      before do
+        allow(appointments_service).to receive(:fetch_and_normalize_vaos_appointments)
+          .with('ref-123').and_return([cancelled_vaos_appt])
+        allow(appointments_service).to receive(:fetch_and_normalize_eps_appointments)
+          .with('ref-123').and_return([active_eps_appt])
+      end
+
+      it 'returns true after calling EPS and emits the eps_duration measurement' do
+        allow(StatsD).to receive(:measure, &measure_yields)
+
+        expect(appointments_service.active_appointment_for_referral?('ref-123')).to be(true)
+        expect(appointments_service).to have_received(:fetch_and_normalize_eps_appointments).with('ref-123')
+        expect(StatsD).to have_received(:measure)
+          .with('vaos.get_active_appointments_for_referral.eps_duration')
+        expect(StatsD).to have_received(:measure)
+          .with('vaos.active_appointment_for_referral.duration')
+      end
+    end
+
+    context 'when neither VAOS nor EPS has an active appointment' do
+      before do
+        allow(appointments_service).to receive(:fetch_and_normalize_vaos_appointments)
+          .with('ref-123').and_return([cancelled_vaos_appt])
+        allow(appointments_service).to receive(:fetch_and_normalize_eps_appointments)
+          .with('ref-123').and_return([cancelled_eps_appt])
+      end
+
+      it 'returns false' do
+        allow(StatsD).to receive(:measure, &measure_yields)
+
+        expect(appointments_service.active_appointment_for_referral?('ref-123')).to be(false)
+      end
+    end
+
+    context 'when the vaos_appointments_only flag is enabled and VAOS has no active appointment' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:va_online_scheduling_referral_list_vaos_appointments_only, anything)
+          .and_return(true)
+        allow(appointments_service).to receive(:fetch_and_normalize_vaos_appointments)
+          .with('ref-123').and_return([cancelled_vaos_appt])
+        allow(appointments_service).to receive(:fetch_and_normalize_eps_appointments)
+      end
+
+      it 'returns false without calling EPS' do
+        allow(StatsD).to receive(:measure, &measure_yields)
+
+        expect(appointments_service.active_appointment_for_referral?('ref-123')).to be(false)
+        expect(appointments_service).not_to have_received(:fetch_and_normalize_eps_appointments)
+      end
+    end
+
+    context 'when invoked multiple times within the same service instance' do
+      it 'fetches all VAOS appointments only once across multiple referrals' do
+        allow(appointments_service).to receive(:get_all_appointments).and_call_original
+        allow(StatsD).to receive(:histogram)
+        allow(StatsD).to receive(:increment)
+        allow(StatsD).to receive(:measure, &measure_yields)
+
+        VCR.use_cassette('vaos/v2/appointments/get_appointments_200_v2',
+                         match_requests_on: %i[method query]) do
+          VCR.use_cassette('vaos/eps/token/token_200',
+                           match_requests_on: %i[method path],
+                           allow_playback_repeats: true, tag: :force_utf8) do
+            VCR.use_cassette('vaos/eps/get_appointments/200_empty',
+                             match_requests_on: %i[method path],
+                             allow_playback_repeats: true, tag: :force_utf8) do
+              appointments_service.active_appointment_for_referral?('ref-150')
+              appointments_service.active_appointment_for_referral?('ref-151')
+              appointments_service.active_appointment_for_referral?('ref-152')
+            end
+          end
+        end
+
+        expect(appointments_service).to have_received(:get_all_appointments).once
+      end
+    end
   end
 
   describe '#referral_appointment_already_exists?' do

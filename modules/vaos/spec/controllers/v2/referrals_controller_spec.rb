@@ -59,6 +59,8 @@ RSpec.describe VAOS::V2::ReferralsController, type: :request do
           .and_return(referral_list_entries)
         allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:get_active_appointments_for_referral)
           .and_return(empty_appointments_response)
+        allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:active_appointment_for_referral?)
+          .and_return(false)
         allow(Flipper).to receive(:enabled?).and_call_original
         allow(Flipper).to receive(:enabled?)
           .with(:va_online_scheduling_referral_list_has_appointments, anything)
@@ -314,15 +316,12 @@ RSpec.describe VAOS::V2::ReferralsController, type: :request do
 
         context 'when a referral has an active appointment' do
           before do
-            allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:get_active_appointments_for_referral)
+            allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:active_appointment_for_referral?)
               .with('REF-A')
-              .and_return({
-                            EPS: { data: [{ id: 'eps-1', status: 'active', start: '2026-06-01T10:00:00Z' }] },
-                            VAOS: { data: [] }
-                          })
-            allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:get_active_appointments_for_referral)
+              .and_return(true)
+            allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:active_appointment_for_referral?)
               .with('REF-B')
-              .and_return(empty_appointments_response)
+              .and_return(false)
           end
 
           it 'sets hasAppointments to true only for that referral' do
@@ -339,11 +338,8 @@ RSpec.describe VAOS::V2::ReferralsController, type: :request do
 
         context 'when a referral has only cancelled appointments' do
           before do
-            allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:get_active_appointments_for_referral)
-              .and_return({
-                            EPS: { data: [{ id: 'eps-1', status: 'cancelled', start: '2026-06-01T10:00:00Z' }] },
-                            VAOS: { data: [{ id: 'vaos-1', status: 'cancelled', start: '2026-06-02T10:00:00Z' }] }
-                          })
+            allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:active_appointment_for_referral?)
+              .and_return(false)
           end
 
           it 'sets hasAppointments to false' do
@@ -359,15 +355,12 @@ RSpec.describe VAOS::V2::ReferralsController, type: :request do
           let(:failure_metric) { 'api.vaos.referral_list.has_appointments_lookup.failure' }
 
           before do
-            allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:get_active_appointments_for_referral)
+            allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:active_appointment_for_referral?)
               .with('REF-A')
               .and_raise(Common::Exceptions::BackendServiceException.new('VAOS_502', { source: 'EPS' }))
-            allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:get_active_appointments_for_referral)
+            allow_any_instance_of(VAOS::V2::AppointmentsService).to receive(:active_appointment_for_referral?)
               .with('REF-B')
-              .and_return({
-                            EPS: { data: [{ id: 'eps-1', status: 'active', start: '2026-06-01T10:00:00Z' }] },
-                            VAOS: { data: [] }
-                          })
+              .and_return(true)
           end
 
           it 'returns 200 with all referrals, leaves the failing one as nil, and logs a PII-safe warning' do
@@ -409,7 +402,7 @@ RSpec.describe VAOS::V2::ReferralsController, type: :request do
 
         it 'skips the appointments lookup and leaves hasAppointments as nil' do
           expect_any_instance_of(VAOS::V2::AppointmentsService)
-            .not_to receive(:get_active_appointments_for_referral)
+            .not_to receive(:active_appointment_for_referral?)
 
           get '/vaos/v2/referrals'
 

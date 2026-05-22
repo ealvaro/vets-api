@@ -2703,6 +2703,17 @@ features:
       VAOS for active appointments per referral. When disabled, hasAppointments is
       null on every entry. Gate exists for performance rollback — the lookup is
       O(N) external calls and has been observed to cause timeouts.
+  va_online_scheduling_referral_list_vaos_appointments_only:
+    actor_type: user
+    enable_in_development: false
+    description: >-
+      Owned by Community Care Appointments. Diagnostic flag — when enabled AND
+      :va_online_scheduling_referral_list_has_appointments is also enabled, the
+      GET /vaos/v2/referrals index endpoint computes hasAppointments using ONLY
+      VAOS data and skips the EPS call per referral. Used to test whether
+      dropping EPS calls resolves the timeouts observed in staging (EPS
+      appointments are eventually transcribed into VAOS). Has no effect if the
+      outer has_appointments flag is disabled.
   va_online_scheduling_unified_non_primary_care:
     actor_type: user
     enable_in_development: false

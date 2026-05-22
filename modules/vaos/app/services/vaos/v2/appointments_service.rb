@@ -239,7 +239,12 @@ module VAOS
       #
       def get_active_appointments_for_referral(referral_number)
         start_time = Time.current
+
+        eps_start = Time.current
         eps_appointments = fetch_and_normalize_eps_appointments(referral_number)
+        StatsD.histogram('vaos.get_active_appointments_for_referral.eps_duration',
+                         (Time.current - eps_start) * 1000)
+
         vaos_appointments = fetch_and_normalize_vaos_appointments(referral_number)
 
         StatsD.histogram('vaos.get_active_appointments_for_referral.duration',
@@ -251,6 +256,35 @@ module VAOS
           EPS: { data: eps_appointments },
           VAOS: { data: vaos_appointments }
         }
+      end
+
+      ##
+      # Boolean check used by the referral list flow. Checks VAOS first
+      # (authoritative — EPS appointments are eventually transcribed into VAOS).
+      # If VAOS already shows an active appointment for this referral, returns
+      # true immediately and skips the EPS lookup. Falls back to EPS only when
+      # VAOS shows nothing active.
+      #
+      # @param referral_number [String] The referral number to search for
+      # @return [Boolean]
+      # @raise [BackendServiceException] If VAOS fails, or if EPS fails after
+      #   a VAOS lookup that returned no active appointments.
+      #
+      def active_appointment_for_referral?(referral_number)
+        StatsD.measure('vaos.active_appointment_for_referral.duration') do
+          vaos_appointments = fetch_and_normalize_vaos_appointments(referral_number)
+          if vaos_appointments.any? { |appt| appt[:status] == 'active' }
+            StatsD.increment('vaos.active_appointment_for_referral.eps_skipped')
+            next true
+          end
+
+          next false if Flipper.enabled?(:va_online_scheduling_referral_list_vaos_appointments_only, user)
+
+          eps_appointments = StatsD.measure('vaos.get_active_appointments_for_referral.eps_duration') do
+            fetch_and_normalize_eps_appointments(referral_number)
+          end
+          eps_appointments.any? { |appt| appt[:status] == 'active' }
+        end
       end
 
       def get_appointment(appointment_id, include = {}, tp_client = 'vagov')
@@ -592,12 +626,26 @@ module VAOS
       end
 
       def fetch_and_normalize_vaos_appointments(referral_number)
-        vaos_response = get_all_appointments({})
+        vaos_response = memoized_all_vaos_appointments
         check_vaos_response_for_failures(vaos_response, referral_number)
         process_vaos_appointments(vaos_response[:data], referral_number)
       rescue Common::Exceptions::BackendServiceException => e
         log_fetch_error('VAOS', referral_number, e.class.name.to_s)
         raise
+      end
+
+      # Memoized to avoid N+1 calls in the referral list flow. The ±1 year
+      # sweep is identical for every referral in a single request; per-referral
+      # filtering happens in process_vaos_appointments. Scoped to this service
+      # instance (one per HTTP request).
+      def memoized_all_vaos_appointments
+        @memoized_all_vaos_appointments ||= begin
+          backend_start = Time.current
+          response = get_all_appointments({})
+          StatsD.histogram('vaos.get_active_appointments_for_referral.vaos_duration',
+                           (Time.current - backend_start) * 1000)
+          response
+        end
       end
 
       def check_vaos_response_for_failures(vaos_response, referral_number)
