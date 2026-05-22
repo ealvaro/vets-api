@@ -909,6 +909,9 @@ features:
   decision_review_use_new_contact_info_page:
     actor_type: user
     description: Enables the new prefilled contact info page in SC, HLR and NOD apps
+  decision_review_nod_form_update_2026:
+    actor_type: user
+    description: Enables the 2026 NOD form update (VHA removal, new ASAP page). Stays OFF until Lighthouse confirms new PDF version.
   dependency_verification_browser_monitoring_enabled:
     actor_type: user
     description: Enable Datadog RUM/LOG monitoring for the form 21-0538
