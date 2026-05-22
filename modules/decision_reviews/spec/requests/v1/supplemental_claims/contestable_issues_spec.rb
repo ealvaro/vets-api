@@ -72,7 +72,8 @@ RSpec.describe 'DecisionReviews::V1::SupplementalClaims::ContestableIssues', typ
 
     context 'with feature flag disabled' do
       before do
-        allow(Flipper).to receive(:enabled?).with(:decision_review_use_new_appealable_issues_service).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:decision_review_use_new_appealable_issues_service,
+                                                  instance_of(User)).and_return(false)
       end
 
       it 'uses contestable issues service and returns issues successfully' do
@@ -113,7 +114,8 @@ RSpec.describe 'DecisionReviews::V1::SupplementalClaims::ContestableIssues', typ
 
     context 'with feature flag enabled' do
       before do
-        allow(Flipper).to receive(:enabled?).with(:decision_review_use_new_appealable_issues_service).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:decision_review_use_new_appealable_issues_service,
+                                                  instance_of(User)).and_return(true)
         # Stub access_token directly to avoid OAuth setup
         allow_any_instance_of(DecisionReviews::V1::AppealableIssues::Configuration)
           .to receive(:access_token).and_return('fake-token-12345')

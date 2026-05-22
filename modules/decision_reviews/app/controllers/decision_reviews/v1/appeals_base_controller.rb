@@ -50,7 +50,7 @@ module DecisionReviews
       end
 
       def use_new_appealable_issues_service?
-        Flipper.enabled?(:decision_review_use_new_appealable_issues_service)
+        Flipper.enabled?(:decision_review_use_new_appealable_issues_service, @current_user)
       end
     end
   end
