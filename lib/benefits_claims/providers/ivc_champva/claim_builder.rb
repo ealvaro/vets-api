@@ -24,14 +24,18 @@ module BenefitsClaims
         }.freeze
 
         PROCESSED_STATUSES = ['processed', 'manually processed'].freeze
-        CLAIM_RECEIVED_STATUSES = ['received', 'submission received'].freeze
+        CLAIM_RECEIVED_STATUSES = [
+          'received',
+          'submission received',
+          # Applicant action required — non-terminal; applicant may respond and receive a follow-up status
+          'additional documentation requested'
+        ].freeze
         COMPLETE_STATUSES = [
-          'eligiblity denied/additional information needed',
-          'eligibility denied/additional information needed',
+          'eligiblity denied/additional information needed',  # misspelled — current Pega API
+          'eligibility denied/additional information needed', # correctly-spelled — future-proof
           'eligible - issued a card',
           'duplicate application',
           'eligible - reissued a card',
-          'additional documentation requested',
           'processed - eligiblity determination unknown',
           'processed - eligibility determination unknown',
           'document identification error'

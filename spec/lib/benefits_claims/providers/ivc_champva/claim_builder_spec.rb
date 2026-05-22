@@ -29,6 +29,19 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
       expect(described_class.normalize_status('Failed')).to eq('error')
     end
 
+    it 'maps additional documentation requested to claimReceived' do
+      expect(described_class.normalize_status('additional documentation requested')).to eq('claimReceived')
+    end
+
+    it 'maps eligibility denial statuses to complete' do
+      [
+        'eligiblity denied/additional information needed',
+        'eligibility denied/additional information needed'
+      ].each do |status|
+        expect(described_class.normalize_status(status)).to eq('complete')
+      end
+    end
+
     it 'maps complete statuses to complete' do
       expect(described_class.normalize_status('Eligible - issued a card')).to eq('complete')
     end

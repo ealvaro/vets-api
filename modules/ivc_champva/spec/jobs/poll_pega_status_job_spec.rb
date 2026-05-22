@@ -153,6 +153,41 @@ RSpec.describe IvcChampva::PollPegaStatusJob do
       end
     end
 
+    context 'when a form has updated_at older than MAX_POLL_AGE_DAYS' do
+      it 'does not poll and leaves pega_status unchanged' do
+        stale_updated_at = (described_class::MAX_POLL_AGE_DAYS + 1).days.ago
+        create(:ivc_champva_form, form_uuid:, pega_status: nil,
+                                  updated_at: stale_updated_at, created_at: stale_updated_at)
+        expect_any_instance_of(IvcChampva::PegaApi::Client).not_to receive(:get_status_by_uuid)
+        job.perform
+      end
+    end
+
+    context 'when a form has a terminal eligibility denial status' do
+      [
+        'eligiblity denied/additional information needed',
+        'eligibility denied/additional information needed'
+      ].each do |terminal_status|
+        it "does not poll forms with status '#{terminal_status}'" do
+          create(:ivc_champva_form, form_uuid:, pega_status: terminal_status, created_at:)
+          expect_any_instance_of(IvcChampva::PegaApi::Client).not_to receive(:get_status_by_uuid)
+          job.perform
+        end
+      end
+    end
+
+    context 'when a form has a non-terminal status that allows follow-up (additional documentation)' do
+      it "still polls forms with status 'additional documentation requested'" do
+        uuid = SecureRandom.uuid
+        form = create(:ivc_champva_form, form_uuid: uuid,
+                                         pega_status: 'additional documentation requested',
+                                         case_id: nil, created_at:)
+        stub_pega(uuid:, reports: [pega_report(case_id: 'D-new', status: 'eligible - issued a card', uuid:)])
+        job.perform
+        expect(form.reload.pega_status).to eq('eligible - issued a card')
+      end
+    end
+
     context 'when Pega returns an empty array' do
       let!(:form) { create(:ivc_champva_form, form_uuid:, pega_status: nil, created_at:) }
 

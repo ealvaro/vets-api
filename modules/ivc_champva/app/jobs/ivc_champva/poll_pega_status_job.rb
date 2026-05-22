@@ -23,17 +23,40 @@ module IvcChampva
     STATUS_KEYS = ['Determination Type', 'Deternimation Type'].freeze
     STATSD_PREFIX = 'ivc_champva.poll_pega_status_job'
 
-    # Pega terminal/determination statuses — once a form reaches one of these we stop
-    # polling because the application has been fully adjudicated. These match the
-    # COMPLETE_STATUSES values in ClaimBuilder and the STATUS_MAP in IvcChampvaFormatter.
+    # Matches the cleanup job's retention window (OldRecordsCleanupJob::CLEANUP_THRESHOLD_DAYS).
+    # Both jobs use updated_at as the time dimension, so this window is the exact inverse
+    # of what the cleanup job deletes: records with updated_at < 60.days.ago are purged,
+    # records with updated_at >= 60.days.ago are still polled. If the cleanup job is
+    # disabled, this bound still prevents unbounded table scans.
+    MAX_POLL_AGE_DAYS = 60
+
+    # Pega terminal statuses — once a form reaches one of these we stop polling because
+    # the application has been fully adjudicated or processed. Mirrors
+    # ClaimBuilder::COMPLETE_STATUSES + ClaimBuilder::PROCESSED_STATUSES.
+    #
+    # Both the misspelled and correctly-spelled variants of two statuses are included
+    # so the job stays correct if Pega fixes their typos in a future API version.
+    #
+    # NOTE: 'additional documentation requested' is intentionally excluded — the applicant
+    # may respond with new documentation and receive a follow-up status
+    # (e.g. 'eligible - issued a card'). We keep polling so we catch that update.
     COMPLETE_STATUSES = [
+      # Eligibility denial statuses (misspelled variant — current Pega API)
       'eligiblity denied/additional information needed',
+      # Eligibility denial statuses (correctly-spelled variant — future-proof)
+      'eligibility denied/additional information needed',
+      # Determination statuses (misspelled variant — current Pega API)
+      'processed - eligiblity determination unknown',
+      # Determination statuses (correctly-spelled variant — future-proof)
+      'processed - eligibility determination unknown',
+      # Remaining terminal determination statuses
       'eligible - issued a card',
       'duplicate application',
       'eligible - reissued a card',
-      'additional documentation requested',
-      'processed - eligiblity determination unknown',
-      'document identification error'
+      'document identification error',
+      # Processed statuses — ClaimBuilder treats these as terminal (close_date is set)
+      'processed',
+      'manually processed'
     ].freeze
 
     def perform
@@ -69,8 +92,12 @@ module IvcChampva
     def pending_forms_scope
       # WHERE NOT IN (...) silently drops NULL rows in SQL, so we explicitly include
       # them — nil means the Pega webhook has never fired for this submission.
+      # The updated_at ceiling aligns with OldRecordsCleanupJob, which also purges by
+      # updated_at. This ensures we keep polling any record that is still alive in the
+      # table (recent activity) and stop automatically once the cleanup job removes it.
       IvcChampvaForm
         .where('pega_status IS NULL OR pega_status NOT IN (?)', COMPLETE_STATUSES)
+        .where('updated_at >= ?', MAX_POLL_AGE_DAYS.days.ago)
     end
 
     def pending_form_uuids
@@ -192,6 +219,7 @@ module IvcChampva
       record_forms_by_status
       record_case_id_health
       record_missing_status_windows
+      record_stale_pending_forms
     end
 
     def record_forms_by_status
@@ -219,6 +247,18 @@ module IvcChampva
                    null_scope.where('created_at < ?', 5.days.ago).count)
       StatsD.gauge("#{STATSD_PREFIX}.forms_missing_status.7d_old",
                    null_scope.where('created_at < ?', 7.days.ago).count)
+    end
+
+    # Counts non-terminal forms whose updated_at has fallen outside the poll window.
+    # These records are no longer being polled and should have been deleted by
+    # OldRecordsCleanupJob. A non-zero value means the cleanup job is disabled or
+    # failing and rows are accumulating beyond the expected retention window.
+    def record_stale_pending_forms
+      stale_count = IvcChampvaForm
+                    .where('pega_status IS NULL OR pega_status NOT IN (?)', COMPLETE_STATUSES)
+                    .where('updated_at < ?', MAX_POLL_AGE_DAYS.days.ago)
+                    .count
+      StatsD.gauge("#{STATSD_PREFIX}.stale_pending_forms", stale_count)
     end
 
     # ──────────────────────────────────────────────

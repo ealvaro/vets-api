@@ -117,6 +117,48 @@ describe Forms::SubmissionStatuses::Formatters::IvcChampvaFormatter,
       expect(result.first.status).to eq('claimReceived')
     end
 
+    it 'maps additional documentation requested to claimReceived' do
+      submission = create(
+        :ivc_champva_form,
+        form_uuid: SecureRandom.uuid,
+        form_number: '10-10D',
+        pega_status: 'additional documentation requested'
+      )
+      dataset = double(
+        'Dataset',
+        submissions?: true,
+        submissions: [submission],
+        intake_statuses?: false,
+        intake_statuses: nil
+      )
+      result = formatter.format_data(dataset)
+      expect(result.first.status).to eq('claimReceived')
+    end
+
+    it 'maps eligibility denial statuses to complete' do
+      [
+        'eligiblity denied/additional information needed',
+        'eligibility denied/additional information needed'
+      ].each do |status|
+        submission = create(
+          :ivc_champva_form,
+          form_uuid: SecureRandom.uuid,
+          form_number: '10-10D',
+          pega_status: status
+        )
+        dataset = double(
+          'Dataset',
+          submissions?: true,
+          submissions: [submission],
+          intake_statuses?: false,
+          intake_statuses: nil
+        )
+        result = formatter.format_data(dataset)
+        expect(result.first.status).to eq('complete'),
+                                       "expected '#{status}' to map to complete"
+      end
+    end
+
     it 'maps PEGA terminal determination statuses to complete' do
       submission = create(
         :ivc_champva_form,
