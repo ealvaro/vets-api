@@ -21090,6 +21090,11 @@
                 "nullable": true,
                 "example": "Cheyenne VA Medical Center"
               },
+              "provider": {
+                "type": "string",
+                "nullable": true,
+                "example": "MCGUIRE,MARCI P"
+              },
               "administrationSite": {
                 "type": "string",
                 "nullable": true,

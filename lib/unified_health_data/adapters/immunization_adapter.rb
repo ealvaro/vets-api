@@ -52,6 +52,7 @@ module UnifiedHealthData
           dose_series: extract_dose_series(protocol_applied),
           group_name:,
           location: extract_location_display(resource),
+          provider: extract_provider(resource),
           manufacturer: extract_manufacturer(resource),
           note: extract_note(resource['note']),
           reaction: extract_reaction(resource['reaction']),
@@ -233,6 +234,26 @@ module UnifiedHealthData
 
         # Fall back to location display (VistA data or OH truncated name)
         resource.dig('location', 'display')
+      end
+
+      # Extracts the practitioner name from the performer array.
+      # OH has typed references like "Practitioner/63662034" with actor.display.
+      # VistA has no actor.reference — only actor.identifier + actor.display.
+      def extract_provider(resource)
+        performers = resource['performer']
+        return nil unless performers.is_a?(Array)
+
+        # Priority 1: performer with a Practitioner/ reference (OH)
+        practitioner = performers.find do |performer|
+          performer.dig('actor', 'reference')&.start_with?('Practitioner/')
+        end
+        return practitioner.dig('actor', 'display') if practitioner
+
+        # Priority 2: performer with actor.display but no actor.reference (VistA — identifier-only)
+        identifier_performer = performers.find do |performer|
+          performer.dig('actor', 'reference').nil? && performer.dig('actor', 'display').present?
+        end
+        identifier_performer&.dig('actor', 'display')
       end
 
       def extract_site(resource)

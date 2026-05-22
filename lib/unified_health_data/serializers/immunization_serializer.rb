@@ -14,6 +14,7 @@ module UnifiedHealthData
                  :dose_series,
                  :group_name,
                  :location,
+                 :provider,
                  :manufacturer,
                  :note,
                  :reaction,

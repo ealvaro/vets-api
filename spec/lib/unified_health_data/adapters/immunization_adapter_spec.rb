@@ -32,6 +32,7 @@ RSpec.describe 'ImmunizationAdapter' do
           'dose_series' => nil,
           'group_name' => 'PNEUMOCOCCAL POLYSACCHARIDE PPV23',
           'location' => 'NUCLEAR MED',
+          'provider' => 'MCGUIRE,MARCI P',
           'manufacturer' => nil,
           'note' => nil,
           'reaction' => nil,
@@ -55,6 +56,7 @@ RSpec.describe 'ImmunizationAdapter' do
           'dose_series' => nil,
           'group_name' => 'INFLUENZA VIRUS VACCINE, INACTIVATED',
           'location' => '556 Captain James A Lovell IL VA Medical Center',
+          'provider' => 'Borland, Victoria A',
           'manufacturer' => 'Seqirus USA Inc',
           'note' => 'Added comment "note"',
           'reaction' => nil,
@@ -396,6 +398,72 @@ RSpec.describe 'ImmunizationAdapter' do
         'location' => {}
       }
       expect(adapter.send(:extract_location_display, resource)).to be_nil
+    end
+  end
+
+  describe '#extract_provider' do
+    it 'returns practitioner display for OH record with Practitioner reference' do
+      resource = {
+        'performer' => [
+          {
+            'function' => { 'text' => 'Administering Provider' },
+            'actor' => {
+              'reference' => 'Practitioner/63662034',
+              'display' => 'Borland, Victoria A'
+            }
+          },
+          {
+            'actor' => {
+              'reference' => 'Organization/2044131',
+              'display' => '556 Captain James A Lovell IL VA Medical Center'
+            }
+          }
+        ]
+      }
+
+      expect(adapter.send(:extract_provider, resource)).to eq('Borland, Victoria A')
+    end
+
+    it 'returns actor display for VistA record with identifier-only performer' do
+      resource = {
+        'performer' => [
+          {
+            'actor' => {
+              'identifier' => { 'value' => '520650339' },
+              'display' => 'MCGUIRE,MARCI P'
+            }
+          }
+        ]
+      }
+
+      expect(adapter.send(:extract_provider, resource)).to eq('MCGUIRE,MARCI P')
+    end
+
+    it 'returns nil when only Organization performer is present' do
+      resource = {
+        'performer' => [
+          {
+            'actor' => {
+              'reference' => 'Organization/2044131',
+              'display' => '556 Captain James A Lovell IL VA Medical Center'
+            }
+          }
+        ]
+      }
+
+      expect(adapter.send(:extract_provider, resource)).to be_nil
+    end
+
+    it 'returns nil when no performers key exists' do
+      resource = { 'id' => 'test-123' }
+
+      expect(adapter.send(:extract_provider, resource)).to be_nil
+    end
+
+    it 'returns nil when performer array is empty' do
+      resource = { 'performer' => [] }
+
+      expect(adapter.send(:extract_provider, resource)).to be_nil
     end
   end
 

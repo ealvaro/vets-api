@@ -515,6 +515,7 @@ RSpec.describe 'Mobile::V1::Health::Immunizations', :skip_json_api_validation, t
                 'location' => 'TEST',
                 'manufacturer' => 'GLAXOSMITHKLINE',
                 'note' => nil,
+                'provider' => 'MCGUIRE,MARCI P',
                 'reaction' => nil,
                 'shortDescription' => 'ZOSTER RECOMBINANT',
                 'administrationSite' => 'RIGHT DELTOID',
