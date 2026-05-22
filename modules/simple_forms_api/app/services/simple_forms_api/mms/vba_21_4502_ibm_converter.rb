@@ -73,7 +73,10 @@ module SimpleFormsApi
         'PLACE_PREVIOUS_APPLIED' => ->(form) { form.data['previous_application_location'] || '' },
 
         'VETERAN_SIGNATURE' => ->(form) { form.data['statement_of_truth_signature'] || '' },
-        'DATE_OF_VETERAN_SIGNATURE' => ->(form) { date_parts_to_string(form, 'signature_date') }
+        'DATE_OF_VETERAN_SIGNATURE' => ->(form) { date_parts_to_string(form, 'signature_date') },
+
+        'FORM_TYPE' => ->(_) { FORM_TYPE_LABEL },
+        'FORM_TYPE_1' => ->(_) { FORM_TYPE_LABEL }
       }.freeze
 
       def self.convert(form)
