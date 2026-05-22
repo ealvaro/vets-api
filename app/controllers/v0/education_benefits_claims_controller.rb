@@ -32,13 +32,6 @@ module V0
       render json: EducationBenefitsClaimSerializer.new(claim.education_benefits_claim)
     end
 
-    def stem_claim_status
-      current_applications = []
-      current_applications = user_stem_automated_decision_claims unless @current_user.nil?
-
-      render json: EducationStemClaimStatusSerializer.new(current_applications)
-    end
-
     def download_pdf
       education_claim = EducationBenefitsClaim.find_by!(token: params[:id])
       saved_claim = SavedClaim.find(education_claim.saved_claim_id)
@@ -69,13 +62,6 @@ module V0
 
     def form_type
       params[:form_type] || '1990'
-    end
-
-    def user_stem_automated_decision_claims
-      EducationBenefitsClaim.joins(:education_stem_automated_decision)
-                            .where(
-                              'education_stem_automated_decisions.user_account_id' => @current_user.user_account_uuid
-                            ).to_a
     end
 
     def education_benefits_claim_params

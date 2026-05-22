@@ -248,7 +248,6 @@ Naming/VariableNumber:
     - 'spec/mailers/stem_applicant_denial_mailer_spec.rb'
     - 'spec/models/form1010cg/submission_spec.rb'
     - 'spec/models/saved_claim/caregivers_assistance_claim_spec.rb'
-    - 'spec/serializers/education_stem_claim_status_serializer_spec.rb'
     - 'spec/services/form1010cg/service_spec.rb'
     - 'spec/services/sign_in/revoke_sessions_for_user_spec.rb'
     - 'spec/sidekiq/education_form/create10203_applicant_decision_letters_spec.rb'

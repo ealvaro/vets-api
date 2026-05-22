@@ -320,10 +320,6 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
       end
     end
 
-    it 'supports checking stem_claim_status' do
-      expect(subject).to validate(:get, '/v0/education_benefits_claims/stem_claim_status', 200)
-    end
-
     describe '10-10CG' do
       context 'submitting caregiver assistance claim form' do
         it 'successfully submits a caregiver assistance claim' do

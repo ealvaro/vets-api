@@ -12,41 +12,6 @@
 			"name": "Unauthenticated vets-api endpoints",
 			"item": [
 				{
-					"name": "/v0/education_benefits_claims/stem_claim_status",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Endpoint returns valid data object\", function () {",
-									"    if (pm.response.code != 200) { return };",
-									"    var responseBody = pm.response.json();",
-									"    pm.expect(responseBody).to.have.property('data');",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{vets_api_env}}/v0/education_benefits_claims/stem_claim_status",
-							"host": [
-								"{{vets_api_env}}"
-							],
-							"path": [
-								"v0",
-								"education_benefits_claims",
-								"stem_claim_status"
-							]
-						}
-					},
-					"response": []
-				},
-				{
 					"name": "/v0/feature_toggles",
 					"event": [
 						{

@@ -141,7 +141,6 @@ Rails.application.routes.draw do
     resource :education_benefits_claims, only: %i[create show] do
       collection do
         post(':form_type', action: :create, as: :form_type)
-        get(:stem_claim_status)
         get('download_pdf/:id', action: :download_pdf, as: :download_pdf)
       end
     end

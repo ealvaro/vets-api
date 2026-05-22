@@ -439,7 +439,6 @@ app/serializers/dependents_verifications_serializer.rb @software/vfs-authenticat
 app/serializers/direct_deposits_serializer.rb @software/disability-benefits @software/backend-review-group
 app/serializers/disability_contention_serializer.rb @software/disability-benefits @software/backend-review-group
 app/serializers/education_benefits_claim_serializer.rb @software/backend-review-group @software/govcio-vfep-codereviewers
-app/serializers/education_stem_claim_status_serializer.rb @software/backend-review-group @software/govcio-vfep-codereviewers
 app/serializers/eligible_data_classes_serializer.rb @software/vfs-vaos @software/backend-review-group
 app/serializers/email_verification_serializer.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 app/serializers/evss_claim_base_helper.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
@@ -2087,7 +2086,6 @@ spec/serializers/dependents_verifications_serializer_spec.rb @software/vfs-authe
 spec/serializers/direct_deposits_serializer_spec.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 spec/serializers/disability_contention_serializer_spec.rb @software/disability-benefits @software/backend-review-group
 spec/serializers/education_benefits_claim_serializer_spec.rb @software/backend-review-group @software/govcio-vfep-codereviewers
-spec/serializers/education_stem_claim_status_serializer_spec.rb @software/backend-review-group @software/govcio-vfep-codereviewers
 spec/serializers/eligible_data_classes_serializer_spec.rb @software/vfs-vaos @software/backend-review-group
 spec/serializers/email_verification_serializer_spec.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 spec/serializers/evss_claim_detail_serializer_spec.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
