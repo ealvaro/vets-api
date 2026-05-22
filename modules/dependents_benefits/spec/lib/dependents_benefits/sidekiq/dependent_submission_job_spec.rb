@@ -474,7 +474,8 @@ RSpec.describe DependentsBenefits::Sidekiq::DependentSubmissionJob, type: :job d
         /Successfully submitted/,
         action: 'success',
         component: anything,
-        parent_claim_id: parent_claim.id
+        parent_claim_id: parent_claim.id,
+        proc_id: nil
       )
       job.send(:handle_job_success)
     end
@@ -486,7 +487,8 @@ RSpec.describe DependentsBenefits::Sidekiq::DependentSubmissionJob, type: :job d
         action: 'success_failure',
         component: anything,
         error: anything,
-        parent_claim_id: parent_claim.id
+        parent_claim_id: parent_claim.id,
+        proc_id: nil
       )
       job.send(:handle_job_success)
     end

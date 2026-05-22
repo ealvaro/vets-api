@@ -27,11 +27,11 @@ module DependentsBenefits::Sidekiq::Include
     # @return [void]
     def handle_job_success
       monitor.track_info_event("Successfully submitted #{self.class} for parent_claim_id #{parent_claim_id}",
-                               action: 'success', component:, parent_claim_id:)
+                               action: 'success', component:, parent_claim_id:, proc_id:)
       handle_successful_submission
     rescue => e
       monitor.track_error_event("Error handling job success #{self.class}",
-                                action: 'success_failure', component:, error: e, parent_claim_id:)
+                                action: 'success_failure', component:, error: e, parent_claim_id:, proc_id:)
     end
 
     # Handles successful submission
