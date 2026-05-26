@@ -105,7 +105,7 @@ The uploads_controller.rb file in the IVC Champva module is a key component of t
 The supporting_document_ids method retrieves the IDs of any supporting documents included in the parsed form data. The get_file_paths_and_metadata method generates file paths and metadata for the uploaded files, and also handles any attachments associated with the form. The get_form_id method retrieves the ID of the form being processed.
 
 ## Helpful Links
-- [Swagger API UI](https://department-of-veterans-affairs.github.io/va-digital-services-platform-docs/api-reference/) then search "https://dev-api.va.gov/v1/apidocs" to see the ivc_champva endpoint
+- [Swagger API UI](https://software-vets-api.pages.va.ghe.com/) then search "https://dev-api.va.gov/v1/apidocs" to see the ivc_champva endpoint
 - [Project MarkDowns](https://va.ghe.com/software/va.gov-team/tree/master/products/health-care/champva)
   - [Team Resource Repository](https://va.ghe.com/software/va.gov-team/blob/master/products/health-care/champva/team/team-resource-repository.md)
   - [VES Integration](https://va.ghe.com/software/va.gov-team/blob/master/products/health-care/champva/engineering/ves_use_case_and_objectives.md)

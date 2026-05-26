@@ -26,7 +26,7 @@ module Users
     #
     # @return [Hash] A serialized version of the initialized error. Follows maintenance
     # window schema.
-    # @see https://department-of-veterans-affairs.github.io/va-digital-services-platform-docs/api-reference/#/site/getMaintenanceWindows
+    # @see https://software-vets-api.pages.va.ghe.com/#/site/getMaintenanceWindows
     #
     def serialize_error
       case error

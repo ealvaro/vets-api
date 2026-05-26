@@ -6,7 +6,7 @@
 - [#sitewide-public-websites](https://dsva.slack.com/archives/C52CL1PKQ)
 
 ### Code Documentation
-- Swagger documentation can be viewed as JSON locally by running the vets-api application server, and then visiting http://localhost:3000/income_limits/v1/apidocs in a browser window. Swagger UI can be accessed via https://department-of-veterans-affairs.github.io/va-digital-services-platform-docs/api-reference/#/ and then searching for https://dev-api.va.gov/income_limits/v1/apidocs in the search bar at the top of the page.
+- Swagger documentation can be viewed as JSON locally by running the vets-api application server, and then visiting http://localhost:3000/income_limits/v1/apidocs in a browser window. Swagger UI can be accessed via https://software-vets-api.pages.va.ghe.com/#/ and then searching for https://dev-api.va.gov/income_limits/v1/apidocs in the search bar at the top of the page.
 
 ### Local Configuration
 - The Income Limits module is configured using the config gem in the `vets-api` repository.

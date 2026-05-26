@@ -11,7 +11,7 @@ This project provides common APIs for applications that live on VA.gov (formerly
 
 [VA.gov Platform Documentation](https://depo-platform-documentation.scrollhelp.site/index.html)
 
-[API Docs](https://department-of-veterans-affairs.github.io/va-digital-services-platform-docs/api-reference/#/)
+[API Docs](https://software-vets-api.pages.va.ghe.com/#/)
 
 For frontend, see [vets-website](https://va.ghe.com/software/vets-website).
 
