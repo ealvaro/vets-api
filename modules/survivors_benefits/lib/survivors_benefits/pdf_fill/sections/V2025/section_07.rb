@@ -157,9 +157,9 @@ module SurvivorsBenefits
 
         def expand_treatment(treatment = {})
           treatment.merge({
-                            'facilityName' => treatment['vaMedicalCenterName'] || '',
-                            'facilityLocation' => [treatment['city'].presence,
-                                                   treatment['state'].presence].compact.join(', '),
+                            'facilityName' => treatment['facilityInfo']['vaMedicalCenterName'] || '',
+                            'facilityLocation' => [treatment['facilityInfo']['city'].presence,
+                                                   treatment['facilityInfo']['state'].presence].compact.join(', '),
                             'startDate' => split_date(treatment['startDate']),
                             'endDate' => split_date(treatment['endDate'])
                           })

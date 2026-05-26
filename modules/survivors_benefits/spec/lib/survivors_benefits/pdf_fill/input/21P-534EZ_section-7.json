@@ -4,9 +4,11 @@
   "treatments": [
     {
       "facility": "7B First Example",
-      "vaMedicalCenterName": "7B First Example Name",
-      "city": "Example City",
-      "state": "EX",
+      "facilityInfo": {
+        "vaMedicalCenterName": "7B First Example Name",
+        "city": "Example City",
+        "state": "EX"
+      },
       "treatmentDates": {
         "start": "2000-01-01",
         "end": "2025-12-31"
@@ -16,8 +18,10 @@
     },
     {
       "facility": "7B Second Example",
-      "vaMedicalCenterName": "7B Second Example Name2",
-      "city": "Example City2",
+      "facilityInfo": {
+        "vaMedicalCenterName": "7B Second Example Name2",
+        "city": "Example City2"
+      },
       "treatmentDates": {
         "start": "2001-02-02",
         "end": "2024-11-30"
@@ -27,8 +31,10 @@
     },
     {
       "facility": "7B Third Example",
-      "vaMedicalCenterName": "7B Third Example Name",
-      "state": "EX",
+      "facilityInfo": {
+        "vaMedicalCenterName": "7B Third Example Name",
+        "state": "EX"
+      },
       "treatmentDates": {
         "start": "2002-03-03",
         "end": "2023-10-29"
