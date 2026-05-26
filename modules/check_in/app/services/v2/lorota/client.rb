@@ -57,7 +57,7 @@ module V2
       #
       # @return [Faraday::Response]
       def token
-        connection.post("/#{base_path}/token") do |req|
+        connection.post("#{path_prefix}/token") do |req|
           req.headers = default_headers.merge('x-lorota-claims' => claims_token)
           req.body = auth_params.to_json
         end
@@ -68,7 +68,7 @@ module V2
       # @param token [String] LoROTA token
       # @return [Faraday::Response]
       def data(token:)
-        connection.get("/#{base_path}/data/#{check_in.uuid}") do |req|
+        connection.get("#{path_prefix}/data/#{check_in.uuid}") do |req|
           req.headers = default_headers.merge('Authorization' => "Bearer #{token}")
         end
       end
@@ -76,13 +76,43 @@ module V2
       private
 
       def connection
-        Faraday.new(url:) do |conn|
+        Faraday.new(url: host_url) do |conn|
           conn.use(:breakers, service_name:)
           conn.response :raise_custom_error, error_prefix: 'LOROTA-API'
           conn.response :betamocks if mock_enabled?
 
           conn.adapter Faraday.default_adapter
         end
+      end
+
+      # Host portion of the configured `url` (scheme + host + non-default port),
+      # stripping any path component. Used as Faraday's base URL so that
+      # request paths constructed via #path_prefix don't conflict with a
+      # path embedded in the `url` setting.
+      def host_url
+        uri = URI.parse(url.to_s)
+        port_part = uri.port && uri.port != uri.default_port ? ":#{uri.port}" : ''
+        "#{uri.scheme}://#{uri.host}#{port_part}"
+      end
+
+      # Path prefix to prepend to LoROTA endpoint paths (e.g. `/dev` before
+      # `/token`). Tolerates either of two SSM-parameter shapes used across
+      # CIE microservices:
+      #
+      #   1. `url` contains only the host, `base_path` carries the stage:
+      #      url=https://host base_path=dev -> "/dev"
+      #   2. `url` contains the full path (host + stage), `base_path` is
+      #      ignored to avoid duplication:
+      #      url=https://host/dev base_path=/dev -> "/dev"
+      #
+      # In either case the prefix is returned WITHOUT a trailing slash so the
+      # caller can append "/token", "/data/UUID", etc. cleanly.
+      def path_prefix
+        url_path = URI.parse(url.to_s).path.to_s.sub(%r{/+\z}, '')
+        return url_path unless url_path.empty?
+
+        trimmed = base_path.to_s.gsub(%r{\A/+|/+\z}, '')
+        trimmed.empty? ? '' : "/#{trimmed}"
       end
 
       def default_headers

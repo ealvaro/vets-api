@@ -95,20 +95,20 @@
     {
       "warning_type": "SQL Injection",
       "warning_code": 0,
-      "fingerprint": "9fd09ce387199671367fce6b24dbcfebb3f63174d3d1e810791e62b531b7f559",
+      "fingerprint": "fcbddabafc56493d2470f50152e88f48af181726bf2a2970e6b8b2562b105ba8",
       "check_name": "SQL",
       "message": "Possible SQL injection",
       "file": "modules/check_in/app/services/v2/chip/client.rb",
       "line": 187,
       "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
-      "code": "connection.delete(\"/#{base_path}/actions/deleteFromLorota/#{check_in_session.uuid}\")",
+      "code": "connection.delete(\"#{path_prefix}/actions/deleteFromLorota/#{check_in_session.uuid}\")",
       "render_path": null,
       "location": {
         "type": "method",
         "class": "V2::Chip::Client",
         "method": "delete"
       },
-      "user_input": "base_path",
+      "user_input": "path_prefix",
       "confidence": "Medium",
       "cwe_id": [
         89

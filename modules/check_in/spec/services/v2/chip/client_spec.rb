@@ -417,4 +417,70 @@ describe V2::Chip::Client do
       end
     end
   end
+
+  describe 'URL composition' do
+    let(:faraday_response) { double('Faraday::Response') }
+
+    before do
+      allow_any_instance_of(Faraday::Connection).to receive(:post).with(anything).and_return(faraday_response)
+      allow(Flipper).to receive(:enabled?).with('check_in_experience_mock_enabled').and_return(false)
+      allow(Flipper).to receive(:enabled?).with('check_in_experience_use_vaec_cie_endpoints').and_return(true)
+    end
+
+    context 'when url contains only the host and base_path carries the stage' do
+      before do
+        allow(Settings.check_in.chip_api_v2).to receive_messages(
+          url_v2: 'https://example.execute-api.us-gov-west-1.amazonaws.com',
+          base_path_v2: 'dev'
+        )
+      end
+
+      it 'builds the request path from base_path' do
+        expect_any_instance_of(Faraday::Connection).to receive(:post).with('/dev/token')
+        subject.token
+      end
+    end
+
+    context 'when url already contains the stage path' do
+      before do
+        allow(Settings.check_in.chip_api_v2).to receive_messages(
+          url_v2: 'https://example.execute-api.us-gov-west-1.amazonaws.com/dev',
+          base_path_v2: '/dev'
+        )
+      end
+
+      it 'uses the url path and ignores base_path to avoid duplication' do
+        expect_any_instance_of(Faraday::Connection).to receive(:post).with('/dev/token')
+        subject.token
+      end
+    end
+
+    context 'when base_path has a leading slash and url has no path' do
+      before do
+        allow(Settings.check_in.chip_api_v2).to receive_messages(
+          url_v2: 'https://example.execute-api.us-gov-west-1.amazonaws.com',
+          base_path_v2: '/dev/'
+        )
+      end
+
+      it 'strips the slashes from base_path' do
+        expect_any_instance_of(Faraday::Connection).to receive(:post).with('/dev/token')
+        subject.token
+      end
+    end
+
+    context 'when url has a trailing slash on its path' do
+      before do
+        allow(Settings.check_in.chip_api_v2).to receive_messages(
+          url_v2: 'https://example.execute-api.us-gov-west-1.amazonaws.com/dev/',
+          base_path_v2: ''
+        )
+      end
+
+      it 'strips the trailing slash from the url path' do
+        expect_any_instance_of(Faraday::Connection).to receive(:post).with('/dev/token')
+        subject.token
+      end
+    end
+  end
 end
