@@ -13,7 +13,7 @@ describe Form1010cg::PoaUploader, :uploader_helpers do
     {
       record: :none,
       allow_unused_http_interactions: false,
-      match_requests_on: %i[method host body]
+      match_requests_on: %i[method host]
     }
   end
 

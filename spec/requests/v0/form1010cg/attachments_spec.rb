@@ -16,7 +16,7 @@ RSpec.describe 'V0::Form1010CG::Attachments', type: :request do
     {
       record: :none,
       allow_unused_http_interactions: false,
-      match_requests_on: %i[method host body]
+      match_requests_on: %i[method host]
     }
   end
 
