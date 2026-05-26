@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  deploy:
+  deploy-redis:
     runs-on: ubuntu-latest
     env:
       BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
@@ -37,6 +37,9 @@ jobs:
           private-key: ${{ secrets.GEM_APP_PRIVATE_KEY }}
           owner: software
           github-api-url: https://va.ghe.com/api/v3
+
+      - name: Install pdftk
+        run: sudo apt-get update && sudo apt-get install -y pdftk-java
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@c4e5b1316158f92e3d49443a9d58b31d25ac0f8f
