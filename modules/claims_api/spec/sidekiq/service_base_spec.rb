@@ -257,13 +257,15 @@ RSpec.describe ClaimsApi::ServiceBase do
     it 'marks claim as errored' do
       msg = {
         'args' => [claim.id],
-        'class' => 'ClaimsApi::V1:DisabilityCompensationPdfGenerator',
+        'class' => 'ClaimsApi::V1::DisabilityCompensationPdfGenerator',
         'error_message' => 'There has been an error'
       }
       claim_record = instance_double(ClaimsApi::AutoEstablishedClaim)
 
       allow(ClaimsApi::AutoEstablishedClaim).to receive(:find).with(claim.id).and_return(claim_record)
       expect(claim_record).to receive(:status=).with(ClaimsApi::AutoEstablishedClaim::ERRORED)
+      expect(claim_record).to receive(:evss_response=).with(msg['error_message'])
+      expect(claim_record).to receive(:save!)
 
       described_class.within_sidekiq_retries_exhausted_block(msg) do
         expect(ClaimsApi::Logger).to receive(:log).with(
