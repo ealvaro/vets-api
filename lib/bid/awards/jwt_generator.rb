@@ -6,13 +6,13 @@ module BID
     # @see https://www.jwt.io/introduction#when-to-use-json-web-tokens
     class JwtGenerator
       # expiration period
-      VALIDITY_LENGTH = 30.minutes
+      VALIDITY_LENGTH = 30.minutes.to_i
 
       # algorithm to be used
       ALGORITHM = 'HS256'
 
       # Issuer assigned
-      ISSUER = 'VAGOV'
+      ISSUER = 'bip-va-gov'
 
       # VBMS user logged in to the application; if no user interaction needs to be a system user
       USER_ID = 'VAGOVSYSACCT'
@@ -46,8 +46,8 @@ module BID
       def payload
         {
           jti: SecureRandom.uuid, # random id to identify a unique JWT
-          iat: created_time.to_i,
-          expires: expiration_time.to_i,
+          iat: Time.now.to_i,
+          exp: Time.now.to_i + VALIDITY_LENGTH,
           iss: ISSUER,
           applicationID: APPLICATION_ID,
           userID: USER_ID,
@@ -58,16 +58,6 @@ module BID
       # retrieve the secret from settings
       def private_key
         Settings.bid.awards.jwt_secret
-      end
-
-      # set the token created time
-      def created_time
-        @created_time = Time.zone.now
-      end
-
-      # set the token expiration date
-      def expiration_time
-        @created_time + VALIDITY_LENGTH
       end
     end
   end

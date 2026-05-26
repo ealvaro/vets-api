@@ -92,7 +92,7 @@ bid:
   awards:
     base_url: <%= ENV['bid__awards__base_url'] %>
     jwt_secret: <%= ENV['bid__awards__jwt_secret'] %>
-    mock: true
+    mock: <%= ENV['bid__awards__mock'] %>
 binaries:
   clamdscan: "/usr/bin/clamdscan"
   pdfinfo: pdfinfo

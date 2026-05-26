@@ -12,8 +12,8 @@ RSpec.describe BID::Awards::JwtGenerator do
                                  alg: 'HS256'
                                }).first
       expect(decoded_jwt.keys)
-        .to include('iss', 'jti', 'expires', 'iat', 'applicationID', 'userID', 'stationID')
-      expect(decoded_jwt['iss']).to eq('VAGOV')
+        .to include('iss', 'jti', 'exp', 'iat', 'applicationID', 'userID', 'stationID')
+      expect(decoded_jwt['iss']).to eq('bip-va-gov')
       expect(decoded_jwt['applicationID']).to eq('VBMS')
       expect(decoded_jwt['userID']).to eq('VAGOVSYSACCT')
       expect(decoded_jwt['stationID']).to eq('283')
