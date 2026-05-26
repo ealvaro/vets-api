@@ -63,8 +63,8 @@ module UnifiedHealthData
       perform(:post, path, request_body.to_json, request_headers(include_content_type: true))
     end
 
-    def get_avs(patient_id:, appt_id:, include_binary: false)
-      path = "#{config.base_path}appointments/#{appt_id}/avs?patientId=#{patient_id}&includeBinary=#{include_binary}"
+    def get_by_docref(doc_id:, include_binary: true)
+      path = "#{config.base_path}document-reference/oracle-health/#{doc_id}?includeBinary=#{include_binary}"
       perform(:get, path, nil, request_headers)
     end
 

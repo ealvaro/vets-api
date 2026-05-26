@@ -5,6 +5,7 @@ require 'common/client/errors'
 require 'map/security_token/errors'
 require 'json'
 require 'memoist'
+require 'unified_health_data/avs_service'
 
 module VAOS
   module V2
@@ -587,7 +588,7 @@ module VAOS
         responses = []
 
         doc_ids.each do |doc_id|
-          response = get_avs_pdf_binary(doc_id, appt_id)
+          response = get_avs_pdf_binary(doc_id)
           if response.nil?
             responses.push({ doc_id:, error: AVS_BINARY_EMPTY_MESSAGE })
           else
@@ -1039,7 +1040,7 @@ module VAOS
       end
 
       def unified_health_data_service
-        @unified_health_data_service ||= UnifiedHealthData::MedicalRecordsService.new(user)
+        @unified_health_data_service ||= UnifiedHealthData::AvsService.new(user)
       end
 
       def clinical_notes_adapter
@@ -1132,10 +1133,10 @@ module VAOS
         avs_path(data[:sid])
       end
 
-      def get_avs_pdf_binary(doc_id, appt_id)
-        return nil if doc_id.nil? || appt_id.nil?
+      def get_avs_pdf_binary(doc_id)
+        return nil if doc_id.nil?
 
-        avs_resp = unified_health_data_service.get_avs_binary_data(doc_id:, appt_id:)
+        avs_resp = unified_health_data_service.get_avs_binary_data(doc_id:)
 
         return nil if avs_resp.nil?
 
