@@ -3748,6 +3748,9 @@ features:
     actor_type: user
     description: Switches the MCEQ Vendor Portal AccessVA link to use the Okta URL
     enable_in_development: false
+  enable_hardship_suspension:
+    actor_type: user
+    description: Enables the hardship suspension radio button and related flow for debt management
   identity_passkey_enabled:
     actor_type: user
     description: Enables passkey functionality for selected users and phased rollout.
