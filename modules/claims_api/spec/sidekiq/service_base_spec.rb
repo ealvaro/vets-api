@@ -495,4 +495,14 @@ RSpec.describe ClaimsApi::ServiceBase do
       )
     end
   end
+
+  describe 'retries exhausted class allowlist' do
+    it 'includes all three allowlisted classes with corrected names' do
+      expect(described_class::RETRIES_EXHAUSTED_CLAIM_CLASSES).to contain_exactly(
+        'ClaimsApi::V1::DisabilityCompensationPdfGenerator',
+        'ClaimsApi::V1::Form526EstablishmentUpload',
+        'ClaimsApi::DisabilityCompensationBenefitsDocumentsUploader'
+      )
+    end
+  end
 end

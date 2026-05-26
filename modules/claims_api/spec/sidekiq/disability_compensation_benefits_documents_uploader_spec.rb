@@ -130,6 +130,54 @@ RSpec.describe ClaimsApi::DisabilityCompensationBenefitsDocumentsUploader, type:
         )
       end
     end
+
+    it 'sets claim status to errored when retries are exhausted' do
+      error_msg = 'An error occurred'
+      msg = { 'args' => [claim.id],
+              'class' => described_class.to_s,
+              'error_message' => error_msg }
+      expect(claim.status).to eq('pending')
+
+      # Get the sidekiq_retries_exhausted handler proc and call it directly
+      handler = described_class.sidekiq_retries_exhausted_block
+      handler.call(msg)
+
+      # Verify the claim was updated
+      claim.reload
+      expect(claim.status).to eq('errored')
+    end
+
+    context 'when the error message is present' do
+      it 'sets evss_response to the error when retries are exhausted' do
+        error_msg = 'An error occurred'
+        msg = { 'args' => [claim.id],
+                'class' => described_class.to_s,
+                'error_message' => error_msg }
+        expect(claim.evss_response).to be_nil
+
+        handler = described_class.sidekiq_retries_exhausted_block
+        handler.call(msg)
+
+        claim.reload
+        expect(claim.evss_response).to eq(error_msg)
+      end
+    end
+
+    context 'when the error message is not present' do
+      it 'sets claim status to errored and evss_response when retries are exhausted' do
+        error_msg = nil
+        msg = { 'args' => [claim.id],
+                'class' => described_class.to_s,
+                'error_message' => error_msg }
+        expect(claim.evss_response).to be_nil
+
+        handler = described_class.sidekiq_retries_exhausted_block
+        handler.call(msg)
+
+        claim.reload
+        expect(claim.evss_response).to eq('Job retries exhausted')
+      end
+    end
   end
 
   describe 'when an errored job has a time limitation' do

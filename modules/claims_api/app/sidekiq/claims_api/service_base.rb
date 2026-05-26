@@ -17,6 +17,9 @@ module ClaimsApi
     LOG_TAG = 'claims_api_sidekiq_service_base'
 
     FILE_NOT_FOUND_ERROR_MESSAGE = 'File could not be retrieved from AWS'
+    RETRIES_EXHAUSTED_CLAIM_CLASSES = %w[ClaimsApi::V1::DisabilityCompensationPdfGenerator
+                                         ClaimsApi::V1::Form526EstablishmentUpload
+                                         ClaimsApi::DisabilityCompensationBenefitsDocumentsUploader].freeze
 
     sidekiq_retries_exhausted do |message|
       ClaimsApi::Logger.log('claims_api_retries_exhausted',
@@ -24,15 +27,13 @@ module ClaimsApi
                             message: "Job retries exhausted for #{message['class']}",
                             error: message['error_message'])
 
-      classes = %w[ClaimsApi::V1:DisabilityCompensationPdfGenerator
-                   ClaimApi::V1::Form526EstablishmentUpload
-                   ClaimsApi::DisabilityCompensationBenefitsDocumentsUploader].freeze
-
       claim_id = message&.dig('args', 0)
 
-      if message['class'].present? && classes.include?(message['class']) && claim_id.present?
+      if message['class'].present? && RETRIES_EXHAUSTED_CLAIM_CLASSES.include?(message['class']) && claim_id.present?
         claim = ClaimsApi::AutoEstablishedClaim.find(claim_id)
+        claim.evss_response = message['error_message'] || 'Job retries exhausted'
         claim.status = ClaimsApi::AutoEstablishedClaim::ERRORED
+        claim.save!
       end
     end
 
