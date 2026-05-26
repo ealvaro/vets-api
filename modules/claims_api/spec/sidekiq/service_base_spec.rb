@@ -37,6 +37,7 @@ RSpec.describe ClaimsApi::ServiceBase do
   let(:poa) do
     poa = create(:power_of_attorney)
     poa.auth_headers = auth_headers
+    poa.status = ClaimsApi::PowerOfAttorney::PENDING
     poa.save
     poa
   end
@@ -105,53 +106,6 @@ RSpec.describe ClaimsApi::ServiceBase do
     end
   end
 
-  describe '#set_evss_response' do
-    it 'replaces existing evss_response errors instead of appending' do
-      claim.evss_response = ['stale error']
-      claim.save!
-
-      service.send(:set_evss_response, claim, StandardError.new('fresh error'))
-
-      claim.reload
-      expect(claim.evss_response).to eq(['fresh error'])
-    end
-
-    it 'stores original_body array errors as-is' do
-      backend_error = Common::Exceptions::BackendServiceException.new(
-        'pdf.error',
-        {},
-        500,
-        [{ 'detail' => 'service failure' }]
-      )
-
-      service.send(:set_evss_response, claim, backend_error)
-
-      claim.reload
-      expect(claim.evss_response).to eq([{ 'detail' => 'service failure' }])
-    end
-
-    it 'stores original_body hash errors as a single array element' do
-      backend_error = Common::Exceptions::BackendServiceException.new(
-        'pdf.error',
-        {},
-        500,
-        { 'detail' => 'single error payload' }
-      )
-
-      service.send(:set_evss_response, claim, backend_error)
-
-      claim.reload
-      expect(claim.evss_response).to eq([{ 'detail' => 'single error payload' }])
-    end
-
-    it 'stores a standard error message as a one-element array' do
-      service.send(:set_evss_response, claim, StandardError.new('Unexpected error occurred'))
-
-      claim.reload
-      expect(claim.evss_response).to eq(['Unexpected error occurred'])
-    end
-  end
-
   describe '#save_auto_claim!' do
     it 'saves claim with the validation_method property of v2' do
       service.send(:save_auto_claim!, claim, claim.status)
@@ -198,47 +152,56 @@ RSpec.describe ClaimsApi::ServiceBase do
   end
 
   describe '#will_retry?' do
-    it 'retries for a header.va_eauth_birlsfilenumber error' do
-      body = [{ key: 'header.va_eauth_birlsfilenumber', severity: 'ERROR', text: 'Size must be between 8 and 9' }]
-
-      error = Common::Exceptions::BackendServiceException.new(
-        'header.va_eauth_birlsfilenumber', {}, nil, body
-      )
-
-      claim.evss_response = body
-      claim.save!
-
-      should_retry = service.send(:will_retry?, claim, error)
-      expect(should_retry).to be(true)
+    def backend_error_with(body)
+      Common::Exceptions::BackendServiceException.new(body.first[:key], {}, nil, body)
     end
 
-    it 'does not retry a form526.InProcess error' do
-      body = [{ key: 'form526.InProcess', severity: 'FATAL', text: 'Form 526 is already in-process' }]
+    context 'when claim has an evss response key' do
+      it 'retries for keys not in the no-retry list' do
+        body = [{ key: 'header.va_eauth_birlsfilenumber', severity: 'ERROR', text: 'Size must be between 8 and 9' }]
+        claim.evss_response = body
+        claim.save!
 
-      error = Common::Exceptions::BackendServiceException.new(
-        'form526.InProcess', {}, nil, body
-      )
+        expect(service.send(:will_retry?, claim, backend_error_with(body))).to be(true)
+      end
 
-      claim.evss_response = body
-      claim.save!
+      it 'does not retry for form526.InProcess' do
+        body = [{ key: 'form526.InProcess', severity: 'FATAL', text: 'Form 526 is already in-process' }]
+        claim.evss_response = body
+        claim.save!
 
-      should_retry = service.send(:will_retry?, claim, error)
-      expect(should_retry).to be(false)
+        expect(service.send(:will_retry?, claim, backend_error_with(body))).to be(false)
+      end
+
+      it 'does not retry for form526.submit.noRetryError' do
+        body = [{ key: 'form526.submit.noRetryError', severity: 'FATAL',
+                  text: 'Claim could not be established. Retries will fail.' }]
+        claim.evss_response = body
+        claim.save!
+
+        expect(service.send(:will_retry?, claim, backend_error_with(body))).to be(false)
+      end
     end
 
-    it 'does not retry a form526.submit.noRetryError error' do
-      body = [{ key: 'form526.submit.noRetryError', severity: 'FATAL',
-                text: 'Claim could not be established. Retries will fail.' }]
+    context 'when claim has no evss response key' do
+      before do
+        claim.evss_response = nil
+        claim.save!
+      end
 
-      error = Common::Exceptions::BackendServiceException.new(
-        'form526.submit.noRetryError', {}, nil, body
-      )
+      it 'uses original body keys to block retries for no-retry error codes' do
+        error = Common::Exceptions::BackendServiceException.new(
+          'form526.InProcess', {}, nil, { key: 'form526.InProcess', text: 'already in process' }
+        )
 
-      claim.evss_response = body
-      claim.save!
+        expect(service.send(:will_retry?, claim, error)).to be(false)
+      end
 
-      should_retry = service.send(:will_retry?, claim, error)
-      expect(should_retry).to be(false)
+      it 'retries when neither evss response nor original body key is present' do
+        error = RuntimeError.new('transient upstream issue')
+
+        expect(service.send(:will_retry?, claim, error)).to be(true)
+      end
     end
   end
 
@@ -287,6 +250,224 @@ RSpec.describe ClaimsApi::ServiceBase do
       expect(detail).to eq(
         "Updating Access. recordConsent: true, consentLimits included for representative #{poa_code}"
       )
+    end
+  end
+
+  describe '.sidekiq_retries_exhausted' do
+    it 'marks claim as errored' do
+      msg = {
+        'args' => [claim.id],
+        'class' => 'ClaimsApi::V1:DisabilityCompensationPdfGenerator',
+        'error_message' => 'There has been an error'
+      }
+      claim_record = instance_double(ClaimsApi::AutoEstablishedClaim)
+
+      allow(ClaimsApi::AutoEstablishedClaim).to receive(:find).with(claim.id).and_return(claim_record)
+      expect(claim_record).to receive(:status=).with(ClaimsApi::AutoEstablishedClaim::ERRORED)
+
+      described_class.within_sidekiq_retries_exhausted_block(msg) do
+        expect(ClaimsApi::Logger).to receive(:log).with(
+          'claims_api_retries_exhausted',
+          record_id: claim.id,
+          message: "Job retries exhausted for #{msg['class']}",
+          error: msg['error_message']
+        )
+      end
+    end
+  end
+
+  describe '#set_evss_response' do
+    it 'replaces existing evss_response errors instead of appending' do
+      claim.evss_response = ['stale error']
+      claim.save!
+
+      service.send(:set_evss_response, claim, StandardError.new('fresh error'))
+
+      claim.reload
+      expect(claim.evss_response).to eq(['fresh error'])
+    end
+
+    it 'stores original_body array errors as-is' do
+      backend_error = Common::Exceptions::BackendServiceException.new(
+        'pdf.error',
+        {},
+        500,
+        [{ 'detail' => 'service failure' }]
+      )
+
+      service.send(:set_evss_response, claim, backend_error)
+
+      claim.reload
+      expect(claim.evss_response).to eq([{ 'detail' => 'service failure' }])
+    end
+
+    it 'stores original_body hash errors as a single array element' do
+      backend_error = Common::Exceptions::BackendServiceException.new(
+        'pdf.error',
+        {},
+        500,
+        { 'detail' => 'single error payload' }
+      )
+
+      service.send(:set_evss_response, claim, backend_error)
+
+      claim.reload
+      expect(claim.evss_response).to eq([{ 'detail' => 'single error payload' }])
+    end
+
+    it 'stores errors from objects exposing an errors array' do
+      error = double(:error, errors: [{ 'detail' => 'errors accessor payload' }])
+
+      service.send(:set_evss_response, claim, error)
+
+      claim.reload
+      expect(claim.evss_response).to eq([{ 'detail' => 'errors accessor payload' }])
+    end
+  end
+
+  describe '#set_vbms_error_message' do
+    it 'persists the extracted message to the poa record' do
+      error = RuntimeError.new('VBMS unavailable')
+
+      service.send(:set_vbms_error_message, poa, error)
+      poa.reload
+
+      expect(poa.vbms_error_message).to eq('VBMS unavailable')
+    end
+  end
+
+  describe 'error extraction helpers' do
+    let(:empty_error) { OpenStruct.new }
+
+    describe '#get_error_message' do
+      it 'returns an original_body payload when available' do
+        error = double(:error, original_body: { detail: 'upstream payload' })
+
+        expect(service.send(:get_error_message, error)).to eq({ detail: 'upstream payload' })
+      end
+
+      it 'returns a message payload when available' do
+        error = StandardError.new('plain error message')
+
+        expect(service.send(:get_error_message, error)).to eq('plain error message')
+      end
+
+      it 'returns an errors payload when available' do
+        error = OpenStruct.new(errors: [{ detail: 'bad data' }])
+
+        expect(service.send(:get_error_message, error)).to eq([{ detail: 'bad data' }])
+      end
+
+      it 'returns a detailed_message payload when available' do
+        error = OpenStruct.new(detailed_message: 'details from upstream service')
+
+        expect(service.send(:get_error_message, error)).to eq('details from upstream service')
+      end
+
+      it 'returns the original error object as a fallback' do
+        expect(service.send(:get_error_message, empty_error)).to eq(empty_error)
+      end
+    end
+
+    describe '#get_error_status_code' do
+      it 'returns a fallback message when status code is unavailable' do
+        expect(service.send(:get_error_status_code, empty_error)).to eq("No status code for error: #{empty_error}")
+      end
+    end
+
+    describe '#get_error_text' do
+      it 'returns the original value when error_message is a string' do
+        expect(service.send(:get_error_text, 'plain text error')).to eq('plain text error')
+      end
+
+      it 'prefers nested messages text when available' do
+        error_message = {
+          messages: [{ text: 'message list text' }],
+          text: 'top-level text',
+          message: 'top-level message',
+          detail: 'top-level detail'
+        }
+
+        expect(service.send(:get_error_text, error_message)).to eq('message list text')
+      end
+
+      it 'falls back to :text when nested messages text is unavailable' do
+        expect(service.send(:get_error_text, { text: 'fallback text' })).to eq('fallback text')
+      end
+
+      it 'falls back to :message when nested messages text and :text are unavailable' do
+        expect(service.send(:get_error_text, { message: 'fallback message' })).to eq('fallback message')
+      end
+
+      it 'falls back to :detail when nested messages text, :text, and :message are unavailable' do
+        expect(service.send(:get_error_text, { detail: 'fallback detail' })).to eq('fallback detail')
+      end
+    end
+
+    describe '#get_original_status_code' do
+      it 'returns an empty string when original status is unavailable' do
+        expect(service.send(:get_original_status_code, empty_error)).to eq('')
+      end
+    end
+  end
+
+  describe '#established_state_value' do
+    it 'returns the established state constant' do
+      expect(service.send(:established_state_value)).to eq(ClaimsApi::AutoEstablishedClaim::ESTABLISHED)
+    end
+  end
+
+  describe '#veteran_file_number' do
+    it 'returns va_eauth_birlsfilenumber from auth headers' do
+      expect(service.send(:veteran_file_number, claim)).to eq(claim.auth_headers['va_eauth_birlsfilenumber'])
+    end
+  end
+
+  describe '#save_poa_errored_state' do
+    it 'sets the poa status to errored and persists' do
+      service.send(:save_poa_errored_state, poa)
+      poa.reload
+
+      expect(poa.status).to eq(ClaimsApi::PowerOfAttorney::ERRORED)
+    end
+  end
+
+  describe '#vanotify?' do
+    let(:rep_id) { '1234' }
+    let(:notification_key) { ClaimsApi::V2::Veterans::PowerOfAttorney::BaseController::VA_NOTIFY_KEY }
+
+    context 'when the VA notify feature flag is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v2_poa_va_notify).and_return(true)
+      end
+
+      it 'returns true when feature, header key, and representative all exist' do
+        create(:representative, representative_id: rep_id)
+
+        expect(service.send(:vanotify?, { notification_key => 'abc123' }, rep_id)).to be(true)
+      end
+
+      it 'returns false when the VA notify key is missing from auth headers' do
+        create(:representative, representative_id: rep_id)
+
+        expect(service.send(:vanotify?, { 'unrelated_header' => 'abc123' }, rep_id)).to be(false)
+      end
+
+      it 'returns false when no representative exists for the given rep_id' do
+        expect(service.send(:vanotify?, { notification_key => 'abc123' }, rep_id)).to be(false)
+      end
+    end
+
+    context 'when the VA notify feature flag is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v2_poa_va_notify).and_return(false)
+      end
+
+      it 'returns false when the feature flag is disabled' do
+        create(:representative, representative_id: rep_id)
+
+        expect(service.send(:vanotify?, { notification_key => 'abc123' }, rep_id)).to be(false)
+      end
     end
   end
 

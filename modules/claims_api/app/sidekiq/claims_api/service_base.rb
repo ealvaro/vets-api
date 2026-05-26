@@ -92,11 +92,6 @@ module ClaimsApi
       save_auto_claim!(auto_claim, ClaimsApi::AutoEstablishedClaim::PENDING)
     end
 
-    def set_errored_state_on_poa(poa)
-      poa.status = poa_errored_state
-      poa.save!
-    end
-
     def save_auto_claim!(auto_claim, status)
       auto_claim.status = status
       auto_claim.validation_method = ClaimsApi::AutoEstablishedClaim::VALIDATION_METHOD
@@ -104,7 +99,6 @@ module ClaimsApi
     end
 
     def set_evss_response(auto_claim, error)
-      auto_claim.evss_response ||= []
       errors_to_add = []
 
       if error_responds_to_original_body?(error)
