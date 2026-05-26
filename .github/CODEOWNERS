@@ -747,6 +747,7 @@ config/ca-trust @software/backend-review-group
 config/ca-trust/README.md @software/backend-review-group
 config/cable.yml @software/backend-review-group
 config/clamd.conf @software/backend-review-group
+config/coe @software/va-core-veteran-experiences @software/backend-review-group
 config/coverband.rb @software/backend-review-group
 config/database.yml @software/backend-review-group
 config/environment.rb @software/backend-review-group
@@ -943,6 +944,7 @@ lib/chip @software/vsa-healthcare-health-quest-1-backend @software/patient-check
 lib/claim_documents/monitor.rb @software/benefits-lifestage @software/backend-review-group
 lib/claim_letters @software/benefits-management-tools-be @software/backend-review-group
 lib/clamav @software/backend-review-group
+lib/coe @software/va-core-veteran-experiences @software/backend-review-group
 lib/committee @software/backend-review-group
 lib/common @software/backend-review-group
 lib/common/client/base.rb @software/backend-review-group
@@ -962,6 +964,7 @@ lib/common/file_helpers.rb @software/backend-review-group
 lib/common/jwt_generator @software/backend-review-group @software/disability-benefits
 lib/common/models @software/backend-review-group
 lib/common/pdf_helpers.rb @software/benefits-decision-reviews-be @software/backend-review-group
+lib/common/validations_patterns.rb @software/va-core-veteran-experiences @software/backend-review-group
 lib/common/virus_scan.rb @software/backend-review-group
 lib/config_helper.rb @software/backend-review-group
 lib/contention_classification @software/backend-review-group @software/benefits-vro-engineers @software/benefits-contention-classification-engineers
@@ -1621,6 +1624,7 @@ spec/lib/caseflow @software/lighthouse-banana-peels @software/backend-review-gro
 spec/lib/central_mail @software/vfs-authenticated-experience-backend @software/backend-review-group
 spec/lib/chatbot @software/vfs-virtual-agent-chatbot @software/backend-review-group
 spec/lib/chip @software/vsa-healthcare-health-quest-1-backend @software/patient-check-in @software/backend-review-group
+spec/lib/coe @software/va-core-veteran-experiences @software/backend-review-group
 spec/lib/committee @software/backend-review-group
 spec/lib/claim_documents/monitor_spec.rb @software/benefits-lifestage @software/backend-review-group
 spec/lib/claim_letters @software/backend-review-group @software/benefits-management-tools-be
@@ -1949,6 +1953,7 @@ spec/models/user_verification_spec.rb @software/octo-identity
 spec/models/va_profile_redis @software/vfs-authenticated-experience-backend @software/backend-review-group
 spec/models/veteran_enrollment_system/form1095_b/form1095_b_spec.rb @software/backend-review-group @software/va-core-veteran-experiences
 spec/models/veteran_onboarding_spec.rb @software/backend-review-group @software/va-core-veteran-experiences
+spec/models/concerns/coe_claim_form_validation/ @software/va-core-veteran-experiences @software/backend-review-group
 spec/models/concerns/ibm_data_dictionary_spec.rb @software/benefits-optimization-aquia @software/backend-review-group
 spec/models/concerns/pension_award_helper_spec.rb @software/benefits-dependents-management @software/backend-review-group
 spec/models/concerns/signature_required_spec.rb @software/vfs-mhv-integration @software/backend-review-group

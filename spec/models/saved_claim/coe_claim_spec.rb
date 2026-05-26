@@ -40,6 +40,51 @@ RSpec.describe SavedClaim::CoeClaim do
     }
   end
 
+  let(:base_v2_form) do
+    {
+      'version' => 2,
+      'fullName' => { 'first' => 'Eddie', 'middle' => 'Joseph', 'last' => 'Caldwell' },
+      'dateOfBirth' => '1933-10-27',
+      'veteran' => {
+        'mailingAddress' => { 'addressLine1' => '123 ANY ST', 'addressLine2' => '', 'addressLine3' => '',
+                              'city' => 'ANYTOWN', 'stateCode' => 'AL', 'zipCode' => '54321' },
+        'homePhone' => { 'areaCode' => '222', 'phoneNumber' => '3334444' },
+        'email' => { 'emailAddress' => 'vet@example.com' }
+      },
+      'militaryHistory' => {
+        'status' => 'ADSM',
+        'separatedDueToDisability' => false,
+        'preDischargeClaim' => false,
+        'periodsOfService' => [
+          {
+            'serviceBranch' => 'AF',
+            'dateRange' => { 'from' => '2000-01-01T00:00:00.000Z', 'to' => '2010-01-16T00:00:00.000Z' }
+          }
+        ]
+      },
+      'loanHistory' => {
+        'hadPriorLoans' => true,
+        'relevantPriorLoans' => [
+          {
+            'dateRange' => { 'from' => '2017-01-01T00:00:00.000Z', 'to' => '' },
+            'propertyAddress' => { 'propertyAddress1' => '234', 'propertyAddress2' => '234',
+                                   'propertyCity' => 'asdf', 'propertyState' => 'AL', 'propertyZip' => '11111' },
+            'vaLoanNumber' => '123123123123',
+            'entitlementRestoration' => 'IRRRL'
+          },
+          {
+            'dateRange' => { 'from' => '2010-01-01T00:00:00.000Z', 'to' => '2011-01-01T00:00:00.000Z' },
+            'propertyAddress' => { 'propertyAddress1' => '939393', 'propertyAddress2' => '234',
+                                   'propertyCity' => 'asdf', 'propertyState' => 'AL', 'propertyZip' => '11111' },
+            'vaLoanNumber' => '456456456456',
+            'entitlementRestoration' => 'REFI'
+          }
+        ]
+      },
+      'privacyAgreementAccepted' => true
+    }
+  end
+
   let(:base_legacy_form) do
     {
       'relevantPriorLoans' => [
@@ -78,52 +123,11 @@ RSpec.describe SavedClaim::CoeClaim do
     }
   end
 
-  let(:base_v2_form) do
-    {
-      'veteran' => {
-        'mailingAddress' => { 'addressLine1' => '123 ANY ST', 'addressLine2' => '', 'addressLine3' => '',
-                              'city' => 'ANYTOWN', 'stateCode' => 'AL', 'zipCode' => '54321' },
-        'homePhone' => { 'areaCode' => '222', 'phoneNumber' => '3334444' },
-        'email' => { 'emailAddress' => 'vet@example.com' }
-      },
-      'loanHistory' => {
-        'hadPriorLoans' => true,
-        'relevantPriorLoans' => [
-          {
-            'dateRange' => { 'from' => '2017-01-01T00:00:00.000Z', 'to' => '' },
-            'propertyAddress' => { 'propertyAddress1' => '234', 'propertyAddress2' => '234', 'propertyCity' => 'asdf',
-                                   'propertyState' => 'AL', 'propertyZip' => '11111' },
-            'vaLoanNumber' => '123123123123',
-            'entitlementRestoration' => 'IRRRL'
-          },
-          {
-            'dateRange' => { 'from' => '2010-01-01T00:00:00.000Z', 'to' => '2011-01-01T00:00:00.000Z' },
-            'propertyAddress' => { 'propertyAddress1' => '939393', 'propertyAddress2' => '234',
-                                   'propertyCity' => 'asdf', 'propertyState' => 'AL', 'propertyZip' => '11111' },
-            'vaLoanNumber' => '456456456456',
-            'entitlementRestoration' => 'REFI'
-          }
-        ]
-      },
-      'hadPriorLoans' => true,
-      'militaryHistory' => {
-        'status' => 'ADSM',
-        'separatedDueToDisability' => false,
-        'periodsOfService' => [
-          {
-            'serviceBranch' => 'AF',
-            'dateRange' => { 'from' => '2000-01-01T00:00:00.000Z', 'to' => '2010-01-16T00:00:00.000Z' }
-          }
-        ]
-      },
-      'fullName' => { 'first' => 'Eddie', 'middle' => 'Joseph', 'last' => 'Caldwell' },
-      'dateOfBirth' => '1933-10-27',
-      'privacyAgreementAccepted' => true,
-      'version' => '2'
-    }
-  end
-
   describe '#send_to_lgy(edipi:, icn:)' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:coe_form_rebuild_cveteam).and_return(false)
+    end
+
     it 'logs an error to sentry if edipi is nil' do
       coe_claim = create(:coe_claim)
       allow(coe_claim).to receive(:prepare_form_data).and_return({})

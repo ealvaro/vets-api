@@ -14,6 +14,15 @@ module Common
       AP AE AA
     ].freeze
 
+    # YYYY-MM-DD; also used for loose date checks alongside ISO8601 in COE dateRange validation.
+    COE_DATE_OF_BIRTH_PATTERN = /
+      \A
+      (?:19|20)\d{2}-
+      (?:0[1-9]|1[0-2])-
+      (?:0[1-9]|[12]\d|3[01])
+      \z
+    /x
+
     COE_POSTAL_CODE_PATTERN = /\A\d{5}(-\d{4})?\z/
   end
 end

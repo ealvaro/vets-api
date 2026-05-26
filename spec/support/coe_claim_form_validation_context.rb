@@ -35,7 +35,6 @@ RSpec.shared_context 'coe claim form validation' do
         'status' => 'VETERAN',
         'separatedDueToDisability' => 'false',
         'preDischargeClaim' => 'false',
-        'purpleHeartRecipient' => 'false',
         'periodsOfService' => [
           {
             'serviceBranch' => 'ARMY',
