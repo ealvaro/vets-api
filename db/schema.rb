@@ -1359,7 +1359,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_18_230147) do
     t.string "submitted_by_icn", comment: "ICN of the authenticated user who submitted the form. Null for unauthenticated submissions or forms created before this column existed."
     t.uuid "transaction_uuid"
     t.index ["form_uuid"], name: "index_ivc_champva_forms_on_form_uuid"
+    t.index ["form_uuid"], name: "index_ivc_champva_forms_on_pending_form_uuid", where: "((pega_status IS NULL) OR ((pega_status)::text <> ALL ((ARRAY['eligiblity denied/additional information needed'::character varying, 'eligibility denied/additional information needed'::character varying, 'processed - eligiblity determination unknown'::character varying, 'processed - eligibility determination unknown'::character varying, 'eligible - issued a card'::character varying, 'duplicate application'::character varying, 'eligible - reissued a card'::character varying, 'document identification error'::character varying, 'processed'::character varying, 'manually processed'::character varying])::text[])))"
     t.index ["needs_kms_rotation"], name: "index_ivc_champva_forms_on_needs_kms_rotation"
+    t.index ["updated_at"], name: "index_ivc_champva_forms_on_updated_at"
   end
 
   create_table "lighthouse526_document_uploads", force: :cascade do |t|
