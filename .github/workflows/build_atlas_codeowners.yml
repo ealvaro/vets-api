@@ -43,6 +43,9 @@ jobs:
           BRANCH="master"
 
           NEW_CONTENT_B64=$(base64 -w0 .github/CODEOWNERS)
+          CONTENT_FILE=$(mktemp)
+          trap 'rm -f "$CONTENT_FILE"' EXIT
+          printf '%s' "$NEW_CONTENT_B64" > "$CONTENT_FILE"
 
           RESPONSE=$(gh api "/repos/${DEST_REPO}/contents/${DEST_PATH}?ref=${BRANCH}" 2>/dev/null || echo '{}')
           CURRENT_SHA=$(echo "$RESPONSE" | jq -r '.sha // empty')
@@ -54,7 +57,7 @@ jobs:
           fi
 
           JQ_ARGS=(--arg msg "Auto update Atlas with Vets-API CODEOWNERS" \
-                   --arg content "$NEW_CONTENT_B64" \
+                   --rawfile content "$CONTENT_FILE" \
                    --arg branch "$BRANCH" \
                    --arg name "va-vsp-bot" \
                    --arg email "70344339+va-vsp-bot@users.noreply.github.com")
@@ -70,3 +73,4 @@ jobs:
           fi
 
           echo "$PAYLOAD" | gh api --method PUT "/repos/${DEST_REPO}/contents/${DEST_PATH}" --input -
+          rm -f "$CONTENT_FILE"
