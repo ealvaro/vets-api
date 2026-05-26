@@ -49,6 +49,7 @@ module TravelClaim
         req.body = URI.encode_www_form(auth_params)
       end
     rescue => e
+      log_external_api_error(operation: 'token', error: e)
       log_message_to_sentry(e.original_body, :error,
                             { uuid: check_in.uuid },
                             { external_service: service_name, team: 'check-in' })
@@ -76,6 +77,7 @@ module TravelClaim
       Rails.logger.error(message: 'BTSSS Timeout Error', uuid: check_in.uuid)
       Faraday::Response.new(response_body: { message: 'BTSSS timeout error' }, status: 408)
     rescue => e
+      log_external_api_error(operation: 'submit_claim', error: e)
       log_message_to_sentry(e.original_body, :error,
                             { uuid: check_in.uuid },
                             { external_service: service_name, team: 'check-in' })
@@ -102,6 +104,7 @@ module TravelClaim
       Rails.logger.error(message: 'BTSSS Timeout Error', uuid: check_in.uuid)
       Faraday::Response.new(response_body: { message: 'BTSSS timeout error' }, status: 408)
     rescue => e
+      log_external_api_error(operation: 'claim_status', error: e)
       log_message_to_sentry(e.original_body, :error,
                             { uuid: check_in.uuid },
                             { external_service: service_name, team: 'check-in' })
@@ -125,6 +128,7 @@ module TravelClaim
       Rails.logger.error(message: 'BTSSS Timeout Error', uuid: check_in.uuid)
       Faraday::Response.new(response_body: { message: 'BTSSS timeout error' }, status: 408)
     rescue => e
+      log_external_api_error(operation: 'submit_claim_v2', error: e)
       log_message_to_sentry(e.original_body, :error,
                             { uuid: check_in.uuid },
                             { external_service: service_name, team: 'check-in' })
@@ -212,6 +216,37 @@ module TravelClaim
 
     def mock_enabled?
       settings.mock || Flipper.enabled?('check_in_experience_mock_enabled') || false
+    end
+
+    def log_external_api_error(operation:, error:)
+      log_data = {
+        message: 'BTSSS API Error',
+        operation:,
+        uuid: check_in.uuid,
+        external_service: service_name,
+        error_class: error.class.name
+      }
+      log_data[:http_status] = error.original_status if error.respond_to?(:original_status)
+      log_data[:error_code] = error.key if error.respond_to?(:key)
+
+      if Flipper.enabled?(:check_in_experience_travel_claim_log_api_error_details) &&
+         error.respond_to?(:original_body) && error.original_body.present?
+        log_data[:api_error_message] = extract_and_redact_message(error.original_body)
+      end
+
+      Rails.logger.error('HCE-Check-In') do
+        log_data.to_json
+      end
+    end
+
+    def extract_and_redact_message(body)
+      parsed = body.is_a?(String) ? JSON.parse(body) : body
+      message = parsed['message'] || parsed['error'] || parsed['detail']
+      return nil unless message.is_a?(String)
+
+      Logging::Helper::DataScrubber.scrub(message)
+    rescue JSON::ParserError
+      nil
     end
   end
 end
