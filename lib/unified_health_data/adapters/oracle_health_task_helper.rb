@@ -95,14 +95,18 @@ module UnifiedHealthData
         focus_reference == "MedicationRequest/#{medication_request_id}"
       end
 
-      # Checks if there's a MedicationDispense with whenPrepared or whenHandedOver
-      # date after the Task.executionPeriod.start
+      # Checks if there's a completed MedicationDispense with whenPrepared or whenHandedOver
+      # date after the Task.executionPeriod.start.
+      # Only completed dispenses count as fulfillment — in-progress dispenses indicate
+      # the pharmacy is still processing the refill, so the submission date should remain.
       def subsequent_dispense?(task_start_time, dispenses_data)
         return false unless dispenses_data.present? && task_start_time.present?
 
         task_time = parse_date_or_epoch(task_start_time)
 
         dispenses_data.any? do |dispense|
+          next false unless dispense[:status] == 'completed'
+
           (dispense[:when_prepared].present? && parse_date_or_epoch(dispense[:when_prepared]) > task_time) ||
             (dispense[:when_handed_over].present? && parse_date_or_epoch(dispense[:when_handed_over]) > task_time)
         end

@@ -439,6 +439,60 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
         expect(result.refill_status).to eq('submitted')
         expect(result.refill_submit_date).to eq('2025-06-24T10:00:00.000Z')
       end
+
+      it 'keeps submitted status when in-progress dispense occurs after task' do
+        resource = fhir_resource_with_task(
+          task_date: '2025-06-24T10:00:00.000Z',
+          dispenses: [
+            {
+              status: 'in-progress',
+              when_prepared: '2025-06-25T12:00:00.000Z',
+              when_handed_over: nil
+            }
+          ]
+        )
+
+        result = subject.parse(resource)
+
+        expect(result.refill_status).to eq('submitted')
+        expect(result.refill_submit_date).to eq('2025-06-24T10:00:00.000Z')
+      end
+
+      it 'keeps submitted status when preparation dispense occurs after task' do
+        resource = fhir_resource_with_task(
+          task_date: '2025-06-24T10:00:00.000Z',
+          dispenses: [
+            {
+              status: 'preparation',
+              when_prepared: '2025-06-25T12:00:00.000Z',
+              when_handed_over: nil
+            }
+          ]
+        )
+
+        result = subject.parse(resource)
+
+        expect(result.refill_status).to eq('submitted')
+        expect(result.refill_submit_date).to eq('2025-06-24T10:00:00.000Z')
+      end
+
+      it 'keeps submitted status when on-hold dispense occurs after task' do
+        resource = fhir_resource_with_task(
+          task_date: '2025-06-24T10:00:00.000Z',
+          dispenses: [
+            {
+              status: 'on-hold',
+              when_prepared: '2025-06-25T12:00:00.000Z',
+              when_handed_over: nil
+            }
+          ]
+        )
+
+        result = subject.parse(resource)
+
+        expect(result.refill_status).to eq('submitted')
+        expect(result.refill_submit_date).to eq('2025-06-24T10:00:00.000Z')
+      end
     end
 
     context 'with renewal submission tracking using Task resources' do
