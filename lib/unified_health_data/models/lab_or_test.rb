@@ -42,6 +42,7 @@ module UnifiedHealthData
     attribute :status, String
     attribute :source, String
     attribute :facility_timezone, String # IANA timezone ID (e.g., 'America/New_York') for the facility
+    attribute :vista_id, String # VistA-native identifier (system='vista-id') for cross-referencing imaging studies
     attribute :observations, UnifiedHealthData::Observation, array: true
 
     default_sort_by sort_date: :desc

@@ -3459,4 +3459,81 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
       end
     end
   end
+
+  describe '#extract_vista_id' do
+    it 'returns the vista-id value when present' do
+      resource = {
+        'identifier' => [
+          { 'system' => 'vista-uid', 'value' => 'urn:va:image:F253:7227761:6739491.8268-1' },
+          { 'system' => 'vista-id', 'value' => '6739491.8268-1' }
+        ]
+      }
+      expect(adapter.send(:extract_vista_id, resource)).to eq('6739491.8268-1')
+    end
+
+    it 'returns nil when identifier array has no vista-id system' do
+      resource = {
+        'identifier' => [
+          { 'system' => 'vista-uid', 'value' => 'urn:va:image:F253:7227761:6739491.8268-1' }
+        ]
+      }
+      expect(adapter.send(:extract_vista_id, resource)).to be_nil
+    end
+
+    it 'returns nil when identifier array is empty' do
+      resource = { 'identifier' => [] }
+      expect(adapter.send(:extract_vista_id, resource)).to be_nil
+    end
+
+    it 'returns nil when identifier key is missing' do
+      resource = { 'id' => 'test-123' }
+      expect(adapter.send(:extract_vista_id, resource)).to be_nil
+    end
+  end
+
+  describe '#parse_single_record vista_id integration' do
+    before do
+      allow_any_instance_of(UnifiedHealthData::FacilityService)
+        .to receive(:get_facility_timezone).and_return(nil)
+    end
+
+    it 'populates vista_id on the parsed record when vista-id identifier exists' do
+      record = {
+        'resource' => {
+          'id' => '08737c7a-caba-43c3-8d22-3130a864d589',
+          'resourceType' => 'DiagnosticReport',
+          'status' => 'final',
+          'category' => [{ 'coding' => [{ 'code' => 'LP29684-5', 'display' => 'Radiology' }] }],
+          'code' => { 'text' => 'MAGNETIC IMAGE,NECK SPINE' },
+          'effectiveDateTime' => '2026-05-08T17:31:00Z',
+          'presentedForm' => [{ 'contentType' => 'text/plain', 'data' => 'cmVwb3J0',
+                                'title' => 'MAGNETIC IMAGE,NECK SPINE' }],
+          'identifier' => [
+            { 'system' => 'vista-uid', 'value' => 'urn:va:image:F253:7227761:6739491.8268-1' },
+            { 'system' => 'vista-id', 'value' => '6739491.8268-1' }
+          ],
+          'contained' => []
+        }
+      }
+      result = adapter.send(:parse_single_record, record)
+      expect(result.vista_id).to eq('6739491.8268-1')
+    end
+
+    it 'sets vista_id to nil when no vista-id identifier exists' do
+      record = {
+        'resource' => {
+          'id' => 'oh-record-456',
+          'resourceType' => 'DiagnosticReport',
+          'status' => 'final',
+          'category' => [{ 'coding' => [{ 'code' => 'LP29684-5', 'display' => 'Radiology' }] }],
+          'code' => { 'text' => 'CT ABDOMEN' },
+          'effectiveDateTime' => '2026-05-08T17:31:00Z',
+          'presentedForm' => [{ 'contentType' => 'text/plain', 'data' => 'cmVwb3J0', 'title' => 'CT ABDOMEN' }],
+          'contained' => []
+        }
+      }
+      result = adapter.send(:parse_single_record, record)
+      expect(result.vista_id).to be_nil
+    end
+  end
 end

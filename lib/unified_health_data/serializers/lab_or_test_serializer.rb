@@ -21,6 +21,7 @@ module UnifiedHealthData
                  :status,
                  :source,
                  :facility_timezone,
+                 :vista_id,
                  :observations
     end
   end

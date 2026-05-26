@@ -96,7 +96,8 @@ module UnifiedHealthData
           body_site: get_body_site(resource, contained),
           status: resource['status'],
           source: record['source'],
-          facility_timezone:
+          facility_timezone:,
+          vista_id: extract_vista_id(resource)
         )
       end # rubocop:enable Metrics/MethodLength
 
@@ -493,6 +494,18 @@ module UnifiedHealthData
         elsif resource['presentedForm']
           resource['presentedForm'].find { |form| form['contentType'] == 'text/plain' }&.dig('creation')
         end
+      end
+
+      # Extracts the VistA-native identifier (system='vista-id') from the FHIR resource.
+      # Used for cross-referencing imaging studies with radiology reports.
+      #
+      # @param resource [Hash] FHIR DiagnosticReport resource
+      # @return [String, nil] the vista-id value or nil
+      def extract_vista_id(resource)
+        return nil if resource['identifier'].blank?
+
+        vista_identifier = resource['identifier'].find { |id| id['system'] == 'vista-id' }
+        vista_identifier&.dig('value')
       end
 
       def facility_service
