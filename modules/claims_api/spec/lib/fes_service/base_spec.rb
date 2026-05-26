@@ -142,4 +142,174 @@ describe ClaimsApi::FesService::Base do
       end
     end
   end
+
+  describe '#access_token' do
+    context 'when auth token is fetched from service' do
+      it 'returns the fetched token' do
+        token_value = 'valid_fes_token_12345'
+        allow_any_instance_of(ClaimsApi::V2::Form526EstablishmentService::Service)
+          .to receive(:get_auth_token).and_return(token_value)
+
+        service_non_mock = described_class.new(use_mock: false)
+        result = service_non_mock.send(:access_token)
+
+        expect(result).to eq(token_value)
+      end
+    end
+
+    context 'when auth token is blank' do
+      it 'raises StandardError with FES auth token missing message' do
+        allow_any_instance_of(ClaimsApi::V2::Form526EstablishmentService::Service)
+          .to receive(:get_auth_token).and_return(nil)
+
+        service_non_mock = described_class.new(use_mock: false)
+
+        expect { service_non_mock.send(:access_token) }
+          .to raise_error(StandardError, 'FES auth token missing')
+      end
+    end
+
+    context 'when use_mock is true' do
+      it 'returns fake_token without calling auth service' do
+        service_mock = described_class.new(use_mock: true)
+        result = service_mock.send(:access_token)
+
+        expect(result).to eq('fake_token')
+      end
+    end
+  end
+
+  describe '#get_error_message' do
+    context 'when error has different response attributes' do
+      it 'returns original_body when present' do
+        error = double('error', original_body: 'original error body')
+        result = service.send(:get_error_message, error)
+
+        expect(result).to eq('original error body')
+      end
+
+      it 'returns body when original_body is not present' do
+        error = double('error',
+                       original_body: nil,
+                       body: 'response body content')
+        allow(error).to receive(:respond_to?).with(:original_body).and_return(true)
+        allow(error).to receive(:respond_to?).with(:body).and_return(true)
+
+        result = service.send(:get_error_message, error)
+
+        expect(result).to eq('response body content')
+      end
+
+      it 'returns message when body is not present' do
+        error = double('error',
+                       original_body: nil,
+                       body: nil,
+                       message: 'error message text')
+        allow(error).to receive(:respond_to?).with(:original_body).and_return(true)
+        allow(error).to receive(:respond_to?).with(:body).and_return(true)
+        allow(error).to receive(:respond_to?).with(:message).and_return(true)
+
+        result = service.send(:get_error_message, error)
+
+        expect(result).to eq('error message text')
+      end
+
+      it 'returns errors when prior attributes are not present' do
+        error = double('error',
+                       original_body: nil,
+                       body: nil,
+                       message: nil,
+                       errors: %w[error1 error2])
+        allow(error).to receive(:respond_to?).with(:original_body).and_return(true)
+        allow(error).to receive(:respond_to?).with(:body).and_return(true)
+        allow(error).to receive(:respond_to?).with(:message).and_return(true)
+        allow(error).to receive(:respond_to?).with(:errors).and_return(true)
+
+        result = service.send(:get_error_message, error)
+
+        expect(result).to eq(%w[error1 error2])
+      end
+
+      it 'returns detailed_message when no prior attributes are present' do
+        error = double('error',
+                       original_body: nil,
+                       body: nil,
+                       message: nil,
+                       errors: nil,
+                       detailed_message: 'detailed error info')
+        allow(error).to receive(:respond_to?).with(:original_body).and_return(true)
+        allow(error).to receive(:respond_to?).with(:body).and_return(true)
+        allow(error).to receive(:respond_to?).with(:message).and_return(true)
+        allow(error).to receive(:respond_to?).with(:errors).and_return(true)
+        allow(error).to receive(:respond_to?).with(:detailed_message).and_return(true)
+
+        result = service.send(:get_error_message, error)
+
+        expect(result).to eq('detailed error info')
+      end
+
+      it 'returns formatted message from a real VCR-backed FES submit error' do
+        captured_error = nil
+
+        VCR.use_cassette('/claims_api/fes/submit/invalid_request') do
+          service.submit(claim, invalid_form_data, not_async)
+        rescue ClaimsApi::Common::Exceptions::Lighthouse::BackendServiceException => e
+          captured_error = e
+        end
+
+        expect(captured_error).to be_present
+
+        result = service.send(:get_error_message, captured_error)
+
+        expect(result).to be_a(String)
+        expect(result).to include('The claim could not be established')
+        expect(result).to include('Http Message Not Readable (Unrecognized Property)')
+      end
+    end
+  end
+
+  describe '#parse_fes_response' do
+    context 'when FES response is not a Hash' do
+      it 'raises ParsingError for string response' do
+        expect { service.send(:parse_fes_response, '<html>error</html>') }
+          .to raise_error(Common::Client::Errors::ParsingError,
+                          'FES service returned an unexpected response format')
+      end
+
+      it 'raises ParsingError for array response' do
+        expect { service.send(:parse_fes_response, %w[error values]) }
+          .to raise_error(Common::Client::Errors::ParsingError,
+                          'FES service returned an unexpected response format')
+      end
+
+      it 'raises ParsingError for nil response' do
+        expect { service.send(:parse_fes_response, nil) }
+          .to raise_error(Common::Client::Errors::ParsingError,
+                          'FES service returned an unexpected response format')
+      end
+    end
+
+    context 'when FES response is a Hash' do
+      it 'returns data key when present' do
+        response = { data: { claimId: 123 } }
+        result = service.send(:parse_fes_response, response)
+
+        expect(result).to eq({ claimId: 123 })
+      end
+
+      it 'returns string data key as fallback' do
+        response = { 'data' => { 'claimId' => 456 } }
+        result = service.send(:parse_fes_response, response)
+
+        expect(result).to eq({ 'claimId' => 456 })
+      end
+
+      it 'returns full response when data key is not present' do
+        response = { claimId: 789, status: 'success' }
+        result = service.send(:parse_fes_response, response)
+
+        expect(result).to eq(response)
+      end
+    end
+  end
 end
