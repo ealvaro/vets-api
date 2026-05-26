@@ -7,7 +7,6 @@ require 'sidekiq/api'
 module MyHealth
   module V2
     class ImagingController < ApplicationController
-      include ActionController::Live
       include MyHealth::V2::Concerns::ErrorHandler
       include SortableRecords
       service_tag 'mhv-medical-records'
@@ -91,7 +90,7 @@ module MyHealth
         uri = URI.parse(url)
         validate_s3_url!(uri)
 
-        stream_from_s3(uri)
+        buffer_from_s3(uri)
       rescue URI::InvalidURIError
         render_error('Bad Request', 'Invalid URL format', '400', 400, :bad_request)
       rescue Common::Exceptions::ParameterMissing => e
@@ -100,13 +99,7 @@ module MyHealth
         Rails.logger.warn("Thumbnail proxy SSRF blocked for host: #{uri&.host}")
         render_error('Forbidden', 'URL not allowed', '403', 403, :forbidden)
       rescue => e
-        if response.committed?
-          Rails.logger.error("Error while streaming thumbnail image: #{e.class} - #{e.message}")
-        else
-          handle_error(e, resource_name: 'thumbnail image', api_type: 'S3')
-        end
-      ensure
-        response.stream.close if response.committed?
+        handle_error(e, resource_name: 'thumbnail image', api_type: 'S3')
       end
 
       private
@@ -131,13 +124,14 @@ module MyHealth
       end
 
       ##
-      # Streams image data from a presigned URL directly to the client.
-      # Each chunk is written to the response stream as it arrives, so the full
-      # image is never held in process memory.
+      # Buffers thumbnail image data from a presigned S3 URL into memory and renders it.
+      # The entire image is held in memory before being sent to the client.
       #
       # @param uri [URI] the parsed presigned URL
       #
-      def stream_from_s3(uri)
+      def buffer_from_s3(uri)
+        image_data = nil
+
         Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https', open_timeout: 10,
                                             read_timeout: 30) do |http|
           request = Net::HTTP::Get.new(uri.request_uri)
@@ -150,17 +144,12 @@ module MyHealth
               )
             end
 
-            # Set response headers only after confirming S3 returned success,
-            # so error handlers can still render a proper JSON error response.
-            response.headers['Content-Type'] = 'image/jpeg'
-            response.headers['Content-Disposition'] = 'inline'
-            response.headers['Cache-Control'] = 'private, max-age=3600'
-
-            http_response.read_body do |chunk|
-              response.stream.write(chunk)
-            end
+            image_data = http_response.read_body
           end
         end
+
+        response.headers['Cache-Control'] = 'private, max-age=3600'
+        send_data(image_data, type: 'image/jpeg', disposition: 'inline')
       end
 
       def service

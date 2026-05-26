@@ -10,6 +10,7 @@ MyHealth::Engine.routes.draw do
         get :thumbnails, on: :member
         get :dicom, on: :member
         get :thumbnail_proxy, on: :collection
+        get :thumbnail_proxy_stream, on: :collection, to: 'imaging_streaming#thumbnail_proxy'
       end
       resources :immunizations, only: %i[index show], defaults: { format: :json }
       resources :labs_and_tests, only: %i[index], defaults: { format: :json }

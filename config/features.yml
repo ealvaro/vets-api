@@ -1881,6 +1881,10 @@ features:
     actor_type: user
     description: When enabled, bypass the MHV downtime notification; intended for smoke testing in production
     enable_in_development: true
+  mhv_medical_records_buffer_images:
+    actor_type: user
+    description: Buffers thumbnail images in memory instead of streaming them (default is streaming)
+    enable_in_development: true
   mhv_medical_records_ccd_extended_file_types:
     actor_type: user
     description: Enables CCD downloads in XML, HTML, PDF w/ support for OH and VistA facilities
