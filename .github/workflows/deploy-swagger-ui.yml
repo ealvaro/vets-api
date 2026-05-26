@@ -14,6 +14,17 @@ jobs:
     env:
       BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
       RAILS_ENV: development
+      COVERBAND_DISABLE_AUTO_START: true
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
@@ -38,7 +49,9 @@ jobs:
         run: |
           bundle exec rails runner \
             'File.write("public/api-reference/apidocs.json", Swagger::Blocks.build_root_json(V0::ApidocsController::SWAGGERED_CLASSES).to_json)' \
-            2>/dev/null
+            2>&1 | tee /tmp/rails-runner.log || true
+          cat /tmp/rails-runner.log
+          test -s public/api-reference/apidocs.json || (echo "apidocs.json was not generated" && exit 1)
 
       - name: Update index.html to point to local JSON
         run: |
