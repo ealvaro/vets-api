@@ -1827,6 +1827,13 @@ features:
     actor_type: user
     description: Enables/disables the EHR transition crosswalk banner showing VistA to Oracle Health triage group name mappings
     enable_in_development: false
+  mhv_secure_messaging_mvh_oh_crosswalk:
+    actor_type: user
+    description: >
+      Enables care team crosswalk alerts for pre-transitioned Oracle Health users.
+      When enabled, displays alerts informing users of OH care team name changes
+      (OH to OH renames) for facilities that have migrated from MyVAHealth to VA.gov.
+    enable_in_development: false
   mhv_secure_messaging_triage_group_plain_language:
     actor_type: user
     description: Disables/Enables Secure Messaging recipients group plain language design
