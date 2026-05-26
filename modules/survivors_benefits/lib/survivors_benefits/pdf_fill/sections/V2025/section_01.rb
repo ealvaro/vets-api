@@ -90,9 +90,10 @@ module SurvivorsBenefits
         }.freeze
         def expand(form_data = {})
           veteran_full_name = form_data['veteranFullName'] ||= {}
-          veteran_full_name['first'] = veteran_full_name['first']&.titleize
-          veteran_full_name['middle'] = veteran_full_name['middle']&.first&.titleize
-          veteran_full_name['last'] = veteran_full_name['last']&.titleize
+          formatted_name = format_name(veteran_full_name)
+          veteran_full_name['first'] = formatted_name['first']
+          veteran_full_name['middle'] = formatted_name['middle']
+          veteran_full_name['last'] = formatted_name['last']
           form_data['section1VeteranSocialSecurityNumber'] = split_ssn(form_data['veteranSocialSecurityNumber'])
           form_data['veteranDateOfBirth'] = split_date(form_data['veteranDateOfBirth'])
           form_data['vaClaimsHistory'] = to_radio_yes_no(form_data['vaClaimsHistory'])

@@ -354,7 +354,10 @@ module SurvivorsBenefits
 
           marriages.map do |marriage|
             reason_for_separation = marriage['reasonForSeparation'].to_s
+            spouse_full_name = marriage['spouseFullName']
+
             marriage.merge({
+                             'spouseFullName' => spouse_full_name.is_a?(Hash) ? format_name(spouse_full_name) : {},
                              'dateOfMarriage' => split_date(marriage['dateOfMarriage']),
                              'dateOfSeparation' => split_date(marriage['dateOfSeparation']),
                              'reasonForSeparation' => Constants::REASONS_FOR_SEPARATION[reason_for_separation]

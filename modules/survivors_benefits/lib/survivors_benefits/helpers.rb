@@ -96,5 +96,23 @@ module SurvivorsBenefits
 
       hash.values.join(' ')
     end
+
+    # Formats name fields for PDF sections.
+    # Preserves first and last as provided, reduces middle to an initial,
+    # and appends a trimmed suffix to last when present.
+    def format_name(name)
+      name ||= {}
+      first = name['first']
+      middle = name['middle']&.strip&.first&.upcase
+      last = name['last']
+      suffix = name['suffix']&.strip
+      last_with_suffix = [last, suffix.presence].compact.join(' ')
+
+      {
+        'first' => first,
+        'middle' => middle,
+        'last' => last_with_suffix.presence || last
+      }
+    end
   end
 end

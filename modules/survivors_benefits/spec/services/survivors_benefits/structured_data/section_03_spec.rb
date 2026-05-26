@@ -52,14 +52,34 @@ RSpec.describe SurvivorsBenefits::StructuredData::Section03 do
   describe '#merge_vet_aliases' do
     it 'merges veteran alias fields' do
       form = {
-        'veteranPreviousNames' => [{ 'first' => 'Johnny', 'last' => 'Doe' }, { 'first' => 'J', 'last' => 'Doe' }]
+        'veteranPreviousNames' => [
+          { 'first' => 'Johnny', 'middle' => 'Quincy', 'last' => 'Doe' },
+          { 'first' => 'J', 'last' => 'Doe' }
+        ]
       }
       service = SurvivorsBenefits::StructuredData::StructuredDataService.new(form)
       service.merge_vet_aliases(form['veteranPreviousNames'])
       expect(service.fields).to include(
         'VET_NAME_OTHER_Y' => true,
         'VET_NAME_OTHER_N' => false,
-        'VET_NAME_OTHER_1' => 'Johnny Doe',
+        'VET_NAME_OTHER_1' => 'Johnny Q Doe',
+        'VET_NAME_OTHER_2' => 'J Doe'
+      )
+    end
+
+    it 'merges veteran alias fields from otherServiceName' do
+      form = {
+        'veteranPreviousNames' => [
+          { 'otherServiceName' => { 'first' => 'Johnny', 'middle' => 'Quincy', 'last' => 'Doe', 'suffix' => 'Jr.' } },
+          { 'otherServiceName' => { 'first' => 'J', 'last' => 'Doe' } }
+        ]
+      }
+      service = SurvivorsBenefits::StructuredData::StructuredDataService.new(form)
+      service.merge_vet_aliases(form['veteranPreviousNames'])
+      expect(service.fields).to include(
+        'VET_NAME_OTHER_Y' => true,
+        'VET_NAME_OTHER_N' => false,
+        'VET_NAME_OTHER_1' => 'Johnny Q Doe Jr.',
         'VET_NAME_OTHER_2' => 'J Doe'
       )
     end

@@ -265,9 +265,12 @@ module SurvivorsBenefits
         end
 
         def expand_previous_names(form_data)
+          previous_name_one = form_data['veteranPreviousNames']&.first&.dig('otherServiceName')
+          previous_name_two = form_data['veteranPreviousNames']&.second&.dig('otherServiceName')
+
           {
-            'veteranPreviousNameOne' => form_data['veteranPreviousNames']&.first || '',
-            'veteranPreviousNameTwo' => form_data['veteranPreviousNames']&.second || ''
+            'veteranPreviousNameOne' => previous_name_one.is_a?(Hash) ? format_name(previous_name_one) : '',
+            'veteranPreviousNameTwo' => previous_name_two.is_a?(Hash) ? format_name(previous_name_two) : ''
           }
         end
 

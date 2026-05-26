@@ -32,14 +32,29 @@ module SurvivorsBenefits::StructuredData::Section03
   def merge_vet_aliases(aliases = [])
     has_aliases = aliases&.length&.positive? || false
     fields.merge!(y_n_pair(has_aliases, 'VET_NAME_OTHER_Y', 'VET_NAME_OTHER_N'))
-    n1 = aliases&.first || {}
-    n2 = aliases&.second || {}
+    # Support both legacy alias hashes and the new nested otherServiceName shape.
+    n1_name = alias_name_hash(aliases&.first)
+    n2_name = alias_name_hash(aliases&.second)
     fields.merge!(
       {
-        'VET_NAME_OTHER_1' => [n1['first'], n1['middle'], n1['last'], n1['suffix']].compact.join(' ').presence,
-        'VET_NAME_OTHER_2' => [n2['first'], n2['middle'], n2['last'], n2['suffix']].compact.join(' ').presence
+        'VET_NAME_OTHER_1' => alias_full_name(n1_name),
+        'VET_NAME_OTHER_2' => alias_full_name(n2_name)
       }
     )
+  end
+
+  def alias_name_hash(alias_row)
+    return {} unless alias_row.is_a?(Hash)
+
+    # New payloads wrap the name in otherServiceName; fall back to legacy flat fields.
+    other_service_name = alias_row['otherServiceName']
+    other_service_name.is_a?(Hash) ? other_service_name : alias_row
+  end
+
+  def alias_full_name(name_hash)
+    # Alias full names use middle initial (not full middle name) for PDF field formatting.
+    name = build_name(name_hash)
+    [name[:first], name[:middle_initial], name[:last], name[:suffix]].compact.join(' ').presence
   end
 
   ##

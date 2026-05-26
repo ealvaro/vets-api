@@ -342,9 +342,10 @@ module SurvivorsBenefits
           form_data['childrenLiveTogetherButNotWithSpouse'] =
             to_radio_yes_no_numeric(form_data['childrenLiveTogetherButNotWithSpouse'])
           custodian_full_name = form_data['custodianFullName'] ||= {}
-          custodian_full_name['first'] = custodian_full_name['first']&.titleize
-          custodian_full_name['middle'] = custodian_full_name['middle']&.first&.titleize
-          custodian_full_name['last'] = custodian_full_name['last']&.titleize
+          formatted_name = format_name(custodian_full_name)
+          custodian_full_name['first'] = formatted_name['first']
+          custodian_full_name['middle'] = formatted_name['middle']
+          custodian_full_name['last'] = formatted_name['last']
           form_data['custodianAddress'] ||= {}
           form_data['custodianAddress']['postalCode'] =
             split_postal_code(form_data['custodianAddress'])
@@ -353,10 +354,7 @@ module SurvivorsBenefits
         end
 
         def expand_child(child = {})
-          child_full_name ||= {}
-          child_full_name['first'] = child.dig('childFullName', 'first')&.titleize
-          child_full_name['middle'] = child.dig('childFullName', 'middle')&.first&.titleize
-          child_full_name['last'] = child.dig('childFullName', 'last')&.titleize
+          child_full_name = format_name(child['childFullName'])
           child_status = child['childStatus'] || []
           child.merge({
                         'childFullName' => child_full_name,

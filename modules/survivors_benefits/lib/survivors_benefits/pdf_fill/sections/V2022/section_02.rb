@@ -150,9 +150,10 @@ module SurvivorsBenefits
 
       def expand(form_data = {})
         form_data['claimantFullName'] ||= {}
-        form_data['claimantFullName']['first'] = form_data.dig('claimantFullName', 'first')&.titleize
-        form_data['claimantFullName']['middle'] = form_data.dig('claimantFullName', 'middle')&.first&.titleize
-        form_data['claimantFullName']['last'] = form_data.dig('claimantFullName', 'last')&.titleize
+        formatted_name = format_name(form_data['claimantFullName'])
+        form_data['claimantFullName']['first'] = formatted_name['first']
+        form_data['claimantFullName']['middle'] = formatted_name['middle']
+        form_data['claimantFullName']['last'] = formatted_name['last']
         form_data['claimantRelationship'] = relationship_to_radio(form_data['claimantRelationship'])
         form_data['claimantSocialSecurityNumber'] = split_ssn(form_data['claimantSocialSecurityNumber'])
         form_data['claimantDateOfBirth'] = split_date(form_data['claimantDateOfBirth'])

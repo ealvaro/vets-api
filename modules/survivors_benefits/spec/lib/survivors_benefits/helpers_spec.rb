@@ -88,4 +88,94 @@ RSpec.describe SurvivorsBenefits::Helpers do
       expect(subject.change_hash_to_string(nil)).to eq('')
     end
   end
+
+  describe '#format_name' do
+    it 'returns a middle initial without changing first and last' do
+      result = subject.format_name({
+                                     'first' => 'jAnE ann',
+                                     'middle' => 'quincy',
+                                     'last' => 'doe-smith',
+                                     'suffix' => nil
+                                   })
+
+      expect(result).to eq({
+                             'first' => 'jAnE ann',
+                             'middle' => 'Q',
+                             'last' => 'doe-smith'
+                           })
+    end
+
+    it 'uses the first non-space character and upcases middle names' do
+      result = subject.format_name({
+                                     'first' => 'Jane',
+                                     'middle' => '   aNNa   ',
+                                     'last' => 'Doe',
+                                     'suffix' => nil
+                                   })
+
+      expect(result).to eq({
+                             'first' => 'Jane',
+                             'middle' => 'A',
+                             'last' => 'Doe'
+                           })
+    end
+
+    it 'preserves suffix formatting for Jr. and III' do
+      jr_result = subject.format_name({
+                                        'first' => 'Jane',
+                                        'middle' => 'Q',
+                                        'last' => 'Doe',
+                                        'suffix' => '  Jr. '
+                                      })
+
+      iii_result = subject.format_name({
+                                         'first' => 'John',
+                                         'middle' => nil,
+                                         'last' => 'Doe',
+                                         'suffix' => '  III '
+                                       })
+
+      expect(jr_result).to eq({
+                                'first' => 'Jane',
+                                'middle' => 'Q',
+                                'last' => 'Doe Jr.'
+                              })
+
+      expect(iii_result).to eq({
+                                 'first' => 'John',
+                                 'middle' => nil,
+                                 'last' => 'Doe III'
+                               })
+    end
+
+    it 'preserves an empty last name when suffix is nil' do
+      result = subject.format_name({
+                                     'first' => 'Jane',
+                                     'middle' => 'Q',
+                                     'last' => '',
+                                     'suffix' => nil
+                                   })
+
+      expect(result).to eq({
+                             'first' => 'Jane',
+                             'middle' => 'Q',
+                             'last' => ''
+                           })
+    end
+
+    it 'preserves an empty last name when suffix is blank' do
+      result = subject.format_name({
+                                     'first' => 'Jane',
+                                     'middle' => 'Q',
+                                     'last' => '',
+                                     'suffix' => ' '
+                                   })
+
+      expect(result).to eq({
+                             'first' => 'Jane',
+                             'middle' => 'Q',
+                             'last' => ''
+                           })
+    end
+  end
 end

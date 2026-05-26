@@ -5,14 +5,18 @@
   "receivedBenefits": true,
   "veteranPreviousNames": [
     {
-      "first": "3A First",
-      "middle": "A",
-      "last": "3A FIRST"
+      "otherServiceName": {
+        "first": "3A First",
+        "middle": "A",
+        "last": "3A FIRST"
+      }
     },
     {
-      "first": "3A Second",
-      "middle": "Z",
-      "last": "3A SECOND"
+      "otherServiceName": {
+        "first": "3A Second",
+        "middle": "Z",
+        "last": "3A SECOND"
+      }
     }
   ]
 }

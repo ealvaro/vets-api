@@ -1,7 +1,7 @@
 {
-  "form1[0].#subform[152].VeteransFirstName[0]": "1 A First",
+  "form1[0].#subform[152].VeteransFirstName[0]": "1A First",
   "form1[0].#subform[152].VeteransMiddleInitial1[0]": "A",
-  "form1[0].#subform[152].VeteransLastName[0]": "1 A Last",
+  "form1[0].#subform[152].VeteransLastName[0]": "1A Last",
   "form1[0].#subform[152].RadioButtonList[0]": "YES",
   "form1[0].#subform[152].VAFileNumber[0]": "987654321",
   "form1[0].#subform[152].DOBmonth[0]": "01",
