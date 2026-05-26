@@ -606,7 +606,7 @@ RSpec.describe 'Transformation Pega', type: :request do
         expect(metadata).to have_key('additional_file_metadata')
         pdf_meta = metadata['additional_file_metadata']["#{uuid}_vha_10_10d.pdf"]
         expect(pdf_meta).to be_present
-        expect(pdf_meta['ves_json_metadata_file']).to include('_ves.json')
+        expect(pdf_meta['meta-jsonfile']).to include('_ves.json')
       end
     end
 
@@ -640,16 +640,55 @@ RSpec.describe 'Transformation Pega', type: :request do
         _file_paths, metadata = controller.send(:get_file_paths_and_metadata, parsed_form_data)
         tenten_meta = metadata.dig('additional_file_metadata', "#{uuid}_vha_10_10d.pdf")
 
-        expect(tenten_meta['ves_json_metadata_file']).to include('_ves.json')
-        expect(tenten_meta['ves_json_metadata_file']).not_to include('_ohi_')
+        expect(tenten_meta['meta-jsonfile']).to include('_ves.json')
+        expect(tenten_meta['meta-jsonfile']).not_to include('_ohi_')
       end
 
       it 'maps each OHI PDF to its own VES OHI JSON by position' do
         _file_paths, metadata = controller.send(:get_file_paths_and_metadata, parsed_form_data)
         afm = metadata['additional_file_metadata']
 
-        expect(afm.dig(ohi_pdf_one, 'ves_json_metadata_file')).to include('_ohi_ves_0')
-        expect(afm.dig(ohi_pdf_two, 'ves_json_metadata_file')).to include('_ohi_ves_1')
+        expect(afm.dig(ohi_pdf_one, 'meta-jsonfile')).to include('_ohi_ves_0')
+        expect(afm.dig(ohi_pdf_two, 'meta-jsonfile')).to include('_ohi_ves_1')
+      end
+    end
+
+    context 'when flag is enabled with standalone 10-7959C' do
+      let(:mock_form) { double('Form', form_id: 'vha_10_7959c', uuid:, data: {}, metadata: {}) }
+      let(:ohi_pdf) { "#{uuid}_vha_10_7959c-tmp.pdf" }
+      let(:mock_ohi_request) { double('VesOhiRequest', to_json: '{"ohi":"standalone"}') }
+      let(:parsed_form_data) do
+        data = JSON.parse(
+          Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json', 'vha_10_7959c.json').read
+        )
+        data['form_number'] = '10-7959C'
+        data
+      end
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:champva_send_ohi_ves_to_pega, nil).and_return(true)
+        allow(controller).to receive_messages(get_attachment_ids_and_form: [['vha_10_7959c'], mock_form])
+        allow(IvcChampva::FormVersionManager).to receive(:get_legacy_form_id).and_return('vha_10_7959c')
+        allow(mock_form).to receive(:handle_attachments).and_return([ohi_pdf])
+        allow(IvcChampva::VesDataFormatter).to receive(:format_for_ohi_request)
+          .and_return([mock_ohi_request])
+      end
+
+      it 'maps the standalone 10-7959C PDF to its OHI VES JSON' do
+        _file_paths, metadata = controller.send(:get_file_paths_and_metadata, parsed_form_data)
+        afm = metadata['additional_file_metadata']
+
+        expect(afm).to be_present
+        pdf_meta = afm["#{uuid}_vha_10_7959c.pdf"]
+        expect(pdf_meta).to be_present
+        expect(pdf_meta['meta-jsonfile']).to include('_ohi_ves_0.json')
+      end
+
+      it 'does not create a VES JSON entry (only OHI VES JSON)' do
+        _file_paths, metadata = controller.send(:get_file_paths_and_metadata, parsed_form_data)
+
+        expect(metadata['attachment_ids']).to include('VES OHI JSON')
+        expect(metadata['attachment_ids']).not_to include('VES JSON')
       end
     end
 

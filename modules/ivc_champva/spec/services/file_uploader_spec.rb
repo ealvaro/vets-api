@@ -399,120 +399,85 @@ describe IvcChampva::FileUploader do
     end
   end
 
-  describe '#insert_combined_docs' do
-    let(:insert_db_row) { true }
-    let(:combined_file_path) { 'tmp/uuid_vha_10_7959a_duty_to_assist_0_0_combined.pdf' }
-    let(:original_files) do
-      [
-        { file_path: 'tmp/uuid_vha_10_7959a.pdf', attachment_id: 'Duty to Assist', index: 0 },
-        { file_path: 'tmp/uuid_vha_10_7959a_supporting_doc-0.pdf', attachment_id: 'Duty to Assist', index: 1 },
-        { file_path: 'tmp/uuid_vha_10_7959a_supporting_doc-1.pdf', attachment_id: 'Duty to Assist', index: 2 }
-      ]
-    end
-
-    let(:combined_uploader) do
-      uploader_instance = IvcChampva::FileUploader.new(form_id, metadata, file_paths, insert_db_row:)
-      uploader_instance.instance_variable_set(:@merge_map, { combined_file_path => original_files })
-      uploader_instance
-    end
-
-    it 'inserts a record for each original file with nil s3_status' do
-      inserted = []
-      allow(combined_uploader).to receive(:insert_form) { |name, status| inserted << { name:, status: } }
-
-      combined_uploader.send(:insert_combined_docs, combined_file_path)
-
-      expect(inserted.length).to eq(3)
-      expect(inserted.map { |r| r[:name] }).to eq([
-                                                    'uuid_vha_10_7959a.pdf',
-                                                    'uuid_vha_10_7959a_supporting_doc-0.pdf',
-                                                    'uuid_vha_10_7959a_supporting_doc-1.pdf'
-                                                  ])
-      expect(inserted.map { |r| r[:status] }).to all(be_nil)
-    end
-
-    it 'is a no-op when file_path is not in merge_map' do
-      expect(combined_uploader).not_to receive(:insert_form)
-
-      combined_uploader.send(:insert_combined_docs, 'tmp/not_a_combined_file.pdf')
-    end
-  end
-
-  describe '#apply_document_combining' do
+  describe '#metadata_for_s3' do
     before do
-      allow(Flipper).to receive(:enabled?).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:champva_store_request_json, nil).and_return(false)
     end
 
-    it 'is a no-op when feature flags are disabled' do
-      original_paths = uploader.instance_variable_get(:@file_paths).dup
-      original_ids = uploader.instance_variable_get(:@metadata)['attachment_ids'].dup
+    context 'without additional_file_metadata' do
+      it 'returns metadata with attachment_id, excluding primaryContactInfo and attachment_ids' do
+        meta_with_extra = metadata.merge('primaryContactInfo' => { 'name' => 'Test' })
+        uploader = IvcChampva::FileUploader.new(form_id, meta_with_extra, file_paths)
 
-      uploader.send(:apply_document_combining)
+        result = uploader.send(:metadata_for_s3, 'Social Security card')
 
-      expect(uploader.instance_variable_get(:@file_paths)).to eq(original_paths)
-      expect(uploader.instance_variable_get(:@metadata)['attachment_ids']).to eq(original_ids)
-      expect(uploader.instance_variable_get(:@merge_map)).to eq({})
-    end
-  end
+        expect(result).to have_key('attachment_id')
+        expect(result['attachment_id']).to eq('Social Security card')
+        expect(result).not_to have_key('primaryContactInfo')
+        expect(result).not_to have_key('attachment_ids')
+        expect(result).not_to have_key('meta-jsonfile')
+      end
 
-  describe 'DTA document combining integration' do
-    let(:uuid) { '4171e61a-03b5-49f3-8717-dbf340310473' }
-    let(:dta_form_id) { 'vha_10_7959a' }
-    let(:fixture_base) { Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures') }
-    let(:pdf_fixture_front) { fixture_base.join('images', 'test-medicare-part-a-and-b-card-front.pdf').to_s }
-    let(:pdf_fixture_back) { fixture_base.join('images', 'test-medicare-part-a-and-b-card-back.pdf').to_s }
-    let(:pdf_fixture_eob) { fixture_base.join('files', 'SampleEOB.pdf').to_s }
+      it 'does not add per-file overrides even with file_path' do
+        uploader = IvcChampva::FileUploader.new(form_id, metadata, file_paths)
 
-    let(:dta_file_paths) { [pdf_fixture_front, pdf_fixture_back, pdf_fixture_eob] }
-    let(:dta_attachment_ids) { ['Duty to Assist', 'Duty to Assist', 'Duty to Assist'] }
-    let(:dta_metadata) do
-      {
-        'uuid' => uuid,
-        'docType' => '10-7959A',
-        'attachment_ids' => dta_attachment_ids,
-        'primaryContactInfo' => {
-          'name' => { 'first' => 'Test', 'last' => 'User' },
-          'email' => 'test@example.com'
-        }
-      }
+        result = uploader.send(:metadata_for_s3, 'Social Security card', 'tmp/file1.pdf')
+
+        expect(result).not_to have_key('meta-jsonfile')
+      end
     end
 
-    let(:dta_uploader) do
-      IvcChampva::FileUploader.new(dta_form_id, dta_metadata, dta_file_paths, insert_db_row: true)
-    end
+    context 'with additional_file_metadata' do
+      let(:afm_metadata) do
+        metadata.merge('additional_file_metadata' => {
+                         'file1.pdf' => { 'meta-jsonfile' => 'uuid_vha_10_10d_ves.json' },
+                         'file2.png' => { 'meta-jsonfile' => 'uuid_vha_10_10d_ves.json' }
+                       })
+      end
 
-    before do
-      allow(Flipper).to receive(:enabled?).and_return(false)
-      allow(Flipper).to receive(:enabled?).with(:champva_document_merging, anything).and_return(true)
-      allow(Flipper).to receive(:enabled?).with('champva_docmerge_10_7959a_duty_to_assist', anything).and_return(true)
-      allow(Flipper).to receive(:enabled?).with(:champva_bypass_persisting_ves_json_to_database,
-                                                anything).and_return(true)
-      allow(dta_uploader).to receive_messages(upload: [200], generate_and_upload_meta_json: [200, nil])
-    end
+      it 'merges per-file overrides for files in the map' do
+        uploader = IvcChampva::FileUploader.new(form_id, afm_metadata, file_paths)
 
-    after do
-      Dir.glob("tmp/*#{IvcChampva::FileNaming::COMBINED_PDF_SUFFIX}").each { |file| FileUtils.rm_f(file) }
-    end
+        result = uploader.send(:metadata_for_s3, 'Social Security card', 'tmp/file1.pdf')
 
-    it 'combines DTA files and creates correct DB records' do
-      dta_uploader.handle_uploads
+        expect(result['meta-jsonfile']).to eq('uuid_vha_10_10d_ves.json')
+      end
 
-      records = IvcChampvaForm.where(form_uuid: uuid)
+      it 'strips -tmp from file path when looking up in map' do
+        custom_metadata = metadata.merge(
+          'additional_file_metadata' => { 'myform.pdf' => { 'meta-jsonfile' => 'ves.json' } }
+        )
+        uploader = IvcChampva::FileUploader.new(form_id, custom_metadata, file_paths)
 
-      combined_records = records.select { |r| r.file_name.include?(IvcChampva::FileNaming::COMBINED_PDF_SUFFIX) }
-      expect(combined_records.length).to eq(1)
-      expect(combined_records.first.s3_status).to eq('[200]')
+        result = uploader.send(:metadata_for_s3, 'doc1', 'tmp/myform-tmp.pdf')
 
-      original_records = records.reject { |r| r.file_name.include?(IvcChampva::FileNaming::COMBINED_PDF_SUFFIX) }
-      expect(original_records.length).to eq(3)
-      expect(original_records.map(&:s3_status)).to all(be_nil)
-    end
+        expect(result['meta-jsonfile']).to eq('ves.json')
+      end
 
-    it 'uploads only the combined PDF to S3 (not individual files)' do
-      dta_uploader.handle_uploads
+      it 'does not add overrides for files not in the map' do
+        uploader = IvcChampva::FileUploader.new(form_id, afm_metadata, file_paths)
+        ves_json_path = 'tmp/4171e61a-03b5-49f3-8717-dbf340310473_vha_10_10d_ves.json'
 
-      # Only the combined PDF should be uploaded, not the 3 individual DTA files
-      expect(dta_uploader).to have_received(:upload).once
+        result = uploader.send(:metadata_for_s3, 'VES JSON', ves_json_path)
+
+        expect(result).not_to have_key('meta-jsonfile')
+      end
+
+      it 'does not add overrides when file_path is nil' do
+        uploader = IvcChampva::FileUploader.new(form_id, afm_metadata, file_paths)
+
+        result = uploader.send(:metadata_for_s3, 'Social Security card')
+
+        expect(result).not_to have_key('meta-jsonfile')
+      end
+
+      it 'strips additional_file_metadata from the returned metadata' do
+        uploader = IvcChampva::FileUploader.new(form_id, afm_metadata, file_paths)
+
+        result = uploader.send(:metadata_for_s3, 'Social Security card', 'tmp/file1.pdf')
+
+        expect(result).not_to have_key('additional_file_metadata')
+      end
     end
   end
 end

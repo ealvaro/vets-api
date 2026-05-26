@@ -2469,7 +2469,7 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
         expect(file_paths).to include(ves_json_path)
         expect(metadata['attachment_ids']).to include('VES JSON')
         expect(metadata['additional_file_metadata']).to eq(
-          'test-uuid-123_vha_10_10d.pdf' => { 'ves_json_metadata_file' => 'test-uuid-123_vha_10_10d_ves.json' }
+          'test-uuid-123_vha_10_10d.pdf' => { 'meta-jsonfile' => 'test-uuid-123_vha_10_10d_ves.json' }
         )
       end
 
@@ -2494,7 +2494,7 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
           expect(file_paths).to include(ves_json_path, ohi_json_path)
           expect(metadata['attachment_ids']).to include('VES JSON', 'VES OHI JSON')
           pdf_meta = metadata.dig('additional_file_metadata', 'test-uuid-123_vha_10_10d.pdf')
-          expect(pdf_meta).to include('ves_json_metadata_file' => 'test-uuid-123_vha_10_10d_ves.json')
+          expect(pdf_meta).to include('meta-jsonfile' => 'test-uuid-123_vha_10_10d_ves.json')
         end
       end
 
@@ -2528,11 +2528,11 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
           _file_paths, metadata = controller.send(:get_file_paths_and_metadata, parsed_form_data)
           afm = metadata['additional_file_metadata']
 
-          expect(afm.dig('test-uuid-123_vha_10_10d.pdf', 'ves_json_metadata_file'))
+          expect(afm.dig('test-uuid-123_vha_10_10d.pdf', 'meta-jsonfile'))
             .to eq('test-uuid-123_vha_10_10d_ves.json')
-          expect(afm.dig(ohi_pdf_one, 'ves_json_metadata_file'))
+          expect(afm.dig(ohi_pdf_one, 'meta-jsonfile'))
             .to eq('test-uuid-123_vha_10_10d_ohi_ves_0.json')
-          expect(afm.dig(ohi_pdf_two, 'ves_json_metadata_file'))
+          expect(afm.dig(ohi_pdf_two, 'meta-jsonfile'))
             .to eq('test-uuid-123_vha_10_10d_ohi_ves_1.json')
         end
       end

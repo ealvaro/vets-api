@@ -733,13 +733,13 @@ module IvcChampva
           next unless attachment_ids[i] == legacy_form_id
 
           clean_name = File.basename(fp).gsub('-tmp', '')
-          additional[clean_name] = (additional[clean_name] || {}).merge('ves_json_metadata_file' => ves_basename)
+          additional[clean_name] = (additional[clean_name] || {}).merge('meta-jsonfile' => ves_basename)
         end
       end
 
       def map_ohi_pdfs_to_ves_json(additional, file_paths, attachment_ids, ohi_jsons)
         ohi_pdf_paths = file_paths.each_with_index.select do |_fp, i|
-          attachment_ids[i] == 'VA form 10-7959c'
+          attachment_ids[i].in?(['VA form 10-7959c', 'vha_10_7959c'])
         end.map(&:first)
 
         ohi_jsons.each_with_index do |ohi_result, index|
@@ -748,7 +748,7 @@ module IvcChampva
 
           clean_name = File.basename(ohi_pdf).gsub('-tmp', '')
           additional[clean_name] = (additional[clean_name] || {}).merge(
-            'ves_json_metadata_file' => File.basename(ohi_result[:path])
+            'meta-jsonfile' => File.basename(ohi_result[:path])
           )
         end
       end
