@@ -86,5 +86,12 @@ module CheckIn
     STATSD_V2_APPOINTMENTS_CLINIC_OBSERVABILITY_TOTAL = 'api.check_in.v2.appointments.clinic_key.observability.total'
     STATSD_V2_APPOINTMENTS_CLINIC_KEY_PRESENT = 'api.check_in.v2.appointments.clinic_key.present'
     STATSD_V2_APPOINTMENTS_CLINIC_KEY_MISSING_OR_EMPTY = 'api.check_in.v2.appointments.clinic_key.missing_or_empty'
+    STATSD_V2_APPOINTMENTS_CLINIC_ENRICHMENT_TOTAL = 'api.check_in.v2.appointments.clinic_enrichment.total'
+    STATSD_V2_APPOINTMENTS_CLINIC_ENRICHMENT_PRESENT = 'api.check_in.v2.appointments.clinic_enrichment.present'
+    STATSD_V2_APPOINTMENTS_CLINIC_ENRICHMENT_MISSING = 'api.check_in.v2.appointments.clinic_enrichment.missing'
+
+    # VDS site-info clinic list lookup during MFS v3 migration
+    STATSD_VDS_SITE_INFO_CLINICS_LOOKUP_MISS = 'api.check_in.vds_site_info.clinics.lookup_miss'
+    STATSD_VDS_SITE_INFO_CLINICS_SKIPPED_FLAG_OFF = 'api.check_in.vds_site_info.clinics.skipped_flag_off'
   end
 end

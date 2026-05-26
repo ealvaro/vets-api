@@ -7,18 +7,23 @@ module CheckIn
       after_action :after_logger, only: %i[index]
 
       def index
+        appointment_rows = nil
         check_in_session
 
         unless check_in_session.authorized?
           render json: check_in_session.unauthorized_message, status: :unauthorized and return
         end
 
-        appointments
-
-        merge_facilities_and_clinic(appointments[:data])
+        appointment_rows = appointments[:data]
+        merge_facilities_and_clinic(appointment_rows)
         serializer = VAOS::AppointmentSerializer.new(appt_struct_data)
 
         render json: serializer.serializable_hash.to_json, status: :ok
+      ensure
+        if track_clinic_key_observability?(appointment_rows)
+          track_clinic_key_observability(appointment_rows)
+          track_clinic_enrichment_observability(appointment_rows)
+        end
       end
 
       def permitted_params
@@ -33,6 +38,8 @@ module CheckIn
       end
 
       def merge_facilities_and_clinic(appointments)
+        facility_service.track_vds_clinics_skipped_flag_off!
+
         appointments.each do |appt|
           next if appt[:locationId].blank?
 
@@ -43,8 +50,10 @@ module CheckIn
               facility_service.get_clinic_with_cache(facility_id: appt[:locationId], clinic_id: appt[:clinic])
           end
         end
+      end
 
-        track_clinic_key_observability(appointments) if clinic_key_observability_enabled?
+      def track_clinic_key_observability?(appointment_rows)
+        clinic_key_observability_enabled? && !appointment_rows.nil?
       end
 
       def clinic_key_observability_enabled?
@@ -64,6 +73,24 @@ module CheckIn
         logger.info('HCE-Check-In') do
           "appointments_clinic_key_observability with_location_total=#{total} clinic_present=#{present} " \
             "clinic_missing_or_empty=#{missing_or_empty}"
+        end
+      end
+
+      def track_clinic_enrichment_observability(appointments)
+        with_clinic_key = appointments.select { |appt| appt[:locationId].present? && appt[:clinic].present? }
+        total = with_clinic_key.size
+        present = with_clinic_key.count do |appt|
+          appt.dig(:clinicInfo, :data, :serviceName).present?
+        end
+        missing = total - present
+
+        StatsD.increment(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_ENRICHMENT_TOTAL, total)
+        StatsD.increment(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_ENRICHMENT_PRESENT, present)
+        StatsD.increment(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_ENRICHMENT_MISSING, missing)
+
+        logger.info('HCE-Check-In') do
+          "appointments_clinic_enrichment_observability clinic_key_present=#{total} " \
+            "clinic_info_present=#{present} clinic_info_missing=#{missing}"
         end
       end
 

@@ -1,0 +1,45 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://veteran.apps.va.gov/vds/info/v1/sites/534/clinics
+    headers:
+      Accept:
+      - application/json
+      Content-Type:
+      - application/json
+      User-Agent:
+      - Vets.gov Agent
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Thu, 07 Jan 2021 21:09:58 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Server:
+      - openresty
+      Access-Control-Allow-Origin:
+      - "*"
+      Strict-Transport-Security:
+      - max-age=63072000; includeSubDomains; preload
+    body:
+      encoding: UTF-8
+      string: |-
+        [
+          {
+            "clinicIen": "1081",
+            "name": "CHS NEUROSURGERY VARMA",
+            "patientFriendlyName": "CHS NEUROSURGERY VARMA",
+            "physicalLocation": "1ST FL SPECIALTY MODULE 2",
+            "institutionId": "534",
+            "primaryStopCode": "406",
+            "primaryStopCodeName": "NEUROSURGERY"
+          }
+        ]
+  recorded_at: Thu, 07 Jan 2021 21:09:58 GMT
+recorded_with: VCR 6.0.0

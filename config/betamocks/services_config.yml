@@ -711,12 +711,26 @@
         :uid_location: 'url'
         :uid_locator: '\/facilities\/v2\/facilities\/([0-9]+)'
     - :method: :get
+      :path: "/facilities/v3/facilities/*"
+      :file_path: "vaos/facilities/get"
+      :response_delay: 0.3
+      :cache_multiple_responses:
+        :uid_location: 'url'
+        :uid_locator: '\/facilities\/v3\/facilities\/([0-9A-Za-z]+)'
+    - :method: :get
       :path: "/facilities/v2/facilities/*/clinics/*"
       :file_path: "vaos/clinics"
       :response_delay: 0.3
       :cache_multiple_responses:
         :uid_location: 'url'
         :uid_locator: '\/facilities\/v2\/facilities\/^[0-9]+$\/clinics\/^[0-9]+$'
+    - :method: :get
+      :path: "/vds/info/v1/sites/*/clinics"
+      :file_path: "check_in/vds_site_info/clinics"
+      :response_delay: 0.3
+      :cache_multiple_responses:
+        :uid_location: 'url'
+        :uid_locator: '\/vds\/info\/v1\/sites\/([0-9]+)\/clinics'
     - :method: :get
       :path: "/vaos/v1/locations/*/clinics"
       :file_path: "vaos/v1/clinics"

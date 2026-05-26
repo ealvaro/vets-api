@@ -12,6 +12,12 @@ describe CheckIn::VAOS::FacilityService do
   before do
     allow(Rails).to receive(:cache).and_return(memory_store)
     Rails.cache.clear
+    allow(Flipper).to receive(:enabled?)
+      .with(:check_in_experience_va_mobile_facilities_v3_enabled)
+      .and_return(false)
+    allow(Flipper).to receive(:enabled?)
+      .with(:check_in_experience_vds_site_info_clinics_enabled)
+      .and_return(false)
   end
 
   describe '.build' do
@@ -56,6 +62,22 @@ describe CheckIn::VAOS::FacilityService do
       end
 
       it 'returns facility' do
+        response = subject.get_facility(facility_id:)
+        expect(response).to eq(facility_response.with_indifferent_access)
+      end
+    end
+
+    context 'when VA Mobile facilities v3 flipper is enabled and vaos returns successful response' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:check_in_experience_va_mobile_facilities_v3_enabled).and_return(true)
+        allow_any_instance_of(Faraday::Connection).to receive(:get)
+          .with("/facilities/v3/facilities/#{facility_id}/",
+                {})
+          .and_return(faraday_response)
+        allow(faraday_response).to receive(:env).and_return(faraday_env)
+      end
+
+      it 'returns facility from MFS v3 path' do
         response = subject.get_facility(facility_id:)
         expect(response).to eq(facility_response.with_indifferent_access)
       end
@@ -107,6 +129,118 @@ describe CheckIn::VAOS::FacilityService do
         response = subject.get_clinic(facility_id:, clinic_id:)
         expect(response).to eq(clinic_response.with_indifferent_access)
       end
+
+      context 'when facilities v3 and VDS site info clinics flippers are enabled' do
+        let(:facility_id) { '534' }
+        let(:clinic_id) { '1081' }
+        let(:vds_clinics) do
+          [
+            {
+              clinicIen: clinic_id,
+              name: 'CHS NEUROSURGERY VARMA',
+              patientFriendlyName: 'CHS NEUROSURGERY VARMA',
+              physicalLocation: '1ST FL SPECIALTY MODULE 2'
+            }
+          ]
+        end
+        let(:mapped_clinic_response) do
+          {
+            data: {
+              clinicId: clinic_id,
+              serviceName: 'CHS NEUROSURGERY VARMA',
+              friendlyName: 'CHS NEUROSURGERY VARMA',
+              physicalLocation: '1ST FL SPECIALTY MODULE 2'
+            }
+          }
+        end
+        let(:faraday_response) { double('Faraday::Response') }
+        let(:faraday_env) { double('Faraday::Env', status: 200, body: vds_clinics.to_json) }
+
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:check_in_experience_va_mobile_facilities_v3_enabled)
+            .and_return(true)
+          allow(Flipper).to receive(:enabled?)
+            .with(:check_in_experience_vds_site_info_clinics_enabled)
+            .and_return(true)
+          allow_any_instance_of(Faraday::Connection).to receive(:get)
+            .with("/vds/info/v1/sites/#{facility_id}/clinics", {})
+            .and_return(faraday_response)
+          allow(faraday_response).to receive(:env).and_return(faraday_env)
+        end
+
+        it 'returns clinic data mapped from VDS-Site-Info list' do
+          response = subject.get_clinic(facility_id:, clinic_id:)
+          expect(response).to eq(mapped_clinic_response.with_indifferent_access)
+        end
+
+        it 'logs and metrics when clinic IEN is not in the VDS site list' do
+          allow(StatsD).to receive(:increment)
+          expect(Rails.logger).to receive(:info).with('HCE-Check-In')
+
+          expect(subject.get_clinic(facility_id:, clinic_id: '9999')).to be_nil
+
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::STATSD_VDS_SITE_INFO_CLINICS_LOOKUP_MISS,
+            tags: ['reason:clinic_ien_not_found']
+          )
+        end
+
+        it 'logs and metrics when the VDS site clinic list is empty' do
+          allow(StatsD).to receive(:increment)
+          expect(Rails.logger).to receive(:info).with('HCE-Check-In')
+          empty_env = double('Faraday::Env', status: 200, body: [].to_json)
+          empty_response = double('Faraday::Response')
+          allow(empty_response).to receive(:env).and_return(empty_env)
+          allow_any_instance_of(Faraday::Connection).to receive(:get)
+            .with("/vds/info/v1/sites/#{facility_id}/clinics", {})
+            .and_return(empty_response)
+
+          expect(subject.get_clinic(facility_id:, clinic_id:)).to be_nil
+
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::STATSD_VDS_SITE_INFO_CLINICS_LOOKUP_MISS,
+            tags: ['reason:empty_site_list']
+          )
+        end
+      end
+
+      context 'when VDS site info clinics is enabled without facilities v3' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:check_in_experience_vds_site_info_clinics_enabled)
+            .and_return(true)
+        end
+
+        it 'uses MFS v2 clinic-by-id instead of VDS' do
+          response = subject.get_clinic(facility_id:, clinic_id:)
+          expect(response).to eq(clinic_response.with_indifferent_access)
+        end
+      end
+
+      context 'when facilities v3 is enabled without VDS site info clinics' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:check_in_experience_va_mobile_facilities_v3_enabled)
+            .and_return(true)
+        end
+
+        it 'does not call VAOS for clinic data and returns nil' do
+          expect_any_instance_of(Faraday::Connection).not_to receive(:get)
+          expect(subject.get_clinic(facility_id:, clinic_id:)).to be_nil
+        end
+
+        it 'increments skipped_flag_off when track_vds_clinics_skipped_flag_off! is called' do
+          allow(StatsD).to receive(:increment)
+          expect(Rails.logger).to receive(:info).with('HCE-Check-In')
+
+          subject.track_vds_clinics_skipped_flag_off!
+
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::STATSD_VDS_SITE_INFO_CLINICS_SKIPPED_FLAG_OFF
+          ).once
+        end
+      end
     end
 
     context 'when facilities api return server error' do
@@ -117,7 +251,9 @@ describe CheckIn::VAOS::FacilityService do
         allow_any_instance_of(Faraday::Connection).to receive(:get).and_raise(exception)
       end
 
-      it 'throws exception' do
+      it 'logs the failure and re-raises' do
+        expect(Rails.logger).to receive(:info).with('HCE-Check-In')
+
         expect do
           subject.get_facility(facility_id:)
         end.to(raise_error do |error|
@@ -184,6 +320,23 @@ describe CheckIn::VAOS::FacilityService do
       end
     end
 
+    context 'when facility v3 cache is populated and facilities v3 flipper is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:check_in_experience_va_mobile_facilities_v3_enabled).and_return(true)
+        Rails.cache.write(
+          "check_in.vaos_facility_v3_#{facility_id}",
+          facility_response,
+          expires_in: 12.hours
+        )
+      end
+
+      it 'returns facility data from v3 cache key without calling perform' do
+        response = subject.get_facility_with_cache(facility_id:)
+        expect_any_instance_of(described_class).not_to receive(:perform)
+        expect(response).to eq(facility_response)
+      end
+    end
+
     context 'when clinic data exists in cache' do
       let(:clinic_response) do
         {
@@ -216,6 +369,69 @@ describe CheckIn::VAOS::FacilityService do
         response = subject.get_clinic_with_cache(facility_id:, clinic_id:)
         expect_any_instance_of(described_class).not_to receive(:perform)
         expect(response).to eq(clinic_response)
+      end
+
+      context 'when facilities v3 and VDS site info clinics are enabled and VDS clinic list is cached' do
+        let(:facility_id) { '534' }
+        let(:clinic_id) { '1081' }
+        let(:vds_clinics) do
+          [
+            {
+              clinicIen: clinic_id,
+              name: 'CHS NEUROSURGERY VARMA',
+              patientFriendlyName: 'CHS NEUROSURGERY VARMA',
+              physicalLocation: '1ST FL SPECIALTY MODULE 2'
+            }
+          ]
+        end
+        let(:mapped_clinic_response) do
+          {
+            data: {
+              clinicId: clinic_id,
+              serviceName: 'CHS NEUROSURGERY VARMA',
+              friendlyName: 'CHS NEUROSURGERY VARMA',
+              physicalLocation: '1ST FL SPECIALTY MODULE 2'
+            }
+          }
+        end
+
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:check_in_experience_va_mobile_facilities_v3_enabled)
+            .and_return(true)
+          allow(Flipper).to receive(:enabled?)
+            .with(:check_in_experience_vds_site_info_clinics_enabled)
+            .and_return(true)
+          Rails.cache.write(
+            "check_in.vds_site_clinics_#{facility_id}",
+            vds_clinics,
+            expires_in: 12.hours
+          )
+        end
+
+        it 'returns mapped clinic from VDS list cache without HTTP' do
+          expect_any_instance_of(described_class).not_to receive(:perform)
+          response = subject.get_clinic_with_cache(facility_id:, clinic_id:)
+          expect(response).to eq(mapped_clinic_response.with_indifferent_access)
+        end
+      end
+
+      context 'when facilities v3 is enabled without VDS site info clinics' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:check_in_experience_va_mobile_facilities_v3_enabled)
+            .and_return(true)
+          Rails.cache.write(
+            "check_in.vaos_clinic_#{facility_id}_#{clinic_id}",
+            clinic_response,
+            expires_in: 12.hours
+          )
+        end
+
+        it 'returns nil without using cached MFS clinic payload' do
+          expect_any_instance_of(described_class).not_to receive(:perform)
+          expect(subject.get_clinic_with_cache(facility_id:, clinic_id:)).to be_nil
+        end
       end
     end
   end

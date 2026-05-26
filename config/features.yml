@@ -531,6 +531,19 @@ features:
     actor_type: user
     description: Enables the feature to show upcoming appointments to the veterans
     enable_in_development: true
+  check_in_experience_va_mobile_facilities_v3_enabled:
+    actor_type: user
+    description: >-
+      When enabled, check-in upcoming appointments use VA Mobile MFS v3 for facility GET
+      (/facilities/v3/facilities/{id}/). When disabled, facilities use MFS v2. Independent of VDS clinics.
+    enable_in_development: false
+  check_in_experience_vds_site_info_clinics_enabled:
+    actor_type: user
+    description: >-
+      When enabled with facilities v3, check-in clinic enrichment uses VDS-Site-Info GET
+      /vds/info/v1/sites/{site-id}/clinics. Requires check_in_experience_va_mobile_facilities_v3_enabled.
+      With v3 on and this off, clinic enrichment is skipped. With v3 off, clinics use MFS v2 clinic-by-id.
+    enable_in_development: false
   check_in_experience_appointments_clinic_observability_enabled:
     actor_type: user
     description: Enables StatsD and logging for VAOS top-level clinic on appointments that have a locationId (same rows where clinic merge can run)

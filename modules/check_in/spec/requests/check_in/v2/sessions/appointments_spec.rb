@@ -12,6 +12,12 @@ RSpec.describe 'CheckIn::V2::Sessions::Appointments', type: :request do
     allow(Flipper).to receive(:enabled?).with('check_in_experience_mock_enabled').and_return(false)
 
     allow(Flipper).to receive(:enabled?).with(:check_in_experience_upcoming_appointments_enabled).and_return(true)
+    allow(Flipper).to receive(:enabled?)
+      .with(:check_in_experience_va_mobile_facilities_v3_enabled)
+      .and_return(false)
+    allow(Flipper).to receive(:enabled?)
+      .with(:check_in_experience_vds_site_info_clinics_enabled)
+      .and_return(false)
 
     Rails.cache.clear
   end
@@ -224,9 +230,9 @@ RSpec.describe 'CheckIn::V2::Sessions::Appointments', type: :request do
         end
 
         it 'does not increment clinic id observability metrics when flipper is disabled' do
-          allow(Flipper).to receive(:enabled?).and_wrap_original do |original, flag, *rest|
-            flag == :check_in_experience_appointments_clinic_observability_enabled ? false : original.call(flag, *rest)
-          end
+          allow(Flipper).to receive(:enabled?)
+            .with(:check_in_experience_appointments_clinic_observability_enabled)
+            .and_return(false)
           allow(StatsD).to receive(:increment)
           VCR.use_cassette 'check_in/clinics/get_clinics_200' do
             VCR.use_cassette 'check_in/facilities/get_facilities_200' do
@@ -245,10 +251,9 @@ RSpec.describe 'CheckIn::V2::Sessions::Appointments', type: :request do
 
         context 'when clinic observability flipper is enabled' do
           before do
-            obs_flag = :check_in_experience_appointments_clinic_observability_enabled
-            allow(Flipper).to receive(:enabled?).and_wrap_original do |original, flag, *rest|
-              flag == obs_flag ? true : original.call(flag, *rest)
-            end
+            allow(Flipper).to receive(:enabled?)
+              .with(:check_in_experience_appointments_clinic_observability_enabled)
+              .and_return(true)
           end
 
           it 'increments total, present, and missing-or-empty clinic key metrics' do
@@ -269,6 +274,12 @@ RSpec.describe 'CheckIn::V2::Sessions::Appointments', type: :request do
               .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_KEY_PRESENT, 2).once
             expect(StatsD).to have_received(:increment)
               .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_KEY_MISSING_OR_EMPTY, 0).once
+            expect(StatsD).to have_received(:increment)
+              .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_ENRICHMENT_TOTAL, 2).once
+            expect(StatsD).to have_received(:increment)
+              .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_ENRICHMENT_PRESENT, 2).once
+            expect(StatsD).to have_received(:increment)
+              .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_ENRICHMENT_MISSING, 0).once
           end
         end
       end
@@ -451,10 +462,9 @@ RSpec.describe 'CheckIn::V2::Sessions::Appointments', type: :request do
 
         context 'when clinic observability flipper is enabled' do
           before do
-            obs_flag = :check_in_experience_appointments_clinic_observability_enabled
-            allow(Flipper).to receive(:enabled?).and_wrap_original do |original, flag, *rest|
-              flag == obs_flag ? true : original.call(flag, *rest)
-            end
+            allow(Flipper).to receive(:enabled?)
+              .with(:check_in_experience_appointments_clinic_observability_enabled)
+              .and_return(true)
           end
 
           it 'increments total and missing-or-empty clinic key metrics when clinic is absent' do
@@ -529,6 +539,34 @@ RSpec.describe 'CheckIn::V2::Sessions::Appointments', type: :request do
           expect(response).to have_http_status(:bad_request)
           expect(response.body).to eq(error_response)
         end
+
+        context 'when clinic observability flipper is enabled' do
+          before do
+            allow(Flipper).to receive(:enabled?)
+              .with(:check_in_experience_appointments_clinic_observability_enabled)
+              .and_return(true)
+          end
+
+          it 'still records clinic key observability when facility enrichment fails' do
+            allow(StatsD).to receive(:increment)
+
+            VCR.use_cassette 'check_in/facilities/get_facilities_500' do
+              VCR.use_cassette 'check_in/appointments/get_appointments_200' do
+                VCR.use_cassette 'map/security_token_service_200_response' do
+                  get "/check_in/v2/sessions/#{id}/appointments", params: { start: start_date, end: end_date }
+                end
+              end
+            end
+
+            expect(response).to have_http_status(:bad_request)
+            expect(StatsD).to have_received(:increment)
+              .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_OBSERVABILITY_TOTAL, 2).once
+            expect(StatsD).to have_received(:increment)
+              .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_KEY_PRESENT, 2).once
+            expect(StatsD).to have_received(:increment)
+              .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_KEY_MISSING_OR_EMPTY, 0).once
+          end
+        end
       end
 
       context 'when facility service succeeds 200 but clinic service returns 500' do
@@ -558,6 +596,524 @@ RSpec.describe 'CheckIn::V2::Sessions::Appointments', type: :request do
 
           expect(response).to have_http_status(:bad_request)
           expect(response.body).to eq(error_response)
+        end
+      end
+
+      context 'when VA Mobile facilities v3 is enabled' do
+        # Single-facility MFS v3 contract: see mfs-v3.json in this directory (getFacilityById).
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:check_in_experience_va_mobile_facilities_v3_enabled)
+            .and_return(true)
+        end
+
+        context 'when appointment service returns successfully' do
+          let(:appts_response) do
+            {
+              data: [
+                {
+                  id: '180766',
+                  type: 'appointments',
+                  attributes: {
+                    kind: 'clinic',
+                    status: 'booked',
+                    serviceType: 'amputation',
+                    locationId: '534',
+                    clinic: '1081',
+                    start: '2023-11-13T16:00:00Z',
+                    end: '2023-11-13T16:30:00Z',
+                    minutesDuration: 30,
+                    telehealth: {
+                      vvsKind: nil,
+                      atlas: nil
+                    },
+                    extension: {
+                      preCheckinAllowed: true,
+                      eCheckinAllowed: true,
+                      patientHasMobileGfe: nil
+                    },
+                    serviceCategory: [{
+                      text: 'REGULAR'
+                    }],
+                    facilityName: 'Ralph H. Johnson Department of Veterans Affairs Medical Center',
+                    facilityVistaSite: '534',
+                    facilityTimezone: 'America/New_York',
+                    facilityPhoneMain: '843-577-5011',
+                    clinicServiceName: nil,
+                    clinicPhysicalLocation: nil,
+                    clinicFriendlyName: nil
+                  }
+                },
+                {
+                  id: '180770',
+                  type: 'appointments',
+                  attributes: {
+                    kind: 'clinic',
+                    status: 'booked',
+                    serviceType: 'amputation',
+                    locationId: '534',
+                    clinic: '1081',
+                    start: '2023-12-11T16:00:00Z',
+                    end: '2023-12-11T16:30:00Z',
+                    minutesDuration: 30,
+                    telehealth: {
+                      vvsKind: nil,
+                      atlas: nil
+                    },
+                    extension: {
+                      preCheckinAllowed: true,
+                      eCheckinAllowed: true,
+                      patientHasMobileGfe: nil
+                    },
+                    serviceCategory: [{
+                      text: 'REGULAR'
+                    }],
+                    facilityName: 'Ralph H. Johnson Department of Veterans Affairs Medical Center',
+                    facilityVistaSite: '534',
+                    facilityTimezone: 'America/New_York',
+                    facilityPhoneMain: '843-577-5011',
+                    clinicServiceName: nil,
+                    clinicPhysicalLocation: nil,
+                    clinicFriendlyName: nil
+                  }
+                }
+              ]
+            }.to_json
+          end
+
+          it 'returns appointments using MFS v3 without clinic enrichment' do
+            allow(StatsD).to receive(:increment)
+
+            VCR.use_cassette 'check_in/facilities/get_facilities_v3_200' do
+              VCR.use_cassette 'check_in/appointments/get_appointments_200' do
+                VCR.use_cassette 'map/security_token_service_200_response' do
+                  get "/check_in/v2/sessions/#{id}/appointments", params: { start: start_date, end: end_date }
+                end
+              end
+            end
+
+            expect(response).to have_http_status(:ok)
+            expect(response.body).to eq(appts_response)
+            expect(StatsD).to have_received(:increment).with(
+              CheckIn::Constants::STATSD_VDS_SITE_INFO_CLINICS_SKIPPED_FLAG_OFF
+            ).once
+          end
+
+          context 'when clinic observability flipper is enabled' do
+            before do
+              allow(Flipper).to receive(:enabled?)
+                .with(:check_in_experience_appointments_clinic_observability_enabled)
+                .and_return(true)
+            end
+
+            it 'records clinic keys present but enrichment missing during v3-only rollout' do
+              allow(StatsD).to receive(:increment)
+
+              VCR.use_cassette 'check_in/facilities/get_facilities_v3_200' do
+                VCR.use_cassette 'check_in/appointments/get_appointments_200' do
+                  VCR.use_cassette 'map/security_token_service_200_response' do
+                    get "/check_in/v2/sessions/#{id}/appointments", params: { start: start_date, end: end_date }
+                  end
+                end
+              end
+
+              expect(StatsD).to have_received(:increment)
+                .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_KEY_PRESENT, 2).once
+              expect(StatsD).to have_received(:increment)
+                .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_ENRICHMENT_PRESENT, 0).once
+              expect(StatsD).to have_received(:increment)
+                .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_ENRICHMENT_MISSING, 2).once
+            end
+          end
+        end
+
+        context 'when facilities v3 and VDS site info clinics are enabled' do
+          before do
+            allow(Flipper).to receive(:enabled?)
+              .with(:check_in_experience_vds_site_info_clinics_enabled)
+              .and_return(true)
+          end
+
+          context 'when appointment service returns successfully' do
+            let(:appts_response) do
+              {
+                data: [
+                  {
+                    id: '180766',
+                    type: 'appointments',
+                    attributes: {
+                      kind: 'clinic',
+                      status: 'booked',
+                      serviceType: 'amputation',
+                      locationId: '534',
+                      clinic: '1081',
+                      start: '2023-11-13T16:00:00Z',
+                      end: '2023-11-13T16:30:00Z',
+                      minutesDuration: 30,
+                      telehealth: {
+                        vvsKind: nil,
+                        atlas: nil
+                      },
+                      extension: {
+                        preCheckinAllowed: true,
+                        eCheckinAllowed: true,
+                        patientHasMobileGfe: nil
+                      },
+                      serviceCategory: [{
+                        text: 'REGULAR'
+                      }],
+                      facilityName: 'Ralph H. Johnson Department of Veterans Affairs Medical Center',
+                      facilityVistaSite: '534',
+                      facilityTimezone: 'America/New_York',
+                      facilityPhoneMain: '843-577-5011',
+                      clinicServiceName: 'CHS NEUROSURGERY VARMA',
+                      clinicPhysicalLocation: '1ST FL SPECIALTY MODULE 2',
+                      clinicFriendlyName: 'CHS NEUROSURGERY VARMA'
+                    }
+                  },
+                  {
+                    id: '180770',
+                    type: 'appointments',
+                    attributes: {
+                      kind: 'clinic',
+                      status: 'booked',
+                      serviceType: 'amputation',
+                      locationId: '534',
+                      clinic: '1081',
+                      start: '2023-12-11T16:00:00Z',
+                      end: '2023-12-11T16:30:00Z',
+                      minutesDuration: 30,
+                      telehealth: {
+                        vvsKind: nil,
+                        atlas: nil
+                      },
+                      extension: {
+                        preCheckinAllowed: true,
+                        eCheckinAllowed: true,
+                        patientHasMobileGfe: nil
+                      },
+                      serviceCategory: [{
+                        text: 'REGULAR'
+                      }],
+                      facilityName: 'Ralph H. Johnson Department of Veterans Affairs Medical Center',
+                      facilityVistaSite: '534',
+                      facilityTimezone: 'America/New_York',
+                      facilityPhoneMain: '843-577-5011',
+                      clinicServiceName: 'CHS NEUROSURGERY VARMA',
+                      clinicPhysicalLocation: '1ST FL SPECIALTY MODULE 2',
+                      clinicFriendlyName: 'CHS NEUROSURGERY VARMA'
+                    }
+                  }
+                ]
+              }.to_json
+            end
+
+            it 'returns appointments using MFS v3 with VDS-Site-Info clinic enrichment' do
+              VCR.use_cassette 'check_in/vds_site_info/get_site_clinics_200' do
+                VCR.use_cassette 'check_in/facilities/get_facilities_v3_200' do
+                  VCR.use_cassette 'check_in/appointments/get_appointments_200' do
+                    VCR.use_cassette 'map/security_token_service_200_response' do
+                      get "/check_in/v2/sessions/#{id}/appointments", params: { start: start_date, end: end_date }
+                    end
+                  end
+                end
+              end
+
+              expect(response).to have_http_status(:ok)
+              expect(response.body).to eq(appts_response)
+            end
+          end
+
+          context 'when facility service succeeds 200 but VDS clinic service returns 500' do
+            let(:error_response) do
+              {
+                errors: [
+                  {
+                    title: 'Operation failed',
+                    detail: 'Operation failed',
+                    code: 'VA900',
+                    status: '400'
+                  }
+                ]
+              }.to_json
+            end
+
+            it 'returns error' do
+              VCR.use_cassette 'check_in/vds_site_info/get_site_clinics_500' do
+                VCR.use_cassette 'check_in/facilities/get_facilities_v3_200' do
+                  VCR.use_cassette 'check_in/appointments/get_appointments_200' do
+                    VCR.use_cassette 'map/security_token_service_200_response' do
+                      get "/check_in/v2/sessions/#{id}/appointments", params: { start: start_date, end: end_date }
+                    end
+                  end
+                end
+              end
+
+              expect(response).to have_http_status(:bad_request)
+              expect(response.body).to eq(error_response)
+            end
+
+            context 'when clinic observability flipper is enabled' do
+              before do
+                allow(Flipper).to receive(:enabled?)
+                  .with(:check_in_experience_appointments_clinic_observability_enabled)
+                  .and_return(true)
+              end
+
+              it 'still records clinic key observability when VDS clinic enrichment fails' do
+                allow(StatsD).to receive(:increment)
+
+                VCR.use_cassette 'check_in/vds_site_info/get_site_clinics_500' do
+                  VCR.use_cassette 'check_in/facilities/get_facilities_v3_200' do
+                    VCR.use_cassette 'check_in/appointments/get_appointments_200' do
+                      VCR.use_cassette 'map/security_token_service_200_response' do
+                        get "/check_in/v2/sessions/#{id}/appointments",
+                            params: { start: start_date, end: end_date }
+                      end
+                    end
+                  end
+                end
+
+                expect(response).to have_http_status(:bad_request)
+                expect(StatsD).to have_received(:increment)
+                  .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_OBSERVABILITY_TOTAL, 2).once
+                expect(StatsD).to have_received(:increment)
+                  .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_KEY_PRESENT, 2).once
+                expect(StatsD).to have_received(:increment)
+                  .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_KEY_MISSING_OR_EMPTY, 0).once
+              end
+            end
+          end
+        end
+
+        context 'when appointment service returns successfully without location id for single appointment' do
+          let(:appts_response) do
+            {
+              data: [
+                {
+                  id: '180766',
+                  type: 'appointments',
+                  attributes: {
+                    kind: 'clinic',
+                    status: 'booked',
+                    serviceType: 'amputation',
+                    locationId: nil,
+                    clinic: '1024',
+                    start: '2023-11-13T16:00:00Z',
+                    end: '2023-11-13T16:30:00Z',
+                    minutesDuration: 30,
+                    telehealth: {
+                      vvsKind: nil,
+                      atlas: nil
+                    },
+                    extension: {
+                      preCheckinAllowed: true,
+                      eCheckinAllowed: true,
+                      patientHasMobileGfe: nil
+                    },
+                    serviceCategory: [{
+                      text: 'REGULAR'
+                    }],
+                    facilityName: nil,
+                    facilityVistaSite: nil,
+                    facilityTimezone: nil,
+                    facilityPhoneMain: nil,
+                    clinicServiceName: nil,
+                    clinicPhysicalLocation: nil,
+                    clinicFriendlyName: nil
+                  }
+                },
+                {
+                  id: '180770',
+                  type: 'appointments',
+                  attributes: {
+                    kind: 'clinic',
+                    status: 'booked',
+                    serviceType: 'amputation',
+                    locationId: '534',
+                    clinic: '1081',
+                    start: '2023-12-11T16:00:00Z',
+                    end: '2023-12-11T16:30:00Z',
+                    minutesDuration: 30,
+                    telehealth: {
+                      vvsKind: nil,
+                      atlas: nil
+                    },
+                    extension: {
+                      preCheckinAllowed: true,
+                      eCheckinAllowed: true,
+                      patientHasMobileGfe: nil
+                    },
+                    serviceCategory: [{
+                      text: 'REGULAR'
+                    }],
+                    facilityName: 'Ralph H. Johnson Department of Veterans Affairs Medical Center',
+                    facilityVistaSite: '534',
+                    facilityTimezone: 'America/New_York',
+                    facilityPhoneMain: '843-577-5011',
+                    clinicServiceName: nil,
+                    clinicPhysicalLocation: nil,
+                    clinicFriendlyName: nil
+                  }
+                }
+              ]
+            }.to_json
+          end
+
+          it 'returns appointments' do
+            VCR.use_cassette 'check_in/facilities/get_facilities_v3_200' do
+              VCR.use_cassette 'check_in/appointments/get_appointments_without_location_200' do
+                VCR.use_cassette 'map/security_token_service_200_response' do
+                  get "/check_in/v2/sessions/#{id}/appointments", params: { start: start_date, end: end_date }
+                end
+              end
+            end
+
+            expect(response).to have_http_status(:ok)
+            expect(response.body).to eq(appts_response)
+          end
+        end
+
+        context 'when appointment service returns successfully without clinic' do
+          let(:appts_response) do
+            {
+              data: [
+                {
+                  id: '180766',
+                  type: 'appointments',
+                  attributes: {
+                    kind: 'clinic',
+                    status: 'booked',
+                    serviceType: 'amputation',
+                    locationId: '534',
+                    clinic: nil,
+                    start: '2023-11-13T16:00:00Z',
+                    end: '2023-11-13T16:30:00Z',
+                    minutesDuration: 30,
+                    telehealth: {
+                      vvsKind: nil,
+                      atlas: nil
+                    },
+                    extension: {
+                      preCheckinAllowed: true,
+                      eCheckinAllowed: true,
+                      patientHasMobileGfe: nil
+                    },
+                    serviceCategory: [{
+                      text: 'REGULAR'
+                    }],
+                    facilityName: 'Ralph H. Johnson Department of Veterans Affairs Medical Center',
+                    facilityVistaSite: '534',
+                    facilityTimezone: 'America/New_York',
+                    facilityPhoneMain: '843-577-5011',
+                    clinicServiceName: nil,
+                    clinicPhysicalLocation: nil,
+                    clinicFriendlyName: nil
+                  }
+                },
+                {
+                  id: '180770',
+                  type: 'appointments',
+                  attributes: {
+                    kind: 'clinic',
+                    status: 'booked',
+                    serviceType: 'amputation',
+                    locationId: '534',
+                    clinic: nil,
+                    start: '2023-12-11T16:00:00Z',
+                    end: '2023-12-11T16:30:00Z',
+                    minutesDuration: 30,
+                    telehealth: {
+                      vvsKind: nil,
+                      atlas: nil
+                    },
+                    extension: {
+                      preCheckinAllowed: true,
+                      eCheckinAllowed: true,
+                      patientHasMobileGfe: nil
+                    },
+                    serviceCategory: [{
+                      text: 'REGULAR'
+                    }],
+                    facilityName: 'Ralph H. Johnson Department of Veterans Affairs Medical Center',
+                    facilityVistaSite: '534',
+                    facilityTimezone: 'America/New_York',
+                    facilityPhoneMain: '843-577-5011',
+                    clinicServiceName: nil,
+                    clinicPhysicalLocation: nil,
+                    clinicFriendlyName: nil
+                  }
+                }
+              ]
+            }.to_json
+          end
+
+          it 'returns appointments' do
+            VCR.use_cassette 'check_in/facilities/get_facilities_v3_200' do
+              VCR.use_cassette 'check_in/appointments/get_appointments_without_clinic_200' do
+                VCR.use_cassette 'map/security_token_service_200_response' do
+                  get "/check_in/v2/sessions/#{id}/appointments", params: { start: start_date, end: end_date }
+                end
+              end
+            end
+
+            expect(response).to have_http_status(:ok)
+            expect(response.body).to eq(appts_response)
+          end
+        end
+
+        context 'when appointment service returns 500' do
+          let(:error_response) do
+            {
+              errors: [
+                {
+                  title: 'Operation failed',
+                  detail: 'Operation failed',
+                  code: 'VA900',
+                  status: '400'
+                }
+              ]
+            }.to_json
+          end
+
+          it 'returns error' do
+            VCR.use_cassette 'check_in/appointments/get_appointments_500' do
+              VCR.use_cassette 'map/security_token_service_200_response' do
+                get "/check_in/v2/sessions/#{id}/appointments", params: { start: start_date, end: end_date }
+              end
+            end
+
+            expect(response).to have_http_status(:bad_request)
+            expect(response.body).to eq(error_response)
+          end
+        end
+
+        context 'when facility service returns 500' do
+          let(:error_response) do
+            {
+              errors: [
+                {
+                  title: 'Operation failed',
+                  detail: 'Operation failed',
+                  code: 'VA900',
+                  status: '400'
+                }
+              ]
+            }.to_json
+          end
+
+          it 'returns error' do
+            VCR.use_cassette 'check_in/facilities/get_facilities_v3_500' do
+              VCR.use_cassette 'check_in/appointments/get_appointments_200' do
+                VCR.use_cassette 'map/security_token_service_200_response' do
+                  get "/check_in/v2/sessions/#{id}/appointments", params: { start: start_date, end: end_date }
+                end
+              end
+            end
+
+            expect(response).to have_http_status(:bad_request)
+            expect(response.body).to eq(error_response)
+          end
         end
       end
     end

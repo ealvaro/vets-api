@@ -57,6 +57,9 @@
 ### Code Documentation
 - Swagger documentation can be viewed as JSON locally by running the vets-api application server, and then visiting http://localhost:3000/check_in/v2/apidocs in a browser window. Swagger UI can be accessed via https://department-of-veterans-affairs.github.io/va-digital-services-platform-docs/api-reference/#/ and then searching for https://dev-api.va.gov/check_in/v2/apidocs in the search bar at the top of the page.
 
+- **MFS facilities v3 (upcoming appointments):** Flipper `check_in_experience_va_mobile_facilities_v3_enabled` — MFS v3 facility GET and cache `check_in.vaos_facility_v3_{id}` vs v2 `check_in.vaos_facility_{id}`.
+- **VDS-Site-Info clinics (upcoming appointments):** Flipper `check_in_experience_vds_site_info_clinics_enabled` — requires facilities v3 flipper on; `GET /vds/info/v1/sites/{site-id}/clinics`, cache `check_in.vds_site_clinics_{site_id}`, mapped to MFS `{ data: ... }` for the serializer. With v3 on and VDS off, clinic enrichment is skipped; with v3 off, MFS v2 clinic-by-id is used.
+
 - Yardoc can be viewed by running the `yard doc` command in a terminal window from within the `modules/check_in` directory, and then visiting `file:///<path_to_vets-api>/modules/check_in/doc/` in a browser window.
 
 ### Application Performance Monitoring
