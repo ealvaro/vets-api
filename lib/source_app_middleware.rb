@@ -30,6 +30,7 @@ class SourceAppMiddleware
     '10272-edu-benefits',
     '10275-edu-benefits',
     '10278-edu-benefits',
+    '10297-edu-benefits',
     '0996-higher-level-review',
     '10-10D',
     '10-10d-extended',
