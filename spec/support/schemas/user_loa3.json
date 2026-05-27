@@ -390,6 +390,9 @@
                         },
                         "user_facility_ready_for_info_alert": {
                           "type": "boolean"
+                        },
+                        "emergency_cutover_lock": {
+                          "type": "array"
                         }
                       }
                     },

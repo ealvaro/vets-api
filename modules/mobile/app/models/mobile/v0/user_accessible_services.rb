@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'mhv/oh_facilities_helper/service'
+
 module Mobile
   module V0
     class UserAccessibleServices
@@ -24,7 +26,8 @@ module Mobile
                                                                      mhv_accelerated_delivery_uhd_enabled],
                                                                   :allergies_oracle_health),
           appeals: access?(appeals: :access?),
-          appointments: access?(vaos: :access?) && @user.icn.present? && access?(vaos: :facilities_access?),
+          appointments: access?(vaos: :access?) && @user.icn.present? && access?(vaos: :facilities_access?) &&
+                        !emergency_brake_active?('appointments'),
           benefitsPushNotification: @user.icn.present? && Flipper.enabled?(
             :event_bus_gateway_letter_ready_push_notifications, icn_actor
           ),
@@ -48,9 +51,9 @@ module Mobile
                                                                     :medications_oracle_health),
           paymentHistory: access?(bgs: :access?),
           preferredName: access?(demographics: :access_update?) && access?(mpi: :queryable?),
-          prescriptions: access?(mhv_prescriptions: :access?),
+          prescriptions: access?(mhv_prescriptions: :access?) && !emergency_brake_active?('rx'),
           scheduleAppointments: access?(schedule_appointment: :access?),
-          secureMessaging: access?(mhv_messaging: :mobile_access?),
+          secureMessaging: access?(mhv_messaging: :mobile_access?) && !emergency_brake_active?('sm'),
           secureMessagingOracleHealthEnabled: Flipper.enabled?(:mhv_secure_messaging_cerner_pilot, @user),
           userProfileUpdate: access?(va_profile: :access_to_v2?)
         }
@@ -100,6 +103,14 @@ module Mobile
             @user.authorize(policy_name, policy_rule)
           end
         end
+      end
+
+      def emergency_brake_active?(tool)
+        oh_migration_service.emergency_brake_active?(tool)
+      end
+
+      def oh_migration_service
+        @oh_migration_service ||= MHV::OhFacilitiesHelper::Service.new(@user)
       end
     end
   end

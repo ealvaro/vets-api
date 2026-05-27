@@ -54,6 +54,21 @@ describe Mobile::V0::UserAccessibleServices, :aggregate_failures, type: :model d
           expect(user_services.service_auth_map[:appointments]).to be_truthy
         end
       end
+
+      context 'when emergency brake is active for appointments' do
+        before do
+          allow_any_instance_of(MHV::OhFacilitiesHelper::Service)
+            .to receive(:emergency_brake_active?).with('appointments').and_return(true)
+          allow_any_instance_of(MHV::OhFacilitiesHelper::Service)
+            .to receive(:emergency_brake_active?).with('sm').and_return(false)
+          allow_any_instance_of(MHV::OhFacilitiesHelper::Service)
+            .to receive(:emergency_brake_active?).with('rx').and_return(false)
+        end
+
+        it 'is false' do
+          expect(user_services.service_auth_map[:appointments]).to be(false)
+        end
+      end
     end
 
     describe 'claims' do
@@ -255,6 +270,24 @@ describe Mobile::V0::UserAccessibleServices, :aggregate_failures, type: :model d
           expect(user_services.service_auth_map[:prescriptions]).to be_truthy
         end
       end
+
+      context 'when emergency brake is active for rx' do
+        let(:user) { build(:user, :mhv) }
+
+        before do
+          allow_any_instance_of(User).to receive(:mhv_user_account).and_return(OpenStruct.new(patient: true))
+          allow_any_instance_of(MHV::OhFacilitiesHelper::Service)
+            .to receive(:emergency_brake_active?).with('rx').and_return(true)
+          allow_any_instance_of(MHV::OhFacilitiesHelper::Service)
+            .to receive(:emergency_brake_active?).with('sm').and_return(false)
+          allow_any_instance_of(MHV::OhFacilitiesHelper::Service)
+            .to receive(:emergency_brake_active?).with('appointments').and_return(false)
+        end
+
+        it 'is false' do
+          expect(user_services.service_auth_map[:prescriptions]).to be(false)
+        end
+      end
     end
 
     describe 'scheduleAppointments' do
@@ -287,6 +320,23 @@ describe Mobile::V0::UserAccessibleServices, :aggregate_failures, type: :model d
       context 'when user does have mhv_messaging access' do
         it 'is true' do
           expect(user_services.service_auth_map[:secureMessaging]).to be_truthy
+        end
+      end
+
+      context 'when emergency brake is active for sm' do
+        before do
+          allow_any_instance_of(MHV::OhFacilitiesHelper::Service)
+            .to receive(:emergency_brake_active?).with('sm').and_return(true)
+          allow_any_instance_of(MHV::OhFacilitiesHelper::Service)
+            .to receive(:emergency_brake_active?).with('rx').and_return(false)
+          allow_any_instance_of(MHV::OhFacilitiesHelper::Service)
+            .to receive(:emergency_brake_active?).with('appointments').and_return(false)
+        end
+
+        it 'is false' do
+          VCR.use_cassette('sm_client/session') do
+            expect(user_services.service_auth_map[:secureMessaging]).to be(false)
+          end
         end
       end
     end

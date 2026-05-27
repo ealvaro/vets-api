@@ -1804,6 +1804,22 @@ features:
     actor_type: user
     description: Shows Veterans their Priority Group on the MHV Landing Page
     enable_in_development: true
+  mhv_oh_emergency_cutover_lock_appointments:
+    actor_type: user
+    description: Emergency lock for Appointments during Oracle Health cutover. Blocks tool access for migrating users.
+    enable_in_development: false
+  mhv_oh_emergency_cutover_lock_mr:
+    actor_type: user
+    description: Emergency lock for Medical Records during Oracle Health cutover. Blocks tool access for migrating users.
+    enable_in_development: false
+  mhv_oh_emergency_cutover_lock_rx:
+    actor_type: user
+    description: Emergency lock for Medications during Oracle Health cutover. Blocks tool access for migrating users.
+    enable_in_development: false
+  mhv_oh_emergency_cutover_lock_sm:
+    actor_type: user
+    description: Emergency lock for Secure Messaging during Oracle Health cutover. Blocks tool access for migrating users.
+    enable_in_development: false
   mhv_oh_migration_schedules:
     actor_type: user
     description: Enables fetching Oracle Health migration schedules for VAHB mobile users

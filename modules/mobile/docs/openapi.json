@@ -27318,7 +27318,8 @@
             "required": [
               "isUserAtPretransitionedOhFacility",
               "isUserFacilityReadyForInfoAlert",
-              "migratingFacilitiesList"
+              "migratingFacilitiesList",
+              "emergencyCutoverLock"
             ],
             "properties": {
               "isUserAtPretransitionedOhFacility": {
@@ -27330,6 +27331,20 @@
                 "type": "boolean",
                 "example": false,
                 "description": "Indicates whether the user's facility is ready for the blue informational alert about Oracle Health transition."
+              },
+              "emergencyCutoverLock": {
+                "type": "array",
+                "description": "A list of tools that are emergency-locked during Oracle Health cutover. Possible values are sm, rx, mr, appointments.",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "sm",
+                    "rx",
+                    "mr",
+                    "appointments"
+                  ]
+                },
+                "example": []
               },
               "migratingFacilitiesList": {
                 "type": "array",

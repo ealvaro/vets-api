@@ -71,6 +71,7 @@ properties:
       - isUserAtPretransitionedOhFacility
       - isUserFacilityReadyForInfoAlert
       - migratingFacilitiesList
+      - emergencyCutoverLock
     properties:
       isUserAtPretransitionedOhFacility:
         type: boolean
@@ -80,6 +81,17 @@ properties:
         type: boolean
         example: false
         description: Indicates whether the user's facility is ready for the blue informational alert about Oracle Health transition.
+      emergencyCutoverLock:
+        type: array
+        description: A list of tools that are emergency-locked during Oracle Health cutover. Possible values are sm, rx, mr, appointments.
+        items:
+          type: string
+          enum:
+            - sm
+            - rx
+            - mr
+            - appointments
+        example: []
       migratingFacilitiesList:
         type: array
         description: A list of facilities that are actively migrating to Oracle Health along with their migration dates.

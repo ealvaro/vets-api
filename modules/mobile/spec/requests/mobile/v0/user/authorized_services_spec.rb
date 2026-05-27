@@ -28,6 +28,11 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
                                                 instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass,
                                                 instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_sm, instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_rx, instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_mr, instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_appointments,
+                                                instance_of(User)).and_return(false)
     end
 
     it 'includes a hash with all available services and a boolean value of if the user has access' do
@@ -73,7 +78,8 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       assert_schema_conform(200)
       expect(meta).to eq({ 'isUserAtPretransitionedOhFacility' => false,
                            'isUserFacilityReadyForInfoAlert' => false,
-                           'migratingFacilitiesList' => [] })
+                           'migratingFacilitiesList' => [],
+                           'emergencyCutoverLock' => [] })
     end
 
     it 'includes properly set meta flags for user at pretransitioned oh facility but not ready for info alert' do
@@ -89,7 +95,8 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       expect(meta).to eq({
                            'isUserAtPretransitionedOhFacility' => true,
                            'isUserFacilityReadyForInfoAlert' => false,
-                           'migratingFacilitiesList' => []
+                           'migratingFacilitiesList' => [],
+                           'emergencyCutoverLock' => []
                          })
     end
 
@@ -106,7 +113,8 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       expect(meta).to eq({
                            'isUserAtPretransitionedOhFacility' => true,
                            'isUserFacilityReadyForInfoAlert' => true,
-                           'migratingFacilitiesList' => []
+                           'migratingFacilitiesList' => [],
+                           'emergencyCutoverLock' => []
                          })
     end
 
@@ -124,7 +132,8 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       expect(meta).to eq({
                            'isUserAtPretransitionedOhFacility' => false,
                            'isUserFacilityReadyForInfoAlert' => false,
-                           'migratingFacilitiesList' => []
+                           'migratingFacilitiesList' => [],
+                           'emergencyCutoverLock' => []
                          })
     end
   end
@@ -143,6 +152,11 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_enabled,
                                                 instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass,
+                                                instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_sm, instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_rx, instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_mr, instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_appointments,
                                                 instance_of(User)).and_return(false)
     end
 
@@ -212,6 +226,11 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
                                                 instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass,
                                                 instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_sm, instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_rx, instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_mr, instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_appointments,
+                                                instance_of(User)).and_return(false)
     end
 
     it 'includes cstMultiClaimProvider when user has ICN' do
@@ -252,6 +271,11 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_schedules,
                                                 instance_of(User)).and_return(true)
       allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass,
+                                                instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_sm, instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_rx, instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_mr, instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_appointments,
                                                 instance_of(User)).and_return(false)
     end
 
@@ -466,6 +490,131 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
         expect(meta['isUserAtPretransitionedOhFacility']).to be false
         expect(meta['isUserFacilityReadyForInfoAlert']).to be false
         expect(meta['migratingFacilitiesList']).to eq([])
+      end
+    end
+  end
+
+  describe 'emergency_cutover_lock' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:event_bus_gateway_letter_ready_push_notifications, instance_of(Flipper::Actor)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:cst_multi_claim_provider_mobile, instance_of(Flipper::Actor)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_medications_cerner_pilot, instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_cerner_pilot,
+                                                instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_allergies_enabled,
+                                                instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_labs_and_tests_enabled,
+                                                instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_enabled,
+                                                instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_schedules,
+                                                instance_of(User)).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass,
+                                                instance_of(User)).and_return(false)
+    end
+
+    context 'when user is not at a migrating facility' do
+      before do
+        allow(Settings.mhv.oh_facility_checks).to receive_messages(
+          pretransitioned_oh_facilities: '',
+          facilities_ready_for_info_alert: '',
+          oh_migrations_list: '2026-10-01:[999,Other VA]'
+        )
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_sm, instance_of(User)).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_rx, instance_of(User)).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_mr, instance_of(User)).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_appointments,
+                                                  instance_of(User)).and_return(true)
+      end
+
+      it 'returns an empty emergencyCutoverLock array even when lock flags are enabled' do
+        get '/mobile/v0/user/authorized-services', headers: sis_headers,
+                                                   params: { 'appointmentIEN' => '123', 'locationId' => '123' }
+        assert_schema_conform(200)
+
+        expect(meta['emergencyCutoverLock']).to eq([])
+      end
+    end
+
+    context 'when user is at a migrating facility' do
+      before do
+        allow(Settings.mhv.oh_facility_checks).to receive_messages(
+          pretransitioned_oh_facilities: '',
+          facilities_ready_for_info_alert: '',
+          oh_migrations_list: '2026-10-01:[555,Facility A]'
+        )
+      end
+
+      context 'when no emergency lock flags are enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_sm,
+                                                    instance_of(User)).and_return(false)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_rx,
+                                                    instance_of(User)).and_return(false)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_mr,
+                                                    instance_of(User)).and_return(false)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_appointments,
+                                                    instance_of(User)).and_return(false)
+        end
+
+        it 'returns an empty emergencyCutoverLock array' do
+          get '/mobile/v0/user/authorized-services', headers: sis_headers,
+                                                     params: { 'appointmentIEN' => '123', 'locationId' => '123' }
+          assert_schema_conform(200)
+
+          expect(meta['emergencyCutoverLock']).to eq([])
+        end
+      end
+
+      context 'when one emergency lock flag is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_sm,
+                                                    instance_of(User)).and_return(false)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_rx,
+                                                    instance_of(User)).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_mr,
+                                                    instance_of(User)).and_return(false)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_appointments,
+                                                    instance_of(User)).and_return(false)
+        end
+
+        it 'returns only the locked tool in emergencyCutoverLock' do
+          get '/mobile/v0/user/authorized-services', headers: sis_headers,
+                                                     params: { 'appointmentIEN' => '123', 'locationId' => '123' }
+          assert_schema_conform(200)
+
+          expect(meta['emergencyCutoverLock']).to eq(['rx'])
+        end
+      end
+
+      context 'when all emergency lock flags are enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_sm,
+                                                    instance_of(User)).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_rx,
+                                                    instance_of(User)).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_mr,
+                                                    instance_of(User)).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_appointments,
+                                                    instance_of(User)).and_return(true)
+        end
+
+        it 'returns all tools in emergencyCutoverLock' do
+          get '/mobile/v0/user/authorized-services', headers: sis_headers,
+                                                     params: { 'appointmentIEN' => '123', 'locationId' => '123' }
+          assert_schema_conform(200)
+
+          expect(meta['emergencyCutoverLock']).to contain_exactly('sm', 'rx', 'mr', 'appointments')
+        end
+
+        it 'sets prescriptions, appointments to false in authorizedServices' do
+          get '/mobile/v0/user/authorized-services', headers: sis_headers,
+                                                     params: { 'appointmentIEN' => '123', 'locationId' => '123' }
+          assert_schema_conform(200)
+
+          expect(attributes['authorizedServices']['prescriptions']).to be false
+          expect(attributes['authorizedServices']['appointments']).to be false
+        end
       end
     end
   end

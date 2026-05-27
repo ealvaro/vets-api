@@ -1010,5 +1010,84 @@ RSpec.describe Users::Profile do
       # spec/lib/mhv/oh_facilities_helper/service_spec.rb
       # The service method rescues all errors and returns []
     end
+
+    describe 'emergency_cutover_lock in oh_migration_info' do
+      let(:users_profile) { Users::Profile.new(user) }
+      let(:mpi_profile_result) { users_profile.send(:mpi_profile) }
+
+      before do
+        allow(user).to receive_messages(loa3?: true, mpi_status: :ok)
+        allow(user).to receive_messages(
+          birth_date_mpi: '1980-01-01',
+          last_name_mpi: 'Doe',
+          gender_mpi: 'M',
+          given_names: ['John'],
+          cerner_id: nil,
+          cerner_facility_ids: [],
+          va_treatment_facility_ids: %w[516 517],
+          va_patient?: true,
+          mhv_account_state: 'OK',
+          active_mhv_ids: ['12345']
+        )
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass, user).and_return(false)
+        allow(Settings.mhv.oh_facility_checks).to receive(:oh_migrations_list)
+          .and_return('2026-03-03:[516,Columbus VA]')
+      end
+
+      context 'when user is not at a migrating facility' do
+        before do
+          allow(Settings.mhv.oh_facility_checks).to receive(:oh_migrations_list)
+            .and_return('2026-03-03:[999,Other VA]')
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_sm, user).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_rx, user).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_mr, user).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_appointments, user).and_return(true)
+        end
+
+        it 'returns an empty emergency_cutover_lock array even when lock flags are enabled' do
+          expect(mpi_profile_result[:oh_migration_info][:emergency_cutover_lock]).to eq([])
+        end
+      end
+
+      context 'when no emergency lock flags are enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_sm, user).and_return(false)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_rx, user).and_return(false)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_mr, user).and_return(false)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_appointments, user).and_return(false)
+        end
+
+        it 'returns an empty emergency_cutover_lock array' do
+          expect(mpi_profile_result[:oh_migration_info][:emergency_cutover_lock]).to eq([])
+        end
+      end
+
+      context 'when one emergency lock flag is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_sm, user).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_rx, user).and_return(false)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_mr, user).and_return(false)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_appointments, user).and_return(false)
+        end
+
+        it 'returns only the locked tool' do
+          expect(mpi_profile_result[:oh_migration_info][:emergency_cutover_lock]).to eq(['sm'])
+        end
+      end
+
+      context 'when all emergency lock flags are enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_sm, user).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_rx, user).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_mr, user).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_appointments, user).and_return(true)
+        end
+
+        it 'returns all tools in emergency_cutover_lock' do
+          expect(mpi_profile_result[:oh_migration_info][:emergency_cutover_lock])
+            .to contain_exactly('sm', 'rx', 'mr', 'appointments')
+        end
+      end
+    end
   end
 end

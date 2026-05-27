@@ -378,6 +378,9 @@
                         },
                         "userFacilityReadyForInfoAlert": {
                           "type": "boolean"
+                        },
+                        "emergencyCutoverLock": {
+                          "type": "array"
                         }
                       }
                     },

@@ -11,6 +11,36 @@ module MHV
         value.to_s.split(',').map(&:strip).compact_blank
       end
 
+      EMERGENCY_LOCK_FLAGS = {
+        'sm' => :mhv_oh_emergency_cutover_lock_sm,
+        'rx' => :mhv_oh_emergency_cutover_lock_rx,
+        'mr' => :mhv_oh_emergency_cutover_lock_mr,
+        'appointments' => :mhv_oh_emergency_cutover_lock_appointments
+      }.freeze
+
+      # Returns an array of tool names that are emergency-locked for this user.
+      # Checks Flipper flags with user context and only returns locks when the
+      # user is at a facility actively migrating to Oracle Health.
+      # @return [Array<String>] e.g. [], ['sm'], ['sm', 'rx']
+      def emergency_cutover_lock_list
+        return [] unless user_facility_migrating?
+
+        EMERGENCY_LOCK_FLAGS.each_with_object([]) do |(tool, flag), locked|
+          locked << tool if Flipper.enabled?(flag, @current_user)
+        end
+      end
+
+      # Returns true if the emergency brake is active for a specific tool for the given user.
+      # Requires: (1) user is at a migrating facility AND (2) the tool's ebrake flag is enabled.
+      # @param tool [String] one of 'sm', 'rx', 'mr', 'appointments'
+      # @return [Boolean]
+      def emergency_brake_active?(tool)
+        flag = EMERGENCY_LOCK_FLAGS[tool]
+        return false unless flag
+
+        user_facility_migrating? && Flipper.enabled?(flag, @current_user)
+      end
+
       def initialize(user)
         super()
         @current_user = user
@@ -132,6 +162,12 @@ module MHV
       end
 
       private
+
+      # Returns true if the current user is at a facility with active migration schedules
+      # @return [Boolean]
+      def user_facility_migrating?
+        get_migration_schedules.present?
+      end
 
       # Checks if the trusted user bypass flag is enabled for the current user
       # @return [Boolean] true if the bypass is enabled

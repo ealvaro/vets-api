@@ -1297,4 +1297,55 @@ RSpec.describe MHV::OhFacilitiesHelper::Service do
       end
     end
   end
+
+  describe '#emergency_brake_active?' do
+    let(:va_treatment_facility_ids) { %w[516] }
+    let(:migration_date) { eastern_today + 5 }
+
+    before do
+      allow(user).to receive(:va_treatment_facility_ids).and_return(va_treatment_facility_ids)
+      allow(Settings.mhv.oh_facility_checks).to receive(:oh_migrations_list)
+        .and_return("#{migration_date}:[516,Columbus VA]")
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_dark_deploy_sm_rx, user).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_dark_deploy_appointments, user).and_return(false)
+    end
+
+    context 'when user is at a migrating facility and the ebrake flag is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_sm, user).and_return(true)
+      end
+
+      it 'returns true for that tool' do
+        expect(service.emergency_brake_active?('sm')).to be true
+      end
+    end
+
+    context 'when user is at a migrating facility but the ebrake flag is not enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_rx, user).and_return(false)
+      end
+
+      it 'returns false' do
+        expect(service.emergency_brake_active?('rx')).to be false
+      end
+    end
+
+    context 'when user is not at a migrating facility and the ebrake flag is enabled' do
+      let(:va_treatment_facility_ids) { %w[999] }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_sm, user).and_return(true)
+      end
+
+      it 'returns false' do
+        expect(service.emergency_brake_active?('sm')).to be false
+      end
+    end
+
+    context 'when tool key is invalid' do
+      it 'returns false' do
+        expect(service.emergency_brake_active?('nonexistent')).to be false
+      end
+    end
+  end
 end

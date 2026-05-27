@@ -181,7 +181,8 @@ module Users
             user_facility_migrating_to_oh:,
             migration_schedules:,
             user_at_pretransitioned_oh_facility:,
-            user_facility_ready_for_info_alert:
+            user_facility_ready_for_info_alert:,
+            emergency_cutover_lock: user_facility_migrating_to_oh ? build_emergency_cutover_lock_list : []
           },
           va_patient: user.va_patient?,
           mhv_account_state: user.mhv_account_state,
@@ -305,6 +306,10 @@ module Users
 
     def user_has_migration_schedules?(schedules)
       schedules.present?
+    end
+
+    def build_emergency_cutover_lock_list
+      oh_facilities_helper.emergency_cutover_lock_list
     end
   end
 end
