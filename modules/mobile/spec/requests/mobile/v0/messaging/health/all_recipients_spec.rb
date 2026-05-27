@@ -7,7 +7,6 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
   include SchemaMatchers
 
   let!(:user) { sis_user(:mhv, mhv_correlation_id: '123') }
-  let(:care_systems_stub) { [{ station_number: '977', health_care_system_name: 'Manila VA Clinic' }] }
 
   before do
     Timecop.freeze(Time.zone.parse('2017-05-01T19:25:00Z'))
@@ -37,9 +36,6 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
     end
 
     it 'responds to GET #all_recipients' do
-      allow_any_instance_of(Mobile::V0::RecipientsController).to receive(:get_unique_care_systems).and_return(
-        care_systems_stub
-      )
       VCR.use_cassette('sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients') do
         get '/mobile/v0/messaging/health/allrecipients', headers: sis_headers
       end
@@ -49,9 +45,6 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
     end
 
     it 'uses suggestedNameDisplay to override name when present' do
-      allow_any_instance_of(Mobile::V0::RecipientsController).to receive(:get_unique_care_systems).and_return(
-        care_systems_stub
-      )
       VCR.use_cassette('sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients') do
         get '/mobile/v0/messaging/health/allrecipients', headers: sis_headers
       end
@@ -63,9 +56,6 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
     end
 
     it 'filters out teams with blocked_status == true' do
-      allow_any_instance_of(Mobile::V0::RecipientsController).to receive(:get_unique_care_systems).and_return(
-        care_systems_stub
-      )
       VCR.use_cassette('sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients_include_blocked') do
         get '/mobile/v0/messaging/health/allrecipients', headers: sis_headers
       end
@@ -80,48 +70,21 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
         .and_return(true)
       VCR.use_cassette('sm_client/session_require_oh') do
         VCR.use_cassette('sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients_require_oh') do
-          VCR.use_cassette('mobile/lighthouse_facilities/200_facilities_977_978_979') do
-            get '/mobile/v0/messaging/health/allrecipients', headers: sis_headers
-          end
+          get '/mobile/v0/messaging/health/allrecipients', headers: sis_headers
         end
       end
 
       parsed_response_meta = response.parsed_body['meta']
       care_systems = parsed_response_meta['careSystems']
       expect(care_systems.length).to be(3)
-      expect(care_systems[0]['healthCareSystemName']).to eq('Manila VA Clinic')
-      expect(care_systems[1]['healthCareSystemName']).to eq('978')
-      expect(care_systems[2]['healthCareSystemName']).to eq('Chalmers P. Wylie Veterans Outpatient Clinic')
+      expect(care_systems[0]['healthCareSystemName']).to eq('VA Wichita Health Care')
+      expect(care_systems[0]['stationNumber']).to eq('977')
+      expect(care_systems[1]['healthCareSystemName']).to eq('VA Wichita Health Care')
+      expect(care_systems[1]['stationNumber']).to eq('978')
+      expect(care_systems[2]['healthCareSystemName']).to eq('VA Dayton health care')
+      expect(care_systems[2]['stationNumber']).to eq('552')
       expect(response).to be_successful
       expect(response.body).to be_a(String)
-      expect(response).to match_camelized_response_schema('all_triage_teams', { strict: false })
-    end
-
-    it 'returns successfully with station numbers as fallback when Lighthouse Facilities API fails' do
-      allow(StatsD).to receive(:increment)
-      allow(Flipper).to receive(:enabled?)
-        .with(:mhv_secure_messaging_cerner_pilot, anything)
-        .and_return(true)
-      VCR.use_cassette('sm_client/session_require_oh') do
-        VCR.use_cassette('sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients_require_oh') do
-          VCR.use_cassette('mobile/lighthouse_facilities/500_facilities_error') do
-            get '/mobile/v0/messaging/health/allrecipients', headers: sis_headers
-          end
-        end
-      end
-
-      expect(response).to be_successful
-      expect(StatsD).to have_received(:increment).with('mobile.sm.allrecipients.facilities_lookup.failure')
-      parsed_response_meta = response.parsed_body['meta']
-      care_systems = parsed_response_meta['careSystems']
-      expect(care_systems.length).to be(3)
-      # All health_care_system_name values should fall back to station_number
-      expect(care_systems[0]['healthCareSystemName']).to eq('977')
-      expect(care_systems[0]['stationNumber']).to eq('977')
-      expect(care_systems[1]['healthCareSystemName']).to eq('978')
-      expect(care_systems[1]['stationNumber']).to eq('978')
-      expect(care_systems[2]['healthCareSystemName']).to eq('979')
-      expect(care_systems[2]['stationNumber']).to eq('979')
       expect(response).to match_camelized_response_schema('all_triage_teams', { strict: false })
     end
 
@@ -131,13 +94,11 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
       before do
         path = Rails.root.join('modules', 'mobile', 'spec', 'support', 'fixtures', 'all_triage_teams.json')
         data = Vets::Collection.new(JSON.parse(File.read(path)), AllTriageTeams)
+        MyHealth::FacilitiesHelper.set_health_care_system_names(data)
         allow_any_instance_of(SM::Client).to receive(:get_all_triage_teams).and_return(data)
       end
 
       it 'retrieves triage teams from the stubbed client' do
-        allow_any_instance_of(Mobile::V0::RecipientsController).to receive(:get_unique_care_systems).and_return(
-          care_systems_stub
-        )
         get('/mobile/v0/messaging/health/allrecipients', headers: sis_headers, params:)
         expect(response).to be_successful
         expect(response.body).to be_a(String)
@@ -151,14 +112,12 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
       end
 
       it 'falls back to name when suggested_name_display is nil' do
-        allow_any_instance_of(Mobile::V0::RecipientsController).to receive(:get_unique_care_systems).and_return(
-          care_systems_stub
-        )
         # Override the fixture data to have a nil suggested_name_display for the first team
         path = Rails.root.join('modules', 'mobile', 'spec', 'support', 'fixtures', 'all_triage_teams.json')
         fixture_data = JSON.parse(File.read(path))
         fixture_data.first['suggested_name_display'] = nil
         data = Vets::Collection.new(fixture_data, AllTriageTeams)
+        MyHealth::FacilitiesHelper.set_health_care_system_names(data)
         allow_any_instance_of(SM::Client).to receive(:get_all_triage_teams).and_return(data)
 
         get('/mobile/v0/messaging/health/allrecipients', headers: sis_headers, params:)
@@ -176,29 +135,38 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
         path = Rails.root.join('modules', 'mobile', 'spec', 'support', 'fixtures',
                                'all_triage_teams_with_duplicates.json')
         data = Vets::Collection.new(JSON.parse(File.read(path)), AllTriageTeams)
+        MyHealth::FacilitiesHelper.set_health_care_system_names(data)
         allow_any_instance_of(SM::Client).to receive(:get_all_triage_teams).and_return(data)
       end
 
       it 'returns a list of the name and station number for each unique care system in meta' do
-        VCR.use_cassette('mobile/lighthouse_facilities/200_facilities_977_978_979') do
-          get('/mobile/v0/messaging/health/allrecipients', headers: sis_headers, params:)
-        end
+        get('/mobile/v0/messaging/health/allrecipients', headers: sis_headers, params:)
         expect(response).to be_successful
         expect(response.body).to be_a(String)
         parsed_response_meta = response.parsed_body['meta']
         care_systems = parsed_response_meta['careSystems']
         expect(care_systems.length).to be(10)
+        expect(care_systems[0]['healthCareSystemName']).to eq('VA Kansas City Health Care')
+        expect(care_systems[0]['stationNumber']).to eq('977')
         # rubocop:disable Layout/LineLength
-        expect(care_systems[0]['healthCareSystemName']).to eq('Manila VA Clinic')
-        expect(care_systems[1]['healthCareSystemName']).to eq('978')
-        expect(care_systems[2]['healthCareSystemName']).to eq('Chalmers P. Wylie Veterans Outpatient Clinic')
-        expect(care_systems[3]['healthCareSystemName']).to eq('VA New York State Healthcare (multiple facilities)')
-        expect(care_systems[4]['healthCareSystemName']).to eq('VA Kansas and Missouri Healthcare (multiple facilities)')
+        expect(care_systems[1]['healthCareSystemName']).to eq('VA Northern California Healthcare (multiple facilities)')
+        expect(care_systems[1]['stationNumber']).to eq('612A4')
+        expect(care_systems[2]['healthCareSystemName']).to eq('VA Columbus Health Care')
+        expect(care_systems[2]['stationNumber']).to eq('978')
+        expect(care_systems[3]['healthCareSystemName']).to eq('VA Dayton health care')
+        expect(care_systems[3]['stationNumber']).to eq('552')
+        expect(care_systems[4]['healthCareSystemName']).to eq('VA New York State Healthcare (multiple facilities)')
+        expect(care_systems[4]['stationNumber']).to eq('528')
         expect(care_systems[5]['healthCareSystemName']).to eq('VA Hudson Valley New York Healthcare (multiple facilities)')
-        expect(care_systems[6]['healthCareSystemName']).to eq('VA Tennessee Healthcare (multiple facilities)')
-        expect(care_systems[7]['healthCareSystemName']).to eq('VA Nebraska and Iowa Healthcare (multiple facilities)')
-        expect(care_systems[8]['healthCareSystemName']).to eq('VA Missouri and Illinois Healthcare (multiple facilities)')
-        expect(care_systems[9]['healthCareSystemName']).to eq('VA Northern California Healthcare (multiple facilities)')
+        expect(care_systems[5]['stationNumber']).to eq('620')
+        expect(care_systems[6]['healthCareSystemName']).to eq('VA Missouri and Illinois Healthcare (multiple facilities)')
+        expect(care_systems[6]['stationNumber']).to eq('657')
+        expect(care_systems[7]['healthCareSystemName']).to eq('VA Kansas and Missouri Healthcare (multiple facilities)')
+        expect(care_systems[7]['stationNumber']).to eq('589')
+        expect(care_systems[8]['healthCareSystemName']).to eq('VA Tennessee Healthcare (multiple facilities)')
+        expect(care_systems[8]['stationNumber']).to eq('626')
+        expect(care_systems[9]['healthCareSystemName']).to eq('VA Nebraska and Iowa Healthcare (multiple facilities)')
+        expect(care_systems[9]['stationNumber']).to eq('636')
         # rubocop:enable Layout/LineLength
       end
     end
@@ -213,9 +181,6 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
           .with(anything, filter_virtual_groups: true)
           .and_call_original
 
-        allow_any_instance_of(Mobile::V0::RecipientsController).to receive(:get_unique_care_systems).and_return(
-          care_systems_stub
-        )
         VCR.use_cassette('sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients') do
           get '/mobile/v0/messaging/health/allrecipients', headers: sis_headers
         end
@@ -224,9 +189,6 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
       end
 
       it 'excludes VTGs from the response when toggle is off' do
-        allow_any_instance_of(Mobile::V0::RecipientsController).to receive(:get_unique_care_systems).and_return(
-          care_systems_stub
-        )
         VCR.use_cassette('sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups') do
           get '/mobile/v0/messaging/health/allrecipients', headers: sis_headers
         end
@@ -250,9 +212,6 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
 
       it 'includes VTGs when show_vtgs_mobile toggle is enabled' do
         allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_show_vtgs_mobile, anything).and_return(true)
-        allow_any_instance_of(Mobile::V0::RecipientsController).to receive(:get_unique_care_systems).and_return(
-          care_systems_stub
-        )
 
         VCR.use_cassette('sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups') do
           get '/mobile/v0/messaging/health/allrecipients', headers: sis_headers
@@ -282,9 +241,6 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
         end
 
         it 'validates schema for get_all_triage_teams' do
-          allow_any_instance_of(Mobile::V0::RecipientsController).to receive(:get_unique_care_systems).and_return(
-            care_systems_stub
-          )
           VCR.use_cassette('sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients') do
             get '/mobile/v0/messaging/health/allrecipients', headers: sis_headers
           end

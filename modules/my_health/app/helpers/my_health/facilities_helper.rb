@@ -16,12 +16,23 @@ module MyHealth
       '612' => 'VA Northern California Healthcare (multiple facilities)',
       '612A4' => 'VA Northern California Healthcare (multiple facilities)'
     }.freeze
+
+    NON_PROD_SYSTEM_NAMES = {
+      '979' => 'VA Dayton health care',
+      '989' => 'VA Cheyenne health care'
+    }.freeze
+
     def set_health_care_system_names(all_triage_teams_collection)
       triage_teams = all_triage_teams_collection.records
       triage_teams.each do |team|
-        station_number = convert_non_prod_id(team.station_number)
+        original_station = team.station_number
+        station_number = convert_non_prod_id(original_station)
         station_number = convert_prod_id(station_number)
-        team.health_care_system_name = COMPLICATED_SYSTEMS[station_number] || team.health_care_system_name
+        non_prod_name = NON_PROD_SYSTEM_NAMES[original_station] if station_number != original_station
+        team.health_care_system_name = COMPLICATED_SYSTEMS[station_number] ||
+                                       non_prod_name ||
+                                       team.health_care_system_name ||
+                                       station_number
         team.station_number = station_number
       end
       all_triage_teams_collection

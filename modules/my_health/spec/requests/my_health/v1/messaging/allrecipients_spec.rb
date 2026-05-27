@@ -56,6 +56,7 @@ RSpec.describe 'MyHealth::V1::Messaging::Allrecipients', type: :request do
       expect(response).to be_successful
       resp_body = JSON.parse(response.body)
       expect(resp_body['data'][0]['attributes']['station_number']).to eq('552')
+      expect(resp_body['data'][0]['attributes']['health_care_system_name']).to eq('VA Dayton health care')
     end
 
     it 'replaces missing health care system ids in prod environment' do
@@ -83,7 +84,7 @@ RSpec.describe 'MyHealth::V1::Messaging::Allrecipients', type: :request do
       end
     end
 
-    it 'does not replace existing health care system names but does replace non-prod station_numbers' do
+    it 'applies non-prod system name override and converts station_numbers' do
       VCR.use_cassette('sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients') do
         get '/my_health/v1/messaging/allrecipients'
       end
@@ -91,6 +92,7 @@ RSpec.describe 'MyHealth::V1::Messaging::Allrecipients', type: :request do
       expect(response).to be_successful
       resp_body = JSON.parse(response.body)
       expect(resp_body['data'][0]['attributes']['station_number']).to eq('552')
+      expect(resp_body['data'][0]['attributes']['health_care_system_name']).to eq('VA Dayton health care')
     end
 
     it 'responds to GET #index' do

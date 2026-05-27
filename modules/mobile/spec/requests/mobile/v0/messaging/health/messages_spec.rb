@@ -102,7 +102,8 @@ RSpec.describe 'Mobile::V0::Messaging::Health::Messages', type: :request do
         expect(response).to be_successful
         expect(response.body).to be_a(String)
         expect(response.parsed_body['meta']['userInTriageTeam']).to be(true)
-        expect(response.parsed_body['meta']['stationNumber']).to eq('979')
+        # Station 979 is converted to 552 in non-prod by FacilitiesHelper
+        expect(response.parsed_body['meta']['stationNumber']).to eq('552')
         expect(response).to match_camelized_response_schema('message', strict: false)
       end
 

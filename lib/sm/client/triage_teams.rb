@@ -60,6 +60,7 @@ module SM
 
         # Create collection once with all data ready
         collection = Vets::Collection.new(filtered_teams, AllTriageTeams, metadata:, errors: json[:errors])
+        MyHealth::FacilitiesHelper.set_health_care_system_names(collection)
         cache_triage_team_station_numbers(user_uuid, collection.data)
         log_health_care_system_names(collection.data)
 

@@ -131,7 +131,7 @@ describe 'sm client' do
         ).once
 
         expect(Rails.logger).to have_received(:warn).with(
-          /AllTriageTeams missing healthCareSystemName.*Team B.*Team C/
+          /AllTriageTeams missing healthCareSystemName.*Team C/
         ).once
       end
 
@@ -192,6 +192,77 @@ describe 'sm client' do
             # When cache is empty and API returns empty, result is an empty array
             expect(result).to be_an(Array)
             expect(result).to be_empty
+          end
+        end
+      end
+    end
+
+    describe 'station number and health care system name processing' do
+      it 'converts non-prod station numbers' do
+        VCR.use_cassette 'sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients' do
+          VCR.use_cassette('sm_client/get_unique_care_systems') do
+            collection = client.get_all_triage_teams('1234')
+
+            # VCR cassette has station 979, which should be converted to 552 in non-prod
+            team = collection.data.find { |t| t.triage_team_id == 4_399_547 }
+            expect(team.station_number).to eq('552')
+          end
+        end
+      end
+
+      it 'converts prod station number 612 to 612A4' do
+        cassette = 'sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients_include_complex_teams'
+        VCR.use_cassette(cassette) do
+          collection = client.get_all_triage_teams('1234')
+
+          team = collection.data.find { |t| t.triage_team_id == 4_399_554 }
+          expect(team.station_number).to eq('612A4')
+        end
+      end
+
+      it 'overrides health_care_system_name for COMPLICATED_SYSTEMS stations' do
+        cassette = 'sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients_include_complex_teams'
+        VCR.use_cassette(cassette) do
+          collection = client.get_all_triage_teams('1234')
+
+          expected_overrides = {
+            '528' => 'VA New York State Healthcare (multiple facilities)',
+            '589' => 'VA Kansas and Missouri Healthcare (multiple facilities)',
+            '620' => 'VA Hudson Valley New York Healthcare (multiple facilities)',
+            '626' => 'VA Tennessee Healthcare (multiple facilities)',
+            '636' => 'VA Nebraska and Iowa Healthcare (multiple facilities)',
+            '657' => 'VA Missouri and Illinois Healthcare (multiple facilities)',
+            '612A4' => 'VA Northern California Healthcare (multiple facilities)'
+          }
+
+          expected_overrides.each do |station, expected_name|
+            team = collection.data.find { |t| t.station_number == station }
+            msg = "expected station #{station} name '#{expected_name}', got '#{team.health_care_system_name}'"
+            expect(team.health_care_system_name).to eq(expected_name), msg
+          end
+        end
+      end
+
+      it 'applies non-prod system name override for converted station numbers' do
+        VCR.use_cassette 'sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients' do
+          VCR.use_cassette('sm_client/get_unique_care_systems') do
+            collection = client.get_all_triage_teams('1234')
+
+            # Station 979 → 552 gets NON_PROD_SYSTEM_NAMES override
+            team = collection.data.find { |t| t.triage_team_id == 4_399_547 }
+            expect(team.health_care_system_name).to eq('VA Dayton health care')
+          end
+        end
+      end
+
+      it 'caches converted station numbers' do
+        VCR.use_cassette 'sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients' do
+          VCR.use_cassette('sm_client/get_unique_care_systems') do
+            client.get_all_triage_teams('1234')
+
+            cached_data = TriageTeamCache.get_cached('1234-all-triage-teams-station-numbers')
+            cached_team = cached_data.find { |t| t.triage_team_id == 4_399_547 }
+            expect(cached_team.station_number).to eq('552')
           end
         end
       end
