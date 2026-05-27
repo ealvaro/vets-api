@@ -5,6 +5,9 @@ module Form1010cg
     include SetAWSConfig
     include LogMetrics
     include UploaderVirusScan
+    include CarrierWave::MiniMagick
+
+    process(convert: 'jpg', if: :heic?)
 
     storage :aws
 
@@ -24,15 +27,21 @@ module Form1010cg
     end
 
     def extension_allowlist
-      %w[jpg jpeg png pdf]
+      %w[jpg jpeg png pdf heic heif]
     end
 
     def content_type_allowlist
-      %w[image/jpg image/jpeg image/png application/pdf]
+      %w[image/jpg image/jpeg image/png application/pdf image/heic image/heif]
     end
 
     def size_range
       (1.byte)...(10.megabytes)
+    end
+
+    private
+
+    def heic?(file)
+      file.content_type.to_s.downcase =~ %r{^image/(heic|heif)$}
     end
   end
 end

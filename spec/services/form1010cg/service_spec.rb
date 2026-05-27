@@ -602,6 +602,36 @@ RSpec.describe Form1010cg::Service do
           expect(mule_soft_client).to have_received(:create_submission_v2).with(mule_soft_payload)
           expect(File).to have_received(:delete).with('spec/fixtures/files/doctors-note.jpg')
         end
+
+        it 'submits to mulesoft with a heic poa attachment' do
+          claim_with_mpi_veteran.parsed_form['poaAttachmentId'] = create(:form1010cg_attachment, :with_attachment).guid
+
+          expect_any_instance_of(Form1010cg::Attachment).to receive(:to_local_file).and_return(
+            'spec/fixtures/files/steelers.heic'
+          )
+
+          allow(File).to receive(:delete).with('spec/fixtures/files/steelers.heic')
+
+          subject
+
+          expect(mule_soft_client).to have_received(:create_submission_v2).with(mule_soft_payload)
+          expect(File).to have_received(:delete).with('spec/fixtures/files/steelers.heic')
+        end
+
+        it 'submits to mulesoft with a heif poa attachment' do
+          claim_with_mpi_veteran.parsed_form['poaAttachmentId'] = create(:form1010cg_attachment, :with_attachment).guid
+
+          expect_any_instance_of(Form1010cg::Attachment).to receive(:to_local_file).and_return(
+            'spec/fixtures/files/steelers.heif'
+          )
+
+          allow(File).to receive(:delete).with('spec/fixtures/files/steelers.heif')
+
+          subject
+
+          expect(mule_soft_client).to have_received(:create_submission_v2).with(mule_soft_payload)
+          expect(File).to have_received(:delete).with('spec/fixtures/files/steelers.heif')
+        end
       end
     end
 

@@ -56,7 +56,7 @@ describe Form1010cg::PoaUploader, :uploader_helpers do
         expect { subject.store!(source_file) }.to raise_error do |error|
           expect(error).to be_instance_of(CarrierWave::IntegrityError)
           expect(error.message).to eq(
-            'You can’t upload "gif" files. The allowed file types are: jpg, jpeg, png, pdf'
+            'You can’t upload "gif" files. The allowed file types are: jpg, jpeg, png, pdf, heic, heif'
           )
         end
       end
@@ -72,10 +72,36 @@ describe Form1010cg::PoaUploader, :uploader_helpers do
           expect(error).to be_instance_of(CarrierWave::IntegrityError)
           expect(error.message).to eq(
             # rubocop:disable Layout/LineLength
-            'You can’t upload application/json files. The allowed file types are: image/jpg, image/jpeg, image/png, application/pdf'
+            'You can’t upload application/json files. The allowed file types are: image/jpg, image/jpeg, image/png, application/pdf, image/heic, image/heif'
             # rubocop:enable Layout/LineLength
           )
         end
+      end
+    end
+
+    context 'with heic content-type' do
+      it 'allows heic extension and content type' do
+        expect(subject.extension_allowlist).to include('heic')
+        expect(subject.content_type_allowlist).to include('image/heic')
+      end
+
+      it 'accepts uppercase HEIC extension' do
+        normalized_extension = File.extname('steelers.HEIC').delete('.').downcase
+
+        expect(subject.extension_allowlist).to include(normalized_extension)
+      end
+    end
+
+    context 'with heif content-type' do
+      it 'allows heif extension and content type' do
+        expect(subject.extension_allowlist).to include('heif')
+        expect(subject.content_type_allowlist).to include('image/heif')
+      end
+
+      it 'accepts uppercase HEIF extension' do
+        normalized_extension = File.extname('steelers.HEIF').delete('.').downcase
+
+        expect(subject.extension_allowlist).to include(normalized_extension)
       end
     end
 
@@ -141,6 +167,35 @@ describe Form1010cg::PoaUploader, :uploader_helpers do
           expect(subject.versions).to eq({})
         end
       end
+    end
+  end
+
+  describe 'processing' do
+    let(:heic_file) { Rack::Test::UploadedFile.new('spec/fixtures/files/steelers.heic', 'image/heic') }
+    let(:heif_file) { Rack::Test::UploadedFile.new('spec/fixtures/files/steelers.heif', 'image/heif') }
+
+    it 'registers HEIC/HEIF conversion processing' do
+      expect(described_class.processors).to include([:convert, 'jpg', :heic?, :if])
+    end
+
+    it 'marks HEIC files for conversion' do
+      expect(subject.send(:heic?, heic_file)).to be_truthy
+    end
+
+    it 'marks HEIF files for conversion' do
+      expect(subject.send(:heic?, heif_file)).to be_truthy
+    end
+
+    it 'marks uppercase HEIC MIME type for conversion' do
+      uppercase_heic_file = Rack::Test::UploadedFile.new('spec/fixtures/files/steelers.heic', 'IMAGE/HEIC')
+
+      expect(subject.send(:heic?, uppercase_heic_file)).to be_truthy
+    end
+
+    it 'does not mark non-HEIC/HEIF files for conversion' do
+      jpg_file = Rack::Test::UploadedFile.new('spec/fixtures/files/doctors-note.jpg', 'image/jpg')
+
+      expect(subject.send(:heic?, jpg_file)).to be_falsey
     end
   end
 
