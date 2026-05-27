@@ -42,6 +42,8 @@ module SurvivorsBenefits
         return unless Flipper.enabled?(:survivors_benefits_form_enabled)
 
         init(saved_claim_id, user_account_uuid)
+        # benefits_intake_uuid comes from here
+        @intake_service ||= reset_intake_service
 
         # generate and validate claim pdf documents
         @form_path = process_document(@claim.to_pdf(@claim.id, { extras_redesign: true, omit_esign_stamp: true }))
@@ -77,8 +79,6 @@ module SurvivorsBenefits
           raise SurvivorsBenefitsBenefitIntakeError,
                 "Unable to find SurvivorsBenefits::SavedClaim #{saved_claim_id}"
         end
-
-        @intake_service = ::BenefitsIntake::Service.new
       end
 
       # Create a monitor to be used for _this_ job
@@ -153,6 +153,38 @@ module SurvivorsBenefits
         govcio_upload if response.success?
 
         raise SurvivorsBenefitsBenefitIntakeError, response.to_s unless response.success?
+      end
+
+      # MyVA relies on SubmissionAttempt records to find submitted forms and create Submission
+      # in Progress cards on the MyVA page
+      #
+      # @return SubmissionAttempt
+      def update_form_submission_attempt
+        # If its a retry we need the new intake uuid for the submission
+        form_submission = @claim.form_submissions.order(created_at: :asc).last || FormSubmission.create_with(
+          form_type: @claim.form_id,
+          form_data: @claim.to_json,
+          saved_claim: @claim,
+          saved_claim_id: @claim.id,
+          user_account_id: @claim.user_account_id
+        ).find_or_create_by!(form_type: @claim.form_id, saved_claim_id: @claim.id)
+
+        # update the submission attempt as well
+        latest_form_submission_attempt = form_submission.latest_attempt
+        if latest_form_submission_attempt
+          latest_form_submission_attempt.update!(benefits_intake_uuid: @intake_service.uuid)
+        else
+          FormSubmissionAttempt.create_with(
+            form_submission:
+          ).find_or_create_by!(benefits_intake_uuid: @intake_service.uuid)
+        end
+      end
+
+      # Create a new instance of the Benefits Intake service for this job
+      #
+      # @return BenefitsIntake::Service
+      def reset_intake_service
+        @intake_service = ::BenefitsIntake::Service.new
       end
 
       def govcio_upload
