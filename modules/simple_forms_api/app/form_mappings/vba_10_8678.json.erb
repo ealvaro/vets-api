@@ -13,7 +13,7 @@
     "form1[0].#subform[0].Table1[0].Row<%= num %>[0].#subform[2].RadioButtonList[1]": "<%= app[:upper_or_lower][:lower_side] %>",
   <% end %>
 
-  "form1[0].#subform[0].Elect[0]": "<%= form.data['electTermination'] ? 1 : 'Off' %>",
+  "form1[0].#subform[0].Elect[0]": "<%= form.data['elect_termination'] ? 1 : 'Off' %>",
   "form1[0].#subform[0].Signature1[0]": "<%= form.signature %>",
   "form1[0].#subform[0].Date[0]": "<%= form.signature_date.strftime('%m/%d/%Y')%>"
 }
