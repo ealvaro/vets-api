@@ -810,6 +810,100 @@ RSpec.describe 'ClinicalNotesAdapter' do
     end
   end
 
+  describe '#extract_avs_binary — sibling Binary Bundle entry (Oracle Health live shape)' do
+    # Live document-reference/oracle-health/:id?includeBinary=true returns the PDF as a
+    # separate top-level Binary entry referenced by content[].attachment.url, not inline.
+    let(:oh_doc_ref) do
+      {
+        'resourceType' => 'DocumentReference',
+        'id' => 'doc-1',
+        'content' => [
+          { 'attachment' => { 'contentType' => 'application/pdf', 'url' => 'https://example.org/Binary/XR-doc-1' } },
+          { 'attachment' => { 'contentType' => 'application/xml', 'url' => 'https://example.org/Binary/XML-doc-1' } }
+        ]
+      }
+    end
+
+    let(:oh_bundle_entries) do
+      [
+        { 'resource' => oh_doc_ref },
+        { 'resource' => { 'resourceType' => 'Binary', 'id' => 'XR-doc-1',
+                          'contentType' => 'application/pdf', 'data' => 'JVBERi0xLjQK' } }
+      ]
+    end
+
+    it 'resolves the sibling Binary referenced by a pdf content attachment url' do
+      result = adapter.send(:extract_avs_binary, oh_doc_ref, oh_bundle_entries)
+      expect(result).to eq(content_type: 'application/pdf', binary: 'JVBERi0xLjQK')
+    end
+
+    it 'returns nil when no Binary entry matches the referenced id' do
+      orphaned = oh_bundle_entries.reject { |e| e['resource']['resourceType'] == 'Binary' }
+      result = adapter.send(:extract_avs_binary, oh_doc_ref, orphaned)
+      expect(result).to be_nil
+    end
+
+    it 'ignores non-AVS content types (xml) when resolving the reference' do
+      xml_only = oh_doc_ref.deep_dup
+      xml_only['content'] = [
+        { 'attachment' => { 'contentType' => 'application/xml', 'url' => 'https://example.org/Binary/XML-doc-1' } }
+      ]
+      entries = [
+        { 'resource' => xml_only },
+        { 'resource' => { 'resourceType' => 'Binary', 'id' => 'XML-doc-1',
+                          'contentType' => 'application/xml', 'data' => 'PHhtbD4=' } }
+      ]
+      expect(adapter.send(:extract_avs_binary, xml_only, entries)).to be_nil
+    end
+
+    it 'prefers a contained Binary over the sibling bundle reference' do
+      with_contained = oh_doc_ref.deep_dup
+      with_contained['contained'] = [
+        { 'resourceType' => 'Binary', 'contentType' => 'application/pdf', 'data' => 'Y29udGFpbmVk' }
+      ]
+      result = adapter.send(:extract_avs_binary, with_contained, oh_bundle_entries)
+      expect(result).to eq(content_type: 'application/pdf', binary: 'Y29udGFpbmVk')
+    end
+
+    it 'prefers inline content data over the sibling bundle reference' do
+      with_inline = oh_doc_ref.deep_dup
+      with_inline['content'].first['attachment']['data'] = 'aW5saW5l'
+      result = adapter.send(:extract_avs_binary, with_inline, oh_bundle_entries)
+      expect(result).to eq(content_type: 'application/pdf', binary: 'aW5saW5l')
+    end
+
+    it 'returns nil when bundle_entries is not provided (default arg, no inline data)' do
+      expect(adapter.send(:extract_avs_binary, oh_doc_ref)).to be_nil
+    end
+  end
+
+  describe '#parse_avs_binary' do
+    let(:doc_entry) do
+      { 'resource' => {
+        'resourceType' => 'DocumentReference', 'id' => 'doc-1',
+        'content' => [
+          { 'attachment' => { 'contentType' => 'application/pdf', 'url' => 'https://example.org/Binary/XR-doc-1' } }
+        ]
+      } }
+    end
+
+    let(:bundle_entries) do
+      [doc_entry,
+       { 'resource' => { 'resourceType' => 'Binary', 'id' => 'XR-doc-1',
+                         'contentType' => 'application/pdf', 'data' => 'JVBERi0xLjQK' } }]
+    end
+
+    it 'returns a BinaryData object resolved from a sibling Binary entry' do
+      result = adapter.parse_avs_binary(doc_entry, bundle_entries)
+      expect(result).to be_a(UnifiedHealthData::BinaryData)
+      expect(result).to have_attributes('content_type' => 'application/pdf', 'binary' => 'JVBERi0xLjQK')
+    end
+
+    it 'returns nil when no binary can be extracted' do
+      expect(adapter.parse_avs_binary(doc_entry, [doc_entry])).to be_nil
+    end
+  end
+
   describe '#build_avs_metadata_by_appointment' do
     let(:doc_ref) do
       {

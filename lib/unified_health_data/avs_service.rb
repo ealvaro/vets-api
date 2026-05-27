@@ -32,7 +32,7 @@ module UnifiedHealthData
         end
         return nil if summary.nil?
 
-        clinical_notes_adapter.parse_avs_binary(summary)
+        clinical_notes_adapter.parse_avs_binary(summary, body['entry'])
       end
     end
 

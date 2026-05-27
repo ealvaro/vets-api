@@ -80,9 +80,12 @@ module UnifiedHealthData
                                                  })
       end
 
-      def parse_avs_binary(avs)
+      # @param avs [Hash] the matched DocumentReference Bundle entry
+      # @param bundle_entries [Array<Hash>, nil] all Bundle entries, used to resolve
+      #   a sibling Binary resource referenced by content[].attachment.url
+      def parse_avs_binary(avs, bundle_entries = nil)
         record = avs['resource']
-        avs_binary_data = extract_avs_binary(record)
+        avs_binary_data = extract_avs_binary(record, bundle_entries)
         return nil unless record && avs_binary_data
 
         UnifiedHealthData::BinaryData.new(avs_binary_data)
@@ -473,28 +476,68 @@ module UnifiedHealthData
         nil
       end
 
-      def extract_avs_binary(record)
-        # First check contained to see if we get an item with content type either pdf or plain text
-        # in the contained array with a data string
-        if array_and_has_items(record['contained'])
-          resource = record['contained'].find do |res|
-            res['resourceType'] == FHIR_RESOURCE_TYPES[:BINARY]
-          end
-          if resource && resource['data'] && AVS_CONTENT_TYPES.include?(resource['contentType'])
-            return { content_type: resource['contentType'], binary: resource['data'] }
-          end
+      # Extracts the AVS binary from a DocumentReference, trying each known delivery
+      # shape in priority order: a contained Binary, an inline content attachment,
+      # then a sibling Binary entry referenced by url (Oracle Health).
+      #
+      # @return [Hash, nil] { content_type:, binary: } or nil when none match
+      def extract_avs_binary(record, bundle_entries = nil)
+        extract_binary_from_contained(record) ||
+          extract_binary_from_inline_content(record) ||
+          extract_binary_from_bundle_reference(record, bundle_entries)
+      end
+
+      # Binary nested in DocumentReference.contained[] with an inline data string.
+      def extract_binary_from_contained(record)
+        return nil unless array_and_has_items(record['contained'])
+
+        resource = record['contained'].find { |res| res['resourceType'] == FHIR_RESOURCE_TYPES[:BINARY] }
+        return nil unless resource && resource['data'] && AVS_CONTENT_TYPES.include?(resource['contentType'])
+
+        { content_type: resource['contentType'], binary: resource['data'] }
+      end
+
+      # Base64 binary inline on a content[].attachment.data field.
+      def extract_binary_from_inline_content(record)
+        return nil unless array_and_has_items(record['content'])
+
+        content_item = record['content'].find do |item|
+          item.dig('attachment', 'data') && AVS_CONTENT_TYPES.include?(item.dig('attachment', 'contentType'))
         end
+        return nil unless content_item
 
-        # Fallback check for pdf or plain text with data string in the content array
-        if array_and_has_items(record['content'])
-          content_item = record['content'].find do |item|
-            item.dig('attachment', 'data') && AVS_CONTENT_TYPES.include?(item.dig('attachment', 'contentType'))
-          end
+        { content_type: content_item['attachment']['contentType'], binary: content_item['attachment']['data'] }
+      end
 
-          if content_item
-            return { content_type: content_item['attachment']['contentType'],
-                     binary: content_item['attachment']['data'] }
-          end
+      # Oracle Health returns the binary as a separate top-level Bundle entry,
+      # referenced by content[].attachment.url (e.g. ".../Binary/XR-20875864668")
+      # rather than inline.
+      def extract_binary_from_bundle_reference(record, bundle_entries)
+        return nil unless array_and_has_items(record['content']) && array_and_has_items(bundle_entries)
+
+        resolve_binary_from_bundle(record['content'], bundle_entries)
+      end
+
+      # Resolves a pdf/plain-text content attachment's url reference
+      # (".../Binary/<id>") to the matching sibling Binary resource in the Bundle
+      # and returns its base64 data.
+      #
+      # @param content [Array<Hash>] the DocumentReference content[] array
+      # @param bundle_entries [Array<Hash>] all Bundle entries
+      # @return [Hash, nil] { content_type:, binary: } or nil when unresolved
+      def resolve_binary_from_bundle(content, bundle_entries)
+        binaries_by_id = bundle_entries.filter_map { |entry| entry['resource'] }
+                                       .select { |res| res['resourceType'] == FHIR_RESOURCE_TYPES[:BINARY] }
+                                       .index_by { |res| res['id'] }
+        return nil if binaries_by_id.empty?
+
+        content.each do |item|
+          content_type = item.dig('attachment', 'contentType')
+          url = item.dig('attachment', 'url')
+          next unless url && AVS_CONTENT_TYPES.include?(content_type)
+
+          binary = binaries_by_id[url.split('/').last]
+          return { content_type:, binary: binary['data'] } if binary && binary['data']
         end
         nil
       end

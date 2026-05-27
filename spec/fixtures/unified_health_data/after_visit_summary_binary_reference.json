@@ -1,0 +1,139 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "20875864668",
+        "meta": {
+          "versionId": "1",
+          "lastUpdated": "2026-03-12T15:59:21.000Z"
+        },
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p><b>Document Reference</b></p><p><b>Patient Name</b>: GUSTAV, HOOPER J</p><p><b>Document Type</b>: Ambulatory Patient Summary</p><p><b>Document Category</b>: Clinical Note</p><p><b>Document Title</b>: Ambulatory Visit Summary</p><p><b>Service End Date</b>: Mar 12, 2026 10:59 A.M. CDT</p><p><b>Document Status</b>: Final</p><p><b>Verifying Provider</b>: Borland, Victoria A</p></div>"
+        },
+        "identifier": [
+          {
+            "system": "https://fhir.cerner.com/ceuuid",
+            "value": "e552a601-e6dd-47a6-b78e-7d3e6e2d8648-20875864668-2026031215592200"
+          }
+        ],
+        "status": "current",
+        "docStatus": "final",
+        "type": {
+          "coding": [
+            {
+              "system": "https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/72",
+              "code": "4189669",
+              "display": "Ambulatory Patient Summary",
+              "userSelected": true
+            },
+            {
+              "system": "http://loinc.org",
+              "code": "96345-4",
+              "userSelected": false
+            }
+          ],
+          "text": "Ambulatory Patient Summary"
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://hl7.org/fhir/us/core/CodeSystem/us-core-documentreference-category",
+                "code": "clinical-note",
+                "display": "Clinical Note",
+                "userSelected": false
+              }
+            ],
+            "text": "Clinical Note"
+          }
+        ],
+        "subject": {
+          "reference": "Patient/72339200",
+          "display": "GUSTAV, HOOPER J"
+        },
+        "date": "2026-03-12T15:59:21Z",
+        "author": [
+          {
+            "reference": "Practitioner/63662034",
+            "display": "Borland, Victoria A"
+          }
+        ],
+        "authenticator": {
+          "reference": "Practitioner/63662034",
+          "display": "Borland, Victoria A"
+        },
+        "custodian": {
+          "reference": "Organization/1938077",
+          "display": "668 Mann-Grandstaff WA VA Medical Center"
+        },
+        "content": [
+          {
+            "attachment": {
+              "contentType": "application/pdf",
+              "url": "https://sqa.ehrm.das.va.gov/cerner/fhir/v2/r4/d45741b3-8335-463d-ab16-8c5f0bcf78ed/Binary/XR-20875864668",
+              "title": "Ambulatory Visit Summary",
+              "creation": "2026-03-12T15:59:21.000Z"
+            },
+            "format": {
+              "system": "http://ihe.net/fhir/ValueSet/IHE.FormatCode.codesystem",
+              "code": "urn:ihe:iti:xds:2017:mimeTypeSufficient",
+              "display": "mimeType Sufficient"
+            }
+          },
+          {
+            "attachment": {
+              "contentType": "application/xml",
+              "url": "https://sqa.ehrm.das.va.gov/cerner/fhir/v2/r4/d45741b3-8335-463d-ab16-8c5f0bcf78ed/Binary/XML-20875864668",
+              "title": "Ambulatory Visit Summary",
+              "creation": "2026-03-12T15:59:21.000Z"
+            },
+            "format": {
+              "system": "http://ihe.net/fhir/ValueSet/IHE.FormatCode.codesystem",
+              "code": "urn:ihe:iti:xds:2017:mimeTypeSufficient",
+              "display": "mimeType Sufficient"
+            }
+          },
+          {
+            "attachment": {
+              "contentType": "text/html",
+              "url": "https://sqa.ehrm.das.va.gov/cerner/fhir/v2/r4/d45741b3-8335-463d-ab16-8c5f0bcf78ed/Binary/TR-20875864668",
+              "title": "Ambulatory Visit Summary",
+              "creation": "2026-03-12T15:59:21.000Z"
+            },
+            "format": {
+              "system": "http://ihe.net/fhir/ValueSet/IHE.FormatCode.codesystem",
+              "code": "urn:ihe:iti:xds:2017:mimeTypeSufficient",
+              "display": "mimeType Sufficient"
+            }
+          }
+        ],
+        "context": {
+          "encounter": [
+            {
+              "reference": "Encounter/322695869"
+            }
+          ],
+          "period": {
+            "end": "2026-03-12T15:59:16Z"
+          }
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Binary",
+        "id": "XR-20875864668",
+        "meta": {
+          "versionId": "944ff4fbd91c7dace74e60112e402fee",
+          "lastUpdated": "2026-05-26T21:27:40.415+00:00"
+        },
+        "contentType": "application/pdf",
+        "data": "JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PC9TdWJ0eXBlL1R5cGUxL1R5cGUvRm9udC9CYXNlRm9udC9I"
+      }
+    }
+  ]
+}

@@ -193,6 +193,25 @@ describe UnifiedHealthData::AvsService, type: :service do
       end
     end
 
+    context 'when the binary is a separate Bundle entry (Oracle Health live shape)' do
+      # Live document-reference/oracle-health/:id?includeBinary=true responses return the PDF
+      # as a top-level Binary entry referenced by content[].attachment.url, not inline.
+      let(:avs_sample_response) do
+        JSON.parse(Rails.root.join(
+          'spec', 'fixtures', 'unified_health_data', 'after_visit_summary_binary_reference.json'
+        ).read)
+      end
+
+      it 'resolves the sibling Binary referenced by content[].attachment.url' do
+        avs = service.get_avs_binary_data(doc_id: '20875864668')
+        expect(avs).not_to be_nil
+        expect(avs).to have_attributes(
+          'content_type' => 'application/pdf',
+          'binary' => start_with('JVBERi0xLjQKJeLj')
+        )
+      end
+    end
+
     context 'when the user has no ICN' do
       let(:user) { build(:user, :loa3, icn: nil) }
 
