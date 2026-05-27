@@ -27,6 +27,10 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
     Timecop.freeze(Time.zone.now)
     allow_any_instance_of(ClaimsApi::EVSSService::Base).to receive(:submit).and_return OpenStruct.new(claimId: 1337)
     allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v2_enable_FES).and_return(true)
+    # Set fixed birthdate (65 years ago) to prevent flaky tests from random birthdates crossing 13-year validation
+    profile = build(:mpi_profile, birth_date: (Time.zone.today - 65.years).strftime('%Y%m%d'))
+    profile_response = build(:find_profile_response, profile:)
+    allow_any_instance_of(MPIData).to receive(:response_from_redis_or_service).and_return(profile_response)
   end
 
   after do

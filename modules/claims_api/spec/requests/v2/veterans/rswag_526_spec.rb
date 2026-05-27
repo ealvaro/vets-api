@@ -13,6 +13,13 @@ describe 'DisabilityCompensation', openapi_spec: Rswag::TextHelpers.new.claims_a
   let(:veteran_mpi_data) { MPIData.new }
   let(:veteran) { ClaimsApi::Veteran.new }
 
+  before do
+    # Set fixed birthdate (65 years ago) to prevent flaky tests from random birthdates crossing 13-year validation
+    profile = build(:mpi_profile, birth_date: (Time.zone.today - 65.years).strftime('%Y%m%d'))
+    profile_response = build(:find_profile_response, profile:)
+    allow_any_instance_of(MPIData).to receive(:response_from_redis_or_service).and_return(profile_response)
+  end
+
   # Build the dropdown for examples
   def append_example_metadata(example, response)
     example.metadata[:response][:content] = {
