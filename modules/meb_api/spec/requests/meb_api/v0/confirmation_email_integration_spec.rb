@@ -85,4 +85,30 @@ RSpec.describe 'MEB API Confirmation Email Integration', type: :request do
                      MebApi::V0::Submit10297FormConfirmation,
                      { form_type: '10297' }
   end
+
+  describe 'POST /meb_api/v0/send_confirmation_email (Chapter 1606)' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:meb_1606_30_confirmation_pages).and_return(true)
+    end
+
+    include_examples 'confirmation email endpoint',
+                     'form:1990_chapter1606',
+                     '/meb_api/v0/send_confirmation_email',
+                     :form1990meb_confirmation_email,
+                     MebApi::V0::Submit1606FormConfirmation,
+                     { chapter_type: 'chapter1606' }
+  end
+
+  describe 'POST /meb_api/v0/send_confirmation_email (Chapter 30)' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:meb_1606_30_confirmation_pages).and_return(true)
+    end
+
+    include_examples 'confirmation email endpoint',
+                     'form:1990_chapter30',
+                     '/meb_api/v0/send_confirmation_email',
+                     :form1990meb_confirmation_email,
+                     MebApi::V0::Submit30FormConfirmation,
+                     { chapter_type: 'chapter30' }
+  end
 end

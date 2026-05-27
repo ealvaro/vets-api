@@ -486,6 +486,168 @@ RSpec.describe 'MebApi::V0 EducationBenefits', type: :request do
         }
       end
     end
+
+    context 'when chapter_type is provided for 1606/30' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:meb_1606_30_confirmation_pages).and_return(true)
+      end
+
+      it 'sends Chapter 1606 confirmation email when chapter_type is chapter1606' do
+        allow(MebApi::V0::Submit1606FormConfirmation).to receive(:perform_async)
+        post '/meb_api/v0/send_confirmation_email', params: {
+          claim_status: 'ELIGIBLE',
+          email: 'test@test.com',
+          first_name: 'test',
+          chapter_type: 'chapter1606'
+        }
+        expect(MebApi::V0::Submit1606FormConfirmation).to have_received(:perform_async)
+          .with('ELIGIBLE', 'test@test.com', 'TEST', user.icn)
+      end
+
+      it 'sends Chapter 30 confirmation email when chapter_type is chapter30' do
+        allow(MebApi::V0::Submit30FormConfirmation).to receive(:perform_async)
+        post '/meb_api/v0/send_confirmation_email', params: {
+          claim_status: 'ELIGIBLE',
+          email: 'test@test.com',
+          first_name: 'test',
+          chapter_type: 'chapter30'
+        }
+        expect(MebApi::V0::Submit30FormConfirmation).to have_received(:perform_async)
+          .with('ELIGIBLE', 'test@test.com', 'TEST', user.icn)
+      end
+
+      it 'defaults to 1990MEB when chapter_type is chapter33' do
+        allow(MebApi::V0::Submit1990mebFormConfirmation).to receive(:perform_async)
+        post '/meb_api/v0/send_confirmation_email', params: {
+          claim_status: 'ELIGIBLE',
+          email: 'test@test.com',
+          first_name: 'test',
+          chapter_type: 'chapter33'
+        }
+        expect(MebApi::V0::Submit1990mebFormConfirmation).to have_received(:perform_async)
+          .with('ELIGIBLE', 'test@test.com', 'TEST', user.icn)
+      end
+
+      it 'defaults to 1990MEB when feature flag is disabled' do
+        allow(Flipper).to receive(:enabled?).with(:meb_1606_30_confirmation_pages).and_return(false)
+        allow(MebApi::V0::Submit1990mebFormConfirmation).to receive(:perform_async)
+        post '/meb_api/v0/send_confirmation_email', params: {
+          claim_status: 'ELIGIBLE',
+          email: 'test@test.com',
+          first_name: 'test',
+          chapter_type: 'chapter1606'
+        }
+        expect(MebApi::V0::Submit1990mebFormConfirmation).to have_received(:perform_async)
+          .with('ELIGIBLE', 'test@test.com', 'TEST', user.icn)
+      end
+    end
+
+    context 'backwards compatibility - when chapter_type is not provided' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:meb_1606_30_confirmation_pages).and_return(true)
+      end
+
+      it 'defaults to 1990MEB when chapter_type is missing' do
+        allow(MebApi::V0::Submit1990mebFormConfirmation).to receive(:perform_async)
+        post '/meb_api/v0/send_confirmation_email', params: {
+          claim_status: 'ELIGIBLE',
+          email: 'test@test.com',
+          first_name: 'test'
+        }
+        expect(MebApi::V0::Submit1990mebFormConfirmation).to have_received(:perform_async)
+          .with('ELIGIBLE', 'test@test.com', 'TEST', user.icn)
+      end
+
+      it 'defaults to 1990MEB when chapter_type is nil' do
+        allow(MebApi::V0::Submit1990mebFormConfirmation).to receive(:perform_async)
+        post '/meb_api/v0/send_confirmation_email', params: {
+          claim_status: 'ELIGIBLE',
+          email: 'test@test.com',
+          first_name: 'test',
+          chapter_type: nil
+        }
+        expect(MebApi::V0::Submit1990mebFormConfirmation).to have_received(:perform_async)
+          .with('ELIGIBLE', 'test@test.com', 'TEST', user.icn)
+      end
+
+      it 'defaults to 1990MEB when chapter_type is empty string' do
+        allow(MebApi::V0::Submit1990mebFormConfirmation).to receive(:perform_async)
+        post '/meb_api/v0/send_confirmation_email', params: {
+          claim_status: 'ELIGIBLE',
+          email: 'test@test.com',
+          first_name: 'test',
+          chapter_type: ''
+        }
+        expect(MebApi::V0::Submit1990mebFormConfirmation).to have_received(:perform_async)
+          .with('ELIGIBLE', 'test@test.com', 'TEST', user.icn)
+      end
+
+      it 'defaults to 1990MEB when chapter_type is unrecognized' do
+        allow(MebApi::V0::Submit1990mebFormConfirmation).to receive(:perform_async)
+        post '/meb_api/v0/send_confirmation_email', params: {
+          claim_status: 'ELIGIBLE',
+          email: 'test@test.com',
+          first_name: 'test',
+          chapter_type: 'invalid_chapter'
+        }
+        expect(MebApi::V0::Submit1990mebFormConfirmation).to have_received(:perform_async)
+          .with('ELIGIBLE', 'test@test.com', 'TEST', user.icn)
+      end
+    end
+
+    context 'case sensitivity of chapter_type parameter' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:meb_1606_30_confirmation_pages).and_return(true)
+      end
+
+      it 'handles CHAPTER1606 (uppercase) correctly' do
+        allow(MebApi::V0::Submit1606FormConfirmation).to receive(:perform_async)
+        post '/meb_api/v0/send_confirmation_email', params: {
+          claim_status: 'ELIGIBLE',
+          email: 'test@test.com',
+          first_name: 'test',
+          chapter_type: 'CHAPTER1606'
+        }
+        expect(MebApi::V0::Submit1606FormConfirmation).to have_received(:perform_async)
+          .with('ELIGIBLE', 'test@test.com', 'TEST', user.icn)
+      end
+
+      it 'handles Chapter1606 (mixed case) correctly' do
+        allow(MebApi::V0::Submit1606FormConfirmation).to receive(:perform_async)
+        post '/meb_api/v0/send_confirmation_email', params: {
+          claim_status: 'ELIGIBLE',
+          email: 'test@test.com',
+          first_name: 'test',
+          chapter_type: 'Chapter1606'
+        }
+        expect(MebApi::V0::Submit1606FormConfirmation).to have_received(:perform_async)
+          .with('ELIGIBLE', 'test@test.com', 'TEST', user.icn)
+      end
+
+      it 'handles CHAPTER30 (uppercase) correctly' do
+        allow(MebApi::V0::Submit30FormConfirmation).to receive(:perform_async)
+        post '/meb_api/v0/send_confirmation_email', params: {
+          claim_status: 'ELIGIBLE',
+          email: 'test@test.com',
+          first_name: 'test',
+          chapter_type: 'CHAPTER30'
+        }
+        expect(MebApi::V0::Submit30FormConfirmation).to have_received(:perform_async)
+          .with('ELIGIBLE', 'test@test.com', 'TEST', user.icn)
+      end
+
+      it 'handles Chapter30 (mixed case) correctly' do
+        allow(MebApi::V0::Submit30FormConfirmation).to receive(:perform_async)
+        post '/meb_api/v0/send_confirmation_email', params: {
+          claim_status: 'ELIGIBLE',
+          email: 'test@test.com',
+          first_name: 'test',
+          chapter_type: 'Chapter30'
+        }
+        expect(MebApi::V0::Submit30FormConfirmation).to have_received(:perform_async)
+          .with('ELIGIBLE', 'test@test.com', 'TEST', user.icn)
+      end
+    end
   end
 
   describe 'VetTec type parameter casing' do

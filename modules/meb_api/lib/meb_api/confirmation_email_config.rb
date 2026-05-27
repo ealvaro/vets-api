@@ -8,22 +8,29 @@ module MebApi
     FORM_1990EMEB = '1990EMEB'
     FORM_10297 = '10297'
     FORM_225490 = '225490'
+    FORM_1990_CHAPTER1606 = '1990_CHAPTER1606'
+    FORM_1990_CHAPTER30 = '1990_CHAPTER30'
 
     # StatsD metric tags
     TAG_1990MEB = 'form:1990meb'
     TAG_1990EMEB = 'form:1990emeb'
     TAG_10297 = 'form:10297'
     TAG_225490 = 'form:225490'
+    TAG_1990_CHAPTER1606 = 'form:1990_chapter1606'
+    TAG_1990_CHAPTER30 = 'form:1990_chapter30'
 
     # Normalized claim statuses for metrics (prevent unbounded cardinality)
-    VALID_CLAIM_STATUSES = %w[ELIGIBLE DENIED PENDING OFFRAMP UNDER_REVIEW].freeze
+    # These are the actual claim statuses returned by DGI backend
+    VALID_CLAIM_STATUSES = %w[ELIGIBLE DENIED INPROGRESS ERROR].freeze
 
     # Default fallback key per form type (used when status is not ELIGIBLE or DENIED)
     DEFAULT_FALLBACK = {
       FORM_1990MEB => 'OFFRAMP',
       FORM_1990EMEB => 'OFFRAMP',
       FORM_10297 => 'UNDER_REVIEW',
-      FORM_225490 => 'OFFRAMP'
+      FORM_225490 => 'OFFRAMP',
+      FORM_1990_CHAPTER1606 => 'OFFRAMP',
+      FORM_1990_CHAPTER30 => 'OFFRAMP'
     }.freeze
 
     # Template ID mappings by form type and status
@@ -46,15 +53,26 @@ module MebApi
       FORM_225490 => {
         'ELIGIBLE' => :form225490_approved_confirmation_email,
         'OFFRAMP' => :form225490_offramp_confirmation_email
+      },
+      FORM_1990_CHAPTER1606 => {
+        'ELIGIBLE' => :form1990_chapter1606_approved_confirmation_email,
+        'OFFRAMP' => :form1990_chapter1606_offramp_confirmation_email
+      },
+      FORM_1990_CHAPTER30 => {
+        'ELIGIBLE' => :form1990_chapter30_approved_confirmation_email,
+        'OFFRAMP' => :form1990_chapter30_offramp_confirmation_email
       }
     }.freeze
 
     class << self
       # Normalize claim status to prevent unbounded metric cardinality
-      # @param status [String, Symbol] Raw claim status
-      # @return [String] Normalized status (ELIGIBLE, DENIED, PENDING, OFFRAMP, or OTHER)
+      # Maps frontend statuses to backend DGI statuses
+      # @param status [String, Symbol] Raw claim status from frontend
+      # @return [String] Normalized status (ELIGIBLE, DENIED, INPROGRESS, ERROR, or OTHER)
       def normalize_claim_status(status)
         normalized = status.to_s.upcase
+        # Map frontend 'IN_PROGRESS' to backend 'INPROGRESS'
+        normalized = 'INPROGRESS' if normalized == 'IN_PROGRESS'
         VALID_CLAIM_STATUSES.include?(normalized) ? normalized : 'OTHER'
       end
 

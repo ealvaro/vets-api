@@ -15,9 +15,22 @@ module MebApi
     class EducationBenefitsController < MebApi::V0::BaseController
       before_action :set_type, only: %i[claim_letter claim_status claimant_info eligibility]
 
+      # Default form type constants (used when chapter type is not 1606/30)
       FORM_TYPE = MebApi::ConfirmationEmailConfig::FORM_1990MEB
       FORM_TAG = MebApi::ConfirmationEmailConfig::TAG_1990MEB
       FLIPPER_KEY = :form1990meb_confirmation_email
+
+      # Chapter-type-aware configuration for confirmation emails
+      CONFIRMATION_EMAIL_CONFIG = {
+        'chapter1606' => {
+          worker: MebApi::V0::Submit1606FormConfirmation,
+          form_tag: MebApi::ConfirmationEmailConfig::TAG_1990_CHAPTER1606
+        },
+        'chapter30' => {
+          worker: MebApi::V0::Submit30FormConfirmation,
+          form_tag: MebApi::ConfirmationEmailConfig::TAG_1990_CHAPTER30
+        }
+      }.freeze
 
       def claimant_info
         response = automation_service.get_claimant_info(@form_type)
@@ -99,17 +112,18 @@ module MebApi
       end
 
       def send_confirmation_email
-        log_confirmation_email_request(FORM_TAG, FLIPPER_KEY)
+        config = resolve_email_config
+        log_confirmation_email_request(config[:form_tag], config[:flipper_key])
 
-        unless Flipper.enabled?(FLIPPER_KEY)
-          log_confirmation_email_skipped(FORM_TAG, 'flipper_disabled')
+        unless Flipper.enabled?(config[:flipper_key])
+          log_confirmation_email_skipped(config[:form_tag], 'flipper_disabled')
           return head :no_content
         end
 
-        attrs = validate_confirmation_email_attributes(FORM_TAG)
+        attrs = validate_confirmation_email_attributes(config[:form_tag])
         return head :unprocessable_entity unless attrs
 
-        dispatch_confirmation_email(attrs[:email])
+        dispatch_confirmation_email(attrs[:email], config)
       end
 
       def submit_enrollment_verification
@@ -150,14 +164,31 @@ module MebApi
         @form_type = type.casecmp('VetTec').zero? ? 'VetTec' : type.capitalize
       end
 
-      def dispatch_confirmation_email(email)
-        MebApi::V0::Submit1990mebFormConfirmation.perform_async(
+      def resolve_email_config
+        # Get chapter type from params (frontend sends 'chapter1606', 'chapter30', or 'chapter33')
+        chapter_type = params[:chapter_type].to_s.downcase
+
+        # Check if 1606/30 confirmation pages feature is enabled and if we have a matching config
+        if Flipper.enabled?(:meb_1606_30_confirmation_pages) && CONFIRMATION_EMAIL_CONFIG.key?(chapter_type)
+          CONFIRMATION_EMAIL_CONFIG[chapter_type].merge(flipper_key: FLIPPER_KEY)
+        else
+          # Default to 1990MEB configuration (Chapter 33 or when feature flag is off)
+          {
+            worker: MebApi::V0::Submit1990mebFormConfirmation,
+            form_tag: FORM_TAG,
+            flipper_key: FLIPPER_KEY
+          }
+        end
+      end
+
+      def dispatch_confirmation_email(email, config)
+        config[:worker].perform_async(
           params[:claim_status],
           email,
           params[:first_name]&.upcase || @current_user.first_name&.upcase,
           @current_user.icn
         )
-        log_confirmation_email_dispatched(FORM_TAG, params[:claim_status])
+        log_confirmation_email_dispatched(config[:form_tag], params[:claim_status])
       end
 
       def contact_info_service

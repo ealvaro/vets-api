@@ -5,10 +5,14 @@ require 'meb_api/confirmation_email_config'
 
 RSpec.describe MebApi::ConfirmationEmailConfig do
   describe '.normalize_claim_status' do
-    it 'returns the status for known values' do
-      %w[ELIGIBLE DENIED PENDING OFFRAMP UNDER_REVIEW].each do |status|
+    it 'returns the status for known DGI backend values' do
+      %w[ELIGIBLE DENIED INPROGRESS ERROR].each do |status|
         expect(described_class.normalize_claim_status(status)).to eq(status)
       end
+    end
+
+    it 'maps frontend IN_PROGRESS to backend INPROGRESS' do
+      expect(described_class.normalize_claim_status('IN_PROGRESS')).to eq('INPROGRESS')
     end
 
     it 'normalizes to uppercase' do
@@ -17,6 +21,8 @@ RSpec.describe MebApi::ConfirmationEmailConfig do
 
     it 'returns OTHER for unknown statuses' do
       expect(described_class.normalize_claim_status('UNKNOWN')).to eq('OTHER')
+      expect(described_class.normalize_claim_status('PENDING')).to eq('OTHER')
+      expect(described_class.normalize_claim_status('OFFRAMP')).to eq('OTHER')
     end
   end
 
@@ -34,7 +40,11 @@ RSpec.describe MebApi::ConfirmationEmailConfig do
         form10297_denied_confirmation_email: '10297_denied',
         form10297_under_review_confirmation_email: '10297_under_review',
         form225490_approved_confirmation_email: '225490_approved',
-        form225490_offramp_confirmation_email: '225490_offramp'
+        form225490_offramp_confirmation_email: '225490_offramp',
+        form1990_chapter1606_approved_confirmation_email: '1990_chapter1606_approved',
+        form1990_chapter1606_offramp_confirmation_email: '1990_chapter1606_offramp',
+        form1990_chapter30_approved_confirmation_email: '1990_chapter30_approved',
+        form1990_chapter30_offramp_confirmation_email: '1990_chapter30_offramp'
       )
     end
 
@@ -117,6 +127,40 @@ RSpec.describe MebApi::ConfirmationEmailConfig do
       it 'returns the offramp template for ERROR' do
         result = described_class.template_id(form_type: '225490', claim_status: 'ERROR')
         expect(result).to eq('225490_offramp')
+      end
+    end
+
+    context 'with FORM_1990_CHAPTER1606' do
+      it 'returns the approved template for ELIGIBLE' do
+        result = described_class.template_id(form_type: '1990_CHAPTER1606', claim_status: 'ELIGIBLE')
+        expect(result).to eq('1990_chapter1606_approved')
+      end
+
+      it 'returns the offramp template for DENIED' do
+        result = described_class.template_id(form_type: '1990_CHAPTER1606', claim_status: 'DENIED')
+        expect(result).to eq('1990_chapter1606_offramp')
+      end
+
+      it 'returns the offramp template for other statuses' do
+        result = described_class.template_id(form_type: '1990_CHAPTER1606', claim_status: 'PENDING')
+        expect(result).to eq('1990_chapter1606_offramp')
+      end
+    end
+
+    context 'with FORM_1990_CHAPTER30' do
+      it 'returns the approved template for ELIGIBLE' do
+        result = described_class.template_id(form_type: '1990_CHAPTER30', claim_status: 'ELIGIBLE')
+        expect(result).to eq('1990_chapter30_approved')
+      end
+
+      it 'returns the offramp template for DENIED' do
+        result = described_class.template_id(form_type: '1990_CHAPTER30', claim_status: 'DENIED')
+        expect(result).to eq('1990_chapter30_offramp')
+      end
+
+      it 'returns the offramp template for other statuses' do
+        result = described_class.template_id(form_type: '1990_CHAPTER30', claim_status: 'INPROGRESS')
+        expect(result).to eq('1990_chapter30_offramp')
       end
     end
   end
