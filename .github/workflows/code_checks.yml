@@ -253,6 +253,10 @@ jobs:
   build:
     name: Build and Cache Docker Image
     runs-on: ubuntu-16-cores-latest
+    permissions:
+      actions: write
+      contents: read
+      id-token: write
     env:
       BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
       DOCKER_BUILDKIT: 1
@@ -287,6 +291,33 @@ jobs:
         uses: aws-actions/amazon-ecr-login@19d944daaa35f0fa1d3f7f8af1d3f2e5de25c5b7 # v2.1.4
         with:
           mask-password: true
+
+      - name: Cleanup stale buildkit caches for this ref
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          deleted=0
+          skipped=0
+
+          mapfile -t cache_entries < <(gh api --paginate "repos/${{ github.repository }}/actions/caches" \
+            --hostname va.ghe.com \
+            --jq '.actions_caches[] | select(.ref == "${{ github.ref }}") | select(.key | startswith("buildkit-") or startswith("index-buildkit-")) | [.id, .key] | @tsv')
+
+          for entry in "${cache_entries[@]}"; do
+            id=$(echo "$entry" | cut -f1)
+            key=$(echo "$entry" | cut -f2)
+            if gh api --hostname va.ghe.com -X DELETE "repos/${{ github.repository }}/actions/caches/$id" --silent 2>/dev/null; then
+              echo "Deleted: $key"
+              deleted=$((deleted + 1))
+            else
+              echo "Skipped: $key"
+              skipped=$((skipped + 1))
+            fi
+          done
+
+          echo ""
+          echo "Done. Deleted: $deleted, Skipped: $skipped"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
