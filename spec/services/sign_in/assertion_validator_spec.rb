@@ -60,7 +60,7 @@ RSpec.describe SignIn::AssertionValidator do
       end
 
       context 'when jwt was not properly encoded' do
-        let(:assertion) { JWT.encode(assertion_payload, nil) }
+        let(:assertion) { JWT.encode(assertion_payload, nil, 'none') }
         let(:expected_error) { SignIn::Errors::AssertionMalformedJWTError }
         let(:expected_error_message) { 'Assertion is malformed' }
 

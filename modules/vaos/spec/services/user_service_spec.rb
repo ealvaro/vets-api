@@ -109,8 +109,8 @@ describe VAOS::UserService do
   end
 
   describe '#expiring_soon?' do
-    let(:valid_token) { JWT.encode({ exp: (Time.now.utc + 3.minutes).to_i }, nil) }
-    let(:expiring_token) { JWT.encode({ exp: (Time.now.utc + 1.minute).to_i }, nil) }
+    let(:valid_token) { JWT.encode({ exp: (Time.now.utc + 3.minutes).to_i }, nil, 'none') }
+    let(:expiring_token) { JWT.encode({ exp: (Time.now.utc + 1.minute).to_i }, nil, 'none') }
     let(:falsely_encoded_token) { 'not a real token' }
 
     context 'when the token is valid and not expiring soon' do
