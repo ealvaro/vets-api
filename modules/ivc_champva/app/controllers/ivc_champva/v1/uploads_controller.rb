@@ -1532,7 +1532,6 @@ module IvcChampva
           enrollment = parsed_form_data['submission_type'].to_s.casecmp('enrollment').zero?
           backfill_enrollment_metadata!(raw_metadata) if enrollment
           metadata = IvcChampva::MetadataValidator.validate(raw_metadata)
-
           file_paths = docs_only_resubmission_supporting_paths_from_form(form)
 
           [file_paths, metadata.merge({ 'attachment_ids' => attachment_ids })]
@@ -1540,10 +1539,11 @@ module IvcChampva
       end
 
       def docs_only_resubmission_merge_fields(parsed_form_data)
+        submission_type = parsed_form_data['submission_type'].to_s
         fields = {
-          'submissionType' => parsed_form_data['submission_type'].to_s,
-          'docType' => parsed_form_data['form_number'],
-          'standalone-flag' => 'true' # kebab-case per downstream Pega requirement
+          'submissionType' => submission_type,
+          'docType' => "#{parsed_form_data['form_number']}-#{submission_type.upcase}",
+          'standalone-flag' => true # kebab-case per downstream Pega requirement
         }
         fields['uuid'] = parsed_form_data['claim_id'] if parsed_form_data['claim_id'].present?
         fields

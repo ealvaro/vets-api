@@ -21,6 +21,7 @@ RSpec.describe 'IvcChampva::V1::Forms::StatusUpdates', type: :request do
     context 'with valid payload' do
       before do
         allow_any_instance_of(IvcChampva::Email).to receive(:valid_environment?).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:va_notify_v2_ivc_champva_email).and_return(false)
       end
 
       it 'returns HTTP status 200 with same form_uuid but not all files' do

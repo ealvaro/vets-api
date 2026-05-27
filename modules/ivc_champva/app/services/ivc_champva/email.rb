@@ -7,11 +7,20 @@ module IvcChampva
     EMAIL_TEMPLATE_MAP = {
       '10-10D' => Settings.vanotify.services.ivc_champva.template_id.form_10_10d_email,
       '10-10D-EXTENDED' => Settings.vanotify.services.ivc_champva.template_id.form_10_10d_email,
-      # supplemental is the same as extended for now, need to update this when we have a separate template
-      '10-10D-SUPPLEMENTAL' => Settings.vanotify.services.ivc_champva.template_id.form_10_10d_email,
+      '10-10D-SUPPLEMENTAL' =>
+        Settings.vanotify.services.ivc_champva.template_id.form_10_10d_supplemental_existing_email,
+      '10-10D-SUPPLEMENTAL-EXISTING' =>
+        Settings.vanotify.services.ivc_champva.template_id.form_10_10d_supplemental_existing_email,
+      '10-10D-SUPPLEMENTAL-ENROLLMENT' =>
+        Settings.vanotify.services.ivc_champva.template_id.form_10_10d_supplemental_enrollment_email,
       '10-10D-FAILURE' => Settings.vanotify.services.ivc_champva.template_id.form_10_10d_failure_email,
       '10-10D-EXTENDED-FAILURE' => Settings.vanotify.services.ivc_champva.template_id.form_10_10d_failure_email,
-      '10-10D-SUPPLEMENTAL-FAILURE' => Settings.vanotify.services.ivc_champva.template_id.form_10_10d_failure_email,
+      '10-10D-SUPPLEMENTAL-FAILURE' =>
+        Settings.vanotify.services.ivc_champva.template_id.form_10_10d_supplemental_existing_failure_email,
+      '10-10D-SUPPLEMENTAL-EXISTING-FAILURE' =>
+        Settings.vanotify.services.ivc_champva.template_id.form_10_10d_supplemental_existing_failure_email,
+      '10-10D-SUPPLEMENTAL-ENROLLMENT-FAILURE' =>
+        Settings.vanotify.services.ivc_champva.template_id.form_10_10d_supplemental_enrollment_failure_email,
       '10-7959F-1' => Settings.vanotify.services.ivc_champva.template_id.form_10_7959f_1_email,
       '10-7959F-1-FAILURE' => Settings.vanotify.services.ivc_champva.template_id.form_10_7959f_1_failure_email,
       '10-7959F-2' => Settings.vanotify.services.ivc_champva.template_id.form_10_7959f_2_email,

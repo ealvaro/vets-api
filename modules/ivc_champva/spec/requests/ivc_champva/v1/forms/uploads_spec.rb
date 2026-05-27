@@ -1926,7 +1926,7 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
       _file_paths, metadata = controller.send(:get_docs_only_resubmission_file_paths_and_metadata, parsed_form_data)
 
       expect(metadata['uuid']).to eq(claim_uuid)
-      expect(metadata['docType']).to eq('10-10D-EXTENDED')
+      expect(metadata['docType']).to eq('10-10D-EXTENDED-EXISTING')
       expect(metadata['attachment_ids']).to eq(['Birth certificate'])
     end
   end

@@ -1779,6 +1779,10 @@ vanotify:
       template_id:
         form_10_10d_email: form_10_10d_email
         form_10_10d_failure_email: form_10_10d_failure_email
+        form_10_10d_supplemental_enrollment_email: form_10_10d_supplemental_enrollment_email
+        form_10_10d_supplemental_enrollment_failure_email: form_10_10d_supplemental_enrollment_failure_email
+        form_10_10d_supplemental_existing_email: form_10_10d_supplemental_existing_email
+        form_10_10d_supplemental_existing_failure_email: form_10_10d_supplemental_existing_failure_email
         form_10_7959a_email: form_10_7959a_email
         form_10_7959a_failure_email: form_10_7959a_failure_email
         form_10_7959c_email: form_10_7959c_email

@@ -113,14 +113,15 @@ RSpec.describe 'IvcChampva::V1::Uploads — 10-10D supplemental docs-only resubm
 
     expect(response).to have_http_status(:ok), -> { "body=#{response.body}" }
 
-    form_record = IvcChampvaForm.find_by(form_number: '10-10D-SUPPLEMENTAL')
+    form_record = IvcChampvaForm.find_by(form_number: '10-10D-SUPPLEMENTAL-EXISTING')
     expect(form_record).to be_present
     expect(form_record.file_name).not_to include('vha_10_10d-tmp.pdf')
   end
 
-  it 'composes docType, preserves submissionType casing, and uses form uuid when no claim_id' do
+  it 'composes docType from form_number + submission_type and preserves submissionType casing' do
     controller = IvcChampva::V1::UploadsController.new
     form_uuid = SecureRandom.uuid
+    claim_uuid = SecureRandom.uuid
     form_instance = double('FormInstance', metadata: { 'uuid' => form_uuid })
 
     allow(controller).to receive(:form_id_for_form_number).with('10-10D-SUPPLEMENTAL').and_return('vha_10_10d')
@@ -132,13 +133,20 @@ RSpec.describe 'IvcChampva::V1::Uploads — 10-10D supplemental docs-only resubm
     )
     allow(IvcChampva::MetadataValidator).to receive(:validate) { |m| m }
 
+    # Without claim_id, form's own uuid is preserved
     _file_paths, metadata = controller.send(
       :get_docs_only_resubmission_file_paths_and_metadata, base_payload
     )
-
-    expect(metadata['docType']).to eq('10-10D-SUPPLEMENTAL')
+    expect(metadata['docType']).to eq('10-10D-SUPPLEMENTAL-EXISTING')
     expect(metadata['submissionType']).to eq('existing')
     expect(metadata['uuid']).to eq(form_uuid)
+
+    # With claim_id, uuid comes from claim_id
+    payload_with_claim = base_payload.merge('claim_id' => claim_uuid)
+    _file_paths, metadata = controller.send(
+      :get_docs_only_resubmission_file_paths_and_metadata, payload_with_claim
+    )
+    expect(metadata['uuid']).to eq(claim_uuid)
   end
 
   it 'does not use docs-only persistence when flipper is off (falls through to standard merged flow)' do
@@ -146,14 +154,18 @@ RSpec.describe 'IvcChampva::V1::Uploads — 10-10D supplemental docs-only resubm
 
     post merged_route, params: base_payload, as: :json
 
-    expect(IvcChampvaForm.where(form_number: '10-10D-SUPPLEMENTAL').count).to eq(0)
+    expect(IvcChampvaForm.where('form_number LIKE ?', '10-10D-SUPPLEMENTAL%').count).to eq(0)
   end
 
   it 'accepts enrollment docs-only resubmission with empty veteran data' do
+    allow(IvcChampvaForm).to receive(:create!).and_call_original
+
     post merged_route, params: enrollment_payload, as: :json
 
     expect(response).to have_http_status(:ok), -> { "body=#{response.body}" }
-    expect(IvcChampvaForm.where(form_number: '10-10D-SUPPLEMENTAL').count).to be >= 1
+    expect(IvcChampvaForm).to have_received(:create!).with(
+      hash_including(form_number: '10-10D-SUPPLEMENTAL-ENROLLMENT')
+    )
   end
 
   it 'returns 422 when a supporting doc is missing its confirmation_code' do
