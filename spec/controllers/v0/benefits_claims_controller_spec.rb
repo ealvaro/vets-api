@@ -2515,29 +2515,27 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
         }
       end
 
-      it 'includes docs-only finalize metadata when enhanced flow flipper is enabled' do
-        metadata = controller.send(
-          :build_upload_metadata_for_claim,
-          claim,
-          champva_enhanced_flow_enabled: true
-        )
+      context 'when CST file uploader docs-only flipper is enabled' do
+        it 'includes docs-only finalize metadata' do
+          allow(controller).to receive(:champva_cst_file_uploader_docs_only_resubmission_enabled?).and_return(true)
+          metadata = controller.send(:build_upload_metadata_for_claim, claim)
 
-        expect(metadata).to eq(
-          base_metadata.merge(
-            'finalizeDestinationKey' => 'ivc_champva_docs_only_resubmission',
-            'submissionType' => 'existing'
+          expect(metadata).to eq(
+            base_metadata.merge(
+              'finalizeDestinationKey' => 'ivc_champva_docs_only_resubmission',
+              'submissionType' => 'existing'
+            )
           )
-        )
+        end
       end
 
-      it 'omits docs-only finalize metadata when enhanced flow flipper is disabled' do
-        metadata = controller.send(
-          :build_upload_metadata_for_claim,
-          claim,
-          champva_enhanced_flow_enabled: false
-        )
+      context 'when CST file uploader docs-only flipper is disabled' do
+        it 'omits docs-only finalize metadata' do
+          allow(controller).to receive(:champva_cst_file_uploader_docs_only_resubmission_enabled?).and_return(false)
+          metadata = controller.send(:build_upload_metadata_for_claim, claim)
 
-        expect(metadata).to eq(base_metadata)
+          expect(metadata).to eq(base_metadata)
+        end
       end
     end
 

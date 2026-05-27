@@ -79,8 +79,12 @@ module IvcChampva
         Datadog::Tracing.trace('IVC Champva Forms - Submit Merged 10-10d + OHI') do
           parsed_form_data = JSON.parse(params.to_json)
 
-          if docs_only_resubmission_flow_enabled?(parsed_form_data)
-            submit_merged_docs_only(parsed_form_data)
+          flow = docs_only_resubmission_flow(parsed_form_data)
+
+          if flow == :cst
+            submit_merged_docs_only_cst(parsed_form_data)
+          elsif flow == :form_submission
+            submit_merged_docs_only_form_submission(parsed_form_data)
           else
             process_standard_merged_champva_submission(parsed_form_data)
           end
@@ -92,9 +96,16 @@ module IvcChampva
         log_error_and_respond("Error submitting merged form: #{e.message}", e)
       end
 
-      def submit_merged_docs_only(parsed_form_data)
+      def submit_merged_docs_only_cst(parsed_form_data)
         validate_docs_only_resubmission!(parsed_form_data) if parsed_form_data['claim_id'].present?
         hydrate_docs_only_resubmission_data(parsed_form_data) if parsed_form_data['claim_id'].present?
+        IvcChampva::MetadataValidator.validate_docs_only_resubmission_cst(parsed_form_data)
+
+        response = process_docs_only_resubmission(parsed_form_data)
+        render json: response.fetch(:json), status: response.fetch(:status)
+      end
+
+      def submit_merged_docs_only_form_submission(parsed_form_data)
         IvcChampva::MetadataValidator.validate_docs_only_resubmission(parsed_form_data)
 
         response = process_docs_only_resubmission(parsed_form_data)
@@ -1440,7 +1451,28 @@ module IvcChampva
       end
 
       def docs_only_resubmission_flow_enabled?(parsed_form_data)
+        docs_only_resubmission_flow(parsed_form_data) != :none
+      end
+
+      def docs_only_resubmission_flow(parsed_form_data)
+        if cst_docs_only_resubmission_flow_enabled?(parsed_form_data)
+          :cst
+        elsif form_submission_docs_only_resubmission_flow_enabled?(parsed_form_data)
+          :form_submission
+        else
+          :none
+        end
+      end
+
+      def cst_docs_only_resubmission_flow_enabled?(parsed_form_data)
         docs_only_resubmission?(parsed_form_data) &&
+          parsed_form_data['claim_id'].present? &&
+          Flipper.enabled?(:champva_cst_file_uploader_docs_only_resubmission, @current_user)
+      end
+
+      def form_submission_docs_only_resubmission_flow_enabled?(parsed_form_data)
+        docs_only_resubmission?(parsed_form_data) &&
+          parsed_form_data['claim_id'].blank? &&
           Flipper.enabled?(:form1010d_enhanced_flow_enabled, @current_user)
       end
 
@@ -1479,9 +1511,21 @@ module IvcChampva
         source_form = IvcChampvaForm.where(form_uuid: parsed_form_data['claim_id'].to_s).order(updated_at: :desc).first
         raise ArgumentError, 'claim_id could not be resolved to an existing CHAMPVA form' if source_form.blank?
 
+        source_payload = source_form_payload(source_form)
+        hydrate_certification_fields(parsed_form_data, source_payload)
         hydrate_primary_contact_info(parsed_form_data, source_form)
-        hydrate_veteran_info(parsed_form_data, source_form)
-        hydrate_default_applicant(parsed_form_data, source_form)
+        hydrate_veteran_info(parsed_form_data, source_form, source_payload)
+        hydrate_applicants(parsed_form_data, source_form, source_payload)
+      end
+
+      def hydrate_certification_fields(parsed_form_data, source_payload)
+        parsed_form_data['certifier_role'] ||= source_payload['certifier_role'] || source_payload['certifierRole']
+        parsed_form_data['statement_of_truth_signature'] ||=
+          source_payload['statement_of_truth_signature'] || source_payload['statementOfTruthSignature']
+
+        parsed_form_data['certification'] ||= {}
+        parsed_form_data['certification']['date'] ||=
+          source_payload.dig('certification', 'date') || source_payload['certification_date']
       end
 
       def hydrate_primary_contact_info(parsed_form_data, source_form)
@@ -1493,28 +1537,79 @@ module IvcChampva
         name['last'] ||= source_form.last_name
       end
 
-      def hydrate_veteran_info(parsed_form_data, source_form)
+      def hydrate_veteran_info(parsed_form_data, source_form, source_payload)
         veteran = parsed_form_data['veteran'] ||= {}
+        source_veteran = source_payload['veteran'] || {}
 
         full_name = veteran['full_name'] ||= {}
         full_name['first'] ||= source_form.first_name
         full_name['last'] ||= source_form.last_name
+
+        veteran['ssn_or_tin'] ||= source_veteran['ssn_or_tin'] || source_veteran['ssnOrTin']
+        veteran['date_of_birth'] ||= source_veteran['date_of_birth'] || source_veteran['dateOfBirth']
 
         address = veteran['address'] ||= {}
         address['country'] ||= 'USA'
         address['postal_code'] ||= '00000'
       end
 
-      def hydrate_default_applicant(parsed_form_data, source_form)
-        return if parsed_form_data['applicants'].present?
+      def source_form_payload(source_form)
+        payload = source_form.request_json
+        return payload if payload.is_a?(Hash)
+        return JSON.parse(payload) if payload.is_a?(String)
 
-        parsed_form_data['applicants'] = [{
+        {}
+      rescue JSON::ParserError
+        {}
+      end
+
+      def hydrate_applicants(parsed_form_data, source_form, source_payload)
+        source_applicants = Array(source_payload['applicants'])
+
+        if parsed_form_data['applicants'].blank?
+          parsed_form_data['applicants'] = source_applicants.presence || [default_applicant(source_form)]
+          return
+        end
+
+        parsed_form_data['applicants'] = Array(parsed_form_data['applicants']).map do |applicant|
+          hydrate_applicant(applicant, source_applicants)
+        end
+      end
+
+      def default_applicant(source_form)
+        {
           'applicant_name' => {
             'first' => source_form.first_name,
             'last' => source_form.last_name
           },
           'vet_relationship' => 'spouse'
-        }]
+        }
+      end
+
+      def hydrate_applicant(applicant, source_applicants)
+        applicant_name = applicant['applicant_name'] || applicant['applicantName'] || {}
+        applicant['applicant_name'] ||= applicant['applicantName'] if applicant['applicantName'].present?
+        match = matching_source_applicant(applicant_name, source_applicants)
+        match ||= source_applicants.first if source_applicants.size == 1
+        return applicant unless match
+
+        applicant['applicant_dob'] ||= match['applicant_dob'] || match['applicantDob']
+        applicant['applicant_member_number'] ||= match['applicant_member_number'] || match['applicantMemberNumber']
+
+        applicant
+      end
+
+      def matching_source_applicant(applicant_name, source_applicants)
+        first = applicant_name['first'].to_s.strip.downcase
+        last = applicant_name['last'].to_s.strip.downcase
+        return nil if first.blank? || last.blank?
+
+        source_applicants.find do |source_applicant|
+          source_name = source_applicant['applicant_name'] || source_applicant['applicantName'] || {}
+          source_first = source_name['first'].to_s.strip.downcase
+          source_last = source_name['last'].to_s.strip.downcase
+          source_first == first && source_last == last
+        end
       end
 
       def get_docs_only_resubmission_file_paths_and_metadata(parsed_form_data)
@@ -1543,7 +1638,7 @@ module IvcChampva
         fields = {
           'submissionType' => submission_type,
           'docType' => "#{parsed_form_data['form_number']}-#{submission_type.upcase}",
-          'standalone-flag' => true # kebab-case per downstream Pega requirement
+          'standalone-flag' => 'true' # kebab-case per downstream Pega requirement
         }
         fields['uuid'] = parsed_form_data['claim_id'] if parsed_form_data['claim_id'].present?
         fields

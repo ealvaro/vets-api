@@ -78,14 +78,12 @@ module V0
                else
                  service.get_claims
                end
-      champva_enhanced_flow_enabled = Flipper.enabled?(:form1010d_enhanced_flow_enabled, @current_user)
-
       check_for_birls_id
       check_for_file_number
 
       claims['data'].each do |claim|
         update_claim_type_language(claim)
-        add_upload_metadata(claim, champva_enhanced_flow_enabled:)
+        add_upload_metadata(claim)
       end
 
       claim_ids = claims['data'].map { |claim| claim['id'] }
@@ -108,9 +106,8 @@ module V0
                 # Legacy single-provider path: Apply Lighthouse-specific transforms here
                 get_legacy_claim(params[:id])
               end
-      champva_enhanced_flow_enabled = Flipper.enabled?(:form1010d_enhanced_flow_enabled, @current_user)
       update_claim_type_language(claim['data'])
-      add_upload_metadata(claim['data'], champva_enhanced_flow_enabled:)
+      add_upload_metadata(claim['data'])
 
       # Document uploads to EVSS require a birls_id; This restriction should
       # be removed when we move to Lighthouse Benefits Documents for document uploads
@@ -227,15 +224,15 @@ module V0
       end
     end
 
-    def add_upload_metadata(claim, champva_enhanced_flow_enabled: false)
-      metadata = build_upload_metadata_for_claim(claim, champva_enhanced_flow_enabled:)
+    def add_upload_metadata(claim)
+      metadata = build_upload_metadata_for_claim(claim)
       return if metadata.blank?
 
       claim['attributes'] ||= {}
       claim['attributes']['uploadMetadata'] = metadata
     end
 
-    def build_upload_metadata_for_claim(claim, champva_enhanced_flow_enabled: false)
+    def build_upload_metadata_for_claim(claim)
       claim_attributes = claim['attributes'] || {}
       provider = claim_attributes['provider'].presence
       destination_key = UPLOAD_DESTINATION_KEY_BY_PROVIDER.fetch(provider, DEFAULT_UPLOAD_DESTINATION_KEY)
@@ -246,7 +243,7 @@ module V0
         form_id = IVC_CHAMPVA_FORM_ID_BY_CLAIM_TYPE[claim_attributes['claimType']]
         metadata['formId'] = form_id if form_id.present?
         metadata['acceptedFileTypes'] = IVC_CHAMPVA_ACCEPTED_FILE_TYPES
-        if form_id == '10-10D-EXTENDED' && champva_enhanced_flow_enabled
+        if form_id == '10-10D-EXTENDED' && champva_cst_file_uploader_docs_only_resubmission_enabled?
           metadata['finalizeDestinationKey'] = IVC_CHAMPVA_FINALIZE_DESTINATION_KEY
           metadata['submissionType'] = 'existing'
         end
@@ -256,6 +253,10 @@ module V0
       end
 
       metadata
+    end
+
+    def champva_cst_file_uploader_docs_only_resubmission_enabled?
+      Flipper.enabled?(:champva_cst_file_uploader_docs_only_resubmission, @current_user)
     end
 
     def add_evidence_submissions(claim, evidence_submissions)

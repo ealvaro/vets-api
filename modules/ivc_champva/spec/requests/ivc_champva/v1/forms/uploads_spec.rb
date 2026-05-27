@@ -464,13 +464,34 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     it 'skips VES when docs-only flow is enabled even if VES flipper is on' do
       allow(Flipper).to receive(:enabled?).with(:champva_send_to_ves, anything).and_return(true)
       allow(Flipper).to receive(:enabled?).with(:champva_send_7959c_to_ves, anything).and_return(false)
-      allow(Flipper).to receive(:enabled?).with(:form1010d_enhanced_flow_enabled, anything).and_return(true)
+      allow(Flipper).to receive(:enabled?)
+        .with(:form1010d_enhanced_flow_enabled, anything)
+        .and_return(true)
 
       expect(controller).not_to receive(:handle_ves_submission)
       allow(controller).to receive(:handle_file_uploads).with('vha_10_10d', docs_only_payload).and_return([[200], nil])
       allow(controller).to receive(:build_json).and_return({ json: {}, status: 200 })
 
       result = controller.send(:handle_file_uploads_wrapper, 'vha_10_10d', docs_only_payload)
+      expect(result[:status]).to eq(200)
+    end
+
+    it 'skips VES when CST docs-only flow is enabled even if VES flipper is on' do
+      cst_docs_only_payload = docs_only_payload.merge('claim_id' => SecureRandom.uuid)
+
+      allow(Flipper).to receive(:enabled?).with(:champva_send_to_ves, anything).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:champva_send_7959c_to_ves, anything).and_return(false)
+      allow(Flipper).to receive(:enabled?)
+        .with(:champva_cst_file_uploader_docs_only_resubmission, anything)
+        .and_return(true)
+
+      expect(controller).not_to receive(:handle_ves_submission)
+      allow(controller).to receive(:handle_file_uploads)
+        .with('vha_10_10d', cst_docs_only_payload)
+        .and_return([[200], nil])
+      allow(controller).to receive(:build_json).and_return({ json: {}, status: 200 })
+
+      result = controller.send(:handle_file_uploads_wrapper, 'vha_10_10d', cst_docs_only_payload)
       expect(result[:status]).to eq(200)
     end
   end
@@ -901,7 +922,19 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
         form_uuid: claim_uuid,
         first_name: 'Pat',
         last_name: 'Veteran',
-        email: 'pat@example.com'
+        email: 'pat@example.com',
+        request_json: {
+          'veteran' => {
+            'ssn_or_tin' => '411111111',
+            'date_of_birth' => '01-01-1958'
+          },
+          'applicants' => [
+            {
+              'applicant_name' => { 'first' => 'Sam', 'last' => 'Beneficiary' },
+              'applicant_dob' => '01-04-2003'
+            }
+          ]
+        }.to_json
       )
     end
     let!(:newer_claim_form_same_uuid) do
@@ -910,7 +943,19 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
         form_uuid: claim_uuid,
         first_name: 'Pat',
         last_name: 'Veteran',
-        email: 'pat@example.com'
+        email: 'pat@example.com',
+        request_json: {
+          'veteran' => {
+            'ssn_or_tin' => '411111111',
+            'date_of_birth' => '01-01-1958'
+          },
+          'applicants' => [
+            {
+              'applicant_name' => { 'first' => 'Sam', 'last' => 'Beneficiary' },
+              'applicant_dob' => '01-04-2003'
+            }
+          ]
+        }.to_json
       )
     end
     let!(:evidence_submission) do
@@ -965,7 +1010,9 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
 
     it 'accepts docs-only resubmission when the flow is enabled' do
       allow(Flipper).to receive(:enabled?).and_call_original
-      allow(Flipper).to receive(:enabled?).with(:form1010d_enhanced_flow_enabled, anything).and_return(true)
+      allow(Flipper).to receive(:enabled?)
+        .with(:champva_cst_file_uploader_docs_only_resubmission, anything)
+        .and_return(true)
       allow_any_instance_of(IvcChampva::V1::UploadsController)
         .to receive(:handle_file_uploads_wrapper)
         .and_return({ json: {}, status: 200 })
@@ -978,12 +1025,69 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
 
     it 'returns 422 when docs-only flow is disabled' do
       allow(Flipper).to receive(:enabled?).and_call_original
-      allow(Flipper).to receive(:enabled?).with(:form1010d_enhanced_flow_enabled, anything).and_return(false)
+      allow(Flipper).to receive(:enabled?)
+        .with(:champva_cst_file_uploader_docs_only_resubmission, anything)
+        .and_return(false)
 
       post '/ivc_champva/v1/forms/docs_only_resubmission', params: payload, as: :json
 
       expect(response).to have_http_status(:unprocessable_entity)
       expect(JSON.parse(response.body)['error_message']).to include('not enabled')
+    end
+
+    it 'hydrates applicant_dob from source request_json when missing in payload' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:champva_cst_file_uploader_docs_only_resubmission, anything)
+        .and_return(true)
+      allow_any_instance_of(IvcChampva::V1::UploadsController)
+        .to receive(:handle_file_uploads_wrapper)
+        .and_return({ json: {}, status: 200 })
+
+      bad_payload = payload.deep_dup
+      bad_payload[:applicants][0].delete(:applicant_dob)
+
+      post '/ivc_champva/v1/forms/docs_only_resubmission', params: bad_payload, as: :json
+
+      expect(response).to have_http_status(:ok), -> { "body=#{response.body}" }
+    end
+
+    it 'hydrates veteran ssn_or_tin from source request_json when missing in payload' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:champva_cst_file_uploader_docs_only_resubmission, anything)
+        .and_return(true)
+      allow_any_instance_of(IvcChampva::V1::UploadsController)
+        .to receive(:handle_file_uploads_wrapper)
+        .and_return({ json: {}, status: 200 })
+
+      bad_payload = payload.deep_dup
+      bad_payload[:veteran].delete(:ssn_or_tin)
+
+      post '/ivc_champva/v1/forms/docs_only_resubmission', params: bad_payload, as: :json
+
+      expect(response).to have_http_status(:ok), -> { "body=#{response.body}" }
+    end
+
+    it 'hydrates applicant_dob when payload uses applicantName camelCase' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:champva_cst_file_uploader_docs_only_resubmission, anything)
+        .and_return(true)
+      allow_any_instance_of(IvcChampva::V1::UploadsController)
+        .to receive(:handle_file_uploads_wrapper)
+        .and_return({ json: {}, status: 200 })
+
+      bad_payload = payload.deep_dup
+      bad_payload[:applicants] = [
+        {
+          applicantName: { first: 'Sam', last: 'Beneficiary' }
+        }
+      ]
+
+      post '/ivc_champva/v1/forms/docs_only_resubmission', params: bad_payload, as: :json
+
+      expect(response).to have_http_status(:ok), -> { "body=#{response.body}" }
     end
   end
 

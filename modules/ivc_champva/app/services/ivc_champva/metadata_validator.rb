@@ -89,6 +89,10 @@ module IvcChampva
       validate_presence_and_stringiness(data.dig('certification', 'date'), 'certification date')
     end
 
+    def self.validate_docs_only_resubmission_cst(data)
+      validate_docs_only_supporting_docs(data['supporting_docs'])
+    end
+
     def self.validate_docs_only_supporting_docs(docs)
       raise ArgumentError, 'supporting_docs is missing' if docs.blank?
 

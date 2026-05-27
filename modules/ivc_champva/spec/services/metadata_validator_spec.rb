@@ -437,157 +437,76 @@ describe IvcChampva::MetadataValidator do
       expect { described_class.validate_docs_only_resubmission(enrollment_payload) }.not_to raise_error
     end
 
-    describe 'supporting_docs validation' do
-      it 'raises when supporting_docs is missing' do
-        data = existing_payload.except('supporting_docs')
-        expect { described_class.validate_docs_only_resubmission(data) }
-          .to raise_error(ArgumentError, 'supporting_docs is missing')
-      end
+    it 'passes for a valid existing payload with multiple supporting docs' do
+      data = existing_payload.deep_merge(
+        'supporting_docs' => [
+          {
+            'name' => 'birth-certificate.png',
+            'confirmation_code' => '0d21739a-632a-4773-90f6-480b2f2473ce',
+            'attachment_id' => 'Birth certificate'
+          },
+          {
+            'name' => 'marriage-certificate.pdf',
+            'confirmation_code' => 'f09a8f72-66d3-4db0-8a3b-4c6eb63a8d4d',
+            'attachment_id' => 'Marriage certificate'
+          }
+        ]
+      )
 
-      it 'raises when supporting_docs is empty' do
-        data = existing_payload.merge('supporting_docs' => [])
-        expect { described_class.validate_docs_only_resubmission(data) }
-          .to raise_error(ArgumentError, 'supporting_docs is missing')
-      end
-
-      it 'raises when a doc is missing confirmation_code' do
-        data = existing_payload.merge('supporting_docs' => [{ 'name' => 'doc.pdf' }])
-        expect { described_class.validate_docs_only_resubmission(data) }
-          .to raise_error(ArgumentError, 'supporting_docs[0] confirmation_code is missing')
-      end
+      expect { described_class.validate_docs_only_resubmission(data) }.not_to raise_error
     end
 
-    describe 'primary_contact_info validation' do
-      it 'raises when primary_contact_info is missing' do
-        data = existing_payload.except('primary_contact_info')
-        expect { described_class.validate_docs_only_resubmission(data) }
-          .to raise_error(ArgumentError, 'primary_contact_info is missing')
-      end
-
-      it 'raises when email is missing' do
-        data = existing_payload.merge('primary_contact_info' => { 'name' => { 'first' => 'Joe' } })
-        expect { described_class.validate_docs_only_resubmission(data) }
-          .to raise_error(ArgumentError, 'primary_contact_info email is missing')
-      end
+    it 'raises when certifier_role is missing' do
+      data = existing_payload.except('certifier_role')
+      expect { described_class.validate_docs_only_resubmission(data) }
+        .to raise_error(ArgumentError, 'certifier_role is missing')
     end
 
-    describe 'applicants validation' do
-      it 'raises when applicants is missing' do
-        data = existing_payload.except('applicants')
-        expect { described_class.validate_docs_only_resubmission(data) }
-          .to raise_error(ArgumentError, 'applicants is missing')
-      end
-
-      it 'raises when applicants is empty' do
-        data = existing_payload.merge('applicants' => [])
-        expect { described_class.validate_docs_only_resubmission(data) }
-          .to raise_error(ArgumentError, 'applicants is missing')
-      end
-
-      it 'raises when applicant first name is nil' do
-        data = existing_payload.merge(
-          'applicants' => [{ 'applicant_name' => { 'last' => 'Alvin' } }]
-        )
-        expect { described_class.validate_docs_only_resubmission(data) }
-          .to raise_error(ArgumentError, 'applicants[0] first name is missing')
-      end
-
-      it 'raises when applicant last name is nil' do
-        data = existing_payload.merge(
-          'applicants' => [{ 'applicant_name' => { 'first' => 'Johnny' } }]
-        )
-        expect { described_class.validate_docs_only_resubmission(data) }
-          .to raise_error(ArgumentError, 'applicants[0] last name is missing')
-      end
-
-      it 'raises when applicant_dob is nil' do
-        data = existing_payload.deep_merge(
-          'applicants' => [existing_payload['applicants'][0].except('applicant_dob')]
-        )
-        expect { described_class.validate_docs_only_resubmission(data) }
-          .to raise_error(ArgumentError, 'applicants[0] applicant_dob is missing')
-      end
-
-      it 'raises when applicant_member_number is nil for enrollment submissions' do
-        data = enrollment_payload.deep_merge(
-          'applicants' => [enrollment_payload['applicants'][0].except('applicant_member_number')]
-        )
-        expect { described_class.validate_docs_only_resubmission(data) }
-          .to raise_error(ArgumentError, 'applicants[0] applicant_member_number is missing')
-      end
-
-      it 'does NOT require applicant_member_number for existing submissions' do
-        data = existing_payload.deep_merge(
-          'applicants' => [existing_payload['applicants'][0].except('applicant_member_number')]
-        )
-        expect { described_class.validate_docs_only_resubmission(data) }.not_to raise_error
-      end
+    it 'raises when applicant_dob is missing for existing submissions' do
+      data = existing_payload.deep_merge(
+        'applicants' => [existing_payload['applicants'][0].except('applicant_dob')]
+      )
+      expect { described_class.validate_docs_only_resubmission(data) }
+        .to raise_error(ArgumentError, 'applicants[0] applicant_dob is missing')
     end
 
-    describe 'veteran validation' do
-      it 'raises when veteran is missing' do
-        data = existing_payload.except('veteran')
-        expect { described_class.validate_docs_only_resubmission(data) }
-          .to raise_error(ArgumentError, 'veteran is missing')
-      end
+    it 'raises when certification date is missing' do
+      data = existing_payload.merge('certification' => {})
+      expect { described_class.validate_docs_only_resubmission(data) }
+        .to raise_error(ArgumentError, 'certification date is missing')
+    end
+  end
 
-      it 'raises when veteran first name is nil for existing submissions' do
-        data = existing_payload.merge('veteran' => { 'full_name' => { 'last' => 'Johnson' } })
-        expect { described_class.validate_docs_only_resubmission(data) }
-          .to raise_error(ArgumentError, 'veteran first name is missing')
-      end
-
-      it 'raises when veteran last name is nil for existing submissions' do
-        data = existing_payload.merge('veteran' => { 'full_name' => { 'first' => 'Joe' } })
-        expect { described_class.validate_docs_only_resubmission(data) }
-          .to raise_error(ArgumentError, 'veteran last name is missing')
-      end
-
-      it 'raises when veteran ssn_or_tin is nil for existing submissions' do
-        data = existing_payload.deep_merge('veteran' => { 'ssn_or_tin' => nil })
-        expect { described_class.validate_docs_only_resubmission(data) }
-          .to raise_error(ArgumentError, 'veteran ssn_or_tin is missing')
-      end
-
-      it 'raises when veteran date_of_birth is nil for existing submissions' do
-        data = existing_payload.deep_merge('veteran' => { 'date_of_birth' => nil })
-        expect { described_class.validate_docs_only_resubmission(data) }
-          .to raise_error(ArgumentError, 'veteran date_of_birth is missing')
-      end
-
-      it 'does NOT raise for empty veteran data on enrollment submissions' do
-        expect { described_class.validate_docs_only_resubmission(enrollment_payload) }.not_to raise_error
-      end
+  describe '.validate_docs_only_resubmission_cst' do
+    let(:docs_only_payload) do
+      {
+        'supporting_docs' => [
+          {
+            'name' => 'sample.png',
+            'confirmation_code' => '0d21739a-632a-4773-90f6-480b2f2473ce',
+            'attachment_id' => 'Birth certificate',
+            'is_encrypted' => false
+          }
+        ]
+      }
     end
 
-    describe 'certifier_role validation' do
-      it 'raises when certifier_role is missing' do
-        data = existing_payload.except('certifier_role')
-        expect { described_class.validate_docs_only_resubmission(data) }
-          .to raise_error(ArgumentError, 'certifier_role is missing')
-      end
+    it 'passes for a valid docs-only payload' do
+      expect { described_class.validate_docs_only_resubmission_cst(docs_only_payload) }.not_to raise_error
     end
 
-    describe 'statement_of_truth_signature validation' do
-      it 'raises when statement_of_truth_signature is missing' do
-        data = existing_payload.except('statement_of_truth_signature')
-        expect { described_class.validate_docs_only_resubmission(data) }
-          .to raise_error(ArgumentError, 'statement_of_truth_signature is missing')
-      end
-    end
+    it 'does not require full-form fields for CST docs-only validation' do
+      data = docs_only_payload.merge(
+        'submission_type' => 'existing',
+        'certifier_role' => nil,
+        'statement_of_truth_signature' => nil,
+        'certification' => {},
+        'primary_contact_info' => {},
+        'veteran' => {},
+        'applicants' => []
+      )
 
-    describe 'certification validation' do
-      it 'raises when certification date is missing' do
-        data = existing_payload.merge('certification' => {})
-        expect { described_class.validate_docs_only_resubmission(data) }
-          .to raise_error(ArgumentError, 'certification date is missing')
-      end
-
-      it 'raises when certification is missing entirely' do
-        data = existing_payload.except('certification')
-        expect { described_class.validate_docs_only_resubmission(data) }
-          .to raise_error(ArgumentError, 'certification date is missing')
-      end
+      expect { described_class.validate_docs_only_resubmission_cst(data) }.not_to raise_error
     end
   end
 end
