@@ -589,6 +589,20 @@ jobs:
           files: Test Results Group*/*.xml
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Cleanup run caches
+        if: always()
+        run: |
+          # Delete docker image on success or on master pushes
+          if [ "${{ needs.tests.result }}" == "success" ] || [ "${{ github.event_name }}" != "pull_request" ]; then
+            gh api --hostname va.ghe.com -X DELETE "repos/${{ github.repository }}/actions/caches?key=docker-image-${{ github.sha }}" --silent || true
+          fi
+          # Shard manifests are always safe to delete — reruns get a new run_id anyway
+          for i in $(seq 1 24); do
+            gh api --hostname va.ghe.com -X DELETE "repos/${{ github.repository }}/actions/caches?key=shard-manifest-${{ github.run_id }}-group-$i" --silent || true
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Add Test Failure label
         if: ${{ needs.tests.result == 'failure' && github.event_name == 'pull_request' }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -683,12 +697,6 @@ jobs:
       #     result_path: coverage/.last_run.json
       #     min_coverage: 90
       #     token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Delete Docker image cache entry
-        if: needs.tests.result == 'success'
-        run: gh cache delete docker-image-${{ github.event.pull_request.merge_commit_sha || github.sha }} || true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure AWS Credentials
         if: needs.tests.result == 'success' && github.event_name != 'pull_request'
