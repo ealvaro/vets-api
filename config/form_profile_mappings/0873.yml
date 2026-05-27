@@ -16,6 +16,7 @@ avaProfile:
   schoolInfo:
     schoolFacilityCode: [ava_profile, school_facility_code]
     schoolName: [ava_profile, school_name]
+    schoolState: [ava_profile, school_state]
   businessPhone: [ava_profile, business_phone]
   businessEmail: [ava_profile, business_email]
 veteranServiceInformation:

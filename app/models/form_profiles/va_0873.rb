@@ -23,6 +23,7 @@ module VA0873
 
     attribute :school_facility_code, String
     attribute :school_name, String
+    attribute :school_state, String
     attribute :business_phone, String
     attribute :business_email, String
   end
@@ -63,6 +64,7 @@ class FormProfiles::VA0873 < FormProfile
     payload = {
       school_facility_code: profile.school_facility_code,
       school_name:,
+      school_state: profile.school_state,
       business_phone: profile.business_phone,
       business_email: profile.business_email
     }

@@ -249,6 +249,7 @@ app/models/form_profiles/va_21p0537.rb @software/bio-heart-team @software/backen
 app/models/form_profiles/va_0803.rb @software/govcio-vfep-codereviewers @software/backend-review-group
 app/models/form_profiles/va_0810.rb @software/govcio-vfep-codereviewers @software/backend-review-group
 app/models/form_profiles/va_0839.rb @software/govcio-vfep-codereviewers @software/backend-review-group
+app/models/form_profiles/va_0873.rb @software/ask-va-team @software/backend-review-group
 app/models/form_profiles/va_0976.rb @software/govcio-vfep-codereviewers @software/backend-review-group
 app/models/form_profiles/va_0989.rb @software/govcio-vfep-codereviewers @software/backend-review-group
 app/models/form_profiles/va_0994.rb @software/govcio-vfep-codereviewers @software/backend-review-group

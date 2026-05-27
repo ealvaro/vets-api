@@ -132,7 +132,8 @@ RSpec.describe FormProfile, type: :model do
       'avaProfile' => {
         'schoolInfo' => {
           'schoolFacilityCode' => '12345678',
-          'schoolName' => 'Fake School'
+          'schoolName' => 'Fake School',
+          'schoolState' => 'TX'
         },
         'businessPhone' => '1234567890',
         'businessEmail' => 'fake@company.com'
@@ -1620,6 +1621,7 @@ RSpec.describe FormProfile, type: :model do
         let(:info) do
           {
             SchoolFacilityCode: '12345678',
+            SchoolState: 'TX',
             BusinessPhone: '1234567890',
             BusinessEmail: 'fake@company.com',
             ServiceNumber: '123455678'
