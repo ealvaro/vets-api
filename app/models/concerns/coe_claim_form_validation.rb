@@ -13,6 +13,7 @@ module CoeClaimFormValidation
   include MilitaryHistory
   include PriorLoan
   include LoanHistory
+  include Files2Validation
 
   MILITARY_STATUS_VALUES = %w[
     ADSM VETERAN NATIONAL_GUARD_OR_RESERVES
@@ -42,6 +43,7 @@ module CoeClaimFormValidation
     validate_veteran_contact
     validate_military_history
     validate_loan_history
+    validate_files2
 
     return if errors.empty?
 

@@ -122,6 +122,17 @@ RSpec.describe SavedClaim::CoeClaim, type: :model do
       expect(error_attributes(invalid)).to include('/fullName')
     end
 
+    context 'with a valid files2 attachment' do
+      let(:form_json) do
+        mutate_form { |h| h['files2'] = [{ 'guid' => 'a', 'confirmationCode' => 'b', 'type' => 'application/pdf' }] }
+      end
+
+      it 'passes validation' do
+        expect(claim.validate).to be true
+        expect(claim.errors).to be_empty
+      end
+    end
+
     it 'logs when validation fails' do
       allow(Rails.logger).to receive(:error)
       expect(claim.validate).to be true
@@ -620,6 +631,98 @@ RSpec.describe SavedClaim::CoeClaim, type: :model do
       it 'records a dateOfLoss error' do
         claim.validate
         expect(error_attributes(claim)).to include('/loanHistory/relevantPriorLoans/0/naturalDisaster/dateOfLoss')
+      end
+    end
+
+    context 'when files2 is not an array' do
+      let(:form_json) { mutate_form { |h| h['files2'] = {} } }
+
+      it 'records an error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/files2')
+      end
+    end
+
+    context 'when a file2 entry is not an object' do
+      let(:form_json) { mutate_form { |h| h['files2'] = [1] } }
+
+      it 'records an error on the file index' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/files2/0')
+      end
+    end
+
+    context 'when file2 confirmationCode is missing' do
+      let(:form_json) { mutate_form { |h| h['files2'] = [{ 'guid' => 'g', 'type' => 'image/jpeg' }] } }
+
+      it 'records a confirmationCode error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/files2/0/confirmationCode')
+      end
+    end
+
+    context 'when file2 confirmationCode is not a string' do
+      let(:form_json) do
+        mutate_form do |h|
+          h['files2'] = [{ 'guid' => 'g', 'confirmationCode' => 1, 'type' => 'image/jpeg' }]
+        end
+      end
+
+      it 'records a type error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/files2/0/confirmationCode')
+      end
+    end
+
+    context 'when file2 type is not a valid MIME string' do
+      let(:form_json) do
+        mutate_form do |h|
+          h['files2'] = [{ 'guid' => 'g', 'confirmationCode' => 'ok', 'type' => 'not-a-mime' }]
+        end
+      end
+
+      it 'records a type error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/files2/0/type')
+      end
+    end
+
+    context 'when file2 name is present but not a string' do
+      let(:form_json) do
+        mutate_form do |h|
+          h['files2'] = [{ 'guid' => 'g', 'confirmationCode' => 'ok', 'type' => 'image/jpeg', 'name' => 1 }]
+        end
+      end
+
+      it 'records a name error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/files2/0/name')
+      end
+    end
+
+    context 'when file2 size is present but not an integer' do
+      let(:form_json) do
+        mutate_form do |h|
+          h['files2'] = [{ 'guid' => 'g', 'confirmationCode' => 'ok', 'type' => 'image/jpeg', 'size' => '12' }]
+        end
+      end
+
+      it 'records a size error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/files2/0/size')
+      end
+    end
+
+    context 'when file2 additionalData is not an object' do
+      let(:form_json) do
+        mutate_form do |h|
+          h['files2'] = [{ 'guid' => 'g', 'confirmationCode' => 'ok', 'type' => 'image/jpeg', 'additionalData' => 'x' }]
+        end
+      end
+
+      it 'records an additionalData error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/files2/0/additionalData')
       end
     end
 

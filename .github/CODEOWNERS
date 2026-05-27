@@ -1919,6 +1919,8 @@ spec/models/saml_request_tracker_spec.rb @software/octo-identity
 spec/models/saved_claim @software/backend-review-group
 spec/models/saved_claim_spec.rb @software/backend-review-group
 spec/models/saved_claim_group_spec.rb @software/benefits-lifestage @software/dependents-benefits @software/backend-review-group
+spec/models/saved_claim/coe_claim_form_validation_spec.rb @software/va-core-veteran-experiences @software/backend-review-group
+spec/models/saved_claim/coe_claim_spec.rb @software/va-core-veteran-experiences @software/backend-review-group
 spec/models/saved_claim/education_benefits/va1995_spec.rb @software/backend-review-group
 spec/models/saved_claim/education_benefits/va0803_spec.rb @software/govcio-vfep-codereviewers @software/backend-review-group
 spec/models/saved_claim/education_benefits/va0989_spec.rb @software/govcio-vfep-codereviewers @software/backend-review-group

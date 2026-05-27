@@ -40,6 +40,44 @@ RSpec.describe SavedClaim::CoeClaim do
     }
   end
 
+  let(:base_legacy_form) do
+    {
+      'relevantPriorLoans' => [
+        {
+          'dateRange' => { 'from' => '2017-01-01T00:00:00.000Z', 'to' => '' },
+          'propertyAddress' => { 'propertyAddress1' => '234', 'propertyAddress2' => '234', 'propertyCity' => 'asdf',
+                                 'propertyState' => 'AL', 'propertyZip' => '11111' },
+          'propertyOwned' => false,
+          'vaLoanNumber' => '123123123123',
+          'intent' => 'IRRRL'
+        },
+        {
+          'dateRange' => { 'from' => '2010-01-01T00:00:00.000Z', 'to' => '2011-01-01T00:00:00.000Z' },
+          'propertyAddress' => { 'propertyAddress1' => '939393', 'propertyAddress2' => '234', 'propertyCity' => 'asdf',
+                                 'propertyState' => 'AL', 'propertyZip' => '11111' },
+          'propertyOwned' => true,
+          'vaLoanNumber' => '456456456456',
+          'intent' => 'REFI'
+        }
+      ],
+      'vaLoanIndicator' => true,
+      'periodsOfService' => [
+        {
+          'serviceBranch' => 'Air Force',
+          'dateRange' => { 'from' => '2000-01-01T00:00:00.000Z', 'to' => '2010-01-16T00:00:00.000Z' }
+        }
+      ],
+      'identity' => 'ADSM',
+      'contactPhone' => '2223334444',
+      'contactEmail' => 'vet@example.com',
+      'fullName' => { 'first' => 'Eddie', 'middle' => 'Joseph', 'last' => 'Caldwell' },
+      'dateOfBirth' => '1933-10-27',
+      'applicantAddress' => { 'country' => 'USA', 'street' => '123 ANY ST', 'city' => 'ANYTOWN', 'state' => 'AL',
+                              'postalCode' => '54321' },
+      'privacyAgreementAccepted' => true
+    }
+  end
+
   let(:base_v2_form) do
     {
       'version' => 2,
@@ -83,44 +121,6 @@ RSpec.describe SavedClaim::CoeClaim do
           }
         ]
       },
-      'privacyAgreementAccepted' => true
-    }
-  end
-
-  let(:base_legacy_form) do
-    {
-      'relevantPriorLoans' => [
-        {
-          'dateRange' => { 'from' => '2017-01-01T00:00:00.000Z', 'to' => '' },
-          'propertyAddress' => { 'propertyAddress1' => '234', 'propertyAddress2' => '234', 'propertyCity' => 'asdf',
-                                 'propertyState' => 'AL', 'propertyZip' => '11111' },
-          'propertyOwned' => false,
-          'vaLoanNumber' => '123123123123',
-          'intent' => 'IRRRL'
-        },
-        {
-          'dateRange' => { 'from' => '2010-01-01T00:00:00.000Z', 'to' => '2011-01-01T00:00:00.000Z' },
-          'propertyAddress' => { 'propertyAddress1' => '939393', 'propertyAddress2' => '234', 'propertyCity' => 'asdf',
-                                 'propertyState' => 'AL', 'propertyZip' => '11111' },
-          'propertyOwned' => true,
-          'vaLoanNumber' => '456456456456',
-          'intent' => 'REFI'
-        }
-      ],
-      'vaLoanIndicator' => true,
-      'periodsOfService' => [
-        {
-          'serviceBranch' => 'Air Force',
-          'dateRange' => { 'from' => '2000-01-01T00:00:00.000Z', 'to' => '2010-01-16T00:00:00.000Z' }
-        }
-      ],
-      'identity' => 'ADSM',
-      'contactPhone' => '2223334444',
-      'contactEmail' => 'vet@example.com',
-      'fullName' => { 'first' => 'Eddie', 'middle' => 'Joseph', 'last' => 'Caldwell' },
-      'dateOfBirth' => '1933-10-27',
-      'applicantAddress' => { 'country' => 'USA', 'street' => '123 ANY ST', 'city' => 'ANYTOWN', 'state' => 'AL',
-                              'postalCode' => '54321' },
       'privacyAgreementAccepted' => true
     }
   end
