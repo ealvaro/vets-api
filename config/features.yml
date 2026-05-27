@@ -2044,6 +2044,10 @@ features:
   mhv_modern_cta_links:
     actor_type: user
     description: CTA widget links point to va.gov services
+  mhv_my_va_health_retired:
+    actor_type: user
+    description: Shows retired My VA Health portal alerts on MHV tool pages for pre-transitioned OH facility users
+    enable_in_development: true
   mhv_medications_display_new_cerner_facility_alert:
     actor_type: user
     description: Enables/disables new facility alert for OH/Cerner users in medications
