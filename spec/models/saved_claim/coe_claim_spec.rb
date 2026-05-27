@@ -63,19 +63,21 @@ RSpec.describe SavedClaim::CoeClaim do
         ]
       },
       'loanHistory' => {
+        'certificateUse' => 'HOME_PURCHASE',
+        'entitlementRestoration' => 'ONE_TIME_RESTORATION',
         'hadPriorLoans' => true,
         'relevantPriorLoans' => [
           {
             'dateRange' => { 'from' => '2017-01-01T00:00:00.000Z', 'to' => '' },
-            'propertyAddress' => { 'propertyAddress1' => '234', 'propertyAddress2' => '234',
-                                   'propertyCity' => 'asdf', 'propertyState' => 'AL', 'propertyZip' => '11111' },
+            'propertyAddress' => { 'country' => 'USA', 'street1' => '234', 'street2' => '234',
+                                   'city' => 'asdf', 'state' => 'AL', 'postalCode' => '11111' },
             'vaLoanNumber' => '123123123123',
             'entitlementRestoration' => 'IRRRL'
           },
           {
             'dateRange' => { 'from' => '2010-01-01T00:00:00.000Z', 'to' => '2011-01-01T00:00:00.000Z' },
-            'propertyAddress' => { 'propertyAddress1' => '939393', 'propertyAddress2' => '234',
-                                   'propertyCity' => 'asdf', 'propertyState' => 'AL', 'propertyZip' => '11111' },
+            'propertyAddress' => { 'country' => 'USA', 'street1' => '939393', 'street2' => '234',
+                                   'city' => 'asdf', 'state' => 'AL', 'postalCode' => '11111' },
             'vaLoanNumber' => '456456456456',
             'entitlementRestoration' => 'REFI'
           }
@@ -478,11 +480,16 @@ RSpec.describe SavedClaim::CoeClaim do
           coe_claim.send_to_lgy(edipi: '1222333222', icn: '1112227772V019333')
         end
 
-        it 'sends the right data to LGY with no loanHistory' do
-          base_v2_form['loanHistory'] = { 'relevantPriorLoans' => [] }
+        it 'sends the right data to LGY when loanHistory is replaced with no prior loans' do
+          base_v2_form['loanHistory'] = {
+            'certificateUse' => 'HOME_PURCHASE',
+            'entitlementRestoration' => 'ONE_TIME_RESTORATION',
+            'hadPriorLoans' => false,
+            'relevantPriorLoans' => []
+          }
           coe_claim = create(:coe_claim, form: base_v2_form.to_json)
           form_data = base_form_data.deep_merge({
-                                                  'veteran' => { 'vaLoanIndicator' => nil,
+                                                  'veteran' => { 'vaLoanIndicator' => false,
                                                                  'vaHomeOwnIndicator' => false },
                                                   'relevantPriorLoans' => [],
                                                   'periodsOfService' => [{

@@ -11,13 +11,43 @@ RSpec.describe SavedClaim::CoeClaim, type: :model do
     h.to_json
   end
 
+  let(:valid_prior_loan) do
+    {
+      'vaLoanNumber' => '123456789012',
+      'dateRange' => { 'from' => '2010-01-01T00:00:00.000Z', 'to' => '2011-01-01T00:00:00.000Z' },
+      'propertyAddress' => {
+        'country' => 'USA',
+        'street1' => '1',
+        'city' => 'X',
+        'state' => 'VA',
+        'postalCode' => '20152'
+      }
+    }
+  end
+
+  def form_with_prior_loans(loans)
+    mutate_form do |h|
+      h['loanHistory']['hadPriorLoans'] = 'true'
+      h['loanHistory']['relevantPriorLoans'] = loans
+    end
+  end
+
+  def mutate_prior_loan
+    loan = valid_prior_loan.deep_dup
+    yield loan
+    mutate_form do |h|
+      h['loanHistory']['hadPriorLoans'] = 'true'
+      h['loanHistory']['relevantPriorLoans'] = [loan]
+    end
+  end
+
   def error_messages(claim_record, attribute)
     claim_record.errors.select { |e| e.attribute.to_s == attribute }.map(&:message)
   end
 
   describe '#form_matches_schema' do
-    it 'returns early when form is not a string for v2+ forms' do
-      claim = described_class.new(form: valid_form_hash.merge('version' => 2).to_json)
+    it 'returns early when form is not a string' do
+      claim = described_class.new(form: valid_form_hash.to_json)
       allow(claim).to receive(:form_is_string).and_return(false)
       expect(claim).not_to receive(:validate_coe_rebuild_form)
       claim.send(:form_matches_schema)
@@ -35,6 +65,30 @@ RSpec.describe SavedClaim::CoeClaim, type: :model do
       allow(claim).to receive(:form_is_string).and_return(true)
       expect(claim).to receive(:validate_coe_rebuild_form).and_call_original
       claim.send(:form_matches_schema)
+    end
+
+    it 'treats missing version as v1 and skips v2 validation' do
+      claim = described_class.new(form: valid_form_hash.except('version').to_json)
+      allow(claim).to receive(:form_is_string).and_return(true)
+      expect(claim).not_to receive(:validate_coe_rebuild_form)
+      claim.send(:form_matches_schema)
+    end
+  end
+
+  describe '#lgy_row_property_owned?' do
+    it 'returns true when propertyOwned key is absent' do
+      claim = described_class.new(form: valid_form_hash.to_json)
+      expect(claim.send(:lgy_row_property_owned?, {})).to be true
+    end
+
+    it 'returns false when propertyOwned is false-like' do
+      claim = described_class.new(form: valid_form_hash.to_json)
+      expect(claim.send(:lgy_row_property_owned?, { 'propertyOwned' => false })).to be false
+    end
+
+    it 'returns true when propertyOwned is true-like' do
+      claim = described_class.new(form: valid_form_hash.to_json)
+      expect(claim.send(:lgy_row_property_owned?, { 'propertyOwned' => 'true' })).to be true
     end
   end
 
@@ -413,6 +467,168 @@ RSpec.describe SavedClaim::CoeClaim, type: :model do
         claim.validate
         expect(error_messages(claim, '/militaryHistory/periodsOfService/0/dateRange/to'))
           .to include('must be on or after from')
+      end
+    end
+
+    context 'when loanHistory hadPriorLoans is missing' do
+      let(:form_json) { mutate_form { |h| h['loanHistory'] = h['loanHistory'].except('hadPriorLoans') } }
+
+      it 'records an error on loanHistory hadPriorLoans' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/loanHistory/hadPriorLoans')
+      end
+    end
+
+    context 'when loanHistory hadPriorLoans is not boolean-like' do
+      let(:form_json) { mutate_form { |h| h['loanHistory']['hadPriorLoans'] = 'maybe' } }
+
+      it 'records a hadPriorLoans error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/loanHistory/hadPriorLoans')
+      end
+    end
+
+    context 'when loanHistory relevantPriorLoans is not an array' do
+      let(:form_json) { mutate_form { |h| h['loanHistory']['relevantPriorLoans'] = {} } }
+
+      it 'records an error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/loanHistory/relevantPriorLoans')
+      end
+    end
+
+    context 'when a prior loan is not an object' do
+      let(:form_json) { form_with_prior_loans([1]) }
+
+      it 'records an error on the loan index' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/loanHistory/relevantPriorLoans/0')
+      end
+    end
+
+    context 'when hadPriorLoans is true but no loans are provided' do
+      let(:form_json) { form_with_prior_loans([]) }
+
+      it 'records a relevantPriorLoans error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/loanHistory/relevantPriorLoans')
+      end
+    end
+
+    context 'when prior loan vaLoanNumber is omitted' do
+      let(:form_json) { mutate_prior_loan { |l| l.delete('vaLoanNumber') } }
+
+      it 'does not require vaLoanNumber' do
+        expect(claim.validate).to be true
+        expect(error_attributes(claim)).not_to include('/loanHistory/relevantPriorLoans/0/vaLoanNumber')
+      end
+    end
+
+    context 'when prior loan vaLoanNumber is not 12 digits' do
+      let(:form_json) { mutate_prior_loan { |l| l['vaLoanNumber'] = '1234567890' } }
+
+      it 'records a vaLoanNumber format error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/loanHistory/relevantPriorLoans/0/vaLoanNumber')
+      end
+    end
+
+    context 'when prior loan vaLoanNumber is numeric 12 digits' do
+      let(:form_json) { mutate_prior_loan { |l| l['vaLoanNumber'] = 123_456_789_012 } }
+
+      it 'passes number type' do
+        expect(claim.validate).to be true
+        expect(error_attributes(claim)).not_to include('/loanHistory/relevantPriorLoans/0/vaLoanNumber')
+      end
+    end
+
+    context 'when prior loan propertyAddress is missing' do
+      let(:form_json) { mutate_prior_loan { |l| l.delete('propertyAddress') } }
+
+      it 'records a propertyAddress error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/loanHistory/relevantPriorLoans/0/propertyAddress')
+      end
+    end
+
+    context 'when prior loan propertyAddress is not an object' do
+      let(:form_json) { mutate_prior_loan { |l| l['propertyAddress'] = 'nope' } }
+
+      it 'records a type error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/loanHistory/relevantPriorLoans/0/propertyAddress')
+      end
+    end
+
+    context 'when prior loan property postalCode is invalid' do
+      let(:form_json) { mutate_prior_loan { |l| l['propertyAddress']['postalCode'] = 'bad' } }
+
+      it 'records a postalCode error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/loanHistory/relevantPriorLoans/0/propertyAddress/postalCode')
+      end
+    end
+
+    context 'when prior loan street2 is not a string' do
+      let(:form_json) { mutate_prior_loan { |l| l['propertyAddress']['street2'] = 99 } }
+
+      it 'records a street2 type error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/loanHistory/relevantPriorLoans/0/propertyAddress/street2')
+      end
+    end
+
+    context 'when prior loan property state is invalid' do
+      let(:form_json) { mutate_prior_loan { |l| l['propertyAddress']['state'] = 'ZZ' } }
+
+      it 'records a state error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/loanHistory/relevantPriorLoans/0/propertyAddress/state')
+      end
+    end
+
+    context 'when prior loan street1 is too long' do
+      let(:form_json) { mutate_prior_loan { |l| l['propertyAddress']['street1'] = 'x' * 51 } }
+
+      it 'records a length error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/loanHistory/relevantPriorLoans/0/propertyAddress/street1')
+      end
+    end
+
+    context 'when prior loan city is too long' do
+      let(:form_json) { mutate_prior_loan { |l| l['propertyAddress']['city'] = 'x' * 52 } }
+
+      it 'records a length error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/loanHistory/relevantPriorLoans/0/propertyAddress/city')
+      end
+    end
+
+    context 'when prior loan loanAmount is wrong type' do
+      let(:form_json) { mutate_prior_loan { |l| l['loanAmount'] = [] } }
+
+      it 'records a loanAmount error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/loanHistory/relevantPriorLoans/0/loanAmount')
+      end
+    end
+
+    context 'when naturalDisaster affected is true but dateOfLoss is missing' do
+      let(:form_json) { mutate_prior_loan { |l| l['naturalDisaster'] = { 'affected' => 'true' } } }
+
+      it 'records a dateOfLoss error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/loanHistory/relevantPriorLoans/0/naturalDisaster/dateOfLoss')
+      end
+    end
+
+    context 'when loanHistory certificateUse is invalid' do
+      let(:form_json) { mutate_form { |h| h['loanHistory']['certificateUse'] = 'INVALID' } }
+
+      it 'records an error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/loanHistory/certificateUse')
       end
     end
   end

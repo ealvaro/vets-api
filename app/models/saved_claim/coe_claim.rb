@@ -181,7 +181,7 @@ class SavedClaim::CoeClaim < SavedClaim
     when 'vaLoanIndicator'
       v2_form? ? parsed_form.dig('loanHistory', 'hadPriorLoans') : parsed_form['vaLoanIndicator']
     when 'vaHomeOwnIndicator'
-      v2_form? ? v2_prior_loans.count.positive? : legacy_prior_loans.any? { |obj| obj['propertyOwned'] }
+      v2_form? ? v2_prior_loans.count.positive? : legacy_prior_loans.any?
     when 'relevantPriorLoans'
       v2_form? ? v2_prior_loans : legacy_prior_loans
     end
@@ -191,9 +191,6 @@ class SavedClaim::CoeClaim < SavedClaim
     case field
     when 'intent'
       v2_form? ? loan['entitlementRestoration'] : loan['intent']
-    when 'propertyOwned'
-      # return true if v2_form? since new form does not add relevantPriorLoans unless they were bought w/ VA Home loan
-      v2_form? || loan['propertyOwned']
     end
   end
 
@@ -206,18 +203,35 @@ class SavedClaim::CoeClaim < SavedClaim
     @lgy_service ||= LGY::Service.new(edipi: @edipi, icn: @icn)
   end
 
+  # @param loan_info [Hash] one row of parsed_form['relevantPriorLoans'] from the (legacy) submit payload
+  def lgy_row_property_owned?(loan_info)
+    return true unless loan_info.key?('propertyOwned')
+
+    v = loan_info['propertyOwned']
+    [true, 'true'].include?(v)
+  end
+
   # rubocop:disable Metrics/MethodLength
   def relevant_prior_loans(form_copy)
     get_value_by_form_version('relevantPriorLoans').each do |loan_info|
-      property_zip, property_zip_suffix = loan_info['propertyAddress']['propertyZip'].split('-', 2)
+      pa = loan_info['propertyAddress']
+      addr1, addr2, city, state, zip_raw =
+        if v2_form?
+          [pa['street1'], pa['street2'] || '', pa['city'], pa['state'], pa['postalCode'].to_s]
+        else
+          [pa['propertyAddress1'], pa['propertyAddress2'] || '', pa['propertyCity'], pa['propertyState'],
+           pa['propertyZip'].to_s]
+        end
+      property_zip, property_zip_suffix = zip_raw.split('-', 2)
       form_copy['relevantPriorLoans'] << {
         'vaLoanNumber' => loan_info['vaLoanNumber'].to_s,
         'startDate' => loan_info['dateRange']['from'],
         'paidOffDate' => loan_info['dateRange']['to'],
         'loanAmount' => loan_info['loanAmount'],
         'loanEntitlementCharged' => loan_info['loanEntitlementCharged'],
-        # propertyOwned also maps to the the stillOwn indicator on the LGY side
-        'propertyOwned' => get_value_by_form_version_from_prior_loan('propertyOwned', loan_info) || false,
+        # propertyOwned also maps to the stillOwn indicator on the LGY side;
+        # prior-loan rows from the new form omit this on the FE; list membership implies current ownership
+        'propertyOwned' => lgy_row_property_owned?(loan_info),
         # In UI: "A one-time restoration of entitlement"
         # In LGY: "One Time Resto"
         'oneTimeRestorationRequested' => get_value_by_form_version_from_prior_loan('intent',
@@ -234,10 +248,10 @@ class SavedClaim::CoeClaim < SavedClaim
                                                                                          loan_info) == 'INQUIRY',
         # LGY has requested `homeSellIndicator` always be null
         'homeSellIndicator' => nil,
-        'propertyAddress1' => loan_info['propertyAddress']['propertyAddress1'],
-        'propertyAddress2' => loan_info['propertyAddress']['propertyAddress2'] || '',
-        'propertyCity' => loan_info['propertyAddress']['propertyCity'],
-        'propertyState' => loan_info['propertyAddress']['propertyState'],
+        'propertyAddress1' => addr1,
+        'propertyAddress2' => addr2,
+        'propertyCity' => city,
+        'propertyState' => state,
         # confirmed OK to omit propertyCounty, but LGY still requires a string
         'propertyCounty' => '',
         'propertyZip' => property_zip,

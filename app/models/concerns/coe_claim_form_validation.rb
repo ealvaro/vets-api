@@ -11,15 +11,27 @@ module CoeClaimFormValidation
   include FullName
   include VeteranContact
   include MilitaryHistory
+  include PriorLoan
+  include LoanHistory
 
   MILITARY_STATUS_VALUES = %w[
     ADSM VETERAN NATIONAL_GUARD_OR_RESERVES
     DISCHARGED_NATIONAL_GUARD DISCHARGED_RESERVES
   ].freeze
 
+  CERTIFICATE_USE_VALUES = %w[
+    ENTITLEMENT_INQUIRY_ONLY HOME_PURCHASE CASH_OUT_REFINANCE INTEREST_RATE_REDUCTION_REFINANCE
+  ].freeze
+
+  ENTITLEMENT_RESTORATION_VALUES = %w[
+    ENTITLEMENT_INQUIRY_ONLY CASH_OUT_REFINANCE INTEREST_RATE_REDUCTION_REFINANCE ONE_TIME_RESTORATION
+  ].freeze
+
   COE_STATE_CODES = Common::ValidationsPatterns::COE_STATE_CODES
   DOB_PATTERN = Common::ValidationsPatterns::COE_DATE_OF_BIRTH_PATTERN
   POSTAL_CODE_PATTERN = Common::ValidationsPatterns::COE_POSTAL_CODE_PATTERN
+
+  VA_LOAN_NUMBER_12_PATTERN = /\A\d{12}\z/
 
   private
 
@@ -29,6 +41,7 @@ module CoeClaimFormValidation
     validate_full_name
     validate_veteran_contact
     validate_military_history
+    validate_loan_history
 
     return if errors.empty?
 

@@ -7,7 +7,6 @@ RSpec.shared_context 'coe claim form validation' do
     {
       'certificateUse' => 'HOME_PURCHASE',
       'hadPriorLoans' => 'false',
-      'currentAddressWasVAHomeLoan' => 'false',
       'entitlementRestoration' => 'ONE_TIME_RESTORATION',
       'relevantPriorLoans' => []
     }

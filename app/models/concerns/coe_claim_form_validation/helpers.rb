@@ -67,6 +67,10 @@ module CoeClaimFormValidation
       [true, false].include?(value) || %w[true false].include?(value.to_s.downcase)
     end
 
+    def coe_truthy?(value)
+      value == true || value.to_s.downcase == 'true'
+    end
+
     def coe_date_string_valid?(value)
       return false if value.blank?
       return false unless value.is_a?(String)
