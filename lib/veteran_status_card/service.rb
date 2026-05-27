@@ -109,6 +109,27 @@ module VeteranStatusCard
     #         not_confirmed_reason:, confirmation_status:, service_summary_code: }
     #
     def status_card # rubocop:disable Metrics/MethodLength
+      # Manually raise a response for testing purposes when a specific user is in non-production environments
+      if Settings.vsp_environment&.to_s&.downcase != 'production'
+        if @user&.email == 'vets.gov.user+6@gmail.com'
+          @confirmation_status = CURRENTLY_SERVING_SSC_MESSAGE
+          @ssc_code = 'D'
+          return ineligible_response(currently_serving_response, testing: true)
+        end
+
+        if @user&.email == 'vets.gov.user+7@gmail.com'
+          @confirmation_status = DISHONORABLE_SSC_MESSAGE
+          @ssc_code = 'A5'
+          return ineligible_response(dishonorable_response, testing: true)
+        end
+
+        if @user&.email == 'vets.gov.user+8@gmail.com'
+          @confirmation_status = UNKNOWN_SSC_MESSAGE
+          @ssc_code = 'U'
+          return ineligible_response(unknown_eligibility_response, testing: true)
+        end
+      end
+
       # Check up front that the ICN is present, as this is required for the VetVerificationStatus service
       if @user&.icn.blank?
         @confirmation_status = NO_ICN_MESSAGE
@@ -348,7 +369,7 @@ module VeteranStatusCard
     # @param error_details [Hash] the error details from error_results
     # @return [Hash] the veteran status alert response
     #
-    def ineligible_response(error_details)
+    def ineligible_response(error_details, testing: false)
       {
         type: VETERAN_STATUS_ALERT,
         attributes: {
@@ -356,7 +377,7 @@ module VeteranStatusCard
           body: error_details[:message],
           alert_type: error_details[:status],
           veteran_status: NOT_CONFIRMED_TEXT,
-          not_confirmed_reason: vet_verification_status[:reason],
+          not_confirmed_reason: testing ? VET_STATUS_MORE_RESEARCH_REQUIRED_TEXT : vet_verification_status[:reason],
           confirmation_status: confirmation_status_upcase,
           service_summary_code: ssc_code
         }
