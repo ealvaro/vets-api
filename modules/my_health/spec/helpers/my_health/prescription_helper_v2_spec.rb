@@ -26,6 +26,7 @@ RSpec.describe MyHealth::PrescriptionHelperV2 do
       id: SecureRandom.uuid,
       prescription_name: 'Test Med',
       disp_status: 'Active',
+      refill_status: 'active',
       is_refillable: false,
       is_renewable: false,
       is_trackable: false,
@@ -124,6 +125,52 @@ RSpec.describe MyHealth::PrescriptionHelperV2 do
       it 'returns false when item does not respond to is_renewable' do
         item = OpenStruct.new(id: '1')
         expect(helper.renewable(item)).to be false
+      end
+    end
+
+    describe '#filter_discontinued_non_va_meds' do
+      it 'filters out non-VA medications with discontinued status' do
+        items = [
+          build_prescription(prescription_source: 'NV', refill_status: 'discontinued'),
+          build_prescription(prescription_source: 'NV', refill_status: 'Discontinued'),
+          build_prescription(prescription_source: 'NV', refill_status: 'active'),
+          build_prescription(prescription_source: 'VA', refill_status: 'discontinued')
+        ]
+
+        result = helper.filter_discontinued_non_va_meds(items)
+
+        expect(result.length).to eq(2)
+        expect(result.map(&:prescription_source)).to contain_exactly('NV', 'VA')
+      end
+
+      it 'keeps non-VA medications with nil refill_status' do
+        items = [
+          build_prescription(prescription_source: 'NV', refill_status: nil),
+          build_prescription(prescription_source: 'NV', refill_status: 'discontinued')
+        ]
+
+        result = helper.filter_discontinued_non_va_meds(items)
+
+        expect(result.length).to eq(1)
+        expect(result.first.refill_status).to be_nil
+      end
+
+      it 'returns empty array for empty input' do
+        result = helper.filter_discontinued_non_va_meds([])
+        expect(result).to eq([])
+      end
+
+      it 'keeps items without prescription_source or refill_status methods' do
+        item_without_methods = OpenStruct.new(id: '1', prescription_name: 'Test')
+        items = [
+          item_without_methods,
+          build_prescription(prescription_source: 'NV', refill_status: 'discontinued')
+        ]
+
+        result = helper.filter_discontinued_non_va_meds(items)
+
+        expect(result.length).to eq(1)
+        expect(result).to include(item_without_methods)
       end
     end
   end

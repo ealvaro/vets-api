@@ -23,6 +23,15 @@ module MyHealth
         end
       end
 
+      def filter_discontinued_non_va_meds(data)
+        data.reject do |item|
+          item.respond_to?(:prescription_source) &&
+            item.prescription_source == 'NV' &&
+            item.respond_to?(:refill_status) &&
+            item.refill_status&.downcase == 'discontinued'
+        end
+      end
+
       def renewable(item)
         item.respond_to?(:is_renewable) && item.is_renewable == true
       end

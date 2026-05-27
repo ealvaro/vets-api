@@ -100,6 +100,8 @@ module MyHealth
         prescriptions = apply_recent_submission_overrides(
           service.get_prescriptions(current_only: false)[:prescriptions].compact
         )
+        # Filter out discontinued non-VA meds
+        prescriptions = filter_discontinued_non_va_meds(prescriptions)
         prescription = prescriptions.find do |p|
           p.prescription_id.to_s == params[:id].to_s &&
             p.station_number.to_s == params[:station_number].to_s
@@ -118,6 +120,8 @@ module MyHealth
         prescriptions = apply_recent_submission_overrides(
           service.get_prescriptions(current_only: false)[:prescriptions].compact
         )
+        # Filter out discontinued non-VA meds
+        prescriptions = filter_discontinued_non_va_meds(prescriptions)
         recently_requested = get_recently_requested_prescriptions(prescriptions)
         refillable_prescriptions = filter_data_by_refill_and_renew(prescriptions)
 
@@ -320,6 +324,9 @@ module MyHealth
                         else
                           remove_pf_pd(prescriptions)
                         end
+
+        # Filter out discontinued non-VA meds
+        prescriptions = filter_discontinued_non_va_meds(prescriptions)
 
         group_prescriptions(prescriptions)
       end
