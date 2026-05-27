@@ -11,7 +11,7 @@ end
 
 RSpec.describe 'IvcChampva::MissingFormStatusJob', type: :job do
   let!(:one_week_ago) { 1.week.ago.utc }
-  let!(:forms) { create_list(:ivc_champva_form, 3, pega_status: nil, created_at: one_week_ago) }
+  let!(:forms) { create_list(:ivc_champva_form, 7, pega_status: nil, created_at: one_week_ago) }
   let!(:job) { IvcChampva::MissingFormStatusJob.new }
 
   before do
@@ -61,6 +61,41 @@ RSpec.describe 'IvcChampva::MissingFormStatusJob', type: :job do
 
     # Verify that an email has now been sent for the target form:
     expect(forms[0].reload.email_sent).to be true
+  end
+
+  it 'updates email_sent to true for all records across multiple form_uuids that exceed the threshold' do
+    threshold = 5 # using 5 since dummy forms have `created_at` set to 1 week ago
+    allow(Settings.vanotify.services.ivc_champva).to receive(:failure_email_threshold_days).and_return(threshold)
+
+    # Set up three distinct form_uuids, each with multiple records
+    uuid_a = SecureRandom.uuid
+    uuid_b = SecureRandom.uuid
+    uuid_c = SecureRandom.uuid
+    forms[0].update(form_uuid: uuid_a)
+    forms[1].update(form_uuid: uuid_a)
+    forms[2].update(form_uuid: uuid_b)
+    forms[3].update(form_uuid: uuid_b)
+    forms[4].update(form_uuid: uuid_b)
+    forms[5].update(form_uuid: uuid_c)
+    forms[6].update(form_uuid: uuid_c)
+
+    # Verify all forms are past threshold and have no email sent:
+    forms.each do |form|
+      expect(days_since_now(form.created_at) > threshold).to be true
+      expect(form.reload.email_sent).to be false
+    end
+
+    # Perform should identify all batches as lapsed and send failure emails:
+    job.perform
+
+    # Verify that email_sent is true for all records with all three form_uuids:
+    expect(forms[0].reload.email_sent).to be true # uuid_a record 1
+    expect(forms[1].reload.email_sent).to be true # uuid_a record 2
+    expect(forms[2].reload.email_sent).to be true # uuid_b record 1
+    expect(forms[3].reload.email_sent).to be true # uuid_b record 2
+    expect(forms[4].reload.email_sent).to be true # uuid_b record 3
+    expect(forms[5].reload.email_sent).to be true # uuid_c record 1
+    expect(forms[6].reload.email_sent).to be true # uuid_c record 2
   end
 
   it 'checks PEGA reporting API and declines to send failure email if form has actually been processed' do
@@ -196,7 +231,7 @@ RSpec.describe 'IvcChampva::MissingFormStatusJob', type: :job do
       # Allow all other info logs, but expect the verbose status logs
       allow(Rails.logger).to receive(:info)
       expect(Rails.logger).to receive(:info)
-        .with(/IVC Forms MissingFormStatusJob - Missing status for Form/).exactly(3).times
+        .with(/IVC Forms MissingFormStatusJob - Missing status for Form/).exactly(7).times
 
       job.perform
     end

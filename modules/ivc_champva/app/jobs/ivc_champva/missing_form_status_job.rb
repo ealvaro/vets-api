@@ -127,7 +127,7 @@ module IvcChampva
 
       ActiveRecord::Base.transaction do
         if IvcChampva::Email.new(form_data).send_email
-          fetch_forms_by_uuid(form[:form_uuid]).update_all(email_sent: true) # rubocop:disable Rails/SkipsModelValidations
+          IvcChampvaForm.where(form_uuid: form[:form_uuid]).update_all(email_sent: true) # rubocop:disable Rails/SkipsModelValidations
           monitor.track_missing_status_email_sent(form[:form_number]) unless callback
         else
           monitor.log_silent_failure(additional_context)
@@ -145,10 +145,6 @@ module IvcChampva
           additional_context:
         }
       }
-    end
-
-    def fetch_forms_by_uuid(form_uuid)
-      @fetch_forms_by_uuid ||= IvcChampvaForm.where(form_uuid:)
     end
 
     ##
