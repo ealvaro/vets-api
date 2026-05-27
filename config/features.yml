@@ -751,6 +751,12 @@ features:
       Enables shared benefit-letter content (names, ordering, filtering, and
       structured descriptions) across vets-website and va-mobile-app.
     enable_in_development: false
+  cst_letters_description_content_format:
+    actor_type: user
+    description: >-
+      When enabled, letter descriptions are returned as a typed content array (nodes with type, text,
+      listType, and items fields) instead of the legacy paragraphs and lists shape.
+    enable_in_development: false
   cst_use_claim_title_generator_web:
     description: When enabled, use the title generator to insert claim titles into claim list responses.
   cst_use_claim_title_generator_mobile:
