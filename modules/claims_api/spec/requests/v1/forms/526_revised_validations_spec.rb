@@ -340,6 +340,32 @@ RSpec.describe ClaimsApi::RevisedDisabilityCompensationValidations do
           .to raise_error(Common::Exceptions::InvalidFieldValue)
       end
     end
+
+    context 'when service period begin date equals end date' do
+      let(:form_attributes) do
+        {
+          'serviceInformation' => {
+            'servicePeriods' => [
+              {
+                'activeDutyBeginDate' => '1965-12-16',
+                'activeDutyEndDate' => '1965-12-16'
+              }
+            ]
+          }
+        }
+      end
+
+      it 'raises an InvalidFieldValue error' do
+        expect { subject.validate_service_periods_chronology! }
+          .to raise_error(Common::Exceptions::InvalidFieldValue) do |error|
+            expect(error.errors.first.detail).to include(
+              'Invalid service period duty dates - ' \
+              'Provided service period duty dates are out of order: ' \
+              'begin=1965-12-16 end=1965-12-16'
+            )
+          end
+      end
+    end
   end
 
   describe '#validate_form_526_no_active_duty_end_date_more_than_180_days_in_future!' do

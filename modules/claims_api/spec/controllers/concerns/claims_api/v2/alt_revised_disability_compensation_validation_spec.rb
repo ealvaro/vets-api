@@ -311,6 +311,25 @@ describe AltTestDisabilityCompensationValidationClass, vcr: 'brd/countries' do
           'activeDutyEndDate (1) needs to be after activeDutyBeginDate.'
         )
       end
+
+      it 'raises an error if the begin date equals the end date' do
+        same_date = 5.years.ago.to_date.iso8601
+        service_info = {
+          'servicePeriods' => [
+            {
+              'activeDutyBeginDate' => same_date,
+              'activeDutyEndDate' => same_date
+            }
+          ]
+        }
+
+        subject.send(:alt_rev_validate_service_periods, service_info)
+
+        expect(current_error_array.count).to eq(1)
+        expect(current_error_array[0][:detail]).to eq(
+          'activeDutyEndDate (0) needs to be after activeDutyBeginDate.'
+        )
+      end
     end
   end
 
@@ -712,6 +731,47 @@ describe AltTestDisabilityCompensationValidationClass, vcr: 'brd/countries' do
     it 'returns true when a date is valid' do
       result = test_526_validation_instance.send(:date_is_valid?, end_date, end_prop)
       expect(result).to be(true)
+    end
+  end
+
+  describe '#date_is_valid_against_current_time_after_check_on_format?' do
+    context 'with yyyy-mm-dd format' do
+      it 'returns false when the date is today' do
+        today = Time.zone.today.strftime('%Y-%m-%d')
+        result = test_526_validation_instance.send(:date_is_valid_against_current_time_after_check_on_format?, today)
+        expect(result).to be(false)
+      end
+
+      it 'returns true when the date is in the past' do
+        yesterday = (Time.zone.today - 1.day).strftime('%Y-%m-%d')
+        result = test_526_validation_instance.send(:date_is_valid_against_current_time_after_check_on_format?,
+                                                   yesterday)
+        expect(result).to be(true)
+      end
+
+      it 'returns false when the date is in the future' do
+        tomorrow = (Time.zone.today + 1.day).strftime('%Y-%m-%d')
+        result = test_526_validation_instance.send(:date_is_valid_against_current_time_after_check_on_format?, tomorrow)
+        expect(result).to be(false)
+      end
+    end
+
+    context 'with yyyy-mm format' do
+      it 'returns true when the date is the current month' do
+        current_month = Time.zone.today.strftime('%Y-%m')
+        result = test_526_validation_instance.send(:date_is_valid_against_current_time_after_check_on_format?,
+                                                   current_month)
+        expect(result).to be(true)
+      end
+    end
+
+    context 'with yyyy format' do
+      it 'returns true when the date is the current year' do
+        current_year = Time.zone.today.strftime('%Y')
+        result = test_526_validation_instance.send(:date_is_valid_against_current_time_after_check_on_format?,
+                                                   current_year)
+        expect(result).to be(true)
+      end
     end
   end
 

@@ -105,7 +105,7 @@ module ClaimsApi
         end_date = service_period['activeDutyEndDate']
         next if end_date.blank?
 
-        if Date.parse(end_date) < Date.parse(begin_date)
+        if Date.parse(end_date) <= Date.parse(begin_date)
           raise ::Common::Exceptions::InvalidFieldValue.new(
             'serviceInformation.servicePeriods',
             'Invalid service period duty dates - ' \

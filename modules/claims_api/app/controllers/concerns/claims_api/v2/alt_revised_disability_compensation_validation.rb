@@ -653,7 +653,7 @@ module ClaimsApi
               next unless date_is_valid?(sp['activeDutyEndDate'],
                                          "serviceInformation/servicePeriods/#{idx}/activeDutyEndDate", true)
 
-              if Date.strptime(sp['activeDutyBeginDate'], '%Y-%m-%d') > Date.strptime(
+              if Date.strptime(sp['activeDutyBeginDate'], '%Y-%m-%d') >= Date.strptime(
                 sp['activeDutyEndDate'], '%Y-%m-%d'
               )
                 begin_date_exception(idx)
@@ -965,6 +965,7 @@ module ClaimsApi
         when 'yyyy-mm-dd'
           param_date = Date.strptime(date, '%Y-%m-%d')
           now_date = Date.strptime(Time.zone.today.strftime('%Y-%m-%d'), '%Y-%m-%d')
+          return param_date < now_date # Full dates must be strictly in the past
         when 'yyyy-mm'
           param_date = Date.strptime(date, '%Y-%m')
           now_date = Date.strptime(Time.zone.today.strftime('%Y-%m'), '%Y-%m')
