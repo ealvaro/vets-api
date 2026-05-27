@@ -52,12 +52,12 @@ http_interactions:
       "claimLabel": "130DPEBNAJRE"
     },
     "document": {
-      "documentId": "doc-12345",
-      "versionId": "v1"
-    },
-    "linkToCreatedResource": "https://forms-api.prod.bip.va.gov/forms/submissions/abc123"
+      "documentId": "58249d9e-ffed-4b3f-9582-3cc7bc2b7f72",
+      "seriesId": "8afb53dd-032c-4ec6-9fec-233d13ff9d30"
+    }
   },
   "envelope": {
+    "formId": "21-686c",
     "veteranId": {
       "identifierType": "PARTICIPANTID",
       "value": "12345"
@@ -66,6 +66,9 @@ http_interactions:
       "identifierType": "PARTICIPANTID",
       "value": "12345"
     },
+    "epCode": "130",
+    "claimLabel": "130DPEBNAJRE",
+    "sourceRequestId": "550e8400-e29b-41d4-a716-446655440000",
     "payload": {
       "veteranInformation": {
         "fullName": {

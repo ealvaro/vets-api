@@ -4,6 +4,14 @@ require 'rails_helper'
 require_relative '../../support/digital_forms_api/submission_fuzz_helpers'
 
 RSpec.describe DigitalFormsApi::SubmissionsController, type: :controller do
+  # Factory traits covering every realistic upstream Forms API error.
+  # Each trait owns its own status code; the spec derives it from the built error.
+  upstream_error_traits = %i[
+    bad_request unauthorized not_found request_timeout unprocessable_entity
+    too_many_requests internal_server_error bad_gateway error gateway_timeout
+    multiple single
+  ].freeze
+
   routes { DigitalFormsApi::Engine.routes }
 
   let(:participant_id) { '12345' }
@@ -206,6 +214,41 @@ RSpec.describe DigitalFormsApi::SubmissionsController, type: :controller do
                                                      ))
         retrieve_submission!
         expect(response).to have_http_status(:internal_server_error)
+      end
+    end
+
+    # ------------------------------------------------------------------ #
+    # Upstream error code coverage
+    # Verifies that each realistic upstream HTTP error is handled correctly
+    # by the controller's error-mapping logic (404 → 404, all others → 500).
+    # ------------------------------------------------------------------ #
+    context 'when upstream Forms API returns various error codes' do
+      before do
+        allow(Rails.logger).to receive(:warn)
+      end
+
+      upstream_error_traits.each do |trait|
+        context "when upstream raises a #{trait} error" do
+          it 'maps to the expected response' do
+            error = build(:digital_forms_service_error, trait)
+            upstream_status = error.status
+            expected = upstream_status == 404 ? :not_found : :internal_server_error
+            message = upstream_status == 404 ? 'Not found' : 'Internal server error'
+
+            allow_any_instance_of(DigitalFormsApi::Service::Submissions)
+              .to receive(:retrieve).and_raise(error)
+
+            expect(monitor).to receive(:track_show).with(hash_including(
+                                                           http_status: Rack::Utils.status_code(expected),
+                                                           failure_stage: 'retrieve_submission',
+                                                           error_source: 'client_error',
+                                                           upstream_status:
+                                                         ))
+            get(:show, params: { id: 'abc123' })
+            expect(response).to have_http_status(expected)
+            expect(JSON.parse(response.body)).to eq({ 'error' => message })
+          end
+        end
       end
     end
 

@@ -35,7 +35,15 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{
-  "message": "Access denied."
+  "messages": [
+    {
+      "key": "bip.framework.not.authorized.exception",
+      "severity": "ERROR",
+      "status": 403,
+      "text": "Access denied.",
+      "timestamp": "2026-02-24T04:09:15.741Z"
+    }
+  ]
 }'
   recorded_at: Tue, 13 May 2025 19:26:37 GMT
 recorded_with: VCR 6.3.1
