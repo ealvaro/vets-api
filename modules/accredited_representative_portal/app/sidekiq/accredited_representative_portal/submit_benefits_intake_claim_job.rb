@@ -55,7 +55,7 @@ module AccreditedRepresentativePortal
         veteran['ssn'],
         veteran['postalCode'],
         "#{@claim.class} va.gov",
-        @claim.class::PROPER_FORM_ID,
+        @claim.proper_form_id,
         @claim.class::BUSINESS_LINE
       )
     end

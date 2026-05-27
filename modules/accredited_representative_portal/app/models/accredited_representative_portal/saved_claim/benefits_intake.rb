@@ -50,7 +50,73 @@ module AccreditedRepresentativePortal
       end
 
       module BusinessLines
-        COMPENSATION = 'CMP'
+        CENTRAL_MAIL_PORTAL = 'CMP'
+      end
+
+      def proper_form_id
+        self.class::PROPER_FORM_ID
+      end
+
+      # This class is to represent forms uploaded via the Submit Other Form feature.
+      class OtherForm < self
+        FORM_ID = nil
+        PROPER_FORM_ID = nil
+        BUSINESS_LINE = BusinessLines::CENTRAL_MAIL_PORTAL
+        STAMPING_FORM_CLASS = SimpleFormsApi::ScannedFormStamps
+        STATUS_WARNING_THRESHOLD = 10.days
+        FEATURE_FLAG = 'accredited_representative_portal_submit_any_file'
+        ACCEPTED_FORM_IDS = %w[
+          21-0779
+          21-4192
+          21-509
+          21-526EZ
+          21-686c
+          21-8940
+          21P-0516-1
+          21P-0517-1
+          21P-0518-1
+          21P-0519C-1
+          21P-0519S-1
+          21P-530a
+          21P-8049
+          21-8951-2
+          21-674b
+          21-2680
+          21-0788
+          21-4193
+          21P-4718a
+          21-4140
+          21P-4706c
+          21-8960
+          21-0304
+          21-651
+          21P-4185
+          21P-535
+          21-4170
+          21P-524
+          21P-601
+          21P-4706B
+          21P-4171
+          21P-8924
+          20-10208
+          21-527
+          21P-527EZ
+          21-534
+          20-0995
+          20-0996
+          10182
+          20-10207
+          28-1900
+          26-1880
+        ].freeze
+
+        validates :proper_form_id, inclusion: ACCEPTED_FORM_IDS
+
+        def proper_form_id
+          ACCEPTED_FORM_IDS.find do |proper_form_id|
+            proper_form_id.downcase == form_id.gsub(/_BENEFITS-INTAKE/, '').downcase
+          end
+        end
       end
 
       FORM_TYPES = [
@@ -58,7 +124,7 @@ module AccreditedRepresentativePortal
            define_claim_type(
              form_id: '21-686C_BENEFITS-INTAKE',
              proper_form_id: '21-686c',
-             business_line: BusinessLines::COMPENSATION,
+             business_line: BusinessLines::CENTRAL_MAIL_PORTAL,
              stamping_form_class: SimpleFormsApi::VBA21686C
            )
         ),
@@ -66,7 +132,7 @@ module AccreditedRepresentativePortal
            define_claim_type(
              form_id: '21-526EZ_BENEFITS-INTAKE',
              proper_form_id: '21-526EZ',
-             business_line: BusinessLines::COMPENSATION,
+             business_line: BusinessLines::CENTRAL_MAIL_PORTAL,
              stamping_form_class: SimpleFormsApi::VBA21526EZ
            )
         )
@@ -122,13 +188,13 @@ module AccreditedRepresentativePortal
       end
 
       def display_form_id
-        self.class::PROPER_FORM_ID
+        proper_form_id || form_id
       end
 
       def self.form_class_from_proper_form_id(proper_form_id)
         FORM_TYPES.find do |klass|
           klass::PROPER_FORM_ID.casecmp?(proper_form_id)
-        end
+        end || OtherForm
       end
     end
   end

@@ -456,6 +456,68 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
       end
     end
 
+    context 'Other forms' do
+      let(:form_number) { '21-4170' }
+      let(:representative_fixture_path) do
+        Rails.root.join(
+          'modules', 'accredited_representative_portal', 'spec', 'fixtures', 'form_data',
+          'representative_form_upload_21_4170.json'
+        )
+      end
+      let!(:attachment) { PersistentAttachments::VAForm.create!(guid: attachment_guid, form_id: '21-4170') }
+      let!(:supporting_attachment) do
+        PersistentAttachments::VAFormDocumentation.create!(guid: supporting_attachment_guid, form_id: '21-4170')
+      end
+
+      before do
+        allow_any_instance_of(AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob).to(
+          receive(:perform) do |_instance, saved_claim_id|
+            claim = SavedClaim.find(saved_claim_id)
+            claim.form_submissions << create(:form_submission, :pending)
+            claim.save!
+          end
+        )
+      end
+
+      around do |example|
+        VCR.use_cassette("#{arp_vcr_path}mpi/valid_icn_full") do
+          VCR.use_cassette("#{arp_vcr_path}lighthouse/200_type_organization_response") do
+            VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload_location') do
+              VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload') do
+                example.run
+              end
+            end
+          end
+        end
+      end
+
+      context 'claimant with matching poa found' do
+        it 'makes the veteran request' do
+          post('/accredited_representative_portal/v0/submit_representative_form', params: veteran_params)
+          expect(response).to have_http_status(:ok)
+          expect(parsed_response).to eq(
+            {
+              'confirmationNumber' => FormSubmissionAttempt.order(created_at: :desc).first.benefits_intake_uuid,
+              'status' => '200',
+              'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
+            }
+          )
+        end
+
+        it 'makes the veteran request with multiple attachments' do
+          post('/accredited_representative_portal/v0/submit_representative_form', params: multi_form_veteran_params)
+          expect(response).to have_http_status(:ok)
+          expect(parsed_response).to eq(
+            {
+              'confirmationNumber' => FormSubmissionAttempt.order(created_at: :desc).first.benefits_intake_uuid,
+              'status' => '200',
+              'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
+            }
+          )
+        end
+      end
+    end
+
     describe 'track_count is called for a submission attempt' do
       let(:monitor_instance) do
         AccreditedRepresentativePortal::Monitoring.new(

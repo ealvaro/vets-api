@@ -1,0 +1,17 @@
+{
+  "form_id": "21-4170",
+  "representative_form_upload": {
+    "formName": "Statement of Marital Relationship",
+    "formData": {
+      "veteranSsn": "796126859",
+      "postalCode": "12345",
+      "veteranDateOfBirth": "1932-02-05",
+      "formNumber": "21-4170",
+      "email": "john@veteran.com",
+      "veteranFullName": {
+        "first": "Hector",
+        "last": "Allen"
+      }
+    }
+  }
+}

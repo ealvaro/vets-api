@@ -31,7 +31,8 @@ RSpec.describe AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob do
               type: 'veteran_service_organization', poa_code: '123',
               name: 'Org Name', can_accept_digital_poa_requests: nil
             )
-        )
+        ),
+      form_id: '21-686c'
     )
   end
 

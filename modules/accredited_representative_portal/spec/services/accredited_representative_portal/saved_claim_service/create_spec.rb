@@ -8,7 +8,8 @@ RSpec.describe AccreditedRepresentativePortal::SavedClaimService::Create do
     described_class.perform(
       type: AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DependencyClaim,
       attachment_guids: attachments.map(&:guid), metadata:,
-      claimant_representative:
+      claimant_representative:,
+      form_id: '21-686c'
     )
   end
 

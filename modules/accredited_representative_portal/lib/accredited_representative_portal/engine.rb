@@ -49,6 +49,13 @@ module AccreditedRepresentativePortal
             AccreditedRepresentativePortal::SubmissionHandler
           )
         end
+
+        AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::OtherForm::ACCEPTED_FORM_IDS.each do |form_id|
+          ::BenefitsIntake::SubmissionStatusJob.register_handler(
+            "#{form_id.upcase}_BENEFITS-INTAKE",
+            AccreditedRepresentativePortal::SubmissionHandler
+          )
+        end
       end
     end
   end

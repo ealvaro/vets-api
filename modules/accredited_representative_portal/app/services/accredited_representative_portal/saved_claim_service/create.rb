@@ -22,13 +22,14 @@ module AccreditedRepresentativePortal
         # rubocop:disable Metrics/MethodLength
         def perform(
           type:, metadata:, attachment_guids:,
-          claimant_representative:
+          claimant_representative:, form_id:
         )
           SavedClaimClaimantRepresentative.transaction do
             type.new.tap do |saved_claim|
               saved_claim.form = metadata.to_json
+              saved_claim.form_id = "#{form_id.upcase}_BENEFITS-INTAKE"
 
-              form_id = saved_claim.class::PROPER_FORM_ID
+              form_id ||= saved_claim.class::PROPER_FORM_ID
               organize_attachments!(form_id, attachment_guids).tap do |attachments|
                 saved_claim.form_attachment = attachments[:form]
 

@@ -35,6 +35,7 @@ module AccreditedRepresentativePortal
           service = SavedClaimService::Create
           saved_claim = service.perform(
             type: form_class,
+            form_id:,
             metadata:,
             attachment_guids:,
             claimant_representative:
@@ -180,7 +181,7 @@ module AccreditedRepresentativePortal
           attachment = service.perform(
             model_klass,
             file: params[:file],
-            form_id: form_class::PROPER_FORM_ID
+            form_id:
           )
 
           span.set_tag('form_upload.form_id', attachment.form_id)
