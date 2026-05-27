@@ -317,6 +317,42 @@ RSpec.describe ClaimsApi::ServiceBase do
       expect(claim.evss_response).to eq([{ 'detail' => 'single error payload' }])
     end
 
+    it 'unwraps nested errors payloads from original_body hash' do
+      error_detail = 'Exactly one identifier, fileNumber or participantId, must be set.'
+      backend_error = Common::Exceptions::BackendServiceException.new(
+        'pdf.error',
+        {},
+        400,
+        {
+          'errors' => [
+            {
+              'detail' => error_detail,
+              'status' => 400,
+              'title' => 'Bad Request'
+            }
+          ]
+        }
+      )
+
+      service.send(:set_evss_response, claim, backend_error)
+
+      claim.reload
+      expect(claim.evss_response).to eq([
+                                          {
+                                            'detail' => error_detail,
+                                            'status' => 400,
+                                            'title' => 'Bad Request'
+                                          }
+                                        ])
+    end
+
+    it 'stores a standard error message as a one-element array' do
+      service.send(:set_evss_response, claim, StandardError.new('Unexpected error occurred'))
+
+      claim.reload
+      expect(claim.evss_response).to eq(['Unexpected error occurred'])
+    end
+
     it 'stores errors from objects exposing an errors array' do
       error = double(:error, errors: [{ 'detail' => 'errors accessor payload' }])
 

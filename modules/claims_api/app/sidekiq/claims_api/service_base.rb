@@ -123,9 +123,19 @@ module ClaimsApi
       end
 
       # Set collected errors to the auto_claim evss_response
-      auto_claim.evss_response = errors_to_add
+      auto_claim.evss_response = normalize_evss_response(errors_to_add)
 
       auto_claim.save!
+    end
+
+    def normalize_evss_response(errors)
+      Array(errors).flat_map do |error|
+        if error.is_a?(Hash) && (error['errors'].present? || error[:errors].present?)
+          Array(error['errors'] || error[:errors])
+        else
+          [error]
+        end
+      end
     end
 
     def allow_poa_access?(poa_form_data:)

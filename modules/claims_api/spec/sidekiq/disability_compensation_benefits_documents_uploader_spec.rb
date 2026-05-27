@@ -91,6 +91,38 @@ RSpec.describe ClaimsApi::DisabilityCompensationBenefitsDocumentsUploader, type:
 
       expect { service.perform(claim.id) }.to raise_error(StandardError)
     end
+
+    it 'sets the claim status to errored' do
+      expect { service.perform(claim.id) }.to raise_error(StandardError)
+
+      claim.reload
+      expect(claim.status).to eq('errored')
+    end
+
+    it 'stores the error in evss_response' do
+      expect { service.perform(claim.id) }.to raise_error(StandardError)
+
+      claim.reload
+      expect(claim.evss_response).to eq(['Connection timeout'])
+    end
+
+    context 'when the error has original_body array payload' do
+      let(:error) do
+        Common::Exceptions::BackendServiceException.new(
+          'pdf.error',
+          {},
+          500,
+          [{ 'detail' => 'service failure' }]
+        )
+      end
+
+      it 'stores original_body array errors as-is in evss_response' do
+        expect { service.perform(claim.id) }.to raise_error(Common::Exceptions::BackendServiceException)
+
+        claim.reload
+        expect(claim.evss_response).to eq([{ 'detail' => 'service failure' }])
+      end
+    end
   end
 
   context 'when the pdf is mocked' do

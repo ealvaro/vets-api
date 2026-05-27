@@ -27,6 +27,8 @@ module ClaimsApi
       log_job_progress(claim_id, "#{version_prefix} BD upload succeeded, Claim workflow finished")
     # Temporary errors (returning HTML, connection timeout), retry call
     rescue => e
+      set_errored_state_on_claim(auto_claim)
+      set_evss_response(auto_claim, e)
       error_message = get_error_message(e)
       log_job_progress(claim_id, "BD failure #{e.class}: #{error_message}")
       raise e
