@@ -39,6 +39,19 @@ RSpec.describe VAOS::V2::Unified::EligibilityService do
         expect(patients_service).to have_received(:get_patient_appointment_metadata)
           .with('primaryCare', '983', 'direct')
       end
+
+      it 'increments statsd eligibility' do
+        allow(StatsD).to receive(:increment)
+        expect(StatsD).to receive(:increment).with(
+          'api.vaos.unified_eligibility.direct_eligible',
+          tags: array_including(
+            'type_of_care:primaryCare'
+          )
+        )
+        expect(StatsD).to receive(:increment).with('api.vaos.unified_eligibility.success')
+
+        service.check_eligibility(facility_id:, vaos_service_type: 'primaryCare')
+      end
     end
 
     context 'when the patient is ineligible for direct scheduling' do
@@ -51,6 +64,19 @@ RSpec.describe VAOS::V2::Unified::EligibilityService do
         result = service.check_eligibility(facility_id:, vaos_service_type: 'primaryCare')
 
         expect(result[:direct_eligible]).to be false
+      end
+
+      it 'increments statsd ineligibility' do
+        allow(StatsD).to receive(:increment)
+        expect(StatsD).to receive(:increment).with(
+          'api.vaos.unified_eligibility.direct_ineligible',
+          tags: array_including(
+            'type_of_care:primaryCare'
+          )
+        )
+        expect(StatsD).to receive(:increment).with('api.vaos.unified_eligibility.success')
+
+        service.check_eligibility(facility_id:, vaos_service_type: 'primaryCare')
       end
     end
 

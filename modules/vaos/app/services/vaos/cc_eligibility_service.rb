@@ -2,11 +2,19 @@
 
 module VAOS
   class CCEligibilityService < VAOS::SessionService
+    STATSD_KEY_PREFIX = 'api.vaos.cc_eligibility'
     def get_eligibility(service_type)
       with_monitoring do
         response = perform(:get, url(service_type), nil, headers)
 
         elig_data = extract_elig_data(response)
+        tags = ["type_of_care:#{elig_data[:service_type]}"]
+        if elig_data[:eligible]
+          StatsD.increment("#{STATSD_KEY_PREFIX}.success",
+                           tags:)
+        else
+          StatsD.increment("#{STATSD_KEY_PREFIX}.failure", tags:)
+        end
         Rails.logger.info('VAOS CCEligibility details', elig_data.to_json) unless elig_data.values.all?(&:nil?)
 
         {

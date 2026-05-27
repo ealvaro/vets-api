@@ -25,6 +25,32 @@ describe VAOS::CCEligibilityService do
       end
     end
 
+    it 'increments statsd success with eligibility of true' do
+      VCR.use_cassette('vaos/cc_eligibility/get_eligibility_true', match_requests_on: %i[method path query]) do
+        allow(StatsD).to receive(:increment)
+        expect(StatsD).to receive(:increment).with(
+          'api.vaos.cc_eligibility.success',
+          tags: array_including(
+            'type_of_care:PrimaryCare'
+          )
+        )
+        subject.get_eligibility(service_type)
+      end
+    end
+
+    it 'increments statsd failure with eligibility of false' do
+      VCR.use_cassette('vaos/cc_eligibility/get_eligibility_false', match_requests_on: %i[method path query]) do
+        allow(StatsD).to receive(:increment)
+        expect(StatsD).to receive(:increment).with(
+          'api.vaos.cc_eligibility.failure',
+          tags: array_including(
+            'type_of_care:PrimaryCare'
+          )
+        )
+        subject.get_eligibility(service_type)
+      end
+    end
+
     context 'invalid service_type' do
       let(:service_type) { 'NotAType' }
 

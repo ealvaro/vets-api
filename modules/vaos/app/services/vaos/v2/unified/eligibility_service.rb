@@ -38,6 +38,14 @@ module VAOS
           direct_eligible = eligible?(vaos_service_type, facility_id, 'direct')
           # Request eligibility disabled for pilot — can take >10s for non-Judy users
           # request_eligible = eligible?(vaos_service_type, facility_id, 'request')
+
+          tags = ["type_of_care:#{vaos_service_type}"]
+          if direct_eligible
+            StatsD.increment("#{STATSD_KEY_PREFIX}.direct_eligible", tags:)
+          else
+            StatsD.increment("#{STATSD_KEY_PREFIX}.direct_ineligible", tags:)
+          end
+
           StatsD.increment("#{STATSD_KEY_PREFIX}.success")
 
           {
