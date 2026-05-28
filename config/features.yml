@@ -2819,9 +2819,6 @@ features:
   veteran_onboarding_browser_monitoring_enabled:
     actor_type: user
     description: Enables Datadog Real User Monitoring for the veteran onboarding review information form
-  veteran_onboarding_prefill_pattern:
-    actor_type: user
-    description: Enables the prefill pattern for veteran onboarding form
   veteran_onboarding_show_to_newly_onboarded:
     actor_type: user
     description: Conditionally display the new veteran onboarding flow to user, based upon number of days since verified
