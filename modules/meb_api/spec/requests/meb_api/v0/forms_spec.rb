@@ -384,6 +384,80 @@ RSpec.describe 'MebApi::V0 Forms', type: :request do
         end
       end
     end
+
+    context 'with meb_dynamic_letter_filename feature flag enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?).with(:meb_dynamic_letter_filename).and_return(true)
+      end
+
+      context 'when requesting VetTec letter' do
+        it 'returns a PDF with VT2 dynamic filename for CoE' do
+          travel_to Time.zone.local(2024, 1, 15, 10, 30, 0) do
+            get '/meb_api/v0/forms_claim_letter', params: { type: 'VetTec' }
+            expect(response).to have_http_status(:ok)
+            expect(response.headers['Content-Type']).to eq('application/pdf')
+            expect(response.headers['Content-Disposition']).to include('VT2_CoE_2024_01_15')
+          end
+        end
+
+        it 'returns a PDF with VT2 dynamic filename for Denial' do
+          travel_to Time.zone.local(2024, 1, 15, 10, 30, 0) do
+            denial_response = double('claim_status_response', claim_status: 'DENIED')
+            allow(status_service).to receive(:get_claim_status).and_return(denial_response)
+            get '/meb_api/v0/forms_claim_letter', params: { type: 'VetTec' }
+            expect(response).to have_http_status(:ok)
+            expect(response.headers['Content-Type']).to eq('application/pdf')
+            expect(response.headers['Content-Disposition']).to include('VT2_Denial_2024_01_15')
+          end
+        end
+      end
+
+      context 'when requesting non-VetTec letter' do
+        it 'returns a PDF with original filename format for TOE' do
+          travel_to Time.zone.local(2024, 1, 15, 10, 30, 0) do
+            get '/meb_api/v0/forms_claim_letter', params: { type: 'ToeSubmission' }
+            expect(response).to have_http_status(:ok)
+            expect(response.headers['Content-Type']).to eq('application/pdf')
+            expect(response.headers['Content-Disposition']).to include('Post-9%2F11 GI_Bill_CoE')
+          end
+        end
+
+        it 'returns a PDF with original filename format for Chapter35' do
+          travel_to Time.zone.local(2024, 1, 15, 10, 30, 0) do
+            get '/meb_api/v0/forms_claim_letter', params: { type: 'Chapter35Submission' }
+            expect(response).to have_http_status(:ok)
+            expect(response.headers['Content-Type']).to eq('application/pdf')
+            expect(response.headers['Content-Disposition']).to include('Post-9%2F11 GI_Bill_CoE')
+          end
+        end
+      end
+    end
+
+    context 'with meb_dynamic_letter_filename feature flag disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?).with(:meb_dynamic_letter_filename).and_return(false)
+      end
+
+      it 'returns a PDF with original filename format for VetTec' do
+        travel_to Time.zone.local(2024, 1, 15, 10, 30, 0) do
+          get '/meb_api/v0/forms_claim_letter', params: { type: 'VetTec' }
+          expect(response).to have_http_status(:ok)
+          expect(response.headers['Content-Type']).to eq('application/pdf')
+          expect(response.headers['Content-Disposition']).to include('Post-9%2F11 GI_Bill_CoE')
+        end
+      end
+
+      it 'returns a PDF with original filename format for TOE' do
+        travel_to Time.zone.local(2024, 1, 15, 10, 30, 0) do
+          get '/meb_api/v0/forms_claim_letter', params: { type: 'ToeSubmission' }
+          expect(response).to have_http_status(:ok)
+          expect(response.headers['Content-Type']).to eq('application/pdf')
+          expect(response.headers['Content-Disposition']).to include('Post-9%2F11 GI_Bill_CoE')
+        end
+      end
+    end
   end
 
   describe 'POST /meb_api/v0/forms_submit_claim' do

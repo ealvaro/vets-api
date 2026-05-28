@@ -2502,6 +2502,10 @@ features:
     actor_type: user
     description: enables DPO option on address field
     enable_in_development: false
+  meb_dynamic_letter_filename:
+    actor_type: user
+    description: Enables dynamic letter filenames for MEB
+    enable_in_development: true
   meb_kicker_notification_enabled:
     actor_type: user
     description: enables kicker notification on additional consideration questions

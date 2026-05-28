@@ -29,6 +29,16 @@ module MebApi
         }
       }.freeze
 
+      # Benefit type to filename prefix mapping for claim letters
+      # This controller handles: VetTec (10297), Chapter 35/Fry (5490), and TOE
+      BENEFIT_TYPE_FILENAME_MAPPING = {
+        'VetTec' => 'VT2'
+        # Add more benefit types here as needed:
+        # 'Chapter35' => 'CH35',
+        # 'Fry' => 'FRY',
+        # 'toe' => 'TOE'
+      }.freeze
+
       def claim_letter
         claimant_response = claimant_service.get_claimant_info(@form_type)
         claimant_id = claimant_response.claimant_id
@@ -44,7 +54,12 @@ module MebApi
 
         date = Time.now.getlocal
         timestamp = date.strftime('%m/%d/%Y %I:%M:%S %p')
-        filename = is_eligible ? "Post-9/11 GI_Bill_CoE_#{timestamp}" : "Post-9/11 GI_Bill_Denial_#{timestamp}"
+
+        filename = if Flipper.enabled?(:meb_dynamic_letter_filename)
+                     generate_dynamic_filename(@form_type, is_eligible, timestamp)
+                   else
+                     is_eligible ? "Post-9/11 GI_Bill_CoE_#{timestamp}" : "Post-9/11 GI_Bill_Denial_#{timestamp}"
+                   end
 
         send_data response.body, filename: "#{filename}.pdf", type: 'application/pdf', disposition: 'attachment'
 
@@ -194,6 +209,19 @@ module MebApi
       rescue => e
         Rails.logger.error("Lighthouse direct deposit service error: #{e}")
         nil
+      end
+
+      def generate_dynamic_filename(form_type, is_eligible, timestamp)
+        letter_type = is_eligible ? 'CoE' : 'Denial'
+        prefix = BENEFIT_TYPE_FILENAME_MAPPING[form_type]
+
+        if prefix
+          date = Time.now.getlocal
+          date_format = date.strftime('%Y_%m_%d')
+          "#{prefix}_#{letter_type}_#{date_format}"
+        else
+          "Post-9/11 GI_Bill_#{letter_type}_#{timestamp}"
+        end
       end
     end
   end

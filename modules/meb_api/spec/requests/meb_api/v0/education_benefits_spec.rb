@@ -99,6 +99,159 @@ RSpec.describe 'MebApi::V0 EducationBenefits', type: :request do
         end
       end
     end
+
+    context 'with meb_dynamic_letter_filename feature flag enabled' do
+      let(:claimant_response) { double('claimant_response', claimant_id: 600_000_001, status: 201) }
+      let(:claim_status_response) { double('claim_status_response', claim_status: 'ELIGIBLE') }
+      let(:letter_response) { double('letter_response', body: 'PDF content here', status: 200) }
+      let(:claimant_service) { instance_double(MebApi::DGI::Claimant::Service) }
+      let(:status_service) { instance_double(MebApi::DGI::Status::Service) }
+      let(:letter_service) { instance_double(MebApi::DGI::Letters::Service) }
+
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?).with(:meb_dynamic_letter_filename).and_return(true)
+        allow(MebApi::DGI::Claimant::Service).to receive(:new).and_return(claimant_service)
+        allow(MebApi::DGI::Status::Service).to receive(:new).and_return(status_service)
+        allow(MebApi::DGI::Letters::Service).to receive(:new).and_return(letter_service)
+        allow(claimant_service).to receive(:get_claimant_info).and_return(claimant_response)
+        allow(status_service).to receive(:get_claim_status).and_return(claim_status_response)
+        allow(letter_service).to receive(:get_claim_letter).and_return(letter_response)
+      end
+
+      context 'when requesting VetTec letter' do
+        it 'returns a PDF with VT2 dynamic filename for CoE' do
+          travel_to Time.zone.local(2024, 1, 15, 10, 30, 0) do
+            get '/meb_api/v0/claim_letter', params: { type: 'VetTec' }
+            expect(response).to have_http_status(:ok)
+            expect(response.headers['Content-Type']).to eq('application/pdf')
+            expect(response.headers['Content-Disposition']).to include('VT2_CoE_2024_01_15')
+          end
+        end
+
+        it 'returns a PDF with VT2 dynamic filename for Denial' do
+          travel_to Time.zone.local(2024, 1, 15, 10, 30, 0) do
+            denial_response = double('claim_status_response', claim_status: 'DENIED')
+            allow(status_service).to receive(:get_claim_status).and_return(denial_response)
+            get '/meb_api/v0/claim_letter', params: { type: 'VetTec' }
+            expect(response).to have_http_status(:ok)
+            expect(response.headers['Content-Type']).to eq('application/pdf')
+            expect(response.headers['Content-Disposition']).to include('VT2_Denial_2024_01_15')
+          end
+        end
+      end
+
+      context 'when requesting Chapter1606 letter' do
+        it 'returns a PDF with CH1606 dynamic filename for CoE' do
+          travel_to Time.zone.local(2024, 1, 15, 10, 30, 0) do
+            get '/meb_api/v0/claim_letter', params: { type: 'chapter1606' }
+            expect(response).to have_http_status(:ok)
+            expect(response.headers['Content-Type']).to eq('application/pdf')
+            expect(response.headers['Content-Disposition']).to include('CH1606_CoE_2024_01_15')
+          end
+        end
+
+        it 'returns a PDF with CH1606 dynamic filename for Denial' do
+          travel_to Time.zone.local(2024, 1, 15, 10, 30, 0) do
+            denial_response = double('claim_status_response', claim_status: 'DENIED')
+            allow(status_service).to receive(:get_claim_status).and_return(denial_response)
+            get '/meb_api/v0/claim_letter', params: { type: 'chapter1606' }
+            expect(response).to have_http_status(:ok)
+            expect(response.headers['Content-Type']).to eq('application/pdf')
+            expect(response.headers['Content-Disposition']).to include('CH1606_Denial_2024_01_15')
+          end
+        end
+      end
+
+      context 'when requesting Chapter30 letter' do
+        it 'returns a PDF with CH30 dynamic filename for CoE' do
+          travel_to Time.zone.local(2024, 1, 15, 10, 30, 0) do
+            get '/meb_api/v0/claim_letter', params: { type: 'chapter30' }
+            expect(response).to have_http_status(:ok)
+            expect(response.headers['Content-Type']).to eq('application/pdf')
+            expect(response.headers['Content-Disposition']).to include('CH30_CoE_2024_01_15')
+          end
+        end
+
+        it 'returns a PDF with CH30 dynamic filename for Denial' do
+          travel_to Time.zone.local(2024, 1, 15, 10, 30, 0) do
+            denial_response = double('claim_status_response', claim_status: 'DENIED')
+            allow(status_service).to receive(:get_claim_status).and_return(denial_response)
+            get '/meb_api/v0/claim_letter', params: { type: 'chapter30' }
+            expect(response).to have_http_status(:ok)
+            expect(response.headers['Content-Type']).to eq('application/pdf')
+            expect(response.headers['Content-Disposition']).to include('CH30_Denial_2024_01_15')
+          end
+        end
+      end
+
+      context 'when requesting Chapter33 letter' do
+        it 'returns a PDF with original filename format for Chapter33' do
+          travel_to Time.zone.local(2024, 1, 15, 10, 30, 0) do
+            get '/meb_api/v0/claim_letter'
+            expect(response).to have_http_status(:ok)
+            expect(response.headers['Content-Type']).to eq('application/pdf')
+            expect(response.headers['Content-Disposition']).to include('Post-9%2F11 GI_Bill_CoE')
+          end
+        end
+      end
+    end
+
+    context 'with meb_dynamic_letter_filename feature flag disabled' do
+      let(:claimant_response) { double('claimant_response', claimant_id: 600_000_001, status: 201) }
+      let(:claim_status_response) { double('claim_status_response', claim_status: 'ELIGIBLE') }
+      let(:letter_response) { double('letter_response', body: 'PDF content here', status: 200) }
+      let(:claimant_service) { instance_double(MebApi::DGI::Claimant::Service) }
+      let(:status_service) { instance_double(MebApi::DGI::Status::Service) }
+      let(:letter_service) { instance_double(MebApi::DGI::Letters::Service) }
+
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?).with(:meb_dynamic_letter_filename).and_return(false)
+        allow(MebApi::DGI::Claimant::Service).to receive(:new).and_return(claimant_service)
+        allow(MebApi::DGI::Status::Service).to receive(:new).and_return(status_service)
+        allow(MebApi::DGI::Letters::Service).to receive(:new).and_return(letter_service)
+        allow(claimant_service).to receive(:get_claimant_info).and_return(claimant_response)
+        allow(status_service).to receive(:get_claim_status).and_return(claim_status_response)
+        allow(letter_service).to receive(:get_claim_letter).and_return(letter_response)
+      end
+
+      it 'returns a PDF with original filename format for VetTec' do
+        travel_to Time.zone.local(2024, 1, 15, 10, 30, 0) do
+          get '/meb_api/v0/claim_letter', params: { type: 'VetTec' }
+          expect(response).to have_http_status(:ok)
+          expect(response.headers['Content-Type']).to eq('application/pdf')
+          expect(response.headers['Content-Disposition']).to include('Post-9%2F11 GI_Bill_CoE')
+        end
+      end
+
+      it 'returns a PDF with original filename format for Chapter33' do
+        travel_to Time.zone.local(2024, 1, 15, 10, 30, 0) do
+          get '/meb_api/v0/claim_letter'
+          expect(response).to have_http_status(:ok)
+          expect(response.headers['Content-Type']).to eq('application/pdf')
+          expect(response.headers['Content-Disposition']).to include('Post-9%2F11 GI_Bill_CoE')
+        end
+      end
+
+      it 'returns a PDF with original filename format for Chapter1606' do
+        travel_to Time.zone.local(2024, 1, 15, 10, 30, 0) do
+          get '/meb_api/v0/claim_letter', params: { type: 'chapter1606' }
+          expect(response).to have_http_status(:ok)
+          expect(response.headers['Content-Type']).to eq('application/pdf')
+          expect(response.headers['Content-Disposition']).to include('Post-9%2F11 GI_Bill_CoE')
+        end
+      end
+
+      it 'returns a PDF with original filename format for Chapter30' do
+        travel_to Time.zone.local(2024, 1, 15, 10, 30, 0) do
+          get '/meb_api/v0/claim_letter', params: { type: 'chapter30' }
+          expect(response).to have_http_status(:ok)
+          expect(response.headers['Content-Type']).to eq('application/pdf')
+          expect(response.headers['Content-Disposition']).to include('Post-9%2F11 GI_Bill_CoE')
+        end
+      end
+    end
   end
 
   describe 'GET /meb_api/v0/claim_status' do
