@@ -15,8 +15,11 @@ module Mobile
       end
 
       def all_recipients
-        filter_vtgs = !Flipper.enabled?(:mhv_secure_messaging_show_vtgs_mobile, @current_user)
-        resource = client.get_all_triage_teams(@current_user.uuid, filter_virtual_groups: filter_vtgs) do |resp|
+        filter_non_pretransitioned = !Flipper.enabled?(:mhv_secure_messaging_show_vtgs_mobile, @current_user)
+        filter_pretransitioned = Flipper.enabled?(:mhv_secure_messaging_hide_pretransitioned_vtgs, @current_user)
+        resource = client.get_all_triage_teams(@current_user.uuid,
+                                               filter_non_pretransitioned_vtgs: filter_non_pretransitioned,
+                                               filter_pretransitioned_vtgs: filter_pretransitioned) do |resp|
           SchemaContract::ValidationInitiator.call(
             user: @current_user, response: resp, contract_name: 'triage_teams'
           )

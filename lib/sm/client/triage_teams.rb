@@ -39,31 +39,30 @@ module SM
       # @note Only triage_team_id and station_number are cached via TriageTeamCache model
       # @return [Common::Collection[AllTriageTeams]]
       #
-      def get_all_triage_teams(user_uuid, filter_virtual_groups: true, &block)
-        path = append_requires_oh_messages_query('alltriageteams', 'requiresOHTriageGroup')
-        response = perform(:get, path, nil, token_headers)
+      def get_all_triage_teams(user_uuid, filter_non_pretransitioned_vtgs: true, filter_pretransitioned_vtgs: false,
+                               &block)
+        response = perform(:get, append_requires_oh_messages_query('alltriageteams', 'requiresOHTriageGroup'),
+                           nil, token_headers)
         block&.call(response)
-        json = response.body
 
-        # Instantiate teams and filter out those migrating to OH
-        teams = json[:data].map { |data| AllTriageTeams.new(data) }
+        teams = response.body[:data].map { |data| AllTriageTeams.new(data) }
         filtered_teams = exclude_migrating_teams(teams)
-        filtered_teams = exclude_non_pretransitioned_virtual_groups(filtered_teams) if filter_virtual_groups
-
-        # Compute metadata with excluded teams count
-        associated_blocked_triage_groups = filtered_teams.count(&:blocked_status)
-        associated_triage_groups = filtered_teams.length
-        metadata = json[:metadata].merge(
-          associated_triage_groups:,
-          associated_blocked_triage_groups:
+        filtered_teams = filter_virtual_triage_groups(
+          filtered_teams,
+          filter_non_pretransitioned: filter_non_pretransitioned_vtgs,
+          filter_pretransitioned: filter_pretransitioned_vtgs
         )
 
-        # Create collection once with all data ready
-        collection = Vets::Collection.new(filtered_teams, AllTriageTeams, metadata:, errors: json[:errors])
+        metadata = response.body[:metadata].merge(
+          associated_triage_groups: filtered_teams.length,
+          associated_blocked_triage_groups: filtered_teams.count(&:blocked_status)
+        )
+
+        collection = Vets::Collection.new(filtered_teams, AllTriageTeams,
+                                          metadata:, errors: response.body[:errors])
         MyHealth::FacilitiesHelper.set_health_care_system_names(collection)
         cache_triage_team_station_numbers(user_uuid, collection.data)
         log_health_care_system_names(collection.data)
-
         collection
       end
 
@@ -96,13 +95,21 @@ module SM
 
       private
 
-      # Filters out VTGs whose station is not in the pretransitioned OH facilities list
-      def exclude_non_pretransitioned_virtual_groups(teams)
-        pretransitioned = MHV::OhFacilitiesHelper::Service.parse_facility_setting(
+      # Filters VTGs independently for pretransitioned and non-pretransitioned OH facilities.
+      # @param filter_non_pretransitioned [Boolean] remove VTGs at non-pretransitioned stations
+      # @param filter_pretransitioned [Boolean] remove VTGs at pretransitioned stations
+      def filter_virtual_triage_groups(teams, filter_non_pretransitioned: true, filter_pretransitioned: false)
+        return teams unless filter_non_pretransitioned || filter_pretransitioned
+
+        pretransitioned_stations = MHV::OhFacilitiesHelper::Service.parse_facility_setting(
           Settings.mhv.oh_facility_checks.pretransitioned_oh_facilities
         )
+
         teams.reject do |team|
-          team.virtual_group && pretransitioned.exclude?(team.station_number.to_s)
+          next false unless team.virtual_group
+
+          at_pretransitioned = pretransitioned_stations.include?(team.station_number.to_s)
+          at_pretransitioned ? filter_pretransitioned : filter_non_pretransitioned
         end
       end
 

@@ -174,11 +174,13 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
     context 'VTG filtering' do
       before do
         allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_show_vtgs_mobile, anything).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_hide_pretransitioned_vtgs,
+                                                  anything).and_return(false)
       end
 
       it 'filters VTGs by default when toggle is off' do
         expect_any_instance_of(SM::Client).to receive(:get_all_triage_teams)
-          .with(anything, filter_virtual_groups: true)
+          .with(anything, filter_non_pretransitioned_vtgs: true, filter_pretransitioned_vtgs: false)
           .and_call_original
 
         VCR.use_cassette('sm_client/triage_teams/gets_a_collection_of_all_triage_team_recipients') do
@@ -223,6 +225,56 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
 
         # Known VTG triage team IDs SHOULD now be present (not filtered)
         expect(returned_ids).to include(6_725_162) # SM668 CANCER CARE (VTG at 668)
+        expect(returned_ids).to include(6_692_633) # Columbus VTG at 757
+      end
+
+      it 'hides all VTGs when hide_pretransitioned_vtgs toggle is on' do
+        allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_hide_pretransitioned_vtgs,
+                                                  anything).and_return(true)
+
+        # Add station 668 to pretransitioned list — normally its VTGs would be kept
+        allow(Settings.mhv.oh_facility_checks).to receive(:pretransitioned_oh_facilities)
+          .and_return('612, 357, 555, 668')
+
+        VCR.use_cassette('sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups') do
+          get '/mobile/v0/messaging/health/allrecipients', headers: sis_headers
+        end
+
+        expect(response).to be_successful
+        resp_body = response.parsed_body
+        returned_ids = resp_body['data'].map { |t| t['attributes']['triageTeamId'] }
+
+        # ALL VTGs should be removed
+        # (non-pretransitioned filtered by show_vtgs_mobile=off, pretransitioned by this toggle)
+        expect(returned_ids).not_to include(6_725_162) # SM668 CANCER CARE (VTG at 668)
+        expect(returned_ids).not_to include(6_692_633) # Columbus VTG at 757
+
+        # Non-VTG teams should still be present
+        expect(returned_ids).to include(6_238_822) # VHA SPO ALS (non-VTG at 668)
+        expect(returned_ids).to include(6_238_639) # VHA COS Allergy (non-VTG at 757)
+      end
+
+      it 'hides pretransitioned VTGs but shows non-pretransitioned VTGs when both toggles are on' do
+        allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_show_vtgs_mobile, anything).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_hide_pretransitioned_vtgs,
+                                                  anything).and_return(true)
+
+        # Add station 668 to pretransitioned list
+        allow(Settings.mhv.oh_facility_checks).to receive(:pretransitioned_oh_facilities)
+          .and_return('612, 357, 555, 668')
+
+        VCR.use_cassette('sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups') do
+          get '/mobile/v0/messaging/health/allrecipients', headers: sis_headers
+        end
+
+        expect(response).to be_successful
+        resp_body = response.parsed_body
+        returned_ids = resp_body['data'].map { |t| t['attributes']['triageTeamId'] }
+
+        # Pretransitioned VTG at 668 should be hidden (hide_pretransitioned is on)
+        expect(returned_ids).not_to include(6_725_162) # SM668 CANCER CARE (VTG at 668)
+
+        # Non-pretransitioned VTG at 757 should be shown (show_vtgs_mobile is on)
         expect(returned_ids).to include(6_692_633) # Columbus VTG at 757
       end
     end

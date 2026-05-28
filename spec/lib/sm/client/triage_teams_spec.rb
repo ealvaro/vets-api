@@ -396,7 +396,7 @@ describe 'sm client' do
 
       it 'parses virtual_group attribute from API response' do
         VCR.use_cassette 'sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups' do
-          collection = client.get_all_triage_teams('1234', filter_virtual_groups: false)
+          collection = client.get_all_triage_teams('1234', filter_non_pretransitioned_vtgs: false)
 
           vtg_teams = collection.data.select(&:virtual_group)
           non_vtg_teams = collection.data.reject(&:virtual_group)
@@ -417,12 +417,12 @@ describe 'sm client' do
         end
       end
 
-      context 'when filter_virtual_groups is true' do
+      context 'when filter_non_pretransitioned_vtgs is true (default)' do
         it 'removes VTGs at non-pretransitioned stations' do
           # Test settings: pretransitioned_oh_facilities = 612, 357, 555
           # Cassette has stations 668 and 757 — neither is pretransitioned
           VCR.use_cassette 'sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups' do
-            collection = client.get_all_triage_teams('1234', filter_virtual_groups: true)
+            collection = client.get_all_triage_teams('1234', filter_non_pretransitioned_vtgs: true)
 
             vtg_teams = collection.data.select(&:virtual_group)
             expect(vtg_teams).to be_empty
@@ -436,7 +436,7 @@ describe 'sm client' do
 
         it 'keeps non-VTG teams regardless of station' do
           VCR.use_cassette 'sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups' do
-            collection = client.get_all_triage_teams('1234', filter_virtual_groups: true)
+            collection = client.get_all_triage_teams('1234', filter_non_pretransitioned_vtgs: true)
 
             non_vtg_teams = collection.data.reject(&:virtual_group)
             expect(non_vtg_teams).not_to be_empty
@@ -461,7 +461,7 @@ describe 'sm client' do
             .and_return('612, 357, 555, 668')
 
           VCR.use_cassette 'sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups' do
-            collection = client.get_all_triage_teams('1234', filter_virtual_groups: true)
+            collection = client.get_all_triage_teams('1234', filter_non_pretransitioned_vtgs: true)
 
             vtg_at_station668 = collection.data.select { |t| t.virtual_group && t.station_number == '668' }
             vtg_at_station757 = collection.data.select { |t| t.virtual_group && t.station_number == '757' }
@@ -483,7 +483,7 @@ describe 'sm client' do
 
         it 'updates metadata counts to reflect filtered results' do
           VCR.use_cassette 'sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups' do
-            collection = client.get_all_triage_teams('1234', filter_virtual_groups: true)
+            collection = client.get_all_triage_teams('1234', filter_non_pretransitioned_vtgs: true)
 
             # Metadata should match actual collection size
             expect(collection.metadata[:associated_triage_groups]).to eq(collection.data.length)
@@ -494,12 +494,12 @@ describe 'sm client' do
         end
       end
 
-      context 'when filter_virtual_groups default (true)' do
-        it 'filters VTGs by default when kwarg is not passed' do
+      context 'when using defaults (filter_non_pretransitioned_vtgs: true, filter_pretransitioned_vtgs: false)' do
+        it 'filters non-pretransitioned VTGs by default when kwargs are not passed' do
           VCR.use_cassette 'sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups' do
             collection = client.get_all_triage_teams('1234')
 
-            # Default is filter_virtual_groups: true — VTGs should be filtered
+            # Default is filter_non_pretransitioned_vtgs: true — non-pretransitioned VTGs should be filtered
             team_ids = collection.data.map(&:triage_team_id)
             expect(team_ids).not_to include(6_725_162) # SM668 CANCER CARE (VTG at 668)
             expect(team_ids).not_to include(6_692_633) # Columbus VTG at 757
@@ -511,15 +511,116 @@ describe 'sm client' do
         end
       end
 
-      context 'when filter_virtual_groups is explicitly false' do
-        it 'returns all teams including VTGs' do
+      context 'when filter_non_pretransitioned_vtgs is explicitly false' do
+        it 'returns all teams including VTGs at non-pretransitioned stations' do
           VCR.use_cassette 'sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups' do
-            collection = client.get_all_triage_teams('1234', filter_virtual_groups: false)
+            collection = client.get_all_triage_teams('1234', filter_non_pretransitioned_vtgs: false)
 
             team_ids = collection.data.map(&:triage_team_id)
             expect(team_ids).to include(6_725_162) # VTG should still be present
             expect(team_ids).to include(6_692_633) # Columbus VTG at 757
             expect(team_ids).to include(6_238_822) # non-VTG should still be present
+          end
+        end
+      end
+
+      context 'when filter_pretransitioned_vtgs is true' do
+        it 'removes VTGs at pretransitioned stations' do
+          # Add station 668 to pretransitioned list
+          allow(Settings.mhv.oh_facility_checks).to receive(:pretransitioned_oh_facilities)
+            .and_return('612, 357, 555, 668')
+
+          VCR.use_cassette 'sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups' do
+            collection = client.get_all_triage_teams('1234', filter_non_pretransitioned_vtgs: false,
+                                                             filter_pretransitioned_vtgs: true)
+
+            # VTG at pretransitioned station 668 should be removed
+            team_ids = collection.data.map(&:triage_team_id)
+            expect(team_ids).not_to include(6_725_162) # SM668 CANCER CARE (VTG at 668, pretransitioned)
+
+            # VTG at non-pretransitioned station 757 should be kept (filter_non_pretransitioned is false)
+            expect(team_ids).to include(6_692_633) # Columbus VTG at 757
+
+            # Non-VTG teams should still be present at both stations
+            expect(team_ids).to include(6_238_822) # VHA SPO ALS (non-VTG at 668)
+            expect(team_ids).to include(6_238_639) # VHA COS Allergy (non-VTG at 757)
+          end
+        end
+
+        it 'keeps non-VTG teams at pretransitioned stations' do
+          allow(Settings.mhv.oh_facility_checks).to receive(:pretransitioned_oh_facilities)
+            .and_return('612, 357, 555, 668')
+
+          VCR.use_cassette 'sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups' do
+            collection = client.get_all_triage_teams('1234', filter_non_pretransitioned_vtgs: false,
+                                                             filter_pretransitioned_vtgs: true)
+
+            non_vtg_at_station = collection.data.select { |t| !t.virtual_group && t.station_number == '668' }
+            expect(non_vtg_at_station).not_to be_empty
+          end
+        end
+      end
+
+      context 'when both filters are true' do
+        it 'removes ALL VTGs regardless of station' do
+          # Add station 668 to pretransitioned list
+          allow(Settings.mhv.oh_facility_checks).to receive(:pretransitioned_oh_facilities)
+            .and_return('612, 357, 555, 668')
+
+          VCR.use_cassette 'sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups' do
+            collection = client.get_all_triage_teams('1234', filter_non_pretransitioned_vtgs: true,
+                                                             filter_pretransitioned_vtgs: true)
+
+            # ALL VTGs should be removed
+            vtg_teams = collection.data.select(&:virtual_group)
+            expect(vtg_teams).to be_empty
+
+            team_ids = collection.data.map(&:triage_team_id)
+            expect(team_ids).not_to include(6_725_162) # SM668 CANCER CARE (VTG at 668, pretransitioned)
+            expect(team_ids).not_to include(6_692_633) # Columbus VTG at 757
+          end
+        end
+
+        it 'keeps non-VTG teams regardless of station' do
+          VCR.use_cassette 'sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups' do
+            collection = client.get_all_triage_teams('1234', filter_non_pretransitioned_vtgs: true,
+                                                             filter_pretransitioned_vtgs: true)
+
+            non_vtg_teams = collection.data.reject(&:virtual_group)
+            expect(non_vtg_teams).not_to be_empty
+
+            team_ids = collection.data.map(&:triage_team_id)
+            expect(team_ids).to include(6_238_822) # VHA SPO ALS (non-VTG at 668)
+            expect(team_ids).to include(6_238_639) # VHA COS Allergy (non-VTG at 757)
+
+            expect(collection.data).to all(have_attributes(virtual_group: false))
+          end
+        end
+
+        it 'updates metadata counts to reflect all VTGs removed' do
+          allow(Settings.mhv.oh_facility_checks).to receive(:pretransitioned_oh_facilities)
+            .and_return('612, 357, 555, 668')
+
+          VCR.use_cassette 'sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups' do
+            collection = client.get_all_triage_teams('1234', filter_non_pretransitioned_vtgs: true,
+                                                             filter_pretransitioned_vtgs: true)
+
+            expect(collection.metadata[:associated_triage_groups]).to eq(collection.data.length)
+            expect(collection.data).to all(have_attributes(virtual_group: false))
+          end
+        end
+      end
+
+      context 'when both filters are false' do
+        it 'returns all teams including all VTGs' do
+          VCR.use_cassette 'sm_client/triage_teams/gets_all_triage_teams_with_virtual_groups' do
+            collection = client.get_all_triage_teams('1234', filter_non_pretransitioned_vtgs: false,
+                                                             filter_pretransitioned_vtgs: false)
+
+            team_ids = collection.data.map(&:triage_team_id)
+            expect(team_ids).to include(6_725_162) # VTG should be present
+            expect(team_ids).to include(6_692_633) # Columbus VTG at 757
+            expect(team_ids).to include(6_238_822) # non-VTG should be present
           end
         end
       end

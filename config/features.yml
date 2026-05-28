@@ -1915,6 +1915,12 @@ features:
     description: >
       When enabled, Virtual Triage Groups (VTGs) are included in the web alltriageteams
       response. Default off means VTGs at non-pretransitioned OH facilities are filtered out.
+  mhv_secure_messaging_hide_pretransitioned_vtgs:
+    actor_type: user
+    description: >
+      When enabled, Virtual Triage Groups (VTGs) at pretransitioned OH facilities are
+      filtered out of the alltriageteams response. Works independently of the
+      show_vtgs_web/mobile toggles. Use after My VA Health decommissioning.
   mhv_bypass_downtime_notification:
     actor_type: user
     description: When enabled, bypass the MHV downtime notification; intended for smoke testing in production
