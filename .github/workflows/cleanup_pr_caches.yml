@@ -1,0 +1,27 @@
+name: Cleanup PR Caches
+on:
+  pull_request:
+    types: [closed]
+
+# Deletes all GHA caches for the closed PR ref.
+# See .github/CI_CACHE_BEHAVIOR.md — "PR close" section for details
+# on what cache types are cleaned up and why.
+
+permissions:
+  actions: write
+
+jobs:
+  cleanup:
+    name: Cleanup PR caches
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete all caches for this PR ref
+        run: |
+          gh api --paginate "repos/${{ github.repository }}/actions/caches" \
+            --hostname va.ghe.com \
+            --jq '.actions_caches[] | select(.ref == "refs/pull/${{ github.event.pull_request.number }}/merge") | .id' | \
+            while read id; do
+              gh api --hostname va.ghe.com -X DELETE "repos/${{ github.repository }}/actions/caches/$id" --silent || true
+            done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
