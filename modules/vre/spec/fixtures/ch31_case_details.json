@@ -42,5 +42,7 @@
     "lastName": "Chickenova",
     "email": "chicken@aol.gov",
     "phone": "908-999-9999"
-  }
+  },
+  "isInitialEvaluationStepCodeOfConductCompleted": true,
+  "hasVeteranOptedForEva": true
 }

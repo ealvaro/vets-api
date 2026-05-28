@@ -14,7 +14,7 @@ http_interactions:
       User-Agent:
       - Vets.gov Agent
       Appian-API-Key:
-      - eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJjNDdiNzNjMy04ZTgzLTQ5MzQtODViMS1kOTNhMmNhMjgxN2UifQ.8TqYLKpQKmdK5PrWvS1FeA7nE2a8HU9S0BuTVXIR5Gw
+      - <APPIAN_API_KEY>
   response:
     status:
       code: 200
@@ -25,7 +25,7 @@ http_interactions:
       content-type:
       - application/json;charset=UTF-8
       content-length:
-      - '391'
+      - '739'
       connection:
       - keep-alive
       server:
@@ -63,6 +63,6 @@ http_interactions:
       - max-age=16000000; includeSubDomains; preload;
     body:
       encoding: UTF-8
-      string: '{"resCaseId":123456,"isTransferredToCWNRS":true,"orientationAppointmentDetails":{"appointmentDateTime":"2025-01-01T12:00:00Z","appointmentPlace":"Main Office"},"externalStatus":{"isDiscontinued":false,"discontinuedReason":null,"isInterrupted":false,"interruptedReason":null,"stateList":[{"stepCode":"APPL","status":"COMPLETED"},{"stepCode":"ELGLDET","status":"COMPLETED"},{"stepCode":"INTAKE","status":"ACTIVE"},{"stepCode":"ENTLDET","status":"PENDING"},{"stepCode":"PLANSELECT","status":"PENDING"},{"stepCode":"PLANSELECT","status":"PENDING"}]}, "caseManager":{"firstName":"Chicken","lastName":"Chickenov","email":"chicken@aol.gov","phone":"908-999-9999"}}'
+      string: '{"resCaseId":123456,"isTransferredToCWNRS":true,"orientationAppointmentDetails":{"appointmentDateTime":"2025-01-01T12:00:00Z","appointmentPlace":"Main Office"},"externalStatus":{"isDiscontinued":false,"discontinuedReason":null,"isInterrupted":false,"interruptedReason":null,"stateList":[{"stepCode":"APPL","status":"COMPLETED"},{"stepCode":"ELGLDET","status":"COMPLETED"},{"stepCode":"INTAKE","status":"ACTIVE"},{"stepCode":"ENTLDET","status":"PENDING"},{"stepCode":"PLANSELECT","status":"PENDING"},{"stepCode":"PLANSELECT","status":"PENDING"}]}, "caseManager":{"firstName":"Chicken","lastName":"Chickenov","email":"chicken@aol.gov","phone":"908-999-9999"},"isInitialEvaluationStepCodeOfConductCompleted":true,"hasVeteranOptedForEva":true}'
   recorded_at: Mon, 06 Oct 2025 15:51:09 GMT
 recorded_with: VCR 6.3.1

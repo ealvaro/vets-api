@@ -11,7 +11,7 @@
         "type": { "type": "string" },
         "attributes": {
           "type": "object",
-          "required": ["res_case_id", "is_transferred_to_cwnrs", "orientation_appointment_details", "external_status", "case_manager"],
+          "required": ["res_case_id", "is_transferred_to_cwnrs", "orientation_appointment_details", "external_status", "case_manager", "is_initial_evaluation_step_code_of_conduct_completed", "has_veteran_opted_for_eva"],
           "properties": {
             "res_case_id": { "type": ["integer", "null"] },
             "is_transferred_to_cwnrs": { "type": ["boolean", "null"] },
@@ -49,7 +49,9 @@
                 "email": { "type": ["string", "null"] },
                 "phone": { "type": ["string", "null"] }
               }
-            }
+            },
+            "is_initial_evaluation_step_code_of_conduct_completed": { "type": ["boolean", "null"] },
+            "has_veteran_opted_for_eva": { "type": ["boolean", "null"] }
           }
         }
       }

@@ -35,4 +35,13 @@ RSpec.describe VRE::Ch31CaseDetailsSerializer, type: :serializer do
   it 'includes :case_manager' do
     expect(attributes['case_manager']).to eq(body['case_manager'])
   end
+
+  it 'includes :is_initial_evaluation_step_code_of_conduct_completed' do
+    expect(attributes['is_initial_evaluation_step_code_of_conduct_completed'])
+      .to eq(body['is_initial_evaluation_step_code_of_conduct_completed'])
+  end
+
+  it 'includes :has_veteran_opted_for_eva' do
+    expect(attributes['has_veteran_opted_for_eva']).to eq(body['has_veteran_opted_for_eva'])
+  end
 end

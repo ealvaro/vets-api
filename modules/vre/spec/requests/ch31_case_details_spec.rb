@@ -15,6 +15,9 @@ RSpec.describe 'VRE::V0::Ch31CaseDetails', type: :request do
         VCR.use_cassette('vre/ch31_case_details/200') do
           get '/vre/v0/ch31_case_details'
           expect(response).to match_response_schema('vre/ch31_case_details')
+          attributes = JSON.parse(response.body).dig('data', 'attributes')
+          expect(attributes['is_initial_evaluation_step_code_of_conduct_completed']).to be(true)
+          expect(attributes['has_veteran_opted_for_eva']).to be(true)
           assert_response :success
         end
       end
