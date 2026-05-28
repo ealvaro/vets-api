@@ -503,6 +503,11 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
       let(:eps_appointment_service) { instance_double(Eps::AppointmentService) }
       let(:redis_client) { instance_double(Eps::RedisClient) }
 
+      # Freeze "today" to a Monday well before the 2026-06-15 fixture so the
+      # CC 3-business-day lead-time filter never drops the seeded slots no
+      # matter when CI runs.
+      around { |example| Timecop.freeze(Time.zone.parse('2026-05-11T10:00:00-04:00')) { example.run } }
+
       before do
         allow(Eps::AppointmentService).to receive(:new).with(user).and_return(eps_appointment_service)
         allow(Eps::RedisClient).to receive(:new).and_return(redis_client)
@@ -587,6 +592,26 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
         results = service.search(referral:)
         eps = results.find { |p| p.provider_type == 'eps' }
         expect(eps.next_available_date).to be_nil
+      end
+
+      # Reference time is frozen to Mon 2026-05-11. 3 business days out =
+      # cutoff at Thu 2026-05-14, so Wed 2026-05-13 must be dropped and
+      # Fri 2026-05-15 kept. This keeps next_available_date in agreement
+      # with the slot picker, which already applies the same filter.
+      it 'skips slots inside the CC 3-business-day lead time' do
+        allow(eps_provider_service).to receive(:get_provider_slots).and_return(
+          OpenStruct.new(
+            slots: [
+              { id: 'too-soon', start: '2026-05-13T09:00:00-04:00' },
+              { id: 'first-allowed', start: '2026-05-15T09:00:00-04:00' }
+            ],
+            count: 2
+          )
+        )
+
+        results = service.search(referral:)
+        eps = results.find { |p| p.provider_type == 'eps' }
+        expect(eps.next_available_date).to eq('2026-05-15')
       end
 
       it 'degrades to nil when slot fetch raises (no error surfaces)' do

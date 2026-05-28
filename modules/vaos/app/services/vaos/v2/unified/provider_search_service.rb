@@ -342,17 +342,20 @@ module VAOS
             startBefore: end_date,
             appointmentId: draft_id
           )
-          earliest_eps_slot_date(response&.slots)
+          slots = Array(response&.slots).map { |slot| EpsSlot.from_eps_slot(slot) }
+          # CC providers need ~3 business days to accept and prep for a
+          # referral, and Wellhive doesn't enforce that floor. Without
+          # filtering, the "next available" surfaced on the provider list
+          # disagrees with the slot picker, which already drops the same
+          # near-term slots in slots_service.rb.
+          earliest_eps_slot_date(CCLeadTimeFilter.filter(slots))
         rescue => e
           log_eps_next_available_failure(provider, e)
           nil
         end
 
         def earliest_eps_slot_date(slots)
-          starts = Array(slots).map do |slot|
-            hash = slot.is_a?(OpenStruct) ? slot.to_h : slot
-            hash[:start] || hash['start']
-          end.compact_blank
+          starts = Array(slots).map(&:start).compact_blank
           return nil if starts.empty?
 
           parse_date_string(starts.min)
