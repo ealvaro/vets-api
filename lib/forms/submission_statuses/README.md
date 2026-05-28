@@ -1,4 +1,13 @@
 # Display Form Status for a non-Lighthouse Benefits Intake API Form
+
+## For the latest version of this guide, see ➡️ [How to Add Form Submission Status to My VA (Any Form API)](https://va.ghe.com/software/va.gov-team/blob/master/products/identity-personalization/my-va/forms-status-on-My-VA/adding-a-form.md)
+
+For questions about this guide you can contact our team on Slack `#accountexp-authexp`
+
+<details>
+
+<summary>OUTDATED VERSION - Archived May 26, 2026</summary>
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Form Status Card](#form-status-card)
@@ -377,3 +386,5 @@ If you are unable to edit this document to add your team's decisions, please let
   - You can reference this document if you want more insight into how we work with the Lighthouse Benefits Intake API to retrieve the status of submitted forms
 - [VA Forms Library - How to set up Save In Progress (SiP)](https://depo-platform-documentation.scrollhelp.site/developer-docs/va-forms-library-how-to-set-up-save-in-progress-si#VAFormsLibrary-HowtosetupSaveInProgress(SiP)-MyVAPage)
 - [VA Design System Submission Status Pattern](https://design.va.gov/patterns/help-users-to/stay-informed-of-their-application-status#for-asynchronous-submissions)
+
+</details>
