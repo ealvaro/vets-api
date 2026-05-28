@@ -873,8 +873,15 @@ jobs:
                 "type": "header",
                 "text": {
                   "type": "plain_text",
-                  "text": ":warning: Warning: Vets-API Coverage Below Target",
+                  "text": ":warning: Warning: Vets-API Coverage Below 93%",
                   "emoji": true
+                }
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "_If coverage dips below 90%, CI, including deployments, will be blocked._"
                 }
               },
               {
