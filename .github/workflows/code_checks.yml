@@ -622,17 +622,31 @@ jobs:
 
       - name: Cleanup run caches
         if: always()
-        run: |
-          # Delete docker image on success or on master pushes
-          if [ "${{ needs.tests.result }}" == "success" ] || [ "${{ github.event_name }}" != "pull_request" ]; then
-            gh api --hostname va.ghe.com -X DELETE "repos/${{ github.repository }}/actions/caches?key=docker-image-${{ github.sha }}" --silent || true
-          fi
-          # Shard manifests are always safe to delete — reruns get a new run_id anyway
-          for i in $(seq 1 24); do
-            gh api --hostname va.ghe.com -X DELETE "repos/${{ github.repository }}/actions/caches?key=shard-manifest-${{ github.run_id }}-group-$i" --silent || true
-          done
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TESTS_PASSED: ${{ needs.tests.result == 'success' }}
+          IS_PR: ${{ github.event_name == 'pull_request' }}
+        run: |
+          delete_cache() {
+            gh api --hostname va.ghe.com -X DELETE "repos/${{ github.repository }}/actions/caches?key=$1" --silent || true
+          }
+
+          # Docker image: keep on PR failure (dev will push again), always delete on master
+          [[ "$TESTS_PASSED" == "true" || "$IS_PR" == "false" ]] && \
+            delete_cache "docker-image-${{ github.sha }}"
+
+          # Shard manifests: always delete, reruns get a new run_id
+          for i in $(seq 1 24); do
+            delete_cache "shard-manifest-${{ github.run_id }}-group-$i"
+          done
+
+          # Buildkit caches: keep on failure for fast rebuild, delete on success
+          if [[ "$TESTS_PASSED" == "true" && "$IS_PR" == "true" ]]; then
+            gh api --paginate "repos/${{ github.repository }}/actions/caches" \
+              --hostname va.ghe.com \
+              --jq '.actions_caches[] | select(.ref == "${{ github.ref }}") | select(.key | startswith("buildkit-") or startswith("index-buildkit-")) | .id' \
+            | xargs -I{} gh api --hostname va.ghe.com -X DELETE "repos/${{ github.repository }}/actions/caches/{}" --silent || true
+          fi
 
       - name: Add Test Failure label
         if: ${{ needs.tests.result == 'failure' && github.event_name == 'pull_request' }}
@@ -720,14 +734,15 @@ jobs:
           echo "percent=$pct" >> $GITHUB_OUTPUT
           echo "Extracted coverage: $pct"
 
-      # - name: Publish Coverage Report
-      #   if: needs.tests.result == 'success'
-      #   uses: devmasx/coverage-check-action@4a754f8957c6824e0a0d44bf9168fdbdf47e7e2f # v1.2.0
-      #   with:
-      #     type: simplecov
-      #     result_path: coverage/.last_run.json
-      #     min_coverage: 90
-      #     token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check minimum coverage
+        if: needs.tests.result == 'success'
+        run: |
+          pct=${{ steps.coverage.outputs.percent }}
+          if awk "BEGIN { exit !($pct < 90) }"; then
+            echo "Coverage $pct% is below the 90% minimum"
+            exit 1
+          fi
+          echo "Coverage $pct% meets the 90% minimum"
 
       - name: Configure AWS Credentials
         if: needs.tests.result == 'success' && github.event_name != 'pull_request'

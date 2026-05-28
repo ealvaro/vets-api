@@ -8,6 +8,7 @@
 # Default: simplecov-resultset-*/.resultset.json
 
 require 'simplecov'
+require_relative '../spec/simplecov_helper'
 
 module CoverageCollate
   # Resultsets contain absolute paths from Docker test containers (/app/...).
@@ -29,7 +30,13 @@ module CoverageCollate
     rewrite_paths(files, workspace_root)
 
     warn "Collating #{files.size} coverage result sets..."
-    SimpleCov.collate(files)
+
+    SimpleCov.collate(files) do
+      SimpleCovHelper.add_filters(self)
+      SimpleCovHelper.add_modules(self)
+      formatter SimpleCov::Formatter::HTMLFormatter
+    end
+
     warn 'Coverage collation complete.'
   end
 end
