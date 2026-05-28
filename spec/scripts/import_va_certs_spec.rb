@@ -124,6 +124,50 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
       script_content = File.read(script_path)
       expect(script_content).to include('Downloading VA certificates...')
     end
+
+    it 'exits on individual cert download failure in GitHub mirror fallback' do
+      script_content = File.read(script_path)
+      expect(script_content).to include('Failed to download ${cert}.cer')
+      expect(script_content).not_to include('Warning: Failed to download ${cert}.cer')
+    end
+
+    it 'actually exits non-zero when a cert returns 404 from the GitHub mirror fallback' do
+      # Exercises the if!/exit 1 pattern in isolation rather than the full script — invoking
+      # import-va-certs.sh directly requires root (/usr/local/share/ca-certificates, update-ca-certificates).
+      # The content-assertion test above verifies the correct code exists in the script; this test
+      # verifies that the pattern exits non-zero as expected when curl gets a 404.
+      require 'open3'
+      require 'timeout'
+      require 'webrick'
+
+      server = WEBrick::HTTPServer.new(Port: 0, Logger: WEBrick::Log.new(File::NULL), AccessLog: [])
+      server.mount_proc('/') do |_req, res|
+        res.status = 404
+        res.body = 'Not Found'
+      end
+      server_thread = Thread.new { server.start } # rubocop:disable ThreadSafety/NewThread
+      Timeout.timeout(2) { sleep 0.01 until server.status == :Running }
+      port = server.listeners.first.addr[1]
+
+      output, status = Open3.capture2e(
+        'bash', '-c', <<~BASH
+          VA_CERT_REPO="http://localhost:#{port}"
+          for cert in VA-Internal-S2-ICA1-v1; do
+            if ! curl --silent --show-error --fail --connect-timeout 5 --max-time 10 --retry 0 \\
+                -o "/tmp/${cert}_test_$$.cer" "${VA_CERT_REPO}/${cert}.cer"; then
+              echo "\\u2717 Failed to download ${cert}.cer"
+              exit 1
+            fi
+          done
+        BASH
+      )
+
+      expect(status.exitstatus).to eq(1)
+      expect(output).to include('Failed to download VA-Internal-S2-ICA1-v1.cer')
+    ensure
+      server&.shutdown
+      server_thread&.join(5)
+    end
   end
 
   describe 'certificate processing' do

@@ -94,8 +94,11 @@ set -euo pipefail
             VA-Internal-S2-ICA34 \
             VA-Internal-S2-RCA1-v1 VA-Internal-S2-RCA2 VA-Internal-S2-RCA3
         do
-            curl --silent --show-error --fail --connect-timeout 10 --max-time 30 --retry 2 \
-                -o "${cert}.cer" "${VA_CERT_REPO}/${cert}.cer" || echo "Warning: Failed to download ${cert}.cer"
+            if ! curl --silent --show-error --fail --connect-timeout 10 --max-time 30 --retry 2 \
+                -o "${cert}.cer" "${VA_CERT_REPO}/${cert}.cer"; then
+                echo "✗ Failed to download ${cert}.cer"
+                exit 1
+            fi
         done
         echo "✓ VA certificates downloaded from GitHub mirror"
     fi
