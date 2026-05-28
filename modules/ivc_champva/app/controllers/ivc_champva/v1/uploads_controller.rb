@@ -771,6 +771,7 @@ module IvcChampva
       end
 
       def process_docs_only_resubmission(parsed_form_data)
+        resolve_supplemental_form_number!(parsed_form_data)
         form_id = form_id_for_form_number(parsed_form_data['form_number'])
         Datadog::Tracing.active_trace&.set_tag('form_id', form_id)
 
@@ -1631,6 +1632,13 @@ module IvcChampva
 
           [file_paths, metadata.merge({ 'attachment_ids' => attachment_ids })]
         end
+      end
+
+      def resolve_supplemental_form_number!(parsed_form_data)
+        return if parsed_form_data['submission_type'].blank?
+        return unless DOCS_ONLY_RESUBMISSION_FORM_NUMBERS.include?(parsed_form_data['form_number'])
+
+        parsed_form_data['form_number'] = '10-10D-SUPPLEMENTAL'
       end
 
       def docs_only_resubmission_merge_fields(parsed_form_data)
