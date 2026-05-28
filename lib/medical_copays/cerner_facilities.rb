@@ -32,6 +32,8 @@ module MedicalCopays
     ].freeze
 
     def self.cerner_copay_user?(user)
+      return false if Flipper.enabled?(:cerner_user_override_lighthouse_copays)
+
       return true if user.cerner_facility_ids&.any?
 
       user_facility_ids = Array(user.vha_facility_ids).map(&:to_s)

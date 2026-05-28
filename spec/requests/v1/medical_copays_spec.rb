@@ -12,6 +12,7 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
     sign_in_as(current_user)
 
     allow_any_instance_of(Auth::ClientCredentials::Service).to receive(:get_token).and_return('fake-access-token')
+    allow(Flipper).to receive(:enabled?).with(:cerner_user_override_lighthouse_copays).and_return(false)
   end
 
   describe 'index' do

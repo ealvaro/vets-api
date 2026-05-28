@@ -389,6 +389,10 @@ features:
   cerner_override_757:
     actor_type: user
     description: This will show the Cerner facility 757 as `isCerner`.
+  cerner_user_override_lighthouse_copays:
+    actor_type: user
+    enable_in_development: true
+    description: This will override cerner.
   champva_vanotify_custom_callback:
     actor_type: user
     description: Enables the custom callback_klass when sending IVC CHAMPVA failure emails with VA Notify

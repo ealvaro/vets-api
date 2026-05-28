@@ -5,6 +5,10 @@ require 'medical_copays/cerner_facilities'
 
 RSpec.describe MedicalCopays::CernerFacilities do
   describe '.cerner_copay_user?' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:cerner_user_override_lighthouse_copays).and_return(false)
+    end
+
     let(:user) { build(:user, :loa3) }
 
     context 'when the user has existing cerner facility IDs from MPI' do
@@ -53,6 +57,17 @@ RSpec.describe MedicalCopays::CernerFacilities do
       end
 
       it 'returns false' do
+        expect(described_class.cerner_copay_user?(user)).to be false
+      end
+    end
+
+    context 'cerner_user_override_lighthouse_copays flipper is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:cerner_user_override_lighthouse_copays).and_return(true)
+        allow(user).to receive_messages(cerner_facility_ids: [], vha_facility_ids: %w[553])
+      end
+
+      it 'returns true' do
         expect(described_class.cerner_copay_user?(user)).to be false
       end
     end
