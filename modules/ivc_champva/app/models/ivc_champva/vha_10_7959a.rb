@@ -12,6 +12,7 @@ module IvcChampva
     include Vets::Model
     include Attachments
     include StampableLogging
+    include SubmissionTracking
 
     attribute :data, Hash
     attr_reader :form_id
@@ -129,25 +130,15 @@ module IvcChampva
     end
 
     def track_submission(current_user)
-      identity = data['certifier_role']
-      current_user_loa = current_user&.loa&.[](:current) || 0
-      email_used = metadata&.dig('primaryContactInfo', 'email') ? 'yes' : 'no'
-      StatsD.increment("#{STATS_KEY}.submission", tags: [
-                         "identity:#{identity}",
-                         "current_user_loa:#{current_user_loa}",
-                         "email_used:#{email_used}",
-                         "form_version:#{FORM_VERSION}",
-                         "claim_status:#{@data['claim_status']}",
-                         "duty_to_assist:#{dta?}",
-                         "pdi_or_claim_number:#{@data['pdi_or_claim_number']}"
-                       ])
-      Rails.logger.info('IVC ChampVA Forms - 10-7959A Submission', identity:,
-                                                                   current_user_loa:,
-                                                                   email_used:,
-                                                                   form_version: FORM_VERSION,
-                                                                   claim_status: @data['claim_status'],
-                                                                   duty_to_assist: dta?,
-                                                                   pdi_or_claim_number: @data['pdi_or_claim_number'])
+      fields = submission_fields(current_user).merge(
+        form_version: FORM_VERSION,
+        claim_status: @data['claim_status'],
+        duty_to_assist: dta?,
+        pdi_or_claim_number: @data['pdi_or_claim_number']
+      )
+      tags = fields.map { |k, v| "#{k}:#{v}" }
+      StatsD.increment("#{STATS_KEY}.submission", tags:)
+      Rails.logger.info('IVC ChampVA Forms - 10-7959A Submission', **fields)
     end
 
     # rubocop:disable Naming/BlockForwarding

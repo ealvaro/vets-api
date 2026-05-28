@@ -130,6 +130,56 @@ RSpec.describe IvcChampva::VHA107959f2 do
   end
   # rubocop:enable Naming/VariableNumber
 
+  describe '#track_submission' do
+    let(:statsd_key) { 'api.ivc_champva_form.10_7959f_2' }
+    let(:mock_verification) { double(verified?: true) }
+    let(:mock_user) { double(loa: { current: 3 }, user_verification: mock_verification) }
+
+    context 'with a verified user' do
+      let(:form_instance) { described_class.new(data) }
+
+      it 'increments StatsD with tags and logs submission info including ial' do
+        expect(StatsD).to receive(:increment).with(
+          "#{statsd_key}.submission",
+          tags: ['identity:', 'current_user_loa:3', 'current_user_ial:2',
+                 'email_used:yes', 'form_version:vha_10_7959f_2']
+        )
+        expect(Rails.logger).to receive(:info).with(
+          'IVC ChampVA Forms - 10-7959F-2 Submission',
+          identity: nil,
+          current_user_loa: 3,
+          current_user_ial: 2,
+          email_used: 'yes',
+          form_version: 'vha_10_7959f_2'
+        )
+
+        form_instance.track_submission(mock_user)
+      end
+    end
+
+    context 'when current_user is nil' do
+      let(:form_instance) { described_class.new(data) }
+
+      it 'defaults loa to 0 and ial to 0' do
+        expect(StatsD).to receive(:increment).with(
+          "#{statsd_key}.submission",
+          tags: ['identity:', 'current_user_loa:0', 'current_user_ial:0',
+                 'email_used:yes', 'form_version:vha_10_7959f_2']
+        )
+        expect(Rails.logger).to receive(:info).with(
+          'IVC ChampVA Forms - 10-7959F-2 Submission',
+          identity: nil,
+          current_user_loa: 0,
+          current_user_ial: 0,
+          email_used: 'yes',
+          form_version: 'vha_10_7959f_2'
+        )
+
+        form_instance.track_submission(nil)
+      end
+    end
+  end
+
   it 'is not past OMB expiration date' do
     # Update this date string to match the current PDF OMB expiration date:
     omb_expiration_date = Date.strptime('03312027', '%m%d%Y')

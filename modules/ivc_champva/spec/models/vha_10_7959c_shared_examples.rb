@@ -178,7 +178,8 @@ RSpec.shared_examples 'form model 10_7959C' do |form_number|
 
   describe '#track_submission' do
     let(:form_version) { described_class::FORM_VERSION }
-    let(:mock_user) { double(loa: { current: 3 }) }
+    let(:mock_verification) { double(verified?: true) }
+    let(:mock_user) { double(loa: { current: 3 }, user_verification: mock_verification) }
 
     context 'with email provided' do
       let(:submission_data) do
@@ -193,12 +194,14 @@ RSpec.shared_examples 'form model 10_7959C' do |form_number|
       it 'increments StatsD with tags and logs submission info' do
         expect(StatsD).to receive(:increment).with(
           "#{statsd_key}.submission",
-          tags: ['identity:applicant', 'current_user_loa:3', 'email_used:yes', "form_version:#{form_version}"]
+          tags: ['identity:applicant', 'current_user_loa:3', 'current_user_ial:2',
+                 'email_used:yes', "form_version:#{form_version}"]
         )
         expect(Rails.logger).to receive(:info).with(
           "IVC ChampVA Forms - #{form_number} Submission",
           identity: 'applicant',
           current_user_loa: 3,
+          current_user_ial: 2,
           email_used: 'yes',
           form_version:
         )
@@ -220,12 +223,14 @@ RSpec.shared_examples 'form model 10_7959C' do |form_number|
       it 'tracks email as no' do
         expect(StatsD).to receive(:increment).with(
           "#{statsd_key}.submission",
-          tags: ['identity:sponsor', 'current_user_loa:3', 'email_used:no', "form_version:#{form_version}"]
+          tags: ['identity:sponsor', 'current_user_loa:3', 'current_user_ial:2',
+                 'email_used:no', "form_version:#{form_version}"]
         )
         expect(Rails.logger).to receive(:info).with(
           "IVC ChampVA Forms - #{form_number} Submission",
           identity: 'sponsor',
           current_user_loa: 3,
+          current_user_ial: 2,
           email_used: 'no',
           form_version:
         )
@@ -244,15 +249,17 @@ RSpec.shared_examples 'form model 10_7959C' do |form_number|
       end
       let(:form_instance) { described_class.new(submission_data) }
 
-      it 'defaults loa to 0' do
+      it 'defaults loa to 0 and ial to 0' do
         expect(StatsD).to receive(:increment).with(
           "#{statsd_key}.submission",
-          tags: ['identity:applicant', 'current_user_loa:0', 'email_used:no', "form_version:#{form_version}"]
+          tags: ['identity:applicant', 'current_user_loa:0', 'current_user_ial:0',
+                 'email_used:no', "form_version:#{form_version}"]
         )
         expect(Rails.logger).to receive(:info).with(
           "IVC ChampVA Forms - #{form_number} Submission",
           identity: 'applicant',
           current_user_loa: 0,
+          current_user_ial: 0,
           email_used: 'no',
           form_version:
         )

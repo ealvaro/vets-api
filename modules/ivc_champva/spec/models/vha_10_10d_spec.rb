@@ -153,7 +153,8 @@ RSpec.describe IvcChampva::VHA1010d do
   describe '#track_submission' do
     let(:statsd_key) { 'api.ivc_champva_form.10_10d' }
     let(:form_version) { 'vha_10_10d' }
-    let(:mock_user) { double(loa: { current: 3 }) }
+    let(:mock_verification) { double(verified?: true) }
+    let(:mock_user) { double(loa: { current: 3 }, user_verification: mock_verification) }
 
     context 'with standard form flow' do
       let(:submission_data) do
@@ -168,12 +169,13 @@ RSpec.describe IvcChampva::VHA1010d do
       it 'increments StatsD with tags and logs submission info' do
         expect(StatsD).to receive(:increment).with(
           "#{statsd_key}.submission",
-          tags: %w[identity:applicant current_user_loa:3 email_used:yes form_version:vha_10_10d]
+          tags: %w[identity:applicant current_user_loa:3 current_user_ial:2 email_used:yes form_version:vha_10_10d]
         )
         expect(Rails.logger).to receive(:info).with(
           'IVC ChampVA Forms - 10-10D Submission',
           identity: 'applicant',
           current_user_loa: 3,
+          current_user_ial: 2,
           email_used: 'yes',
           form_version:
         )
@@ -192,15 +194,16 @@ RSpec.describe IvcChampva::VHA1010d do
       end
       let(:form_instance) { described_class.new(submission_data) }
 
-      it 'defaults loa to 0' do
+      it 'defaults loa to 0 and ial to 0' do
         expect(StatsD).to receive(:increment).with(
           "#{statsd_key}.submission",
-          tags: %w[identity:applicant current_user_loa:0 email_used:no form_version:vha_10_10d]
+          tags: %w[identity:applicant current_user_loa:0 current_user_ial:0 email_used:no form_version:vha_10_10d]
         )
         expect(Rails.logger).to receive(:info).with(
           'IVC ChampVA Forms - 10-10D Submission',
           identity: 'applicant',
           current_user_loa: 0,
+          current_user_ial: 0,
           email_used: 'no',
           form_version:
         )

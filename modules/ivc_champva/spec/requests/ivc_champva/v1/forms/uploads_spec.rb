@@ -253,8 +253,7 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
       )
     end
 
-    it 'does not call track_submission on form models that do not respond to it' do
-      # 10-7959F-1 does not have track_submission implemented (method_missing returns a hash, not StatsD calls)
+    it 'calls track_submission on 7959F-1 form models' do
       fixture_path = Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json', 'vha_10_7959f_1.json')
       data = JSON.parse(fixture_path.read)
 
@@ -267,16 +266,14 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
                context: double('context', http_response: double('http_response', status_code: 200)))
       )
 
-      # Allow all StatsD calls so we can verify later
       allow(StatsD).to receive(:increment).and_call_original
 
       post '/ivc_champva/v1/forms', params: data
 
       expect(response).to have_http_status(:ok)
-      # Verify track_submission was NOT called (7959F-1 doesn't have it implemented)
-      expect(StatsD).not_to have_received(:increment).with(
+      expect(StatsD).to have_received(:increment).with(
         'api.ivc_champva_form.10_7959f_1.submission',
-        anything
+        hash_including(:tags)
       )
     end
   end

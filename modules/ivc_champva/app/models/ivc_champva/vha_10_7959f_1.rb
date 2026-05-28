@@ -9,6 +9,7 @@ module IvcChampva
     include Vets::Model
     include Attachments
     include StampableLogging
+    include SubmissionTracking
 
     attribute :data, Hash
     attr_reader :form_id
@@ -61,6 +62,13 @@ module IvcChampva
       email_used = metadata&.dig('primaryContactInfo', 'email') ? 'yes' : 'no'
       StatsD.increment("#{STATS_KEY}.#{email_used}")
       Rails.logger.info('IVC ChampVA Forms - 10-7959F-1 Email Used', email_used:)
+    end
+
+    def track_submission(current_user)
+      fields = submission_fields(current_user).merge(form_version: @form_id)
+      tags = fields.map { |k, v| "#{k}:#{v}" }
+      StatsD.increment("#{STATS_KEY}.submission", tags:)
+      Rails.logger.info('IVC ChampVA Forms - 10-7959F-1 Submission', **fields)
     end
 
     def method_missing(_, *args)
