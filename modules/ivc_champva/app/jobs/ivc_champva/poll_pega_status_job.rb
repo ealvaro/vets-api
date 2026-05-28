@@ -4,16 +4,16 @@ require 'sidekiq'
 require 'pega_api/client'
 
 # Daily cron job that polls the Pega status API for every IvcChampvaForm that has
-# not yet reached a terminal/complete state. It writes the latest Pega status and
-# case_id back to the DB record so the frontend can reflect the current stage of the
+# not yet reached a terminal/complete state. It writes the latest Pega status back
+# to the DB record so the frontend can reflect the current stage of the
 # veteran's application.
 #
 # Flow per batch (grouped by form_uuid):
 #   1. Query ivc_champva_forms for records where pega_status is NULL or non-terminal
-#   2. For each distinct form_uuid, GET the Pega status endpoint with Uuid header = form_uuid
+#   2. For each distinct form_uuid, POST to the Pega status endpoint with uuid in request body
 #   3. Match each returned case object to a DB record by case_id
 #      (falls back to the first report when case_id is not yet assigned)
-#   4. Write pega_status + case_id back to the record via update_columns
+#   4. Write pega_status back to the record via update_columns
 module IvcChampva
   class PollPegaStatusJob
     include Sidekiq::Job
@@ -169,14 +169,17 @@ module IvcChampva
       status = extract_status(report)
       case_id = report['PEGA Case ID']
 
-      return [:skipped, 'blank status in report'] if status.blank?
+      if status.blank?
+        StatsD.increment("#{STATSD_PREFIX}.nil_status_from_pega")
+        return [:skipped, 'blank status in report']
+      end
 
-      unless needs_update?(form, status, case_id)
+      unless needs_update?(form, status)
         Rails.logger.debug { "IVC Forms PollPegaStatusJob - no status change for case_id: #{case_id}" }
         return [:skipped, nil]
       end
 
-      update_form(form, status, case_id)
+      update_form(form, status)
       log_update(form_uuid, status, case_id)
       StatsD.increment("#{STATSD_PREFIX}.form_updated")
       [:updated, nil]
@@ -201,14 +204,14 @@ module IvcChampva
       nil
     end
 
-    def update_form(form, status, case_id)
+    def update_form(form, status)
       # rubocop:disable Rails/SkipsModelValidations
-      form.update_columns(pega_status: status, case_id:, updated_at: Time.current)
+      form.update_columns(pega_status: status, updated_at: Time.current)
       # rubocop:enable Rails/SkipsModelValidations
     end
 
-    def needs_update?(form, status, case_id)
-      form.pega_status != status || form.case_id != case_id
+    def needs_update?(form, status)
+      form.pega_status != status
     end
 
     # ──────────────────────────────────────────────

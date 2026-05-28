@@ -180,7 +180,7 @@ module IvcChampva
         # Prepare VES request using form_uuid as application_uuid for consistency
         ves_request = prepare_ves_request(parsed_form_data, form_uuid: metadata['uuid'])
 
-        statuses, error_messages = upload_form(form_id, file_paths, metadata)
+        statuses, error_messages = upload_form(form_id, file_paths, metadata, parsed_form_data)
         response = build_json(statuses, error_messages)
 
         submit_to_ves(ves_request, metadata) if response[:status] == 200

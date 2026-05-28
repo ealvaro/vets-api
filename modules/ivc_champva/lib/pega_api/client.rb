@@ -62,7 +62,7 @@ module IvcChampva
       end
 
       ##
-      # HTTP GET call to the Pega status API to retrieve the latest case statuses for a given UUID.
+      # HTTP POST call to the Pega status API to retrieve the latest case statuses for a given UUID.
       # The response is double-encoded: the outer body is JSON containing a `body` field that is
       # itself a JSON-encoded array of case objects.
       #
@@ -70,10 +70,10 @@ module IvcChampva
       #
       # @return [Array<Hash>] the case rows, each containing 'PEGA Case ID', 'Status', 'UUID', etc.
       def get_status_by_uuid(uuid)
-        resp = connection.get(config.status_path) do |req|
+        resp = connection.post(config.status_path) do |req|
           req.headers['Content-Type'] = 'application/json'
           req.headers['x-api-key']    = Settings.ivc_champva.pega_api.api_key.to_s
-          req.headers['Uuid']         = uuid.to_s
+          req.body = { uuid: uuid.to_s }.to_json
         end
 
         raise "response code: #{resp.status}, response body: #{resp.body}" unless resp.status == 200

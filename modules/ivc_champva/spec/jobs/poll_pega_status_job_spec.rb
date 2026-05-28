@@ -80,9 +80,9 @@ RSpec.describe IvcChampva::PollPegaStatusJob do
         forms.each { |f| expect(f.reload.pega_status).to eq('Received') }
       end
 
-      it 'assigns the case_id from the first report to all records' do
+      it 'does not assign case_id from reports' do
         job.perform
-        forms.each { |f| expect(f.reload.case_id).to eq('D-12345') }
+        forms.each { |f| expect(f.reload.case_id).to be_nil }
       end
     end
 
@@ -137,6 +137,23 @@ RSpec.describe IvcChampva::PollPegaStatusJob do
       it 'leaves pega_status unchanged' do
         job.perform
         expect(form.reload.pega_status).to eq('Open')
+      end
+    end
+
+    context 'when a form already has a case_id but status changes' do
+      let!(:form) do
+        create(:ivc_champva_form, form_uuid:,
+                                  pega_status: 'Open', case_id: 'D-EXISTING', created_at:)
+      end
+
+      before do
+        stub_pega(reports: [pega_report(case_id: 'D-EXISTING', status: 'Processed')])
+      end
+
+      it 'updates status but preserves the existing case_id' do
+        job.perform
+        expect(form.reload.pega_status).to eq('Processed')
+        expect(form.reload.case_id).to eq('D-EXISTING')
       end
     end
 
@@ -208,12 +225,18 @@ RSpec.describe IvcChampva::PollPegaStatusJob do
       end
 
       before do
+        allow(StatsD).to receive(:increment)
         stub_pega(reports: [pega_report(case_id: 'D-000', status: '')])
       end
 
       it 'leaves pega_status unchanged' do
         job.perform
         expect(form.reload.pega_status).to be_nil
+      end
+
+      it 'emits a nil status metric for alerting' do
+        job.perform
+        expect(StatsD).to have_received(:increment).with("#{described_class::STATSD_PREFIX}.nil_status_from_pega")
       end
     end
 
@@ -234,7 +257,7 @@ RSpec.describe IvcChampva::PollPegaStatusJob do
       it 'uses Deternimation Type as a fallback for status' do
         job.perform
         expect(form.reload.pega_status).to eq('Processed')
-        expect(form.reload.case_id).to eq('D-777')
+        expect(form.reload.case_id).to be_nil
       end
     end
 

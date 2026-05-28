@@ -139,7 +139,7 @@ RSpec.describe IvcChampva::PegaApi::Client do
       let(:faraday_response) { double('Faraday::Response', status: 200, body: mock_status_body) }
 
       before do
-        allow_any_instance_of(Faraday::Connection).to receive(:get).with(anything).and_return(faraday_response)
+        allow_any_instance_of(Faraday::Connection).to receive(:post).with(anything).and_return(faraday_response)
       end
 
       it 'returns parsed case rows with expected case IDs and statuses' do
@@ -160,7 +160,7 @@ RSpec.describe IvcChampva::PegaApi::Client do
       end
 
       before do
-        allow_any_instance_of(Faraday::Connection).to receive(:get).with(anything).and_return(faraday_response)
+        allow_any_instance_of(Faraday::Connection).to receive(:post).with(anything).and_return(faraday_response)
       end
 
       it 'raises a PegaApiError' do
