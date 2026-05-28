@@ -7,6 +7,8 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
     it 'maps docs-only resubmission 10-10d form numbers to CHAMPVA application' do
       expect(described_class.claim_type_for('10-10D-EXTENDED-EXISTING')).to eq('CHAMPVA application')
       expect(described_class.claim_type_for('10-10D-EXTENDED-ENROLLMENT')).to eq('CHAMPVA application')
+      expect(described_class.claim_type_for('10-10D-SUPPLEMENTAL-EXISTING')).to eq('CHAMPVA application')
+      expect(described_class.claim_type_for('10-10D-SUPPLEMENTAL-ENROLLMENT')).to eq('CHAMPVA application')
     end
   end
 
@@ -17,6 +19,10 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
 
     it 'maps "Received" to claimReceived' do
       expect(described_class.normalize_status('Received')).to eq('claimReceived')
+    end
+
+    it 'maps "Submitted" to claimReceived' do
+      expect(described_class.normalize_status('Submitted')).to eq('claimReceived')
     end
 
     it 'maps processed statuses to vbms' do
@@ -83,8 +89,28 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
       )
 
       expect(supporting_documents.map(&:original_file_name)).to eq(
-        ['Screenshot 2026-04-21 at 9.22.07 AM.png']
+        ['Screenshot 2026-04-21 at 9.22.07 AM.png', 'abc_vha_10_10d.pdf']
       )
+    end
+
+    it 'filters supporting_doc files regardless of form_number format' do
+      created_at = Time.zone.parse('2026-05-11 11:00:00')
+      supporting_doc_record = double(
+        id: 301,
+        form_number: '10-10D-EXTENDED',
+        file_name: '2073cde3-789e-45f4-bad4-232f1a7cd966_vha_10_10d_supporting_doc-0.pdf',
+        created_at:
+      )
+      normal_record = double(
+        id: 302,
+        form_number: '10-10D-EXTENDED',
+        file_name: 'school_enrollment_certification_form.png',
+        created_at:
+      )
+
+      supporting_documents = described_class.build_supporting_documents([supporting_doc_record, normal_record])
+
+      expect(supporting_documents.map(&:original_file_name)).to eq(['school_enrollment_certification_form.png'])
     end
   end
 
@@ -93,6 +119,11 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
       double(
         first_name: 'Jane',
         last_name: 'Doe',
+        request_json: {
+          'applicants' => [
+            { 'applicantName' => { 'first' => 'John', 'last' => 'Doe' } }
+          ]
+        },
         form_uuid: '123',
         form_number: '10-10D',
         file_name: 'test.pdf',
@@ -146,13 +177,41 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
         section_groups = meta.dig('detail', 'sectionGroups')
         applicant_group = section_groups.find { |g| g['title'] == 'Applicants' }
         expect(applicant_group).to be_present
-        expect(applicant_group['items']).to include('Jane Doe')
+        expect(applicant_group['items']).to include('John Doe')
+      end
+
+      it 'does not show veteran name in Applicants section group' do
+        record_with_veteran_in_applicants = double(
+          first_name: 'Jane',
+          last_name: 'Doe',
+          request_json: {
+            'applicants' => [
+              { 'applicantName' => { 'first' => 'John', 'last' => 'Veteran' } },
+              { 'applicantName' => { 'first' => 'John', 'last' => 'Doe' } }
+            ]
+          },
+          form_uuid: '456',
+          form_number: '10-10D',
+          file_name: 'test3.pdf',
+          pega_status: nil,
+          created_at: Time.zone.now,
+          updated_at: Time.zone.now
+        )
+
+        meta = described_class.build_claim_status_meta([record_with_veteran_in_applicants], 'pending', user)
+        applicant_group = meta.dig('detail', 'sectionGroups').find { |g| g['title'] == 'Applicants' }
+        expect(applicant_group['items']).to contain_exactly('John Doe')
       end
 
       it 'deduplicates applicant names across records with the same person' do
         duplicate_record = double(
           first_name: 'Jane',
           last_name: 'Doe',
+          request_json: {
+            'applicants' => [
+              { 'applicantName' => { 'first' => 'John', 'last' => 'Doe' } }
+            ]
+          },
           form_uuid: '123',
           form_number: '10-10D',
           file_name: 'test2.pdf',
@@ -163,6 +222,24 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
         meta = described_class.build_claim_status_meta([record, duplicate_record], 'pending', user)
         applicant_group = meta.dig('detail', 'sectionGroups').find { |g| g['title'] == 'Applicants' }
         expect(applicant_group['items'].count).to eq(1)
+      end
+
+      it 'falls back to record names when request_json has no applicants array' do
+        record_without_applicants = double(
+          first_name: 'Fallback',
+          last_name: 'Name',
+          request_json: {},
+          form_uuid: '999',
+          form_number: '10-10D',
+          file_name: 'no-applicants.pdf',
+          pega_status: nil,
+          created_at: Time.zone.now,
+          updated_at: Time.zone.now
+        )
+
+        meta = described_class.build_claim_status_meta([record_without_applicants], 'pending', user)
+        applicant_group = meta.dig('detail', 'sectionGroups').find { |g| g['title'] == 'Applicants' }
+        expect(applicant_group['items']).to include('Fallback Name')
       end
     end
 

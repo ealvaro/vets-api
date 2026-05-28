@@ -194,6 +194,18 @@ features:
     actor_type: user
     description: Use lighthouse instead of EVSS to upload benefits documents.
     enable_in_development: false
+  benefits_documents_lighthouse_provider:
+    actor_type: user
+    description: Enables the Lighthouse benefits documents provider in the provider registry.
+    enable_in_development: true
+  benefits_documents_ivc_champva_provider:
+    actor_type: user
+    description: Enables the IVC CHAMPVA benefits documents provider in the provider registry.
+    enable_in_development: true
+  benefits_documents_ivc_champva_docs_only_resubmission:
+    actor_type: user
+    description: Enables CHAMPVA documents-only resubmission finalize metadata and endpoint execution.
+    enable_in_development: true
   benefits_require_gateway_origin:
     actor_type: user
     description: Requires that all requests made to endpoints in appeals_api and vba_documents be made through the gateway

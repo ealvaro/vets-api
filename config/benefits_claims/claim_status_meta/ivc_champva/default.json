@@ -15,15 +15,22 @@
     "simpleLayout": false,
     "uploadFirstLayout": true,
     "uploadTitle": "Upload supporting documents",
+    "uploadDescription": "You can submit documents while we review your application. But this may delay our decision.",
     "headerTitle": "Application files",
-    "description": "If you need to update your information, you can upload your supporting documents here. This could be your personal information, health insurance, or school status. You can also review files you've submitted using this tool.",
+    "description": "If you need to update your information, you can upload your supporting documents here. You can also review files you've submitted using this tool.",
+    "ohiDescription": "If you need to update your other non-VA health insurance information, you'll need to submit a separate form (VA Form 10-7959c).",
+    "ohiLink": {
+      "href": "https://www.va.gov/family-and-caregiver-benefits/health-and-disability/champva/submit-other-insurance-form-10-7959c/introduction",
+      "text": "Submit other health insurance information"
+    },
+    "closedAlertPrefix": "Note:",
+    "closedAlertText": "We closed your application. This means you can no longer submit files using this tool. If you're enrolled in CHAMPVA, you can still update your other health insurance information.",
     "filesReceivedDescription": "If you submitted files using this tool, they'll appear here once we receive them. Files you or others submitted by mail or fax won't appear here.",
     "evidenceSubmittedText": "You submitted this file as a supporting document.",
-    "otherWaysIntroText": "You can send your documents by mail or fax.",
+    "detailsLabel": "If you want to submit your documents by mail or fax",
     "options": {
       "option1": {
-        "title": "Option 1: By mail",
-        "description": "Mail copies of your documents to this address:",
+        "description": "You can mail a copy of each document to this address:",
         "addressLines": [
           "VHA Office of Community Care",
           "CHAMPVA Eligibility",
@@ -32,14 +39,12 @@
         ]
       },
       "option2": {
-        "title": "Option 2: By fax",
-        "description": "Fax your documents to 1-303-331-7809.",
+        "description": "Or fax them to 1-303-331-7809.",
         "noteText": "We can only scan 1 side of each document. If any of your documents are double-sided, you'll need to include copies of each side of those documents."
       }
     },
     "confirmation": {
-      "title": "How to confirm we've received your documents",
-      "descriptionPrefix": "To confirm we've received the documents you submitted by mail or fax, call us at",
+      "descriptionPrefix": "If you want to confirm that we've received the documents you submitted by mail or fax, call us at",
       "phone": "8007338387",
       "tty": "711",
       "descriptionNote": "We're here Monday through Friday, 8:00 a.m. to 7:30 p.m. ET."
@@ -65,13 +70,13 @@
       {
         "phase": 1,
         "header": "Step 1: Application received",
-        "description": "We received your application.",
-        "descriptionDateTemplate": "We received your application on {date}, and will review it.",
+        "description": "We received your application. We typically review applications within 5 business days.",
+        "descriptionDateTemplate": "We received your application on {date}. We typically review applications within 5 business days.",
         "details": [
           "If we need more information, we'll mail you a letter."
         ],
         "linkText": "Learn more about what to do after you apply for CHAMPVA benefits",
-        "linkUrl": "../files"
+        "linkUrl": "https://www.va.gov/resources/what-to-do-after-applying-for-champva-benefits/"
       },
       {
         "phase": 2,
@@ -128,12 +133,14 @@
       "pending": {
         "title": "Step 1 of 2: Application received",
         "recentActivityTitle": "Step 1: Application received",
-        "description": "We received your application. If we need more information, we'll mail you a letter."
+        "description": "We received your application. We typically review applications within 5 business days.",
+        "descriptionNote": "If we need more information, we'll mail you a letter."
       },
       "claimReceived": {
         "title": "Step 1 of 2: Application received",
         "recentActivityTitle": "Step 1: Application received",
-        "description": "We received your application. If we need more information, we'll mail you a letter."
+        "description": "We received your application. We typically review applications within 5 business days.",
+        "descriptionNote": "If we need more information, we'll mail you a letter."
       },
       "vbms": {
         "title": "Step 2 of 2: Application decided",

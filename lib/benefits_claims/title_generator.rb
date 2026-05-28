@@ -21,6 +21,10 @@ module BenefitsClaims
       'Death' => Title.new(
         display_title: 'Claim for expenses related to death or burial',
         claim_type_base: 'expenses related to death or burial claim'
+      ),
+      'CHAMPVA application' => Title.new(
+        display_title: 'CHAMPVA application',
+        claim_type_base: 'application for CHAMPVA benefits'
       )
     }.freeze
 

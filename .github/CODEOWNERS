@@ -828,6 +828,7 @@ config/initializers/committee.rb @software/backend-review-group
 config/initializers/backtrace_silencers.rb @software/backend-review-group
 config/initializers/benefits_intake_submission_status_handlers.rb @software/benefits-lifestage @software/backend-review-group
 config/initializers/benefits_claims_providers.rb @software/benefits-management-tools-be @software/backend-review-group
+config/initializers/benefits_documents_providers.rb @software/benefits-management-tools-be @software/backend-review-group
 config/initializers/betamocks.rb @software/backend-review-group
 config/initializers/bgs.rb @software/backend-review-group
 config/initializers/breakers.rb @software/backend-review-group
@@ -933,6 +934,7 @@ lib/benefits_claims/claim_status_meta @software/benefits-management-tools-be @so
 lib/benefits_claims/providers @software/benefits-management-tools-be @software/backend-review-group
 lib/benefits_claims/responses/claim_response.rb @software/benefits-management-tools-be @software/backend-review-group
 lib/benefits_claims/title_generator.rb @software/benefits-management-tools-be @software/backend-review-group
+lib/benefits_documents @software/benefits-management-tools-be @software/backend-review-group
 lib/benefits_intake_service @software/benefits-dependents-management @software/backend-review-group
 lib/bgs @software/benefits-dependents-management @software/backend-review-group
 lib/bid @software/disability-benefits @software/backend-review-group
@@ -1616,6 +1618,7 @@ spec/lib/benefits_claims/claim_status_meta @software/benefits-management-tools-b
 spec/lib/benefits_claims/providers @software/benefits-management-tools-be @software/backend-review-group
 spec/lib/benefits_claims/responses/claim_response_spec.rb @software/benefits-management-tools-be @software/backend-review-group
 spec/lib/benefits_claims/title_generator_spec.rb @software/benefits-management-tools-be @software/backend-review-group
+spec/lib/benefits_documents @software/benefits-management-tools-be @software/backend-review-group
 spec/lib/benefits_intake_service @software/backend-review-group @software/benefits-dependents-management
 spec/lib/bgs @software/benefits-dependents-management @software/backend-review-group
 spec/lib/bid @software/disability-benefits @software/backend-review-group

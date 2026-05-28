@@ -106,7 +106,7 @@ module IvcChampva
       end
 
       def submit_merged_docs_only_form_submission(parsed_form_data)
-        IvcChampva::MetadataValidator.validate_docs_only_resubmission(parsed_form_data)
+        IvcChampva::MetadataValidator.validate_docs_only_resubmission_cst(parsed_form_data)
 
         response = process_docs_only_resubmission(parsed_form_data)
         render json: response.fetch(:json), status: response.fetch(:status)
@@ -487,7 +487,9 @@ module IvcChampva
 
       def submit_supporting_documents # rubocop:disable Metrics/MethodLength
         Datadog::Tracing.trace('IVC Champva Forms - Submit Supporting Document') do
-          if %w[10-10D 10-7959C 10-7959F-2 10-7959A 10-10D-EXTENDED 10-10D-SUPPLEMENTAL].include?(params[:form_id])
+          allowed_form_ids = %w[10-10D 10-7959C 10-7959F-2 10-7959A 10-10D-EXTENDED
+                                10-10D-SUPPLEMENTAL 10-10D-SUPPLEMENTAL-EXISTING 10-10D-SUPPLEMENTAL-ENROLLMENT]
+          if allowed_form_ids.include?(params[:form_id])
             attachment = PersistentAttachments::MilitaryRecords.new(form_id: params[:form_id])
             attachment.heif_enabled = Flipper.enabled?(:champva_heif_attachments_enabled, @current_user)
 
@@ -885,14 +887,14 @@ module IvcChampva
         claim_ids = resolve_claim_record_ids(parsed_form_data['claim_id'])
         return if claim_ids.blank?
 
-        submitted_file_names = submitted_supporting_doc_file_names(parsed_form_data)
-        return if submitted_file_names.blank?
+        submitted_file_name_counts = submitted_supporting_doc_file_name_counts(parsed_form_data)
+        return if submitted_file_name_counts.blank?
 
         pending_submissions = pending_evidence_submissions_for_claim_ids(claim_ids)
 
         updated_count = 0
         pending_submissions.each do |submission|
-          updated_count += 1 if mark_submission_received_if_matches(submission, submitted_file_names)
+          updated_count += 1 if mark_submission_received_if_matches(submission, submitted_file_name_counts)
         end
 
         Rails.logger.info(
@@ -900,10 +902,10 @@ module IvcChampva
         )
       end
 
-      def submitted_supporting_doc_file_names(parsed_form_data)
+      def submitted_supporting_doc_file_name_counts(parsed_form_data)
         Array(parsed_form_data['supporting_docs'])
           .filter_map { |doc| normalize_file_name(doc['name']) }
-          .uniq
+          .tally
       end
 
       def pending_evidence_submissions_for_claim_ids(claim_ids)
@@ -927,14 +929,16 @@ module IvcChampva
         IvcChampvaForm.where(form_uuid: claim_id).order(:created_at).pluck(:id)
       end
 
-      def mark_submission_received_if_matches(submission, submitted_file_names)
+      def mark_submission_received_if_matches(submission, submitted_file_name_counts)
         file_name = submission_file_name(submission)
-        return false if file_name.blank? || submitted_file_names.exclude?(file_name)
+        remaining = submitted_file_name_counts[file_name].to_i
+        return false if file_name.blank? || remaining <= 0
 
         submission.update!(
           upload_status: BenefitsDocuments::Constants::UPLOAD_STATUS[:SUCCESS],
           acknowledgement_date: Time.current
         )
+        submitted_file_name_counts[file_name] = remaining - 1
         true
       rescue JSON::ParserError, TypeError
         false
@@ -1163,6 +1167,7 @@ module IvcChampva
       #
       # @return [Array<Integer, String>] An array with 1 or more http status codes
       #   and an array with 1 or more message strings.
+      # rubocop:disable Metrics/MethodLength
       def handle_file_uploads(form_id, parsed_form_data)
         Datadog::Tracing.trace('IVC Champva Forms - Upload Files Without VES Submission') do
           on_failure = lambda do |e, attempt|
@@ -1177,6 +1182,7 @@ module IvcChampva
           statuses = [500]
           error_messages = ['Server error occurred']
 
+          file_paths = []
           IvcChampva::Retry.do(1, retry_on: RETRY_ERROR_CONDITIONS, on_failure:) do
             file_paths, metadata = get_file_paths_and_metadata(parsed_form_data)
             options = { insert_db_row: true, current_user: @current_user, parsed_form_data: }
@@ -1190,8 +1196,11 @@ module IvcChampva
           end
 
           [statuses, error_messages]
+        ensure
+          cleanup_supporting_doc_working_files(file_paths)
         end
       end
+      # rubocop:enable Metrics/MethodLength
 
       ##
       # Wraps handle_uploads and includes retry logic when file uploads get non-200s.
@@ -1205,6 +1214,7 @@ module IvcChampva
       #
       # @return [Array<Integer, String>] An array with 1 or more http status codes
       #   and an array with 1 or more message strings.
+      # rubocop:disable Metrics/MethodLength
       def upload_form(form_id, file_paths, metadata, parsed_form_data = nil)
         Datadog::Tracing.trace('IVC Champva Forms - Upload Files With VES Submission') do
           on_failure = lambda do |e, attempt|
@@ -1231,6 +1241,23 @@ module IvcChampva
           end
 
           [statuses, error_messages]
+        ensure
+          cleanup_supporting_doc_working_files(file_paths)
+        end
+      end
+      # rubocop:enable Metrics/MethodLength
+
+      def cleanup_supporting_doc_working_files(file_paths)
+        Array(file_paths).each do |path|
+          next if path.blank?
+
+          file_name = File.basename(path)
+          next unless file_name.include?('_supporting_doc-')
+
+          tmp_prefix = Rails.root.join('tmp').to_s
+          next unless path.start_with?(tmp_prefix)
+
+          FileUtils.rm_f(path)
         end
       end
 
@@ -1545,6 +1572,11 @@ module IvcChampva
         full_name = veteran['full_name'] ||= {}
         full_name['first'] ||= source_form.first_name
         full_name['last'] ||= source_form.last_name
+        full_name['middle'] ||= source_veteran.dig('full_name', 'middle')
+        full_name['suffix'] ||= source_veteran.dig('full_name', 'suffix')
+
+        veteran['ssn_or_tin'] ||= source_veteran['ssn_or_tin']
+        veteran['date_of_birth'] ||= source_veteran['date_of_birth']
 
         veteran['ssn_or_tin'] ||= source_veteran['ssn_or_tin'] || source_veteran['ssnOrTin']
         veteran['date_of_birth'] ||= source_veteran['date_of_birth'] || source_veteran['dateOfBirth']
@@ -1605,14 +1637,15 @@ module IvcChampva
         last = applicant_name['last'].to_s.strip.downcase
         return nil if first.blank? || last.blank?
 
-        source_applicants.find do |source_applicant|
-          source_name = source_applicant['applicant_name'] || source_applicant['applicantName'] || {}
-          source_first = source_name['first'].to_s.strip.downcase
-          source_last = source_name['last'].to_s.strip.downcase
-          source_first == first && source_last == last
+        source_applicants.find do |candidate|
+          candidate_name = candidate['applicant_name'] || candidate['applicantName'] || {}
+          candidate_first = candidate_name['first'].to_s.strip.downcase
+          candidate_last = candidate_name['last'].to_s.strip.downcase
+          candidate_first == first && candidate_last == last
         end
       end
 
+      # rubocop:disable Metrics/MethodLength
       def get_docs_only_resubmission_file_paths_and_metadata(parsed_form_data)
         Datadog::Tracing.trace('IVC Champva Forms - Get docs-only paths and metadata') do
           base_form_id = form_id_for_form_number(parsed_form_data['form_number'])
@@ -1624,7 +1657,13 @@ module IvcChampva
             raise ArgumentError, 'supporting documents must resolve to at least one attachment id for upload'
           end
 
-          raw_metadata = form.metadata.merge(docs_only_resubmission_merge_fields(parsed_form_data))
+          merge_fields = {
+            'submissionType' => parsed_form_data['submission_type'].to_s,
+            'docType' => "#{parsed_form_data['form_number']}-#{parsed_form_data['submission_type'].to_s.upcase}",
+            'supportingDocApplicants' => supporting_document_applicants(parsed_form_data).to_json
+          }
+          merge_fields['uuid'] = parsed_form_data['claim_id'] if parsed_form_data['claim_id'].present?
+          raw_metadata = form.metadata.merge(merge_fields)
           enrollment = parsed_form_data['submission_type'].to_s.casecmp('enrollment').zero?
           backfill_enrollment_metadata!(raw_metadata) if enrollment
           metadata = IvcChampva::MetadataValidator.validate(raw_metadata)
@@ -1633,6 +1672,7 @@ module IvcChampva
           [file_paths, metadata.merge({ 'attachment_ids' => attachment_ids })]
         end
       end
+      # rubocop:enable Metrics/MethodLength
 
       def resolve_supplemental_form_number!(parsed_form_data)
         return if parsed_form_data['submission_type'].blank?
@@ -1641,15 +1681,21 @@ module IvcChampva
         parsed_form_data['form_number'] = '10-10D-SUPPLEMENTAL'
       end
 
-      def docs_only_resubmission_merge_fields(parsed_form_data)
-        submission_type = parsed_form_data['submission_type'].to_s
-        fields = {
-          'submissionType' => submission_type,
-          'docType' => "#{parsed_form_data['form_number']}-#{submission_type.upcase}",
-          'standalone-flag' => 'true' # kebab-case per downstream Pega requirement
-        }
-        fields['uuid'] = parsed_form_data['claim_id'] if parsed_form_data['claim_id'].present?
-        fields
+      def supporting_document_applicants(parsed_form_data)
+        cached_uploads = []
+        parsed_form_data['supporting_docs']&.each do |doc|
+          record = PersistentAttachments::MilitaryRecords.find_by(guid: doc['confirmation_code'])
+          cached_uploads << {
+            attachment_id: doc['attachment_id'],
+            confirmation_code: doc['confirmation_code'],
+            applicants: Array(doc['applicants']).compact,
+            created_at: record&.created_at
+          }
+        end
+
+        cached_uploads
+          .sort_by { |upload| upload[:created_at] || Time.zone.at(0) }
+          .map { |upload| upload.except(:created_at) }
       end
 
       def backfill_enrollment_metadata!(metadata)

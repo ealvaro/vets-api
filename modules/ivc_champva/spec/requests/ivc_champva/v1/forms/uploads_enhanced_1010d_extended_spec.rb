@@ -80,6 +80,9 @@ RSpec.describe 'IvcChampva::V1::Uploads — 10-10D supplemental docs-only resubm
     allow(attachment_record).to receive(:[]).with(:created_at).and_return(created)
 
     allow(Flipper).to receive(:enabled?).and_call_original
+    allow(Flipper).to receive(:enabled?).with(
+      :champva_cst_file_uploader_docs_only_resubmission, any_args
+    ).and_return(true)
     allow(Flipper).to receive(:enabled?).with(:form1010d_enhanced_flow_enabled, any_args).and_return(true)
     allow(Flipper).to receive(:enabled?).with(:champva_send_to_ves, any_args).and_return(true)
     allow(Flipper).to receive(:enabled?).with(:champva_send_7959c_to_ves, any_args).and_return(false)
@@ -149,7 +152,10 @@ RSpec.describe 'IvcChampva::V1::Uploads — 10-10D supplemental docs-only resubm
     expect(metadata['uuid']).to eq(claim_uuid)
   end
 
-  it 'does not use docs-only persistence when flipper is off (falls through to standard merged flow)' do
+  it 'does not use docs-only persistence when both docs-only flow flags are off' do
+    allow(Flipper).to receive(:enabled?)
+      .with(:champva_cst_file_uploader_docs_only_resubmission, any_args)
+      .and_return(false)
     allow(Flipper).to receive(:enabled?).with(:form1010d_enhanced_flow_enabled, any_args).and_return(false)
 
     post merged_route, params: base_payload, as: :json
@@ -187,52 +193,39 @@ RSpec.describe 'IvcChampva::V1::Uploads — 10-10D supplemental docs-only resubm
     expect(JSON.parse(response.body)['error_message']).to include('supporting_docs is missing')
   end
 
-  it 'returns 422 when certifier_role is missing' do
+  it 'does not require certifier_role for docs-only resubmission' do
     bad = base_payload.except('certifier_role')
     post merged_route, params: bad, as: :json
 
-    expect(response).to have_http_status(:unprocessable_entity)
-    expect(JSON.parse(response.body)['error_message']).to include('certifier_role is missing')
+    expect(response).to have_http_status(:ok), -> { "body=#{response.body}" }
   end
 
-  it 'returns 422 when statement_of_truth_signature is missing' do
+  it 'does not require statement_of_truth_signature for docs-only resubmission' do
     bad = base_payload.except('statement_of_truth_signature')
     post merged_route, params: bad, as: :json
 
-    expect(response).to have_http_status(:unprocessable_entity)
-    expect(JSON.parse(response.body)['error_message']).to include('statement_of_truth_signature is missing')
+    expect(response).to have_http_status(:ok), -> { "body=#{response.body}" }
   end
 
-  it 'returns 422 when certification date is missing' do
+  it 'does not require certification date for docs-only resubmission' do
     bad = base_payload.merge('certification' => {})
     post merged_route, params: bad, as: :json
 
-    expect(response).to have_http_status(:unprocessable_entity)
-    expect(JSON.parse(response.body)['error_message']).to include('certification date is missing')
+    expect(response).to have_http_status(:ok), -> { "body=#{response.body}" }
   end
 
-  it 'returns 422 when applicants is empty' do
-    bad = base_payload.merge('applicants' => [])
-    post merged_route, params: bad, as: :json
-
-    expect(response).to have_http_status(:unprocessable_entity)
-    expect(JSON.parse(response.body)['error_message']).to include('applicants is missing')
-  end
-
-  it 'returns 422 when applicant name is missing' do
+  it 'does not require applicant details for docs-only resubmission' do
     bad = base_payload.merge('applicants' => [{ 'applicant_name' => { 'last' => 'Alvin' } }])
     post merged_route, params: bad, as: :json
 
-    expect(response).to have_http_status(:unprocessable_entity)
-    expect(JSON.parse(response.body)['error_message']).to include('applicants[0] first name is missing')
+    expect(response).to have_http_status(:ok), -> { "body=#{response.body}" }
   end
 
-  it 'returns 422 when veteran ssn_or_tin is missing for existing submissions' do
+  it 'does not require veteran identifiers for docs-only resubmission' do
     bad = base_payload.merge('veteran' => { 'full_name' => { 'first' => 'Pat', 'last' => 'Vet' } })
     post merged_route, params: bad, as: :json
 
-    expect(response).to have_http_status(:unprocessable_entity)
-    expect(JSON.parse(response.body)['error_message']).to include('veteran ssn_or_tin is missing')
+    expect(response).to have_http_status(:ok), -> { "body=#{response.body}" }
   end
 
   it 'does NOT require veteran name for enrollment submissions' do

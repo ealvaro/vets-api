@@ -221,6 +221,17 @@ RSpec.describe 'Mobile::V0::Claim', type: :request do
           allow(Flipper).to receive(:enabled?).with('benefits_claims_lighthouse_provider', anything).and_return(true)
           allow(Flipper).to receive(:enabled?).with('benefits_claims_lighthouse_provider_mobile',
                                                     anything).and_return(true)
+          # Re-register in case another spec (e.g. provider_registry_spec) called ProviderRegistry.clear!
+          # and left the global Concurrent::Map empty for this parallel worker process.
+          BenefitsClaims::Providers::ProviderRegistry.register(
+            :lighthouse,
+            BenefitsClaims::Providers::Lighthouse::LighthouseBenefitsClaimsProvider,
+            feature_flag: 'benefits_claims_lighthouse_provider',
+            platform_flags: {
+              web: 'benefits_claims_lighthouse_provider_web',
+              mobile: 'benefits_claims_lighthouse_provider_mobile'
+            }
+          )
         end
 
         context 'when no type parameter is provided' do

@@ -22,8 +22,8 @@ RSpec.describe BenefitsClaims::ClaimStatusMeta::ConfigLoader, '#load ivc_champva
     subject(:files) { config['files'] }
 
     it 'has option1 (mail) and option2 (fax)' do
-      expect(files.dig('options', 'option1', 'title')).to eq('Option 1: By mail')
-      expect(files.dig('options', 'option2', 'title')).to eq('Option 2: By fax')
+      expect(files.dig('options', 'option1', 'description')).to include('mail')
+      expect(files.dig('options', 'option2', 'description')).to include('fax')
     end
 
     it 'option1 has addressLines' do
@@ -87,10 +87,18 @@ RSpec.describe BenefitsClaims::ClaimStatusMeta::ConfigLoader, '#load ivc_champva
       end
     end
 
-    it 'pending status description includes both sentences' do
+    it 'pending status description includes the processing timeline sentence' do
       description = what_we_are_doing.dig('statusMap', 'pending', 'description')
       expect(description).to include('We received your application.')
-      expect(description).to include("If we need more information, we'll mail you a letter.")
+      expect(description).to include('5 business days')
+    end
+
+    it 'pending and claimReceived have a descriptionNote with the mail letter sentence' do
+      %w[pending claimReceived].each do |status|
+        note = what_we_are_doing.dig('statusMap', status, 'descriptionNote')
+        expect(note).to be_present
+        expect(note).to include("If we need more information, we'll mail you a letter.")
+      end
     end
   end
 
@@ -110,6 +118,13 @@ RSpec.describe BenefitsClaims::ClaimStatusMeta::ConfigLoader, '#load ivc_champva
       template = overview.dig('steps', 0, 'descriptionDateTemplate')
       expect(template).to be_present
       expect(template).to include('{date}')
+    end
+
+    it 'step 1 description and descriptionDateTemplate include the processing timeline sentence' do
+      description = overview.dig('steps', 0, 'description')
+      template = overview.dig('steps', 0, 'descriptionDateTemplate')
+      expect(description).to include('5 business days')
+      expect(template).to include('5 business days')
     end
 
     it 'currentStepByStatus covers pending, claimReceived, vbms, and complete' do

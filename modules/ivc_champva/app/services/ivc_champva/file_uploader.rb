@@ -205,8 +205,9 @@ module IvcChampva
     # @return [Hash] modified metadata object
     def metadata_for_s3(attachment_id, file_path = nil)
       key = attachment_id.is_a?(Integer) ? 'claim_id' : 'attachment_id'
-      result = @metadata.except('primaryContactInfo', 'attachment_ids', 'additional_file_metadata')
-                        .merge({ key => attachment_id.to_s })
+      result = @metadata
+               .except('primaryContactInfo', 'attachment_ids', 'supportingDocApplicants', 'additional_file_metadata')
+               .merge({ key => attachment_id.to_s })
 
       if file_path && @metadata['additional_file_metadata']
         file_name = File.basename(file_path).gsub('-tmp', '')

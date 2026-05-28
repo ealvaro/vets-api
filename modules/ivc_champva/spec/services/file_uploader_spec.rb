@@ -415,6 +415,7 @@ describe IvcChampva::FileUploader do
         expect(result['attachment_id']).to eq('Social Security card')
         expect(result).not_to have_key('primaryContactInfo')
         expect(result).not_to have_key('attachment_ids')
+        expect(result).not_to have_key('supportingDocApplicants')
         expect(result).not_to have_key('meta-jsonfile')
       end
 

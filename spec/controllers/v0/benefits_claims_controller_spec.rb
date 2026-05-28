@@ -2494,47 +2494,59 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
           'formId' => '10-10D-EXTENDED',
           'acceptedFileTypes' => %w[pdf jpg jpeg png],
           'documentTypeOptions' => [
-            { 'value' => 'Court ordered adoption papers', 'label' => 'Court ordered adoption papers' },
+            { 'value' => 'Annulment decree', 'label' => 'Annulment decree' },
             { 'value' => 'Birth certificate', 'label' => 'Birth certificate' },
             { 'value' => 'Certificate of civil union', 'label' => 'Certificate of civil union' },
+            { 'value' => 'Common-law marriage affidavit', 'label' => 'Common-law marriage affidavit' },
+            { 'value' => 'Court-ordered adoption papers', 'label' => 'Court-ordered adoption papers' },
+            { 'value' => 'Death certificate', 'label' => 'Death certificate' },
+            { 'value' => 'Disability rating letter for the child',
+              'label' => 'Disability rating letter for the child' },
             { 'value' => 'Divorce decree', 'label' => 'Divorce decree' },
             { 'value' => 'Marriage certificate', 'label' => 'Marriage certificate' },
-            { 'value' => 'Front of Medicare Parts A or B card', 'label' => 'Front of Medicare Parts A or B card' },
-            { 'value' => 'Back of Medicare Parts A or B card', 'label' => 'Back of Medicare Parts A or B card' },
-            { 'value' => 'Front of Medicare Part C card', 'label' => 'Front of Medicare Part C card' },
-            { 'value' => 'Back of Medicare Part C card', 'label' => 'Back of Medicare Part C card' },
-            { 'value' => 'Front of Medicare Part D card', 'label' => 'Front of Medicare Part D card' },
-            { 'value' => 'Back of Medicare Part D card', 'label' => 'Back of Medicare Part D card' },
-            { 'value' => 'Front of health insurance card', 'label' => 'Front of health insurance card' },
-            { 'value' => 'Back of health insurance card', 'label' => 'Back of health insurance card' },
-            { 'value' => 'Other document', 'label' => 'Other document' },
-            { 'value' => 'School enrollment certification form', 'label' => 'School enrollment certification form' },
-            { 'value' => 'Enrollment letter', 'label' => 'Enrollment letter' },
-            { 'value' => 'Letter from the SSA', 'label' => 'Letter from the SSA' }
+            { 'value' => 'School acceptance letter', 'label' => 'School acceptance letter' },
+            { 'value' => 'School enrollment certification letter',
+              'label' => 'School enrollment certification letter' },
+            { 'value' => 'Social Security card', 'label' => 'Social Security card' }
           ]
         }
       end
 
-      context 'when CST file uploader docs-only flipper is enabled' do
-        it 'includes docs-only finalize metadata' do
-          allow(controller).to receive(:champva_cst_file_uploader_docs_only_resubmission_enabled?).and_return(true)
-          metadata = controller.send(:build_upload_metadata_for_claim, claim)
+      it 'includes docs-only finalize metadata when CST file uploader docs-only flipper is enabled' do
+        metadata = controller.send(
+          :build_upload_metadata_for_claim,
+          claim,
+          champva_cst_file_uploader_docs_only_resubmission_enabled: true
+        )
 
-          expect(metadata).to eq(
-            base_metadata.merge(
-              'finalizeDestinationKey' => 'ivc_champva_docs_only_resubmission',
-              'submissionType' => 'existing'
-            )
+        expect(metadata).to eq(
+          base_metadata.merge(
+            'finalizeDestinationKey' => 'ivc_champva_docs_only_resubmission',
+            'submissionType' => 'existing'
           )
-        end
+        )
       end
 
-      context 'when CST file uploader docs-only flipper is disabled' do
-        it 'omits docs-only finalize metadata' do
-          allow(controller).to receive(:champva_cst_file_uploader_docs_only_resubmission_enabled?).and_return(false)
-          metadata = controller.send(:build_upload_metadata_for_claim, claim)
+      it 'omits docs-only finalize metadata when CST file uploader docs-only flipper is disabled' do
+        metadata = controller.send(
+          :build_upload_metadata_for_claim,
+          claim,
+          champva_cst_file_uploader_docs_only_resubmission_enabled: false
+        )
 
-          expect(metadata).to eq(base_metadata)
+        expect(metadata).to eq(base_metadata)
+      end
+
+      it 'maps supplemental CHAMPVA form IDs to CHAMPVA document options' do
+        supplemental_form_ids = %w[
+          10-10D-SUPPLEMENTAL
+          10-10D-SUPPLEMENTAL-EXISTING
+          10-10D-SUPPLEMENTAL-ENROLLMENT
+        ]
+
+        supplemental_form_ids.each do |form_id|
+          options = described_class::IVC_CHAMPVA_DOCUMENT_TYPE_OPTIONS_BY_FORM_ID[form_id]
+          expect(options).to eq(base_metadata['documentTypeOptions'])
         end
       end
     end

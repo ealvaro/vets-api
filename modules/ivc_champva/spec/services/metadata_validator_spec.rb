@@ -462,12 +462,11 @@ describe IvcChampva::MetadataValidator do
         .to raise_error(ArgumentError, 'certifier_role is missing')
     end
 
-    it 'raises when applicant_dob is missing for existing submissions' do
+    it 'does NOT raise when applicant_dob is missing for existing submissions' do
       data = existing_payload.deep_merge(
         'applicants' => [existing_payload['applicants'][0].except('applicant_dob')]
       )
-      expect { described_class.validate_docs_only_resubmission(data) }
-        .to raise_error(ArgumentError, 'applicants[0] applicant_dob is missing')
+      expect { described_class.validate_docs_only_resubmission(data) }.not_to raise_error
     end
 
     it 'raises when certification date is missing' do

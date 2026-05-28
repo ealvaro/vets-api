@@ -113,8 +113,8 @@ module IvcChampva
       applicants.each_with_index do |app, i|
         validate_presence_and_stringiness(app.dig('applicant_name', 'first'), "applicants[#{i}] first name")
         validate_presence_and_stringiness(app.dig('applicant_name', 'last'), "applicants[#{i}] last name")
-        validate_presence_and_stringiness(app['applicant_dob'], "applicants[#{i}] applicant_dob")
         if submission_type == 'enrollment'
+          validate_presence_and_stringiness(app['applicant_dob'], "applicants[#{i}] applicant_dob")
           validate_presence_and_stringiness(app['applicant_member_number'], "applicants[#{i}] applicant_member_number")
         end
       end
@@ -128,7 +128,6 @@ module IvcChampva
       validate_presence_and_stringiness(vet.dig('full_name', 'first'), 'veteran first name')
       validate_presence_and_stringiness(vet.dig('full_name', 'last'), 'veteran last name')
       validate_presence_and_stringiness(vet['ssn_or_tin'], 'veteran ssn_or_tin')
-      validate_presence_and_stringiness(vet['date_of_birth'], 'veteran date_of_birth')
     end
   end
 end

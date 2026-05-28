@@ -117,6 +117,15 @@ RSpec.describe BenefitsClaims::TitleGenerator do
                                claim_type_base: 'request to add or remove a dependent'
                              })
       end
+
+      it 'returns CHAMPVA application title for CHAMPVA application claim type' do
+        result = described_class.generate_titles('CHAMPVA application', nil)
+
+        expect(result).to eq({
+                               display_title: 'CHAMPVA application',
+                               claim_type_base: 'application for CHAMPVA benefits'
+                             })
+      end
     end
 
     context 'with default title generation' do
@@ -392,14 +401,20 @@ RSpec.describe BenefitsClaims::TitleGenerator do
     end
 
     describe 'CLAIM_TYPE_SPECIAL_CASES' do
-      it 'contains only the Death special case' do
-        expect(BenefitsClaims::TitleGenerator::CLAIM_TYPE_SPECIAL_CASES.keys).to eq(['Death'])
+      it 'contains the expected special cases' do
+        expect(BenefitsClaims::TitleGenerator::CLAIM_TYPE_SPECIAL_CASES.keys).to eq(['Death', 'CHAMPVA application'])
       end
 
       it 'has proper Title struct for Death case' do
         death_title = BenefitsClaims::TitleGenerator::CLAIM_TYPE_SPECIAL_CASES['Death']
         expect(death_title.display_title).to eq('Claim for expenses related to death or burial')
         expect(death_title.claim_type_base).to eq('expenses related to death or burial claim')
+      end
+
+      it 'has proper Title struct for CHAMPVA application case' do
+        champva_title = BenefitsClaims::TitleGenerator::CLAIM_TYPE_SPECIAL_CASES['CHAMPVA application']
+        expect(champva_title.display_title).to eq('CHAMPVA application')
+        expect(champva_title.claim_type_base).to eq('application for CHAMPVA benefits')
       end
     end
 

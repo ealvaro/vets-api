@@ -29,6 +29,7 @@ module V0
 
     FEATURE_USE_TITLE_GENERATOR_WEB = 'cst_use_claim_title_generator_web'
     FEATURE_MULTI_CLAIM_PROVIDER = 'cst_multi_claim_provider'
+    FEATURE_CHAMPVA_DOCS_ONLY_RESUBMISSION = 'benefits_documents_ivc_champva_docs_only_resubmission'
     DEFAULT_UPLOAD_DESTINATION_KEY = 'benefits_claims'
     IVC_CHAMPVA_UPLOAD_DESTINATION_KEY = 'ivc_champva_supporting_documents'
     IVC_CHAMPVA_FINALIZE_DESTINATION_KEY = 'ivc_champva_docs_only_resubmission'
@@ -47,27 +48,25 @@ module V0
     }.freeze
 
     IVC_CHAMPVA_10_10D_EXTENDED_DOCUMENT_TYPE_OPTIONS = [
-      'Court ordered adoption papers',
+      'Annulment decree',
       'Birth certificate',
       'Certificate of civil union',
+      'Common-law marriage affidavit',
+      'Court-ordered adoption papers',
+      'Death certificate',
+      'Disability rating letter for the child',
       'Divorce decree',
       'Marriage certificate',
-      'Front of Medicare Parts A or B card',
-      'Back of Medicare Parts A or B card',
-      'Front of Medicare Part C card',
-      'Back of Medicare Part C card',
-      'Front of Medicare Part D card',
-      'Back of Medicare Part D card',
-      'Front of health insurance card',
-      'Back of health insurance card',
-      'Other document',
-      'School enrollment certification form',
-      'Enrollment letter',
-      'Letter from the SSA'
+      'School acceptance letter',
+      'School enrollment certification letter',
+      'Social Security card'
     ].map { |option| { 'value' => option, 'label' => option } }.freeze
 
     IVC_CHAMPVA_DOCUMENT_TYPE_OPTIONS_BY_FORM_ID = {
-      '10-10D-EXTENDED' => IVC_CHAMPVA_10_10D_EXTENDED_DOCUMENT_TYPE_OPTIONS
+      '10-10D-EXTENDED' => IVC_CHAMPVA_10_10D_EXTENDED_DOCUMENT_TYPE_OPTIONS,
+      '10-10D-SUPPLEMENTAL' => IVC_CHAMPVA_10_10D_EXTENDED_DOCUMENT_TYPE_OPTIONS,
+      '10-10D-SUPPLEMENTAL-EXISTING' => IVC_CHAMPVA_10_10D_EXTENDED_DOCUMENT_TYPE_OPTIONS,
+      '10-10D-SUPPLEMENTAL-ENROLLMENT' => IVC_CHAMPVA_10_10D_EXTENDED_DOCUMENT_TYPE_OPTIONS
     }.freeze
 
     IVC_CHAMPVA_ACCEPTED_FILE_TYPES = %w[pdf jpg jpeg png].freeze
@@ -78,12 +77,15 @@ module V0
                else
                  service.get_claims
                end
+      champva_cst_file_uploader_docs_only_resubmission_enabled =
+        Flipper.enabled?(:champva_cst_file_uploader_docs_only_resubmission, @current_user)
+
       check_for_birls_id
       check_for_file_number
 
       claims['data'].each do |claim|
         update_claim_type_language(claim)
-        add_upload_metadata(claim)
+        add_upload_metadata(claim, champva_cst_file_uploader_docs_only_resubmission_enabled:)
       end
 
       claim_ids = claims['data'].map { |claim| claim['id'] }
@@ -106,8 +108,10 @@ module V0
                 # Legacy single-provider path: Apply Lighthouse-specific transforms here
                 get_legacy_claim(params[:id])
               end
+      champva_cst_file_uploader_docs_only_resubmission_enabled =
+        Flipper.enabled?(:champva_cst_file_uploader_docs_only_resubmission, @current_user)
       update_claim_type_language(claim['data'])
-      add_upload_metadata(claim['data'])
+      add_upload_metadata(claim['data'], champva_cst_file_uploader_docs_only_resubmission_enabled:)
 
       # Document uploads to EVSS require a birls_id; This restriction should
       # be removed when we move to Lighthouse Benefits Documents for document uploads
@@ -224,15 +228,18 @@ module V0
       end
     end
 
-    def add_upload_metadata(claim)
-      metadata = build_upload_metadata_for_claim(claim)
+    def add_upload_metadata(claim, champva_cst_file_uploader_docs_only_resubmission_enabled: false)
+      metadata = build_upload_metadata_for_claim(
+        claim,
+        champva_cst_file_uploader_docs_only_resubmission_enabled:
+      )
       return if metadata.blank?
 
       claim['attributes'] ||= {}
       claim['attributes']['uploadMetadata'] = metadata
     end
 
-    def build_upload_metadata_for_claim(claim)
+    def build_upload_metadata_for_claim(claim, champva_cst_file_uploader_docs_only_resubmission_enabled: false)
       claim_attributes = claim['attributes'] || {}
       provider = claim_attributes['provider'].presence
       destination_key = UPLOAD_DESTINATION_KEY_BY_PROVIDER.fetch(provider, DEFAULT_UPLOAD_DESTINATION_KEY)
@@ -243,7 +250,7 @@ module V0
         form_id = IVC_CHAMPVA_FORM_ID_BY_CLAIM_TYPE[claim_attributes['claimType']]
         metadata['formId'] = form_id if form_id.present?
         metadata['acceptedFileTypes'] = IVC_CHAMPVA_ACCEPTED_FILE_TYPES
-        if form_id == '10-10D-EXTENDED' && champva_cst_file_uploader_docs_only_resubmission_enabled?
+        if form_id == '10-10D-EXTENDED' && champva_cst_file_uploader_docs_only_resubmission_enabled
           metadata['finalizeDestinationKey'] = IVC_CHAMPVA_FINALIZE_DESTINATION_KEY
           metadata['submissionType'] = 'existing'
         end

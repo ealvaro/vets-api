@@ -17,6 +17,9 @@ module BenefitsClaims
           '10-10d-extended' => 'CHAMPVA application',
           '10-10d-extended-existing' => 'CHAMPVA application',
           '10-10d-extended-enrollment' => 'CHAMPVA application',
+          '10-10d-supplemental' => 'CHAMPVA application',
+          '10-10d-supplemental-existing' => 'CHAMPVA application',
+          '10-10d-supplemental-enrollment' => 'CHAMPVA application',
           '10-7959c' => 'Other Health Insurance',
           '10-7959f-1' => 'Foreign Medical Program registration',
           '10-7959f-2' => 'Foreign Medical Program claim',
@@ -27,6 +30,8 @@ module BenefitsClaims
         CLAIM_RECEIVED_STATUSES = [
           'received',
           'submission received',
+          # Set by CST file uploader after successful S3 upload, before PEGA picks it up
+          'submitted',
           # Applicant action required — non-terminal; applicant may respond and receive a follow-up status
           'additional documentation requested'
         ].freeze
@@ -40,7 +45,7 @@ module BenefitsClaims
           'processed - eligibility determination unknown',
           'document identification error'
         ].freeze
-        INTERNAL_DOCS_ONLY_1010D_FILE_NAME_PATTERN = /_vha_10_10d(?:_supporting_doc-\d+)?\.pdf\z/i
+        INTERNAL_DOCS_ONLY_1010D_FILE_NAME_PATTERN = /_vha_10_10d_supporting_doc-\d+\.pdf\z/i
 
         def self.build_claim_response(records, user = nil)
           records = Array(records)
@@ -111,10 +116,8 @@ module BenefitsClaims
         end
 
         def self.internal_docs_only_artifact?(record)
-          form_number = record.form_number.to_s
           file_name = record.file_name.to_s
-
-          form_number.start_with?('10-10D-EXTENDED-') && file_name.match?(INTERNAL_DOCS_ONLY_1010D_FILE_NAME_PATTERN)
+          file_name.match?(INTERNAL_DOCS_ONLY_1010D_FILE_NAME_PATTERN)
         end
 
         def self.format_date(value)
@@ -144,9 +147,11 @@ module BenefitsClaims
 
           base_meta = load_base_metadata
           veteran_name = [user&.first_name, user&.last_name].compact.join(' ').strip
-          applicant_names = records.map do |record|
-            [record.first_name, record.last_name].compact.join(' ').strip
-          end.compact_blank.uniq
+          applicant_names = applicant_names_for(records)
+          normalized_veteran_name = normalize_name(veteran_name)
+          applicant_names = applicant_names.reject do |name|
+            normalized_veteran_name.present? && normalize_name(name) == normalized_veteran_name
+          end
 
           detail_groups = []
           detail_groups << { 'title' => 'Veteran', 'items' => [veteran_name] } if veteran_name.present?
@@ -159,6 +164,43 @@ module BenefitsClaims
           base_meta['whatWeAreDoing']['currentStatus'] = status
 
           base_meta
+        end
+
+        def self.applicant_names_for(records)
+          names = records.flat_map { |record| applicant_names_from_request_json(record) }.compact_blank.uniq
+          return names if names.any?
+
+          records.map do |record|
+            [record.first_name, record.last_name].compact.join(' ').strip
+          end.compact_blank.uniq
+        end
+
+        def self.applicant_names_from_request_json(record)
+          payload = parse_request_json(record&.request_json)
+          applicants = payload['applicants'] || payload[:applicants]
+          return [] unless applicants.is_a?(Array)
+
+          applicants.map do |applicant|
+            name = if applicant.is_a?(Hash)
+                     applicant['applicantName'] || applicant[:applicantName] ||
+                       applicant['applicant_name'] || applicant[:applicant_name]
+                   end
+            next nil unless name.is_a?(Hash)
+
+            [
+              name['first'] || name[:first],
+              name['last'] || name[:last]
+            ].compact.join(' ').strip
+          end.compact_blank
+        end
+
+        def self.parse_request_json(request_json)
+          return request_json if request_json.is_a?(Hash)
+          return {} if request_json.blank?
+
+          JSON.parse(request_json)
+        rescue JSON::ParserError
+          {}
         end
 
         def self.include_champva_custom_content?(user)
@@ -182,6 +224,10 @@ module BenefitsClaims
           return 'REVIEW_OF_EVIDENCE' if status == 'error'
 
           'UNDER_REVIEW'
+        end
+
+        def self.normalize_name(value)
+          value.to_s.strip.downcase.gsub(/\s+/, ' ')
         end
       end
       # rubocop:enable Metrics/ModuleLength

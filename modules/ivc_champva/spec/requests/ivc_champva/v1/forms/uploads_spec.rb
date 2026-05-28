@@ -1008,8 +1008,7 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     it 'accepts docs-only resubmission when the flow is enabled' do
       allow(Flipper).to receive(:enabled?).and_call_original
       allow(Flipper).to receive(:enabled?)
-        .with(:champva_cst_file_uploader_docs_only_resubmission, anything)
-        .and_return(true)
+        .with(:champva_cst_file_uploader_docs_only_resubmission, anything).and_return(true)
       allow_any_instance_of(IvcChampva::V1::UploadsController)
         .to receive(:handle_file_uploads_wrapper)
         .and_return({ json: {}, status: 200 })
@@ -1023,8 +1022,7 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     it 'returns 422 when docs-only flow is disabled' do
       allow(Flipper).to receive(:enabled?).and_call_original
       allow(Flipper).to receive(:enabled?)
-        .with(:champva_cst_file_uploader_docs_only_resubmission, anything)
-        .and_return(false)
+        .with(:champva_cst_file_uploader_docs_only_resubmission, anything).and_return(false)
 
       post '/ivc_champva/v1/forms/docs_only_resubmission', params: payload, as: :json
 
@@ -1035,8 +1033,7 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     it 'hydrates applicant_dob from source request_json when missing in payload' do
       allow(Flipper).to receive(:enabled?).and_call_original
       allow(Flipper).to receive(:enabled?)
-        .with(:champva_cst_file_uploader_docs_only_resubmission, anything)
-        .and_return(true)
+        .with(:champva_cst_file_uploader_docs_only_resubmission, anything).and_return(true)
       allow_any_instance_of(IvcChampva::V1::UploadsController)
         .to receive(:handle_file_uploads_wrapper)
         .and_return({ json: {}, status: 200 })
@@ -1052,8 +1049,7 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     it 'hydrates veteran ssn_or_tin from source request_json when missing in payload' do
       allow(Flipper).to receive(:enabled?).and_call_original
       allow(Flipper).to receive(:enabled?)
-        .with(:champva_cst_file_uploader_docs_only_resubmission, anything)
-        .and_return(true)
+        .with(:champva_cst_file_uploader_docs_only_resubmission, anything).and_return(true)
       allow_any_instance_of(IvcChampva::V1::UploadsController)
         .to receive(:handle_file_uploads_wrapper)
         .and_return({ json: {}, status: 200 })
@@ -1069,8 +1065,7 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     it 'hydrates applicant_dob when payload uses applicantName camelCase' do
       allow(Flipper).to receive(:enabled?).and_call_original
       allow(Flipper).to receive(:enabled?)
-        .with(:champva_cst_file_uploader_docs_only_resubmission, anything)
-        .and_return(true)
+        .with(:champva_cst_file_uploader_docs_only_resubmission, anything).and_return(true)
       allow_any_instance_of(IvcChampva::V1::UploadsController)
         .to receive(:handle_file_uploads_wrapper)
         .and_return({ json: {}, status: 200 })
@@ -1171,6 +1166,25 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
 
     it 'handles PDFs with no password' do
       expect(controller.send(:unlock_file, file, nil)).to eq(file)
+    end
+  end
+
+  describe '#cleanup_supporting_doc_working_files' do
+    let(:controller) { IvcChampva::V1::UploadsController.new }
+
+    it 'removes tmp supporting_doc working files and keeps unrelated files' do
+      supporting_path = Rails.root.join('tmp', "#{SecureRandom.uuid}_vha_10_10d_supporting_doc-0.pdf").to_s
+      unrelated_path = Rails.root.join('tmp', "#{SecureRandom.uuid}_metadata.json").to_s
+
+      File.write(supporting_path, 'supporting-temp')
+      File.write(unrelated_path, 'keep-me')
+
+      controller.send(:cleanup_supporting_doc_working_files, [supporting_path, unrelated_path, nil, ''])
+
+      expect(File.exist?(supporting_path)).to be(false)
+      expect(File.exist?(unrelated_path)).to be(true)
+
+      FileUtils.rm_f(unrelated_path)
     end
   end
 
