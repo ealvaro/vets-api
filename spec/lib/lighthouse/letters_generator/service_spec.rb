@@ -212,6 +212,9 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
 
   describe '#get_eligible_letter_types' do
     it 'returns a list of eligible letter types' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?).with(:letters_hide_dependent_benefits_summary_letter).and_return(false)
+
       expect_any_instance_of(Lighthouse::LettersGenerator::Configuration)
         .to receive(:get_access_token)
         .once
@@ -619,6 +622,62 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
     end
   end
 
+  describe 'letters_hide_dependent_benefits_summary_letter flag' do
+    let(:user) { build(:user) }
+    let(:eligible_letters_response) do
+      {
+        'letters' => [
+          { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => 'Benefit summary letter' },
+          { 'letterType' => 'BENEFIT_SUMMARY_DEPENDENT', 'letterName' => 'Dependent Benefit Summary Letter' },
+          { 'letterType' => 'PROOF_OF_SERVICE', 'letterName' => 'Proof of service letter' }
+        ],
+        'letterDestination' => { 'name' => 'DOLLY PARTON' }
+      }
+    end
+
+    before do
+      expect_any_instance_of(Lighthouse::LettersGenerator::Configuration)
+        .to receive(:get_access_token)
+        .once
+        .and_return('faketoken')
+
+      @stubs.get('/eligible-letters?icn=DOLLYPARTON') do
+        [200, {}, eligible_letters_response]
+      end
+    end
+
+    context 'when letters_hide_dependent_benefits_summary_letter is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?).with(:letters_hide_dependent_benefits_summary_letter).and_return(false)
+      end
+
+      it 'includes dependent benefits summary letter' do
+        client = Lighthouse::LettersGenerator::Service.new
+        response = client.get_eligible_letter_types('DOLLYPARTON', user)
+
+        letter_types = response[:letters].pluck(:letterType)
+        expect(letter_types).to include('benefit_summary_dependent')
+      end
+    end
+
+    context 'when letters_hide_dependent_benefits_summary_letter is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?).with(:letters_hide_dependent_benefits_summary_letter).and_return(true)
+      end
+
+      it 'excludes dependent benefits summary letter' do
+        client = Lighthouse::LettersGenerator::Service.new
+        response = client.get_eligible_letter_types('DOLLYPARTON', user)
+
+        letter_types = response[:letters].pluck(:letterType)
+        expect(letter_types).not_to include('benefit_summary_dependent')
+        expect(letter_types).to include('benefit_summary', 'proof_of_service')
+      end
+    end
+  end
+
   describe 'letter ordering and sorting' do
     let(:user) { build(:user) }
     let(:eligible_letters_response) do
@@ -648,6 +707,7 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
         allow(Flipper).to receive(:enabled?).and_call_original
         allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:letters_hide_dependent_benefits_summary_letter).and_return(false)
       end
 
       it 'returns letters in the original order from Lighthouse' do
@@ -664,6 +724,7 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
         allow(Flipper).to receive(:enabled?).and_call_original
         allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(true)
         allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:letters_hide_dependent_benefits_summary_letter).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:fmp_benefits_authorization_letter, user).and_return(true)
       end
 

@@ -95,6 +95,11 @@ module Lighthouse
           service_verification
         ]
         list = list.excluding('service_verification') if Flipper.enabled?(:letters_hide_service_verification_letter)
+
+        if Flipper.enabled?(:letters_hide_dependent_benefits_summary_letter)
+          list = list.excluding('benefit_summary_dependent')
+        end
+
         list << 'foreign_medical_program' if fmp_benefits_authorization_letter_enabled?(user)
         list.to_set.freeze
       end

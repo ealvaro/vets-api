@@ -792,6 +792,10 @@ features:
     actor_type: user
     description: When enabled, CST does not include Service Verification in the list of letters on vets-website
     enable_in_development: true
+  letters_hide_dependent_benefits_summary_letter:
+    actor_type: user
+    description: When enabled, the VA Benefit Letters and Documents page on VA.gov does not show the Dependent Benefits Summary letter
+    enable_in_development: true
   coe_access:
     actor_type: user
     description: Feature gates the certificate of eligibility application
