@@ -1160,10 +1160,10 @@ GEM
       activerecord (>= 7.1)
     strscan (3.1.8)
     strscan (3.1.8-java)
-    super_diff (0.18.0)
-      attr_extras (>= 6.2.4)
-      diff-lcs
-      patience_diff
+    super_diff (0.19.0)
+      attr_extras (>= 6.2.4, < 8)
+      diff-lcs (~> 1.5)
+      patience_diff (~> 1.2)
     swagger-blocks (3.0.0)
     terminal-table (4.0.0)
       unicode-display_width (>= 1.1.1, < 4)
