@@ -39,15 +39,19 @@ module TravelPay
       submitted_claim = claims_service.submit_claim(claim['claimId'])
       submitted_claim['status'] = 'Claim submitted'
 
+      increment_statsd('success')
       submitted_claim
     rescue ArgumentError => e
+      increment_statsd('failure')
       raise Common::Exceptions::BadRequest, detail: e.message
     rescue => e
       if claim.nil? ## error occurred on claim creation step
         Rails.logger.error(message: "[#{@client}] SMOC transaction: Failed to create claim")
+        increment_statsd('failure')
         raise Common::Exceptions::BackendServiceException.new(nil, {}, detail: 'Failed to create claim')
       elsif expense.nil? && claim['claimId'].present? ## error occurred on expense step, but claim was created
         Rails.logger.error(message: "[#{@client}] SMOC transaction: Failed to add expense, #{e}")
+        increment_statsd('incomplete')
         {
           'claimId' => claim['claimId'],
           'status' => 'Incomplete'
@@ -57,6 +61,7 @@ module TravelPay
         Rails.logger.error(message: "[#{@client}] SMOC transaction: Failed to submit claim #{claim['claimId'].slice(
           0, 8
         )}")
+        increment_statsd('saved')
         {
           'claimId' => claim['claimId'],
           'status' => 'Saved'
@@ -96,6 +101,10 @@ module TravelPay
 
     def expenses_service
       @expenses_service ||= TravelPay::ExpensesService.new(@auth_manager)
+    end
+
+    def increment_statsd(result)
+      StatsD.increment('travel_pay.claims.smoc.submit', tags: ["result:#{result}"])
     end
   end
 end

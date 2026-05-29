@@ -7,6 +7,7 @@ module TravelPay
       include ClaimHelper
 
       after_action :scrub_logs, only: [:show]
+      before_action :check_smoc_feature_flag, only: [:create]
 
       def index
         claims = claims_service.get_claims_by_date_range(params)
@@ -44,11 +45,6 @@ module TravelPay
       end
 
       def create
-        unless Flipper.enabled?(:travel_pay_submit_mileage_expense, @current_user)
-          message = 'Travel Pay mileage expense submission unavailable per feature toggle'
-          Rails.logger.error(message:)
-          raise Common::Exceptions::ServiceUnavailable, message:
-        end
         begin
           Rails.logger.info(message: 'SMOC transaction START')
 
@@ -61,9 +57,12 @@ module TravelPay
           submitted_claim = claims_service.submit_claim(claim_id)
 
           Rails.logger.info(message: 'SMOC transaction END')
+          increment_smoc_statsd('success')
         rescue ArgumentError => e
+          increment_smoc_statsd('failure')
           raise Common::Exceptions::BadRequest, detail: e.message
         rescue Faraday::Error => e
+          increment_smoc_statsd('failure')
           TravelPay::ServiceError.raise_mapped_error(e)
         end
 
@@ -86,6 +85,18 @@ module TravelPay
 
       def expense_service
         @expense_service ||= TravelPay::ExpensesService.new(auth_manager)
+      end
+
+      def increment_smoc_statsd(result)
+        StatsD.increment('travel_pay.claims.smoc.create', tags: ["result:#{result}"])
+      end
+
+      def check_smoc_feature_flag
+        unless Flipper.enabled?(:travel_pay_submit_mileage_expense, @current_user)
+          message = 'Travel Pay mileage expense submission unavailable per feature toggle'
+          Rails.logger.error(message:)
+          raise Common::Exceptions::ServiceUnavailable, message:
+        end
       end
 
       def scrub_logs

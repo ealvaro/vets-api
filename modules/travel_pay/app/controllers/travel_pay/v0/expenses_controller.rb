@@ -41,11 +41,14 @@ module TravelPay
         created_expense = expense_service.create_expense(expense_params_for_service(expense))
 
         Rails.logger.info(message: 'Travel Pay expense submission END')
+        increment_expense_statsd(params[:expense_type], 'success')
 
         render json: created_expense, status: :created
       rescue ArgumentError => e
+        increment_expense_statsd(params[:expense_type], 'failure')
         raise Common::Exceptions::BadRequest, detail: e.message
       rescue Faraday::Error => e
+        increment_expense_statsd(params[:expense_type], 'failure')
         TravelPay::ServiceError.raise_mapped_error(e)
       end
 
@@ -95,6 +98,11 @@ module TravelPay
 
       def expense_service
         @expense_service ||= TravelPay::ExpensesService.new(auth_manager)
+      end
+
+      def increment_expense_statsd(expense_type, result)
+        StatsD.increment('travel_pay.expenses.create',
+                         tags: ["expense_type:#{expense_type}", "result:#{result}"])
       end
 
       def check_feature_flag

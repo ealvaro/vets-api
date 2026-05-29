@@ -21,15 +21,19 @@ module TravelPay
         Rails.logger.info(message: 'Submit complex claim')
         submitted_claim = claims_service.submit_claim(claim_id)
 
+        increment_submit_statsd('success')
         render json: submitted_claim, status: :created
       rescue Faraday::ClientError => e
         # 400-level errors (bad request, unauthorized, forbidden)
+        increment_submit_statsd('failure')
         handle_faraday_error(e, 'Invalid request for complex claim', log_prefix: 'Submitting complex claim: ')
       rescue Faraday::ServerError => e
         # 500-level errors
+        increment_submit_statsd('failure')
         handle_faraday_error(e, 'Server error submitting complex claim', log_prefix: 'Submitting complex claim: ')
       rescue Faraday::Error => e
         # Catch all for Faraday::ConnectionFailed, Faraday::TimeoutError, Faraday::SSLError
+        increment_submit_statsd('failure')
         handle_faraday_error(e, 'Error creating complex claim', log_prefix: 'Submitting complex claim: ')
       end
 
@@ -76,6 +80,21 @@ module TravelPay
         end
 
         find_or_create_appt_id!('Complex', permitted_params)
+      end
+
+      VALID_CLAIM_TYPES = %w[community-care other].freeze
+
+      def increment_submit_statsd(result)
+        claim_type = resolve_claim_type(request.query_parameters[:claim_type])
+        StatsD.increment('travel_pay.claims.complex.submit',
+                         tags: ["result:#{result}", "claim_type:#{claim_type}"])
+      end
+
+      def resolve_claim_type(type)
+        return 'unknown' if type.blank?
+        return type if VALID_CLAIM_TYPES.include?(type)
+
+        'unknown'
       end
 
       def base_required_fields

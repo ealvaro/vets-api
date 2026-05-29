@@ -664,6 +664,36 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
             expect(JSON.parse(response.body)).to eq('claimId' => claim_id)
           end
 
+          it 'tracks claim_type:community-care in StatsD when claim_type param is provided' do
+            allow(StatsD).to receive(:increment)
+            patch("/travel_pay/v0/complex_claims/#{claim_id}/submit?claim_type=community-care")
+
+            expect(response).to have_http_status(:created)
+            expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.submit',
+                                                             tags: %w[result:success
+                                                                      claim_type:community-care])
+          end
+
+          it 'tracks claim_type:other in StatsD when claim_type is other' do
+            allow(StatsD).to receive(:increment)
+            patch("/travel_pay/v0/complex_claims/#{claim_id}/submit?claim_type=other")
+
+            expect(response).to have_http_status(:created)
+            expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.submit',
+                                                             tags: %w[result:success
+                                                                      claim_type:other])
+          end
+
+          it 'tracks claim_type:unknown in StatsD when claim_type param is missing' do
+            allow(StatsD).to receive(:increment)
+            patch("/travel_pay/v0/complex_claims/#{claim_id}/submit")
+
+            expect(response).to have_http_status(:created)
+            expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.submit',
+                                                             tags: %w[result:success
+                                                                      claim_type:unknown])
+          end
+
           # NOTE: In request specs, you can’t make params[:claim_id] truly missing because
           # it’s part of the URL path and Rails routing prevents that.
           it 'returns bad request when claim_id is invalid' do
