@@ -102,22 +102,21 @@ RSpec.describe SavedClaim::CoeClaim do
       },
       'loanHistory' => {
         'certificateUse' => 'HOME_PURCHASE',
-        'entitlementRestoration' => 'ONE_TIME_RESTORATION',
         'hadPriorLoans' => true,
         'relevantPriorLoans' => [
           {
-            'dateRange' => { 'from' => '2017-01-01T00:00:00.000Z', 'to' => '' },
+            'loanDate' => '2017-01-01T00:00:00.000Z',
             'propertyAddress' => { 'country' => 'USA', 'street1' => '234', 'street2' => '234',
                                    'city' => 'asdf', 'state' => 'AL', 'postalCode' => '11111' },
             'vaLoanNumber' => '123123123123',
-            'entitlementRestoration' => 'IRRRL'
+            'entitlementRestoration' => 'INTEREST_RATE_REDUCTION_REFINANCE'
           },
           {
-            'dateRange' => { 'from' => '2010-01-01T00:00:00.000Z', 'to' => '2011-01-01T00:00:00.000Z' },
+            'loanDate' => '2010-01-01T00:00:00.000Z',
             'propertyAddress' => { 'country' => 'USA', 'street1' => '939393', 'street2' => '234',
                                    'city' => 'asdf', 'state' => 'AL', 'postalCode' => '11111' },
             'vaLoanNumber' => '456456456456',
-            'entitlementRestoration' => 'REFI'
+            'entitlementRestoration' => 'CASH_OUT_REFINANCE'
           }
         ]
       },
@@ -332,7 +331,7 @@ RSpec.describe SavedClaim::CoeClaim do
         }, {
           'vaLoanNumber' => '456456456456',
           'startDate' => '2010-01-01T00:00:00.000Z',
-          'paidOffDate' => '2011-01-01T00:00:00.000Z',
+          'paidOffDate' => '',
           'loanAmount' => nil,
           'loanEntitlementCharged' => nil,
           'propertyOwned' => true,
@@ -483,7 +482,6 @@ RSpec.describe SavedClaim::CoeClaim do
         it 'sends the right data to LGY when loanHistory is replaced with no prior loans' do
           base_v2_form['loanHistory'] = {
             'certificateUse' => 'HOME_PURCHASE',
-            'entitlementRestoration' => 'ONE_TIME_RESTORATION',
             'hadPriorLoans' => false,
             'relevantPriorLoans' => []
           }

@@ -4,6 +4,7 @@ class SavedClaim::CoeClaim < SavedClaim
   include CoeClaimFormValidation
 
   FORM = '26-1880'
+  REBUILD_FORM_VERSIONS = [2, 3].freeze
 
   def form_matches_schema
     return super unless rebuild_form_version?
@@ -51,7 +52,7 @@ class SavedClaim::CoeClaim < SavedClaim
   private
 
   def rebuild_form_version?
-    parsed_form.is_a?(Hash) && parsed_form.fetch('version', 1).to_i > 1
+    parsed_form.is_a?(Hash) && REBUILD_FORM_VERSIONS.include?(coe_form_version)
   rescue JSON::ParserError
     false
   end
@@ -129,7 +130,7 @@ class SavedClaim::CoeClaim < SavedClaim
     }
 
     mapping = address_mappings[field]
-    path = v2_form? ? mapping[:v2] : mapping[:v1]
+    path = rebuild_form_version? ? mapping[:v2] : mapping[:v1]
     parsed_form.dig(*path)
   end
 
@@ -138,38 +139,38 @@ class SavedClaim::CoeClaim < SavedClaim
 
     case field
     when 'phone'
-      if v2_form?
+      if rebuild_form_version?
         home_phone = veteran_segment['homePhone'] || {}
         (home_phone['areaCode'].to_s + home_phone['phoneNumber'].to_s)
       else
         parsed_form['contactPhone']
       end
     when 'email'
-      v2_form? ? veteran_segment.dig('email', 'emailAddress') : parsed_form['contactEmail']
+      rebuild_form_version? ? veteran_segment.dig('email', 'emailAddress') : parsed_form['contactEmail']
     end
   end
 
   def get_military_history_field(field)
     case field
     when 'identity'
-      v2_form? ? parsed_form.dig('militaryHistory', 'status') : parsed_form['identity']
+      rebuild_form_version? ? parsed_form.dig('militaryHistory', 'status') : parsed_form['identity']
     when 'disabilityIndicator'
-      v2_form? ? parsed_form.dig('militaryHistory', 'separatedDueToDisability') : false
+      rebuild_form_version? ? parsed_form.dig('militaryHistory', 'separatedDueToDisability') : false
     when 'periodsOfService'
       legacy_periods = parsed_form['periodsOfService'] || []
       v2_periods = parsed_form.dig('militaryHistory', 'periodsOfService') || []
-      v2_form? ? v2_periods : legacy_periods
+      rebuild_form_version? ? v2_periods : legacy_periods
     end
   end
 
   def get_file_field(field, file = nil)
     case field
     when 'files'
-      v2_form? ? parsed_form['files2'] : parsed_form['files']
+      rebuild_form_version? ? parsed_form['files2'] : parsed_form['files']
     when 'file_attachment_type'
-      v2_form? ? file.dig('additionalData', 'attachmentType') : file['attachmentType']
+      rebuild_form_version? ? file.dig('additionalData', 'attachmentType') : file['attachmentType']
     when 'file_attachment_description'
-      v2_form? ? file.dig('additionalData', 'attachmentDescription') : file['attachmentDescription']
+      rebuild_form_version? ? file.dig('additionalData', 'attachmentDescription') : file['attachmentDescription']
     end
   end
 
@@ -179,23 +180,19 @@ class SavedClaim::CoeClaim < SavedClaim
 
     case field
     when 'vaLoanIndicator'
-      v2_form? ? parsed_form.dig('loanHistory', 'hadPriorLoans') : parsed_form['vaLoanIndicator']
+      rebuild_form_version? ? parsed_form.dig('loanHistory', 'hadPriorLoans') : parsed_form['vaLoanIndicator']
     when 'vaHomeOwnIndicator'
-      v2_form? ? v2_prior_loans.count.positive? : legacy_prior_loans.any?
+      rebuild_form_version? ? v2_prior_loans.count.positive? : legacy_prior_loans.any?
     when 'relevantPriorLoans'
-      v2_form? ? v2_prior_loans : legacy_prior_loans
+      rebuild_form_version? ? v2_prior_loans : legacy_prior_loans
     end
   end
 
   def get_value_by_form_version_from_prior_loan(field, loan)
     case field
     when 'intent'
-      v2_form? ? loan['entitlementRestoration'] : loan['intent']
+      rebuild_form_version? ? loan['entitlementRestoration'] : loan['intent']
     end
-  end
-
-  def v2_form?
-    parsed_form.key?('version') && parsed_form['version'].to_s == '2'
   end
   # rubocop:enable Metrics/MethodLength
 
@@ -215,18 +212,25 @@ class SavedClaim::CoeClaim < SavedClaim
   def relevant_prior_loans(form_copy)
     get_value_by_form_version('relevantPriorLoans').each do |loan_info|
       pa = loan_info['propertyAddress']
+      start_date, paid_off_date =
+        if rebuild_form_version?
+          [loan_info['loanDate'], '']
+        else
+          [loan_info['dateRange']['from'], loan_info['dateRange']['to']]
+        end
       addr1, addr2, city, state, zip_raw =
-        if v2_form?
+        if rebuild_form_version?
           [pa['street1'], pa['street2'] || '', pa['city'], pa['state'], pa['postalCode'].to_s]
         else
           [pa['propertyAddress1'], pa['propertyAddress2'] || '', pa['propertyCity'], pa['propertyState'],
            pa['propertyZip'].to_s]
         end
       property_zip, property_zip_suffix = zip_raw.split('-', 2)
+      intent = get_value_by_form_version_from_prior_loan('intent', loan_info)
       form_copy['relevantPriorLoans'] << {
         'vaLoanNumber' => loan_info['vaLoanNumber'].to_s,
-        'startDate' => loan_info['dateRange']['from'],
-        'paidOffDate' => loan_info['dateRange']['to'],
+        'startDate' => start_date,
+        'paidOffDate' => paid_off_date,
         'loanAmount' => loan_info['loanAmount'],
         'loanEntitlementCharged' => loan_info['loanEntitlementCharged'],
         # propertyOwned also maps to the stillOwn indicator on the LGY side;
@@ -234,18 +238,16 @@ class SavedClaim::CoeClaim < SavedClaim
         'propertyOwned' => lgy_row_property_owned?(loan_info),
         # In UI: "A one-time restoration of entitlement"
         # In LGY: "One Time Resto"
-        'oneTimeRestorationRequested' => get_value_by_form_version_from_prior_loan('intent',
-                                                                                   loan_info) == 'ONE_TIME_RESTORATION',
+        'oneTimeRestorationRequested' => intent == 'ONE_TIME_RESTORATION',
         # In UI: "An Interest Rate Reduction Refinance Loan (IRRRL) to refinance the balance of a current VA home loan"
         # In LGY: "IRRRL Ind"
-        'irrrlRequested' => get_value_by_form_version_from_prior_loan('intent', loan_info) == 'IRRRL',
+        'irrrlRequested' => %w[IRRRL INTEREST_RATE_REDUCTION_REFINANCE].include?(intent),
         # In UI: "A regular cash-out refinance of a current VA home loan"
         # In LGY: "Cash Out Refi"
-        'cashoutRefinaceRequested' => get_value_by_form_version_from_prior_loan('intent', loan_info) == 'REFI',
+        'cashoutRefinaceRequested' => %w[REFI CASH_OUT_REFINANCE].include?(intent),
         # In UI: "An entitlement inquiry only"
         # In LGY: "Entitlement Inquiry Only"
-        'noRestorationEntitlementIndicator' => get_value_by_form_version_from_prior_loan('intent',
-                                                                                         loan_info) == 'INQUIRY',
+        'noRestorationEntitlementIndicator' => %w[INQUIRY ENTITLEMENT_INQUIRY_ONLY].include?(intent),
         # LGY has requested `homeSellIndicator` always be null
         'homeSellIndicator' => nil,
         'propertyAddress1' => addr1,
@@ -265,7 +267,7 @@ class SavedClaim::CoeClaim < SavedClaim
     get_value_by_form_version('periodsOfService').each do |service_info|
       service_branch_value = service_info['serviceBranch']
 
-      if v2_form?
+      if rebuild_form_version?
         military_branch, service_type = map_service_branch_code(service_branch_value)
         log_version_string = 'COE periods_of_service using v2 mapping'
       else

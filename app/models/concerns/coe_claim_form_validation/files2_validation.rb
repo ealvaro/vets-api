@@ -27,7 +27,7 @@ module CoeClaimFormValidation
         return
       end
 
-      %w[guid confirmationCode type].each { |key| validate_required_string(file[key], "#{base}/#{key}") }
+      %w[confirmationCode type].each { |key| validate_required_string(file[key], "#{base}/#{key}") }
       if file['type'].is_a?(String) && file['type'].present? && !file['type'].match?(MIME_TYPE_PATTERN)
         errors.add("#{base}/type", 'must be a valid MIME type')
       end

@@ -14,11 +14,27 @@ module CoeClaimFormValidation
       end
 
       validate_prior_loan_va_number(loan, base)
-      validate_coe_date_range(loan['dateRange'], base)
+
+      validate_required_string_enum(loan['entitlementRestoration'], "#{base}/entitlementRestoration",
+                                    ENTITLEMENT_RESTORATION_VALUES)
       validate_prior_loan_property_address(loan, base)
+      validate_prior_loan_date(loan, base)
+
       validate_prior_loan_natural_disaster(loan, base)
       validate_optional_loan_number_field(loan, "#{base}/loanAmount", 'loanAmount')
       validate_optional_loan_number_field(loan, "#{base}/loanEntitlementCharged", 'loanEntitlementCharged')
+    end
+
+    def validate_prior_loan_date(loan, base)
+      loan_date = loan['loanDate']
+      return if loan_date.blank?
+
+      fragment = "#{base}/loanDate"
+      if !loan_date.is_a?(String)
+        errors.add(fragment, 'must be a string')
+      elsif !coe_date_string_valid?(loan_date)
+        errors.add(fragment, CoeClaimFormValidation::COE_DATE_RANGE_STRING_FORMAT_MESSAGE)
+      end
     end
 
     def validate_prior_loan_va_number(loan, base)

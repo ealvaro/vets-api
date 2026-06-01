@@ -11,9 +11,13 @@ module CoeClaimFormValidation
       return unless mh.is_a?(Hash)
 
       validate_required_string_enum(mh['status'], '/militaryHistory/status', MILITARY_STATUS_VALUES)
-      %w[separatedDueToDisability preDischargeClaim].each do |key|
-        validate_booleanish_field(mh[key], "/militaryHistory/#{key}")
+      validate_booleanish_field(mh['separatedDueToDisability'], '/militaryHistory/separatedDueToDisability')
+
+      if v3_coe_form? && mh['status'] == 'ADSM'
+        validate_booleanish_field(mh['preDischargeClaim'], '/militaryHistory/preDischargeClaim')
+        validate_booleanish_field(mh['purpleHeartRecipient'], '/militaryHistory/purpleHeartRecipient')
       end
+
       validate_periods_of_service(mh['periodsOfService'])
     end
 

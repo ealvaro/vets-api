@@ -11,8 +11,6 @@ module CoeClaimFormValidation
       return unless lh.is_a?(Hash)
 
       validate_required_string_enum(lh['certificateUse'], '/loanHistory/certificateUse', CERTIFICATE_USE_VALUES)
-      validate_required_string_enum(lh['entitlementRestoration'], '/loanHistory/entitlementRestoration',
-                                    ENTITLEMENT_RESTORATION_VALUES)
       validate_booleanish_field(lh['hadPriorLoans'], '/loanHistory/hadPriorLoans')
       validate_loan_history_prior_loans(lh)
     end

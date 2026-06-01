@@ -56,6 +56,14 @@ module CoeClaimFormValidation
       end
     end
 
+    def coe_form_version
+      parsed_form.fetch('version', 1).to_i
+    end
+
+    def v3_coe_form?
+      coe_form_version >= 3
+    end
+
     def booleanish_value_missing?(value)
       return true if value.nil?
       return true if value.is_a?(String) && value.strip.empty?

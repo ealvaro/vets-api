@@ -14,7 +14,8 @@ RSpec.describe SavedClaim::CoeClaim, type: :model do
   let(:valid_prior_loan) do
     {
       'vaLoanNumber' => '123456789012',
-      'dateRange' => { 'from' => '2010-01-01T00:00:00.000Z', 'to' => '2011-01-01T00:00:00.000Z' },
+      'entitlementRestoration' => 'ONE_TIME_RESTORATION',
+      'loanDate' => '2010-01-01T00:00:00.000Z',
       'propertyAddress' => {
         'country' => 'USA',
         'street1' => '1',
@@ -107,6 +108,20 @@ RSpec.describe SavedClaim::CoeClaim, type: :model do
 
         expect(claim.send(:rebuild_form_version?)).to be false
       end
+
+      it 'returns true for v2 and v3 forms' do
+        v2_claim = described_class.new(form: valid_form_hash.merge('version' => 2).to_json)
+        v3_claim = described_class.new(form: valid_v3_form_hash.to_json)
+
+        expect(v2_claim.send(:rebuild_form_version?)).to be true
+        expect(v3_claim.send(:rebuild_form_version?)).to be true
+      end
+
+      it 'returns false for v1 forms' do
+        v1_claim = described_class.new(form: valid_form_hash.merge('version' => 1).to_json)
+
+        expect(v1_claim.send(:rebuild_form_version?)).to be false
+      end
     end
 
     it 'validates a structurally complete v2 claim without adding field errors' do
@@ -124,7 +139,7 @@ RSpec.describe SavedClaim::CoeClaim, type: :model do
 
     context 'with a valid files2 attachment' do
       let(:form_json) do
-        mutate_form { |h| h['files2'] = [{ 'guid' => 'a', 'confirmationCode' => 'b', 'type' => 'application/pdf' }] }
+        mutate_form { |h| h['files2'] = [{ 'confirmationCode' => 'b', 'type' => 'application/pdf' }] }
       end
 
       it 'passes validation' do
@@ -653,7 +668,7 @@ RSpec.describe SavedClaim::CoeClaim, type: :model do
     end
 
     context 'when file2 confirmationCode is missing' do
-      let(:form_json) { mutate_form { |h| h['files2'] = [{ 'guid' => 'g', 'type' => 'image/jpeg' }] } }
+      let(:form_json) { mutate_form { |h| h['files2'] = [{ 'type' => 'image/jpeg' }] } }
 
       it 'records a confirmationCode error' do
         claim.validate
@@ -664,7 +679,7 @@ RSpec.describe SavedClaim::CoeClaim, type: :model do
     context 'when file2 confirmationCode is not a string' do
       let(:form_json) do
         mutate_form do |h|
-          h['files2'] = [{ 'guid' => 'g', 'confirmationCode' => 1, 'type' => 'image/jpeg' }]
+          h['files2'] = [{ 'confirmationCode' => 1, 'type' => 'image/jpeg' }]
         end
       end
 
@@ -677,7 +692,7 @@ RSpec.describe SavedClaim::CoeClaim, type: :model do
     context 'when file2 type is not a valid MIME string' do
       let(:form_json) do
         mutate_form do |h|
-          h['files2'] = [{ 'guid' => 'g', 'confirmationCode' => 'ok', 'type' => 'not-a-mime' }]
+          h['files2'] = [{ 'confirmationCode' => 'ok', 'type' => 'not-a-mime' }]
         end
       end
 
@@ -690,7 +705,7 @@ RSpec.describe SavedClaim::CoeClaim, type: :model do
     context 'when file2 name is present but not a string' do
       let(:form_json) do
         mutate_form do |h|
-          h['files2'] = [{ 'guid' => 'g', 'confirmationCode' => 'ok', 'type' => 'image/jpeg', 'name' => 1 }]
+          h['files2'] = [{ 'confirmationCode' => 'ok', 'type' => 'image/jpeg', 'name' => 1 }]
         end
       end
 
@@ -703,7 +718,7 @@ RSpec.describe SavedClaim::CoeClaim, type: :model do
     context 'when file2 size is present but not an integer' do
       let(:form_json) do
         mutate_form do |h|
-          h['files2'] = [{ 'guid' => 'g', 'confirmationCode' => 'ok', 'type' => 'image/jpeg', 'size' => '12' }]
+          h['files2'] = [{ 'confirmationCode' => 'ok', 'type' => 'image/jpeg', 'size' => '12' }]
         end
       end
 
@@ -716,7 +731,7 @@ RSpec.describe SavedClaim::CoeClaim, type: :model do
     context 'when file2 additionalData is not an object' do
       let(:form_json) do
         mutate_form do |h|
-          h['files2'] = [{ 'guid' => 'g', 'confirmationCode' => 'ok', 'type' => 'image/jpeg', 'additionalData' => 'x' }]
+          h['files2'] = [{ 'confirmationCode' => 'ok', 'type' => 'image/jpeg', 'additionalData' => 'x' }]
         end
       end
 
@@ -732,6 +747,108 @@ RSpec.describe SavedClaim::CoeClaim, type: :model do
       it 'records an error' do
         claim.validate
         expect(error_attributes(claim)).to include('/loanHistory/certificateUse')
+      end
+    end
+  end
+
+  describe 'COE v3 field validation' do
+    subject(:claim) { described_class.new(form: form_json) }
+
+    let(:form_json) { valid_v3_form_hash.to_json }
+
+    def mutate_v3_form
+      h = valid_v3_form_hash.deep_dup
+      yield h
+      h.to_json
+    end
+
+    context 'with a complete valid v3 payload' do
+      it 'passes validation' do
+        expect(claim.validate).to be true
+        expect(claim.errors).to be_empty
+      end
+    end
+
+    context 'when status is ADSM and preDischargeClaim is missing' do
+      let(:form_json) { mutate_v3_form { |h| h['militaryHistory'].delete('preDischargeClaim') } }
+
+      it 'records a preDischargeClaim required error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/militaryHistory/preDischargeClaim')
+      end
+    end
+
+    context 'when status is ADSM and purpleHeartRecipient is missing' do
+      let(:form_json) { mutate_v3_form { |h| h['militaryHistory'].delete('purpleHeartRecipient') } }
+
+      it 'records a purpleHeartRecipient required error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/militaryHistory/purpleHeartRecipient')
+      end
+    end
+
+    context 'when preDischargeClaim is not boolean-like' do
+      let(:form_json) { mutate_v3_form { |h| h['militaryHistory']['preDischargeClaim'] = 'maybe' } }
+
+      it 'records a preDischargeClaim error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/militaryHistory/preDischargeClaim')
+      end
+    end
+
+    context 'when status is not ADSM on v3' do
+      let(:form_json) do
+        mutate_v3_form do |h|
+          h['militaryHistory']['status'] = 'VETERAN'
+          h['militaryHistory'].delete('preDischargeClaim')
+          h['militaryHistory'].delete('purpleHeartRecipient')
+        end
+      end
+
+      it 'does not require preDischargeClaim or purpleHeartRecipient' do
+        expect(claim.validate).to be true
+        expect(error_attributes(claim)).not_to include('/militaryHistory/preDischargeClaim')
+        expect(error_attributes(claim)).not_to include('/militaryHistory/purpleHeartRecipient')
+      end
+    end
+
+    context 'when prior loan loanDate is missing' do
+      let(:form_json) do
+        mutate_v3_form { |h| h['loanHistory']['relevantPriorLoans'][0].delete('loanDate') }
+      end
+
+      it 'does not require loanDate' do
+        expect(claim.validate).to be true
+        expect(error_attributes(claim)).not_to include('/loanHistory/relevantPriorLoans/0/loanDate')
+      end
+    end
+
+    context 'when prior loan entitlementRestoration is missing' do
+      let(:form_json) do
+        mutate_v3_form { |h| h['loanHistory']['relevantPriorLoans'][0].delete('entitlementRestoration') }
+      end
+
+      it 'records an entitlementRestoration error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/loanHistory/relevantPriorLoans/0/entitlementRestoration')
+      end
+    end
+
+    context 'when prior loan propertyAddress is missing' do
+      let(:form_json) { mutate_v3_form { |h| h['loanHistory']['relevantPriorLoans'][0].delete('propertyAddress') } }
+
+      it 'records a propertyAddress required error' do
+        claim.validate
+        expect(error_attributes(claim)).to include('/loanHistory/relevantPriorLoans/0/propertyAddress')
+      end
+    end
+
+    context 'when top-level loanHistory entitlementRestoration is missing' do
+      let(:form_json) { mutate_v3_form { |h| h['loanHistory'].delete('entitlementRestoration') } }
+
+      it 'does not require top-level entitlementRestoration' do
+        expect(claim.validate).to be true
+        expect(error_attributes(claim)).not_to include('/loanHistory/entitlementRestoration')
       end
     end
   end
