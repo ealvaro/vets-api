@@ -88,8 +88,7 @@ module EventBusGateway
     end
 
     def notify_client
-      # Push notifications require a separate API key from email and sms
-      @notify_client ||= VaNotify::Service.new(Constants::NOTIFY_SETTINGS.push_api_key)
+      @notify_client ||= VaNotify::Service.new(Constants::NOTIFY_SETTINGS.api_key)
     end
   end
 end
