@@ -52,9 +52,16 @@ module Crm
     def conn(url:)
       Faraday.new(url:) do |f|
         f.use(:breakers, service_name:)
+        f.response :betamocks if use_mocks?
         f.response :raise_custom_error, error_prefix: service_name
         f.adapter Faraday.default_adapter
       end
+    end
+
+    def use_mocks?
+      env_check = Settings.vsp_environment.to_s.downcase == 'localhost' # Only enable in localhost
+
+      Settings.betamocks.enabled && Settings.ask_va_api.use_mocks && env_check
     end
 
     def token_headers
