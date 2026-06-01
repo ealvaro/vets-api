@@ -33,7 +33,8 @@ identity_dashboard_service_account_config.update!(service_account_id: vaid_servi
                                                   description: 'VA Identity Dashboard API',
                                                   scopes: [
                                                     'http://localhost:3000/sign_in/client_configs',
-                                                    'http://localhost:3000/sign_in/service_account_configs'
+                                                    'http://localhost:3000/sign_in/service_account_configs',
+                                                    'http://localhost:3000/sts/user_credentials'
                                                   ],
                                                   access_token_audience: 'http://localhost:4000',
                                                   access_token_duration: vaid_access_token_duration,

@@ -25,30 +25,52 @@ describe 'user_credential rake tasks' do # rubocop:disable RSpec/DescribeClass
     before { task.reenable }
 
     context 'when a required argument is missing' do
-      let(:expected_output) { '[UserCredential::UserVerification lock] failed - Missing required arguments' }
-
       it 'raises an error' do
-        expect { task.invoke }.to output("#{expected_output}\n").to_stdout
+        expect do
+          task.invoke
+        end.to output(/\[UserCredential::UserVerification lock\] failed - Missing parameter/).to_stdout
       end
     end
 
     context 'when type argument is invalid' do
-      let(:expected_output) { '[UserCredential::UserVerification lock] failed - Invalid type' }
+      let(:task) { Rake::Task['user_credential:lock_verification'] }
+      let(:start_context) do
+        {
+          type: 'invalid',
+          credential_id:,
+          requested_by:
+        }
+      end
 
       it 'raises an error' do
-        expect { task.invoke('invalid', credential_id, requested_by) }.to output("#{expected_output}\n").to_stdout
+        expect do
+          task.invoke('invalid', credential_id,
+                      requested_by)
+        end.to output(/\[UserCredential::UserVerification lock\] rake task start[\s\S]*failed - Bad request/).to_stdout
       end
     end
   end
 
   context 'single credential changes' do
+    let(:start_context) do
+      {
+        type:,
+        credential_id:,
+        requested_by:
+      }
+    end
+    let(:complete_context) do
+      {
+        action: action.to_sym,
+        type:,
+        credential_id:,
+        locked:,
+        requested_by:
+      }
+    end
     let(:expected_output) do
-      "#{namespace} rake task start, context: {\"type\":\"#{type}\",\"credential_id\":\"#{credential_id}\"," \
-        "\"requested_by\":\"#{requested_by}\"}\n" \
-        "#{namespace} credential #{action}, context: {\"type\":\"#{type}\",\"credential_id\":\"#{credential_id}\"," \
-        "\"requested_by\":\"#{requested_by}\",\"locked\":#{locked}}\n" \
-        "#{namespace} rake task complete, context: {\"type\":\"#{type}\",\"credential_id\":\"#{credential_id}\"," \
-        "\"requested_by\":\"#{requested_by}\"}\n"
+      "#{namespace} rake task start, context: #{start_context.to_json}\n" \
+        "#{namespace} rake task complete, context: #{complete_context.to_json}\n"
     end
 
     describe 'user_credential:lock_verification' do
@@ -84,13 +106,19 @@ describe 'user_credential rake tasks' do # rubocop:disable RSpec/DescribeClass
       end
     end
 
-    describe 'user_credential not found' do
+    describe 'user credential not found' do
       let(:task) { Rake::Task['user_credential:lock_verification'] }
       let(:namespace) { '[UserCredential::UserVerification lock]' }
+      let(:start_context) do
+        {
+          type:,
+          credential_id: 'invalid',
+          requested_by:
+        }
+      end
       let(:expected_output) do
-        "#{namespace} rake task start, context: {\"type\":\"#{type}\",\"credential_id\":\"invalid\"," \
-          "\"requested_by\":\"#{requested_by}\"}\n" \
-          "#{namespace} failed - UserVerification not found\n"
+        "#{namespace} rake task start, context: #{start_context.to_json}\n" \
+          "#{namespace} failed - Record not found\n"
       end
 
       before { task.reenable }
@@ -102,12 +130,24 @@ describe 'user_credential rake tasks' do # rubocop:disable RSpec/DescribeClass
   end
 
   context 'toggle lock on user account' do
+    let(:start_context) do
+      {
+        icn:,
+        requested_by:
+      }
+    end
+    let(:complete_context) do
+      {
+        action: action.to_sym,
+        user_account_id: user_account.id,
+        locked:,
+        requested_by:
+      }
+    end
     let(:expected_output) do
       [
-        "#{namespace} rake task start, context: {\"icn\":\"#{icn}\",\"requested_by\":\"#{requested_by}\"}",
-        "#{namespace} user account #{action}, context: {\"icn\":\"#{user_account.icn}\"," \
-        "\"requested_by\":\"#{requested_by}\",\"locked\":#{locked}}",
-        "#{namespace} rake task complete, context: {\"icn\":\"#{icn}\",\"requested_by\":\"#{requested_by}\"}"
+        "#{namespace} rake task start, context: #{start_context.to_json}",
+        "#{namespace} rake task complete, context: #{complete_context.to_json}"
       ].sort
     end
 
@@ -164,7 +204,7 @@ describe 'user_credential rake tasks' do # rubocop:disable RSpec/DescribeClass
       let(:namespace) { '[UserCredential::UserAccount lock]' }
       let(:expected_output) do
         "#{namespace} rake task start, context: {\"icn\":\"invalid\",\"requested_by\":\"#{requested_by}\"}\n" \
-          "#{namespace} failed - UserAccount not found\n"
+          "#{namespace} failed - Record not found\n"
       end
 
       before { task.reenable }

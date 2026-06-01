@@ -522,6 +522,7 @@ app/services/sign_in @software/octo-identity
 app/services/terms_of_use @software/octo-identity
 app/services/user_audit.rb @software/octo-identity
 app/services/user_audit/ @software/octo-identity
+app/services/user_credential_manager.rb @software/octo-identity
 app/services/user_visn_service.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 app/services/users @software/octo-identity
 app/services/v0/lighthouse_claims/proxy.rb @software/benefits-management-tools-be @software/backend-review-group
@@ -2160,6 +2161,7 @@ spec/services/sign_in @software/octo-identity
 spec/services/terms_of_use @software/octo-identity
 spec/services/user_audit_spec.rb @software/octo-identity
 spec/services/user_audit/ @software/octo-identity
+spec/services/user_credential_manager_spec.rb @software/octo-identity
 spec/services/user_visn_service_spec.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 spec/services/users @software/octo-identity
 spec/services/v0/lighthouse_claims/proxy_spec.rb @software/benefits-management-tools-be @software/backend-review-group

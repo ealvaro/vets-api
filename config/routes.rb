@@ -41,6 +41,13 @@ Rails.application.routes.draw do
 
   namespace :sts do
     get '/terms_of_use/current_status', to: 'terms_of_use#current_status'
+
+    scope '/user_credentials' do
+      post :lock_verification, to: 'user_credentials#lock_verification'
+      post :unlock_verification, to: 'user_credentials#unlock_verification'
+      post :lock_account, to: 'user_credentials#lock_account'
+      post :unlock_account, to: 'user_credentials#unlock_account'
+    end
   end
 
   namespace :v0, defaults: { format: 'json' } do
