@@ -31,7 +31,7 @@ module SimpleFormsApi
       )
       @data.each do |device|
         gen.add_text(
-          overflow_text(device['deviceOrMedication'], device['both']),
+          overflow_text(device, device['both']),
           question_num: 7,
           question_suffix: 'a',
           question_text: 'DEVICE, ORTHOPEDIC APPLIANCE OR SKIN MEDICATION IMPACTS WHICH AREA OF THE BODY',
@@ -52,9 +52,13 @@ module SimpleFormsApi
 
     def overflow_text(device, both)
       if both
-        "#{device} is needed for Upper and Lower, Left and Right sides"
+        "#{device['device_or_medication']} is needed for Upper and Lower, Left and Right sides
+          Issuing Facility: #{device['issuing_facility']}
+        "
       else
-        "#{device} is needed for both Left and Right sides"
+        "#{device['device_or_medication']} is needed for both Left and Right sides
+          Issuing Facility: #{device['issuing_facility']}
+        "
       end
     end
     # rubocop:enable Metrics/MethodLength
