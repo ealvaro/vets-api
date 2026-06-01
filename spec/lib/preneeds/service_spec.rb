@@ -52,4 +52,18 @@ describe Preneeds::Service do
       )
     end
   end
+
+  describe '#savon_client' do
+    it 'memoizes the client per instance' do
+      expect(subject.send(:savon_client)).to equal(subject.send(:savon_client))
+    end
+
+    it 'does not share the memoized client across instances' do
+      expect(subject.send(:savon_client)).not_to equal(described_class.new.send(:savon_client))
+    end
+
+    it 'disables HTTPI logging' do
+      expect(subject.send(:savon_client).globals[:log]).to be false
+    end
+  end
 end

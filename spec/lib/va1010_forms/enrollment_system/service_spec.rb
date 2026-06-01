@@ -194,25 +194,24 @@ RSpec.describe VA1010Forms::EnrollmentSystem::Service do
   describe '#self.soap' do
     subject { described_class.soap }
 
-    it 'returns soap client' do
+    it 'returns a Savon client' do
       expect(subject).to be_a(Savon::Client)
+    end
+
+    it 'returns the same instance on every call' do
+      expect(described_class.soap).to equal(described_class.soap)
     end
 
     context 'configuration values' do
       subject { super().globals }
 
-      let(:wsdl_path) { 'my/path/from/wsdl' }
-
-      before do
-        stub_const('HCA::Configuration::WSDL', :wsdl_path)
-      end
-
       it 'has correct config' do
-        expect(subject[:wsdl]).to eq :wsdl_path
+        expect(subject[:wsdl]).to eq HCA::Configuration::WSDL
         expect(subject[:env_namespace]).to eq :soap
         expect(subject[:element_form_default]).to eq :qualified
         expect(subject[:namespaces]).to eq({ 'xmlns:tns': 'http://va.gov/service/esr/voa/v1' })
         expect(subject[:namespace]).to eq 'http://va.gov/schema/esr/voa/v1'
+        expect(subject[:log]).to be false
       end
     end
   end

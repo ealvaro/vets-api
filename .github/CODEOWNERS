@@ -1612,6 +1612,7 @@ spec/fixtures/vbms @software/benefits-dependents-management @software/backend-re
 spec/fixtures/veteran_enrollment_system @software/health-apps-backend @software/backend-review-group
 spec/fixtures/lighthouse/hcc/bundle.json @software/vsa-debt-resolution @software/backend-review-group
 spec/helpers/parameter_filter_helper_spec.rb @software/backend-review-group
+spec/initializers/httpi_spec.rb @software/backend-review-group
 spec/initializers/rails_semantic_logger_patch_spec.rb @software/backend-review-group
 spec/lib/apps @software/lighthouse-pivot
 spec/lib/bb @software/vfs-vaos @software/backend-review-group

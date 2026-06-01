@@ -131,7 +131,7 @@ module Preneeds
     # @return [Savon::Client] Savon client
     #
     def savon_client
-      @savon ||= Savon.client(wsdl: Settings.preneeds.wsdl)
+      @savon ||= Savon.client(wsdl: Settings.preneeds.wsdl, log: false)
     end
   end
 end
