@@ -23,9 +23,10 @@ module ClaimsApi
       def alt_rev_validate_form_526_submission_values
         return if form_attributes.empty?
 
-        alt_rev_validate_claim_process_type_bdd if bdd_claim?
-        # ensure 'claimDate', if provided, is not in the future
+        # ensure 'claimDate', if provided, is valid and not in the future
+        # must run before BDD validation since it uses claim_date
         alt_rev_validate_form_526_claim_date
+        alt_rev_validate_claim_process_type_bdd if bdd_claim?
         # ensure mailing address country is valid
         alt_rev_validate_form_526_identification
         # ensure disabilities are valid
@@ -45,6 +46,15 @@ module ClaimsApi
       private
 
       def alt_rev_validate_form_526_claim_date
+        # Raise immediately — claim_date is used by BDD and 180-day checks downstream,
+        # so continuing with nil would crash or produce misleading errors.
+        if claim_date.nil?
+          raise ::ClaimsApi::Common::Exceptions::Lighthouse::JsonFormValidationError, [
+            { title: 'Unprocessable Entity', status: '422',
+              source: '/claimDate', detail: "#{form_attributes['claimDate']} is not a valid date." }
+          ]
+        end
+
         return if claim_date <= Date.current
 
         collect_error_messages(

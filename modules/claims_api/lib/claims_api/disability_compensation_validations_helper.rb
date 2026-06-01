@@ -10,6 +10,8 @@ module ClaimsApi
 
     YYYY_YYYYMM_REGEX = '^(?:19|20)[0-9][0-9]$|^(?:19|20)[0-9][0-9]-(0[1-9]|1[0-2])$'
     YYYY_MM_DD_REGEX = '^(?:[0-9]{4})-(?:0[1-9]|1[0-2])-(?:0[1-9]|[1-2][0-9]|3[0-1])$'
+    CLAIM_DATE_REGEX = '^(?:[0-9]{4})-(?:0[1-9]|1[0-2])-(?:0[1-9]|[1-2][0-9]|3[0-1])' \
+                       '(?:T[0-1][0-9]:[0-5][0-9]:[0-5][0-9](?:[-+][0-9]{2}:[0-9]{2}|Z))*$'
     DATE_STRING_FORMAT_REGEX = /^[\d-]+$/
     VALID_DISABILITY_NAME_REGEX = %r{^[a-zA-Z0-9'",.#&;:%<>/()\[\]\\ -]+$}
 
@@ -40,7 +42,7 @@ module ClaimsApi
         end_date = sp['activeDutyEndDate']
         next false if end_date.blank?
 
-        Date.parse(end_date) <= Time.zone.today.end_of_day
+        Date.parse(end_date) <= Date.current
       end
     end
 
@@ -58,29 +60,24 @@ module ClaimsApi
     end
 
     def claim_date
-      @claim_date = if date_is_valid?(form_attributes['claimDate'], 'claimDate', true)
-                      Date.parse(form_attributes['claimDate'])
-                    else
-                      Date.current
-                    end
+      return @claim_date if defined?(@claim_date)
+      return @claim_date = Date.current if form_attributes['claimDate'].blank?
+
+      raw = form_attributes['claimDate'].to_s
+      return @claim_date = nil unless raw.match?(CLAIM_DATE_REGEX)
+
+      @claim_date = Date.parse(raw)
+    rescue Date::Error
+      # calendar-impossible date like 2026-02-31
+      @claim_date = nil
     end
 
     # Will check for a real date including leap year
     def date_is_valid?(date, property, is_full_date = false) # rubocop:disable Style/OptionalBooleanParameter
       return false if date.blank?
 
-      # Convert ISO8601 timestamps to YYYY-MM-DD format
-      # claim date is the only value that can be submitted with a timestamp via 526.json schema
-      if date.include?('T') && property == 'claimDate'
-        begin
-          date = Date.parse(date).iso8601
-        rescue ArgumentError
-          # If parsing fails, continue with original date for normal validation flow
-        end
-      end
-
       # check for something like 'July 2017'
-      unless DATE_STRING_FORMAT_REGEX =~ date || property == 'claimDate'
+      unless DATE_STRING_FORMAT_REGEX =~ date
         collect_date_error(date, property)
         return false
       end
@@ -93,9 +90,7 @@ module ClaimsApi
 
       return true if Date.valid_date?(date_y, date_m, date_d)
 
-      # due to claimDate being an optional field with a fallback, this is the only date
-      # we allow to be invalid/nil without an error
-      collect_date_error(date, property) unless property == 'claimDate'
+      collect_date_error(date, property)
 
       false
     end

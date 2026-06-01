@@ -204,20 +204,16 @@ describe ClaimsApi::DisabilityCompensationValidationsHelper do
         expect(subject.send(:date_is_valid?, '2020-01-01', 'testDate', true)).to be(true)
       end
 
-      it 'returns true for valid YYYY date if full date is not required' do
+      it 'returns true for valid YYYY date when full date is not required' do
         expect(subject.send(:date_is_valid?, '2020', 'testDate')).to be(true)
       end
 
-      it 'returns true for valid YYYY-MM date' do
+      it 'returns true for valid YYYY-MM date when full date is not required' do
         expect(subject.send(:date_is_valid?, '2020-01', 'testDate')).to be(true)
       end
 
       it 'returns true for leap year date' do
         expect(subject.send(:date_is_valid?, '2020-02-29', 'testDate', true)).to be(true)
-      end
-
-      it 'returns true for claimDates with ISO8601 timestamp' do
-        expect(subject.send(:date_is_valid?, '2020-01-01T12:00:00Z', 'claimDate', true)).to be(true)
       end
     end
 
@@ -230,15 +226,15 @@ describe ClaimsApi::DisabilityCompensationValidationsHelper do
         expect(subject.send(:date_is_valid?, nil, 'testDate')).to be(false)
       end
 
-      it 'returns false when full date is required and the format is not YYYY-MM-DD' do
+      it 'returns false when full date is required and format is not YYYY-MM-DD' do
         expect(subject.send(:date_is_valid?, '01-01-2020', 'testDate', true)).to be(false)
       end
 
-      it 'returns false when the date is a partial date and the full date is required' do
+      it 'returns false when partial date is given but full date is required' do
         expect(subject.send(:date_is_valid?, '2020-01', 'testDate', true)).to be(false)
       end
 
-      it 'returns false for invalid date like February 30th' do
+      it 'returns false for calendar-impossible dates like February 30th' do
         expect(subject.send(:date_is_valid?, '2020-02-30', 'testDate', true)).to be(false)
       end
 
@@ -246,27 +242,15 @@ describe ClaimsApi::DisabilityCompensationValidationsHelper do
         expect(subject.send(:date_is_valid?, '2021-02-29', 'testDate', true)).to be(false)
       end
 
-      it 'returns false for ISO 8601 timestamps for fields that are not claimDate' do
+      it 'returns false for ISO 8601 timestamps' do
         expect(subject.send(:date_is_valid?, '2020-01-01T12:00:00Z', 'testDate', true)).to be(false)
       end
 
-      it 'logs errors for invalid dates except claimDate' do
+      it 'returns false and collects error for non-date strings' do
         expect(subject.send(:date_is_valid?, 'invalid-date', 'testDate')).to be(false)
         expect(subject.errors_array.length).to eq(1)
         expect(subject.errors_array.first[:detail]).to eq('invalid-date is not a valid date.')
         expect(subject.errors_array.first[:source]).to eq('data/attributes/testDate')
-      end
-
-      it 'does not log errors for invalid claimDate' do
-        expect(subject.send(:date_is_valid?, 'invalid-date', 'claimDate')).to be(false)
-        expect(subject.errors_array).to be_empty
-      end
-    end
-
-    context 'when date is claimDate' do
-      it 'allows invalid claimDate without collecting error' do
-        expect(subject.send(:date_is_valid?, 'invalid-date', 'claimDate')).to be(false)
-        expect(subject.errors_array).to be_empty
       end
     end
   end
@@ -342,14 +326,14 @@ describe ClaimsApi::DisabilityCompensationValidationsHelper do
       expect(subject.claim_date).to eq(Date.current)
     end
 
-    it 'returns the current date if claimDate is invalid' do
+    it 'returns nil for invalid claimDate' do
       form_attributes['claimDate'] = 'invalid-date'
-      expect(subject.claim_date).to eq(Date.current)
+      expect(subject.claim_date).to be_nil
     end
 
-    it 'returns the current date if claimDate isn not YYYY-MM-DD' do
-      form_attributes['claimDate'] = '01-01-2020'
-      expect(subject.claim_date).to eq(Date.current)
+    it 'returns nil for calendar-impossible claimDate' do
+      form_attributes['claimDate'] = '2026-02-31'
+      expect(subject.claim_date).to be_nil
     end
   end
 end

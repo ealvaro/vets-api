@@ -48,6 +48,9 @@ module ClaimsApi
     end
 
     def validate_form_526_submission_claim_date!
+      # claim_date returns nil when the string is unparseable
+      raise ::Common::Exceptions::InvalidFieldValue.new('claimDate', form_attributes['claimDate']) if claim_date.nil?
+
       return if claim_date <= Date.current
 
       raise ::Common::Exceptions::InvalidFieldValue.new('claimDate', form_attributes['claimDate'])

@@ -721,14 +721,18 @@ describe TestDisabilityCompensationValidationClass, vcr: 'brd/countries' do
     end
 
     context 'when claimDate is invalid' do
-      it 'returns today\'s date and doesn\'t raise an error' do
+      it 'returns nil' do
         subject.form_attributes['claimDate'] = 'invalid-date'
-        subject.instance_variable_set(:@claim_date, nil)
+        expect(subject.send(:claim_date)).to be_nil
+      end
 
-        expect(subject.send(:claim_date)).to eq(Date.current)
-        errors = test_526_validation_instance.send(:error_collection)
+      it 'raises JsonFormValidationError when validated' do
+        subject.form_attributes['claimDate'] = 'invalid-date'
 
-        expect(errors).to be_empty
+        expect { test_526_validation_instance.send(:validate_form_526_claim_date) }
+          .to raise_error(ClaimsApi::Common::Exceptions::Lighthouse::JsonFormValidationError) do |error|
+            expect(error.errors_array.first[:detail]).to eq('invalid-date is not a valid date.')
+          end
       end
     end
 
@@ -736,7 +740,6 @@ describe TestDisabilityCompensationValidationClass, vcr: 'brd/countries' do
       it 'collects an error with the correct message' do
         future_date = (Date.current + 1.day).iso8601
         subject.form_attributes['claimDate'] = future_date
-        subject.instance_variable_set(:@claim_date, nil)
 
         test_526_validation_instance.send(:validate_form_526_claim_date)
         errors = test_526_validation_instance.send(:error_collection)

@@ -287,8 +287,6 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
           end
 
           context 'rejects the submission' do
-            let(:partial_err_message) { 'The property /claimDate did not match the following requirements:' }
-
             it 'with an invalid string YYYY' do
               mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
                 temp = JSON.parse(data)
@@ -301,7 +299,7 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
                 parsed_errors = parsed_res['errors']
                 expect(parsed_errors.count).to eq(1)
                 expect(response).to have_http_status(:unprocessable_content)
-                expect(parsed_errors[0]['detail']).to include(partial_err_message)
+                expect(parsed_errors[0]['detail']).to include('is not a valid date')
               end
             end
 
@@ -317,7 +315,7 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
                 parsed_errors = parsed_res['errors']
                 expect(parsed_errors.count).to eq(1)
                 expect(response).to have_http_status(:unprocessable_content)
-                expect(parsed_errors[0]['detail']).to include(partial_err_message)
+                expect(parsed_errors[0]['detail']).to include('is not a valid date')
               end
             end
 
@@ -333,7 +331,39 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
                 parsed_errors = parsed_res['errors']
                 expect(parsed_errors.count).to eq(1)
                 expect(response).to have_http_status(:unprocessable_content)
-                expect(parsed_errors[0]['detail']).to include(partial_err_message)
+                expect(parsed_errors[0]['detail']).to include('is not a valid date')
+              end
+            end
+
+            it 'with a non-string integer value' do
+              mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+                temp = JSON.parse(data)
+                temp['data']['attributes']['claimDate'] = 123
+                data = temp.to_json
+
+                post synchronous_path, params: data, headers: auth_header
+
+                parsed_res = JSON.parse(response.body)
+                parsed_errors = parsed_res['errors']
+                expect(parsed_errors.count).to eq(1)
+                expect(response).to have_http_status(:unprocessable_content)
+                expect(parsed_errors[0]['detail']).to include('is not a valid date')
+              end
+            end
+
+            it 'with a non-string boolean value' do
+              mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+                temp = JSON.parse(data)
+                temp['data']['attributes']['claimDate'] = true
+                data = temp.to_json
+
+                post synchronous_path, params: data, headers: auth_header
+
+                parsed_res = JSON.parse(response.body)
+                parsed_errors = parsed_res['errors']
+                expect(parsed_errors.count).to eq(1)
+                expect(response).to have_http_status(:unprocessable_content)
+                expect(parsed_errors[0]['detail']).to include('is not a valid date')
               end
             end
 

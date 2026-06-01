@@ -1591,7 +1591,6 @@ describe AltTestDisabilityCompensationValidationClass, vcr: 'brd/countries' do
       it 'collects an error with the correct message' do
         future_date = (Date.current + 1.day).iso8601
         test_526_validation_instance.form_attributes['claimDate'] = future_date
-        test_526_validation_instance.instance_variable_set(:@claim_date, nil)
 
         test_526_validation_instance.send(:alt_rev_validate_form_526_claim_date)
         errors = current_error_array
@@ -1599,6 +1598,17 @@ describe AltTestDisabilityCompensationValidationClass, vcr: 'brd/countries' do
         expect(errors).not_to be_empty
         expect(errors[0][:detail]).to eq('claimDate must not be in the future.')
         expect(errors[0][:source]).to eq('/claimDate')
+      end
+    end
+
+    context 'when claimDate is invalid' do
+      it 'raises JsonFormValidationError' do
+        test_526_validation_instance.form_attributes['claimDate'] = '2026-02-31'
+
+        expect { test_526_validation_instance.send(:alt_rev_validate_form_526_claim_date) }
+          .to raise_error(ClaimsApi::Common::Exceptions::Lighthouse::JsonFormValidationError) do |error|
+            expect(error.errors_array.first[:detail]).to eq('2026-02-31 is not a valid date.')
+          end
       end
     end
   end

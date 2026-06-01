@@ -57,6 +57,17 @@ RSpec.describe ClaimsApi::RevisedDisabilityCompensationValidations do
           .to raise_error(Common::Exceptions::InvalidFieldValue)
       end
     end
+
+    context 'when claim date is an invalid date string' do
+      let(:form_attributes) { { 'claimDate' => '2026-02-31' } }
+
+      it 'raises an InvalidFieldValue error' do
+        expect { subject.validate_form_526_submission_claim_date! }
+          .to raise_error(Common::Exceptions::InvalidFieldValue) do |error|
+            expect(error.errors.first.detail).to eq('"2026-02-31" is not a valid value for "claimDate"')
+          end
+      end
+    end
   end
 
   describe '#validate_form_526_location_codes!' do
