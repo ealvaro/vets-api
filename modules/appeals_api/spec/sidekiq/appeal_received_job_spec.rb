@@ -25,6 +25,28 @@ describe AppealsApi::AppealReceivedJob, type: :job do
     }]
   end
 
+  describe '#vanotify_service_settings' do
+    context 'when appeals_api_vanotify_service_migration is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:appeals_api_vanotify_service_migration).and_return(false)
+      end
+
+      it 'returns Settings.vanotify.services.lighthouse' do
+        expect(job.vanotify_service_settings).to eq(Settings.vanotify.services.lighthouse)
+      end
+    end
+
+    context 'when appeals_api_vanotify_service_migration is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:appeals_api_vanotify_service_migration).and_return(true)
+      end
+
+      it 'returns Settings.vanotify.services.lighthouse_benefits_appeals' do
+        expect(job.vanotify_service_settings).to eq(Settings.vanotify.services.lighthouse_benefits_appeals)
+      end
+    end
+  end
+
   describe 'perform' do
     let(:vanotify_client) { instance_double(VaNotify::Service) }
     let(:appeal_id) { appeal.id }
@@ -36,6 +58,7 @@ describe AppealsApi::AppealReceivedJob, type: :job do
       let(:expected_date_submitted) { 'January 02, 2024' }
 
       before do
+        allow(Flipper).to receive(:enabled?).with(:appeals_api_vanotify_service_migration).and_return(false)
         allow(FeatureFlipper).to receive(:send_email?).and_return(true)
         allow(VaNotify::Service).to receive(:new).and_return(vanotify_client)
         allow(vanotify_client).to receive(:send_email)
@@ -178,6 +201,7 @@ describe AppealsApi::AppealReceivedJob, type: :job do
       let(:expected_log) { nil }
 
       before do
+        allow(Flipper).to receive(:enabled?).with(:appeals_api_vanotify_service_migration).and_return(false)
         allow(FeatureFlipper).to receive(:send_email?).and_return(true)
         allow(VaNotify::Service).to receive(:new).and_return(vanotify_client)
         expect(Rails.logger).to receive(:error).once.with(expected_log)

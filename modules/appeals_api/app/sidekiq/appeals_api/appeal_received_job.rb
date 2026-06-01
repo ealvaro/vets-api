@@ -32,7 +32,7 @@ module AppealsApi
 
       appeal_type_name = appeal.class.name.demodulize.snakecase
       template_name = "#{appeal_type_name}_received#{appeal.non_veteran_claimant? ? '_claimant' : ''}"
-      template_id = Settings.vanotify.services.lighthouse.template_id[template_name]
+      template_id = vanotify_service_settings.template_id[template_name]
 
       if template_id.blank?
         Rails.logger.error("#{self.class.name}: could not find VANotify template id for '#{template_name}'")
@@ -84,7 +84,15 @@ module AppealsApi
     # rubocop:enable Metrics/MethodLength
 
     def vanotify_service
-      @vanotify_service ||= VaNotify::Service.new(Settings.vanotify.services.lighthouse.api_key)
+      @vanotify_service ||= VaNotify::Service.new(vanotify_service_settings.api_key)
+    end
+
+    def vanotify_service_settings
+      if Flipper.enabled?(:appeals_api_vanotify_service_migration)
+        Settings.vanotify.services.lighthouse_benefits_appeals
+      else
+        Settings.vanotify.services.lighthouse
+      end
     end
   end
 end

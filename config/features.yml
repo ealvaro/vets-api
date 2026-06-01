@@ -83,6 +83,12 @@ features:
     actor_type: user
     description: Enables enhancement to the 21-526EZ "Add Disabilities" page being implemented by the Conditions Team.
     enable_in_development: true
+  appeals_api_vanotify_service_migration:
+    actor_type: user
+    description: >-
+      When enabled, Appeals API VA Notify jobs use Settings.vanotify.services.lighthouse_benefits_appeals
+      instead of Settings.vanotify.services.lighthouse for API key and template configuration
+    enable_in_development: true
   appointments_consolidation:
     actor_type: user
     description: For features being tested while merging logic for appointments between web and mobile

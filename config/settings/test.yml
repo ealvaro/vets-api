@@ -1804,6 +1804,17 @@ vanotify:
         notice_of_disagreement_received_claimant: ~
         supplemental_claim_received: ~
         supplemental_claim_received_claimant: ~
+    lighthouse_benefits_appeals:
+      api_key: fake_api_key
+      template_id:
+        connection_template: ~
+        disconnection_template: fake_template_id
+        higher_level_review_received: ~
+        higher_level_review_received_claimant: ~
+        notice_of_disagreement_received: ~
+        notice_of_disagreement_received_claimant: ~
+        supplemental_claim_received: ~
+        supplemental_claim_received_claimant: ~
     lighthouse_benefits_claims:
       api_key: fake-xxxxxx-zzzz-aaaa-bbbb-cccccccc-xxxxxx-zzzz-aaaa-bbbb-cccccccc
       notification_client_secret: xxxxxxxx-zzzz-xxxx-yyyy-vvvvvvvvvvvv

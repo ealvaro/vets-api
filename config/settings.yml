@@ -1786,6 +1786,17 @@ vanotify:
         notice_of_disagreement_received_claimant: <%= ENV['vanotify__services__lighthouse__template_id__notice_of_disagreement_received_claimant'] %>
         supplemental_claim_received: <%= ENV['vanotify__services__lighthouse__template_id__supplemental_claim_received'] %>
         supplemental_claim_received_claimant: <%= ENV['vanotify__services__lighthouse__template_id__supplemental_claim_received_claimant'] %>
+    lighthouse_benefits_appeals:
+      api_key: <%= ENV['vanotify__services__lighthouse_benefits_appeals__api_key'] %>
+      template_id:
+        connection_template: <%= ENV['vanotify__services__lighthouse_benefits_appeals__template_id__connection_template'] %>
+        disconnection_template: <%= ENV['vanotify__services__lighthouse_benefits_appeals__template_id__disconnection_template'] %>
+        higher_level_review_received: <%= ENV['vanotify__services__lighthouse_benefits_appeals__template_id__higher_level_review_received'] %>
+        higher_level_review_received_claimant: <%= ENV['vanotify__services__lighthouse_benefits_appeals__template_id__higher_level_review_received_claimant'] %>
+        notice_of_disagreement_received: <%= ENV['vanotify__services__lighthouse_benefits_appeals__template_id__notice_of_disagreement_received'] %>
+        notice_of_disagreement_received_claimant: <%= ENV['vanotify__services__lighthouse_benefits_appeals__template_id__notice_of_disagreement_received_claimant'] %>
+        supplemental_claim_received: <%= ENV['vanotify__services__lighthouse_benefits_appeals__template_id__supplemental_claim_received'] %>
+        supplemental_claim_received_claimant: <%= ENV['vanotify__services__lighthouse_benefits_appeals__template_id__supplemental_claim_received_claimant'] %>
     lighthouse_benefits_claims:
       api_key: <%= ENV['vanotify__services__lighthouse_benefits_claims__api_key'] %>
       notification_client_secret: <%= ENV['vanotify__services__lighthouse_benefits_claims__notification_client_secret'] %>
