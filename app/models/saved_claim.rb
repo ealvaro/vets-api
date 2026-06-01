@@ -47,11 +47,9 @@ class SavedClaim < ApplicationRecord
 
   # create a uuid for this second (used in the confirmation number) and store
   # the form type based on the constant found in the subclass.
-  # Exempting ARP 'Submit Other' form class.
   after_initialize do
     self.form_id = self.class::FORM.upcase unless [
-      SavedClaim::DependencyClaim,
-      ::AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::OtherForm
+      SavedClaim::DependencyClaim
     ].any? { |k| instance_of?(k) }
   end
 

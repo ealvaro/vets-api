@@ -29,7 +29,6 @@ module AccreditedRepresentativePortal
               saved_claim.form = metadata.to_json
               saved_claim.form_id = "#{form_id.upcase}_BENEFITS-INTAKE"
 
-              form_id ||= saved_claim.class::PROPER_FORM_ID
               organize_attachments!(form_id, attachment_guids).tap do |attachments|
                 saved_claim.form_attachment = attachments[:form]
 
