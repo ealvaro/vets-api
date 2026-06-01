@@ -52,7 +52,7 @@ RSpec.describe AskVAApi::Inquiries::Retriever do
     )
 
     allow(Settings).to receive_messages(
-      ask_va_api: double(crm_api: crm_config),
+      ask_va_api: double(crm_api: crm_config, use_mocks: false),
       vsp_environment: 'development'
     )
 
