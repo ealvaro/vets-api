@@ -24,6 +24,11 @@ module Swagger
               key :required, %i[file_data]
               property :file_data, type: :string, example: 'filename.pdf'
               property :password, type: :string, example: 'My Password'
+              property :attachment_id,
+                       type: :string,
+                       example: 'L1839',
+                       description: 'Optional attachment identifier to enable OCR-based ' \
+                                    'document validation (currently supports L1839)'
             end
           end
 

@@ -127,5 +127,69 @@ RSpec.describe 'V0::UploadSupportingEvidence', type: :request do
         expect(response).to have_http_status(:bad_request)
       end
     end
+
+    context 'with attachment_id parameter and validation enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:disability_526_document_validation_enabled, instance_of(User))
+          .and_return(true)
+      end
+
+      it 'returns empty warnings array when document matches' do
+        allow_any_instance_of(RTesseract).to receive(:to_s)
+          .and_return('Separation Health Assessment - Part A: Veteran Information')
+
+        post '/v0/upload_supporting_evidence',
+             params: { supporting_evidence_attachment: { file_data: pdf_file, attachment_id: 'L1839' } }
+        expect(response).to have_http_status(:ok)
+        body = JSON.parse(response.body)
+        expect(body.dig('data', 'attributes', 'warnings')).to eq([])
+      end
+
+      it 'returns wrong_form warning when document does not match expected form' do
+        allow_any_instance_of(RTesseract).to receive(:to_s)
+          .and_return('Random unrelated document text')
+
+        post '/v0/upload_supporting_evidence',
+             params: { supporting_evidence_attachment: { file_data: pdf_file, attachment_id: 'L1839' } }
+        expect(response).to have_http_status(:ok)
+        body = JSON.parse(response.body)
+        expect(body.dig('data', 'attributes', 'warnings')).to eq(['wrong_form'])
+      end
+
+      it 'returns unable_to_validate warning when OCR fails' do
+        allow_any_instance_of(RTesseract).to receive(:to_s).and_raise(RuntimeError, 'OCR failure')
+
+        post '/v0/upload_supporting_evidence',
+             params: { supporting_evidence_attachment: { file_data: pdf_file, attachment_id: 'L1839' } }
+        expect(response).to have_http_status(:ok)
+        body = JSON.parse(response.body)
+        expect(body.dig('data', 'attributes', 'warnings')).to eq(['unable_to_validate'])
+      end
+
+      it 'does not include warnings when attachment_id is not provided' do
+        post '/v0/upload_supporting_evidence',
+             params: { supporting_evidence_attachment: { file_data: pdf_file } }
+        expect(response).to have_http_status(:ok)
+        body = JSON.parse(response.body)
+        expect(body.dig('data', 'attributes', 'warnings')).to be_nil
+      end
+    end
+
+    context 'with attachment_id parameter and validation disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:disability_526_document_validation_enabled, instance_of(User))
+          .and_return(false)
+      end
+
+      it 'does not include warnings even when attachment_id is provided' do
+        post '/v0/upload_supporting_evidence',
+             params: { supporting_evidence_attachment: { file_data: pdf_file, attachment_id: 'L1839' } }
+        expect(response).to have_http_status(:ok)
+        body = JSON.parse(response.body)
+        expect(body.dig('data', 'attributes', 'warnings')).to be_nil
+      end
+    end
   end
 end

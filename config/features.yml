@@ -254,7 +254,7 @@ features:
   disability_526_document_validation_enabled:
     actor_type: user
     description: If enabled, the Form 21-526EZ upload endpoint will attempt to validate the uploaded document against the provided expected form type.
-    enable_in_development: false
+    enable_in_development: true
   disability_526_new_bdd_sha_enforcement_workflow_enabled:
     actor_type: user
     description: If enabled, Form 21-526EZ will show new UI to encourage veterans to upload a Separation Health Assessment (SHA).

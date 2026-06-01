@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'logging/third_party_transaction'
+require 'disability_compensation/validators/document_validator'
 
 module V0
   class UploadSupportingEvidencesController < ApplicationController
@@ -23,10 +24,51 @@ module V0
       }
     )
 
+    def create
+      super
+
+      return unless document_validation_enabled?
+      return if filtered_params[:attachment_id].blank?
+
+      append_validation_result!
+    end
+
     private
 
     def serializer_klass
       SupportingEvidenceAttachmentSerializer
+    end
+
+    def filtered_params
+      @filtered_params ||= params.require(:supporting_evidence_attachment)
+                                 .permit(:file_data, :password, :attachment_id)
+    end
+
+    def run_document_validation
+      file_path = filtered_params[:file_data].tempfile.path
+      validator = DisabilityCompensation::Validators::DocumentValidator.new(
+        file_path,
+        attachment_id: filtered_params[:attachment_id],
+        in_progress_form_id:
+      )
+      validator.validate
+    end
+
+    def document_validation_enabled?
+      Flipper.enabled?(:disability_526_document_validation_enabled, current_user)
+    end
+
+    def append_validation_result!
+      body = JSON.parse(response.body)
+      attributes = body.dig('data', 'attributes') || {}
+      attributes['warnings'] = run_document_validation
+      body['data'] ||= {}
+      body['data']['attributes'] = attributes
+      self.response_body = body.to_json
+    end
+
+    def in_progress_form_id
+      InProgressForm.form_for_user(FormProfiles::VA526ez::FORM_ID, current_user)&.id
     end
   end
 end
