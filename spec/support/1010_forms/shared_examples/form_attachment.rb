@@ -13,6 +13,10 @@ shared_examples 'create 1010 form attachment' do
   let(:pdf_file) do
     fixture_file_upload('doctors-note.pdf', 'application/pdf')
   end
+  let(:locked_pdf_file) do
+    fixture_file_upload('locked_pdf_password_is_test.pdf', 'application/pdf')
+  end
+  let(:bad_password) { 'incorrect-password' }
   let(:form_attachment_model) { described_class::FORM_ATTACHMENT_MODEL }
   let(:param_namespace) { form_attachment_model.to_s.underscore.split('/').last }
   let(:resource_name) { form_attachment_model.name.remove('::').snakecase }
@@ -88,6 +92,25 @@ shared_examples 'create 1010 form attachment' do
             'guid' => form_attachment_guid
           }
         }
+      }
+    )
+  end
+
+  it 'returns 422 with exact message when PDF password is incorrect' do
+    post(:create, params: { param_namespace => { file_data: locked_pdf_file, password: bad_password } })
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(JSON.parse(response.body)).to eq(
+      {
+        'errors' => [
+          {
+            'title' => 'Unprocessable Entity',
+            'detail' => 'The password you entered is incorrect. Please try again.',
+            'code' => '422',
+            'source' => 'FormAttachment.unlock_pdf',
+            'status' => '422'
+          }
+        ]
       }
     )
   end

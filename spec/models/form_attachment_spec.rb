@@ -39,6 +39,24 @@ RSpec.describe FormAttachment do
       let(:file_name) { 'locked_pdf_password_is_test.Pdf' }
       let(:bad_password) { 'bad_pw' }
 
+      context 'when password is not provided' do
+        it 'does not call unlock_pdf' do
+          file = Rack::Test::UploadedFile.new(Rails.root.join('spec', 'fixtures', 'preneeds', 'extras.pdf'),
+                                              'application/pdf')
+          expect(preneed_attachment).not_to receive(:unlock_pdf)
+          preneed_attachment.set_file_data!(file)
+        end
+      end
+
+      context 'when file is not a pdf' do
+        it 'does not call unlock_pdf' do
+          file = Rack::Test::UploadedFile.new(Rails.root.join('spec', 'fixtures', 'files', 'doctors-note.jpg'),
+                                              'image/jpeg')
+          expect(preneed_attachment).not_to receive(:unlock_pdf)
+          preneed_attachment.set_file_data!(file, '123')
+        end
+      end
+
       context 'when provided password is incorrect' do
         let(:tempfile) { Tempfile.new(['', "-#{file_name}"]) }
         let(:file) do
@@ -74,7 +92,7 @@ RSpec.describe FormAttachment do
           expect(raised_error.cause).to be_nil
         end
 
-        it 'does not expose the original PdftkError with password in the exception chain' do
+        it 'does not expose lower-level PDF processing errors in the exception chain' do
           raised_error = nil
           begin
             preneed_attachment.set_file_data!(file, bad_password)
