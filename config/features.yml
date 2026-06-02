@@ -3825,6 +3825,9 @@ features:
   identity_passkey_enabled:
     actor_type: user
     description: Enables passkey functionality for selected users and phased rollout.
+  ct_vettec_v2:
+    actor_type: user
+    description: Enables vet tec 2.0 funcionality in Comparison Tool
   gids_sequential_upload:
     actor_type: user
     description: Enables sequential upload of large csv files in gi-bill-data-service
