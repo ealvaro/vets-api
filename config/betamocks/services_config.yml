@@ -42,6 +42,10 @@
       :path: <%= "/#{Settings.ask_va_api.crm_api.veis_api_path}/inquiries/new" %>
       :file_path: "/ask_va/crm_api/post_inquiries/default"
       :response_delay: 0.3
+    - :method: :get
+      :path: <%= "/#{Settings.ask_va_api.crm_api.veis_api_path}/profile" %>
+      :file_path: "/ask_va/crm_api/profile/default"
+      :response_delay: 0.3
     ## Travel Pay
     - :method: :post
       :path: "/eis/api/btsss/travelclaim/api/v2/Auth/access-token"
@@ -149,7 +153,7 @@
   :base_uri: <%= "#{URI(Settings.ask_va_api.crm_api.auth_url).host}:#{URI(Settings.ask_va_api.crm_api.auth_url).port}" %>
   :endpoints:
     - :method: :post
-      :path: <%= "/#{Settings.ask_va_api.crm_api.tenant_id}/oauth2/v2.0/token" %>
+      :path: <%= "/#{Settings.ask_va_api.crm_api.tenant_id}/oauth2/token" %>
       :file_path: "/ask_va/token/default"
       :response_delay: 0.3
     - :method: :post
