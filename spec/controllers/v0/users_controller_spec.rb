@@ -29,7 +29,7 @@ RSpec.describe V0::UsersController, type: :controller do
 
     context 'when profile claims enabled' do
       before do
-        Flipper.enable(:profile_user_claims)
+        Flipper.enable(:profile_user_claims) # rubocop:disable Project/ForbidFlipperToggleInSpecs
       end
 
       it 'returns a JSON user profile with claims' do
@@ -55,7 +55,7 @@ RSpec.describe V0::UsersController, type: :controller do
 
     before do
       sign_in_as(user)
-      Flipper.disable(:profile_user_claims)
+      Flipper.disable(:profile_user_claims) # rubocop:disable Project/ForbidFlipperToggleInSpecs
     end
 
     it 'returns a JSON user profile with a bad_address' do
@@ -111,7 +111,7 @@ RSpec.describe V0::UsersController, type: :controller do
 
     context 'when profile claims enabled' do
       before do
-        Flipper.enable(:profile_user_claims)
+        Flipper.enable(:profile_user_claims) # rubocop:disable Project/ForbidFlipperToggleInSpecs
       end
 
       it 'returns a JSON user profile with claims' do
