@@ -532,15 +532,6 @@ RSpec.describe SavedClaim::CoeClaim, type: :model do
       end
     end
 
-    context 'when hadPriorLoans is true but no loans are provided' do
-      let(:form_json) { form_with_prior_loans([]) }
-
-      it 'records a relevantPriorLoans error' do
-        claim.validate
-        expect(error_attributes(claim)).to include('/loanHistory/relevantPriorLoans')
-      end
-    end
-
     context 'when prior loan vaLoanNumber is omitted' do
       let(:form_json) { mutate_prior_loan { |l| l.delete('vaLoanNumber') } }
 

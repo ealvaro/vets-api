@@ -18,13 +18,7 @@ module CoeClaimFormValidation
     def validate_loan_history_prior_loans(lh)
       loans = lh['relevantPriorLoans']
 
-      if coe_truthy?(lh['hadPriorLoans'])
-        if !loans.is_a?(Array) || loans.empty?
-          errors.add('/loanHistory/relevantPriorLoans',
-                     'must include at least one prior loan when hadPriorLoans is true')
-          return
-        end
-      elsif lh.key?('relevantPriorLoans')
+      if lh.key?('relevantPriorLoans')
         unless loans.is_a?(Array)
           errors.add('/loanHistory/relevantPriorLoans', 'must be an array')
           return
