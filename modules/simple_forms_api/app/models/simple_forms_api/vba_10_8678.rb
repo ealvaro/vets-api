@@ -6,6 +6,40 @@ require 'simple_forms_api/overflow_108678'
 module SimpleFormsApi
   class VBA108678 < BaseForm
     STATS_KEY = 'api.simple_forms_api.10_8678'
+    CHECK_BOX_COORDINATES = [
+      {
+        upper_checkbox: [313.5, 459.0],
+        upper_left_radio: [313.5, 447.0],
+        upper_right_radio: [361.5, 447.0],
+        lower_checkbox: [451.5, 459.0],
+        lower_left_radio: [451.5, 447.0],
+        lower_right_radio: [499.5, 447.0]
+      }.freeze,
+      {
+        upper_checkbox: [313.5, 423.0],
+        upper_left_radio: [313.5, 411.0],
+        upper_right_radio: [361.5, 411.0],
+        lower_checkbox: [451.5, 423.0],
+        lower_left_radio: [451.5, 411.0],
+        lower_right_radio: [499.5, 411.0]
+      }.freeze,
+      {
+        upper_checkbox: [313.5, 387.0],
+        upper_left_radio: [313.5, 375.0],
+        upper_right_radio: [361.5, 375.0],
+        lower_checkbox: [451.5, 387.0],
+        lower_left_radio: [451.5, 375.0],
+        lower_right_radio: [499.5, 375.0]
+      }.freeze,
+      {
+        upper_checkbox: [313.5, 351.0],
+        upper_left_radio: [313.5, 339.0],
+        upper_right_radio: [361.5, 339.0],
+        lower_checkbox: [451.5, 351.0],
+        lower_left_radio: [451.5, 339.0],
+        lower_right_radio: [499.5, 339.0]
+      }.freeze
+    ].freeze
     attr_reader :address, :appliances_for_pdf
 
     include ::PdfFill::Forms::FormHelper
@@ -99,7 +133,7 @@ module SimpleFormsApi
         {
           device: app['device_or_medication'],
           disability: app['service_connected_disability'],
-          upper_or_lower: extract_button_list(app['impacted_locations'])
+          impacted_locations: extract_button_list(app['impacted_locations'])
         }
       end
     end
@@ -131,7 +165,6 @@ module SimpleFormsApi
 
     # Due to a bug in the PDF we cannot select the Upper or Lower checkboxes,
     # this method manually writes a "X" to the pdf in the correct spots.
-    # rubocop:disable Metrics/MethodLength
     def manual_fills(pdf_path)
       return pdf_path if @appliances_for_pdf.empty?
 
@@ -145,8 +178,7 @@ module SimpleFormsApi
           @appliances_for_pdf.each_with_index do |item, idx|
             next if idx > 3
 
-            draw_an_x(canvas, coords[idx][:upper]) if item[:upper_or_lower][:upper] != 'Off'
-            draw_an_x(canvas, coords[idx][:lower]) if item[:upper_or_lower][:lower] != 'Off'
+            draw_impacted_location_marks(canvas, coords[idx], item[:impacted_locations])
           end
         end
         # returns a Hexapdf doc, so use string for path reference
@@ -161,7 +193,6 @@ module SimpleFormsApi
         pdf_path
       end
     end
-    # rubocop:enable Metrics/MethodLength
 
     def gather_overflow_devices(appliances)
       apps = []
@@ -184,13 +215,23 @@ module SimpleFormsApi
 
     private
 
+    def draw_impacted_location_marks(canvas, coordinates, impacted_locations)
+      return if impacted_locations.blank?
+
+      has_upper_selection = impacted_locations[:upper_left] || impacted_locations[:upper_right]
+      has_lower_selection = impacted_locations[:lower_left] || impacted_locations[:lower_right]
+
+      draw_an_x(canvas, coordinates[:upper_checkbox]) if has_upper_selection
+      draw_an_x(canvas, coordinates[:upper_left_radio]) if impacted_locations[:upper_left]
+      draw_an_x(canvas, coordinates[:upper_right_radio]) if impacted_locations[:upper_right]
+
+      draw_an_x(canvas, coordinates[:lower_checkbox]) if has_lower_selection
+      draw_an_x(canvas, coordinates[:lower_left_radio]) if impacted_locations[:lower_left]
+      draw_an_x(canvas, coordinates[:lower_right_radio]) if impacted_locations[:lower_right]
+    end
+
     def check_box_coordinates
-      [
-        { upper: [313.5, 460], lower: [451.5, 459.5] },
-        { upper: [314, 424], lower: [451.5, 423.5] },
-        { upper: [314, 388], lower: [451.5, 387.5] },
-        { upper: [314, 351.5], lower: [451.5, 351] }
-      ]
+      CHECK_BOX_COORDINATES
     end
 
     def draw_an_x(canvas, coordinates)
@@ -200,24 +241,18 @@ module SimpleFormsApi
     end
 
     def extract_button_list(hash)
-      data_hash = { upper: 'Off', upper_side: 'Off', lower: 'Off', lower_side: 'Off' }
+      data_hash = {
+        upper_left: false,
+        upper_right: false,
+        lower_left: false,
+        lower_right: false
+      }
       return data_hash if hash.blank?
 
-      if hash['upper_left']
-        data_hash[:upper] = 1
-        data_hash[:upper_side] = 'LEFT'
-      elsif hash['upper_right']
-        data_hash[:upper] = 1
-        data_hash[:upper_side] = 'RIGHT'
+      data_hash.keys.each do |location|
+        data_hash[location] = hash[location.to_s] == true
       end
 
-      if hash['lower_left']
-        data_hash[:lower] = 2
-        data_hash[:lower_side] = 'LEFT'
-      elsif hash['lower_right']
-        data_hash[:lower] = 2
-        data_hash[:lower_side] = 'RIGHT'
-      end
       data_hash
     end
   end

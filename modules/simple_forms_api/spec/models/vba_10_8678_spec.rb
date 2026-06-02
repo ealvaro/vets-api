@@ -74,18 +74,74 @@ RSpec.describe SimpleFormsApi::VBA108678 do
 
       expect(first_appliance[:device]).to eq(raw_appliance['device_or_medication'])
       expect(first_appliance[:disability]).to eq(raw_appliance['service_connected_disability'])
-      expect(first_appliance[:upper_or_lower]).to eq(
-        { upper: 1, upper_side: 'LEFT', lower: 'Off', lower_side: 'Off' }
+      expect(first_appliance[:impacted_locations]).to eq(
+        { upper_left: true, upper_right: false, lower_left: false, lower_right: false }
       )
-      expect(subject[1][:upper_or_lower]).to eq(
-        { upper: 'Off', upper_side: 'Off', lower: 2, lower_side: 'RIGHT' }
+      expect(subject[1][:impacted_locations]).to eq(
+        { upper_left: false, upper_right: false, lower_left: false, lower_right: true }
       )
-      expect(subject[2][:upper_or_lower]).to eq(
-        { upper: 1, upper_side: 'RIGHT', lower: 'Off', lower_side: 'Off' }
+      expect(subject[2][:impacted_locations]).to eq(
+        { upper_left: false, upper_right: true, lower_left: false, lower_right: false }
       )
-      expect(subject[3][:upper_or_lower]).to eq(
-        { upper: 'Off', upper_side: 'Off', lower: 2, lower_side: 'LEFT' }
+      expect(subject[3][:impacted_locations]).to eq(
+        { upper_left: false, upper_right: false, lower_left: true, lower_right: false }
       )
+    end
+  end
+
+  describe '#manual_fills' do
+    let(:pdf_path) { 'tmp/test-vba_10_8678.pdf' }
+    let(:doc) { instance_double(HexaPDF::Document) }
+    let(:page) { instance_double(HexaPDF::Type::Page) }
+    let(:canvas) { instance_double(HexaPDF::Content::Canvas) }
+
+    it 'draws an x for each selected location without collapsing multi-select values' do
+      data['appliances'][0]['impacted_locations'] = {
+        'upper_left' => true,
+        'upper_right' => true,
+        'lower_left' => true,
+        'lower_right' => true
+      }
+
+      allow(HexaPDF::Document).to receive(:open).with(pdf_path).and_return(doc)
+      allow(doc).to receive(:pages).and_return([page])
+      allow(page).to receive(:canvas).with(type: :overlay).and_return(canvas)
+      allow(canvas).to receive(:save_graphics_state).and_yield
+      allow(canvas).to receive(:fill_color)
+      allow(canvas).to receive(:font)
+      allow(canvas).to receive(:text)
+      allow(doc).to receive(:write)
+      allow(FileUtils).to receive(:mv)
+      allow(Common::FileHelpers).to receive(:delete_file_if_exists)
+
+      form.manual_fills(pdf_path)
+
+      expect(canvas).to have_received(:text).with('x', at: [313.5, 459.0])
+      expect(canvas).to have_received(:text).with('x', at: [313.5, 447.0])
+      expect(canvas).to have_received(:text).with('x', at: [361.5, 447.0])
+      expect(canvas).to have_received(:text).with('x', at: [451.5, 459.0])
+      expect(canvas).to have_received(:text).with('x', at: [451.5, 447.0])
+      expect(canvas).to have_received(:text).with('x', at: [499.5, 447.0])
+    end
+  end
+
+  describe '#overflow_pdf' do
+    it 'creates an overflow page for multi-select impacted locations' do
+      data['appliances'][0]['impacted_locations'] = {
+        'upper_left' => true,
+        'upper_right' => true,
+        'lower_left' => true,
+        'lower_right' => true
+      }
+
+      overflow_generator = instance_double(SimpleFormsApi::Overflow108678, generate: '/tmp/overflow.pdf')
+
+      expect(SimpleFormsApi::Overflow108678).to receive(:new).with(
+        [hash_including('both' => true)],
+        cutoff: 1
+      ).and_return(overflow_generator)
+
+      expect(form.overflow_pdf).to eq('/tmp/overflow.pdf')
     end
   end
 

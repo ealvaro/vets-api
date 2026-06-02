@@ -7,10 +7,10 @@
     <% num = i + 1 %>
     "form1[0].#subform[0].Table1[0].Row<%= num %>[0].#subform[0].SERVICE-CONNECTEDDISABILITY1[0]": "<%= app[:disability] %>",
     "form1[0].#subform[0].Table1[0].Row<%= num %>[0].NAMEOFDEVICEORTHOPEDICAPPLIANCEORSKINMEDICATION1[0]": "<%= app[:device] %>",
-    "form1[0].#subform[0].Table1[0].Row<%= num %>[0].#subform[1].UPPER\\.LOWER<%= num %>[0]": "<%= app[:upper_or_lower][:upper] %>",
-    "form1[0].#subform[0].Table1[0].Row<%= num %>[0].#subform[1].RadioButtonList[0]": "<%= app[:upper_or_lower][:upper_side] %>",
-    "form1[0].#subform[0].Table1[0].Row<%= num %>[0].#subform[2].UPPER\\.LOWER<%= num %>[1]": "<%= app[:upper_or_lower][:lower] %>",
-    "form1[0].#subform[0].Table1[0].Row<%= num %>[0].#subform[2].RadioButtonList[1]": "<%= app[:upper_or_lower][:lower_side] %>",
+    "form1[0].#subform[0].Table1[0].Row<%= num %>[0].#subform[1].UPPER\\.LOWER<%= num %>[0]": "Off",
+    "form1[0].#subform[0].Table1[0].Row<%= num %>[0].#subform[1].RadioButtonList[0]": "Off",
+    "form1[0].#subform[0].Table1[0].Row<%= num %>[0].#subform[2].UPPER\\.LOWER<%= num %>[1]": "Off",
+    "form1[0].#subform[0].Table1[0].Row<%= num %>[0].#subform[2].RadioButtonList[1]": "Off",
   <% end %>
 
   "form1[0].#subform[0].Elect[0]": "<%= form.data['elect_termination'] ? 1 : 'Off' %>",
