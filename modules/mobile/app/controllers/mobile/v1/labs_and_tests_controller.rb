@@ -7,7 +7,9 @@ require 'unique_user_events'
 module Mobile
   module V1
     class LabsAndTestsController < ApplicationController
-      service_tag 'mhv-medical-records'
+      include MedicalRecords::ErrorHandler
+
+      service_tag :'mhv-medical-records'
 
       before_action :controller_enabled?
 
@@ -29,6 +31,11 @@ module Mobile
         )
 
         render json: UnifiedHealthData::Serializers::LabOrTestSerializer.new(labs)
+      rescue Common::Exceptions::GatewayTimeout,
+             Common::Client::Errors::ClientError,
+             Common::Exceptions::BackendServiceException,
+             StandardError => e
+        handle_error(e, resource_name: 'Mobile labs and tests', api_type: 'Mobile UHD')
       end
 
       private

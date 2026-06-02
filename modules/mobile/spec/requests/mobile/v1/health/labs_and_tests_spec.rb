@@ -111,5 +111,127 @@ RSpec.describe 'Mobile::V1::LabsAndTestsController', :skip_json_api_validation, 
         expect(response).to have_http_status(:not_implemented)
       end
     end
+
+    context 'error handling via MedicalRecords::ErrorHandler' do
+      let(:mock_service) { instance_double(UnifiedHealthData::MedicalRecordsService) }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(uhd_flipper, instance_of(User)).and_return(true)
+        allow(Datadog::Tracing).to receive(:active_span).and_return(nil)
+        allow(UnifiedHealthData::MedicalRecordsService).to receive(:new).and_return(mock_service)
+      end
+
+      context 'when a GatewayTimeout error occurs' do
+        before do
+          allow(mock_service).to receive(:get_labs).and_raise(Common::Exceptions::GatewayTimeout)
+          get path, headers: sis_headers, params: default_params
+        end
+
+        it 'returns 504 with structured error envelope' do
+          expect(response).to have_http_status(:gateway_timeout)
+          body = JSON.parse(response.body)
+          expect(body['errors']).to be_an(Array)
+          expect(body['errors'].first['status'].to_s).to eq('504')
+        end
+      end
+
+      context 'when a Timeout::Error occurs' do
+        before do
+          allow(mock_service).to receive(:get_labs).and_raise(Timeout::Error, 'execution expired')
+          get path, headers: sis_headers, params: default_params
+        end
+
+        it 'returns 504 with structured error envelope' do
+          expect(response).to have_http_status(:gateway_timeout)
+          body = JSON.parse(response.body)
+          expect(body['errors']).to be_an(Array)
+          expect(body['errors'].first['title']).to eq('Gateway Timeout')
+        end
+      end
+
+      context 'when a ClientError with status occurs' do
+        before do
+          allow(mock_service).to receive(:get_labs).and_raise(
+            Common::Client::Errors::ClientError.new(nil, 502, { 'detail' => 'bad gateway' })
+          )
+          get path, headers: sis_headers, params: default_params
+        end
+
+        it 'returns 502 with structured error envelope' do
+          expect(response).to have_http_status(:bad_gateway)
+          body = JSON.parse(response.body)
+          expect(body['errors']).to be_an(Array)
+          expect(body['errors'].first['code']).to eq('502')
+          expect(body['errors'].first['title']).to include('UHD API Error')
+        end
+      end
+
+      context 'when a ClientError without status occurs' do
+        before do
+          allow(mock_service).to receive(:get_labs).and_raise(
+            Common::Client::Errors::ClientError.new(nil, nil)
+          )
+          get path, headers: sis_headers, params: default_params
+        end
+
+        it 'returns 503 with structured error envelope' do
+          expect(response).to have_http_status(:service_unavailable)
+          body = JSON.parse(response.body)
+          expect(body['errors']).to be_an(Array)
+          expect(body['errors'].first['code']).to eq('503')
+        end
+      end
+
+      context 'when a Breakers::OutageException occurs' do
+        before do
+          breakers_service = instance_double(Breakers::Service, name: 'UHD')
+          outage = instance_double(Breakers::Outage, start_time: Time.zone.now, end_time: nil,
+                                                     service: breakers_service)
+          allow(mock_service).to receive(:get_labs)
+            .and_raise(Breakers::OutageException.new(outage, breakers_service))
+          get path, headers: sis_headers, params: default_params
+        end
+
+        it 'returns 503 with structured error envelope' do
+          expect(response).to have_http_status(:service_unavailable)
+          body = JSON.parse(response.body)
+          expect(body['errors']).to be_an(Array)
+          expect(body['errors'].first['title']).to eq('Service Unavailable')
+        end
+      end
+
+      context 'when an unexpected StandardError occurs' do
+        before do
+          allow(mock_service).to receive(:get_labs).and_raise(StandardError, 'something went wrong')
+          get path, headers: sis_headers, params: default_params
+        end
+
+        it 'returns 500 with a safe generic message' do
+          expect(response).to have_http_status(:internal_server_error)
+          body = JSON.parse(response.body)
+          expect(body['errors']).to be_an(Array)
+          expect(body['errors'].first['title']).to eq('Internal Server Error')
+          expect(body['errors'].first['detail']).to eq(
+            'An unexpected error occurred while retrieving Mobile labs and tests.'
+          )
+        end
+
+        it 'does not leak the original error message' do
+          body = JSON.parse(response.body)
+          expect(body['errors'].first['detail']).not_to include('something went wrong')
+        end
+      end
+
+      context 'when a NotImplemented error occurs' do
+        before do
+          allow(mock_service).to receive(:get_labs).and_raise(Common::Exceptions::NotImplemented)
+        end
+
+        it 're-raises and is not swallowed by handle_error' do
+          get path, headers: sis_headers, params: default_params
+          expect(response).to have_http_status(:not_implemented)
+        end
+      end
+    end
   end
 end

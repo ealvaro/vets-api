@@ -33,6 +33,7 @@ app/controllers/concerns/headers.rb @software/backend-review-group
 app/controllers/concerns/instrumentation.rb @software/backend-review-group @software/octo-identity
 app/controllers/concerns/inbound_request_logging.rb @software/benefits-management-tools-be @software/backend-review-group
 app/controllers/concerns/json_api_pagination_links.rb @software/backend-review-group
+app/controllers/concerns/medical_records/error_handler.rb @software/vfs-mhv-integration @software/backend-review-group
 app/controllers/concerns/sentry_controller_logging.rb @software/backend-review-group
 app/controllers/concerns/pdf_filename_generator.rb @software/health-apps-backend @software/backend-review-group
 app/controllers/concerns/pdf_s3_operations.rb @software/backend-review-group @software/benefits-intake-pingwind @software/bio-huntridge
