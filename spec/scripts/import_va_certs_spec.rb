@@ -99,7 +99,7 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
   end
 
   describe 'VA certificate download' do
-    it 'downloads VA certificates with wget and falls back to GitHub mirror' do
+    it 'downloads VA certificates with wget and falls back to GHEC-US mirror' do
       script_content = File.read(script_path)
 
       # Verify wget command with proper options
@@ -112,9 +112,12 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
       expect(script_content).to include('--accept="VA*.cer"')
       expect(script_content).to include('http://aia.pki.va.gov/PKI/AIA/VA/')
 
-      # Verify GitHub mirror fallback
-      expect(script_content).to include('falling back to GitHub mirror')
-      expect(script_content).to include('platform-va-ca-certificate')
+      # Verify GHEC-US mirror fallback URL and auth pattern
+      expect(script_content).to include('falling back to GHEC-US mirror')
+      expect(script_content).to include('raw.va.ghe.com/software/platform-va-ca-certificate/main')
+      expect(script_content).to include('BUNDLE_VA__GHE__COM')
+      expect(script_content).to include('Authorization: token')
+      expect(script_content).to include('BUNDLE_VA__GHE__COM is not set')
 
       # Verify build fails when no cert files found after both attempts
       expect(script_content).to include('No certificate files found after download')

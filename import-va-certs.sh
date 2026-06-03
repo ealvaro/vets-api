@@ -77,8 +77,15 @@ set -euo pipefail
         http://aia.pki.va.gov/PKI/AIA/VA/; then
         echo "✓ VA certificates downloaded from aia.pki.va.gov"
     else
-        echo "⚠ aia.pki.va.gov unreachable, falling back to GitHub mirror..."
-        VA_CERT_REPO="https://raw.githubusercontent.com/department-of-veterans-affairs/platform-va-ca-certificate/main"
+        echo "⚠ aia.pki.va.gov unreachable, falling back to GHEC-US mirror..."
+        VA_CERT_REPO="https://raw.va.ghe.com/software/platform-va-ca-certificate/main"
+        CERT_TOKEN="${BUNDLE_VA__GHE__COM:-}"
+        CERT_TOKEN="${CERT_TOKEN##*:}"
+        if [ -z "${CERT_TOKEN}" ]; then
+            echo "✗ BUNDLE_VA__GHE__COM is not set — cannot authenticate to GHEC-US mirror"
+            exit 1
+        fi
+        curl_auth=(-H "Authorization: token ${CERT_TOKEN}")
         for cert in \
             VA-Internal-S2-ICA1-v1 VA-Internal-S2-ICA2-v1 VA-Internal-S2-ICA3-v1 \
             VA-Internal-S2-ICA4 VA-Internal-S2-ICA5 VA-Internal-S2-ICA6 \
@@ -95,12 +102,13 @@ set -euo pipefail
             VA-Internal-S2-RCA1-v1 VA-Internal-S2-RCA2 VA-Internal-S2-RCA3
         do
             if ! curl --silent --show-error --fail --connect-timeout 10 --max-time 30 --retry 2 \
+                "${curl_auth[@]}" \
                 -o "${cert}.cer" "${VA_CERT_REPO}/${cert}.cer"; then
                 echo "✗ Failed to download ${cert}.cer"
                 exit 1
             fi
         done
-        echo "✓ VA certificates downloaded from GitHub mirror"
+        echo "✓ VA certificates downloaded from GHEC-US mirror"
     fi
 
     # Check if any certificate files exist before processing
