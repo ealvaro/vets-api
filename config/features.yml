@@ -267,9 +267,6 @@ features:
     actor_type: user
     description: If enabled, Form 21-526EZ will show the new form navigation menu and remove the progress bar.
     enable_in_development: false
-  disability_compensation_new_conditions_workflow:
-    actor_type: user
-    description: enables new Conditions/Rated Disabilities workflow in 526EZ
   disability_compensation_fix_poisoned_ipf:
     actor_type: user
     description: >
@@ -281,6 +278,16 @@ features:
     description: >
       Kill switch for the fix that removes duplicate additionalInformation keys on InProgressForms
     enable_in_development: true
+  disability_compensation_new_conditions_workflow:
+    actor_type: user
+    description: enables new Conditions/Rated Disabilities workflow in 526EZ
+    enable_in_development: true
+  disability_compensation_new_conditions_workflow_rollback_ipfs:
+    actor_type: user
+    description: If enabled, allows IPFs that were transformed from v1 to v2 to be rolled back to the v1 data model
+  disability_compensation_new_conditions_workflow_transform_ipfs:
+    actor_type: user
+    description: If enabled, allows v1 IPFs to be transformed to the v2 data model
   disability_compensation_rated_disabilities_cache:
     actor_type: user
     description: Enables caching of Lighthouse rated disabilities responses
