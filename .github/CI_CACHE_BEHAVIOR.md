@@ -1,5 +1,7 @@
 # CI Cache Behavior
 
+> Cache cleanup is handled in the `Cleanup run caches` step of the `publish_results` job in `.github/workflows/code_checks.yml`.
+
 This document describes how GitHub Actions caches are used, written, and cleaned up during each `Code Checks` workflow run.
 
 ## Cache types
@@ -23,7 +25,7 @@ Docker images are built in layers stacked on top of each other:
 4. Gems (bundle install) — changes when Gemfile changes
 5. App code — changes on every commit
 
-When a build runs, BuildKit checks which layers have changed and reuses cached blobs for unchanged layers. If only app code changed, layers 1–4 are pulled from cache and only layer 5 is rebuilt. The stable base layer blobs (created May 5th) are shared across all refs and reused on every build.
+When a build runs, BuildKit checks which layers have changed and reuses cached blobs for unchanged layers. If only app code changed, layers 1–4 are pulled from cache and only layer 5 is rebuilt. The stable base layer blobs are shared across all refs and reused on every build.
 
 ---
 
@@ -32,7 +34,6 @@ When a build runs, BuildKit checks which layers have changed and reuses cached b
 ### Fail
 
 **Build job:**
-- Cleanup buildkit blobs: runs but nothing to delete (new ref, no previous blobs)
 - `cache-from` pulls shared base layer blobs from master ✅
 - Writes new buildkit blobs for this PR ref
 - Saves `docker-image-${{ github.sha }}`
@@ -43,11 +44,12 @@ When a build runs, BuildKit checks which layers have changed and reuses cached b
 - Restores shard manifest: miss (new run_id) → generates and saves fresh
 
 **Publish results:**
-- Docker image tar: **preserved** (PR failure — kept for reruns without rebuilding)
+- Docker image tar: deleted
 - Shard manifests: deleted
+- Buildkit blobs: deleted for all non-master refs
 - Runtime log: not saved (tests failed)
 
-**What remains in cache:** `docker-image-${{ github.sha }}`, buildkit blobs for this PR ref, master runtime log
+**What remains in cache:** master runtime log, master buildkit blobs
 
 ---
 
@@ -56,11 +58,9 @@ When a build runs, BuildKit checks which layers have changed and reuses cached b
 Same as fail except:
 
 **Publish results:**
-- Docker image tar: deleted
-- Shard manifests: deleted
 - Runtime log: saved for this PR ref
 
-**What remains in cache:** buildkit blobs for this PR ref, runtime log for this PR ref
+**What remains in cache:** runtime log for this PR ref
 
 ---
 
@@ -69,7 +69,6 @@ Same as fail except:
 ### Fail
 
 **Build job:**
-- Cleanup buildkit blobs: **deletes previous buildkit blobs for this PR ref** — logs each deleted key and prints a summary e.g. `Done. Deleted: 58, Skipped: 0`
 - `cache-from` pulls shared base layer blobs ✅
 - Writes fresh buildkit blobs for this commit
 - Saves `docker-image-${{ github.sha }}` (new SHA)
@@ -80,11 +79,12 @@ Same as fail except:
 - Restores shard manifest: miss (new run_id) → generates and saves fresh
 
 **Publish results:**
-- Docker image tar: **preserved** (PR failure — kept for reruns without rebuilding)
+- Docker image tar: deleted
 - Shard manifests: deleted
+- Buildkit blobs: deleted for all non-master refs (including blobs from previous commits on this PR)
 - Runtime log: not saved
 
-**What remains in cache:** `docker-image-${{ github.sha }}`, fresh buildkit blobs for this PR ref, runtime log
+**What remains in cache:** runtime log from previous successful run (if any)
 
 ---
 
@@ -93,11 +93,9 @@ Same as fail except:
 Same as fail except:
 
 **Publish results:**
-- Docker image tar: deleted
-- Shard manifests: deleted
 - Runtime log: saved, overwriting previous for this PR ref
 
-**What remains in cache:** fresh buildkit blobs for this PR ref, updated runtime log
+**What remains in cache:** updated runtime log for this PR ref
 
 ---
 
@@ -106,7 +104,6 @@ Same as fail except:
 ### Fail
 
 **Build job:**
-- Cleanup buildkit blobs: **skipped** (master — preserves shared stable base layer blobs)
 - `cache-from` pulls existing master buildkit blobs ✅
 - Writes new buildkit blobs alongside existing ones
 - Saves `docker-image-${{ github.sha }}`
@@ -117,8 +114,9 @@ Same as fail except:
 - Restores shard manifest: miss → generates and saves fresh
 
 **Publish results:**
-- Docker image tar: **deleted** (master always deletes regardless of outcome)
+- Docker image tar: deleted
 - Shard manifests: deleted
+- Buildkit blobs: untouched (master is excluded from bulk delete)
 - Runtime log: not saved
 
 **What remains in cache:** buildkit blobs for master (accumulating), nothing else
@@ -130,8 +128,6 @@ Same as fail except:
 Same as fail except:
 
 **Publish results:**
-- Docker image tar: deleted
-- Shard manifests: deleted
 - Runtime log: saved, overwriting previous master runtime log
 
 **What remains in cache:** buildkit blobs for master (accumulating), updated master runtime log
@@ -142,28 +138,20 @@ Same as fail except:
 
 | Scenario | Docker image tar | Buildkit blobs | Shard manifests | Runtime log |
 |---|---|---|---|---|
-| New PR fail | Preserved for reruns | Written fresh | Deleted | Not saved |
-| New PR success | Deleted | Written fresh | Deleted | Saved |
-| Existing PR fail | Preserved for reruns | Previous deleted, fresh written | Deleted | Not saved |
-| Existing PR success | Deleted | Previous deleted, fresh written | Deleted | Saved |
+| New PR fail | Deleted | Written then deleted | Deleted | Not saved |
+| New PR success | Deleted | Written then deleted | Deleted | Saved |
+| Existing PR fail | Deleted | Previous deleted, fresh written then deleted | Deleted | Not saved |
+| Existing PR success | Deleted | Previous deleted, fresh written then deleted | Deleted | Saved |
 | Master fail | Deleted | Accumulate | Deleted | Not saved |
 | Master success | Deleted | Accumulate | Deleted | Saved |
 
 ## PR close
 
-When a PR is closed (merged or abandoned), the `Cleanup PR Caches` workflow (`.github/workflows/cleanup_pr_caches.yml`) fires and deletes **all** remaining caches for that PR ref in one pass. This covers every cache type that ref could have:
-
-- All `buildkit-blob-*` blobs
-- All `index-buildkit-*` entries
-- `docker-image-*` tar (if tests failed and it was preserved for reruns)
-- Any remaining `shard-manifest-*` entries (if `publish_results` didn't run)
-- `parallel-runtime-log-*` for that ref
-
-Nothing is left behind after close. This is the final cleanup that handles anything the per-run cleanup in `publish_results` couldn't reach — primarily the buildkit blobs that accumulated across the PR's lifetime.
+When a PR is closed (merged or abandoned), the `Cleanup PR Caches` workflow (`.github/workflows/cleanup_pr_caches.yml`) fires and deletes **all** remaining caches for that PR ref in one pass. In practice, `publish_results` will have already deleted everything for the final run — the close workflow is a safety net for cancelled runs or any edge cases where cleanup didn't fire.
 
 ## Rerunning a failed test shard
 
-If a single test shard fails, a dev can rerun just that shard without triggering a full rebuild. The `docker-image-${{ github.sha }}` tar is preserved on PR test failures specifically to support this. The shard manifest will regenerate automatically on cache miss if needed. The docker image is only deleted once all tests pass or on a master push.
+If a single test shard fails, a dev can rerun just that shard. Since the docker image tar is always deleted after `publish_results`, a rerun will trigger a full rebuild. The shard manifest will regenerate automatically on cache miss.
 
 ---
 
@@ -193,9 +181,13 @@ gh api --paginate "repos/software/vets-api/actions/caches" --hostname va.ghe.com
   done
 ```
 
-**Delete all caches for a specific ref** — use this to manually nuke a PR or master when the cache limit is being hit:
+**Delete all caches for a specific ref** — use this to manually nuke a PR when the cache limit is being hit:
 ```bash
-gh api --paginate "repos/software/vets-api/actions/caches" --hostname va.ghe.com --jq '.actions_caches[] | select(.ref == "refs/pull/NNNNN/merge") | .id' | while read id; do gh api --hostname va.ghe.com -X DELETE "repos/software/vets-api/actions/caches/$id" --silent || true; done
+gh api --paginate "repos/software/vets-api/actions/caches" --hostname va.ghe.com \
+  --jq '.actions_caches[] | select(.ref == "refs/pull/NNNNN/merge") | .id' | \
+  while read -r id; do
+    gh api --hostname va.ghe.com -X DELETE "repos/software/vets-api/actions/caches/$id" --silent || true
+  done
 ```
 
 The repo has a hard 10 GB enterprise cache limit. When exceeded, GitHub auto-evicts least-recently-used caches, which can cause `fail-on-cache-miss` failures mid-CI run.

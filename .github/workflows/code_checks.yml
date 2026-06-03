@@ -289,33 +289,6 @@ jobs:
         with:
           mask-password: true
 
-      - name: Cleanup stale buildkit caches for this ref
-        if: github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          deleted=0
-          skipped=0
-
-          mapfile -t cache_entries < <(gh api --paginate "repos/${{ github.repository }}/actions/caches" \
-            --hostname va.ghe.com \
-            --jq '.actions_caches[] | select(.ref == "${{ github.ref }}") | select(.key | startswith("buildkit-") or startswith("index-buildkit-")) | [.id, .key] | @tsv')
-
-          for entry in "${cache_entries[@]}"; do
-            id=$(echo "$entry" | cut -f1)
-            key=$(echo "$entry" | cut -f2)
-            if gh api --hostname va.ghe.com -X DELETE "repos/${{ github.repository }}/actions/caches/$id" --silent 2>/dev/null; then
-              echo "Deleted: $key"
-              deleted=$((deleted + 1))
-            else
-              echo "Skipped: $key"
-              skipped=$((skipped + 1))
-            fi
-          done
-
-          echo ""
-          echo "Done. Deleted: $deleted, Skipped: $skipped"
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
 
@@ -610,31 +583,29 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cleanup run caches
+        # Cache cleanup behavior is documented in docs/ci_cache_behavior.md
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TESTS_PASSED: ${{ needs.tests.result == 'success' }}
-          IS_PR: ${{ github.event_name == 'pull_request' }}
         run: |
-          delete_cache() {
-            gh api --hostname va.ghe.com -X DELETE "repos/${{ github.repository }}/actions/caches?key=$1" --silent || true
-          }
+          api() { gh api --hostname va.ghe.com --silent "$@" || true; }
 
-          # Docker image: keep on PR failure (dev will push again), always delete on master
-          [[ "$TESTS_PASSED" == "true" || "$IS_PR" == "false" ]] && \
-            delete_cache "docker-image-${{ github.sha }}"
+          # Delete Docker image
+          api -X DELETE "repos/${{ github.repository }}/actions/caches?key=docker-image-${{ github.sha }}"
 
-          # Shard manifests: always delete, reruns get a new run_id
+          # Shard manifests
           for i in $(seq 1 24); do
-            delete_cache "shard-manifest-${{ github.run_id }}-group-$i"
+            api -X DELETE "repos/${{ github.repository }}/actions/caches?key=shard-manifest-${{ github.run_id }}-group-$i"
           done
 
-          # Buildkit caches: keep on failure for fast rebuild, delete on success
-          if [[ "$TESTS_PASSED" == "true" && "$IS_PR" == "true" ]]; then
+          # Buildkit caches: all non-master refs
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             gh api --paginate "repos/${{ github.repository }}/actions/caches" \
               --hostname va.ghe.com \
-              --jq '.actions_caches[] | select(.ref == "${{ github.ref }}") | select(.key | startswith("buildkit-") or startswith("index-buildkit-")) | .id' \
-            | xargs -I{} gh api --hostname va.ghe.com -X DELETE "repos/${{ github.repository }}/actions/caches/{}" --silent || true
+              --jq '.actions_caches[] | select(.ref != "refs/heads/master") | select(.key | startswith("shard-manifest-") or startswith("buildkit-") or startswith("index-buildkit-") or startswith("docker-image-")) | .id' \
+            | while read -r id; do
+                api -X DELETE "repos/${{ github.repository }}/actions/caches/$id"
+              done
           fi
 
       - name: Add Test Failure label
