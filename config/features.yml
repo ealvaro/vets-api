@@ -544,6 +544,9 @@ features:
   champva_stamp_text_wrapping:
     actor_type: user
     description: Enables text wrapping for metadata stamped on blank PDF pages in IVC forms
+  chapter_36_form_dd_rum_monitoring:
+    actor_type: user
+    description: Enables Datadog Real User Monitoring for the Chapter 36 (PCPG) form
   check_in_experience_enabled:
     actor_type: user
     description: Enables the health care check-in experiences
