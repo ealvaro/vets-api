@@ -126,7 +126,7 @@ RSpec.describe 'Mobile::V0::PowerOfAttorney', type: :request do
 
       context 'when using accredited models (flag on)' do
         before do
-          Flipper.enable(:mobile_power_of_attorney_use_accredited_models)
+          allow(Flipper).to receive(:enabled?).with(:mobile_power_of_attorney_use_accredited_models).and_return(true)
         end
 
         context 'when an organization is the active poa' do
