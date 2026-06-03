@@ -9,7 +9,6 @@ module SimpleFormsApi
     #   deviceOrMedication: String,
     #   serviceConnectedDisability: String,
     #   impactedLocations: {},
-    #   both: true/false or absent
     # }]
 
     def initialize(data, cutoff:)
@@ -31,7 +30,7 @@ module SimpleFormsApi
       )
       @data.each do |device|
         gen.add_text(
-          overflow_text(device, device['both']),
+          overflow_text(device),
           question_num: 7,
           question_suffix: 'a',
           question_text: 'DEVICE, ORTHOPEDIC APPLIANCE OR SKIN MEDICATION IMPACTS WHICH AREA OF THE BODY',
@@ -50,16 +49,8 @@ module SimpleFormsApi
 
     private
 
-    def overflow_text(device, both)
-      if both
-        "#{device['device_or_medication']} is needed for Upper and Lower, Left and Right sides
-          Issuing Facility: #{device['issuing_facility']}
-        "
-      else
-        "#{device['device_or_medication']} is needed for both Left and Right sides
-          Issuing Facility: #{device['issuing_facility']}
-        "
-      end
+    def overflow_text(device)
+      "#{device['device_or_medication']} was issued from #{device['issuing_facility']}"
     end
     # rubocop:enable Metrics/MethodLength
   end

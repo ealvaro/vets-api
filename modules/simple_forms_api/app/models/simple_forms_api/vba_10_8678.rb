@@ -157,7 +157,7 @@ module SimpleFormsApi
     def overflow_pdf
       return nil if data['appliances'].blank?
 
-      devices_list = gather_overflow_devices(data['appliances'])
+      devices_list = data['appliances']
       return nil if devices_list.blank?
 
       Overflow108678.new(devices_list, cutoff: 1).generate
@@ -192,23 +192,6 @@ module SimpleFormsApi
         Rails.logger.error('simple forms api - manual additions error', { error: e.message })
         pdf_path
       end
-    end
-
-    def gather_overflow_devices(appliances)
-      apps = []
-      appliances.each do |app|
-        impact_area = app['impacted_locations'] ||= {}
-
-        upper_device = impact_area['upper_left'] == true && impact_area['upper_right'] == true
-        lower_device = impact_area['lower_left'] == true && impact_area['lower_right'] == true
-
-        if upper_device && lower_device
-          apps << app.merge({ 'both' => true })
-        elsif upper_device || lower_device
-          apps << app
-        end
-      end
-      apps
     end
 
     def track_user_identity(confirmation_number); end

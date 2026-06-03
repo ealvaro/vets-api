@@ -137,7 +137,7 @@ RSpec.describe SimpleFormsApi::VBA108678 do
       overflow_generator = instance_double(SimpleFormsApi::Overflow108678, generate: '/tmp/overflow.pdf')
 
       expect(SimpleFormsApi::Overflow108678).to receive(:new).with(
-        [hash_including('both' => true)],
+        data['appliances'],
         cutoff: 1
       ).and_return(overflow_generator)
 
@@ -160,66 +160,6 @@ RSpec.describe SimpleFormsApi::VBA108678 do
           'businessLine' => 'CMP'
         }
       )
-    end
-  end
-
-  describe '#gather_overflow_devices' do
-    it 'return empty if nothing qualifies' do
-      result = subject.gather_overflow_devices([])
-      expect(result).to eq([])
-
-      result = subject.gather_overflow_devices(
-        [
-          {
-            'device_or_medication' => 'Hearing Aid',
-            'service_connected_disability' => 'Hearing Loss',
-            'impacted_locations' => {
-              'upper_left' => true,
-              'upper_right' => false,
-              'lower_left' => false,
-              'lower_right' => true
-            }
-          }
-        ]
-      )
-      expect(result).to eq([])
-    end
-
-    it 'Adds a "both" key if all options are selected' do
-      test_data = [{
-        'device_or_medication' => 'Hearing Aid',
-        'service_connected_disability' => 'Hearing Loss',
-        'impacted_locations' => {
-          'upper_left' => true,
-          'upper_right' => true,
-          'lower_left' => true,
-          'lower_right' => true
-        }
-      }]
-      results = form.gather_overflow_devices(test_data)
-      expect(results[0]).to include('both' => true)
-    end
-
-    it 'Adds the hash if both left and right are selected' do
-      test_data = [{
-        'device_or_medication' => 'Hearing Aid',
-        'service_connected_disability' => 'Hearing Loss',
-        'impacted_locations' => {
-          'upper_left' => true,
-          'upper_right' => true,
-          'lower_left' => false,
-          'lower_right' => false
-        }
-      }]
-      results = form.gather_overflow_devices(test_data)
-      expect(results.length).to be(1)
-
-      test_data[0]['impacted_locations']['upper_left'] = false
-      test_data[0]['impacted_locations']['upper_right'] = false
-      test_data[0]['impacted_locations']['lower_left'] = true
-      test_data[0]['impacted_locations']['lower_right'] = true
-      results = form.gather_overflow_devices(test_data)
-      expect(results.length).to be(1)
     end
   end
 end
