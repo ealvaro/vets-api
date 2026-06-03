@@ -16,6 +16,7 @@ module DecisionReviews
           if @redesign
             format_evidence_data_for_lighthouse_schema
             @request_body['form4142'] = format_private_evidence_entries(@request_body['form4142'])
+            normalize_homeless_living_situation_other
           end
 
           normalize_evidence_retrieval_for_lighthouse_schema
@@ -223,6 +224,20 @@ module DecisionReviews
           # Lighthouse accepts missing evidenceDates key but rejects empty array
           merged_attributes['evidenceDates'] = unique_evidence_dates unless unique_evidence_dates.empty?
           merged_entry
+        end
+
+        # Normalizes the homelessLivingSituationOther field to remove newlines and collapse
+        # multiple consecutive spaces into single spaces. This ensures the text fits properly
+        # in the generated PDF form which has limited space.
+        def normalize_homeless_living_situation_other
+          homeless_other = @request_body.dig('data', 'attributes', 'homelessLivingSituationOther')
+
+          return unless homeless_other.is_a?(String) && !homeless_other.empty?
+
+          # Remove newlines and collapse multiple spaces into single spaces, then strip
+          normalized = homeless_other.gsub(/\s+/, ' ').strip
+
+          @request_body['data']['attributes']['homelessLivingSituationOther'] = normalized
         end
 
         # Gate on payload value, not Flipper toggle. This ensures users who started

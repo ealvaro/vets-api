@@ -822,4 +822,256 @@ RSpec.describe DecisionReviews::V1::SupplementalClaims::RequestBodyNormalizer do
       end
     end
   end
+
+  describe 'homelessLivingSituationOther normalization' do
+    subject(:normalized_data) { described_class.new(request_body).normalize }
+
+    context 'when redesign is enabled' do
+      context 'with text containing newlines' do
+        let(:request_body) do
+          {
+            'scRedesign' => true,
+            'data' => {
+              'attributes' => {
+                'veteran' => { 'phone' => { 'areaCode' => '555' } },
+                'homelessLivingSituationOther' => "Living in\nmy car\nbecause of\neviction"
+              }
+            }
+          }
+        end
+
+        it 'removes newlines and replaces with single spaces' do
+          result = normalized_data.dig('data', 'attributes', 'homelessLivingSituationOther')
+          expect(result).to eq('Living in my car because of eviction')
+        end
+
+        it 'does not contain any newlines' do
+          result = normalized_data.dig('data', 'attributes', 'homelessLivingSituationOther')
+          expect(result).not_to include("\n")
+          expect(result).not_to include("\r")
+        end
+
+        it 'does not contain consecutive spaces' do
+          result = normalized_data.dig('data', 'attributes', 'homelessLivingSituationOther')
+          expect(result).not_to match(/\s{2,}/)
+        end
+      end
+
+      context 'with text containing multiple consecutive spaces' do
+        let(:request_body) do
+          {
+            'scRedesign' => true,
+            'data' => {
+              'attributes' => {
+                'veteran' => { 'phone' => { 'areaCode' => '555' } },
+                'homelessLivingSituationOther' => 'Lost my   home    due to     financial    hardship'
+              }
+            }
+          }
+        end
+
+        it 'collapses multiple spaces into single spaces' do
+          result = normalized_data.dig('data', 'attributes', 'homelessLivingSituationOther')
+          expect(result).to eq('Lost my home due to financial hardship')
+        end
+
+        it 'does not contain consecutive spaces' do
+          result = normalized_data.dig('data', 'attributes', 'homelessLivingSituationOther')
+          expect(result).not_to match(/\s{2,}/)
+        end
+      end
+
+      context 'with text containing both newlines and multiple spaces' do
+        let(:request_body) do
+          {
+            'scRedesign' => true,
+            'data' => {
+              'attributes' => {
+                'veteran' => { 'phone' => { 'areaCode' => '555' } },
+                'homelessLivingSituationOther' => "Staying with\n\nfriends  because   I\nlost   my  apartment"
+              }
+            }
+          }
+        end
+
+        it 'normalizes both newlines and multiple spaces to single spaces' do
+          result = normalized_data.dig('data', 'attributes', 'homelessLivingSituationOther')
+          expect(result).to eq('Staying with friends because I lost my apartment')
+        end
+
+        it 'does not contain any newlines' do
+          result = normalized_data.dig('data', 'attributes', 'homelessLivingSituationOther')
+          expect(result).not_to include("\n")
+          expect(result).not_to include("\r")
+        end
+
+        it 'does not contain consecutive spaces' do
+          result = normalized_data.dig('data', 'attributes', 'homelessLivingSituationOther')
+          expect(result).not_to match(/\s{2,}/)
+        end
+      end
+
+      context 'with leading and trailing whitespace' do
+        let(:request_body) do
+          {
+            'scRedesign' => true,
+            'data' => {
+              'attributes' => {
+                'veteran' => { 'phone' => { 'areaCode' => '555' } },
+                'homelessLivingSituationOther' => "  \n  Couch surfing with family  \n  "
+              }
+            }
+          }
+        end
+
+        it 'strips leading and trailing whitespace' do
+          result = normalized_data.dig('data', 'attributes', 'homelessLivingSituationOther')
+          expect(result).to eq('Couch surfing with family')
+        end
+
+        it 'does not have leading or trailing spaces' do
+          result = normalized_data.dig('data', 'attributes', 'homelessLivingSituationOther')
+          expect(result[0]).not_to eq(' ')
+          expect(result[-1]).not_to eq(' ')
+        end
+      end
+
+      context 'with various whitespace characters (tabs, carriage returns)' do
+        let(:request_body) do
+          {
+            'scRedesign' => true,
+            'data' => {
+              'attributes' => {
+                'veteran' => { 'phone' => { 'areaCode' => '555' } },
+                'homelessLivingSituationOther' => "Living\tin\r\nshelter\t\tsystem"
+              }
+            }
+          }
+        end
+
+        it 'normalizes all whitespace types to single spaces' do
+          result = normalized_data.dig('data', 'attributes', 'homelessLivingSituationOther')
+          expect(result).to eq('Living in shelter system')
+        end
+
+        it 'does not contain any special whitespace characters' do
+          result = normalized_data.dig('data', 'attributes', 'homelessLivingSituationOther')
+          expect(result).not_to include("\t")
+          expect(result).not_to include("\r")
+          expect(result).not_to include("\n")
+        end
+
+        it 'does not contain consecutive spaces' do
+          result = normalized_data.dig('data', 'attributes', 'homelessLivingSituationOther')
+          expect(result).not_to match(/\s{2,}/)
+        end
+      end
+
+      context 'with normal text (no whitespace issues)' do
+        let(:request_body) do
+          {
+            'scRedesign' => true,
+            'data' => {
+              'attributes' => {
+                'veteran' => { 'phone' => { 'areaCode' => '555' } },
+                'homelessLivingSituationOther' => 'Living in temporary housing'
+              }
+            }
+          }
+        end
+
+        it 'does not modify properly formatted text' do
+          result = normalized_data.dig('data', 'attributes', 'homelessLivingSituationOther')
+          expect(result).to eq('Living in temporary housing')
+        end
+      end
+
+      context 'when homelessLivingSituationOther is nil' do
+        let(:request_body) do
+          {
+            'scRedesign' => true,
+            'data' => {
+              'attributes' => {
+                'veteran' => { 'phone' => { 'areaCode' => '555' } },
+                'homelessLivingSituationOther' => nil
+              }
+            }
+          }
+        end
+
+        it 'does not raise an error' do
+          expect { normalized_data }.not_to raise_error
+        end
+
+        it 'leaves the field as nil' do
+          result = normalized_data.dig('data', 'attributes', 'homelessLivingSituationOther')
+          expect(result).to be_nil
+        end
+      end
+
+      context 'when homelessLivingSituationOther is empty string' do
+        let(:request_body) do
+          {
+            'scRedesign' => true,
+            'data' => {
+              'attributes' => {
+                'veteran' => { 'phone' => { 'areaCode' => '555' } },
+                'homelessLivingSituationOther' => ''
+              }
+            }
+          }
+        end
+
+        it 'does not raise an error' do
+          expect { normalized_data }.not_to raise_error
+        end
+
+        it 'leaves the field as empty string' do
+          result = normalized_data.dig('data', 'attributes', 'homelessLivingSituationOther')
+          expect(result).to eq('')
+        end
+      end
+
+      context 'when homelessLivingSituationOther is not present in attributes' do
+        let(:request_body) do
+          {
+            'scRedesign' => true,
+            'data' => {
+              'attributes' => {
+                'veteran' => { 'phone' => { 'areaCode' => '555' } }
+              }
+            }
+          }
+        end
+
+        it 'does not raise an error' do
+          expect { normalized_data }.not_to raise_error
+        end
+
+        it 'does not add the field' do
+          result = normalized_data.dig('data', 'attributes', 'homelessLivingSituationOther')
+          expect(result).to be_nil
+        end
+      end
+    end
+
+    context 'when redesign is disabled' do
+      let(:request_body) do
+        {
+          'scRedesign' => false,
+          'data' => {
+            'attributes' => {
+              'veteran' => { 'phone' => { 'areaCode' => '555' } },
+              'homelessLivingSituationOther' => "Text with\nnewlines  and   spaces"
+            }
+          }
+        }
+      end
+
+      it 'does not normalize the field' do
+        result = normalized_data.dig('data', 'attributes', 'homelessLivingSituationOther')
+        expect(result).to eq("Text with\nnewlines  and   spaces")
+      end
+    end
+  end
 end
