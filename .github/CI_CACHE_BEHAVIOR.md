@@ -12,7 +12,7 @@ This document describes how GitHub Actions caches are used, written, and cleaned
 | `index-buildkit-1-*` | BuildKit layer index metadata | ~0 MB |
 | `docker-image-${{ github.sha }}` | Full compressed Docker image tar (~900 MB) shared across 24 test shards | ~900 MB |
 | `shard-manifest-${{ github.run_id }}-group-N` | List of spec files for each of the 24 test shards | ~0 MB |
-| `parallel-runtime-log-${{ github.ref }}-${{ github.run_id }}` | Per-file rspec runtimes used for shard balancing on next run | ~0 MB |
+| `parallel-runtime-log-${{ github.ref }}-${{ github.run_id }}` | Per-file rspec runtimes used for shard balancing on next run | ~35 KB |
 | `setup-ruby-bundler-cache-*` | Bundled gems for the linting job | ~181 MB |
 
 ## How BuildKit layer caching works
@@ -25,7 +25,9 @@ Docker images are built in layers stacked on top of each other:
 4. Gems (bundle install) — changes when Gemfile changes
 5. App code — changes on every commit
 
-When a build runs, BuildKit checks which layers have changed and reuses cached blobs for unchanged layers. If only app code changed, layers 1–4 are pulled from cache and only layer 5 is rebuilt. The stable base layer blobs are shared across all refs and reused on every build.
+When a build runs, BuildKit checks which layers have changed and reuses cached blobs for unchanged layers. If only app code changed, layers 1–4 are pulled from cache and only layer 5 is rebuilt.
+
+> **Note:** Buildkit blobs provided no measurable build speedup in practice and were accumulating ~4.8 GB on master alone. They are now deleted after every run for all refs including master.
 
 ---
 
@@ -34,7 +36,7 @@ When a build runs, BuildKit checks which layers have changed and reuses cached b
 ### Fail
 
 **Build job:**
-- `cache-from` pulls shared base layer blobs from master ✅
+- `cache-from: type=gha` attempts to pull buildkit blobs — miss (deleted after previous run)
 - Writes new buildkit blobs for this PR ref
 - Saves `docker-image-${{ github.sha }}`
 
@@ -45,11 +47,11 @@ When a build runs, BuildKit checks which layers have changed and reuses cached b
 
 **Publish results:**
 - Docker image tar: deleted
-- Shard manifests: deleted
-- Buildkit blobs: deleted for all non-master refs
-- Runtime log: not saved (tests failed)
+- Shard manifests: deleted (bulk delete scoped to current ref)
+- Buildkit blobs: deleted for all refs
+- Runtime logs: all PR runtime logs deleted, not saved (tests failed)
 
-**What remains in cache:** master runtime log, master buildkit blobs
+**What remains in cache:** latest master runtime log, `setup-ruby-bundler-cache-*`, `codeql-trap-*`
 
 ---
 
@@ -58,9 +60,9 @@ When a build runs, BuildKit checks which layers have changed and reuses cached b
 Same as fail except:
 
 **Publish results:**
-- Runtime log: saved for this PR ref
+- Runtime log: saved for this PR ref, then deleted on next PR run
 
-**What remains in cache:** runtime log for this PR ref
+**What remains in cache:** runtime log for this PR ref, latest master runtime log, `setup-ruby-bundler-cache-*`, `codeql-trap-*`
 
 ---
 
@@ -69,7 +71,7 @@ Same as fail except:
 ### Fail
 
 **Build job:**
-- `cache-from` pulls shared base layer blobs ✅
+- `cache-from: type=gha` attempts to pull buildkit blobs — miss (deleted after previous run)
 - Writes fresh buildkit blobs for this commit
 - Saves `docker-image-${{ github.sha }}` (new SHA)
 
@@ -80,11 +82,11 @@ Same as fail except:
 
 **Publish results:**
 - Docker image tar: deleted
-- Shard manifests: deleted
-- Buildkit blobs: deleted for all non-master refs (including blobs from previous commits on this PR)
-- Runtime log: not saved
+- Shard manifests: deleted (bulk delete scoped to current ref)
+- Buildkit blobs: deleted for all refs
+- Runtime logs: all PR runtime logs deleted, not saved
 
-**What remains in cache:** runtime log from previous successful run (if any)
+**What remains in cache:** runtime log from previous successful run (if any), latest master runtime log, `setup-ruby-bundler-cache-*`, `codeql-trap-*`
 
 ---
 
@@ -93,9 +95,9 @@ Same as fail except:
 Same as fail except:
 
 **Publish results:**
-- Runtime log: saved, overwriting previous for this PR ref
+- Runtime log: saved for this PR ref, then deleted on next PR run
 
-**What remains in cache:** updated runtime log for this PR ref
+**What remains in cache:** updated runtime log for this PR ref, latest master runtime log, `setup-ruby-bundler-cache-*`, `codeql-trap-*`
 
 ---
 
@@ -104,22 +106,22 @@ Same as fail except:
 ### Fail
 
 **Build job:**
-- `cache-from` pulls existing master buildkit blobs ✅
-- Writes new buildkit blobs alongside existing ones
+- `cache-from: type=gha` attempts to pull buildkit blobs — miss (deleted after previous run)
+- Writes new buildkit blobs
 - Saves `docker-image-${{ github.sha }}`
 
 **Tests job (×24):**
 - Restores `docker-image-${{ github.sha }}` ✅
-- Restores runtime log: hits master ✅
+- Restores runtime log: hits latest master runtime log ✅
 - Restores shard manifest: miss → generates and saves fresh
 
 **Publish results:**
 - Docker image tar: deleted
 - Shard manifests: deleted
-- Buildkit blobs: untouched (master is excluded from bulk delete)
-- Runtime log: not saved
+- Buildkit blobs: deleted for all refs
+- Runtime logs: old master runtime logs deleted, not saved (tests failed), latest kept
 
-**What remains in cache:** buildkit blobs for master (accumulating), nothing else
+**What remains in cache:** latest master runtime log (unchanged), `setup-ruby-bundler-cache-*`, `codeql-trap-*`
 
 ---
 
@@ -128,9 +130,9 @@ Same as fail except:
 Same as fail except:
 
 **Publish results:**
-- Runtime log: saved, overwriting previous master runtime log
+- Runtime log: new one saved, all previous master runtime logs deleted, only latest kept
 
-**What remains in cache:** buildkit blobs for master (accumulating), updated master runtime log
+**What remains in cache:** updated master runtime log, `setup-ruby-bundler-cache-*`, `codeql-trap-*`
 
 ---
 
@@ -138,12 +140,12 @@ Same as fail except:
 
 | Scenario | Docker image tar | Buildkit blobs | Shard manifests | Runtime log |
 |---|---|---|---|---|
-| New PR fail | Deleted | Written then deleted | Deleted | Not saved |
-| New PR success | Deleted | Written then deleted | Deleted | Saved |
-| Existing PR fail | Deleted | Previous deleted, fresh written then deleted | Deleted | Not saved |
-| Existing PR success | Deleted | Previous deleted, fresh written then deleted | Deleted | Saved |
-| Master fail | Deleted | Accumulate | Deleted | Not saved |
-| Master success | Deleted | Accumulate | Deleted | Saved |
+| New PR fail | Deleted | Written then deleted | Deleted | Not saved, all PR logs deleted |
+| New PR success | Deleted | Written then deleted | Deleted | Saved, deleted on next PR run |
+| Existing PR fail | Deleted | Written then deleted | Deleted | Not saved, all PR logs deleted |
+| Existing PR success | Deleted | Written then deleted | Deleted | Saved, deleted on next PR run |
+| Master fail | Deleted | Written then deleted | Deleted | Not saved, old logs pruned |
+| Master success | Deleted | Written then deleted | Deleted | Saved, old logs pruned, latest kept |
 
 ## PR close
 
@@ -188,6 +190,19 @@ gh api --paginate "repos/software/vets-api/actions/caches" --hostname va.ghe.com
   while read -r id; do
     gh api --hostname va.ghe.com -X DELETE "repos/software/vets-api/actions/caches/$id" --silent || true
   done
+```
+
+**Delete all parallel runtime logs not accessed in the last 30 minutes** (macOS):
+```bash
+CUTOFF=$(date -u -v-30M +%Y-%m-%dT%H:%M:%SZ) && \
+gh api --paginate "repos/software/vets-api/actions/caches" \
+  --hostname va.ghe.com \
+  --jq '.actions_caches[]' | \
+jq -r --arg cutoff "$CUTOFF" \
+  'select(.key | startswith("parallel-runtime-log-")) | select(.last_accessed_at < $cutoff) | .id' | \
+while read -r id; do
+  gh api --hostname va.ghe.com --silent -X DELETE "repos/software/vets-api/actions/caches/$id" || true
+done
 ```
 
 The repo has a hard 10 GB enterprise cache limit. When exceeded, GitHub auto-evicts least-recently-used caches, which can cause `fail-on-cache-miss` failures mid-CI run.

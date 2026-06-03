@@ -593,17 +593,31 @@ jobs:
           # Delete Docker image
           api -X DELETE "repos/${{ github.repository }}/actions/caches?key=docker-image-${{ github.sha }}"
 
-          # Shard manifests
-          for i in $(seq 1 24); do
-            api -X DELETE "repos/${{ github.repository }}/actions/caches?key=shard-manifest-${{ github.run_id }}-group-$i"
-          done
+          # Bulk delete: buildkit, index-buildkit for all refs, shard manifests for current ref only
+          gh api --paginate "repos/${{ github.repository }}/actions/caches" \
+            --hostname va.ghe.com \
+            --jq '.actions_caches[] | select(
+              ((.key | startswith("buildkit-") or startswith("index-buildkit-"))) or
+              ((.key | startswith("shard-manifest-")) and .ref == "${{ github.ref }}")
+            ) | .id' \
+          | while read -r id; do
+              api -X DELETE "repos/${{ github.repository }}/actions/caches/$id"
+            done
 
-          # Buildkit caches: all non-master refs
+          # Runtime logs: delete all for PRs, keep only latest for master
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             gh api --paginate "repos/${{ github.repository }}/actions/caches" \
               --hostname va.ghe.com \
-              --jq '.actions_caches[] | select(.ref != "refs/heads/master") | select(.key | startswith("shard-manifest-") or startswith("buildkit-") or startswith("index-buildkit-") or startswith("docker-image-")) | .id' \
+              --jq '.actions_caches[] | select(.key | startswith("parallel-runtime-log-refs/pull/")) | .id' \
             | while read -r id; do
+                api -X DELETE "repos/${{ github.repository }}/actions/caches/$id"
+              done
+          else
+            gh api --paginate "repos/${{ github.repository }}/actions/caches" \
+              --hostname va.ghe.com \
+              --jq '.actions_caches[] | select(.ref == "refs/heads/master") | select(.key | startswith("parallel-runtime-log-")) | {id, created_at}' | \
+            jq -s 'sort_by(.created_at) | reverse | .[1:] | .[].id' | \
+            while read -r id; do
                 api -X DELETE "repos/${{ github.repository }}/actions/caches/$id"
               done
           fi
