@@ -598,7 +598,8 @@ jobs:
             --hostname va.ghe.com \
             --jq '.actions_caches[] | select(
               ((.key | startswith("buildkit-") or startswith("index-buildkit-"))) or
-              ((.key | startswith("shard-manifest-")) and .ref == "${{ github.ref }}")
+              ((.key | startswith("shard-manifest-")) and .ref == "${{ github.ref }}") or
+              ((.key | startswith("setup-ruby-bundler-cache-")) and .ref != "refs/heads/master")
             ) | .id' \
           | while read -r id; do
               api -X DELETE "repos/${{ github.repository }}/actions/caches/$id"
