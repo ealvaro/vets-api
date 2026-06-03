@@ -6,19 +6,19 @@ module AccreditedRepresentativePortal
       extend ActiveSupport::Concern
 
       DOCUMENT_KEYS = {
-        'conviction-details' => 'imprisonedDetailsDocuments',
-        'court-martialed-details' => 'militaryConvictionDetailsDocuments',
-        'under-charges-details' => 'currentlyChargedDetailsDocuments',
-        'resigned-from-education-details' => 'suspendedDetailsDocuments',
-        'withdrawn-from-education-details' => 'withdrawnDetailsDocuments',
-        'disciplined-for-dishonesty-details' => 'disciplinedDetailsDocuments',
-        'resigned-for-dishonesty-details' => 'resignedRetiredDetailsDocuments',
-        'representative-for-agency-details' => 'agentAttorneyDetailsDocuments',
-        'reprimanded-in-agency-details' => 'reprimandedDetailsDocuments',
-        'resigned-from-agency-details' => 'resignedToAvoidReprimandDetailsDocuments',
-        'applied-for-va-accreditation-details' => 'appliedForAccreditationDetailsDocuments',
-        'terminated-by-vsorg-details' => 'accreditationTerminatedDetailsDocuments',
-        'condition-that-affects-representation-details' => 'impairmentsDetailsDocuments'
+        'conviction-details' => 'convictionDetailsDocuments',
+        'court-martialed-details' => 'courtMartialedDetailsDocuments',
+        'under-charges-details' => 'underChargesDetailsDocuments',
+        'resigned-from-education-details' => 'resignedFromEducationDetailsDocuments',
+        'withdrawn-from-education-details' => 'withdrawnFromEducationDetailsDocuments',
+        'disciplined-for-dishonesty-details' => 'disciplinedForDishonestyDetailsDocuments',
+        'resigned-for-dishonesty-details' => 'resignedForDishonestyDetailsDocuments',
+        'representative-for-agency-details' => 'representativeForAgencyDetailsDocuments',
+        'reprimanded-in-agency-details' => 'reprimandedInAgencyDetailsDocuments',
+        'resigned-from-agency-details' => 'resignedFromAgencyDetailsDocuments',
+        'applied-for-va-accreditation-details' => 'appliedForVaAccreditationDetailsDocuments',
+        'terminated-by-vsorg-details' => 'terminatedByVsorgDetailsDocuments',
+        'condition-that-affects-representation-details' => 'conditionThatAffectsRepresentationDetailsDocuments'
       }.freeze
 
       def documents_key_for(slug)

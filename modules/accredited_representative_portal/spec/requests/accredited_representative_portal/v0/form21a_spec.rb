@@ -85,23 +85,284 @@ RSpec.describe 'AccreditedRepresentativePortal::V0::Form21a', type: :request do
           form = form_array.first
           expect(form['icnNo']).to eq(representative_user.icn)
           expect(form['uId']).to eq(representative_user.uuid)
-          instance_double(Faraday::Response, success?: true, body: { result: 'success' }, status: 201)
+          instance_double(
+            Faraday::Response,
+            success?: true,
+            body: {
+              'uploaded' => [
+                {
+                  'application' => {
+                    'id' => '12345'
+                  }
+                }
+              ],
+              'result' => 'success'
+            },
+            status: 201
+          )
         end
 
         expect(Rails.logger).to receive(:info).with(
           a_string_including(
             'Form21aController: Form 21a successfully submitted to OGC service by user with' \
-            " user_uuid=#{representative_user.uuid} - Response: {:result=>\"success\"}"
+            " user_uuid=#{representative_user.uuid}"
           )
         )
 
         make_post_request
         expect(response).to have_http_status(:created)
-        expect(parsed_response).to eq('result' => 'success')
+        expect(parsed_response).to eq(
+          'uploaded' => [
+            {
+              'application' => {
+                'id' => '12345'
+              }
+            }
+          ],
+          'result' => 'success'
+        )
 
         get('/accredited_representative_portal/v0/in_progress_forms/21a')
         expect(response).to have_http_status(:ok)
         expect(parsed_response).to eq({})
+      end
+    end
+
+    context 'when response includes uploaded application id and form has document uploads' do
+      let(:in_progress_form_data) do
+        {
+          'convictionDetailsDocuments' => [
+            {
+              'name' => 'test_doc.pdf',
+              'confirmationCode' => 'guid-123',
+              'size' => 12_345,
+              'type' => 'application/pdf'
+            }
+          ]
+        }.to_json
+      end
+
+      let!(:in_progress_form) do
+        create(
+          :in_progress_form,
+          form_id: '21a',
+          user_uuid: representative_user.uuid,
+          form_data: in_progress_form_data
+        )
+      end
+
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:accredited_representative_portal_form_21a)
+          .and_return(true)
+      end
+
+      it 'enqueues document upload jobs when application id is present' do
+        allow(AccreditationService).to receive(:submit_form21a).and_return(
+          instance_double(
+            Faraday::Response,
+            success?: true,
+            body: {
+              'uploaded' => [
+                {
+                  'application' => {
+                    'id' => '12345'
+                  }
+                }
+              ],
+              'result' => 'success'
+            },
+            status: 201
+          )
+        )
+
+        expect(AccreditedRepresentativePortal::Form21aDocumentUploadService)
+          .to receive(:enqueue_uploads)
+          .with(in_progress_form:, application_id: '12345')
+          .and_return(1)
+
+        make_post_request
+
+        expect(response).to have_http_status(:created)
+      end
+
+      it 'destroys in-progress form after enqueuing uploads' do
+        allow(AccreditationService).to receive(:submit_form21a).and_return(
+          instance_double(
+            Faraday::Response,
+            success?: true,
+            body: {
+              'uploaded' => [
+                {
+                  'application' => {
+                    'id' => '12345'
+                  }
+                }
+              ],
+              'result' => 'success'
+            },
+            status: 201
+          )
+        )
+
+        allow(AccreditedRepresentativePortal::Form21aDocumentUploadService)
+          .to receive(:enqueue_uploads)
+          .and_return(1)
+
+        expect { make_post_request }.to change(InProgressForm, :count).by(-1)
+      end
+
+      it 'still returns success and destroys in-progress form when application id is missing' do
+        allow(AccreditationService).to receive(:submit_form21a).and_return(
+          instance_double(
+            Faraday::Response,
+            success?: true,
+            body: {
+              'uploaded' => [
+                {
+                  'application' => {}
+                }
+              ],
+              'result' => 'success'
+            },
+            status: 201
+          )
+        )
+
+        expect(AccreditedRepresentativePortal::Form21aDocumentUploadService)
+          .not_to receive(:enqueue_uploads)
+
+        allow(Rails.logger).to receive(:error).and_call_original
+        allow(Rails.logger).to receive(:info).and_call_original
+
+        expect { make_post_request }.to change(InProgressForm, :count).by(-1)
+
+        expect(response).to have_http_status(:created)
+        expect(parsed_response).to eq(
+          'uploaded' => [
+            {
+              'application' => {}
+            }
+          ],
+          'result' => 'success'
+        )
+
+        expect(Rails.logger).to have_received(:error).with(
+          a_string_including('Missing application id in GCLAWS response')
+        )
+      end
+    end
+
+    context 'when response includes application id but no in-progress form exists' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:accredited_representative_portal_form_21a)
+          .and_return(true)
+
+        InProgressForm.where(form_id: '21a', user_uuid: representative_user.uuid).delete_all
+      end
+
+      it 'logs a warning, skips document upload enqueueing, and still renders the successful response' do
+        allow(AccreditationService).to receive(:submit_form21a).and_return(
+          instance_double(
+            Faraday::Response,
+            success?: true,
+            body: {
+              'uploaded' => [
+                {
+                  'application' => {
+                    'id' => '12345'
+                  }
+                }
+              ],
+              'result' => 'success'
+            },
+            status: 201
+          )
+        )
+
+        expect(AccreditedRepresentativePortal::Form21aDocumentUploadService)
+          .not_to receive(:enqueue_uploads)
+
+        allow(Rails.logger).to receive(:warn).and_call_original
+        allow(Rails.logger).to receive(:info).and_call_original
+
+        make_post_request
+
+        expect(response).to have_http_status(:created)
+        expect(parsed_response).to eq(
+          'uploaded' => [
+            {
+              'application' => {
+                'id' => '12345'
+              }
+            }
+          ],
+          'result' => 'success'
+        )
+
+        expect(Rails.logger).to have_received(:warn).with(
+          a_string_including('No in-progress form found after successful Form 21a submission')
+        )
+      end
+    end
+
+    context 'when in-progress form cleanup fails after document uploads are enqueued' do
+      let!(:in_progress_form) { create(:in_progress_form, form_id: '21a', user_uuid: representative_user.uuid) }
+
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:accredited_representative_portal_form_21a)
+          .and_return(true)
+      end
+
+      it 'logs the cleanup error and still renders the successful OGC response' do
+        allow(AccreditationService).to receive(:submit_form21a).and_return(
+          instance_double(
+            Faraday::Response,
+            success?: true,
+            body: {
+              'uploaded' => [
+                {
+                  'application' => {
+                    'id' => '12345'
+                  }
+                }
+              ],
+              'result' => 'success'
+            },
+            status: 201
+          )
+        )
+
+        allow(AccreditedRepresentativePortal::Form21aDocumentUploadService)
+          .to receive(:enqueue_uploads)
+          .and_return(0)
+
+        allow_any_instance_of(InProgressForm)
+          .to receive(:destroy!)
+          .and_raise(ActiveRecord::ActiveRecordError, 'cleanup failed')
+
+        allow(Rails.logger).to receive(:error).and_call_original
+        allow(Rails.logger).to receive(:info).and_call_original
+
+        make_post_request
+
+        expect(response).to have_http_status(:created)
+        expect(parsed_response).to eq(
+          'uploaded' => [
+            {
+              'application' => {
+                'id' => '12345'
+              }
+            }
+          ],
+          'result' => 'success'
+        )
+
+        expect(Rails.logger).to have_received(:error).with(
+          a_string_including('Failed to destroy in-progress form after successful Form 21a submission')
+        )
       end
     end
 
@@ -418,6 +679,21 @@ RSpec.describe 'AccreditedRepresentativePortal::V0::Form21a', type: :request do
       end
     end
 
+    context 'when file upload is unprocessable' do
+      before do
+        allow_any_instance_of(AccreditedRepresentativePortal::Form21aAttachment)
+          .to receive(:set_file_data!)
+          .and_raise(Common::Exceptions::UnprocessableEntity.new(detail: 'Invalid file type'))
+      end
+
+      it 'returns unprocessable entity with error message' do
+        make_post_request
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(parsed_response['errors']).to include('Invalid file type')
+      end
+    end
+
     context 'when attachment fails validation' do
       before do
         allow_any_instance_of(AccreditedRepresentativePortal::Form21aAttachment)
@@ -482,7 +758,7 @@ RSpec.describe 'AccreditedRepresentativePortal::V0::Form21a', type: :request do
         in_progress_form.reload
         form_data = JSON.parse(in_progress_form.form_data)
 
-        documents = form_data['imprisonedDetailsDocuments']
+        documents = form_data['convictionDetailsDocuments']
         expect(documents).to be_an(Array)
         expect(documents.size).to eq(1)
 

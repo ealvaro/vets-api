@@ -59,8 +59,14 @@ module AccreditedRepresentativePortal
       Rails.logger.info(log)
     end
 
+    def s3_uploads_enabled?
+      ActiveModel::Type::Boolean.new.cast(
+        Settings.ogc.form21a_service_url.s3.uploads_enabled
+      )
+    end
+
     def set_aws_params
-      if Settings.ogc.form21a_service_url.s3.uploads_enabled
+      if s3_uploads_enabled?
         self.aws_credentials = {
           region: Settings.ogc.form21a_service_url.s3.region
         }
