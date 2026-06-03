@@ -1726,6 +1726,7 @@ spec/lib/lighthouse/direct_deposit/payment_account_spec.rb @software/vfs-authent
 spec/lib/lighthouse/facilities @software/vfs-facilities @software/backend-review-group
 spec/lib/lighthouse/facilities/client_spec.rb @software/vfs-facilities @software/backend-review-group
 spec/lib/lighthouse/letters_generator @software/benefits-management-tools-be @software/backend-review-group
+spec/lib/lighthouse/service_exception_spec.rb @software/disability-benefits @software/benefits-management-tools-be @software/backend-review-group
 spec/lib/lighthouse/veteran_verification @software/vfs-authenticated-experience-backend @software/backend-review-group
 spec/lib/lighthouse/veterans_health @software/va-cto-health-products @software/backend-review-group
 spec/lib/lighthouse/healthcare_cost_and_coverage @software/vsa-debt-resolution @software/backend-review-group

@@ -63,8 +63,8 @@ RSpec.describe Lighthouse::HealthcareCostAndCoverage::Medication::Service do
         allow(service.send(:config)).to receive(:get).and_raise(Faraday::TimeoutError.new)
       end
 
-      it 'raises Common::Exceptions::Timeout' do
-        expect { service.list(id: medication_id) }.to raise_error(Common::Exceptions::Timeout)
+      it 'raises Common::Exceptions::GatewayTimeout' do
+        expect { service.list(id: medication_id) }.to raise_error(Common::Exceptions::GatewayTimeout)
       end
     end
 

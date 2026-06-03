@@ -200,11 +200,11 @@ RSpec.describe LighthouseRatedDisabilitiesProvider do
     expect(response.rated_disabilities).to eq([])
   end
 
-  it 'returns the proper error through the Timeout class' do
+  it 'returns the proper error through the GatewayTimeout class' do
     allow_any_instance_of(Faraday::Connection).to receive(:get).and_raise(Faraday::TimeoutError)
     expect do
       @provider.get_rated_disabilities('', '')
-    end.to raise_error(Common::Exceptions::Timeout)
+    end.to raise_error(Common::Exceptions::GatewayTimeout)
   end
 
   it 'returns the proper error through the ServiceError class' do

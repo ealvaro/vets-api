@@ -75,8 +75,8 @@ RSpec.describe Lighthouse::HealthcareCostAndCoverage::Account::Service do
         allow(service.send(:config)).to receive(:get).and_raise(Faraday::TimeoutError.new)
       end
 
-      it 'raises Lighthouse::Service timeout (mapped to Common::Exceptions::Timeout)' do
-        expect { service.list }.to raise_error(Common::Exceptions::Timeout)
+      it 'raises Lighthouse::Service timeout (mapped to Common::Exceptions::GatewayTimeout)' do
+        expect { service.list }.to raise_error(Common::Exceptions::GatewayTimeout)
       end
     end
 
