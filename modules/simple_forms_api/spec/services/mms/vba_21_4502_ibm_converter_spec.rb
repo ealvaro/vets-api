@@ -41,7 +41,7 @@ RSpec.describe SimpleFormsApi::Mms::VBA214502IbmConverter do
       expect(ibm_payload['VETERAN_SSN_1']).to eq('')
       expect(ibm_payload['VETERAN_SERVICE_NUMBER']).to eq('')
       expect(ibm_payload['INT_PHONE_NUMBER']).to eq('')
-      expect(ibm_payload['CLAIMANT_ADDRESS_LINE2']).to eq('')
+      expect(ibm_payload['CURRENT_ADDRESS_LINE2']).to eq('')
       expect(ibm_payload['DATE_ENTERED_TO_SERVICE']).to eq('')
       expect(ibm_payload['DATE_SEPARATED_FROM_SERVICE']).to eq('')
       expect(ibm_payload['DATE_APPLIED_DISABILITY']).to eq('')
@@ -93,23 +93,23 @@ RSpec.describe SimpleFormsApi::Mms::VBA214502IbmConverter do
     end
 
     it 'normalizes ZIP to first 5 digits' do
-      expect(payload['CLAIMANT_ADDRESS_ZIP5']).to match(/\A\d{5}\z/)
+      expect(payload['CURRENT_ADDRESS_ZIP5']).to match(/\A\d{5}\z/)
     end
 
     describe 'electronic correspondence checkbox' do
       it 'returns "1" when true' do
         data['electronic_correspondence'] = true
-        expect(described_class.convert(SimpleFormsApi::VBA214502.new(data))['AGREE_ELECTRONIC_CORR']).to eq('1')
+        expect(described_class.convert(SimpleFormsApi::VBA214502.new(data))['AGREE_ELECTRONIC_CORR']).to eq(1)
       end
 
       it 'returns "0" when false' do
         data['electronic_correspondence'] = false
-        expect(described_class.convert(SimpleFormsApi::VBA214502.new(data))['AGREE_ELECTRONIC_CORR']).to eq('0')
+        expect(described_class.convert(SimpleFormsApi::VBA214502.new(data))['AGREE_ELECTRONIC_CORR']).to eq(0)
       end
 
       it 'returns "0" when missing' do
         data.delete('electronic_correspondence')
-        expect(described_class.convert(SimpleFormsApi::VBA214502.new(data))['AGREE_ELECTRONIC_CORR']).to eq('0')
+        expect(described_class.convert(SimpleFormsApi::VBA214502.new(data))['AGREE_ELECTRONIC_CORR']).to eq(0)
       end
     end
 
@@ -124,8 +124,8 @@ RSpec.describe SimpleFormsApi::Mms::VBA214502IbmConverter do
           'country' => 'US'
         }
         result = described_class.convert(SimpleFormsApi::VBA214502.new(data))
-        expect(result['CLAIMANT_ADDRESS_LINE1']).to eq('123 Current St')
-        expect(result['CLAIMANT_ADDRESS_CITY']).to eq('Currentville')
+        expect(result['CURRENT_ADDRESS_LINE1']).to eq('123 Current St')
+        expect(result['CURRENT_ADDRESS_CITY']).to eq('Currentville')
       end
 
       it 'uses planned_mailing_address when active duty and planned address is provided' do
@@ -138,8 +138,8 @@ RSpec.describe SimpleFormsApi::Mms::VBA214502IbmConverter do
           'country' => 'US'
         }
         result = described_class.convert(SimpleFormsApi::VBA214502.new(data))
-        expect(result['CLAIMANT_ADDRESS_LINE1']).to eq('456 Planned Rd')
-        expect(result['CLAIMANT_ADDRESS_CITY']).to eq('Plannedburg')
+        expect(result['CURRENT_ADDRESS_LINE1']).to eq('456 Planned Rd')
+        expect(result['CURRENT_ADDRESS_CITY']).to eq('Plannedburg')
       end
 
       it 'falls back to current_mailing_address when active duty but planned is empty' do
@@ -150,7 +150,7 @@ RSpec.describe SimpleFormsApi::Mms::VBA214502IbmConverter do
           'city' => 'Currentville'
         }
         result = described_class.convert(SimpleFormsApi::VBA214502.new(data))
-        expect(result['CLAIMANT_ADDRESS_LINE1']).to eq('123 Current St')
+        expect(result['CURRENT_ADDRESS_LINE1']).to eq('123 Current St')
       end
     end
 
@@ -169,11 +169,11 @@ RSpec.describe SimpleFormsApi::Mms::VBA214502IbmConverter do
           data['branch_of_service'] = branch_value
           result = described_class.convert(SimpleFormsApi::VBA214502.new(data))
 
-          expect(result[expected_field]).to eq('1')
+          expect(result[expected_field]).to eq(1)
 
           other_branch_keys = result.keys.grep(/^BRANCH_OF_SERVICE_/) - [expected_field]
           other_branch_keys.each do |key|
-            expect(result[key]).to eq('0'), "expected #{key} to be '0' when branch is #{branch_value}"
+            expect(result[key]).to eq(0), "expected #{key} to be 0 when branch is #{branch_value}"
           end
         end
       end
@@ -182,7 +182,7 @@ RSpec.describe SimpleFormsApi::Mms::VBA214502IbmConverter do
         data['branch_of_service'] = 'FOREIGN LEGION'
         result = described_class.convert(SimpleFormsApi::VBA214502.new(data))
         result.keys.grep(/^BRANCH_OF_SERVICE_/).each do |key|
-          expect(result[key]).to eq('0')
+          expect(result[key]).to eq(0)
         end
       end
     end
@@ -191,22 +191,22 @@ RSpec.describe SimpleFormsApi::Mms::VBA214502IbmConverter do
       it 'checks YES and unchecks NO when true' do
         data['active_duty'] = true
         result = described_class.convert(SimpleFormsApi::VBA214502.new(data))
-        expect(result['ACTIVE_DUTY_YES']).to eq('1')
-        expect(result['ACTIVE_DUTY_NO']).to eq('0')
+        expect(result['ACTIVE_DUTY_YES']).to eq(1)
+        expect(result['ACTIVE_DUTY_NO']).to eq(0)
       end
 
       it 'checks NO and unchecks YES when false' do
         data['active_duty'] = false
         result = described_class.convert(SimpleFormsApi::VBA214502.new(data))
-        expect(result['ACTIVE_DUTY_YES']).to eq('0')
-        expect(result['ACTIVE_DUTY_NO']).to eq('1')
+        expect(result['ACTIVE_DUTY_YES']).to eq(0)
+        expect(result['ACTIVE_DUTY_NO']).to eq(1)
       end
 
       it 'leaves both unchecked when missing' do
         data.delete('active_duty')
         result = described_class.convert(SimpleFormsApi::VBA214502.new(data))
-        expect(result['ACTIVE_DUTY_YES']).to eq('0')
-        expect(result['ACTIVE_DUTY_NO']).to eq('0')
+        expect(result['ACTIVE_DUTY_YES']).to eq(0)
+        expect(result['ACTIVE_DUTY_NO']).to eq(0)
       end
     end
 
@@ -221,8 +221,8 @@ RSpec.describe SimpleFormsApi::Mms::VBA214502IbmConverter do
           data['vehicle_type'] = vehicle
           result = described_class.convert(SimpleFormsApi::VBA214502.new(data))
 
-          expect(result["TYPE_CONVEYANCE_#{suffix}"]).to eq('1')
-          expect(result['TYPE_CONVEYANCE_OTHER']).to eq('0')
+          expect(result["TYPE_CONVEYANCE_#{suffix}"]).to eq(1)
+          expect(result['TYPE_CONVEYANCE_OTHER']).to eq(0)
           expect(result['TYPE_CONVEYANCE_OTHER_SPECIFY']).to eq('')
         end
       end
@@ -231,11 +231,11 @@ RSpec.describe SimpleFormsApi::Mms::VBA214502IbmConverter do
         data['vehicle_type'] = 'Motorcycle Sidecar'
         result = described_class.convert(SimpleFormsApi::VBA214502.new(data))
 
-        expect(result['TYPE_CONVEYANCE_AUTO']).to eq('0')
-        expect(result['TYPE_CONVEYANCE_STAT_WAGON']).to eq('0')
-        expect(result['TYPE_CONVEYANCE_VAN']).to eq('0')
-        expect(result['TYPE_CONVEYANCE_TRUCK']).to eq('0')
-        expect(result['TYPE_CONVEYANCE_OTHER']).to eq('1')
+        expect(result['TYPE_CONVEYANCE_AUTO']).to eq(0)
+        expect(result['TYPE_CONVEYANCE_STAT_WAGON']).to eq(0)
+        expect(result['TYPE_CONVEYANCE_VAN']).to eq(0)
+        expect(result['TYPE_CONVEYANCE_TRUCK']).to eq(0)
+        expect(result['TYPE_CONVEYANCE_OTHER']).to eq(1)
         expect(result['TYPE_CONVEYANCE_OTHER_SPECIFY']).to eq('Motorcycle Sidecar')
       end
     end

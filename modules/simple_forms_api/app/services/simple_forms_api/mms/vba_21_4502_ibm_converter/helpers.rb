@@ -57,17 +57,17 @@ module SimpleFormsApi
         end
 
         def bool_to_checkbox(value)
-          truthy?(value) ? '1' : '0'
+          truthy?(value) ? 1 : 0
         end
 
         def yes_checkbox(value)
-          truthy?(value) ? '1' : '0'
+          truthy?(value) ? 1 : 0
         end
 
         def no_checkbox(value)
-          return '0' if value.nil?
+          return 0 if value.nil?
 
-          truthy?(value) ? '0' : '1'
+          truthy?(value) ? 0 : 1
         end
 
         def truthy?(value)
@@ -92,7 +92,7 @@ module SimpleFormsApi
 
         def conveyance_other_checkbox(form)
           vehicle_type = form.data['vehicle_type'].to_s.upcase
-          return '0' if vehicle_type.empty?
+          return 0 if vehicle_type.empty?
 
           bool_to_checkbox(!CONVEYANCE_MAP.key?(vehicle_type))
         end

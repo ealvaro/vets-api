@@ -29,12 +29,12 @@ module SimpleFormsApi
         'EMAIL' => ->(form) { form.data['email'] || '' },
         'AGREE_ELECTRONIC_CORR' => ->(form) { bool_to_checkbox(form.data['electronic_correspondence']) },
 
-        'CLAIMANT_ADDRESS_LINE1' => ->(form) { effective_address(form)['street'] || '' },
-        'CLAIMANT_ADDRESS_LINE2' => ->(form) { effective_address(form)['street2'] || '' },
-        'CLAIMANT_ADDRESS_CITY' => ->(form) { effective_address(form)['city'] || '' },
-        'CLAIMANT_ADDRESS_STATE' => ->(form) { effective_address(form)['state'] || '' },
-        'CLAIMANT_ADDRESS_COUNTRY' => ->(form) { effective_address(form)['country'] || '' },
-        'CLAIMANT_ADDRESS_ZIP5' => ->(form) { normalize_zip(effective_address(form)['postal_code']) },
+        'CURRENT_ADDRESS_LINE1' => ->(form) { effective_address(form)['street'] || '' },
+        'CURRENT_ADDRESS_LINE2' => ->(form) { effective_address(form)['street2'] || '' },
+        'CURRENT_ADDRESS_CITY' => ->(form) { effective_address(form)['city'] || '' },
+        'CURRENT_ADDRESS_STATE' => ->(form) { effective_address(form)['state'] || '' },
+        'CURRENT_ADDRESS_COUNTRY' => ->(form) { effective_address(form)['country'] || '' },
+        'CURRENT_ADDRESS_ZIP5' => ->(form) { normalize_zip(effective_address(form)['postal_code']) },
 
         'BRANCH_OF_SERVICE_ARMY' => ->(form) { branch_checkbox(form, 'ARMY') },
         'BRANCH_OF_SERVICE_NAVY' => ->(form) { branch_checkbox(form, 'NAVY') },
@@ -72,7 +72,7 @@ module SimpleFormsApi
         'DATE_PREVIOUS_APPLIED' => ->(form) { date_parts_to_string(form, 'date_of_previous_application') },
         'PLACE_PREVIOUS_APPLIED' => ->(form) { form.data['previous_application_location'] || '' },
 
-        'VETERAN_SIGNATURE' => ->(form) { form.data['statement_of_truth_signature'] || '' },
+        'VETERAN_SIGNATURE' => ->(form) { form.data['statement_of_truth_signature'].present? ? 1 : 0 },
         'DATE_OF_VETERAN_SIGNATURE' => ->(form) { date_parts_to_string(form, 'signature_date') },
 
         'FORM_TYPE' => ->(_) { FORM_TYPE_LABEL },

@@ -197,53 +197,53 @@ RSpec.describe SimpleFormsApi::Mms::VBA214502IbmConverter::Helpers do
 
   describe '#bool_to_checkbox' do
     it 'returns "1" for true' do
-      expect(harness.bool_to_checkbox(true)).to eq('1')
+      expect(harness.bool_to_checkbox(true)).to eq(1)
     end
 
     it 'returns "0" for false' do
-      expect(harness.bool_to_checkbox(false)).to eq('0')
+      expect(harness.bool_to_checkbox(false)).to eq(0)
     end
 
     it 'returns "0" for nil' do
-      expect(harness.bool_to_checkbox(nil)).to eq('0')
+      expect(harness.bool_to_checkbox(nil)).to eq(0)
     end
 
     it 'recognizes truthy strings' do
       %w[1 true yes y t TRUE Yes].each do |v|
-        expect(harness.bool_to_checkbox(v)).to eq('1')
+        expect(harness.bool_to_checkbox(v)).to eq(1)
       end
     end
 
     it 'returns "0" for other strings' do
-      expect(harness.bool_to_checkbox('no')).to eq('0')
-      expect(harness.bool_to_checkbox('false')).to eq('0')
+      expect(harness.bool_to_checkbox('no')).to eq(0)
+      expect(harness.bool_to_checkbox('false')).to eq(0)
     end
   end
 
   describe '#yes_checkbox' do
     it 'returns "1" for truthy values' do
-      expect(harness.yes_checkbox(true)).to eq('1')
-      expect(harness.yes_checkbox('yes')).to eq('1')
+      expect(harness.yes_checkbox(true)).to eq(1)
+      expect(harness.yes_checkbox('yes')).to eq(1)
     end
 
     it 'returns "0" for falsy values' do
-      expect(harness.yes_checkbox(false)).to eq('0')
-      expect(harness.yes_checkbox(nil)).to eq('0')
+      expect(harness.yes_checkbox(false)).to eq(0)
+      expect(harness.yes_checkbox(nil)).to eq(0)
     end
   end
 
   describe '#no_checkbox' do
     it 'returns "0" when value is truthy (i.e. user said yes)' do
-      expect(harness.no_checkbox(true)).to eq('0')
-      expect(harness.no_checkbox('yes')).to eq('0')
+      expect(harness.no_checkbox(true)).to eq(0)
+      expect(harness.no_checkbox('yes')).to eq(0)
     end
 
     it 'returns "1" when value is explicitly false (user said no)' do
-      expect(harness.no_checkbox(false)).to eq('1')
+      expect(harness.no_checkbox(false)).to eq(1)
     end
 
     it 'returns "0" when value is nil (unanswered, neither box checked)' do
-      expect(harness.no_checkbox(nil)).to eq('0')
+      expect(harness.no_checkbox(nil)).to eq(0)
     end
   end
 
@@ -280,16 +280,16 @@ RSpec.describe SimpleFormsApi::Mms::VBA214502IbmConverter::Helpers do
       let(:data) { { 'branch_of_service' => 'air force' } }
 
       it 'returns "1" when target_suffix matches the mapped value' do
-        expect(harness.branch_checkbox(form, 'AIR-FORCE')).to eq('1')
+        expect(harness.branch_checkbox(form, 'AIR-FORCE')).to eq(1)
       end
 
       it 'returns "0" for non-matching target suffixes' do
-        expect(harness.branch_checkbox(form, 'ARMY')).to eq('0')
+        expect(harness.branch_checkbox(form, 'ARMY')).to eq(0)
       end
 
       it 'uppercases the branch value before lookup' do
         data['branch_of_service'] = 'Marine Corps'
-        expect(harness.branch_checkbox(form, 'MARINE')).to eq('1')
+        expect(harness.branch_checkbox(form, 'MARINE')).to eq(1)
       end
     end
 
@@ -297,8 +297,8 @@ RSpec.describe SimpleFormsApi::Mms::VBA214502IbmConverter::Helpers do
       let(:data) { { 'branch_of_service' => 'Foreign Legion' } }
 
       it 'returns "0" for every target suffix' do
-        expect(harness.branch_checkbox(form, 'ARMY')).to eq('0')
-        expect(harness.branch_checkbox(form, 'NAVY')).to eq('0')
+        expect(harness.branch_checkbox(form, 'ARMY')).to eq(0)
+        expect(harness.branch_checkbox(form, 'NAVY')).to eq(0)
       end
     end
 
@@ -306,7 +306,7 @@ RSpec.describe SimpleFormsApi::Mms::VBA214502IbmConverter::Helpers do
       let(:data) { {} }
 
       it 'returns "0"' do
-        expect(harness.branch_checkbox(form, 'ARMY')).to eq('0')
+        expect(harness.branch_checkbox(form, 'ARMY')).to eq(0)
       end
     end
   end
@@ -316,11 +316,11 @@ RSpec.describe SimpleFormsApi::Mms::VBA214502IbmConverter::Helpers do
       let(:data) { { 'vehicle_type' => 'station wagon' } }
 
       it 'returns "1" when target_suffix matches' do
-        expect(harness.conveyance_checkbox(form, 'STAT_WAGON')).to eq('1')
+        expect(harness.conveyance_checkbox(form, 'STAT_WAGON')).to eq(1)
       end
 
       it 'returns "0" for non-matching suffixes' do
-        expect(harness.conveyance_checkbox(form, 'AUTO')).to eq('0')
+        expect(harness.conveyance_checkbox(form, 'AUTO')).to eq(0)
       end
     end
 
@@ -328,7 +328,7 @@ RSpec.describe SimpleFormsApi::Mms::VBA214502IbmConverter::Helpers do
       let(:data) { { 'vehicle_type' => 'Hovercraft' } }
 
       it 'returns "0" for any suffix in the map' do
-        expect(harness.conveyance_checkbox(form, 'AUTO')).to eq('0')
+        expect(harness.conveyance_checkbox(form, 'AUTO')).to eq(0)
       end
     end
 
@@ -336,7 +336,7 @@ RSpec.describe SimpleFormsApi::Mms::VBA214502IbmConverter::Helpers do
       let(:data) { {} }
 
       it 'returns "0"' do
-        expect(harness.conveyance_checkbox(form, 'AUTO')).to eq('0')
+        expect(harness.conveyance_checkbox(form, 'AUTO')).to eq(0)
       end
     end
   end
@@ -344,26 +344,26 @@ RSpec.describe SimpleFormsApi::Mms::VBA214502IbmConverter::Helpers do
   describe '#conveyance_other_checkbox' do
     it 'returns "1" when vehicle_type is set but not in the map' do
       data['vehicle_type'] = 'Hovercraft'
-      expect(harness.conveyance_other_checkbox(form)).to eq('1')
+      expect(harness.conveyance_other_checkbox(form)).to eq(1)
     end
 
     it 'returns "0" when vehicle_type matches a mapped value' do
       data['vehicle_type'] = 'AUTOMOBILE'
-      expect(harness.conveyance_other_checkbox(form)).to eq('0')
+      expect(harness.conveyance_other_checkbox(form)).to eq(0)
     end
 
     it 'returns "0" when vehicle_type is empty' do
       data['vehicle_type'] = ''
-      expect(harness.conveyance_other_checkbox(form)).to eq('0')
+      expect(harness.conveyance_other_checkbox(form)).to eq(0)
     end
 
     it 'returns "0" when vehicle_type is missing' do
-      expect(harness.conveyance_other_checkbox(form)).to eq('0')
+      expect(harness.conveyance_other_checkbox(form)).to eq(0)
     end
 
     it 'is case-insensitive when checking the map' do
       data['vehicle_type'] = 'automobile'
-      expect(harness.conveyance_other_checkbox(form)).to eq('0')
+      expect(harness.conveyance_other_checkbox(form)).to eq(0)
     end
   end
 
