@@ -107,6 +107,21 @@ describe SignIn::Idme::Service do
       expect(response).to include(expected_authorization_page)
     end
 
+    context 'when review_instance_slug is present' do
+      let(:review_instance_slug) { 'some-review-instance-slug' }
+      let(:hostname) { 'staging-api.va.gov' }
+
+      before do
+        allow(Settings).to receive_messages(review_instance_slug:, hostname:)
+      end
+
+      it 'renders the review instance callback proxy as redirect uri' do
+        expect(response).to include(
+          CGI.escape("https://#{hostname}/#{SignIn::Constants::Auth::REVIEW_INSTANCE_CALLBACK_PROXY_PATH}")
+        )
+      end
+    end
+
     context 'when operation parameter equals Constants::Auth::SIGN_UP' do
       let(:operation) { SignIn::Constants::Auth::SIGN_UP }
       let(:expected_signup_param) { 'op=signup' }

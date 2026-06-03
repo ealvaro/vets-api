@@ -15,7 +15,11 @@ module SignIn
       end
 
       def redirect_uri
-        IdentitySettings.logingov.redirect_uri
+        if Settings.review_instance_slug.present?
+          "https://#{Settings.hostname}/#{Constants::Auth::REVIEW_INSTANCE_CALLBACK_PROXY_PATH}"
+        else
+          IdentitySettings.logingov.redirect_uri
+        end
       end
 
       def logout_redirect_uri

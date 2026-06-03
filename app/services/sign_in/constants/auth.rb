@@ -58,6 +58,7 @@ module SignIn
       REFRESH_ROUTE_PATH = '/v0/sign_in/refresh'
       REFRESH_TOKEN_COOKIE_NAME = 'vagov_refresh_token'
       RESPONSE_TYPES_SUPPORTED = ['code'].freeze
+      REVIEW_INSTANCE_CALLBACK_PROXY_PATH = 'v0/sign_in/review_instance_callback_proxy'
       REVOKE_ROUTE_PATH = '/v0/sign_in/revoke'
       SERVICE_ACCOUNT_ACCESS_TOKEN_COOKIE_NAME = 'service_account_access_token'
       SCOPES = [DEVICE_SSO = 'device_sso'].freeze

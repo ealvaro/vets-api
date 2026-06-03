@@ -106,6 +106,21 @@ describe SignIn::Logingov::Service do
         it 'contains the expected scopes' do
           expect(response).to include(expected_scope_query)
         end
+
+        context 'when review_instance_slug is present' do
+          let(:review_instance_slug) { 'some-review-instance-slug' }
+          let(:hostname) { 'staging-api.va.gov' }
+
+          before do
+            allow(Settings).to receive_messages(review_instance_slug:, hostname:)
+          end
+
+          it 'renders the review instance callback proxy as redirect uri' do
+            expect(response).to include(
+              CGI.escape("https://#{hostname}/#{SignIn::Constants::Auth::REVIEW_INSTANCE_CALLBACK_PROXY_PATH}")
+            )
+          end
+        end
       end
 
       context 'when it is an invalid scope' do

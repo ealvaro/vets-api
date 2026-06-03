@@ -19,7 +19,11 @@ module SignIn
       end
 
       def redirect_uri
-        IdentitySettings.idme.redirect_uri
+        if Settings.review_instance_slug.present?
+          "https://#{Settings.hostname}/#{Constants::Auth::REVIEW_INSTANCE_CALLBACK_PROXY_PATH}"
+        else
+          IdentitySettings.idme.redirect_uri
+        end
       end
 
       def client_key_path
