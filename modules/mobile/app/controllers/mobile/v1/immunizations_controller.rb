@@ -7,20 +7,19 @@ require 'unified_health_data/serializers/immunization_serializer'
 module Mobile
   module V1
     class ImmunizationsController < ApplicationController
+      include MedicalRecords::ErrorHandler
+
       service_tag 'mhv-medical-records'
 
       FUTURE_DATE = '3000-01-01'
 
       def index
         data_source = uhd_enabled? ? 'uhd' : 'lighthouse'
-        tag_datadog_span(data_source)
+        tag_data_source_span(data_source)
 
         if uhd_enabled?
-          result = uhd_service.get_immunizations
-          # Warnings (e.g., Partial Failure responses from SCDF) are not surfaced to the mobile app.
-          # Mobile has its own release cycle; warning support can be added separately if needed.
-          # For now, just grab the records and return them
-          records = result[:records]
+          records = fetch_uhd_immunizations
+          return if performed? # ErrorHandler already rendered a response
         else
           records = immunizations_adapter.parse(service.get_immunizations)
         end
@@ -37,6 +36,24 @@ module Mobile
 
       private
 
+      # Fetches immunizations from UHD, with MedicalRecords::ErrorHandler rescue.
+      # Errors on the UHD path get structured JSON envelopes from the ErrorHandler.
+      # The Lighthouse path intentionally does NOT use ErrorHandler so that
+      # BackendServiceException bubbles up to the global Mobile exception handler,
+      # which renders the MOBL_502_upstream_error code that VAHB depends on.
+      def fetch_uhd_immunizations
+        result = uhd_service.get_immunizations
+        # Warnings (e.g., Partial Failure responses from SCDF) are not surfaced to the mobile app.
+        # Mobile has its own release cycle; warning support can be added separately if needed.
+        # For now, just grab the records and return them
+        result[:records]
+      rescue Common::Exceptions::GatewayTimeout,
+             Common::Client::Errors::ClientError,
+             Common::Exceptions::BackendServiceException,
+             StandardError => e
+        handle_error(e, resource_name: 'Mobile immunizations', api_type: 'Mobile UHD')
+      end
+
       def uhd_enabled?
         return @uhd_enabled if defined?(@uhd_enabled)
 
@@ -45,7 +62,7 @@ module Mobile
 
       # Grab the active Datadog APM span and
       # set a custom tag medical_records.data_source to either "uhd" or "lighthouse".
-      def tag_datadog_span(data_source)
+      def tag_data_source_span(data_source)
         span = Datadog::Tracing.active_span
         span&.set_tag('medical_records.data_source', data_source)
       end
