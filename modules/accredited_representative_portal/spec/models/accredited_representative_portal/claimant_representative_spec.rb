@@ -158,8 +158,13 @@ RSpec.describe AccreditedRepresentativePortal::ClaimantRepresentative, type: :mo
           )
         end
 
-        it 'returns nil' do
-          expect(claimant_representative).to be_nil
+        # no_acceptance reps can still VIEW an established VSO claimant; acceptance_mode only
+        # governs acting on pending requests (enforced by PowerOfAttorneyRequestPolicy).
+        it 'returns a claimant representative' do
+          expect(claimant_representative).to have_attributes(
+            claimant_id: be_a(String),
+            accredited_individual_registration_number: registration_number
+          )
         end
       end
 
@@ -193,7 +198,11 @@ RSpec.describe AccreditedRepresentativePortal::ClaimantRepresentative, type: :mo
           )
         end
 
-        context 'when there is a matching non-withdrawn POA request for the claimant' do
+        # The claimant already has an accepted POA held by the rep's org (the BenefitsClaims
+        # stub returns the org's poa_code). Once a POA is accepted it belongs to the whole
+        # org, so a self_only rep can view the established claimant whether or not they were
+        # the rep named in 16A on the request.
+        context 'when the rep is named in 16A on a request for the claimant' do
           let!(:claimant_user_account) do
             create(:user_account, icn: claimant_icn)
           end
@@ -207,17 +216,6 @@ RSpec.describe AccreditedRepresentativePortal::ClaimantRepresentative, type: :mo
             )
           end
 
-          it 'has a matching POA request in the finder query' do
-            expect(
-              AccreditedRepresentativePortal::PowerOfAttorneyRequest
-                .joins(:claimant)
-                .not_withdrawn
-                .exists?(claimant: { icn: claimant_icn },
-                         power_of_attorney_holder_poa_code: poa_code,
-                         accredited_individual_registration_number: registration_number)
-            ).to be(true)
-          end
-
           it 'returns a claimant representative' do
             expect(claimant_representative).to have_attributes(
               claimant_id: be_a(String),
@@ -226,26 +224,16 @@ RSpec.describe AccreditedRepresentativePortal::ClaimantRepresentative, type: :mo
           end
         end
 
-        context 'when there is no matching POA request for the claimant' do
-          let!(:different_claimant_user_account) do
-            create(:user_account, icn: '1008596379V859838')
-          end
-
-          before do
-            create(
-              :power_of_attorney_request,
-              claimant: different_claimant_user_account,
-              poa_code:,
-              accredited_individual: representative
+        context 'when the rep is not named in 16A on any request for the claimant' do
+          it 'returns a claimant representative' do
+            expect(claimant_representative).to have_attributes(
+              claimant_id: be_a(String),
+              accredited_individual_registration_number: registration_number
             )
-          end
-
-          it 'returns nil' do
-            expect(claimant_representative).to be_nil
           end
         end
 
-        context 'when there is a request for the claimant but a different representative' do
+        context 'when a request for the claimant names a different representative' do
           let!(:claimant_user_account) do
             create(:user_account, icn: claimant_icn)
           end
@@ -269,42 +257,11 @@ RSpec.describe AccreditedRepresentativePortal::ClaimantRepresentative, type: :mo
             )
           end
 
-          it 'returns nil' do
-            expect(claimant_representative).to be_nil
-          end
-        end
-
-        context 'when there is a request for the claimant but a different poa code' do
-          let!(:claimant_user_account) do
-            create(:user_account, icn: claimant_icn)
-          end
-
-          let!(:other_organization) do
-            create(:organization, poa: 'ABC', name: 'Other Org')
-          end
-
-          let!(:other_representative) do
-            create(
-              :representative,
-              :vso,
-              representative_id: '99999',
-              poa_codes: ['ABC'],
-              email: 'other-rep@example.com'
+          it 'still returns a claimant representative for the established POA' do
+            expect(claimant_representative).to have_attributes(
+              claimant_id: be_a(String),
+              accredited_individual_registration_number: registration_number
             )
-          end
-
-          before do
-            create(
-              :power_of_attorney_request,
-              claimant: claimant_user_account,
-              poa_code: 'ABC',
-              accredited_individual: other_representative,
-              accredited_organization: other_organization
-            )
-          end
-
-          it 'returns nil' do
-            expect(claimant_representative).to be_nil
           end
         end
       end

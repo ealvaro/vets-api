@@ -54,25 +54,22 @@ module AccreditedRepresentativePortal
       def allowed_for_claimant?(membership)
         return true unless individual_accept_enabled?
 
-        org_rep_membership = Veteran::Service::OrganizationRepresentative.active.find_by(
+        # We only reach here when the claimant already has an accepted POA held by this
+        # rep's org: the caller resolves the claimant's active POA code (from the Benefits
+        # Claims API, which reflects only established POAs) to this membership. Once a POA
+        # is accepted it belongs to the whole org, so any rep with an active accreditation
+        # in it may VIEW the claimant, regardless of acceptance_mode. acceptance_mode
+        # (including no_acceptance) and the self_only "named in 16A" rule only govern ACTING
+        # on a pending request, which is enforced separately by
+        # PowerOfAttorneyRequestPolicy#can_accept?.
+        #
+        # This active-accreditation check also excludes attorney and claims-agent
+        # memberships, which PowerOfAttorneyHolderMemberships#all builds without an
+        # OrganizationRepresentative record, so it is not redundant with that builder.
+        Veteran::Service::OrganizationRepresentative.active.exists?(
           organization_poa: membership.power_of_attorney_holder.poa_code,
           representative_id: membership.registration_number
         )
-
-        return false if org_rep_membership.blank?
-        return false if org_rep_membership.no_acceptance?
-        return true if org_rep_membership.any_request?
-
-        allowed_self_only_for_claimant?(membership)
-      end
-
-      def allowed_self_only_for_claimant?(membership)
-        PowerOfAttorneyRequest
-          .joins(:claimant)
-          .not_withdrawn
-          .exists?(claimant: { icn: @claimant.icn },
-                   power_of_attorney_holder_poa_code: membership.power_of_attorney_holder.poa_code,
-                   accredited_individual_registration_number: membership.registration_number)
       end
 
       def individual_accept_enabled?
