@@ -129,6 +129,27 @@ Rspec.describe 'V0::Search', type: :request do
         end
       end
     end
+
+    context 'when upstream returns a 200 with a non-JSON body' do
+      before do
+        # Simulate Search.gov returning 200 with plain text (non-JSON content type).
+        # Faraday's :json middleware skips parsing, leaving body as a String.
+        # This exercises the full path: Service#results -> ResultsResponse.from -> Pagination.new
+        stub_request(:get, /#{Settings.search.url}/)
+          .to_return(status: 200, body: 'unexpected plain text response',
+                     headers: { 'Content-Type' => 'text/plain' })
+      end
+
+      it 'does not raise a 500 error', :aggregate_failures do
+        get '/v0/search', params: { query: 'benefits' }
+
+        expect(response).to have_http_status(:ok)
+        body = JSON.parse(response.body)
+        pagination = body.dig('meta', 'pagination')
+        expect(pagination['total_entries']).to eq(0)
+        expect(pagination['current_page']).to eq(0)
+      end
+    end
   end
 end
 

@@ -20,8 +20,9 @@ module Search
     end
 
     def self.from(response)
-      pagination = pagination_object(response.body)
-      new(response.status, pagination, body: response.body)
+      body = response.body.is_a?(Hash) ? response.body : {}
+      pagination = pagination_object(body)
+      new(response.status, pagination, body:)
     end
 
     def cache?

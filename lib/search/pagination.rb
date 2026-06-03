@@ -28,8 +28,9 @@ module Search
     # @param [Hash] raw_body a Hash from the 'web' object found in the results response
     #
     def initialize(raw_body)
-      @next_offset = raw_body.dig('web', 'next_offset')
-      @total_entries = raw_body.dig('web', 'total')
+      body = raw_body.is_a?(Hash) ? raw_body : {}
+      @next_offset = body.dig('web', 'next_offset') # intentionally nil-able; current_page handles nil
+      @total_entries = body.dig('web', 'total').to_i # .to_i guards against nil arithmetic (nil / float raises)
       @total_pages = (total_entries / ENTRIES_PER_PAGE.to_f).ceil
     end
 

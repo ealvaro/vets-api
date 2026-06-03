@@ -120,4 +120,28 @@ describe Search::Pagination do
       end
     end
   end
+
+  context 'when raw_body is a String instead of a Hash' do
+    subject { described_class.new('unexpected string response') }
+
+    it 'does not raise an error' do
+      expect { subject }.not_to raise_error
+    end
+
+    it 'returns zeroed pagination' do
+      expect(subject.object).to include('current_page' => 0, 'total_pages' => 0, 'total_entries' => 0)
+    end
+  end
+
+  context 'when raw_body is nil' do
+    subject { described_class.new(nil) }
+
+    it 'does not raise an error' do
+      expect { subject }.not_to raise_error
+    end
+
+    it 'returns zeroed pagination' do
+      expect(subject.object).to include('current_page' => 0, 'total_pages' => 0, 'total_entries' => 0)
+    end
+  end
 end
