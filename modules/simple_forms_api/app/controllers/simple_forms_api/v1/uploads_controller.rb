@@ -36,7 +36,7 @@ module SimpleFormsApi
         '40-1330M' => 'vba_40_1330m'
       }.freeze
 
-      UNAUTHENTICATED_FORMS = %w[40-0247 21-10210 21P-0847 40-10007 40-1330M 21P-0537 21P-601].freeze
+      UNAUTHENTICATED_FORMS = %w[40-0247 21-10210 21P-0847 40-10007 40-1330M 21P-0537 21P-601 21-0788].freeze
 
       def submit
         Datadog::Tracing.active_trace&.set_tag('form_id', params[:form_number])

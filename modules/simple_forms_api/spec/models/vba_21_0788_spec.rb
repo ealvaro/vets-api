@@ -238,7 +238,11 @@ RSpec.describe SimpleFormsApi::VBA210788 do
     context 'when missing' do
       let(:data) { super().merge('signature_date' => nil) }
 
-      it { is_expected.to be_nil }
+      it { is_expected.to match(%r{\d{2}/\d{2}/\d{4}}) }
+
+      it 'autofills with the current data' do
+        expect(form.signature_date).to eq(Time.current.in_time_zone('America/Chicago').strftime('%m/%d/%Y'))
+      end
     end
   end
 

@@ -114,8 +114,9 @@ module SimpleFormsApi
       data['statement_of_truth_signature']
     end
 
+    # Returns the formatted signature_date from the form object or the current Date
     def signature_date
-      return nil unless data['signature_date']
+      return Time.current.in_time_zone('America/Chicago').strftime('%m/%d/%Y') unless data['signature_date']
 
       Date.parse(data['signature_date']).strftime('%m/%d/%Y')
     end
