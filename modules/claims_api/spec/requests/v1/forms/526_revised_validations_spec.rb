@@ -42,7 +42,7 @@ RSpec.describe ClaimsApi::RevisedDisabilityCompensationValidations do
     end
 
     context 'when claim date is in the past' do
-      let(:form_attributes) { { 'claimDate' => 1.day.ago.iso8601 } }
+      let(:form_attributes) { { 'claimDate' => 1.day.ago.to_date.iso8601 } }
 
       it 'does not raise an error' do
         expect { subject.validate_form_526_submission_claim_date! }.not_to raise_error

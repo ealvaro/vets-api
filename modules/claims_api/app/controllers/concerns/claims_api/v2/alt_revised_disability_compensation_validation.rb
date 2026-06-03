@@ -3,6 +3,7 @@
 require 'claims_api/v2/disability_compensation_shared_service_module'
 require 'claims_api/disability_compensation_validations_helper'
 require 'claims_api/lighthouse_military_address_validator'
+require 'claims_api/common/exceptions/lighthouse/json_form_validation_error'
 
 module ClaimsApi
   module V2
