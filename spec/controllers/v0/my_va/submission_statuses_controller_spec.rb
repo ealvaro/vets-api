@@ -9,7 +9,7 @@ RSpec.describe V0::MyVA::SubmissionStatusesController, type: :controller do
   before do
     sign_in_as(user)
     allow(Flipper).to receive(:enabled?)
-      .with(:benefits_claims_ivc_champva_provider, user).and_return(false)
+      .with(:benefits_claims_ivc_champva_provider, instance_of(User)).and_return(false)
   end
 
   describe 'GET #show' do
@@ -20,11 +20,10 @@ RSpec.describe V0::MyVA::SubmissionStatusesController, type: :controller do
 
       before do
         allow(Flipper).to receive(:enabled?)
-                      .with(:my_va_display_all_lighthouse_benefits_intake_forms, user).and_return(false)
+                      .with(:my_va_display_all_lighthouse_benefits_intake_forms, instance_of(User)).and_return(false)
         allow(Flipper).to receive(:enabled?)
-                      .with(:my_va_display_decision_reviews_forms, user).and_return(false)
-        allow(Forms::SubmissionStatuses::Report).to receive(:new).and_return(empty_report)
-        allow(empty_report).to receive(:run).and_return(empty_report)
+                      .with(:my_va_display_decision_reviews_forms, instance_of(User)).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:hca_status_card_enabled, instance_of(User)).and_return(false)
       end
 
       it 'returns empty array when no forms are allowed' do
@@ -43,8 +42,11 @@ RSpec.describe V0::MyVA::SubmissionStatusesController, type: :controller do
 
       before do
         allow(Flipper).to receive(:enabled?).with(:my_va_display_all_lighthouse_benefits_intake_forms,
-                                                  user).and_return(true)
-        allow(Flipper).to receive(:enabled?).with(:my_va_display_decision_reviews_forms, user).and_return(false)
+                                                  instance_of(User)).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:my_va_display_decision_reviews_forms,
+                                                  instance_of(User)).and_return(false)
+
+        allow(Flipper).to receive(:enabled?).with(:hca_status_card_enabled, instance_of(User)).and_return(false)
       end
 
       it 'creates report with only benefits intake enabled' do
@@ -56,7 +58,43 @@ RSpec.describe V0::MyVA::SubmissionStatusesController, type: :controller do
         expect(response).to have_http_status(:ok)
 
         # Verify the report was created and run
-        expect(Forms::SubmissionStatuses::Report).to have_received(:new)
+        expect(Forms::SubmissionStatuses::Report).to have_received(:new).with(
+          user_account: anything,
+          allowed_forms: nil,
+          gateway_options: anything
+        )
+        expect(benefits_report).to have_received(:run)
+      end
+    end
+
+    context 'when only the health care applications flag is enabled' do
+      let(:benefits_report) do
+        double('Report', submission_statuses: [], errors: [])
+      end
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:my_va_display_all_lighthouse_benefits_intake_forms,
+                                                  instance_of(User)).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:my_va_display_decision_reviews_forms,
+                                                  instance_of(User)).and_return(false)
+
+        allow(Flipper).to receive(:enabled?).with(:hca_status_card_enabled, instance_of(User)).and_return(true)
+      end
+
+      it 'creates report with only HCA forms enabled' do
+        allow(Forms::SubmissionStatuses::Report).to receive(:new).and_return(benefits_report)
+        allow(benefits_report).to receive(:run).and_return(benefits_report)
+
+        get :show
+
+        expect(response).to have_http_status(:ok)
+
+        # Verify the report was created and run
+        expect(Forms::SubmissionStatuses::Report).to have_received(:new).with(
+          user_account: anything,
+          allowed_forms: array_including('1010ez'),
+          gateway_options: anything
+        )
         expect(benefits_report).to have_received(:run)
       end
     end
@@ -68,8 +106,10 @@ RSpec.describe V0::MyVA::SubmissionStatusesController, type: :controller do
 
       before do
         allow(Flipper).to receive(:enabled?).with(:my_va_display_all_lighthouse_benefits_intake_forms,
-                                                  user).and_return(false)
-        allow(Flipper).to receive(:enabled?).with(:my_va_display_decision_reviews_forms, user).and_return(true)
+                                                  instance_of(User)).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:my_va_display_decision_reviews_forms,
+                                                  instance_of(User)).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:hca_status_card_enabled, instance_of(User)).and_return(false)
       end
 
       it 'creates report with only decision reviews enabled' do
@@ -81,7 +121,11 @@ RSpec.describe V0::MyVA::SubmissionStatusesController, type: :controller do
         expect(response).to have_http_status(:ok)
 
         # Verify the report was created and run
-        expect(Forms::SubmissionStatuses::Report).to have_received(:new)
+        expect(Forms::SubmissionStatuses::Report).to have_received(:new).with(
+          user_account: anything,
+          allowed_forms: array_including('20-0995'),
+          gateway_options: anything
+        )
         expect(decision_reviews_report).to have_received(:run)
       end
     end
@@ -108,8 +152,10 @@ RSpec.describe V0::MyVA::SubmissionStatusesController, type: :controller do
 
       before do
         allow(Flipper).to receive(:enabled?).with(:my_va_display_all_lighthouse_benefits_intake_forms,
-                                                  user).and_return(true)
-        allow(Flipper).to receive(:enabled?).with(:my_va_display_decision_reviews_forms, user).and_return(true)
+                                                  instance_of(User)).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:my_va_display_decision_reviews_forms,
+                                                  instance_of(User)).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:hca_status_card_enabled, instance_of(User)).and_return(false)
       end
 
       it 'creates report with both gateways enabled and all form types' do
@@ -130,7 +176,11 @@ RSpec.describe V0::MyVA::SubmissionStatusesController, type: :controller do
         expect(form_data['attributes']['pdf_support']).to be true
 
         # Verify the report was created and run
-        expect(Forms::SubmissionStatuses::Report).to have_received(:new)
+        expect(Forms::SubmissionStatuses::Report).to have_received(:new).with(
+          user_account: anything,
+          allowed_forms: nil,
+          gateway_options: anything
+        )
         expect(combined_report).to have_received(:run)
       end
     end
@@ -142,8 +192,10 @@ RSpec.describe V0::MyVA::SubmissionStatusesController, type: :controller do
 
       before do
         allow(Flipper).to receive(:enabled?).with(:my_va_display_all_lighthouse_benefits_intake_forms,
-                                                  user).and_return(true)
-        allow(Flipper).to receive(:enabled?).with(:my_va_display_decision_reviews_forms, user).and_return(false)
+                                                  instance_of(User)).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:my_va_display_decision_reviews_forms,
+                                                  instance_of(User)).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:hca_status_card_enabled, instance_of(User)).and_return(false)
         allow(Forms::SubmissionStatuses::Report).to receive(:new).and_return(email_options_report)
         allow(email_options_report).to receive(:run).and_return(email_options_report)
       end
@@ -184,8 +236,10 @@ RSpec.describe V0::MyVA::SubmissionStatusesController, type: :controller do
 
       before do
         allow(Flipper).to receive(:enabled?).with(:my_va_display_all_lighthouse_benefits_intake_forms,
-                                                  user).and_return(true)
-        allow(Flipper).to receive(:enabled?).with(:my_va_display_decision_reviews_forms, user).and_return(false)
+                                                  instance_of(User)).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:my_va_display_decision_reviews_forms,
+                                                  instance_of(User)).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:hca_status_card_enabled, instance_of(User)).and_return(false)
         allow(Forms::SubmissionStatuses::Report).to receive(:new).and_return(failing_report)
         allow(failing_report).to receive(:run).and_raise(StandardError, 'Service unavailable')
       end
@@ -231,8 +285,10 @@ RSpec.describe V0::MyVA::SubmissionStatusesController, type: :controller do
 
       before do
         allow(Flipper).to receive(:enabled?).with(:my_va_display_all_lighthouse_benefits_intake_forms,
-                                                  user).and_return(true)
-        allow(Flipper).to receive(:enabled?).with(:my_va_display_decision_reviews_forms, user).and_return(false)
+                                                  instance_of(User)).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:my_va_display_decision_reviews_forms,
+                                                  instance_of(User)).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:hca_status_card_enabled, instance_of(User)).and_return(false)
         allow(Forms::SubmissionStatuses::Report).to receive(:new).and_return(serialization_report)
         allow(serialization_report).to receive(:run).and_return(serialization_report)
       end

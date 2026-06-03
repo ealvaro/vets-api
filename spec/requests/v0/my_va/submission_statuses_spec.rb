@@ -12,6 +12,13 @@ RSpec.describe 'V0::MyVA::SubmissionStatuses', feature: :form_submission,
 
   before do
     sign_in_as(user)
+    allow(Flipper).to receive(:enabled?)
+      .with(:my_va_display_all_lighthouse_benefits_intake_forms, instance_of(User)).and_return(false)
+    allow(Flipper).to receive(:enabled?)
+      .with(:my_va_display_decision_reviews_forms, instance_of(User)).and_return(false)
+    allow(Flipper).to receive(:enabled?)
+      .with(:benefits_claims_ivc_champva_provider, instance_of(User)).and_return(false)
+    allow(Flipper).to receive(:enabled?).with(:hca_status_card_enabled, instance_of(User)).and_return(false)
   end
 
   context 'when user has submissions' do
@@ -19,7 +26,6 @@ RSpec.describe 'V0::MyVA::SubmissionStatuses', feature: :form_submission,
       create(:form_submission, :with_form214142, user_account_id: account_id)
       create(:form_submission, :with_form210845, user_account_id: account_id)
       create(:form_submission, :with_form_blocked, user_account_id: account_id)
-      allow(Flipper[display_all_forms_toggle]).to receive(:enabled?).and_return(false)
     end
 
     it 'returns submission statuses' do
@@ -157,7 +163,8 @@ RSpec.describe 'V0::MyVA::SubmissionStatuses', feature: :form_submission,
     end
 
     it 'returns all submission statuses including blocked forms' do
-      allow(Flipper[display_all_forms_toggle]).to receive(:enabled?).and_return(true)
+      allow(Flipper).to receive(:enabled?)
+        .with(:my_va_display_all_lighthouse_benefits_intake_forms, instance_of(User)).and_return(true)
 
       VCR.use_cassette('forms/submission_statuses/200_valid_with_blocked_forms') do
         get '/v0/my_va/submission_statuses'
@@ -193,8 +200,6 @@ RSpec.describe 'V0::MyVA::SubmissionStatuses', feature: :form_submission,
       ]
       allow_any_instance_of(benefits_intake_gateway)
         .to receive(:intake_statuses).and_return(lighthouse_intake_statuses)
-
-      allow(Flipper[display_all_forms_toggle]).to receive(:enabled?).and_return(false)
     end
 
     it 'returns lighthouse submission statuses' do

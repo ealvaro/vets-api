@@ -83,30 +83,86 @@ describe Forms::SubmissionStatuses::Report, feature: :form_submission,
         )
       end
 
-      it 'returns the correct count' do
-        result = subject.run
+      context 'when :hca_status_card_enabled is enabled' do
+        subject(:report) do
+          described_class.new(
+            user_account:,
+            allowed_forms:,
+            gateway_options: {
+              benefits_intake_enabled: true,
+              hca_status_card_enabled: true,
+              user_email: 'test@example.com'
+            }
+          )
+        end
 
-        expect(result.submission_statuses.size).to be(3)
-        expect(result.errors).to be_empty
+        before do
+          allow(HealthCareApplication).to receive(:enrollment_status).with(user_account.icn, true).and_return(
+            {
+              'application_date' => '2018-12-27T00:00:00.000-06:00',
+              'enrollment_date' => 1.day.ago.to_s,
+              'preferred_facility' => '988 - DAYT20',
+              'parsed_status' => 'enrolled',
+              'effective_date' => '2019-01-02T21:58:55.000-06:00',
+              'priority_group' => 'Group 3',
+              'can_submit_financial_info' => true
+            }
+          )
+        end
+
+        it 'returns the correct count' do
+          result = subject.run
+
+          expect(result.submission_statuses.size).to be(4)
+          expect(result.errors).to be_empty
+        end
+
+        it 'sorts results' do
+          result = subject.run
+
+          submission_statuses = result.submission_statuses
+          expect(submission_statuses.first.updated_at).to be <= submission_statuses.last.updated_at
+        end
+
+        it 'returns the correct values' do
+          result = subject.run
+
+          submission_status = result.submission_statuses.first
+          expect(submission_status.id).to eq('d0c6cea6-9885-4e2f-8e0c-708d5933833a')
+          expect(submission_status.detail).to eq('detail')
+          expect(submission_status.form_type).to eq('21-0845')
+          expect(submission_status.message).to eq('message')
+          expect(submission_status.status).to eq('received')
+          expect(submission_status.pdf_support).to be(true)
+        end
       end
 
-      it 'sorts results' do
-        result = subject.run
+      context 'when :hca_status_card_enabled is disabled' do
+        it 'returns the correct count' do
+          result = subject.run
 
-        submission_statuses = result.submission_statuses
-        expect(submission_statuses.first.updated_at).to be <= submission_statuses.last.updated_at
-      end
+          expect(result.submission_statuses.size).to be(3)
+          expect(result.errors).to be_empty
+        end
 
-      it 'returns the correct values' do
-        result = subject.run
+        it 'sorts results' do
+          result = subject.run
 
-        submission_status = result.submission_statuses.first
-        expect(submission_status.id).to eq('d0c6cea6-9885-4e2f-8e0c-708d5933833a')
-        expect(submission_status.detail).to eq('detail')
-        expect(submission_status.form_type).to eq('21-0845')
-        expect(submission_status.message).to eq('message')
-        expect(submission_status.status).to eq('received')
-        expect(submission_status.pdf_support).to be(true)
+          submission_statuses = result.submission_statuses
+          expect(submission_statuses.first.updated_at).to be <= submission_statuses.last.updated_at
+        end
+
+        it 'returns the correct values' do
+          result = subject.run
+
+          submission_status = result.submission_statuses.first
+          expect(submission_status.id).to eq('d0c6cea6-9885-4e2f-8e0c-708d5933833a')
+          expect(submission_status.detail).to eq('detail')
+          expect(submission_status.form_type).to eq('21-0845')
+          expect(submission_status.message).to eq('message')
+          expect(submission_status.status).to eq('received')
+          expect(submission_status.pdf_support).to be(true)
+        end
       end
     end
   end
@@ -258,6 +314,7 @@ describe Forms::SubmissionStatuses::Report, feature: :form_submission,
           benefits_intake_enabled: false,
           decision_reviews_enabled: false,
           ivc_champva_enabled: true,
+          hca_status_card_enabled: false,
           user_email: 'test@example.com'
         }
       )
@@ -353,7 +410,7 @@ describe Forms::SubmissionStatuses::Report, feature: :form_submission,
         )
       end
 
-      it 'logs gateway errors' do
+      it 'logs gateway errors for benefits intake' do
         expect(logger).to receive(:error).with(
           'Gateway errors encountered when retrieving data in Forms::SubmissionStatuses::Report',
           hash_including(
@@ -414,9 +471,9 @@ describe Forms::SubmissionStatuses::Report, feature: :form_submission,
         let(:formatter) { instance_double(Forms::SubmissionStatuses::Formatters::BenefitsIntakeFormatter) }
 
         before do
-          allow_any_instance_of(benefits_intake_gateway).to receive(
-            :data
-          ).and_return(OpenStruct.new(submissions?: true, errors: []))
+          allow_any_instance_of(benefits_intake_gateway)
+            .to receive(:data)
+            .and_return(OpenStruct.new(submissions?: true, errors: []))
 
           stub_const(
             'Forms::SubmissionStatuses::Report::FORMATTERS',

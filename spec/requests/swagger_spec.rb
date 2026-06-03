@@ -3459,6 +3459,15 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
         create(:form_submission, :with_form214142, user_account_id: user.user_account_uuid)
         create(:form_submission, :with_form210845, user_account_id: user.user_account_uuid)
         create(:form_submission, :with_form_blocked, user_account_id: user.user_account_uuid)
+
+        allow(Flipper).to receive(:enabled?)
+          .with(:my_va_display_all_lighthouse_benefits_intake_forms, instance_of(User)).and_return(false)
+        allow(Flipper).to receive(:enabled?)
+          .with(:my_va_display_decision_reviews_forms, instance_of(User)).and_return(false)
+        allow(Flipper).to receive(:enabled?)
+          .with(:benefits_claims_ivc_champva_provider, instance_of(User)).and_return(false)
+        allow(Flipper).to receive(:enabled?)
+          .with(:hca_status_card_enabled, instance_of(User)).and_return(false)
       end
 
       it 'submission statuses 200' do

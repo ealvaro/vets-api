@@ -46,6 +46,19 @@ module VA1010Forms
         raise e
       end
 
+      def submission_status(form_submission_id)
+        response = perform(:post, '', status_body(form_submission_id))
+
+        root = response.body.locate('S:Envelope/S:Body/retrieveFormSubmissionStatusResponse').first
+        {
+          status: root.locate('status').first&.text,
+          messageType: root.locate('message/type').first&.text,
+          messageDetail: root.locate('message/detail').first&.text,
+          formSubmissionId: root.locate('formSubmissionId').first.text.to_i,
+          timestamp: root.locate('timeStamp').first&.text || Time.now.getlocal.to_s
+        }
+      end
+
       # Savon *seems* like it should be setting these things correctly
       # from what the docs say. Our WSDL file is weird, maybe?
       SOAP_CLIENT = Savon.client(
@@ -90,6 +103,13 @@ module VA1010Forms
         log_payload_info(formatted_form, submission_body)
 
         submission_body
+      end
+
+      def status_body(form_submission_id)
+        self.class.soap.build_request(
+          :get_form_submission_status,
+          message: { formSubmissionId: form_submission_id }
+        ).body
       end
     end
   end

@@ -2,9 +2,11 @@
 
 require_relative 'gateways/benefits_intake_gateway'
 require_relative 'gateways/decision_reviews_gateway'
+require_relative 'gateways/hca1010_ez_gateway'
 require_relative 'gateways/ivc_champva_gateway'
 require_relative 'formatters/benefits_intake_formatter'
 require_relative 'formatters/decision_reviews_formatter'
+require_relative 'formatters/hca1010_ez_formatter'
 require_relative 'formatters/ivc_champva_formatter'
 
 module Forms
@@ -13,7 +15,8 @@ module Forms
       FORMATTERS = {
         'lighthouse_benefits_intake' => Formatters::BenefitsIntakeFormatter.new,
         'decision_reviews' => Formatters::DecisionReviewsFormatter.new,
-        'ivc_champva' => Formatters::IvcChampvaFormatter.new
+        'ivc_champva' => Formatters::IvcChampvaFormatter.new,
+        'hca1010_ez' => Formatters::Hca1010EzFormatter.new
       }.freeze
 
       def initialize(user_account:, allowed_forms:, gateway_options: {})
@@ -87,6 +90,7 @@ module Forms
         append_benefits_intake_gateway(gateways:, user_account:, allowed_forms:, gateway_options:)
         append_decision_reviews_gateway(gateways:, user_account:, allowed_forms:, gateway_options:)
         append_ivc_champva_gateway(gateways:, user_account:, gateway_options:)
+        append_hca1010_ez_gateway(gateways:, user_account:, gateway_options:)
         gateways
       end
 
@@ -117,6 +121,15 @@ module Forms
             user_account:,
             user_email: gateway_options[:user_email]
           )
+        }
+      end
+
+      def append_hca1010_ez_gateway(gateways:, user_account:, gateway_options:)
+        return unless gateway_options.fetch(:hca_status_card_enabled, false)
+
+        gateways << {
+          service: 'hca1010_ez',
+          gateway: Gateways::Hca1010EzGateway.new(user_account:)
         }
       end
 

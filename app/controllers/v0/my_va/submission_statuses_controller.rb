@@ -25,6 +25,7 @@ module V0
         # Always include benefits intake forms for backward compatibility
         forms += restricted_benefits_intake_forms
         forms += decision_reviews_forms_if_enabled
+        forms += FormProfile::ALL_FORMS[:hca] if display_hca_forms?
         forms
       end
 
@@ -72,7 +73,8 @@ module V0
           # The feature flag only controls whether to show ALL forms vs restricted list
           benefits_intake_enabled: true,
           decision_reviews_enabled: display_decision_reviews_forms?,
-          ivc_champva_enabled: display_ivc_champva_forms?
+          ivc_champva_enabled: display_ivc_champva_forms?,
+          hca_status_card_enabled: display_hca_forms?
         }
 
         options[:user_email] = @current_user.email if options[:ivc_champva_enabled]
@@ -100,6 +102,10 @@ module V0
           :benefits_claims_ivc_champva_provider,
           @current_user
         )
+      end
+
+      def display_hca_forms?
+        Flipper.enabled?(:hca_status_card_enabled, @current_user)
       end
     end
   end
