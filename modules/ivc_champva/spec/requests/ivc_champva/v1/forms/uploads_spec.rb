@@ -1113,6 +1113,9 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
         post '/ivc_champva/v1/forms/submit_supporting_documents',
              params: { form_id: '10-10D', file: locked_file, password: 'bad' }
         expect(response).to have_http_status(:unprocessable_entity)
+        expect(response.parsed_body['errors'].first['detail']).to eq(
+          IvcChampva::Constants::INCORRECT_PASSWORD_DETAIL
+        )
       end
     end
 
@@ -1156,6 +1159,9 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
         post '/ivc_champva/v1/forms/submit_supporting_documents',
              params: { form_id: '10-10D', file: locked_file, password: 'bad' }
         expect(response).to have_http_status(:unprocessable_entity)
+        expect(response.parsed_body['errors'].first['detail']).to eq(
+          IvcChampva::Constants::INCORRECT_PASSWORD_DETAIL
+        )
       end
     end
 

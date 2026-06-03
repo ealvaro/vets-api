@@ -450,7 +450,7 @@ module IvcChampva
         # This helps prevent leaking exception context to DataDog when we raise this error
         if has_pdf_err
           raise Common::Exceptions::UnprocessableEntity.new(
-            detail: I18n.t('errors.messages.uploads.pdf.incorrect_password'),
+            detail: IvcChampva::Constants::INCORRECT_PASSWORD_DETAIL,
             source: 'IvcChampva::V1::UploadsController'
           )
         end
@@ -477,7 +477,7 @@ module IvcChampva
         # This helps prevent leaking exception context to DataDog when we raise this error
         if has_pdf_err
           raise Common::Exceptions::UnprocessableEntity.new(
-            detail: I18n.t('errors.messages.uploads.pdf.incorrect_password'),
+            detail: IvcChampva::Constants::INCORRECT_PASSWORD_DETAIL,
             source: 'IvcChampva::V1::UploadsController'
           )
         end
