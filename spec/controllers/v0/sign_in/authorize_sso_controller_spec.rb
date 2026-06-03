@@ -51,15 +51,20 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
       SignIn::AccessTokenJwtEncoder.new(access_token: existing_access_token).perform if existing_access_token
     end
 
+    let(:authorize_sso_id) { SecureRandom.uuid }
+
     before do
       request.cookies[SignIn::Constants::Auth::ACCESS_TOKEN_COOKIE_NAME] = existing_access_token_cookie
       allow(Rails.logger).to receive(:info)
       allow(StatsD).to receive(:increment)
+      allow(SecureRandom).to receive(:uuid).and_return(authorize_sso_id)
     end
 
     shared_examples 'a redirect to USIP' do
       let(:expected_redirect_uri) { 'http://localhost:3001/sign-in' }
-      let(:expected_query_params) { authorize_sso_params.merge(oauth: true).to_query }
+      let(:expected_query_params) do
+        authorize_sso_params.merge(oauth: true, authorize_sso_id:).to_query
+      end
       let(:expected_log_message) { '[SignInService] [V0::SignInController] authorize sso redirect' }
       let(:expected_log_payload) do
         {
@@ -72,16 +77,24 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
       let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
       let(:expected_statsd_tags) { ["client_id:#{client_id_param}", "app_name:#{app_name}"] }
 
-      it 'logs and redirects to USIP' do
+      it 'stashes the request params, logs, and redirects to USIP' do
         expect(subject).to redirect_to("#{expected_redirect_uri}?#{expected_query_params}")
         expect(Rails.logger).to have_received(:info).with(expected_log_message, expected_log_payload)
         expect(StatsD).to have_received(:increment).with('api.sis.auth_sso.redirect', tags: expected_statsd_tags)
+
+        container = SignIn::AuthorizeSSOContainer.find(authorize_sso_id)
+        expect(container).to have_attributes(
+          uuid: authorize_sso_id,
+          client_id: client_id_param,
+          code_challenge:,
+          code_challenge_method:,
+          client_state: state,
+          app_name:
+        )
       end
     end
 
     shared_examples 'an error response' do
-      let(:expected_error_json) { { 'error' => expected_error_message } }
-      let(:expected_error_status) { :bad_request }
       let(:expected_log_message) { '[SignInService] [V0::SignInController] authorize sso error' }
       let(:expected_log_payload) do
         {
@@ -93,11 +106,20 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
       end
       let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
       let(:expected_statsd_tags) { ["client_id:#{client_id_param}", "app_name:#{app_name}"] }
+      let(:request_id) { SecureRandom.uuid }
+      let(:meta_refresh_tag) { '<meta http-equiv="refresh" content="0;' }
 
-      it 'logs and renders expected error' do
+      before do
+        allow_any_instance_of(ActionController::TestRequest).to receive(:request_id).and_return(request_id)
+      end
+
+      it 'logs and redirects to the sign-in error page' do
         response = subject
-        expect(response).to have_http_status(expected_error_status)
-        expect(JSON.parse(response.body)).to eq(expected_error_json)
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include(meta_refresh_tag)
+        expect(response.body).to include('/v0/sign_in/error')
+        expect(response.body).to include("error_code=#{error_code}")
+        expect(response.body).to include("request_id=#{request_id}")
         expect(Rails.logger).to have_received(:info).with(expected_log_message, expected_log_payload)
         expect(StatsD).to have_received(:increment).with('api.sis.auth_sso.failure', tags: expected_statsd_tags)
       end
@@ -117,6 +139,30 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
         let(:expected_error_message) { 'Access token has expired' }
 
         it_behaves_like 'a redirect to USIP'
+      end
+
+      context 'when stashing the request params fails validation' do
+        let(:client_id_param) { nil }
+        let(:expected_error_message) { "Invalid params: Client can't be blank" }
+
+        before { request.cookies.clear }
+
+        it_behaves_like 'an error response' do
+          let(:expected_log_payload) do
+            {
+              errors: expected_error_message,
+              error_code:,
+              client_id: client_id_param.to_s,
+              app_name:,
+              authorize_sso_id:
+            }
+          end
+        end
+
+        it 'does not persist a container' do
+          subject
+          expect(SignIn::AuthorizeSSOContainer.find(authorize_sso_id)).to be_nil
+        end
       end
     end
 

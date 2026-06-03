@@ -78,11 +78,35 @@ module V0
       end
 
       def redirect_to_usip
-        query_params = authorize_sso_params.to_h.merge(oauth: true)
+        stash_authorize_sso_request
+
+        query_params = authorize_sso_params.to_h.merge(oauth: true, authorize_sso_id: @authorize_sso_id)
         uri = URI.parse(IdentitySettings.sign_in.usip_uri)
         uri.query = query_params.to_query
 
         redirect_to uri, status: :found
+      rescue ::SignIn::Errors::MalformedParamsError => e
+        log_authorize_sso_error(e, :error)
+        handle_pre_login_error(e, authorize_sso_params[:client_id])
+      end
+
+      def stash_authorize_sso_request
+        @authorize_sso_id = SecureRandom.uuid
+
+        container = ::SignIn::AuthorizeSSOContainer.new(
+          uuid: @authorize_sso_id,
+          client_id: authorize_sso_params[:client_id],
+          code_challenge: authorize_sso_params[:code_challenge],
+          code_challenge_method: authorize_sso_params[:code_challenge_method],
+          client_state: authorize_sso_params[:state],
+          app_name: authorize_sso_params[:app_name],
+          nonce: authorize_sso_params[:nonce]
+        )
+        return if container.save
+
+        raise ::SignIn::Errors::MalformedParamsError.new(
+          message: "Invalid params: #{container.errors.full_messages.join(', ')}"
+        )
       end
 
       def authenticate_authorize_sso
@@ -95,7 +119,7 @@ module V0
         log_authorize_sso_error(error, handler)
 
         case handler
-        when :error then render json: { error: error.message }, status: :bad_request
+        when :error then handle_pre_login_error(error, authorize_sso_params[:client_id])
         when :redirect then redirect_to_usip
         end
       end
@@ -112,7 +136,8 @@ module V0
                        ::SignIn::Constants::Statsd::STATSD_SIS_AUTHORIZE_SSO_FAILURE
                      end
 
-        sign_in_logger.error("authorize sso #{handler}", exception: error, context: authorize_sso_log_params)
+        context = authorize_sso_log_params.merge({ authorize_sso_id: @authorize_sso_id }).compact
+        sign_in_logger.error("authorize sso #{handler}", exception: error, context:)
         StatsD.increment(statsd_key, tags: authorize_sso_statsd_tags)
       end
 
