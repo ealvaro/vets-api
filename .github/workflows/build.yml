@@ -99,3 +99,23 @@ jobs:
       aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
       aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       va_vsp_bot_private_key: ${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
+
+  cleanup_caches:
+    needs: build_and_push
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Delete old CodeQL trap caches, keep only latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --paginate "repos/${{ github.repository }}/actions/caches" \
+            --hostname va.ghe.com \
+            --jq '.actions_caches[] | select(.key | startswith("codeql-trap-")) | {id, created_at}' | \
+          jq -s 'sort_by(.created_at) | reverse | .[1:] | .[].id' | \
+          while read -r id; do
+            gh api --hostname va.ghe.com --silent -X DELETE \
+              "repos/${{ github.repository }}/actions/caches/$id" || true
+          done
