@@ -156,6 +156,33 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantController, type: :re
           expect(returned_ids).not_to include(withdrawn_poa_request.id)
         end
       end
+
+      # A rep who has only resolved (declined) requests for a claimant and no established
+      # POA must not be able to reveal the claimant via search.
+      context 'when the only request is declined and there is no established POA' do
+        let!(:poa_request) do
+          create(:power_of_attorney_request, :with_veteran_claimant, :with_declination,
+                 poa_code:, accredited_individual: representative,
+                 accredited_organization: vso, claimant:)
+        end
+        let!(:other_poa_request) { nil }
+
+        before do
+          # No established POA for the claimant, so claimant_representative is nil.
+          allow_any_instance_of(BenefitsClaims::Service)
+            .to receive(:get_power_of_attorney).and_return({ 'data' => {} })
+        end
+
+        it 'returns a 404 and does not expose claimant details' do
+          VCR.use_cassette('mpi/find_candidate/valid_icn_full') do
+            post('/accredited_representative_portal/v0/claimant/search', params: {
+                   first_name: 'John', last_name: 'Smith', dob: '1980-01-01', ssn: '666-66-6666'
+                 })
+          end
+          expect(response).to have_http_status(:not_found)
+          expect(parsed_response.dig('data', 'firstName')).to be_nil
+        end
+      end
     end
   end
 

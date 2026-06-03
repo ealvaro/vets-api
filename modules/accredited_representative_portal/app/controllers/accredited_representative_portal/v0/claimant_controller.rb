@@ -27,7 +27,10 @@ module AccreditedRepresentativePortal
 
         power_of_attorney_requests = claimant_poa_requests(claimant_profile.icn)
 
-        (claimant_representative.present? || power_of_attorney_requests.any?) or
+        # A claimant is only revealed when the rep has established POA or there is a
+        # still-pending request. Resolved requests (declined/expired/accepted-elsewhere)
+        # do not grant continued visibility into the claimant.
+        (claimant_representative.present? || power_of_attorney_requests.unresolved.exists?) or
           raise Common::Exceptions::RecordNotFound, 'Claimant not found'
 
         serializer =
