@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'sidekiq/attr_package'
+
 module VANotify
   module V2
     class QueueEmailJob
