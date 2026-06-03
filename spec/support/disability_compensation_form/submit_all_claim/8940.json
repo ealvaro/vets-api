@@ -1,6 +1,6 @@
 {
   "form526": {
-     "mailingAddress": {
+    "mailingAddress": {
       "country": "USA",
       "city": "Portland",
       "state": "OR",
@@ -47,6 +47,7 @@
       "phoneNumber": "1231231231"
     },
     "isVAEmployee": false,
+    "hasMilitaryRetiredPay": true,
     "militaryRetiredPayBranch": "Air Force",
     "needToLeaveHousing": true,
     "ratedDisabilities": [
@@ -67,7 +68,7 @@
     ],
     "otherHomelessHousing": "other living situation",
     "phoneAndEmail": {
-      "primaryPhone" : "2024561111",
+      "primaryPhone": "2024561111",
       "emailAddress": "test@email.com"
     },
     "privacyAgreementAccepted": true,
@@ -114,9 +115,7 @@
           "from": "2018-03-02",
           "to": "2018-03-03"
         },
-        "treatedDisabilityNames": [
-          "PTSD (post traumatic stress disorder)"
-        ]
+        "treatedDisabilityNames": ["PTSD (post traumatic stress disorder)"]
       },
       {
         "treatmentCenterName": "Huntsville VA Facility",
@@ -127,9 +126,7 @@
           "from": "2015-04-03",
           "to": "2018-03-04"
         },
-        "treatedDisabilityNames": [
-          "PTSD personal trauma"
-        ]
+        "treatedDisabilityNames": ["PTSD personal trauma"]
       }
     ],
     "waiveRetirementPay": false,
@@ -280,4 +277,3 @@
     }
   }
 }
-

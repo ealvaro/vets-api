@@ -682,7 +682,9 @@ describe EVSS::DisabilityCompensationForm::DataTranslationAllClaim do
     end
 
     context 'when provided military retired data' do
-      let(:form_content) { { 'form526' => { 'militaryRetiredPayBranch' => 'Air Force' } } }
+      let(:form_content) do
+        { 'form526' => { 'hasMilitaryRetiredPay' => true, 'militaryRetiredPayBranch' => 'Air Force' } }
+      end
 
       it 'translates the data correctly' do
         expect(subject.send(:translate_service_pay)).to eq 'servicePay' => {
@@ -719,6 +721,26 @@ describe EVSS::DisabilityCompensationForm::DataTranslationAllClaim do
             }
           }
         }
+      end
+    end
+  end
+
+  describe '#military_retired_pay' do
+    context 'when hasMilitaryRetiredPay is false' do
+      let(:form_content) do
+        { 'form526' => { 'hasMilitaryRetiredPay' => false, 'militaryRetiredPayBranch' => 'Air Force' } }
+      end
+
+      it 'translates the data to receiving false' do
+        expect(subject.send(:military_retired_pay)).to eq(
+          'receiving' => false
+        )
+      end
+    end
+
+    context 'when `hasMilitaryRetiredPay` does not exist' do
+      it 'translates the data correctly' do
+        expect(subject.send(:military_retired_pay)).to be_nil
       end
     end
   end

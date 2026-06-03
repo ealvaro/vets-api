@@ -277,14 +277,18 @@ module EVSS
       end
 
       def military_retired_pay
-        return nil if input_form['militaryRetiredPayBranch'].blank?
+        return nil if input_form['hasMilitaryRetiredPay'].nil?
 
-        {
-          'receiving' => true,
-          'payment' => {
-            'serviceBranch' => service_branch(input_form['militaryRetiredPayBranch'])
-          }
-        }
+        receiving = ActiveModel::Type::Boolean.new.cast(input_form['hasMilitaryRetiredPay'])
+
+        if receiving
+          {
+            'receiving' => true,
+            'payment' => payment(input_form['militaryRetiredPayBranch'])
+          }.compact
+        else
+          { 'receiving' => false }
+        end
       end
 
       def separation_pay

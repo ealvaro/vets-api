@@ -111,6 +111,7 @@ module Swagger
                 'Navy',
                 'Public Health Service'
               ]
+            property :hasMilitaryRetiredPay, type: :boolean
             property :needToLeaveHousing, type: :boolean
             property :newPrimaryDisabilities, type: :array do
               items type: :object do
