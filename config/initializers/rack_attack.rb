@@ -29,19 +29,19 @@ class Rack::Attack
   end
 
   throttle('vic_profile_photos_download/ip', limit: 8, period: 5.minutes) do |req|
-    req.ip if req.path == '/v0/vic/profile_photo_attachments' && req.get?
+    req.remote_ip if req.path == '/v0/vic/profile_photo_attachments' && req.get?
   end
 
   throttle('vic_profile_photos_upload/ip', limit: 8, period: 5.minutes) do |req|
-    req.ip if req.path == '/v0/vic/profile_photo_attachments' && req.post?
+    req.remote_ip if req.path == '/v0/vic/profile_photo_attachments' && req.post?
   end
 
   throttle('vic_supporting_docs_upload/ip', limit: 8, period: 5.minutes) do |req|
-    req.ip if req.path == '/v0/vic/supporting_documentation_attachments' && req.post?
+    req.remote_ip if req.path == '/v0/vic/supporting_documentation_attachments' && req.post?
   end
 
   throttle('vic_submissions/ip', limit: 10, period: 1.minute) do |req|
-    req.ip if req.path == '/v0/vic/vic_submissions' && req.post?
+    req.remote_ip if req.path == '/v0/vic/vic_submissions' && req.post?
   end
 
   throttle('check_in/ip', limit: 10, period: 1.minute) do |req|
