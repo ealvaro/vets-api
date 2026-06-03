@@ -1,3 +1,16 @@
+# Jobs (in order):
+#   compare_sha        — diagnostic: logs commit SHAs for debugging checkout mismatches
+#   linting_and_security — Rubocop, Brakeman, Reek, bundle-audit; adds/removes lint-failure label on PRs
+#   build              — builds the Docker image and saves it to the Actions cache keyed by github.sha
+#   tests              — 24-way matrix; each group restores the Docker image and runs its assigned specs
+#   publish_results    — collects JUnit XML, reports results, checks coverage, conditionally posts Slack alerts
+#
+# Caching strategy:
+#   Docker image       — cached by github.sha; kept on PR failure for fast rebuild, deleted on success or master push
+#   Shard manifest     — generated once per run_id+group by generate_shard_manifest.rb so reruns always
+#                        execute the same file set; deleted after publish_results
+#   Runtime log        — saved only on full test success to avoid poisoning future shard balancing with
+#                        partial data; restored with branch-then-master fallback for new PRs
 name: Code Checks
 on:
   push:
@@ -28,16 +41,8 @@ jobs:
     runs-on: ubuntu-32-cores-latest
     steps:
       - name: Checkout PR
-        if: ${{ github.event_name != 'pull_request' }}
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-
-      - name: Checkout PR HEAD ref
-        if: ${{ github.event_name == 'pull_request' }}
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 1
 
       - name: Compute changed files for boundary check
@@ -262,16 +267,8 @@ jobs:
       DOCKER_BUILDKIT: 1
     steps:
       - name: Checkout PR
-        if: ${{ github.event_name != 'pull_request' }}
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-
-      - name: Checkout PR HEAD ref
-        if: ${{ github.event_name == 'pull_request' }}
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 1
 
       - name: Login to DockerHub
@@ -403,16 +400,8 @@ jobs:
       COMPOSE_BASH_CMD: docker compose -f docker-compose.test.yml run web bash -c
     steps:
       - name: Checkout PR
-        if: ${{ github.event_name != 'pull_request' }}
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-
-      - name: Checkout PR HEAD ref
-        if: ${{ github.event_name == 'pull_request' }}
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 1
 
       - name: Login to DockerHub
@@ -481,7 +470,7 @@ jobs:
           # first-attempt run would do, then freezes those file assignments.
           ${{ env.COMPOSE_BASH_CMD }} \
             "bundle exec ruby script/generate_shard_manifest.rb \
-              ${{ matrix.test_group }} 24 $manifest_path \
+              ${{ matrix.test_group }} ${{ strategy.job-total }} $manifest_path \
               tmp/parallel_runtime_rspec.log"
 
           if [ ! -s "$manifest_path" ]; then
