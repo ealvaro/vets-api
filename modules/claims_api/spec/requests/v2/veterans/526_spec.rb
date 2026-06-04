@@ -23,6 +23,19 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
     )
   end
 
+  let(:data) do
+    temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans', 'disability_compensation',
+                           'form_526_json_api.json').read
+    temp = JSON.parse(temp)
+    attributes = temp['data']['attributes']
+    attributes['changeOfAddress']['dates']['beginDate'] = 2.months.from_now.strftime('%Y-%m-%d')
+    attributes['changeOfAddress']['dates']['endDate'] = 6.months.from_now.strftime('%Y-%m-%d')
+    attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] = anticipated_separation_date
+    attributes['serviceInformation']['servicePeriods'][-1]['activeDutyEndDate'] = active_duty_end_date
+
+    temp.to_json
+  end
+
   before do
     Timecop.freeze(Time.zone.now)
     allow_any_instance_of(ClaimsApi::EVSSService::Base).to receive(:submit).and_return OpenStruct.new(claimId: 1337)
@@ -40,16 +53,6 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
   describe '#526', vcr: 'claims_api/disability_comp' do
     let(:anticipated_separation_date) { 2.days.from_now.strftime('%Y-%m-%d') }
     let(:active_duty_end_date) { 2.days.from_now.strftime('%Y-%m-%d') }
-    let(:data) do
-      temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans', 'disability_compensation',
-                             'form_526_json_api.json').read
-      temp = JSON.parse(temp)
-      attributes = temp['data']['attributes']
-      attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] = anticipated_separation_date
-      attributes['serviceInformation']['servicePeriods'][-1]['activeDutyEndDate'] = active_duty_end_date
-
-      temp.to_json
-    end
     let(:schema) { Rails.root.join('modules', 'claims_api', 'config', 'schemas', 'v2', '526.json').read }
     let(:veteran_id) { '1013062086V794840' }
 
@@ -167,16 +170,6 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
            skip: 'Disabling tests for deactivated /veterans/{veteranId}/526 endpoint' do
     let(:anticipated_separation_date) { 2.days.from_now.strftime('%Y-%m-%d') }
     let(:active_duty_end_date) { 2.days.from_now.strftime('%Y-%m-%d') }
-    let(:data) do
-      temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans', 'disability_compensation',
-                             'form_526_json_api.json').read
-      temp = JSON.parse(temp)
-      attributes = temp['data']['attributes']
-      attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] = anticipated_separation_date
-      attributes['serviceInformation']['servicePeriods'][-1]['activeDutyEndDate'] = active_duty_end_date
-
-      temp.to_json
-    end
     let(:schema) { Rails.root.join('modules', 'claims_api', 'config', 'schemas', 'v2', '526.json').read }
     let(:veteran_id) { '1013062086V794840' }
     let(:submit_path) { "/services/claims/v2/veterans/#{veteran_id}/526" }
@@ -209,16 +202,6 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
     let(:synchronous_path) { "/services/claims/v2/veterans/#{veteran_id}/526/synchronous" }
     let(:anticipated_separation_date) { 2.days.from_now.strftime('%Y-%m-%d') }
     let(:active_duty_end_date) { 2.days.from_now.strftime('%Y-%m-%d') }
-    let(:data) do
-      temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans', 'disability_compensation',
-                             'form_526_json_api.json').read
-      temp = JSON.parse(temp)
-      attributes = temp['data']['attributes']
-      attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] = anticipated_separation_date
-      attributes['serviceInformation']['servicePeriods'][-1]['activeDutyEndDate'] = active_duty_end_date
-
-      temp.to_json
-    end
     let(:schema) { Rails.root.join('modules', 'claims_api', 'config', 'schemas', 'v2', '526.json').read }
     let(:synchronous_scopes) { %w[system/526.override system/claim.write] }
     let(:invalid_scopes) { %w[system/526-pdf.override] }

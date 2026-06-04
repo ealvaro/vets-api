@@ -256,6 +256,8 @@ describe AltTestDisabilityCompensationValidationClass, vcr: 'brd/countries' do
       end
 
       it 'does not return or raise any errors' do
+        subject.form_attributes['changeOfAddress']['dates']['beginDate'] = 2.months.from_now.strftime('%Y-%m-%d')
+        subject.form_attributes['changeOfAddress']['dates']['endDate'] = 6.months.from_now.strftime('%Y-%m-%d')
         expect { subject.send(:alt_rev_validate_form_526_submission_values) }.not_to raise_error
         expect(current_error_array).to be_nil
       end
