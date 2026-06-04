@@ -103,6 +103,7 @@ module SignIn
                                           scope:,
                                           operation:,
                                           nonce:,
+                                          redirect_uri:,
                                           authorize_sso_id:)
     end
 

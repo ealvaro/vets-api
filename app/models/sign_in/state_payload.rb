@@ -5,7 +5,7 @@ module SignIn
     include ActiveModel::Validations
 
     attr_reader :acr, :client_id, :type, :code_challenge, :client_state, :code, :scope, :created_at, :operation,
-                :nonce, :authorize_sso_id
+                :nonce, :redirect_uri, :authorize_sso_id
 
     validates :code, :created_at, presence: true
     validates :acr, inclusion: Constants::Auth::ACR_VALUES
@@ -26,6 +26,7 @@ module SignIn
                    client_state: nil,
                    created_at: nil,
                    nonce: nil,
+                   redirect_uri: nil,
                    authorize_sso_id: nil)
       @acr = acr
       @client_id = client_id
@@ -37,6 +38,7 @@ module SignIn
       @created_at = created_at || Time.zone.now.to_i
       @operation = operation
       @nonce = nonce
+      @redirect_uri = redirect_uri
       @authorize_sso_id = authorize_sso_id
       validate!
     end

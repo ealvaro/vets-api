@@ -18,6 +18,7 @@ RSpec.describe SignIn::StatePayloadJwtDecoder do
                                          scope:,
                                          operation:,
                                          nonce:,
+                                         redirect_uri:,
                                          authorize_sso_id:).perform
     end
     let(:code_challenge) { Base64.urlsafe_encode64('some-safe-code-challenge') }
@@ -32,6 +33,7 @@ RSpec.describe SignIn::StatePayloadJwtDecoder do
     let(:scope) { SignIn::Constants::Auth::DEVICE_SSO }
     let(:operation) { SignIn::Constants::Auth::VERIFY_CTA_AUTHENTICATED }
     let(:nonce) { nil }
+    let(:redirect_uri) { nil }
     let(:authorize_sso_id) { nil }
 
     let(:client_state_minimum_length) { SignIn::Constants::Auth::CLIENT_STATE_MINIMUM_LENGTH }
@@ -55,6 +57,7 @@ RSpec.describe SignIn::StatePayloadJwtDecoder do
           created_at:,
           scope:,
           operation:,
+          redirect_uri:,
           authorize_sso_id:
         }
       end
@@ -88,6 +91,7 @@ RSpec.describe SignIn::StatePayloadJwtDecoder do
         expect(decoded_state_payload.scope).to eq(scope)
         expect(decoded_state_payload.operation).to eq(operation)
         expect(decoded_state_payload.nonce).to eq(nonce)
+        expect(decoded_state_payload.redirect_uri).to eq(redirect_uri)
         expect(decoded_state_payload.authorize_sso_id).to eq(authorize_sso_id)
       end
     end
@@ -98,6 +102,15 @@ RSpec.describe SignIn::StatePayloadJwtDecoder do
       it 'returns a State Payload with nonce' do
         decoded_state_payload = subject
         expect(decoded_state_payload.nonce).to eq('test-nonce-value')
+      end
+    end
+
+    context 'when state payload jwt includes redirect_uri' do
+      let(:redirect_uri) { 'https://review-instance.example.com/v0/sign_in/callback' }
+
+      it 'returns a State Payload with redirect_uri' do
+        decoded_state_payload = subject
+        expect(decoded_state_payload.redirect_uri).to eq(redirect_uri)
       end
     end
 
