@@ -97,7 +97,9 @@ RSpec.describe DependentsBenefits::Sidekiq::BGSFormJob, type: :job do
 
       form_instance = instance_double(BGS::Form674, submit: nil)
       user_struct = have_attributes(first_name: be_a(String), last_name: be_a(String)) # #generate_user_struct
-      expect(BGS::Form674).to receive(:new).with(user_struct, saved_claim, { proc_id: }).and_return(form_instance)
+      expect(BGS::Form674).to receive(:new).with(user_struct, saved_claim,
+                                                 { proc_id:, update_proc_state_on_complete: false })
+                                           .and_return(form_instance)
       expect(form_instance).to receive(:submit).with(normalized_data)
 
       job.send(:submit_674_form, saved_claim)

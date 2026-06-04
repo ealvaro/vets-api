@@ -184,13 +184,12 @@ FactoryBot.define do
           'view:completed_dependent': false,
           'view:completed_household_child': false,
           report_divorce: {
-            spouse_income: true,
+            spouse_income: 'Y',
             date: '2023-11-03',
             divorce_location: {
               location: {
                 city: 'louisville',
-                state: 'KY',
-                country: 'US'
+                state: 'KY'
               }
             },
             reason_marriage_ended: 'Divorce',
@@ -214,7 +213,7 @@ FactoryBot.define do
             date: '2024-02-01'
           },
           does_live_with_spouse: {
-            spouse_income: true,
+            spouse_income: 'Y',
             current_spouse_reason_for_separation: 'Other',
             other: 'other reasons',
             address: {
@@ -271,7 +270,7 @@ FactoryBot.define do
           spouse_marriage_history: [
             {
               end_location: { location: { city: 'denver', state: 'CO' } },
-              start_location: { outside_usa: true, location: { city: 'denver', state: 'CO' } },
+              start_location: { outside_usa: true, location: { city: 'bogota', country: 'Colombia' } },
               end_date: '2010-07-06',
               start_date: '2010-03-05',
               reason_marriage_ended: 'Other',
@@ -284,7 +283,7 @@ FactoryBot.define do
                 outside_usa: true,
                 location: {
                   city: 'fayetteville',
-                  state: 'AR'
+                  country: 'AR'
                 }
               },
               end_date: '2013-08-08',
@@ -294,7 +293,7 @@ FactoryBot.define do
             },
             {
               end_location: { location: { city: 'portland', state: 'ME' } },
-              start_location: { outside_usa: true, location: { city: 'washington', state: 'DC' } },
+              start_location: { outside_usa: true, location: { city: 'washington', country: 'DC' } },
               end_date: '2015-07-06',
               start_date: '2014-09-06',
               reason_marriage_ended: 'Death',
@@ -302,7 +301,7 @@ FactoryBot.define do
             },
             {
               end_location: { location: { city: 'burlington', state: 'VT' } },
-              start_location: { outside_usa: true, location: { city: 'wilmington', state: 'DE' } },
+              start_location: { outside_usa: true, location: { city: 'wilmington', country: 'DE' } },
               end_date: '2019-11-09',
               start_date: '2016-10-11',
               reason_marriage_ended: 'Divorce',
@@ -346,7 +345,7 @@ FactoryBot.define do
           ],
           children_to_add: [
             {
-              income_in_last_year: true,
+              income_in_last_year: 'Y',
               marriage_end_date: '2023-07-03',
               marriage_end_reason: 'Divorce',
               marriage_end_description: 'short',
@@ -382,17 +381,21 @@ FactoryBot.define do
               school_age_in_school: false
             },
             {
-              income_in_last_year: false,
+              income_in_last_year: 'N',
               marriage_end_reason: 'annulment',
               marriage_end_description: 'description of annulment really long text here over length 16',
               does_child_live_with_you: true,
               has_child_ever_been_married: false,
-              is_biological_child_of_spouse: true,
               relationship_to_child: { stepchild: true },
               is_biological_child: false,
+              is_biological_child_of_spouse: true,
+              relationship_type: 'ADOPTED',
+              date_entered_household: '2024-05-04',
               biological_parent_name: { first: 'bio', middle: 'log', last: 'cal' },
               biological_parent_ssn: '000000000',
+              biological_parent_dob: '1950-01-01',
               does_child_have_permanent_disability: true,
+              does_child_have_disability: true,
               birth_location: {
                 location: {
                   state: 'DC',
@@ -403,7 +406,6 @@ FactoryBot.define do
               ssn: '987654321',
               full_name: { first: 'test', middle: 'middle', last: 'childtwo' },
               birth_date: '2009-04-05',
-              date_entered_household: '2024-05-04',
               school_age_in_school: false
             },
             {
@@ -412,6 +414,8 @@ FactoryBot.define do
               does_child_live_with_you: true,
               has_child_ever_been_married: false,
               relationship_to_child: { adopted: true },
+              is_biological_child: true,
+              does_child_have_disability: false,
               birth_location: {
                 location: {
                   state: 'AR',
@@ -425,13 +429,14 @@ FactoryBot.define do
               school_age_in_school: false
             },
             {
-              income_in_last_year: false,
+              income_in_last_year: 'N',
               marriage_end_reason: 'annulment',
               marriage_end_description: 'description of annulment',
               does_child_live_with_you: true,
               has_child_ever_been_married: false,
               relationship_to_child: { adopted: false },
               is_biological_child: true,
+              does_child_have_disability: false,
               birth_location: {
                 location: {
                   state: 'SC',
@@ -445,29 +450,33 @@ FactoryBot.define do
               school_age_in_school: false
             },
             {
-              income_in_last_year: true,
+              income_in_last_year: 'Y',
               marriage_end_reason: 'annulment',
               marriage_end_description: 'description of annulment',
               does_child_live_with_you: true,
               has_child_ever_been_married: false,
               relationship_to_child: { adopted: true },
               is_biological_child: false,
+              relationship_type: 'ADOPTED',
+              does_child_have_disability: false,
               birth_location: { location: { state: 'NH', city: 'durham', postal_code: '03301' } },
               biological_parent_name: { first: 'bio', middle: 'log', last: 'cal' },
               biological_parent_ssn: '000000000',
+              biological_parent_dob: '1950-01-01',
               ssn: '987654321',
               full_name: { first: 'test', middle: 'middle', last: 'childfive' },
               birth_date: '2019-10-08',
               school_age_in_school: false
             },
             {
-              income_in_last_year: false,
+              income_in_last_year: 'N',
               marriage_end_reason: 'annulment',
               marriage_end_description: 'description of annulment',
               does_child_live_with_you: true,
               has_child_ever_been_married: false,
               relationship_to_child: { adopted: false },
               is_biological_child: true,
+              does_child_have_disability: false,
               birth_location: { location: { state: 'NY', city: 'new york', postal_code: '03301' } },
               ssn: '987654321',
               full_name: { first: 'test', middle: 'middle', last: 'childsix' },
@@ -524,7 +533,7 @@ FactoryBot.define do
               state: 'ME',
               postal_code: '04102'
             },
-            student_income: true,
+            student_income: 'Y',
             ssn: '987654321',
             relationship_to_student: 'biological',
             full_name: {
@@ -579,8 +588,8 @@ FactoryBot.define do
           ],
           deaths: [
             {
-              deceased_dependent_income: true,
-              dependent_death_location: { location: { city: 'new orleans', state: 'LA', country: 'USA' } },
+              deceased_dependent_income: 'Y',
+              dependent_death_location: { location: { city: 'new orleans', state: 'LA' } },
               dependent_death_date: '2024-03-02',
               dependent_type: 'DEPENDENT_PARENT',
               full_name: { first: 'deceased', middle: 'middle', last: 'dependent' },
@@ -588,8 +597,8 @@ FactoryBot.define do
               birth_date: '1960-01-01'
             },
             {
-              deceased_dependent_income: true,
-              dependent_death_location: { location: { city: 'new orleans', state: 'LA', country: 'USA' } },
+              deceased_dependent_income: 'Y',
+              dependent_death_location: { location: { city: 'new orleans', state: 'LA' } },
               dependent_death_date: '2024-03-02',
               dependent_type: 'CHILD',
               child_status: { child_under18: true, step_child: true },
@@ -598,7 +607,7 @@ FactoryBot.define do
               birth_date: '1990-01-01'
             },
             {
-              deceased_dependent_income: false,
+              deceased_dependent_income: 'N',
               dependent_death_location: { location: { city: 'denver', state: 'CO' } },
               dependent_death_date: '2023-10-03',
               dependent_type: 'SPOUSE',
@@ -608,14 +617,14 @@ FactoryBot.define do
             }
           ],
           child_marriage: [{
-            dependent_income: false,
+            dependent_income: 'N',
             date_married: '2023-06-03',
             full_name: { first: 'child', middle: 'middle', last: 'married' },
             ssn: '987654321',
             birth_date: '2008-04-05'
           }],
           child_stopped_attending_school: [{
-            dependent_income: false,
+            dependent_income: 'N',
             date_child_left_school: '2023-04-03',
             full_name: { first: 'removing', middle: 'middle', last: 'child' },
             ssn: '987654321',
@@ -699,7 +708,7 @@ FactoryBot.define do
             'report674' => true
           },
           'child_stopped_attending_school' => [{
-            'dependent_income' => false,
+            'dependent_income' => 'N',
             'date_child_left_school' => '2023-04-03',
             'full_name' => { 'first' => 'removing', 'middle' => 'middle', 'last' => 'child' },
             'ssn' => '987654321',
@@ -760,7 +769,7 @@ FactoryBot.define do
                 'state' => 'ME',
                 'postal_code' => '04102'
               },
-              'student_income' => true,
+              'student_income' => 'Y',
               'ssn' => '987654321',
               'relationship_to_student' => 'biological',
               'full_name' => {
@@ -822,7 +831,7 @@ FactoryBot.define do
             'date' => '2024-02-01'
           },
           'does_live_with_spouse' => {
-            'spouse_income' => true,
+            'spouse_income' => 'Y',
             'current_spouse_reason_for_separation' => 'Other',
             'other' => 'other reasons',
             'address' => {
@@ -883,7 +892,7 @@ FactoryBot.define do
             {
               'end_location' => { 'location' => { 'city' => 'boston', 'state' => 'MA' } },
               'start_location' => { 'outside_usa' => true,
-                                    'location' => { 'city' => 'fayetteville', 'state' => 'AR' } },
+                                    'location' => { 'city' => 'fayetteville', 'country' => 'AR' } },
               'end_date' => '2013-08-08',
               'start_date' => '2011-07-12',
               'reason_marriage_ended' => 'Divorce',
@@ -891,7 +900,8 @@ FactoryBot.define do
             },
             {
               'end_location' => { 'location' => { 'city' => 'portland', 'state' => 'ME' } },
-              'start_location' => { 'outside_usa' => true, 'location' => { 'city' => 'washington', 'state' => 'DC' } },
+              'start_location' => { 'outside_usa' => true,
+                                    'location' => { 'city' => 'washington', 'country' => 'DC' } },
               'end_date' => '2015-07-06',
               'start_date' => '2014-09-06',
               'reason_marriage_ended' => 'Death',
@@ -899,7 +909,8 @@ FactoryBot.define do
             },
             {
               'end_location' => { 'location' => { 'city' => 'burlington', 'state' => 'VT' } },
-              'start_location' => { 'outside_usa' => true, 'location' => { 'city' => 'wilmington', 'state' => 'DE' } },
+              'start_location' => { 'outside_usa' => true,
+                                    'location' => { 'city' => 'wilmington', 'country' => 'DE' } },
               'end_date' => '2019-11-09',
               'start_date' => '2016-10-11',
               'reason_marriage_ended' => 'Divorce',
@@ -908,13 +919,17 @@ FactoryBot.define do
           ],
           'children_to_add' => [
             {
-              'income_in_last_year' => true,
+              'income_in_last_year' => 'Y',
               'marriage_end_date' => '2023-07-03',
               'marriage_end_reason' => 'Divorce',
               'marriage_end_description' => 'short',
               'does_child_live_with_you' => false,
               'has_child_ever_been_married' => true,
               'is_biological_child_of_spouse' => false,
+              'date_entered_household' => '2024-05-04',
+              'biological_parent_name' => { 'first' => 'bio', 'middle' => 'log', 'last' => 'cal' },
+              'biological_parent_ssn' => '000000000',
+              'biological_parent_dob' => '1950-01-01',
               'relationship_to_child' => { 'adopted' => false, 'stepchild' => false },
               'does_child_have_permanent_disability' => false,
               'is_biological_child' => true,
@@ -934,12 +949,10 @@ FactoryBot.define do
               },
               'living_with' => { 'first' => 'test', 'last' => 'person' },
               'does_child_have_disability' => true,
-              'biological_parent_name' => { 'first' => 'bio', 'middle' => 'log', 'last' => 'cal' },
-              'biological_parent_ssn' => '000000000',
               'school_age_in_school' => false
             },
             {
-              'income_in_last_year' => false,
+              'income_in_last_year' => 'N',
               'marriage_end_reason' => 'annulment',
               'marriage_end_description' => 'description of annulment really long text here over length 16',
               'does_child_live_with_you' => true,
@@ -947,7 +960,9 @@ FactoryBot.define do
               'is_biological_child_of_spouse' => true,
               'relationship_to_child' => { 'stepchild' => true },
               'is_biological_child' => false,
+              'relationship_type' => 'ADOPTED',
               'does_child_have_permanent_disability' => true,
+              'does_child_have_disability' => true,
               'birth_location' => { 'location' => { 'state' => 'DC', 'city' => 'washington',
                                                     'postal_code' => '03301' } },
               'ssn' => '987654321',
@@ -956,6 +971,7 @@ FactoryBot.define do
               'date_entered_household' => '2024-05-04',
               'biological_parent_name' => { 'first' => 'bio', 'middle' => 'log', 'last' => 'cal' },
               'biological_parent_ssn' => '000000000',
+              'biological_parent_dob' => '1950-01-01',
               'school_age_in_school' => false
             },
             {
@@ -969,10 +985,11 @@ FactoryBot.define do
               'ssn' => '987654321',
               'full_name' => { 'first' => 'test', 'middle' => 'middle', 'last' => 'childthree' },
               'birth_date' => '2010-04-06',
-              'school_age_in_school' => false
+              'school_age_in_school' => false,
+              'does_child_have_disability' => false
             },
             {
-              'income_in_last_year' => false,
+              'income_in_last_year' => 'N',
               'marriage_end_reason' => 'annulment',
               'marriage_end_description' => 'description of annulment',
               'does_child_live_with_you' => true,
@@ -984,26 +1001,30 @@ FactoryBot.define do
               'ssn' => '987654321',
               'full_name' => { 'first' => 'test', 'middle' => 'middle', 'last' => 'childfour' },
               'birth_date' => '2015-09-07',
-              'school_age_in_school' => false
+              'school_age_in_school' => false,
+              'does_child_have_disability' => false
             },
             {
-              'income_in_last_year' => true,
+              'income_in_last_year' => 'Y',
               'marriage_end_reason' => 'annulment',
               'marriage_end_description' => 'description of annulment',
               'does_child_live_with_you' => true,
               'has_child_ever_been_married' => false,
               'relationship_to_child' => { 'adopted' => true },
               'is_biological_child' => false,
+              'relationship_type' => 'ADOPTED',
               'birth_location' => { 'location' => { 'state' => 'NH', 'city' => 'durham', 'postal_code' => '03301' } },
               'ssn' => '987654321',
               'full_name' => { 'first' => 'test', 'middle' => 'middle', 'last' => 'childfive' },
               'birth_date' => '2019-10-08',
               'school_age_in_school' => false,
               'biological_parent_name' => { 'first' => 'bio', 'middle' => 'log', 'last' => 'cal' },
-              'biological_parent_ssn' => '000000000'
+              'biological_parent_ssn' => '000000000',
+              'biological_parent_dob' => '1950-01-01',
+              'does_child_have_disability' => false
             },
             {
-              'income_in_last_year' => false,
+              'income_in_last_year' => 'N',
               'marriage_end_reason' => 'annulment',
               'marriage_end_description' => 'description of annulment',
               'does_child_live_with_you' => true,
@@ -1014,13 +1035,14 @@ FactoryBot.define do
               'ssn' => '987654321',
               'full_name' => { 'first' => 'test', 'middle' => 'middle', 'last' => 'childsix' },
               'birth_date' => '2023-11-07',
-              'school_age_in_school' => false
+              'school_age_in_school' => false,
+              'does_child_have_disability' => false
             }
           ],
           'report_divorce' => {
-            'spouse_income' => true,
+            'spouse_income' => 'Y',
             'date' => '2023-11-03',
-            'divorce_location' => { 'location' => { 'city' => 'louisville', 'state' => 'KY', 'country' => 'US' } },
+            'divorce_location' => { 'location' => { 'city' => 'louisville', 'state' => 'KY' } },
             'reason_marriage_ended' => 'Divorce',
             'full_name' => { 'first' => 'removing', 'middle' => 'former', 'last' => 'spouse' },
             'birth_date' => '1980-02-03'
@@ -1063,7 +1085,7 @@ FactoryBot.define do
           ],
           'deaths' => [
             {
-              'deceased_dependent_income' => true,
+              'deceased_dependent_income' => 'Y',
               'dependent_death_location' => { 'location' => { 'city' => 'new orleans', 'state' => 'LA',
                                                               'country' => 'USA' } },
               'dependent_death_date' => '2024-03-02',
@@ -1073,7 +1095,7 @@ FactoryBot.define do
               'birth_date' => '1960-01-01'
             },
             {
-              'deceased_dependent_income' => true,
+              'deceased_dependent_income' => 'Y',
               'dependent_death_location' => { 'location' => { 'city' => 'new orleans', 'state' => 'LA',
                                                               'country' => 'USA' } },
               'dependent_death_date' => '2024-03-02',
@@ -1084,7 +1106,7 @@ FactoryBot.define do
               'birth_date' => '1990-01-01'
             },
             {
-              'deceased_dependent_income' => false,
+              'deceased_dependent_income' => 'N',
               'dependent_death_location' => { 'location' => { 'city' => 'denver', 'state' => 'CO' } },
               'dependent_death_date' => '2023-10-03',
               'dependent_type' => 'SPOUSE',
@@ -1094,14 +1116,14 @@ FactoryBot.define do
             }
           ],
           'child_marriage' => [{
-            'dependent_income' => false,
+            'dependent_income' => 'N',
             'date_married' => '2023-06-03',
             'full_name' => { 'first' => 'child', 'middle' => 'middle', 'last' => 'married' },
             'ssn' => '987654321',
             'birth_date' => '2008-04-05'
           }],
           'child_stopped_attending_school' => [{
-            'dependent_income' => false,
+            'dependent_income' => 'N',
             'date_child_left_school' => '2023-04-03',
             'full_name' => { 'first' => 'removing', 'middle' => 'middle', 'last' => 'child' },
             'ssn' => '987654321',

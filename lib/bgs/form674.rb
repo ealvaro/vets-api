@@ -26,6 +26,7 @@ module BGS
       @end_product_code = '130SCHATTEBN'
       @proc_state = 'Ready'
       @claim_type_end_product = options[:claim_type_end_product]
+      @update_proc_state_on_complete = options[:update_proc_state_on_complete]
     end
 
     def submit(payload)
@@ -87,6 +88,7 @@ module BGS
         monitor.track_event('info',
                             "21-674 Saved Claim submitted automatically to RBPS with proc_state of #{@proc_state}",
                             "#{stats_key}.automatic", { proc_id: @proc_id, automatic: true })
+        bgs_service.update_proc(proc_id, proc_state: @proc_state) if @update_proc_state_on_complete
       end
     end
 

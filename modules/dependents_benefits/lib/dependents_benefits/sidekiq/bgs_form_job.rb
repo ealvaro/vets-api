@@ -59,7 +59,17 @@ module DependentsBenefits::Sidekiq
     def submit_674_form(claim)
       claim_data = ::BGS::Job.new.normalize_names_and_addresses!(claim.parsed_form)
 
-      ::BGS::Form674.new(generate_user_struct, claim, { proc_id: @proc_id }).submit(claim_data)
+      # If a 674 is the only claim we are submitting, we need
+      # for the BGS form class to also update the proc_state
+      # to 'Ready' once everything else is set.
+      is_only674 = false
+      if claim.is_a?(::DependentsBenefits::SchoolAttendanceApproval)
+        parent_claim = SavedClaim.find_by(id: claim.parent_claim_id)
+        is_only674 = parent_claim && !parent_claim&.submittable_686?
+      end
+
+      ::BGS::Form674.new(generate_user_struct, claim,
+                         { proc_id: @proc_id, update_proc_state_on_complete: is_only674 }).submit(claim_data)
     end
 
     ##
