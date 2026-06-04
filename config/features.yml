@@ -1023,6 +1023,9 @@ features:
   dependents_bypass_schema_validation:
     actor_type: user
     description: Bypasses vets_json_schema validation for dependency claims
+  disability_526_add_person_refresh_fix:
+    actor_type: user
+    description: Enables a profile dispatch to allow user with recently added missing IDs to enter the 526 form without a refresh
   disability_526_form4142_polling_records:
     actor_type: user
     description: enables creation of, and tracking of, sent form 4142 documents, from the 526 flow, to the Lighthouse Benefits Intake API
