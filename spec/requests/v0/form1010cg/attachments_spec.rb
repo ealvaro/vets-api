@@ -196,5 +196,69 @@ RSpec.describe 'V0::Form1010CG::Attachments', type: :request do
         expect(error_detail).to include('The allowed file types are: jpg, jpeg, png, pdf, heic, heif')
       end
     end
+
+    context 'when encrypted PDF cannot be decrypted' do
+      it 'returns FE-compatible decryption error response' do
+        allow_any_instance_of(Form1010cg::Attachment).to receive(:set_file_data!).and_raise(
+          Common::Exceptions::UnprocessableEntity.new(
+            detail: I18n.t('errors.messages.uploads.pdf.incorrect_password'),
+            source: 'Common::PdfHelpers.unlock_pdf'
+          )
+        )
+
+        post(
+          endpoint,
+          headers:,
+          params: {
+            attachment: {
+              file_data: Form1010cgHelpers::TestFileHelpers.create_test_uploaded_file(
+                'doctors-note.pdf',
+                'application/pdf'
+              ),
+              password: 'wrong-password'
+            }
+          }
+        )
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(JSON.parse(response.body)).to eq(
+          {
+            'errorMessage' => 'The password you entered is incorrect. Please try again.',
+            'isEncrypted' => true
+          }
+        )
+      end
+
+      it 'returns FE-compatible response for malformed or undecryptable PDF' do
+        allow_any_instance_of(Form1010cg::Attachment).to receive(:set_file_data!).and_raise(
+          Common::Exceptions::UnprocessableEntity.new(
+            detail: I18n.t('errors.messages.uploads.pdf.invalid'),
+            source: 'Common::PdfHelpers.unlock_pdf'
+          )
+        )
+
+        post(
+          endpoint,
+          headers:,
+          params: {
+            attachment: {
+              file_data: Form1010cgHelpers::TestFileHelpers.create_test_uploaded_file(
+                'malformed-pdf.pdf',
+                'application/pdf'
+              ),
+              password: 'some-password'
+            }
+          }
+        )
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(JSON.parse(response.body)).to eq(
+          {
+            'errorMessage' => 'The password you entered is incorrect. Please try again.',
+            'isEncrypted' => true
+          }
+        )
+      end
+    end
   end
 end

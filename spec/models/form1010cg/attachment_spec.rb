@@ -47,4 +47,64 @@ RSpec.describe Form1010cg::Attachment, type: :model do
       end
     end
   end
+
+  describe '#set_file_data!' do
+    let(:uploaded_file) do
+      tempfile = Tempfile.new(['locked_pdf_password_is_test', '.pdf'])
+      tempfile.binmode
+      tempfile.write(File.binread('spec/fixtures/files/locked_pdf_password_is_test.pdf'))
+      tempfile.rewind
+
+      ActionDispatch::Http::UploadedFile.new(
+        tempfile:,
+        filename: 'locked_pdf_password_is_test.pdf',
+        type: 'application/pdf'
+      )
+    end
+    let(:attachment_uploader) { instance_double(Form1010cg::PoaUploader, filename: 'locked_pdf_password_is_test.pdf') }
+
+    before do
+      allow(Form1010cg::PoaUploader).to receive(:new).and_return(attachment_uploader)
+      allow(attachment_uploader).to receive(:store!)
+    end
+
+    after do
+      uploaded_file.tempfile.close!
+    rescue Errno::ENOENT, IOError
+      nil
+    end
+
+    it 'uses HexaPDF helper to unlock encrypted PDFs with a provided password' do
+      expect(Common::PdfHelpers).to receive(:unlock_pdf).once.and_call_original
+
+      subject.set_file_data!(uploaded_file, 'test')
+
+      expect(attachment_uploader).to have_received(:store!).once
+      expect(subject.parsed_file_data['filename']).to eq('locked_pdf_password_is_test.pdf')
+    end
+
+    it 'does not attempt to decrypt when password is not provided' do
+      expect(Common::PdfHelpers).not_to receive(:unlock_pdf)
+
+      subject.set_file_data!(uploaded_file)
+
+      expect(attachment_uploader).to have_received(:store!).once
+    end
+
+    it 'logs a hard-coded message and raises normalized unlock error data' do
+      unsanitized_error = Common::Exceptions::UnprocessableEntity.new(
+        detail: '/tmp/sensitive-user-filename.pdf bad password',
+        source: 'UnexpectedSource'
+      )
+
+      allow(Common::PdfHelpers).to receive(:unlock_pdf).and_raise(unsanitized_error)
+      expect(Rails.logger).to receive(:warn).with('[Form 10-10CG] PDF unlock failed: invalid pdf provided')
+
+      expect { subject.set_file_data!(uploaded_file, 'test') }
+        .to raise_error(Common::Exceptions::UnprocessableEntity) do |error|
+          expect(error.errors.first.source).to eq('Common::PdfHelpers.unlock_pdf')
+          expect(error.errors.first.detail).to eq(I18n.t('errors.messages.uploads.pdf.invalid'))
+        end
+    end
+  end
 end
