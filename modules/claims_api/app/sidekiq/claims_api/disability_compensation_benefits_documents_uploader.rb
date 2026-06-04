@@ -24,6 +24,7 @@ module ClaimsApi
       log_job_progress(claim_id, 'Uploaded 526 PDF to BD')
       # at this point in the workflow the claim is 'established'
       set_established_state_on_claim(auto_claim)
+      clear_evss_response_for_claim(auto_claim)
       log_job_progress(claim_id, "#{version_prefix} BD upload succeeded, Claim workflow finished")
     # Temporary errors (returning HTML, connection timeout), retry call
     rescue => e

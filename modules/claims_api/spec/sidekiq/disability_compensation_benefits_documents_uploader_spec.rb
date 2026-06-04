@@ -70,6 +70,18 @@ RSpec.describe ClaimsApi::DisabilityCompensationBenefitsDocumentsUploader, type:
         expect(claim.uploader.blank?).to be(false)
       end
     end
+
+    it 'clears stale evss_response from a prior failed attempt' do
+      claim.update!(evss_response: ['Prior upload error'], status: ClaimsApi::AutoEstablishedClaim::ERRORED)
+
+      VCR.use_cassette('claims_api/bd/upload') do
+        service.perform(claim.id)
+      end
+
+      claim.reload
+      expect(claim.status).to eq('established')
+      expect(claim.evss_response).to be_nil
+    end
   end
 
   context 'errored submission' do
