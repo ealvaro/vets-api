@@ -1286,15 +1286,19 @@ module IvcChampva
         # `form_id` even on forms that don't have an `applicants` array (e.g. FMP2)
         applicant_rounded_number = total_applicants_count.ceil.zero? ? 1 : total_applicants_count.ceil
 
-        # Optionally add a supporting document with arbitrary form-defined values.
-        add_blank_doc_and_stamp(form, parsed_form_data)
+        if Flipper.enabled?(:champva_claims_duty_to_assist, @current_user)
+          stamped_page = build_stamped_page(form)
+        else
+          add_blank_doc_and_stamp(form, parsed_form_data)
+          stamped_page = nil
+        end
 
         track_form_submission_metrics(form)
 
         attachment_ids = build_attachment_ids(base_form_id, parsed_form_data, applicant_rounded_number)
         attachment_ids = [base_form_id] if attachment_ids.empty?
 
-        [attachment_ids.compact, form]
+        [attachment_ids.compact, form, stamped_page]
       end
 
       def supporting_document_ids(parsed_form_data)
@@ -1440,6 +1444,32 @@ module IvcChampva
         end
       end
 
+      ##
+      # creates a stamped blank page and returns file info directly,
+      # bypassing the supporting_docs pipeline so the page gets named form_page
+      # instead of supporting_doc-N (which would inflate the confirmation email count).
+      #
+      # @param form [Object] The form object that may contain stamp_metadata method
+      # @return [Hash, nil] { file_path:, attachment_id: } or nil when not applicable
+      def build_stamped_page(form)
+        Datadog::Tracing.trace('IVC Champva Forms - Build Stamped Page') do
+          return unless form.methods.include?(:stamp_metadata)
+
+          stamps = form.stamp_metadata
+          return if stamps.nil? || !stamps.is_a?(Hash)
+
+          blank_page_path = IvcChampva::Attachments.get_blank_page
+          IvcChampva::PdfStamper.stamp_metadata_items(blank_page_path, stamps[:metadata])
+
+          legacy_form_id = IvcChampva::FormVersionManager.get_legacy_form_id(form.form_id)
+          stamped_name = "#{form.uuid}_#{legacy_form_id}_form_page.pdf"
+          stamped_path = File.join('tmp', stamped_name)
+          FileUtils.mv(blank_page_path, stamped_path)
+
+          { file_path: stamped_path, attachment_id: stamps[:attachment_id] }
+        end
+      end
+
       # TODO: add documentation comments and consider renaming, this method also triggers
       # - PDF filling
       # - metadata validation
@@ -1450,7 +1480,7 @@ module IvcChampva
             return get_docs_only_resubmission_file_paths_and_metadata(parsed_form_data)
           end
 
-          attachment_ids, form = get_attachment_ids_and_form(parsed_form_data)
+          attachment_ids, form, stamped_page = get_attachment_ids_and_form(parsed_form_data)
 
           # Use the actual form ID for PDF generation, but legacy form ID for S3/metadata
           actual_form_id = form.form_id
@@ -1464,6 +1494,11 @@ module IvcChampva
           metadata = IvcChampva::MetadataValidator.validate(form.metadata)
 
           file_paths = form.handle_attachments(file_path)
+
+          if stamped_page
+            file_paths << stamped_page[:file_path]
+            attachment_ids << stamped_page[:attachment_id]
+          end
 
           append_ves_json_files(form, parsed_form_data, [file_paths, attachment_ids, metadata, legacy_form_id])
 

@@ -433,6 +433,115 @@ RSpec.describe 'Transformation Pega', type: :request do
         end
       end
 
+      describe '10_7959a DTA resubmission (has_claim_docs: false)' do
+        fixture_path = Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json', 'vha_10_7959a.json')
+        data = JSON.parse(fixture_path.read).merge(
+          'claim_status' => 'resubmission',
+          'has_claim_docs' => false
+        )
+
+        let(:pdf_path) { Rails.root.join('tmp', "#{uuid}_vha_10_7959a.pdf").to_s }
+        let(:blank_page_path) { Rails.root.join('tmp', "#{SecureRandom.hex(8)}_blank.pdf").to_s }
+
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?).with(:champva_claims_duty_to_assist, anything).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:champva_claims_duty_to_assist).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:champva_document_merging, anything).and_return(false)
+          allow(Flipper).to receive(:enabled?).with(:champva_update_metadata_keys).and_return(false)
+
+          FileUtils.touch(blank_page_path)
+          allow(IvcChampva::Attachments).to receive(:get_blank_page).and_return(blank_page_path)
+        end
+
+        after do
+          Rails.root.glob("tmp/#{uuid}_*_form_page.pdf").each { |f| FileUtils.rm_f(f) }
+        end
+
+        it 'names the DTA stamped page as form_page instead of supporting_doc' do
+          stamped_page_key = "#{uuid}_vha_10_7959a_form_page.pdf"
+
+          allow_any_instance_of(IvcChampva::S3).to receive(:read_file) do |_instance, path|
+            path.to_s.include?('_metadata.json') ? '{}' : '%PDF-1.4 test stub'
+          end
+
+          post '/ivc_champva/v1/forms', params: data.to_json,
+                                        headers: { 'Content-Type' => 'application/json' }
+          expect(response).to have_http_status(:ok)
+
+          put_object_calls = []
+          expect(aws_client).to have_received(:put_object).at_least(:once) do |params|
+            put_object_calls << params
+          end
+
+          uploaded_keys = put_object_calls.map { |p| p[:key] }
+
+          expect(uploaded_keys).to include(stamped_page_key)
+          expect(uploaded_keys.select { |k| k.include?('supporting_doc') }).to be_empty
+
+          stamped_upload = put_object_calls.find { |p| p[:key] == stamped_page_key }
+          expect(stamped_upload[:metadata]['attachment_id']).to eq('Duty to Assist')
+        end
+
+        it 'labels all attachment_ids as Duty to Assist' do
+          allow_any_instance_of(IvcChampva::S3).to receive(:read_file) do |_instance, path|
+            path.to_s.include?('_metadata.json') ? '{}' : '%PDF-1.4 test stub'
+          end
+
+          post '/ivc_champva/v1/forms', params: data.to_json,
+                                        headers: { 'Content-Type' => 'application/json' }
+          expect(response).to have_http_status(:ok)
+
+          expect(aws_client).to have_received(:put_object).once.with(
+            hash_including(
+              key: "#{uuid}_vha_10_7959a.pdf",
+              metadata: a_hash_including('attachment_id' => 'Duty to Assist')
+            )
+          )
+        end
+
+        context 'with document merging enabled' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:champva_document_merging, anything).and_return(true)
+            allow(Flipper).to receive(:enabled?).with('champva_docmerge_10_7959a_duty_to_assist', anything)
+                                                .and_return(true)
+
+            FileUtils.touch(pdf_path)
+            allow(IvcChampva::PdfCombiner).to receive(:combine) do |output_path, _input_paths|
+              FileUtils.touch(output_path)
+            end
+          end
+
+          after do
+            Rails.root.glob("tmp/#{uuid}_*_combined.pdf").each { |f| FileUtils.rm_f(f) }
+          end
+
+          it 'merges the stamped page into the combined DTA PDF' do
+            allow_any_instance_of(IvcChampva::S3).to receive(:read_file) do |_instance, path|
+              path.to_s.include?('_metadata.json') ? '{}' : '%PDF-1.4 test stub'
+            end
+
+            post '/ivc_champva/v1/forms', params: data.to_json,
+                                          headers: { 'Content-Type' => 'application/json' }
+            expect(response).to have_http_status(:ok)
+
+            put_object_calls = []
+            expect(aws_client).to have_received(:put_object).at_least(:once) do |params|
+              put_object_calls << params
+            end
+
+            uploaded_keys = put_object_calls.map { |p| p[:key] }
+
+            combined_key = uploaded_keys.find { |k| k.include?('_combined.pdf') }
+            expect(combined_key).to be_present
+            expect(combined_key).to include('duty_to_assist')
+
+            expect(uploaded_keys.select { |k| k.include?('form_page') }).to be_empty
+            expect(uploaded_keys.select { |k| k.include?('supporting_doc') }).to be_empty
+          end
+        end
+      end
+
       describe '10_7959f_1' do
         fixture_path = Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json', 'vha_10_7959f_1.json')
         data = JSON.parse(fixture_path.read)

@@ -2208,8 +2208,6 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     let(:controller) { IvcChampva::V1::UploadsController.new }
     let(:parsed_form_data) { { 'form_number' => '10-7959A', 'supporting_docs' => [] } }
 
-    # Basic test form class with stamp_metadata method to verify
-    # it properly gates the functionality
     let(:form) do
       instance_double(IvcChampva::VHA107959a,
                       form_id: '10-7959A',
@@ -2218,11 +2216,9 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     end
 
     it 'creates and adds a supporting document' do
-      # Mock out the PDF operations to avoid actually creating files
       expect(IvcChampva::PdfStamper).to receive(:stamp_metadata_items)
       expect(controller).to receive(:create_custom_attachment).and_return({ 'attachment_id' => 'doc1' })
 
-      # Check that a supporting doc gets added to the form_data
       expect do
         controller.send(:add_blank_doc_and_stamp, form, parsed_form_data)
       end.to change { parsed_form_data['supporting_docs'].length }.from(0).to(1)
@@ -2244,6 +2240,65 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
       expect(IvcChampva::PdfStamper).not_to receive(:stamp_metadata_items)
 
       controller.send(:add_blank_doc_and_stamp, form, parsed_form_data)
+    end
+  end
+
+  describe '#build_stamped_page' do
+    let(:controller) { IvcChampva::V1::UploadsController.new }
+    let(:blank_page_path) { 'tmp/test_blank.pdf' }
+
+    let(:form) do
+      instance_double(IvcChampva::VHA107959a,
+                      form_id: 'vha_10_7959a',
+                      uuid: 'test-uuid',
+                      methods: [:stamp_metadata],
+                      stamp_metadata: { metadata: { 'test_key' => 'test_value' }, attachment_id: 'Duty to Assist' })
+    end
+
+    before do
+      allow(IvcChampva::Attachments).to receive(:get_blank_page).and_return(blank_page_path)
+      allow(IvcChampva::PdfStamper).to receive(:stamp_metadata_items)
+      allow(IvcChampva::FormVersionManager).to receive(:get_legacy_form_id)
+        .with('vha_10_7959a').and_return('vha_10_7959a')
+      allow(FileUtils).to receive(:mv)
+    end
+
+    it 'returns a hash with file_path using the legacy form ID and attachment_id' do
+      result = controller.send(:build_stamped_page, form)
+
+      expect(result).to be_a(Hash)
+      expect(result[:file_path]).to eq('tmp/test-uuid_vha_10_7959a_form_page.pdf')
+      expect(result[:attachment_id]).to eq('Duty to Assist')
+    end
+
+    it 'stamps the blank page with form metadata' do
+      expect(IvcChampva::PdfStamper).to receive(:stamp_metadata_items)
+        .with(blank_page_path, { 'test_key' => 'test_value' })
+
+      controller.send(:build_stamped_page, form)
+    end
+
+    it 'does not add anything to supporting_docs' do
+      parsed_form_data = { 'supporting_docs' => [] }
+      controller.send(:build_stamped_page, form)
+
+      expect(parsed_form_data['supporting_docs']).to be_empty
+    end
+  end
+
+  describe '#build_stamped_page without stamp_metadata method' do
+    let(:controller) { IvcChampva::V1::UploadsController.new }
+    let(:form) { instance_double(IvcChampva::VHA1010d) }
+
+    before do
+      allow(form).to receive(:methods).and_return([])
+    end
+
+    it 'returns nil when form has no stamp_metadata method' do
+      expect(IvcChampva::PdfStamper).not_to receive(:stamp_metadata_items)
+
+      result = controller.send(:build_stamped_page, form)
+      expect(result).to be_nil
     end
   end
 
