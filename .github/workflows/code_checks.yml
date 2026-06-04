@@ -68,11 +68,30 @@ jobs:
           owner: software
           github-api-url: https://va.ghe.com/api/v3
 
+      - name: Generate bgs-ext token
+        id: bgs-ext-app-token
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
+        with:
+          client-id: ${{ vars.GEM_APP_CLIENT_ID }}
+          private-key: ${{ secrets.GEM_APP_PRIVATE_KEY }}
+          owner: software
+          repositories: bgs-ext
+          github-api-url: https://va.ghe.com/api/v3
+
+      - name: Add temporary bgs-ext git URL rewrite
+        run: |
+          git config --global url."https://x-access-token:${{ steps.bgs-ext-app-token.outputs.token }}@va.ghe.com/software/bgs-ext.git".insteadOf https://va.ghe.com/software/bgs-ext.git
+
       - uses: ruby/setup-ruby@97ecb7b512899eb71ab1bf2310a624c6f1589ac6 # v1
         env:
           BUNDLE_VA__GHE__COM: x-access-token:${{ steps.app-token.outputs.token }}
         with:
           bundler-cache: true
+
+      - name: Remove temporary bgs-ext git URL rewrite
+        if: always()
+        run: |
+          git config --global --unset-all url."https://x-access-token:${{ steps.bgs-ext-app-token.outputs.token }}@va.ghe.com/software/bgs-ext.git".insteadOf || true
 
       - name: Check for Gemfile changes
         id: gemfile_changes
@@ -566,12 +585,31 @@ jobs:
           owner: software
           github-api-url: https://va.ghe.com/api/v3
 
+      - name: Generate bgs-ext token
+        id: bgs-ext-app-token
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
+        with:
+          client-id: ${{ vars.GEM_APP_CLIENT_ID }}
+          private-key: ${{ secrets.GEM_APP_PRIVATE_KEY }}
+          owner: software
+          repositories: bgs-ext
+          github-api-url: https://va.ghe.com/api/v3
+
+      - name: Add temporary bgs-ext git URL rewrite
+        run: |
+          git config --global url."https://x-access-token:${{ steps.bgs-ext-app-token.outputs.token }}@va.ghe.com/software/bgs-ext.git".insteadOf https://va.ghe.com/software/bgs-ext.git
+
       - uses: ruby/setup-ruby@97ecb7b512899eb71ab1bf2310a624c6f1589ac6 # v1
         env:
           BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
           BUNDLE_VA__GHE__COM: x-access-token:${{ steps.app-token.outputs.token }}
         with:
           bundler-cache: ${{ needs.tests.result == 'success' }}
+
+      - name: Remove temporary bgs-ext git URL rewrite
+        if: always()
+        run: |
+          git config --global --unset-all url."https://x-access-token:${{ steps.bgs-ext-app-token.outputs.token }}@va.ghe.com/software/bgs-ext.git".insteadOf || true
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
 
