@@ -18,5 +18,16 @@ module SignIn
 
     validates :uuid, :client_id, presence: true
     validates :uuid, format: { with: UUID_FORMAT }
+
+    def to_authorize_sso_params
+      {
+        client_id:,
+        code_challenge:,
+        code_challenge_method:,
+        state: client_state,
+        app_name:,
+        nonce:
+      }.compact
+    end
   end
 end

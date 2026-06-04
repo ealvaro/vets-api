@@ -54,8 +54,24 @@ module V0
       end
 
       def authorize_sso_params
-        @authorize_sso_params ||= params.permit(:client_id, :code_challenge, :code_challenge_method, :state,
+        @authorize_sso_params ||= authorize_sso_container_params ||
+                                  params.permit(:client_id, :code_challenge, :code_challenge_method, :state,
                                                 :app_name, :nonce)
+      rescue ::SignIn::Errors::MalformedParamsError
+        @authorize_sso_params = {}
+        raise
+      end
+
+      def authorize_sso_container_params
+        @authorize_sso_id = params[:authorize_sso_id].presence
+        return unless @authorize_sso_id
+
+        container = ::SignIn::AuthorizeSSOContainer.pop(@authorize_sso_id)
+        unless container
+          raise ::SignIn::Errors::MalformedParamsError.new(message: 'Authorize SSO request not found or expired')
+        end
+
+        container.to_authorize_sso_params
       end
 
       def validate_authorize_sso_params!

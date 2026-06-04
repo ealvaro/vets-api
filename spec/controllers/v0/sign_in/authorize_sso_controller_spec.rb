@@ -257,6 +257,57 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
           end
         end
       end
+
+      context 'and authorize_sso_id is present' do
+        let(:authorize_sso_params) { { authorize_sso_id: } }
+
+        context 'and the container exists' do
+          let!(:authorize_sso_container) do
+            create(:authorize_sso_container,
+                   uuid: authorize_sso_id,
+                   client_id:,
+                   code_challenge:,
+                   code_challenge_method:,
+                   client_state: state,
+                   app_name:)
+          end
+
+          it 'uses the container values to issue the login code' do
+            response = subject
+
+            expect(response).to have_http_status(:found)
+            expect(response.body).to include("URL=#{client_config.redirect_uri}")
+            expect(response.body).to include('code=')
+            expect(response.body).to include("state=#{state}")
+          end
+
+          it 'destroys the container on success' do
+            subject
+            expect(SignIn::AuthorizeSSOContainer.find(authorize_sso_id)).to be_nil
+          end
+        end
+
+        context 'and the container is missing' do
+          let(:expected_error_message) { 'Authorize SSO request not found or expired' }
+          let(:client_id_param) { '' }
+
+          it_behaves_like 'an error response' do
+            let(:expected_statsd_tags) { ['client_id:', 'app_name:'] }
+            let(:expected_log_payload) do
+              {
+                errors: expected_error_message,
+                error_code:,
+                authorize_sso_id:
+              }
+            end
+          end
+
+          it 'does not invoke the user code map creator' do
+            expect(SignIn::AuthSSO::SessionValidator).not_to receive(:new)
+            subject
+          end
+        end
+      end
     end
   end
 end
