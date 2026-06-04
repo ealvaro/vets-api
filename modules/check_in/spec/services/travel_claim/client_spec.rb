@@ -81,7 +81,7 @@ describe TravelClaim::Client do
 
       it 'logs message and raises exception' do
         expect_any_instance_of(Vets::SharedLogging).to receive(:log_message_to_sentry)
-        expect(Rails.logger).to receive(:error)
+        expect(Rails.logger).to receive(:error).with('HCE-Check-In', hash_including(message: 'BTSSS API Error'))
         expect { subject.token }.to raise_exception(exception)
       end
     end
@@ -96,7 +96,7 @@ describe TravelClaim::Client do
 
       it 'logs message and raises exception' do
         expect_any_instance_of(Vets::SharedLogging).to receive(:log_message_to_sentry)
-        expect(Rails.logger).to receive(:error)
+        expect(Rails.logger).to receive(:error).with('HCE-Check-In', hash_including(message: 'BTSSS API Error'))
         expect { subject.token }.to raise_exception(exception)
       end
     end
@@ -135,7 +135,7 @@ describe TravelClaim::Client do
 
       it 'logs message and returns original error' do
         expect_any_instance_of(Vets::SharedLogging).to receive(:log_message_to_sentry)
-        expect(Rails.logger).to receive(:error)
+        expect(Rails.logger).to receive(:error).with('HCE-Check-In', hash_including(message: 'BTSSS API Error'))
 
         response = subject.submit_claim(token: access_token, patient_icn: icn, appointment_date: appt_date)
         expect(response.status).to eq(resp.status)
@@ -158,7 +158,7 @@ describe TravelClaim::Client do
 
       it 'logs message and returns original error' do
         expect_any_instance_of(Vets::SharedLogging).to receive(:log_message_to_sentry)
-        expect(Rails.logger).to receive(:error)
+        expect(Rails.logger).to receive(:error).with('HCE-Check-In', hash_including(message: 'BTSSS API Error'))
 
         response = subject.submit_claim(token: access_token, patient_icn: icn, appointment_date: appt_date)
         expect(response.status).to eq(resp.status)
@@ -176,7 +176,7 @@ describe TravelClaim::Client do
 
       it 'logs message and returns original error' do
         expect_any_instance_of(Vets::SharedLogging).to receive(:log_message_to_sentry)
-        expect(Rails.logger).to receive(:error)
+        expect(Rails.logger).to receive(:error).with('HCE-Check-In', hash_including(message: 'BTSSS API Error'))
 
         response = subject.submit_claim(token: access_token, patient_icn: icn, appointment_date: appt_date)
         expect(response.status).to eq(resp.status)
@@ -194,7 +194,7 @@ describe TravelClaim::Client do
 
       it 'logs message and raises exception' do
         expect_any_instance_of(Vets::SharedLogging).to receive(:log_message_to_sentry)
-        expect(Rails.logger).to receive(:error)
+        expect(Rails.logger).to receive(:error).with('HCE-Check-In', hash_including(message: 'BTSSS API Error'))
 
         response = subject.submit_claim(token: access_token, patient_icn: icn, appointment_date: appt_date)
         expect(response.status).to eq(resp.status)
@@ -261,7 +261,7 @@ describe TravelClaim::Client do
 
       it 'logs message and returns original error' do
         expect_any_instance_of(Vets::SharedLogging).to receive(:log_message_to_sentry)
-        expect(Rails.logger).to receive(:error)
+        expect(Rails.logger).to receive(:error).with('HCE-Check-In', hash_including(message: 'BTSSS API Error'))
 
         response = subject.claim_status(token:, patient_icn:, start_range_date:, end_range_date:)
         expect(response.status).to eq(resp.status)
@@ -323,7 +323,7 @@ describe TravelClaim::Client do
 
       it 'logs message and returns original error' do
         expect_any_instance_of(Vets::SharedLogging).to receive(:log_message_to_sentry)
-        expect(Rails.logger).to receive(:error)
+        expect(Rails.logger).to receive(:error).with('HCE-Check-In', hash_including(message: 'BTSSS API Error'))
 
         response = subject.submit_claim_v2(token, opts)
         expect(response.status).to eq(resp.status)
@@ -346,7 +346,7 @@ describe TravelClaim::Client do
 
       it 'logs message and returns original error' do
         expect_any_instance_of(Vets::SharedLogging).to receive(:log_message_to_sentry)
-        expect(Rails.logger).to receive(:error)
+        expect(Rails.logger).to receive(:error).with('HCE-Check-In', hash_including(message: 'BTSSS API Error'))
 
         response = subject.submit_claim_v2(token, opts)
         expect(response.status).to eq(resp.status)
@@ -364,7 +364,7 @@ describe TravelClaim::Client do
 
       it 'logs message and returns original error' do
         expect_any_instance_of(Vets::SharedLogging).to receive(:log_message_to_sentry)
-        expect(Rails.logger).to receive(:error)
+        expect(Rails.logger).to receive(:error).with('HCE-Check-In', hash_including(message: 'BTSSS API Error'))
 
         response = subject.submit_claim_v2(token, opts)
         expect(response.status).to eq(resp.status)
@@ -382,7 +382,7 @@ describe TravelClaim::Client do
 
       it 'logs message and raises exception' do
         expect_any_instance_of(Vets::SharedLogging).to receive(:log_message_to_sentry)
-        expect(Rails.logger).to receive(:error)
+        expect(Rails.logger).to receive(:error).with('HCE-Check-In', hash_including(message: 'BTSSS API Error'))
 
         response = subject.submit_claim_v2(token, opts)
         expect(response.status).to eq(resp.status)
@@ -428,11 +428,11 @@ describe TravelClaim::Client do
       end
 
       it 'includes the redacted api_error_message in the log payload' do
-        expect(Rails.logger).to receive(:error).with('HCE-Check-In') do |&block|
-          payload = JSON.parse(block.call)
-          expect(payload['message']).to eq('BTSSS API Error')
-          expect(payload['operation']).to eq('submit_claim')
-          expect(payload['api_error_message']).to eq('redacted-message')
+        expect(Rails.logger).to receive(:error) do |prefix, payload|
+          expect(prefix).to eq('HCE-Check-In')
+          expect(payload[:message]).to include('BTSSS API Error')
+          expect(payload[:operation]).to eq('submit_claim')
+          expect(payload[:api_error_message]).to eq('redacted-message')
         end
 
         subject.submit_claim(token: access_token, patient_icn: icn, appointment_date: appt_date)
@@ -447,10 +447,10 @@ describe TravelClaim::Client do
 
       it 'does not include api_error_message in the log payload' do
         expect(Logging::Helper::DataScrubber).not_to receive(:scrub)
-        expect(Rails.logger).to receive(:error).with('HCE-Check-In') do |&block|
-          payload = JSON.parse(block.call)
-          expect(payload['message']).to eq('BTSSS API Error')
-          expect(payload).not_to have_key('api_error_message')
+        expect(Rails.logger).to receive(:error) do |prefix, payload|
+          expect(prefix).to eq('HCE-Check-In')
+          expect(payload[:message]).to include('BTSSS API Error')
+          expect(payload).not_to have_key(:api_error_message)
         end
 
         subject.submit_claim(token: access_token, patient_icn: icn, appointment_date: appt_date)

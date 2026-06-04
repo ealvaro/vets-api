@@ -234,9 +234,7 @@ module TravelClaim
         log_data[:api_error_message] = extract_and_redact_message(error.original_body)
       end
 
-      Rails.logger.error('HCE-Check-In') do
-        log_data.to_json
-      end
+      Rails.logger.error('HCE-Check-In', log_data)
     end
 
     def extract_and_redact_message(body)

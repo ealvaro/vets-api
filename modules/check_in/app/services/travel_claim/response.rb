@@ -81,7 +81,7 @@ module TravelClaim
       error_code = case message
                    when /multiple appointments/i
                      CODE_MULTIPLE_APPTS
-                   when /already has a claim/i
+                   when /already has a claim/i, /associated claim at the same facility/i
                      CODE_CLAIM_EXISTS
                    when /appointment not found/i
                      CODE_APPT_NOT_FOUND

@@ -32,6 +32,21 @@ describe TravelClaim::Response do
       end
     end
 
+    context 'when status 400 for an appointment with an associated claim at the same facility' do
+      it 'maps to CLM_002_CLAIM_EXISTS' do
+        error_message = '10/16/2020 : The appointment found for the appointment date has an associated claim ' \
+                        'at the same facility.'
+        claims_api_400_response = {
+          currentDate: '[10/16/2020 03:28:48 PM]',
+          message: error_message
+        }
+        resp = Faraday::Response.new(response_body: claims_api_400_response, status: 400)
+        hsh = { data: { error: true, code: 'CLM_002_CLAIM_EXISTS', message: error_message }, status: resp.status }
+
+        expect(subject.build(response: resp).handle).to eq(hsh)
+      end
+    end
+
     context 'when status 400 for multiple appointments' do
       it 'returns a formatted response' do
         error_message = '10/16/2020 : There were multiple appointments for that date'
