@@ -15,6 +15,7 @@ module V0
         operation = params[:operation].presence || ::SignIn::Constants::Auth::AUTHORIZE
         scope = params[:scope].presence
         nonce = params[:nonce].presence
+        authorize_sso_id = params[:authorize_sso_id].presence
 
         validate_authorize_params(type, client_id, acr, operation)
 
@@ -29,8 +30,9 @@ module V0
                                                      operation:,
                                                      client_state:,
                                                      scope:,
-                                                     nonce:).perform
-        context = { type:, client_id:, acr:, operation: }
+                                                     nonce:,
+                                                     authorize_sso_id:).perform
+        context = { type:, client_id:, acr:, operation:, authorize_sso_id: }.compact
 
         sign_in_logger.info('authorize', context)
         StatsD.increment(::SignIn::Constants::Statsd::STATSD_SIS_AUTHORIZE_SUCCESS,

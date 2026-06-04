@@ -5,7 +5,6 @@ require 'rails_helper'
 RSpec.describe SignIn::StatePayload, type: :model do
   let(:state_payload) do
     create(:state_payload,
-           redirect_uri:,
            code_challenge:,
            client_id:,
            type:,
@@ -14,7 +13,8 @@ RSpec.describe SignIn::StatePayload, type: :model do
            client_state:,
            created_at:,
            scope:,
-           operation:)
+           operation:,
+           authorize_sso_id:)
   end
 
   let(:code_challenge) { Base64.urlsafe_encode64(SecureRandom.hex) }
@@ -27,7 +27,7 @@ RSpec.describe SignIn::StatePayload, type: :model do
   let(:created_at) { Time.zone.now.to_i }
   let(:scope) { SignIn::Constants::Auth::DEVICE_SSO }
   let(:operation) { SignIn::Constants::Auth::VERIFY_CTA_AUTHENTICATED }
-  let(:redirect_uri) { client_config.redirect_uri }
+  let(:authorize_sso_id) { nil }
 
   describe 'validations' do
     describe '#code' do

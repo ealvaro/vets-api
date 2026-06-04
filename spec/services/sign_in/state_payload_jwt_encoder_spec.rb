@@ -14,7 +14,8 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
                                          client_config:,
                                          operation:,
                                          nonce:,
-                                         redirect_uri:).perform
+                                         redirect_uri:,
+                                         authorize_sso_id:).perform
     end
 
     let(:code_challenge) { 'some-code-challenge' }
@@ -31,6 +32,7 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
     let(:client_state_minimum_length) { SignIn::Constants::Auth::CLIENT_STATE_MINIMUM_LENGTH }
     let(:operation) { SignIn::Constants::Auth::VERIFY_CTA_AUTHENTICATED }
     let(:redirect_uri) { nil }
+    let(:authorize_sso_id) { nil }
 
     shared_context 'validated code challenge state payload jwt' do
       let(:code) { 'some-state-code-value' }

@@ -80,7 +80,8 @@ module V0
                                                      type: state_payload.type,
                                                      client_state: state_payload.client_state,
                                                      operation: state_payload.operation,
-                                                     nonce: state_payload.nonce).perform
+                                                     nonce: state_payload.nonce,
+                                                     authorize_sso_id: state_payload.authorize_sso_id).perform
         render body: auth_service(state_payload.type, state_payload.client_id).render_auth(state:, acr: acr_for_type),
                content_type: 'text/html'
       end
@@ -112,6 +113,7 @@ module V0
                                 "operation:#{state_payload.operation}"])
         params_hash = { code: user_code_map.login_code, type: user_code_map.type }
         params_hash.merge!(state: user_code_map.client_state) if user_code_map.client_state.present?
+        params_hash.merge!(authorize_sso_id: state_payload.authorize_sso_id) if state_payload.authorize_sso_id.present?
 
         render body: ::SignIn::RedirectUrlGenerator.new(
           redirect_uri: user_code_map.client_config.redirect_uri,
