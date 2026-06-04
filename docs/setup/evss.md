@@ -1,3 +1,4 @@
+# EVSS has been decommissioned.
 ## EVSS S3 Uploads
 
 Uploaded disability claim documents are handled by CarrierWave and either sent
