@@ -12,6 +12,12 @@ module DebtsApi
 
       rescue_from DebtsApi::V0::FinancialStatusReportService::FSRNotFoundInRedis, with: :render_not_found
 
+      # Legacy entrypoint. Expects a form already in submit-ready shape — no BE-side
+      # transforms run. New resolution options are wired on `transform_and_submit`
+      # only; this endpoint was not extended for hardship-suspension. To add hardship
+      # support here, add :hardship_timeframe and :hardship_timeframe_acknowledgement
+      # to the `fsr_form` strong-params permit; downstream (`FsrFormBuilder`, schema
+      # validation, comment composition) is already shared with `transform_and_submit`.
       def create
         render json: service.submit_financial_status_report(fsr_form)
       end
@@ -281,6 +287,8 @@ module DebtsApi
             :resolution_waiver_check,
             :resolution_option,
             :resolution_comment,
+            :hardship_timeframe,
+            :hardship_timeframe_acknowledgement,
             :payee_number,
             :person_entitled,
             :deduction_code,

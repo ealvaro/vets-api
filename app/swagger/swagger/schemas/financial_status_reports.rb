@@ -207,7 +207,71 @@ module Swagger
             property :debt_type, type: :string
             property :deduction_code, type: :string
             property :resolution_comment, type: :string
-            property :resolution_option, type: :string
+            property :resolution_option, type: :string,
+                                         enum: %w[waiver monthly compromise]
+            property :station, type: :object do
+              property :facilit_y_num, type: :string
+            end
+          end
+        end
+      end
+
+      swagger_schema :FinancialStatusReportTransform do
+        key :required, [:personal_identification]
+
+        property :personal_identification, type: :object do
+          key :$ref, :PersonalIdentification
+        end
+
+        property :personal_data, type: :object do
+          key :$ref, :PersonalData
+        end
+
+        property :income, type: :array do
+          items do
+            key :$ref, :Income
+          end
+        end
+
+        property :expenses, type: :object do
+          key :$ref, :Expenses
+        end
+
+        property :discretionary_income, type: :object do
+          key :$ref, :DiscretionaryIncome
+        end
+
+        property :assets, type: :object do
+          key :$ref, :Assets
+        end
+
+        property :installment_contracts_and_other_debts, type: :array do
+          items do
+            key :$ref, :InstallmentContractsAndOtherDebts
+          end
+        end
+
+        property :total_of_installment_contracts_and_other_debts, type: :object do
+          key :$ref, :TotalOfInstallmentContractsAndOtherDebts
+        end
+
+        property :additional_data do
+          key :$ref, :AdditionalData
+        end
+
+        property :selected_debts_and_copays, type: :array do
+          items do
+            property :debt_type, type: :string
+            property :deduction_code, type: :string
+            property :resolution_comment, type: :string
+            property :resolution_option, type: :string,
+                                         enum: %w[waiver monthly compromise hardship-suspension]
+            property :hardship_timeframe, type: :string,
+                                          enum: %w[within-6-months 6-to-12-months 12-to-18-months 18-to-24-months],
+                                          description: 'Required when resolution_option is hardship-suspension'
+            property :hardship_timeframe_acknowledgement, type: :boolean,
+                                                          description: 'Required and must be true when ' \
+                                                                       'resolution_option is hardship-suspension'
             property :station, type: :object do
               property :facilit_y_num, type: :string
             end

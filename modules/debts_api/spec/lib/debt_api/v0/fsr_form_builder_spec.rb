@@ -78,8 +78,42 @@ RSpec.describe DebtsApi::V0::FsrFormBuilder, type: :service do
       end
 
       it 'adds compromise ammounts' do
-        expected = 'No comments Disability compensation and pension debt compromise amount: $50.00, '
+        expected = 'No comments Disability compensation and pension debt compromise amount: $50.00'
         expect(builder.vba_form.form_data['additionalData']['additionalComments']).to eq(expected)
+      end
+
+      it 'adds the hardship-suspension sentence into the DMC-bound additionalComments' do
+        allow(Flipper).to receive(:enabled?).with(:enable_hardship_suspension, anything).and_return(true)
+        hardship_form = vba_form_data.deep_dup
+        debt = hardship_form['selected_debts_and_copays'].first
+        debt['resolution_option'] = 'hardship-suspension'
+        debt['deduction_code'] = '30'
+        debt['hardship_timeframe'] = '6-to-12-months'
+        debt['hardship_timeframe_acknowledgement'] = true
+
+        builder = described_class.new(hardship_form, '123', user)
+        comments = builder.vba_form.form_data.dig('additionalData', 'additionalComments')
+
+        expect(comments).to include(
+          'Disability compensation and pension debt - Hardship Suspension Request Information: ' \
+          'I am experiencing temporary financial hardship and I estimate my financial situation ' \
+          'to improve between 6-12 months'
+        )
+      end
+
+      it 'omits the hardship sentence when the enable_hardship_suspension flag is off' do
+        allow(Flipper).to receive(:enabled?).with(:enable_hardship_suspension, anything).and_return(false)
+        hardship_form = vba_form_data.deep_dup
+        debt = hardship_form['selected_debts_and_copays'].first
+        debt['resolution_option'] = 'hardship-suspension'
+        debt['deduction_code'] = '30'
+        debt['hardship_timeframe'] = '6-to-12-months'
+        debt['hardship_timeframe_acknowledgement'] = true
+
+        builder = described_class.new(hardship_form, '123', user)
+        comments = builder.vba_form.form_data.dig('additionalData', 'additionalComments')
+
+        expect(comments).not_to include('Hardship Suspension Request Information')
       end
 
       it 'aggregates fsr reasons' do
@@ -121,7 +155,7 @@ RSpec.describe DebtsApi::V0::FsrFormBuilder, type: :service do
         vha_form_data['additional_data']['additional_comments'] = "^Gr\neg|"
         builder = described_class.new(vha_form_data, '123', user)
         vha_comments = builder.vha_forms.first.form_data['additionalData']['additionalComments']
-        expect(vha_comments).to eq('Greg , ')
+        expect(vha_comments).to eq('Greg')
       end
 
       it 'adds compromise ammounts to comments' do
@@ -132,6 +166,19 @@ RSpec.describe DebtsApi::V0::FsrFormBuilder, type: :service do
         builder = described_class.new(compromise_form, '123', user)
         comments = builder.vha_forms.first.form_data.dig('additionalData', 'additionalComments')
         expect(comments.include?('Disability compensation and pension debt')).to be(true)
+      end
+
+      it 'rejects the submission if a copay is marked as hardship-suspension (debt-only resolution)' do
+        hardship_form = vha_form_data.deep_dup
+        copays = hardship_form['selected_debts_and_copays']
+        copays.first['resolutionOption'] = 'hardship-suspension'
+        copays.first['deductionCode'] = '30'
+        copays.first['hardshipTimeframe'] = 'within-6-months'
+        copays.first['hardshipTimeframeAcknowledgement'] = true
+
+        expect do
+          described_class.new(hardship_form, '123', user)
+        end.to raise_error(DebtsApi::V0::FsrFormBuilder::FSRInvalidRequest)
       end
 
       it 'does not have a vba form' do
@@ -211,6 +258,73 @@ RSpec.describe DebtsApi::V0::FsrFormBuilder, type: :service do
         expect do
           described_class.new(busted_form, '123', user)
         end.to raise_error(DebtsApi::V0::FsrFormBuilder::FSRInvalidRequest)
+      end
+    end
+
+    context 'hardship-suspension schema validation' do
+      let(:schema_path) { Rails.root.join('lib', 'debt_management_center', 'schemas', 'fsr.json').to_s }
+      let(:debt) do
+        {
+          'resolutionOption' => 'hardship-suspension',
+          'debtType' => 'DEBT',
+          'hardshipTimeframe' => '6-to-12-months',
+          'hardshipTimeframeAcknowledgement' => true
+        }
+      end
+      let(:form) { { 'selectedDebtsAndCopays' => [debt] } }
+
+      def validate(payload)
+        JSON::Validator.fully_validate(schema_path, payload)
+      end
+
+      it 'accepts a valid hardship-suspension debt' do
+        expect(validate(form)).to be_empty
+      end
+
+      it 'rejects an unknown hardshipTimeframe enum value on a hardship-suspension debt' do
+        debt['hardshipTimeframe'] = 'bogus-9-months'
+        expect(validate(form)).not_to be_empty
+      end
+
+      it 'rejects a hardship-suspension debt missing hardshipTimeframe' do
+        debt.delete('hardshipTimeframe')
+        expect(validate(form)).not_to be_empty
+      end
+
+      it 'rejects a hardship-suspension debt with hardshipTimeframeAcknowledgement false' do
+        debt['hardshipTimeframeAcknowledgement'] = false
+        expect(validate(form)).not_to be_empty
+      end
+
+      it 'rejects hardship-suspension on a copay (debtType is COPAY, not DEBT)' do
+        debt['debtType'] = 'COPAY'
+        expect(validate(form)).not_to be_empty
+      end
+
+      it 'rejects an unknown resolutionOption value' do
+        debt['resolutionOption'] = 'amnesty'
+        expect(validate(form)).not_to be_empty
+      end
+
+      it 'accepts existing non-hardship resolutionOption values without timeframe fields' do
+        %w[waiver monthly compromise].each do |option|
+          form['selectedDebtsAndCopays'] = [{ 'resolutionOption' => option }]
+          expect(validate(form)).to be_empty, "expected resolutionOption=#{option} to be valid"
+        end
+      end
+
+      it 'accepts non-hardship debts that carry default-empty hardship fields from the FE' do
+        %w[waiver monthly compromise].each do |option|
+          form['selectedDebtsAndCopays'] = [
+            {
+              'resolutionOption' => option,
+              'hardshipTimeframe' => '',
+              'hardshipTimeframeAcknowledgement' => false
+            }
+          ]
+          expect(validate(form)).to be_empty,
+                                    "expected resolutionOption=#{option} with empty hardship fields to be valid"
+        end
       end
     end
   end

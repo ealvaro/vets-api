@@ -26,9 +26,12 @@ module DebtsApi
         end
 
         def resolution_options_map
-          { 'waiver' => 'Waiver',
+          {
+            'waiver' => 'Waiver',
             'monthly' => 'Extended monthly payments',
-            'compromise' => 'Compromise' }
+            'compromise' => 'Compromise',
+            'hardship-suspension' => 'Hardship suspension'
+          }
         end
       end
     end

@@ -32,6 +32,36 @@ module Swagger
         end
       end
 
+      swagger_path '/debts_api/v0/financial_status_reports/transform_and_submit' do
+        operation :post do
+          key :summary, 'Transforms FE-shaped Form VA-5655 data and submits to the Debt Management Center'
+          key :description, "Accepts a raw FE-submitted VA-5655 payload, runs server-side
+            transforms (discretionary income, totals, additional-comment composition,
+            etc.) via FullTransformService, then forwards the result to the Debt
+            Management Center's Financial Status Report API, where it is used to fill
+            a PDF version of the VA-5655 form for submission to filenet.
+            This is the endpoint the vets-website FE posts to, and the only endpoint
+            that accepts hardship-suspension resolution data."
+          key :operationId, 'postFinancialStatusReportTransformAndSubmit'
+          key :tags, %w[financial_status_reports]
+
+          parameter do
+            key :name, :request
+            key :in, :body
+            key :required, true
+            schema '$ref': :FinancialStatusReportTransform
+          end
+
+          response 200 do
+            key :description, 'Form VA-5655 Financial Status Report successful submission'
+
+            schema do
+              property :content, type: :string
+            end
+          end
+        end
+      end
+
       swagger_path '/debts_api/v0/financial_status_reports/download_pdf' do
         operation :get do
           key :summary, 'Downloads the filled copy of VA-5655 Financial Status Report'

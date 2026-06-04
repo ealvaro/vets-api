@@ -58,7 +58,7 @@ module DebtsApi
       form = @original_data.deep_dup
       form.delete(DEBTS_KEY)
       if @debts.present?
-        add_compromise_amounts(form, @debts)
+        add_additional_comments(form, @debts)
         aggregate_fsr_reasons(form, @debts)
         form
       else

@@ -14,24 +14,43 @@ module DebtsApi
       '74' => 'Post-9/11 GI Bill debt for tuition',
       '75' => 'Post-9/11 GI Bill debt for tuition (school liable)'
     }.freeze
+    HARDSHIP_SUSPENSION = 'hardship-suspension'
+    MONTHLY = 'monthly'
+    WAIVER = 'waiver'
+    COMPROMISE = 'compromise'
 
-    def add_compromise_amounts(form, debts)
+    HARDSHIP_SUSPENSION_DESCRIPTION =
+      'Hardship Suspension Request Information: I am experiencing temporary financial hardship ' \
+      'and I estimate my financial situation to improve'
+    COMPROMISE_DESCRIPTION = 'compromise amount:'
+
+    TIMEFRAME_OPTIONS = {
+      'within-6-months' => 'within 6 months',
+      '6-to-12-months' => 'between 6-12 months',
+      '12-to-18-months' => 'between 12-18 months',
+      '18-to-24-months' => 'between 18-24 months'
+    }.freeze
+
+    def add_additional_comments(form, debts)
+      resolution_text = get_resolution_option_text(debts)
+      return if resolution_text.blank?
+
+      existing = form['additionalData']['additionalComments']
       form['additionalData']['additionalComments'] =
-        "#{form['additionalData']['additionalComments']} #{get_compromise_amount_text(debts)}"
+        [existing, resolution_text].compact_blank.join(' ')
     end
 
-    def get_compromise_amount_text(debts)
-      debts.map do |debt|
-        if debt['resolutionOption'] == 'compromise'
-          "#{DEDUCTION_CODES[debt['deductionCode']]} compromise amount: $#{debt['resolutionComment']}"
-        end
-      end.join(', ')
+    def get_resolution_option_text(debts)
+      debts.filter_map { |debt| format_resolution(debt) }.join(', ')
     end
 
     def aggregate_fsr_reasons(form, debts)
       return if debts.blank?
 
-      form['personalIdentification']['fsrReason'] = debts.pluck('resolutionOption').uniq.join(', ').delete_prefix(', ')
+      reasons = debts.pluck('resolutionOption').uniq.map do |option|
+        option == HARDSHIP_SUSPENSION ? 'hardship suspension' : option
+      end
+      form['personalIdentification']['fsrReason'] = reasons.join(', ').delete_prefix(', ')
     end
 
     def enabled_feature_flags(user)
@@ -49,6 +68,28 @@ module DebtsApi
 
     def in_progress_form(user_uuid)
       InProgressForm.where(form_id: '5655', user_uuid:).last
+    end
+
+    private
+
+    def format_resolution(debt)
+      case debt['resolutionOption']
+      when COMPROMISE          then format_compromise(debt)
+      when HARDSHIP_SUSPENSION then format_hardship(debt) if hardship_suspension_enabled?
+      end
+    end
+
+    def format_compromise(debt)
+      "#{DEDUCTION_CODES[debt['deductionCode']]} #{COMPROMISE_DESCRIPTION} $#{debt['resolutionComment']}"
+    end
+
+    def format_hardship(debt)
+      "#{DEDUCTION_CODES[debt['deductionCode']]} - #{HARDSHIP_SUSPENSION_DESCRIPTION} " \
+        "#{TIMEFRAME_OPTIONS[debt['hardshipTimeframe']]}"
+    end
+
+    def hardship_suspension_enabled?
+      Flipper.enabled?(:enable_hardship_suspension, @user)
     end
   end
 end

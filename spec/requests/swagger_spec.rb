@@ -787,6 +787,37 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
         end
       end
 
+      context 'financial status report transform and submit' do
+        let(:pre_transform_fsr_form_data) do
+          get_fixture_absolute('modules/debts_api/spec/fixtures/pre_submission_fsr/pre_transform')
+        end
+
+        it 'validates the route' do
+          pdf_stub = class_double(PdfFill::Filler).as_stubbed_const
+          allow(pdf_stub).to receive(:fill_ancillary_form).and_return(Rails.root.join(
+            *'/spec/fixtures/dmc/5655.pdf'.split('/')
+          ).to_s)
+          request_headers = {
+            '_headers' => {
+              'Cookie' => sign_in(user, nil, true),
+              'Accept' => 'application/json',
+              'Content-Type' => 'application/json'
+            },
+            '_data' => pre_transform_fsr_form_data.to_json
+          }
+          VCR.use_cassette('dmc/submit_fsr') do
+            VCR.use_cassette('bgs/people_service/person_data') do
+              expect(subject).to validate(
+                :post,
+                '/debts_api/v0/financial_status_reports/transform_and_submit',
+                200,
+                request_headers
+              )
+            end
+          end
+        end
+      end
+
       describe 'financial status report submissions' do
         it 'supports getting financial status report submissions' do
           expect(subject).to validate(

@@ -53,6 +53,41 @@ RSpec.describe DebtsApi::V0::FsrFormTransform::PersonalIdentificationCalculator,
           expect(expected_fsr_reason).to eq(transformed_fsr_reason)
         end
       end
+
+      context 'when a debt has a hardship-suspension resolution option' do
+        let(:pre_transform_fsr_form_data) do
+          raw_data = get_fixture_absolute('modules/debts_api/spec/fixtures/pre_submission_fsr/pre_transform')
+          raw_data['selected_debts_and_copays'] = [
+            {
+              'resolution_option' => 'hardship-suspension',
+              'hardship_timeframe' => '6-to-12-months',
+              'hardship_timeframe_acknowledgement' => true
+            }
+          ]
+          raw_data
+        end
+
+        it 'maps hardship-suspension to its display name in fsrReason' do
+          expect(@data['fsrReason']).to eq('Hardship suspension')
+        end
+      end
+
+      context 'when debts have a mix of resolution options including hardship-suspension' do
+        let(:pre_transform_fsr_form_data) do
+          raw_data = get_fixture_absolute('modules/debts_api/spec/fixtures/pre_submission_fsr/pre_transform')
+          raw_data['selected_debts_and_copays'] = [
+            { 'resolution_option' => 'waiver', 'resolution_comment' => '' },
+            { 'resolution_option' => 'hardship-suspension',
+              'hardship_timeframe' => 'within-6-months',
+              'hardship_timeframe_acknowledgement' => true }
+          ]
+          raw_data
+        end
+
+        it 'joins unique display names with comma' do
+          expect(@data['fsrReason']).to eq('Waiver, Hardship suspension')
+        end
+      end
     end
   end
 end

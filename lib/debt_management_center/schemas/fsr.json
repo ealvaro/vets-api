@@ -643,7 +643,73 @@
       },
       "facilityNum": {
         "type": "string"
+      },
+      "selectedDebtsAndCopays": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "resolutionOption": {
+              "type": "string",
+              "enum": [
+                "waiver",
+                "monthly",
+                "compromise",
+                "hardship-suspension"
+              ]
+            },
+            "hardshipTimeframe": {
+              "type": "string"
+            },
+            "hardshipTimeframeAcknowledgement": {
+              "type": "boolean"
+            }
+          },
+          "oneOf": [
+            {
+              "properties": {
+                "resolutionOption": {
+                  "enum": [
+                    "waiver",
+                    "monthly",
+                    "compromise"
+                  ]
+                }
+              }
+            },
+            {
+              "properties": {
+                "resolutionOption": {
+                  "enum": [
+                    "hardship-suspension"
+                  ]
+                },
+                "debtType": {
+                  "enum": [
+                    "DEBT"
+                  ]
+                },
+                "hardshipTimeframe": {
+                  "enum": [
+                    "within-6-months",
+                    "6-to-12-months",
+                    "12-to-18-months",
+                    "18-to-24-months"
+                  ]
+                },
+                "hardshipTimeframeAcknowledgement": {
+                  "enum": [
+                    true
+                  ]
+                }
+              },
+              "required": [
+                "hardshipTimeframe",
+                "hardshipTimeframeAcknowledgement"
+              ]
+            }
+          ]
+        }
       }
     }
   }
-  

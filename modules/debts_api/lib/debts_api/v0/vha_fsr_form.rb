@@ -56,7 +56,7 @@ module DebtsApi
       facility_form = @original_data.deep_dup
       facility_form['facilityNum'] = @facility_num
       facility_form['personalIdentification']['fileNumber'] = @user.ssn
-      add_compromise_amounts(facility_form, @copays)
+      add_additional_comments(facility_form, @copays)
       aggregate_fsr_reasons(facility_form, @copays)
       facility_form.delete(DEBTS_KEY)
       facility_form = remove_form_delimiters(facility_form)

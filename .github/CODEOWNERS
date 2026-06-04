@@ -681,6 +681,7 @@ app/swagger/swagger/schemas/connected_applications.rb @software/lighthouse-pivot
 app/swagger/swagger/schemas/contacts.rb @software/vfs-authenticated-experience-backend @software/vfs-mhv-integration @software/backend-review-group
 app/swagger/swagger/schemas/dependents_verifications.rb @software/benefits-dependents-management @software/backend-review-group
 app/swagger/swagger/schemas/dependents.rb @software/benefits-dependents-management @software/backend-review-group
+app/swagger/swagger/schemas/financial_status_reports.rb @software/vsa-debt-resolution @software/backend-review-group
 app/swagger/swagger/schemas/form526/ @software/disability-benefits @software/backend-review-group
 app/swagger/swagger/schemas/gibct @software/backend-review-group
 app/swagger/swagger/schemas/gibct/calculator_constants.rb @software/backend-review-group

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'debts_api/v0/fsr_form_transform/full_transform_service'
 require_relative '../../../support/stub_financial_status_report'
 require_relative '../../../support/financial_status_report_helpers'
 
@@ -149,6 +150,64 @@ RSpec.describe 'DebtsApi::V0::FinancialStatusReports', type: :request do
           )
           expect(response).to have_http_status(:ok)
         end
+      end
+    end
+
+    context 'strong params for selected_debts_and_copays' do
+      let(:hardship_payload) do
+        pre_transform_fsr_form_data.deep_dup.merge(
+          'selected_debts_and_copays' => [
+            {
+              'id' => 0,
+              'resolution_option' => 'hardship-suspension',
+              'hardship_timeframe' => '6-to-12-months',
+              'hardship_timeframe_acknowledgement' => true
+            }
+          ]
+        )
+      end
+
+      let(:compromise_payload) do
+        pre_transform_fsr_form_data.deep_dup.merge(
+          'selected_debts_and_copays' => [
+            { 'id' => 0, 'resolution_option' => 'compromise', 'resolution_comment' => '50' }
+          ]
+        )
+      end
+
+      it 'permits hardship_timeframe and hardship_timeframe_acknowledgement per debt for hardship-suspension' do
+        captured_form = nil
+        allow(DebtsApi::V0::FsrFormTransform::FullTransformService).to receive(:new) do |form|
+          captured_form = form
+          raise StandardError, 'short-circuit'
+        end
+
+        post(
+          '/debts_api/v0/financial_status_reports/transform_and_submit',
+          params: hardship_payload,
+          as: :json
+        )
+
+        debt = captured_form['selected_debts_and_copays'].first
+        expect(debt['hardship_timeframe']).to eq('6-to-12-months')
+        expect(debt['hardship_timeframe_acknowledgement']).to be(true)
+      end
+
+      it 'permits resolution_comment as a scalar string for compromise' do
+        captured_form = nil
+        allow(DebtsApi::V0::FsrFormTransform::FullTransformService).to receive(:new) do |form|
+          captured_form = form
+          raise StandardError, 'short-circuit'
+        end
+
+        post(
+          '/debts_api/v0/financial_status_reports/transform_and_submit',
+          params: compromise_payload,
+          as: :json
+        )
+
+        debt = captured_form['selected_debts_and_copays'].first
+        expect(debt['resolution_comment']).to eq('50')
       end
     end
   end
