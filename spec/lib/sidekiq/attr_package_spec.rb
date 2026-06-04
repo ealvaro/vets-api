@@ -25,7 +25,7 @@ RSpec.describe Sidekiq::AttrPackage do
 
     context 'when no expiration is provided' do
       it 'stores attributes in Redis and returns a key' do
-        expect(redis_double).to receive(:set).with(expected_key, attrs.to_json, ex: 7.days)
+        expect(redis_double).to receive(:set).with(expected_key, attrs.to_json, ex: 3.days)
         key = described_class.create(**attrs)
         expect(key).to eq(expected_key)
       end

@@ -3,13 +3,14 @@
 module Sidekiq
   class AttrPackage
     REDIS_NAMESPACE = 'sidekiq_attr_package'
+    DEFAULT_EXPIRES_IN = 3.days
 
     class << self
       # Create a new attribute package
-      # @param expires_in [Integer] the expiration time in days
+      # @param expires_in [Integer] the expiration time in seconds
       # @param attrs [Hash] the attributes to be stored
       # @return [String] the key of the stored attributes
-      def create(expires_in: 7.days, **attrs)
+      def create(expires_in: DEFAULT_EXPIRES_IN, **attrs)
         json_attrs = attrs.to_json
         key = SecureRandom.hex(32)
 
