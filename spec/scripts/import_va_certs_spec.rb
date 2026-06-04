@@ -128,6 +128,21 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
       expect(script_content).to include('Downloading VA certificates...')
     end
 
+    it 'verifies wget actually downloaded VA*.cer files before declaring success' do
+      script_content = File.read(script_path)
+
+      # Verify nullglob is used to safely expand the VA*.cer glob
+      expect(script_content).to include('shopt -s nullglob')
+      expect(script_content).to include('va_files=(VA*.cer)')
+      expect(script_content).to include('shopt -u nullglob')
+
+      # Verify the file count check gates the success declaration
+      expect(script_content).to include('if [ ${#va_files[@]} -gt 0 ]; then')
+
+      # Verify the warning message for the wget-exits-0-but-no-files case
+      expect(script_content).to include('wget succeeded but no VA*.cer files were downloaded')
+    end
+
     it 'exits on individual cert download failure in GitHub mirror fallback' do
       script_content = File.read(script_path)
       expect(script_content).to include('Failed to download ${cert}.cer')

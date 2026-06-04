@@ -67,6 +67,7 @@ set -euo pipefail
     )
 
     echo "Downloading VA certificates..."
+    va_certs_downloaded=false
     if wget \
         --level=1 \
         --recursive \
@@ -75,9 +76,21 @@ set -euo pipefail
         --no-directories \
         --accept="VA*.cer" \
         http://aia.pki.va.gov/PKI/AIA/VA/; then
-        echo "✓ VA certificates downloaded from aia.pki.va.gov"
-    else
-        echo "⚠ aia.pki.va.gov unreachable, falling back to GHEC-US mirror..."
+        # Verify wget actually downloaded VA cert files — it can exit 0
+        # even when the directory listing returns no matching files.
+        shopt -s nullglob
+        va_files=(VA*.cer)
+        shopt -u nullglob
+        if [ ${#va_files[@]} -gt 0 ]; then
+            echo "✓ VA certificates downloaded from aia.pki.va.gov (${#va_files[@]} files)"
+            va_certs_downloaded=true
+        else
+            echo "⚠ wget succeeded but no VA*.cer files were downloaded"
+        fi
+    fi
+
+    if [ "$va_certs_downloaded" = false ]; then
+        echo "⚠ aia.pki.va.gov did not provide VA certs, falling back to GHEC-US mirror..."
         VA_CERT_REPO="https://raw.va.ghe.com/software/platform-va-ca-certificate/main"
         CERT_TOKEN="${BUNDLE_VA__GHE__COM:-}"
         CERT_TOKEN="${CERT_TOKEN##*:}"
