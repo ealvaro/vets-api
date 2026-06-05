@@ -824,6 +824,10 @@ features:
     actor_type: user
     description: Enables new status page for the Certificate of Eligibility form
     enable_in_development: true
+  coe_form_browser_monitoring_enabled:
+    actor_type: user
+    description: Enables browser monitoring for the Certificate of Eligibility form
+    enable_in_development: true
   coe_form_rebuild_cveteam:
     actor_type: user
     description: Enables rebuild of Certificate of Eligibility form
