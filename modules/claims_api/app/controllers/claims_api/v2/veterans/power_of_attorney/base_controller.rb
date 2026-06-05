@@ -136,13 +136,16 @@ module ClaimsApi
         end
 
         def add_dependent_to_auth_headers(headers)
+          return headers if user_profile.nil? || user_profile.status != :ok
+
           claimant = user_profile.profile
+          return headers if claimant.nil?
 
           headers.merge!({
                            dependent: {
                              participant_id: claimant.participant_id,
                              ssn: claimant.ssn,
-                             first_name: claimant.given_names[0],
+                             first_name: claimant.given_names&.first,
                              last_name: claimant.family_name
                            }
                          })
@@ -248,10 +251,15 @@ module ClaimsApi
         def nullable_icn
           current_user.icn
         rescue => e
-          ClaimsApi::Logger.log 'POABaseController',
-                                level: :warn,
-                                message: 'Failed to retrieve icn for consumer',
-                                error_message: e.message
+          StatsD.increment('claims_api.poa.icn_retrieval_failure')
+          ClaimsApi::Logger.log(
+            'POABaseController',
+            level: :warn,
+            message: 'Failed to retrieve icn for consumer',
+            statsd_key: 'claims_api.poa.icn_retrieval_failure',
+            error_class: e.class.name,
+            error_message: e.message
+          )
           nil
         end
 
@@ -264,19 +272,22 @@ module ClaimsApi
           dependent_claimant_icn.presence || params[:veteranId]
         end
 
+        ##
+        # Fetch claimant profile from MPI service by ICN
+        # Returns an MPI::Responses::FindProfileResponse or nil if claimant_icn is blank
+        # Logs and returns nil if MPI service encounters an ArgumentError
+        #
         def fetch_claimant
-          if claimant_icn.present?
-            mpi_profile = mpi_service.find_profile_by_identifier(identifier: claimant_icn,
-                                                                 identifier_type: MPI::Constants::ICN)
-          end
-        rescue ArgumentError
-          mpi_profile
-        end
+          return nil if claimant_icn.blank?
 
-        def fetch_ptcpnt_id(vet_icn)
-          mpi_profile = mpi_service.find_profile_by_identifier(identifier: vet_icn,
-                                                               identifier_type: MPI::Constants::ICN)
-          mpi_profile.profile.participant_id
+          mpi_service.find_profile_by_identifier(identifier: claimant_icn,
+                                                 identifier_type: MPI::Constants::ICN)
+        rescue ArgumentError, MPI::Errors::ArgumentError => e
+          log_mpi_lookup_failure(e, 'claimant')
+          nil
+        rescue => e
+          log_mpi_lookup_error(e, 'claimant')
+          nil
         end
 
         def claimant_icn
@@ -288,11 +299,40 @@ module ClaimsApi
         end
 
         def add_claimant_data_to_form
-          if user_profile&.status == :ok
-            first_name = user_profile.profile.given_names.first
-            last_name = user_profile.profile.family_name
-            form_attributes['claimant'].merge!(firstName: first_name, lastName: last_name)
-          end
+          return unless user_profile&.status == :ok
+
+          claimant = form_attributes['claimant']
+          return unless claimant.is_a?(Hash)
+
+          first_name = user_profile.profile.given_names&.first
+          last_name = user_profile.profile.family_name
+          claimant.merge!(firstName: first_name, lastName: last_name)
+        end
+
+        def log_mpi_lookup_failure(error, lookup_type)
+          metric = "claims_api.poa.mpi_#{lookup_type}_lookup_failure"
+          StatsD.increment(metric)
+          ClaimsApi::Logger.log(
+            'POABaseController',
+            level: :warn,
+            message: "MPI lookup failed for #{lookup_type}",
+            statsd_key: metric,
+            error_class: error.class.name,
+            error_message: error.message
+          )
+        end
+
+        def log_mpi_lookup_error(error, lookup_type)
+          metric = "claims_api.poa.mpi_#{lookup_type}_lookup_error"
+          StatsD.increment(metric)
+          ClaimsApi::Logger.log(
+            'POABaseController',
+            level: :error,
+            message: "Unexpected error during MPI #{lookup_type} lookup",
+            statsd_key: metric,
+            error_class: error.class.name,
+            error_message: error.message
+          )
         end
       end
     end

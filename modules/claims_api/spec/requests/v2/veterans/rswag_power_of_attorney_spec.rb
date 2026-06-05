@@ -684,8 +684,6 @@ describe 'PowerOfAttorney',
                                                           veteran_icn: '1012829932V238054',
                                                           poa_code: '003')
             allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_v2_poa_requests_skip_bgs).and_return(false)
-            allow_any_instance_of(ClaimsApi::V2::Veterans::PowerOfAttorney::BaseController).to receive(:fetch_ptcpnt_id)
-              .with(anything).and_return('600049322')
             allow(ClaimsApi::PowerOfAttorneyRequestService::Decide).to receive(:new).and_return(poa_request_service)
             allow(poa_request_service).to receive(:handle_poa_response).and_return(get_poa_request_response)
             allow_any_instance_of(ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController)
