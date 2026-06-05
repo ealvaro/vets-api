@@ -65,6 +65,7 @@ module V0
       saved_claim = SavedClaim::DisabilityCompensation::Form526AllClaim.from_hash(form_content)
       saved_claim.metadata = check_for_0781_metadata
       in_progress_form = InProgressForm.form_for_user(FormProfiles::VA526ez::FORM_ID, @current_user)
+      saved_claim.form_start_date = in_progress_form.created_at if in_progress_form
 
       saved_claim.save ? log_success(saved_claim) : log_failure(saved_claim, in_progress_form)
       submission = create_submission(saved_claim)

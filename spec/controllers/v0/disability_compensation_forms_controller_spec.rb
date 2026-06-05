@@ -192,4 +192,26 @@ RSpec.describe V0::DisabilityCompensationFormsController, type: :controller do
       end
     end
   end
+
+  describe '#submit_all_claim' do
+    let(:saved_claim) { build(:va526ez) }
+
+    before do
+      allow(SavedClaim::DisabilityCompensation::Form526AllClaim).to(
+        receive(:from_hash).and_return(saved_claim)
+      )
+    end
+
+    it 'populates form_start_date on the SavedClaim from the InProgressForm.created_at' do
+      in_progress_form = create(:in_progress_526_form, user_uuid: user.uuid, created_at: 3.days.ago)
+
+      post(:submit_all_claim, body: '{}', as: :json)
+      expect(saved_claim.form_start_date).to eq(in_progress_form.created_at)
+    end
+
+    it 'leaves form_start_date nil when no InProgressForm exists for the user' do
+      post(:submit_all_claim, body: '{}', as: :json)
+      expect(saved_claim.form_start_date).to be_nil
+    end
+  end
 end
