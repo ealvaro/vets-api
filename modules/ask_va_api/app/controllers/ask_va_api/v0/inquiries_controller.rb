@@ -7,6 +7,7 @@ module AskVAApi
       before_action :require_loa3!, except: %i[unauth_create status]
       before_action :record_inbound_checkpoint, only: %i[create unauth_create]
       before_action :validate_inquiry_id_format, only: %i[status] # We can add back show and create_reply later
+      before_action :validate_reply_content, only: [:create_reply]
       skip_before_action :authenticate, only: %i[unauth_create status]
 
       def index
@@ -116,6 +117,13 @@ module AskVAApi
         msg = 'Invalid inquiry ID format. Expected: A-<8-digit date>-<5-10 digit number> (e.g., A-20260416-1234567).'
 
         render json: { error: msg }, status: :bad_request unless params[:id].match?(INQUIRY_ID_FORMAT)
+      end
+
+      def validate_reply_content
+        reply = params[:reply]
+        return if reply.is_a?(String) && reply.match?(/\S/)
+
+        render json: { error: 'Reply content cannot be blank or only whitespace' }, status: :unprocessable_entity
       end
 
       class InvalidAttachmentError < StandardError; end

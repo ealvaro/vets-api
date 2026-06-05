@@ -868,6 +868,41 @@ RSpec.describe 'AskVAApi::V0::Inquiries', type: :request do
       end
     end
 
+    context 'when reply contains only whitespace' do
+      before { sign_in(authorized_user) }
+
+      it 'returns unprocessable_entity for a single space' do
+        post '/ask_va_api/v0/inquiries/A-12345678-123456/reply/new',
+             params: { 'reply' => ' ', 'files' => [{ 'file_name' => nil, 'file_content' => nil }] }
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(JSON.parse(response.body)['error']).to eq('Reply content cannot be blank or only whitespace')
+      end
+
+      it 'returns unprocessable_entity for multiple spaces' do
+        post '/ask_va_api/v0/inquiries/A-12345678-123456/reply/new',
+             params: { 'reply' => '   ', 'files' => [{ 'file_name' => nil, 'file_content' => nil }] }
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+
+      it 'returns unprocessable_entity for tabs and newlines' do
+        post '/ask_va_api/v0/inquiries/A-12345678-123456/reply/new',
+             params: { 'reply' => "\t\n", 'files' => [{ 'file_name' => nil, 'file_content' => nil }] }
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+
+      it 'returns unprocessable_entity when reply is empty' do
+        post '/ask_va_api/v0/inquiries/A-12345678-123456/reply/new',
+             params: { 'reply' => '', 'files' => [{ 'file_name' => nil, 'file_content' => nil }] }
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+
+      it 'returns unprocessable_entity when reply is nil' do
+        post '/ask_va_api/v0/inquiries/A-12345678-123456/reply/new',
+             params: { 'reply' => nil, 'files' => [{ 'file_name' => nil, 'file_content' => nil }] }
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+    end
+
     it_behaves_like 'an endpoint requiring loa3', :post, '/ask_va_api/v0/inquiries/123/reply/new',
                     { params: { reply: 'reply' } }
   end
