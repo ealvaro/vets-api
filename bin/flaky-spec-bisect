@@ -146,6 +146,7 @@ class FlakySpecBisect
 
   def fetch_ci_commit
     output, status = Open3.capture2(
+      { 'GH_HOST' => 'va.ghe.com' },
       'gh', 'run', 'view', @run_id,
       '--repo', REPO,
       '--json', 'headSha',
@@ -177,6 +178,7 @@ class FlakySpecBisect
 
   def find_failed_test_groups
     output, status = Open3.capture2(
+      { 'GH_HOST' => 'va.ghe.com' },
       'gh', 'run', 'view', @run_id,
       '--repo', REPO,
       '--json', 'jobs',
@@ -268,6 +270,7 @@ class FlakySpecBisect
 
   def fetch_artifact(artifact_name, dir)
     _, stderr, status = Open3.capture3(
+      { 'GH_HOST' => 'va.ghe.com' },
       'gh', 'run', 'download', @run_id,
       '--repo', REPO,
       '--name', artifact_name,
