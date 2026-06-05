@@ -28,6 +28,7 @@ module VBADocuments
       {
         summary_stats:,
         consumer_stats:,
+        veterans_impacted:,
         page_count_stats:,
         upload_size_in_mb_stats:,
         status_elapsed_time_stats:
@@ -103,6 +104,17 @@ module VBADocuments
         median: calculate_median(page_counts),
         mode: calculate_mode(page_counts)
       }
+    end
+
+    def veterans_impacted
+      non_error_statuses = %w[pending uploaded received processing success vbms]
+      records_in_date_range
+        .where(status: non_error_statuses)
+        .where("metadata->>'icn' IS NOT NULL")
+        .where("metadata->>'icn' != ''")
+        .select("metadata->>'icn'")
+        .distinct
+        .count
     end
 
     def upload_size_in_mb_stats

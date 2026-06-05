@@ -46,6 +46,27 @@
 <h5>* Processing statuses include: pending, uploaded, received, and processing</h5>
 <br>
 <br>
+<h2>Prior Twelve Months - Veterans Impacted (Unique Veterans)</h2>
+<table>
+  <thead>
+  <tr>
+    <th style="width: 30%">YEAR</th>
+    <th style="width: 30%">MONTH</th>
+    <th style="width: 40%">UNIQUE VETERANS</th>
+  </tr>
+  </thead>
+  <tbody>
+    <% @stats.each do |month_stats| %>
+      <tr>
+        <td><%= month_stats.year %></td>
+        <td><%= Date::MONTHNAMES[month_stats.month] %></td>
+        <td style="text-align: right"><%= month_stats.stats['veterans_impacted'] || 0 %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+<br>
+<br>
 <h2>Prior Twelve Months - Page Counts and Upload Sizes in MB</h2>
 <table>
   <thead>

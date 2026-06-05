@@ -68,6 +68,7 @@ RSpec.describe VBADocuments::MonthlyStatsGenerator do
             'processing_count' => 0
           }
         ],
+        'veterans_impacted' => 3,
         'page_count_stats' => {
           'mode' => 2,
           'total' => 125,
@@ -151,6 +152,7 @@ RSpec.describe VBADocuments::MonthlyStatsGenerator do
              status: 'pending',
              consumer_name: 'Consumer1',
              metadata: {
+               icn: '1012345678V123456',
                status: {
                  pending: { start: 1703082497 }
                }
@@ -161,6 +163,7 @@ RSpec.describe VBADocuments::MonthlyStatsGenerator do
              consumer_name: 'Consumer1',
              uploaded_pdf: { total_pages: 2 },
              metadata: {
+               icn: '1012345678V123456',
                size: 1280122,
                status: {
                  pending: { start: 1703083533, end: 1703083534 },
@@ -200,6 +203,7 @@ RSpec.describe VBADocuments::MonthlyStatsGenerator do
              consumer_name: 'Consumer1',
              uploaded_pdf: { total_pages: 2 },
              metadata: {
+               icn: '1012345679V654321',
                size: 511302,
                status: {
                  pending: { start: 1703082142, end: 1703082143 },
@@ -231,6 +235,7 @@ RSpec.describe VBADocuments::MonthlyStatsGenerator do
              consumer_name: 'Consumer1',
              uploaded_pdf: { total_pages: 2 },
              metadata: {
+               icn: '1012345680V999999',
                size: 1221122,
                status: {
                  pending: { start: 1703080436, end: 1703080437 },
@@ -249,6 +254,7 @@ RSpec.describe VBADocuments::MonthlyStatsGenerator do
              consumer_name: 'Consumer2',
              uploaded_pdf: { total_pages: 2 },
              metadata: {
+               icn: '1012345681V111111',
                size: 811009,
                status: {
                  pending: { start: 1703081972, end: 1703081973 },
