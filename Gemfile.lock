@@ -888,9 +888,9 @@ GEM
       date
       jar-dependencies (>= 0.1.7)
     public_suffix (7.0.5)
-    puma (7.2.0)
+    puma (7.2.1)
       nio4r (~> 2.0)
-    puma (7.2.0-java)
+    puma (7.2.1-java)
       nio4r (~> 2.0)
     pundit (2.5.2)
       activesupport (>= 3.0.0)
@@ -1392,7 +1392,7 @@ DEPENDENCIES
   prawn-markup
   prawn-table
   pry-byebug
-  puma
+  puma (~> 7.2)
   pundit
   rack
   rack-attack
