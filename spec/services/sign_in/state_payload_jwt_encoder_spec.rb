@@ -15,7 +15,8 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
                                          operation:,
                                          nonce:,
                                          redirect_uri:,
-                                         authorize_sso_id:).perform
+                                         authorize_sso_id:,
+                                         app_name:).perform
     end
 
     let(:code_challenge) { 'some-code-challenge' }
@@ -33,6 +34,7 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
     let(:operation) { SignIn::Constants::Auth::VERIFY_CTA_AUTHENTICATED }
     let(:redirect_uri) { nil }
     let(:authorize_sso_id) { nil }
+    let(:app_name) { nil }
 
     shared_context 'validated code challenge state payload jwt' do
       let(:code) { 'some-state-code-value' }
@@ -63,6 +65,7 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
           expect(decoded_jwt.operation).to eq(operation)
           expect(decoded_jwt.nonce).to eq(nonce)
           expect(decoded_jwt.redirect_uri).to eq(redirect_uri)
+          expect(decoded_jwt.app_name).to eq(app_name)
         end
 
         it 'saves a StateCode in redis' do
@@ -254,6 +257,29 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
       it 'includes redirect_uri in the JWT' do
         decoded_jwt = OpenStruct.new(JWT.decode(subject, false, nil).first)
         expect(decoded_jwt.redirect_uri).to eq('https://review_slug.vfs.va.gov/auth/login/callback')
+      end
+    end
+
+    context 'app_name is provided' do
+      let(:pkce) { false }
+      let(:code_challenge) { nil }
+      let(:app_name) { 'some-app-name' }
+      let(:code) { 'some-state-code-value' }
+      let(:client_id) { client_config.client_id }
+      let(:acr) { SignIn::Constants::Auth::ACR_VALUES.first }
+      let(:type) { SignIn::Constants::Auth::CSP_TYPES.first }
+      let(:client_state) { SecureRandom.alphanumeric(SignIn::Constants::Auth::CLIENT_STATE_MINIMUM_LENGTH + 1) }
+
+      before do
+        allow(SecureRandom).to receive(:hex).and_return(code)
+        Timecop.freeze
+      end
+
+      after { Timecop.return }
+
+      it 'includes app_name in the JWT' do
+        decoded_jwt = OpenStruct.new(JWT.decode(subject, false, nil).first)
+        expect(decoded_jwt.app_name).to eq('some-app-name')
       end
     end
   end

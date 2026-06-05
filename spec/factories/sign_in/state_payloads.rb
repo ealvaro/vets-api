@@ -16,6 +16,7 @@ FactoryBot.define do
     nonce { nil }
     redirect_uri { nil }
     authorize_sso_id { nil }
+    app_name { nil }
 
     initialize_with do
       new(acr:,
@@ -29,7 +30,8 @@ FactoryBot.define do
           operation:,
           nonce:,
           redirect_uri:,
-          authorize_sso_id:)
+          authorize_sso_id:,
+          app_name:)
     end
   end
 end

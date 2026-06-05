@@ -19,7 +19,8 @@ RSpec.describe SignIn::StatePayloadJwtDecoder do
                                          operation:,
                                          nonce:,
                                          redirect_uri:,
-                                         authorize_sso_id:).perform
+                                         authorize_sso_id:,
+                                         app_name:).perform
     end
     let(:code_challenge) { Base64.urlsafe_encode64('some-safe-code-challenge') }
     let(:code_challenge_method) { SignIn::Constants::Auth::CODE_CHALLENGE_METHOD }
@@ -35,6 +36,7 @@ RSpec.describe SignIn::StatePayloadJwtDecoder do
     let(:nonce) { nil }
     let(:redirect_uri) { nil }
     let(:authorize_sso_id) { nil }
+    let(:app_name) { nil }
 
     let(:client_state_minimum_length) { SignIn::Constants::Auth::CLIENT_STATE_MINIMUM_LENGTH }
 
@@ -58,7 +60,8 @@ RSpec.describe SignIn::StatePayloadJwtDecoder do
           scope:,
           operation:,
           redirect_uri:,
-          authorize_sso_id:
+          authorize_sso_id:,
+          app_name:
         }
       end
       let(:expected_error) { SignIn::Errors::StatePayloadSignatureMismatchError }
@@ -93,6 +96,7 @@ RSpec.describe SignIn::StatePayloadJwtDecoder do
         expect(decoded_state_payload.nonce).to eq(nonce)
         expect(decoded_state_payload.redirect_uri).to eq(redirect_uri)
         expect(decoded_state_payload.authorize_sso_id).to eq(authorize_sso_id)
+        expect(decoded_state_payload.app_name).to eq(app_name)
       end
     end
 
@@ -111,6 +115,15 @@ RSpec.describe SignIn::StatePayloadJwtDecoder do
       it 'returns a State Payload with redirect_uri' do
         decoded_state_payload = subject
         expect(decoded_state_payload.redirect_uri).to eq(redirect_uri)
+      end
+    end
+
+    context 'when state payload jwt includes app_name' do
+      let(:app_name) { 'some-app-name' }
+
+      it 'returns a State Payload with app_name' do
+        decoded_state_payload = subject
+        expect(decoded_state_payload.app_name).to eq('some-app-name')
       end
     end
 

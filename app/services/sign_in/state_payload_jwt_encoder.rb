@@ -13,12 +13,13 @@ module SignIn
       :operation,
       :nonce,
       :redirect_uri,
-      :authorize_sso_id
+      :authorize_sso_id,
+      :app_name
     )
 
     # rubocop:disable Metrics/ParameterLists
     def initialize(code_challenge:, code_challenge_method:, acr:, client_config:, type:, operation:, scope: nil,
-                   client_state: nil, nonce: nil, redirect_uri: nil, authorize_sso_id: nil)
+                   client_state: nil, nonce: nil, redirect_uri: nil, authorize_sso_id: nil, app_name: nil)
       @acr = acr
       @client_config = client_config
       @client_state = client_state
@@ -30,6 +31,7 @@ module SignIn
       @nonce = nonce
       @redirect_uri = redirect_uri || set_redirect_uri
       @authorize_sso_id = authorize_sso_id
+      @app_name = app_name
     end
     # rubocop:enable Metrics/ParameterLists
 
@@ -89,7 +91,8 @@ module SignIn
         operation: state_payload.operation,
         nonce: state_payload.nonce,
         redirect_uri:,
-        authorize_sso_id: state_payload.authorize_sso_id
+        authorize_sso_id: state_payload.authorize_sso_id,
+        app_name: state_payload.app_name
       }
     end
 
@@ -104,7 +107,8 @@ module SignIn
                                           operation:,
                                           nonce:,
                                           redirect_uri:,
-                                          authorize_sso_id:)
+                                          authorize_sso_id:,
+                                          app_name:)
     end
 
     def state_code

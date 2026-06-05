@@ -75,7 +75,7 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
         }
       end
       let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
-      let(:expected_statsd_tags) { ["client_id:#{client_id_param}", "app_name:#{app_name}"] }
+      let(:expected_statsd_tags) { ["client_id:#{client_id_param}"] }
 
       it 'stashes the request params, logs, and redirects to USIP' do
         expect(subject).to redirect_to("#{expected_redirect_uri}?#{expected_query_params}")
@@ -105,7 +105,7 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
         }
       end
       let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
-      let(:expected_statsd_tags) { ["client_id:#{client_id_param}", "app_name:#{app_name}"] }
+      let(:expected_statsd_tags) { ["client_id:#{client_id_param}"] }
       let(:request_id) { SecureRandom.uuid }
       let(:meta_refresh_tag) { '<meta http-equiv="refresh" content="0;' }
 
@@ -234,7 +234,7 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
               expect(response.body).to include('code=')
               expect(response.body).to include("state=#{state}")
               expect(StatsD).to have_received(:increment).with('api.sis.auth_sso.success',
-                                                               tags: ["client_id:#{client_id}", "app_name:#{app_name}"])
+                                                               tags: ["client_id:#{client_id}"])
             end
           end
         end
@@ -292,7 +292,7 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
           let(:client_id_param) { '' }
 
           it_behaves_like 'an error response' do
-            let(:expected_statsd_tags) { ['client_id:', 'app_name:'] }
+            let(:expected_statsd_tags) { ['client_id:'] }
             let(:expected_log_payload) do
               {
                 errors: expected_error_message,

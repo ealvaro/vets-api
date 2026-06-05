@@ -38,13 +38,15 @@ module V0
         client_state = authorize_sso_params[:state]
         nonce = authorize_sso_params[:nonce]
         user_attributes = ::SignIn::AuthSSO::SessionValidator.new(access_token: @access_token, client_id:).perform
+        app_name = authorize_sso_params[:app_name]
 
         state_payload_jwt = ::SignIn::StatePayloadJwtEncoder.new(
           code_challenge:, code_challenge_method:, client_state:,
           acr: user_attributes[:acr], type: user_attributes[:type],
           client_config: client_config(client_id),
           operation: ::SignIn::Constants::Auth::AUTHORIZE_SSO,
-          nonce:
+          nonce:,
+          app_name:
         ).perform
 
         state_payload = ::SignIn::StatePayloadJwtDecoder.new(state_payload_jwt:).perform
@@ -162,7 +164,7 @@ module V0
       end
 
       def authorize_sso_statsd_tags
-        authorize_sso_log_params.map { |key, value| "#{key}:#{value}" }
+        ["client_id:#{authorize_sso_params[:client_id]}"]
       end
     end
   end

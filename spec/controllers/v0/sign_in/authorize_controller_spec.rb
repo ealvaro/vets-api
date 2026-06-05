@@ -23,6 +23,7 @@ RSpec.describe V0::SignIn::AuthorizeController, type: :controller do
     end
     let(:acr) { { acr: acr_value } }
     let(:acr_value) { 'some-acr' }
+    let(:app_name) { nil }
     let(:code_challenge) { { code_challenge: 'some-code-challenge' } }
     let(:code_challenge_method) { { code_challenge_method: 'some-code-challenge-method' } }
     let(:client_id) { { client_id: client_id_value } }
@@ -50,12 +51,9 @@ RSpec.describe V0::SignIn::AuthorizeController, type: :controller do
       let(:statsd_auth_failure) { SignIn::Constants::Statsd::STATSD_SIS_AUTHORIZE_FAILURE }
       let(:expected_error_log) { '[SignInService] [V0::SignInController] authorize error' }
       let(:expected_error_message) do
-        { errors: expected_error,
-          error_code:,
-          client_id: client_id_value,
-          type: type_value,
-          acr: acr_value,
-          operation: operation_value }
+        error_context = { errors: expected_error, error_code:, client_id: client_id_value,
+                          type: type_value, acr: acr_value, operation: operation_value }
+        app_name ? error_context.merge(app_name:) : error_context
       end
       let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
       let(:meta_refresh_tag) { '<meta http-equiv="refresh" content="0;' }
@@ -98,12 +96,9 @@ RSpec.describe V0::SignIn::AuthorizeController, type: :controller do
       let(:statsd_auth_failure) { SignIn::Constants::Statsd::STATSD_SIS_AUTHORIZE_FAILURE }
       let(:expected_error_log) { '[SignInService] [V0::SignInController] authorize error' }
       let(:expected_error_message) do
-        { errors: expected_error,
-          error_code:,
-          client_id: client_id_value,
-          type: type_value,
-          acr: acr_value,
-          operation: operation_value }
+        error_context = { errors: expected_error, error_code:, client_id: client_id_value,
+                          type: type_value, acr: acr_value, operation: operation_value }
+        app_name ? error_context.merge(app_name:) : error_context
       end
 
       context 'and client_id maps to a web based configuration' do
@@ -246,8 +241,9 @@ RSpec.describe V0::SignIn::AuthorizeController, type: :controller do
             type: type[:type],
             client_id: client_id_value,
             acr: acr_value,
-            operation: operation_value
-          }
+            operation: operation_value,
+            app_name:
+          }.compact
         end
 
         before { allow(JWT).to receive(:encode).and_return(state) }
@@ -279,6 +275,13 @@ RSpec.describe V0::SignIn::AuthorizeController, type: :controller do
           let(:authorize_params) do
             super().merge(nonce: { nonce: 'test-nonce-value' })
           end
+
+          it_behaves_like 'expected response with optional scope'
+        end
+
+        context 'and app_name is provided' do
+          let(:app_name) { 'some-app-name' }
+          let(:authorize_params) { super().merge(app_name:) }
 
           it_behaves_like 'expected response with optional scope'
         end

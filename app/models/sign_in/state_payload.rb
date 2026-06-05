@@ -5,7 +5,7 @@ module SignIn
     include ActiveModel::Validations
 
     attr_reader :acr, :client_id, :type, :code_challenge, :client_state, :code, :scope, :created_at, :operation,
-                :nonce, :redirect_uri, :authorize_sso_id
+                :nonce, :redirect_uri, :authorize_sso_id, :app_name
 
     validates :code, :created_at, presence: true
     validates :acr, inclusion: Constants::Auth::ACR_VALUES
@@ -27,7 +27,8 @@ module SignIn
                    created_at: nil,
                    nonce: nil,
                    redirect_uri: nil,
-                   authorize_sso_id: nil)
+                   authorize_sso_id: nil,
+                   app_name: nil)
       @acr = acr
       @client_id = client_id
       @type = type
@@ -40,6 +41,7 @@ module SignIn
       @nonce = nonce
       @redirect_uri = redirect_uri
       @authorize_sso_id = authorize_sso_id
+      @app_name = app_name
       validate!
     end
     # rubocop:enable Metrics/ParameterLists

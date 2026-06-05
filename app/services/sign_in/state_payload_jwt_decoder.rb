@@ -27,7 +27,8 @@ module SignIn
         operation: decoded_jwt.operation,
         nonce: decoded_jwt.nonce,
         redirect_uri: decoded_jwt.redirect_uri,
-        authorize_sso_id: decoded_jwt.authorize_sso_id
+        authorize_sso_id: decoded_jwt.authorize_sso_id,
+        app_name: decoded_jwt.app_name
       )
     end
 

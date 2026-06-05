@@ -38,6 +38,7 @@ module V0
           acr: state_payload&.acr,
           operation: state_payload&.operation
         }
+        error_details[:app_name] = state_payload.app_name if state_payload&.app_name
         sign_in_logger.error('callback error', exception: e, context: error_details)
         StatsD.increment(::SignIn::Constants::Statsd::STATSD_SIS_CALLBACK_FAILURE,
                          tags: ["type:#{error_details[:type]}",
@@ -81,7 +82,8 @@ module V0
                                                      client_state: state_payload.client_state,
                                                      operation: state_payload.operation,
                                                      nonce: state_payload.nonce,
-                                                     authorize_sso_id: state_payload.authorize_sso_id).perform
+                                                     authorize_sso_id: state_payload.authorize_sso_id,
+                                                     app_name: state_payload.app_name).perform
         render body: auth_service(state_payload.type, state_payload.client_id).render_auth(state:, acr: acr_for_type),
                content_type: 'text/html'
       end
@@ -104,6 +106,7 @@ module V0
           authentication_time: Time.zone.now.to_i - state_payload.created_at,
           operation: state_payload.operation
         }
+        context[:app_name] = state_payload.app_name if state_payload.app_name
         sign_in_logger.info('callback', context)
         StatsD.increment(::SignIn::Constants::Statsd::STATSD_SIS_CALLBACK_SUCCESS,
                          tags: ["type:#{state_payload.type}",

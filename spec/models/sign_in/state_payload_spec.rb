@@ -15,7 +15,8 @@ RSpec.describe SignIn::StatePayload, type: :model do
            created_at:,
            scope:,
            operation:,
-           authorize_sso_id:)
+           authorize_sso_id:,
+           app_name:)
   end
 
   let(:code_challenge) { Base64.urlsafe_encode64(SecureRandom.hex) }
@@ -30,6 +31,7 @@ RSpec.describe SignIn::StatePayload, type: :model do
   let(:operation) { SignIn::Constants::Auth::VERIFY_CTA_AUTHENTICATED }
   let(:redirect_uri) { client_config.redirect_uri }
   let(:authorize_sso_id) { nil }
+  let(:app_name) { nil }
 
   describe 'validations' do
     describe '#code' do
@@ -188,6 +190,24 @@ RSpec.describe SignIn::StatePayload, type: :model do
     end
 
     context 'when nonce is not provided' do
+      it 'is nil' do
+        expect(subject).to be_nil
+      end
+    end
+  end
+
+  describe '#app_name' do
+    subject { state_payload.app_name }
+
+    context 'when app_name is provided' do
+      let(:app_name) { 'some-app-name' }
+
+      it 'stores the app_name' do
+        expect(subject).to eq('some-app-name')
+      end
+    end
+
+    context 'when app_name is not provided' do
       it 'is nil' do
         expect(subject).to be_nil
       end

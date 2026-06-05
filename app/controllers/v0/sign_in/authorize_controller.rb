@@ -16,6 +16,9 @@ module V0
         scope = params[:scope].presence
         nonce = params[:nonce].presence
         authorize_sso_id = params[:authorize_sso_id].presence
+        app_name = params[:app_name].presence
+        context = { type:, client_id:, acr:, operation:, authorize_sso_id: }.compact
+        context[:app_name] = app_name if app_name
 
         validate_authorize_params(type, client_id, acr, operation)
 
@@ -31,8 +34,8 @@ module V0
                                                      client_state:,
                                                      scope:,
                                                      nonce:,
-                                                     authorize_sso_id:).perform
-        context = { type:, client_id:, acr:, operation:, authorize_sso_id: }.compact
+                                                     authorize_sso_id:,
+                                                     app_name:).perform
 
         sign_in_logger.info('authorize', context)
         StatsD.increment(::SignIn::Constants::Statsd::STATSD_SIS_AUTHORIZE_SUCCESS,
@@ -41,7 +44,9 @@ module V0
         render body: auth_service(type, client_id).render_auth(state:, acr: acr_for_type, operation:),
                content_type: 'text/html'
       rescue => e
-        sign_in_logger.error('authorize error', exception: e, context: { client_id:, type:, acr:, operation: })
+        sign_in_logger.error('authorize error', exception: e,
+                                                context: { client_id:, type:, acr:, operation: }
+                                                .merge({ app_name: }.compact))
         StatsD.increment(::SignIn::Constants::Statsd::STATSD_SIS_AUTHORIZE_FAILURE)
         handle_pre_login_error(e, client_id)
       end

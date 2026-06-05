@@ -23,6 +23,7 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
        "operation:#{operation}"]
     end
     let(:type) {}
+    let(:app_name) { nil }
     let(:acr) { nil }
     let(:mpi_update_profile_response) { create(:add_person_response) }
     let(:mpi_add_person_response) { create(:add_person_response, parsed_codes: { icn: add_person_icn }) }
@@ -61,7 +62,9 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
       let(:statsd_callback_failure) { SignIn::Constants::Statsd::STATSD_SIS_CALLBACK_FAILURE }
       let(:expected_error_log) { '[SignInService] [V0::SignInController] callback error' }
       let(:expected_error_message) do
-        { errors: expected_error, error_code:, client_id:, type:, acr:, operation: }
+        error_context = { errors: expected_error, error_code:, client_id:,
+                          type:, acr:, operation: }
+        app_name ? error_context.merge(app_name:) : error_context
       end
       let(:meta_refresh_tag) { '<meta http-equiv="refresh" content="0;' }
       let(:request_id) { SecureRandom.uuid }
@@ -114,7 +117,7 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
         let(:auth_param) { 'fail' }
         let(:expected_error_log) { '[SignInService] [V0::SignInController] callback error' }
         let(:expected_error_message) do
-          { errors: expected_error, error_code:, client_id:, type:, acr:, operation: }
+          { errors: expected_error, error_code:, client_id:, type:, acr:, operation: }.merge({ app_name: }.compact)
         end
         let(:request_id) { SecureRandom.uuid }
         let(:meta_refresh_tag) { '<meta http-equiv="refresh" content="0;' }
@@ -213,7 +216,8 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
                                              client_config:,
                                              type:,
                                              client_state:,
-                                             operation:).perform
+                                             operation:,
+                                             app_name:).perform
         end
         let(:uplevel_state_value) do
           SignIn::StatePayloadJwtEncoder.new(code_challenge:,
@@ -222,7 +226,8 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
                                              client_config:,
                                              type:,
                                              client_state:,
-                                             operation:).perform
+                                             operation:,
+                                             app_name:).perform
         end
         let(:code_challenge) { Base64.urlsafe_encode64('some-code-challenge') }
         let(:code_challenge_method) { SignIn::Constants::Auth::CODE_CHALLENGE_METHOD }
@@ -311,16 +316,9 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
                 let(:statsd_callback_success) { SignIn::Constants::Statsd::STATSD_SIS_CALLBACK_SUCCESS }
                 let(:authentication_time) { 0 }
                 let(:expected_logger_context) do
-                  {
-                    type:,
-                    client_id:,
-                    ial:,
-                    acr:,
-                    icn: mpi_profile.icn,
-                    credential_uuid: logingov_uuid,
-                    authentication_time:,
-                    operation:
-                  }
+                  logger_context = { type:, client_id:, ial:, acr:, icn: mpi_profile.icn,
+                                     credential_uuid: logingov_uuid, authentication_time:, operation: }
+                  app_name ? logger_context.merge(app_name:) : logger_context
                 end
                 let(:mpi_profile) do
                   build(:mpi_profile,
@@ -451,16 +449,9 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
               let(:client_code) { 'some-client-code' }
               let(:expected_log) { '[SignInService] [V0::SignInController] callback' }
               let(:expected_logger_context) do
-                {
-                  type:,
-                  client_id:,
-                  ial:,
-                  acr:,
-                  icn: mpi_profile.icn,
-                  credential_uuid: idme_uuid,
-                  authentication_time:,
-                  operation:
-                }
+                logger_context = { type:, client_id:, ial:, acr:, icn: mpi_profile.icn,
+                                   credential_uuid: idme_uuid, authentication_time:, operation: }
+                app_name ? logger_context.merge(app_name:) : logger_context
               end
 
               context 'and credential should be uplevelled' do
@@ -659,17 +650,11 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
               let(:statsd_callback_success) { SignIn::Constants::Statsd::STATSD_SIS_CALLBACK_SUCCESS }
               let(:expected_icn) { mpi_profile.icn }
               let(:authentication_time) { 0 }
+
               let(:expected_logger_context) do
-                {
-                  type:,
-                  client_id:,
-                  ial:,
-                  acr:,
-                  icn: expected_icn,
-                  credential_uuid: backing_idme_uuid,
-                  authentication_time:,
-                  operation:
-                }
+                logger_context = { type:, client_id:, ial:, acr:, icn: expected_icn,
+                                   credential_uuid: backing_idme_uuid, authentication_time:, operation: }
+                app_name ? logger_context.merge(app_name:) : logger_context
               end
               let(:meta_refresh_tag) { '<meta http-equiv="refresh" content="0;' }
 
@@ -776,7 +761,8 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
                                            client_config:,
                                            type:,
                                            client_state:,
-                                           operation:).perform
+                                           operation:,
+                                           app_name:).perform
       end
       let(:code_challenge) { Base64.urlsafe_encode64('some-code-challenge') }
       let(:code_challenge_method) { SignIn::Constants::Auth::CODE_CHALLENGE_METHOD }
@@ -807,6 +793,15 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
         let(:error_value) { 'some-error-value' }
         let(:expected_error) { 'Unknown Credential Provider Issue' }
         let(:error_code) { SignIn::Constants::ErrorCode::GENERIC_EXTERNAL_ISSUE }
+
+        it_behaves_like 'error response'
+      end
+
+      context 'and error is given with app_name present' do
+        let(:error_value) { 'some-error-value' }
+        let(:expected_error) { 'Unknown Credential Provider Issue' }
+        let(:error_code) { SignIn::Constants::ErrorCode::GENERIC_EXTERNAL_ISSUE }
+        let(:app_name) { 'some-app-name' }
 
         it_behaves_like 'error response'
       end
