@@ -26,6 +26,14 @@ module SimpleFormsApi
       21P-4171
       21P-8924
       20-10208
+      20-0995
+      20-0996
+      10182
+      20-10207
+      28-1900
+      26-1880
+      21P-527EZ
+      21P-534EZ
     ].freeze
 
     # Special cases: forms that stamp on a different page
@@ -40,6 +48,18 @@ module SimpleFormsApi
       '21-0304' => {
         line_one: [460, 660],
         line_two: [460, 640]
+      },
+      '28-1900' => {
+        line_one: [450, 625],
+        line_two: [450, 605]
+      },
+      '21P-527EZ' => {
+        line_one: [425, 710],
+        line_two: [425, 690]
+      },
+      '21P-534EZ' => {
+        line_one: [425, 700],
+        line_two: [425, 680]
       }
     }.freeze
 
