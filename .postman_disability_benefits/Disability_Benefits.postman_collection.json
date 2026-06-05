@@ -1,0 +1,339 @@
+{
+  "info": {
+    "name": "Disability Benefits",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Collection for testing the document validation feature on upload for Disability Benefits."
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:3000" },
+    { "key": "credential_type", "value": "idme" },
+    { "key": "client_id", "value": "vamock" },
+    { "key": "acr", "value": "min" },
+    { "key": "attachment_id", "value": "" },
+    { "key": "profile_key", "value": "vetsgovuser210" },
+    { "key": "redirect_uri", "value": "http://localhost:3001/auth/login/callback" },
+    { "key": "code_verifier", "value": "c8be9cdb1e4cd4f514d373544d78811b96f9463c734b4af8b8120c89d8802d2d" },
+    { "key": "code_challenge", "value": "IdjT7cT01uDjJEXXHSnG6R3XAtcBNLalwbJkM9tZ0cA" },
+    { "key": "access_token", "value": "" },
+    { "key": "csrf_token", "value": "" }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// ── Helper functions ──",
+          "",
+          "function getVar(name, fallback) {",
+          "  const val = pm.collectionVariables.get(name) || pm.environment.get(name);",
+          "  if (val !== undefined && val !== null && val !== '') return val;",
+          "  if (fallback !== undefined) return fallback;",
+          "  throw new Error('Missing variable: ' + name);",
+          "}",
+          "",
+          "function makeAbsolute(baseUrl, maybeRelative) {",
+          "  if (!maybeRelative) return maybeRelative;",
+          "  if (/^https?:\\/\\//.test(maybeRelative)) return maybeRelative;",
+          "  return baseUrl + maybeRelative;",
+          "}",
+          "",
+          "function extractParam(urlOrPath, key, baseUrl) {",
+          "  const absolute = makeAbsolute(baseUrl, urlOrPath);",
+          "  const queryIndex = absolute.indexOf('?');",
+          "  if (queryIndex < 0) return null;",
+          "  const query = absolute.slice(queryIndex + 1);",
+          "  const parts = query.split('&');",
+          "  for (const part of parts) {",
+          "    if (!part) continue;",
+          "    const eqIndex = part.indexOf('=');",
+          "    const rawKey = eqIndex >= 0 ? part.slice(0, eqIndex) : part;",
+          "    const rawValue = eqIndex >= 0 ? part.slice(eqIndex + 1) : '';",
+          "    if (decodeURIComponent(rawKey) === key) {",
+          "      return decodeURIComponent(rawValue.replace(/\\+/g, ' '));",
+          "    }",
+          "  }",
+          "  return null;",
+          "}",
+          "",
+          "function extractRefreshUrl(html) {",
+          "  if (typeof html !== 'string' || !html) return null;",
+          "  const metaUrlMatch = html.match(/URL=([^\"\\s]+)/i);",
+          "  if (metaUrlMatch && metaUrlMatch[1]) return metaUrlMatch[1].replace(/&amp;/g, '&');",
+          "  const jsRedirectMatch = html.match(/window\\.location(?:\\.href)?\\s*=\\s*['\"]([^'\"]+)['\"]/i);",
+          "  if (jsRedirectMatch && jsRedirectMatch[1]) return jsRedirectMatch[1].replace(/&amp;/g, '&');",
+          "  return null;",
+          "}",
+          "",
+          "function extractLoginCode(urlOrPath, baseUrl) {",
+          "  if (!urlOrPath) return null;",
+          "  return extractParam(urlOrPath, 'code', baseUrl) || extractParam(urlOrPath, 'login_code', baseUrl);",
+          "}",
+          "",
+          "function formatError(err) {",
+          "  if (!err) return 'unknown error';",
+          "  if (typeof err === 'string') return err;",
+          "  if (err.message) return err.message;",
+          "  try { return JSON.stringify(err); } catch(e) { return String(err); }",
+          "}",
+          "",
+          "// ── Mocked Access Token Generation ──",
+          "// Flow: authorize (200 HTML) → credential_list (200 JSON) →",
+          "//       mocked authorize (302 → callback 200 HTML) → token exchange",
+          "",
+          "const baseUrl = getVar('base_url', 'http://localhost:3000');",
+          "const credentialType = getVar('credential_type', 'idme');",
+          "const preferredProfile = getVar('profile_key', 'vetsgovuser0');",
+          "const clientId = getVar('client_id', 'vamock');",
+          "const redirectUri = getVar('redirect_uri', 'http://localhost:3001/auth/login/callback');",
+          "const acr = getVar('acr', credentialType === 'logingov' ? 'ial2' : 'min');",
+          "const codeVerifier = getVar('code_verifier', 'c8be9cdb1e4cd4f514d373544d78811b96f9463c734b4af8b8120c89d8802d2d');",
+          "const codeChallenge = getVar('code_challenge', 'IdjT7cT01uDjJEXXHSnG6R3XAtcBNLalwbJkM9tZ0cA');",
+          "const rawState = 'state-' + Date.now() + '-postman';",
+          "const clientState = rawState.length >= 22 ? rawState : (rawState + '-' + Date.now()).slice(0, Math.max(22, rawState.length + 1));",
+          "",
+          "// Step 1: Authorize — returns 200 with HTML containing meta-refresh URL with signed state",
+          "const authorizeUrl = baseUrl + '/v0/sign_in/authorize'",
+          "  + '?type=' + encodeURIComponent(credentialType)",
+          "  + '&client_id=' + encodeURIComponent(clientId)",
+          "  + '&acr=' + encodeURIComponent(acr)",
+          "  + '&response_type=code'",
+          "  + '&code_challenge=' + encodeURIComponent(codeChallenge)",
+          "  + '&code_challenge_method=S256'",
+          "  + '&state=' + encodeURIComponent(clientState);",
+          "",
+          "pm.sendRequest({",
+          "  url: authorizeUrl,",
+          "  method: 'GET'",
+          "}, function(err, authorizeResponse) {",
+          "  if (err) throw new Error('Authorize request failed: ' + formatError(err));",
+          "",
+          "  const authorizeHtml = authorizeResponse.text();",
+          "  const authorizeRefreshUrl = extractRefreshUrl(authorizeHtml);",
+          "",
+          "  // The authorize endpoint returns 200 HTML with a meta-refresh URL containing the signed state",
+          "  const signedState =",
+          "    (authorizeRefreshUrl && extractParam(authorizeRefreshUrl, 'state', baseUrl)) ||",
+          "    (authorizeHtml.match(/[?&]state=([^\"&\\s]+)/) && decodeURIComponent(authorizeHtml.match(/[?&]state=([^\"&\\s]+)/)[1]));",
+          "",
+          "  if (!signedState) {",
+          "    throw new Error(",
+          "      'Unable to extract signed state from /v0/sign_in/authorize response. '",
+          "      + 'Status: ' + authorizeResponse.code + '. '",
+          "      + 'Body (first 300 chars): ' + authorizeHtml.slice(0, 300)",
+          "    );",
+          "  }",
+          "",
+          "  // Step 2: Credential list — returns 200 JSON with mock profiles",
+          "  const credListUrl = baseUrl + '/mocked_authentication/credential_list?type=' + encodeURIComponent(credentialType);",
+          "",
+          "  pm.sendRequest({",
+          "    url: credListUrl,",
+          "    method: 'GET'",
+          "  }, function(err, credListResponse) {",
+          "    if (err) throw new Error('Credential list request failed: ' + formatError(err));",
+          "",
+          "    const mockProfiles = credListResponse.json().mock_profiles || {};",
+          "    const selectedProfile = mockProfiles[preferredProfile] || Object.values(mockProfiles)[0];",
+          "    if (!selectedProfile || !selectedProfile.encoded_credential) {",
+          "      throw new Error('No mocked auth profile found. Check credential_type/profile_key values.');",
+          "    }",
+          "",
+          "    // Step 3: Mocked authorize — returns 302 → Postman follows to /v0/sign_in/callback",
+          "    // which returns 200 HTML with meta-refresh containing the login code",
+          "    const mockedAuthUrl = baseUrl + '/mocked_authentication/authorize'",
+          "      + '?credential_info=' + encodeURIComponent(selectedProfile.encoded_credential)",
+          "      + '&state=' + encodeURIComponent(signedState);",
+          "",
+          "    pm.sendRequest({",
+          "      url: mockedAuthUrl,",
+          "      method: 'GET'",
+          "    }, function(err, callbackResponse) {",
+          "      if (err) throw new Error('Mocked authorize/callback failed: ' + formatError(err));",
+          "",
+          "      // Postman follows the 302 redirect to /v0/sign_in/callback which returns",
+          "      // 200 HTML with a meta-refresh URL like: http://localhost:3001/auth/login/callback?code=LOGIN_CODE&...",
+          "      const callbackHtml = callbackResponse.text();",
+          "      const callbackRefreshUrl = extractRefreshUrl(callbackHtml);",
+          "",
+          "      let loginCode = extractLoginCode(callbackRefreshUrl, baseUrl);",
+          "      if (!loginCode) {",
+          "        // Try parsing from response body as JSON (fallback)",
+          "        try {",
+          "          const cbJson = callbackResponse.json();",
+          "          loginCode = cbJson.code || cbJson.login_code;",
+          "        } catch(e) {}",
+          "      }",
+          "",
+          "      if (!loginCode) {",
+          "        throw new Error(",
+          "          'Unable to extract login code from callback. '",
+          "          + 'Status: ' + callbackResponse.code + '. '",
+          "          + 'Body (first 300 chars): ' + callbackHtml.slice(0, 300)",
+          "        );",
+          "      }",
+          "",
+          "      // Step 4: Token exchange",
+          "      const tokenUrl = baseUrl + '/v0/sign_in/token'",
+          "        + '?grant_type=authorization_code'",
+          "        + '&code=' + encodeURIComponent(loginCode)",
+          "        + '&code_verifier=' + encodeURIComponent(codeVerifier)",
+          "        + '&client_id=' + encodeURIComponent(clientId)",
+          "        + '&redirect_uri=' + encodeURIComponent(redirectUri);",
+          "",
+          "      pm.sendRequest({",
+          "        url: tokenUrl,",
+          "        method: 'POST'",
+          "      }, function(err, tokenResponse) {",
+          "        if (err) throw new Error('Token exchange failed: ' + formatError(err));",
+          "",
+          "        const tokenData = tokenResponse.json();",
+          "        const accessToken = (tokenData.data && tokenData.data.access_token) || tokenData.access_token;",
+          "",
+          "        if (!accessToken) {",
+          "          throw new Error(",
+          "            'Token response missing access_token. Status: ' + tokenResponse.code",
+          "            + '. Body: ' + tokenResponse.text().slice(0, 300)",
+          "          );",
+          "        }",
+          "",
+          "        pm.collectionVariables.set('access_token', accessToken);",
+          "",
+          "        const refreshToken = (tokenData.data && tokenData.data.refresh_token) || tokenData.refresh_token;",
+          "        const antiCsrfToken = (tokenData.data && tokenData.data.anti_csrf_token) || tokenData.anti_csrf_token;",
+          "        if (refreshToken) pm.collectionVariables.set('refresh_token', refreshToken);",
+          "        if (antiCsrfToken) pm.collectionVariables.set('anti_csrf_token', antiCsrfToken);",
+          "      });",
+          "    });",
+          "  });",
+          "});",
+          ""
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Get CSRF Token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const csrfToken = pm.response.headers.get('x-csrf-token');",
+              "if (!csrfToken) {",
+              "  throw new Error('x-csrf-token header missing from HEAD /v0/csrf_token response');",
+              "}",
+              "pm.collectionVariables.set('csrf_token', csrfToken);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "HEAD",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "vagov_access_token={{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/v0/csrf_token",
+          "host": ["{{base_url}}"],
+          "path": ["v0", "csrf_token"]
+        }
+      }
+    },
+    {
+      "name": "Upload Supporting Evidence",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [""]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Upload returns 200', function() {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const responseJson = pm.response.json();",
+              "",
+              "if (pm.response.code !== 200) {",
+              "  const firstError = responseJson.errors && Array.isArray(responseJson.errors) ? responseJson.errors[0] : null;",
+              "  const detail = firstError && firstError.detail ? firstError.detail : 'No error detail provided';",
+              "  throw new Error('Upload failed with status ' + pm.response.code + ': ' + detail);",
+              "}",
+              "",
+              "const attachmentId = pm.collectionVariables.get('attachment_id') || pm.environment.get('attachment_id');",
+              "if (attachmentId) {",
+              "  pm.test('Response contains warnings array', function() {",
+              "    pm.expect(responseJson.data.attributes).to.have.property('warnings');",
+              "    pm.expect(responseJson.data.attributes.warnings).to.be.an('array');",
+              "  });",
+              "}",
+              "",
+              "pm.test('Response contains upload GUID', function() {",
+              "  pm.expect(responseJson.data).to.be.an('object');",
+              "  pm.expect(responseJson.data.attributes).to.be.an('object');",
+              "  pm.expect(responseJson.data.attributes.guid).to.be.a('string');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrf_token}}"
+          },
+          {
+            "key": "Cookie",
+            "value": "vagov_access_token={{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "supporting_evidence_attachment[file_data]",
+              "type": "file",
+              "src": "",
+              "description": "Select the file to upload using the file picker in Postman"
+            },
+            {
+              "key": "supporting_evidence_attachment[attachment_id]",
+              "value": "{{attachment_id}}",
+              "type": "text"
+            },
+            {
+              "key": "supporting_evidence_attachment[password]",
+              "value": "",
+              "type": "text",
+              "description": "Password for encrypted PDFs. Leave empty if not needed.",
+              "disabled": true
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/v0/upload_supporting_evidence",
+          "host": ["{{base_url}}"],
+          "path": ["v0", "upload_supporting_evidence"]
+        }
+      }
+    }
+  ]
+}
