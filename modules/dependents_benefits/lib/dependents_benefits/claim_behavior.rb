@@ -59,5 +59,20 @@ module DependentsBenefits
     def monitor
       @monitor ||= DependentsBenefits::Monitor.new
     end
+
+    # Override base class (::SavedClaim) implementation since these classes
+    # have their own pdf filler logic
+    def pdf_overflow_tracking
+      tags = ["form_id:#{form_id}", "doctype:#{document_type}"]
+
+      filename = to_pdf
+
+      # @see PdfFill::Filler
+      StatsD.increment('saved_claim.pdf.overflow', tags:) if filename.end_with?('_final.pdf')
+    rescue => e
+      Rails.logger.warn("#{self.class} Error tracking PDF overflow", form_id:, saved_claim_id: id, error: e)
+    ensure
+      Common::FileHelpers.delete_file_if_exists(filename)
+    end
   end
 end

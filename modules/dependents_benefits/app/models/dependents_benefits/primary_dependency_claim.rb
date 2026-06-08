@@ -46,5 +46,25 @@ module DependentsBenefits
         files.find_each { |f| f.update(saved_claim_id: id) }
       end
     end
+
+    # Log extra metrics after saving to database
+    def after_create_metrics
+      super
+
+      tags = ["form_id:#{form_id}", "doctype:#{document_type}"]
+
+      if submittable_686? && submittable_674?
+        StatsD.increment('saved_claim.create.dependents_686_674', tags:)
+      elsif submittable_686?
+        StatsD.increment('saved_claim.create.dependents_686_only', tags:)
+      elsif submittable_674?
+        StatsD.increment('saved_claim.create.dependents_674_only', tags:)
+      end
+    end
+
+    # No need to track PDF metrics for this class, it doesn't generate any pdfs
+    def pdf_overflow_tracking
+      nil
+    end
   end
 end

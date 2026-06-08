@@ -17,7 +17,6 @@ module DependentsBenefits::Sidekiq::Include
     # (e.g., INVALID_SSN, DUPLICATE_CLAIM, etc). Base implementation assumes
     # all errors are transient.
     #
-    # @param error [Exception, nil] The error to check
     # @return [Boolean] true if error is permanent, false if transient
     def permanent_failure?(_error)
       false # Base: assume all errors are transient

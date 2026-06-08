@@ -37,4 +37,56 @@ RSpec.describe DependentsBenefits::PrimaryDependencyClaim do
       saved_claim.process_attachments!
     end
   end
+
+  describe 'create metrics' do
+    before do
+      allow(StatsD).to receive(:increment)
+    end
+
+    let(:claim) { described_class.new(form: form_data) }
+    let(:tags) { ["form_id:#{claim.form_id}", "doctype:#{claim.document_type}"] }
+
+    context 'with a combined 686+674 form' do
+      let(:form_data) { build(:dependents_claim).form }
+
+      it 'increments the correct metric' do
+        claim.save!
+        expect(claim.submittable_686?).to be(true)
+        expect(claim.submittable_674?).to be(true)
+        expect(StatsD).to have_received(:increment).with('saved_claim.create.dependents_686_674', tags:)
+      end
+    end
+
+    context 'with a 686 only form' do
+      let(:form_data) { build(:add_remove_dependents_claim).form }
+
+      it 'increments the correct metric' do
+        claim.save!
+        expect(claim.submittable_686?).to be(true)
+        expect(claim.submittable_674?).to be(false)
+        expect(StatsD).to have_received(:increment).with('saved_claim.create.dependents_686_only', tags:)
+      end
+    end
+
+    context 'with a 674 only form' do
+      let(:form_data) { build(:student_claim).form }
+
+      it 'increments the correct metric' do
+        claim.save!
+        expect(claim.submittable_686?).to be(false)
+        expect(claim.submittable_674?).to be(true)
+        expect(StatsD).to have_received(:increment).with('saved_claim.create.dependents_674_only', tags:)
+      end
+    end
+  end
+
+  describe '#pdf_overflow_tracking' do
+    it 'does nothing' do
+      claim = described_class.new(form: saved_claim.form)
+
+      allow(claim).to receive(:to_pdf)
+      claim.save!
+      expect(claim).not_to have_received(:to_pdf)
+    end
+  end
 end

@@ -348,10 +348,12 @@ RSpec.describe DependentsBenefits::Monitor do
         context 'when removal flow flag is on' do
           before do
             allow(SavedClaim).to receive(:find).with(claim.id).and_return(claim)
-            claim.update(form: { 'is_v3_removal_flow' => true }.to_json)
+            claim.update(form: JSON.parse(claim.form).merge({ 'is_v3_removal_flow' => true }).to_json)
           end
 
           it 'includes use_v3:true and v3_removal:true tags in submit_event call' do
+            # parsed_form is memoized, so we need to clear it after making any updates to form
+            claim.instance_variable_set('@parsed_form', nil)
             message = 'Test info message'
             action = 'test_action'
             m = described_class.new(claim.id, current_user)
@@ -466,10 +468,12 @@ RSpec.describe DependentsBenefits::Monitor do
         allow(Flipper).to receive(:enabled?).with(:va_dependents_v3, anything).and_return(true)
 
         allow(SavedClaim).to receive(:find).with(claim.id).and_return(claim)
-        claim.update(form: { 'is_v3_removal_flow' => true }.to_json)
+        claim.update!(form: JSON.parse(claim.form).merge({ 'is_v3_removal_flow' => true }).to_json)
       end
 
       it 'includes use_v3 and v3_removal:true tags' do
+        # parsed_form is memoized, so we need to clear it after making any updates to form
+        claim.instance_variable_set('@parsed_form', nil)
         m = described_class.new(claim.id, current_user)
         expect(m.tags).to include('use_v3:true')
         expect(m.tags).to include('v3_removal:true')

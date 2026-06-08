@@ -882,7 +882,7 @@ FactoryBot.define do
           'spouse_marriage_history' => [
             {
               'end_location' => { 'location' => { 'city' => 'denver', 'state' => 'CO' } },
-              'start_location' => { 'outside_usa' => true, 'location' => { 'city' => 'denver', 'state' => 'CO' } },
+              'start_location' => { 'outside_usa' => true, 'location' => { 'city' => 'denver', 'country' => 'CO' } },
               'end_date' => '2010-07-06',
               'start_date' => '2010-03-05',
               'reason_marriage_ended' => 'Other',
@@ -986,6 +986,7 @@ FactoryBot.define do
               'full_name' => { 'first' => 'test', 'middle' => 'middle', 'last' => 'childthree' },
               'birth_date' => '2010-04-06',
               'school_age_in_school' => false,
+              'is_biological_child' => true,
               'does_child_have_disability' => false
             },
             {
@@ -1086,8 +1087,13 @@ FactoryBot.define do
           'deaths' => [
             {
               'deceased_dependent_income' => 'Y',
-              'dependent_death_location' => { 'location' => { 'city' => 'new orleans', 'state' => 'LA',
-                                                              'country' => 'USA' } },
+              'dependent_death_location' => {
+                'outside_usa' => false,
+                'location' => {
+                  'city' => 'new orleans',
+                  'state' => 'LA'
+                }
+              },
               'dependent_death_date' => '2024-03-02',
               'dependent_type' => 'DEPENDENT_PARENT',
               'full_name' => { 'first' => 'deceased', 'middle' => 'middle', 'last' => 'dependent' },
@@ -1096,8 +1102,13 @@ FactoryBot.define do
             },
             {
               'deceased_dependent_income' => 'Y',
-              'dependent_death_location' => { 'location' => { 'city' => 'new orleans', 'state' => 'LA',
-                                                              'country' => 'USA' } },
+              'dependent_death_location' => {
+                'outside_usa' => false,
+                'location' => {
+                  'city' => 'new orleans',
+                  'state' => 'LA'
+                }
+              },
               'dependent_death_date' => '2024-03-02',
               'dependent_type' => 'CHILD',
               'child_status' => { 'child_under18' => true, 'step_child' => true },
