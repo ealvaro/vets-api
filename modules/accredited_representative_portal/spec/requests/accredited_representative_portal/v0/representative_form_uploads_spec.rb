@@ -1088,4 +1088,83 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
       expect(response).to have_http_status(:internal_server_error)
     end
   end
+
+  describe '#check_poa_status' do
+    let(:icn) { '1234567890V123456' }
+
+    let(:verify_params) do
+      {
+        firstName: 'Peter',
+        lastName: 'Severino',
+        ssn: '091541857',
+        dateOfBirth: '1970-01-01'
+      }
+    end
+
+    before do
+      allow_any_instance_of(Auth::ClientCredentials::Service)
+        .to receive(:get_token).and_return('<TOKEN>')
+
+      allow(AccreditedRepresentativePortal::ClaimantLookupService)
+        .to receive(:get_icn)
+        .with('Peter', 'Severino', '091541857', '1970-01-01')
+        .and_return(icn)
+    end
+
+    context 'when claimant is not found' do
+      before do
+        allow(AccreditedRepresentativePortal::ClaimantLookupService)
+          .to receive(:get_icn)
+          .with('Peter', 'Severino', '091541857', '1970-01-01')
+          .and_raise(Common::Exceptions::RecordNotFound, 'Claimant not found')
+      end
+
+      it 'returns a generic 422 failure response' do
+        post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(parsed_response).to eq({
+                                        'status' => 'failure',
+                                        'error' => 'Unable to verify claimant information'
+                                      })
+      end
+    end
+
+    context 'when claimant is found without matching POA' do
+      before do
+        allow_any_instance_of(described_class)
+          .to receive(:authorize)
+          .and_raise(Pundit::NotAuthorizedError)
+      end
+
+      it 'returns a generic 422 failure response' do
+        post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(parsed_response).to eq({
+                                        'status' => 'failure',
+                                        'error' => 'Unable to verify claimant information'
+                                      })
+      end
+    end
+
+    context 'when claimant is found with matching POA' do
+      before do
+        allow_any_instance_of(described_class)
+          .to receive(:authorize) do |controller, *|
+            controller.instance_variable_set(:@_pundit_policy_authorized, true)
+            true
+          end
+      end
+
+      it 'returns success' do
+        post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+
+        expect(response).to have_http_status(:ok)
+        expect(parsed_response).to eq({
+                                        'status' => 'success'
+                                      })
+      end
+    end
+  end
 end

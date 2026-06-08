@@ -18,6 +18,7 @@ module AccreditedRepresentativePortal
       before_action only: %i[submit upload_scanned_form upload_supporting_documents] do
         deny_access_unless_form_enabled(form_id)
       end
+      before_action :authorize_poa_check, only: :check_poa_status
 
       ATTEMPT_METRIC_SUBMIT = 'ar.claims.form_upload.submit.attempt'
       SUCCESS_METRIC_SUBMIT = 'ar.claims.form_upload.submit.success'
@@ -123,6 +124,10 @@ module AccreditedRepresentativePortal
         end
       end
 
+      def check_poa_status
+        render json: { status: 'success' }, status: :ok
+      end
+
       private
 
       def bdd_status(saved_claim)
@@ -171,6 +176,33 @@ module AccreditedRepresentativePortal
             policy_class: RepresentativeFormUploadPolicy
           )
         end
+      end
+
+      def authorize_poa_check
+        raise Common::Exceptions::BadRequest.new(detail: 'invalid') if claimant_icn.blank?
+
+        authorize(claimant_icn, policy_class: FormSubmissionPolicy)
+      rescue Common::Exceptions::BadRequest,
+             Common::Exceptions::RecordNotFound,
+             Pundit::NotAuthorizedError
+        render json: {
+          status: 'failure',
+          error: 'Unable to verify claimant information'
+        }, status: :unprocessable_content
+      end
+
+      def claimant_icn
+        return super unless action_name == 'check_poa_status'
+
+        @claimant_icn ||= ClaimantLookupService.get_icn(
+          params[:firstName],
+          params[:lastName],
+          params[:ssn],
+          params[:dateOfBirth]
+        )
+      rescue Common::Exceptions::BadRequest,
+             Common::Exceptions::RecordNotFound
+        nil
       end
 
       # rubocop:disable Metrics/MethodLength
