@@ -6,8 +6,7 @@ require 'survivors_benefits/benefits_intake/submit_claim_job'
 require 'survivors_benefits/monitor'
 require 'pdf_utilities/datestamp_pdf'
 
-RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmitClaimJob, :uploader_helpers,
-               skip: 'TODO after schema built' do
+RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmitClaimJob, :uploader_helpers do
   stub_virus_scan
   let(:job) { described_class.new }
   let(:claim) { create(:survivors_benefits_claim) }
@@ -22,12 +21,19 @@ RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmitClaimJob, :uploader_help
     let(:location) { 'test_location' }
     let(:omit_esign_stamp) { true }
     let(:extras_redesign) { true }
+    let(:parsed_form) do
+      {
+        'veteranFullName' => { 'first' => 'John', 'last' => 'Doe' },
+        'veteranSocialSecurityNumber' => '333224444',
+        'claimantAddress' => { 'postalCode' => '22030' }
+      }
+    end
 
     before do
       job.instance_variable_set(:@claim, claim)
       allow(SurvivorsBenefits::SavedClaim).to receive(:find).and_return(claim)
       allow(claim).to receive(:to_pdf).with(claim.id, { extras_redesign:, omit_esign_stamp: }).and_return(pdf_path)
-      allow(claim).to receive(:persistent_attachments).and_return([])
+      allow(claim).to receive_messages(persistent_attachments: [], parsed_form:)
 
       job.instance_variable_set(:@intake_service, service)
       allow(BenefitsIntake::Service).to receive(:new).and_return(service)
@@ -37,6 +43,12 @@ RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmitClaimJob, :uploader_help
       allow(response).to receive(:success?).and_return true
 
       job.instance_variable_set(:@monitor, monitor)
+
+      # Deterministic feature-flag control: the form flag is on by default,
+      # structured-data transmission off unless a specific example enables it.
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?).with(:survivors_benefits_form_enabled).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:survivors_benefits_structured_data_transmission).and_return(false)
     end
 
     context 'with survivors_benefits_form_enabled flipper' do
@@ -118,11 +130,50 @@ RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmitClaimJob, :uploader_help
     end
 
     it 'calls claim.to_ibm method to generate IBM payload and returns a hash' do
+      allow(Flipper).to receive(:enabled?).with(:survivors_benefits_structured_data_transmission).and_return(true)
+      allow(job).to receive(:process_document).and_return(pdf_path)
+      allow(Ibm::Service).to receive(:new).and_return(instance_double(Ibm::Service, upload_form: response))
+
       expect(claim).to receive(:to_ibm).and_return({ test: 'data' })
       job.perform(claim.id, user_account_uuid)
       expect(job.instance_variable_get(:@ibm_payload)).to eq({ test: 'data' })
     end
     # perform
+  end
+
+  describe '#update_form_submission_attempt' do
+    let(:claim) { create(:survivors_benefits_claim, user_account:) }
+
+    before do
+      job.instance_variable_set(:@claim, claim)
+      job.instance_variable_set(:@intake_service, service)
+      allow(service).to receive(:uuid).and_return('11111111-1111-4111-8111-111111111111')
+    end
+
+    # MyVA builds submitted-form cards from FormSubmission/FormSubmissionAttempt records,
+    # so this association must be created and tied to the user and benefits intake uuid.
+    it 'creates a FormSubmission and attempt tied to the user and benefits intake uuid' do
+      expect { job.send(:update_form_submission_attempt) }
+        .to change(FormSubmission, :count).by(1)
+        .and change(FormSubmissionAttempt, :count).by(1)
+
+      submission = claim.form_submissions.last
+      expect(submission.form_type).to eq(claim.form_id)
+      expect(submission.user_account_id).to eq(user_account.id)
+      expect(submission.latest_attempt.benefits_intake_uuid).to eq('11111111-1111-4111-8111-111111111111')
+    end
+
+    it 'updates the existing attempt on retry instead of creating a duplicate' do
+      job.send(:update_form_submission_attempt)
+      allow(service).to receive(:uuid).and_return('22222222-2222-4222-8222-222222222222')
+
+      expect { job.send(:update_form_submission_attempt) }
+        .to not_change(FormSubmission, :count)
+        .and not_change(FormSubmissionAttempt, :count)
+
+      expect(claim.form_submissions.last.latest_attempt.benefits_intake_uuid)
+        .to eq('22222222-2222-4222-8222-222222222222')
+    end
   end
 
   describe 'govcio_upload' do
@@ -131,7 +182,7 @@ RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmitClaimJob, :uploader_help
 
     before do
       job.instance_variable_set(:@intake_service, service)
-      allow(service).to receive(:guid).and_return('test_guid')
+      allow(service).to receive(:uuid).and_return('test_guid')
 
       job.instance_variable_set(:@ibm_payload, { test: 'data' })
 

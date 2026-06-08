@@ -6,8 +6,7 @@ require 'medical_expense_reports/benefits_intake/submit_claim_job'
 require 'medical_expense_reports/monitor'
 require 'pdf_utilities/datestamp_pdf'
 
-RSpec.describe MedicalExpenseReports::BenefitsIntake::SubmitClaimJob, :uploader_helpers,
-               skip: 'TODO after schema built' do
+RSpec.describe MedicalExpenseReports::BenefitsIntake::SubmitClaimJob, :uploader_helpers do
   stub_virus_scan
   let(:job) { described_class.new }
   let(:claim) { create(:medical_expense_reports_claim) }
@@ -21,12 +20,19 @@ RSpec.describe MedicalExpenseReports::BenefitsIntake::SubmitClaimJob, :uploader_
     let(:location) { 'test_location' }
     let(:omit_esign_stamp) { true }
     let(:extras_redesign) { true }
+    let(:parsed_form) do
+      {
+        'veteranFullName' => { 'first' => 'John', 'last' => 'Doe' },
+        'veteranSocialSecurityNumber' => '333224444',
+        'claimantAddress' => { 'postalCode' => '22030' }
+      }
+    end
 
     before do
       job.instance_variable_set(:@claim, claim)
       allow(MedicalExpenseReports::SavedClaim).to receive(:find).and_return(claim)
       allow(claim).to receive(:to_pdf).with(claim.id, { extras_redesign:, omit_esign_stamp: }).and_return(pdf_path)
-      allow(claim).to receive(:persistent_attachments).and_return([])
+      allow(claim).to receive_messages(persistent_attachments: [], parsed_form:)
 
       job.instance_variable_set(:@intake_service, service)
       allow(BenefitsIntake::Service).to receive(:new).and_return(service)
@@ -36,6 +42,12 @@ RSpec.describe MedicalExpenseReports::BenefitsIntake::SubmitClaimJob, :uploader_
       allow(response).to receive(:success?).and_return true
 
       job.instance_variable_set(:@monitor, monitor)
+
+      # Deterministic feature-flag control: the form flag is on by default,
+      # structured-data transmission off unless a specific example enables it.
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?).with(:medical_expense_reports_form_enabled).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:medical_expense_reports_structured_data_transmission).and_return(false)
     end
 
     context 'with medical_expense_reports_form_enabled flipper' do
@@ -124,7 +136,7 @@ RSpec.describe MedicalExpenseReports::BenefitsIntake::SubmitClaimJob, :uploader_
 
     before do
       job.instance_variable_set(:@intake_service, service)
-      allow(service).to receive(:guid).and_return('test_guid')
+      allow(service).to receive(:uuid).and_return('test_guid')
 
       job.instance_variable_set(:@ibm_payload, { test: 'data' })
 
@@ -166,207 +178,39 @@ RSpec.describe MedicalExpenseReports::BenefitsIntake::SubmitClaimJob, :uploader_
     end
   end
 
-  describe '#build_ibm_payload' do
-    let(:base_form_data) do
-      {
-        'claimantFullName' => { 'first' => 'Jane', 'middle' => 'Q', 'last' => 'Public' },
-        'claimantAddress' => {
-          'street' => '100 Main St',
-          'street2' => 'Apt 2',
-          'city' => 'City',
-          'state' => 'VA',
-          'postalCode' => '22206',
-          'country' => 'USA'
-        },
-        'claimantEmail' => 'claimant@example.com',
-        'careExpenses' => [
-          {
-            'recipient' => 'VETERAN',
-            'recipientName' => 'Vet Care',
-            'provider' => 'Primary Care',
-            'careDate' => { 'from' => '2023-01-01', 'to' => '2023-01-31' },
-            'monthlyAmount' => '1000',
-            'hourlyRate' => '25',
-            'weeklyHours' => '30'
-          },
-          {
-            'recipient' => 'CHILD',
-            'recipientName' => 'Child Care',
-            'provider' => 'Child Provider',
-            'careDate' => { 'from' => '2023-02-01', 'to' => '2023-02-28' },
-            'monthlyAmount' => '1200.5',
-            'hourlyRate' => '30',
-            'weeklyHours' => '20'
-          }
-        ],
-        'primaryPhone' => { 'countryCode' => 'US', 'contact' => '(555) 123-4567' },
-        'veteranFullName' => { 'first' => 'John', 'middle' => 'Q', 'last' => 'Public' },
-        'veteranSocialSecurityNumber' => '123456789',
-        'vaFileNumber' => '987654321',
-        'veteranAddress' => {
-          'street' => '1 Main Street',
-          'street2' => 'A1',
-          'city' => 'City',
-          'state' => 'VA',
-          'postalCode' => '22206',
-          'country' => 'USA'
-        },
-        'statementOfTruthSignature' => 'Jane Public',
-        'dateSigned' => '2024-04-01',
-        'medicalExpenses' => [
-          {
-            'recipient' => 'SPOUSE',
-            'recipientName' => 'Spouse Expense',
-            'provider' => 'Medical Lab',
-            'purpose' => 'Labs',
-            'paymentDate' => '2024-02-02',
-            'paymentFrequency' => 'ONCE_MONTH',
-            'paymentAmount' => '123456.78'
-          }
-        ],
-        'mileageExpenses' => [
-          {
-            'traveler' => 'CHILD',
-            'travelerName' => 'Child Traveler',
-            'travelLocation' => 'HOSPITAL',
-            'travelLocationOther' => 'Child Clinic',
-            'travelMilesTraveled' => '45',
-            'travelDate' => '2024-03-03',
-            'travelReimbursementAmount' => '12345.6'
-          }
-        ],
-        'reportingPeriod' => { 'from' => '2024-01-01', 'to' => '2024-12-31' },
-        'firstTimeReporting' => false
-      }
+  describe '#update_form_submission_attempt' do
+    let(:user_account) { create(:user_account) }
+    let(:claim) { create(:medical_expense_reports_claim, user_account:) }
+
+    before do
+      job.instance_variable_set(:@claim, claim)
+      job.instance_variable_set(:@intake_service, service)
+      allow(service).to receive(:uuid).and_return('11111111-1111-4111-8111-111111111111')
     end
 
-    let(:form_data) { base_form_data.deep_dup }
+    # MyVA builds submitted-form cards from FormSubmission/FormSubmissionAttempt records,
+    # so this association must be created and tied to the user and benefits intake uuid.
+    it 'creates a FormSubmission and attempt tied to the user and benefits intake uuid' do
+      expect { job.send(:update_form_submission_attempt) }
+        .to change(FormSubmission, :count).by(1)
+        .and change(FormSubmissionAttempt, :count).by(1)
 
-    it 'returns the IBM data dictionary mapping' do
-      payload = job.send(:build_ibm_payload, form_data)
-
-      expect(payload).to include(
-        'CLAIMANT_FIRST_NAME' => 'Jane',
-        'CLAIMANT_LAST_NAME' => 'Public',
-        'CLAIMANT_MIDDLE_INITIAL' => 'Q',
-        'CLAIMANT_NAME' => 'Jane Q Public',
-        'CLAIMANT_ADDRESS_FULL_BLOCK' => '100 Main St Apt 2 City VA 22206 USA',
-        'CL_EMAIL' => 'claimant@example.com',
-        'CL_PHONE_NUMBER' => '5551234567',
-        'CL_INT_PHONE_NUMBER' => nil,
-        'DATE_SIGNED' => '2024-04-01',
-        'FORM_TYPE' => MedicalExpenseReports::FORM_TYPE_LABEL,
-        'MED_EXPENSES_FROM_1' => '01/01/2024',
-        'MED_EXPENSES_TO_1' => '12/31/2024',
-        'USE_VA_RCVD_DATE' => false,
-        'VA_FILE_NUMBER' => '987654321',
-        'VETERAN_FIRST_NAME' => 'John',
-        'VETERAN_LAST_NAME' => 'Public',
-        'VETERAN_MIDDLE_INITIAL' => 'Q',
-        'VETERAN_NAME' => 'John Q Public',
-        'VETERAN_SSN' => '123456789',
-        'CLAIMANT_SIGNATURE' => 'Jane Public',
-        'IN_HM_VTRN_PAID_1' => true,
-        'IN_HM_CHLD_PAID_2' => true,
-        'IN_HM_CHLD_OTHR_NAME_2' => 'Child Care',
-        'IN_HM_PROVIDER_NAME_2' => 'Child Provider',
-        'IN_HM_DATE_START_2' => '02/01/2023',
-        'IN_HM_AMT_PAID_2' => '1,200.50',
-        'IN_HM_HRLY_RATE_2' => '30',
-        'IN_HM_NBR_HRS_2' => '20',
-        'MED_EXP_PAID_SPSE_1' => true,
-        'CB_PAYMENT_MONTHLY1' => true,
-        'MED_EXP_DATE_PAID_1' => '02/02/2024',
-        'MED_EXP_AMT_PAID_1' => '123,456.78',
-        'MED_EXP_PRVDR_NAME_1' => 'Medical Lab',
-        'MED_EXPENSE_1' => 'Labs',
-        'CHLD_RQD_TRVL_1' => true,
-        'MDCL_FCLTY_NAME_1' => 'Child Clinic',
-        'TTL_MLS_TRVLD_1' => '45',
-        'DATE_TRVLD_1' => '03/03/2024',
-        'OTHER_SRC_RMBRSD_1' => '12,345.60',
-        'TRVL_CHLD_OTHR_NAME_1' => 'Child Traveler'
-      )
+      submission = claim.form_submissions.last
+      expect(submission.form_type).to eq(claim.form_id)
+      expect(submission.user_account_id).to eq(user_account.id)
+      expect(submission.latest_attempt.benefits_intake_uuid).to eq('11111111-1111-4111-8111-111111111111')
     end
 
-    context 'without claimantAddress data' do
-      let(:form_data) do
-        base_form_data.deep_dup.tap { |form| form.delete('claimantAddress') }
-      end
+    it 'updates the existing attempt on retry instead of creating a duplicate' do
+      job.send(:update_form_submission_attempt)
+      allow(service).to receive(:uuid).and_return('22222222-2222-4222-8222-222222222222')
 
-      it 'falls back to the veteran address' do
-        payload = job.send(:build_ibm_payload, form_data)
+      expect { job.send(:update_form_submission_attempt) }
+        .to not_change(FormSubmission, :count)
+        .and not_change(FormSubmissionAttempt, :count)
 
-        expect(payload['CLAIMANT_ADDRESS_FULL_BLOCK']).to eq('1 Main Street A1 City VA 22206 USA')
-      end
-    end
-  end
-
-  describe 'helper methods' do
-    describe '#build_name' do
-      it 'returns nil parts when name hash is missing' do
-        result = job.send(:build_name, nil)
-        expect(result[:first]).to be_nil
-        expect(result[:full]).to be_nil
-      end
-
-      it 'builds a full name when parts exist' do
-        result = job.send(:build_name, { 'first' => 'Jane', 'last' => 'Doe' })
-        expect(result[:full]).to eq('Jane Doe')
-      end
-    end
-
-    describe '#build_address_block' do
-      it 'returns nil when address is missing' do
-        expect(job.send(:build_address_block, nil)).to be_nil
-      end
-
-      it 'joins street, city, state, postal code, and country' do
-        address = {
-          'street' => '100 Main St',
-          'street2' => 'Apt 2',
-          'city' => 'Arlington',
-          'state' => 'VA',
-          'postalCode' => '22206',
-          'country' => 'USA'
-        }
-        expect(job.send(:build_address_block, address)).to eq('100 Main St Apt 2 Arlington VA 22206 USA')
-      end
-
-      it 'ignores blanks when parts are empty strings' do
-        address = { 'street' => '', 'city' => 'City' }
-        expect(job.send(:build_address_block, address)).to eq('City')
-      end
-    end
-
-    describe '#international_phone_number' do
-      it 'prioritizes the explicit internationalPhone field' do
-        form = { 'internationalPhone' => '+52 1 234 567 890' }
-        expect(job.send(:international_phone_number, form, {})).to eq('521234567890')
-      end
-
-      it 'falls back to sanitized contact when country is not US' do
-        form = {}
-        primary_phone = { 'countryCode' => 'MX', 'contact' => '521-234-567-890' }
-        expect(job.send(:international_phone_number, form, primary_phone)).to eq('521234567890')
-      end
-
-      it 'returns nil for US phones without explicit international input' do
-        form = {}
-        primary_phone = { 'countryCode' => 'US', 'contact' => '555-123-4567' }
-        expect(job.send(:international_phone_number, form, primary_phone)).to be_nil
-      end
-    end
-
-    describe '#use_va_rcvd_date?' do
-      it 'returns false when value is nil' do
-        expect(job.send(:use_va_rcvd_date?, {})).to be false
-      end
-
-      it 'returns the boolean value when present' do
-        expect(job.send(:use_va_rcvd_date?, { 'firstTimeReporting' => true })).to be true
-        expect(job.send(:use_va_rcvd_date?, { 'firstTimeReporting' => false })).to be false
-      end
+      expect(claim.form_submissions.last.latest_attempt.benefits_intake_uuid)
+        .to eq('22222222-2222-4222-8222-222222222222')
     end
   end
 

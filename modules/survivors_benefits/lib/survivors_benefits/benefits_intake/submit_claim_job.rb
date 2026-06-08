@@ -149,7 +149,7 @@ module SurvivorsBenefits
         monitor.track_submission_attempted(@claim, @intake_service, @user_account_uuid, tracked_payload)
 
         response = @intake_service.perform_upload(**payload)
-
+        update_form_submission_attempt
         govcio_upload if response.success?
 
         raise SurvivorsBenefitsBenefitIntakeError, response.to_s unless response.success?
