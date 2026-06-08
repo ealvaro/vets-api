@@ -1,0 +1,33 @@
+{
+  "form_number": "10-8678",
+  "full_name": {
+    "first": "Jane",
+    "last": "Doe"
+  },
+  "ssn": "123456789",
+  "veteran_address": {
+    "street": "1 Main St",
+    "city": "Anytown",
+    "state": "VA",
+    "postal_code": "22301",
+    "country": "US"
+  },
+  "day_phone_number": "5551234567",
+  "email": "jane.doe@example.com",
+  "app_calendar_year": "2026",
+  "appliances": [
+    {
+      "name": "Artificial leg",
+      "disability": "Right leg amputation",
+      "issue_date": { "month": "06", "year": "2024" },
+      "issue_office_name_location": "Richmond VAMC",
+      "impacted_location": "Right leg"
+    }
+  ],
+  "statement_of_truth_signature": "Jane Doe",
+  "signature_date": {
+    "month": "01",
+    "day": "15",
+    "year": "2026"
+  }
+}

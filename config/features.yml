@@ -1505,6 +1505,9 @@ features:
   vba_21_4140_ibm_mms_connection:
     actor_type: user
     description: If enabled performs MMS IBM Upload for 21-4140.
+  vba_10_8678_ibm_mms_connection:
+    actor_type: user
+    description: If enabled performs MMS IBM Upload for 10-8678.
   vba_21_4502_ibm_mms_connection:
     actor_type: user
     description: If enabled performs MMS IBM Upload for 21-4502.
