@@ -292,13 +292,19 @@ module EVSS
       end
 
       def separation_pay
-        return nil if input_form['hasSeparationPay'].blank?
+        return nil if input_form['hasSeparationPay'].nil?
 
-        {
-          'received' => true,
-          'payment' => payment(input_form['separationPayBranch']),
-          'receivedDate' => approximate_date(input_form['separationPayDate'])
-        }.compact
+        received = ActiveModel::Type::Boolean.new.cast(input_form['hasSeparationPay'])
+
+        if received
+          {
+            'received' => true,
+            'payment' => payment(input_form['separationPayBranch']),
+            'receivedDate' => approximate_date(input_form['separationPayDate'])
+          }.compact
+        else
+          { 'received' => false }
+        end
       end
 
       def payment(branch)

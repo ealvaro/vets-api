@@ -781,8 +781,8 @@ describe EVSS::DisabilityCompensationForm::DataTranslationAllClaim do
         }
       end
 
-      it 'does not translate separation pay' do
-        expect(subject.send(:separation_pay)).to be_nil
+      it 'translates the data to received false' do
+        expect(subject.send(:separation_pay)).to eq('received' => false)
       end
     end
 
