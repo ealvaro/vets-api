@@ -669,6 +669,9 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
       let(:base64_params) do
         { attachment: File.read(Rails.root.join(*'/modules/claims_api/spec/fixtures/base64pdf'.split('/')).to_s) }
       end
+      let(:base64_params_attachment1) do
+        { attachment1: base64_params[:attachment] }
+      end
 
       it 'submit binary and change the document status' do
         mock_acg(scopes) do |auth_header|
@@ -678,11 +681,41 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
             .to receive(:check_request_ssn_matches_mpi).and_return(nil)
           allow_any_instance_of(ClaimsApi::PowerOfAttorneyUploader).to receive(:store!)
           expect(power_of_attorney.file_data).to be_nil
+
           put("#{path}/#{power_of_attorney.id}",
               params: binary_params, headers: headers.merge(auth_header))
+
           power_of_attorney.reload
           expect(power_of_attorney.file_data).not_to be_nil
           expect(power_of_attorney.status).to eq('submitted')
+        end
+      end
+
+      # This addresses a bug where the IO stream was closing causing an issue
+      # with the virus scanner further down the line
+      # See API-56343 for context.
+      it 'submits base64 attachment1 JSON and succeeds (by keeping the stream open)' do
+        mock_acg(scopes) do |auth_header|
+          allow_any_instance_of(pws)
+            .to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
+          allow_any_instance_of(ClaimsApi::V1::Forms::PowerOfAttorneyController)
+            .to receive(:check_request_ssn_matches_mpi).and_return(nil)
+          #
+          # We need to mock being in Production to get past the guard
+          # in app/uploders/uploader_virus_scan.rb
+          # otherwise this would never go red if changes were made
+          allow(Rails.env).to receive(:production?).and_return(true)
+          expect(Common::FileHelpers)
+            .to receive(:generate_clamav_temp_file)
+            .and_call_original
+          expect(Common::VirusScan)
+            .to receive(:scan)
+            .with(kind_of(String), upload_context: anything)
+            .and_return(true)
+
+          put("#{path}/#{power_of_attorney.id}",
+              params: base64_params_attachment1, headers: headers.merge(auth_header), as: :json)
+          expect(response).to have_http_status(:success)
         end
       end
 

@@ -72,7 +72,9 @@ module ClaimsApi
           filename = "temp_upload_#{SecureRandom.urlsafe_base64(8)}.pdf"
           temp_file = Tempfile.new(filename, encoding: 'ASCII-8BIT')
           temp_file.write(decoded_data)
-          temp_file.close
+          # Keep the stream open for CarrierWave callbacks (e.g., virus scan) which read the uploaded IO.
+          # Closing here caused `IOError: closed stream` for JSON/base64 attachment uploads.
+          temp_file.rewind
           ActionDispatch::Http::UploadedFile.new(filename:,
                                                  type: 'application/pdf',
                                                  tempfile: temp_file)

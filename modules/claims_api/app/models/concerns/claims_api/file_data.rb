@@ -33,6 +33,12 @@ module ClaimsApi
         self.file_data = { filename: uploader.filename,
                            doc_type:,
                            description: }
+      rescue UploaderVirusScan::VirusFoundError
+        Rails.logger.warn("#{self.class.name}#set_file_data!: virus detected in upload")
+        raise ::Common::Exceptions::UnprocessableEntity.new(
+          detail: 'We were unable to process your file. Please try again.',
+          source: self.class.name
+        )
       end
     end
   end
