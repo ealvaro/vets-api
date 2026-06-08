@@ -74,6 +74,9 @@ set -euo pipefail
         --no-parent \
         --no-host-directories \
         --no-directories \
+        --tries=3 \
+        --timeout=60 \
+        --waitretry=5 \
         --accept="VA*.cer" \
         http://aia.pki.va.gov/PKI/AIA/VA/; then
         # Verify wget actually downloaded VA cert files — it can exit 0

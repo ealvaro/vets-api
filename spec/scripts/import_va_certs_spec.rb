@@ -112,6 +112,11 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
       expect(script_content).to include('--accept="VA*.cer"')
       expect(script_content).to include('http://aia.pki.va.gov/PKI/AIA/VA/')
 
+      # Verify retry/backoff flags are present
+      expect(script_content).to include('--tries=3')
+      expect(script_content).to include('--timeout=60')
+      expect(script_content).to include('--waitretry=5')
+
       # Verify GHEC-US mirror fallback URL and auth pattern
       expect(script_content).to include('falling back to GHEC-US mirror')
       expect(script_content).to include('raw.va.ghe.com/software/platform-va-ca-certificate/main')
