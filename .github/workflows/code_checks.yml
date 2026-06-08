@@ -82,7 +82,7 @@ jobs:
         run: |
           git config --global url."https://x-access-token:${{ steps.bgs-ext-app-token.outputs.token }}@va.ghe.com/software/bgs-ext.git".insteadOf https://va.ghe.com/software/bgs-ext.git
 
-      - uses: ruby/setup-ruby@97ecb7b512899eb71ab1bf2310a624c6f1589ac6 # v1
+      - uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1
         env:
           BUNDLE_VA__GHE__COM: x-access-token:${{ steps.app-token.outputs.token }}
         with:
@@ -599,7 +599,7 @@ jobs:
         run: |
           git config --global url."https://x-access-token:${{ steps.bgs-ext-app-token.outputs.token }}@va.ghe.com/software/bgs-ext.git".insteadOf https://va.ghe.com/software/bgs-ext.git
 
-      - uses: ruby/setup-ruby@97ecb7b512899eb71ab1bf2310a624c6f1589ac6 # v1
+      - uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1
         env:
           BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
           BUNDLE_VA__GHE__COM: x-access-token:${{ steps.app-token.outputs.token }}
