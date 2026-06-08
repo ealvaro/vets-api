@@ -1370,13 +1370,13 @@
   :base_uri: <%= "#{URI(Settings.dgi.vye.vets.url).host}:#{URI(Settings.dgi.vye.vets.url).port}" %>
   :endpoints:
     - :method: :post
-      :path: "/dgi/vye/claimantLookup"
+      :path: "/vets-service/v1/dgi/vye/claimantLookup"
       :file_path: "dgi/vye/claimant"
       :cache_multiple_responses:
         :uid_location: body
         :uid_locator: 'ssn":"(\w+)"'
     - :method: :get
-      :path: "/verifications/vye/*/verification-record"
+      :path: "/vets-service/v1/verifications/vye/*/verification-record"
       :file_path: "dgi/vye/verification"
       :cache_multiple_responses:
         :uid_location: url
