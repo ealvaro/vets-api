@@ -49,7 +49,6 @@ module VRE
       submission, attempt = setup_submission_tracking(claim_id, submission_id)
 
       begin
-        # TODO: Change this to use new modular VRE claim class
         claim = SavedClaim::VeteranReadinessEmploymentClaim.find(claim_id)
         user = OpenStruct.new(JSON.parse(KmsEncrypted::Box.new.decrypt(encrypted_user)))
         claim.send_to_vre(user)

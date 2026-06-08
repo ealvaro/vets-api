@@ -218,6 +218,27 @@ RSpec.describe VRE::VREVeteranReadinessEmploymentClaim do
         end
       end
 
+      context 'when veteran identifier format is invalid' do
+        before do
+          base_parsed_form['veteranInformation'].merge!('VAFileNumber' => 'BAD-ID', 'ssn' => '1234')
+          allow(claim).to receive(:send_to_lighthouse!).and_return(nil)
+        end
+
+        it 'logs invalid identifier details' do
+          allow(Rails.logger).to receive(:error)
+          expected_message = 'Invalid veteran identifiers: SSN must be 9 digits; ' \
+                             'VA File Number must be 7-9 digits with optional leading C'
+          claim.upload_to_vbms(user: upload_user)
+          expect(Rails.logger).to have_received(:error).with(
+            'Error uploading VRE claim to VBMS.',
+            {
+              user_uuid: upload_user.uuid,
+              message: expected_message
+            }
+          )
+        end
+      end
+
       it 'uses ClaimsApi::VBMSUploader and stores the document series ref id as documentId' do
         allow_any_instance_of(ClaimsApi::VBMSUploader).to receive(:upload!)
           .and_return({ vbms_document_series_ref_id: 'DOC-SERIES-001' })
@@ -290,6 +311,27 @@ RSpec.describe VRE::VREVeteranReadinessEmploymentClaim do
             {
               user_uuid: upload_user.uuid,
               message: 'SSN or VA File Number required'
+            }
+          )
+        end
+      end
+
+      context 'when veteran identifier format is invalid' do
+        before do
+          base_parsed_form['veteranInformation'].merge!('VAFileNumber' => 'BAD-ID', 'ssn' => '1234')
+          allow(claim).to receive(:send_to_lighthouse!).and_return(nil)
+        end
+
+        it 'logs invalid identifier details' do
+          allow(Rails.logger).to receive(:error)
+          expected_message = 'Invalid veteran identifiers: SSN must be 9 digits; ' \
+                             'VA File Number must be 7-9 digits with optional leading C'
+          claim.upload_to_vbms(user: upload_user)
+          expect(Rails.logger).to have_received(:error).with(
+            'Error uploading VRE claim to Claims Evidence API.',
+            {
+              user_uuid: upload_user.uuid,
+              message: expected_message
             }
           )
         end

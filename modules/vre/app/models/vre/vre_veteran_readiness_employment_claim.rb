@@ -83,9 +83,10 @@ module VRE
     def upload_to_vbms(user:, doc_type: '1167')
       use_claims_evidence = Flipper.enabled? :vre_use_claims_evidence_api
       form_path = PdfFill::Filler.fill_form(self, nil, { created_at: })
-      va_file_number = parsed_form['veteranInformation']['VAFileNumber']
-      ssn = parsed_form['veteranInformation']['ssn']
-      raise 'SSN or VA File Number required' if va_file_number.blank? && ssn.blank?
+      va_file_number = normalize_va_file_number(parsed_form['veteranInformation']['VAFileNumber'])
+      ssn = normalize_ssn(parsed_form['veteranInformation']['ssn'])
+
+      validate_veteran_identifiers!(va_file_number:, ssn:)
 
       if use_claims_evidence
         upload_to_claims_evidence_api(form_path:, va_file_number:, ssn:, user:, doc_type:)
@@ -262,6 +263,29 @@ module VRE
     rescue
       Rails.logger.warn('VRE claim unable to add VA File Number.', { user_uuid: user&.uuid })
       nil
+    end
+
+    def normalize_ssn(ssn)
+      ssn.to_s.gsub(/\D/, '').presence
+    end
+
+    def normalize_va_file_number(va_file_number)
+      va_file_number.to_s.strip.upcase.presence
+    end
+
+    def validate_veteran_identifiers!(va_file_number:, ssn:)
+      raise 'SSN or VA File Number required' if va_file_number.blank? && ssn.blank?
+
+      errors = []
+      errors << 'SSN must be 9 digits' if ssn.present? && !ssn.match?(/\A\d{9}\z/)
+      if va_file_number.present? &&
+         !va_file_number.match?(/\A(?:C)?\d{7,9}\z/)
+        errors << 'VA File Number must be 7-9 digits with optional leading C'
+      end
+
+      return if errors.empty?
+
+      raise "Invalid veteran identifiers: #{errors.join('; ')}"
     end
 
     def log_to_statsd(service)

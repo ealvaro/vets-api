@@ -500,6 +500,50 @@ RSpec.describe SavedClaim::VeteranReadinessEmploymentClaim do
         allow(Flipper).to receive(:enabled?).and_return(false)
       end
 
+      context 'when veteran identifier is missing' do
+        before do
+          base_parsed_form['veteranInformation'].merge!('VAFileNumber' => nil, 'ssn' => nil)
+          allow(claim).to receive(:send_to_lighthouse!).and_return(nil)
+        end
+
+        it 'logs a validation error with the missing identifier message' do
+          allow(Rails.logger).to receive(:error)
+
+          claim.upload_to_vbms(user: upload_user)
+
+          expect(Rails.logger).to have_received(:error).with(
+            'Error uploading VRE claim to VBMS.',
+            {
+              user_uuid: upload_user.uuid,
+              message: 'SSN or VA File Number required'
+            }
+          )
+        end
+      end
+
+      context 'when veteran identifier formats are invalid' do
+        before do
+          base_parsed_form['veteranInformation'].merge!('VAFileNumber' => 'BAD-ID', 'ssn' => '1234')
+          allow(claim).to receive(:send_to_lighthouse!).and_return(nil)
+        end
+
+        it 'logs a validation error describing invalid formats' do
+          allow(Rails.logger).to receive(:error)
+          expected_message = 'Invalid veteran identifiers: SSN must be 9 digits; ' \
+                             'VA File Number must be 7-9 digits with optional leading C'
+
+          claim.upload_to_vbms(user: upload_user)
+
+          expect(Rails.logger).to have_received(:error).with(
+            'Error uploading VRE claim to VBMS.',
+            {
+              user_uuid: upload_user.uuid,
+              message: expected_message
+            }
+          )
+        end
+      end
+
       it 'uses ClaimsApi::VBMSUploader and stores the document series ref id as documentId' do
         allow_any_instance_of(ClaimsApi::VBMSUploader).to receive(:upload!)
           .and_return({ vbms_document_series_ref_id: 'DOC-SERIES-001' })
@@ -526,6 +570,28 @@ RSpec.describe SavedClaim::VeteranReadinessEmploymentClaim do
           .and_return(
             base_parsed_form.merge(
               'veteranInformation' => base_parsed_form.fetch('veteranInformation', {}).merge('VAFileNumber' => '')
+            )
+          )
+
+        vbms_uploader = instance_double(ClaimsApi::VBMSUploader)
+        allow(vbms_uploader).to receive(:upload!).and_return({ vbms_document_series_ref_id: 'X' })
+        expect(ClaimsApi::VBMSUploader).to receive(:new).with(
+          filepath: Rails.root.join(form_path),
+          file_number: '987654321',
+          doc_type: '1167'
+        ).and_return(vbms_uploader)
+
+        claim.upload_to_vbms(user: upload_user)
+      end
+
+      it 'normalizes SSN by stripping non-digits before VBMS upload' do
+        allow(claim).to receive(:parsed_form)
+          .and_return(
+            base_parsed_form.merge(
+              'veteranInformation' => base_parsed_form.fetch('veteranInformation', {}).merge(
+                'VAFileNumber' => '',
+                'ssn' => '987-65-4321'
+              )
             )
           )
 
