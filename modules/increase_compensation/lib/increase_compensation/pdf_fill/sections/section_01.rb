@@ -181,6 +181,9 @@ module IncreaseCompensation
           question_num: 7,
           'phone_area_code' => {
             limit: 3,
+            question_num: 7,
+            question_label: 'Primary Phone Number',
+            question_text: 'Primary Phone Number',
             key: 'form1[0].#subform[0].AreaCode[0]'
           },
           'phone_first_three_numbers' => {
@@ -203,7 +206,7 @@ module IncreaseCompensation
 
       def expand(form_data = {})
         form_data['veteranFullName'] = extract_middle_i(form_data, 'veteranFullName')
-        form_data['veteranPhone'] = expand_phone_number(form_data['veteranPhone']) if form_data['veteranPhone'].present?
+        form_data['veteranPhone'] = format_us_phone_number(form_data['veteranPhone'])
         form_data['veteranSocialSecurityNumber'] = split_ssn(form_data['veteranSocialSecurityNumber'])
         form_data['veteranSocialSecurityNumber1'] = form_data['veteranSocialSecurityNumber']
         form_data['veteranSocialSecurityNumber2'] = form_data['veteranSocialSecurityNumber']
@@ -219,6 +222,22 @@ module IncreaseCompensation
                                     else
                                       two_line_overflow(form_data['email'], 'email', 17)
                                     end
+      end
+
+      def format_us_phone_number(number)
+        if number.blank?
+          Rails.logger.warn('IncreaseCompensation::Monitor 21-8940V1 - PDF recieved blank phone number')
+          return ''
+        end
+        return expand_phone_number(number) if number.length == 10 && number[0] != '1'
+        return expand_phone_number(number[1..]) if number.length == 11 && number[0] == '1'
+
+        # otherwise its a international or malformed phone number so overflow
+        {
+          'phone_area_code' => number,
+          'phone_first_three_numbers' => 'add',
+          'phone_last_four_numbers' => 'page'
+        }
       end
     end
   end
