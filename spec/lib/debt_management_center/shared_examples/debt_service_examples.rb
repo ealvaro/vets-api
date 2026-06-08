@@ -3,6 +3,7 @@
 RSpec.shared_examples 'debt service behavior' do
   before do
     allow(StatsD).to receive(:increment)
+    allow(Flipper).to receive(:enabled?).with(:dmc_file_number_padding, anything).and_return(false)
   end
 
   describe '#get_debts' do

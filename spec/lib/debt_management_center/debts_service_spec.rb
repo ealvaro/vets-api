@@ -170,4 +170,78 @@ RSpec.describe DebtManagementCenter::DebtsService do
       end
     end
   end
+
+  describe '#fetch_debts_from_dmc' do
+    subject(:fetch_debts) { service.send(:fetch_debts_from_dmc) }
+
+    let(:service) { described_class.new(user) }
+    let(:user) { build(:user, :loa3, ssn:) }
+    let(:ssn) { '123456789' }
+    let(:bgs_request) { instance_double(BGS::People::Request) }
+    let(:bgs_response) { instance_double(BGS::People::Response, file_number:) }
+    let(:file_number) { '12345678' }
+    let(:response) { instance_double(Faraday::Response, body: []) }
+
+    before do
+      allow(BGS::People::Request).to receive(:new).and_return(bgs_request)
+      allow(bgs_request).to receive(:find_person_by_participant_id).with(user:).and_return(bgs_response)
+    end
+
+    context 'when dmc_file_number_padding is enabled for the user' do
+      let(:debts) { [{ 'fileNumber' => '12345678', 'currentAR' => 123.45 }] }
+      let(:response) { instance_double(Faraday::Response, body: debts) }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:dmc_file_number_padding, user).and_return(true)
+        expect(service).to receive(:perform).with(
+          :post,
+          Settings.dmc.debts_endpoint,
+          { fileNumber: ' 12345678' },
+          nil,
+          { timeout: 30 }
+        ).and_return(response)
+      end
+
+      it 'pads the file number in the DMC request payload and returns the debts' do
+        expect(fetch_debts).to eq(debts)
+      end
+    end
+
+    context 'when dmc_file_number_padding is disabled for the user' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:dmc_file_number_padding, user).and_return(false)
+        expect(service).to receive(:perform).with(
+          :post,
+          Settings.dmc.debts_endpoint,
+          { fileNumber: '12345678' },
+          nil,
+          { timeout: 30 }
+        ).and_return(response)
+      end
+
+      it 'does not change the file number in the DMC request payload' do
+        expect(fetch_debts).to eq([])
+      end
+    end
+
+    context 'when the file number is blank' do
+      let(:file_number) { nil }
+      let(:ssn) { '' }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:dmc_file_number_padding, user).and_return(true)
+        expect(service).to receive(:perform).with(
+          :post,
+          Settings.dmc.debts_endpoint,
+          { fileNumber: '' },
+          nil,
+          { timeout: 30 }
+        ).and_return(response)
+      end
+
+      it 'does not pad the DMC request payload with spaces' do
+        expect(fetch_debts).to eq([])
+      end
+    end
+  end
 end
