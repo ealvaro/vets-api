@@ -54,10 +54,8 @@ jobs:
           ssm_parameter: /dsva-vagov/vets-api/prod/env_vars/BUNDLE_ENTERPRISE__CONTRIBSYS__COM
           env_variable_name: BUNDLE_ENTERPRISE__CONTRIBSYS__COM
 
-      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
-        with:
-          ssm_parameter: /dsva-vagov/vets-api/common/ECR_REPOSITORY
-          env_variable_name: ECR_REPOSITORY
+      - name: Set ECR repository
+        run: echo "ECR_REPOSITORY=vets-api" >> $GITHUB_ENV
 
       - name: Build Postman Docker Image
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7
