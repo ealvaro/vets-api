@@ -7,6 +7,7 @@ module VAProfile
     STATSD_KEY_PREFIX = 'api.va_profile'
     FINAL_SUCCESS = %w[COMPLETED_SUCCESS COMPLETED_NO_CHANGES_DETECTED].freeze
     FINAL_FAILURE = %w[REJECTED COMPLETED_FAILURE].freeze
+    KNOWN_CONTACT_TYPES = %w[address email telephone].freeze
 
     class << self
       # Triggers the associated StatsD.increment method for the VAProfile buckets that are
@@ -28,14 +29,19 @@ module VAProfile
       # @param response [FaradayObject] The raw response from the Faraday HTTP call
       # @param bucket1 [String] The VAProfile bucket to increment.  This bucket must
       #   already be initialized in config/initializers/statsd.rb.
+      # @param path [String, nil] The request path (e.g. 'telephones/status/123').
+      #   Used to derive a contact_type tag for the metric.
       # @return [Nil] Returns nil only if the passed transaction status is not a final status
       #
-      def increment_transaction_results(response, bucket1 = 'posts_and_puts')
+      def increment_transaction_results(response, bucket1 = 'posts_and_puts', path: nil)
         status = status_in(response)
 
         return unless final_status?(status)
 
-        increment(bucket1, bucket_for(status))
+        contact_type = contact_type_from_path(path)
+        tags = build_tags(contact_type:, error_code: failure?(status) ? error_code_in(response) : nil)
+
+        StatsD.increment("#{STATSD_KEY_PREFIX}.#{bucket1}.#{bucket_for(status)}", tags:)
       end
 
       # Increments the associated StatsD bucket with the passed in exception error key.
@@ -51,6 +57,20 @@ module VAProfile
 
       def status_in(response)
         response&.body&.dig('tx_status')&.upcase
+      end
+
+      def contact_type_from_path(path)
+        segment = path.to_s.split('/').first
+        return unless segment
+
+        KNOWN_CONTACT_TYPES.find { |type| segment.start_with?(type) }
+      end
+
+      def error_code_in(response)
+        code = response&.body&.dig('tx_messages', 0, 'code')&.to_s&.strip
+        return unless code.present? && code.match?(/\A[A-Za-z0-9_]{1,20}\z/)
+
+        code
       end
 
       def final_status?(status)
@@ -71,6 +91,13 @@ module VAProfile
         elsif failure?(status)
           'failure'
         end
+      end
+
+      def build_tags(contact_type:, error_code: nil)
+        tags = []
+        tags << "contact_type:#{contact_type}" if contact_type
+        tags << "error_code:#{error_code}" if error_code
+        tags.presence
       end
     end
   end

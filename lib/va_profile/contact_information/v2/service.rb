@@ -328,7 +328,7 @@ module VAProfile
         def get_transaction_status(path, response_class)
           with_monitoring do
             raw_response = perform(:get, path)
-            VAProfile::Stats.increment_transaction_results(raw_response)
+            VAProfile::Stats.increment_transaction_results(raw_response, path:)
 
             response_class.from(raw_response)
           end
