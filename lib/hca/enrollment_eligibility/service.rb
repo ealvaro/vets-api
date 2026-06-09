@@ -64,13 +64,9 @@ module HCA
         dependents = parse_dependents(response)
         spouse = parse_spouse(response)
 
-        ezr_data = financial_info.merge(convert_insurance_hash(response, providers).except!(:providers)).merge(spouse)
-
-        if Flipper.enabled?(:ezr_form_prefill_with_providers_and_dependents)
-          ezr_data = financial_info.merge(convert_insurance_hash(response, providers))
-          ezr_data[:dependents] = dependents if dependents.present?
-          ezr_data.merge!(spouse)
-        end
+        ezr_data = financial_info.merge(convert_insurance_hash(response, providers))
+        ezr_data[:dependents] = dependents if dependents.present?
+        ezr_data.merge!(spouse)
 
         add_contacts_to_ezr_data(ezr_data, response) if Flipper.enabled?(:ezr_emergency_contacts_enabled, user)
 

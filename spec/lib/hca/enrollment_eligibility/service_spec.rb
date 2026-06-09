@@ -46,26 +46,8 @@ describe HCA::EnrollmentEligibility::Service do
         allow(Flipper).to receive(:enabled?).with(:ezr_emergency_contacts_enabled, instance_of(User)).and_return(false)
       end
 
-      context "and 'ezr_form_prefill_with_providers_and_dependents' flipper is enabled" do
-        before do
-          allow(Flipper).to receive(:enabled?).with(:ezr_form_prefill_with_providers_and_dependents).and_return(true)
-        end
-
-        it 'gets Veteran data without contacts and with providers and dependents' do
-          expect_veteran_data_to_match(veteran_data.except('nextOfKins', 'emergencyContacts'))
-        end
-      end
-
-      context "and 'ezr_form_prefill_with_providers_and_dependents' flipper is disabled" do
-        before do
-          allow(Flipper).to receive(:enabled?).with(:ezr_form_prefill_with_providers_and_dependents).and_return(false)
-        end
-
-        it 'gets Veteran data without contacts, providers, or dependents' do
-          expect_veteran_data_to_match(
-            veteran_data.except('providers', 'dependents', 'nextOfKins', 'emergencyContacts')
-          )
-        end
+      it 'gets Veteran data without contacts and with providers and dependents' do
+        expect_veteran_data_to_match(veteran_data.except('nextOfKins', 'emergencyContacts'))
       end
     end
 
@@ -74,24 +56,8 @@ describe HCA::EnrollmentEligibility::Service do
         allow(Flipper).to receive(:enabled?).with(:ezr_emergency_contacts_enabled, instance_of(User)).and_return(true)
       end
 
-      context "and 'ezr_form_prefill_with_providers_and_dependents' flipper is enabled" do
-        before do
-          allow(Flipper).to receive(:enabled?).with(:ezr_form_prefill_with_providers_and_dependents).and_return(true)
-        end
-
-        it 'gets Veteran data with contacts, providers and dependents' do
-          expect_veteran_data_to_match(veteran_data)
-        end
-      end
-
-      context "and 'ezr_form_prefill_with_providers_and_dependents' flipper is disabled" do
-        before do
-          allow(Flipper).to receive(:enabled?).with(:ezr_form_prefill_with_providers_and_dependents).and_return(false)
-        end
-
-        it 'gets Veteran data with contacts, but without providers and dependents' do
-          expect_veteran_data_to_match(veteran_data.except('providers', 'dependents'))
-        end
+      it 'gets Veteran data with contacts, providers and dependents' do
+        expect_veteran_data_to_match(veteran_data)
       end
     end
   end

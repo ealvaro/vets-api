@@ -1315,19 +1315,36 @@ RSpec.describe FormProfile, type: :model do
         before do
           allow(user).to receive(:icn).and_return('1012829228V424035')
           allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?).with(:ezr_emergency_contacts_enabled,
+                                                    instance_of(User)).and_return(false)
         end
 
-        context "when the 'ezr_form_prefill_with_providers_and_dependents' flipper is enabled" do
+        let(:v10_10_ezr_expected) do
+          JSON.parse(
+            File.read('spec/fixtures/form1010_ezr/veteran_data.json')
+          ).merge(ezr_prefilled_data_without_ee_data).except('nextOfKins', 'emergencyContacts')
+        end
+
+        it 'returns a prefilled 10-10EZR form', run_at: 'Thu, 27 Feb 2025 01:10:06 GMT' do
+          VCR.use_cassette(
+            'form1010_ezr/lookup_user_with_ezr_prefill_data',
+            match_requests_on: %i[method uri body], erb: true
+          ) do
+            expect_prefilled('10-10EZR')
+          end
+        end
+
+        context "when the 'ezr_emergency_contacts_enabled' flipper is enabled" do
           before do
-            allow(Flipper).to receive(:enabled?).with(:ezr_form_prefill_with_providers_and_dependents).and_return(true)
             allow(Flipper).to receive(:enabled?).with(:ezr_emergency_contacts_enabled,
-                                                      instance_of(User)).and_return(false)
+                                                      instance_of(User)).and_return(true)
           end
 
           let(:v10_10_ezr_expected) do
-            JSON.parse(
+            contacts = JSON.parse(
               File.read('spec/fixtures/form1010_ezr/veteran_data.json')
-            ).merge(ezr_prefilled_data_without_ee_data).except('nextOfKins', 'emergencyContacts')
+            ).merge(ezr_prefilled_data_without_ee_data)
+            contacts
           end
 
           it 'returns a prefilled 10-10EZR form', run_at: 'Thu, 27 Feb 2025 01:10:06 GMT' do
@@ -1336,82 +1353,6 @@ RSpec.describe FormProfile, type: :model do
               match_requests_on: %i[method uri body], erb: true
             ) do
               expect_prefilled('10-10EZR')
-            end
-          end
-
-          context "and the 'ezr_emergency_contacts_enabled' flipper is enabled" do
-            before do
-              allow(Flipper).to receive(:enabled?).with(:ezr_emergency_contacts_enabled,
-                                                        instance_of(User)).and_return(true)
-            end
-
-            let(:v10_10_ezr_expected) do
-              contacts = JSON.parse(
-                File.read('spec/fixtures/form1010_ezr/veteran_data.json')
-              ).merge(ezr_prefilled_data_without_ee_data)
-              contacts
-            end
-
-            it 'returns a prefilled 10-10EZR form', run_at: 'Thu, 27 Feb 2025 01:10:06 GMT' do
-              VCR.use_cassette(
-                'form1010_ezr/lookup_user_with_ezr_prefill_data',
-                match_requests_on: %i[method uri body], erb: true
-              ) do
-                expect_prefilled('10-10EZR')
-              end
-            end
-          end
-        end
-
-        context "when the 'ezr_form_prefill_with_providers_and_dependents' flipper is disabled" do
-          before do
-            allow(Flipper).to receive(:enabled?).with(
-              :ezr_form_prefill_with_providers_and_dependents
-            ).and_return(false)
-            allow(Flipper).to receive(:enabled?).with(:ezr_emergency_contacts_enabled,
-                                                      instance_of(User)).and_return(false)
-          end
-
-          let(:v10_10_ezr_expected) do
-            JSON.parse(
-              File.read('spec/fixtures/form1010_ezr/veteran_data.json')
-            ).merge(ezr_prefilled_data_without_ee_data).except(
-              'providers',
-              'dependents',
-              'nextOfKins',
-              'emergencyContacts'
-            )
-          end
-
-          it 'returns a prefilled 10-10EZR form that does not include providers, dependents, or contacts',
-             run_at: 'Thu, 27 Feb 2025 01:10:06 GMT' do
-            VCR.use_cassette(
-              'form1010_ezr/lookup_user_with_ezr_prefill_data',
-              match_requests_on: %i[method uri body], erb: true
-            ) do
-              expect_prefilled('10-10EZR')
-            end
-          end
-
-          context "and the 'ezr_emergency_contacts_enabled' flipper is enabled" do
-            before do
-              allow(Flipper).to receive(:enabled?).with(:ezr_emergency_contacts_enabled,
-                                                        instance_of(User)).and_return(true)
-            end
-
-            let(:v10_10_ezr_expected) do
-              JSON.parse(
-                File.read('spec/fixtures/form1010_ezr/veteran_data.json')
-              ).merge(ezr_prefilled_data_without_ee_data).except('providers', 'dependents')
-            end
-
-            it 'returns a prefilled 10-10EZR form', run_at: 'Thu, 27 Feb 2025 01:10:06 GMT' do
-              VCR.use_cassette(
-                'form1010_ezr/lookup_user_with_ezr_prefill_data',
-                match_requests_on: %i[method uri body], erb: true
-              ) do
-                expect_prefilled('10-10EZR')
-              end
             end
           end
         end
