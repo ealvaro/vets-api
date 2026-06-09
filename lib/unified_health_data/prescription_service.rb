@@ -23,13 +23,7 @@ module UnifiedHealthData
 
         adapter = UnifiedHealthData::Adapters::PrescriptionsAdapter.new(@user)
         result = adapter.parse(body, current_only:)
-
-        Rails.logger.info(
-          message: 'UHD prescriptions retrieved',
-          total_prescriptions: result[:prescriptions].size,
-          current_filtering_applied: current_only,
-          service: 'unified_health_data'
-        )
+        log_prescriptions_result(result, current_only)
 
         result
       end
@@ -129,6 +123,28 @@ module UnifiedHealthData
           error: failure['message'] || 'Unable to process refill',
           station_number: order['stationNumber']
         }
+      end
+    end
+
+    def log_prescriptions_result(result, current_only)
+      if result[:prescriptions].size.zero?
+        Rails.logger.info(
+          message: 'UHD prescriptions not found',
+          total_prescriptions: result[:prescriptions].size,
+          current_filtering_applied: current_only,
+          icn: @user&.icn,
+          has_failed_stations: result[:metadata][:has_failed_stations],
+          service: 'unified_health_data'
+        )
+      else
+        Rails.logger.info(
+          message: 'UHD prescriptions retrieved',
+          total_prescriptions: result[:prescriptions].size,
+          current_filtering_applied: current_only,
+          icn: @user&.icn,
+          has_failed_stations: result[:metadata][:has_failed_stations],
+          service: 'unified_health_data'
+        )
       end
     end
   end

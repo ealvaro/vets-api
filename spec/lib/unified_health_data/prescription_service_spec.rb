@@ -434,8 +434,20 @@ describe UnifiedHealthData::PrescriptionService, type: :service do
     end
 
     context 'with empty response', :vcr do
-      it 'returns empty prescriptions for empty response' do
+      it 'logs UHD prescriptions not found when no prescriptions are returned' do
+        allow(Rails.logger).to receive(:info).and_call_original
         VCR.use_cassette('unified_health_data/get_prescriptions_empty') do
+          expect(Rails.logger).to receive(:info).with(
+            hash_including(
+              message: 'UHD prescriptions not found',
+              total_prescriptions: 0,
+              current_filtering_applied: false,
+              icn: user.icn,
+              has_failed_stations: false,
+              service: 'unified_health_data'
+            )
+          )
+
           result = service.get_prescriptions
           expect(result[:prescriptions]).to eq([])
           expect(result[:metadata]).to eq({ has_failed_stations: false })
