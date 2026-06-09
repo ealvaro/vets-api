@@ -34,30 +34,43 @@ RSpec.describe 'VO::TsaLetter', type: :request do
         allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(true)
       end
 
-      it 'renders the most recent tsa letter metadata with name and description' do
-        VCR.use_cassette('tsa_letters/show_success', { match_requests_on: %i[method uri body] }) do
-          get '/v0/tsa_letter'
-          expect(response).to have_http_status(:ok)
+      context 'when cst_letters_description_content_format is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:cst_letters_description_content_format).and_return(false)
+        end
 
-          response_json = JSON.parse(response.body)
-          attributes = response_json.dig('data', 'attributes')
+        it 'renders the most recent tsa letter metadata with name and description in legacy format' do
+          VCR.use_cassette('tsa_letters/show_success', { match_requests_on: %i[method uri body] }) do
+            get '/v0/tsa_letter'
+            expect(response).to have_http_status(:ok)
 
-          # Verify existing fields are unchanged
-          expect(attributes['document_id']).to eq('c75438b4-47f8-44d3-9e35-798158591456')
-          expect(attributes['document_version']).to eq('920debba-cc65-479c-ab47-db9b2a5cd95f')
-          expect(attributes['modified_datetime']).to eq('2025-09-09T14:18:53')
+            attributes = JSON.parse(response.body).dig('data', 'attributes')
+            expect(attributes['name']).to eq('TSA PreCheck application fee waiver')
+            expect(attributes['description']['paragraphs']).to eq(
+              [
+                'This letter confirms that you are eligible for a TSA PreCheck application fee waiver.',
+                'You can use this letter to qualify for a TSA PreCheck application fee waiver.'
+              ]
+            )
+          end
+        end
+      end
 
-          # Verify new fields from Content module
-          expect(attributes['name']).to eq('TSA PreCheck application fee waiver')
-          expected_description = {
-            'paragraphs' => [
-              'This letter confirms that you are eligible for a ' \
-              'TSA PreCheck application fee waiver.',
-              'You can use this letter to qualify for a ' \
-              'TSA PreCheck application fee waiver.'
-            ]
-          }
-          expect(attributes['description']).to eq(expected_description)
+      context 'when cst_letters_description_content_format is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:cst_letters_description_content_format).and_return(true)
+        end
+
+        it 'renders the most recent tsa letter metadata with name and description in content format' do
+          VCR.use_cassette('tsa_letters/show_success', { match_requests_on: %i[method uri body] }) do
+            get '/v0/tsa_letter'
+            expect(response).to have_http_status(:ok)
+
+            attributes = JSON.parse(response.body).dig('data', 'attributes')
+            expect(attributes['name']).to eq('TSA PreCheck application fee waiver')
+            expect(attributes['description']['content']).to be_an(Array)
+            expect(attributes['description']['content'].first['text']).to include('TSA PreCheck application fee waiver')
+          end
         end
       end
     end

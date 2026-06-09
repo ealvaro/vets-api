@@ -17,6 +17,9 @@ RSpec.describe V0::LettersDiscrepancyController, type: :controller do
     before do
       sign_in_as(user)
       allow(Rails.logger).to receive(:info)
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, any_args).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:cst_letters_description_content_format).and_return(false)
     end
 
     it 'does not log anything if both services return the same letters' do
@@ -31,7 +34,6 @@ RSpec.describe V0::LettersDiscrepancyController, type: :controller do
     context 'does log the differences between the services' do
       context 'when :letters_hide_service_verification_letter is enabled' do
         before do
-          allow(Flipper).to receive(:enabled?).and_call_original
           allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(true)
         end
 
@@ -102,7 +104,6 @@ RSpec.describe V0::LettersDiscrepancyController, type: :controller do
 
       context 'when :letters_hide_service_verification_letter is disabled' do
         before do
-          allow(Flipper).to receive(:enabled?).and_call_original
           allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
         end
 

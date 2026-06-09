@@ -21,6 +21,10 @@ module Lighthouse
     end
 
     class Service < Common::Client::Base
+      # TODO: Remove once cst_letters_description_content_format is fully enabled and all clients
+      # have migrated to the new description shape.
+      CONSOLIDATED_COVERAGE_NAME = 'Creditable coverage for health care and prescription drugs'
+
       BENEFICIARY_KEY_TRANFORMS = {
         awardEffectiveDateTime: :awardEffectiveDate,
         chapter35Eligibility: :hasChapter35Eligibility,
@@ -148,8 +152,20 @@ module Lighthouse
           end
         end
 
-        transformed = updated_letter_transformation(filtered_letters)
+        letters_to_transform = if description_content_format_enabled?
+                                 consolidate_coverage_letters(filtered_letters)
+                               else
+                                 filtered_letters
+                               end
+        transformed = updated_letter_transformation(letters_to_transform)
         sort_letters_by_order(transformed)
+      end
+
+      def consolidate_coverage_letters(letters)
+        relabeled = letters.map do |l|
+          l['letterType'].downcase == 'medicare_partd' ? l.merge('letterType' => 'minimum_essential_coverage') : l
+        end
+        relabeled.uniq { |l| l['letterType'].downcase }
       end
 
       def updated_letter_transformation(letters)
@@ -157,9 +173,17 @@ module Lighthouse
           letter_type_lower = letter['letterType'].downcase
           {
             letterType: letter_type_lower,
-            name: Content::LETTER_NAME_OVERRIDES[letter_type_lower] || letter['letterName'],
-            description: Content::LETTER_DESCRIPTIONS[letter_type_lower]
+            name: letter_name(letter_type_lower, letter['letterName']),
+            description: Lighthouse::LettersGenerator.format_description(letter_type_lower)
           }
+        end
+      end
+
+      def letter_name(letter_type, upstream_name)
+        if letter_type == 'minimum_essential_coverage' && description_content_format_enabled?
+          CONSOLIDATED_COVERAGE_NAME
+        else
+          Content::LETTER_NAME_OVERRIDES[letter_type] || upstream_name
         end
       end
 
@@ -177,6 +201,10 @@ module Lighthouse
 
       def content_updates_enabled?(user)
         Flipper.enabled?(:cst_letters_content_updates, user)
+      end
+
+      def description_content_format_enabled?
+        Flipper.enabled?(:cst_letters_description_content_format)
       end
 
       def transform_military_services(services_info)

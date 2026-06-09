@@ -2,10 +2,20 @@
 
 module Lighthouse
   module LettersGenerator
+    def self.format_description(letter_type)
+      if Flipper.enabled?(:cst_letters_description_content_format)
+        Content::LETTER_DESCRIPTIONS[letter_type]
+      else
+        Content::LETTER_DESCRIPTIONS_LEGACY[letter_type]
+      end
+    end
+
     module Content
       # Defines the desired order for benefit letters to provide a consistent user experience
       # across all clients (web, mobile, native apps).
       # Note: tsa is appended in vets-api and VA Mobile due to a different code path than other letters
+      # TODO: Remove medicare_partd once cst_letters_description_content_format is fully enabled and all clients
+      # have migrated to the new description shape.
       LETTER_ORDER = %w[
         benefit_summary
         benefit_verification
@@ -20,6 +30,8 @@ module Lighthouse
 
       # Display name overrides for benefit letters to provide consistent naming across all clients.
       # Maps letterType to desired display name. If not present, upstream letterName is used.
+      # TODO: Remove medicare_partd once cst_letters_description_content_format is fully enabled and all clients
+      # have migrated to the new description shape.
       LETTER_NAME_OVERRIDES = {
         'benefit_summary' => 'Benefits and service verification',
         'benefit_verification' => 'Proof of VA income',
@@ -37,6 +49,12 @@ module Lighthouse
       # Letter descriptions for all letter types. Provides structured content for clients to render.
       LETTER_DESCRIPTIONS = YAML.load_file(
         File.join(__dir__, 'descriptions.yml')
+      ).freeze
+
+      # Legacy description shape (paragraphs/lists) for clients not yet migrated to the content array format.
+      # Remove once cst_letters_description_content_format is fully enabled and all clients are migrated.
+      LETTER_DESCRIPTIONS_LEGACY = YAML.load_file(
+        File.join(__dir__, 'descriptions_legacy.yml')
       ).freeze
     end
   end

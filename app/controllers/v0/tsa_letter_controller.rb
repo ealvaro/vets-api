@@ -96,7 +96,7 @@ module V0
 
       attributes.merge(
         name: Lighthouse::LettersGenerator::Content::LETTER_NAME_OVERRIDES['tsa'],
-        description: Lighthouse::LettersGenerator::Content::LETTER_DESCRIPTIONS['tsa']
+        description: Lighthouse::LettersGenerator.format_description('tsa')
       )
     end
 

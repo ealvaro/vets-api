@@ -779,7 +779,6 @@ features:
       structured descriptions) across vets-website and va-mobile-app.
     enable_in_development: false
   cst_letters_description_content_format:
-    actor_type: user
     description: >-
       When enabled, letter descriptions are returned as a typed content array (nodes with type, text,
       listType, and items fields) instead of the legacy paragraphs and lists shape.

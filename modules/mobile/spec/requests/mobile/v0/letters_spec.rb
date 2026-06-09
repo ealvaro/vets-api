@@ -297,57 +297,117 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
             allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(true)
           end
 
-          it 'includes descriptions with correct structure and uses Content module names' do
-            VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
-              get '/mobile/v0/letters', headers: sis_headers
+          context 'when cst_letters_description_content_format is disabled' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(:cst_letters_description_content_format).and_return(false)
+            end
 
-              expect(response).to have_http_status(:ok)
-              letters = JSON.parse(response.body).dig('data', 'attributes', 'letters')
-              proof_of_service = letters.find { |letter| letter['letterType'] == 'proof_of_service' }
-              service_verification = letters.find { |letter| letter['letterType'] == 'service_verification' }
-              benefit_summary = letters.find { |letter| letter['letterType'] == 'benefit_summary' }
-              benefit_verification = letters.find { |letter| letter['letterType'] == 'benefit_verification' }
+            it 'includes descriptions in legacy format and uses Content module names' do
+              VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
+                get '/mobile/v0/letters', headers: sis_headers
 
-              # Verify description structure for letters that have descriptions
-              expect(proof_of_service['description']).to be_present
-              paragraphs = proof_of_service['description']['paragraphs']
-              expect(paragraphs).to be_an(Array)
-              expect(paragraphs.first).to include('This card confirms that you served')
-              expect(proof_of_service['description']['lists']).to be_an(Array)
-              expect(proof_of_service['description']['lists'].first['items']).to include('Requesting Veteran discounts')
+                expect(response).to have_http_status(:ok)
+                letters = JSON.parse(response.body).dig('data', 'attributes', 'letters')
+                proof_of_service = letters.find { |letter| letter['letterType'] == 'proof_of_service' }
+                service_verification = letters.find { |letter| letter['letterType'] == 'service_verification' }
+                benefit_summary = letters.find { |letter| letter['letterType'] == 'benefit_summary' }
+                benefit_verification = letters.find { |letter| letter['letterType'] == 'benefit_verification' }
 
-              # Verify description is omitted for letters without descriptions
-              expect(service_verification).not_to have_key('description')
+                expect(proof_of_service['description']).to be_present
+                expect(proof_of_service['description']['paragraphs']).to be_an(Array)
+                expect(
+                  proof_of_service['description']['paragraphs'].first
+                ).to include('This card confirms that you served')
+                expect(proof_of_service['description']['lists']).to be_an(Array)
+                expect(
+                  proof_of_service['description']['lists'].first['items']
+                ).to include('Requesting Veteran discounts')
 
-              # Verify names come from Content module
-              expect(benefit_summary['name']).to eq('Benefits and service verification')
-              expect(benefit_verification['name']).to eq('Proof of VA income')
+                expect(service_verification).not_to have_key('description')
+                expect(benefit_summary['name']).to eq('Benefits and service verification')
+                expect(benefit_verification['name']).to eq('Proof of VA income')
 
-              assert_schema_conform(200)
+                assert_schema_conform(200)
+              end
+            end
+
+            it 'returns letters in service order, not alphabetically sorted' do
+              VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
+                get '/mobile/v0/letters', headers: sis_headers
+                expect(response).to have_http_status(:ok)
+                letters = JSON.parse(response.body).dig('data', 'attributes', 'letters')
+                letter_names = letters.map { |l| l['name'] }
+                expect(letter_names).not_to eq(letter_names.sort)
+                expect(letters.map { |l| l['letterType'] }).to eq(
+                  %w[benefit_summary benefit_verification proof_of_service civil_service
+                     minimum_essential_coverage medicare_partd commissary service_verification]
+                )
+              end
+            end
+
+            it 'includes medicare_partd and minimum_essential_coverage letters' do
+              VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
+                get '/mobile/v0/letters', headers: sis_headers
+                letter_types = JSON.parse(response.body).dig('data', 'attributes', 'letters').map do |l|
+                  l['letterType']
+                end
+                expect(letter_types).to include('medicare_partd', 'minimum_essential_coverage')
+              end
             end
           end
 
-          it 'returns letters in service order, not alphabetically sorted' do
-            VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
-              get '/mobile/v0/letters', headers: sis_headers
-              expect(response).to have_http_status(:ok)
-              letters = JSON.parse(response.body).dig('data', 'attributes', 'letters')
-              letter_names = letters.map { |l| l['name'] }
-              # Verify it's NOT alphabetically sorted
-              expect(letter_names).not_to eq(letter_names.sort)
-              # Verify it follows the service order
-              expect(letters.map { |l| l['letterType'] }).to eq(
-                %w[benefit_summary benefit_verification proof_of_service civil_service
-                   minimum_essential_coverage medicare_partd commissary service_verification]
+          context 'when cst_letters_description_content_format is enabled' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(:cst_letters_description_content_format).and_return(true)
+            end
+
+            it 'includes descriptions in content format and uses Content module names' do
+              VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
+                get '/mobile/v0/letters', headers: sis_headers
+
+                expect(response).to have_http_status(:ok)
+                letters = JSON.parse(response.body).dig('data', 'attributes', 'letters')
+                proof_of_service = letters.find { |letter| letter['letterType'] == 'proof_of_service' }
+                service_verification = letters.find { |letter| letter['letterType'] == 'service_verification' }
+                benefit_summary = letters.find { |letter| letter['letterType'] == 'benefit_summary' }
+                benefit_verification = letters.find { |letter| letter['letterType'] == 'benefit_verification' }
+
+                expect(proof_of_service['description']).to be_present
+                expect(proof_of_service['description']['content']).to be_an(Array)
+                expect(
+                  proof_of_service['description']['content'].first['text']
+                ).to include('This card confirms that you served')
+                expect(
+                  proof_of_service['description']['content'].find { |n| n['type'] == 'list' }['items']
+                ).to include('Requesting Veteran discounts')
+
+                expect(service_verification).not_to have_key('description')
+                expect(benefit_summary['name']).to eq('Benefits and service verification')
+                expect(benefit_verification['name']).to eq('Proof of VA income')
+
+                assert_schema_conform(200)
+              end
+            end
+
+            it 'consolidates medicare_partd into minimum_essential_coverage' do
+              service_double = instance_double(Lighthouse::LettersGenerator::Service)
+              allow(service_double).to receive(:get_eligible_letter_types).and_return(
+                {
+                  letters: [
+                    { letterType: 'benefit_summary', name: 'Benefits and service verification', description: nil },
+                    { letterType: 'minimum_essential_coverage',
+                      name: 'Creditable coverage for health care and prescription drugs', description: {} }
+                  ],
+                  letter_destination: {}
+                }
               )
-            end
-          end
+              allow_any_instance_of(Mobile::V0::LettersController)
+                .to receive(:lighthouse_service).and_return(service_double)
 
-          it 'includes medicare_partd and minimum_essential_coverage letters' do
-            VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
               get '/mobile/v0/letters', headers: sis_headers
               letter_types = JSON.parse(response.body).dig('data', 'attributes', 'letters').map { |l| l['letterType'] }
-              expect(letter_types).to include('medicare_partd', 'minimum_essential_coverage')
+              expect(letter_types).to include('minimum_essential_coverage')
+              expect(letter_types).not_to include('medicare_partd')
             end
           end
         end
@@ -552,34 +612,61 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
             allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(true)
           end
 
-          it 'uses Content module name and includes description with correct structure' do
-            VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
-              VCR.use_cassette('mobile/lgy/determination_eligible', match_requests_on: %i[method uri]) do
-                VCR.use_cassette('mobile/lgy/application_200_status_submitted', match_requests_on: %i[method uri]) do
-                  get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => '2.59.0' })
-                  expect(response).to have_http_status(:ok)
+          context 'when cst_letters_description_content_format is disabled' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(:cst_letters_description_content_format).and_return(false)
+            end
 
-                  letters = JSON.parse(response.body).dig('data', 'attributes', 'letters')
-                  coe_letter = letters.find { |letter| letter['letterType'] == 'certificate_of_eligibility_home_loan' }
+            it 'uses Content module name and includes COE description in legacy format' do
+              VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
+                VCR.use_cassette('mobile/lgy/determination_eligible', match_requests_on: %i[method uri]) do
+                  VCR.use_cassette('mobile/lgy/application_200_status_submitted', match_requests_on: %i[method uri]) do
+                    get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => '2.59.0' })
+                    expect(response).to have_http_status(:ok)
 
-                  expect(coe_letter).to be_present
-                  # Verify name comes from Content module
-                  expect(coe_letter['name']).to eq('Home loan Certificate of Eligibility (COE)')
-                  # Verify description structure
-                  expect(coe_letter['description']).to be_present
-                  expect(coe_letter['description']).to be_a(Hash)
-                  expect(coe_letter['description']['paragraphs']).to be_an(Array)
-                  # Verify COE-specific fields
-                  expect(coe_letter['referenceNumber']).to eq('16934344')
-                  expect(coe_letter['coeStatus']).to eq('AVAILABLE')
-                  # Verify COE letter lands in its canonical LETTER_ORDER position rather than at
-                  # the bottom, even though it's appended after the Lighthouse letters.
-                  expect(letters.map { |l| l['letterType'] }).to eq(
-                    %w[benefit_summary benefit_verification certificate_of_eligibility_home_loan
-                       proof_of_service civil_service minimum_essential_coverage medicare_partd
-                       commissary]
-                  )
-                  assert_schema_conform(200)
+                    letters = JSON.parse(response.body).dig('data', 'attributes', 'letters')
+                    coe_letter = letters.find do |letter|
+                      letter['letterType'] == 'certificate_of_eligibility_home_loan'
+                    end
+
+                    expect(coe_letter).to be_present
+                    expect(coe_letter['name']).to eq('Home loan Certificate of Eligibility (COE)')
+                    expect(coe_letter['description']).to be_present
+                    expect(coe_letter['description']['paragraphs']).to be_an(Array)
+                    expect(coe_letter['referenceNumber']).to eq('16934344')
+                    expect(coe_letter['coeStatus']).to eq('AVAILABLE')
+                    assert_schema_conform(200)
+                  end
+                end
+              end
+            end
+          end
+
+          context 'when cst_letters_description_content_format is enabled' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(:cst_letters_description_content_format).and_return(true)
+            end
+
+            it 'uses Content module name and includes COE description in content format' do
+              VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
+                VCR.use_cassette('mobile/lgy/determination_eligible', match_requests_on: %i[method uri]) do
+                  VCR.use_cassette('mobile/lgy/application_200_status_submitted', match_requests_on: %i[method uri]) do
+                    get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => '2.59.0' })
+                    expect(response).to have_http_status(:ok)
+
+                    letters = JSON.parse(response.body).dig('data', 'attributes', 'letters')
+                    coe_letter = letters.find do |letter|
+                      letter['letterType'] == 'certificate_of_eligibility_home_loan'
+                    end
+
+                    expect(coe_letter).to be_present
+                    expect(coe_letter['name']).to eq('Home loan Certificate of Eligibility (COE)')
+                    expect(coe_letter['description']).to be_present
+                    expect(coe_letter['description']['content']).to be_an(Array)
+                    expect(coe_letter['referenceNumber']).to eq('16934344')
+                    expect(coe_letter['coeStatus']).to eq('AVAILABLE')
+                    assert_schema_conform(200)
+                  end
                 end
               end
             end

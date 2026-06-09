@@ -305,11 +305,6 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
       end
 
       before do
-        expect_any_instance_of(Lighthouse::LettersGenerator::Configuration)
-          .to receive(:get_access_token)
-          .once
-          .and_return('faketoken')
-
         @stubs.get('/eligible-letters?icn=DOLLYPARTON') do
           [200, {}, eligible_letters_response]
         end
@@ -323,6 +318,11 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
         end
 
         it 'returns the existing lighthouse shape' do
+          expect_any_instance_of(Lighthouse::LettersGenerator::Configuration)
+            .to receive(:get_access_token)
+            .once
+            .and_return('faketoken')
+
           client = Lighthouse::LettersGenerator::Service.new
           response = client.get_eligible_letter_types('DOLLYPARTON', user)
 
@@ -343,26 +343,211 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
           allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
         end
 
-        it 'applies names, descriptions, and ordering' do
+        context 'when cst_letters_description_content_format is enabled' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:cst_letters_description_content_format).and_return(true)
+          end
+
+          it 'applies names, descriptions in content format, and ordering' do
+            expect_any_instance_of(Lighthouse::LettersGenerator::Configuration)
+              .to receive(:get_access_token)
+              .once
+              .and_return('faketoken')
+
+            client = Lighthouse::LettersGenerator::Service.new
+            response = client.get_eligible_letter_types('DOLLYPARTON', user)
+
+            expect(response[:letters].map { |l| l[:letterType] }).to eq(
+              %w[benefit_summary proof_of_service service_verification]
+            )
+
+            benefit_summary = response[:letters].first
+            service_verification = response[:letters].last
+
+            expect(benefit_summary[:name]).to eq('Benefits and service verification')
+            expect(benefit_summary[:description]['content'].first['text']).to start_with(
+              'This letter confirms your service history'
+            )
+            expect(
+              benefit_summary[:description]['content'].find { |b| b['type'] == 'list' }['items']
+            ).to include('Applying for housing assistance')
+            expect(benefit_summary[:description]['subtitle']).to eq('Choose topics to include')
+
+            expect(service_verification[:name]).to eq('Service verification letter')
+            expect(service_verification[:description]).to be_nil
+          end
+        end
+
+        context 'when cst_letters_description_content_format is disabled' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:cst_letters_description_content_format).and_return(false)
+          end
+
+          it 'applies names, descriptions in legacy format, and ordering' do
+            expect_any_instance_of(Lighthouse::LettersGenerator::Configuration)
+              .to receive(:get_access_token)
+              .once
+              .and_return('faketoken')
+
+            client = Lighthouse::LettersGenerator::Service.new
+            response = client.get_eligible_letter_types('DOLLYPARTON', user)
+
+            benefit_summary = response[:letters].first
+            service_verification = response[:letters].last
+
+            expect(benefit_summary[:name]).to eq('Benefits and service verification')
+            expect(benefit_summary[:description]['paragraphs']).to be_an(Array)
+            expect(benefit_summary[:description]['paragraphs'].first).to start_with(
+              'This letter confirms your service history'
+            )
+            expect(benefit_summary[:description]['lists']).to be_an(Array)
+            expect(benefit_summary[:description]['lists'].first['items']).to include('Applying for housing assistance')
+            expect(benefit_summary[:description]['subtitle']).to eq('Choose topics to include')
+
+            expect(service_verification[:name]).to eq('Service verification letter')
+            expect(service_verification[:description]).to be_nil
+          end
+        end
+      end
+
+      context 'consolidation of medicare_partd to minimum_essential_coverage when both flags are enabled' do
+        let(:user) { build(:user) }
+        let(:consolidation_response) do
+          {
+            'letters' => [
+              { 'letterType' => 'MEDICARE_PARTD', 'letterName' => 'Medicare Part D letter' },
+              { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => 'Benefits and service verification' }
+            ],
+            'letterDestination' => { 'name' => 'DOLLY PARTON' }
+          }
+        end
+
+        before do
+          @test_stubs = Faraday::Adapter::Test::Stubs.new
+          test_conn = Faraday.new { |b| b.adapter(:test, @test_stubs) }
+          allow_any_instance_of(Lighthouse::LettersGenerator::Configuration)
+            .to receive(:connection).and_return(test_conn)
+
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:cst_letters_description_content_format).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
+
+          @test_stubs.get('/eligible-letters?icn=DOLLYPARTON') do
+            [200, {}, consolidation_response]
+          end
+        end
+
+        it 'relabels medicare_partd to minimum_essential_coverage' do
+          expect_any_instance_of(Lighthouse::LettersGenerator::Configuration)
+            .to receive(:get_access_token).once.and_return('faketoken')
+
           client = Lighthouse::LettersGenerator::Service.new
           response = client.get_eligible_letter_types('DOLLYPARTON', user)
 
-          expect(response[:letters].map { |l| l[:letterType] }).to eq(
-            %w[benefit_summary proof_of_service service_verification]
-          )
+          letter_types = response[:letters].map { |l| l[:letterType] }
+          expect(letter_types).to include('minimum_essential_coverage')
+          expect(letter_types).not_to include('medicare_partd')
+        end
 
-          benefit_summary = response[:letters].first
-          service_verification = response[:letters].last
+        it 'uses minimum_essential_coverage name and description in content format' do
+          expect_any_instance_of(Lighthouse::LettersGenerator::Configuration)
+            .to receive(:get_access_token).once.and_return('faketoken')
 
-          expect(benefit_summary[:name]).to eq('Benefits and service verification')
-          expect(benefit_summary[:description]['paragraphs'].first).to start_with(
-            'This letter confirms your service history'
-          )
-          expect(benefit_summary[:description]['lists'].first['items']).to include('Applying for housing assistance')
-          expect(benefit_summary[:description]['subtitle']).to eq('Choose topics to include')
+          client = Lighthouse::LettersGenerator::Service.new
+          response = client.get_eligible_letter_types('DOLLYPARTON', user)
 
-          expect(service_verification[:name]).to eq('Service verification letter')
-          expect(service_verification[:description]).to be_nil
+          mec_letter = response[:letters].find { |l| l[:letterType] == 'minimum_essential_coverage' }
+          expect(mec_letter[:name]).to eq('Creditable coverage for health care and prescription drugs')
+          expect(mec_letter[:description]).not_to be_nil
+          expect(mec_letter[:description].keys).to include('content')
+        end
+      end
+
+      context 'no consolidation when cst_letters_description_content_format is disabled' do
+        let(:user) { build(:user) }
+        let(:consolidation_response) do
+          {
+            'letters' => [
+              { 'letterType' => 'MEDICARE_PARTD', 'letterName' => 'Medicare Part D letter' },
+              { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => 'Benefits and service verification' }
+            ],
+            'letterDestination' => { 'name' => 'DOLLY PARTON' }
+          }
+        end
+
+        before do
+          @test_stubs = Faraday::Adapter::Test::Stubs.new
+          test_conn = Faraday.new { |b| b.adapter(:test, @test_stubs) }
+          allow_any_instance_of(Lighthouse::LettersGenerator::Configuration)
+            .to receive(:connection).and_return(test_conn)
+
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:cst_letters_description_content_format).and_return(false)
+          allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
+
+          @test_stubs.get('/eligible-letters?icn=DOLLYPARTON') do
+            [200, {}, consolidation_response]
+          end
+        end
+
+        it 'does not relabel medicare_partd and returns legacy description format' do
+          expect_any_instance_of(Lighthouse::LettersGenerator::Configuration)
+            .to receive(:get_access_token).once.and_return('faketoken')
+
+          client = Lighthouse::LettersGenerator::Service.new
+          response = client.get_eligible_letter_types('DOLLYPARTON', user)
+
+          letter_types = response[:letters].map { |l| l[:letterType] }
+          expect(letter_types).to include('medicare_partd')
+          expect(letter_types).not_to include('minimum_essential_coverage')
+
+          partd_letter = response[:letters].find { |l| l[:letterType] == 'medicare_partd' }
+          expect(partd_letter[:description].keys).to include('paragraphs')
+        end
+      end
+
+      context 'deduplication when both medicare_partd and minimum_essential_coverage are returned' do
+        let(:user) { build(:user) }
+        let(:both_letters_response) do
+          {
+            'letters' => [
+              { 'letterType' => 'MEDICARE_PARTD', 'letterName' => 'Medicare Part D letter' },
+              { 'letterType' => 'MINIMUM_ESSENTIAL_COVERAGE', 'letterName' => 'Minimum essential coverage letter' },
+              { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => 'Benefits and service verification' }
+            ],
+            'letterDestination' => { 'name' => 'DOLLY PARTON' }
+          }
+        end
+
+        before do
+          @test_stubs = Faraday::Adapter::Test::Stubs.new
+          test_conn = Faraday.new { |b| b.adapter(:test, @test_stubs) }
+          allow_any_instance_of(Lighthouse::LettersGenerator::Configuration)
+            .to receive(:connection).and_return(test_conn)
+
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:cst_letters_description_content_format).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
+
+          @test_stubs.get('/eligible-letters?icn=DOLLYPARTON') do
+            [200, {}, both_letters_response]
+          end
+        end
+
+        it 'includes only one minimum_essential_coverage entry' do
+          expect_any_instance_of(Lighthouse::LettersGenerator::Configuration)
+            .to receive(:get_access_token)
+            .once
+            .and_return('faketoken')
+
+          client = Lighthouse::LettersGenerator::Service.new
+          response = client.get_eligible_letter_types('DOLLYPARTON', user)
+
+          mec_count = response[:letters].count { |l| l[:letterType] == 'minimum_essential_coverage' }
+          expect(mec_count).to eq(1)
         end
       end
     end

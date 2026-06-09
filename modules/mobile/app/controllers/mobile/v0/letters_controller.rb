@@ -115,7 +115,7 @@ module Mobile
         if coe_status[:status].in?(COE_STATUSES)
           if Flipper.enabled?(:cst_letters_content_updates, @current_user)
             name = Lighthouse::LettersGenerator::Content::LETTER_NAME_OVERRIDES['certificate_of_eligibility_home_loan']
-            description = Lighthouse::LettersGenerator::Content::LETTER_DESCRIPTIONS['certificate_of_eligibility_home_loan']
+            description = Lighthouse::LettersGenerator.format_description('certificate_of_eligibility_home_loan')
           else
             name = 'Certificate of Eligibility for Home Loan Letter'
             description = nil
