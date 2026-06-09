@@ -102,7 +102,7 @@ describe Forms::SubmissionStatuses::Report, feature: :form_submission,
               'application_date' => '2018-12-27T00:00:00.000-06:00',
               'enrollment_date' => 1.day.ago.to_s,
               'preferred_facility' => '988 - DAYT20',
-              'parsed_status' => 'enrolled',
+              'parsed_status' => :enrolled,
               'effective_date' => '2019-01-02T21:58:55.000-06:00',
               'priority_group' => 'Group 3',
               'can_submit_financial_info' => true

@@ -10,11 +10,11 @@ module Forms
     module Gateways
       class Hca1010EzGateway < BaseGateway
         NORMALIZED_STATUSES = {
-          'enrolled' => :received,
-          'pending_mt' => :in_progress,
-          'pending_other' => :in_progress,
-          'pending_purpleheart' => :in_progress,
-          'pending_unverified' => :in_progress
+          enrolled: :received,
+          pending_mt: :in_progress,
+          pending_other: :in_progress,
+          pending_purpleheart: :in_progress,
+          pending_unverified: :in_progress
         }.freeze
 
         def submissions
