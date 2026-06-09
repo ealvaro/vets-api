@@ -6,7 +6,7 @@
 #   build-and-publish:
 #     runs-on: ubuntu-latest
 #     env:
-#       BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
+#       BUNDLE_ENTERPRISE__CONTRIBSYS__COM: injected via SSM
 #     steps:
 #       - name: Check out code
 #         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6

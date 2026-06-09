@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   get_files:
@@ -52,6 +53,22 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6
+        with:
+          role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
+          aws-region: us-gov-west-1
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /dsva-vagov/vets-api/prod/env_vars/DD_API_KEY
+          env_variable_name: DD_API_KEY
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /dsva-vagov/vets-api/prod/env_vars/DD_APP_KEY
+          env_variable_name: DD_APP_KEY
+
       - name: 'Debug'
         run: |
           echo "File: ${{matrix.file}}"
@@ -82,7 +99,7 @@ jobs:
           echo "Updating $service@$schema to Datadog Service Catalog"
           curl --fail-with-body --location --request POST "https://api.ddog-gov.com/api/v2/services/definitions?schema_version=$schema" \
           --header 'Accept: application/json' \
-          --header 'DD-API-KEY: ${{ secrets.DD_API_KEY }}' \
-          --header 'DD-APPLICATION-KEY: ${{ secrets.DD_APP_KEY }}' \
+          --header 'DD-API-KEY: ${{ env.DD_API_KEY }}' \
+          --header 'DD-APPLICATION-KEY: ${{ env.DD_APP_KEY }}' \
           --header 'Content-Type: text/plain' \
           --data "${{ steps.read_yaml.outputs.result}}"

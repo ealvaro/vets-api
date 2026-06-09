@@ -15,11 +15,21 @@ jobs:
   validate-config-files:
     env:
       COVERBAND_DISABLE_AUTO_START: true
-      BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
     permissions: write-all
     runs-on: ubuntu-32-cores-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6
+        with:
+          role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
+          aws-region: us-gov-west-1
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /dsva-vagov/vets-api/prod/env_vars/BUNDLE_ENTERPRISE__CONTRIBSYS__COM
+          env_variable_name: BUNDLE_ENTERPRISE__CONTRIBSYS__COM
 
       - name: Generate cross-repo token for gems
         id: app-token

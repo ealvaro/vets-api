@@ -16,10 +16,6 @@ on:
         required: true
         type: string
     secrets:
-      aws_access_key_id: #${{ secrets.AWS_ACCESS_KEY_ID }}
-        required: true
-      aws_secret_access_key: #${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        required: true
       va_vsp_bot_private_key: #${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
         required: true
 permissions:

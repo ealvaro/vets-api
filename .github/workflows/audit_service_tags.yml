@@ -13,8 +13,6 @@ jobs:
     permissions: write-all
     name: Check for Missing service_tag in Controllers
     env:
-      BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
-      ECR_REGISTRY_WITH_SLASH: "${{ secrets.ECR_REGISTRY }}/"
       CI: true
       RAILS_ENV: test
       TERM: xterm-256color
@@ -30,16 +28,39 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
-        with:
-          username: ${{ secrets.DOCKERHUB_USER }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6
         with:
           role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
           aws-region: us-gov-west-1
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /dsva-vagov/vets-api/prod/env_vars/BUNDLE_ENTERPRISE__CONTRIBSYS__COM
+          env_variable_name: BUNDLE_ENTERPRISE__CONTRIBSYS__COM
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /dsva-vagov/vets-api/common/ECR_REGISTRY
+          env_variable_name: ECR_REGISTRY
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /devops/dockerhub/vavfsbot_user
+          env_variable_name: DOCKERHUB_USER
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /devops/dockerhub/vavfsbot_password
+          env_variable_name: DOCKERHUB_PASSWORD
+
+      - name: Set ECR registry env
+        run: echo "ECR_REGISTRY_WITH_SLASH=${ECR_REGISTRY}/" >> $GITHUB_ENV
+
+      - uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
+        with:
+          username: ${{ env.DOCKERHUB_USER }}
+          password: ${{ env.DOCKERHUB_PASSWORD }}
 
       - name: Login to Amazon ECR
         id: ecr-login

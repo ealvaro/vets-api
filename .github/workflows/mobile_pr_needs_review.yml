@@ -6,6 +6,7 @@ on:
     types: [ready_for_review]
 
 permissions:
+  id-token: write
   pull-requests: read
 
 jobs:
@@ -14,10 +15,24 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_HOST: va.ghe.com
-      SLACK_API_TOKEN: ${{ secrets.SLACK_MOBILE_BOT_TOKEN }}
-      SLACK_CHANNEL_ID: ${{ secrets.SLACK_MOBILE_ALERTS_CHANNEL_ID }}
     if: github.event.pull_request.base.ref == 'master'
     steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6
+        with:
+          role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
+          aws-region: us-gov-west-1
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /dsva-vagov/vets-api/common/SLACK_MOBILE_BOT_TOKEN
+          env_variable_name: SLACK_API_TOKEN
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /dsva-vagov/vets-api/common/SLACK_MOBILE_ALERTS_CHANNEL_ID
+          env_variable_name: SLACK_CHANNEL_ID
+
       - name: Check if PR author is a mobile team member
         id: check_author
         run: |

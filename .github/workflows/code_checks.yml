@@ -35,8 +35,6 @@ jobs:
 
   linting_and_security:
     name: Linting and Security
-    env:
-      BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
     permissions: write-all
     runs-on: ubuntu-32-cores-latest
     steps:
@@ -44,6 +42,17 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 1
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6
+        with:
+          role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
+          aws-region: us-gov-west-1
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /dsva-vagov/vets-api/prod/env_vars/BUNDLE_ENTERPRISE__CONTRIBSYS__COM
+          env_variable_name: BUNDLE_ENTERPRISE__CONTRIBSYS__COM
 
       - name: Compute changed files for boundary check
         if: ${{ github.event_name == 'pull_request' }}
@@ -284,7 +293,6 @@ jobs:
       contents: read
       id-token: write
     env:
-      BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
       DOCKER_BUILDKIT: 1
     steps:
       - name: Checkout PR
@@ -292,17 +300,32 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Login to DockerHub
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
-        with:
-          username: ${{ secrets.DOCKERHUB_USER }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
-
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6
         with:
           role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
           aws-region: us-gov-west-1
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /dsva-vagov/vets-api/prod/env_vars/BUNDLE_ENTERPRISE__CONTRIBSYS__COM
+          env_variable_name: BUNDLE_ENTERPRISE__CONTRIBSYS__COM
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /devops/dockerhub/vavfsbot_user
+          env_variable_name: DOCKERHUB_USER
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /devops/dockerhub/vavfsbot_password
+          env_variable_name: DOCKERHUB_PASSWORD
+
+      - name: Login to DockerHub
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
+        with:
+          username: ${{ env.DOCKERHUB_USER }}
+          password: ${{ env.DOCKERHUB_PASSWORD }}
 
       - name: Login to Amazon ECR
         id: ecr-login
@@ -384,8 +407,6 @@ jobs:
             24,
           ]
     env:
-      BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
-      ECR_REGISTRY_WITH_SLASH: "${{ secrets.ECR_REGISTRY }}/"
       CI: true
       RAILS_ENV: test
       TERM: xterm-256color
@@ -398,17 +419,40 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Login to DockerHub
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
-        with:
-          username: ${{ secrets.DOCKERHUB_USER }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
-
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6
         with:
           role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
           aws-region: us-gov-west-1
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /dsva-vagov/vets-api/prod/env_vars/BUNDLE_ENTERPRISE__CONTRIBSYS__COM
+          env_variable_name: BUNDLE_ENTERPRISE__CONTRIBSYS__COM
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /dsva-vagov/vets-api/common/ECR_REGISTRY
+          env_variable_name: ECR_REGISTRY
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /devops/dockerhub/vavfsbot_user
+          env_variable_name: DOCKERHUB_USER
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /devops/dockerhub/vavfsbot_password
+          env_variable_name: DOCKERHUB_PASSWORD
+
+      - name: Set ECR registry env
+        run: echo "ECR_REGISTRY_WITH_SLASH=${ECR_REGISTRY}/" >> $GITHUB_ENV
+
+      - name: Login to DockerHub
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
+        with:
+          username: ${{ env.DOCKERHUB_USER }}
+          password: ${{ env.DOCKERHUB_PASSWORD }}
 
       - name: Login to Amazon ECR
         id: ecr-login
@@ -576,6 +620,17 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6
+        with:
+          role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
+          aws-region: us-gov-west-1
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /dsva-vagov/vets-api/prod/env_vars/BUNDLE_ENTERPRISE__CONTRIBSYS__COM
+          env_variable_name: BUNDLE_ENTERPRISE__CONTRIBSYS__COM
+
       - name: Generate cross-repo token for gems
         id: app-token
         uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
@@ -601,7 +656,6 @@ jobs:
 
       - uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1
         env:
-          BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
           BUNDLE_VA__GHE__COM: x-access-token:${{ steps.app-token.outputs.token }}
         with:
           bundler-cache: ${{ needs.tests.result == 'success' }}
@@ -726,8 +780,6 @@ jobs:
 
       - name: Collate coverage and generate report
         if: needs.tests.result == 'success'
-        env:
-          BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
         run: bundle exec ruby script/coverage_collate.rb
 
       - name: Upload Combined Coverage HTML

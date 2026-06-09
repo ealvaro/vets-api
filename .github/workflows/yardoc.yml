@@ -20,6 +20,7 @@ on: # `on` parses to `true` in ruby
       
 permissions:
   contents: read
+  id-token: write
   pull-requests: write
   statuses: write
 
@@ -28,7 +29,6 @@ jobs:
     name: Yardoc
 
     env:
-      BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
       COVERBAND_DISABLE_AUTO_START: true
 
     runs-on: ubuntu-latest
@@ -40,6 +40,17 @@ jobs:
 
       - name: Fetch target branch
         run: git fetch origin "${GITHUB_BASE_REF}" --depth=1
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6
+        with:
+          role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
+          aws-region: us-gov-west-1
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /dsva-vagov/vets-api/prod/env_vars/BUNDLE_ENTERPRISE__CONTRIBSYS__COM
+          env_variable_name: BUNDLE_ENTERPRISE__CONTRIBSYS__COM
 
       - name: Generate cross-repo token for gems
         id: app-token

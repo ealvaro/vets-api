@@ -30,8 +30,6 @@ jobs:
   build_and_push:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     name: Build and Push
-    env:
-      BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -50,6 +48,17 @@ jobs:
       - name: Login to ECR
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@19d944daaa35f0fa1d3f7f8af1d3f2e5de25c5b7 # v2
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /dsva-vagov/vets-api/prod/env_vars/BUNDLE_ENTERPRISE__CONTRIBSYS__COM
+          env_variable_name: BUNDLE_ENTERPRISE__CONTRIBSYS__COM
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /dsva-vagov/vets-api/common/ECR_REPOSITORY
+          env_variable_name: ECR_REPOSITORY
+
       - name: Build Postman Docker Image
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7
         env:
@@ -83,7 +92,7 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ steps.ecr-login.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ github.event.workflow_run.head_commit.id }}
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.event.workflow_run.head_commit.id }}
           cache-from: type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY
           cache-to: type=inline
   deploy_dev_staging:
@@ -96,8 +105,6 @@ jobs:
       auto_deploy_envs: "dev staging"
       commit_sha: ${{ github.event.workflow_run.head_commit.id }}
     secrets:
-      aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       va_vsp_bot_private_key: ${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
 
   deploy_prod_sandbox:
@@ -110,8 +117,6 @@ jobs:
       auto_deploy_envs: "prod sandbox"
       commit_sha: ${{ github.event.workflow_run.head_commit.id }}
     secrets:
-      aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       va_vsp_bot_private_key: ${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
 
   cleanup_caches:
