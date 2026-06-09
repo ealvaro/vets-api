@@ -2133,10 +2133,6 @@ features:
     actor_type: user
     description: Enables/disables refill progress related work
     enable_in_development: true
-  mhv_medications_dont_increment_ipe_count:
-    actor_type: user
-    description: when this flag is on the count will not be incremented for ipe
-    enable_in_development: true
   mhv_medications_oh_transition_refill_block:
     actor_type: user
     description: Blocks prescription refills for facilities transitioning to Oracle Health during phases p4-p5 (T-3 to T+2)
@@ -2144,10 +2140,6 @@ features:
   mhv_medications_oracle_health_cutover:
     actor_type: user
     description: Enables Oracle Health cutover functionality for the 4 Michigan VAMC facilities transitioning
-    enable_in_development: true
-  mhv_medications_partial_fill_content:
-    actor_type: user
-    description: Enables/disables partial fill content
     enable_in_development: true
   mhv_medications_oh_renewal_message_rollout:
     actor_type: user
