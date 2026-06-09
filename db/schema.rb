@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_05_18_230147) do
+ActiveRecord::Schema[7.2].define(version: 2026_06_05_120001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -63,8 +63,11 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_18_230147) do
     t.boolean "can_accept_reject_poa"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "acceptance_mode", default: "no_acceptance", null: false
+    t.datetime "deactivated_at"
     t.index ["accredited_individual_id", "accredited_organization_id"], name: "index_accreditations_on_indi_and_org_ids", unique: true
     t.index ["accredited_organization_id"], name: "index_accreditations_on_accredited_organization_id"
+    t.check_constraint "acceptance_mode::text = ANY (ARRAY['any_request'::character varying::text, 'self_only'::character varying::text, 'no_acceptance'::character varying::text])", name: "check_accreditations_acceptance_mode"
   end
 
   create_table "accredited_individuals", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -131,9 +134,13 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_18_230147) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "can_accept_digital_poa_requests", default: false, null: false
+    t.string "primary_org_acceptance_mode", default: "no_acceptance", null: false
+    t.string "default_new_rep_acceptance_mode", default: "no_acceptance", null: false
     t.index ["location"], name: "index_accredited_organizations_on_location", using: :gist
     t.index ["name"], name: "index_accredited_organizations_on_name"
     t.index ["poa_code"], name: "index_accredited_organizations_on_poa_code", unique: true
+    t.check_constraint "default_new_rep_acceptance_mode::text = ANY (ARRAY['any_request'::character varying::text, 'self_only'::character varying::text, 'no_acceptance'::character varying::text])", name: "check_accredited_orgs_default_new_rep_acceptance_mode"
+    t.check_constraint "primary_org_acceptance_mode::text = ANY (ARRAY['any_request'::character varying::text, 'self_only'::character varying::text, 'no_acceptance'::character varying::text])", name: "check_accredited_orgs_primary_org_acceptance_mode"
   end
 
   create_table "active_storage_attachments", force: :cascade do |t|
