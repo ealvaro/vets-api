@@ -26,7 +26,6 @@ module ClaimsApi
         # @return [JSON] Record in pending state
         def submit_form_2122 # rubocop:disable Metrics/MethodLength
           validate_json_schema
-
           poa_code = form_attributes.dig('serviceOrganization', 'poaCode')
           validate_poa_code!(poa_code)
           validate_poa_code_for_current_user!(poa_code) if header_request? && !token.client_credentials_token?
@@ -44,11 +43,9 @@ module ClaimsApi
           unless power_of_attorney&.status&.in?(%w[submitted pending])
             attributes = {
               status: ClaimsApi::PowerOfAttorney::PENDING,
-              auth_headers:,
-              form_data: form_attributes,
+              auth_headers:, form_data: form_attributes,
               current_poa: power_of_attorney_verifier.current_poa_code,
-              header_hash:,
-              cid: token.payload['cid']
+              header_hash:, cid: token.payload['cid']
             }
             attributes.merge!({ source_data: }) unless token.client_credentials_token?
             power_of_attorney = ClaimsApi::PowerOfAttorney.create(attributes)

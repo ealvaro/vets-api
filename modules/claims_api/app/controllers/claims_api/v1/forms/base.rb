@@ -16,6 +16,7 @@ module ClaimsApi
         skip_before_action :validate_veteran_identifiers, only: %i[schema]
         include ClaimsApi::EndpointDeprecation
         include ClaimsApi::PreJsonValidations
+        after_action :cleanup_tempfiles, if: :cleanup_tempfiles_action?
 
         def schema
           add_deprecation_headers_to_response(response:, link: ClaimsApi::EndpointDeprecation::V1_DEV_DOCS)
@@ -71,6 +72,8 @@ module ClaimsApi
           decoded_data = Base64.decode64(base64)
           filename = "temp_upload_#{SecureRandom.urlsafe_base64(8)}.pdf"
           temp_file = Tempfile.new(filename, encoding: 'ASCII-8BIT')
+          @decoded_tempfiles ||= []
+          @decoded_tempfiles << temp_file
           temp_file.write(decoded_data)
           # Keep the stream open for CarrierWave callbacks (e.g., virus scan) which read the uploaded IO.
           # Closing here caused `IOError: closed stream` for JSON/base64 attachment uploads.
@@ -78,6 +81,32 @@ module ClaimsApi
           ActionDispatch::Http::UploadedFile.new(filename:,
                                                  type: 'application/pdf',
                                                  tempfile: temp_file)
+        end
+
+        def cleanup_tempfiles
+          return if @decoded_tempfiles.blank?
+
+          @decoded_tempfiles.each do |tempfile|
+            if tempfile.closed?
+              tempfile.unlink if tempfile.path.present? && File.exist?(tempfile.path)
+            else
+              tempfile.close!
+            end
+          rescue Errno::ENOENT
+            # already removed
+          rescue => e
+            claims_v1_logging(
+              'cleanup_tempfiles',
+              level: :warn,
+              message: "tempfile cleanup failed: #{e.class}: #{e.message}"
+            )
+          end
+        ensure
+          @decoded_tempfiles = []
+        end
+
+        def cleanup_tempfiles_action?
+          %w[upload upload_form_526 upload_supporting_documents].include?(action_name)
         end
 
         # We have no control over the names of the binary attachments that the consumer gives us.

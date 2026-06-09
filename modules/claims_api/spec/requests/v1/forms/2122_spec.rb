@@ -719,6 +719,27 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
         end
       end
 
+      it 'cleans up tempfiles after base64 upload' do
+        # Ensure we can assert on the tempfile name created by
+        # ClaimsApi::V1::Forms::Base#decode_document
+        token = 'cleanup_tempfiles_spec'
+        allow(SecureRandom).to receive(:urlsafe_base64).with(8).and_return(token)
+        tmp_glob = File.join(Dir.tmpdir, "temp_upload_#{token}.pdf*")
+
+        mock_acg(scopes) do |auth_header|
+          allow_any_instance_of(pws).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
+          allow_any_instance_of(ClaimsApi::V1::Forms::PowerOfAttorneyController)
+            .to receive(:check_request_ssn_matches_mpi).and_return(nil)
+          allow_any_instance_of(ClaimsApi::PowerOfAttorneyUploader).to receive(:store!)
+
+          put("#{path}/#{power_of_attorney.id}",
+              params: base64_params_attachment1, headers: headers.merge(auth_header), as: :json)
+
+          expect(response).to have_http_status(:success)
+          expect(Dir.glob(tmp_glob)).to be_empty
+        end
+      end
+
       it 'submit base64 and change the document status' do
         mock_acg(scopes) do |auth_header|
           allow_any_instance_of(pws)

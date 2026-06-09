@@ -3922,6 +3922,21 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
       end
     end
 
+    it 'cleans up tempfiles after upload 526 base64 form through PUT' do
+      token = 'cleanup_526_put_spec'
+      allow(SecureRandom).to receive(:urlsafe_base64).with(8).and_return(token)
+      tmp_glob = File.join(Dir.tmpdir, "temp_upload_#{token}.pdf*")
+
+      mock_acg(scopes) do |auth_header|
+        allow_any_instance_of(ClaimsApi::SupportingDocumentUploader).to receive(:store!)
+        put("/services/claims/v1/forms/526/#{auto_claim.id}",
+            params: base64_params, headers: headers.merge(auth_header), as: :json)
+
+        expect(response).to have_http_status(:ok)
+        expect(Dir.glob(tmp_glob)).to be_empty
+      end
+    end
+
     it 'rejects uploading 526 through PUT when autoCestPDFGenerationDisabled is false' do
       mock_acg(scopes) do |auth_header|
         allow_any_instance_of(ClaimsApi::SupportingDocumentUploader).to receive(:store!)
@@ -3952,6 +3967,21 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
         expect(response).to have_http_status(:ok)
         auto_claim.reload
         expect(auto_claim.supporting_documents.count).to eq(count + 2)
+      end
+    end
+
+    it 'cleans up tempfiles after upload base64 support docs through POST' do
+      token = 'cleanup_526_post_spec'
+      allow(SecureRandom).to receive(:urlsafe_base64).with(8).and_return(token)
+      tmp_glob = File.join(Dir.tmpdir, "temp_upload_#{token}.pdf*")
+
+      mock_acg(scopes) do |auth_header|
+        allow_any_instance_of(ClaimsApi::SupportingDocumentUploader).to receive(:store!)
+        post("/services/claims/v1/forms/526/#{auto_claim.id}/attachments",
+             params: base64_params, headers: headers.merge(auth_header), as: :json)
+
+        expect(response).to have_http_status(:ok)
+        expect(Dir.glob(tmp_glob)).to be_empty
       end
     end
 
