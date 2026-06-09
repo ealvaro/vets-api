@@ -28,9 +28,9 @@ module IvcChampva
         'veteranFirstName' => @data.dig('veteran', 'full_name', 'first'),
         'veteranMiddleName' => @data.dig('veteran', 'full_name', 'middle'),
         'veteranLastName' => @data.dig('veteran', 'full_name', 'last'),
-        'sponsorFirstName' => @data.fetch('applicants', [])&.first&.dig('applicant_name', 'first'),
-        'sponsorMiddleName' => @data.fetch('applicants', [])&.first&.dig('applicant_name', 'middle'),
-        'sponsorLastName' => @data.fetch('applicants', [])&.first&.dig('applicant_name', 'last'),
+        'sponsorFirstName' => @data.dig('veteran', 'full_name', 'first'),
+        'sponsorMiddleName' => @data.dig('veteran', 'full_name', 'middle'),
+        'sponsorLastName' => @data.dig('veteran', 'full_name', 'last'),
         'fileNumber' => @data.dig('veteran', 'va_claim_number').presence || @data.dig('veteran', 'ssn_or_tin'),
         'zipCode' => @data.dig('veteran', 'address', 'postal_code') || '00000',
         'country' => @data.dig('veteran', 'address', 'country') || 'USA',
@@ -168,7 +168,7 @@ module IvcChampva
     def extract_beneficiary_properties(app)
       applicant = app.symbolize_keys.slice(:applicant_ssn, :applicant_name, :applicant_dob)
       applicant.tap do |a|
-        a[:beneficiary_ssn] = a.delete(:applicant_ssn)
+        a[:beneficiary_ssn] = a.delete(:applicant_ssn).presence || app['applicant_member_number']
         a[:beneficiary_name] = a.delete(:applicant_name)
         a[:beneficiary_dob] = a.delete(:applicant_dob)
       end

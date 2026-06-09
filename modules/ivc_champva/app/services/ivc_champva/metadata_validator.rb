@@ -7,10 +7,14 @@ module IvcChampva
     def self.validate(metadata)
       Datadog::Tracing.trace('IVC Champva Forms - Validate Metadata') do
         name_prefix = Flipper.enabled?(:champva_update_metadata_keys) ? 'sponsor' : 'veteran'
+        skip_name = metadata['submissionType'].to_s.downcase == 'enrollment'
 
-        validate_first_name(metadata, name_prefix)
-          .then { |m| validate_last_name(m, name_prefix) }
-          .then { |m| validate_file_number(m) }
+        unless skip_name
+          validate_first_name(metadata, name_prefix)
+            .then { |m| validate_last_name(m, name_prefix) }
+        end
+
+        validate_file_number(metadata)
           .then { |m| validate_zip_code(m) }
           .then { |m| validate_source(m) }
           .then { |m| validate_doc_type(m) }

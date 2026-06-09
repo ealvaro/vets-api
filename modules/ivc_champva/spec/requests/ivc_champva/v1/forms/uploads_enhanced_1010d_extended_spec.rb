@@ -233,4 +233,59 @@ RSpec.describe 'IvcChampva::V1::Uploads — 10-10D supplemental docs-only resubm
 
     expect(response).to have_http_status(:ok), -> { "body=#{response.body}" }
   end
+
+  it 'sends sponsor/veteran metadata from veteran data for existing submissions' do
+    captured_puts = []
+    allow_any_instance_of(IvcChampva::S3).to receive(:put_object) do |_instance, key, _file, metadata|
+      captured_puts << { key:, metadata: }
+      { success: true }
+    end
+
+    post merged_route, params: base_payload, as: :json
+
+    expect(response).to have_http_status(:ok), -> { "body=#{response.body}" }
+    doc_upload = captured_puts.find { |p| p[:metadata].is_a?(Hash) && p[:metadata]['docType'].present? }
+    expect(doc_upload).to be_present, "Expected an upload with docType metadata, got: #{captured_puts.inspect}"
+    metadata = doc_upload[:metadata]
+    expect(metadata['veteranFirstName']).to eq('Pat')
+    expect(metadata['veteranLastName']).to eq('Veteran')
+    expect(metadata['sponsorFirstName']).to eq('Pat')
+    expect(metadata['sponsorLastName']).to eq('Veteran')
+  end
+
+  it 'does not populate veteran/sponsor metadata with bene info for enrollment' do
+    captured_puts = []
+    allow_any_instance_of(IvcChampva::S3).to receive(:put_object) do |_instance, key, _file, metadata|
+      captured_puts << { key:, metadata: }
+      { success: true }
+    end
+
+    post merged_route, params: enrollment_payload, as: :json
+
+    expect(response).to have_http_status(:ok), -> { "body=#{response.body}" }
+    doc_upload = captured_puts.find { |p| p[:metadata].is_a?(Hash) && p[:metadata]['docType'].present? }
+    expect(doc_upload).to be_present, "Expected an upload with docType metadata, got: #{captured_puts.inspect}"
+    metadata = doc_upload[:metadata]
+    expect(metadata['veteranFirstName']).to be_nil
+    expect(metadata['sponsorFirstName']).to be_nil
+  end
+
+  it 'maps applicant_member_number to beneficiary_ssn for enrollment' do
+    allow(Flipper).to receive(:enabled?).with(:champva_update_metadata_keys, any_args).and_return(true)
+    allow(Flipper).to receive(:enabled?).with(:champva_update_metadata_keys).and_return(true)
+
+    captured_puts = []
+    allow_any_instance_of(IvcChampva::S3).to receive(:put_object) do |_instance, key, _file, metadata|
+      captured_puts << { key:, metadata: }
+      { success: true }
+    end
+
+    post merged_route, params: enrollment_payload, as: :json
+
+    expect(response).to have_http_status(:ok), -> { "body=#{response.body}" }
+    doc_upload = captured_puts.find { |p| p[:metadata].is_a?(Hash) && p[:metadata]['docType'].present? }
+    expect(doc_upload).to be_present, "Expected an upload with docType metadata, got: #{captured_puts.inspect}"
+    bene = JSON.parse(doc_upload[:metadata]['beneficiary_0'])
+    expect(bene['beneficiary_ssn']).to eq('345345345')
+  end
 end

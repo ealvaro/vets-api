@@ -389,6 +389,82 @@ RSpec.describe IvcChampva::VHA1010d2027 do
     end
   end
 
+  describe '#extract_beneficiary_properties' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:champva_update_metadata_keys).and_return(true)
+    end
+
+    context 'when applicant_ssn is present' do
+      let(:form_data) do
+        data.merge('applicants' => [
+                     { 'applicant_ssn' => '123456789', 'applicant_name' => { 'first' => 'Sam', 'last' => 'Bene' },
+                       'applicant_dob' => '2003-01-04', 'applicant_member_number' => '999999999' }
+                   ])
+      end
+
+      it 'uses applicant_ssn for beneficiary_ssn' do
+        result = described_class.new(form_data).add_applicant_properties
+        bene = JSON.parse(result['beneficiary_0'])
+        expect(bene['beneficiary_ssn']).to eq('123456789')
+      end
+    end
+
+    context 'when applicant_ssn is blank and applicant_member_number is present' do
+      let(:form_data) do
+        data.merge('applicants' => [
+                     { 'applicant_ssn' => '', 'applicant_name' => { 'first' => 'Sam', 'last' => 'Bene' },
+                       'applicant_dob' => '2003-01-04', 'applicant_member_number' => '345345345' }
+                   ])
+      end
+
+      it 'falls back to applicant_member_number for beneficiary_ssn' do
+        result = described_class.new(form_data).add_applicant_properties
+        bene = JSON.parse(result['beneficiary_0'])
+        expect(bene['beneficiary_ssn']).to eq('345345345')
+      end
+    end
+
+    context 'when applicant_ssn is nil and applicant_member_number is present' do
+      let(:form_data) do
+        data.merge('applicants' => [
+                     { 'applicant_name' => { 'first' => 'Sam', 'last' => 'Bene' },
+                       'applicant_dob' => '2003-01-04', 'applicant_member_number' => '345345345' }
+                   ])
+      end
+
+      it 'falls back to applicant_member_number for beneficiary_ssn' do
+        result = described_class.new(form_data).add_applicant_properties
+        bene = JSON.parse(result['beneficiary_0'])
+        expect(bene['beneficiary_ssn']).to eq('345345345')
+      end
+    end
+  end
+
+  describe '#metadata sponsor/veteran mapping' do
+    it 'maps sponsor fields from veteran data, not applicant data' do
+      form_data = data.merge(
+        'applicants' => [
+          { 'applicant_name' => { 'first' => 'Sam', 'last' => 'Bene' }, 'applicant_dob' => '2003-01-04' }
+        ]
+      )
+      metadata = described_class.new(form_data).metadata
+
+      expect(metadata['sponsorFirstName']).to eq('John')
+      expect(metadata['sponsorLastName']).to eq('Doe')
+      expect(metadata['sponsorFirstName']).not_to eq('Sam')
+    end
+
+    it 'returns nil sponsor fields when veteran data is empty' do
+      form_data = data.merge('veteran' => { 'full_name' => {} })
+      metadata = described_class.new(form_data).metadata
+
+      expect(metadata['sponsorFirstName']).to be_nil
+      expect(metadata['sponsorLastName']).to be_nil
+      expect(metadata['veteranFirstName']).to be_nil
+      expect(metadata['veteranLastName']).to be_nil
+    end
+  end
+
   describe 'veteran email field mapping' do
     context 'when veteran email is provided in the expected format' do
       let(:email_data) do

@@ -1699,8 +1699,9 @@ module IvcChampva
           }
           merge_fields['uuid'] = parsed_form_data['claim_id'] if parsed_form_data['claim_id'].present?
           raw_metadata = form.metadata.merge(merge_fields)
-          enrollment = parsed_form_data['submission_type'].to_s.casecmp('enrollment').zero?
-          backfill_enrollment_metadata!(raw_metadata) if enrollment
+          if parsed_form_data['submission_type'].to_s.casecmp('enrollment').zero?
+            backfill_enrollment_metadata!(raw_metadata)
+          end
           metadata = IvcChampva::MetadataValidator.validate(raw_metadata)
           file_paths = docs_only_resubmission_supporting_paths_from_form(form)
 
