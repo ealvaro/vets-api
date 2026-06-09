@@ -94,6 +94,7 @@ bid:
     base_url: ~
     jwt_secret: abcd1234abcd1234abcd1234abcd1234abcd1234
     mock: true
+    net_worth_limit: '163699'
 binaries:
   clamdscan: "/usr/bin/clamdscan"
   pdfinfo: pdfinfo

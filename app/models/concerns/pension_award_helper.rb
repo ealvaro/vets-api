@@ -13,12 +13,6 @@ module PensionAwardHelper
     error: -1
   }.freeze
 
-  # Constants representing error types for logging purposes
-  ERROR_TYPES = {
-    net_worth: 'networth',
-    awards: 'awards'
-  }.freeze
-
   # @return [Integer] 1 if user is in receipt of pension, 0 if not, -1 if request fails
   # Needed for FE to differentiate between 200 response and error
   def is_in_receipt_of_pension # rubocop:disable Naming/PredicatePrefix
@@ -30,17 +24,6 @@ module PensionAwardHelper
     else
       PENSION_STATUS[:error]
     end
-  end
-
-  # @return [Integer] the net worth limit for pension, default is 163,699 as of 2026
-  # Default will be cached in future enhancement
-  def net_worth_limit
-    awards = pension_award_service.get_awards_pension
-    awards.try(:body).dig('awards_pension', 'net_worth_limit')
-  rescue => e
-    track_pension_award_error(error: e, type: ERROR_TYPES[:net_worth])
-    # 2025-26 net worth limit
-    163_699
   end
 
   # @return [Hash] the awards pension data from BID service or an empty hash if the request fails
@@ -59,7 +42,7 @@ module PensionAwardHelper
         {}
       end
     rescue => e
-      track_pension_award_error(error: e, type: ERROR_TYPES[:awards])
+      track_pension_award_error(e)
       {}
     end
   end
@@ -102,8 +85,7 @@ module PensionAwardHelper
   # Handles error tracking specific to each form profile's monitoring approach
   #
   # @param error [Exception] The error that occurred during pension award retrieval
-  # @param type [String] The type of error for logging purposes (e.g., 'awards', 'networth')
-  def track_pension_award_error(error:, type:)
+  def track_pension_award_error(error)
     raise NotImplementedError, 'Including class must implement #track_pension_award_error'
   end
 

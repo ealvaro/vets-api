@@ -20,8 +20,8 @@ RSpec.describe PensionAwardHelper, type: :model do
         @pension_award_service ||= BID::Awards::Service.new(nil)
       end
 
-      def track_pension_award_error(error:, type:)
-        Rails.logger.warn("Test error: #{error.message} for #{type}")
+      def track_pension_award_error(error)
+        Rails.logger.warn("Test error: #{error.message} for awards")
       end
     end
   end
@@ -64,7 +64,7 @@ RSpec.describe PensionAwardHelper, type: :model do
       it 'does not raise error when implemented' do
         error = StandardError.new('test error')
         expect(Rails.logger).to receive(:warn).with('Test error: test error for awards')
-        expect { complete_instance.send(:track_pension_award_error, error:, type: 'awards') }.not_to raise_error
+        expect { complete_instance.send(:track_pension_award_error, error) }.not_to raise_error
       end
     end
   end
@@ -91,37 +91,6 @@ RSpec.describe PensionAwardHelper, type: :model do
       it 'returns -1 when pension status is unknown' do
         allow(complete_instance).to receive(:awards_pension).and_return({})
         expect(complete_instance.is_in_receipt_of_pension).to eq(-1)
-      end
-    end
-
-    describe '#net_worth_limit' do
-      context 'when awards pension is successful' do
-        let(:mock_awards_pension_response) do
-          OpenStruct.new(body: {
-                           'awards_pension' => { 'net_worth_limit' => 123_456 }
-                         })
-        end
-
-        before do
-          allow(mock_service).to receive(:get_awards_pension).and_return(mock_awards_pension_response)
-        end
-
-        it 'returns the net worth limit from awards_pension when available' do
-          expect(complete_instance.net_worth_limit).to eq(123_456)
-        end
-      end
-
-      context 'when awards pension fails' do
-        before do
-          allow(complete_instance).to receive(:track_pension_award_error)
-        end
-
-        it 'returns default value when net worth limit is not available' do
-          error = StandardError.new('Service error')
-          allow(mock_service).to receive(:get_awards_pension).and_raise(error)
-          expect(complete_instance.net_worth_limit).to eq(163_699)
-          expect(complete_instance).to have_received(:track_pension_award_error).with(error:, type: 'networth')
-        end
       end
     end
 
@@ -179,7 +148,7 @@ RSpec.describe PensionAwardHelper, type: :model do
 
         result = complete_instance.awards_pension
         expect(result).to eq({})
-        expect(complete_instance).to have_received(:track_pension_award_error).with(error:, type: 'awards')
+        expect(complete_instance).to have_received(:track_pension_award_error).with(error)
       end
     end
 

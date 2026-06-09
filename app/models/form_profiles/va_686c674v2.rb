@@ -89,6 +89,16 @@ class FormProfiles::VA686c674v2 < FormProfile
   end
 
   ##
+  # Retrieves net worth limit from settings
+  # Previously retrieved per request from BID Awards API call but moved to AWS Parameter Store
+  # Net worth limit value updated every November
+  #
+  # @return [Integer, nil] net worth limit
+  def net_worth_limit
+    Settings.bid.awards.net_worth_limit.to_i
+  end
+
+  ##
   # This method retrieves the dependents from the BGS service and maps them to the DependentInformation model.
   # If no dependents are found or if they are not active for benefits, it returns an empty array.
   def prefill_dependents_information
@@ -164,9 +174,9 @@ class FormProfiles::VA686c674v2 < FormProfile
   # Tracks pension award errors using the monitor service
   #
   # @param error [Exception] The error that occurred during pension award retrieval
-  def track_pension_award_error(error:, type:)
+  def track_pension_award_error(error)
     monitor.track_event('warn',
-                        "Failed to retrieve awards pension data for #{type}",
+                        'Failed to retrieve awards pension data for awards',
                         'awards_pension_error',
                         {
                           user_account_uuid: user&.user_account_uuid,

@@ -236,20 +236,9 @@ RSpec.describe FormProfile, type: :model do
 
           context 'with pension awards prefill' do
             let(:user) { create(:evss_user, :loa3) }
-            let(:form_profile) do
-              FormProfiles::VA686c674v2.new(user:, form_id: '686C-674-V2')
-            end
-            let(:awards_response) do
-              double('response', body: { 'awards_pension' => { 'net_worth_limit' => 163_699 } })
-            end
+            let(:form_profile) { FormProfiles::VA686c674v2.new(user:, form_id: '686C-674-V2') }
             let(:mock_award_response) { OpenStruct.new(body: {}) }
-            let(:bid_service) do
-              double(
-                'BID::Awards::Service',
-                get_current_awards: mock_award_response,
-                get_awards_pension: awards_response
-              )
-            end
+            let(:bid_service) { double('BID::Awards::Service', get_current_awards: mock_award_response) }
             let(:monitor) { instance_double(DependentsBenefits::Monitor) }
 
             before do
@@ -257,6 +246,11 @@ RSpec.describe FormProfile, type: :model do
               allow(BID::Awards::Service).to receive(:new).with(user).and_return(bid_service)
               allow(DependentsBenefits::Monitor).to receive(:new).and_return(monitor)
               allow(monitor).to receive(:track_warning_event)
+            end
+
+            it 'prefills net worth limit with value from BID Awards settings' do
+              prefilled_data = described_class.for(form_id: '686C-674-V2', user:).prefill[:form_data]
+              expect(prefilled_data['nonPrefill']['netWorthLimit']).to eq(Settings.bid.awards.net_worth_limit.to_i)
             end
 
             context 'for IP award line type with effective date in past' do
@@ -281,27 +275,16 @@ RSpec.describe FormProfile, type: :model do
                                })
               end
 
-              it 'prefills net worth limit with default value when using get_current_awards' do
+              it 'prefills 1 when user has IP award line type' do
                 VCR.use_cassette('va_profile/military_personnel/post_read_service_histories_200',
                                  allow_playback_repeats: true) do
                   prefilled_data = described_class.for(form_id: '686C-674-V2', user:).prefill[:form_data]
-                  expect(prefilled_data['nonPrefill']['netWorthLimit']).to eq(163_699)
                   expect(prefilled_data['nonPrefill']['isInReceiptOfPension']).to eq(1)
 
                   expect(monitor)
                     .not_to have_received(:track_warning_event)
                     .with(
                       'Failed to retrieve awards pension data for awards',
-                      action: 'awards_pension_error',
-                      component:,
-                      user_account_uuid: user&.user_account_uuid,
-                      error: anything,
-                      form_id: '686C-674-V2'
-                    )
-                  expect(monitor)
-                    .not_to have_received(:track_warning_event)
-                    .with(
-                      'Failed to retrieve awards pension data for networth',
                       action: 'awards_pension_error',
                       component:,
                       user_account_uuid: user&.user_account_uuid,
@@ -338,9 +321,7 @@ RSpec.describe FormProfile, type: :model do
                 VCR.use_cassette('va_profile/military_personnel/post_read_service_histories_200',
                                  allow_playback_repeats: true) do
                   prefilled_data = described_class.for(form_id: '686C-674-V2', user:).prefill[:form_data]
-
                   expect(prefilled_data['nonPrefill']['isInReceiptOfPension']).to eq(0)
-                  expect(prefilled_data['nonPrefill']['netWorthLimit']).to eq(163_699)
 
                   expect(monitor)
                     .not_to have_received(:track_warning_event)
@@ -352,21 +333,11 @@ RSpec.describe FormProfile, type: :model do
                       error: anything,
                       form_id: '686C-674-V2'
                     )
-                  expect(monitor)
-                    .not_to have_received(:track_warning_event)
-                    .with(
-                      'Failed to retrieve awards pension data for networth',
-                      action: 'awards_pension_error',
-                      component:,
-                      user_account_uuid: user&.user_account_uuid,
-                      error: anything,
-                      form_id: '686C-674-V2'
-                    )
                 end
               end
             end
 
-            it 'prefills -1 and default net worth limit when bid awards service returns an error' do
+            it 'prefills -1 when bid awards service returns an error' do
               allow(BGS::DependentService).to receive(:new).with(user).and_return(dependent_service)
               allow(dependent_service).to receive(:get_dependents).and_return(dependents_data)
 
@@ -374,11 +345,8 @@ RSpec.describe FormProfile, type: :model do
               VCR.use_cassette('va_profile/military_personnel/post_read_service_histories_200',
                                allow_playback_repeats: true) do
                 allow(bid_service).to receive(:get_current_awards).and_raise(error)
-                allow(bid_service).to receive(:get_awards_pension).and_raise(error)
-
                 prefilled_data = described_class.for(form_id: '686C-674-V2', user:).prefill[:form_data]
                 expect(bid_service).to have_received(:get_current_awards)
-                expect(bid_service).to have_received(:get_awards_pension)
                 expect(monitor)
                   .to have_received(:track_warning_event)
                   .with(
@@ -389,19 +357,7 @@ RSpec.describe FormProfile, type: :model do
                     error: error.message,
                     form_id: '686C-674-V2'
                   )
-                expect(monitor)
-                  .to have_received(:track_warning_event)
-                  .with(
-                    'Failed to retrieve awards pension data for networth',
-                    action: 'awards_pension_error',
-                    component:,
-                    user_account_uuid: user&.user_account_uuid,
-                    error: error.message,
-                    form_id: '686C-674-V2'
-                  )
-
                 expect(prefilled_data['nonPrefill']['isInReceiptOfPension']).to eq(-1)
-                expect(prefilled_data['nonPrefill']['netWorthLimit']).to eq(163_699)
               end
             end
           end
@@ -513,37 +469,6 @@ RSpec.describe FormProfile, type: :model do
               allow(Rails.logger).to receive(:warn)
             end
 
-            it 'prefills net worth limit with default value when using get_current_awards' do
-              VCR.use_cassette('va_profile/military_personnel/post_read_service_histories_200',
-                               allow_playback_repeats: true) do
-                # Mock get_current_awards to return IP award line type
-                mock_response_body = {
-                  'award' => {
-                    'award_event_list' => {
-                      'award_events' => [
-                        {
-                          'award_line_list' => {
-                            'award_lines' => [
-                              {
-                                'award_line_type' => 'IP',
-                                'effective_date' => '2020-01-01T00:00:00-05:00'
-                              }
-                            ]
-                          }
-                        }
-                      ]
-                    }
-                  }
-                }
-                allow_any_instance_of(BID::Awards::Service).to receive(:get_current_awards).and_return(
-                  OpenStruct.new(body: mock_response_body)
-                )
-
-                prefilled_data = described_class.for(form_id: '686C-674-V2', user:).prefill[:form_data]
-                expect(prefilled_data['nonPrefill']['netWorthLimit']).to eq(163_699)
-              end
-            end
-
             it 'prefills 1 when user is in receipt of pension (IP award line type)' do
               VCR.use_cassette('va_profile/military_personnel/post_read_service_histories_200',
                                allow_playback_repeats: true) do
@@ -590,24 +515,21 @@ RSpec.describe FormProfile, type: :model do
               end
             end
 
-            it 'prefills -1 and default net worth limit when bid awards service returns an error' do
+            it 'prefills -1 when bid awards service returns an error' do
               allow(BGS::DependentService).to receive(:new).with(user).and_return(dependent_service)
               allow(dependent_service).to receive(:get_dependents).and_return(dependents_data)
 
               error = StandardError.new('awards pension error')
               VCR.use_cassette('va_profile/military_personnel/post_read_service_histories_200',
                                allow_playback_repeats: true) do
-                allow_any_instance_of(BID::Awards::Service).to receive(:get_awards_pension).and_raise(error)
+                allow_any_instance_of(BID::Awards::Service).to receive(:get_current_awards).and_raise(error)
 
                 expect(Rails.logger).to receive(:warn).with('Failed to retrieve awards pension data for awards',
-                                                            anything)
-                expect(Rails.logger).to receive(:warn).with('Failed to retrieve awards pension data for networth',
                                                             anything)
 
                 prefilled_data = described_class.for(form_id: '686C-674-V2', user:).prefill[:form_data]
 
                 expect(prefilled_data['nonPrefill']['isInReceiptOfPension']).to eq(-1)
-                expect(prefilled_data['nonPrefill']['netWorthLimit']).to eq(163_699)
               end
             end
           end

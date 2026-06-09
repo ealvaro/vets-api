@@ -104,6 +104,16 @@ module DependentsBenefits
     end
 
     ##
+    # Retrieves net worth limit from settings
+    # Previously retrieved per request from BID Awards API call but moved to AWS Parameter Store
+    # Net worth limit value updated every November
+    #
+    # @return [Integer, nil] net worth limit
+    def net_worth_limit
+      Settings.bid.awards.net_worth_limit.to_i
+    end
+
+    ##
     # Retrieves and memoizes the veteran's file number from BGS or falls back to SSN
     # Makes BGS API call only once and caches the result for subsequent calls
     #
@@ -196,8 +206,8 @@ module DependentsBenefits
     # Tracks pension award errors using the monitor service
     #
     # @param error [Exception] The error that occurred during pension award retrieval
-    def track_pension_award_error(error:, type:)
-      monitor.track_warning_event("Failed to retrieve awards pension data for #{type}",
+    def track_pension_award_error(error)
+      monitor.track_warning_event('Failed to retrieve awards pension data for awards',
                                   action: 'awards_pension_error', component:,
                                   user_account_uuid: user&.user_account_uuid,
                                   error: error.message, form_id:)
