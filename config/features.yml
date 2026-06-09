@@ -3851,3 +3851,7 @@ features:
   gids_sequential_upload:
     actor_type: user
     description: Enables sequential upload of large csv files in gi-bill-data-service
+  enable_prefill_update_527ez_0969:
+    actor_type: user
+    description: Enables prefill update for 21p-526ez and 21p-0969 forms
+
