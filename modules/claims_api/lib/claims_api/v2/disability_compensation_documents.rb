@@ -2,7 +2,6 @@
 
 require 'sidekiq'
 require 'claims_api/vbms_uploader'
-require 'claims_api/poa_vbms_sidekiq'
 
 module ClaimsApi
   module V2
