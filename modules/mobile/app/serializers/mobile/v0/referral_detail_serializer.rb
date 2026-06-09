@@ -5,6 +5,10 @@ module Mobile
     class ReferralDetailSerializer
       include JSONAPI::Serializer
 
+      # Categories of care that support online scheduling. Until the CCRA API can tell us per-referral
+      # whether online scheduling is supported, we approximate it from the category of care.
+      ONLINE_SCHEDULE_CATEGORIES = ['primary care'].freeze
+
       set_id :uuid
       set_type :referrals
 
@@ -17,10 +21,8 @@ module Mobile
       attribute :appointments
       attribute :referral_date
       attribute :station_id
-      # TODO: online_schedule is defaulting to true for all referrals. This is a temporary measure until
-      # we have a way to determine this value from the CCRA API
-      attribute :online_schedule do
-        true
+      attribute :online_schedule do |referral|
+        ONLINE_SCHEDULE_CATEGORIES.include?(referral.category_of_care.to_s.downcase)
       end
 
       attribute :provider do |referral|

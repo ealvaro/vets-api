@@ -92,25 +92,25 @@ RSpec.describe 'Mobile::V0::Referrals', type: :request do
         end
       end
 
-      context 'when there are referrals with unsupported categories of care' do
-        let(:supported_referral) do
+      context 'when there are referrals with mixed categories of care' do
+        let(:primary_care_referral) do
           build(:ccra_referral_list_entry, category_of_care: 'primary care', station_id: '984')
         end
-        let(:unsupported_referral) do
+        let(:cardiology_referral) do
           build(:ccra_referral_list_entry, category_of_care: 'cardiology', station_id: '984')
         end
 
         before do
           allow(referral_service_double).to receive(:get_vaos_referral_list)
-            .and_return([supported_referral, unsupported_referral])
+            .and_return([primary_care_referral, cardiology_referral])
           allow(VAOS::ReferralEncryptionService).to receive(:encrypt).and_return('encrypted-id')
         end
 
-        it 'only returns referrals with supported categories of care' do
+        it 'returns referrals from all categories of care' do
           get '/mobile/v0/referrals', headers: sis_headers
 
           json = response.parsed_body
-          expect(json['data'].length).to eq(1)
+          expect(json['data'].length).to eq(2)
         end
       end
 
@@ -168,7 +168,7 @@ RSpec.describe 'Mobile::V0::Referrals', type: :request do
   describe 'GET /mobile/v0/referrals/:id' do
     let(:encrypted_id) { 'encrypted-984_646372' }
     let(:decrypted_id) { '984_646372' }
-    let(:referral) { build(:ccra_referral_detail) }
+    let(:referral) { build(:ccra_referral_detail, category_of_care: 'primary care') }
 
     before do
       allow(VAOS::ReferralEncryptionService).to receive(:decrypt).with(encrypted_id).and_return(decrypted_id)
@@ -210,6 +210,17 @@ RSpec.describe 'Mobile::V0::Referrals', type: :request do
 
         json = response.parsed_body
         expect(json['data']['attributes']['hasAppointments']).to be false
+      end
+
+      context 'when the referral is not a primary care category' do
+        let(:referral) { build(:ccra_referral_detail, category_of_care: 'cardiology') }
+
+        it 'sets online_schedule to false' do
+          get "/mobile/v0/referrals/#{encrypted_id}", headers: sis_headers
+
+          json = response.parsed_body
+          expect(json['data']['attributes']['onlineSchedule']).to be false
+        end
       end
 
       context 'when there are active appointments' do

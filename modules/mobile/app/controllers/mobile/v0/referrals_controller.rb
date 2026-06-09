@@ -3,11 +3,8 @@
 module Mobile
   module V0
     class ReferralsController < ApplicationController
-      SUPPORTED_CATEGORIES_OF_CARE = ['primary care'].freeze
-
       # V2 Community Care pilot station IDs
       SUPPORTED_STATION_IDS_PRODUCTION = %w[
-        534 534QD 534GH 534QC 534GF 534GD 534QE 534GC 534GE 534GB 534BY 534GG
         508 508QK 508QF 508QC 508QI 508QJ 508GA 508GP 508GO 508GQ 508QE 508GG
         508GH 508GF 508QH 508GN 508GI 508GE 508GS 508GM 508GK 508GL 508GJ
       ].freeze
@@ -22,9 +19,8 @@ module Mobile
           referral_status_param
         )
 
-        # Filter out expired referrals, unsupported categories of care, and unsupported station IDs
+        # Filter out expired referrals and unsupported station IDs
         response = filter_expired_referrals(response)
-        response = filter_by_category_of_care(response)
         response = filter_by_station_id(response)
 
         # Add encrypted UUIDs to the referrals for URL usage
@@ -110,10 +106,6 @@ module Mobile
         referrals.each do |referral|
           referral.uuid = VAOS::ReferralEncryptionService.encrypt(referral.referral_consult_id)
         end
-      end
-
-      def filter_by_category_of_care(referrals)
-        referrals.select { |referral| referral.category_of_care.to_s.downcase.in?(SUPPORTED_CATEGORIES_OF_CARE) }
       end
 
       def filter_by_station_id(referrals)

@@ -5,33 +5,6 @@ require 'rails_helper'
 RSpec.describe Mobile::V0::ReferralsController, type: :controller do
   let(:controller) { described_class.new }
 
-  describe '#filter_by_category_of_care' do
-    let(:primary_care_referral) { build(:ccra_referral_list_entry, category_of_care: 'primary care') }
-    let(:cardiology_referral) { build(:ccra_referral_list_entry, category_of_care: 'cardiology') }
-    let(:nil_category_referral) { build(:ccra_referral_list_entry, category_of_care: nil) }
-
-    it 'keeps primary care referrals' do
-      result = controller.send(:filter_by_category_of_care, [primary_care_referral, cardiology_referral])
-      expect(result).to contain_exactly(primary_care_referral)
-    end
-
-    it 'filters out unsupported categories' do
-      result = controller.send(:filter_by_category_of_care, [cardiology_referral])
-      expect(result).to be_empty
-    end
-
-    it 'filters out referrals with nil category_of_care' do
-      result = controller.send(:filter_by_category_of_care, [nil_category_referral])
-      expect(result).to be_empty
-    end
-
-    it 'is case insensitive' do
-      upcased = build(:ccra_referral_list_entry, category_of_care: 'PRIMARY CARE')
-      result = controller.send(:filter_by_category_of_care, [upcased])
-      expect(result).to contain_exactly(upcased)
-    end
-  end
-
   describe '#filter_expired_referrals' do
     let(:active_referral) { build(:ccra_referral_list_entry, referral_expiration_date: (Date.current + 30.days).to_s) }
     let(:expired_referral) { build(:ccra_referral_list_entry, referral_expiration_date: (Date.current - 1.day).to_s) }
@@ -63,7 +36,7 @@ RSpec.describe Mobile::V0::ReferralsController, type: :controller do
   end
 
   describe '#filter_by_station_id' do
-    let(:supported_referral) { build(:ccra_referral_list_entry, station_id: '534') }
+    let(:supported_referral) { build(:ccra_referral_list_entry, station_id: '508') }
     let(:unsupported_referral) { build(:ccra_referral_list_entry, station_id: '999') }
     let(:dev_only_referral) { build(:ccra_referral_list_entry, station_id: '984') }
 
