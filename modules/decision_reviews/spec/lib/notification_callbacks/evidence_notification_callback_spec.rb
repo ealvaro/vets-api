@@ -13,16 +13,20 @@ describe DecisionReviews::EvidenceNotificationCallback do
     Settings.vanotify.services.benefits_decision_review.template_id.supplemental_claim_evidence_error_email
   end
 
+  # A persisted VANotify::Notification reloaded from the database so that
+  # `callback_metadata` is returned from the jsonb column with string keys.
+  # This mirrors what `VANotify::DeliveryStatusUpdateJob` sees in production
+  # (it loads the record fresh before invoking the callback) and is what
+  # exposed the symbol/string-key mismatch in `NotificationMonitor`.
   let(:notification) do
-    OpenStruct.new(
-      notification_id: SecureRandom.uuid,
+    create(
+      :notification,
       notification_type: 'email',
-      source_location: 'unit-test',
       status:,
       status_reason:,
       callback_klass: described_class.to_s,
       callback_metadata: {
-        email_type: :error,
+        email_type: 'error',
         service_name: 'supplemental-claims',
         function: 'evidence_submission_to_lighthouse',
         submitted_appeal_uuid:,
@@ -30,7 +34,7 @@ describe DecisionReviews::EvidenceNotificationCallback do
         reference:,
         statsd_tags: ['service:supplemental-claims', 'function:evidence_submission_to_lighthouse']
       }
-    )
+    ).reload
   end
 
   before do
@@ -50,7 +54,7 @@ describe DecisionReviews::EvidenceNotificationCallback do
         expect(message).to eq('Silent failure avoided')
         expect(payload[:service]).to eq('supplemental-claims')
         expect(payload[:function]).to eq('evidence_submission_to_lighthouse')
-        expect(payload[:additional_context][:callback_metadata][:submitted_appeal_uuid]).to eq(submitted_appeal_uuid)
+        expect(payload[:additional_context][:callback_metadata]['submitted_appeal_uuid']).to eq(submitted_appeal_uuid)
       end
       expect(Rails.logger).to receive(:info).with('DecisionReviews::EvidenceNotificationCallback: Delivered',
                                                   anything)
@@ -80,7 +84,7 @@ describe DecisionReviews::EvidenceNotificationCallback do
         expect(message).to eq('Silent failure!')
         expect(payload[:service]).to eq('supplemental-claims')
         expect(payload[:function]).to eq('evidence_submission_to_lighthouse')
-        expect(payload[:additional_context][:callback_metadata][:submitted_appeal_uuid]).to eq(submitted_appeal_uuid)
+        expect(payload[:additional_context][:callback_metadata]['submitted_appeal_uuid']).to eq(submitted_appeal_uuid)
       end
       expect(Rails.logger).to receive(:error).with('DecisionReviews::EvidenceNotificationCallback: Permanent Failure',
                                                    anything)
