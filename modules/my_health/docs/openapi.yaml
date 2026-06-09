@@ -508,7 +508,8 @@ paths:
                   FHIR Bundle containing DiagnosticReport and DocumentReference objects. The schemas can be found at
                   <a href='https://software-mhv-fhir-phr-mapping.pages.va.ghe.com/StructureDefinition-VA.MHV.PHR.chReport.html'>Chemistry/Hematology</a>,
                   <a href='https://software-mhv-fhir-phr-mapping.pages.va.ghe.com/StructureDefinition-VA.MHV.PHR.ecg.html'>EKG</a>,
-                  <a href='https://software-mhv-fhir-phr-mapping.pages.va.ghe.com/StructureDefinition-VA.MHV.PHR.labReport.html'>Microbiology and Pathology</a>,
+                  <a href='https://software-mhv-fhir-phr-mapping.pages.va.ghe.com/StructureDefinition-VA.MHV.PHR.MBlabReport.html'>Microbiology</a>,
+                  <a href='https://software-mhv-fhir-phr-mapping.pages.va.ghe.com/StructureDefinition-VA.MHV.PHR.SPlabReport.html'>Pathology</a>,
                   <a href='https://software-mhv-fhir-phr-mapping.pages.va.ghe.com/StructureDefinition-VA.MHV.PHR.imaging.html'>Radiology</a>
           description: OK
         "401":
@@ -538,7 +539,8 @@ paths:
                 description: >
                   FHIR DiagnosticReport. The schemas can be found at
                   <a href='https://software-mhv-fhir-phr-mapping.pages.va.ghe.com/StructureDefinition-VA.MHV.PHR.chReport.html'>Chemistry/Hematology</a>,
-                  <a href='https://software-mhv-fhir-phr-mapping.pages.va.ghe.com/StructureDefinition-VA.MHV.PHR.labReport.html'>Microbiology and Pathology</a>
+                  <a href='https://software-mhv-fhir-phr-mapping.pages.va.ghe.com/StructureDefinition-VA.MHV.PHR.MBlabReport.html'>Microbiology</a>,
+                  <a href='https://software-mhv-fhir-phr-mapping.pages.va.ghe.com/StructureDefinition-VA.MHV.PHR.SPlabReport.html'>Pathology</a>,
                   <a href='https://software-mhv-fhir-phr-mapping.pages.va.ghe.com/StructureDefinition-VA.MHV.PHR.ecg.html'>EKG</a>,
                   <a href='https://software-mhv-fhir-phr-mapping.pages.va.ghe.com/StructureDefinition-VA.MHV.PHR.imaging.html'>Radiology</a>
           description: OK
