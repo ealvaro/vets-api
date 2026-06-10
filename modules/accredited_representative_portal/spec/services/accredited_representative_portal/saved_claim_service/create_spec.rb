@@ -14,8 +14,8 @@ RSpec.describe AccreditedRepresentativePortal::SavedClaimService::Create do
   end
 
   before do
-    allow_any_instance_of(AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob).to(
-      receive(:perform)
+    allow(AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob).to(
+      receive(:perform_async)
     )
 
     # This removes: SHRINE WARNING: Error occurred when attempting to extract image dimensions:
@@ -115,8 +115,8 @@ RSpec.describe AccreditedRepresentativePortal::SavedClaimService::Create do
           let(:attachments) { [form_a] }
 
           it 'returns a saved claim, enqueues the submission job, claimant representative was associated' do
-            expect_any_instance_of(AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob).to(
-              receive(:perform)
+            expect(AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob).to(
+              receive(:perform_async)
             )
 
             claim = perform
@@ -185,8 +185,8 @@ RSpec.describe AccreditedRepresentativePortal::SavedClaimService::Create do
           let(:attachments) { [form_a, attachment_a, attachment_b] }
 
           it 'returns a saved claim, enqueues the submission job, claimant representative was associated' do
-            expect_any_instance_of(AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob).to(
-              receive(:perform)
+            expect(AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob).to(
+              receive(:perform_async)
             )
 
             claim = perform
@@ -245,23 +245,13 @@ RSpec.describe AccreditedRepresentativePortal::SavedClaimService::Create do
             end
           end
 
-          context 'unhandled errors' do
-            it 'raises UnknownError' do
-              allow_any_instance_of(
-                AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob
-              ).to receive(:perform).and_raise(StandardError.new('kaboom'))
-
-              expect { perform }.to raise_error described_class::UnknownError
-            end
-          end
-
           context 'with any error' do
             let(:attachments) { [form_a, attachment_a, attachment_b] }
 
             before do
-              allow_any_instance_of(
-                AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob
-              ).to receive(:perform).and_raise(described_class::WrongAttachmentsError)
+              allow(AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob).to(
+                receive(:perform_async).and_raise(described_class::WrongAttachmentsError)
+              )
             end
 
             it 'does not leave any saved claim join objects' do

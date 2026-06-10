@@ -2,6 +2,18 @@
 
 module AccreditedRepresentativePortal
   class SubmitBenefitsIntakeClaimJob < Lighthouse::SubmitBenefitsIntakeClaim
+    ATTEMPT_METRIC_SUBMIT = 'ar.claims.form_upload.submit.attempt'
+    SUCCESS_METRIC_SUBMIT = 'ar.claims.form_upload.submit.success'
+    ERROR_METRIC_SUBMIT = 'ar.claims.form_upload.submit.error'
+
+    def perform(saved_claim_id)
+      super
+      StatsD.increment(SUCCESS_METRIC_SUBMIT, tags: success_metric_tags)
+    rescue
+      StatsD.increment(ERROR_METRIC_SUBMIT, tags: ["form_id:#{@claim&.form_id}", 'reason:unknown_error'])
+      raise
+    end
+
     ##
     # TODO: Remove this parent class override.
     #
@@ -19,6 +31,7 @@ module AccreditedRepresentativePortal
     #
     def init(saved_claim_id)
       @claim = ::SavedClaim.find(saved_claim_id)
+      StatsD.increment(ATTEMPT_METRIC_SUBMIT, tags: ["form_id:#{@claim.form_id}"])
       @lighthouse_service = lighthouse_service
     end
 
@@ -97,6 +110,22 @@ module AccreditedRepresentativePortal
         end
       else
         raise ArgumentError
+      end
+    end
+
+    private
+
+    def success_metric_tags
+      tags = ["form_id:#{@claim.form_id}"]
+      tags << "bdd_status:#{bdd_status}" if @claim.form_id.include?('526EZ')
+      tags
+    end
+
+    def bdd_status
+      if @claim.parsed_form['benefitsDeliveryDischarge']
+        @claim.separation_health_assessment.present? ? 'bdd_with_sha' : 'bdd_without_sha'
+      else
+        'non_bdd'
       end
     end
   end

@@ -4,9 +4,7 @@ module AccreditedRepresentativePortal
   module SavedClaimService
     module Create
       Error = Class.new(RuntimeError)
-      UnknownError = Class.new(Error)
       WrongAttachmentsError = Class.new(Error)
-      TooManyRequestsError = Class.new(Error)
 
       class RecordInvalidError < Error
         attr_reader :record
@@ -48,26 +46,15 @@ module AccreditedRepresentativePortal
               end
 
               create!(saved_claim, claimant_representative)
-
-              SubmitBenefitsIntakeClaimJob.new.perform(
-                saved_claim.id
-              )
+              SubmitBenefitsIntakeClaimJob.perform_async(saved_claim.id)
             end
           end
-        ##
-        # Expose a discrete set of known exceptions. Expose any remaining with a
-        # catch-all unknown exception.
-        #
+          ##
+          # Expose a discrete set of known exceptions. Expose any remaining with a
+          # catch-all unknown exception.
+          #
         rescue RecordInvalidError, WrongAttachmentsError, ::BenefitsIntakeService::Service::InvalidDocumentError
           raise
-        rescue Common::Client::Errors::ClientError => e
-          if e.message&.match(/429/)
-            # We are reraising this particular error so vets-website can display a specific message to
-            # the user while we continue to have rate-limiting issues
-            raise TooManyRequestsError
-          else
-            raise UnknownError
-          end
         rescue
           raise UnknownError
         end

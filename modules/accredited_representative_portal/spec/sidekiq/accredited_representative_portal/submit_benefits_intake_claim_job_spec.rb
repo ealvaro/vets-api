@@ -12,27 +12,16 @@ RSpec.describe AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob do
       JSON.parse(fixture)
     end
 
-  subject(:perform) do
-    attachments = [
-      create(:persistent_attachment_va_form, form_id: '21-686c'),
-      create(:persistent_attachment_va_form_documentation, form_id: '21-686c')
-    ]
+  subject(:perform) { described_class.new.perform(saved_claim.id) }
 
-    AccreditedRepresentativePortal::SavedClaimService::Create.perform(
-      type: AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DependencyClaim,
-      attachment_guids: attachments.map(&:guid),
-      metadata: dependent_claimant_form,
-      claimant_representative:
-        AccreditedRepresentativePortal::ClaimantRepresentative.new(
-          claimant_id: '1234',
-          accredited_individual_registration_number: '10001',
-          power_of_attorney_holder:
-            AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
-              type: 'veteran_service_organization', poa_code: '123',
-              name: 'Org Name', can_accept_digital_poa_requests: nil
-            )
-        ),
-      form_id: '21-686c'
+  let(:form_attachment) { create(:persistent_attachment_va_form, form_id: '21-686c') }
+  let(:documentation)   { create(:persistent_attachment_va_form_documentation, form_id: '21-686c') }
+
+  let(:saved_claim) do
+    AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DependencyClaim.create!(
+      form: dependent_claimant_form.to_json,
+      form_attachment:,
+      persistent_attachments: [documentation]
     )
   end
 
@@ -113,6 +102,68 @@ RSpec.describe AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob do
 
           perform
         end
+      end
+    end
+  end
+
+  describe 'StatsD metrics' do
+    let(:form_id) { saved_claim.form_id }
+
+    before do
+      allow(StatsD).to receive(:increment)
+      allow(Flipper).to receive(:enabled?).with(
+        :accredited_representative_portal_lighthouse_api_key
+      ).and_return(false)
+    end
+
+    context 'on success' do
+      it 'increments ATTEMPT then SUCCESS' do
+        use_cassette('performs', vcr_options) do
+          perform
+        end
+
+        expect(StatsD).to have_received(:increment)
+          .with(described_class::ATTEMPT_METRIC_SUBMIT, tags: ["form_id:#{form_id}"])
+        expect(StatsD).to have_received(:increment)
+          .with(described_class::SUCCESS_METRIC_SUBMIT, tags: ["form_id:#{form_id}"])
+      end
+    end
+
+    context 'on ClientError' do
+      before do
+        allow_any_instance_of(BenefitsIntakeService::Service).to(
+          receive(:get_location_and_uuid).and_raise(
+            Common::Client::Errors::ClientError.new('500 Internal Server Error')
+          )
+        )
+      end
+
+      it 'increments ATTEMPT then ERROR with reason:unknown_error' do
+        suppress(Common::Client::Errors::ClientError) { perform }
+
+        expect(StatsD).to have_received(:increment)
+          .with(described_class::ATTEMPT_METRIC_SUBMIT, tags: ["form_id:#{form_id}"])
+        expect(StatsD).to have_received(:increment)
+          .with(described_class::ERROR_METRIC_SUBMIT,
+                tags: ["form_id:#{form_id}", 'reason:unknown_error'])
+      end
+    end
+
+    context 'on generic error' do
+      before do
+        allow_any_instance_of(BenefitsIntakeService::Service).to(
+          receive(:get_location_and_uuid).and_raise(StandardError.new('oh no'))
+        )
+      end
+
+      it 'increments ATTEMPT then ERROR with reason:unknown_error' do
+        suppress(StandardError) { perform }
+
+        expect(StatsD).to have_received(:increment)
+          .with(described_class::ATTEMPT_METRIC_SUBMIT, tags: ["form_id:#{form_id}"])
+        expect(StatsD).to have_received(:increment)
+          .with(described_class::ERROR_METRIC_SUBMIT,
+                tags: ["form_id:#{form_id}", 'reason:unknown_error'])
       end
     end
   end

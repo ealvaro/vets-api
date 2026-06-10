@@ -47,7 +47,7 @@ module AccreditedRepresentativePortal
       if object.pending_submission_attempt_stale?
         'awaiting_receipt_warning'
       else
-        STATUSES.fetch(object.latest_submission_attempt&.aasm_state, 'processing_error')
+        STATUSES.fetch(object.latest_submission_attempt&.aasm_state, 'awaiting_receipt')
       end
     end
 
