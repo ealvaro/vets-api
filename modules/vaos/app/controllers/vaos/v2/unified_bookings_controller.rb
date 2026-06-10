@@ -30,33 +30,35 @@ module VAOS
 
       def create
         validate_provider_type!
-
-        provider = build_provider
-        slot = build_slot
-        booking_service = resolve_booking_service
-
-        confirmation = booking_service.book(
-          user: current_user,
-          provider:,
-          slot:,
-          params: create_booking_params
-        )
-
+        confirmation = perform_booking
+        StatsD.increment("#{STATSD_KEY_PREFIX}.create.success", tags: ["provider_type:#{provider_type}"])
         render json: serialize_confirmation(confirmation), status: :created
       rescue VAOS::V2::Unified::BookingArgumentError => e
         # Surface the booking service's specific message (e.g. "referral_number or
         # referral_id is required for EPS booking") so the client gets an actionable
         # 400 instead of a generic parameter-missing complaint about an internal
         # variable name. Maps to Common::Exceptions::ParameterMissing (HTTP 400).
+        log_create_failure
         raise Common::Exceptions::ParameterMissing.new('booking_params', detail: e.message)
       rescue Common::Exceptions::BaseError
+        log_create_failure
         raise
       rescue => e
         log_error(e) unless e.is_a?(VAOS::V2::Unified::BaseBookingService::AlreadyLogged)
+        log_create_failure
         raise
       end
 
       private
+
+      def perform_booking
+        resolve_booking_service.book(
+          user: current_user,
+          provider: build_provider,
+          slot: build_slot,
+          params: create_booking_params
+        )
+      end
 
       def provider_type
         @provider_type ||= params.require(:provider_type)
@@ -271,6 +273,10 @@ module VAOS
           "#{STATSD_KEY_PREFIX}.controller_error",
           tags: ["provider_type:#{provider_type_safe}", "error_type:#{error.class.name.demodulize.underscore}"]
         )
+      end
+
+      def log_create_failure
+        StatsD.increment("#{STATSD_KEY_PREFIX}.create.failure", tags: ["provider_type:#{provider_type_safe}"])
       end
 
       def vaos_appointments_service

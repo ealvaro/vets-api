@@ -57,6 +57,13 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
         expect(body['data']['attributes']['start']).to eq('2026-04-15T14:00:00Z')
       end
 
+      it 'increments create.success tagged provider_type:va' do
+        post('/vaos/v2/unified_bookings', params: va_params.to_json, headers:)
+
+        expect(StatsD).to have_received(:increment)
+          .with('api.vaos.unified_booking.create.success', tags: ['provider_type:va'])
+      end
+
       it 'builds the correct VAOS request body' do
         post('/vaos/v2/unified_bookings', params: va_params.to_json, headers:)
 
@@ -161,6 +168,13 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
           body = JSON.parse(response.body)
           expect(body['errors']).to be_present
         end
+
+        it 'increments create.failure tagged provider_type:va' do
+          post('/vaos/v2/unified_bookings', params: va_params.to_json, headers:)
+
+          expect(StatsD).to have_received(:increment)
+            .with('api.vaos.unified_booking.create.failure', tags: ['provider_type:va'])
+        end
       end
 
       context 'when VAOS returns a booked response without an appointment id' do
@@ -216,6 +230,13 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
         expect(body['data']['type']).to eq('unified_booking')
         expect(body['data']['attributes']['provider_type']).to eq('eps')
         expect(body['data']['attributes']['status']).to eq('booked')
+      end
+
+      it 'increments create.success tagged provider_type:eps' do
+        post('/vaos/v2/unified_bookings', params: eps_params.to_json, headers:)
+
+        expect(StatsD).to have_received(:increment)
+          .with('api.vaos.unified_booking.create.success', tags: ['provider_type:eps'])
       end
 
       it 'calls the guarded draft service then submit_appointment' do
@@ -341,6 +362,13 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
           expect(response).to have_http_status(:bad_gateway)
           body = JSON.parse(response.body)
           expect(body['errors']).to be_present
+        end
+
+        it 'increments create.failure tagged provider_type:eps' do
+          post('/vaos/v2/unified_bookings', params: eps_params.to_json, headers:)
+
+          expect(StatsD).to have_received(:increment)
+            .with('api.vaos.unified_booking.create.failure', tags: ['provider_type:eps'])
         end
       end
 
