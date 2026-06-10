@@ -289,15 +289,24 @@ describe 'DisabilityCompensation', openapi_spec: Rswag::TextHelpers.new.claims_a
       produces 'application/json'
 
       get_schema_description = <<~VERBIAGE
-        Automatically establishes a disability compensation claim (21-526EZ) in Veterans Benefits Management System (VBMS). This endpoint synchronously generates a filled and electronically signed 526EZ form and establishes the disability claim in VBMS. The 526EZ form is uploaded asynchronously.
+        Automatically establishes a disability compensation claim (21-526EZ) in Veterans Benefits Management#{' '}
+        System (VBMS). This endpoint synchronously generates a filled and electronically signed 526EZ form#{' '}
+        and establishes the disability claim in VBMS. The 526EZ form is uploaded asynchronously.
 
-        A 202 response indicates the API submission was accepted and the claim was established in VBMS. Check claim status using the GET veterans/{veteranId}/claims/{id} endpoint. The claim status details response will return the associated 526EZ PDF in the supportingDocuments list.
+        A 202 response indicates the API submission was accepted and the claim was established in VBMS.#{' '}
+        Check claim status using the GET veterans/{veteranId}/claims/{id} endpoint. The claim status#{' '}
+        details response will return the associated 526EZ PDF in the supportingDocuments list.
 
         **A substantially complete 526EZ claim must include:**
         * Veteran's name
         * Sufficient service information for VA to verify the claimed service
         * At least one claimed disability or medical condition and how it relates to service
         * Veteran and/or Representative signature
+
+        We recommend including the Veteran's signature on claim submissions to avoid processing delays.#{' '}
+        If only a Power of Attorney (POA) signs, VA must send a 5103 notice to the Veteran, which#{' '}
+        triggers a 30-day hold before the claim can be rated. The claim will move forward, but rating#{' '}
+        cannot occur until either the Veteran responds or the 30-day hold ends.
 
         **Standard and fully developed claims (FDCs)**
 
