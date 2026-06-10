@@ -129,6 +129,23 @@ module MyHealth
         render json: MyHealth::V2::PrescriptionDetailsSerializer.new(refillable_prescriptions, options)
       end
 
+      # Returns only the count of prescriptions that are refillable.
+      # This is a lightweight endpoint for the My VA Prescriptions card.
+      def refillable_count
+        prescriptions = apply_recent_submission_overrides(
+          service.get_prescriptions(current_only: false)[:prescriptions].compact
+        )
+        prescriptions = filter_discontinued_non_va_meds(prescriptions)
+        count = prescriptions.count(&:is_refillable)
+
+        render json: {
+          data: {
+            refillable_count: count,
+            timestamp: Time.current.iso8601
+          }
+        }
+      end
+
       private
 
       def service

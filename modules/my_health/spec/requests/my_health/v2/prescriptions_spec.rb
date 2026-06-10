@@ -1841,4 +1841,62 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
       end
     end
   end
+
+  describe 'GET /my_health/v2/prescriptions/refillable_count' do
+    it 'returns the count of refillable prescriptions' do
+      VCR.use_cassette('unified_health_data/get_prescriptions_success', match_requests_on: %i[method path]) do
+        get('/my_health/v2/prescriptions/refillable_count', headers:)
+
+        expect(response).to have_http_status(:success)
+        json_response = response.parsed_body
+
+        expect(json_response).to have_key('data')
+        expect(json_response['data']).to have_key('refillable_count')
+        expect(json_response['data']).to have_key('timestamp')
+        expect(json_response['data']['refillable_count']).to be_a(Integer)
+        expect(json_response['data']['refillable_count']).to be >= 0
+      end
+    end
+
+    it 'returns zero when no prescriptions are refillable' do
+      prescriptions = [
+        build_prescription(is_refillable: false, is_renewable: true),
+        build_prescription(is_refillable: false, is_renewable: false)
+      ]
+
+      allow_any_instance_of(UnifiedHealthData::PrescriptionService)
+        .to receive(:get_prescriptions)
+        .and_return({ prescriptions:, metadata: {} })
+
+      get('/my_health/v2/prescriptions/refillable_count', headers:)
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body['data']['refillable_count']).to eq(0)
+    end
+
+    it 'returns zero when user has no prescriptions' do
+      allow_any_instance_of(UnifiedHealthData::PrescriptionService)
+        .to receive(:get_prescriptions)
+        .and_return({ prescriptions: [], metadata: {} })
+
+      get('/my_health/v2/prescriptions/refillable_count', headers:)
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body['data']['refillable_count']).to eq(0)
+    end
+
+    context 'when user is not authenticated' do
+      before do
+        allow_any_instance_of(ApplicationController).to receive(:authenticate).and_raise(
+          Common::Exceptions::Unauthorized.new(detail: 'Not authenticated')
+        )
+      end
+
+      it 'returns unauthorized' do
+        get('/my_health/v2/prescriptions/refillable_count', headers:)
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
 end
