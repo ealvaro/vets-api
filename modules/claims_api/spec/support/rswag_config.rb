@@ -111,7 +111,7 @@ class ClaimsApi::RswagConfig
           {
             name: 'Intent to File',
             description: <<~VERBIAGE
-              Allows authenticated and authorized users to automatically establish an Intent to File (21-0966) in VBMS.
+              Allows authenticated and authorized users to establish an Intent to File in VBMS using the Intent to File a Claim for Compensation and/or Pension, or Survivors Pension and/or DIC form (VA Form 21-0966).
             VERBIAGE
           },
           {

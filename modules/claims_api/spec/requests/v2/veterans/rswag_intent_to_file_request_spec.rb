@@ -145,7 +145,11 @@ describe 'IntentToFile', openapi_spec: Rswag::TextHelpers.new.claims_api_docs do
       ]
       consumes 'application/json'
       produces 'application/json'
-      description 'Establishes an Intent to File for disability compensation, pension, and survivor claims.'
+      description 'Establishes an Intent to File for disability compensation, pension, and survivor ' \
+                  "claims.\n\nThis endpoint sends a Veteran's Intent to File directly to VBMS. The " \
+                  "submission is recorded with VA, but it doesn't create or save a PDF version of " \
+                  "VA Form 21-0966 to the Veteran's eFolder. A PDF form isn't needed, and a formal " \
+                  "claim isn't started as part of this process."
 
       parameter name: 'veteranId',
                 in: :path,
