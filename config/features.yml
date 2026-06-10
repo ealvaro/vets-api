@@ -2574,6 +2574,9 @@ features:
     actor_type: user
     description: Blocks users under 18 years old from filing the 1990e and 5490 forms
     enable_in_development: true
+  show_meb_vet_tec_2_maintenance_alert:
+    actor_type: user
+    description: Enables the VET TEC 2.0 maintenance alert
   meb5490_automation:
     actor_type: user
     description: >
