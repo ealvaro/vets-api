@@ -152,6 +152,22 @@ describe ClaimsApi::V2::ClaimsRequests::SupportingDocuments do
         end
       end
     end
+
+    context 'when claim is looked up by UUID (params[:id] is a UUID, claim_id is numeric)' do
+      before do
+        allow(controller).to receive(:params).and_return({ id: 'abc12345-6789-def0-1234-abcdef567890' })
+      end
+
+      it 'uses the resolved claim_id from bgs_claim, not params[:id]' do
+        VCR.use_cassette('claims_api/bd/search_with_participant_id') do
+          expect(controller.benefits_doc_api).to receive(:search).with('600397218', participant_id: '600045025')
+                                                                 .and_call_original
+          result = controller.build_supporting_docs(bgs_claim, ssn)
+          expect(result.length).to eq(1)
+          expect(result[0][:document_id]).to eq('{6A40E389-EB12-473C-8C23-D1D6C996C544}')
+        end
+      end
+    end
   end
 
   describe '#bd_upload_date' do

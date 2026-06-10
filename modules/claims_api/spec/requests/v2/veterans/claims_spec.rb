@@ -990,7 +990,9 @@ RSpec.describe 'ClaimsApi::V2::Veterans::Claims', type: :request do
                           .to receive(:benefits_doc_api)
                           .and_return(benefits_doc_api)
 
-                        expect(benefits_doc_api).to receive(:search).with(claim_id, file_number: '796043735')
+                        bgs_benefit_claim_id = bgs_claim.dig(:benefit_claim_details_dto, :benefit_claim_id)
+                        expect(benefits_doc_api).to receive(:search).with(bgs_benefit_claim_id,
+                                                                          file_number: '796043735')
 
                         get claim_by_id_path, headers: auth_header
 
@@ -1023,7 +1025,9 @@ RSpec.describe 'ClaimsApi::V2::Veterans::Claims', type: :request do
                           .to receive(:benefits_doc_api)
                           .and_return(benefits_doc_api)
 
-                        expect(benefits_doc_api).to receive(:search).with(claim_id, participant_id: '600061742')
+                        bgs_benefit_claim_id = bgs_claim.dig(:benefit_claim_details_dto, :benefit_claim_id)
+                        expect(benefits_doc_api).to receive(:search).with(bgs_benefit_claim_id,
+                                                                          participant_id: '600061742')
 
                         get claim_by_id_path, headers: auth_header
 

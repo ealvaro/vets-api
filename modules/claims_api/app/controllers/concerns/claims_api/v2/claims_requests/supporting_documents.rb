@@ -11,22 +11,25 @@ module ClaimsApi
 
           @supporting_documents = []
 
+          @bgs_claim_id = bgs_claim.dig(:benefit_claim_details_dto, :benefit_claim_id)
+          return [] if @bgs_claim_id.blank?
+
           identifier = determine_veteran_identifier(ssn)
 
           return [] if identifier.nil?
 
           claims_v2_logging('benefits_documents',
-                            message: "calling benefits documents api for claim_id #{params[:id]} " \
+                            message: "calling benefits documents api for claim_id #{@bgs_claim_id} " \
                                      "with #{identifier.keys.first}")
 
-          docs = benefits_doc_api.search(params[:id], **identifier)&.dig(:data)
+          docs = benefits_doc_api.search(@bgs_claim_id, **identifier)&.dig(:data)
 
           return [] if docs.nil? || docs&.dig(:documents).blank?
 
           # use filter service to remove VA-generated documents from the list of supporting documents
           claims_v2_logging('benefits_documents',
                             message: 'calling benefits documents api (claim_letters_search) to filter VA ' \
-                                     "generated documents for claim_id #{params[:id]} in claims controller v2")
+                                     "generated documents for claim_id #{@bgs_claim_id} in claims controller v2")
           docs.merge!(documents: filter_va_documents(docs[:documents], **identifier))
 
           @supporting_documents = transform_documents(docs)
@@ -41,7 +44,7 @@ module ClaimsApi
 
           if file_number.blank?
             claims_v2_logging('benefits_documents',
-                              message: "calling benefits documents api for claim_id: #{params[:id]} " \
+                              message: "calling benefits documents api for claim_id: #{@bgs_claim_id} " \
                                        'returned a nil file number in claims controller v2')
             return nil
           end
