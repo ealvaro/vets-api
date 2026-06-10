@@ -149,6 +149,55 @@ RSpec.describe MyHealth::FacilitiesHelper do
       result = described_class.set_health_care_system_names(collection)
       expect(result).to eq(collection)
     end
+
+    context 'with empty collection' do
+      it 'returns the collection without error' do
+        collection = build_collection([])
+        result = described_class.set_health_care_system_names(collection)
+        expect(result).to eq(collection)
+        expect(result.records).to be_empty
+      end
+    end
+
+    context 'with mixed station types in one collection' do
+      before { allow(Settings).to receive(:hostname).and_return('staging-api.va.gov') }
+
+      it 'applies correct overrides for each team type' do
+        teams_data = [
+          { triage_team_id: 1, name: 'Team A', station_number: '528',
+            health_care_system_name: 'API Name 1' },
+          { triage_team_id: 2, name: 'Team B', station_number: '979',
+            health_care_system_name: 'API Name 2' },
+          { triage_team_id: 3, name: 'Team C', station_number: '520',
+            health_care_system_name: 'VA Gulf Coast health care' }
+        ]
+        collection = build_collection(teams_data)
+
+        described_class.set_health_care_system_names(collection)
+
+        teams = collection.records
+        expect(teams[0].station_number).to eq('528')
+        expect(teams[0].health_care_system_name).to eq('VA New York State Healthcare (multiple facilities)')
+        expect(teams[1].station_number).to eq('552')
+        expect(teams[1].health_care_system_name).to eq('VA Dayton health care')
+        expect(teams[2].station_number).to eq('520')
+        expect(teams[2].health_care_system_name).to eq('VA Gulf Coast health care')
+      end
+    end
+
+    context 'when health_care_system_name is empty string' do
+      it 'preserves empty string (truthy in Ruby)' do
+        collection = build_collection([
+                                        { triage_team_id: 1, name: 'Team A', station_number: '520',
+                                          health_care_system_name: '' }
+                                      ])
+
+        described_class.set_health_care_system_names(collection)
+
+        team = collection.records.first
+        expect(team.health_care_system_name).to eq('')
+      end
+    end
   end
 
   describe '.convert_non_prod_id' do
@@ -179,6 +228,18 @@ RSpec.describe MyHealth::FacilitiesHelper do
         expect(described_class.convert_non_prod_id('989')).to eq('989')
       end
     end
+
+    context 'with non-staging non-prod hostname' do
+      before { allow(Settings).to receive(:hostname).and_return('dev-api.va.gov') }
+
+      it 'still converts 979 to 552' do
+        expect(described_class.convert_non_prod_id('979')).to eq('552')
+      end
+
+      it 'still converts 989 to 442' do
+        expect(described_class.convert_non_prod_id('989')).to eq('442')
+      end
+    end
   end
 
   describe '.convert_prod_id' do
@@ -189,6 +250,14 @@ RSpec.describe MyHealth::FacilitiesHelper do
     it 'returns other IDs unchanged' do
       expect(described_class.convert_prod_id('528')).to eq('528')
     end
+
+    it 'returns COMPLICATED_SYSTEMS station 589 unchanged' do
+      expect(described_class.convert_prod_id('589')).to eq('589')
+    end
+
+    it 'returns COMPLICATED_SYSTEMS station 612A4 unchanged' do
+      expect(described_class.convert_prod_id('612A4')).to eq('612A4')
+    end
   end
 
   describe '.convert_non_prod_ids' do
@@ -198,6 +267,10 @@ RSpec.describe MyHealth::FacilitiesHelper do
       it 'converts all non-prod IDs in the array' do
         result = described_class.convert_non_prod_ids(%w[979 989 528])
         expect(result).to eq(%w[552 442 528])
+      end
+
+      it 'returns empty array when given empty array' do
+        expect(described_class.convert_non_prod_ids([])).to eq([])
       end
     end
 

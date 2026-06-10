@@ -90,7 +90,7 @@ describe MedicalRecords::Client do
             let(:fake_collection) { double('Vets::Collection', records: cached_records) }
 
             before do
-              # Return an array of “cached_records” so that client.list_* returns data from cache
+              # Return an array of "cached_records" so that client.list_* returns data from cache
               allow(model_class).to receive(:get_cached).with(cache_key).and_return(cached_records)
               # Prevent any FHIR calls from happening
               allow(client).to receive(:fhir_search)
@@ -226,6 +226,47 @@ describe MedicalRecords::Client do
             expect(condition).to be_a(MHV::MR::HealthCondition)
           end
         end
+      end
+    end
+
+    describe ':patient_not_found guards' do
+      let(:client) { MedicalRecords::Client.new(session: { user_id: 'test' }, icn: 'test') }
+
+      before do
+        # Simulate patient_fhir_id being nil (patient not found)
+        allow(client).to receive(:patient_fhir_id).and_return(nil)
+      end
+
+      it 'list_vitals returns :patient_not_found' do
+        expect(client.send(:list_vitals)).to eq(:patient_not_found)
+      end
+
+      it 'list_clinical_notes returns :patient_not_found' do
+        expect(client.send(:list_clinical_notes)).to eq(:patient_not_found)
+      end
+
+      it 'get_clinical_note returns :patient_not_found' do
+        expect(client.send(:get_clinical_note, '123')).to eq(:patient_not_found)
+      end
+
+      it 'list_labs_and_tests returns :patient_not_found' do
+        expect(client.send(:list_labs_and_tests)).to eq(:patient_not_found)
+      end
+
+      it 'get_diagnostic_report returns :patient_not_found' do
+        expect(client.send(:get_diagnostic_report, '123')).to eq(:patient_not_found)
+      end
+
+      it 'get_condition returns :patient_not_found' do
+        allow(Flipper)
+          .to receive(:enabled?)
+          .with(:mhv_medical_records_support_new_model_health_condition)
+          .and_return(false)
+        expect(client.send(:get_condition, '123')).to eq(:patient_not_found)
+      end
+
+      it 'list_labs_document_reference returns :patient_not_found' do
+        expect(client.send(:list_labs_document_reference)).to eq(:patient_not_found)
       end
     end
 
@@ -508,6 +549,69 @@ describe MedicalRecords::Client do
           expect(result).to eq(bundle)
         end
       end
+
+      it 'sorts entries ascending using a custom block' do
+        r1 = FHIR::Patient.new(birthDate: '1990')
+        r2 = FHIR::Patient.new(birthDate: '1970')
+        r3 = FHIR::Patient.new(birthDate: '1985')
+        bundle = FHIR::Bundle.new(entry: [r1, r2, r3].map do |resource|
+          FHIR::Bundle::Entry.new(resource:)
+        end)
+
+        result = client.send(:sort_bundle_with_criteria, bundle, :asc, &:birthDate)
+        expect(result.entry.map { |e| e.resource.birthDate }).to eq(%w[1970 1985 1990])
+      end
+
+      it 'places nil values at the end in ascending order' do
+        r1 = FHIR::Patient.new(birthDate: '1990')
+        r2 = FHIR::Patient.new
+        r3 = FHIR::Patient.new(birthDate: '1970')
+        bundle = FHIR::Bundle.new(entry: [r1, r2, r3].map do |resource|
+          FHIR::Bundle::Entry.new(resource:)
+        end)
+
+        result = client.send(:sort_bundle_with_criteria, bundle, :asc, &:birthDate)
+        expect(result.entry.last.resource.birthDate).to be_nil
+      end
+    end
+
+    describe '#sort_lab_entries' do
+      let(:client) { MedicalRecords::Client.new(session: { user_id: 'test' }, icn: 'test') }
+
+      it 'sorts DiagnosticReport entries by effectiveDateTime in reverse chronological order' do
+        report1 = FHIR::DiagnosticReport.new(effectiveDateTime: '2020-01-01')
+        report2 = FHIR::DiagnosticReport.new(effectiveDateTime: '2023-06-15')
+        report3 = FHIR::DiagnosticReport.new(effectiveDateTime: '2021-07-10')
+        entries = [report1, report2, report3]
+        client.send(:sort_lab_entries, entries)
+        expect(entries.map(&:effectiveDateTime)).to eq(%w[2023-06-15 2021-07-10 2020-01-01])
+      end
+
+      it 'sorts DocumentReference entries by date in reverse chronological order' do
+        doc1 = FHIR::DocumentReference.new(date: '2019-05-01')
+        doc2 = FHIR::DocumentReference.new(date: '2022-12-25')
+        entries = [doc1, doc2]
+        client.send(:sort_lab_entries, entries)
+        expect(entries.map(&:date)).to eq(%w[2022-12-25 2019-05-01])
+      end
+
+      it 'sorts mixed DiagnosticReport and DocumentReference entries together' do
+        report = FHIR::DiagnosticReport.new(effectiveDateTime: '2020-06-01')
+        doc = FHIR::DocumentReference.new(date: '2022-01-15')
+        entries = [report, doc]
+        client.send(:sort_lab_entries, entries)
+        expect(entries.first).to eq(doc)
+        expect(entries.last).to eq(report)
+      end
+
+      it 'sorts unknown resource types after dated entries (sort key 0)' do
+        report = FHIR::DiagnosticReport.new(effectiveDateTime: '2020-01-01')
+        unknown = FHIR::Patient.new
+        entries = [unknown, report]
+        client.send(:sort_lab_entries, entries)
+        expect(entries.first).to eq(report)
+        expect(entries.last).to eq(unknown)
+      end
     end
 
     describe '#fetch_nested_value' do
@@ -528,6 +632,66 @@ describe MedicalRecords::Client do
       it 'returns nil for a non-existent field' do
         expect(client.fetch_nested_value(doc_ref, 'start')).to be_nil
         expect(client.fetch_nested_value(doc_ref, 'context.start')).to be_nil
+      end
+    end
+
+    describe '#merge_bundles' do
+      let(:client) { MedicalRecords::Client.new(session: { user_id: 'test' }, icn: 'test') }
+
+      it 'merges entries from two bundles and updates total' do
+        bundle1 = FHIR::Bundle.new(entry: [
+                                     FHIR::Bundle::Entry.new(resource: FHIR::AllergyIntolerance.new(id: '1'))
+                                   ])
+        bundle2 = FHIR::Bundle.new(entry: [
+                                     FHIR::Bundle::Entry.new(resource: FHIR::AllergyIntolerance.new(id: '2')),
+                                     FHIR::Bundle::Entry.new(resource: FHIR::AllergyIntolerance.new(id: '3'))
+                                   ])
+        result = client.send(:merge_bundles, bundle1, bundle2)
+        expect(result.entry.length).to eq(3)
+        expect(result.total).to eq(3)
+        expect(result.entry.map { |e| e.resource.id }).to eq(%w[1 2 3])
+      end
+
+      it 'handles bundle2 with nil entry' do
+        bundle1 = FHIR::Bundle.new(entry: [
+                                     FHIR::Bundle::Entry.new(resource: FHIR::AllergyIntolerance.new(id: '1'))
+                                   ])
+        bundle2 = FHIR::Bundle.new
+        bundle2.entry = nil
+        result = client.send(:merge_bundles, bundle1, bundle2)
+        expect(result.entry.length).to eq(1)
+        expect(result.total).to eq(1)
+      end
+
+      it 'handles bundle1 with nil entry' do
+        bundle1 = FHIR::Bundle.new
+        bundle1.entry = nil
+        bundle2 = FHIR::Bundle.new(entry: [
+                                     FHIR::Bundle::Entry.new(resource: FHIR::AllergyIntolerance.new(id: '1'))
+                                   ])
+        result = client.send(:merge_bundles, bundle1, bundle2)
+        expect(result.entry.length).to eq(1)
+        expect(result.total).to eq(1)
+      end
+
+      it 'raises an error when inputs are not bundles' do
+        bundle1 = FHIR::Bundle.new
+        non_bundle = FHIR::Patient.new
+        expect do
+          client.send(:merge_bundles, bundle1, non_bundle)
+        end.to raise_error(RuntimeError, 'Both inputs must be FHIR Bundles')
+      end
+
+      it 'returns a cloned bundle with merged entries' do
+        bundle1 = FHIR::Bundle.new(entry: [
+                                     FHIR::Bundle::Entry.new(resource: FHIR::AllergyIntolerance.new(id: '1'))
+                                   ])
+        bundle2 = FHIR::Bundle.new(entry: [
+                                     FHIR::Bundle::Entry.new(resource: FHIR::AllergyIntolerance.new(id: '2'))
+                                   ])
+        result = client.send(:merge_bundles, bundle1, bundle2)
+        expect(result.entry.length).to eq(2)
+        expect(result.resourceType).to eq('Bundle')
       end
     end
 
@@ -641,6 +805,26 @@ describe MedicalRecords::Client do
           expect { client.handle_api_errors(result) }.to raise_error(Common::Exceptions::BackendServiceException)
         end
       end
+
+      it 'does not raise when result code is nil' do
+        result = OpenStruct.new(code: nil)
+        expect { client.send(:handle_api_errors, result) }.not_to raise_error
+      end
+
+      it 'does not raise for status codes below 400' do
+        result = OpenStruct.new(code: 200)
+        expect { client.send(:handle_api_errors, result) }.not_to raise_error
+      end
+
+      it 'raises BackendServiceException for 401 Unauthorized' do
+        result = OpenStruct.new(code: 401, body: { issue: [{ diagnostics: 'Unauthorized' }] }.to_json)
+        expect { client.send(:handle_api_errors, result) }.to raise_error(Common::Exceptions::BackendServiceException)
+      end
+
+      it 'raises BackendServiceException for 404 Not Found' do
+        result = OpenStruct.new(code: 404, body: { issue: [{ diagnostics: 'Not found' }] }.to_json)
+        expect { client.send(:handle_api_errors, result) }.to raise_error(Common::Exceptions::BackendServiceException)
+      end
     end
   end
 
@@ -658,6 +842,49 @@ describe MedicalRecords::Client do
           end
         end
       end
+    end
+  end
+
+  describe '#parse_error_diagnostics' do
+    let(:client) { MedicalRecords::Client.new(session: { user_id: 'test' }, icn: 'test') }
+
+    it 'extracts diagnostics from a valid JSON body with issue array' do
+      body = { issue: [{ diagnostics: 'Something went wrong' }] }.to_json
+      expect(client.send(:parse_error_diagnostics, body)).to eq('Something went wrong')
+    end
+
+    it 'returns nil when JSON body has no issue key' do
+      body = { error: 'Unknown' }.to_json
+      expect(client.send(:parse_error_diagnostics, body)).to be_nil
+    end
+
+    it 'returns nil when issue array is empty' do
+      body = { issue: [] }.to_json
+      expect(client.send(:parse_error_diagnostics, body)).to be_nil
+    end
+
+    it 'returns nil when issue has no diagnostics field' do
+      body = { issue: [{ severity: 'error' }] }.to_json
+      expect(client.send(:parse_error_diagnostics, body)).to be_nil
+    end
+
+    it 'returns upstream message and logs error for non-JSON body' do
+      expect(Rails.logger).to receive(:error).with(
+        'MedicalRecords received non-JSON error response',
+        hash_including(body_size: anything)
+      )
+      result = client.send(:parse_error_diagnostics, '<html>Error</html>')
+      expect(result).to eq('Upstream service returned a non-JSON response')
+    end
+
+    it 'handles nil body gracefully' do
+      # nil.to_s => "" which is invalid JSON
+      expect(Rails.logger).to receive(:error).with(
+        'MedicalRecords received non-JSON error response',
+        hash_including(body_size: 0)
+      )
+      result = client.send(:parse_error_diagnostics, nil)
+      expect(result).to eq('Upstream service returned a non-JSON response')
     end
   end
 
@@ -687,8 +914,9 @@ describe MedicalRecords::Client do
         default_headers: { 'Cache-Control' => 'no-cache' },
         rewrite_next_link: nil
       )
-      allow(client).to receive(:handle_api_errors).and_raise(Common::Exceptions::BackendServiceException.new(400,
-                                                                                                             'Error'))
+      allow(client).to receive(:handle_api_errors).and_raise(
+        Common::Exceptions::BackendServiceException.new(400, 'Error')
+      )
       MedicalRecords::Client.send(:public, *MedicalRecords::Client.protected_instance_methods)
     end
 
@@ -838,8 +1066,9 @@ describe MedicalRecords::Client do
       before do
         # Override the parent context setup and make fhir_search_query raise an exception directly
         allow(client).to receive(:handle_api_errors).and_call_original
-        allow(client).to receive(:fhir_search_query).and_raise(Common::Exceptions::BackendServiceException.new(400,
-                                                                                                               'Error'))
+        allow(client).to receive(:fhir_search_query).and_raise(
+          Common::Exceptions::BackendServiceException.new(400, 'Error')
+        )
       end
 
       it 'handles API errors from the initial query' do
@@ -847,6 +1076,20 @@ describe MedicalRecords::Client do
 
         expect(client).to have_received(:fhir_search_query).with(fhir_model, search_params)
       end
+    end
+  end
+
+  describe '#default_headers' do
+    let(:client) { MedicalRecords::Client.new(session: { user_id: 'test' }, icn: 'test') }
+
+    it 'includes Cache-Control no-cache header' do
+      headers = client.send(:default_headers)
+      expect(headers['Cache-Control']).to eq('no-cache')
+    end
+
+    it 'includes x-api-key from settings' do
+      headers = client.send(:default_headers)
+      expect(headers).to have_key('x-api-key')
     end
   end
 
@@ -876,6 +1119,20 @@ describe MedicalRecords::Client do
       expect(bundle.link.find { |l| l.relation == 'next' }.url)
         .to eq('https://fwdproxy.va.gov/fhir?_getpages=xyz&_count=1')
     end
+
+    it 'returns nil without modifying bundle when no next link is present' do
+      bundle = FHIR::Bundle.new(
+        link: [FHIR::Bundle::Link.new(relation: 'self', url: 'https://example.org/fhir?page=1')]
+      )
+      result = client.send(:rewrite_next_link, bundle)
+      expect(result).to be_nil
+      expect(bundle.link.find { |l| l.relation == 'self' }.url).to eq('https://example.org/fhir?page=1')
+    end
+
+    it 'returns nil when bundle has no links' do
+      bundle = FHIR::Bundle.new
+      expect(client.send(:rewrite_next_link, bundle)).to be_nil
+    end
   end
 
   def extract_date(resource)
@@ -886,6 +1143,268 @@ describe MedicalRecords::Client do
       resource.date.to_i
     else
       0
+    end
+  end
+
+  describe 'FHIR client patch — custom header injection' do
+    subject(:host) { host_class.new(base_fhir_headers, parsed_resource, reply) }
+
+    let(:host_class) do
+      Class.new do
+        include FHIR::Sections::Crud
+        include FHIR::Sections::Feed
+        include FHIR::Sections::Search
+
+        attr_reader :fhir_headers_calls, :resource_url_calls, :last_get, :last_post, :strip_base_calls
+
+        def initialize(base_fhir_headers, parsed_resource, reply)
+          @default_format = 'application/fhir+json'
+          @base_fhir_headers = base_fhir_headers
+          @parsed_resource = parsed_resource
+          @reply = reply
+          @fhir_headers_calls = []
+          @resource_url_calls = []
+          @strip_base_calls = []
+        end
+
+        # Stubs for FHIR::Client helpers referenced by the patched methods.
+        def fhir_headers(opts = {})
+          @fhir_headers_calls << opts
+          @base_fhir_headers
+        end
+
+        def resource_url(opts)
+          @resource_url_calls << opts
+          '/Patient/123'
+        end
+
+        def parse_reply(_klass, _format, _reply)
+          @parsed_resource
+        end
+
+        def strip_base(url)
+          @strip_base_calls << url
+          url.gsub('http://example.com', '')
+        end
+
+        def get(url, headers = {})
+          @last_get = [url, headers]
+          @reply
+        end
+
+        def post(url, body = nil, headers = {})
+          @last_post = [url, body, headers]
+          @reply
+        end
+      end
+    end
+
+    let(:base_fhir_headers) { { 'Accept' => 'application/fhir+json' } }
+    let(:parsed_resource) { double('ParsedResource') }
+    let(:reply) { OpenStruct.new(resource: nil, resource_class: nil) }
+
+    describe 'Crud#read' do
+      let(:klass) { FHIR::Patient }
+
+      it 'merges custom headers into the GET request' do
+        custom = { 'X-Cache-Control' => 'no-cache' }
+        host.read(klass, '123', nil, nil, headers: custom)
+
+        expect(host.last_get).to eq(['/Patient/123', base_fhir_headers.merge(custom)])
+      end
+
+      it 'uses an empty hash when no custom headers are provided' do
+        host.read(klass, '123')
+
+        expect(host.last_get).to eq(['/Patient/123', base_fhir_headers])
+      end
+
+      it 'passes the accept header to fhir_headers when a format is given' do
+        host.read(klass, '123', 'application/fhir+xml')
+
+        expect(host.fhir_headers_calls.last).to eq(accept: 'application/fhir+xml')
+      end
+
+      it 'passes an empty hash to fhir_headers when no format is given' do
+        host.read(klass, '123')
+
+        expect(host.fhir_headers_calls.last).to eq({})
+      end
+
+      it 'includes summary in options forwarded to resource_url' do
+        host.read(klass, '123', nil, :text)
+
+        expect(host.resource_url_calls.last).to include(summary: :text)
+      end
+
+      it 'sets resource and resource_class on the reply' do
+        result = host.read(klass, '123')
+
+        expect(result.resource).to eq(parsed_resource)
+        expect(result.resource_class).to eq(klass)
+      end
+    end
+
+    describe 'Feed#next_page' do
+      let(:link) { Struct.new(:url).new('http://example.com/Patient?page=2') }
+      let(:bundle) { Struct.new(:next_link).new(link) }
+      let(:current) { Struct.new(:resource, :resource_class).new(bundle, FHIR::Patient) }
+
+      it 'merges custom headers into the GET request' do
+        custom = { 'X-Api-Key' => 'abc123' }
+        host.next_page(current, headers: custom)
+
+        expect(host.last_get).to eq(['/Patient?page=2', base_fhir_headers.merge(custom)])
+      end
+
+      it 'uses an empty hash when no custom headers are provided' do
+        host.next_page(current)
+
+        expect(host.last_get).to eq(['/Patient?page=2', base_fhir_headers])
+      end
+
+      it 'returns nil when the bundle has no link' do
+        no_link = Struct.new(:next_link).new(nil)
+        no_link_current = Struct.new(:resource, :resource_class).new(no_link, FHIR::Patient)
+
+        expect(host.next_page(no_link_current)).to be_nil
+      end
+
+      it 'does not call get when the bundle has no link' do
+        no_link = Struct.new(:next_link).new(nil)
+        no_link_current = Struct.new(:resource, :resource_class).new(no_link, FHIR::Patient)
+        host.next_page(no_link_current)
+
+        expect(host.last_get).to be_nil
+      end
+
+      it 'strips the base URL from the link before requesting' do
+        host.next_page(current)
+
+        expect(host.strip_base_calls.last).to eq('http://example.com/Patient?page=2')
+      end
+
+      it 'sets resource and resource_class on the reply' do
+        result = host.next_page(current)
+
+        expect(result.resource).to eq(parsed_resource)
+        expect(result.resource_class).to eq(FHIR::Patient)
+      end
+
+      context 'when navigating backward' do
+        let(:prev_link) { Struct.new(:url).new('http://example.com/Patient?page=1') }
+        let(:prev_bundle) { Struct.new(:previous_link).new(prev_link) }
+        let(:prev_current) { Struct.new(:resource, :resource_class).new(prev_bundle, FHIR::Patient) }
+
+        it 'calls previous_link on the bundle' do
+          host.next_page(prev_current, {}, FHIR::Sections::Feed::BACKWARD)
+
+          expect(host.last_get).to eq(['/Patient?page=1', base_fhir_headers])
+        end
+
+        it 'returns nil when no previous link exists' do
+          no_prev = Struct.new(:previous_link).new(nil)
+          no_prev_current = Struct.new(:resource, :resource_class).new(no_prev, FHIR::Patient)
+
+          expect(host.next_page(no_prev_current, {}, FHIR::Sections::Feed::BACKWARD)).to be_nil
+        end
+      end
+
+      context 'when navigating to the first page' do
+        let(:first_link) { Struct.new(:url).new('http://example.com/Patient?page=1') }
+        let(:first_bundle) { Struct.new(:first_link).new(first_link) }
+        let(:first_current) { Struct.new(:resource, :resource_class).new(first_bundle, FHIR::Patient) }
+
+        it 'calls first_link on the bundle' do
+          host.next_page(first_current, {}, FHIR::Sections::Feed::FIRST)
+
+          expect(host.last_get).to eq(['/Patient?page=1', base_fhir_headers])
+        end
+      end
+
+      context 'when navigating to the last page' do
+        let(:last_link) { Struct.new(:url).new('http://example.com/Patient?page=9') }
+        let(:last_bundle) { Struct.new(:last_link).new(last_link) }
+        let(:last_current) { Struct.new(:resource, :resource_class).new(last_bundle, FHIR::Patient) }
+
+        it 'calls last_link on the bundle' do
+          host.next_page(last_current, {}, FHIR::Sections::Feed::LAST)
+
+          expect(host.last_get).to eq(['/Patient?page=9', base_fhir_headers])
+        end
+      end
+
+      context 'when combining page direction with custom headers' do
+        let(:prev_link) { Struct.new(:url).new('http://example.com/Patient?page=1') }
+        let(:prev_bundle) { Struct.new(:previous_link).new(prev_link) }
+        let(:prev_current) { Struct.new(:resource, :resource_class).new(prev_bundle, FHIR::Patient) }
+
+        it 'merges custom headers on a backward navigation' do
+          custom = { 'X-Request-ID' => 'req-42' }
+          host.next_page(prev_current, { headers: custom }, FHIR::Sections::Feed::BACKWARD)
+
+          expect(host.last_get).to eq(['/Patient?page=1', base_fhir_headers.merge(custom)])
+        end
+      end
+    end
+
+    describe 'Search#search' do
+      let(:klass) { FHIR::Patient }
+
+      context 'when using GET (no search flag or body)' do
+        it 'merges custom headers into the GET request' do
+          custom = { 'X-Cache-Control' => 'no-cache' }
+          host.search(klass, headers: custom)
+
+          expect(host.last_get).to eq(['/Patient/123', base_fhir_headers.merge(custom)])
+        end
+
+        it 'uses an empty hash when no custom headers are provided' do
+          host.search(klass)
+
+          expect(host.last_get).to eq(['/Patient/123', base_fhir_headers])
+        end
+      end
+
+      context 'when using POST (search body present)' do
+        it 'merges custom headers into the POST request' do
+          custom = { 'X-Api-Key' => 'key' }
+          host.search(klass, search: { body: 'name=test' }, headers: custom)
+
+          post_url, post_body, post_headers = host.last_post
+          expect(post_url).to eq('/Patient/123')
+          expect(post_body).to eq('name=test')
+          expect(post_headers).to include('X-Api-Key' => 'key')
+        end
+
+        it 'sets the search flag to true' do
+          options = { search: { body: 'name=test' } }
+          host.search(klass, options)
+
+          expect(options[:search][:flag]).to be true
+        end
+
+        it 'sends the form-urlencoded content type to fhir_headers' do
+          host.search(klass, search: { body: 'name=test' })
+
+          expect(host.fhir_headers_calls.last).to eq(content_type: 'application/x-www-form-urlencoded')
+        end
+      end
+
+      context 'when search flag is explicitly true without a body' do
+        it 'uses POST' do
+          host.search(klass, search: { flag: true })
+
+          expect(host.last_post).not_to be_nil
+        end
+      end
+
+      it 'sets resource and resource_class on the reply' do
+        result = host.search(klass)
+
+        expect(result.resource).to eq(parsed_resource)
+        expect(result.resource_class).to eq(klass)
+      end
     end
   end
 end

@@ -62,6 +62,19 @@ RSpec.describe 'ClinicalNotesAdapter' do
       result = adapter.parse([nil, nil])
       expect(result).to eq([])
     end
+
+    it 'does not crash when record type is nil' do
+      note = {
+        'resource' => {
+          'id' => 'cn-3a',
+          'docStatus' => 'final',
+          'content' => [{ 'attachment' => { 'contentType' => 'text/plain', 'data' => 'dGVzdA==' } }]
+        }
+      }
+      parsed = adapter.parse_single_note(note)
+      expect(parsed).not_to be_nil
+      expect(parsed.note_type).to eq('other')
+    end
   end
 
   describe '#parse_single_note' do
@@ -546,6 +559,14 @@ RSpec.describe 'ClinicalNotesAdapter' do
         expect(parsed_note.sort_date).to eq(adapter.send(:normalize_date_for_sorting, '2025-07-29T17:48:41Z'))
       end
     end
+
+    it 'returns nil when note is nil' do
+      expect(adapter.parse_single_note(nil)).to be_nil
+    end
+
+    it 'returns nil when note has no resource key' do
+      expect(adapter.parse_single_note({ 'id' => 'orphan' })).to be_nil
+    end
   end
 
   describe 'derive_oh_date fallback_record behavior' do
@@ -688,6 +709,384 @@ RSpec.describe 'ClinicalNotesAdapter' do
     end
   end
 
+  describe '#format_name_first_to_last' do
+    it 'formats a Hash with family and given keys' do
+      name = { 'family' => 'Smith', 'given' => %w[John Q] }
+      result = adapter.send(:format_name_first_to_last, name)
+      expect(result).to eq('John Q Smith')
+    end
+
+    it 'formats a Hash with text containing a comma-separated last,first name' do
+      name = { 'text' => 'MCGUIRE,MARCI P' }
+      result = adapter.send(:format_name_first_to_last, name)
+      expect(result).to eq('MARCI P MCGUIRE')
+    end
+
+    it 'returns original text when Hash text has no comma' do
+      name = { 'text' => 'Dr Smith' }
+      result = adapter.send(:format_name_first_to_last, name)
+      expect(result).to eq('Dr Smith')
+    end
+
+    it 'formats a plain string with comma-separated last,first' do
+      result = adapter.send(:format_name_first_to_last, 'DOE,JANE')
+      expect(result).to eq('JANE DOE')
+    end
+
+    it 'returns original string when there is no comma' do
+      result = adapter.send(:format_name_first_to_last, 'SingleName')
+      expect(result).to eq('SingleName')
+    end
+
+    it 'returns nil when input is nil' do
+      result = adapter.send(:format_name_first_to_last, nil)
+      expect(result).to be_nil
+    end
+  end
+
+  describe '#find_contained' do
+    let(:contained_resources) do
+      [
+        { 'id' => 'mhv-practitioner-100', 'resourceType' => 'Practitioner', 'name' => [{ 'text' => 'Dr A' }] },
+        { 'id' => 'loc-200', 'resourceType' => 'Location', 'name' => 'Room 5' },
+        { 'id' => 'org-300', 'resourceType' => 'Organization', 'name' => 'VA Hospital' }
+      ]
+    end
+
+    it 'resolves a #-prefixed reference by id' do
+      result = adapter.send(:find_contained, contained_resources, '#mhv-practitioner-100', 'Practitioner')
+      expect(result['id']).to eq('mhv-practitioner-100')
+      expect(result['resourceType']).to eq('Practitioner')
+    end
+
+    it 'resolves a ResourceType/id style reference' do
+      result = adapter.send(:find_contained, contained_resources, 'Location/loc-200', 'Location')
+      expect(result['id']).to eq('loc-200')
+    end
+
+    it 'returns nil when type does not match for a #-prefixed reference' do
+      result = adapter.send(:find_contained, contained_resources, '#mhv-practitioner-100', 'Location')
+      expect(result).to be_nil
+    end
+
+    it 'returns nil when reference is nil' do
+      result = adapter.send(:find_contained, contained_resources, nil, 'Practitioner')
+      expect(result).to be_nil
+    end
+
+    it 'returns nil when contained is nil' do
+      result = adapter.send(:find_contained, nil, '#mhv-practitioner-100', 'Practitioner')
+      expect(result).to be_nil
+    end
+  end
+
+  describe '#extract_reference_id' do
+    it 'extracts id from a valid reference string' do
+      result = adapter.send(:extract_reference_id, 'Appointment/appt-123', 'Appointment')
+      expect(result).to eq('appt-123')
+    end
+
+    it 'returns nil when reference is not a String' do
+      expect(adapter.send(:extract_reference_id, 12_345, 'Appointment')).to be_nil
+    end
+
+    it 'returns nil when reference has the wrong resource type prefix' do
+      expect(adapter.send(:extract_reference_id, 'Encounter/enc-1', 'Appointment')).to be_nil
+    end
+
+    it 'returns nil when reference is just the prefix with no id' do
+      expect(adapter.send(:extract_reference_id, 'Appointment/', 'Appointment')).to be_nil
+    end
+  end
+
+  describe '#tiu_system_author?' do
+    it 'returns true when author display includes HX_VA_TIU_SYS' do
+      record = { 'author' => [{ 'display' => 'Contributor_system, HX_VA_TIU_SYS' }] }
+      expect(adapter.send(:tiu_system_author?, record)).to be true
+    end
+
+    it 'returns false when author display does not include HX_VA_TIU_SYS' do
+      record = { 'author' => [{ 'display' => 'Victoria A Borland' }] }
+      expect(adapter.send(:tiu_system_author?, record)).to be false
+    end
+
+    it 'returns false when author array is empty' do
+      record = { 'author' => [] }
+      expect(adapter.send(:tiu_system_author?, record)).to be false
+    end
+
+    it 'returns false when author is nil' do
+      record = {}
+      expect(adapter.send(:tiu_system_author?, record)).to be false
+    end
+  end
+
+  describe '#extract_author' do
+    it 'returns nil when record has no author array' do
+      record = {}
+      expect(adapter.send(:extract_author, record)).to be_nil
+    end
+
+    it 'returns nil when author array is empty' do
+      record = { 'author' => [] }
+      expect(adapter.send(:extract_author, record)).to be_nil
+    end
+
+    it 'returns nil when author has no reference' do
+      record = { 'author' => [{ 'display' => 'Some Author' }] }
+      expect(adapter.send(:extract_author, record)).to be_nil
+    end
+
+    it 'resolves author from contained resources' do
+      record = {
+        'author' => [{ 'reference' => '#pract-1' }],
+        'contained' => [
+          { 'id' => 'pract-1', 'resourceType' => 'Practitioner',
+            'name' => [{ 'family' => 'Smith', 'given' => ['Jane'], 'text' => 'Smith,Jane' }] }
+        ]
+      }
+      expect(adapter.send(:extract_author, record)).to eq('Jane Smith')
+    end
+  end
+
+  describe '#extract_authenticator' do
+    it 'returns nil when record has no authenticator' do
+      record = {}
+      expect(adapter.send(:extract_authenticator, record)).to be_nil
+    end
+
+    it 'returns nil when authenticator has no reference' do
+      record = { 'authenticator' => { 'display' => 'Some Signer' } }
+      expect(adapter.send(:extract_authenticator, record)).to be_nil
+    end
+
+    it 'resolves authenticator from contained resources' do
+      record = {
+        'authenticator' => { 'reference' => '#pract-2' },
+        'contained' => [
+          { 'id' => 'pract-2', 'resourceType' => 'Practitioner',
+            'name' => [{ 'family' => 'Doe', 'given' => ['John'], 'text' => 'Doe,John' }] }
+        ]
+      }
+      expect(adapter.send(:extract_authenticator, record)).to eq('John Doe')
+    end
+  end
+
+  describe '#extract_location' do
+    it 'extracts location from VistA context.related path' do
+      record = {
+        'context' => {
+          'related' => [{ 'reference' => '#loc-1' }]
+        },
+        'contained' => [
+          { 'id' => 'loc-1', 'resourceType' => 'Location',
+            'managingOrganization' => { 'display' => 'VA Portland' } }
+        ]
+      }
+      expect(adapter.send(:extract_location, record)).to eq('VA Portland')
+    end
+
+    it 'falls back to resource name when managingOrganization.display is absent (VistA)' do
+      record = {
+        'context' => {
+          'related' => [{ 'reference' => '#loc-1' }]
+        },
+        'contained' => [
+          { 'id' => 'loc-1', 'resourceType' => 'Location', 'name' => 'Clinic B' }
+        ]
+      }
+      expect(adapter.send(:extract_location, record)).to eq('Clinic B')
+    end
+
+    it 'extracts location from OH custodian path' do
+      record = {
+        'context' => {},
+        'custodian' => { 'reference' => '#org-1' },
+        'contained' => [
+          { 'id' => 'org-1', 'resourceType' => 'Location',
+            'managingOrganization' => { 'display' => '668 Mann-Grandstaff' } }
+        ]
+      }
+      expect(adapter.send(:extract_location, record)).to eq('668 Mann-Grandstaff')
+    end
+
+    it 'returns nil when context and custodian are both missing' do
+      record = {}
+      expect(adapter.send(:extract_location, record)).to be_nil
+    end
+
+    it 'returns nil when context.related is empty and custodian is missing' do
+      record = { 'context' => { 'related' => [] } }
+      expect(adapter.send(:extract_location, record)).to be_nil
+    end
+  end
+
+  describe '#resolve_binary_from_bundle' do
+    it 'returns nil when Binary entry has matching id but no data field' do
+      content = [{ 'attachment' => { 'contentType' => 'application/pdf', 'url' => 'https://example.org/Binary/XR-1' } }]
+      bundle_entries = [
+        { 'resource' => { 'resourceType' => 'Binary', 'id' => 'XR-1', 'contentType' => 'application/pdf' } }
+      ]
+      result = adapter.send(:resolve_binary_from_bundle, content, bundle_entries)
+      expect(result).to be_nil
+    end
+
+    it 'returns nil when all content items have non-AVS content types' do
+      content = [
+        { 'attachment' => { 'contentType' => 'application/xml', 'url' => 'https://example.org/Binary/XML-1' } },
+        { 'attachment' => { 'contentType' => 'text/html', 'url' => 'https://example.org/Binary/HTML-1' } }
+      ]
+      bundle_entries = [
+        { 'resource' => { 'resourceType' => 'Binary', 'id' => 'XML-1', 'data' => 'eG1s' } }
+      ]
+      result = adapter.send(:resolve_binary_from_bundle, content, bundle_entries)
+      expect(result).to be_nil
+    end
+  end
+
+  describe '#build_encounter_keyed_hash_from_doc_refs' do
+    it 'skips doc refs without context or encounter' do
+      doc_ref = {
+        'id' => 'dr-1',
+        'type' => { 'coding' => [{ 'code' => '96345-4' }] },
+        'content' => [{ 'attachment' => { 'contentType' => 'application/pdf' } }]
+      }
+      result = adapter.send(:build_encounter_keyed_hash_from_doc_refs, [doc_ref])
+      expect(result).to be_empty
+    end
+
+    it 'skips doc refs where codes and content_types are both blank' do
+      doc_ref = {
+        'id' => 'dr-2',
+        'content' => [{ 'attachment' => { 'contentType' => 'application/xml' } }],
+        'context' => { 'encounter' => [{ 'reference' => 'Encounter/enc-1' }] }
+      }
+      result = adapter.send(:build_encounter_keyed_hash_from_doc_refs, [doc_ref])
+      expect(result).to be_empty
+    end
+
+    it 'handles non-Hash content items gracefully' do
+      doc_ref = {
+        'id' => 'dr-3',
+        'type' => { 'coding' => [{ 'code' => '96345-4' }] },
+        'content' => ['not-a-hash', nil],
+        'context' => { 'encounter' => [{ 'reference' => 'Encounter/enc-1' }] }
+      }
+      result = adapter.send(:build_encounter_keyed_hash_from_doc_refs, [doc_ref])
+      expect(result['enc-1'][:content_types]).to eq([])
+    end
+
+    it 'skips encounters with blank reference ids' do
+      doc_ref = {
+        'id' => 'dr-4',
+        'type' => { 'coding' => [{ 'code' => '96345-4' }] },
+        'content' => [{ 'attachment' => { 'contentType' => 'application/pdf' } }],
+        'context' => { 'encounter' => [{ 'reference' => 'WrongPrefix/enc-1' }] }
+      }
+      result = adapter.send(:build_encounter_keyed_hash_from_doc_refs, [doc_ref])
+      expect(result).to be_empty
+    end
+  end
+
+  describe '#get_date_signed' do
+    it 'extracts date signed from authenticator extension' do
+      record = {
+        'authenticator' => {
+          'extension' => [{ 'valueDateTime' => '2025-01-14T09:29:26+00:00' }]
+        }
+      }
+      result = adapter.send(:get_date_signed, record)
+      expect(result).to eq('2025-01-14T09:29:26+00:00')
+    end
+
+    it 'returns nil when authenticator has no extension' do
+      record = { 'authenticator' => {} }
+      result = adapter.send(:get_date_signed, record)
+      expect(result).to be_nil
+    end
+
+    it 'returns nil when authenticator is missing' do
+      record = {}
+      result = adapter.send(:get_date_signed, record)
+      expect(result).to be_nil
+    end
+
+    it 'returns nil when extension has no valueDateTime' do
+      record = { 'authenticator' => { 'extension' => [{ 'url' => 'some-url' }] } }
+      result = adapter.send(:get_date_signed, record)
+      expect(result).to be_nil
+    end
+  end
+
+  describe '#get_note' do
+    it 'returns base64 data for text/plain content' do
+      record = {
+        'content' => [
+          { 'attachment' => { 'contentType' => 'text/plain', 'data' => 'dGVzdA==' } }
+        ]
+      }
+      result = adapter.send(:get_note, record)
+      expect(result).to eq('dGVzdA==')
+    end
+
+    it 'returns nil when content array is empty' do
+      record = { 'content' => [] }
+      result = adapter.send(:get_note, record)
+      expect(result).to be_nil
+    end
+
+    it 'returns nil when record has no content key' do
+      record = {}
+      result = adapter.send(:get_note, record)
+      expect(result).to be_nil
+    end
+
+    it 'returns nil when no content item has text/plain contentType' do
+      record = {
+        'content' => [
+          { 'attachment' => { 'contentType' => 'application/pdf', 'data' => 'JVBER' } }
+        ]
+      }
+      result = adapter.send(:get_note, record)
+      expect(result).to be_nil
+    end
+
+    it 'does not crash when content items have no attachment key' do
+      record = {
+        'content' => [{ 'format' => 'text/plain' }]
+      }
+      result = adapter.send(:get_note, record)
+      expect(result).to be_nil
+    end
+  end
+
+  describe '#addendum_note?' do
+    it 'returns true when relatesTo contains code appends' do
+      record = { 'relatesTo' => [{ 'code' => 'appends', 'target' => {} }] }
+      expect(adapter.send(:addendum_note?, record)).to be true
+    end
+
+    it 'returns false when relatesTo has no appends code' do
+      record = { 'relatesTo' => [{ 'code' => 'replaces', 'target' => {} }] }
+      expect(adapter.send(:addendum_note?, record)).to be false
+    end
+
+    it 'returns false when relatesTo is nil' do
+      record = {}
+      expect(adapter.send(:addendum_note?, record)).to be false
+    end
+
+    it 'returns false when relatesTo is an empty array' do
+      record = { 'relatesTo' => [] }
+      expect(adapter.send(:addendum_note?, record)).to be false
+    end
+
+    it 'returns false when relatesTo is not an array' do
+      record = { 'relatesTo' => 'not-an-array' }
+      expect(adapter.send(:addendum_note?, record)).to be false
+    end
+  end
+
   describe '#parse_avs_with_metadata' do
     context 'happy path' do
       it 'returns the expected fields with binary data included' do
@@ -808,6 +1207,19 @@ RSpec.describe 'ClinicalNotesAdapter' do
         expect(parsed_avs).to be_nil
       end
     end
+
+    it 'does not crash when AVS record type is nil' do
+      avs = {
+        'resource' => {
+          'id' => 'cn-3b',
+          'contained' => [{ 'resourceType' => 'Binary', 'contentType' => 'application/pdf', 'data' => 'JVBER' }],
+          'content' => []
+        }
+      }
+      parsed = adapter.parse_avs_with_metadata(avs, 'appt-1', false)
+      expect(parsed).not_to be_nil
+      expect(parsed.note_type).to eq('other')
+    end
   end
 
   describe '#extract_avs_binary — sibling Binary Bundle entry (Oracle Health live shape)' do
@@ -874,6 +1286,28 @@ RSpec.describe 'ClinicalNotesAdapter' do
 
     it 'returns nil when bundle_entries is not provided (default arg, no inline data)' do
       expect(adapter.send(:extract_avs_binary, oh_doc_ref)).to be_nil
+    end
+
+    it 'does not crash when content item has no attachment key' do
+      record = {
+        'contained' => [],
+        'content' => [
+          { 'format' => 'text/plain' },
+          { 'attachment' => { 'data' => 'dGVzdA==', 'contentType' => 'text/plain' } }
+        ]
+      }
+      result = adapter.send(:extract_avs_binary, record)
+      expect(result).not_to be_nil
+      expect(result[:content_type]).to eq('text/plain')
+    end
+
+    it 'returns nil when no content items have valid attachment data' do
+      record = {
+        'contained' => [],
+        'content' => [{ 'format' => 'text/plain' }]
+      }
+      result = adapter.send(:extract_avs_binary, record)
+      expect(result).to be_nil
     end
   end
 
@@ -1007,123 +1441,38 @@ RSpec.describe 'ClinicalNotesAdapter' do
     end
   end
 
-  # ==========================================================================
-  # Null/nil exception regression tests (fixes 3a–3f)
-  # ==========================================================================
-  describe 'null/nil exception guards' do
-    # 3a. get_record_type — nil record['type']
-    describe '#parse — nil record type (fix 3a)' do
-      it 'does not crash when record type is nil' do
-        note = {
-          'resource' => {
-            'id' => 'cn-3a',
-            'docStatus' => 'final',
-            'content' => [{ 'attachment' => { 'contentType' => 'text/plain', 'data' => 'dGVzdA==' } }]
-          }
-        }
-        parsed = adapter.parse_single_note(note)
-        expect(parsed).not_to be_nil
-        expect(parsed.note_type).to eq('other')
-      end
+  describe '#get_loinc_codes' do
+    it 'returns nil when record has no type key' do
+      result = adapter.send(:get_loinc_codes, {})
+      expect(result).to be_nil
     end
 
-    # 3b. get_avs_record_type — nil record['type']
-    describe '#parse_avs_with_metadata — nil record type (fix 3b)' do
-      it 'does not crash when AVS record type is nil' do
-        avs = {
-          'resource' => {
-            'id' => 'cn-3b',
-            'contained' => [{ 'resourceType' => 'Binary', 'contentType' => 'application/pdf', 'data' => 'JVBER' }],
-            'content' => []
-          }
-        }
-        parsed = adapter.parse_avs_with_metadata(avs, 'appt-1', false)
-        expect(parsed).not_to be_nil
-        expect(parsed.note_type).to eq('other')
-      end
+    it 'returns nil when type has no coding' do
+      result = adapter.send(:get_loinc_codes, { 'type' => {} })
+      expect(result).to be_nil
+    end
+  end
+
+  describe '#get_title' do
+    it 'returns nil when no content items have attachment' do
+      record = { 'content' => [{ 'format' => 'text/plain' }] }
+      result = adapter.send(:get_title, record)
+      expect(result).to be_nil
     end
 
-    # 3c. get_loinc_codes — nil record['type']
-    describe '#get_loinc_codes — nil record type (fix 3c)' do
-      it 'returns nil when record has no type key' do
-        result = adapter.send(:get_loinc_codes, {})
-        expect(result).to be_nil
-      end
-
-      it 'returns nil when type has no coding' do
-        result = adapter.send(:get_loinc_codes, { 'type' => {} })
-        expect(result).to be_nil
-      end
+    it 'returns nil when content is nil' do
+      record = {}
+      result = adapter.send(:get_title, record)
+      expect(result).to be_nil
     end
 
-    # 3d. get_title — find returns nil
-    describe '#get_title — no content items have attachment (fix 3d)' do
-      it 'returns nil when no content items have attachment' do
-        record = { 'content' => [{ 'format' => 'text/plain' }] }
-        result = adapter.send(:get_title, record)
-        expect(result).to be_nil
-      end
-
-      it 'returns nil when content is nil' do
-        record = {}
-        result = adapter.send(:get_title, record)
-        expect(result).to be_nil
-      end
-
-      it 'falls back to type.text when attachment has no title' do
-        record = {
-          'content' => [{ 'attachment' => { 'contentType' => 'text/plain' } }],
-          'type' => { 'text' => 'Discharge Summary' }
-        }
-        result = adapter.send(:get_title, record)
-        expect(result).to eq('Discharge Summary')
-      end
-    end
-
-    # 3e. extract_avs_binary — nil attachment in content items
-    describe '#extract_avs_binary — content items with nil attachment (fix 3e)' do
-      it 'does not crash when content item has no attachment key' do
-        record = {
-          'contained' => [],
-          'content' => [
-            { 'format' => 'text/plain' },
-            { 'attachment' => { 'data' => 'dGVzdA==', 'contentType' => 'text/plain' } }
-          ]
-        }
-        result = adapter.send(:extract_avs_binary, record)
-        expect(result).not_to be_nil
-        expect(result[:content_type]).to eq('text/plain')
-      end
-
-      it 'returns nil when no content items have valid attachment data' do
-        record = {
-          'contained' => [],
-          'content' => [{ 'format' => 'text/plain' }]
-        }
-        result = adapter.send(:extract_avs_binary, record)
-        expect(result).to be_nil
-      end
-    end
-
-    # 3f. get_note — find returns nil
-    describe '#get_note — no text/plain content item (fix 3f)' do
-      it 'returns nil when no content item has text/plain contentType' do
-        record = {
-          'content' => [
-            { 'attachment' => { 'contentType' => 'application/pdf', 'data' => 'JVBER' } }
-          ]
-        }
-        result = adapter.send(:get_note, record)
-        expect(result).to be_nil
-      end
-
-      it 'does not crash when content items have no attachment key' do
-        record = {
-          'content' => [{ 'format' => 'text/plain' }]
-        }
-        result = adapter.send(:get_note, record)
-        expect(result).to be_nil
-      end
+    it 'falls back to type.text when attachment has no title' do
+      record = {
+        'content' => [{ 'attachment' => { 'contentType' => 'text/plain' } }],
+        'type' => { 'text' => 'Discharge Summary' }
+      }
+      result = adapter.send(:get_title, record)
+      expect(result).to eq('Discharge Summary')
     end
   end
 end

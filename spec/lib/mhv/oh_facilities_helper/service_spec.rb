@@ -220,6 +220,40 @@ RSpec.describe MHV::OhFacilitiesHelper::Service do
     end
   end
 
+  describe '.parse_facility_setting' do
+    it 'parses a comma-separated string into an array of station IDs' do
+      expect(described_class.parse_facility_setting('516, 517, 518')).to eq(%w[516 517 518])
+    end
+
+    it 'returns empty array for nil' do
+      expect(described_class.parse_facility_setting(nil)).to eq([])
+    end
+
+    it 'returns empty array for false' do
+      expect(described_class.parse_facility_setting(false)).to eq([])
+    end
+
+    it 'returns empty array for integer 0' do
+      expect(described_class.parse_facility_setting(0)).to eq([])
+    end
+
+    it 'returns empty array for empty string' do
+      expect(described_class.parse_facility_setting('')).to eq([])
+    end
+
+    it 'handles a single numeric value (auto-converted by env_parse_values)' do
+      expect(described_class.parse_facility_setting(516)).to eq(['516'])
+    end
+
+    it 'strips whitespace from entries' do
+      expect(described_class.parse_facility_setting('  516 ,  517  ')).to eq(%w[516 517])
+    end
+
+    it 'removes blank entries from trailing commas' do
+      expect(described_class.parse_facility_setting('516,517,')).to eq(%w[516 517])
+    end
+  end
+
   describe '#get_migration_schedules' do
     let(:user) { build(:user, :loa3) }
     let(:user_facility_ids) { %w[516 517] }
@@ -687,6 +721,71 @@ RSpec.describe MHV::OhFacilitiesHelper::Service do
           expect { service.get_migration_schedules }.not_to raise_error
         end
       end
+    end
+  end
+
+  describe '#parse_single_migration_entry (private)' do
+    it 'returns a hash with migration_date and facilities for valid input' do
+      result = service.send(:parse_single_migration_entry, '2026-03-03:[516,Columbus VA]')
+      expect(result).to eq({
+                             migration_date: '2026-03-03',
+                             facilities: [{ facility_id: '516', facility_name: 'Columbus VA' }]
+                           })
+    end
+
+    it 'returns nil when entry has no colon separator' do
+      result = service.send(:parse_single_migration_entry, '2026-03-03[516,Columbus VA]')
+      expect(result).to be_nil
+    end
+
+    it 'returns nil when facilities part is empty' do
+      result = service.send(:parse_single_migration_entry, '2026-03-03:')
+      expect(result).to be_nil
+    end
+
+    it 'returns nil when date part is blank' do
+      result = service.send(:parse_single_migration_entry, ':[516,Columbus VA]')
+      expect(result).to be_nil
+    end
+
+    it 'returns nil when facilities contain no valid bracket groups' do
+      result = service.send(:parse_single_migration_entry, '2026-03-03:no-brackets')
+      expect(result).to be_nil
+    end
+  end
+
+  describe '#parse_facilities_from_string (private)' do
+    it 'parses multiple bracket-delimited facilities' do
+      result = service.send(:parse_facilities_from_string, '[516,Columbus VA],[517,Toledo VA]')
+      expect(result).to eq([
+                             { facility_id: '516', facility_name: 'Columbus VA' },
+                             { facility_id: '517', facility_name: 'Toledo VA' }
+                           ])
+    end
+
+    it 'returns empty array for empty brackets' do
+      result = service.send(:parse_facilities_from_string, '[]')
+      expect(result).to eq([])
+    end
+
+    it 'skips facilities with blank ID' do
+      result = service.send(:parse_facilities_from_string, '[,Some Name]')
+      expect(result).to eq([])
+    end
+
+    it 'skips entries with only an ID (no name)' do
+      result = service.send(:parse_facilities_from_string, '[516]')
+      expect(result).to eq([])
+    end
+
+    it 'handles facility names containing commas' do
+      result = service.send(:parse_facilities_from_string, '[516,Columbus, OH VA]')
+      expect(result).to eq([{ facility_id: '516', facility_name: 'Columbus, OH VA' }])
+    end
+
+    it 'returns empty array when no bracket groups match' do
+      result = service.send(:parse_facilities_from_string, 'no brackets here')
+      expect(result).to eq([])
     end
   end
 
@@ -1346,6 +1445,210 @@ RSpec.describe MHV::OhFacilitiesHelper::Service do
       it 'returns false' do
         expect(service.emergency_brake_active?('nonexistent')).to be false
       end
+    end
+  end
+
+  describe '#emergency_cutover_lock_list' do
+    let(:va_treatment_facility_ids) { %w[516] }
+    let(:migration_date) { eastern_today + 5 }
+
+    before do
+      allow(user).to receive(:va_treatment_facility_ids).and_return(va_treatment_facility_ids)
+      allow(Settings.mhv.oh_facility_checks).to receive(:oh_migrations_list)
+        .and_return("#{migration_date}:[516,Columbus VA]")
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_dark_deploy_sm_rx, user).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_dark_deploy_appointments, user).and_return(false)
+      # Default all emergency lock flags to disabled
+      described_class::EMERGENCY_LOCK_FLAGS.each_value do |flag|
+        allow(Flipper).to receive(:enabled?).with(flag, user).and_return(false)
+      end
+    end
+
+    context 'when user is at a migrating facility and multiple ebrake flags are enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_sm, user).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_rx, user).and_return(true)
+      end
+
+      it 'returns all locked tool names' do
+        result = service.emergency_cutover_lock_list
+        expect(result).to contain_exactly('sm', 'rx')
+      end
+    end
+
+    context 'when user is at a migrating facility and no ebrake flags are enabled' do
+      it 'returns an empty array' do
+        expect(service.emergency_cutover_lock_list).to eq([])
+      end
+    end
+
+    context 'when user is not at a migrating facility' do
+      let(:va_treatment_facility_ids) { %w[999] }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_emergency_cutover_lock_sm, user).and_return(true)
+      end
+
+      it 'returns an empty array regardless of flag state' do
+        expect(service.emergency_cutover_lock_list).to eq([])
+      end
+    end
+
+    context 'when all ebrake flags are enabled' do
+      before do
+        described_class::EMERGENCY_LOCK_FLAGS.each_value do |flag|
+          allow(Flipper).to receive(:enabled?).with(flag, user).and_return(true)
+        end
+      end
+
+      it 'returns all tool names' do
+        result = service.emergency_cutover_lock_list
+        expect(result).to match_array(described_class::EMERGENCY_LOCK_FLAGS.keys)
+      end
+    end
+  end
+
+  describe '#extract_migration_dates (private)' do
+    it 'extracts valid dates from migrations list string' do
+      raw = '2026-03-03:[516,Columbus VA];2026-04-01:[517,Toledo VA]'
+      result = service.send(:extract_migration_dates, raw)
+      expect(result).to eq([Date.new(2026, 3, 3), Date.new(2026, 4, 1)])
+    end
+
+    it 'skips entries with invalid dates' do
+      raw = 'bad-date:[516,Columbus VA];2026-04-01:[517,Toledo VA]'
+      result = service.send(:extract_migration_dates, raw)
+      expect(result).to eq([Date.new(2026, 4, 1)])
+    end
+
+    it 'skips entries with date but no facilities part' do
+      raw = '2026-03-03;2026-04-01:[517,Toledo VA]'
+      result = service.send(:extract_migration_dates, raw)
+      expect(result).to eq([Date.new(2026, 4, 1)])
+    end
+
+    it 'returns empty array for blank input' do
+      expect(service.send(:extract_migration_dates, '')).to eq([])
+    end
+
+    it 'returns empty array for nil input' do
+      expect(service.send(:extract_migration_dates, nil)).to eq([])
+    end
+  end
+
+  describe '#effective_phases (private)' do
+    let(:user) { build(:user, :loa3) }
+    let(:service) { described_class.new(user) }
+
+    before do
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_dark_deploy_sm_rx, user).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_dark_deploy_appointments, user).and_return(false)
+    end
+
+    context 'when no dark deploy flags are enabled' do
+      it 'returns the standard PHASES' do
+        result = service.send(:effective_phases)
+        expect(result).to eq(described_class::PHASES)
+      end
+    end
+
+    context 'when both dark deploy flags are enabled simultaneously' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_dark_deploy_sm_rx, user).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_dark_deploy_appointments,
+                                                  user).and_return(true)
+      end
+
+      it 'applies both offsets' do
+        result = service.send(:effective_phases)
+        expect(result[:p6]).to eq(described_class::DARK_DEPLOY_SM_RX_OFFSETS[:p6])
+        expect(result[:p7]).to eq(described_class::DARK_DEPLOY_APPOINTMENTS_OFFSETS[:p7])
+      end
+
+      it 'preserves non-overridden phases' do
+        result = service.send(:effective_phases)
+        expect(result[:p0]).to eq(described_class::PHASES[:p0])
+        expect(result[:p5]).to eq(described_class::PHASES[:p5])
+      end
+    end
+  end
+
+  describe '#determine_migration_status (private)' do
+    let(:user) { build(:user, :loa3) }
+    let(:service) { described_class.new(user) }
+    let(:migration_date) { Date.new(2026, 5, 1) }
+
+    it 'returns NOT_STARTED when more than 60 days before migration' do
+      allow(Date).to receive(:current).and_return(migration_date - 100)
+      expect(service.send(:determine_migration_status, migration_date)).to eq('NOT_STARTED')
+    end
+
+    it 'returns ACTIVE at exactly p0 boundary (60 days before)' do
+      allow(Date).to receive(:current).and_return(migration_date - 60)
+      expect(service.send(:determine_migration_status, migration_date)).to eq('ACTIVE')
+    end
+
+    it 'returns ACTIVE on migration day' do
+      allow(Date).to receive(:current).and_return(migration_date)
+      expect(service.send(:determine_migration_status, migration_date)).to eq('ACTIVE')
+    end
+
+    it 'returns ACTIVE at last phase boundary (p9, 45 days after)' do
+      allow(Date).to receive(:current).and_return(migration_date + 45)
+      expect(service.send(:determine_migration_status, migration_date)).to eq('ACTIVE')
+    end
+
+    it 'returns COMPLETE after last phase' do
+      allow(Date).to receive(:current).and_return(migration_date + 46)
+      expect(service.send(:determine_migration_status, migration_date)).to eq('COMPLETE')
+    end
+  end
+
+  describe '#format_phase_date (private)' do
+    let(:user) { build(:user, :loa3) }
+    let(:service) { described_class.new(user) }
+
+    it 'formats a date without leading zero on the day' do
+      expect(service.send(:format_phase_date, Date.new(2026, 1, 5))).to eq('January 5, 2026')
+    end
+
+    it 'formats a date with double-digit day' do
+      expect(service.send(:format_phase_date, Date.new(2026, 12, 25))).to eq('December 25, 2026')
+    end
+
+    it 'formats the first day of the year' do
+      expect(service.send(:format_phase_date, Date.new(2026, 1, 1))).to eq('January 1, 2026')
+    end
+  end
+
+  describe '#determine_current_phase (private)' do
+    let(:user) { build(:user, :loa3) }
+    let(:service) { described_class.new(user) }
+    let(:migration_date) { Date.new(2026, 5, 1) }
+
+    before do
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_dark_deploy_sm_rx, user).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_dark_deploy_appointments, user).and_return(false)
+    end
+
+    it 'returns nil when before p0 (more than 60 days before migration)' do
+      allow(Date).to receive(:current).and_return(migration_date - 61)
+      expect(service.send(:determine_current_phase, migration_date)).to be_nil
+    end
+
+    it 'returns p0 at exactly 60 days before migration' do
+      allow(Date).to receive(:current).and_return(migration_date - 60)
+      expect(service.send(:determine_current_phase, migration_date)).to eq('p0')
+    end
+
+    it 'returns p5 on migration day' do
+      allow(Date).to receive(:current).and_return(migration_date)
+      expect(service.send(:determine_current_phase, migration_date)).to eq('p5')
+    end
+
+    it 'returns p9 well after all phases (last phase persists)' do
+      allow(Date).to receive(:current).and_return(migration_date + 100)
+      expect(service.send(:determine_current_phase, migration_date)).to eq('p9')
     end
   end
 end
