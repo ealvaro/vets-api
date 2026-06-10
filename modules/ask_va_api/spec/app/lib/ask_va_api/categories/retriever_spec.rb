@@ -1,0 +1,83 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+module AskVAApi
+  module Categories
+    RSpec.describe Retriever do
+      let(:parsed_data) { { Topics: [{ Id: 1, Name: 'Category 1', ParentId: nil, RankOrder: 1 }] } }
+      let(:static_data_service) { instance_double(Crm::CacheData) }
+      let(:entity_class) { Entity }
+
+      describe '#call' do
+        let(:retriever) { described_class.new(user_mock_data:, entity_class:) }
+
+        context 'when using mock data' do
+          let(:user_mock_data) { true }
+          let(:response) { retriever.call }
+
+          it 'reads from a file and returns an array of Entity instances' do
+            expect(response).to all(be_a(entity_class))
+          end
+
+          it 'returns only categories (items with no parent)' do
+            expect(response.map(&:parent_id).uniq).to eq([nil])
+          end
+
+          it 'returns items with topic_type Category' do
+            expect(response.map(&:topic_type).uniq).to eq(['Category'])
+          end
+
+          it 'returns categories sorted by rank_order' do
+            rank_orders = response.map(&:rank_order)
+            expect(rank_orders).to eq(rank_orders.sort)
+          end
+        end
+
+        context 'when not using mock data' do
+          let(:user_mock_data) { false }
+
+          context 'when the Topics key is blank' do
+            before do
+              allow(Crm::CacheData).to receive(:new).and_return(static_data_service)
+              allow(static_data_service).to receive(:call).and_return({ Topics: [] })
+            end
+
+            it 'returns an empty array' do
+              expect(retriever.call).to eq([])
+            end
+          end
+
+          context 'when successful' do
+            before do
+              allow(Crm::CacheData).to receive(:new).and_return(static_data_service)
+              allow(static_data_service).to receive(:call).and_return(parsed_data)
+            end
+
+            it 'fetches data using Crm::CacheData service and returns an array of Entity instances' do
+              expect(retriever.call).to all(be_a(entity_class))
+            end
+          end
+
+          context 'when an error occurs during data retrieval' do
+            let(:body) do
+              '{"Data":null,"Message":"Data Validation: null ,"ExceptionOccurred":' \
+                'true,"ExceptionMessage":"Data Validation: null","MessageId": "6dfa81bd-f04a-4f39-88c5-1422d88ed3ff"}'
+            end
+            let(:failure) { Faraday::Response.new(response_body: body, status: 400) }
+
+            before do
+              allow_any_instance_of(Crm::CrmToken).to receive(:call).and_return('token')
+              allow_any_instance_of(Crm::Service).to receive(:call)
+                .with(endpoint: 'Topics', payload: {}).and_return(failure)
+            end
+
+            it 'rescues the error and calls the ErrorHandler' do
+              expect { retriever.call }.to raise_error(ErrorHandler::ServiceError)
+            end
+          end
+        end
+      end
+    end
+  end
+end

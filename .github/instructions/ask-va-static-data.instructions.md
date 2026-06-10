@@ -1,0 +1,191 @@
+---
+applyTo: "modules/ask_va_api/app/controllers/ask_va_api/v0/static_data_controller.rb,modules/ask_va_api/app/lib/ask_va_api/base_retriever.rb,modules/ask_va_api/app/lib/ask_va_api/categories/**/*,modules/ask_va_api/app/lib/ask_va_api/contents/**/*,modules/ask_va_api/app/lib/ask_va_api/announcements/**/*,modules/ask_va_api/app/lib/ask_va_api/branch_of_service/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/categories/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/contents/**/*,modules/ask_va_api/spec/requests/ask_va_api/v0/static_data_spec.rb,modules/ask_va_api/config/routes.rb"
+---
+
+# Copilot Instructions for Ask VA API / Static Data
+
+**Path-Specific Instructions for the `ask_va_api` module's static data endpoints**
+
+These instructions automatically apply when working with:
+- **Controller:** `StaticDataController` — all static data endpoints (`/categories`, `/contents`, `/announcements`, etc.)
+- **Retrievers/Entities/Serializers:** Classes under `app/lib/ask_va_api/{resource}/`
+- **Base class:** `BaseRetriever` — shared superclass for all retrievers
+- **Specs:** Request specs in `spec/requests/ask_va_api/v0/static_data_spec.rb` and unit specs under `spec/app/lib/ask_va_api/`
+
+---
+
+## `get_resource` Dynamic Resolution Pattern
+
+`StaticDataController` uses a convention-based pattern to dynamically resolve classes. A controller action calls `get_resource('resource_name')` which resolves to three classes via `constantize`:
+
+- `AskVAApi::{ResourceName}::Retriever`
+- `AskVAApi::{ResourceName}::Serializer`
+- `AskVAApi::{ResourceName}::Entity`
+
+**Pattern:**
+```ruby
+# Controller action — just call get_resource with the resource name
+def categories
+  get_resource('categories', user_mock_data: params[:user_mock_data])
+  render_result(@categories)
+end
+```
+
+The resource name string (`'categories'`) is `.camelize`d to resolve class constants, so `'categories'` → `AskVAApi::Categories::Retriever`, etc. The instance variable is set as `@categories` (matching the resource name).
+
+**Anti-pattern:**
+```ruby
+# DON'T reuse another resource's classes to avoid creating new ones.
+# This creates coupling that prevents clean removal later.
+def categories
+  get_resource('contents', user_mock_data: params[:user_mock_data], type: 'category')
+  render_result(@contents)
+end
+```
+
+**Why:** Each endpoint should have its own Retriever/Entity/Serializer triad so that deprecated endpoints (like `/contents`) can be fully removed without breaking newer endpoints.
+
+---
+
+## BaseRetriever Subclass Pattern
+
+### When to use
+When adding a new static data endpoint to `StaticDataController`.
+
+### Required files (the "triad")
+
+For a resource named `foo`, create three files:
+
+1. **Retriever** — `app/lib/ask_va_api/foo/retriever.rb`
+2. **Entity** — `app/lib/ask_va_api/foo/entity.rb`
+3. **Serializer** — `app/lib/ask_va_api/foo/serializer.rb`
+
+### Retriever pattern
+```ruby
+module AskVAApi
+  module Foo
+    class Retriever < BaseRetriever
+      private
+
+      def fetch_data
+        data = user_mock_data ? static_data : fetch_from_cache
+        filter_data(data)
+      end
+
+      def static_data
+        @static_data ||= begin
+          static = File.read('modules/ask_va_api/config/locales/static_data.json')
+          JSON.parse(static, symbolize_names: true)
+        end
+      end
+
+      def fetch_from_cache
+        Crm::CacheData.new.call(endpoint: 'Topics', cache_key: 'categories_topics_subtopics')
+      end
+
+      def filter_data(data)
+        # Filter and sort the raw data for this resource type
+      end
+    end
+  end
+end
+```
+
+Key points:
+- Do **not** override `initialize` if you only need `user_mock_data:` and `entity_class:` — `BaseRetriever` provides these.
+- Override `initialize` only when the retriever needs additional keyword arguments (e.g., `Contents::Retriever` takes `type:` and `parent_id:`).
+- `BaseRetriever#call` handles mapping raw data through `entity_class` and error rescue via `ErrorHandler`.
+
+### Entity pattern
+```ruby
+module AskVAApi
+  module Foo
+    class Entity
+      attr_reader :id, :name  # ... all attributes
+
+      def initialize(info)
+        @id = info[:Id]        # Map CRM PascalCase keys
+        @name = info[:Name]
+      end
+    end
+  end
+end
+```
+
+### Serializer pattern
+```ruby
+module AskVAApi
+  module Foo
+    class Serializer
+      include JSONAPI::Serializer
+      set_type :foo  # Must match the endpoint/resource name
+
+      attributes :name  # ... all serialized attributes
+    end
+  end
+end
+```
+
+**Critical:** `set_type` must match the resource name. The JSONAPI response `type` field will be this value.
+
+---
+
+## Data Source: CRM Cache
+
+Static data endpoints share the same CRM cache:
+- **Endpoint:** `'Topics'`
+- **Cache key:** `'categories_topics_subtopics'`
+- **Service:** `Crm::CacheData.new.call(endpoint:, cache_key:)`
+
+The cache returns a hash with `{ Topics: [...] }`. Each item has:
+- `Id`, `Name`, `ParentId`, `Description`, `RequiresAuthentication`, `AllowAttachments`, `RankOrder`, `DisplayName`, `TopicType`, `ContactPreferences`
+
+Filtering by hierarchy:
+- **Categories:** `ParentId.nil?` (top-level), sorted by `RankOrder`
+- **Topics:** `ParentId == category_id`, sorted by `Name`
+- **Subtopics:** `ParentId == topic_id`, sorted by `Name`
+
+Mock data: `modules/ask_va_api/config/locales/static_data.json` (used when `user_mock_data` param is truthy).
+
+---
+
+## Test Patterns
+
+### Request specs (`static_data_spec.rb`)
+
+Use the shared example for error handling:
+```ruby
+context 'when an error occurs' do
+  before do
+    allow_any_instance_of(Crm::CacheData)
+      .to receive(:call)
+      .and_raise(StandardError)
+    get endpoint_path
+  end
+
+  it_behaves_like 'common error handling', :unprocessable_entity, 'service_error',
+                  'StandardError: StandardError'
+end
+```
+
+Success case pattern:
+```ruby
+context 'when successful' do
+  before { get endpoint_path, params: { user_mock_data: true } }
+
+  it 'returns data' do
+    expect(JSON.parse(response.body)['data']).to include(a_hash_including(expected_hash))
+    expect(response).to have_http_status(:ok)
+  end
+end
+```
+
+### Unit specs (retriever, entity, serializer)
+
+Each class in the triad should have its own spec file under `spec/app/lib/ask_va_api/{resource}/`. Follow the existing `contents/` or `categories/` specs as templates.
+
+---
+
+## Deprecation Context
+
+`/contents` is a multiplexed endpoint that serves categories, topics, and subtopics via a `type` query parameter. It is being replaced by dedicated endpoints (`/categories`, `/topics/:id/subtopics`, etc.) per issues #2170, #2414, #2415, #2428, #2429. Each new endpoint gets its own class triad so `/contents` and `Contents::*` can be fully removed later.

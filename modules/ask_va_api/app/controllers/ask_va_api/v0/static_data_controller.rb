@@ -18,6 +18,11 @@ module AskVAApi
         render_result(@branch_of_service)
       end
 
+      def categories
+        get_resource('categories', user_mock_data: params[:user_mock_data])
+        render_result(@categories)
+      end
+
       def contents
         get_resource('contents',
                      user_mock_data: params[:user_mock_data],
@@ -30,6 +35,7 @@ module AskVAApi
       private
 
       def get_resource(resource_type, options = {})
+        options[:user_mock_data] = ActiveModel::Type::Boolean.new.cast(options[:user_mock_data])
         camelize_resource = resource_type.camelize
         retriever_class = constantize_class("AskVAApi::#{camelize_resource}::Retriever")
         serializer_class = constantize_class("AskVAApi::#{camelize_resource}::Serializer")
@@ -45,10 +51,6 @@ module AskVAApi
 
       def constantize_class(class_name)
         class_name.constantize
-      end
-
-      def mock_service
-        DynamicsMockService.new(icn: nil, logger: nil) if params[:user_mock_data]
       end
 
       def render_result(resource)

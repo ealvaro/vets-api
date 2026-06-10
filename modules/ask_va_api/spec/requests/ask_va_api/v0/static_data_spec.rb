@@ -116,6 +116,68 @@ RSpec.describe 'AskVAApi StaticData', type: :request do
     end
   end
 
+  describe 'GET #categories' do
+    let(:categories_path) { '/ask_va_api/v0/categories' }
+    let(:expected_hash) do
+      { 'id' => '75524deb-d864-eb11-bb24-000d3a579c45',
+        'type' => 'categories',
+        'attributes' =>
+         { 'name' => 'Education benefits and work study',
+           'allow_attachments' => true,
+           'description' => nil,
+           'display_name' => 'Education benefits and work study',
+           'parent_id' => nil,
+           'rank_order' => 1,
+           'requires_authentication' => true,
+           'topic_type' => 'Category',
+           'contact_preferences' => ['Email'] } }
+    end
+
+    context 'when successful' do
+      before do
+        get categories_path, params: { user_mock_data: true }
+      end
+
+      it 'returns categories data' do
+        expect(JSON.parse(response.body)['data']).to include(a_hash_including(expected_hash))
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context 'when user_mock_data is the string "false"' do
+      let(:cache_data) { instance_double(Crm::CacheData) }
+      let(:parsed_data) do
+        { Topics: [{ Id: '75524deb-d864-eb11-bb24-000d3a579c45', Name: 'Education benefits and work study',
+                     ParentId: nil, Description: nil, RequiresAuthentication: true, AllowAttachments: true,
+                     RankOrder: 1, DisplayName: 'Education benefits and work study', TopicType: 'Category',
+                     ContactPreferences: ['Email'] }] }
+      end
+
+      before do
+        allow(Crm::CacheData).to receive(:new).and_return(cache_data)
+        allow(cache_data).to receive(:call).and_return(parsed_data)
+        get categories_path, params: { user_mock_data: 'false' }
+      end
+
+      it 'casts to boolean false and fetches from CRM cache instead of mock data' do
+        expect(cache_data).to have_received(:call)
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context 'when an error occurs' do
+      before do
+        allow_any_instance_of(Crm::CacheData)
+          .to receive(:call)
+          .and_raise(StandardError)
+        get categories_path
+      end
+
+      it_behaves_like 'common error handling', :unprocessable_entity, 'service_error',
+                      'StandardError: StandardError'
+    end
+  end
+
   describe 'GET #contents' do
     let(:contents_path) { '/ask_va_api/v0/contents' }
     let(:expected_hash) do
