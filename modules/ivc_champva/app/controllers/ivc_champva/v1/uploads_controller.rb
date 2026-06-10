@@ -489,14 +489,19 @@ module IvcChampva
         Datadog::Tracing.trace('IVC Champva Forms - Submit Supporting Document') do
           allowed_form_ids = %w[10-10D 10-7959C 10-7959F-2 10-7959A 10-10D-EXTENDED
                                 10-10D-SUPPLEMENTAL 10-10D-SUPPLEMENTAL-EXISTING 10-10D-SUPPLEMENTAL-ENROLLMENT]
-          if allowed_form_ids.include?(params[:form_id])
-            attachment = PersistentAttachments::MilitaryRecords.new(form_id: params[:form_id])
+          form_id = submit_supporting_documents_params[:form_id]
+          file = submit_supporting_documents_params[:file]
+          password = submit_supporting_documents_params[:password]
+          attachment_id = submit_supporting_documents_params[:attachment_id]
+
+          if allowed_form_ids.include?(form_id)
+            attachment = PersistentAttachments::MilitaryRecords.new(form_id:)
             attachment.heif_enabled = Flipper.enabled?(:champva_heif_attachments_enabled, @current_user)
 
-            Rails.logger.info "submit_supporting_documents called for form #{params[:form_id]}"
+            Rails.logger.info "submit_supporting_documents called for form #{form_id}"
 
-            unlocked = unlock_file(params['file'], params['password'])
-            attachment.file = params['password'] ? unlocked : params['file']
+            unlocked = unlock_file(file, password)
+            attachment.file = password ? unlocked : file
 
             # pre-validation logging to help debug issues
             Rails.logger.info "submit_supporting_documents attachment.file class: #{attachment.file.class}"
@@ -524,14 +529,14 @@ module IvcChampva
 
             persist_claim_evidence_submission(attachment)
 
-            launch_background_job(attachment, params[:form_id].to_s, params['attachment_id'])
+            launch_background_job(attachment, form_id.to_s, attachment_id)
 
             if Flipper.enabled?(:champva_claims_llm_validation, @current_user)
               # Prepare the base response
               response_data = PersistentAttachmentSerializer.new(attachment).serializable_hash
 
               # Add LLM analysis if enabled
-              llm_result = call_llm_service(attachment, params[:form_id], params['attachment_id'])
+              llm_result = call_llm_service(attachment, form_id, attachment_id)
               response_data[:llm_response] = llm_result if llm_result.present?
 
               render json: response_data
@@ -540,7 +545,7 @@ module IvcChampva
             end
           else
             raise Common::Exceptions::UnprocessableEntity.new(
-              detail: "Unsupported form_id: #{params[:form_id]}",
+              detail: "Unsupported form_id: #{form_id}",
               source: 'IvcChampva::V1::UploadsController'
             )
           end
@@ -1796,6 +1801,10 @@ module IvcChampva
           'IVC Champva - unauthenticated user submitting form',
           { form_number: params[:form_number] }
         )
+      end
+
+      def submit_supporting_documents_params
+        params.permit(:file, :password, :form_id, :attachment_id)
       end
     end
   end

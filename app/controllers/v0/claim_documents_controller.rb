@@ -19,7 +19,7 @@ module V0
 
       @attachment = klass&.new(form_id:, doctype:)
       # add the file after so that we have a form_id and guid for the uploader to use
-      @attachment.file = unlock_file(params['file'], params['password'])
+      @attachment.file = unlock_file(claims_params[:file], claims_params[:password])
 
       if @attachment.respond_to?(:requires_stamped_pdf_validation?) &&
          @attachment.requires_stamped_pdf_validation? &&
@@ -57,11 +57,11 @@ module V0
     end
 
     def form_id
-      params[:form_id].upcase
+      claims_params[:form_id].upcase
     end
 
     def doctype
-      params[:doctype] || 10 # Unknown
+      claims_params[:doctype] || 10 # Unknown
     end
 
     def unlock_file(file, file_password)
@@ -128,6 +128,10 @@ module V0
 
     def uploads_monitor
       @uploads_monitor ||= ClaimDocuments::Monitor.new
+    end
+
+    def claims_params
+      params.permit(:file, :password, :form_id, :doctype)
     end
   end
 end

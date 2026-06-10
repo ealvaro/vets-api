@@ -68,7 +68,7 @@ module BenefitsDocuments
         end
 
         def unlocked_file(file, password)
-          return file unless file.present? && password.present? && File.extname(file).downcase == '.pdf'
+          return file unless file_inputs_are_valid?(file, password)
 
           pdftk = PdfForms.new(Settings.binaries.pdftk)
           tmpf = Tempfile.new(['decrypted_form_attachment', '.pdf'])
@@ -85,6 +85,12 @@ module BenefitsDocuments
           file.tempfile.unlink
           file.tempfile = tmpf
           file
+        end
+
+        def file_inputs_are_valid?(file, password)
+          file_param_valid = file.present? && file.is_a?(String) && File.extname(file).downcase == '.pdf'
+          password_param_valid = password.present? && password.is_a?(String)
+          file_param_valid && password_param_valid
         end
 
         def persist_evidence_submission(claim_id, source_file, attachment, params)

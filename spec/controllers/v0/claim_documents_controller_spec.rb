@@ -29,6 +29,13 @@ RSpec.describe V0::ClaimDocumentsController, type: :controller do
       post(:create, params: { 'form_id' => '21P-527EZ', 'file' => locked_file, 'password' => 'test' })
     end
 
+    it 'records datestamp_pdf error with a locked pdf and password as array' do
+      expect(StatsD).to receive(:increment).with('api.claim_documents.attempt', tags: include('form_id:21P-527EZ'))
+      expect(StatsD).to receive(:increment)
+        .with('api.datestamp_pdf.error', tags: include('service:pdf_utilities')).twice
+      post(:create, params: { 'form_id' => '21P-527EZ', 'file' => locked_file, 'password' => ['test'] })
+    end
+
     it 'records input error with a locked pdf and incorrect password' do
       expect(StatsD).to receive(:increment).with('api.claim_documents.attempt', tags: include('form_id:21P-527EZ'))
       expect(StatsD).to receive(:increment).with('api.claim_documents.input_error', tags: include('form_id:21P-527EZ'))
