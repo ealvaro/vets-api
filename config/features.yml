@@ -2243,9 +2243,6 @@ features:
     actor_type: user
     description: Toggle for the new PDF form alignment update
     enable_in_development: true
-  pension_enable_controller_authentication:
-    actor_type: user
-    description: If enabled, enforce user authentication at the controller level (Pensions::V0::ClaimsController)
   pre_entry_covid19_screener:
     actor_type: user
     description: >

@@ -34,7 +34,6 @@ RSpec.describe Pensions::V0::ClaimsController, type: :controller do
     context 'as an authenticated user' do
       before do
         sign_in_as(user)
-        allow(Flipper).to receive(:enabled?).with(:pension_enable_controller_authentication).and_return(false)
       end
 
       it 'logs validation errors' do
@@ -86,11 +85,7 @@ RSpec.describe Pensions::V0::ClaimsController, type: :controller do
       end
     end
 
-    context 'as an unauthenticated user, with the authentication feature flag enabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:pension_enable_controller_authentication).and_return(true)
-      end
-
+    context 'as an unauthenticated user' do
       it 'returns an error' do
         allow(Pensions::SavedClaim).to receive(:new).and_return(claim)
         allow(Flipper).to receive(:enabled?).with(:bpds_service_enabled).and_return(true)

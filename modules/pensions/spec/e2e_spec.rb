@@ -14,6 +14,7 @@ RSpec.describe 'Pensions End to End', type: :request do
   let(:monitor) { Pensions::Monitor.new }
   let(:service) { BenefitsIntake::Service.new }
   let(:vanotify) { double(send_email: true) }
+  let(:user) { create(:user) }
 
   let(:stats_key) { BenefitsIntake::SubmissionStatusJob::STATS_KEY }
 
@@ -26,12 +27,13 @@ RSpec.describe 'Pensions End to End', type: :request do
     allow(Flipper).to receive(:enabled?).with(anything).and_call_original
     allow(Flipper).to receive(:enabled?).with(:pension_submitted_email_notification).and_return true
     allow(Flipper).to receive(:enabled?).with(:benefits_intake_submission_status_job).and_return true
-    allow(Flipper).to receive(:enabled?).with(:pension_enable_controller_authentication).and_return false
+    sign_in(user)
   end
 
   it 'successfully completes the submission process' do
     # form submission
-    expect(Pensions::SavedClaim).to receive(:new).with(form: form.form).and_call_original
+    expect(Pensions::SavedClaim).to receive(:new).with(form: form.form,
+                                                       user_account: user.user_account).and_call_original
     expect(monitor).to receive(:track_create_attempt).and_call_original
     expect(SavedClaimSerializer).to receive(:new).and_call_original
     expect(PersistentAttachment).to receive(:where).with(guid: anything).and_call_original

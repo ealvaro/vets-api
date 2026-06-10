@@ -453,35 +453,46 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
     end
 
     it 'supports adding a pension claim' do
+      mpi_stub = double('MPI')
       allow(SecureRandom).to receive(:uuid).and_return('c3fa0769-70cb-419a-b3a6-d2563e7b8502')
-      allow(Flipper).to receive(:enabled?).with(:pension_enable_controller_authentication).and_return(false)
+      allow(MPI::Service).to receive(:new).and_return(mpi_stub)
+      allow(mpi_stub).to receive(:find_profile_by_identifier).and_return(
+        OpenStruct.new({ profile: OpenStruct.new({
+                                                   ssn: '123121234', participant_id: '123456789'
+                                                 }) })
+      )
 
-      VCR.use_cassette(
-        'mpi/find_candidate/find_profile_with_attributes',
-        VCR::MATCH_EVERYTHING
-      ) do
-        expect(subject).to validate(
-          :post,
-          '/pensions/v0/claims',
-          200,
+      user = build(:user, :loa3)
+
+      expect(subject).to validate(
+        :post,
+        '/pensions/v0/claims',
+        200,
+        {
           '_data' => {
             'pension_claim' => {
               'form' => build(:pensions_saved_claim).form
             }
+          },
+          '_headers' => {
+            'Cookie' => sign_in(user, nil, true)
           }
-        )
+        }
+      )
 
-        expect(subject).to validate(
-          :post,
-          '/pensions/v0/claims',
-          422,
-          '_data' => {
-            'pension_claim' => {
-              'invalid-form' => { invalid: true }.to_json
-            }
+      expect(subject).to validate(
+        :post,
+        '/pensions/v0/claims',
+        422,
+        '_data' => {
+          'pension_claim' => {
+            'invalid-form' => { invalid: true }.to_json
           }
-        )
-      end
+        },
+        '_headers' => {
+          'Cookie' => sign_in(user, nil, true)
+        }
+      )
     end
 
     context 'MDOT tests' do
