@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require_relative '../rails_helper'
+require_relative '../support/form_526_fixture_helper'
 require 'claims_api/disability_compensation_benefits_documents_uploader'
 
 RSpec.describe ClaimsApi::DisabilityCompensationBenefitsDocumentsUploader, type: :job do
@@ -15,9 +16,7 @@ RSpec.describe ClaimsApi::DisabilityCompensationBenefitsDocumentsUploader, type:
   let(:claim_date) { (Time.zone.today - 1.day).to_s }
   let(:anticipated_separation_date) { 2.days.from_now.strftime('%m-%d-%Y') }
   let(:form_data) do
-    temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans', 'disability_compensation',
-                           'form_526_json_api.json').read
-    temp = JSON.parse(temp)
+    temp = Form526FixtureHelper.new.data
     attributes = temp['data']['attributes']
     attributes['claimDate'] = claim_date
     attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] = anticipated_separation_date

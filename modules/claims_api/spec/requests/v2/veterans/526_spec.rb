@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require_relative '../../../rails_helper'
+require_relative '../../../support/form_526_fixture_helper'
 
 RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
   let(:scopes) { %w[claim.write claim.read] }
@@ -24,16 +25,12 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
   end
 
   let(:data) do
-    temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans', 'disability_compensation',
-                           'form_526_json_api.json').read
-    temp = JSON.parse(temp)
-    attributes = temp['data']['attributes']
-    attributes['changeOfAddress']['dates']['beginDate'] = 2.months.from_now.strftime('%Y-%m-%d')
-    attributes['changeOfAddress']['dates']['endDate'] = 6.months.from_now.strftime('%Y-%m-%d')
-    attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] = anticipated_separation_date
-    attributes['serviceInformation']['servicePeriods'][-1]['activeDutyEndDate'] = active_duty_end_date
+    fixture = Form526FixtureHelper.new.future_change_of_address_dates
+    fixture.attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] =
+      anticipated_separation_date
+    fixture.attributes['serviceInformation']['servicePeriods'][-1]['activeDutyEndDate'] = active_duty_end_date
 
-    temp.to_json
+    fixture.data.to_json
   end
 
   before do

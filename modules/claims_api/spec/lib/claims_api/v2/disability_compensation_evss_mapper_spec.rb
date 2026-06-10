@@ -2,23 +2,11 @@
 
 require 'rails_helper'
 require 'claims_api/v2/disability_compensation_evss_mapper'
+require_relative '../../../support/form_526_fixture_helper'
 
 describe ClaimsApi::V2::DisabilityCompensationEvssMapper do
   describe '526 claim maps to the evss container' do
-    let(:form_data) do
-      JSON.parse(
-        Rails.root.join(
-          'modules',
-          'claims_api',
-          'spec',
-          'fixtures',
-          'v2',
-          'veterans',
-          'disability_compensation',
-          'form_526_json_api.json'
-        ).read
-      )
-    end
+    let(:form_data) { Form526FixtureHelper.new.data }
     let(:auto_claim) do
       create(:auto_established_claim, form_data: form_data['data']['attributes'])
     end

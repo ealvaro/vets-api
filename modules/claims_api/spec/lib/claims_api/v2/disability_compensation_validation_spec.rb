@@ -2,24 +2,14 @@
 
 require 'rails_helper'
 require 'claims_api/v2/disability_compensation_validation'
+require_relative '../../../support/form_526_fixture_helper'
 
 # Calling private methods so needed to wrap it in a class
 class TestDisabilityCompensationValidationClass
   include ClaimsApi::V2::DisabilityCompensationValidation
 
   def form_attributes
-    @form_attributes ||= JSON.parse(
-      Rails.root.join(
-        'modules',
-        'claims_api',
-        'spec',
-        'fixtures',
-        'v2',
-        'veterans',
-        'disability_compensation',
-        'form_526_json_api.json'
-      ).read
-    ).dig('data', 'attributes')
+    @form_attributes ||= Form526FixtureHelper.new.attributes
   end
 end
 

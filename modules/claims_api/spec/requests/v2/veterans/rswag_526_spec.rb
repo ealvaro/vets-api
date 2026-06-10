@@ -5,6 +5,7 @@ require Rails.root.join('spec', 'rswag_override.rb').to_s
 require 'rails_helper'
 require_relative '../../../rails_helper'
 require_relative '../../../support/swagger_shared_components/v2'
+require_relative '../../../support/form_526_fixture_helper'
 
 describe 'DisabilityCompensation', openapi_spec: Rswag::TextHelpers.new.claims_api_docs do
   let(:scopes) { %w[system/claim.read system/claim.write] }
@@ -82,10 +83,9 @@ describe 'DisabilityCompensation', openapi_spec: Rswag::TextHelpers.new.claims_a
 
         let(:scopes) { %w[system/claim.read system/claim.write] }
 
-        request_template = JSON.parse(Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
-                                                      'disability_compensation', 'form_526_json_api.json').read)
-        request_template['data']['attributes']['serviceInformation'].delete('federalActivation')
-        request_template['data']['attributes']['serviceInformation']['servicePeriods'].each do |per|
+        request_fixture = Form526FixtureHelper.new.future_change_of_address_dates
+        request_fixture.attributes['serviceInformation'].delete('federalActivation')
+        request_fixture.attributes['serviceInformation']['servicePeriods'].each do |per|
           per.delete('separationLocationCode')
         end
 
@@ -98,7 +98,7 @@ describe 'DisabilityCompensation', openapi_spec: Rswag::TextHelpers.new.claims_a
                                               'disability_compensation', 'valid_526_minimum.json').read)
           },
           'Maximum Attributes' => {
-            value: request_template
+            value: request_fixture.data
 
           }
         }
@@ -108,15 +108,10 @@ describe 'DisabilityCompensation', openapi_spec: Rswag::TextHelpers.new.claims_a
             let(:claim_date) { (Time.zone.today - 1.day).to_s }
             let(:anticipated_separation_date) { 2.days.from_now.strftime('%Y-%m-%d') }
             let(:data) do
-              temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
-                                     'disability_compensation', 'form_526_json_api.json').read
-              temp = JSON.parse(temp)
-              attributes = temp['data']['attributes']
-              attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] =
+              fixture = Form526FixtureHelper.new.future_change_of_address_dates
+              fixture.attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] =
                 anticipated_separation_date
-              temp['data']['attributes'] = attributes
-              temp.to_json
-              temp
+              fixture.data
             end
 
             let(:disability_comp_request) do
@@ -143,10 +138,7 @@ describe 'DisabilityCompensation', openapi_spec: Rswag::TextHelpers.new.claims_a
                                               'disability_compensation', 'default.json').read)
 
             let(:data) do
-              temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
-                                     'disability_compensation', 'form_526_json_api.json').read
-              temp = JSON.parse(temp)
-              temp
+              Form526FixtureHelper.new.future_change_of_address_dates.data
             end
 
             let(:disability_comp_request) do
@@ -176,15 +168,10 @@ describe 'DisabilityCompensation', openapi_spec: Rswag::TextHelpers.new.claims_a
           let(:claim_date) { (Time.zone.today - 1.day).to_s }
           let(:anticipated_separation_date) { 2.days.from_now.strftime('%Y-%m-%d') }
           let(:data) do
-            temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
-                                   'disability_compensation', 'form_526_json_api.json').read
-            temp = JSON.parse(temp)
-            attributes = temp['data']['attributes']
-            attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] =
+            fixture = Form526FixtureHelper.new.future_change_of_address_dates
+            fixture.attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] =
               anticipated_separation_date
-            temp['data']['attributes'] = attributes
-            temp.to_json
-            temp
+            fixture.data
           end
 
           let(:disability_comp_request) do
@@ -336,18 +323,16 @@ describe 'DisabilityCompensation', openapi_spec: Rswag::TextHelpers.new.claims_a
 
       merged_values = {}
       merged_values[:meta] = { transactionId: '00000000-0000-0000-0000-000000000000' }
-      parsed_json = JSON.parse(Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
-                                               'disability_compensation', 'form_526_json_api.json').read)
-      parsed_json['data']['attributes']['serviceInformation']['federalActivation']['anticipatedSeparationDate'] =
+      parsed_fixture = Form526FixtureHelper.new.future_change_of_address_dates
+      parsed_fixture.attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] =
         2.days.from_now.strftime('%Y-%m-%d')
-      parsed_json['data']['attributes']['serviceInformation']['servicePeriods'][-1]['activeDutyEndDate'] =
+      parsed_fixture.attributes['serviceInformation']['servicePeriods'][-1]['activeDutyEndDate'] =
         2.days.from_now.strftime('%Y-%m-%d')
-      merged_values[:data] = parsed_json['data']
+      merged_values[:data] = parsed_fixture.data['data']
 
-      request_template = JSON.parse(Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
-                                                    'disability_compensation', 'form_526_json_api.json').read)
-      request_template['data']['attributes']['serviceInformation'].delete('federalActivation')
-      request_template['data']['attributes']['serviceInformation']['servicePeriods'].each do |per|
+      request_fixture = Form526FixtureHelper.new.future_change_of_address_dates
+      request_fixture.attributes['serviceInformation'].delete('federalActivation')
+      request_fixture.attributes['serviceInformation']['servicePeriods'].each do |per|
         per.delete('separationLocationCode')
       end
       parameter in: :body, examples: {
@@ -356,7 +341,7 @@ describe 'DisabilityCompensation', openapi_spec: Rswag::TextHelpers.new.claims_a
                                             'disability_compensation', 'valid_526_minimum.json').read)
         },
         'Maximum Attributes' => {
-          value: request_template
+          value: request_fixture.data
 
         },
         'Transaction ID' => {
@@ -369,15 +354,10 @@ describe 'DisabilityCompensation', openapi_spec: Rswag::TextHelpers.new.claims_a
           let(:claim_date) { (Time.zone.today - 1.day).to_s }
           let(:anticipated_separation_date) { 2.days.from_now.strftime('%Y-%m-%d') }
           let(:data) do
-            temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
-                                   'disability_compensation', 'form_526_json_api.json').read
-            temp = JSON.parse(temp)
-            attributes = temp['data']['attributes']
-            attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] =
+            fixture = Form526FixtureHelper.new.future_change_of_address_dates
+            fixture.attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] =
               anticipated_separation_date
-            temp['data']['attributes'] = attributes
-            temp.to_json
-            temp
+            fixture.data
           end
 
           schema SwaggerSharedComponents::V2.schemas[:sync_disability_compensation]
@@ -442,10 +422,7 @@ describe 'DisabilityCompensation', openapi_spec: Rswag::TextHelpers.new.claims_a
                                             'disability_compensation', 'default.json').read)
 
           let(:data) do
-            temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
-                                   'disability_compensation', 'form_526_json_api.json').read
-            temp = JSON.parse(temp)
-            temp
+            Form526FixtureHelper.new.future_change_of_address_dates.data
           end
 
           let(:disability_comp_request) do
@@ -475,15 +452,10 @@ describe 'DisabilityCompensation', openapi_spec: Rswag::TextHelpers.new.claims_a
         let(:claim_date) { (Time.zone.today - 1.day).to_s }
         let(:anticipated_separation_date) { 2.days.from_now.strftime('%Y-%m-%d') }
         let(:data) do
-          temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
-                                 'disability_compensation', 'form_526_json_api.json').read
-          temp = JSON.parse(temp)
-          attributes = temp['data']['attributes']
-          attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] =
+          fixture = Form526FixtureHelper.new.future_change_of_address_dates
+          fixture.attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] =
             anticipated_separation_date
-          temp['data']['attributes'] = attributes
-          temp.to_json
-          temp
+          fixture.data
         end
 
         let(:disability_comp_request) do
@@ -588,21 +560,17 @@ describe 'DisabilityCompensation', openapi_spec: Rswag::TextHelpers.new.claims_a
             end
             let(:anticipated_separation_date) { 2.days.from_now.strftime('%Y-%m-%d') }
             let(:data) do
-              temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
-                                     'disability_compensation', 'form_526_json_api.json').read
-              temp = JSON.parse(temp)
-              attributes = temp['data']['attributes']
+              fixture = Form526FixtureHelper.new.future_change_of_address_dates
 
               # Ensure federalActivation is present with proper date
-              attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] =
+              fixture.attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] =
                 anticipated_separation_date
 
               # Make sure reservesNationalGuardService exists but with empty obligationTermsOfService
               # This will cause the validation error in the correct format
-              attributes['serviceInformation']['reservesNationalGuardService']['obligationTermsOfService'] = {}
+              fixture.attributes['serviceInformation']['reservesNationalGuardService']['obligationTermsOfService'] = {}
 
-              temp['data']['attributes'] = attributes
-              temp
+              fixture.data
             end
 
             let(:disability_comp_request) { data }
@@ -659,15 +627,10 @@ describe 'DisabilityCompensation', openapi_spec: Rswag::TextHelpers.new.claims_a
                                             'disability', 'validate.json').read)
           let(:anticipated_separation_date) { 2.days.from_now.strftime('%Y-%m-%d') }
           let(:data) do
-            temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
-                                   'disability_compensation', 'form_526_json_api.json').read
-            temp = JSON.parse(temp)
-            attributes = temp['data']['attributes']
-            attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] =
+            fixture = Form526FixtureHelper.new.future_change_of_address_dates
+            fixture.attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] =
               anticipated_separation_date
-            temp['data']['attributes'] = attributes
-            temp.to_json
-            temp
+            fixture.data
           end
 
           before do |example|
@@ -697,11 +660,7 @@ describe 'DisabilityCompensation', openapi_spec: Rswag::TextHelpers.new.claims_a
                                             'disability_compensation', 'default.json').read)
 
           let(:data) do
-            temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
-                                   'disability_compensation', 'form_526_json_api.json').read
-            temp = JSON.parse(temp)
-
-            temp
+            Form526FixtureHelper.new.future_change_of_address_dates.data
           end
           let(:Authorization) { nil }
 
@@ -730,15 +689,10 @@ describe 'DisabilityCompensation', openapi_spec: Rswag::TextHelpers.new.claims_a
         let(:claim_date) { (Time.zone.today - 1.day).to_s }
         let(:anticipated_separation_date) { 2.days.from_now.strftime('%Y-%m-%d') }
         let(:data) do
-          temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
-                                 'disability_compensation', 'form_526_json_api.json').read
-          temp = JSON.parse(temp)
-          attributes = temp['data']['attributes']
-          attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] =
+          fixture = Form526FixtureHelper.new.future_change_of_address_dates
+          fixture.attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] =
             anticipated_separation_date
-          temp['data']['attributes'] = attributes
-          temp.to_json
-          temp
+          fixture.data
         end
 
         let(:disability_comp_request) do
@@ -857,11 +811,7 @@ describe 'DisabilityCompensation', openapi_spec: Rswag::TextHelpers.new.claims_a
                                               'veterans', 'disability_compensation', 'attachments.json').read)
 
             let(:data) do
-              temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
-                                     'disability_compensation', 'form_526_json_api.json').read
-              temp = JSON.parse(temp)
-
-              temp
+              Form526FixtureHelper.new.future_change_of_address_dates.data
             end
 
             let(:scopes) { %w[system/claim.write] }
@@ -902,11 +852,7 @@ describe 'DisabilityCompensation', openapi_spec: Rswag::TextHelpers.new.claims_a
                                               'disability_compensation', 'default.json').read)
 
             let(:data) do
-              temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
-                                     'disability_compensation', 'form_526_json_api.json').read
-              temp = JSON.parse(temp)
-
-              temp
+              Form526FixtureHelper.new.future_change_of_address_dates.data
             end
 
             let(:scopes) { %w[system/claim.write] }
@@ -1075,15 +1021,10 @@ describe 'DisabilityCompensation', openapi_spec: Rswag::TextHelpers.new.claims_a
         let(:claim_date) { (Time.zone.today - 1.day).to_s }
         let(:anticipated_separation_date) { 2.days.from_now.strftime('%Y-%m-%d') }
         let(:data) do
-          temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
-                                 'disability_compensation', 'form_526_json_api.json').read
-          temp = JSON.parse(temp)
-          attributes = temp['data']['attributes']
-          attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] =
+          fixture = Form526FixtureHelper.new.future_change_of_address_dates
+          fixture.attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] =
             anticipated_separation_date
-          temp['data']['attributes'] = attributes
-          temp.to_json
-          temp
+          fixture.data
         end
 
         let(:disability_comp_request) do

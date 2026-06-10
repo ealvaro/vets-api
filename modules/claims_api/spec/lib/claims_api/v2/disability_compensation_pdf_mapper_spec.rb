@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require 'claims_api/v2/disability_compensation_pdf_mapper'
+require_relative '../../../support/form_526_fixture_helper'
 
 describe ClaimsApi::V2::DisabilityCompensationPdfMapper do
   describe '526 claim maps to the pdf generator', vcr: 'claims_api/disability_comp' do
@@ -14,20 +15,7 @@ describe ClaimsApi::V2::DisabilityCompensationPdfMapper do
       }
     end
 
-    let(:auto_claim) do
-      JSON.parse(
-        Rails.root.join(
-          'modules',
-          'claims_api',
-          'spec',
-          'fixtures',
-          'v2',
-          'veterans',
-          'disability_compensation',
-          'form_526_json_api.json'
-        ).read
-      )
-    end
+    let(:auto_claim) { Form526FixtureHelper.new.data }
 
     let(:user) { create(:user, :loa3) }
     let(:auth_headers) do

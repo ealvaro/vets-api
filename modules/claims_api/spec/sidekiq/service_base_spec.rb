@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require_relative '../rails_helper'
+require_relative '../support/form_526_fixture_helper'
 
 RSpec.describe ClaimsApi::ServiceBase do
   let(:user) { create(:user, :loa3) }
@@ -17,9 +18,7 @@ RSpec.describe ClaimsApi::ServiceBase do
   let(:errored_ews) { create(:evidence_waiver_submission, :with_full_headers_tamara, status: 'errored') }
 
   let(:form_data) do
-    temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans', 'disability_compensation',
-                           'form_526_json_api.json').read
-    temp = JSON.parse(temp)
+    temp = Form526FixtureHelper.new.data
     attributes = temp['data']['attributes']
     attributes['claimDate'] = claim_date
     attributes['serviceInformation']['federalActivation']['anticipatedSeparationDate'] = anticipated_separation_date
