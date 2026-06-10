@@ -42,6 +42,17 @@ module AAL
       perform(:post, 'usermgmt/activity', form.params, token_headers) if Flipper.enabled?(:mhv_enable_aal_integration)
     end
 
+    ##
+    # Retrieve paginated account activity logs from MHV.
+    #
+    # @param [ActionController::Parameters] params - Query parameters
+    #   (from_date, to_date, page, limit, sort, select, style)
+    # @return [Faraday::Response] the API response
+    #
+    def get_activities(params = {})
+      perform(:get, 'usermgmt/external/activities', params, token_headers)
+    end
+
     private
 
     ##

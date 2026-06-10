@@ -80,6 +80,21 @@ RSpec.describe AAL::Client do
     end
   end
 
+  describe '#get_activities' do
+    it 'calls perform with GET and passes query params' do
+      params = { 'page' => '0', 'limit' => '20' }
+      expect(client).to receive(:perform)
+        .with(:get, 'usermgmt/external/activities', params, anything)
+      client.get_activities(params)
+    end
+
+    it 'defaults to empty params' do
+      expect(client).to receive(:perform)
+        .with(:get, 'usermgmt/external/activities', {}, anything)
+      client.get_activities
+    end
+  end
+
   describe '#aal_redis_key' do
     let(:unordered_attrs) do
       {
