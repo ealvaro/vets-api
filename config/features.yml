@@ -247,10 +247,6 @@ features:
   cave_idp:
     actor_type: cookie_id
     description: Enables the CAVE (Common Attachment Validation Engine) IDP proxy endpoints
-  cerner_non_eligible_sis_enabled:
-    actor_type: user
-    description: Enables Sign in Service for cerner authentication
-    enable_in_development: true
   disability_526_document_validation_enabled:
     actor_type: user
     description: If enabled, the Form 21-526EZ upload endpoint will attempt to validate the uploaded document against the provided expected form type.

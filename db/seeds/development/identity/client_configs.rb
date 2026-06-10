@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-Flipper.enable(:cerner_non_eligible_sis_enabled)
-
 SignIn::ClientConfig.where("'dslogon' = ANY(credential_service_providers)").find_each do |config|
   config.update!(credential_service_providers: config.credential_service_providers.without('dslogon'))
 end
