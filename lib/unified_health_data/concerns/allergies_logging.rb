@@ -68,6 +68,23 @@ module UnifiedHealthData
         StatsD.increment("#{allergies_statsd_prefix}.anomaly.high_filter_rate")
       end
 
+      # Always-on: warns when parsed allergies contain duplicate IDs.
+      def warn_allergies_duplicate_ids(parsed_allergies)
+        ids = parsed_allergies.map(&:id)
+        duplicate_ids = ids.tally.select { |_id, count| count > 1 }
+        return if duplicate_ids.empty?
+
+        mr_log.warn(
+          resource: ALLERGIES, action: 'index',
+          anomaly: 'duplicate_ids',
+          duplicate_ids: duplicate_ids.keys,
+          duplicate_count: duplicate_ids.values.sum,
+          total_count: parsed_allergies.size
+        )
+
+        StatsD.increment("#{allergies_statsd_prefix}.anomaly.duplicate_ids")
+      end
+
       # Diagnostic: logs raw entry counts per source from SCDF before any filtering.
       # Helps distinguish "SCDF returned nothing" from "our filters dropped everything".
       def log_allergies_raw_source_counts(body)
@@ -106,6 +123,7 @@ module UnifiedHealthData
         allergies_logging_enabled? && log_allergies_response_count(raw_count, returned_count)
         allergies_logging_enabled? && log_allergies_index_metrics(combined_records, returned_count)
         warn_allergies_high_filter_rate(raw_count, returned_count, source_breakdown:)
+        warn_allergies_duplicate_ids(parsed_allergies)
       end
     end
   end

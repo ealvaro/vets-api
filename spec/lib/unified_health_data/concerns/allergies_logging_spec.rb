@@ -176,6 +176,73 @@ RSpec.describe UnifiedHealthData::Concerns::AllergiesLogging do
     end
   end
 
+  describe '#warn_allergies_duplicate_ids' do
+    it 'warns and increments StatsD when duplicate IDs exist' do
+      parsed = [
+        double('Allergy', id: '111'),
+        double('Allergy', id: '111'),
+        double('Allergy', id: '222')
+      ]
+
+      instance.send(:warn_allergies_duplicate_ids, parsed)
+
+      expect(Rails.logger).to have_received(:warn).with(
+        hash_including(
+          service: 'medical_records',
+          resource: 'allergies',
+          action: 'index',
+          anomaly: 'duplicate_ids',
+          duplicate_ids: ['111'],
+          duplicate_count: 2,
+          total_count: 3
+        )
+      )
+      expect(StatsD).to have_received(:increment)
+        .with('api.uhd.allergies.anomaly.duplicate_ids')
+    end
+
+    it 'reports multiple duplicate IDs' do
+      parsed = [
+        double('Allergy', id: '111'),
+        double('Allergy', id: '111'),
+        double('Allergy', id: '222'),
+        double('Allergy', id: '222'),
+        double('Allergy', id: '333')
+      ]
+
+      instance.send(:warn_allergies_duplicate_ids, parsed)
+
+      expect(Rails.logger).to have_received(:warn).with(
+        hash_including(
+          duplicate_ids: %w[111 222],
+          duplicate_count: 4,
+          total_count: 5
+        )
+      )
+    end
+
+    it 'does not warn when all IDs are unique' do
+      parsed = [
+        double('Allergy', id: '111'),
+        double('Allergy', id: '222')
+      ]
+
+      instance.send(:warn_allergies_duplicate_ids, parsed)
+
+      expect(Rails.logger).not_to have_received(:warn)
+      expect(StatsD).not_to have_received(:increment)
+        .with('api.uhd.allergies.anomaly.duplicate_ids')
+    end
+
+    it 'does not warn when parsed_allergies is empty' do
+      instance.send(:warn_allergies_duplicate_ids, [])
+
+      expect(Rails.logger).not_to have_received(:warn)
+      expect(StatsD).not_to have_received(:increment)
+        .with('api.uhd.allergies.anomaly.duplicate_ids')
+    end
+  end
+
   describe '#log_allergies_metrics' do
     let(:combined_records) do
       [
@@ -183,7 +250,7 @@ RSpec.describe UnifiedHealthData::Concerns::AllergiesLogging do
         { 'source' => 'oracle-health', 'resource' => {} }
       ]
     end
-    let(:parsed_allergies) { [double('Allergy')] }
+    let(:parsed_allergies) { [double('Allergy', id: '123')] }
 
     before do
       allow(Flipper).to receive(:enabled?)
@@ -196,6 +263,16 @@ RSpec.describe UnifiedHealthData::Concerns::AllergiesLogging do
 
       expect(Rails.logger).to have_received(:info).at_least(:once)
       expect(StatsD).to have_received(:gauge).at_least(:once)
+    end
+
+    it 'calls duplicate ID warning' do
+      dupes = [double('Allergy', id: '111'), double('Allergy', id: '111')]
+
+      instance.send(:log_allergies_metrics, combined_records, dupes)
+
+      expect(Rails.logger).to have_received(:warn).with(
+        hash_including(anomaly: 'duplicate_ids', duplicate_ids: ['111'])
+      )
     end
 
     it 'skips diagnostic logs when toggle is disabled but still warns on high filter rate' do
