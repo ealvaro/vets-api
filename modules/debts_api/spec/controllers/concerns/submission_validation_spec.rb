@@ -39,6 +39,79 @@ RSpec.describe DebtsApi::Concerns::SubmissionValidation do
     end
   end
 
+  describe 'FSRValidator' do
+    let(:valid_form) do
+      {
+        'selectedDebtsAndCopays' => [
+          {
+            'debtType' => 'DEBT',
+            'resolutionOption' => 'waiver'
+          }
+        ],
+        'additionalData' => {
+          'additionalComments' => 'I need help with this debt.'
+        }
+      }
+    end
+
+    it 'does not raise when a required supporting statement is present' do
+      expect { fsr_validator.validate_supporting_statement(valid_form) }.not_to raise_error
+    end
+
+    it 'raises UnprocessableEntity with the expected detail when the statement is blank' do
+      form = valid_form.deep_dup
+      form['additionalData']['additionalComments'] = ' '
+
+      expect { fsr_validator.validate_supporting_statement(form) }
+        .to raise_error(Common::Exceptions::UnprocessableEntity) do |error|
+          expect(error.errors.first.detail).to eq('Supporting personal statement is required')
+        end
+    end
+
+    it 'treats nil, empty string, and whitespace as a blank statement' do
+      [nil, '', '   '].each do |blank_value|
+        form = valid_form.deep_dup
+        form['additionalData']['additionalComments'] = blank_value
+
+        expect { fsr_validator.validate_supporting_statement(form) }
+          .to raise_error(Common::Exceptions::UnprocessableEntity),
+              "expected raise for additionalComments=#{blank_value.inspect}"
+      end
+    end
+
+    it 'raises for each resolution option that requires a supporting statement' do
+      %w[compromise hardship-suspension monthly waiver].each do |option|
+        form = valid_form.deep_dup
+        form['selectedDebtsAndCopays'].first['resolutionOption'] = option
+        form['additionalData']['additionalComments'] = nil
+
+        expect { fsr_validator.validate_supporting_statement(form) }
+          .to raise_error(Common::Exceptions::UnprocessableEntity),
+              "expected raise for resolutionOption=#{option}"
+      end
+    end
+
+    it 'does not raise when selected resolution options do not require a supporting statement' do
+      form = valid_form.deep_dup
+      form['selectedDebtsAndCopays'].first['resolutionOption'] = 'extended'
+      form['additionalData']['additionalComments'] = nil
+
+      expect { fsr_validator.validate_supporting_statement(form) }.not_to raise_error
+    end
+
+    it 'raises when a required option is selected alongside a non-required option and statement is blank' do
+      form = valid_form.deep_dup
+      form['selectedDebtsAndCopays'] = [
+        { 'debtType' => 'DEBT', 'resolutionOption' => 'extended' },
+        { 'debtType' => 'DEBT', 'resolutionOption' => 'monthly' }
+      ]
+      form['additionalData']['additionalComments'] = nil
+
+      expect { fsr_validator.validate_supporting_statement(form) }
+        .to raise_error(Common::Exceptions::UnprocessableEntity)
+    end
+  end
+
   describe 'DisputeDebtValidator' do
     let(:user) { build(:user, :loa3) }
     let(:valid_metadata) do

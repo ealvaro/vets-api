@@ -261,6 +261,61 @@ RSpec.describe DebtsApi::V0::FsrFormBuilder, type: :service do
       end
     end
 
+    context 'supporting statement validation' do
+      let(:resolution_options) { %w[waiver hardship-suspension compromise monthly] }
+
+      it 'accepts selected resolution options when additionalComments has user text' do
+        resolution_options.each do |option|
+          form = vba_form_data.deep_dup
+          form['additional_data']['additional_comments'] = 'I need help with this debt.'
+          form['selected_debts_and_copays'].first['resolution_option'] = option
+          form['selected_debts_and_copays'].first['hardship_timeframe'] = '6-to-12-months'
+          form['selected_debts_and_copays'].first['hardship_timeframe_acknowledgement'] = true
+
+          comments = described_class.new(form, '123', user).sanitized_form.dig('additionalData',
+                                                                               'additionalComments')
+          expect(comments).to eq('I need help with this debt.')
+        end
+      end
+
+      it 'rejects blank additionalComments for each selected resolution option' do
+        resolution_options.each do |option|
+          form = vba_form_data.deep_dup
+          form['additional_data']['additional_comments'] = '  '
+          form['selected_debts_and_copays'].first['resolution_option'] = option
+          form['selected_debts_and_copays'].first['hardship_timeframe'] = '6-to-12-months'
+          form['selected_debts_and_copays'].first['hardship_timeframe_acknowledgement'] = true
+
+          expect do
+            described_class.new(form, '123', user)
+          end.to raise_error(Common::Exceptions::UnprocessableEntity)
+        end
+      end
+
+      it 'rejects nil additionalComments before backend-generated hardship text is appended' do
+        form = vba_form_data.deep_dup
+        form['additional_data']['additional_comments'] = nil
+        debt = form['selected_debts_and_copays'].first
+        debt['resolution_option'] = 'hardship-suspension'
+        debt['hardship_timeframe'] = '6-to-12-months'
+        debt['hardship_timeframe_acknowledgement'] = true
+
+        expect do
+          described_class.new(form, '123', user)
+        end.to raise_error(Common::Exceptions::UnprocessableEntity)
+      end
+
+      it 'rejects blank additionalComments for selected copay resolution options' do
+        form = vha_form_data.deep_dup
+        form['additional_data']['additional_comments'] = ''
+        form['selected_debts_and_copays'].first['resolution_option'] = 'monthly'
+
+        expect do
+          described_class.new(form, '123', user)
+        end.to raise_error(Common::Exceptions::UnprocessableEntity)
+      end
+    end
+
     context 'hardship-suspension schema validation' do
       let(:schema_path) { Rails.root.join('lib', 'debt_management_center', 'schemas', 'fsr.json').to_s }
       let(:debt) do

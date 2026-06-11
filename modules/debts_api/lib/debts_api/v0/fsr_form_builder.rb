@@ -25,13 +25,18 @@ module DebtsApi
       @is_streamlined = @streamlined_data ? @streamlined_data['value'] : false
 
       @sanitized_form = sanitize(form.deep_dup)
-      validate_form_schema(@sanitized_form)
+      validate_form(@sanitized_form)
 
       @all_debts = get_debts
       @user_form = build_user_form
       @vba_form = build_vba_form
       @vha_forms = build_vha_forms
       @is_combined = @vha_forms.present? && @vha_forms.first.is_combined
+    end
+
+    def validate_form(form)
+      validate_form_schema(form)
+      DebtsApi::Concerns::SubmissionValidation::FSRValidator.validate_supporting_statement(form)
     end
 
     def validate_form_schema(form)

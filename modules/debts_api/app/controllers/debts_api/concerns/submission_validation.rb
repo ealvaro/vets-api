@@ -21,15 +21,44 @@ module DebtsApi
             log_and_raise_error(errors) if errors.any?
           end
 
-          def log_and_raise_error(errors)
+          def log_and_raise_error(errors, error_class: FormInvalid, message: INVALID_ERROR_MESSAGE, error: nil)
             Rails.logger.error(errors)
-            raise FormInvalid, INVALID_ERROR_MESSAGE
+            raise error if error
+
+            raise error_class, message
           end
         end
       end
 
       class FSRValidator < BaseValidator
-        # TODO: move validation here from fsr_form_builder
+        REQUIRED_SUPPORTING_STATEMENT_OPTIONS = %w[
+          compromise
+          hardship-suspension
+          monthly
+          waiver
+        ].freeze
+
+        class << self
+          def validate_supporting_statement(form)
+            selected_debts = Array(form['selectedDebtsAndCopays'])
+            resolution_options = selected_debts.pluck('resolutionOption').compact
+            required_options = resolution_options & REQUIRED_SUPPORTING_STATEMENT_OPTIONS
+            supporting_statement = form.dig('additionalData', 'additionalComments')
+            supporting_statement_blank = supporting_statement.to_s.strip.blank?
+
+            return unless required_options.any? && supporting_statement_blank
+
+            StatsD.increment(
+              "#{DebtsApi::V0::Form5655Submission::STATS_KEY}.supporting_statement.blank"
+            )
+            log_and_raise_error(
+              'Supporting personal statement is required',
+              error: Common::Exceptions::UnprocessableEntity.new(
+                detail: 'Supporting personal statement is required'
+              )
+            )
+          end
+        end
       end
 
       class DisputeDebtValidator < BaseValidator
