@@ -11008,10 +11008,14 @@
                             }
                           },
                           "pageSize": {
-                            "type": "string"
+                            "type": "string",
+                            "description": "Deprecated. Use the `page[size]` URL query parameter instead.",
+                            "deprecated": true
                           },
                           "pageIndex": {
-                            "type": "string"
+                            "type": "string",
+                            "description": "Deprecated. Use the `page[number]` URL query parameter instead.",
+                            "deprecated": true
                           },
                           "filter": {
                             "type": "object",
