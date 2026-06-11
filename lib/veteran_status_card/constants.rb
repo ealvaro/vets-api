@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module VeteranStatusCard
-  module Constants # rubocop:disable Metrics/ModuleLength
+  module Constants
     SUPPORT_PHONE = '866-279-3677'
     SUPPORT_HOURS = 'Monday through Friday, 8:00 a.m. to 8:00 p.m. ET.'
 
@@ -10,7 +10,7 @@ module VeteranStatusCard
 
     STANDARD_ERROR_TITLE = "You're not eligible for a Veteran Status Card"
 
-    DISHONORABLE_MESSAGE = [
+    DISCHARGE_STATUS_MESSAGE = [
       {
         type: 'text',
         value: "Your service history and discharge status don't meet the requirements for a Veteran Status Card."
@@ -25,30 +25,9 @@ module VeteranStatusCard
         tty: true
       }
     ].freeze
-    DISHONORABLE_RESPONSE = {
+    DISCHARGE_STATUS_RESPONSE = {
       title: STANDARD_ERROR_TITLE,
-      message: DISHONORABLE_MESSAGE,
-      status: WARNING_STATUS
-    }.freeze
-
-    INELIGIBLE_SERVICE_MESSAGE = [
-      {
-        type: 'text',
-        value: "Your service history doesn't meet the requirements for a Veteran Status Card."
-      },
-      {
-        type: 'text',
-        value: "If you think this is incorrect, call us. We're here #{SUPPORT_HOURS}"
-      },
-      {
-        type: 'phone',
-        value: SUPPORT_PHONE,
-        tty: true
-      }
-    ].freeze
-    INELIGIBLE_SERVICE_RESPONSE = {
-      title: STANDARD_ERROR_TITLE,
-      message: INELIGIBLE_SERVICE_MESSAGE,
+      message: DISCHARGE_STATUS_MESSAGE,
       status: WARNING_STATUS
     }.freeze
 

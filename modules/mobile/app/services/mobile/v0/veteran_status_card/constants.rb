@@ -14,15 +14,9 @@ module Mobile
 
         STANDARD_ERROR_TITLE = ::VeteranStatusCard::Constants::STANDARD_ERROR_TITLE
 
-        DISHONORABLE_RESPONSE = {
+        DISCHARGE_STATUS_RESPONSE = {
           title: STANDARD_ERROR_TITLE,
-          message: ::VeteranStatusCard::Constants::DISHONORABLE_MESSAGE,
-          status: WARNING_STATUS
-        }.freeze
-
-        INELIGIBLE_SERVICE_RESPONSE = {
-          title: STANDARD_ERROR_TITLE,
-          message: ::VeteranStatusCard::Constants::INELIGIBLE_SERVICE_MESSAGE,
+          message: ::VeteranStatusCard::Constants::DISCHARGE_STATUS_MESSAGE,
           status: WARNING_STATUS
         }.freeze
 

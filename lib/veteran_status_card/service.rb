@@ -25,20 +25,14 @@ module VeteranStatusCard
 
     # Ineligibility reasons based on logic
     # Used in logging, responses to the frontend, and StatsD suffixes
-    DISHONORABLE_SSC_MESSAGE = 'ineligible_dishonorable_ssc'
-    INELIGIBLE_SERVICE_SSC_MESSAGE = 'ineligible_service_ssc'
+    DISCHARGE_STATUS_SSC_MESSAGE = 'ineligible_discharge_status_ssc'
     UNKNOWN_SSC_MESSAGE = 'ineligible_unknown_ssc'
-    EDIPI_NO_PNL_SSC_MESSAGE = 'ineligible_edipi_no_pnl_ssc'
     CURRENTLY_SERVING_SSC_MESSAGE = 'ineligible_currently_serving_ssc'
-    ERROR_SSC_MESSAGE = 'ineligible_error_ssc'
     UNCAUGHT_SSC_MESSAGE = 'ineligible_uncaught_ssc'
 
-    # Confirmed SSC messages
-    AD_DSCH_VAL_SSC_MESSAGE = 'eligible_ad_dsch_val_ssc'
-    AD_VAL_PREV_QUAL_SSC_MESSAGE = 'eligible_ad_val_prev_qual_ssc'
-    AD_VAL_PREV_RES_GRD_SSC_MESSAGE = 'eligible_ad_val_prev_res_grd_ssc'
-    AD_UNCHAR_DSCH_SSC_MESSAGE = 'eligible_ad_unchar_dsch_ssc'
-    VAL_PREV_QUAL_SSC_MESSAGE = 'eligible_val_prev_qual_ssc'
+    # Confirmed SSC messages — two categories matching Mural source of truth
+    ELIGIBLE_HONORABLE_SSC_MESSAGE = 'eligible_honorable_ssc'
+    ELIGIBLE_UNCHAR_DSCH_SSC_MESSAGE = 'eligible_unchar_dsch_ssc'
 
     # Response type constants
     VETERAN_STATUS_CARD = 'veteran_status_card'
@@ -54,31 +48,30 @@ module VeteranStatusCard
     VET_STATUS_MORE_RESEARCH_REQUIRED_TEXT = 'MORE_RESEARCH_REQUIRED'
     VET_STATUS_NOT_TITLE_38_TEXT = 'NOT_TITLE_38'
 
-    # Confirmed (eligible) SSC codes
-    AD_DSCH_VAL_SSC_CODES = %w[A1 A3 A4 A5- B1 B3 B4 B5- R1 R3 R4].freeze
-    AD_VAL_PREV_QUAL_SSC_CODES = %w[A1+ A3+ A4+ B1+ B3+ B4+ B5+ R1+ R3+ R4+].freeze
-    AD_VAL_PREV_RES_GRD_SSC_CODES = %w[A3* A4* B3* B4* B5* R3* R4*].freeze
-    AD_UNCHAR_DSCH_SSC_CODES = %w[A2 B2 R2].freeze
-    VAL_PREV_QUAL_SSC = %w[G1 G1+ G3+ G4+ G5+ D+].freeze
+    # Confirmed (eligible) SSC codes — two categories matching Mural source of truth
+    # COD = Honorable: A1, A1+, B1, B1+, G1, G1+, R1, R1+
+    ELIGIBLE_HONORABLE_SSC_CODES = %w[A1 A1+ B1 B1+ G1 G1+ R1 R1+].freeze
+    # COD = Uncharacterized: A2, B2, G2, R2
+    ELIGIBLE_UNCHAR_DSCH_SSC_CODES = %w[A2 B2 G2 R2].freeze
 
-    # Active duty + dishonorable
-    DISHONORABLE_SSC_CODES = %w[A5 A5+ A5* B5 G5 G5* R5 R5+ R5*].freeze
+    # Discharge status codes — discharge doesn't meet requirements (Message 3 — discharge status)
+    DISCHARGE_STATUS_SSC_CODES = %w[
+      A3 A4 A5 A3+ A4+ A5+ A5- A3* A4* A5*
+      B3 B4 B5 B3+ B4+ B5+ B5- B3* B4* B5*
+      G3 G4 G5 G3+ G4+ G5+ G3* G4* G5*
+      R3 R4 R5 R3+ R4+ R5+ R3* R4* R5*
+    ].freeze
 
-    # No active duty + discharge other than dishonorable
-    INELIGIBLE_SERVICE_SSC_CODES = %w[G2 G3 G4 G3* G4*].freeze
+    # Active duty codes — user is currently serving (Message 4 — active duty)
+    CURRENTLY_SERVING_CODES = %w[D D+ D*].freeze
 
-    UNKNOWN_SERVICE_SSC_CODE = 'U'
-    EDIPI_NO_PNL_CODE = 'X'
-    CURRENTLY_SERVING_CODES = %w[D D*].freeze
-
-    # Codes where a real status could not be determined
-    ERROR_SSC_CODES = %w[VNA DVN DVU CVI].freeze
+    # Codes where a real status could not be determined (Message 5 — unknown eligibility)
+    UNKNOWN_ELIGIBILITY_SSC_CODES = %w[U DVN DVU VNA X CVI].freeze
 
     # Message codes to signify what message the end user is seeing for logging purposes
     CONFIRMED_MESSAGE = 'status_card_confirmed'
     SOMETHING_WENT_WRONG_MESSAGE = 'something_went_wrong'
-    DISHONORABLE_MESSAGE = 'dishonorable'
-    INELIGIBLE_SERVICE_MESSAGE = 'ineligible_service'
+    DISCHARGE_STATUS_MESSAGE = 'discharge_status'
     UNKNOWN_ELIGIBILITY_MESSAGE = 'unknown_eligibility'
     CURRENTLY_SERVING_MESSAGE = 'currently_serving'
     UNCAUGHT_ERROR_MESSAGE = 'uncaught_error'
@@ -118,9 +111,9 @@ module VeteranStatusCard
         end
 
         if @user&.email == 'vets.gov.user+7@gmail.com'
-          @confirmation_status = DISHONORABLE_SSC_MESSAGE
+          @confirmation_status = DISCHARGE_STATUS_SSC_MESSAGE
           @ssc_code = 'A5'
-          return ineligible_response(dishonorable_response, testing: true)
+          return ineligible_response(discharge_status_response, testing: true)
         end
 
         if @user&.email == 'vets.gov.user+8@gmail.com'
@@ -210,25 +203,14 @@ module VeteranStatusCard
     end
 
     ##
-    # Returns the response for dishonorable discharge
+    # Returns the response for discharge status ineligibility (Message 3)
     # Override in subclasses to use different messaging
     #
     # @return [Hash] response with :title, :message, :status keys
     #
-    def dishonorable_response
-      @user_message = DISHONORABLE_MESSAGE
-      VeteranStatusCard::Constants::DISHONORABLE_RESPONSE
-    end
-
-    ##
-    # Returns the response for ineligible service (no active duty + discharge other than dishonorable)
-    # Override in subclasses to use different messaging
-    #
-    # @return [Hash] response with :title, :message, :status keys
-    #
-    def ineligible_service_response
-      @user_message = INELIGIBLE_SERVICE_MESSAGE
-      VeteranStatusCard::Constants::INELIGIBLE_SERVICE_RESPONSE
+    def discharge_status_response
+      @user_message = DISCHARGE_STATUS_MESSAGE
+      VeteranStatusCard::Constants::DISCHARGE_STATUS_RESPONSE
     end
 
     ##
@@ -321,8 +303,9 @@ module VeteranStatusCard
         confirmed ? STATSD_ELIGIBLE : STATSD_INELIGIBLE,
         vet_verification_status[:reason],
         @confirmation_status,
+        ssc_code,
         STATSD_SUCCESS
-      ]
+      ].compact
       log_multiple_statsd(keys)
 
       Rails.logger.info("#{service_name} VSC Card Result", {
@@ -406,25 +389,16 @@ module VeteranStatusCard
     #
     # @return [Hash] error response with keys :title, :message, :status
     #
-    def response_for_ssc_code # rubocop:disable Metrics/MethodLength
+    def response_for_ssc_code
       case ssc_code
-      when *DISHONORABLE_SSC_CODES
-        @confirmation_status = DISHONORABLE_SSC_MESSAGE
-        dishonorable_response
-      when *INELIGIBLE_SERVICE_SSC_CODES
-        @confirmation_status = INELIGIBLE_SERVICE_SSC_MESSAGE
-        ineligible_service_response
-      when UNKNOWN_SERVICE_SSC_CODE
-        @confirmation_status = UNKNOWN_SSC_MESSAGE
-        unknown_eligibility_response
-      when EDIPI_NO_PNL_CODE
-        @confirmation_status = EDIPI_NO_PNL_SSC_MESSAGE
-        unknown_eligibility_response
+      when *DISCHARGE_STATUS_SSC_CODES
+        @confirmation_status = DISCHARGE_STATUS_SSC_MESSAGE
+        discharge_status_response
       when *CURRENTLY_SERVING_CODES
         @confirmation_status = CURRENTLY_SERVING_SSC_MESSAGE
         currently_serving_response
-      when *ERROR_SSC_CODES
-        @confirmation_status = ERROR_SSC_MESSAGE
+      when *UNKNOWN_ELIGIBILITY_SSC_CODES
+        @confirmation_status = UNKNOWN_SSC_MESSAGE
         unknown_eligibility_response
       else
         @confirmation_status = UNCAUGHT_SSC_MESSAGE
@@ -495,20 +469,11 @@ module VeteranStatusCard
     #
     def ssc_confirmed?
       case ssc_code
-      when *AD_DSCH_VAL_SSC_CODES
-        @confirmation_status = AD_DSCH_VAL_SSC_MESSAGE
+      when *ELIGIBLE_HONORABLE_SSC_CODES
+        @confirmation_status = ELIGIBLE_HONORABLE_SSC_MESSAGE
         true
-      when *AD_VAL_PREV_QUAL_SSC_CODES
-        @confirmation_status = AD_VAL_PREV_QUAL_SSC_MESSAGE
-        true
-      when *AD_VAL_PREV_RES_GRD_SSC_CODES
-        @confirmation_status = AD_VAL_PREV_RES_GRD_SSC_MESSAGE
-        true
-      when *AD_UNCHAR_DSCH_SSC_CODES
-        @confirmation_status = AD_UNCHAR_DSCH_SSC_MESSAGE
-        true
-      when *VAL_PREV_QUAL_SSC
-        @confirmation_status = VAL_PREV_QUAL_SSC_MESSAGE
+      when *ELIGIBLE_UNCHAR_DSCH_SSC_CODES
+        @confirmation_status = ELIGIBLE_UNCHAR_DSCH_SSC_MESSAGE
         true
       else
         false

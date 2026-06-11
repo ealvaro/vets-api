@@ -91,18 +91,10 @@ RSpec.describe Mobile::V0::VeteranStatusCard::Service do
       end
     end
 
-    describe '#dishonorable_response' do
+    describe '#discharge_status_response' do
       it 'returns Mobile constants' do
-        expect(subject.send(:dishonorable_response)).to eq(
-          Mobile::V0::VeteranStatusCard::Constants::DISHONORABLE_RESPONSE
-        )
-      end
-    end
-
-    describe '#ineligible_service_response' do
-      it 'returns Mobile constants' do
-        expect(subject.send(:ineligible_service_response)).to eq(
-          Mobile::V0::VeteranStatusCard::Constants::INELIGIBLE_SERVICE_RESPONSE
+        expect(subject.send(:discharge_status_response)).to eq(
+          Mobile::V0::VeteranStatusCard::Constants::DISCHARGE_STATUS_RESPONSE
         )
       end
     end
@@ -260,27 +252,16 @@ RSpec.describe Mobile::V0::VeteranStatusCard::Service do
       end
 
       describe 'ineligibility reason StatsD logging with mobile prefix' do
-        context 'with DISHONORABLE SSC code' do
+        context 'with DISCHARGE_STATUS SSC code' do
           let(:veteran_status) { 'not confirmed' }
           let(:not_confirmed_reason) { 'MORE_RESEARCH_REQUIRED' }
           let(:ssc_code) { 'A5' }
 
-          it 'logs DISHONORABLE_SSC_MESSAGE with mobile prefix' do
+          it 'logs DISCHARGE_STATUS_SSC_MESSAGE with mobile prefix' do
             subject.status_card
 
-            expect(StatsD).to have_received(:increment).with('veteran_status_card.mobile.ineligible_dishonorable_ssc')
-          end
-        end
-
-        context 'with INELIGIBLE_SERVICE SSC code' do
-          let(:veteran_status) { 'not confirmed' }
-          let(:not_confirmed_reason) { 'MORE_RESEARCH_REQUIRED' }
-          let(:ssc_code) { 'G2' }
-
-          it 'logs INELIGIBLE_SERVICE_SSC_MESSAGE with mobile prefix' do
-            subject.status_card
-
-            expect(StatsD).to have_received(:increment).with('veteran_status_card.mobile.ineligible_service_ssc')
+            expect(StatsD).to have_received(:increment)
+              .with('veteran_status_card.mobile.ineligible_discharge_status_ssc')
           end
         end
 
@@ -301,10 +282,10 @@ RSpec.describe Mobile::V0::VeteranStatusCard::Service do
           let(:not_confirmed_reason) { 'MORE_RESEARCH_REQUIRED' }
           let(:ssc_code) { 'X' }
 
-          it 'logs EDIPI_NO_PNL_SSC_MESSAGE with mobile prefix' do
+          it 'logs UNKNOWN_SSC_MESSAGE with mobile prefix' do
             subject.status_card
 
-            expect(StatsD).to have_received(:increment).with('veteran_status_card.mobile.ineligible_edipi_no_pnl_ssc')
+            expect(StatsD).to have_received(:increment).with('veteran_status_card.mobile.ineligible_unknown_ssc')
           end
         end
 
@@ -326,10 +307,10 @@ RSpec.describe Mobile::V0::VeteranStatusCard::Service do
           let(:not_confirmed_reason) { 'MORE_RESEARCH_REQUIRED' }
           let(:ssc_code) { 'VNA' }
 
-          it 'logs ERROR_SSC_MESSAGE with mobile prefix' do
+          it 'logs UNKNOWN_SSC_MESSAGE with mobile prefix' do
             subject.status_card
 
-            expect(StatsD).to have_received(:increment).with('veteran_status_card.mobile.ineligible_error_ssc')
+            expect(StatsD).to have_received(:increment).with('veteran_status_card.mobile.ineligible_unknown_ssc')
           end
         end
 
@@ -461,32 +442,17 @@ RSpec.describe Mobile::V0::VeteranStatusCard::Service do
           end
         end
 
-        context 'when SSC code is dishonorable' do
+        context 'when SSC code is discharge status ineligible' do
           let(:veteran_status) { 'not confirmed' }
           let(:not_confirmed_reason) { 'MORE_RESEARCH_REQUIRED' }
           let(:ssc_code) { 'A5' }
 
-          it 'logs user_message: dishonorable' do
+          it 'logs user_message: discharge_status' do
             subject.status_card
 
             expect(Rails.logger).to have_received(:info).with(
               '[Mobile::V0::VeteranStatusCard::Service] VSC Card Result',
-              hash_including(user_message: described_class::DISHONORABLE_MESSAGE)
-            )
-          end
-        end
-
-        context 'when SSC code is ineligible service' do
-          let(:veteran_status) { 'not confirmed' }
-          let(:not_confirmed_reason) { 'MORE_RESEARCH_REQUIRED' }
-          let(:ssc_code) { 'G2' }
-
-          it 'logs user_message: ineligible_service' do
-            subject.status_card
-
-            expect(Rails.logger).to have_received(:info).with(
-              '[Mobile::V0::VeteranStatusCard::Service] VSC Card Result',
-              hash_including(user_message: described_class::INELIGIBLE_SERVICE_MESSAGE)
+              hash_including(user_message: described_class::DISCHARGE_STATUS_MESSAGE)
             )
           end
         end
@@ -587,34 +553,21 @@ RSpec.describe Mobile::V0::VeteranStatusCard::Service do
     context 'when veteran is not eligible' do
       let(:veteran_status) { 'not confirmed' }
 
-      context 'with DISHONORABLE SSC codes' do
+      context 'with DISCHARGE_STATUS SSC codes' do
         let(:not_confirmed_reason) { 'MORE_RESEARCH_REQUIRED' }
         let(:ssc_code) { 'A5' }
 
-        it 'returns veteran_status_alert with Mobile dishonorable constants' do
+        it 'returns veteran_status_alert with Mobile discharge status constants' do
           result = subject.status_card
 
           expect(result[:type]).to eq('veteran_status_alert')
-          expect(result[:attributes][:header]).to eq(Mobile::V0::VeteranStatusCard::Constants::DISHONORABLE_RESPONSE[:title])
-          expect(result[:attributes][:body]).to eq(Mobile::V0::VeteranStatusCard::Constants::DISHONORABLE_RESPONSE[:message])
-          expect(result[:attributes][:alert_type]).to eq(Mobile::V0::VeteranStatusCard::Constants::DISHONORABLE_RESPONSE[:status])
+          discharge_response = Mobile::V0::VeteranStatusCard::Constants::DISCHARGE_STATUS_RESPONSE
+          expect(result[:attributes][:header]).to eq(discharge_response[:title])
+          expect(result[:attributes][:body]).to eq(discharge_response[:message])
+          expect(result[:attributes][:alert_type]).to eq(discharge_response[:status])
           expect(result[:attributes][:veteran_status]).to eq('not confirmed')
           expect(result[:attributes][:not_confirmed_reason]).to eq('MORE_RESEARCH_REQUIRED')
           expect(result[:attributes][:service_summary_code]).to eq(ssc_code)
-        end
-      end
-
-      context 'with INELIGIBLE_SERVICE SSC codes' do
-        let(:not_confirmed_reason) { 'MORE_RESEARCH_REQUIRED' }
-        let(:ssc_code) { 'G2' }
-
-        it 'returns veteran_status_alert with Mobile ineligible service constants' do
-          result = subject.status_card
-
-          expect(result[:type]).to eq('veteran_status_alert')
-          expect(result[:attributes][:header]).to eq(Mobile::V0::VeteranStatusCard::Constants::INELIGIBLE_SERVICE_RESPONSE[:title])
-          expect(result[:attributes][:body]).to eq(Mobile::V0::VeteranStatusCard::Constants::INELIGIBLE_SERVICE_RESPONSE[:message])
-          expect(result[:attributes][:alert_type]).to eq(Mobile::V0::VeteranStatusCard::Constants::INELIGIBLE_SERVICE_RESPONSE[:status])
         end
       end
 
@@ -747,10 +700,11 @@ RSpec.describe Mobile::V0::VeteranStatusCard::Service do
       context 'when environment in not production' do
         before { allow(Settings).to receive(:vsp_environment).and_return('staging') }
 
-        it 'returns ineligible_response for dishonorable' do
+        it 'returns ineligible_response for discharge status' do
           response = subject.status_card
 
-          expect(response[:attributes][:confirmation_status]).to eq(described_class::DISHONORABLE_SSC_MESSAGE.upcase)
+          expect(response[:attributes][:confirmation_status])
+            .to eq(described_class::DISCHARGE_STATUS_SSC_MESSAGE.upcase)
           expect(response[:attributes][:service_summary_code]).to eq('A5')
         end
       end

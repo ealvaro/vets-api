@@ -40,21 +40,12 @@ module Mobile
         end
 
         ##
-        # @see VeteranStatusCard::Service#dishonorable_response
-        # @return [Hash] mobile-specific dishonorable discharge response
+        # @see VeteranStatusCard::Service#discharge_status_response
+        # @return [Hash] mobile-specific discharge status response
         #
-        def dishonorable_response
-          @user_message = DISHONORABLE_MESSAGE
-          Mobile::V0::VeteranStatusCard::Constants::DISHONORABLE_RESPONSE
-        end
-
-        ##
-        # @see VeteranStatusCard::Service#ineligible_service_response
-        # @return [Hash] mobile-specific ineligible service response
-        #
-        def ineligible_service_response
-          @user_message = INELIGIBLE_SERVICE_MESSAGE
-          Mobile::V0::VeteranStatusCard::Constants::INELIGIBLE_SERVICE_RESPONSE
+        def discharge_status_response
+          @user_message = DISCHARGE_STATUS_MESSAGE
+          Mobile::V0::VeteranStatusCard::Constants::DISCHARGE_STATUS_RESPONSE
         end
 
         ##
