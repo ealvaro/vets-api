@@ -643,6 +643,10 @@ features:
     actor_type: user
     description: Enables users to access the claim letters page
     enable_in_development: true
+  claim_or_appeal_card_enabled:
+    actor_type: user
+    description: When enabled, renders Claims Status Tool list items through the shared ClaimOrAppealCard component
+    enable_in_development: true
   claims_api_flash_updater_uses_local_bgs:
     actor_type: user
     description: Enables flash updater to use local_bgs
