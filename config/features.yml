@@ -2148,10 +2148,6 @@ features:
     actor_type: user
     description: Blocks prescription refills for facilities transitioning to Oracle Health during phases p4-p5 (T-3 to T+2)
     enable_in_development: true
-  mhv_medications_oracle_health_cutover:
-    actor_type: user
-    description: Enables Oracle Health cutover functionality for the 4 Michigan VAMC facilities transitioning
-    enable_in_development: true
   mhv_medications_oh_renewal_message_rollout:
     actor_type: user
     description: Controls user rollout of the prescription renewal secure-message flow for Oracle Health facilities listed in mhv.oh_facility_checks.renewal_flow_rollout_oh_facilities
