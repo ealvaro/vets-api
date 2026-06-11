@@ -19,6 +19,8 @@ RSpec.describe VHANotification::Configuration do
   end
 
   describe '#connection' do
+    after { config.instance_variable_set(:@conn, nil) }
+
     it 'returns a Faraday connection' do
       expect(config.connection).to be_a(Faraday::Connection)
     end
