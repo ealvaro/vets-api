@@ -87,14 +87,14 @@ class FormProfiles::VA526ez < FormProfile
   attribute :payment_information, VA526ez::FormPaymentAccountInformation
   attribute :prefill_526, VA526ez::Form526Prefill
 
+  # Builds the prefill hash for the 21-526EZ form, combining data from multiple external services.
+  #
+  # The returned hash includes 'ratedDisabilitiesFetchFailed: true' if the lookup raised an
+  # exception (to distinguish a failed fetch from a legitimate finding of no rated disabilities)
   def prefill
     @prefill_526 = initialize_form526_prefill
 
-    begin
-      @rated_disabilities_information = initialize_rated_disabilities_information
-    rescue => e
-      Rails.logger.error("Form526 Prefill for rated disabilities failed. #{e.message}")
-    end
+    fetch_rated_disabilities
 
     begin
       @veteran_contact_information = initialize_veteran_contact_information
@@ -112,6 +112,8 @@ class FormProfiles::VA526ez < FormProfile
 
     mappings = self.class.mappings_for_form(form_id)
     form_data = generate_prefill(mappings)
+    # inject the ratedDisabilitiesFetchFailed flag when the fetch failed, otherwise omit
+    form_data['ratedDisabilitiesFetchFailed'] = true if @rated_disabilities_fetch_failed
     { form_data:, metadata: }
   end
 
@@ -123,6 +125,10 @@ class FormProfiles::VA526ez < FormProfile
     }
   end
 
+  # Fetches the user's rated disabilities from the configured API provider.
+  #
+  # Returns a VA526ez::FormRatedDisabilities on success, or {} if the user fails an authorization
+  # check. Raises on provider errors (network timeouts, 5xx, etc.).
   def initialize_rated_disabilities_information
     return {} unless user.authorize :evss, :access?
     return {} unless user.authorize :lighthouse, :access_vet_status?
@@ -140,6 +146,19 @@ class FormProfiles::VA526ez < FormProfile
   end
 
   private
+
+  # Fetches rated disabilities and tracks whether the call raised an exception.
+  # Resets the instance variables before each attempt, to guard against repeated calls potentially
+  # returning stale data from a previous attempt.
+  def fetch_rated_disabilities
+    @rated_disabilities_fetch_failed = false
+    @rated_disabilities_information = {}
+    @rated_disabilities_information = initialize_rated_disabilities_information
+  rescue => e
+    Rails.logger.error("Form526 Prefill for rated disabilities failed. #{e.message}")
+    @rated_disabilities_fetch_failed = true
+    @rated_disabilities_information = nil
+  end
 
   def prefill_base_class_methods
     begin

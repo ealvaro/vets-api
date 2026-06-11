@@ -83,5 +83,22 @@ RSpec.describe FormProfiles::VA526ez do
       expect(Rails.logger).to receive(:error).with(a_string_matching(/Form526 Prefill for rated disabilities failed/))
       expect { profile.prefill }.not_to raise_error
     end
+
+    context 'ratedDisabilitiesFetchFailed flag' do
+      it 'sets ratedDisabilitiesFetchFailed to true in form_data when rated disabilities fetch raises an exception' do
+        allow(profile).to receive(:initialize_rated_disabilities_information)
+          .and_raise(StandardError.new('service unavailable'))
+        allow(Rails.logger).to receive(:error)
+
+        result = profile.prefill
+        expect(result[:form_data]['ratedDisabilitiesFetchFailed']).to be(true)
+      end
+
+      it 'does not include ratedDisabilitiesFetchFailed in form_data when rated disabilities fetch succeeds' do
+        # key is omitted, to keep the response minimal
+        result = profile.prefill
+        expect(result[:form_data]).not_to have_key('ratedDisabilitiesFetchFailed')
+      end
+    end
   end
 end

@@ -935,6 +935,76 @@ RSpec.describe V0::DisabilityCompensationInProgressFormsController do
             end
           end
         end
+
+        context 'ratedDisabilitiesFetchFailed flag' do
+          context 'when the IPF has ratedDisabilitiesFetchFailed: true (fetch failed during prefill)' do
+            before do
+              fd = JSON.parse(in_progress_form_lighthouse.form_data)
+              fd['ratedDisabilitiesFetchFailed'] = true
+              in_progress_form_lighthouse.update!(form_data: fd.to_json)
+            end
+
+            context 'and the retry fetch succeeds' do
+              it 'clears ratedDisabilitiesFetchFailed from the response' do
+                VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+                  VCR.use_cassette('disability_max_ratings/max_ratings') do
+                    get v0_disability_compensation_in_progress_form_url(in_progress_form_lighthouse.form_id),
+                        params: nil
+                  end
+                end
+
+                expect(response).to have_http_status(:ok)
+                json_response = JSON.parse(response.body)
+                expect(json_response['formData']).not_to have_key('ratedDisabilitiesFetchFailed')
+              end
+            end
+
+            context 'and the retry fetch also fails (raises an exception)' do
+              before do
+                allow_any_instance_of(FormProfiles::VA526ez)
+                  .to receive(:initialize_rated_disabilities_information)
+                  .and_raise(Common::Exceptions::Timeout.new)
+                allow(Rails.logger).to receive(:warn)
+              end
+
+              it 'preserves ratedDisabilitiesFetchFailed in the response' do
+                get v0_disability_compensation_in_progress_form_url(in_progress_form_lighthouse.form_id), params: nil
+
+                expect(response).to have_http_status(:ok)
+                json_response = JSON.parse(response.body)
+                expect(json_response['formData']['ratedDisabilitiesFetchFailed']).to be(true)
+              end
+            end
+          end
+
+          context 'when the IPF does not have ratedDisabilitiesFetchFailed set' do
+            it 'does not add ratedDisabilitiesFetchFailed to the response when the fetch succeeds' do
+              VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+                VCR.use_cassette('disability_max_ratings/max_ratings') do
+                  get v0_disability_compensation_in_progress_form_url(in_progress_form_lighthouse.form_id),
+                      params: nil
+                end
+              end
+
+              expect(response).to have_http_status(:ok)
+              json_response = JSON.parse(response.body)
+              expect(json_response['formData']).not_to have_key('ratedDisabilitiesFetchFailed')
+            end
+
+            it 'does not add ratedDisabilitiesFetchFailed to the response when the fetch fails' do
+              allow_any_instance_of(FormProfiles::VA526ez)
+                .to receive(:initialize_rated_disabilities_information)
+                .and_raise(Common::Exceptions::Timeout.new)
+              allow(Rails.logger).to receive(:warn)
+
+              get v0_disability_compensation_in_progress_form_url(in_progress_form_lighthouse.form_id), params: nil
+
+              expect(response).to have_http_status(:ok)
+              json_response = JSON.parse(response.body)
+              expect(json_response['formData']).not_to have_key('ratedDisabilitiesFetchFailed')
+            end
+          end
+        end
       end
 
       describe '#update' do

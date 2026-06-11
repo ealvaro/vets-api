@@ -175,8 +175,18 @@ module V0
 
     # Checks whether the rated disabilities in form_data match those returned by an external service.
     # If they differ, assigns the latter to form_data['updatedRatedDisabilities'] and updates the returnUrl
-    # to the appropriate page for rated disabilities
+    # to the appropriate page for rated disabilities.
+    #
+    # Also updates the 'ratedDisabilitiesFetchFailed' flag that may have been set during prefill
+    # (in FormProfiles::VA526ez#prefill); if the retry succeeds, the flag is cleared.
     def update_rated_disabilities(form_data, metadata)
+      # if the fetch failed, return early; else, clear the flag set during prefill for failed fetches
+      if rated_disabilities_from_api_provider.nil?
+        return
+      else
+        form_data.delete('ratedDisabilitiesFetchFailed')
+      end
+
       return if rated_disabilities_from_api_provider.blank? ||
                 arr_to_compare(form_data&.dig('ratedDisabilities')) ==
                 arr_to_compare(rated_disabilities_from_api_provider&.rated_disabilities&.map(&:attributes))
