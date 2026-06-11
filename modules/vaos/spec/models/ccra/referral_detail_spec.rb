@@ -543,4 +543,32 @@ describe Ccra::ReferralDetail do
       end
     end
   end
+
+  describe '#online_schedule?' do
+    subject { described_class.new(category_of_care:).online_schedule? }
+
+    context 'when category_of_care is "PRIMARY CARE"' do
+      let(:category_of_care) { 'PRIMARY CARE' }
+
+      it { is_expected.to be(true) }
+    end
+
+    context 'when category_of_care is mixed case with surrounding whitespace' do
+      let(:category_of_care) { '  primary care  ' }
+
+      it { is_expected.to be(true) }
+    end
+
+    context 'when category_of_care is a different specialty' do
+      let(:category_of_care) { 'CARDIOLOGY' }
+
+      it { is_expected.to be(false) }
+    end
+
+    context 'when category_of_care is nil' do
+      let(:category_of_care) { nil }
+
+      it { is_expected.to be(false) }
+    end
+  end
 end

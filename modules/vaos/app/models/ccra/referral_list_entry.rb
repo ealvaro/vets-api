@@ -25,6 +25,10 @@ module Ccra
       @expiration_date = parse_date(attributes[:referral_expiration_date])
     end
 
+    def online_schedule?
+      category_of_care.to_s.strip.casecmp?(PRIMARY_CARE_CATEGORY)
+    end
+
     ##
     # Creates an array of ReferralListEntry objects from an array of referral data.
     #

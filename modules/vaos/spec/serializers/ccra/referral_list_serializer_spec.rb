@@ -84,6 +84,40 @@ RSpec.describe Ccra::ReferralListSerializer do
       end
     end
 
+    describe 'onlineSchedule attribute' do
+      let(:referral) do
+        ref = build(:ccra_referral_list_entry, category_of_care:)
+        ref.uuid = 'encrypted-uuid'
+        ref
+      end
+      let(:serialized_data) { described_class.new([referral]).serializable_hash }
+      let(:online_schedule) { serialized_data[:data][0][:attributes][:onlineSchedule] }
+
+      context 'when category_of_care is "PRIMARY CARE"' do
+        let(:category_of_care) { 'PRIMARY CARE' }
+
+        it { expect(online_schedule).to be(true) }
+      end
+
+      context 'when category_of_care is mixed case with surrounding whitespace' do
+        let(:category_of_care) { '  primary care  ' }
+
+        it { expect(online_schedule).to be(true) }
+      end
+
+      context 'when category_of_care is a different specialty' do
+        let(:category_of_care) { 'CARDIOLOGY' }
+
+        it { expect(online_schedule).to be(false) }
+      end
+
+      context 'when category_of_care is nil' do
+        let(:category_of_care) { nil }
+
+        it { expect(online_schedule).to be(false) }
+      end
+    end
+
     context 'with an empty list' do
       let(:referrals) { [] }
       let(:serializer) { described_class.new(referrals) }

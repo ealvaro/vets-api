@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module Ccra
+  PRIMARY_CARE_CATEGORY = 'PRIMARY CARE'
+
   class ReferralDetail
     include ActiveModel::Serializers::JSON
     include ActiveModel::Model
@@ -44,6 +46,10 @@ module Ccra
       parse_referring_facility_info(attributes[:referring_facility_info])
       parse_treating_provider_info(attributes[:treating_provider_info])
       parse_treating_facility_info(attributes[:treating_facility_info])
+    end
+
+    def online_schedule?
+      category_of_care.to_s.strip.casecmp?(PRIMARY_CARE_CATEGORY)
     end
 
     ##

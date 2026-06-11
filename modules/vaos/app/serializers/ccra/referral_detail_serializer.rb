@@ -20,6 +20,8 @@ module Ccra
     attribute :referral_date
     attribute :station_id
 
+    attribute :online_schedule, &:online_schedule?
+
     # Nested provider information
     attribute :provider do |referral|
       provider_info = {

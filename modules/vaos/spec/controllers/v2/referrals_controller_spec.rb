@@ -86,6 +86,7 @@ RSpec.describe VAOS::V2::ReferralsController, type: :request do
         expect(first_referral['attributes']['referralConsultId']).to eq(referral_consult_id)
         expect(first_referral['attributes']['expirationDate']).to eq((Date.current + 60.days).strftime('%Y-%m-%d'))
         expect(first_referral['attributes']['hasAppointments']).to be(false)
+        expect(first_referral['attributes']['onlineSchedule']).to be(false)
       end
 
       it 'logs multiple referrals count with JSON structured format and records StatsD gauge' do
@@ -462,6 +463,7 @@ RSpec.describe VAOS::V2::ReferralsController, type: :request do
         expect(response_data['data']['id']).to eq(encrypted_referral_consult_id)
         expect(response_data['data']['type']).to eq('referrals')
         expect(response_data['data']['attributes']['categoryOfCare']).to eq('CARDIOLOGY')
+        expect(response_data['data']['attributes']['onlineSchedule']).to be(false)
         expect(response_data['data']['attributes']['provider']['name']).to eq('Dr. Smith')
         expect(response_data['data']['attributes']['referringFacility']['name']).to be_present
         expect(response_data['data']['attributes']['expirationDate']).to be_a(String)
