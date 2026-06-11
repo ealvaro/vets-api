@@ -41,6 +41,24 @@ RSpec.describe SimpleFormsApi::VBA210788 do
     end
   end
 
+  describe '#first_name' do
+    subject { form.first_name }
+
+    it { is_expected.to eq data.dig('full_name', 'first') }
+  end
+
+  describe '#middle_name' do
+    subject { form.middle_name }
+
+    it { is_expected.to eq data.dig('full_name', 'middle') }
+  end
+
+  describe '#last_name' do
+    subject { form.last_name }
+
+    it { is_expected.to eq data.dig('full_name', 'last') }
+  end
+
   describe '#full_name' do
     subject { form.full_name }
 
@@ -52,6 +70,30 @@ RSpec.describe SimpleFormsApi::VBA210788 do
           data.dig('full_name', 'last')
         ].compact.join(' ')
       )
+    end
+  end
+
+  describe '#notification_first_name' do
+    subject { form.notification_first_name }
+
+    it { is_expected.to eq data.dig('full_name', 'first') }
+  end
+
+  describe '#notification_last_name' do
+    subject { form.notification_last_name }
+
+    it { is_expected.to eq data.dig('full_name', 'last') }
+  end
+
+  describe '#notification_email_address' do
+    subject { form.notification_email_address }
+
+    it { is_expected.to eq data['email_address'] }
+
+    context 'when email_address is blank' do
+      let(:data) { super().merge('email_address' => '') }
+
+      it { is_expected.to be_nil }
     end
   end
 
@@ -71,6 +113,30 @@ RSpec.describe SimpleFormsApi::VBA210788 do
     end
   end
 
+  describe '#zip_code' do
+    subject { form.zip_code }
+
+    it { is_expected.to eq data.dig('address', 'postal_code') }
+  end
+
+  describe '#zip_code_is_us_based' do
+    subject { form.zip_code_is_us_based }
+
+    context 'when country is USA' do
+      it { is_expected.to be true }
+    end
+
+    context 'when country is not USA' do
+      let(:data) do
+        super().merge(
+          'address' => super()['address'].merge('country' => 'CAN')
+        )
+      end
+
+      it { is_expected.to be false }
+    end
+  end
+
   describe '#ssn' do
     subject { form.ssn }
 
@@ -81,6 +147,32 @@ RSpec.describe SimpleFormsApi::VBA210788 do
     subject { form.file_number }
 
     it { is_expected.to eq data['va_file_number'] }
+  end
+
+  describe '#metadata_file_number' do
+    subject { form.metadata_file_number }
+
+    context 'when VA file number is present' do
+      let(:data) { super().merge('va_file_number' => 'C12345678') }
+
+      it 'strips non-digits from the VA file number' do
+        expect(subject).to eq '12345678'
+      end
+    end
+
+    context 'when VA file number is numeric' do
+      let(:data) { super().merge('va_file_number' => '123456789') }
+
+      it { is_expected.to eq '123456789' }
+    end
+
+    context 'when VA file number is missing' do
+      let(:data) { super().merge('va_file_number' => nil) }
+
+      it 'falls back to SSN digits' do
+        expect(subject).to eq data['ssn'].gsub(/\D/, '')
+      end
+    end
   end
 
   describe '#relationship' do
@@ -251,8 +343,10 @@ RSpec.describe SimpleFormsApi::VBA210788 do
 
     it 'returns expected structure' do
       expect(subject).to include(
-        'veteranFullName' => form.full_name,
-        'fileNumber' => form.file_number,
+        'veteranFirstName' => form.first_name,
+        'veteranLastName' => form.last_name,
+        'fileNumber' => form.metadata_file_number,
+        'zipCode' => form.zip_code,
         'source' => 'VA Platform Digital Forms',
         'docType' => "StructuredData:#{data['form_number']}",
         'businessLine' => 'CMP'

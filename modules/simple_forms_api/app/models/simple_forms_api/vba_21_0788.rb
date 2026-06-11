@@ -48,12 +48,36 @@ module SimpleFormsApi
       )
     end
 
+    def first_name
+      data.dig('full_name', 'first')
+    end
+
+    def middle_name
+      data.dig('full_name', 'middle')
+    end
+
+    def last_name
+      data.dig('full_name', 'last')
+    end
+
     def full_name
       [
         data.dig('full_name', 'first'),
         data.dig('full_name', 'middle'),
         data.dig('full_name', 'last')
       ].compact.join(' ')
+    end
+
+    def notification_first_name
+      first_name
+    end
+
+    def notification_last_name
+      last_name
+    end
+
+    def notification_email_address
+      data['email_address'].presence
     end
 
     def ssn
@@ -64,6 +88,13 @@ module SimpleFormsApi
       data['va_file_number']
     end
 
+    def metadata_file_number
+      [
+        file_number,
+        ssn
+      ].find(&:present?).to_s.gsub(/\D/, '')
+    end
+
     def full_address
       [
         @address.address_line1,
@@ -72,6 +103,14 @@ module SimpleFormsApi
         @address.state_code,
         @address.zip_code
       ].compact.join(', ')
+    end
+
+    def zip_code_is_us_based
+      data.dig('address', 'country').to_s.upcase == 'USA'
+    end
+
+    def zip_code
+      data.dig('address', 'postal_code')
     end
 
     def phone
@@ -212,8 +251,10 @@ module SimpleFormsApi
 
     def metadata
       {
-        'veteranFullName' => full_name,
-        'fileNumber' => file_number,
+        'veteranFirstName' => first_name,
+        'veteranLastName' => last_name,
+        'fileNumber' => metadata_file_number,
+        'zipCode' => zip_code,
         'source' => 'VA Platform Digital Forms',
         'docType' => "StructuredData:#{data['form_number']}",
         'businessLine' => 'CMP'
