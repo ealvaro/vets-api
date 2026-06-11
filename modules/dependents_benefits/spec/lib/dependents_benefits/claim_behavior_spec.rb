@@ -345,9 +345,7 @@ RSpec.describe DependentsBenefits::ClaimBehavior do
 
   describe '#pension_related_submission?' do
     context 'when feature flag is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:va_dependents_net_worth_and_pension).and_return(false)
-      end
+      before { allow(Flipper).to receive(:enabled?).with(:va_dependents_net_worth_and_pension).and_return(false) }
 
       it 'returns false' do
         expect(child_claim.pension_related_submission?).to be false
@@ -355,23 +353,19 @@ RSpec.describe DependentsBenefits::ClaimBehavior do
     end
 
     context 'when feature flag is enabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:va_dependents_net_worth_and_pension).and_return(true)
-      end
+      before { allow(Flipper).to receive(:enabled?).with(:va_dependents_net_worth_and_pension).and_return(true) }
 
       context 'when the claim is pension related' do
+        let(:claim) { create(:dependents_claim, :pension_related) }
+
         it 'returns true' do
-          expect(child_claim.pension_related_submission?).to be true
+          expect(claim.pension_related_submission?).to be true
         end
       end
 
       context 'when the claim is not pension related' do
-        before do
-          child_claim.parsed_form['dependents_application'].delete('household_income')
-        end
-
         it 'returns false' do
-          expect(child_claim.pension_related_submission?).to be false
+          expect(claim.pension_related_submission?).to be false
         end
       end
     end

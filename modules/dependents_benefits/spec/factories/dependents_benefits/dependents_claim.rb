@@ -152,6 +152,10 @@ FactoryBot.define do
 
     form_id { '686C-674-V2' }
 
+    transient do
+      is_in_receipt_of_pension { 0 }
+    end
+
     form do
       {
         statement_of_truth_certified: true,
@@ -176,7 +180,8 @@ FactoryBot.define do
             },
             ssn: '000000000',
             ssn_last_four: '5309',
-            va_file_last_four: '5309'
+            va_file_last_four: '5309',
+            is_in_receipt_of_pension:
           },
           household_income: true,
           'view:completed_child_stopped_attending_school': false,
@@ -658,6 +663,10 @@ FactoryBot.define do
 
     trait :with_attachments do
       persistent_attachments { create_list(:claim_evidence, 2) }
+    end
+
+    trait :pension_related do
+      is_in_receipt_of_pension { 1 }
     end
   end
 

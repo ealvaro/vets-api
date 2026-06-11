@@ -46,8 +46,6 @@ module DependentsBenefits
     def enqueue_submissions
       monitor.track_info_event('Starting claim submission processing', action: 'start', component:, parent_claim_id:)
 
-      track_submission_special_claim_types
-
       mark_in_progress_form_pending
 
       enqueue_background_jobs
@@ -147,45 +145,45 @@ module DependentsBenefits
     # Tracks special claim types (pension-related and no-SSN claims)
     # @return [void]
     def track_successful_special_claim_types
-      if child_claims.any?(&:pension_related_submission?)
-        track_pension_related_submission('Successful pension-related claim submission')
-      end
-      track_no_ssn_claim_submission('Successful no-SSN claim submission') if child_claims.any?(&:no_ssn_claim?)
+      track_pension_related_submissions
+      track_no_ssn_claim_submissions
     end
 
-    # Tracks special claim types during submission
+    # Tracks pension-related claim submission for each child claim
     # @return [void]
-    def track_submission_special_claim_types
-      if child_claims.any?(&:pension_related_submission?)
-        track_pension_related_submission('Submitted pension-related claim')
-      end
-      track_no_ssn_claim_submission('Submitted no-SSN claim') if child_claims.any?(&:no_ssn_claim?)
-    end
+    def track_pension_related_submissions
+      return unless parent_claim.pension_related_submission?
 
-    # Tracks pension-related claim submission
-    # @param message [String] The message to log for the pension-related submission
-    # @return [void]
-    def track_pension_related_submission(message)
       form_type = parent_claim&.claim_form_type
-      monitor.track_info_event(message,
-                               action: 'pension.submission',
-                               component:,
-                               parent_claim_id:,
-                               form_type:,
-                               module_stats_key: DependentsBenefits::Monitor::PENSION_SUBMISSION_STATS_KEY)
+      child_claims.each do |claim|
+        monitor.track_info_event('Successful pension-related claim submission',
+                                 action: 'pension.submission',
+                                 component:,
+                                 claim_id: claim.id,
+                                 form_id: claim.form_id,
+                                 parent_claim_id:,
+                                 form_type:,
+                                 module_stats_key: DependentsBenefits::Monitor::PENSION_SUBMISSION_STATS_KEY)
+      end
     end
 
-    # Tracks no-SSN claim submission
-    # @param message [String] The message to log for the no-SSN claim submission
+    # Tracks no-SSN claim submission for each child claim
     # @return [void]
-    def track_no_ssn_claim_submission(message)
+    def track_no_ssn_claim_submissions
       form_type = parent_claim&.claim_form_type
-      monitor.track_info_event(message,
-                               action: 'no_ssn_claim.submission',
-                               component:,
-                               parent_claim_id:,
-                               form_type:,
-                               module_stats_key: DependentsBenefits::Monitor::NO_SSN_SUBMISSION_STATS_KEY)
+      child_claims.each do |claim|
+        if claim.no_ssn_claim?
+          monitor.track_info_event('Successful no-SSN claim submission',
+                                   action: 'no_ssn_claim.submission',
+                                   component:,
+                                   claim_id: claim.id,
+                                   form_id: claim.form_id,
+                                   parent_claim_id:,
+                                   form_type:,
+                                   module_stats_key: DependentsBenefits::Monitor::NO_SSN_SUBMISSION_STATS_KEY)
+
+        end
+      end
     end
   end
 end
