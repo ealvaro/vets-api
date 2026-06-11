@@ -25,9 +25,7 @@ module EventBusGateway
       ::Rails.logger.error('LetterReadyPushJob retries exhausted',
                            { job_id:, timestamp:, error_class:, error_message: })
       tags = Constants::DD_TAGS + ["function: #{error_message}"]
-      silent_failure_tags = Constants::DD_TAGS + ['function: LetterReadyPushJob']
       StatsD.increment("#{STATSD_METRIC_PREFIX}.exhausted", tags:)
-      StatsD.increment('silent_failure', tags: silent_failure_tags)
       Sidekiq::AttrPackage.delete(cache_key) if cache_key
     end
 
