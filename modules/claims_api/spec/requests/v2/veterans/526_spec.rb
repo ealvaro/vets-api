@@ -898,6 +898,22 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
             end
           end
         end
+
+        context "when 'datePaymentReceived' has a trailing dash" do
+          let(:trailing_dash_dates) { %w[2011- 2011-02- 2011-02-04-] }
+
+          it 'rejects dates with trailing dashes' do
+            trailing_dash_dates.each do |date|
+              mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+                VCR.use_cassette('claims_api/disability_comp') do
+                  post synchronous_path, params: service_pay_data_with_date(date), headers: auth_header
+                  expect(response).to have_http_status(:unprocessable_content),
+                                      "Expected trailing dash date '#{date}' to be rejected but got #{response.status}"
+                end
+              end
+            end
+          end
+        end
       end
     end
 

@@ -200,6 +200,25 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
             end
           end
         end
+
+        context "when 'treatment.startDate' has a trailing dash" do
+          let(:trailing_dash_dates) { %w[2011- 2011-02- 2011-02-04-] }
+
+          it 'rejects dates with trailing dashes' do
+            trailing_dash_dates.each do |date|
+              mock_acg(scopes) do |auth_header|
+                VCR.use_cassette('claims_api/bgs/claims/claims') do
+                  VCR.use_cassette('claims_api/brd/countries') do
+                    post path, params: build_treatment_start_date(date), headers: headers.merge(auth_header)
+                    expect(response).to have_http_status(:unprocessable_content),
+                                        "Expected trailing dash date '#{date}' " \
+                                        "to be rejected but got #{response.status}"
+                  end
+                end
+              end
+            end
+          end
+        end
       end
 
       describe "'treatment.endDate' validations" do
@@ -311,6 +330,25 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
                 VCR.use_cassette('claims_api/brd/countries') do
                   post path, params: build_treatment_end_date(nil), headers: headers.merge(auth_header)
                   expect(response).to have_http_status(:ok)
+                end
+              end
+            end
+          end
+        end
+
+        context "when 'treatment.endDate' has a trailing dash" do
+          let(:trailing_dash_dates) { %w[2011- 2011-02- 2011-02-04-] }
+
+          it 'rejects dates with trailing dashes' do
+            trailing_dash_dates.each do |date|
+              mock_acg(scopes) do |auth_header|
+                VCR.use_cassette('claims_api/bgs/claims/claims') do
+                  VCR.use_cassette('claims_api/brd/countries') do
+                    post path, params: build_treatment_end_date(date), headers: headers.merge(auth_header)
+                    expect(response).to have_http_status(:unprocessable_content),
+                                        "Expected trailing dash date '#{date}' to be " \
+                                        "rejected but got #{response.status}"
+                  end
                 end
               end
             end
@@ -2742,6 +2780,27 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
                       post path, params: build_service_pay_attribute(date), headers: headers.merge(auth_header)
                       expect(response).to have_http_status(:ok)
                     end
+                  end
+                end
+              end
+            end
+          end
+
+          context "when 'receivedDate' has a trailing dash" do
+            let(:trailing_dash_dates) { %w[2011- 2011-02- 2011-02-04-] }
+
+            before do
+              allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_enable_FES).and_return(true)
+            end
+
+            it 'rejects dates with trailing dashes' do
+              trailing_dash_dates.each do |date|
+                mock_acg(scopes) do |auth_header|
+                  VCR.use_cassette('claims_api/brd/countries') do
+                    post path, params: build_service_pay_attribute(date), headers: headers.merge(auth_header)
+                    expect(response).to have_http_status(:unprocessable_content),
+                                        "Expected trailing dash date '#{date}' to " \
+                                        "be rejected but got #{response.status}"
                   end
                 end
               end
