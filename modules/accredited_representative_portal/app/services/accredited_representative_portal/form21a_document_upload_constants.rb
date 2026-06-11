@@ -4,8 +4,8 @@ module AccreditedRepresentativePortal
   module Form21aDocumentUploadConstants
     # File type codes expected by GCLAWS Document API
     FILE_TYPES = {
-      'application/pdf' => 1,
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 2
+      'application/pdf' => 7,
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 15
     }.freeze
 
     # Maps form_data document keys to GCLAWS document type codes.

@@ -83,7 +83,7 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
                  multipart_request?(request) &&
                    multipart_field?(request, 'ApplicationId', application_id) &&
                    multipart_field?(request, 'DocumentTypeId', document_type) &&
-                   multipart_field?(request, 'FileTypeId', 1) &&
+                   multipart_field?(request, 'FileTypeId', 7) &&
                    multipart_field?(request, 'OriginalFileName', original_file_name) &&
                    multipart_file_part?(
                      request,
@@ -255,11 +255,11 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
         allow_any_instance_of(FormAttachment).to receive(:get_file).and_return(mock_file)
       end
 
-      it 'sends FileTypeId 2 for DOCX files' do
+      it 'sends FileTypeId 15 for DOCX files' do
         stub = stub_request(:post, document_upload_url)
                .with do |request|
                  multipart_request?(request) &&
-                   multipart_field?(request, 'FileTypeId', 2) &&
+                   multipart_field?(request, 'FileTypeId', 15) &&
                    multipart_file_part?(
                      request,
                      field_name: 'FileDetails',
