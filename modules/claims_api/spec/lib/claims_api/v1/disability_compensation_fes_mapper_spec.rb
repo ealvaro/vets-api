@@ -476,6 +476,14 @@ describe ClaimsApi::V1::DisabilityCompensationFesMapper do
           expect(reserves_info_data[:title10Activation][:title10ActivationDate]).to eq('2023-01-01')
         end
       end
+
+      describe 'claim submission source' do
+        context 'when a v1 claim is mapped' do
+          it "sets the claimSubmissionSource to 'VSOREP' in the payload" do
+            expect(fes_data[:data][:claimSubmissionSource]).to eq('VSOREP')
+          end
+        end
+      end
     end
   end
 end

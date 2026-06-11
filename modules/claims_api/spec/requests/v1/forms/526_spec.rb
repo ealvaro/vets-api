@@ -3841,6 +3841,35 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
         end
       end
     end
+
+    describe 'FES claim submission source' do
+      context "when the 'lighthouse_claims_api_v1_enable_FES' feature flag is enabled" do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_enable_FES).and_return(true)
+        end
+
+        it "adds claimSubmissionSource as 'VSOREP' in FES mapper output without mutating persisted form_data" do
+          mock_acg(scopes) do |auth_header|
+            VCR.use_cassette('claims_api/bgs/claims/claims') do
+              VCR.use_cassette('claims_api/brd/countries') do
+                json_data = JSON.parse data
+                params = json_data
+                post path, params: params.to_json, headers: headers.merge(auth_header)
+
+                expect(response).to have_http_status(:ok)
+                response_body = JSON.parse response.body
+                token = response_body['data']['attributes']['token']
+                auto_claim = ClaimsApi::AutoEstablishedClaim.find(token)
+                fes_payload = ClaimsApi::V1::DisabilityCompensationFesMapper.new(auto_claim).map_claim
+
+                expect(auto_claim.form_data['claimSubmissionSource']).to be_nil
+                expect(fes_payload.dig(:data, :claimSubmissionSource)).to eq('VSOREP')
+              end
+            end
+          end
+        end
+      end
+    end
   end
 
   describe '#526 without flashes or special issues' do

@@ -8,6 +8,8 @@ module ClaimsApi
     class DisabilityCompensationFesMapper
       include FesMapperBase
       include LighthouseMilitaryAddressValidator
+      # claim submission source for v2 claims
+      CLAIM_SUBMISSION_SOURCE = 'VET'
 
       def initialize(auto_claim)
         @auto_claim = auto_claim
@@ -259,6 +261,7 @@ module ClaimsApi
             serviceTransactionId: @auto_claim.auth_headers['va_eauth_service_transaction_id'],
             claimantParticipantId: extract_veteran_participant_id,
             veteranParticipantId: extract_veteran_participant_id,
+            claimSubmissionSource: claim_submission_source,
             form526: @fes_claim
           }
         }
@@ -318,6 +321,10 @@ module ClaimsApi
         @data[:serviceInformation][:servicePeriods]&.max_by do |period|
           Date.parse(period[:activeDutyBeginDate])
         end
+      end
+
+      def claim_submission_source
+        CLAIM_SUBMISSION_SOURCE
       end
     end
   end

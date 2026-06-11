@@ -48,5 +48,10 @@ module ClaimsApi
 
       address
     end
+
+    # claim submission source definition for v1 and v2 to prevent drift between mappers
+    def claim_submission_source
+      raise NotImplementedError, 'Subclass must define claim_submission_source'
+    end
   end
 end

@@ -476,6 +476,14 @@ describe ClaimsApi::V2::DisabilityCompensationFesMapper do
           expect(fes_data[:data][:form526][:claimDate]).to eq('2024-01-15')
         end
       end
+
+      describe 'claim submission source' do
+        context 'when a v2 claim is mapped' do
+          it "sets the claimSubmissionSource to 'VET' in the payload information" do
+            expect(fes_data[:data][:claimSubmissionSource]).to eq('VET')
+          end
+        end
+      end
     end
   end
 end

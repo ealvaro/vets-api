@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require_relative '../../../rails_helper'
+require 'claims_api/v2/disability_compensation_fes_mapper'
 require_relative '../../../support/form_526_fixture_helper'
 
 RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
@@ -243,6 +244,26 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
                 expect(parsed_res).not_to have_key('meta')
                 expect(response).to have_http_status(:accepted)
               end
+            end
+          end
+        end
+      end
+
+      describe 'FES claim submission source' do
+        it "adds claimSubmissionSource as 'VET' in v2 FES mapper output without mutating persisted form_data" do
+          mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
+            VCR.use_cassette('claims_api/disability_comp') do
+              post synchronous_path, params: data, headers: auth_header
+
+              expect(response).to have_http_status(:accepted)
+
+              parsed_res = JSON.parse(response.body)
+              claim_id = parsed_res['data']['id']
+              auto_claim = ClaimsApi::AutoEstablishedClaim.find(claim_id)
+              fes_payload = ClaimsApi::V2::DisabilityCompensationFesMapper.new(auto_claim).map_claim
+
+              expect(auto_claim.form_data['claimSubmissionSource']).to be_nil
+              expect(fes_payload.dig(:data, :claimSubmissionSource)).to eq('VET')
             end
           end
         end
