@@ -48,6 +48,11 @@ proof_of_service:
         - Accessing Veteran-only programs or community services
         - Verifying service history for non-financial purposes
 
+service_verification:
+  content:
+    - type: paragraph
+      text: This letter shows your branch of service, the date you started active duty, and the date you were discharged from active duty.
+
 civil_service:
   content:
     - type: paragraph

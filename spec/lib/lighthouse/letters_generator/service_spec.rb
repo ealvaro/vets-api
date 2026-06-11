@@ -374,7 +374,11 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
             expect(benefit_summary[:description]['subtitle']).to eq('Choose topics to include')
 
             expect(service_verification[:name]).to eq('Service verification letter')
-            expect(service_verification[:description]).to be_nil
+            expect(service_verification[:description]).to be_present
+            expect(service_verification[:description]['content']).to be_an(Array)
+            expect(service_verification[:description]['content'].first['text']).to start_with(
+              'This letter shows your branch of service'
+            )
           end
         end
 
@@ -405,7 +409,11 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
             expect(benefit_summary[:description]['subtitle']).to eq('Choose topics to include')
 
             expect(service_verification[:name]).to eq('Service verification letter')
-            expect(service_verification[:description]).to be_nil
+            expect(service_verification[:description]).to be_present
+            expect(service_verification[:description]['paragraphs']).to be_an(Array)
+            expect(service_verification[:description]['paragraphs'].first).to start_with(
+              'This letter shows your branch of service'
+            )
           end
         end
       end

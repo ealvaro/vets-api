@@ -309,7 +309,6 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                 expect(response).to have_http_status(:ok)
                 letters = JSON.parse(response.body).dig('data', 'attributes', 'letters')
                 proof_of_service = letters.find { |letter| letter['letterType'] == 'proof_of_service' }
-                service_verification = letters.find { |letter| letter['letterType'] == 'service_verification' }
                 benefit_summary = letters.find { |letter| letter['letterType'] == 'benefit_summary' }
                 benefit_verification = letters.find { |letter| letter['letterType'] == 'benefit_verification' }
 
@@ -323,7 +322,6 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                   proof_of_service['description']['lists'].first['items']
                 ).to include('Requesting Veteran discounts')
 
-                expect(service_verification).not_to have_key('description')
                 expect(benefit_summary['name']).to eq('Benefits and service verification')
                 expect(benefit_verification['name']).to eq('Proof of VA income')
 
@@ -368,7 +366,6 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                 expect(response).to have_http_status(:ok)
                 letters = JSON.parse(response.body).dig('data', 'attributes', 'letters')
                 proof_of_service = letters.find { |letter| letter['letterType'] == 'proof_of_service' }
-                service_verification = letters.find { |letter| letter['letterType'] == 'service_verification' }
                 benefit_summary = letters.find { |letter| letter['letterType'] == 'benefit_summary' }
                 benefit_verification = letters.find { |letter| letter['letterType'] == 'benefit_verification' }
 
@@ -381,7 +378,6 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                   proof_of_service['description']['content'].find { |n| n['type'] == 'list' }['items']
                 ).to include('Requesting Veteran discounts')
 
-                expect(service_verification).not_to have_key('description')
                 expect(benefit_summary['name']).to eq('Benefits and service verification')
                 expect(benefit_verification['name']).to eq('Proof of VA income')
 

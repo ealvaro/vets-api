@@ -40,6 +40,10 @@ proof_of_service:
         - Accessing Veteran-only programs or community services
         - Verifying service history for non-financial purposes
 
+service_verification:
+  paragraphs:
+    - This letter shows your branch of service, the date you started active duty, and the date you were discharged from active duty.
+
 civil_service:
   paragraphs:
     - This letter confirms that you’re a disabled Veteran and may qualify for preference in civil service jobs.
