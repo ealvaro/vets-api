@@ -20,14 +20,19 @@ module ClaimsApi
       @claimant_ssn = options[:claimant_ssn]
     end
 
+    # attempt to assign POA using person web service, and fallback to benefit claim update
     def assign_poa_to_dependent!
-      return nil if assign_poa_to_dependent_via_manage_ptcpnt_rlnshp?
+      return nil if assign_poa_to_dependent_via_manage_ptcpnt_rlnshp == :success
 
-      return nil if assign_poa_to_dependent_via_update_benefit_claim?
+      return nil if assign_poa_to_dependent_via_update_benefit_claim == :success
 
-      log(level: :error, message: 'Failed to assign POA to dependent')
+      log_assignment_failure(
+        reason: 'Failed to assign POA via both manage_ptcpnt_rlnshp and update benefit claim'
+      )
 
-      raise ::Common::Exceptions::ServiceError
+      raise ::Common::Exceptions::ServiceError.new(
+        detail: 'Failed to assign POA via both manage_ptcpnt_rlnshp and update benefit claim'
+      )
     end
 
     private
@@ -37,45 +42,51 @@ module ClaimsApi
                                       external_key: @dependent_participant_id)
     end
 
+    def assign_poa_via_manage_ptcpnt_rlnshp_outcome
+      res = person_web_service.manage_ptcpnt_rlnshp_poa(ptcpnt_id_a: @dependent_participant_id,
+                                                        ptcpnt_id_b: poa_participant_id,
+                                                        authzn_poa_access_ind: @allow_poa_access,
+                                                        authzn_change_clmant_addrs_ind: @allow_poa_cadd)
+      if manage_ptcpnt_rlnshp_poa_success?(res)
+        log(message: 'POA assigned to dependent.')
+
+        return :success
+      end
+
+      log_assignment_failure(
+        reason: 'Failure to assign POA via PersonWebService.manage_ptcpnt_rlnshp_poa'
+      )
+
+      :could_not_assign_via_manage_ptcpnt_rlnshp
+    end
+
     def log(level: :info, **rest)
       ClaimsApi::Logger.log('dependent_claimant_poa_assignment_service', level:, poa_id: @poa_id, poa_code: @poa_code,
                                                                          **rest)
     end
 
-    def assign_poa_to_dependent_via_manage_ptcpnt_rlnshp?
-      res = person_web_service.manage_ptcpnt_rlnshp_poa(ptcpnt_id_a: @dependent_participant_id,
-                                                        ptcpnt_id_b: poa_participant_id,
-                                                        authzn_poa_access_ind: @allow_poa_access,
-                                                        authzn_change_clmant_addrs_ind: @allow_poa_cadd)
-
-      if manage_ptcpnt_rlnshp_poa_success?(res)
-        log(message: 'POA assigned to dependent.')
-
-        return true
-      end
-
-      raise ::Common::Exceptions::ServiceError
+    def assign_poa_to_dependent_via_manage_ptcpnt_rlnshp
+      assign_poa_via_manage_ptcpnt_rlnshp_outcome
     rescue ::Common::Exceptions::ServiceError => e
-      if e.errors.first.detail == 'PtcpntIdA has open claims.'
-        log(message: 'Dependent has open claims, continuing.')
+      if open_claims_error?(e)
+        log(
+          message: 'Dependent has open claims, continuing.',
+          reason: 'Failed to assign POA via manage_ptcpnt_rlnshp. Attempting to assign POA via update benefit claim.'
+        )
 
-        return false
+        return :fallback_to_update_benefit_claim
       end
+      log_assignment_failure(
+        reason: 'Service error with Person Web Service call to assign POA via manage_ptcpnt_rlnshp'
+      )
 
       raise e
     rescue => e
-      log(level: :error, message: 'Something else went wrong with manage_ptcpnt_rlnshp.', error: error_details(e))
+      log_assignment_failure(
+        reason: 'An unknown error occurred trying to assign POA via manage_ptcpnt_rlnshp'
+      )
 
       raise e
-    end
-
-    def error_details(e)
-      {
-        message: e.message,
-        detail: e.try(:detail),
-        details: e.try(:details),
-        errors: e.try(:errors)&.map(&:to_h)
-      }.compact
     end
 
     def iso_to_date(iso_date)
@@ -100,26 +111,30 @@ module ClaimsApi
       }
     end
 
-    def assign_poa_to_dependent_via_update_benefit_claim?
+    def assign_poa_to_dependent_via_update_benefit_claim
       claim_details = first_open_claim_details
 
-      if claim_details.blank?
-        log(message: 'Dependent has no open claims.', statuses: dependent_claims.pluck(:phase_type).uniq)
+      validate_claim_details_present(claim_details)
 
-        raise ::Common::Exceptions::ServiceError
+      # separate error handling to control logging and avoid logging PII from claim details.
+      begin
+        benefit_claim_update_input = build_benefit_claim_update_input(claim_details:)
+        result = benefit_claim_service.update_benefit_claim(benefit_claim_update_input)
+
+        if result.dig(:return, :return_message) == 'Update to Corporate was successful'
+          log(message: 'POA assigned to dependent.')
+
+          return :success
+
+        end
+        :could_not_assign_via_update_benefit_claim
+      rescue => e # not logging error details to avoid logging PII, but can be added in the future if needed
+        log_assignment_failure(
+          reason: 'Failure to assign POA via BenefitClaimService.update_benefit_claim' \
+                  "due to error class #{e.class.name}"
+        )
+        :could_not_assign_via_update_benefit_claim
       end
-
-      benefit_claim_update_input = build_benefit_claim_update_input(claim_details:)
-
-      result = benefit_claim_service.update_benefit_claim(benefit_claim_update_input)
-
-      if result[:return][:return_message] == 'Update to Corporate was successful'
-        log(message: 'POA assigned to dependent.')
-
-        return true
-      end
-
-      false
     end
 
     def dependent_claims
@@ -201,6 +216,40 @@ module ClaimsApi
 
         first_claim_id = first_claim.present? ? first_claim[:bnft_claim_id] : nil
         first_claim_id.present? ? claim_details(first_claim_id) : {}
+      end
+    end
+
+    # logging does not contain error details to avoid logging PII
+    # this can be added in the future if needed, but would require refactoring to ensure no PII is logged
+    def log_assignment_failure(reason:, statuses: nil)
+      log_data = {
+        message: 'Failed to assign POA to dependent',
+        reason:
+      }
+      log_data[:statuses] = statuses if statuses.present?
+
+      log(level: :error, **log_data)
+    end
+
+    def open_claims_error?(error)
+      error.try(:errors)&.first&.try(:detail) == 'PtcpntIdA has open claims.'
+    end
+
+    def dependent_claim_statuses
+      claims = dependent_claims
+      return [] unless claims.is_a?(Array)
+
+      claims.pluck(:phase_type).uniq
+    end
+
+    def validate_claim_details_present(claim_details)
+      if claim_details.blank?
+        log_assignment_failure(
+          reason: 'Dependent has no open claims',
+          statuses: dependent_claim_statuses
+        )
+
+        raise ::Common::Exceptions::ServiceError.new(detail: 'Dependent has no open claims')
       end
     end
   end

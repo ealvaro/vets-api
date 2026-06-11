@@ -3,11 +3,14 @@
 require 'rails_helper'
 require 'bgs_service/local_bgs'
 
-Rspec.describe ClaimsApi::DependentClaimantPoaAssignmentService do
+RSpec.describe ClaimsApi::DependentClaimantPoaAssignmentService do
   let(:dependent_participant_id) { '600052700' }
+  let(:poa_error_message) { 'Failed to assign POA to dependent' }
+  let(:poa_code) { '002' }
+
   describe '#assign_poa_to_dependent!' do
     let(:service) do
-      described_class.new(poa_code: '002', veteran_participant_id: '600052699', dependent_participant_id:,
+      described_class.new(poa_code:, veteran_participant_id: '600052699', dependent_participant_id:,
                           veteran_file_number: '796163671', claimant_ssn: '796163672')
     end
     let(:mock_find_benefit_claims_status_by_ptcpnt_id) do
@@ -158,18 +161,31 @@ Rspec.describe ClaimsApi::DependentClaimantPoaAssignmentService do
             suspence_record: nil }
       }
     end
+    let(:mock_unsuccessful_update_benefit_claim) do
+      {
+        return:
+          {
+            return_code: 'GUIE05001',
+            return_message: 'Update failed'
+          }
+      }
+    end
+
+    before do
+      allow(ClaimsApi::Logger).to receive(:log)
+    end
 
     context 'when the dependent has no open claims' do
       it 'assigns the POA to the dependent via manage_ptcpnt_rlnshp' do
         VCR.use_cassette('claims_api/bgs/person_web_service/manage_ptcpnt_rlnshp_poa_no_open_claims') do
           VCR.use_cassette('claims_api/bgs/standard_data_web_service/find_poas') do
-            allow(service).to receive(:assign_poa_to_dependent_via_manage_ptcpnt_rlnshp?).and_call_original
+            allow(service).to receive(:assign_poa_to_dependent_via_manage_ptcpnt_rlnshp).and_call_original
 
             expect do
               service.assign_poa_to_dependent!
             end.not_to raise_error
 
-            expect(service).to have_received(:assign_poa_to_dependent_via_manage_ptcpnt_rlnshp?)
+            expect(service).to have_received(:assign_poa_to_dependent_via_manage_ptcpnt_rlnshp)
           end
         end
       end
@@ -179,7 +195,7 @@ Rspec.describe ClaimsApi::DependentClaimantPoaAssignmentService do
       it 'assigns the POA to the dependent via update_benefit_claim' do
         VCR.use_cassette('claims_api/bgs/person_web_service/manage_ptcpnt_rlnshp_poa_with_open_claims') do
           VCR.use_cassette('claims_api/bgs/standard_data_web_service/find_poas') do
-            allow(service).to receive(:assign_poa_to_dependent_via_update_benefit_claim?).and_call_original
+            allow(service).to receive(:assign_poa_to_dependent_via_update_benefit_claim).and_call_original
             allow_any_instance_of(ClaimsApi::EbenefitsBnftClaimStatusWebService).to receive(
               :find_benefit_claims_status_by_ptcpnt_id
             )
@@ -193,7 +209,7 @@ Rspec.describe ClaimsApi::DependentClaimantPoaAssignmentService do
               service.assign_poa_to_dependent!
             end.not_to raise_error
 
-            expect(service).to have_received(:assign_poa_to_dependent_via_update_benefit_claim?)
+            expect(service).to have_received(:assign_poa_to_dependent_via_update_benefit_claim)
           end
         end
       end
@@ -201,7 +217,7 @@ Rspec.describe ClaimsApi::DependentClaimantPoaAssignmentService do
       it 'calls find_bnft_claim_by_clmant_id when find_benefit_claims_status_by_ptcpnt_id fails' do
         VCR.use_cassette('claims_api/bgs/person_web_service/manage_ptcpnt_rlnshp_poa_with_open_claims') do
           VCR.use_cassette('claims_api/bgs/standard_data_web_service/find_poas') do
-            allow(service).to receive(:assign_poa_to_dependent_via_update_benefit_claim?).and_call_original
+            allow(service).to receive(:assign_poa_to_dependent_via_update_benefit_claim).and_call_original
             allow_any_instance_of(ClaimsApi::EbenefitsBnftClaimStatusWebService).to receive(
               :find_benefit_claims_status_by_ptcpnt_id
             ).with(dependent_participant_id).and_return({})
@@ -217,6 +233,158 @@ Rspec.describe ClaimsApi::DependentClaimantPoaAssignmentService do
             expect(result).to be_nil
           end
         end
+      end
+    end
+
+    context 'when handling assignment failures with Person Web Service' do
+      it 'logs explicit fallback details when manage_ptcpnt_rlnshp reports open claims' do
+        open_claims_error = Common::Exceptions::ServiceError.new(detail: 'PtcpntIdA has open claims.')
+        person_web_service = instance_double(ClaimsApi::PersonWebService)
+
+        allow(service).to receive_messages(person_web_service:, poa_participant_id: '600123456')
+        allow(person_web_service).to receive(:manage_ptcpnt_rlnshp_poa).and_raise(open_claims_error)
+
+        result = service.send(:assign_poa_to_dependent_via_manage_ptcpnt_rlnshp)
+
+        expect(result).to eq(:fallback_to_update_benefit_claim)
+        expect(ClaimsApi::Logger).to have_received(:log).with(
+          'dependent_claimant_poa_assignment_service',
+          hash_including(
+            reason: 'Failed to assign POA via manage_ptcpnt_rlnshp. Attempting to assign POA via update benefit claim.',
+            message: 'Dependent has open claims, continuing.',
+            poa_code:,
+            poa_id: nil,
+            level: :info
+          )
+        )
+      end
+
+      it 'logs detailed service errors and re-raises the original exception' do
+        service_error = Common::Exceptions::ServiceError.new(detail: 'Unexpected BGS service error')
+        person_web_service = instance_double(ClaimsApi::PersonWebService)
+
+        allow(service).to receive_messages(person_web_service:, poa_participant_id: '600123456')
+        allow(person_web_service).to receive(:manage_ptcpnt_rlnshp_poa).and_raise(service_error)
+
+        expect do
+          service.send(:assign_poa_to_dependent_via_manage_ptcpnt_rlnshp)
+        end.to raise_error(Common::Exceptions::ServiceError) { |error|
+          expect(error.errors.first.detail).to eq 'Unexpected BGS service error'
+        }
+
+        expect(ClaimsApi::Logger).to have_received(:log).with(
+          'dependent_claimant_poa_assignment_service',
+          hash_including(
+            level: :error,
+            message: poa_error_message,
+            reason: 'Service error with Person Web Service call to assign POA via manage_ptcpnt_rlnshp'
+          )
+        )
+      end
+
+      it 'logs generic service error details and re-raises the original exception when no detail is provided' do
+        service_error = Common::Exceptions::BackendServiceException.new
+        person_web_service = instance_double(ClaimsApi::PersonWebService)
+
+        allow(service).to receive_messages(person_web_service:, poa_participant_id: '600123456')
+        allow(person_web_service).to receive(:manage_ptcpnt_rlnshp_poa).and_raise(service_error)
+
+        expect do
+          service.send(:assign_poa_to_dependent_via_manage_ptcpnt_rlnshp)
+        end.to raise_error(Common::Exceptions::BackendServiceException) { |error|
+          expect(error.errors.first.detail).to eq service_error.errors.first.detail
+        }
+
+        expect(ClaimsApi::Logger).to have_received(:log).with(
+          'dependent_claimant_poa_assignment_service',
+          hash_including(
+            level: :error,
+            message: poa_error_message,
+            reason: 'An unknown error occurred trying to assign POA via manage_ptcpnt_rlnshp'
+          )
+        )
+      end
+    end
+
+    context 'when handling assignment failures with Benefit Claim Service' do
+      it 'logs update failure details and raises service error when update_benefit_claim is unsuccessful' do
+        allow(service).to receive_messages(
+          assign_poa_to_dependent_via_manage_ptcpnt_rlnshp: :fallback_to_update_benefit_claim,
+          first_open_claim_details: mock_find_bnft_claim[:bnft_claim_dto]
+        )
+        allow_any_instance_of(ClaimsApi::BenefitClaimService).to receive(:update_benefit_claim)
+          .and_return(mock_unsuccessful_update_benefit_claim)
+
+        expect do
+          service.assign_poa_to_dependent!
+        end.to raise_error(Common::Exceptions::ServiceError) { |error|
+          expect(
+            error.errors.first.detail
+          ).to eq 'Failed to assign POA via both manage_ptcpnt_rlnshp and update benefit claim'
+        }
+
+        expect(ClaimsApi::Logger).to have_received(:log).with(
+          'dependent_claimant_poa_assignment_service',
+          hash_including(
+            level: :error,
+            reason: 'Failed to assign POA via both manage_ptcpnt_rlnshp and update benefit claim',
+            poa_code:,
+            poa_id: nil,
+            message: poa_error_message
+          )
+        )
+      end
+
+      it 'logs no-open-claim-details failure context and raises service error' do
+        allow(service).to receive_messages(
+          assign_poa_to_dependent_via_manage_ptcpnt_rlnshp: :fallback_to_update_benefit_claim,
+          first_open_claim_details: {},
+          dependent_claims: [{ phase_type: 'Complete' }]
+        )
+
+        expect do
+          service.assign_poa_to_dependent!
+        end.to raise_error(Common::Exceptions::ServiceError) { |error|
+          expect(error.errors.first.detail).to eq 'Dependent has no open claims'
+        }
+
+        expect(ClaimsApi::Logger).to have_received(:log).with(
+          'dependent_claimant_poa_assignment_service',
+          hash_including(
+            level: :error,
+            reason: 'Dependent has no open claims',
+            statuses: ['Complete']
+          )
+        )
+      end
+
+      it 'logs generic error class and message details and raises service error when an unexpected error occurs' do
+        error = StandardError.new('Unexpected error during benefit claim update')
+        allow(service).to receive_messages(
+          assign_poa_to_dependent_via_manage_ptcpnt_rlnshp: :fallback_to_update_benefit_claim,
+          first_open_claim_details: mock_find_bnft_claim[:bnft_claim_dto]
+        )
+        allow_any_instance_of(ClaimsApi::BenefitClaimService).to receive(:update_benefit_claim)
+          .and_raise(error)
+
+        expect do
+          service.assign_poa_to_dependent!
+        end.to raise_error(Common::Exceptions::ServiceError) { |service_error|
+          expect(service_error.errors.first.detail).to eq 'Failed to assign POA via both ' \
+                                                          'manage_ptcpnt_rlnshp and update benefit claim'
+        }
+
+        # generic error logging is the same for error since this is the last error raised
+        expect(ClaimsApi::Logger).to have_received(:log).with(
+          'dependent_claimant_poa_assignment_service',
+          hash_including(
+            level: :error,
+            reason: 'Failed to assign POA via both manage_ptcpnt_rlnshp and update benefit claim',
+            poa_code:,
+            poa_id: nil,
+            message: poa_error_message
+          )
+        )
       end
     end
 
@@ -286,19 +454,6 @@ Rspec.describe ClaimsApi::DependentClaimantPoaAssignmentService do
           res = service.send(:first_open_claim_details)
 
           expect(res).to eq({})
-        end
-      end
-
-      context 'dependent_claims and find_bnft_claim_by_clmant_id do not find claims' do
-        it 'does not find any open claims, and returns nil' do
-          allow_any_instance_of(ClaimsApi::DependentClaimantPoaAssignmentService).to receive(
-            :dependent_claims
-          ).and_return([])
-          allow_any_instance_of(ClaimsApi::DependentClaimantPoaAssignmentService).to receive(
-            :first_open_claim_details
-          ).and_return(nil)
-        rescue => e
-          expect(e).to be_a(Common::Exceptions::ServiceError)
         end
       end
     end
