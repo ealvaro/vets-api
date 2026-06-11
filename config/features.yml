@@ -1663,6 +1663,10 @@ features:
     actor_type: user
     description: Enable/disable skipping BGS calls for POA Requests
     enable_in_development: true
+  lighthouse_claims_api_2122_pdf_form_update:
+    actor_type: user
+    description: Update the PDF form used for V2 21-22 POA requests in Lighthouse Benefits Claims API
+    enable_in_development: false
   lighthouse_claims_api_2122a_pdf_form_update:
     actor_type: user
     description: Update the PDF form used for V2 21-22a POA requests in Lighthouse Benefits Claims API

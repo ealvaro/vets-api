@@ -19,6 +19,7 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
     allow_any_instance_of(ClaimsApi::V2::BenefitsDocuments::Service)
       .to receive(:get_auth_token).and_return('some-value-here')
     allow_any_instance_of(Flipper).to receive(:enabled?).with(:claims_api_use_person_web_service).and_return false
+    allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_2122_pdf_form_update).and_return(false)
   end
 
   it 'sets retry_for to 48 hours' do

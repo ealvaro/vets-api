@@ -101,27 +101,89 @@ describe ClaimsApi::V2::PoaPdfConstructor::Organization do
     Timecop.return
   end
 
-  context 'page1_options' do
-    it 'returns the expected values' do
-      res = subject.send(:page1_options, data)
+  describe 'with lighthouse_claims_api_2122_pdf_form_update flag' do
+    describe 'when enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_2122_pdf_form_update).and_return(true)
+      end
 
-      expect(res.values).to match(expected_page1_values)
+      it 'page1_template_path uses the updated template directory' do
+        path = subject.send(:page1_template_path)
+
+        expect(path.to_s).to include('pdf_templates/21-22/rev_10_27_2023/1.pdf')
+      end
+
+      it 'page2_template_path uses the updated template directory' do
+        path = subject.send(:page2_template_path)
+
+        expect(path.to_s).to include('pdf_templates/21-22/rev_10_27_2023/2.pdf')
+      end
+
+      it 'page3_template_path uses the updated template directory' do
+        path = subject.send(:page3_template_path)
+
+        expect(path.to_s).to include('pdf_templates/21-22/rev_10_27_2023/3.pdf')
+      end
+
+      it 'page4_template_path uses the updated template directory' do
+        path = subject.send(:page4_template_path)
+
+        expect(path.to_s).to include('pdf_templates/21-22/rev_10_27_2023/4.pdf')
+      end
     end
 
-    it 'returns the expected values with a dependent' do
-      data_w_claimant = data.deep_merge!(dependent_attributes)
+    describe 'when disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_2122_pdf_form_update).and_return(false)
+      end
 
-      res = subject.send(:page1_options, data_w_claimant)
+      context 'page1_options' do
+        it 'returns the expected values' do
+          res = subject.send(:page1_options, data)
 
-      expect(res.values).to include('Lillian', 'Disney')
-    end
-  end
+          expect(res.values).to match(expected_page1_values)
+        end
 
-  describe '#page2_options pdf' do
-    it 'returns the expected values' do
-      res = subject.send(:page2_options, data)
+        it 'returns the expected values with a dependent' do
+          data_w_claimant = data.deep_merge!(dependent_attributes)
 
-      expect(res.values).to eq(expected_page2_values)
+          res = subject.send(:page1_options, data_w_claimant)
+
+          expect(res.values).to include('Lillian', 'Disney')
+        end
+      end
+
+      describe '#page2_options pdf' do
+        it 'returns the expected values' do
+          res = subject.send(:page2_options, data)
+
+          expect(res.values).to eq(expected_page2_values)
+        end
+      end
+
+      it 'page1_template_path uses the default template directory' do
+        path = subject.send(:page1_template_path)
+
+        expect(path.to_s).not_to include('rev_10_27_2023')
+      end
+
+      it 'page2_template_path uses the default template directory' do
+        path = subject.send(:page2_template_path)
+
+        expect(path.to_s).not_to include('rev_10_27_2023')
+      end
+
+      it 'page3_template_path uses the default template directory' do
+        path = subject.send(:page3_template_path)
+
+        expect(path.to_s).not_to include('rev_10_27_2023')
+      end
+
+      it 'page4_template_path uses the default template directory' do
+        path = subject.send(:page4_template_path)
+
+        expect(path.to_s).not_to include('rev_10_27_2023')
+      end
     end
   end
 end
