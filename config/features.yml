@@ -1984,6 +1984,12 @@ features:
     actor_type: user
     description: Enables users w/ Oracle Health facilities to download an OH CCD
     enable_in_development: true
+  mhv_medical_records_duplicate_records_note:
+    actor_type: user
+    description: >-
+      Replaces the duplicate records info alert with a descriptive Note shown only
+      on the Allergies and Vaccines pages.
+    enable_in_development: true
   mhv_medical_records_fetch_scdf_imaging_studies:
     actor_type: user
     description: Enables fetching imaging studies from SCDF for Medical Records
