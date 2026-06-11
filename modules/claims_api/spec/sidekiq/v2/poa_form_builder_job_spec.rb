@@ -7,6 +7,7 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
   subject { described_class }
 
   let(:power_of_attorney) { create(:power_of_attorney, :with_full_headers) }
+  let(:org_coords) { { veteran: { x: 35, y: 240 }, representative: { x: 35, y: 200 } } }
   let(:poa_code) { 'ABC' }
   let(:rep) do
     create(:representative, representative_id: '1234', poa_codes: [poa_code], first_name: 'Bob',
@@ -314,13 +315,13 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
                      'page2' => [
                        {
                          'signature' => 'JESSE GRAY - signed via api.va.gov',
-                         'x' => 35,
-                         'y' => 240
+                         'x' => org_coords[:veteran][:x],
+                         'y' => org_coords[:veteran][:y]
                        },
                        {
                          'signature' => 'Bob Representative - signed via api.va.gov',
-                         'x' => 35,
-                         'y' => 200
+                         'x' => org_coords[:representative][:x],
+                         'y' => org_coords[:representative][:y]
                        }
                      ]
                    },
@@ -426,13 +427,13 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
                      'page2' => [
                        {
                          'signature' => 'Mitchell Jenkins - signed via api.va.gov',
-                         'x' => 35,
-                         'y' => 240
+                         'x' => org_coords[:veteran][:x],
+                         'y' => org_coords[:veteran][:y]
                        },
                        {
                          'signature' => 'Bob Representative - signed via api.va.gov',
-                         'x' => 35,
-                         'y' => 200
+                         'x' => org_coords[:representative][:x],
+                         'y' => org_coords[:representative][:y]
                        }
                      ]
                    },

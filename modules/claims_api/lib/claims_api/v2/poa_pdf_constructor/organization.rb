@@ -6,6 +6,10 @@ module ClaimsApi
   module V2
     module PoaPdfConstructor
       class Organization < ClaimsApi::V2::PoaPdfConstructor::Base
+        def self.signature_coordinates
+          { veteran: { x: 35, y: 240 }, representative: { x: 35, y: 200 } }
+        end
+
         protected
 
         def page1_template_path
