@@ -37,6 +37,16 @@ describe Veteran::User do
       end
     end
 
+    it 'handles nil response from find_poa_history_by_ptcpnt_id' do
+      VCR.use_cassette('claims_api/bgs/claimant_web_service/not_find_poa_by_participant_id') do
+        allow_any_instance_of(org_web_service).to receive(:find_poa_history_by_ptcpnt_id)
+          .and_return(nil)
+        veteran = Veteran::User.new(user)
+        expect(veteran.power_of_attorney).to be_nil
+        expect(veteran.previous_power_of_attorney).to be_nil
+      end
+    end
+
     it 'provides most recent previous poa' do
       VCR.use_cassette('claims_api/bgs/claimant_web_service/find_poa_by_participant_id') do
         allow_any_instance_of(org_web_service).to receive(:find_poa_history_by_ptcpnt_id)
