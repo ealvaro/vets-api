@@ -2114,10 +2114,6 @@ features:
     actor_type: user
     description: Enables/disables the use of pre-transformed vital objects
     enable_in_development: true
-  mhv_medications_display_allergies:
-    actor_type: user
-    description: Enables/disables allergies and reactions data
-    enable_in_development: true
   mhv_medications_cerner_pilot:
     actor_type: user
     description: Enables/disables Medications Cerner Transition Pilot environment on VA.gov and VHAB
@@ -2140,17 +2136,9 @@ features:
     actor_type: user
     description: Shows retired My VA Health portal alerts on MHV tool pages for pre-transitioned OH facility users
     enable_in_development: true
-  mhv_medications_display_new_cerner_facility_alert:
-    actor_type: user
-    description: Enables/disables new facility alert for OH/Cerner users in medications
-    enable_in_development: true
   mhv_medications_display_pending_meds:
     actor_type: user
     description: Enables/disables pending medications related work
-    enable_in_development: true
-  mhv_medications_display_refill_progress:
-    actor_type: user
-    description: Enables/disables refill progress related work
     enable_in_development: true
   mhv_medications_oh_transition_refill_block:
     actor_type: user
@@ -3869,4 +3857,3 @@ features:
   enable_prefill_update_527ez_0969:
     actor_type: user
     description: Enables prefill update for 21p-526ez and 21p-0969 forms
-
