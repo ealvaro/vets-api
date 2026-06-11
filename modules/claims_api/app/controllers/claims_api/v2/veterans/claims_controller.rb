@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'claims_api/bgs_claim_status_mapper'
+require 'claims_api/contention_parser'
 
 module ClaimsApi
   module V2
@@ -178,14 +179,12 @@ module ClaimsApi
         end
 
         def build_contentions(data)
-          contentions = data[:contentions]&.split(/(?<=\)),/)
-          return [] if contentions.nil?
+          return [] if data[:contentions].blank?
 
-          [].tap do |a|
-            contentions.map do |contention|
-              a << { name: contention.strip }
-            end
-          end
+          entries = ClaimsApi::ContentionParser.parse(data[:contentions])
+          return [] if entries.blank?
+
+          entries.map { |c| { name: c } }
         end
 
         def current_phase_back(data)

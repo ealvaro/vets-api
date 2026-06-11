@@ -1249,11 +1249,16 @@ RSpec.describe 'ClaimsApi::V2::Veterans::Claims', type: :request do
 
       describe 'when handling a BGS claim' do
         context 'it retrieves the contentions list' do
+          let(:contention_one) { 'c1 (This is new), right (New)' }
+          let(:contention_two) { 'c2 (Increase)' }
+          let(:contention_three) { 'c3 (Unknown), left(None)' }
+
           it 'lists the contentions without leading spaces' do
             lh_claim = create(:auto_established_claim, status: 'PENDING', veteran_icn: veteran_id,
                                                        evss_id: '111111111')
             claim_contentions = bgs_claim_response
-            claim_contentions[:benefit_claim_details_dto][:contentions] = ' c1 (New),  c2 (Old), c3 (Unknown)'
+            claim_contentions[:benefit_claim_details_dto][:contentions] =
+              "#{contention_one}, #{contention_two},    #{contention_three}"
             mock_ccg(scopes) do |auth_header|
               VCR.use_cassette('claims_api/bgs/tracked_items/find_tracked_items') do
                 VCR.use_cassette('claims_api/evss/documents/get_claim_documents') do
@@ -1267,8 +1272,8 @@ RSpec.describe 'ClaimsApi::V2::Veterans::Claims', type: :request do
                   json_response = JSON.parse(response.body)
                   expect(response).to have_http_status(:ok)
                   claim_contentions_res = json_response['data']['attributes']['contentions']
-                  expect(claim_contentions_res).to eq([{ 'name' => 'c1 (New)' }, { 'name' => 'c2 (Old)' },
-                                                       { 'name' => 'c3 (Unknown)' }])
+                  expect(claim_contentions_res).to eq([{ 'name' => contention_one }, { 'name' => contention_two },
+                                                       { 'name' => contention_three }])
                 end
               end
             end

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'claims_api/bgs_claim_status_mapper'
+require 'claims_api/contention_parser'
 
 module ClaimsApi
   class EvssBgsMapper
@@ -49,10 +50,9 @@ module ClaimsApi
     private
 
     def contentions
-      contentions = @data['contentions']&.split(/(?<=\)),/)
-      return [] if contentions.nil?
+      return [] if @data['contentions'].blank?
 
-      contentions
+      ClaimsApi::ContentionParser.parse(@data['contentions'])
     end
 
     def phase
