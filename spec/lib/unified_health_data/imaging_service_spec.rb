@@ -8,7 +8,9 @@ describe UnifiedHealthData::ImagingService, type: :service do
   let(:service) { described_class.new(user) }
   let(:adapter) { instance_double(UnifiedHealthData::Adapters::ImagingStudyAdapter) }
   let(:client) { instance_double(UnifiedHealthData::Client) }
-  let(:parsed_studies) { [instance_double(UnifiedHealthData::ImagingStudy)] }
+  let(:parsed_studies) do
+    [instance_double(UnifiedHealthData::ImagingStudy, id: 'study-1', event_id: nil, description: 'CT Chest')]
+  end
 
   let(:date_params) { { start_date: '2024-01-01', end_date: '2025-01-01' } }
 

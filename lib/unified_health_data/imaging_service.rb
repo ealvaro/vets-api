@@ -4,10 +4,12 @@ require 'common/client/base'
 require_relative 'adapters/imaging_study_adapter'
 require_relative 'base_service'
 require_relative 'client'
+require_relative 'concerns/imaging_logging'
 
 module UnifiedHealthData
   class ImagingService < UnifiedHealthData::BaseService
     include Common::Client::Concerns::Monitoring
+    include Concerns::ImagingLogging
 
     def get_imaging_studies(start_date:, end_date:, imaging_study_type: 'RADIOLOGY', site_ids: [])
       with_monitoring do
@@ -20,7 +22,9 @@ module UnifiedHealthData
         )
         records = response.body['entry'] || []
         log_operation_outcomes(records)
-        imaging_study_adapter.parse(records)
+        parsed_studies = imaging_study_adapter.parse(records)
+        log_imaging_metrics(records, parsed_studies)
+        parsed_studies
       end
     end
 

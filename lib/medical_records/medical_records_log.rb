@@ -107,6 +107,7 @@ module MedicalRecords
     ALLERGIES      = 'allergies'
     CLINICAL_NOTES = 'clinical_notes'
     CONDITIONS     = 'conditions'
+    IMAGING        = 'imaging'
     LABS_AND_TESTS = 'labs_and_tests'
     VACCINES       = 'vaccines'
     VITALS         = 'vitals'
@@ -126,6 +127,7 @@ module MedicalRecords
       ALLERGIES => :mhv_medical_records_allergies_diagnostic,
       CLINICAL_NOTES => :mhv_medical_records_clinical_notes_diagnostic,
       CONDITIONS => :mhv_medical_records_conditions_diagnostic,
+      IMAGING => :mhv_medical_records_imaging_diagnostic,
       LABS_AND_TESTS => :mhv_medical_records_labs_and_tests_diagnostic,
       VACCINES => :mhv_medical_records_vaccines_diagnostic,
       VITALS => :mhv_medical_records_vitals_diagnostic

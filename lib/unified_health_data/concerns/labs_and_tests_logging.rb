@@ -200,20 +200,34 @@ module UnifiedHealthData
         )
       end
 
-      def log_labs_index_metrics(parsed_labs, start_date, end_date)
+      def log_labs_index_metrics(parsed_labs, start_date, end_date) # rubocop:disable Metrics/MethodLength
         total = parsed_labs.size
-        vista_count = parsed_labs.count { |l| l.source == SourceConstants::VISTA }
-        oh_count = parsed_labs.count { |l| l.source == SourceConstants::ORACLE_HEALTH }
+        vista_labs = parsed_labs.select { |l| l.source == SourceConstants::VISTA }
+        oh_labs = parsed_labs.select { |l| l.source == SourceConstants::ORACLE_HEALTH }
         total_obs = parsed_labs.sum { |l| l.observations.size }
+        unique_name_count, named_count = count_report_name_stats(parsed_labs)
+        vista_with_vista_id = vista_labs.count { |l| l.vista_id.present? }
+        oh_with_id = oh_labs.count { |l| l.id.present? }
         mr_log.diagnostic(
-          resource: LABS, action: 'index', total_labs: total, vista_count:,
-          oracle_health_count: oh_count, total_observations: total_obs,
+          resource: LABS, action: 'index', total_labs: total,
+          vista_count: vista_labs.size, oracle_health_count: oh_labs.size,
+          total_observations: total_obs,
           avg_observations_per_report: total.positive? ? (total_obs.to_f / total).round(1) : 0,
+          unique_report_name_count: unique_name_count,
+          duplicate_report_names: unique_name_count < named_count,
+          vista_with_vista_id:,
+          vista_without_vista_id: vista_labs.size - vista_with_vista_id,
+          oh_with_id:,
+          oh_without_id: oh_labs.size - oh_with_id,
           start_date:, end_date:, **labs_caller_metadata
         )
         StatsD.gauge("#{labs_statsd_prefix}.index.total", total, tags: labs_statsd_tags)
-        StatsD.gauge("#{labs_statsd_prefix}.index.vista", vista_count, tags: labs_statsd_tags)
-        StatsD.gauge("#{labs_statsd_prefix}.index.oracle_health", oh_count, tags: labs_statsd_tags)
+        StatsD.gauge("#{labs_statsd_prefix}.index.vista", vista_labs.size, tags: labs_statsd_tags)
+        StatsD.gauge("#{labs_statsd_prefix}.index.oracle_health", oh_labs.size, tags: labs_statsd_tags)
+        if unique_name_count < named_count
+          StatsD.increment("#{labs_statsd_prefix}.index.duplicate_report_names",
+                           tags: labs_statsd_tags)
+        end
       end
 
       # Shared helper for always-on anomaly warnings: logs + increments StatsD.
@@ -263,6 +277,24 @@ module UnifiedHealthData
           start_date:, end_date:, **labs_caller_metadata
         )
         StatsD.increment("#{labs_statsd_prefix}.error", tags: labs_statsd_tags)
+      end
+
+      # Normalizes a report display name to lowercase alphanumeric characters only.
+      def normalize_report_name(name)
+        return nil if name.blank?
+
+        name.downcase.gsub(/[^a-z0-9]/, '')
+      end
+
+      # Counts unique normalized display names across parsed labs.
+      # Returns [unique_count, named_count] for non-blank normalized display names.
+      def count_report_name_stats(parsed_labs)
+        normalized_names = []
+        parsed_labs.each do |lab|
+          normalized = normalize_report_name(lab.display)
+          normalized_names << normalized if normalized
+        end
+        [normalized_names.uniq.size, normalized_names.size]
       end
 
       # Orchestrates index-level metrics and proactive warnings for get_labs.

@@ -173,8 +173,14 @@ RSpec.describe UnifiedHealthData::Concerns::LabsAndTestsLogging do
   describe '#log_labs_index_metrics' do
     let(:obs1) { double('Observation') }
     let(:obs2) { double('Observation') }
-    let(:vista_lab) { double('LabOrTest', source: 'vista', observations: [obs1, obs2]) }
-    let(:oh_lab) { double('LabOrTest', source: 'oracle-health', observations: [obs1]) }
+    let(:vista_lab) do
+      double('LabOrTest', source: 'vista', observations: [obs1, obs2],
+                          display: 'Complete Blood Count', vista_id: 'v-123', id: 'dr-1')
+    end
+    let(:oh_lab) do
+      double('LabOrTest', source: 'oracle-health', observations: [obs1],
+                          display: 'Basic Metabolic Panel', vista_id: nil, id: 'dr-2')
+    end
     let(:parsed_labs) { [vista_lab, vista_lab, oh_lab] }
 
     before do
@@ -211,6 +217,95 @@ RSpec.describe UnifiedHealthData::Concerns::LabsAndTestsLogging do
       expect(StatsD).to have_received(:gauge).with('api.uhd.labs_and_tests.index.oracle_health', 1, tags: [])
     end
 
+    it 'logs unique report name count and duplicate flag' do
+      instance.send(:log_labs_index_metrics, parsed_labs, '2024-01-01', '2025-06-01')
+
+      expect(Rails.logger).to have_received(:info).with(
+        hash_including(
+          unique_report_name_count: 2,
+          duplicate_report_names: true
+        )
+      )
+    end
+
+    it 'logs cross-reference ID presence by source' do
+      instance.send(:log_labs_index_metrics, parsed_labs, '2024-01-01', '2025-06-01')
+
+      expect(Rails.logger).to have_received(:info).with(
+        hash_including(
+          vista_with_vista_id: 2,
+          vista_without_vista_id: 0,
+          oh_with_id: 1,
+          oh_without_id: 0
+        )
+      )
+    end
+
+    it 'increments duplicate_report_names StatsD when duplicates exist' do
+      instance.send(:log_labs_index_metrics, parsed_labs, '2024-01-01', '2025-06-01')
+
+      expect(StatsD).to have_received(:increment)
+        .with('api.uhd.labs_and_tests.index.duplicate_report_names', tags: [])
+    end
+
+    it 'does not increment duplicate_report_names StatsD when all names are unique' do
+      unique_labs = [
+        double('LabOrTest', source: 'vista', observations: [obs1],
+                            display: 'CBC', vista_id: 'v-1', id: 'dr-1'),
+        double('LabOrTest', source: 'oracle-health', observations: [obs1],
+                            display: 'BMP', vista_id: nil, id: 'dr-2')
+      ]
+
+      instance.send(:log_labs_index_metrics, unique_labs, '2024-01-01', '2025-06-01')
+
+      expect(StatsD).not_to have_received(:increment)
+        .with('api.uhd.labs_and_tests.index.duplicate_report_names', tags: [])
+    end
+
+    it 'does not flag duplicates when blank displays reduce named_count below total' do
+      labs_with_blank = [
+        double('LabOrTest', source: 'vista', observations: [obs1],
+                            display: 'CBC', vista_id: 'v-1', id: 'dr-1'),
+        double('LabOrTest', source: 'oracle-health', observations: [obs1],
+                            display: nil, vista_id: nil, id: 'dr-2')
+      ]
+
+      instance.send(:log_labs_index_metrics, labs_with_blank, '2024-01-01', '2025-06-01')
+
+      expect(Rails.logger).to have_received(:info).with(
+        hash_including(
+          unique_report_name_count: 1,
+          duplicate_report_names: false
+        )
+      )
+    end
+
+    it 'tracks vista labs missing vista_id' do
+      labs_missing_id = [
+        double('LabOrTest', source: 'vista', observations: [obs1],
+                            display: 'CBC', vista_id: nil, id: 'dr-1')
+      ]
+
+      instance.send(:log_labs_index_metrics, labs_missing_id, '2024-01-01', '2025-06-01')
+
+      expect(Rails.logger).to have_received(:info).with(
+        hash_including(vista_with_vista_id: 0, vista_without_vista_id: 1)
+      )
+    end
+
+    it 'tracks OH labs missing id' do
+      labs_missing_id = [
+        double('LabOrTest', source: 'oracle-health', observations: [obs1],
+                            display: 'BMP', vista_id: nil, id: nil)
+      ]
+
+      instance.send(:log_labs_index_metrics, labs_missing_id, '2024-01-01', '2025-06-01')
+
+      expect(Rails.logger).to have_received(:info).with(
+        hash_including(oh_with_id: 0, oh_without_id: 1)
+      )
+    end
+
     it 'handles empty labs array gracefully' do
       instance.send(:log_labs_index_metrics, [], '2024-01-01', '2025-06-01')
 
@@ -218,9 +313,55 @@ RSpec.describe UnifiedHealthData::Concerns::LabsAndTestsLogging do
         hash_including(
           total_labs: 0,
           total_observations: 0,
-          avg_observations_per_report: 0
+          avg_observations_per_report: 0,
+          unique_report_name_count: 0,
+          duplicate_report_names: false,
+          vista_with_vista_id: 0,
+          oh_with_id: 0
         )
       )
+    end
+  end
+
+  describe '#normalize_report_name' do
+    it 'lowercases and strips non-alphanumeric characters' do
+      expect(instance.send(:normalize_report_name, 'CBC W/Diff')).to eq('cbcwdiff')
+    end
+
+    it 'returns nil for blank input' do
+      expect(instance.send(:normalize_report_name, nil)).to be_nil
+      expect(instance.send(:normalize_report_name, '')).to be_nil
+    end
+  end
+
+  describe '#count_report_name_stats' do
+    it 'returns [unique_count, named_count] for non-blank names' do
+      labs = [
+        double('LabOrTest', display: 'CBC'),
+        double('LabOrTest', display: 'cbc'),
+        double('LabOrTest', display: 'Basic Metabolic Panel')
+      ]
+
+      unique, named = instance.send(:count_report_name_stats, labs)
+      expect(unique).to eq(2)
+      expect(named).to eq(3)
+    end
+
+    it 'skips labs with blank display' do
+      labs = [
+        double('LabOrTest', display: 'CBC'),
+        double('LabOrTest', display: nil)
+      ]
+
+      unique, named = instance.send(:count_report_name_stats, labs)
+      expect(unique).to eq(1)
+      expect(named).to eq(1)
+    end
+
+    it 'returns [0, 0] for empty array' do
+      unique, named = instance.send(:count_report_name_stats, [])
+      expect(unique).to eq(0)
+      expect(named).to eq(0)
     end
   end
 
@@ -361,9 +502,13 @@ RSpec.describe UnifiedHealthData::Concerns::LabsAndTestsLogging do
 
   describe '#log_labs_metrics' do
     let(:obs) { double('Observation') }
-    let(:vista_lab) { double('LabOrTest', source: 'vista', observations: [obs], date_completed: '2024-06-01') }
+    let(:vista_lab) do
+      double('LabOrTest', source: 'vista', observations: [obs], date_completed: '2024-06-01',
+                          display: 'Complete Blood Count', vista_id: 'v-1', id: 'dr-1')
+    end
     let(:oh_lab) do
-      double('LabOrTest', source: 'oracle-health', observations: [obs, obs], date_completed: '2024-07-01')
+      double('LabOrTest', source: 'oracle-health', observations: [obs, obs], date_completed: '2024-07-01',
+                          display: 'Basic Metabolic Panel', vista_id: nil, id: 'dr-2')
     end
     let(:parsed_labs) { [vista_lab, oh_lab] }
 
@@ -407,7 +552,8 @@ RSpec.describe UnifiedHealthData::Concerns::LabsAndTestsLogging do
 
       it 'triggers missing dates warning when threshold met' do
         missing_date_labs = Array.new(3) do
-          double('LabOrTest', source: 'vista', observations: [obs], date_completed: nil)
+          double('LabOrTest', source: 'vista', observations: [obs], date_completed: nil,
+                              display: 'CBC', vista_id: 'v-1', id: 'dr-1')
         end
         instance.send(:log_labs_metrics, combined_records, missing_date_labs, '2024-01-01', '2025-06-01')
 
@@ -418,7 +564,8 @@ RSpec.describe UnifiedHealthData::Concerns::LabsAndTestsLogging do
 
       it 'triggers empty observations warning when threshold met' do
         empty_obs_labs = Array.new(3) do
-          double('LabOrTest', source: 'vista', observations: [], date_completed: '2024-06-01')
+          double('LabOrTest', source: 'vista', observations: [], date_completed: '2024-06-01',
+                              display: 'CBC', vista_id: 'v-1', id: 'dr-1')
         end
         instance.send(:log_labs_metrics, combined_records, empty_obs_labs, '2024-01-01', '2025-06-01')
 
@@ -495,7 +642,10 @@ RSpec.describe UnifiedHealthData::Concerns::LabsAndTestsLogging do
 
   describe 'caller tagging' do
     let(:obs) { double('Observation') }
-    let(:vista_lab) { double('LabOrTest', source: 'vista', observations: [obs], date_completed: '2024-06-01') }
+    let(:vista_lab) do
+      double('LabOrTest', source: 'vista', observations: [obs], date_completed: '2024-06-01',
+                          display: 'Complete Blood Count', vista_id: 'v-1', id: 'dr-1')
+    end
     let(:parsed_labs) { [vista_lab] }
     let(:combined_records) { [double, double] }
 
