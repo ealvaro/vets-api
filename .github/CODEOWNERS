@@ -1996,6 +1996,7 @@ spec/rakelib/fixtures @software/backend-review-group
 spec/rakelib/form526_spec.rb @software/disability-benefits @software/backend-review-group
 spec/rakelib/jobs_spec.rb @software/govcio-vfep-codereviewers @software/backend-review-group
 spec/rakelib/payment_history_status_rake_spec.rb @software/benefits-management-tools-be @software/vsa-debt-resolution @software/backend-review-group
+spec/rakelib/persistent_attachment_remediation_spec.rb @software/va-notify-write @software/backend-review-group
 spec/rakelib/piilog_repl @software/backend-review-group
 spec/rakelib/piilog_repl/piilog_helpers_spec.rb @software/backend-review-group
 spec/rakelib/remediation_batch_upload_spec.rb @software/octo-benefits-portfolio-code-reviewers @software/backend-review-group

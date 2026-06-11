@@ -197,12 +197,24 @@ namespace :persistent_attachment_remediation do
           puts "[DRY RUN] Would send remediation email to #{scrub_email(email)}"
         else
           service_config = Settings.vanotify.services[vanotify_service]
-          VANotify::EmailJob.perform_async(
-            email,
-            service_config.email.persistent_attachment_error.template_id,
-            personalization,
-            service_config.api_key
-          )
+          template_id = service_config.email.persistent_attachment_error.template_id
+
+          if Flipper.enabled?(:va_notify_v2_persistent_attachment_remediation)
+            api_key_path = "Settings.vanotify.services.#{vanotify_service}.api_key"
+            VANotify::V2::QueueEmailJob.enqueue(
+              email,
+              template_id,
+              personalization,
+              api_key_path
+            )
+          else
+            VANotify::EmailJob.perform_async(
+              email,
+              template_id,
+              personalization,
+              service_config.api_key
+            )
+          end
         end
       end
     end
