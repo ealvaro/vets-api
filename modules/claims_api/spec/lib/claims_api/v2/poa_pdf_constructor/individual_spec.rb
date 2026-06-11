@@ -128,10 +128,37 @@ describe ClaimsApi::V2::PoaPdfConstructor::Individual do
       }
     )
     power_of_attorney.save!
+    allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_2122a_pdf_form_update).and_return(false)
   end
 
   after do
     Timecop.return
+  end
+
+  context 'pdf_template_subdir' do
+    context 'when lighthouse_claims_api_2122a_pdf_form_update is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_2122a_pdf_form_update).and_return(true)
+      end
+
+      it 'uses the rev_07_2023 template paths' do
+        expect(subject.send(:page1_template_path).to_s).to include('rev_07_2023/1.pdf')
+        expect(subject.send(:page2_template_path).to_s).to include('rev_07_2023/2.pdf')
+        expect(subject.send(:page3_template_path).to_s).to include('rev_07_2023/3.pdf')
+      end
+    end
+
+    context 'when lighthouse_claims_api_2122a_pdf_form_update is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_2122a_pdf_form_update).and_return(false)
+      end
+
+      it 'uses the original template paths' do
+        expect(subject.send(:page1_template_path).to_s).not_to include('rev_07_2023')
+        expect(subject.send(:page2_template_path).to_s).to end_with('21-22A/2.pdf')
+        expect(subject.send(:page3_template_path).to_s).to end_with('21-22A/3.pdf')
+      end
+    end
   end
 
   context 'page1_options' do

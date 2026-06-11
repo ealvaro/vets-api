@@ -9,19 +9,24 @@ module ClaimsApi
         protected
 
         def page1_template_path
-          Rails.root.join('modules', 'claims_api', 'config', 'pdf_templates', '21-22A', '1.pdf')
+          page_template_base_path.join('1.pdf')
         end
 
         def page2_template_path
-          Rails.root.join('modules', 'claims_api', 'config', 'pdf_templates', '21-22A', '2.pdf')
+          page_template_base_path.join('2.pdf')
         end
 
         def page3_template_path
-          Rails.root.join('modules', 'claims_api', 'config', 'pdf_templates', '21-22A', '3.pdf')
+          page_template_base_path.join('3.pdf')
         end
 
         def page4_template_path
           nil
+        end
+
+        def page_template_base_path
+          path = Rails.root.join('modules', 'claims_api', 'config', 'pdf_templates', '21-22A')
+          Flipper.enabled?(:lighthouse_claims_api_2122a_pdf_form_update) ? path.join('rev_07_2023') : path
         end
 
         #
@@ -29,6 +34,22 @@ module ClaimsApi
         #
         # @param data [Hash] Hash of data to add to the pdf
         def sign_pdf_text(data)
+          if Flipper.enabled?(:lighthouse_claims_api_2122a_pdf_form_update)
+            updated_sign_pdf_text(data)
+          else
+            legacy_sign_pdf_text(data)
+          end
+        end
+
+        def updated_sign_pdf_text(_data)
+          # TODO: Update signature positions for rev_07_2023 (17A/18A on page 2, 23A/25A on page 3)
+          @page1_path = page1_template_path
+          @page2_path = page2_template_path
+          @page3_path = page3_template_path
+          @page4_path = page4_template_path
+        end
+
+        def legacy_sign_pdf_text(data)
           @page1_path = page1_template_path
           @page2_path = insert_text_signatures(page2_template_path, data['text_signatures']['page2'])
           @page3_path = page3_template_path
@@ -36,6 +57,38 @@ module ClaimsApi
         end
 
         def page2_options(data)
+          return updated_page2_options(data) if Flipper.enabled?(:lighthouse_claims_api_2122a_pdf_form_update)
+
+          legacy_page2_options(data)
+        end
+
+        def page3_options(data)
+          return updated_page3_options(data) if Flipper.enabled?(:lighthouse_claims_api_2122a_pdf_form_update)
+
+          {} # legacy form has no page 3 fields
+        end
+
+        # rubocop:disable Metrics/MethodLength
+        # rubocop:disable Layout/LineLength
+        def page1_options(data)
+          return updated_page1_options(data) if Flipper.enabled?(:lighthouse_claims_api_2122a_pdf_form_update)
+
+          legacy_page1_options(data)
+        end
+
+        def updated_page1_options(_data)
+          {} # TODO: Add new form field mappings for rev_07_2023 page 1
+        end
+
+        def updated_page2_options(_data)
+          {} # TODO: Add new form field mappings for rev_07_2023 page 2
+        end
+
+        def updated_page3_options(_data)
+          {} # TODO: Add new form field mappings for rev_07_2023 page 3
+        end
+
+        def legacy_page2_options(data)
           base_form = 'form1[0].#subform[1]'
           {
             # Header
@@ -59,9 +112,7 @@ module ClaimsApi
           }
         end
 
-        # rubocop:disable Metrics/MethodLength
-        # rubocop:disable Layout/LineLength
-        def page1_options(data)
+        def legacy_page1_options(data)
           base_form = 'form1[0].#subform[0]'
           {
             # Section !
