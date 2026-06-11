@@ -134,24 +134,24 @@ module V2
         settings.mock || Flipper.enabled?('check_in_experience_mock_enabled') || false
       end
 
-      def use_vaec_cie_endpoints?
-        Flipper.enabled?('check_in_experience_use_vaec_cie_endpoints') || false
+      def use_vaec_cie_lorota?
+        Flipper.enabled?('check_in_experience_use_vaec_cie_lorota') || false
       end
 
       def url
-        use_vaec_cie_endpoints? ? settings.url_v2 : settings.url
+        use_vaec_cie_lorota? ? settings.url_v2 : settings.url
       end
 
       def base_path
-        use_vaec_cie_endpoints? ? settings.base_path_v2 : settings.base_path
+        use_vaec_cie_lorota? ? settings.base_path_v2 : settings.base_path
       end
 
       def api_id
-        use_vaec_cie_endpoints? ? settings.api_id_v2 : settings.api_id
+        use_vaec_cie_lorota? ? settings.api_id_v2 : settings.api_id
       end
 
       def api_key
-        use_vaec_cie_endpoints? ? settings.api_key_v2 : settings.api_key
+        use_vaec_cie_lorota? ? settings.api_key_v2 : settings.api_key
       end
     end
   end

@@ -100,13 +100,13 @@ describe V2::Lorota::Client do
       allow_any_instance_of(Faraday::Connection).to receive(:get).with(anything).and_return(faraday_response)
     end
 
-    context 'when check_in_experience_use_vaec_cie_endpoints flag is disabled' do
+    context 'when check_in_experience_use_vaec_cie_lorota flag is disabled' do
       before do
-        allow(Flipper).to receive(:enabled?).with('check_in_experience_use_vaec_cie_endpoints').and_return(false)
+        allow(Flipper).to receive(:enabled?).with('check_in_experience_use_vaec_cie_lorota').and_return(false)
         allow(Flipper).to receive(:enabled?).with('check_in_experience_mock_enabled').and_return(false)
       end
 
-      it 'uses original settings' do
+      it 'uses original (cms) settings' do
         expect(subject.send(:url)).to eq(Settings.check_in.lorota_v2.url)
         expect(subject.send(:base_path)).to eq(Settings.check_in.lorota_v2.base_path)
         expect(subject.send(:api_id)).to eq(Settings.check_in.lorota_v2.api_id)
@@ -125,13 +125,13 @@ describe V2::Lorota::Client do
       end
     end
 
-    context 'when check_in_experience_use_vaec_cie_endpoints flag is enabled' do
+    context 'when check_in_experience_use_vaec_cie_lorota flag is enabled' do
       before do
-        allow(Flipper).to receive(:enabled?).with('check_in_experience_use_vaec_cie_endpoints').and_return(true)
+        allow(Flipper).to receive(:enabled?).with('check_in_experience_use_vaec_cie_lorota').and_return(true)
         allow(Flipper).to receive(:enabled?).with('check_in_experience_mock_enabled').and_return(false)
       end
 
-      it 'uses v2 settings' do
+      it 'uses v2 (cie) settings' do
         expect(subject.send(:url)).to eq(Settings.check_in.lorota_v2.url_v2)
         expect(subject.send(:base_path)).to eq(Settings.check_in.lorota_v2.base_path_v2)
         expect(subject.send(:api_id)).to eq(Settings.check_in.lorota_v2.api_id_v2)
@@ -157,6 +157,24 @@ describe V2::Lorota::Client do
           expect(request.headers['x-apigw-api-id']).to eq(Settings.check_in.lorota_v2.api_id_v2)
         end
         subject.token
+      end
+    end
+
+    context 'is independent of the CHIP endpoints flag' do
+      before do
+        allow(Flipper).to receive(:enabled?).with('check_in_experience_mock_enabled').and_return(false)
+      end
+
+      it 'never consults the CHIP endpoints flag and stays on cms LoROTA' do
+        allow(Flipper).to receive(:enabled?).with('check_in_experience_use_vaec_cie_lorota').and_return(false)
+        expect(Flipper).not_to receive(:enabled?).with('check_in_experience_use_vaec_cie_endpoints')
+        expect(subject.send(:url)).to eq(Settings.check_in.lorota_v2.url)
+      end
+
+      it 'never consults the CHIP endpoints flag and moves to cie LoROTA when the LoROTA flag is on' do
+        allow(Flipper).to receive(:enabled?).with('check_in_experience_use_vaec_cie_lorota').and_return(true)
+        expect(Flipper).not_to receive(:enabled?).with('check_in_experience_use_vaec_cie_endpoints')
+        expect(subject.send(:url)).to eq(Settings.check_in.lorota_v2.url_v2)
       end
     end
   end
