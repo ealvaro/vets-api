@@ -40,7 +40,7 @@ module AccreditedRepresentativePortal
     end
 
     attribute :confirmation_number do |object|
-      object.latest_submission_attempt&.benefits_intake_uuid
+      object.saved_claim&.guid
     end
 
     attribute :vbms_status do |object|

@@ -33,7 +33,7 @@ module AccreditedRepresentativePortal
             claimant_representative:
           )
 
-          confirmation_number = saved_claim.id
+          confirmation_number = saved_claim.guid
 
           span.set_tag('form_submission.status', '200')
           span.set_tag('form_submission.confirmation_number', confirmation_number)

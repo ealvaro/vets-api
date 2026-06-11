@@ -224,7 +224,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
           expect(parsed_response).to eq(
             {
               'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DependencyClaim
-                                      .order(created_at: :desc).first.id,
+                                      .order(created_at: :desc).first.guid,
               'status' => '200',
               'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
             }
@@ -258,7 +258,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
             expect(parsed_response).to eq(
               {
                 'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DependencyClaim
-                                        .order(created_at: :desc).first.id,
+                                        .order(created_at: :desc).first.guid,
                 'status' => '200',
                 'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
               }
@@ -271,7 +271,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
             expect(parsed_response).to eq(
               {
                 'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DependencyClaim
-                                        .order(created_at: :desc).first.id,
+                                        .order(created_at: :desc).first.guid,
                 'status' => '200',
                 'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
               }
@@ -284,7 +284,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
             expect(parsed_response).to eq(
               {
                 'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DependencyClaim
-                                        .order(created_at: :desc).first.id,
+                                        .order(created_at: :desc).first.guid,
                 'status' => '200',
                 'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
               }
@@ -382,7 +382,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
           expect(parsed_response).to eq(
             {
               'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DisabilityClaim
-                                      .order(created_at: :desc).first.id,
+                                      .order(created_at: :desc).first.guid,
               'status' => '200',
               'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
             }
@@ -395,7 +395,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
           expect(parsed_response).to eq(
             {
               'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DisabilityClaim
-                                      .order(created_at: :desc).first.id,
+                                      .order(created_at: :desc).first.guid,
               'status' => '200',
               'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
             }
@@ -409,7 +409,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
             expect(parsed_response).to eq(
               {
                 'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DisabilityClaim
-                                        .order(created_at: :desc).first.id,
+                                        .order(created_at: :desc).first.guid,
                 'status' => '200',
                 'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
               }
@@ -462,7 +462,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
           expect(parsed_response).to eq(
             {
               'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake.const_get(form_const)
-                                      .order(created_at: :desc).first.id,
+                                      .order(created_at: :desc).first.guid,
               'status' => '200',
               'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
             }
@@ -476,7 +476,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
           expect(parsed_response).to eq(
             {
               'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake.const_get(form_const)
-                                      .order(created_at: :desc).first.id,
+                                      .order(created_at: :desc).first.guid,
               'status' => '200',
               'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
             }

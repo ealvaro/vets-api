@@ -33,8 +33,7 @@ RSpec.describe AccreditedRepresentativePortal::SavedClaimClaimantRepresentativeS
 
   describe '#confirmation_number' do
     it 'returns confirmation uuid' do
-      uuid = saved_claim_claimant_rep.saved_claim.latest_submission_attempt.benefits_intake_uuid
-      expect(subject[:confirmationNumber]).to eq uuid
+      expect(subject[:confirmationNumber]).to eq saved_claim_claimant_rep.saved_claim.guid
     end
   end
 
