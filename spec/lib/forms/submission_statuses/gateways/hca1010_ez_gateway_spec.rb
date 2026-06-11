@@ -7,6 +7,8 @@ describe Forms::SubmissionStatuses::Gateways::Hca1010EzGateway,
          feature: :form_submission,
          team_owner: :health_apps_backend do
   let(:user_account) { create(:user_account) }
+  let(:created_at) { (DateTime.current - 15.days).to_s }
+  let(:updated_at) { (DateTime.current - 14.days).to_s }
 
   describe '#submissions' do
     it 'returns the user' do
@@ -18,16 +20,14 @@ describe Forms::SubmissionStatuses::Gateways::Hca1010EzGateway,
 
   describe '#api_statuses' do
     it 'returns enrolled status as received and nil errors on success' do
-      created_at = '2018-12-27T00:00:00.000-06:00'
-      updated_at = '2018-12-27T17:15:39.000-06:00'
       result = {
-        'application_date' => created_at,
-        'enrollment_date' => updated_at,
-        'preferred_facility' => '988 - DAYT20',
-        'parsed_status' => :enrolled,
-        'effective_date' => '2019-01-02T21:58:55.000-06:00',
-        'priority_group' => 'Group 3',
-        'can_submit_financial_info' => true
+        application_date: created_at,
+        enrollment_date: updated_at,
+        preferred_facility: '988 - DAYT20',
+        parsed_status: :enrolled,
+        effective_date: '2019-01-02T21:58:55.000-06:00',
+        priority_group: 'Group 3',
+        can_submit_financial_info: true
       }
       expect(HealthCareApplication).to receive(:enrollment_status).with(user_account.icn, true).and_return(result)
       gateway = described_class.new(user_account:)
@@ -37,16 +37,14 @@ describe Forms::SubmissionStatuses::Gateways::Hca1010EzGateway,
     end
 
     it 'returns pending status as in_progress and nil errors on success' do
-      created_at = '2018-12-27T00:00:00.000-06:00'
-      updated_at = '2018-12-27T17:15:39.000-06:00'
       result = {
-        'application_date' => created_at,
-        'enrollment_date' => updated_at,
-        'preferred_facility' => '988 - DAYT20',
-        'parsed_status' => :pending_other,
-        'effective_date' => '2019-01-02T21:58:55.000-06:00',
-        'priority_group' => 'Group 3',
-        'can_submit_financial_info' => true
+        application_date: created_at,
+        enrollment_date: updated_at,
+        preferred_facility: '988 - DAYT20',
+        parsed_status: :pending_other,
+        effective_date: '2019-01-02T21:58:55.000-06:00',
+        priority_group: 'Group 3',
+        can_submit_financial_info: true
       }
       expect(HealthCareApplication).to receive(:enrollment_status).with(user_account.icn, true).and_return(result)
       gateway = described_class.new(user_account:)
@@ -56,16 +54,15 @@ describe Forms::SubmissionStatuses::Gateways::Hca1010EzGateway,
     end
 
     it 'returns unexpected status as nil and nil errors on success' do
-      created_at = '2018-12-27T00:00:00.000-06:00'
-      updated_at = '2018-12-27T17:15:39.000-06:00'
       result = {
-        'application_date' => created_at,
-        'enrollment_date' => updated_at,
-        'preferred_facility' => '988 - DAYT20',
-        'parsed_status' => :status_we_do_not_recognize,
-        'effective_date' => '2019-01-02T21:58:55.000-06:00',
-        'priority_group' => 'Group 3',
-        'can_submit_financial_info' => true
+        application_date: created_at,
+        enrollment_date: updated_at,
+        preferred_facility: '988 - DAYT20',
+        parsed_status: :status_we_do_not_recognize,
+        effective_date: '2019-01-02T21:58:55.000-06:00',
+        priority_group: 'Group 3',
+        can_submit_financial_info: true
+
       }
       expect(HealthCareApplication).to receive(:enrollment_status).with(user_account.icn, true).and_return(result)
       gateway = described_class.new(user_account:)

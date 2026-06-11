@@ -25,11 +25,11 @@ module Forms
         def api_statuses(submissions)
           submitted_current_user = submissions.first
           record = HealthCareApplication.enrollment_status(submitted_current_user.icn, true)
-          status = NORMALIZED_STATUSES[record['parsed_status']]
+          status = NORMALIZED_STATUSES[record[:parsed_status]]
 
           return [nil, nil] unless status
 
-          [[{ status:, created_at: record['application_date'], updated_at: record['enrollment_date'] }], nil]
+          [[{ status:, created_at: record[:application_date], updated_at: record[:enrollment_date] }], nil]
         rescue => e
           [nil, [e.message]]
         end
