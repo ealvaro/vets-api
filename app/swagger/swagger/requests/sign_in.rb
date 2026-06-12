@@ -210,9 +210,9 @@ module Swagger
       end
 
       swagger_path '/v0/sign_in/revoke_all_sessions' do
-        operation :get do
-          key :description, 'Sign in Service destruction of all of a user\'s sessions.'
-          key :operationId, 'getSignInRevokeAll'
+        operation :post do
+          key :description, 'Sign in Service destruction of all of a user\'s sessions except the calling session.'
+          key :operationId, 'postSignInRevokeAll'
           key :tags, %w[authentication]
 
           key :produces, ['application/json']
@@ -221,7 +221,7 @@ module Swagger
           parameter :optional_authorization
 
           response 200 do
-            key :description, 'Access token validated & included `user_uuid` used to look up & destroy all of a user\'s sessions.'
+            key :description, 'Access token validated & included `user_uuid` used to look up & destroy all of the user\'s sessions except the calling session.'
             schema {}
           end
         end

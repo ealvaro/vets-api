@@ -10,7 +10,7 @@ module V0
         session = ::SignIn::OAuthSession.find_by(handle: @access_token.session_handle)
         raise ::SignIn::Errors::SessionNotFoundError.new message: 'Session not found' if session.blank?
 
-        ::SignIn::RevokeSessionsForUser.new(user_account: session.user_account).perform
+        ::SignIn::RevokeSessions.new(session:).perform
 
         sign_in_logger.info('revoke all sessions', @access_token.to_s)
         StatsD.increment(::SignIn::Constants::Statsd::STATSD_SIS_REVOKE_ALL_SESSIONS_SUCCESS)

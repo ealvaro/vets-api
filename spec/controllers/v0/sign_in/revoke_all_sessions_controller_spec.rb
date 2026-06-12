@@ -3,8 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe V0::SignIn::RevokeAllSessionsController, type: :controller do
-  describe 'GET revoke_all_sessions' do
-    subject { get(:revoke_all_sessions) }
+  describe 'POST revoke_all_sessions' do
+    subject { post(:revoke_all_sessions) }
 
     shared_context 'error response' do
       let(:statsd_failure) { SignIn::Constants::Statsd::STATSD_SIS_REVOKE_ALL_SESSIONS_FAILURE }
@@ -47,43 +47,13 @@ RSpec.describe V0::SignIn::RevokeAllSessionsController, type: :controller do
       let(:access_token_object) do
         create(:access_token, session_handle: oauth_session.handle, user_uuid:)
       end
-      let(:oauth_session_count) { SignIn::OAuthSession.where(user_account:).count }
       let(:statsd_success) { SignIn::Constants::Statsd::STATSD_SIS_REVOKE_ALL_SESSIONS_SUCCESS }
       let(:expected_log) { '[SignInService] [V0::SignInController] revoke all sessions' }
-      let(:expected_log_params) do
-        {
-          uuid: access_token_object.uuid,
-          user_uuid: access_token_object.user_uuid,
-          session_handle: access_token_object.session_handle,
-          client_id: access_token_object.client_id,
-          audience: access_token_object.audience,
-          version: access_token_object.version,
-          last_regeneration_time: access_token_object.last_regeneration_time.to_i,
-          created_time: access_token_object.created_time.to_i,
-          expiration_time: access_token_object.expiration_time.to_i
-        }
-      end
+      let(:expected_log_params) { access_token_object.to_s }
       let(:expected_status) { :ok }
 
       before do
         request.headers['Authorization'] = authorization
-      end
-
-      it 'deletes all OAuthSession objects associated with current user user_account' do
-        expect { subject }.to change(SignIn::OAuthSession, :count).from(oauth_session_count).to(0)
-      end
-
-      it 'returns ok status' do
-        expect(subject).to have_http_status(expected_status)
-      end
-
-      it 'logs the revoke all sessions call' do
-        expect(Rails.logger).to receive(:info).with(expected_log, expected_log_params)
-        subject
-      end
-
-      it 'triggers statsd increment for successful call' do
-        expect { subject }.to trigger_statsd_increment(statsd_success)
       end
 
       context 'and no session matches the access token session handle' do
@@ -102,10 +72,38 @@ RSpec.describe V0::SignIn::RevokeAllSessionsController, type: :controller do
         let(:expected_error_message) { expected_error.to_s }
 
         before do
-          allow(SignIn::RevokeSessionsForUser).to receive(:new).and_raise(expected_error.new(message: expected_error))
+          allow(SignIn::RevokeSessions).to receive(:new).and_raise(expected_error.new(message: expected_error))
         end
 
         it_behaves_like 'error response'
+      end
+
+      context 'and the user has other sessions' do
+        let!(:other_session) { create(:oauth_session, user_account:) }
+
+        before { oauth_session }
+
+        it 'revokes all sessions except the current session' do
+          expect { subject }.to change(SignIn::OAuthSession, :count).from(2).to(1)
+        end
+
+        it 'preserves the current session' do
+          subject
+          expect(SignIn::OAuthSession.find_by(handle: oauth_session.handle)).to be_present
+        end
+
+        it 'returns ok status' do
+          expect(subject).to have_http_status(expected_status)
+        end
+
+        it 'logs the revoke all sessions call' do
+          expect(Rails.logger).to receive(:info).with(expected_log, expected_log_params)
+          subject
+        end
+
+        it 'triggers statsd increment for successful call' do
+          expect { subject }.to trigger_statsd_increment(statsd_success)
+        end
       end
     end
   end

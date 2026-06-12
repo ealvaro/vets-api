@@ -143,7 +143,7 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
         end
       end
 
-      describe 'GET v0/sign_in/revoke_all_sessions' do
+      describe 'POST v0/sign_in/revoke_all_sessions' do
         let(:user_verification) { create(:user_verification) }
         let(:validated_credential) { create(:validated_credential, user_verification:, client_config:) }
         let(:client_config) { create(:client_config, enforced_terms: nil) }
@@ -154,9 +154,9 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
         let!(:user) { create(:user, :loa3, uuid: access_token_object.user_uuid, middle_name: 'leo') }
         let(:access_token) { SignIn::AccessTokenJwtEncoder.new(access_token: access_token_object).perform }
 
-        it 'revokes the session' do
+        it 'revokes all sessions except the calling session' do
           expect(subject).to validate(
-            :get,
+            :post,
             '/v0/sign_in/revoke_all_sessions',
             200,
             '_headers' => {
