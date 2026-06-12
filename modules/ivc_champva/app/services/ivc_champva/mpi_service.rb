@@ -16,6 +16,32 @@ module IvcChampva
       validate_veterans(parsed_form_data['veteran']) if parsed_form_data['veteran']
     end
 
+    ##
+    # Look up a person's name by their ICN via MPI.
+    #
+    # @param icn [String] the Integration Control Number to look up
+    # @return [Hash, nil] { first_name:, last_name: } or nil if not found / error
+    def lookup_name_by_icn(icn)
+      response = @mpi_service.find_profile_by_identifier(
+        identifier: icn,
+        identifier_type: MPI::Constants::ICN
+      )
+
+      return nil unless response.ok?
+
+      profile = response.profile
+      {
+        first_name: profile.given_names&.first,
+        last_name: profile.family_name
+      }
+    rescue MPI::Errors::RecordNotFound
+      @monitor.track_mpi_profile_not_found('icn_lookup', 'MPI::Errors::RecordNotFound')
+      nil
+    rescue MPI::Errors::FailedRequestError, StandardError => e
+      @monitor.track_mpi_service_error('icn_lookup', e.class.name)
+      nil
+    end
+
     private
 
     def validate_applicants(applicants)

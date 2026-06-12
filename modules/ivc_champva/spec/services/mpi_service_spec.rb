@@ -120,4 +120,64 @@ RSpec.describe IvcChampva::MPIService do
       end
     end
   end
+
+  describe '#lookup_name_by_icn' do
+    let(:icn) { '0000001200581123V296649000000' }
+    let(:mock_profile) do
+      instance_double(MPI::Models::MviProfile, given_names: %w[Jane M], family_name: 'Doe')
+    end
+    let(:successful_response) { instance_double(MPI::Responses::FindProfileResponse, ok?: true, profile: mock_profile) }
+
+    context 'when the profile is found' do
+      before { allow(mock_mpi_service).to receive(:find_profile_by_identifier).and_return(successful_response) }
+
+      it 'returns first and last name' do
+        result = service.lookup_name_by_icn(icn)
+        expect(result[:first_name]).to eq('Jane')
+        expect(result[:last_name]).to eq('Doe')
+      end
+
+      it 'calls MPI with the ICN identifier type' do
+        expect(mock_mpi_service).to receive(:find_profile_by_identifier).with(
+          identifier: icn,
+          identifier_type: MPI::Constants::ICN
+        )
+        service.lookup_name_by_icn(icn)
+      end
+    end
+
+    context 'when the profile is not found' do
+      before do
+        allow(mock_mpi_service).to receive(:find_profile_by_identifier)
+          .and_raise(MPI::Errors::RecordNotFound.new('not found'))
+        allow(mock_monitor).to receive(:track_mpi_profile_not_found)
+      end
+
+      it 'returns nil' do
+        expect(service.lookup_name_by_icn(icn)).to be_nil
+      end
+
+      it 'tracks the not found event' do
+        expect(mock_monitor).to receive(:track_mpi_profile_not_found).with('icn_lookup', anything)
+        service.lookup_name_by_icn(icn)
+      end
+    end
+
+    context 'when MPI service errors' do
+      before do
+        allow(mock_mpi_service).to receive(:find_profile_by_identifier)
+          .and_raise(MPI::Errors::FailedRequestError.new('service unavailable'))
+        allow(mock_monitor).to receive(:track_mpi_service_error)
+      end
+
+      it 'returns nil' do
+        expect(service.lookup_name_by_icn(icn)).to be_nil
+      end
+
+      it 'tracks the service error' do
+        expect(mock_monitor).to receive(:track_mpi_service_error).with('icn_lookup', anything)
+        service.lookup_name_by_icn(icn)
+      end
+    end
+  end
 end

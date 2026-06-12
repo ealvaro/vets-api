@@ -219,6 +219,167 @@ RSpec.describe IvcChampva::VesApi::Client do
     end
   end
 
+  describe '#get_icns_for_transaction' do
+    let(:response_body) do
+      '{"data":[{"icn":"0000001200603250V008079000000","personUUID":"682","personType":"SPONSOR"},' \
+        '{"icn":"0000001200603251V181504000000","personUUID":"638","personType":"BENEFICIARY"}],"messages":[]}'
+    end
+
+    before do
+      allow(client).to receive(:connection).and_return(double(get: response))
+    end
+
+    context 'successful response from VES' do
+      let(:response) { instance_double(Faraday::Response, status: 200, body: response_body) }
+
+      it 'returns parsed data array' do
+        result = client.get_icns_for_transaction(transaction_uuid)
+        expect(result).to be_an(Array)
+        expect(result.size).to eq(2)
+        expect(result.first['icn']).to eq('0000001200603250V008079000000')
+      end
+    end
+
+    context 'non-200 response from VES' do
+      let(:response) { instance_double(Faraday::Response, status: 404, body: '{}') }
+
+      it 'raises a VesApiError' do
+        expect do
+          client.get_icns_for_transaction(transaction_uuid)
+        end.to raise_error(IvcChampva::VesApi::VesApiError)
+      end
+    end
+
+    context 'application not yet processed (empty data)' do
+      let(:response) { instance_double(Faraday::Response, status: 200, body: '{"data":[],"messages":[]}') }
+
+      it 'raises a VesApplicationPendingError' do
+        expect do
+          client.get_icns_for_transaction(transaction_uuid)
+        end.to raise_error(IvcChampva::VesApi::VesApplicationPendingError)
+      end
+    end
+  end
+
+  describe '#icn_lookup_headers' do
+    context 'when api_key is configured (production/dev)' do
+      it 'includes the apiKey header' do
+        result = client.send(:icn_lookup_headers, transaction_uuid)
+        expect(result['apiKey']).to eq('fake_api_key')
+        expect(result['transactionUUId']).to eq(transaction_uuid)
+        expect(result[:content_type]).to eq('application/json')
+      end
+    end
+
+    context 'when api_key is blank (staging)' do
+      before { allow(client.settings).to receive(:api_key).and_return(nil) }
+
+      it 'omits the apiKey header' do
+        result = client.send(:icn_lookup_headers, transaction_uuid)
+        expect(result.key?('apiKey')).to be(false)
+        expect(result['transactionUUId']).to eq(transaction_uuid)
+      end
+    end
+  end
+
+  describe '#get_ee_summary' do
+    let(:icn) { '0000001013836784V369083000000' }
+    let(:success_body) do
+      {
+        'data' => {
+          'vfmpProgramsInfo' => {
+            'relationships' => [
+              {
+                'champvaEligibilities' => [
+                  {
+                    'status' => 'Ineligible',
+                    'reason' => 'No current school letter',
+                    'sponsor' => {
+                      'icn' => '0000001013836108V943512000000',
+                      'champvaStatus' => 'ELIGIBLE',
+                      'champvaReason' => 'P&T'
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        'messages' => []
+      }.to_json
+    end
+
+    before do
+      allow(client).to receive(:connection).and_return(double(get: response))
+    end
+
+    context 'successful response with data' do
+      let(:response) { instance_double(Faraday::Response, status: 200, body: success_body) }
+
+      it 'returns the parsed data hash' do
+        result = client.get_ee_summary(icn:)
+        expect(result).to be_a(Hash)
+        eligibility = result.dig('vfmpProgramsInfo', 'relationships', 0, 'champvaEligibilities', 0)
+        expect(eligibility['status']).to eq('Ineligible')
+      end
+
+      it 'passes regionIdOrOffset when provided' do
+        mock_conn = double('connection')
+        allow(client).to receive(:connection).and_return(mock_conn)
+        expect(mock_conn).to receive(:get)
+          .with(/CSTChampvaEligibility/, hash_including(regionIdOrOffset: 'GMT-6'))
+          .and_yield(double('req', headers: {}).as_null_object)
+          .and_return(response)
+        client.get_ee_summary(icn:, region_id_or_offset: 'GMT-6')
+      end
+    end
+
+    context 'application not yet processed (nil data)' do
+      let(:response) { instance_double(Faraday::Response, status: 200, body: '{"data":null,"messages":[]}') }
+
+      it 'raises a VesApplicationPendingError' do
+        expect do
+          client.get_ee_summary(icn:)
+        end.to raise_error(IvcChampva::VesApi::VesApplicationPendingError)
+      end
+    end
+
+    context 'non-200 response from VES' do
+      let(:response) { instance_double(Faraday::Response, status: 500, body: '{}') }
+
+      it 'raises a VesApiError' do
+        expect do
+          client.get_ee_summary(icn:)
+        end.to raise_error(IvcChampva::VesApi::VesApiError)
+      end
+    end
+  end
+
+  describe '#ee_summary_headers' do
+    context 'when api_key is configured (production/dev)' do
+      it 'includes the apiKey header' do
+        result = client.send(:ee_summary_headers)
+        expect(result['apiKey']).to eq('fake_api_key')
+        expect(result[:content_type]).to eq('application/json')
+        expect(result['accept']).to eq('application/json')
+      end
+
+      it 'does not include a transactionUUId header' do
+        result = client.send(:ee_summary_headers)
+        expect(result.key?('transactionUUId')).to be(false)
+      end
+    end
+
+    context 'when api_key is blank (staging)' do
+      before { allow(client.settings).to receive(:api_key).and_return(nil) }
+
+      it 'omits the apiKey header' do
+        result = client.send(:ee_summary_headers)
+        expect(result.key?('apiKey')).to be(false)
+      end
+    end
+  end
+
   # Temporary, delete me
   # This test is used to hit the production endpoint when running locally.
   # It can be removed once we have some real code that uses the VES API client.

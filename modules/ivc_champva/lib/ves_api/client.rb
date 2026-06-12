@@ -9,6 +9,10 @@ module IvcChampva
   module VesApi
     class VesApiError < StandardError; end
 
+    # Raised when VES returns a 200 but no ICNs yet — application is still being processed.
+    # Callers should treat this as a transient condition and retry later.
+    class VesApplicationPendingError < StandardError; end
+
     # TODO: define Message response structure
 
     class Client < Common::Client::Base
@@ -107,6 +111,97 @@ module IvcChampva
         elsif ves_request_data.is_a?(Hash)
           ves_request_data['application_uuid'] || ves_request_data['applicationUUID']
         end
+      end
+
+      ##
+      # Retrieve ICNs/person mapping for a given VES transaction UUID
+      #
+      # @param transaction_uuid [String] the transaction UUID to query
+      # @return [Array<Hash>] array of person records (icn, personUUID, personType)
+      def get_icns_for_transaction(transaction_uuid)
+        url = "#{config.base_path}/ves-vfmp-app-svc/champva-applications/vfmp-txn-request-uuid/#{transaction_uuid}"
+        resp = connection.get(url) do |req|
+          req.headers = icn_lookup_headers(transaction_uuid)
+        end
+
+        monitor.track_ves_response('icn_lookup', resp.status, nil)
+
+        raise "response code: #{resp.status}" unless resp.status == 200
+
+        parsed = JSON.parse(resp.body)
+        data = parsed['data'] || []
+
+        raise VesApplicationPendingError, 'No ICNs returned — application may not be processed yet' if data.empty?
+
+        data
+      rescue VesApplicationPendingError
+        raise
+      rescue => e
+        raise VesApiError, e.message.to_s
+      end
+
+      ##
+      # Fetch CHAMPVA eligibility for a given ICN from the VES EE Summary service (CSTChampvaEligibility dataset).
+      #
+      # The applicant's CHAMPVA status/reason is at:
+      #   data['vfmpProgramsInfo']['relationships'][]['champvaEligibilities'][]['status'] / ['reason']
+      # The sponsor's CHAMPVA status/reason is nested within each eligibility at:
+      #   ...['champvaEligibilities'][]['sponsor']['champvaStatus'] / ['champvaReason']
+      #
+      # @param icn [String] the person's Integration Control Number
+      # @param region_id_or_offset [String, nil] optional timezone region/offset (e.g. 'GMT-6')
+      # @return [Hash] the parsed 'data' hash from VES
+      # @raise [VesApplicationPendingError] if VES returns 200 but no data (still processing)
+      # @raise [VesApiError] on non-200 response or unexpected error
+      def get_ee_summary(icn:, region_id_or_offset: nil)
+        params = { id: icn }
+        params[:regionIdOrOffset] = region_id_or_offset if region_id_or_offset.present?
+
+        resp = connection.get("#{config.base_path}/ves-ee-summary-svc/eesummary/CSTChampvaEligibility", params) do |req|
+          req.headers = ee_summary_headers
+        end
+
+        monitor.track_ves_response('ee_summary', resp.status, nil)
+
+        raise "response code: #{resp.status}" unless resp.status == 200
+
+        parsed = JSON.parse(resp.body)
+        data = parsed['data']
+
+        if data.nil?
+          raise VesApplicationPendingError, 'No EE summary data returned — application may not be processed yet'
+        end
+
+        data
+      rescue VesApplicationPendingError
+        raise
+      rescue => e
+        raise VesApiError, e.message.to_s
+      end
+
+      private
+
+      ##
+      # Assembles headers for ICN lookup requests. Omits the apiKey header when no key is
+      # configured (e.g. staging environments where the key is not required).
+      #
+      # @param transaction_uuid [String] the transaction UUID
+      # @return [Hash] the headers
+      def icn_lookup_headers(transaction_uuid)
+        h = { :content_type => 'application/json', 'transactionUUId' => transaction_uuid.to_s }
+        h['apiKey'] = settings.api_key if settings.api_key.present?
+        h
+      end
+
+      ##
+      # Assembles headers for EE Summary service requests. No transactionUUId required.
+      # Omits apiKey when not configured (e.g. staging).
+      #
+      # @return [Hash] the headers
+      def ee_summary_headers
+        h = { :content_type => 'application/json', 'accept' => 'application/json' }
+        h['apiKey'] = settings.api_key if settings.api_key.present?
+        h
       end
     end
   end
