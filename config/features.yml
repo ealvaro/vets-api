@@ -731,6 +731,10 @@ features:
     actor_type: user
     description: When enabled, claims status tool uses synchronous evidence uploads
     enable_in_development: true
+  cst_supplemental_claims_evidence_upload:
+    actor_type: user
+    description: When enabled, gates the V0 claims evidence upload endpoint for the CST supplemental claims files tab
+    enable_in_development: false
   cst_timezone_discrepancy_mitigation:
     actor_type: user
     description: >
