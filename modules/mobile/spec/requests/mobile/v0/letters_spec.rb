@@ -337,8 +337,8 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                 letter_names = letters.map { |l| l['name'] }
                 expect(letter_names).not_to eq(letter_names.sort)
                 expect(letters.map { |l| l['letterType'] }).to eq(
-                  %w[benefit_summary benefit_verification proof_of_service civil_service
-                     minimum_essential_coverage medicare_partd commissary service_verification]
+                  %w[benefit_summary benefit_verification proof_of_service service_verification civil_service
+                     minimum_essential_coverage medicare_partd commissary]
                 )
               end
             end

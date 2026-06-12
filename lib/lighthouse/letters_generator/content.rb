@@ -21,6 +21,7 @@ module Lighthouse
         benefit_verification
         certificate_of_eligibility_home_loan
         proof_of_service
+        service_verification
         civil_service
         minimum_essential_coverage
         medicare_partd
@@ -38,6 +39,7 @@ module Lighthouse
         'certificate_of_eligibility' => 'Home loan Certificate of Eligibility (COE)',
         'certificate_of_eligibility_home_loan' => 'Home loan Certificate of Eligibility (COE)',
         'proof_of_service' => 'Proof of service card',
+        'service_verification' => 'Service Verification Letter',
         'civil_service' => 'Civil service preference',
         'minimum_essential_coverage' => 'Proof of minimum essential coverage',
         'medicare_partd' => 'Creditable prescription drug coverage',

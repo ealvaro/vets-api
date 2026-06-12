@@ -296,7 +296,7 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
       let(:eligible_letters_response) do
         {
           'letters' => [
-            { 'letterType' => 'SERVICE_VERIFICATION', 'letterName' => 'Service verification letter' },
+            { 'letterType' => 'SERVICE_VERIFICATION', 'letterName' => 'Service Verification Letter' },
             { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => 'Benefits summary letter from LH' },
             { 'letterType' => 'PROOF_OF_SERVICE', 'letterName' => 'Proof of service letter from LH' }
           ],
@@ -328,7 +328,7 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
 
           expect(response[:letters]).to eq(
             [
-              { letterType: 'service_verification', name: 'Service verification letter' },
+              { letterType: 'service_verification', name: 'Service Verification Letter' },
               { letterType: 'benefit_summary', name: 'Benefits summary letter from LH' },
               { letterType: 'proof_of_service', name: 'Proof of service letter from LH' }
             ]
@@ -373,7 +373,7 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
             ).to include('Applying for housing assistance')
             expect(benefit_summary[:description]['subtitle']).to eq('Choose topics to include')
 
-            expect(service_verification[:name]).to eq('Service verification letter')
+            expect(service_verification[:name]).to eq('Service Verification Letter')
             expect(service_verification[:description]).to be_present
             expect(service_verification[:description]['content']).to be_an(Array)
             expect(service_verification[:description]['content'].first['text']).to start_with(
@@ -408,7 +408,7 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
             expect(benefit_summary[:description]['lists'].first['items']).to include('Applying for housing assistance')
             expect(benefit_summary[:description]['subtitle']).to eq('Choose topics to include')
 
-            expect(service_verification[:name]).to eq('Service verification letter')
+            expect(service_verification[:name]).to eq('Service Verification Letter')
             expect(service_verification[:description]).to be_present
             expect(service_verification[:description]['paragraphs']).to be_an(Array)
             expect(service_verification[:description]['paragraphs'].first).to start_with(
@@ -765,7 +765,7 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
       {
         'letters' => [
           { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => 'Benefit summary letter' },
-          { 'letterType' => 'SERVICE_VERIFICATION', 'letterName' => 'Service verification letter' },
+          { 'letterType' => 'SERVICE_VERIFICATION', 'letterName' => 'Service Verification Letter' },
           { 'letterType' => 'PROOF_OF_SERVICE', 'letterName' => 'Proof of service letter' }
         ],
         'letterDestination' => { 'name' => 'DOLLY PARTON' }
