@@ -29,6 +29,7 @@ module Mobile
       COE_STATUSES = %w[AVAILABLE ELIGIBLE].freeze
       COE_LETTER_TYPE = 'certificate_of_eligibility_home_loan'
       COE_APP_VERSION = '2.58.0'
+      CONTENT_UPDATES_APP_VERSION = '2.78.0'
 
       before_action { authorize :lighthouse, :access? }
 
@@ -41,10 +42,8 @@ module Mobile
         letters = lighthouse_service.get_eligible_letter_types(icn, @current_user)[:letters]
         response = letters.filter_map do |letter|
           # The following letters need to be filtered out due to outdated content when flag is off
-          if !Flipper.enabled?(:cst_letters_content_updates,
-                               @current_user) && FILTERED_LETTER_TYPES.include?(letter[:letterType])
-            next
-          end
+          # or the app version is below CONTENT_UPDATES_APP_VERSION
+          next if !content_updates_enabled? && FILTERED_LETTER_TYPES.include?(letter[:letterType])
 
           Mobile::V0::Letter.new(letter_type: letter[:letterType], name: apply_name_override(letter),
                                  description: letter[:description])
@@ -54,7 +53,7 @@ module Mobile
 
         displayable_letters = response.select { |letter| letter.displayable?(@current_user) }
 
-        if Flipper.enabled?(:cst_letters_content_updates, @current_user)
+        if content_updates_enabled?
           render json: Mobile::V0::LettersSerializer.new(@current_user, sort_by_letter_order(displayable_letters))
         else
           render json: Mobile::V0::LettersSerializer.new(@current_user, displayable_letters.sort_by(&:name))
@@ -113,7 +112,7 @@ module Mobile
         increment_coe_counter(coe_status)
 
         if coe_status[:status].in?(COE_STATUSES)
-          if Flipper.enabled?(:cst_letters_content_updates, @current_user)
+          if content_updates_enabled?
             name = Lighthouse::LettersGenerator::Content::LETTER_NAME_OVERRIDES['certificate_of_eligibility_home_loan']
             description = Lighthouse::LettersGenerator.format_description('certificate_of_eligibility_home_loan')
           else
@@ -135,7 +134,7 @@ module Mobile
 
       def apply_name_override(letter)
         name = letter[:name]
-        return name if Flipper.enabled?(:cst_letters_content_updates, @current_user)
+        return name if content_updates_enabled?
 
         name = 'Benefit Summary and Service Verification Letter' if letter[:letterType] == 'benefit_summary'
         name = 'Foreign Medical Program Enrollment Letter' if letter[:letterType] == 'foreign_medical_program'
@@ -197,6 +196,24 @@ module Mobile
 
         body_params = JSON.parse(body_string)
         body_params.keep_if { |k, _| k.in? DOWNLOAD_PARAMS }
+      end
+
+      def content_updates_enabled?
+        return @content_updates_enabled unless @content_updates_enabled.nil?
+
+        @content_updates_enabled = Flipper.enabled?(:cst_letters_content_updates, @current_user) &&
+                                   content_updates_app_version?
+      end
+
+      def content_updates_app_version?
+        return false if request.headers['App-Version'].nil?
+
+        begin
+          version = Gem::Version.new(request.headers['App-Version'])
+          version >= Gem::Version.new(CONTENT_UPDATES_APP_VERSION)
+        rescue ArgumentError
+          false
+        end
       end
 
       def coe_app_version?
