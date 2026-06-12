@@ -373,4 +373,34 @@ RSpec.describe Logging::Helper::DataScrubber do
       end
     end
   end
+
+  describe '.scrub_url_query_pii' do
+    it 'redacts a URL-encoded email value while preserving the rest of the URL' do
+      url = 'https://www.va.gov/schedule/date-time?uuid=abc-123&veteranContactEmail=jane%40example.com'
+      expect(described_class.scrub_url_query_pii(url))
+        .to eq('https://www.va.gov/schedule/date-time?uuid=abc-123&veteranContactEmail=[REDACTED]')
+    end
+
+    it 'redacts a plain email value passed as the first query param' do
+      url = 'https://www.va.gov/schedule?email=jane@example.com&foo=bar'
+      expect(described_class.scrub_url_query_pii(url))
+        .to eq('https://www.va.gov/schedule?email=[REDACTED]&foo=bar')
+    end
+
+    it 'matches the email param case-insensitively' do
+      url = 'https://www.va.gov/schedule?contactEMAIL=jane%40example.com'
+      expect(described_class.scrub_url_query_pii(url))
+        .to eq('https://www.va.gov/schedule?contactEMAIL=[REDACTED]')
+    end
+
+    it 'leaves a URL without an email param untouched' do
+      url = 'https://www.va.gov/schedule/date-time?uuid=abc-123'
+      expect(described_class.scrub_url_query_pii(url)).to eq(url)
+    end
+
+    it 'returns blank input unchanged' do
+      expect(described_class.scrub_url_query_pii(nil)).to be_nil
+      expect(described_class.scrub_url_query_pii('')).to eq('')
+    end
+  end
 end

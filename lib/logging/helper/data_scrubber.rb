@@ -85,6 +85,12 @@ module Logging
       # The string used to replace detected PII
       REDACTION = '[REDACTED]'
 
+      # Matches an email-bearing URL query parameter, capturing the leading
+      # `?`/`&` + param name + `=` so only the value is replaced. The generic
+      # EMAIL pattern above cannot catch these because the `@` is URL-encoded
+      # (`%40`) in a raw Referer, so this targets any `*email*` param value.
+      EMAIL_QUERY_PARAM_REGEX = /([?&][^?&=\s]*email[^?&=\s]*=)[^&\s]*/i
+
       # protected keys not to be scrubbed
       SAFE_KEYS = %w[
         claim_id
@@ -127,6 +133,21 @@ module Logging
       rescue => e
         Rails.logger.error("DataScrubber failed: #{e.class} - #{e.message}")
         data # Return original data on failure to avoid blocking logging
+      end
+
+      # Masks the value of any email-bearing query parameter in a URL (e.g. a
+      # Referer like `.../schedule?veteranContactEmail=jane%40example.com`),
+      # leaving the rest of the URL intact for debugging. Catches URL-encoded
+      # emails that the generic EMAIL pattern misses. Used by the `referer`
+      # log tag so veteran emails are never written to logs / Datadog.
+      #
+      # @param url [String, nil] the URL to scrub
+      # @return [String, nil] the URL with email query-param values redacted,
+      #   or the input unchanged when blank or containing no such param
+      def scrub_url_query_pii(url)
+        return url if url.blank?
+
+        url.gsub(EMAIL_QUERY_PARAM_REGEX) { "#{Regexp.last_match(1)}#{REDACTION}" }
       end
 
       # Internal recursive method that handles different data types.

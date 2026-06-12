@@ -64,7 +64,10 @@ Rails.application.configure do
     user_agent: ->(request) { request.user_agent },
     fingerprint: ->(request) { "#{request.remote_ip} #{request.user_agent}" },
     ref: ->(_request) { AppInfo::GIT_REVISION },
-    referer: ->(request) { request.headers['Referer'] },
+    # Mask any email passed as a query param in the referer (e.g. the
+    # veteranContactEmail param in the va.gov scheduling flow) so PII is never
+    # written to logs / Datadog (both the referer tag and derived http.referer).
+    referer: ->(request) { Logging::Helper::DataScrubber.scrub_url_query_pii(request.headers['Referer']) },
     consumer_id: ->(request) { request.headers['X-Consumer-ID'] },
     consumer_username: ->(request) { request.headers['X-Consumer-Username'] },
     consumer_custom_id: ->(request) { request.headers['X-Consumer-Custom-ID'] },
