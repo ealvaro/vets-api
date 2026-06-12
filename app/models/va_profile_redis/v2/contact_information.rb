@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'logging/monitor'
 require 'va_profile/contact_information/v2/person_response'
 require 'va_profile/contact_information/v2/service'
 require 'va_profile/models/address'
@@ -34,6 +35,20 @@ module VAProfileRedis
         contact_info.user = user
         contact_info.populate_from_redis
         contact_info
+      rescue VAProfile::ContactInformation::V2::Service::Errors::MissingUserVAProfileIdError => e
+        Logging::Monitor.new(name, allowlist: %w[user_uuid_present icn_present vet360_id_present
+                                                 error_class error_message])
+                        .track_request(
+                          :error,
+                          'Missing User VAProfile_ID for Vet360 Contact Information',
+                          'va_profile_redis.v2.contact_information.missing_vaprofile_id',
+                          user_uuid_present: user.uuid.present?,
+                          icn_present: user.icn.present?,
+                          vet360_id_present: user.vet360_id.present?,
+                          error_class: e.class.name,
+                          error_message: e.message
+                        )
+        nil
       end
 
       # Returns the user's email model. In VA Profile, a user can only have one

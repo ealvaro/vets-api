@@ -90,6 +90,33 @@ RSpec.describe User, type: :model do
         expect(contact_info.email.email_address).to eq(user.va_profile_email)
       end
     end
+
+    context 'when user is missing vet360_id' do
+      let(:user) { build(:user, :loa3, vet360_id: nil) }
+      let(:contact_info) { instance_double(VAProfileRedis::V2::ContactInformation) }
+
+      before do
+        allow(VAProfileRedis::V2::ContactInformation).to receive(:for_user).with(user).and_return(contact_info)
+      end
+
+      it 'falls back to ICN and calls the contact information facade' do
+        expect(VAProfileRedis::V2::ContactInformation).to receive(:for_user).with(user)
+
+        expect(user.vet360_contact_info).to eq(contact_info)
+      end
+    end
+
+    context 'when user has ICN but no vet360_id' do
+      let(:user) { build(:user, :loa3, vet360_id: nil) }
+
+      before do
+        allow(VAProfileRedis::V2::ContactInformation).to receive(:for_user).with(user).and_return(nil)
+      end
+
+      it 'still calls for_user and returns nil' do
+        expect(user.vet360_contact_info).to be_nil
+      end
+    end
   end
 
   describe '#all_emails' do

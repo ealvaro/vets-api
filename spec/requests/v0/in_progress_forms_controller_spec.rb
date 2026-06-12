@@ -274,6 +274,19 @@ RSpec.describe V0::InProgressFormsController do
 
           expect(without_inflection_header).to eq with_inflection_header
         end
+
+        context 'when user is missing vet360_id' do
+          let(:user) { build(:user, :loa3, vet360_id: nil, address: build(:mpi_profile_address)) }
+
+          it 'returns prefill data when Vet360 contact info is unavailable' do
+            allow(VAProfileRedis::V2::ContactInformation).to receive(:for_user).and_return(nil)
+
+            get v0_in_progress_form_url('FAKEFORM'), params: nil
+
+            expect(response).to have_http_status(:ok)
+            expect(JSON.parse(response.body)).to have_key('formData')
+          end
+        end
       end
 
       context 'when a form mapping is not found' do

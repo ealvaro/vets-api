@@ -878,4 +878,76 @@ describe VAProfile::ContactInformation::V2::Service do
       end
     end
   end
+
+  describe 'error handling' do
+    describe 'MissingUserVAProfileIdError' do
+      context 'when vet360_id is nil' do
+        let(:user_without_vet360) { build(:user, :loa3, vet360_id: nil, icn: '123498767V234859') }
+        let(:service) { described_class.new(user_without_vet360) }
+
+        it 'raises MissingUserVAProfileIdError on verify_vet360_id!' do
+          expect do
+            service.send(:verify_vet360_id!)
+          end.to raise_error(
+            VAProfile::ContactInformation::V2::Service::Errors::MissingUserVAProfileIdError
+          )
+        end
+      end
+
+      context 'when vet360_id is empty string' do
+        let(:user_empty_vet360) { build(:user, :loa3, vet360_id: '', icn: '123498767V234859') }
+        let(:service) { described_class.new(user_empty_vet360) }
+
+        it 'raises MissingUserVAProfileIdError on verify_vet360_id!' do
+          expect do
+            service.send(:verify_vet360_id!)
+          end.to raise_error(
+            VAProfile::ContactInformation::V2::Service::Errors::MissingUserVAProfileIdError
+          )
+        end
+      end
+    end
+
+    describe 'MissingUserICNAndVAProfileIdError' do
+      context 'when both icn and vet360_id are missing' do
+        let(:user_no_ids) { build(:user, :loa3, vet360_id: nil, icn: nil) }
+        let(:service) { described_class.new(user_no_ids) }
+
+        it 'raises MissingUserICNAndVAProfileIdError on verify_user!' do
+          expect do
+            service.send(:verify_user!)
+          end.to raise_error(
+            VAProfile::ContactInformation::V2::Service::Errors::MissingUserICNAndVAProfileIdError
+          )
+        end
+      end
+
+      context 'when both icn and vet360_id are empty strings' do
+        let(:user_empty_ids) { build(:user, :loa3, vet360_id: '', icn: '') }
+        let(:service) { described_class.new(user_empty_ids) }
+
+        it 'raises MissingUserICNAndVAProfileIdError on verify_user!' do
+          expect do
+            service.send(:verify_user!)
+          end.to raise_error(
+            VAProfile::ContactInformation::V2::Service::Errors::MissingUserICNAndVAProfileIdError
+          )
+        end
+      end
+    end
+
+    describe 'exception inheritance' do
+      it 'MissingUserVAProfileIdError inherits from StandardError' do
+        expect(
+          VAProfile::ContactInformation::V2::Service::Errors::MissingUserVAProfileIdError
+        ).to be < StandardError
+      end
+
+      it 'MissingUserICNAndVAProfileIdError inherits from StandardError' do
+        expect(
+          VAProfile::ContactInformation::V2::Service::Errors::MissingUserICNAndVAProfileIdError
+        ).to be < StandardError
+      end
+    end
+  end
 end

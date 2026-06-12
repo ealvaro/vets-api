@@ -13,6 +13,11 @@ module VAProfile
   module ContactInformation
     module V2
       class Service < VAProfile::Service
+        module Errors
+          class MissingUserVAProfileIdError < StandardError; end
+          class MissingUserICNAndVAProfileIdError < StandardError; end
+        end
+
         CONTACT_INFO_CHANGE_TEMPLATE = Settings.vanotify.services.va_gov.template_id.contact_info_change
         VA_PROFILE_ID_POSTFIX = '^PI^200VETS^USDVA'
         REDACTED_AAID = '[REDACTED_AAID]'
@@ -237,12 +242,15 @@ module VAProfile
         private
 
         def verify_vet360_id!
-          raise 'ContactInformationV2 - Missing User VAProfile_ID' if @user&.vet360_id.blank?
+          if @user&.vet360_id.blank?
+            raise Errors::MissingUserVAProfileIdError,
+                  'ContactInformationV2 - Missing User VAProfile_ID'
+          end
         end
 
         def verify_user!
           unless @user&.vet360_id.present? || @user&.icn.present?
-            raise 'ContactInformationV2 - Missing User ICN and VAProfile_ID'
+            raise Errors::MissingUserICNAndVAProfileIdError, 'ContactInformationV2 - Missing User ICN and VAProfile_ID'
           end
 
           Rails.logger.info("ContactInformationV2 User MVI Verified? : #{@user&.icn.present?},

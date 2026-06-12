@@ -63,6 +63,39 @@ describe VAProfileRedis::V2::ContactInformation do
     end
   end
 
+  describe '.for_user' do
+    context 'when get_person raises MissingUserVAProfileIdError' do
+      let(:error) { VAProfile::ContactInformation::V2::Service::Errors::MissingUserVAProfileIdError.new }
+      let(:monitor) { instance_double(Logging::Monitor) }
+
+      before do
+        allow_any_instance_of(VAProfile::ContactInformation::V2::Service).to receive(:get_person).and_raise(error)
+        allow(Logging::Monitor).to receive(:new).and_return(monitor)
+        allow(monitor).to receive(:track_request)
+      end
+
+      it 'returns nil' do
+        expect(VAProfileRedis::V2::ContactInformation.for_user(user)).to be_nil
+      end
+
+      it 'logs the error via the monitor' do
+        expect(monitor).to receive(:track_request).with(
+          :error,
+          'Missing User VAProfile_ID for Vet360 Contact Information',
+          'va_profile_redis.v2.contact_information.missing_vaprofile_id',
+          hash_including(
+            icn_present: user.icn.present?,
+            vet360_id_present: user.vet360_id.present?,
+            error_class: error.class.name,
+            error_message: error.message
+          )
+        )
+
+        VAProfileRedis::V2::ContactInformation.for_user(user)
+      end
+    end
+  end
+
   describe '.new' do
     it 'creates an instance with user attributes' do
       VCR.use_cassette('va_profile/v2/contact_information/person', VCR::MATCH_EVERYTHING) do

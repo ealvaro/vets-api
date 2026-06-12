@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'string_helpers'
+require 'logging/monitor'
 require 'va_profile/configuration'
 require 'va_profile/prefill/military_information'
 require 'vets/model'
@@ -383,17 +384,27 @@ class FormProfile
     FormContactInformation.new(opt)
   end
 
-  # doing this (below) instead of `@vet360_contact_info ||= Settings...` to cache nil too
   def vet360_contact_info
-    return @vet360_contact_info if @vet360_contact_info_retrieved
+    return @vet360_contact_info if instance_variable_defined?(:@vet360_contact_info)
 
-    @vet360_contact_info_retrieved = true
-    if user.icn.present? || user.vet360_id.present?
-      @vet360_contact_info = VAProfileRedis::V2::ContactInformation.for_user(user)
-    else
-      Rails.logger.info('Vet360 Contact Info Null')
-    end
-    @vet360_contact_info
+    @vet360_contact_info = if user.vet360_id.present? || user.icn.present?
+                             VAProfileRedis::V2::ContactInformation.for_user(user)
+                           else
+                             log_vet360_contact_info_null
+                             nil
+                           end
+  end
+
+  def log_vet360_contact_info_null
+    monitor.track_request(
+      :info,
+      'Vet360 Contact Info Null',
+      'form_profile.vet360_contact_info.no_user_ids',
+      call_location: caller_locations.first,
+      user_uuid_present: user.uuid.present?,
+      icn_present: user.icn.present?,
+      vet360_id_present: user.vet360_id.present?
+    )
   end
 
   def vet360_mailing_address
@@ -490,5 +501,11 @@ class FormProfile
     hash.deep_transform_keys! { |k| k.to_s.camelize(:lower) }
     hash.each { |k, v| hash[k] = clean!(v) }
     hash.compact_blank!
+  end
+
+  def monitor
+    @monitor ||= Logging::Monitor.new(self.class.name,
+                                      allowlist: %w[user_uuid_present icn_present vet360_id_present
+                                                    error_class error_message])
   end
 end

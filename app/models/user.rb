@@ -97,12 +97,8 @@ class User < Common::RedisStore
   end
 
   def full_name_normalized
-    {
-      first: first_name&.capitalize,
-      middle: middle_name&.capitalize,
-      last: last_name&.capitalize,
-      suffix: normalized_suffix
-    }
+    { first: first_name&.capitalize, middle: middle_name&.capitalize, last: last_name&.capitalize,
+      suffix: normalized_suffix }
   end
 
   def preferred_name
@@ -123,24 +119,18 @@ class User < Common::RedisStore
 
   def mhv_correlation_id
     return unless can_create_mhv_account?
-    return mhv_user_account.id if mhv_user_account.present?
 
-    nil
+    mhv_user_account&.id
   end
 
   def mhv_user_account
     @mhv_user_account_error = nil
     @mhv_user_account ||= MHV::UserAccount::Creator.new(user_verification:, session_id: session_handle).perform
-  rescue MHV::UserAccount::Errors::ValidationError => e
-    @mhv_user_account_error = :validation
-    log_mhv_user_account_error(e.message)
-    nil
-  rescue MHV::UserAccount::Errors::MHVClientError => e
-    @mhv_user_account_error = :client
-    log_mhv_user_account_error(e.message)
-    nil
   rescue => e
-    @mhv_user_account_error = :unknown
+    @mhv_user_account_error = {
+      MHV::UserAccount::Errors::ValidationError => :validation,
+      MHV::UserAccount::Errors::MHVClientError => :client
+    }.fetch(e.class, :unknown)
     log_mhv_user_account_error(e.message)
     nil
   end
@@ -196,15 +186,9 @@ class User < Common::RedisStore
   end
 
   def address
-    address = mpi_profile&.address
-    {
-      street: address&.street,
-      street2: address&.street2,
-      city: address&.city,
-      state: address&.state,
-      country: address&.country,
-      postal_code: address&.postal_code
-    }
+    a = mpi_profile&.address
+    { street: a&.street, street2: a&.street2, city: a&.city, state: a&.state,
+      country: a&.country, postal_code: a&.postal_code }
   end
 
   def deceased_date
@@ -395,9 +379,9 @@ class User < Common::RedisStore
   delegate :show_onboarding_flow_on_login, to: :onboarding, allow_nil: true
 
   def vet360_contact_info
-    return nil unless vet360_id.present? || icn.present?
+    return unless vet360_id.present? || icn.present?
 
-    @vet360_contact_info ||= VAProfileRedis::V2::ContactInformation.for_user(self)
+    VAProfileRedis::V2::ContactInformation.for_user(self)
   end
 
   def va_profile_email
