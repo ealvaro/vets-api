@@ -165,6 +165,31 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
           )
         end
       end
+
+      describe 'DELETE v0/sign_in/sessions/{handle}' do
+        let(:user_verification) { create(:user_verification) }
+        let(:validated_credential) { create(:validated_credential, user_verification:, client_config:) }
+        let(:client_config) { create(:client_config, enforced_terms: nil) }
+        let(:session_container) do
+          SignIn::SessionCreator.new(validated_credential:).perform
+        end
+        let(:access_token_object) { session_container.access_token }
+        let(:session) { session_container.session }
+        let!(:user) { create(:user, :loa3, uuid: access_token_object.user_uuid, middle_name: 'leo') }
+        let(:access_token) { SignIn::AccessTokenJwtEncoder.new(access_token: access_token_object).perform }
+
+        it 'destroys the session' do
+          expect(subject).to validate(
+            :delete,
+            '/v0/sign_in/sessions/{handle}',
+            200,
+            '_headers' => {
+              'Authorization' => "Bearer #{access_token}"
+            },
+            'handle' => session.handle
+          )
+        end
+      end
     end
 
     it 'supports listing in-progress forms' do

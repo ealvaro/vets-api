@@ -23,6 +23,7 @@ Rails.application.routes.draw do
   get  '/v0/sign_in/logout',                to: 'v0/sign_in/logout#logout'
   get  '/v0/sign_in/logingov_logout_proxy', to: 'v0/sign_in/logingov_logout_proxy#logingov_logout_proxy'
   get  '/v0/sign_in/error',                 to: 'v0/sign_in/error#error', as: :sign_in_error
+  delete '/v0/sign_in/sessions/:handle',    to: 'v0/sign_in/sessions#destroy'
   unless Settings.vsp_environment == 'production'
     get '/v0/sign_in/review_instance_callback_proxy',
         to: 'v0/sign_in/review_instance_callback_proxy#review_instance_callback_proxy'

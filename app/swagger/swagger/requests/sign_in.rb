@@ -244,6 +244,32 @@ module Swagger
           end
         end
       end
+
+      swagger_path '/v0/sign_in/sessions/{handle}' do
+        operation :delete do
+          key :description, 'Sign in Service destruction of a single session owned by the caller, identified by handle.'
+          key :operationId, 'deleteSignInSession'
+          key :tags, %w[authentication]
+
+          key :produces, ['application/json']
+          key :consumes, ['application/json']
+
+          parameter :optional_authorization
+
+          parameter do
+            key :name, 'handle'
+            key :in, :path
+            key :description, 'The handle of the session to destroy. Must be owned by the authenticated caller.'
+            key :required, true
+            key :type, :string
+          end
+
+          response 200 do
+            key :description, 'Access token validated & the session matching the given handle, owned by the caller, was destroyed.'
+            schema {}
+          end
+        end
+      end
     end
   end
 end
