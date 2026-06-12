@@ -116,12 +116,18 @@ RSpec.describe SimpleFormsApi::VBA108678 do
 
       form.manual_fills(pdf_path)
 
-      expect(canvas).to have_received(:text).with('x', at: [313.5, 459.0])
-      expect(canvas).to have_received(:text).with('x', at: [313.5, 447.0])
-      expect(canvas).to have_received(:text).with('x', at: [361.5, 447.0])
-      expect(canvas).to have_received(:text).with('x', at: [451.5, 459.0])
-      expect(canvas).to have_received(:text).with('x', at: [451.5, 447.0])
-      expect(canvas).to have_received(:text).with('x', at: [499.5, 447.0])
+      expect(canvas).to have_received(:text).with('x', at: [313.5, 304.0])
+      expect(canvas).to have_received(:text).with('x', at: [313.5, 291.5])
+      expect(canvas).to have_received(:text).with('x', at: [361.5, 291.5])
+      expect(canvas).to have_received(:text).with('x', at: [451.5, 304.0])
+      expect(canvas).to have_received(:text).with('x', at: [451.5, 291.5])
+      expect(canvas).to have_received(:text).with('x', at: [499.5, 291.5])
+      expect(canvas).to have_received(:text).with('x', at: [451.5, 268.0])
+      expect(canvas).to have_received(:text).with('x', at: [499.5, 255.5])
+      expect(canvas).to have_received(:text).with('x', at: [313.5, 232.0])
+      expect(canvas).to have_received(:text).with('x', at: [361.5, 219.5])
+      expect(canvas).to have_received(:text).with('x', at: [451.5, 196.0])
+      expect(canvas).to have_received(:text).with('x', at: [451.5, 183.5])
     end
   end
 

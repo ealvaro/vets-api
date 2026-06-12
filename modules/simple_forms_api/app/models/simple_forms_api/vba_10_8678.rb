@@ -8,36 +8,36 @@ module SimpleFormsApi
     STATS_KEY = 'api.simple_forms_api.10_8678'
     CHECK_BOX_COORDINATES = [
       {
-        upper_checkbox: [313.5, 459.0],
-        upper_left_radio: [313.5, 447.0],
-        upper_right_radio: [361.5, 447.0],
-        lower_checkbox: [451.5, 459.0],
-        lower_left_radio: [451.5, 447.0],
-        lower_right_radio: [499.5, 447.0]
+        upper_checkbox: [313.5, 304.0],
+        upper_left_radio: [313.5, 291.5],
+        upper_right_radio: [361.5, 291.5],
+        lower_checkbox: [451.5, 304.0],
+        lower_left_radio: [451.5, 291.5],
+        lower_right_radio: [499.5, 291.5]
       }.freeze,
       {
-        upper_checkbox: [313.5, 423.0],
-        upper_left_radio: [313.5, 411.0],
-        upper_right_radio: [361.5, 411.0],
-        lower_checkbox: [451.5, 423.0],
-        lower_left_radio: [451.5, 411.0],
-        lower_right_radio: [499.5, 411.0]
+        upper_checkbox: [313.5, 268.0],
+        upper_left_radio: [313.5, 255.5],
+        upper_right_radio: [361.5, 255.5],
+        lower_checkbox: [451.5, 268.0],
+        lower_left_radio: [451.5, 255.5],
+        lower_right_radio: [499.5, 255.5]
       }.freeze,
       {
-        upper_checkbox: [313.5, 387.0],
-        upper_left_radio: [313.5, 375.0],
-        upper_right_radio: [361.5, 375.0],
-        lower_checkbox: [451.5, 387.0],
-        lower_left_radio: [451.5, 375.0],
-        lower_right_radio: [499.5, 375.0]
+        upper_checkbox: [313.5, 232.0],
+        upper_left_radio: [313.5, 219.5],
+        upper_right_radio: [361.5, 219.5],
+        lower_checkbox: [451.5, 232.0],
+        lower_left_radio: [451.5, 219.5],
+        lower_right_radio: [499.5, 219.5]
       }.freeze,
       {
-        upper_checkbox: [313.5, 351.0],
-        upper_left_radio: [313.5, 339.0],
-        upper_right_radio: [361.5, 339.0],
-        lower_checkbox: [451.5, 351.0],
-        lower_left_radio: [451.5, 339.0],
-        lower_right_radio: [499.5, 339.0]
+        upper_checkbox: [313.5, 196.0],
+        upper_left_radio: [313.5, 183.5],
+        upper_right_radio: [361.5, 183.5],
+        lower_checkbox: [451.5, 196.0],
+        lower_left_radio: [451.5, 183.5],
+        lower_right_radio: [499.5, 183.5]
       }.freeze
     ].freeze
     attr_reader :address, :appliances_for_pdf
