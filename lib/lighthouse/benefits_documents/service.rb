@@ -53,7 +53,9 @@ module BenefitsDocuments
 
     # gets all claim letters from the lighthouse claims-letters/search endpoint
     def claim_letters_search(doc_type_ids: nil, participant_id: nil, file_number: nil)
-      config.claim_letters_search(doc_type_ids:, participant_id:, file_number:)
+      response = config.claim_letters_search(doc_type_ids:, participant_id:, file_number:)
+      track_claim_letters_search_success
+      response
     rescue Faraday::ClientError, Faraday::ServerError => e
       log_claim_letters_search_failure(e, doc_type_ids, participant_id, file_number)
       handle_error(e, nil, 'services/benefits-documents/v1/claim-letters/search')
@@ -120,10 +122,39 @@ module BenefitsDocuments
                             file_number_present: file_number.present?,
                             is_veteran: @user.veteran?,
                             served_in_military: @user.served_in_military?,
+                            title38_status: user_title38_status,
+                            birls_id_present: user_birls_id_present,
                             error_type: error.class.to_s,
                             error_message: error.message,
                             status_code: error.try(:response)&.dig(:status)
                           })
+    end
+
+    def track_claim_letters_search_success
+      StatsD.increment('cst.claim_letters.search_success', tags: [
+                         "title38_status:#{user_title38_status || 'none'}",
+                         "birls_id_present:#{@user.birls_id.present?}",
+                         "is_veteran:#{@user.veteran?}",
+                         "served_in_military:#{@user.served_in_military?}"
+                       ])
+    rescue => e
+      StatsD.increment('cst.claim_letters.search_success_metric_error', tags: ["error_class:#{e.class.name}"])
+    end
+
+    # Raw VA Profile Title 38 code (e.g. V1, V3, V4, V6). VA Profile reads can raise,
+    # so we rescue to nil to ensure logging never blocks the response
+    def user_title38_status
+      @user.veteran_status&.title38_status
+    rescue
+      nil
+    end
+
+    # birls_id is MPI-backed and can raise on a cache miss, so we rescue to false to
+    # ensure logging never blocks the response
+    def user_birls_id_present
+      @user.birls_id.present?
+    rescue
+      false
     end
 
     def submit_document(file, file_params, lighthouse_client_id = nil) # rubocop:disable Metrics/MethodLength

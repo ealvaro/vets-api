@@ -279,7 +279,8 @@ RSpec.describe BenefitsDocuments::Service do
         allow_any_instance_of(BenefitsDocuments::Configuration)
           .to receive(:claim_letters_search).and_raise(faraday_error)
         allow(Rails.logger).to receive(:info)
-        allow(user).to receive_messages(veteran?: true, served_in_military?: true)
+        allow(user).to receive_messages(veteran?: true, served_in_military?: true, birls_id: '796104437',
+                                        veteran_status: double(title38_status: 'V1'))
       end
 
       context 'when cst_claim_letters_log_failure is enabled' do
@@ -295,9 +296,35 @@ RSpec.describe BenefitsDocuments::Service do
               doc_type_ids: ['184'],
               participant_id_present: false,
               file_number_present: true,
+              title38_status: 'V1',
+              birls_id_present: true,
               error_type: 'Faraday::ClientError',
               error_message: 'Bad Request'
             )
+          )
+
+          expect { subject.claim_letters_search(doc_type_ids: ['184'], file_number: user.ssn) }
+            .to raise_error(Common::Exceptions::ServiceError)
+        end
+
+        it "logs nil title38_status when 'VAProfile::VeteranStatus::Service#get_veteran_status' raises" do
+          allow(user).to receive(:veteran_status).and_raise(StandardError)
+
+          expect(Rails.logger).to receive(:info).with(
+            'Claim letters failure for user',
+            hash_including(title38_status: nil)
+          )
+
+          expect { subject.claim_letters_search(doc_type_ids: ['184'], file_number: user.ssn) }
+            .to raise_error(Common::Exceptions::ServiceError)
+        end
+
+        it 'logs birls_id_present as false when the MPI-backed birls_id lookup raises an exception' do
+          allow(user).to receive(:birls_id).and_raise(StandardError)
+
+          expect(Rails.logger).to receive(:info).with(
+            'Claim letters failure for user',
+            hash_including(birls_id_present: false)
           )
 
           expect { subject.claim_letters_search(doc_type_ids: ['184'], file_number: user.ssn) }
@@ -328,6 +355,61 @@ RSpec.describe BenefitsDocuments::Service do
 
           expect { subject.claim_letters_search(file_number: user.ssn) }
             .to raise_error(Common::Exceptions::ServiceError)
+        end
+      end
+    end
+
+    describe '#claim_letters_search success metric' do
+      let(:response_body) { { data: { documents: [{ docTypeId: 184 }] } } }
+
+      before do
+        allow_any_instance_of(BenefitsDocuments::Configuration)
+          .to receive(:claim_letters_search)
+          .and_return(Faraday::Response.new(status: 200, body: response_body))
+        allow(StatsD).to receive(:increment)
+        allow(user).to receive_messages(veteran?: false, served_in_military?: true, birls_id: '796104437',
+                                        veteran_status: double(title38_status: 'V4'))
+      end
+
+      it 'increments the success counter tagged with the user-state field values' do
+        subject.claim_letters_search(file_number: user.ssn)
+
+        expect(StatsD).to have_received(:increment).with(
+          'cst.claim_letters.search_success',
+          tags: array_including('title38_status:V4', 'birls_id_present:true', 'is_veteran:false',
+                                'served_in_military:true')
+        )
+      end
+
+      it 'tags title38_status as none when "VAProfile::VeteranStatus::Service#get_veteran_status" raises' do
+        allow(user).to receive(:veteran_status).and_raise(StandardError)
+
+        subject.claim_letters_search(file_number: user.ssn)
+
+        expect(StatsD).to have_received(:increment).with(
+          'cst.claim_letters.search_success',
+          tags: array_including('title38_status:none')
+        )
+      end
+
+      context 'when building the success metric raises' do
+        before do
+          allow(user).to receive(:veteran?).and_raise(StandardError.new('VA Profile down'))
+        end
+
+        it 'returns the response and never raises' do
+          response = nil
+          expect { response = subject.claim_letters_search(file_number: user.ssn) }.not_to raise_error
+          expect(response.status).to eq(200)
+        end
+
+        it 'increments the failure counter tagged with the error class' do
+          subject.claim_letters_search(file_number: user.ssn)
+
+          expect(StatsD).to have_received(:increment).with(
+            'cst.claim_letters.search_success_metric_error',
+            tags: ['error_class:StandardError']
+          )
         end
       end
     end
