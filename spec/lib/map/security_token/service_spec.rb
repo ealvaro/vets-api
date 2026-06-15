@@ -18,6 +18,22 @@ describe MAP::SecurityToken::Service do
     let(:jwk_payload) { JSON.parse(File.read('spec/fixtures/map/jwks.json'))['keys'].first }
     let(:map_jwks) { JWT::JWK::Set.new([jwk_payload]) }
     let(:redis_store) { ActiveSupport::Cache::RedisCacheStore.new(redis: MockRedis.new) }
+    let(:token_endpoint) { 'https://veteran.apps-staging.va.gov/sts/oauth/v1/token' }
+
+    shared_examples 'a failed STS token request' do
+      let(:context) { { error: expected_error_message } }
+      let(:expected_error) { Common::Client::Errors::ClientError }
+      let(:expected_error_response) do
+        "#{expected_message}, status: #{expected_error_status}, application: #{application}, " \
+          "icn: #{icn}, context: #{context}"
+      end
+      let(:expected_log_values) { { status: expected_error_status, application:, icn:, context: } }
+
+      it 'raises a client error with the expected message and creates a log' do
+        expect(Rails.logger).to receive(:error).with(expected_message, expected_log_values)
+        expect { subject }.to raise_error(expected_error, expected_error_response)
+      end
+    end
 
     shared_examples 'STS token request' do
       before do
@@ -84,44 +100,36 @@ describe MAP::SecurityToken::Service do
         end
       end
 
-      context 'when response is not successful with a 401 error' do
-        let(:context) { { error: expected_error_message } }
+      context 'when response is not successful with a 401 error',
+              vcr: { cassette_name: 'map/security_token_service_401_response' } do
         let(:expected_error_message) { 'invalid_client' }
         let(:expected_error_status) { 401 }
         let(:expected_message) { "#{log_prefix} token failed, client error" }
-        let(:expected_error_response) do
-          "#{expected_message}, status: #{expected_error_status}, application: #{application}, " \
-            "icn: #{icn}, context: #{context}"
-        end
-        let(:expected_error) { Common::Client::Errors::ClientError }
-        let(:expected_log_values) { { status: expected_error_status, application:, icn:, context: } }
 
-        it 'raises a client error with expected message and creates a log' do
-          VCR.use_cassette('map/security_token_service_401_response') do
-            expect(Rails.logger).to receive(:error).with(expected_message, expected_log_values)
-            expect { subject }.to raise_error(expected_error, expected_error_response)
-          end
-        end
+        it_behaves_like 'a failed STS token request'
       end
 
-      context 'when response is not successful with a 500 error' do
-        let(:context) { { error: expected_error_message } }
+      context 'when response is not successful with a 500 error',
+              vcr: { cassette_name: 'map/security_token_service_500_response' } do
         let(:expected_error_message) { 'server_error' }
         let(:expected_error_status) { 500 }
         let(:expected_message) { "#{log_prefix} token failed, server error" }
-        let(:expected_error_response) do
-          "#{expected_message}, status: #{expected_error_status}, application: #{application}, " \
-            "icn: #{icn}, context: #{context}"
-        end
-        let(:expected_error) { Common::Client::Errors::ClientError }
-        let(:expected_log_values) { { status: expected_error_status, application:, icn:, context: } }
 
-        it 'raises a client error with expected message and creates a log' do
-          VCR.use_cassette('map/security_token_service_500_response') do
-            expect(Rails.logger).to receive(:error).with(expected_message, expected_log_values)
-            expect { subject }.to raise_error(expected_error, expected_error_response)
-          end
+        it_behaves_like 'a failed STS token request'
+      end
+
+      context 'when response is not successful with a nil status' do
+        let(:expected_error_message) { 'server_error' }
+        let(:response_body) { { 'error' => expected_error_message } }
+        let(:expected_error_status) { 500 }
+        let(:expected_message) { "#{log_prefix} token failed, server error" }
+        let(:client_error) { Common::Client::Errors::ClientError.new('client error', nil, response_body) }
+
+        before do
+          stub_request(:post, token_endpoint).to_raise(client_error)
         end
+
+        it_behaves_like 'a failed STS token request'
       end
 
       context 'when request to STS times out' do
@@ -131,7 +139,7 @@ describe MAP::SecurityToken::Service do
         let(:expected_log_values) { { application:, icn: } }
 
         before do
-          stub_request(:post, 'https://veteran.apps-staging.va.gov/sts/oauth/v1/token').to_raise(Net::ReadTimeout)
+          stub_request(:post, token_endpoint).to_raise(Net::ReadTimeout)
         end
 
         it 'raises an gateway timeout error and creates a log' do

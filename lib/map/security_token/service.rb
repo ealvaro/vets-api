@@ -51,7 +51,7 @@ module MAP
       end
 
       def parse_and_raise_error(e, icn, application)
-        status = e.status
+        status = e.status || 500
         error_source = status >= 500 ? 'server' : 'client'
         parse_body = e.body.presence || {}
         context = { error: parse_body['error'] }
