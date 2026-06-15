@@ -1,11 +1,8 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'carrierwave/test/matchers'
 
 RSpec.describe HCAAttachmentUploader, type: :uploader do
-  include CarrierWave::Test::Matchers
-
   shared_examples 'converts image to jpg' do |uploaded_file_let|
     it 'converts the file to jpg' do
       expect(uploader).to receive(:convert).with('jpg')
@@ -22,20 +19,6 @@ RSpec.describe HCAAttachmentUploader, type: :uploader do
       Rails.root.join('spec', 'fixtures', 'files', 'doctors-note.png'),
       'image/png'
     )
-  end
-
-  before do
-    CarrierWave.configure do |config|
-      config.enable_processing = true
-    end
-    uploader.store!(file)
-  end
-
-  after do
-    uploader.remove!
-    CarrierWave.configure do |config|
-      config.enable_processing = false
-    end
   end
 
   describe '#initialize' do
