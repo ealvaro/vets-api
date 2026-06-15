@@ -21,32 +21,8 @@ RSpec.describe MHV::Prescriptions::OhTransitionRefillFilter do
       ]
     end
 
-    context 'when feature flag is disabled' do
+    context 'when partitioning orders' do
       before do
-        allow(Flipper).to receive(:enabled?)
-          .with(:mhv_medications_oh_transition_refill_block, user).and_return(false)
-      end
-
-      it 'returns all orders as allowed with no blocked failures' do
-        allowed, blocked = filter.partition_orders(orders)
-
-        expect(allowed).to eq(orders)
-        expect(blocked).to be_empty
-      end
-
-      it 'does not call the OH facilities helper' do
-        allow(mock_oh_helper).to receive(:get_phases_for_station_numbers)
-
-        filter.partition_orders(orders)
-
-        expect(mock_oh_helper).not_to have_received(:get_phases_for_station_numbers)
-      end
-    end
-
-    context 'when feature flag is enabled' do
-      before do
-        allow(Flipper).to receive(:enabled?)
-          .with(:mhv_medications_oh_transition_refill_block, user).and_return(true)
         allow(StatsD).to receive(:increment)
       end
 

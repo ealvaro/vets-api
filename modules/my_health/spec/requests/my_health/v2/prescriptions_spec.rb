@@ -426,12 +426,7 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
           allow(UniqueUserEvents).to receive(:log_event)
         end
 
-        context 'when mhv_medications_oh_transition_refill_block flag is enabled' do
-          before do
-            allow(Flipper).to receive(:enabled?).with(:mhv_medications_oh_transition_refill_block,
-                                                      anything).and_return(true)
-          end
-
+        context 'OH transition refill blocking' do
           it 'blocks all orders when all facilities are in blocked phases (p4-p5)' do
             allow(mock_oh_helper).to receive(:get_phases_for_station_numbers)
               .with(%w[556 570])
@@ -555,45 +550,6 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
               user: anything,
               event_name: UniqueUserEvents::EventRegistry::PRESCRIPTIONS_REFILL_REQUESTED,
               event_facility_ids: %w[556 570]
-            )
-          end
-        end
-
-        context 'when mhv_medications_oh_transition_refill_block flag is disabled' do
-          before do
-            allow(Flipper).to receive(:enabled?).with(:mhv_medications_oh_transition_refill_block,
-                                                      anything).and_return(false)
-          end
-
-          it 'sends all orders to upstream service without checking OH phases' do
-            allow(mock_oh_helper).to receive(:get_phases_for_station_numbers)
-            allow(mock_service).to receive(:refill_prescription)
-              .and_return({
-                            success: [
-                              { id: '15220389459', status: 'submitted', station_number: '556' },
-                              { id: '0000000000001', status: 'submitted', station_number: '570' }
-                            ],
-                            failed: []
-                          })
-
-            post refill_path,
-                 params: [
-                   { stationNumber: '556', id: '15220389459' },
-                   { stationNumber: '570', id: '0000000000001' }
-                 ].to_json,
-                 headers: { 'Content-Type' => 'application/json' }
-
-            expect(response).to have_http_status(:ok)
-
-            # OH helper should NOT be called to check phases
-            expect(mock_oh_helper).not_to have_received(:get_phases_for_station_numbers)
-
-            # All orders sent to upstream service
-            expect(mock_service).to have_received(:refill_prescription).with(
-              [
-                { 'stationNumber' => '556', 'id' => '15220389459' },
-                { 'stationNumber' => '570', 'id' => '0000000000001' }
-              ]
             )
           end
         end

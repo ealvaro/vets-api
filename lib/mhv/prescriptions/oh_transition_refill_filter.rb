@@ -14,7 +14,6 @@ module MHV
     #   filter = MHV::Prescriptions::OhTransitionRefillFilter.new(current_user, source_app: request.env['SOURCE_APP'])
     #   allowed_orders, blocked_failures = filter.partition_orders(parsed_orders)
     #
-    # Gated by the :mhv_medications_oh_transition_refill_block Flipper flag.
     class OhTransitionRefillFilter
       STATSD_KEY_PREFIX = "#{UnifiedHealthData::Constants::STATSD_KEY_PREFIX}.oh_transition".freeze
       BLOCKED_PHASES = %w[p4 p5].freeze
@@ -32,8 +31,6 @@ module MHV
       # @return [Array(Array<Hash>, Array<Hash>)] [allowed_orders, blocked_failures]
       #   blocked_failures use the standard { id:, error:, station_number: } format
       def partition_orders(orders)
-        return [orders, []] unless Flipper.enabled?(:mhv_medications_oh_transition_refill_block, @user)
-
         phases_map = fetch_phases_map(orders)
         allowed, blocked_failures = split_orders(orders, phases_map)
         log_blocked_orders(blocked_failures, orders.size) if blocked_failures.present?
