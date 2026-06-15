@@ -12,7 +12,7 @@ module V1
     rescue_from MedicalCopays::VBS::Service::ServiceError, with: :service_error
 
     def index
-      if cerner_copay_user?
+      if use_vbs?
         copays = vbs_service.get_copays
         copays[:isCerner] = true
 
@@ -43,7 +43,7 @@ module V1
     end
 
     def show
-      if cerner_copay_user?
+      if use_vbs?
         copay = vbs_service.get_copay_by_id(params[:id])
         copay[:isCerner] = true
 
@@ -57,6 +57,10 @@ module V1
     end
 
     private
+
+    def use_vbs?
+      !Flipper.enabled?(:vha_show_payment_history) || cerner_copay_user?
+    end
 
     def medical_copay_service
       MedicalCopays::LighthouseIntegration::Service.new(current_user.icn)

@@ -13,6 +13,7 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
 
     allow_any_instance_of(Auth::ClientCredentials::Service).to receive(:get_token).and_return('fake-access-token')
     allow(Flipper).to receive(:enabled?).with(:cerner_user_override_lighthouse_copays).and_return(false)
+    allow(Flipper).to receive(:enabled?).with(:vha_show_payment_history).and_return(false)
   end
 
   describe 'index' do
@@ -20,84 +21,90 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
       allow_any_instance_of(User).to receive(:cerner_facility_ids).and_return([])
     end
 
-    it 'returns a formatted hash response' do
-      travel_to Time.utc(2025, 8, 1) do
-        VCR.use_cassette('lighthouse/hcc/copay_list_by_month', match_requests_on: %i[method path query]) do
-          # Mock account data to avoid MissingAccountError
-          allow_any_instance_of(MedicalCopays::LighthouseIntegration::Service)
-            .to receive(:fetch_accounts_for_invoices)
-            .and_return(
-              {
-                '4-O3d8XK44ejMS' => {
-                  'id' => '4-O3d8XK44ejMS',
-                  'status' => 'active',
-                  'balance' => 75.72
-                },
-                '4-Nsb4Vwsulhk8' => {
-                  'id' => '4-Nsb4Vwsulhk8',
-                  'status' => 'active',
-                  'balance' => 100.0
+    context 'vha_show_payment_history flag enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:vha_show_payment_history).and_return(true)
+      end
+
+      it 'returns a formatted hash response' do
+        travel_to Time.utc(2025, 8, 1) do
+          VCR.use_cassette('lighthouse/hcc/copay_list_by_month', match_requests_on: %i[method path query]) do
+            # Mock account data to avoid MissingAccountError
+            allow_any_instance_of(MedicalCopays::LighthouseIntegration::Service)
+              .to receive(:fetch_accounts_for_invoices)
+              .and_return(
+                {
+                  '4-O3d8XK44ejMS' => {
+                    'id' => '4-O3d8XK44ejMS',
+                    'status' => 'active',
+                    'balance' => 75.72
+                  },
+                  '4-Nsb4Vwsulhk8' => {
+                    'id' => '4-Nsb4Vwsulhk8',
+                    'status' => 'active',
+                    'balance' => 100.0
+                  }
                 }
-              }
-            )
+              )
+
+            get '/v1/medical_copays'
+
+            response_body = JSON.parse(response.body)
+            meta = response_body['meta']
+            copay_summary = meta['copay_summary']
+            data_element = response_body['data'].first
+
+            expect(copay_summary.keys)
+              .to eq(%w[total_current_balance copay_bill_count last_updated_on])
+
+            expect(meta.keys)
+              .to eq(%w[total page per_page copay_summary])
+            expect(data_element['attributes'].keys)
+              .to match_array(
+                %w[
+                  url
+                  facility
+                  facilityId
+                  lastUpdatedAt
+                  city
+                  externalId
+                  latestBillingRef
+                  currentBalance
+                  previousBalance
+                  previousUnpaidBalance
+                  invoiceDate
+                  lineItems
+                  statementGeneratedDay
+                ]
+              )
+          end
+        end
+      end
+
+      it 'handles auth error' do
+        VCR.use_cassette('lighthouse/hcc/auth_error') do
+          allow_any_instance_of(Auth::ClientCredentials::Service)
+            .to receive(:get_token).and_call_original
+          allow(Auth::ClientCredentials::JWTGenerator)
+            .to receive(:generate_token).and_return('fake-jwt')
 
           get '/v1/medical_copays'
 
           response_body = JSON.parse(response.body)
-          meta = response_body['meta']
-          copay_summary = meta['copay_summary']
-          data_element = response_body['data'].first
+          errors = response_body['errors']
 
-          expect(copay_summary.keys)
-            .to eq(%w[total_current_balance copay_bill_count last_updated_on])
-
-          expect(meta.keys)
-            .to eq(%w[total page per_page copay_summary])
-          expect(data_element['attributes'].keys)
-            .to match_array(
-              %w[
-                url
-                facility
-                facilityId
-                lastUpdatedAt
-                city
-                externalId
-                latestBillingRef
-                currentBalance
-                previousBalance
-                previousUnpaidBalance
-                invoiceDate
-                lineItems
-                statementGeneratedDay
-              ]
-            )
+          expect(errors.first.keys).to eq(%w[error error_description status code title detail])
         end
       end
-    end
 
-    it 'handles auth error' do
-      VCR.use_cassette('lighthouse/hcc/auth_error') do
-        allow_any_instance_of(Auth::ClientCredentials::Service)
-          .to receive(:get_token).and_call_original
-        allow(Auth::ClientCredentials::JWTGenerator)
-          .to receive(:generate_token).and_return('fake-jwt')
+      it 'handles no records returned' do
+        VCR.use_cassette('lighthouse/hcc/no_records', match_requests_on: %i[method path query]) do
+          allow(Auth::ClientCredentials::JWTGenerator).to receive(:generate_token).and_return('fake-jwt')
+          get '/v1/medical_copays'
 
-        get '/v1/medical_copays'
-
-        response_body = JSON.parse(response.body)
-        errors = response_body['errors']
-
-        expect(errors.first.keys).to eq(%w[error error_description status code title detail])
-      end
-    end
-
-    it 'handles no records returned' do
-      VCR.use_cassette('lighthouse/hcc/no_records', match_requests_on: %i[method path query]) do
-        allow(Auth::ClientCredentials::JWTGenerator).to receive(:generate_token).and_return('fake-jwt')
-        get '/v1/medical_copays'
-
-        response_body = JSON.parse(response.body)
-        expect(response_body['data']).to eq([])
+          response_body = JSON.parse(response.body)
+          expect(response_body['data']).to eq([])
+        end
       end
     end
 
@@ -136,6 +143,8 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
       end
 
       it 'passes include_line_items as nil when the param is omitted' do
+        allow(Flipper).to receive(:enabled?).with(:vha_show_payment_history).and_return(true)
+
         copay_service = instance_double(MedicalCopays::LighthouseIntegration::Service)
         allow(MedicalCopays::LighthouseIntegration::Service)
           .to receive(:new).with(current_user.icn).and_return(copay_service)
@@ -153,6 +162,8 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
       end
 
       it 'passes include_line_items through from params when provided' do
+        allow(Flipper).to receive(:enabled?).with(:vha_show_payment_history).and_return(true)
+
         copay_service = instance_double(MedicalCopays::LighthouseIntegration::Service)
         allow(MedicalCopays::LighthouseIntegration::Service)
           .to receive(:new).with(current_user.icn).and_return(copay_service)
@@ -180,6 +191,7 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
     let(:vcr_options) { { allow_playback_repeats: true, match_requests_on: %i[method uri] } }
 
     it 'returns copay detail for authenticated user' do
+      allow(Flipper).to receive(:enabled?).with(:vha_show_payment_history).and_return(true)
       VCR.use_cassette('lighthouse/hcc/copay_detail_success', vcr_options) do
         # Use June so `collect_invoices_in_range` (6-month window) includes the Jan 2025
         # invoice; with Aug 1 that row falls just outside the window. Associated rows must
@@ -272,6 +284,7 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
     end
 
     it 'handles auth error' do
+      allow(Flipper).to receive(:enabled?).with(:vha_show_payment_history).and_return(true)
       VCR.use_cassette('lighthouse/hcc/auth_error', vcr_options) do
         allow(Auth::ClientCredentials::JWTGenerator).to receive(:generate_token).and_return('fake-jwt')
         allow(MedicalCopays::CernerFacilities).to receive(:cerner_copay_user?).and_return(false)
@@ -291,6 +304,7 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
     end
 
     it 'includes isCerner false for non-cerner user' do
+      allow(Flipper).to receive(:enabled?).with(:vha_show_payment_history).and_return(true)
       VCR.use_cassette('lighthouse/hcc/copay_detail_success', vcr_options) do
         allow(Auth::ClientCredentials::JWTGenerator).to receive(:generate_token).and_return('fake-jwt')
         allow(MedicalCopays::CernerFacilities).to receive(:cerner_copay_user?).and_return(false)
