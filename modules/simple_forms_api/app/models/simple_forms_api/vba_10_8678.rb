@@ -194,7 +194,11 @@ module SimpleFormsApi
       end
     end
 
-    def track_user_identity(confirmation_number); end
+    def track_user_identity(confirmation_number)
+      identity = data['elect_termination'].presence ? 'terminating' : 'applying'
+      StatsD.increment("#{STATS_KEY}.#{identity}")
+      Rails.logger.info('Simple forms api - 10-8678 submission user identity', identity:, confirmation_number:)
+    end
 
     private
 

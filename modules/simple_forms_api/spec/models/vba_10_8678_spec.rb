@@ -168,4 +168,49 @@ RSpec.describe SimpleFormsApi::VBA108678 do
       )
     end
   end
+
+  describe '#track_user_identity' do
+    before do
+      allow(StatsD).to receive(:increment)
+      allow(Rails.logger).to receive(:info)
+    end
+
+    context 'when user is terminating' do
+      let(:data) do
+        {
+          'elect_termination' => true
+        }
+      end
+
+      it 'tracks employed identity and logs information' do
+        described_class.new(data).track_user_identity('ABC123')
+
+        expect(StatsD).to have_received(:increment).with('api.simple_forms_api.10_8678.terminating')
+        expect(Rails.logger).to have_received(:info).with(
+          'Simple forms api - 10-8678 submission user identity',
+          identity: 'terminating',
+          confirmation_number: 'ABC123'
+        )
+      end
+    end
+
+    context 'when user is applying' do
+      let(:data) do
+        {
+          'elect_termination' => false
+        }
+      end
+
+      it 'tracks unemployed identity and logs information' do
+        described_class.new(data).track_user_identity('XYZ789')
+
+        expect(StatsD).to have_received(:increment).with('api.simple_forms_api.10_8678.applying')
+        expect(Rails.logger).to have_received(:info).with(
+          'Simple forms api - 10-8678 submission user identity',
+          identity: 'applying',
+          confirmation_number: 'XYZ789'
+        )
+      end
+    end
+  end
 end
