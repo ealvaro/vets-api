@@ -72,12 +72,12 @@ module MPI
         element = RequestHelper.build_registration_event_element
         element << RequestHelper.build_id_null_flavor(type: null_flavor_type)
         element << RequestHelper.build_status_code
-        element << build_subject_1
+        element << build_subject_one
         element << RequestHelper.build_custodian
         element
       end
 
-      def build_subject_1
+      def build_subject_one
         element = RequestHelper.build_subject_1_element
         element << build_patient
         element

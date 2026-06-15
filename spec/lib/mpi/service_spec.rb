@@ -644,6 +644,120 @@ describe MPI::Service do
     end
   end
 
+  describe '#unlink_profile_identifier' do
+    subject do
+      mpi_service.unlink_profile_identifier(icn:, identifier_type:, identifier:)
+    end
+
+    let(:statsd_caller) { 'unlink_profile_identifier' }
+    let(:icn) { 'some-icn' }
+    let(:identifier_type) { MPI::Constants::LOGINGOV_UUID }
+    let(:identifier) { 'some-credential-uuid' }
+
+    context 'malformed request' do
+      let(:icn) { nil }
+      let(:missing_keys) { [:icn] }
+      let(:expected_error) { MPI::Errors::ArgumentError }
+      let(:expected_error_message) { "Required values missing: #{missing_keys}" }
+
+      it 'raises a required values missing error' do
+        expect { subject }.to raise_error(expected_error, expected_error_message)
+      end
+    end
+
+    context 'valid request' do
+      let(:transaction_id) { nil }
+      let(:parsed_response) { { transaction_id:, idme_uuid: identifier } }
+
+      before { VCR.insert_cassette('mpi/unlink_profile_identifier/unlink_profile_identifier_success') }
+
+      after { VCR.eject_cassette('mpi/unlink_profile_identifier/unlink_profile_identifier_success') }
+
+      it_behaves_like 'add person success response'
+    end
+
+    context 'invalid requests' do
+      let(:add_person_error_details) do
+        { other: [{ codeSystem: code_system, code: mpi_error_code, displayName: error_display_name }],
+          transaction_id:,
+          error_details: { ack_detail_code:, id_extension:, error_texts: } }
+      end
+      let(:transaction_id) { 'some-transaction-id' }
+      let(:code_system) { 'some-code-system' }
+      let(:mpi_error_code) { 'some-mpi-error-code' }
+      let(:ack_detail_code) { 'some-ack-detail-code' }
+      let(:error_texts) { ['some-error-texts'] }
+      let(:error_display_name) { 'some-error-display-name' }
+      let(:id_extension) { 'some-id-extension' }
+
+      context 'when response includes server error' do
+        let(:code_system) { '2.16.840.1.113883.5.1100' }
+        let(:mpi_error_code) { 'INTERR' }
+        let(:ack_detail_code) { 'AE' }
+        let(:error_texts) { ['Internal System Error'] }
+        let(:error_display_name) { 'Internal System Error' }
+        let(:id_extension) { '200VGOV-1373004c-e23e-4d94-90c5-5b101f6be54a' }
+        let(:transaction_id) { nil }
+        let(:expected_error_message) { add_person_error_details.to_s }
+
+        before { VCR.insert_cassette('mpi/unlink_profile_identifier/unlink_profile_identifier_server_error') }
+
+        after { VCR.eject_cassette('mpi/unlink_profile_identifier/unlink_profile_identifier_server_error') }
+
+        it_behaves_like 'add person error response'
+      end
+
+      context 'when response includes invalid request error' do
+        let(:code_system) { '2.16.840.1.113883.5.1100' }
+        let(:mpi_error_code) { 'INTERR' }
+        let(:ack_detail_code) { 'AE' }
+        let(:error_texts) { ['At least one name must be provided.'] }
+        let(:error_display_name) { 'Internal System Error' }
+        let(:id_extension) { '200VGOV-b1406361-5e06-4763-840a-41d8ab0ed771' }
+        let(:transaction_id) { nil }
+        let(:expected_error_message) { add_person_error_details.to_s }
+
+        before { VCR.insert_cassette('mpi/unlink_profile_identifier/unlink_profile_identifier_invalid_request') }
+
+        after { VCR.eject_cassette('mpi/unlink_profile_identifier/unlink_profile_identifier_invalid_request') }
+
+        it_behaves_like 'add person error response'
+      end
+
+      context 'when record not found in MPI' do
+        let(:code_system) { '2.16.840.1.113883.5.4' }
+        let(:mpi_error_code) { 'Key204' }
+        let(:ack_detail_code) { 'AE' }
+        let(:error_texts) { ['Unknown Key Identifier: UNKNOWN', 'Unlink/Relink Failed!:Correlation NOT FOUND'] }
+        let(:error_display_name) { 'Unknown Key Identifier' }
+        let(:id_extension) { '200VGOV-b1406361-5e06-4763-840a-41d8ab0ed772' }
+        let(:transaction_id) { nil }
+        let(:add_person_error_details) do
+          { other: [{ codeSystem: code_system, code: mpi_error_code, displayName: error_display_name }],
+            idme_uuid: identifier,
+            transaction_id:,
+            error_details: { ack_detail_code:, id_extension:, error_texts: } }
+        end
+        let(:expected_error_message) { add_person_error_details.to_s }
+
+        before { VCR.insert_cassette('mpi/unlink_profile_identifier/unlink_profile_identifier_record_not_found') }
+
+        after { VCR.eject_cassette('mpi/unlink_profile_identifier/unlink_profile_identifier_record_not_found') }
+
+        it_behaves_like 'add person error response'
+      end
+
+      context 'when request fails due to gateway timeout' do
+        let(:expected_error) { Common::Exceptions::GatewayTimeout }
+        let(:expected_error_message) { expected_error.new.message }
+
+        before { allow_any_instance_of(Faraday::Connection).to receive(:post).and_raise(Faraday::TimeoutError) }
+
+        it_behaves_like 'connection add person error response'
+      end
+    end
+  end
+
   shared_examples 'find profile success response' do
     let(:transaction_id) { '4bae058f5d5c4fa906c85472' }
     let(:identifier_type) { MPI::Constants::ICN }

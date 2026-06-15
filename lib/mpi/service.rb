@@ -14,6 +14,7 @@ require 'mpi/messages/find_profile_by_identifier'
 require 'mpi/messages/find_profile_by_edipi'
 require 'mpi/messages/find_profile_by_facility'
 require 'mpi/messages/update_profile_message'
+require 'mpi/messages/unlink_profile_identifier_message'
 require 'mpi/responses/add_person_response'
 require 'mpi/responses/find_profile_response'
 require 'mpi/constants'
@@ -207,6 +208,20 @@ module MPI
     end
     # rubocop:enable Metrics/ParameterLists
     # rubocop:enable Metrics/MethodLength
+
+    def unlink_profile_identifier(icn:, identifier_type:, identifier:)
+      with_monitoring do
+        raw_response = perform(
+          :post, '',
+          MPI::Messages::UnlinkProfileIdentifierMessage.new(icn:, identifier_type:, identifier:).perform,
+          soapaction: Constants::UPDATE_PROFILE
+        )
+        MPI::Services::AddPersonResponseCreator.new(type: Constants::UNLINK_PROFILE_IDENTIFIER_TYPE,
+                                                    response: raw_response).perform
+      end
+    rescue *CONNECTION_ERRORS => e
+      MPI::Services::AddPersonResponseCreator.new(type: Constants::UNLINK_PROFILE_IDENTIFIER_TYPE, error: e).perform
+    end
 
     def self.service_is_up?
       last_mvi_outage = Breakers::Outage.find_latest(service: MPI::Configuration.instance.breakers_service)

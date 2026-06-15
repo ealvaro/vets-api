@@ -39,6 +39,7 @@ module MPI
     ADD_PERSON_PROXY_TYPE = 'add_person_proxy'
     ADD_PERSON_IMPLICIT_TYPE = 'add_person_implicit'
     UPDATE_PROFILE_TYPE = 'update_profile'
+    UNLINK_PROFILE_IDENTIFIER_TYPE = 'unlink_profile_identifier'
     FIND_PROFILE_TYPE = 'find_profile'
     FIND_PROFILE_BY_IDENTIFIER_TYPE = 'find_profile_by_identifier'
     FIND_PROFILE_BY_EDIPI_TYPE = 'find_profile_by_edipi'

@@ -146,6 +146,14 @@ module MPI
           ssn_element
         end
 
+        def build_unlink_identifier(identifier:, root:)
+          credential_uuid_element = element('asOtherIDs', classCode: 'PAT')
+          credential_uuid_element << build_identifier(identifier:, root:)
+          credential_uuid_element << element('statusCode', code: 'UNLINK')
+          credential_uuid_element << build_scoping_organization(root:)
+          credential_uuid_element
+        end
+
         def build_patient_person_proxy_add
           proxy_add_element = element('asOtherIDs', classCode: 'PAT')
           proxy_add_element << build_identifier(identifier: 'PROXY_ADD^PI^200VBA^USVBA',
