@@ -21,6 +21,8 @@ module DatadogMetrics
     'mr.vitals_details',
     # MR download calls
     'mr.download_blue_button',
+    'mr.fetch_blue_button_data',
+    'mr.generate_blue_button',
     'mr.download_ccd',
     'mr.download_sei'
   ].freeze

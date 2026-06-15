@@ -10,6 +10,7 @@ module V0
       tags = params[:tags] || []
 
       unless DatadogMetrics::ALLOWLIST.include?(metric)
+        Rails.logger.warn('DatadogActionController: metric not on allowlist', metric: metric.to_s.truncate(50))
         render json: { error: 'Metric not allowed' }, status: :bad_request and return
       end
 
