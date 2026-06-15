@@ -692,12 +692,6 @@ RSpec.describe SignIn::ApplicationController, type: :controller do
       allow(Settings.sentry).to receive(:dsn).and_return('T')
     end
 
-    it 'makes a call to sentry with request uuid and service unavailable error' do
-      expect(Sentry).to receive(:set_extras).once.with(request_uuid: nil)
-      expect(Sentry).to receive(:set_extras).once.with(va_exception_error)
-      subject
-    end
-
     it 'makes a call to sentry with appropriate tags' do
       expect(Sentry).to receive(:set_tags).once.with(tags_context)
       expect(Sentry).to receive(:set_tags).once.with(error: client_type)
@@ -709,8 +703,8 @@ RSpec.describe SignIn::ApplicationController, type: :controller do
       subject
     end
 
-    it 'captures the exception for sentry' do
-      expect(Sentry).to receive(:capture_exception).once
+    it 'logs the exception message to Rails.logger.error' do
+      expect(Rails.logger).to receive(:error).with('some message', hash_including(:va_exception_errors))
       subject
     end
 

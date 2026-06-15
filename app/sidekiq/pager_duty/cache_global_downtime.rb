@@ -2,6 +2,7 @@
 
 require 'vets/shared_logging'
 
+require 'logging/helper/data_scrubber'
 require 'pagerduty/maintenance_client'
 require 'pagerduty/maintenance_windows_uploader'
 
@@ -23,10 +24,14 @@ module PagerDuty
 
       PagerDuty::MaintenanceWindowsUploader.upload_file(file_path)
     rescue Common::Exceptions::BackendServiceException, Common::Client::Errors::ClientError => e
-      log_exception_to_sentry(e)
+      Rails.logger.error(scrub_pii(e.message))
     end
 
     private
+
+    def scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
+    end
 
     def global_service_id
       Settings.maintenance.services&.to_hash&.dig(:global)

@@ -2,6 +2,7 @@
 
 require 'pagerduty/maintenance_client'
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 module PagerDuty
   class PollMaintenanceWindows
@@ -34,7 +35,13 @@ module PagerDuty
         api_win.delete unless open_ids.include?(api_win.pagerduty_id)
       end
     rescue Common::Exceptions::BackendServiceException, Common::Client::Errors::ClientError => e
-      log_exception_to_sentry(e)
+      Rails.logger.error(scrub_pii(e.message))
+    end
+
+    private
+
+    def scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
     end
   end
 end

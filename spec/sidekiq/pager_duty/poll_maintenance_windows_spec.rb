@@ -86,20 +86,16 @@ RSpec.describe PagerDuty::PollMaintenanceWindows, type: :job do
   end
 
   context 'with error response from client' do
-    before do
-      allow(Settings.sentry).to receive(:dsn).and_return('asdf')
-    end
-
     it 'bails on backend error' do
       expect(client_stub).to receive(:get_all).and_raise(Common::Exceptions::BackendServiceException)
-      expect(Sentry).to receive(:capture_exception).with(Common::Exceptions::BackendServiceException, level: 'error')
+      expect(Rails.logger).to receive(:error)
 
       described_class.new.perform
     end
 
     it 'bails on client error' do
       expect(client_stub).to receive(:get_all).and_raise(Common::Client::Errors::ClientError)
-      expect(Sentry).to receive(:capture_exception).with(Common::Client::Errors::ClientError, level: 'error')
+      expect(Rails.logger).to receive(:error)
 
       described_class.new.perform
     end

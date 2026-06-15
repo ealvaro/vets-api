@@ -2,6 +2,7 @@
 
 require 'vic/url_helper'
 require 'vic/id_card_attribute_error'
+require 'logging/helper/data_scrubber'
 
 module V0
   class IdCardAttributesController < ApplicationController
@@ -18,6 +19,10 @@ module V0
     end
 
     private
+
+    def scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
+    end
 
     def skip_sentry_exception_types
       super + [::VIC::IDCardAttributeError]
@@ -36,7 +41,7 @@ module V0
         if e.status == 404
           nil
         else
-          log_exception_to_sentry(e)
+          Rails.logger.error(scrub_pii(e.message))
           raise ::VIC::IDCardAttributeError, ::VIC::IDCardAttributeError::VIC010
         end
       end

@@ -108,13 +108,6 @@ RSpec.describe ApplicationController, type: :controller do
         end
       end
 
-      describe '#log_exception_to_sentry' do
-        it 'logs to Sentry' do
-          expect(Sentry).to receive(:capture_exception).with(exception, level: 'error').once
-          subject.log_exception_to_sentry(exception)
-        end
-      end
-
       describe '#log_exception_to_rails' do
         it 'warn logs to Rails logger' do
           expect(Rails.logger).to receive(:error).with(exception)
@@ -133,18 +126,6 @@ RSpec.describe ApplicationController, type: :controller do
         it 'does not log to Sentry' do
           expect(Sentry).to receive(:capture_exception).exactly(0).times
           subject.log_message_to_sentry('blah', :warn, { extra: 'context' }, tags: 'tagging')
-        end
-      end
-
-      describe '#log_exception_to_sentry' do
-        it 'error logs to Rails logger' do
-          expect(Rails.logger).to receive(:error).with("#{exception.message}.")
-          subject.log_exception_to_sentry(exception)
-        end
-
-        it 'does not log to Sentry' do
-          expect(Sentry).to receive(:capture_exception).exactly(0).times
-          subject.log_exception_to_sentry(exception)
         end
       end
     end
@@ -297,15 +278,6 @@ RSpec.describe ApplicationController, type: :controller do
       get :not_authorized
     end
 
-    it 'does log exceptions to sentry based on level identified in exception.en.yml' do
-      expect(Sentry).to receive(:capture_exception).with(
-        Common::Exceptions::BackendServiceException,
-        { level: 'warning' }
-      )
-      expect(Sentry).not_to receive(:capture_message)
-      get :common_error_with_warning_sentry
-    end
-
     it 'does not log to sentry if Breakers::OutageException' do
       expect(Sentry).not_to receive(:capture_exception)
       expect(Sentry).not_to receive(:capture_message)
@@ -444,96 +416,6 @@ RSpec.describe ApplicationController, type: :controller do
   end
 
   context 'ConnectionFailed Error' do
-    it 'makes a call to sentry when there is cause' do
-      allow_any_instance_of(Rx::Client)
-        .to receive(:connection).and_raise(Faraday::ConnectionFailed, 'some message')
-      expect(Sentry).to receive(:set_extras).once.with(
-        { request_uuid: nil }
-      )
-      expect(Sentry).to receive(:set_extras).once.with(
-        {
-          va_exception_errors: [{
-            title: 'Service unavailable',
-            detail: 'Backend Service Outage',
-            code: '503',
-            status: '503'
-          }]
-        }
-      )
-      # if current user is nil it means user is not signed in.
-      expect(Sentry).to receive(:set_tags).once.with(
-        {
-          controller_name: 'anonymous',
-          sign_in_method: 'not-signed-in',
-          source: 'my_testing'
-        }
-      )
-      expect(Sentry).to receive(:set_tags).once.with(
-        { error: 'mhv_session' }
-      )
-      # since user is not signed in this shouldnt get called.
-      expect(Sentry).not_to receive(:set_user)
-      expect(Sentry).to receive(:capture_exception).once
-      request.headers['Source-App-Name'] = 'my_testing'
-      with_settings(Settings.sentry, dsn: 'T') do
-        get :client_connection_failed
-      end
-      expect(JSON.parse(response.body)['errors'].first['title'])
-        .to eq('Service unavailable')
-    end
-
-    context 'signed in user' do
-      let(:user) { create(:user) }
-
-      before do
-        controller.instance_variable_set(:@current_user, user)
-      end
-
-      it 'makes a call to sentry when there is cause' do
-        allow_any_instance_of(Rx::Client)
-          .to receive(:connection).and_raise(Faraday::ConnectionFailed, 'some message')
-        expect(Sentry).to receive(:set_extras).once.with(
-          { request_uuid: nil }
-        )
-        expect(Sentry).to receive(:set_extras).once.with(
-          {
-            va_exception_errors: [{
-              title: 'Service unavailable',
-              detail: 'Backend Service Outage',
-              code: '503',
-              status: '503'
-            }]
-          }
-        )
-        # if authn_context is nil on current_user it means idme
-        expect(Sentry).to receive(:set_tags).once.with(
-          { controller_name: 'anonymous', sign_in_method: SignIn::Constants::Auth::IDME, sign_in_acct_type: nil }
-        )
-
-        expect(Sentry).to receive(:set_tags).once.with(
-          { error: 'mhv_session' }
-        )
-        # since user IS signed in, this SHOULD get called
-        expect(Sentry).to receive(:set_user).with(
-          {
-            id: user.uuid,
-            authn_context: user.authn_context,
-            loa: user.loa,
-            mhv_icn: user.mhv_icn
-          }
-        )
-        expect(Sentry).to receive(:capture_exception).once.with(
-          Faraday::ConnectionFailed,
-          level: 'error'
-        )
-        with_settings(Settings.sentry, dsn: 'T') do
-          get :client_connection_failed
-        end
-        expect(JSON.parse(response.body)['errors'].first['title'])
-          .to eq('Service unavailable')
-      end
-    end
-
     context 'Pundit::NotAuthorizedError' do
       subject { JSON.parse(response.body)['errors'].first }
 

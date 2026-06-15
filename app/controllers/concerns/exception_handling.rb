@@ -5,6 +5,7 @@ require 'common/client/errors'
 require 'json_schema/json_api_missing_attribute'
 require 'datadog'
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 module ExceptionHandling
   extend ActiveSupport::Concern
@@ -78,7 +79,7 @@ module ExceptionHandling
   def report_original_exception(exception)
     # report the original 'cause' of the exception when present
     if skip_sentry_exception?(exception)
-      Rails.logger.error "#{exception.message}.", backtrace: exception.backtrace
+      Rails.logger.error "#{scrub_pii(exception.message)}.", backtrace: exception.backtrace
     elsif exception.is_a?(Common::Exceptions::BackendServiceException) && exception.generic_error?
       # Warn about VA900 needing to be added to exception.en.yml
       log_message_to_sentry(exception.va900_warning, :warn, i18n_exception_hint: exception.va900_hint)
@@ -89,11 +90,11 @@ module ExceptionHandling
     extra = exception.respond_to?(:errors) ? { errors: exception.errors.map(&:to_h) } : {}
     # Add additional user specific context to the logs
     if exception.is_a?(Common::Exceptions::BackendServiceException) && current_user.present?
-      extra[:icn] = current_user.icn
+      extra[:user_account_id] = current_user.user_account_uuid
       extra[:mhv_credential_uuid] = current_user.mhv_credential_uuid
     end
     va_exception_info = { va_exception_errors: va_exception.errors.map(&:to_hash) }
-    log_exception_to_sentry(exception, extra.merge(va_exception_info))
+    Rails.logger.error(scrub_pii(exception.message), scrub_pii(extra.merge(va_exception_info)))
 
     # Because we are handling exceptions here and not re-raising, we need to set the error on the
     # Datadog span for it to be reported correctly. We also need to set it on the top-level
@@ -103,6 +104,10 @@ module ExceptionHandling
     # in Sentry, but tags are not suitable for complex objects.
     Datadog::Tracing.active_span&.set_error(exception)
     request.env[Datadog::Tracing::Contrib::Rack::Ext::RACK_ENV_REQUEST_SPAN]&.set_error(exception)
+  end
+
+  def scrub_pii(message)
+    Logging::Helper::DataScrubber.scrub(message)
   end
 
   # Log 403 Forbidden responses with AU-3 required fields (NIST SP 800-53)

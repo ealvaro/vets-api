@@ -14,7 +14,7 @@ shared_examples_for 'a controller that does not log 404 to Sentry' do
       routes.draw do
         get '/fake_route' => "#{controller_klass.to_s.underscore.gsub('_controller', '')}#authenticate"
       end
-      allow_any_instance_of(ApplicationController).to receive(:log_exception_to_sentry) { raise }
+      allow_any_instance_of(ApplicationController).to receive(:report_mapped_exception) { raise }
       get(controller.present? ? :authenticate : '/fake_route')
       expect(response).to have_http_status(:not_found)
     end
