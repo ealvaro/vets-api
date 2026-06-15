@@ -73,7 +73,7 @@ module DhpConnectedDevices
 
       def connection_unavailable_error
         Rails.logger.warn('Device connection unavailable for Veterans without an ICN')
-        log_message_to_sentry('User with an invalid ICN value attempted to connect their Fitbit', 'warn')
+        Rails.logger.warn('User with an invalid ICN value attempted to connect their Fitbit')
         raise Common::Exceptions::Forbidden.new(
           detail: 'User with an invalid ICN value attempted to connect their Fitbit',
           source: 'FitbitController'

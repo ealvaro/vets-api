@@ -82,7 +82,7 @@ module ExceptionHandling
       Rails.logger.error "#{scrub_pii(exception.message)}.", backtrace: exception.backtrace
     elsif exception.is_a?(Common::Exceptions::BackendServiceException) && exception.generic_error?
       # Warn about VA900 needing to be added to exception.en.yml
-      log_message_to_sentry(exception.va900_warning, :warn, i18n_exception_hint: exception.va900_hint)
+      Rails.logger.warn(exception.va900_warning, i18n_exception_hint: exception.va900_hint)
     end
   end
 

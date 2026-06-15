@@ -13,10 +13,9 @@ class DeleteOldTransactionsJob
       .find_each do |tx|
         tx.destroy!
     rescue ActiveRecord::RecordNotDestroyed => e
-      log_message_to_sentry(
+      Rails.logger.error(
         'DeleteOldTransactionsJob raised an exception',
-        :error,
-        { model: self.class.to_s, transaction_id: tx.id, exception: e }
+        model: self.class.to_s, transaction_id: tx.id, exception: e
       )
       end
   end

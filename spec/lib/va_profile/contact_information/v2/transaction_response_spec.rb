@@ -156,15 +156,12 @@ describe VAProfile::ContactInformation::V2::TransactionResponse do
         let(:user) { build(:user, :loa3) }
 
         it 'logs that error to sentry' do
-          allow(described_class).to receive(:log_message_to_sentry)
-          expect(described_class).to receive(:log_message_to_sentry).with(
+          allow(Rails.logger).to receive(:error)
+          expect(Rails.logger).to receive(:error).with(
             'va profile mpi not found',
-            :error,
-            {
-              icn: user.icn,
-              edipi: user.edipi,
-              response_body: raw_response.body
-            },
+            user_account: user.user_account,
+            edipi: user.edipi,
+            response_body: raw_response.body,
             error: :va_profile
           )
           described_class.from(raw_response, user)
@@ -221,10 +218,9 @@ describe VAProfile::ContactInformation::V2::TransactionResponse do
       it 'logs that error to sentry' do
         redacted_response_body = described_class.redact_response_body(body)
 
-        expect(described_class).to receive(:log_message_to_sentry).with(
+        expect(Rails.logger).to receive(:error).with(
           'VAProfile contact info transaction error',
-          :error,
-          { response_body: redacted_response_body },
+          response_body: redacted_response_body,
           error: :va_profile
         )
         subject

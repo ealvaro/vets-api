@@ -50,9 +50,6 @@ module TravelClaim
       end
     rescue => e
       log_external_api_error(operation: 'token', error: e)
-      log_message_to_sentry(e.original_body, :error,
-                            { uuid: check_in.uuid },
-                            { external_service: service_name, team: 'check-in' })
 
       raise e
     end
@@ -78,9 +75,6 @@ module TravelClaim
       Faraday::Response.new(response_body: { message: 'BTSSS timeout error' }, status: 408)
     rescue => e
       log_external_api_error(operation: 'submit_claim', error: e)
-      log_message_to_sentry(e.original_body, :error,
-                            { uuid: check_in.uuid },
-                            { external_service: service_name, team: 'check-in' })
 
       Faraday::Response.new(response_body: e.original_body, status: e.original_status)
     end
@@ -105,9 +99,6 @@ module TravelClaim
       Faraday::Response.new(response_body: { message: 'BTSSS timeout error' }, status: 408)
     rescue => e
       log_external_api_error(operation: 'claim_status', error: e)
-      log_message_to_sentry(e.original_body, :error,
-                            { uuid: check_in.uuid },
-                            { external_service: service_name, team: 'check-in' })
 
       Faraday::Response.new(response_body: e.original_body, status: e.original_status)
     end
@@ -129,9 +120,6 @@ module TravelClaim
       Faraday::Response.new(response_body: { message: 'BTSSS timeout error' }, status: 408)
     rescue => e
       log_external_api_error(operation: 'submit_claim_v2', error: e)
-      log_message_to_sentry(e.original_body, :error,
-                            { uuid: check_in.uuid },
-                            { external_service: service_name, team: 'check-in' })
 
       Faraday::Response.new(response_body: e.original_body, status: e.original_status)
     end

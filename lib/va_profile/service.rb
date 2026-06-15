@@ -113,7 +113,7 @@ module VAProfile
       if VAProfile::Exceptions::Parser.instance.known?(exception_key)
         VAProfile::Stats.increment_exception(exception_key)
       else
-        log_message_to_sentry('New VAProfile Exceptions Key', :info, key: exception_key)
+        Rails.logger.info('New VAProfile Exceptions Key', key: exception_key)
       end
     end
   end

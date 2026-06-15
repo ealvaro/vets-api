@@ -92,15 +92,6 @@ RSpec.describe ApplicationController, type: :controller do
     context 'with SENTRY_DSN set' do
       before { allow(Settings.sentry).to receive(:dsn).and_return('asdf') }
 
-      describe '#log_message_to_sentry' do
-        it 'logs to Sentry' do
-          expect(Sentry).to receive(:set_tags)
-          expect(Sentry).to receive(:set_extras)
-          expect(Sentry).to receive(:capture_message)
-          subject.log_message_to_sentry('blah', :error, { extra: 'context' }, tags: 'tagging')
-        end
-      end
-
       describe '#log_message_to_rails' do
         it 'error logs to Rails logger' do
           expect(Rails.logger).to receive(:error).with(/blah/).with(/context/)

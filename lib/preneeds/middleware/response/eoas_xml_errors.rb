@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 module Preneeds
   module Middleware
@@ -29,12 +30,16 @@ module Preneeds
 
           # strip percentages from xml because Sentry uses it for interpolation
           extra_context = { original_status: status, original_body: env.body&.delete('%') }
-          log_message_to_sentry('Generalized XML error response from EOAS', :warn, extra_context)
+          Rails.logger.warn('Generalized XML error response from EOAS', scrub_pii(extra_context))
 
           raise Common::Exceptions::BackendServiceException.new('VA900', response_values, @status, env.body)
         end
 
         private
+
+        def scrub_pii(message)
+          Logging::Helper::DataScrubber.scrub(message)
+        end
 
         def backend_error?(env)
           env.status != 200 && fault.present?

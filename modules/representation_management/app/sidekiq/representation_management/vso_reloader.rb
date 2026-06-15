@@ -2,6 +2,7 @@
 
 require 'sidekiq'
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 module RepresentationManagement
   class VSOReloader < BaseReloader
@@ -12,7 +13,8 @@ module RepresentationManagement
 
     sidekiq_retries_exhausted do |msg, _ex|
       job = new
-      job.send(:log_message_to_sentry, "VSOReloader retries exhausted: #{msg['error_message']}", :error)
+      error_message = Logging::Helper::DataScrubber.scrub(msg['error_message'])
+      Rails.logger.error("VSOReloader retries exhausted: #{error_message}")
       job.send(:log_to_slack, "VSOReloader retries exhausted: #{msg['error_message']}")
     end
 
@@ -129,7 +131,7 @@ module RepresentationManagement
       return nil if types.blank?
 
       invalid = types - VALID_TYPES
-      Rails.logger.warn("VSOReloader: Invalid types ignored: #{invalid.join(', ')}") if invalid.any?
+      Rails.logger.warn("VSOReloader: Invalid types ignored: #{scrub_pii(invalid.join(', '))}") if invalid.any?
 
       valid = types & VALID_TYPES
       valid.empty? ? nil : valid
@@ -159,13 +161,13 @@ module RepresentationManagement
     end
 
     def handle_connection_failure(error)
-      log_message_to_sentry("OGC connection failed: #{error.message}", :warn)
+      Rails.logger.warn("OGC connection failed: #{scrub_pii(error.message)}")
       log_to_slack('VSO Reloader failed to connect to OGC')
       fail_ingestion_log("OGC connection failed: #{error.message}")
     end
 
     def handle_client_error(error)
-      log_message_to_sentry("VSO Reloading error: #{error.message}", :warn)
+      Rails.logger.warn("VSO Reloading error: #{scrub_pii(error.message)}")
       log_to_slack('VSO Reloader job has failed!')
       fail_ingestion_log("VSO Reloading error: #{error.message}")
     end
@@ -361,10 +363,10 @@ module RepresentationManagement
                 'Action: Update skipped, manual review required'
 
       log_to_slack(message)
-      log_message_to_sentry("VSO Reloader threshold exceeded for #{rep_type}", :warn,
-                            previous_count:,
-                            new_count:,
-                            decrease_percentage:)
+      Rails.logger.warn("VSO Reloader threshold exceeded for #{rep_type}",
+                        previous_count:,
+                        new_count:,
+                        decrease_percentage:)
     end
 
     def save_accreditation_totals
@@ -466,6 +468,10 @@ module RepresentationManagement
       return unless @ingestion_log
 
       @ingestion_log.fail_ingestion!(error: error_message)
+    end
+
+    def scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
     end
   end
 end

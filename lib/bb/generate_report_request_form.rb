@@ -51,18 +51,5 @@ module BB
     def eligible_data_classes
       @eligible_data_classes ||= client.get_eligible_data_classes.members.map(&:name)
     end
-
-    # TODO: uncomment to re-enable this validation
-    # TODO: See: https://va.ghe.com/software/vets.gov-team/issues/3777
-    # def data_classes_belongs_to_eligible_data_classes
-    #   ineligible_data_classes = data_classes - eligible_data_classes
-    #   if ineligible_data_classes.any?
-    #     log_message_to_sentry('Health record ineligible classes', :info,
-    #                           extra_context: { data_classes: data_classes,
-    #                                            eligible_data_classes: eligible_data_classes })
-    #     log_message_to_rails('Health record ineligible classes', :info)
-    #     errors.add(:base, "Invalid data classes: #{ineligible_data_classes.join(', ')}")
-    #   end
-    # end
   end
 end

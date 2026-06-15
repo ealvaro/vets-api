@@ -13,7 +13,7 @@ RSpec.describe EVSSClaimDocument do
       context 'when provided password is incorrect' do
         it 'logs a sanitized message to Sentry' do
           error_message = nil
-          allow_any_instance_of(EVSSClaimDocument).to receive(:log_message_to_sentry) do |_, message, _level|
+          allow(Rails.logger).to receive(:warn) do |message|
             error_message = message
           end
 

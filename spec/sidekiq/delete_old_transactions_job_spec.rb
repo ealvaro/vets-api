@@ -16,7 +16,7 @@ RSpec.describe DeleteOldTransactionsJob do
              status: AsyncTransaction::Base::COMPLETED)
 
       job = DeleteOldTransactionsJob.new
-      expect(job).to receive(:log_message_to_sentry).once
+      expect(Rails.logger).to receive(:error).once
       job.perform
     end
   end

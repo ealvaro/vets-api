@@ -2,6 +2,7 @@
 
 require 'sidekiq'
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 module Veteran
   class VSOReloader < BaseReloader
@@ -106,6 +107,10 @@ module Veteran
       poa&.gsub(/\W/, '')
     end
 
+    def scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
+    end
+
     # Setup methods for perform
 
     def setup_ingestion
@@ -130,13 +135,13 @@ module Veteran
     end
 
     def handle_connection_failure(error)
-      log_message_to_sentry("OGC connection failed: #{error.message}", :warn)
+      Rails.logger.warn("OGC connection failed: #{scrub_pii(error.message)}")
       log_to_slack('VSO Reloader failed to connect to OGC')
       fail_ingestion_log("OGC connection failed: #{error.message}")
     end
 
     def handle_client_error(error)
-      log_message_to_sentry("VSO Reloading error: #{error.message}", :warn)
+      Rails.logger.warn("VSO Reloading error: #{scrub_pii(error.message)}")
       log_to_slack('VSO Reloader job has failed!')
       fail_ingestion_log("VSO Reloading error: #{error.message}")
     end
@@ -322,9 +327,8 @@ module Veteran
                 'Action: Update skipped, manual review required'
 
       log_to_slack(message)
-      log_message_to_sentry(
+      Rails.logger.warn(
         "VSO Reloader threshold exceeded for #{rep_type}",
-        :warn,
         previous_count:,
         new_count:,
         decrease_percentage:

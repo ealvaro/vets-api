@@ -4,6 +4,7 @@ require 'octokit'
 require 'faraday'
 require 'uri'
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 # Fetches the Trexler XLSX file from the sensitive repo.
 # Only returns content if the file was committed within the last 24 hours.
@@ -81,7 +82,10 @@ class SensitiveRepoXlsxFileFetcher
   end
 
   def log_error(message)
-    Rails.logger.error("SensitiveRepoXlsxFileFetcher error: #{message}")
-    log_message_to_sentry("SensitiveRepoXlsxFileFetcher error: #{message}", :error)
+    Rails.logger.error("SensitiveRepoXlsxFileFetcher error: #{scrub_pii(message)}")
+  end
+
+  def scrub_pii(message)
+    Logging::Helper::DataScrubber.scrub(message)
   end
 end

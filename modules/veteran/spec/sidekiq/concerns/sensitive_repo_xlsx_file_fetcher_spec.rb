@@ -27,7 +27,6 @@ RSpec.describe SensitiveRepoXlsxFileFetcher do
     let(:success_response) { instance_double(Faraday::Response, body: 'file content', success?: true) }
 
     before do
-      allow(fetcher).to receive(:log_message_to_sentry)
       allow(Rails.logger).to receive(:error)
       allow(Octokit::Client).to receive(:new).and_return(octokit_client)
       allow(octokit_client).to receive_messages(commits:, contents: file_info)

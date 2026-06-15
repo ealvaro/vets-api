@@ -33,7 +33,7 @@ RSpec.describe Organizations::UpdateNames, type: :job do
       allow(Organizations::Names).to receive(:all).and_return([{ poa: '80', name: 'Updated Name' }])
       allow(Veteran::Service::Organization).to receive(:find_by).with(poa: '80').and_raise(StandardError,
                                                                                            'Unexpected error')
-      expect_any_instance_of(Vets::SharedLogging).to receive(:log_message_to_sentry).with(
+      expect(Rails.logger).to receive(:error).with(
         "Error updating organization name for POA in Organizations::UpdateNames: Unexpected error. POA: '80', Org Name: 'Updated Name'." # rubocop:disable Layout/LineLength
       )
       # expect_any_instance_of(Vets::SharedLogging).to receive(:log_message_to_rails).with(

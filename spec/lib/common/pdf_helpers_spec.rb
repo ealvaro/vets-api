@@ -13,7 +13,7 @@ describe Common::PdfHelpers do
     context 'when provided password is incorrect' do
       it 'logs a message to sentry' do
         error_message = nil
-        allow(subject).to receive(:log_message_to_sentry) do |message, _level| # rubocop:disable RSpec/SubjectStub
+        allow(Rails.logger).to receive(:warn) do |message|
           error_message = message
         end
 
@@ -23,7 +23,7 @@ describe Common::PdfHelpers do
         expect { subject.unlock_pdf(input_file, bad_password, output_file) }
           .to raise_error(Common::Exceptions::UnprocessableEntity)
 
-        expect(error_message).to be 'Invalid password specified'
+        expect(error_message).to eq 'Invalid password specified'
       end
     end
 
@@ -32,7 +32,7 @@ describe Common::PdfHelpers do
         input_file = Rack::Test::UploadedFile.new('spec/fixtures/files/aes256_password.pdf', 'application/pdf')
         output_file = Tempfile.new(['encrypted_attachment', '.pdf'])
 
-        expect(subject).not_to receive(:log_message_to_sentry) # rubocop:disable RSpec/SubjectStub
+        expect(Rails.logger).not_to receive(:warn)
         expect { subject.unlock_pdf(input_file, password, output_file) }
           .not_to raise_error
       end

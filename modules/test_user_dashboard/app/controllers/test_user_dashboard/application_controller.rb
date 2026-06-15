@@ -25,7 +25,7 @@ module TestUserDashboard
         JWT.decode raw_token, rsa_public, true, { algorithm: 'RS256' }
         return true
       rescue JWT::DecodeError => e
-        log_message_to_sentry('Error decoding TUD JWT: ', :error, body: e.message)
+        Rails.logger.error('Error decoding TUD JWT: ', body: e.message)
       end
       false
     end

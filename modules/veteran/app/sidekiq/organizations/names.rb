@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 module Organizations
   class Names
@@ -117,14 +118,9 @@ module Organizations
         serialized_poa = serialize_poa(org[:poa])
         { poa: serialized_poa, name: org[:name] }
       rescue => e
-        # Since the deprecated Vets::SharedLogging was designed for instance methods, not class methods,
-        # and we need to invoke these methods within a class method context, we instantiate a dummy_logger.
-        # This dummy object previously included Vets::SharedLogging (now uses Vets::SharedLogging), allowing us to
-        # use its logging capabilities without altering the original module's design. This approach enables
-        # class-level logging by leveraging the module's instance methods, ensuring we can log messages to
-        # Sentry from static (class) contexts while maintaining the module's intended usage patterns.
-        dummy_logger = Class.new { include Vets::SharedLogging }.new
-        dummy_logger.log_message_to_sentry("Failed to serialize POA in Organizations::Names: #{e.message}. POA: '#{org[:poa]}', Org Name: '#{org[:name]}'.", 'error') # rubocop:disable Layout/LineLength
+        error_msg = "Failed to serialize POA in Organizations::Names: #{scrub_pii(e.message)}. " \
+                    "POA: '#{org[:poa]}', Org Name: '#{org[:name]}'."
+        Rails.logger.error(error_msg)
         next
       end.compact
     end
@@ -139,6 +135,14 @@ module Organizations
         "00#{poa}"
       else
         raise StandardError, "Invalid POA format: #{poa}"
+      end
+    end
+
+    class << self
+      private
+
+      def scrub_pii(message)
+        Logging::Helper::DataScrubber.scrub(message)
       end
     end
   end

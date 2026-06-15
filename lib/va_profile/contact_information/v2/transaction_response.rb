@@ -46,10 +46,9 @@ module VAProfile
         def self.log_transaction_error
           redacted_response_body = redact_response_body(@response_body)
 
-          log_message_to_sentry(
+          Rails.logger.error(
             'VAProfile contact info transaction error',
-            :error,
-            { response_body: redacted_response_body },
+            response_body: redacted_response_body,
             error: :va_profile
           )
         end
@@ -134,14 +133,11 @@ module VAProfile
           if error?
             @response_body['tx_messages'].each do |tx_message|
               if tx_message['code'] == NOT_FOUND_IN_MPI_CODE
-                return log_message_to_sentry(
+                return Rails.logger.error(
                   'va profile mpi not found',
-                  :error,
-                  {
-                    icn: @user.icn,
-                    edipi: @user.edipi,
-                    response_body: @response_body
-                  },
+                  user_account: @user.user_account,
+                  edipi: @user.edipi,
+                  response_body: redact_response_body(@response_body),
                   error: :va_profile
                 )
               end

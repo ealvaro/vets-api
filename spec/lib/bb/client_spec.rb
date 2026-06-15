@@ -33,8 +33,7 @@ describe 'bb client' do
     it 'logs failed extract statuses', :vcr do
       VCR.use_cassette('bb_client/gets_a_list_of_extract_statuses') do
         msg = 'Final health record refresh contained one or more error statuses'
-        expect(Sentry).to receive(:set_extras).with({ refresh_failures: %w[Appointments ImagingStudy] })
-        expect(Sentry).to receive(:capture_message).with(msg, level: 'warning')
+        expect(Rails.logger).to receive(:warn).with(msg, refresh_failures: %w[Appointments ImagingStudy])
 
         client.get_extract_status
       end

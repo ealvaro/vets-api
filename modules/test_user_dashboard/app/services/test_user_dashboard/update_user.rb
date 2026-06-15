@@ -17,7 +17,7 @@ module TestUserDashboard
 
       checkout_time = { checkout_time: time }
       valid_update = tud_account.update(checkout_time)
-      log_message_to_sentry('[TestUserDashboard] UpdateUser invalid update', :warn, checkout_time) unless valid_update
+      Rails.logger.warn('[TestUserDashboard] UpdateUser invalid update', checkout_time) unless valid_update
     end
   end
 end

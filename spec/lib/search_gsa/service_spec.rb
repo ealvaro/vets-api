@@ -159,9 +159,12 @@ describe SearchGsa::Service do
         end
       end
 
-      it 'does not log to sentry' do
+      it 'logs the error to Rails.logger' do
         VCR.use_cassette('search/exceeds_rate_limit', VCR::MATCH_EVERYTHING) do
-          expect_any_instance_of(described_class).not_to receive(:log_message_to_sentry)
+          expect(Rails.logger).to receive(:error).with(
+            'External service error',
+            hash_including(search: 'general_search_query_error')
+          )
 
           expect { subject.results }.to raise_error(Common::Exceptions::BackendServiceException)
         end
