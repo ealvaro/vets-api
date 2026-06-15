@@ -56,10 +56,10 @@ describe Common::Client::Middleware::Response::SOAPParser do
       )
     end
 
-    it 'logs the error to sentry' do
-      expect(Sentry).to receive(:set_extras).with(
-        url: 'http://somewhere.gov',
-        body: 'foo'
+    it 'logs the error' do
+      expect(Rails.logger).to receive(:error).with(
+        'SOAPParser Error',
+        { url: 'http://somewhere.gov', body: 'foo' }
       )
 
       expect { connection.get 'http://somewhere.gov' }.to raise_error(

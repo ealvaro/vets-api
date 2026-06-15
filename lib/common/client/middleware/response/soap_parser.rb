@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'logging/helper/data_scrubber'
+
 module Common
   module Client
     module Middleware
@@ -23,7 +25,7 @@ module Common
           private
 
           def log_error_details(env)
-            Sentry.set_extras(url: env.url.to_s, body: env.body)
+            Rails.logger.error('SOAPParser Error', { url: env.url.to_s, body: scrub_pii(env.body) })
           end
 
           def parse_doc(body)
@@ -37,6 +39,10 @@ module Common
 
           def doc_includes_error?(doc)
             !doc.locate('env:Envelope/env:Body/env:Fault').empty?
+          end
+
+          def scrub_pii(message)
+            ::Logging::Helper::DataScrubber.scrub(message)
           end
         end
       end
