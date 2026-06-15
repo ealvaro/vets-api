@@ -46,4 +46,24 @@ RSpec.describe V0::DatadogActionController, type: :controller do
       end
     end
   end
+
+  describe 'real ALLOWLIST integration' do
+    it 'accepts every metric in the real ALLOWLIST' do
+      DatadogMetrics::ALLOWLIST.each do |metric|
+        allow(StatsD).to receive(:increment)
+
+        post :create, params: { metric: }
+
+        expect(response).to have_http_status(:no_content)
+      end
+    end
+
+    it 'rejects a metric not in the real ALLOWLIST' do
+      expect(StatsD).not_to receive(:increment)
+
+      post :create, params: { metric: 'definitely_not_a_real_metric' }
+
+      expect(response).to have_http_status(:bad_request)
+    end
+  end
 end
