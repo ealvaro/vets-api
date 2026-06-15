@@ -110,11 +110,12 @@ module SearchGsa
     end
 
     def save_error_details(error_message)
-      Sentry.set_extras(
-        message: Search::PiiRedactor.redact(error_message),
-        url: config.base_path
+      Rails.logger.error(
+        'External service error',
+        search: 'general_search_query_error',
+        url: config.base_path,
+        message: Search::PiiRedactor.redact(error_message)
       )
-      Sentry.set_tags(search: 'general_search_query_error')
     end
 
     def handle_429!(error)

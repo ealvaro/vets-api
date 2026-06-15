@@ -2,6 +2,7 @@
 
 require 'common/client/base'
 require 'evss/auth_headers'
+require 'logging/helper/data_scrubber'
 
 module EVSS
   class Service < Common::Client::Base
@@ -48,14 +49,18 @@ module EVSS
     end
 
     def save_error_details(error)
-      Sentry.set_tags(external_service: self.class.to_s.underscore)
-
-      Sentry.set_extras(
+      Rails.logger.error(
+        error.class.name,
+        external_service: self.class.to_s.underscore,
         url: config.base_path,
-        message: error.message,
-        body: error.body,
+        message: scrub_pii(error.message),
+        body: scrub_pii(error.body),
         transaction_id: @transaction_id
       )
+    end
+
+    def scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
     end
 
     def handle_error(error)

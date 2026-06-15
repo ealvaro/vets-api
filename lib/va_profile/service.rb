@@ -4,6 +4,7 @@ require 'common/client/base'
 require 'common/client/errors'
 require 'common/exceptions/backend_service_exception'
 require 'common/exceptions/forbidden'
+require 'logging/helper/data_scrubber'
 require_relative 'exceptions/parser'
 require_relative 'models/message'
 require_relative 'stats'
@@ -62,15 +63,17 @@ module VAProfile
     end
 
     def save_error_details(error)
-      Sentry.set_extras(
-        message: error.message,
+      Rails.logger.error(
+        error.class.name,
+        va_profile: person_transaction_failure?(error) ? 'failed_vet360_id_initializations' : 'general_client_error',
         url: config.base_path,
-        body: error.body
+        message: scrub_pii(error.message),
+        body: scrub_pii(error.body)
       )
+    end
 
-      Sentry.set_tags(
-        va_profile: person_transaction_failure?(error) ? 'failed_vet360_id_initializations' : 'general_client_error'
-      )
+    def scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
     end
 
     def person_transaction_failure?(error)

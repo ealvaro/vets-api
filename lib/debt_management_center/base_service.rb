@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'common/client/base'
+require 'logging/helper/data_scrubber'
 
 module DebtManagementCenter
   class BaseService < Common::Client::Base
@@ -49,8 +50,17 @@ module DebtManagementCenter
     end
 
     def save_error_details(error)
-      Sentry.set_tags(external_service: self.class.to_s.underscore)
-      Sentry.set_extras(url: config.base_path, message: error.message, body: error.body)
+      Rails.logger.error(
+        error.class.name,
+        external_service: self.class.to_s.underscore,
+        url: config.base_path,
+        message: scrub_pii(error.message),
+        body: scrub_pii(error.body)
+      )
+    end
+
+    def scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
     end
 
     def handle_error(error)

@@ -568,9 +568,12 @@ describe VAProfile::ContactInformation::V2::Service do
         end
       end
 
-      it 'includes "general_client_error" tag in sentry error', :aggregate_failures do
+      it 'includes "general_client_error" tag in the logged error', :aggregate_failures do
         VCR.use_cassette('va_profile/v2/contact_information/email_transaction_status_error', VCR::MATCH_EVERYTHING) do
-          expect(Sentry).to receive(:set_tags).with(va_profile: 'general_client_error')
+          expect(Rails.logger).to receive(:error).with(
+            anything,
+            hash_including(va_profile: 'general_client_error')
+          )
 
           expect { subject.get_email_transaction_status(transaction_id) }.to raise_error do |e|
             expect(e).to be_a(Common::Exceptions::BackendServiceException)
@@ -707,9 +710,12 @@ describe VAProfile::ContactInformation::V2::Service do
         end
       end
 
-      it 'logs a va_profile tagged error message to sentry', :aggregate_failures do
+      it 'logs a va_profile tagged error message', :aggregate_failures do
         VCR.use_cassette('va_profile/v2/contact_information/person_transaction_status_error', VCR::MATCH_EVERYTHING) do
-          expect(Sentry).to receive(:set_tags).with(va_profile: 'failed_vet360_id_initializations')
+          expect(Rails.logger).to receive(:error).with(
+            anything,
+            hash_including(va_profile: 'failed_vet360_id_initializations')
+          )
 
           expect { subject.get_person_transaction_status(transaction_id) }.to raise_error do |e|
             expect(e).to be_a(Common::Exceptions::BackendServiceException)

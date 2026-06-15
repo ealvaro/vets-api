@@ -6,6 +6,7 @@ require_relative 'configuration'
 require_relative 'responses/response'
 require 'erb'
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 module Apps
   # Proxy Service for Apps API.
@@ -70,13 +71,17 @@ module Apps
     end
 
     def save_error_details(error)
-      Sentry.set_tags(external_service: self.class.to_s.underscore)
-
-      Sentry.set_extras(
+      Rails.logger.error(
+        error.class.name,
+        external_service: self.class.to_s.underscore,
         url: config.base_path,
-        message: error.message,
-        body: error.body
+        message: scrub_pii(error.message),
+        body: scrub_pii(error.body)
       )
+    end
+
+    def scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
     end
   end
 end

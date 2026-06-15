@@ -23,11 +23,12 @@ describe EVSS::Service do
   let(:transaction_id) { service.transaction_id }
 
   describe '#save_error_details' do
-    it 'sets the tags_context and extra_context' do
-      expect(Sentry).to receive(:set_tags).with(external_service: 'evss/foo/service')
-      expect(Sentry).to receive(:set_extras).with(
-        message: 'Common::Client::Errors::ClientError',
+    it 'logs the error with scrubbed message and body' do
+      expect(Rails.logger).to receive(:error).with(
+        'Common::Client::Errors::ClientError',
+        external_service: 'evss/foo/service',
         url: 'http://',
+        message: 'Common::Client::Errors::ClientError',
         body: nil,
         transaction_id:
       )

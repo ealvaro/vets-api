@@ -20,6 +20,7 @@ RSpec.describe Mobile::V0::Vet360LinkingJob, type: :job do
   context 'when linking request fails' do
     it 'logs the user uuid and error message and raises an error' do
       VCR.use_cassette('mobile/profile/v2/init_vet360_id_status_400') do
+        allow_any_instance_of(VAProfile::Service).to receive(:save_error_details)
         expect(Rails.logger).to receive(:error).with(
           'Mobile Vet360 account linking request failed for user with uuid',
           {

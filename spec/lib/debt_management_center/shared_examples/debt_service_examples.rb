@@ -3,6 +3,7 @@
 RSpec.shared_examples 'debt service behavior' do
   before do
     allow(StatsD).to receive(:increment)
+    allow(Rails.logger).to receive(:error)
     allow(Flipper).to receive(:enabled?).with(:dmc_file_number_padding, anything).and_return(false)
   end
 
@@ -24,18 +25,19 @@ RSpec.shared_examples 'debt service behavior' do
       it 'returns a bad request error' do
         VCR.use_cassette('bgs/people_service/no_person_data') do
           VCR.use_cassette('debts/get_letters_empty_ssn', VCR::MATCH_EVERYTHING) do
-            expect(Sentry).to receive(:set_tags).once.with(external_service: described_class.to_s.underscore)
-            expect(Sentry).to receive(:set_extras).once.with(
-              url: Settings.dmc.url,
-              message: match(/the server responded with status 400/),
-              body: { 'message' => 'Bad request' }
-            )
-
             expect { described_class.new(user_no_ssn).get_debts }.to raise_error(
               Common::Exceptions::BackendServiceException
             ) do |e|
               expect(e.message).to match(/DMC400/)
             end
+
+            expect(Rails.logger).to have_received(:error).with(
+              'Common::Client::Errors::ClientError',
+              external_service: described_class.to_s.underscore,
+              url: Settings.dmc.url,
+              message: match(/the server responded with status 400/),
+              body: { 'message' => 'Bad request' }
+            ).once
 
             # Verify metrics were recorded
             expect(StatsD).to have_received(:increment).with('api.dmc.init_cached_debts.fired')
