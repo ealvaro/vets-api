@@ -102,12 +102,24 @@ RSpec.describe BGSDependents::Base do
       it 'receives nil for state in the address' do
         address = sample_v2_dependent_application['veteran_contact_information']['veteran_address']
         address['country'] = 'ITA'
-        address['international_postal_code'] = '12345'
         address['state'] = 'Tuscany'
         params = base.create_address_params('1', '1', address)
         expect(params[:postal_cd]).to be_nil
         expect(params[:prvnc_nm]).to eq('Tuscany')
         expect(params[:zip_prefix_nbr]).to be_nil
+        expect(params[:frgn_postal_cd]).to eq('21122')
+      end
+
+      it 'sends a dummy value for a non-present postal code and international address' do
+        address = sample_v2_dependent_application['veteran_contact_information']['veteran_address']
+        address['country'] = 'ITA'
+        address['state'] = 'Tuscany'
+        address['postal_code'] = ''
+        params = base.create_address_params('1', '1', address)
+        expect(params[:postal_cd]).to be_nil
+        expect(params[:prvnc_nm]).to eq('Tuscany')
+        expect(params[:zip_prefix_nbr]).to be_nil
+        expect(params[:frgn_postal_cd]).to eq('00000')
       end
     end
   end

@@ -6,6 +6,7 @@ module BGSDependents
   class Base
     include Vets::Model
     MILITARY_POST_OFFICE_TYPE_CODES = %w[APO DPO FPO].freeze
+    DUMMY_FOREIGN_POSTAL_CODE = '00000'
 
     # Gets the person's address based on the lives with veteran flag
     #
@@ -167,7 +168,7 @@ module BGSDependents
         state = address['state']
         zip_prefix_nbr = address['postal_code']
       else
-        frgn_postal_code = address['postal_code']
+        frgn_postal_code = address['postal_code'].presence || DUMMY_FOREIGN_POSTAL_CODE
         state = nil
         zip_prefix_nbr = nil
       end
