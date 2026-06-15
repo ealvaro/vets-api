@@ -39,6 +39,17 @@ RSpec.describe MedicalExpenseReports::V0::ClaimsController, type: :request do
       expect(response).to have_http_status(:internal_server_error)
     end
 
+    it 'includes the user_account on the created claim record' do
+      built_claim = nil
+      allow(MedicalExpenseReports::SavedClaim).to receive(:new).and_wrap_original do |original, *args, **kwargs|
+        built_claim = original.call(*args, **kwargs)
+      end
+
+      post '/medical_expense_reports/v0/claims', params: { param_name => { form: claim.form } }
+
+      expect(built_claim.user_account).to eq(user.user_account)
+    end
+
     it('returns a serialized claim', skip: 'TODO after schema built') do
       allow(MedicalExpenseReports::SavedClaim).to receive(:new).and_return(claim)
 

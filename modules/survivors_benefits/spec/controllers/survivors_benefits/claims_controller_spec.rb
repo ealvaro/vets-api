@@ -39,6 +39,17 @@ RSpec.describe SurvivorsBenefits::V0::ClaimsController, type: :request do
       expect(response).to have_http_status(:internal_server_error)
     end
 
+    it 'includes the user_account on the created claim record' do
+      built_claim = nil
+      allow(SurvivorsBenefits::SavedClaim).to receive(:new).and_wrap_original do |original, *args, **kwargs|
+        built_claim = original.call(*args, **kwargs)
+      end
+
+      post '/survivors_benefits/v0/form534ez', params: { param_name => { form: claim.form } }
+
+      expect(built_claim.user_account).to eq(user.user_account)
+    end
+
     it('returns a serialized claim', skip: 'TODO after schema built') do
       allow(SurvivorsBenefits::SavedClaim).to receive(:new).and_return(claim)
 
