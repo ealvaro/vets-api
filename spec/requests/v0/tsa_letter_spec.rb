@@ -48,7 +48,7 @@ RSpec.describe 'VO::TsaLetter', type: :request do
             expect(attributes['name']).to eq('TSA PreCheck application fee waiver')
             expect(attributes['description']['paragraphs']).to eq(
               [
-                'This letter confirms that you are eligible for a TSA PreCheck application fee waiver.',
+                'This letter confirms that you qualify for a TSA PreCheck application fee waiver.',
                 'You can use this letter to qualify for a TSA PreCheck application fee waiver.'
               ]
             )

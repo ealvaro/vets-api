@@ -115,6 +115,6 @@ foreign_medical_program:
 tsa:
   content:
     - type: paragraph
-      text: This letter confirms that you are eligible for a TSA PreCheck application fee waiver.
+      text: This letter confirms that you qualify for a TSA PreCheck application fee waiver.
     - type: paragraph
       text: You can use this letter to qualify for a TSA PreCheck application fee waiver.
