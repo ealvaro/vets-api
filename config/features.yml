@@ -112,7 +112,7 @@ features:
     actor_type: user
     description: >
       The Ask VA form alert banner with a link to the old portal. To use while form is down for maintenance.
-    enable_in_development: true
+    enable_in_development: false
   ask_va_business_personal:
     actor_type: user
     description: Enables the page to transition to the business flow
@@ -158,7 +158,7 @@ features:
       When enabled, the API restricts external access and returns a service unavailable response across all routes.
       Primarily used for coordinated maintenance windows or temporary system suspensions,
       allowing the team to manage API exposure dynamically without requiring a redeploy.
-    enable_in_development: true
+    enable_in_development: false
   ask_va_api_patsr_separation:
     actor_type: user
     description: >

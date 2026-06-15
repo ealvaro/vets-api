@@ -55,14 +55,14 @@ RSpec.describe Crm::Service do
   # Legacy endpoints (flag disabled)
   flag_name = :ask_va_api_patsr_separation
   flag_state = false
-  include_examples 'crm request with header', 'development', flag_name, flag_state, 'ava-qa'
+  include_examples 'crm request with header', 'development', flag_name, flag_state, 'ava-int'
   include_examples 'crm request with header', 'test', flag_name, flag_state, 'iris-dev'
   include_examples 'crm request with header', 'staging', flag_name, flag_state, 'ava-qa'
   include_examples 'crm request with header', 'production', flag_name, flag_state, 'veft'
 
   # New endpoints (flag enabled)
   flag_state = true
-  include_examples 'crm request with header', 'development', flag_name, flag_state, 'ava-qa'
+  include_examples 'crm request with header', 'development', flag_name, flag_state, 'ava-int'
   include_examples 'crm request with header', 'test', flag_name, flag_state, 'iris-dev'
   include_examples 'crm request with header', 'staging', flag_name, flag_state, 'ava-preprod'
   include_examples 'crm request with header', 'production', flag_name, flag_state, 'ava'
@@ -124,7 +124,7 @@ RSpec.describe Crm::Service do
 
         allow_any_instance_of(Faraday::Connection).to receive(:get).with(
           'eis/vagov.lob.ava/api/inquiries',
-          { organizationName: 'ava-qa' }
+          { organizationName: 'ava-int' }
         ).and_raise(exception)
       end
 

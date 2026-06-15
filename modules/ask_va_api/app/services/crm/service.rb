@@ -8,7 +8,7 @@ module Crm
       env = {
         'localhost' => 'betamocks',
         'test' => 'iris-dev',
-        'development' => 'ava-qa',
+        'development' => 'ava-int',
         'staging' => 'ava-qa',
         'production' => 'veft'
       }
