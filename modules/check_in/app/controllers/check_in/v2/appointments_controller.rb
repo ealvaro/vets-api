@@ -20,10 +20,7 @@ module CheckIn
 
         render json: serializer.serializable_hash.to_json, status: :ok
       ensure
-        if track_clinic_key_observability?(appointment_rows)
-          track_clinic_key_observability(appointment_rows)
-          track_clinic_enrichment_observability(appointment_rows)
-        end
+        track_clinic_observability(appointment_rows) if track_clinic_observability?(appointment_rows)
       end
 
       def permitted_params
@@ -52,46 +49,67 @@ module CheckIn
         end
       end
 
-      def track_clinic_key_observability?(appointment_rows)
-        clinic_key_observability_enabled? && !appointment_rows.nil?
+      def track_clinic_observability?(appointment_rows)
+        clinic_observability_enabled? && !appointment_rows.nil?
       end
 
-      def clinic_key_observability_enabled?
+      def clinic_observability_enabled?
         Flipper.enabled?(:check_in_experience_appointments_clinic_observability_enabled)
       end
 
-      def track_clinic_key_observability(appointments)
-        with_location = appointments.select { |appt| appt[:locationId].present? }
-        total = with_location.size
-        present = with_location.count { |appt| appt[:clinic].present? }
-        missing_or_empty = total - present
-
-        StatsD.increment(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_OBSERVABILITY_TOTAL, total)
-        StatsD.increment(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_KEY_PRESENT, present)
-        StatsD.increment(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_KEY_MISSING_OR_EMPTY, missing_or_empty)
+      def track_clinic_observability(appointments)
+        counts = clinic_observability_counts(appointments)
+        increment_clinic_observability_metrics(counts)
 
         logger.info('HCE-Check-In') do
-          "appointments_clinic_key_observability with_location_total=#{total} clinic_present=#{present} " \
-            "clinic_missing_or_empty=#{missing_or_empty}"
+          { event: 'appointments_clinic_observability', **counts }
         end
       end
 
-      def track_clinic_enrichment_observability(appointments)
-        with_clinic_key = appointments.select { |appt| appt[:locationId].present? && appt[:clinic].present? }
-        total = with_clinic_key.size
-        present = with_clinic_key.count do |appt|
-          appt.dig(:clinicInfo, :data, :serviceName).present?
-        end
-        missing = total - present
+      def clinic_observability_counts(appointments)
+        with_location_total = 0
+        clinic_key_present = 0
+        clinic_enrichment_total = 0
+        clinic_info_present = 0
 
-        StatsD.increment(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_ENRICHMENT_TOTAL, total)
-        StatsD.increment(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_ENRICHMENT_PRESENT, present)
-        StatsD.increment(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_ENRICHMENT_MISSING, missing)
+        appointments.each do |appt|
+          next if appt[:locationId].blank?
 
-        logger.info('HCE-Check-In') do
-          "appointments_clinic_enrichment_observability clinic_key_present=#{total} " \
-            "clinic_info_present=#{present} clinic_info_missing=#{missing}"
+          with_location_total += 1
+          next if appt[:clinic].blank?
+
+          clinic_key_present += 1
+          clinic_enrichment_total += 1
+          clinic_info_present += 1 if appt.dig(:clinicInfo, :data, :serviceName).present?
         end
+
+        {
+          with_location_total:,
+          clinic_key_present:,
+          clinic_key_missing_or_empty: with_location_total - clinic_key_present,
+          clinic_enrichment_total:,
+          clinic_info_present:,
+          clinic_info_missing: clinic_enrichment_total - clinic_info_present
+        }
+      end
+
+      def increment_clinic_observability_metrics(counts)
+        StatsD.increment(
+          CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_OBSERVABILITY_TOTAL, counts[:with_location_total]
+        )
+        StatsD.increment(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_KEY_PRESENT, counts[:clinic_key_present])
+        StatsD.increment(
+          CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_KEY_MISSING_OR_EMPTY, counts[:clinic_key_missing_or_empty]
+        )
+        StatsD.increment(
+          CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_ENRICHMENT_TOTAL, counts[:clinic_enrichment_total]
+        )
+        StatsD.increment(
+          CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_ENRICHMENT_PRESENT, counts[:clinic_info_present]
+        )
+        StatsD.increment(
+          CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_ENRICHMENT_MISSING, counts[:clinic_info_missing]
+        )
       end
 
       def check_in_session
