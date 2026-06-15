@@ -145,10 +145,6 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
           end
 
           before do
-            allow(Flipper).to receive(:enabled?)
-              .with(:accredited_representative_portal_individual_accept_backend)
-              .and_return(false)
-
             create(
               :representative,
               user_types: ['attorney'],
@@ -208,28 +204,6 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
                         can_accept_digital_poa_requests: false,
                         acceptance_mode: nil
                       )
-                  ),
-                  described_class::Membership.new(
-                    registration_number: 'R1002',
-                    power_of_attorney_holder:
-                      PowerOfAttorneyHolder.new(
-                        type: 'veteran_service_organization',
-                        name: 'Org A',
-                        poa_code: 'P12',
-                        can_accept_digital_poa_requests: false,
-                        acceptance_mode: 'no_acceptance'
-                      )
-                  ),
-                  described_class::Membership.new(
-                    registration_number: 'R1002',
-                    power_of_attorney_holder:
-                      PowerOfAttorneyHolder.new(
-                        type: 'veteran_service_organization',
-                        name: 'Org B',
-                        poa_code: 'P13',
-                        can_accept_digital_poa_requests: true,
-                        acceptance_mode: 'no_acceptance'
-                      )
                   )
                 ]
               )
@@ -259,10 +233,6 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
       end
 
       before do
-        allow(Flipper).to receive(:enabled?)
-          .with(:accredited_representative_portal_individual_accept_backend)
-          .and_return(true)
-
         create(
           :representative,
           user_types: ['attorney'],
@@ -439,20 +409,6 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
           it 'excludes the organization from memberships' do
             memberships = described_class.new(icn: 'some_icn', emails:)
             expect(memberships.find('P13')).to be_nil
-          end
-        end
-
-        context 'when flag is disabled and no OrganizationRepresentative record exists' do
-          before do
-            allow(Flipper).to receive(:enabled?)
-              .with(:accredited_representative_portal_individual_accept_backend)
-              .and_return(false)
-          end
-
-          it 'still includes the organization with default acceptance_mode' do
-            memberships = described_class.new(icn: 'some_icn', emails:)
-            holder = memberships.find('P13').power_of_attorney_holder
-            expect(holder.acceptance_mode).to eq('no_acceptance')
           end
         end
       end

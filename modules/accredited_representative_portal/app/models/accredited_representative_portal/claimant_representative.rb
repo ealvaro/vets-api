@@ -52,8 +52,6 @@ module AccreditedRepresentativePortal
       private
 
       def allowed_for_claimant?(membership)
-        return true unless individual_accept_enabled?
-
         # We only reach here when the claimant already has an accepted POA held by this
         # rep's org: the caller resolves the claimant's active POA code (from the Benefits
         # Claims API, which reflects only established POAs) to this membership. Once a POA
@@ -70,10 +68,6 @@ module AccreditedRepresentativePortal
           organization_poa: membership.power_of_attorney_holder.poa_code,
           representative_id: membership.registration_number
         )
-      end
-
-      def individual_accept_enabled?
-        Flipper.enabled?(:accredited_representative_portal_individual_accept_backend)
       end
     end
 

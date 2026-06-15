@@ -59,7 +59,6 @@ module RepresentationManagement
     end
 
     def representative_can_accept_for_organization?
-      return unless Flipper.enabled?(:accredited_representative_portal_individual_accept)
       return if organization.nil? || representative.nil?
       return unless organization.can_accept_digital_poa_requests
 

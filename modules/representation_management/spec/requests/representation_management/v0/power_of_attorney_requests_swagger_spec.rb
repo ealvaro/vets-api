@@ -38,8 +38,8 @@ RSpec.describe 'Power of Attorney Requests',
           before do
             sign_in_as(user)
             allow(Flipper).to receive(:enabled?).with(:appoint_a_representative_enable_v2_features).and_return(true)
-            allow(Flipper).to receive(:enabled?)
-              .with(:accredited_representative_portal_individual_accept).and_return(false)
+            create(:veteran_organization_representative,
+                   representative:, organization:, acceptance_mode: 'any_request')
             allow_any_instance_of(RepresentationManagement::PowerOfAttorneyRequestService::Orchestrate)
               .to receive(:call)
               .and_return({ request: poa_request_result })
@@ -62,8 +62,8 @@ RSpec.describe 'Power of Attorney Requests',
           before do
             sign_in_as(user)
             allow(Flipper).to receive(:enabled?).with(:appoint_a_representative_enable_v2_features).and_return(true)
-            allow(Flipper).to receive(:enabled?)
-              .with(:accredited_representative_portal_individual_accept).and_return(false)
+            create(:veteran_organization_representative,
+                   representative:, organization:, acceptance_mode: 'any_request')
           end
 
           schema '$ref' => '#/components/schemas/errors'

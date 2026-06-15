@@ -6,9 +6,26 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantClaimSubmissionsContr
   before do
     login_as(representative_user)
     allow_any_instance_of(Auth::ClientCredentials::Service).to receive(:get_token).and_return('fake_access_token')
-    allow(Flipper).to receive(:enabled?)
-      .with(:accredited_representative_portal_individual_accept_backend)
+
+    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+      .to receive(:empty?)
       .and_return(false)
+
+    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+      .to receive(:power_of_attorney_holders)
+      .and_return([
+                    AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
+                      type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
+                      poa_code: '067',
+                      name: 'Test VSO',
+                      can_accept_digital_poa_requests: true,
+                      acceptance_mode: 'any_request'
+                    )
+                  ])
+
+    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+      .to receive(:registration_numbers)
+      .and_return(['357458'])
 
     # This removes: SHRINE WARNING: Error occurred when attempting to extract image dimensions:
     # #<FastImage::UnknownImageType: FastImage::UnknownImageType>
@@ -100,6 +117,16 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantClaimSubmissionsContr
                      email: representative_user.email,
                      representative_id: '357458',
                      poa_codes: ['11'])
+            end
+
+            before do
+              allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+                .to receive(:empty?)
+                .and_return(true)
+
+              allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+                .to receive(:power_of_attorney_holders)
+                .and_return([])
             end
 
             it 'returns 403' do

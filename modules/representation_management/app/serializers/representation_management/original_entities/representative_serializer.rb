@@ -18,14 +18,10 @@ module RepresentationManagement
       end
 
       attribute :accredited_organizations do |object|
-        orgs = if Flipper.enabled?(:accredited_representative_portal_individual_accept)
-                 accepting_poas = RepresentationManagement::OrganizationWithRepContext.accepting_poas_for(object)
-                 object.organizations.map do |org|
-                   RepresentationManagement::OrganizationWithRepContext.new(org, accepting_poas:)
-                 end
-               else
-                 object.organizations
-               end
+        accepting_poas = RepresentationManagement::OrganizationWithRepContext.accepting_poas_for(object)
+        orgs = object.organizations.map do |org|
+          RepresentationManagement::OrganizationWithRepContext.new(org, accepting_poas:)
+        end
         RepresentationManagement::OriginalEntities::RepresentativeOrganizationSerializer.new(orgs)
       end
     end

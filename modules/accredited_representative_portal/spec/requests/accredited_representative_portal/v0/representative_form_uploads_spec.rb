@@ -41,9 +41,42 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
     allow(Flipper).to receive(:enabled?)
       .with(:accredited_representative_portal_killswitch)
       .and_return(false)
-    allow(Flipper).to receive(:enabled?)
-      .with(:accredited_representative_portal_individual_accept_backend)
-      .and_return(false)
+
+    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+      .to receive(:empty?).and_return(false)
+    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+      .to receive(:power_of_attorney_holders).and_return([
+                                                           AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
+                                                             type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
+                                                             poa_code:,
+                                                             name: 'Test VSO',
+                                                             can_accept_digital_poa_requests: true,
+                                                             acceptance_mode: 'any_request'
+                                                           )
+                                                         ])
+    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+      .to receive(:registration_numbers).and_return([representative.representative_id])
+    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+      .to receive(:find).and_return(
+        AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships::Membership.new(
+          registration_number: representative.representative_id,
+          power_of_attorney_holder: AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
+            type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
+            poa_code:,
+            name: 'Test VSO',
+            can_accept_digital_poa_requests: true,
+            acceptance_mode: 'any_request'
+          )
+        )
+      )
+
+    create(
+      :veteran_organization_representative,
+      organization_poa: poa_code,
+      representative_id: representative.representative_id,
+      acceptance_mode: :any_request,
+      deactivated_at: nil
+    )
   end
 
   describe 'accredited_representative_portal_killswitch' do

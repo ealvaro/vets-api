@@ -66,54 +66,6 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
     end
 
     describe '#show?' do
-      context 'when feature flag is disabled' do
-        before do
-          allow(Flipper).to receive(:enabled?)
-            .with(:accredited_representative_portal_individual_accept_backend, user)
-            .and_return(false)
-        end
-
-        context 'when user has no matching POA holder' do
-          it 'denies access' do
-            expect(policy.show?).to be false
-          end
-        end
-
-        context 'when user has a matching POA code but does not accept digital POAs' do
-          let(:power_of_attorney_holders) do
-            [
-              PowerOfAttorneyHolder.new(
-                type: 'veteran_service_organization',
-                poa_code:,
-                name: 'Org Name',
-                can_accept_digital_poa_requests: false
-              )
-            ]
-          end
-
-          it 'denies access' do
-            expect(policy.show?).to be false
-          end
-        end
-
-        context 'when user has a matching POA code and accepts digital POAs' do
-          let(:power_of_attorney_holders) do
-            [
-              PowerOfAttorneyHolder.new(
-                type: 'veteran_service_organization',
-                poa_code:,
-                name: 'Org Name',
-                can_accept_digital_poa_requests: true
-              )
-            ]
-          end
-
-          it 'allows access' do
-            expect(policy.show?).to be true
-          end
-        end
-      end
-
       context 'when policy is instantiated with a class instead of a record' do
         subject(:policy) { described_class.new(user, AccreditedRepresentativePortal::PowerOfAttorneyRequest) }
 
@@ -133,15 +85,11 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
         end
       end
 
-      context 'when feature flag is enabled' do
+      context 'when using individual accept permissions' do
         let(:vso_org) { create(:veteran_organization, poa: poa_code) }
         let(:vso_rep) { create(:veteran_representative) }
 
         before do
-          allow(Flipper).to receive(:enabled?)
-            .with(:accredited_representative_portal_individual_accept_backend, user)
-            .and_return(true)
-
           allow(user).to receive(:registration_numbers).and_return([vso_rep.representative_id])
         end
 
@@ -296,38 +244,24 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
         allow(user).to receive(:registration_numbers).and_return([vso_rep.representative_id])
       end
 
-      context 'when feature flag is disabled' do
-        before do
-          allow(Flipper).to receive(:enabled?)
-            .with(:accredited_representative_portal_individual_accept_backend, user)
-            .and_return(false)
+      context 'when user has matching POA holders that accept digital POAs' do
+        let(:power_of_attorney_holders) do
+          [
+            PowerOfAttorneyHolder.new(
+              type: 'veteran_service_organization',
+              poa_code:,
+              name: 'Org Name',
+              can_accept_digital_poa_requests: true
+            )
+          ]
         end
 
-        context 'when user has matching POA holders that accept digital POAs' do
-          let(:power_of_attorney_holders) do
-            [
-              PowerOfAttorneyHolder.new(
-                type: 'veteran_service_organization',
-                poa_code:,
-                name: 'Org Name',
-                can_accept_digital_poa_requests: true
-              )
-            ]
-          end
-
-          it 'returns matching requests' do
-            expect(resolved_scope).to contain_exactly(matching_request)
-          end
+        it 'returns matching requests' do
+          expect(resolved_scope).to contain_exactly(matching_request)
         end
       end
 
-      context 'when feature flag is enabled' do
-        before do
-          allow(Flipper).to receive(:enabled?)
-            .with(:accredited_representative_portal_individual_accept_backend, user)
-            .and_return(true)
-        end
-
+      context 'with individual accept permissions' do
         let(:power_of_attorney_holders) do
           [
             PowerOfAttorneyHolder.new(

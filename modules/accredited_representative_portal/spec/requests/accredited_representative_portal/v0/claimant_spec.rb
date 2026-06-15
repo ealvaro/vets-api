@@ -11,10 +11,25 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantController, type: :re
     travel_to(time)
     allow_any_instance_of(Auth::ClientCredentials::Service).to receive(:get_token).and_return('fake_access_token')
 
-    allow(Flipper)
-      .to receive(:enabled?)
-      .with(:accredited_representative_portal_individual_accept_backend)
+    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+      .to receive(:empty?)
       .and_return(false)
+
+    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+      .to receive(:power_of_attorney_holders)
+      .and_return([
+                    AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
+                      type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
+                      poa_code:,
+                      name: 'Test VSO',
+                      can_accept_digital_poa_requests: true,
+                      acceptance_mode: 'any_request'
+                    )
+                  ])
+
+    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+      .to receive(:registration_numbers)
+      .and_return([representative.representative_id])
   end
 
   let!(:poa_code) { '067' }

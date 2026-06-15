@@ -67,12 +67,10 @@ module AccreditedRepresentativePortal
                        )
                        .index_by(&:organization_poa)
 
-            individual_accept = Flipper.enabled?(:accredited_representative_portal_individual_accept_backend)
-
             organizations.filter_map do |organization|
               org_rep = org_reps[organization.poa]
 
-              next if org_rep.nil? && individual_accept
+              next if org_rep.nil?
 
               acceptance_mode = org_rep&.acceptance_mode || DEFAULT_ACCEPTANCE_MODE
 

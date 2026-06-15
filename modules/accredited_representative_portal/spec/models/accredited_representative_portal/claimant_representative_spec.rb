@@ -110,56 +110,77 @@ RSpec.describe AccreditedRepresentativePortal::ClaimantRepresentative, type: :mo
       end
     end
 
-    context 'when individual accept flag is disabled' do
+    context 'when there is no active organization representative membership' do
+      it 'returns nil' do
+        expect(claimant_representative).to be_nil
+      end
+    end
+
+    context 'when the organization representative membership is no_acceptance' do
       before do
-        allow(Flipper).to receive(:enabled?).and_call_original
-        allow(Flipper).to receive(:enabled?)
-          .with(:accredited_representative_portal_individual_accept_backend)
-          .and_return(false)
+        create(
+          :veteran_organization_representative,
+          organization_poa: poa_code,
+          representative_id: registration_number,
+          acceptance_mode: :no_acceptance,
+          deactivated_at: nil
+        )
       end
 
-      it 'returns a claimant representative when the claimant poa matches a membership' do
+      # no_acceptance reps can still VIEW an established VSO claimant; acceptance_mode only
+      # governs acting on pending requests (enforced by PowerOfAttorneyRequestPolicy).
+      it 'returns a claimant representative' do
         expect(claimant_representative).to have_attributes(
           claimant_id: be_a(String),
-          accredited_individual_registration_number: registration_number,
-          power_of_attorney_holder: AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
-            poa_code:,
-            type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
-            name: 'Org Name',
-            can_accept_digital_poa_requests: false,
-            acceptance_mode: 'no_acceptance'
-          )
+          accredited_individual_registration_number: registration_number
         )
       end
     end
 
-    context 'when individual accept flag is enabled' do
+    context 'when the organization representative membership is any_request' do
       before do
-        allow(Flipper).to receive(:enabled?).and_call_original
-        allow(Flipper).to receive(:enabled?)
-          .with(:accredited_representative_portal_individual_accept_backend)
-          .and_return(true)
+        create(
+          :veteran_organization_representative,
+          organization_poa: poa_code,
+          representative_id: registration_number,
+          acceptance_mode: :any_request,
+          deactivated_at: nil
+        )
       end
 
-      context 'when there is no active organization representative membership' do
-        it 'returns nil' do
-          expect(claimant_representative).to be_nil
+      it 'returns a claimant representative' do
+        expect(claimant_representative).to have_attributes(
+          claimant_id: be_a(String),
+          accredited_individual_registration_number: registration_number
+        )
+      end
+    end
+
+    context 'when the organization representative membership is self_only' do
+      let!(:org_rep_membership) do
+        create(
+          :veteran_organization_representative,
+          organization_poa: poa_code,
+          representative_id: registration_number,
+          acceptance_mode: :self_only,
+          deactivated_at: nil
+        )
+      end
+
+      context 'when there is a matching non-withdrawn POA request for the claimant' do
+        let!(:claimant_user_account) do
+          create(:user_account, icn: claimant_icn)
         end
-      end
 
-      context 'when the organization representative membership is no_acceptance' do
-        before do
+        let!(:poa_request) do
           create(
-            :veteran_organization_representative,
-            organization_poa: poa_code,
-            representative_id: registration_number,
-            acceptance_mode: :no_acceptance,
-            deactivated_at: nil
+            :power_of_attorney_request,
+            claimant: claimant_user_account,
+            poa_code:,
+            accredited_individual: representative
           )
         end
 
-        # no_acceptance reps can still VIEW an established VSO claimant; acceptance_mode only
-        # governs acting on pending requests (enforced by PowerOfAttorneyRequestPolicy).
         it 'returns a claimant representative' do
           expect(claimant_representative).to have_attributes(
             claimant_id: be_a(String),
@@ -168,33 +189,17 @@ RSpec.describe AccreditedRepresentativePortal::ClaimantRepresentative, type: :mo
         end
       end
 
-      context 'when the organization representative membership is any_request' do
+      context 'when there is no matching POA request for the claimant' do
+        let!(:different_claimant_user_account) do
+          create(:user_account, icn: '1008596379V859838')
+        end
+
         before do
           create(
-            :veteran_organization_representative,
-            organization_poa: poa_code,
-            representative_id: registration_number,
-            acceptance_mode: :any_request,
-            deactivated_at: nil
-          )
-        end
-
-        it 'returns a claimant representative' do
-          expect(claimant_representative).to have_attributes(
-            claimant_id: be_a(String),
-            accredited_individual_registration_number: registration_number
-          )
-        end
-      end
-
-      context 'when the organization representative membership is self_only' do
-        let!(:org_rep_membership) do
-          create(
-            :veteran_organization_representative,
-            organization_poa: poa_code,
-            representative_id: registration_number,
-            acceptance_mode: :self_only,
-            deactivated_at: nil
+            :power_of_attorney_request,
+            claimant: different_claimant_user_account,
+            poa_code:,
+            accredited_individual: representative
           )
         end
 

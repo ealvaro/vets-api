@@ -15,9 +15,6 @@ module AccreditedRepresentativePortal
         receive(:all).and_return(power_of_attorney_holder_memberships)
       )
       allow(Flipper).to receive(:enabled?).and_call_original
-      allow(Flipper).to receive(:enabled?)
-        .with(:accredited_representative_portal_individual_accept_backend)
-        .and_return(false)
     end
 
     around do |example|
@@ -45,6 +42,23 @@ module AccreditedRepresentativePortal
                 )
             )
           ]
+        end
+
+        before do
+          allow_any_instance_of(PowerOfAttorneyHolderMemberships)
+            .to receive(:empty?).and_return(false)
+
+          allow(ClaimantRepresentative).to receive(:find).and_return(
+            ClaimantRepresentative.new(
+              claimant_id: SecureRandom.uuid,
+              accredited_individual_registration_number: '1234',
+              power_of_attorney_holder:
+                PowerOfAttorneyHolder.new(
+                  type: 'veteran_service_organization', poa_code: '067',
+                  name: 'Org Name', can_accept_digital_poa_requests: nil
+                )
+            )
+          )
         end
 
         it 'allows access' do

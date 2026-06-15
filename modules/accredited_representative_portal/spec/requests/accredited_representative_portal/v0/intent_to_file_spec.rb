@@ -33,14 +33,62 @@ RSpec.describe AccreditedRepresentativePortal::V0::IntentToFileController, type:
     allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_skip_itf_check).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_itf_confirmation_email)
                                         .and_return(false)
-    allow(Flipper).to receive(:enabled?)
-      .with(:accredited_representative_portal_individual_accept_backend)
-      .and_return(false)
     VCR.configure do |c|
       c.debug_logger = File.open('record.log', 'w')
     end
     allow_any_instance_of(Auth::ClientCredentials::Service).to receive(:get_token).and_return('fake_access_token')
     login_as(test_user)
+
+    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+      .to receive(:empty?)
+      .and_return(false)
+
+    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+      .to receive(:power_of_attorney_holders)
+      .and_return([
+                    AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
+                      type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
+                      poa_code:,
+                      name: 'Test VSO',
+                      can_accept_digital_poa_requests: true,
+                      acceptance_mode: 'any_request'
+                    )
+                  ])
+
+    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+      .to receive(:registration_numbers)
+      .and_return([representative.representative_id])
+
+    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+      .to receive(:find)
+      .and_return(
+        AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships::Membership.new(
+          registration_number: representative.representative_id,
+          power_of_attorney_holder: AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
+            type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
+            poa_code:,
+            name: 'Test VSO',
+            can_accept_digital_poa_requests: true,
+            acceptance_mode: 'any_request'
+          )
+        )
+      )
+
+    allow(AccreditedRepresentativePortal::ClaimantRepresentative).to receive(:find)
+      .and_return(
+        AccreditedRepresentativePortal::ClaimantRepresentative.new(
+          claimant_id: SecureRandom.uuid,
+          accredited_individual_registration_number: representative.representative_id,
+          power_of_attorney_holder: AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
+            type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
+            poa_code:,
+            name: 'Test VSO',
+            can_accept_digital_poa_requests: true,
+            acceptance_mode: 'any_request'
+          )
+        )
+      )
+
     allow(AccreditedRepresentativePortal::ClaimantLookupService).to receive(:get_icn).with(
       'Derrick', 'Reid', '666468765', '1976-01-16'
     ).and_return(icn)
@@ -102,6 +150,11 @@ RSpec.describe AccreditedRepresentativePortal::V0::IntentToFileController, type:
       let(:poa_check_vcr_response) { '200_empty_response' }
       let(:test_user) { create(:representative_user, email: 'notallowed@example.com') }
 
+      before do
+        allow(AccreditedRepresentativePortal::ClaimantRepresentative).to receive(:find)
+          .and_return(nil)
+      end
+
       it 'returns 403' do
         get("/accredited_representative_portal/v0/intent_to_file/?benefitType=compensation&#{veteran_query_params}")
         expect(response).to have_http_status(:forbidden)
@@ -139,6 +192,11 @@ RSpec.describe AccreditedRepresentativePortal::V0::IntentToFileController, type:
       context 'rep does not have POA for claimant' do
         let(:poa_check_vcr_response) { '200_poa_check_survivor_empty_response' }
         let(:test_user) { create(:representative_user, email: 'notallowed@example.com') }
+
+        before do
+          allow(AccreditedRepresentativePortal::ClaimantRepresentative).to receive(:find)
+            .and_return(nil)
+        end
 
         it 'returns 403' do
           get("/accredited_representative_portal/v0/intent_to_file/?benefitType=survivor&#{survivor_query_params}")
@@ -272,6 +330,11 @@ RSpec.describe AccreditedRepresentativePortal::V0::IntentToFileController, type:
     context 'rep does not have POA for veteran' do
       let(:test_user) { create(:representative_user, email: 'notallowed@example.com') }
       let(:poa_check_vcr_response) { '200_empty_response' }
+
+      before do
+        allow(AccreditedRepresentativePortal::ClaimantRepresentative).to receive(:find)
+          .and_return(nil)
+      end
 
       it 'returns 403' do
         post('/accredited_representative_portal/v0/intent_to_file', params:)

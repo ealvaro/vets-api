@@ -34,7 +34,6 @@ module AccreditedRepresentativePortal
     end
 
     def authorize_with_individual_accept
-      return legacy_authorize unless individual_accept_enabled?
       return legacy_authorize unless @record.respond_to?(:power_of_attorney_holder_poa_code)
 
       return false unless record_org_participates?
@@ -47,10 +46,6 @@ module AccreditedRepresentativePortal
       return true if mode == 'any_request'
 
       self_only_allows?
-    end
-
-    def individual_accept_enabled?
-      Flipper.enabled?(:accredited_representative_portal_individual_accept_backend, @user)
     end
 
     def acceptance_mode_for_record_org

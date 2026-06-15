@@ -41,7 +41,8 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestDecisio
         type: 'veteran_service_organization',
         poa_code:,
         name: 'Org Name',
-        can_accept_digital_poa_requests: true
+        can_accept_digital_poa_requests: true,
+        acceptance_mode: 'any_request'
       )
     ]
   end
@@ -58,16 +59,14 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestDecisio
     allow(Flipper).to receive(:enabled?)
       .with(:accredited_representative_portal_killswitch)
       .and_return(false)
-    allow(Flipper).to receive(:enabled?)
-      .with(:accredited_representative_portal_individual_accept_backend, anything)
-      .and_return(false)
-    allow(Flipper).to receive(:enabled?)
-      .with(:accredited_representative_portal_individual_accept_backend)
-      .and_return(false)
 
     allow(Flipper).to receive(:enabled?)
       .with(:send_poa_to_corpdb)
       .and_return(true)
+
+    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+      .to receive(:empty?)
+      .and_return(false)
 
     allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
       .to receive(:power_of_attorney_holders)
@@ -76,6 +75,21 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestDecisio
     allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
       .to receive(:registration_numbers)
       .and_return([representative.representative_id])
+
+    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+      .to receive(:find)
+      .and_return(
+        AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships::Membership.new(
+          registration_number: representative.representative_id,
+          power_of_attorney_holder: AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
+            type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
+            poa_code:,
+            name: 'Org Name',
+            can_accept_digital_poa_requests: true,
+            acceptance_mode: 'any_request'
+          )
+        )
+      )
   end
 
   def stub_ar_monitoring(controller: 'power_of_attorney_request_decisions', action: 'create')
@@ -124,7 +138,8 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestDecisio
             type: 'veteran_service_organization',
             poa_code:,
             name: 'Org Name',
-            can_accept_digital_poa_requests: false
+            can_accept_digital_poa_requests: false,
+            acceptance_mode: 'any_request'
           )
         ]
       end

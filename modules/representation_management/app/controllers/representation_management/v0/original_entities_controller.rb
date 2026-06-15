@@ -10,7 +10,7 @@ module RepresentationManagement
       def index
         data = RepresentationManagement::OriginalEntityQuery.new(params[:query]).results
         orgs = data.select { |r| r.is_a?(Veteran::Service::Organization) }
-        any_request_poas = if Flipper.enabled?(:accredited_representative_portal_individual_accept) && orgs.any?
+        any_request_poas = if orgs.any?
                              RepresentationManagement::OrganizationWithAcceptanceCheck.any_request_poas_for(orgs)
                            else
                              Set.new

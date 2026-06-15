@@ -22,12 +22,26 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
     allow(Flipper).to receive(:enabled?)
       .with(:accredited_representative_portal_killswitch)
       .and_return(false)
-    allow(Flipper).to receive(:enabled?)
-      .with(:accredited_representative_portal_individual_accept_backend, anything)
+
+    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+      .to receive(:empty?)
       .and_return(false)
-    allow(Flipper).to receive(:enabled?)
-      .with(:accredited_representative_portal_individual_accept_backend)
-      .and_return(false)
+
+    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+      .to receive(:power_of_attorney_holders)
+      .and_return([
+                    AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
+                      type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
+                      poa_code:,
+                      name: 'Test VSO',
+                      can_accept_digital_poa_requests: true,
+                      acceptance_mode: 'any_request'
+                    )
+                  ])
+
+    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+      .to receive(:registration_numbers)
+      .and_return([representative.representative_id])
 
     test_user
     representative
@@ -75,20 +89,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
         expect(parsed_response['data'].map { |p| p['id'] }).not_to include(other_poa_request.id)
       end
 
-      context 'when individual accept feature flag is enabled (scope filtering)' do
-        before do
-          allow(Flipper).to receive(:enabled?)
-            .with(:accredited_representative_portal_individual_accept_backend, anything)
-            .and_return(true)
-          allow(Flipper).to receive(:enabled?)
-            .with(:accredited_representative_portal_individual_accept_backend)
-            .and_return(true)
-
-          allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
-            .to receive(:registration_numbers)
-            .and_return([representative.representative_id])
-        end
-
+      context 'with individual accept permissions (scope filtering)' do
         let!(:same_org_request_one) { create(:power_of_attorney_request, :with_veteran_claimant, poa_code:) }
         let!(:same_org_request_two) { create(:power_of_attorney_request, :with_veteran_claimant, poa_code:) }
 
@@ -121,6 +122,18 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
               acceptance_mode: 'self_only'
             )
 
+            allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+              .to receive(:power_of_attorney_holders)
+              .and_return([
+                            AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
+                              type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
+                              poa_code:,
+                              name: 'Test VSO',
+                              can_accept_digital_poa_requests: true,
+                              acceptance_mode: 'self_only'
+                            )
+                          ])
+
             poa_request.update!(accredited_individual_registration_number: representative.representative_id)
             same_org_request_one.update!(accredited_individual_registration_number: representative.representative_id)
             same_org_request_two.update!(accredited_individual_registration_number: '999999')
@@ -150,6 +163,18 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
               representative:,
               acceptance_mode: 'no_acceptance'
             )
+
+            allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+              .to receive(:power_of_attorney_holders)
+              .and_return([
+                            AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
+                              type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
+                              poa_code:,
+                              name: 'Test VSO',
+                              can_accept_digital_poa_requests: true,
+                              acceptance_mode: 'no_acceptance'
+                            )
+                          ])
           end
 
           it 'returns org requests with can_accept false' do
@@ -162,6 +187,16 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
         end
 
         context 'when org participates but acceptance_mode is blank (no org rep row)' do
+          before do
+            allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+              .to receive(:empty?)
+              .and_return(true)
+
+            allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+              .to receive(:power_of_attorney_holders)
+              .and_return([])
+          end
+
           it 'returns forbidden because rep has no active membership with the org' do
             get('/accredited_representative_portal/v0/power_of_attorney_requests')
 
@@ -340,6 +375,14 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
     context 'when user has no associated VSOs' do
       before do
         representative.destroy!
+
+        allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+          .to receive(:empty?)
+          .and_return(true)
+
+        allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+          .to receive(:power_of_attorney_holders)
+          .and_return([])
       end
 
       it 'returns 403 Forbidden' do
@@ -564,6 +607,18 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
     context 'when user\'s VSO does not accept digital POAs' do
       before do
         vso.update!(can_accept_digital_poa_requests: false)
+
+        allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+          .to receive(:power_of_attorney_holders)
+          .and_return([
+                        AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
+                          type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
+                          poa_code:,
+                          name: 'Test VSO',
+                          can_accept_digital_poa_requests: false,
+                          acceptance_mode: 'any_request'
+                        )
+                      ])
       end
 
       it 'returns 403 Forbidden' do
@@ -679,19 +734,6 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
 
     describe 'GET /accredited_representative_portal/v0/power_of_attorney_requests/:id' do
       context 'when user is authorized' do
-        before do
-          allow(Flipper).to receive(:enabled?).and_call_original
-          allow(Flipper).to receive(:enabled?)
-            .with(:accredited_representative_portal_killswitch)
-            .and_return(false)
-          allow(Flipper).to receive(:enabled?)
-            .with(:accredited_representative_portal_individual_accept_backend, anything)
-            .and_return(false)
-          allow(Flipper).to receive(:enabled?)
-            .with(:accredited_representative_portal_individual_accept_backend)
-            .and_return(false)
-        end
-
         it 'returns the details of the POA request' do
           get("/accredited_representative_portal/v0/power_of_attorney_requests/#{poa_request.id}")
 
@@ -700,18 +742,7 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
         end
       end
 
-      context 'when individual accept feature flag is enabled (record authorization)' do
-        before do
-          allow(Flipper).to receive(:enabled?)
-            .with(:accredited_representative_portal_individual_accept_backend, anything)
-            .and_return(true)
-          allow(Flipper).to receive(:enabled?)
-            .with(:accredited_representative_portal_individual_accept_backend)
-            .and_return(true)
-
-          allow(test_user).to receive(:registration_numbers).and_return([representative.representative_id])
-        end
-
+      context 'with individual accept permissions (record authorization)' do
         it 'allows show when acceptance_mode is any_request' do
           create(
             :veteran_organization_representative,
@@ -731,6 +762,18 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
             representative:,
             acceptance_mode: 'no_acceptance'
           )
+
+          allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+            .to receive(:power_of_attorney_holders)
+            .and_return([
+                          AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
+                            type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
+                            poa_code:,
+                            name: 'Test VSO',
+                            can_accept_digital_poa_requests: true,
+                            acceptance_mode: 'no_acceptance'
+                          )
+                        ])
 
           get("/accredited_representative_portal/v0/power_of_attorney_requests/#{poa_request.id}")
           expect(response).to have_http_status(:forbidden)
@@ -758,6 +801,18 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
             acceptance_mode: 'self_only'
           )
 
+          allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+            .to receive(:power_of_attorney_holders)
+            .and_return([
+                          AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
+                            type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
+                            poa_code:,
+                            name: 'Test VSO',
+                            can_accept_digital_poa_requests: true,
+                            acceptance_mode: 'self_only'
+                          )
+                        ])
+
           poa_request.update!(accredited_individual_registration_number: '999999')
 
           get("/accredited_representative_portal/v0/power_of_attorney_requests/#{poa_request.id}")
@@ -783,6 +838,18 @@ RSpec.describe AccreditedRepresentativePortal::V0::PowerOfAttorneyRequestsContro
       context "when user's VSO does not accept digital POAs" do
         before do
           vso.update!(can_accept_digital_poa_requests: false)
+
+          allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+            .to receive(:power_of_attorney_holders)
+            .and_return([
+                          AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
+                            type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
+                            poa_code:,
+                            name: 'Test VSO',
+                            can_accept_digital_poa_requests: false,
+                            acceptance_mode: 'any_request'
+                          )
+                        ])
         end
 
         # Record falls out of policy scope when org doesn't accept digital POA requests
