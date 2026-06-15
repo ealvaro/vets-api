@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'logging/helper/data_scrubber'
+
 module CheckIn
   ##
   # Sidekiq job responsible for sending SMS notifications related to travel claims.
@@ -97,12 +99,13 @@ module CheckIn
       sentry_context[:claim_number] = claim_number if claim_number
 
       # Use logging helper for class method context
-      logging_helper.log_exception_to_sentry(
-        ex,
-        sentry_context,
-        { error: :check_in_va_notify_job, team: 'check-in' }
+      Rails.logger.error(
+        scrub_pii(ex.message),
+        scrub_pii(sentry_context.merge({ error: :check_in_va_notify_job, team: 'check-in' }))
       )
-      Rails.logger.error("Travel Claim Notification retries exhausted: #{ex.message} - Context: #{sentry_context}")
+      Rails.logger.error(
+        scrub_pii("Travel Claim Notification retries exhausted: #{ex.message} - Context: #{sentry_context}")
+      )
 
       facility_type = determine_facility_type_from_template(template_id)
       log_failure_no_retry('Retries exhausted', { uuid:, phone_number:, template_id:, facility_type: })
@@ -194,6 +197,15 @@ module CheckIn
     end
 
     private
+
+    def scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
+    end
+
+    def self.scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
+    end
+    private_class_method :scrub_pii
 
     ##
     # Validates that all required fields are present

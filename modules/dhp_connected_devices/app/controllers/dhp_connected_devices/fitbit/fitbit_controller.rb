@@ -2,6 +2,7 @@
 
 require 'fitbit/client'
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 module DhpConnectedDevices
   module Fitbit
@@ -23,7 +24,7 @@ module DhpConnectedDevices
         VeteranDeviceRecordsService.create_or_activate(@current_user, device_key)
         redirect_with_status('success')
       rescue => e
-        Rails.logger.warn("Fitbit callback error: #{e}")
+        Rails.logger.warn(scrub_pii("Fitbit callback error: #{e}"))
         log_error(e)
         redirect_with_status('error')
       end
@@ -35,7 +36,7 @@ module DhpConnectedDevices
         VeteranDeviceRecordsService.deactivate(@current_user, device_key)
         redirect_with_status('disconnect-success')
       rescue => e
-        Rails.logger.warn("Fitbit disconnection error: #{e}")
+        Rails.logger.warn(scrub_pii("Fitbit disconnection error: #{e}"))
         log_error(e)
         redirect_with_status('disconnect-error')
       end
@@ -84,12 +85,11 @@ module DhpConnectedDevices
       end
 
       def log_error(error)
-        log_exception_to_sentry(
-          error,
-          {
-            icn: @current_user&.icn
-          }
-        )
+        Rails.logger.error(scrub_pii(error.message), scrub_pii({ user_account: @current_user.user_account }))
+      end
+
+      def scrub_pii(message)
+        Logging::Helper::DataScrubber.scrub(message)
       end
     end
   end

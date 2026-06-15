@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 module V2
   module Chip
@@ -126,13 +127,11 @@ module V2
           req.body = appointment_attributes.to_json
         end
       rescue => e
-        log_exception_to_sentry(e,
-                                {
-                                  original_body: e.original_body,
-                                  original_status: e.original_status,
-                                  uuid: check_in_session.uuid
-                                },
-                                { external_service: service_name, team: 'check-in' })
+        Rails.logger.error(scrub_pii(e.message), {
+          original_body: scrub_pii(e.original_body),
+          original_status: e.original_status,
+          uuid: check_in_session.uuid
+        }.merge({ external_service: service_name, team: 'check-in' }))
 
         raise e
       end
@@ -188,18 +187,20 @@ module V2
           req.headers = default_headers.merge('Authorization' => "Bearer #{token}")
         end
       rescue => e
-        log_exception_to_sentry(e,
-                                {
-                                  original_body: e.original_body,
-                                  original_status: e.original_status,
-                                  uuid: check_in_session.uuid
-                                },
-                                { external_service: service_name, team: 'check-in' })
+        Rails.logger.error(scrub_pii(e.message), {
+          original_body: scrub_pii(e.original_body),
+          original_status: e.original_status,
+          uuid: check_in_session.uuid
+        }.merge({ external_service: service_name, team: 'check-in' }))
 
         Faraday::Response.new(response_body: e.original_body, status: e.original_status)
       end
 
       private
+
+      def scrub_pii(message)
+        Logging::Helper::DataScrubber.scrub(message)
+      end
 
       ##
       # Create a Faraday connection object that glues the attributes

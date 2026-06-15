@@ -6,13 +6,6 @@ RSpec.describe 'DhpConnectedDevices::Fitbit', type: :request do
   let(:current_user) { build(:user, :loa1) }
   let(:user_without_icn) { build(:user, :loa1, icn: '') }
 
-  def expected_error_logged(error_class, current_user)
-    expect_any_instance_of(Vets::SharedLogging).to receive(:log_exception_to_sentry).with(
-      instance_of(error_class),
-      { icn: current_user.icn }
-    )
-  end
-
   before do
     allow(Flipper).to receive(:enabled?).and_call_original
   end
@@ -133,15 +126,15 @@ RSpec.describe 'DhpConnectedDevices::Fitbit', type: :request do
       let(:access_token) { '{"access_token":"token"}' }
 
       it 'logs errors to Sentry' do
-        allow_any_instance_of(Vets::SharedLogging).to receive(:log_exception_to_sentry).with(any_args)
+        allow(Rails.logger).to receive(:error)
 
-        expect_any_instance_of(Vets::SharedLogging).to receive(:log_exception_to_sentry)
+        expect(Rails.logger).to receive(:error).with(anything, hash_including(:user_account))
         expect(fitbit_callback('?error="error"')).to redirect_to error_path
       end
 
       it "redirects with 'fitbit=error' when authorization code is not received" do
         allow(fitbit_api).to receive(:get_auth_code).with(any_args).and_raise(missing_auth_error)
-        allow_any_instance_of(Vets::SharedLogging).to receive(:log_exception_to_sentry).with(any_args)
+        allow(Rails.logger).to receive(:error)
 
         expect(fitbit_api).not_to receive(:get_token)
         expect(token_storage_service).not_to receive(:store_tokens)
@@ -154,7 +147,7 @@ RSpec.describe 'DhpConnectedDevices::Fitbit', type: :request do
       it "redirects with 'fitbit=error' when authorization is given but token exchange is unsuccessful" do
         allow_any_instance_of(fitbit_client).to receive(:get_auth_code).with(any_args).and_return('889709')
         allow_any_instance_of(fitbit_client).to receive(:get_token).with(any_args).and_raise(token_exchange_error)
-        allow_any_instance_of(Vets::SharedLogging).to receive(:log_exception_to_sentry).with(any_args)
+        allow(Rails.logger).to receive(:error)
 
         expect(token_storage_service).not_to receive(:store_tokens)
 
@@ -165,7 +158,7 @@ RSpec.describe 'DhpConnectedDevices::Fitbit', type: :request do
         allow_any_instance_of(fitbit_client).to receive(:get_auth_code).with(any_args).and_return('889709')
         allow_any_instance_of(fitbit_client).to receive(:get_token).with(any_args).and_return(access_token)
         allow_any_instance_of(TokenStorageService).to receive(:store_tokens).with(any_args).and_raise(TokenStorageError)
-        allow_any_instance_of(Vets::SharedLogging).to receive(:log_exception_to_sentry).with(any_args)
+        allow(Rails.logger).to receive(:error)
 
         expect(fitbit_callback('?code=889709')).to redirect_to error_path
       end
@@ -211,7 +204,7 @@ RSpec.describe 'DhpConnectedDevices::Fitbit', type: :request do
 
         it 'redirects to frontend with disconnect-error code on device record not found error' do
           VeteranDeviceRecord.delete(@vdr)
-          expected_error_logged(ActiveRecord::RecordNotFound, current_user)
+          expect(Rails.logger).to receive(:error).with(anything, hash_including(:user_account))
           expect(fitbit_disconnect).to redirect_to @disconnect_error_path
         end
       end
@@ -223,7 +216,7 @@ RSpec.describe 'DhpConnectedDevices::Fitbit', type: :request do
         end
 
         it 'redirects to frontend with disconnect-error and logs TokenRetrievalError' do
-          expected_error_logged(TokenRetrievalError, current_user)
+          expect(Rails.logger).to receive(:error).with(anything, hash_including(:user_account))
           expect(fitbit_disconnect).to redirect_to @disconnect_error_path
         end
       end
@@ -236,7 +229,7 @@ RSpec.describe 'DhpConnectedDevices::Fitbit', type: :request do
         end
 
         it 'redirects to frontend with disconnect-error and logs TokenRevocationError' do
-          expected_error_logged(DhpConnectedDevices::Fitbit::TokenRevocationError, current_user)
+          expect(Rails.logger).to receive(:error).with(anything, hash_including(:user_account))
           expect(fitbit_disconnect).to redirect_to @disconnect_error_path
         end
       end
@@ -251,7 +244,7 @@ RSpec.describe 'DhpConnectedDevices::Fitbit', type: :request do
         end
 
         it 'redirects to frontend with disconnect-error and logs TokenDeletionError' do
-          expected_error_logged(TokenDeletionError, current_user)
+          expect(Rails.logger).to receive(:error).with(anything, hash_including(:user_account))
           expect(fitbit_disconnect).to redirect_to @disconnect_error_path
         end
       end

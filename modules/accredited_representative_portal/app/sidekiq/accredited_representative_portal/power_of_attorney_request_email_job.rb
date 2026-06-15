@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 module AccreditedRepresentativePortal
   class PowerOfAttorneyRequestEmailJob
@@ -15,7 +16,7 @@ module AccreditedRepresentativePortal
       error_message = msg['error_message']
 
       message = "#{job_class} retries exhausted"
-      Rails.logger.error(message, { job_id:, error_class:, error_message: })
+      Rails.logger.error(message, Logging::Helper::DataScrubber.scrub({ job_id:, error_class:, error_message: }))
       StatsD.increment("sidekiq.jobs.#{job_class.underscore}.retries_exhausted")
     end
 
@@ -40,19 +41,21 @@ module AccreditedRepresentativePortal
 
     def handle_backend_exception(e, template_id)
       if e.status_code == 400
-        log_exception_to_sentry(
-          e,
-          {
-            args: { template_id: }
-          },
-          { error: :accredited_representative_portal_power_of_attorney_request_email_job }
-        )
+        context = {
+          args: { template_id: }
+        }.merge({ error: :accredited_representative_portal_power_of_attorney_request_email_job })
+
+        Rails.logger.error(scrub_pii(e.message), scrub_pii(context))
       else
         raise e
       end
     end
 
     private
+
+    def scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
+    end
 
     def generate_personalisation(notification)
       case [notification.type, notification.recipient_type]

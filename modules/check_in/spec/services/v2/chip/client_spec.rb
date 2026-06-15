@@ -144,7 +144,7 @@ describe V2::Chip::Client do
       end
 
       it 'returns success response' do
-        expect_any_instance_of(Vets::SharedLogging).not_to receive(:log_exception_to_sentry)
+        expect(Rails.logger).not_to receive(:error)
 
         expect(subject.set_precheckin_started(token:)).to eq(resp)
       end
@@ -200,7 +200,7 @@ describe V2::Chip::Client do
       end
 
       it 'returns success response' do
-        expect_any_instance_of(Vets::SharedLogging).not_to receive(:log_exception_to_sentry)
+        expect(Rails.logger).not_to receive(:error)
 
         expect(subject.set_echeckin_started(token:, appointment_attributes:)).to eq(resp)
       end
@@ -216,7 +216,15 @@ describe V2::Chip::Client do
       end
 
       it 'handles the exception and returns original error' do
-        expect_any_instance_of(Vets::SharedLogging).to receive(:log_exception_to_sentry)
+        expect(Rails.logger).to receive(:error).with(
+          anything,
+          hash_including(
+            original_status: resp.status,
+            uuid: check_in_session.uuid,
+            external_service: subject.service_name,
+            team: 'check-in'
+          )
+        )
 
         expect { subject.set_echeckin_started(token:, appointment_attributes:) }
           .to raise_error Common::Exceptions::BackendServiceException
@@ -365,7 +373,15 @@ describe V2::Chip::Client do
       end
 
       it 'handles the exception and returns original error' do
-        expect_any_instance_of(Vets::SharedLogging).to receive(:log_exception_to_sentry)
+        expect(Rails.logger).to receive(:error).with(
+          anything,
+          hash_including(
+            original_status: resp.status,
+            uuid: check_in_session.uuid,
+            external_service: subject.service_name,
+            team: 'check-in'
+          )
+        )
 
         response = subject.delete(token:)
         expect(response.status).to eq(resp.status)

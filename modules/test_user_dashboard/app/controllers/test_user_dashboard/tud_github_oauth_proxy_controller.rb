@@ -2,6 +2,7 @@
 
 require 'faraday'
 require 'net/http'
+require 'logging/helper/data_scrubber'
 
 module TestUserDashboard
   class TudGithubOAuthProxyController < ApplicationController
@@ -12,11 +13,15 @@ module TestUserDashboard
       token = github_oauth_access_token_request(code:)
       render json: token
     rescue => e
-      log_exception_to_sentry(e, nil, nil, 'warn')
+      Rails.logger.error(scrub_pii(e.message))
       render nothing: true, status: :bad_request
     end
 
     private
+
+    def scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
+    end
 
     def github_oauth_access_token_request(code:)
       url = 'https://github.com/login/oauth/access_token'
