@@ -3,6 +3,7 @@
 require 'datadog'
 require 'timeout'
 require 'logging/third_party_transaction'
+require 'logging/helper/data_scrubber'
 require 'evss/failure_notification'
 require 'lighthouse/benefits_documents/constants'
 require 'lighthouse/benefits_documents/utilities/helpers'
@@ -101,7 +102,7 @@ class EVSS::DocumentUpload
                      tags: ['service:claim-status', "function: #{message}"])
   rescue => e
     error_message = "#{name} failed to update EvidenceSubmission"
-    ::Rails.logger.error(error_message, { message: e.message })
+    ::Rails.logger.error(error_message, scrub_pii({ message: e.message }))
     StatsD.increment('silent_failure', tags: ['service:claim-status', "function: #{error_message}"])
   end
 
@@ -116,9 +117,9 @@ class EVSS::DocumentUpload
     StatsD.increment('silent_failure_avoided_no_confirmation', tags: DD_ZSF_TAGS)
   rescue => e
     ::Rails.logger.error('EVSS::DocumentUpload exhaustion handler email error',
-                         { message: e.message })
+                         scrub_pii({ message: e.message }))
     StatsD.increment('silent_failure', tags: DD_ZSF_TAGS)
-    log_exception_to_sentry(e)
+    Rails.logger.error(scrub_pii(e.message))
   end
 
   # Update personalisation here since an evidence submission record was previously created
@@ -155,6 +156,10 @@ class EVSS::DocumentUpload
 
   def self.can_update_evidence_submission(evidence_submission)
     Flipper.enabled?(:cst_send_evidence_submission_failure_emails) && !evidence_submission.nil?
+  end
+
+  def self.scrub_pii(message)
+    Logging::Helper::DataScrubber.scrub(message)
   end
 
   private

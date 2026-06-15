@@ -3,6 +3,7 @@
 require 'vets/model'
 require 'pdf_info'
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 class EVSSClaimDocument
   include Vets::Model
@@ -147,7 +148,7 @@ class EVSSClaimDocument
     file_obj.tempfile.rewind
   rescue PdfInfo::MetadataReadError => e
     Rails.logger.info("MetadataReadError: Document for claim #{evss_claim_id}")
-    log_exception_to_sentry(e, nil, nil, 'warn')
+    Rails.logger.error(scrub_pii(e.message))
 
     if e.message.include?('Incorrect password')
       errors.add(:base, I18n.t('errors.messages.uploads.pdf.locked'))
@@ -173,5 +174,9 @@ class EVSSClaimDocument
 
     # remove all but the last "."  in the file name
     file_name.gsub!(/[.](?=.*[.])/, '')
+  end
+
+  def scrub_pii(message)
+    Logging::Helper::DataScrubber.scrub(message)
   end
 end

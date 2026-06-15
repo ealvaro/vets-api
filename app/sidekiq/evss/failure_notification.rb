@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 class EVSS::FailureNotification
   include Sidekiq::Job
@@ -35,7 +36,12 @@ class EVSS::FailureNotification
     ::Rails.logger.info('EVSS::FailureNotification email sent')
   rescue => e
     ::Rails.logger.error('EVSS::FailureNotification email error',
-                         { message: e.message })
-    log_exception_to_sentry(e)
+                         scrub_pii({ message: e.message }))
+  end
+
+  private
+
+  def scrub_pii(message)
+    Logging::Helper::DataScrubber.scrub(message)
   end
 end

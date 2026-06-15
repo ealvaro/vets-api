@@ -3,6 +3,7 @@
 require 'net/sftp'
 require 'vets/shared_logging'
 require 'sftp_writer/factory'
+require 'logging/helper/data_scrubber'
 
 module EducationForm
   class FormattingError < StandardError
@@ -215,7 +216,7 @@ module EducationForm
     end
 
     def log_exception(exception, region = nil, send_email: true)
-      log_exception_to_sentry(exception)
+      Rails.logger.error(scrub_pii(exception.message))
       log_to_slack(exception.to_s)
       log_to_email(region) if send_email
     end
@@ -246,6 +247,10 @@ module EducationForm
 
     def local_or_staging_env?
       Rails.env.eql?('development') || Settings.hostname.eql?('staging-api.va.gov')
+    end
+
+    def scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
     end
   end
 end

@@ -357,8 +357,8 @@ RSpec.describe EducationForm::CreateDailySpoolFiles, form: :education_benefits, 
         expect(SFTPWriter::Local).to receive(:new).exactly(6).and_return(local_mock)
         expect(local_mock).to receive(:write).exactly(6).times.and_raise('boom')
         expect(local_mock).to receive(:close).once.and_return(true)
-        expect(subject).to receive(:log_exception_to_sentry).exactly(6)
-                                                            .times.with(instance_of(EducationForm::DailySpoolFileError))
+        expect(Rails.logger).to receive(:error).exactly(6)
+                                               .times.with(instance_of(String))
 
         subject.perform
       end

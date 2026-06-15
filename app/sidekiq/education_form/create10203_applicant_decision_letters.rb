@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 module EducationForm
   class FormattingError < StandardError
@@ -46,11 +47,15 @@ module EducationForm
       region = EducationFacility.facility_for(region: :eastern)
       StatsD.increment("worker.education_benefits_claim.applicant_denial_letter.#{region}.22-#{claim.form_type}")
       exception = FormattingError.new("Could not email denial letter for #{claim.confirmation_number}.\n\n#{error}")
-      log_exception_to_sentry(exception)
+      Rails.logger.error(scrub_pii(exception.message))
     end
 
     def log_info(message)
       logger.info(message)
+    end
+
+    def scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
     end
   end
 end

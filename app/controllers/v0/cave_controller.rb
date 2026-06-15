@@ -260,21 +260,17 @@ module V0
     end
 
     def report_service_error_to_sentry(error:, status_code:, error_code:)
-      log_exception_to_sentry(
-        error,
-        {
-          cave_document_id: params[:id],
-          cave_endpoint: request.path,
-          cave_request_id: request.request_id,
-          cave_upstream_status: error.upstream_status_code,
-          cave_mapped_status: status_code
-        }.compact,
-        {
-          error_type: error.error_type,
-          operation: error.operation,
-          error_code:
-        }.compact
-      )
+      Rails.logger.error(error.message, {
+        cave_document_id: params[:id],
+        cave_endpoint: request.path,
+        cave_request_id: request.request_id,
+        cave_upstream_status: error.upstream_status_code,
+        cave_mapped_status: status_code
+      }.compact.merge({
+        error_type: error.error_type,
+        operation: error.operation,
+        error_code:
+      }.compact))
     end
 
     def error_title(status_code)

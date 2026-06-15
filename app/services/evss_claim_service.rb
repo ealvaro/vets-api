@@ -6,6 +6,7 @@ require 'evss/auth_headers'
 require 'lighthouse/benefits_documents/constants'
 require 'lighthouse/benefits_documents/utilities/helpers'
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 # EVSS Claims Status Tool
 class EVSSClaimService
@@ -78,7 +79,7 @@ class EVSSClaimService
       source: 'EVSSClaimService.upload_document'
     )
   rescue CarrierWave::IntegrityError => e
-    log_exception_to_sentry(e, nil, nil, 'warn')
+    Rails.logger.error(scrub_pii(e.message))
 
     raise Common::Exceptions::UnprocessableEntity.new(detail: e.message, source: 'EVSSClaimService.upload_document')
   end
@@ -178,5 +179,9 @@ class EVSSClaimService
     return unless Flipper.enabled?(:cst_send_evidence_submission_failure_emails)
 
     create_initial_evidence_submission(evss_claim_document).id
+  end
+
+  def scrub_pii(message)
+    Logging::Helper::DataScrubber.scrub(message)
   end
 end

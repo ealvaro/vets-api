@@ -30,7 +30,7 @@ RSpec.describe BGS::People::Service do
       let(:participant_id) { '11111111111' }
       let(:expected_error) { BGS::People::Service::VAFileNumberNotFound.new }
       let(:expected_error_message_icn) { { icn: user.icn } }
-      let(:expected_error_message_team) { { team: } }
+      let(:expected_error_message_team) { { user_account: user.user_account, team: } }
       let(:team) { 'vfs-ebenefits' }
 
       it 'returns a bgs people response without a found record' do
@@ -47,9 +47,7 @@ RSpec.describe BGS::People::Service do
       it 'logs an exception to sentry' do
         VCR.use_cassette('bgs/people_service/no_person_data') do
           service = BGS::People::Service.new(user)
-          expect(service).to receive(:log_exception_to_sentry).with(expected_error,
-                                                                    expected_error_message_icn,
-                                                                    expected_error_message_team)
+          expect(Rails.logger).to receive(:error).with(expected_error.message, expected_error_message_team)
           service.find_person_by_participant_id
         end
       end
@@ -58,7 +56,7 @@ RSpec.describe BGS::People::Service do
     context 'bgs server error' do
       let(:server_error) { StandardError }
       let(:expected_error_message_icn) { { icn: user.icn } }
-      let(:expected_error_message_team) { { team: } }
+      let(:expected_error_message_team) { { user_account: user.user_account, team: } }
       let(:team) { 'vfs-ebenefits' }
       let(:status) { :error }
 
@@ -68,9 +66,7 @@ RSpec.describe BGS::People::Service do
 
       it 'logs an exception to sentry' do
         service = BGS::People::Service.new(user)
-        expect(service).to receive(:log_exception_to_sentry).with(server_error,
-                                                                  expected_error_message_icn,
-                                                                  expected_error_message_team)
+        expect(Rails.logger).to receive(:error).with(be_a(String), expected_error_message_team)
         service.find_person_by_participant_id
       end
 

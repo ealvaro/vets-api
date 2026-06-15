@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 ###########################################################################################
 # This class is deprecated in favor of modules/va_notify/app/sidekiq/va_notify/email_job.rb
@@ -26,13 +27,16 @@ class VANotifyEmailJob
     )
   rescue VANotify::Error => e
     if e.status_code == 400
-      log_exception_to_sentry(
-        e,
-        { args: { template_id:, personalisation: } },
-        { error: :va_notify_email_job }
-      )
+      Rails.logger.error(scrub_pii(e.message),
+                         scrub_pii({ args: { template_id:, personalisation: } }.merge({ error: :va_notify_email_job })))
     else
       raise e
     end
+  end
+
+  private
+
+  def scrub_pii(message)
+    Logging::Helper::DataScrubber.scrub(message)
   end
 end

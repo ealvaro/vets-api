@@ -3,6 +3,7 @@
 require 'datadog'
 require 'timeout'
 require 'lighthouse/benefits_documents/worker_service'
+require 'logging/helper/data_scrubber'
 require 'lighthouse/benefits_documents/constants'
 require 'lighthouse/benefits_documents/utilities/helpers'
 
@@ -74,7 +75,7 @@ module Lighthouse
         add_log('FAILED', evidence_submission.claim_id, evidence_submission.id, msg['jid'])
       rescue => e
         error_message = "#{name} failed to update EvidenceSubmission"
-        ::Rails.logger.error(error_message, { message: e.message })
+        ::Rails.logger.error(error_message, scrub_pii({ message: e.message }))
         StatsD.increment('silent_failure', tags: ['service:claim-status', "function: #{error_message}"])
       end
 
@@ -88,9 +89,9 @@ module Lighthouse
         ::Rails.logger.info("#{name} exhaustion handler email queued")
       rescue => e
         ::Rails.logger.error("#{name} exhaustion handler email error",
-                             { message: e.message })
+                             scrub_pii({ message: e.message }))
         StatsD.increment('silent_failure', tags: ['service:claim-status', 'function: evidence upload to Lighthouse'])
-        log_exception_to_sentry(e)
+        Rails.logger.error(scrub_pii(e.message))
       end
 
       # Update personalisation here since an evidence submission record was previously created
@@ -127,6 +128,10 @@ module Lighthouse
 
       def self.can_update_evidence_submission(evidence_submission)
         Flipper.enabled?(:cst_send_evidence_submission_failure_emails) && !evidence_submission.nil?
+      end
+
+      def self.scrub_pii(message)
+        Logging::Helper::DataScrubber.scrub(message)
       end
 
       private

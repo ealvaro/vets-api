@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 require 'sidekiq'
 require 'lighthouse/benefits_documents/constants'
@@ -65,9 +66,14 @@ module Lighthouse
 
       def record_email_send_failure(upload, error)
         error_message = "#{upload.job_class} va notify failure email errored"
-        ::Rails.logger.error(error_message, { message: error.message })
+        ::Rails.logger.error(error_message, scrub_pii({ message: error.message }))
         StatsD.increment('silent_failure', tags: ['service:claim-status', "function: #{error_message}"])
-        log_exception_to_sentry(error)
+      end
+
+      private
+
+      def scrub_pii(message)
+        Logging::Helper::DataScrubber.scrub(message)
       end
     end
   end

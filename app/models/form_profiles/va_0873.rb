@@ -2,6 +2,7 @@
 
 require 'va_profile/demographics/service'
 require 'vets/model'
+require 'logging/helper/data_scrubber'
 
 module VA0873
   FORM_ID = '0873'
@@ -98,10 +99,14 @@ class FormProfiles::VA0873 < FormProfile
     handle_exception(e, :school_name)
   end
 
-  # Logs the exception to Sentry and returns an empty object as a fallback
+  # Logs the exception to Rails and returns an empty object as a fallback
   def handle_exception(exception, context)
-    log_exception_to_sentry(exception, {}, prefill: context)
+    Rails.logger.error(scrub_pii(exception.message), { prefill: context })
     {}
+  end
+
+  def scrub_pii(message)
+    Logging::Helper::DataScrubber.scrub(message)
   end
 
   def extract_service_number

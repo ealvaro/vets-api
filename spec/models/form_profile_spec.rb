@@ -1303,9 +1303,7 @@ RSpec.describe FormProfile, type: :model do
         let(:v10_10_ezr_expected) { ezr_prefilled_data_without_ee_data.merge('nonPrefill' => {}) }
 
         it 'prefills the rest of the data and logs exception to sentry' do
-          expect_any_instance_of(FormProfiles::VA1010ezr).to receive(:log_exception_to_sentry).with(
-            instance_of(VCR::Errors::UnhandledHTTPRequestError)
-          )
+          expect(Rails.logger).to receive(:error).with(instance_of(String))
           expect_prefilled('10-10EZR')
         end
       end

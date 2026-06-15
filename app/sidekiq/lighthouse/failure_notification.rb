@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 class Lighthouse::FailureNotification
   include Sidekiq::Job
@@ -40,7 +41,13 @@ class Lighthouse::FailureNotification
     ::Rails.logger.info('Lighthouse::FailureNotification email sent')
   rescue => e
     ::Rails.logger.error('Lighthouse::FailureNotification email error',
-                         { message: e.message })
-    log_exception_to_sentry(e)
+                         scrub_pii({ message: e.message }))
+    Rails.logger.error(scrub_pii(e.message))
+  end
+
+  private
+
+  def scrub_pii(message)
+    Logging::Helper::DataScrubber.scrub(message)
   end
 end

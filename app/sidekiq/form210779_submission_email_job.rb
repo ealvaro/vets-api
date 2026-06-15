@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 class Form210779SubmissionEmailJob
   include Sidekiq::Job
@@ -87,7 +88,7 @@ class Form210779SubmissionEmailJob
     Rails.logger.error('Form210779SubmissionEmailJob failed to send confirmation email',
                        error: error.class.name,
                        saved_claim_id:)
-    log_exception_to_sentry(error, { saved_claim_id: }, { error: :form210779_submission_email_job })
+    Rails.logger.error(scrub_pii(error.message), { saved_claim_id: }.merge({ error: :form210779_submission_email_job }))
   end
 
   def notify_client
@@ -157,5 +158,9 @@ class Form210779SubmissionEmailJob
       'date_submitted' => date_str,
       'form_name' => '21-0779'
     }.compact
+  end
+
+  def scrub_pii(message)
+    Logging::Helper::DataScrubber.scrub(message)
   end
 end

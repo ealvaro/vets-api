@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'hca/enrollment_eligibility/service'
+require 'logging/helper/data_scrubber'
 
 class FormProfiles::VA1010ezr < FormProfile
   def metadata
@@ -16,7 +17,7 @@ class FormProfiles::VA1010ezr < FormProfile
       begin
         HCA::EnrollmentEligibility::Service.new.get_ezr_data(user)
       rescue => e
-        log_exception_to_sentry(e)
+        Rails.logger.error(scrub_pii(e.message))
         OpenStruct.new
       end
   end
@@ -24,5 +25,11 @@ class FormProfiles::VA1010ezr < FormProfile
   def clean!(hash)
     hash.deep_transform_keys! { |k| k.camelize(:lower) }
     Common::HashHelpers.deep_compact(hash)
+  end
+
+  private
+
+  def scrub_pii(message)
+    Logging::Helper::DataScrubber.scrub(message)
   end
 end

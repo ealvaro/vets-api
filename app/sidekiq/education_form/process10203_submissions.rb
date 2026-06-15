@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 module EducationForm
   class FormattingError < StandardError
@@ -159,11 +160,15 @@ module EducationForm
                   else
                     FormattingError.new("Could not format #{claim.confirmation_number}")
                   end
-      log_exception_to_sentry(exception)
+      Rails.logger.error(scrub_pii(exception.message))
     end
 
     def log_info(message)
       logger.info(message)
+    end
+
+    def scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
     end
   end
 end

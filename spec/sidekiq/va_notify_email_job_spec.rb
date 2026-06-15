@@ -31,21 +31,19 @@ RSpec.describe VANotifyEmailJob, type: :model do
       it 'rescues and logs the error' do
         VCR.use_cassette('va_notify/bad_request_invalid_template_id') do
           job = described_class.new
-          expect(job).to receive(:log_exception_to_sentry).with(
-            instance_of(VANotify::BadRequest),
+          # VANotify::Error#log_error fires inside VaNotify::Service#handle_error before the error is
+          # raised. Suppressing it here so it doesn't interfere with the Rails.logger expectation below.
+          allow_any_instance_of(VANotify::Error).to receive(:log_error)
+          expect(Rails.logger).to receive(:error).with(
+            instance_of(String),
             {
               args: {
                 template_id:,
                 personalisation: nil
-              }
-            },
-            {
+              },
               error: :va_notify_email_job
             }
           )
-          # expect(job).to receive(:log_exception_to_rails).with(
-          #   instance_of(VANotify::BadRequest)
-          # )
 
           job.perform(email, template_id)
         end

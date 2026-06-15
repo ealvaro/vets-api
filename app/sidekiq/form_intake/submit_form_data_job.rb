@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 module FormIntake
   # Sidekiq job to submit form data to GCIO digitization API
@@ -63,20 +64,18 @@ module FormIntake
     end
 
     def handle_record_not_found(form_submission_id, benefits_intake_uuid, error)
-      Rails.logger.warn('Form submission deleted during job execution', {
-                          form_submission_id:,
-                          benefits_intake_uuid:,
-                          error: error.message
-                        })
+      Rails.logger.warn('Form submission deleted during job execution', scrub_pii({
+                                                                                    form_submission_id:,
+                                                                                    benefits_intake_uuid:,
+                                                                                    error: error.message
+                                                                                  }))
     end
 
     def handle_and_log_unexpected_error(error)
       handle_unexpected_error(error)
-      log_exception_to_sentry(error, {
-                                form_submission_id: @form_submission&.id,
-                                form_type: @form_submission&.form_type,
-                                benefits_intake_uuid: @benefits_intake_uuid
-                              })
+      Rails.logger.error(scrub_pii(error.message),
+                         { form_submission_id: @form_submission&.id, form_type: @form_submission&.form_type,
+                           benefits_intake_uuid: @benefits_intake_uuid })
     end
 
     private
@@ -89,7 +88,7 @@ module FormIntake
       mapper_class = FormIntake::Mappers::Registry.mapper_for(@form_submission.form_type)
       mapper_class.new(@form_submission, @benefits_intake_uuid)
     rescue FormIntake::Mappers::MappingNotFoundError => e
-      Rails.logger.error('Mapper not found', error: e.message, form_type: @form_submission.form_type)
+      Rails.logger.error('Mapper not found', scrub_pii({ error: e.message, form_type: @form_submission.form_type }))
       nil
     end
 
@@ -168,19 +167,19 @@ module FormIntake
 
       Rails.logger.error(
         'GCIO submission non-retryable error',
-        form_submission_id: @form_submission.id,
-        form_intake_submission_id: @form_intake_submission.id,
-        error: error_message,
-        status_code:,
-        benefits_intake_uuid: @benefits_intake_uuid
+        scrub_pii({
+                    form_submission_id: @form_submission.id,
+                    form_intake_submission_id: @form_intake_submission.id,
+                    error: error_message,
+                    status_code:,
+                    benefits_intake_uuid: @benefits_intake_uuid
+                  })
       )
 
       # Log non-retryable errors to Sentry for visibility
-      log_exception_to_sentry(error, {
-                                form_submission_id: @form_submission.id,
-                                form_type: @form_submission.form_type,
-                                status_code:
-                              })
+      Rails.logger.error(scrub_pii(error.message),
+                         { form_submission_id: @form_submission.id, form_type: @form_submission.form_type,
+                           status_code: })
 
       StatsD.increment("#{STATSD_KEY_PREFIX}.non_retryable_error",
                        tags: tags + ["status:#{status_code}"])
@@ -192,13 +191,15 @@ module FormIntake
       # Retryable error - log as warning (will be retried by Sidekiq)
       Rails.logger.warn(
         'GCIO submission retryable error - will retry',
-        form_submission_id: @form_submission.id,
-        form_intake_submission_id: @form_intake_submission.id,
-        error: error_message,
-        status_code:,
-        retry_count: @form_intake_submission.retry_count,
-        max_retries: 16,
-        benefits_intake_uuid: @benefits_intake_uuid
+        scrub_pii({
+                    form_submission_id: @form_submission.id,
+                    form_intake_submission_id: @form_intake_submission.id,
+                    error: error_message,
+                    status_code:,
+                    retry_count: @form_intake_submission.retry_count,
+                    max_retries: 16,
+                    benefits_intake_uuid: @benefits_intake_uuid
+                  })
       )
 
       StatsD.increment("#{STATSD_KEY_PREFIX}.retryable_error",
@@ -210,11 +211,13 @@ module FormIntake
     def handle_unexpected_error(error)
       Rails.logger.error(
         'GCIO submission unexpected error',
-        form_submission_id: @form_submission.id,
-        form_intake_submission_id: @form_intake_submission&.id,
-        error_class: error.class.name,
-        error: error.message,
-        benefits_intake_uuid: @benefits_intake_uuid
+        scrub_pii({
+                    form_submission_id: @form_submission.id,
+                    form_intake_submission_id: @form_intake_submission&.id,
+                    error_class: error.class.name,
+                    error: error.message,
+                    benefits_intake_uuid: @benefits_intake_uuid
+                  })
       )
 
       StatsD.increment("#{STATSD_KEY_PREFIX}.unexpected_error",
@@ -249,6 +252,10 @@ module FormIntake
       ]
     end
 
+    def scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
+    end
+
     class << self
       def handle_exhaustion(form_submission_id, error_message)
         form_intake_submission = FormIntakeSubmission.find_by(form_submission_id:)
@@ -270,10 +277,12 @@ module FormIntake
       def log_exhaustion(form_submission_id, form_intake_submission, error_message)
         Rails.logger.error(
           'GCIO submission retries exhausted',
-          form_submission_id:,
-          form_intake_submission_id: form_intake_submission.id,
-          error: error_message,
-          retry_count: form_intake_submission.retry_count
+          scrub_pii({
+                      form_submission_id:,
+                      form_intake_submission_id: form_intake_submission.id,
+                      error: error_message,
+                      retry_count: form_intake_submission.retry_count
+                    })
         )
       end
 
@@ -290,10 +299,16 @@ module FormIntake
       def log_exhaustion_handler_error(form_submission_id, error)
         Rails.logger.error(
           'Error in FormIntake::SubmitFormDataJob exhaustion handler',
-          form_submission_id:,
-          error: error.message,
-          backtrace: error.backtrace&.first(5)
+          scrub_pii({
+                      form_submission_id:,
+                      error: error.message,
+                      backtrace: error.backtrace&.first(5)
+                    })
         )
+      end
+
+      def scrub_pii(message)
+        Logging::Helper::DataScrubber.scrub(message)
       end
     end
   end
