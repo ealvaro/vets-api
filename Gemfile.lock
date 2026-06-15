@@ -359,7 +359,7 @@ GEM
       deep_merge (~> 1.2, >= 1.2.1)
       ostruct
     connection_pool (2.5.5)
-    console1984 (0.2.2)
+    console1984 (0.2.4)
       irb (~> 1.13)
       parser
       rails (>= 7.0)
@@ -1228,10 +1228,10 @@ GEM
       crack (>= 0.3.2)
       hashdiff (>= 0.4.0, < 2.0.0)
     webrick (1.9.2)
-    websocket-driver (0.8.0)
+    websocket-driver (0.8.1)
       base64
       websocket-extensions (>= 0.1.0)
-    websocket-driver (0.8.0-java)
+    websocket-driver (0.8.1-java)
       base64
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
