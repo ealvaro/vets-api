@@ -80,6 +80,12 @@ module SimpleFormsApi
       data['email_address'].presence
     end
 
+    def track_user_identity(confirmation_number)
+      identity = 'submission'
+      StatsD.increment("#{STATS_KEY}.#{identity}")
+      Rails.logger.info('Simple forms api - 21-0788 submission user identity', identity:, confirmation_number:)
+    end
+
     def ssn
       data['ssn']
     end

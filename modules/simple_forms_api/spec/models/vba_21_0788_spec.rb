@@ -97,6 +97,21 @@ RSpec.describe SimpleFormsApi::VBA210788 do
     end
   end
 
+  describe '#track_user_identity' do
+    it 'tracks the 21-0788 submission identity' do
+      confirmation_number = 'ABC123'
+
+      expect(StatsD).to receive(:increment).with('api.simple_forms_api.21_0788.submission')
+      expect(Rails.logger).to receive(:info).with(
+        'Simple forms api - 21-0788 submission user identity',
+        identity: 'submission',
+        confirmation_number:
+      )
+
+      described_class.new({}).track_user_identity(confirmation_number)
+    end
+  end
+
   describe '#full_address' do
     subject { form.full_address }
 
