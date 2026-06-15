@@ -10,6 +10,7 @@ module Forms
 
         def merge_record(submission_map, api_status)
           status_record = OpenStruct.new(
+            id: api_status[:id],
             form_type: '10-10EZ',
             status: api_status[:status],
             created_at: parse_date(api_status[:created_at]),

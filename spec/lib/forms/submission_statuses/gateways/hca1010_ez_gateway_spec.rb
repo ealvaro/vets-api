@@ -32,7 +32,12 @@ describe Forms::SubmissionStatuses::Gateways::Hca1010EzGateway,
       expect(HealthCareApplication).to receive(:enrollment_status).with(user_account.icn, true).and_return(result)
       gateway = described_class.new(user_account:)
 
-      expected_status = { status: :received, created_at:, updated_at: }
+      expected_status = {
+        id: user_account.id,
+        status: :received,
+        created_at:,
+        updated_at:
+      }
       expect(gateway.api_statuses([user_account])).to eq([[expected_status], nil])
     end
 
@@ -49,7 +54,12 @@ describe Forms::SubmissionStatuses::Gateways::Hca1010EzGateway,
       expect(HealthCareApplication).to receive(:enrollment_status).with(user_account.icn, true).and_return(result)
       gateway = described_class.new(user_account:)
 
-      expected_status = { status: :in_progress, created_at:, updated_at: }
+      expected_status = {
+        id: user_account.id,
+        status: :in_progress,
+        created_at:,
+        updated_at:
+      }
       expect(gateway.api_statuses([user_account])).to eq([[expected_status], nil])
     end
 

@@ -36,6 +36,7 @@ describe Forms::SubmissionStatuses::Formatters::Hca1010EzFormatter,
     let(:statuses_data) do
       [
         {
+          id: current_user.id,
           status: 'received',
           created_at: '2018-12-27T00:00:00.000-06:00',
           updated_at: '2018-12-27T17:15:39.000-06:00'
@@ -58,6 +59,7 @@ describe Forms::SubmissionStatuses::Formatters::Hca1010EzFormatter,
       expect(result.size).to eq(1)
       record = result.first
 
+      expect(record.id).to eq(current_user.id)
       expect(record.form_type).to eq('10-10EZ')
       expect(record.status).to eq('received')
       expect(record.created_at).to be_a(Time)

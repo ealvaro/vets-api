@@ -29,7 +29,14 @@ module Forms
 
           return [nil, nil] unless status
 
-          [[{ status:, created_at: record[:application_date], updated_at: record[:enrollment_date] }], nil]
+          api_status_result = {
+            id: submitted_current_user.id,
+            status:,
+            created_at: record[:application_date],
+            updated_at: record[:enrollment_date]
+          }
+
+          [[api_status_result], nil]
         rescue => e
           [nil, [e.message]]
         end
