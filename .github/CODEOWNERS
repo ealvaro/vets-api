@@ -311,7 +311,6 @@ app/models/messaging_signature.rb @software/vfs-mhv-integration @software/backen
 app/models/mhv_metrics_unique_user_event.rb @software/vfs-mhv-integration @software/backend-review-group
 app/models/mhv_opt_in_flag.rb @software/vfs-mhv-integration @software/backend-review-group @software/octo-identity
 app/models/mhv_user_account.rb @software/octo-identity
-app/models/mhv/mr @software/vfs-mhv-integration @software/backend-review-group
 app/models/mpi_data.rb @software/octo-identity
 app/models/old_email.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 app/models/onsite_notification.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
@@ -1916,7 +1915,6 @@ spec/models/message_spec.rb @software/vfs-mhv-integration @software/backend-revi
 spec/models/mhv_metrics_unique_user_event_spec.rb @software/vfs-mhv-integration @software/backend-review-group
 spec/models/mhv_opt_in_flag_spec.rb @software/vfs-mhv-integration @software/backend-review-group
 spec/models/mhv_user_account_spec.rb @software/octo-identity
-spec/models/mhv/mr @software/vfs-mhv-integration @software/backend-review-group
 spec/models/mpi_data_spec.rb @software/octo-identity
 spec/models/onsite_notification_spec.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 spec/models/persistent_attachments @software/benefits-non-disability @software/pension-and-burials @software/backend-review-group

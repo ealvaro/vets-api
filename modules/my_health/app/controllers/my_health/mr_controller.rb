@@ -8,7 +8,6 @@ require 'medical_records/lighthouse_client'
 module MyHealth
   class MRController < ApplicationController
     include MyHealth::MHVControllerConcerns
-    include JsonApiPaginationLinks
     service_tag 'mhv-medical-records'
 
     # skip_before_action :authenticate

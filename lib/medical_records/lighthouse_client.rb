@@ -40,9 +40,9 @@ module MedicalRecords
     end
 
     ##
-    # @param _uuid [String] an unused parameter for compatibility with the base client
+    # List allergies from Lighthouse
     #
-    def list_allergies(_uuid)
+    def list_allergies
       bundle = lighthouse_client.list_allergy_intolerances
       bundle = Oj.load(bundle[:body].to_json, symbol_keys: true)
       sort_bundle(bundle, :recordedDate, :desc)
@@ -106,22 +106,6 @@ module MedicalRecords
       merged_bundle.total = merged_bundle.entry.count
 
       merged_bundle
-    end
-
-    ##
-    # Apply pagination to the entries in a FHIR::Bundle object. This assumes sorting has already taken place.
-    #
-    # @param entries a list of FHIR objects
-    # @param page_size [Fixnum] page size
-    # @param page_num [Fixnum] which page to return
-    #
-    def paginate_bundle_entries(entries, page_size, page_num)
-      start_index = (page_num - 1) * page_size
-      end_index = start_index + page_size
-      paginated_entries = entries[start_index...end_index]
-
-      # Return the paginated result or an empty array if no entries
-      paginated_entries || []
     end
 
     ##

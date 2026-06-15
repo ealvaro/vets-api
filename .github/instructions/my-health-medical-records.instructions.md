@@ -304,35 +304,6 @@ module MyHealth
 end
 ```
 
-### Controller Pattern with Pagination Support (Experimental)
-
-```ruby
-module MyHealth
-  module V1
-    class AllergiesController < MRController
-      def index
-        if Flipper.enabled?(:mhv_medical_records_support_new_model_allergy)
-          use_cache = params.key?(:use_cache) ?
-            ActiveModel::Type::Boolean.new.cast(params[:use_cache]) : true
-
-          with_patient_resource(client.list_allergies(@current_user.uuid, use_cache:)) do |resource|
-            resource = resource.sort
-            if pagination_params[:per_page]
-              resource = resource.paginate(**pagination_params)
-              links = pagination_links(resource)
-            end
-            options = { meta: resource.metadata, links: }
-            render json: AllergySerializer.new(resource.data, options)
-          end
-        else
-          render_resource client.list_allergies(@current_user.uuid)
-        end
-      end
-    end
-  end
-end
-```
-
 ### Client Usage Pattern
 
 ```ruby
@@ -426,16 +397,6 @@ end
 
 - Enables new eligibility verification via UserEligibility::Client
 - Replaces account type check with SM user eligibility check
-
-**`:mhv_medical_records_support_new_model_allergy`** (Experimental)
-
-- Enables new allergies model with pagination support
-- Not yet fully implemented
-
-**`:mhv_medical_records_support_backend_pagination_allergy`**
-
-- Enables caching for allergy data when using new model
-- Works with `:mhv_medical_records_support_new_model_allergy`
 
 **Usage Pattern:**
 
