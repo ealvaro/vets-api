@@ -3629,6 +3629,12 @@ features:
   survivors_benefits_facility_selector:
     actor_type: user
     description: Enables facility selector for survivors benefits form (Form 21P-534EZ)
+  survivors_benefits_bpds_service_enabled:
+    actor_type: user
+    description: Enables the BPDS service for Survivors Benefits (21P-534EZ)
+  survivors_benefits_bpds_submit_after_vbms:
+    actor_type: user
+    description: When enabled, BPDS submission for Survivors Benefits is enqueued from the SubmissionHandler after VBMS upload success instead of from the controller
   sob_claimant_service:
     actor_type: user
     description: If enabled, use the new claimant service for SOB

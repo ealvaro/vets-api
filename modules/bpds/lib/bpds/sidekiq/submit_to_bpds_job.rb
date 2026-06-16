@@ -36,7 +36,8 @@ module BPDS
 
       # Registry mapping form IDs to their formatter classes
       FORMATTERS = {
-        '21P-530EZ' => 'Burials::BPDS::Formatter'
+        '21P-530EZ' => 'Burials::BPDS::Formatter',
+        '21P-534EZ' => 'SurvivorsBenefits::BPDS::Formatter'
       }.freeze
 
       # Submits a saved claim to the BPDS service if the feature is enabled.
