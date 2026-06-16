@@ -384,7 +384,8 @@ module PdfFill
             key: 'vaco5655[0].#subform[1].Field136[0]',
             question_num: 36,
             question_text: 'Additional Comments',
-            limit: 450
+            limit: 450,
+            multiline_limit: 3
           }
         },
         'applicantCertifications' => {
