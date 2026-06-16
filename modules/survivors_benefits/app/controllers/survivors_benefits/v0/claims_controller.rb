@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'bpds/submission_handler'
 require 'survivors_benefits/benefits_intake/submit_claim_job'
 require 'survivors_benefits/monitor'
 require 'survivors_benefits/zsf_config'
@@ -12,6 +13,7 @@ module SurvivorsBenefits
     #
     class ClaimsController < ClaimsBaseController
       include PdfS3Operations
+      include BPDS::SubmissionHandler
 
       before_action :check_flipper_flag
       skip_after_action :set_csrf_header, only: [:create]
@@ -59,6 +61,16 @@ module SurvivorsBenefits
         end
 
         process_attachments(in_progress_form, claim)
+
+        # Parallel BPDS submission (matches the 21P-527EZ pattern). No-op when the
+        # per-form flag is off OR when the after-VBMS mode is on (in which case the
+        # SubmissionHandler enqueues BPDS after the Lighthouse poller marks VBMS).
+        #
+        # BPDS is experimental and must never disrupt claim submission. submit_claim_to_bpds
+        # runs synchronously here and performs MPI/BGS lookups and KMS encryption before
+        # enqueuing the async job, any of which can raise. We swallow those errors so the
+        # claim is still handed off to SubmitClaimJob below.
+        submit_claim_to_bpds_safely(claim) if survivors_benefits_bpds_parallel_enabled?
 
         SurvivorsBenefits::BenefitsIntake::SubmitClaimJob.perform_async(claim.id, current_user&.user_account_uuid)
 
@@ -113,6 +125,26 @@ module SurvivorsBenefits
         metadata = in_progress_form.metadata
         metadata['submission']['error_message'] = claim&.errors&.errors&.to_s
         in_progress_form.update(metadata:)
+      end
+
+      # Invokes the BPDS submission, isolating any failure so it cannot abort claim
+      # submission. A raised error here would otherwise propagate to #create's rescue
+      # and prevent SubmitClaimJob from ever being enqueued, orphaning the saved claim.
+      #
+      # @param claim [SurvivorsBenefits::SavedClaim]
+      def submit_claim_to_bpds_safely(claim)
+        submit_claim_to_bpds(claim.id, current_user)
+      rescue => e
+        bpds_monitor.track_submit_failure(claim.id, e)
+        Rails.logger.warn('[SurvivorsBenefits] BPDS parallel submission failed; claim submission continues',
+                          claim_id: claim.id, exception: e)
+      end
+
+      # True when the per-form BPDS flag is on AND the after-VBMS timing flag is off.
+      # The master :bpds_service_enabled flag is checked inside BPDS::SubmissionHandler#submit_claim_to_bpds.
+      def survivors_benefits_bpds_parallel_enabled?
+        Flipper.enabled?(:survivors_benefits_bpds_service_enabled, current_user) &&
+          !Flipper.enabled?(:survivors_benefits_bpds_submit_after_vbms, current_user)
       end
 
       ##
