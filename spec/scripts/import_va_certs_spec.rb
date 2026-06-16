@@ -3,6 +3,9 @@
 require 'rails_helper'
 require 'tmpdir'
 require 'fileutils'
+require 'open3'
+require 'timeout'
+require 'webrick'
 
 RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
   let(:script_path) { Rails.root.join('import-va-certs.sh') }
@@ -50,6 +53,7 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
       expect(script_content).to include(
         'https://dl.dod.cyber.mil/wp-content/uploads/pki-pke/zip/unclass-certificates_pkcs7_ECA.zip'
       )
+      expect(script_content).to include('DOD_ECA_HTTPS_URL=')
 
       # Verify HTTP fallback with --fail
       expect(script_content).to include(
@@ -96,6 +100,43 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
       dod_zip_block = script_content[/else\s+echo "✗ DoD ECA zip file not found after download attempts".*?fi/m]
       expect(dod_zip_block).to include('exit 1')
     end
+
+    it 'exits non-zero when DoD cert endpoints return non-200' do
+      server = WEBrick::HTTPServer.new(Port: 0, Logger: WEBrick::Log.new(File::NULL), AccessLog: [])
+      server.mount_proc('/DigiCertTLSRSASHA2562020CA1-1.crt.pem') do |_req, res|
+        res.status = 200
+        res.body = "dummy cert\n"
+      end
+      server.mount_proc('/DigiCertGlobalG2TLSRSASHA2562020CA1.crt') do |_req, res|
+        res.status = 200
+        res.body = "dummy cert\n"
+      end
+      server.mount_proc('/unclass-certificates_pkcs7_ECA.zip') do |_req, res|
+        res.status = 404
+        res.body = 'Not Found'
+      end
+
+      server_thread = Thread.new { server.start } # rubocop:disable ThreadSafety/NewThread
+      Timeout.timeout(2) { sleep 0.01 until server.status == :Running }
+      port = server.listeners.first.addr[1]
+
+      output, status = Open3.capture2e(
+        {
+          'CA_CERT_DIR' => mock_cert_dir,
+          'DIGICERT_TLS_RSA_URL' => "http://127.0.0.1:#{port}/DigiCertTLSRSASHA2562020CA1-1.crt.pem",
+          'DIGICERT_GLOBAL_G2_URL' => "http://127.0.0.1:#{port}/DigiCertGlobalG2TLSRSASHA2562020CA1.crt",
+          'DOD_ECA_HTTPS_URL' => "http://127.0.0.1:#{port}/unclass-certificates_pkcs7_ECA.zip",
+          'DOD_ECA_HTTP_URL' => "http://127.0.0.1:#{port}/unclass-certificates_pkcs7_ECA.zip"
+        },
+        script_path.to_s
+      )
+
+      expect(status).not_to be_success
+      expect(output).to include('All DoD ECA download attempts failed')
+    ensure
+      server&.shutdown
+      server_thread&.join(5)
+    end
   end
 
   describe 'VA certificate download' do
@@ -120,6 +161,7 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
       # Verify GHEC-US mirror fallback URL and auth pattern
       expect(script_content).to include('falling back to GHEC-US mirror')
       expect(script_content).to include('raw.va.ghe.com/software/platform-va-ca-certificate/main')
+      expect(script_content).to include('VA_CERT_REPO="${VA_CERT_REPO:-${VA_CERT_REPO_DEFAULT}}"')
       expect(script_content).to include('BUNDLE_VA__GHE__COM')
       expect(script_content).to include('Authorization: token')
       expect(script_content).to include('BUNDLE_VA__GHE__COM is not set')
@@ -154,15 +196,8 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
       expect(script_content).not_to include('Warning: Failed to download ${cert}.cer')
     end
 
-    it 'actually exits non-zero when a cert returns 404 from the GitHub mirror fallback' do
-      # Exercises the if!/exit 1 pattern in isolation rather than the full script — invoking
-      # import-va-certs.sh directly requires root (/usr/local/share/ca-certificates, update-ca-certificates).
-      # The content-assertion test above verifies the correct code exists in the script; this test
-      # verifies that the pattern exits non-zero as expected when curl gets a 404.
-      require 'open3'
-      require 'timeout'
-      require 'webrick'
-
+    it 'exits non-zero when a configured cert endpoint returns non-200' do
+      # Executes the real script with endpoint overrides and a local cert directory.
       server = WEBrick::HTTPServer.new(Port: 0, Logger: WEBrick::Log.new(File::NULL), AccessLog: [])
       server.mount_proc('/') do |_req, res|
         res.status = 404
@@ -173,19 +208,126 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
       port = server.listeners.first.addr[1]
 
       output, status = Open3.capture2e(
-        'bash', '-c', <<~BASH
-          VA_CERT_REPO="http://localhost:#{port}"
-          for cert in VA-Internal-S2-ICA1-v1; do
-            if ! curl --silent --show-error --fail --connect-timeout 5 --max-time 10 --retry 0 \\
-                -o "/tmp/${cert}_test_$$.cer" "${VA_CERT_REPO}/${cert}.cer"; then
-              echo "\\u2717 Failed to download ${cert}.cer"
-              exit 1
-            fi
-          done
+        {
+          'CA_CERT_DIR' => mock_cert_dir,
+          'DIGICERT_TLS_RSA_URL' => "http://127.0.0.1:#{port}/DigiCertTLSRSASHA2562020CA1-1.crt.pem"
+        },
+        script_path.to_s
+      )
+
+      expect(status).not_to be_success
+      expect(output).to include('DigiCert TLS RSA SHA256 2020 CA1-1 download failed')
+    ensure
+      server&.shutdown
+      server_thread&.join(5)
+    end
+
+    it 'exits non-zero when a VA mirror cert endpoint returns non-200' do
+      # Executes the real script through the VA mirror fallback branch while faking only the
+      # commands that would otherwise require a real DoD certificate bundle.
+      skip 'wget not available in PATH for integration script test' unless system('command -v wget >/dev/null 2>&1')
+
+      fake_bin_dir = File.join(temp_dir, 'fake-bin')
+      FileUtils.mkdir_p(fake_bin_dir)
+
+      File.write(
+        File.join(fake_bin_dir, 'unzip'),
+        <<~'BASH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          mkdir -p ECA_CA/certificates_pkcs7_v5_12_eca
+          cat > ECA_CA/certificates_pkcs7_v5_12_eca/certificates_pkcs7_v5_12_eca_ECA_Root_CA_5_der.p7b <<'EOF'
+          fake-doD-content
+          EOF
         BASH
       )
 
-      expect(status.exitstatus).to eq(1)
+      File.write(
+        File.join(fake_bin_dir, 'openssl'),
+        <<~'BASH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          if [ "${1:-}" = "pkcs7" ]; then
+            out_file=''
+            prev=''
+            for arg in "$@"; do
+              if [ "$prev" = "-out" ]; then
+                out_file="$arg"
+                break
+              fi
+              prev="$arg"
+            done
+
+            if [ -n "$out_file" ]; then
+              cat > "$out_file" <<'EOF'
+          -----BEGIN CERTIFICATE-----
+          Tm90UmVhbENlcnRpZmljYXRl
+          -----END CERTIFICATE-----
+          EOF
+            else
+              cat <<'EOF'
+          -----BEGIN CERTIFICATE-----
+          Tm90UmVhbENlcnRpZmljYXRl
+          -----END CERTIFICATE-----
+          EOF
+            fi
+          else
+            echo "unsupported openssl invocation: $*" >&2
+            exit 1
+          fi
+        BASH
+      )
+
+      FileUtils.chmod('+x', File.join(fake_bin_dir, 'unzip'))
+      FileUtils.chmod('+x', File.join(fake_bin_dir, 'openssl'))
+
+      pem_cert = <<~PEM
+        -----BEGIN CERTIFICATE-----
+        Tm90UmVhbENlcnRpZmljYXRl
+        -----END CERTIFICATE-----
+      PEM
+
+      server = WEBrick::HTTPServer.new(Port: 0, Logger: WEBrick::Log.new(File::NULL), AccessLog: [])
+      server.mount_proc('/DigiCertTLSRSASHA2562020CA1-1.crt.pem') do |_req, res|
+        res.status = 200
+        res.body = pem_cert
+      end
+      server.mount_proc('/DigiCertGlobalG2TLSRSASHA2562020CA1.crt') do |_req, res|
+        res.status = 200
+        res.body = pem_cert
+      end
+      server.mount_proc('/unclass-certificates_pkcs7_ECA.zip') do |_req, res|
+        res.status = 200
+        res.body = 'fake-zip'
+      end
+      server.mount_proc('/PKI/AIA/VA/') do |_req, res|
+        res.status = 200
+        res['Content-Type'] = 'text/html'
+        res.body = '<html><body><h1>VA AIA</h1><p>No cert links here.</p></body></html>'
+      end
+
+      server_thread = Thread.new { server.start } # rubocop:disable ThreadSafety/NewThread
+      Timeout.timeout(2) { sleep 0.01 until server.status == :Running }
+      port = server.listeners.first.addr[1]
+
+      output, status = Open3.capture2e(
+        {
+          'CA_CERT_DIR' => mock_cert_dir,
+          'PATH' => "#{fake_bin_dir}:#{ENV.fetch('PATH')}",
+          'DIGICERT_TLS_RSA_URL' => "http://127.0.0.1:#{port}/DigiCertTLSRSASHA2562020CA1-1.crt.pem",
+          'DIGICERT_GLOBAL_G2_URL' => "http://127.0.0.1:#{port}/DigiCertGlobalG2TLSRSASHA2562020CA1.crt",
+          'DOD_ECA_HTTPS_URL' => "http://127.0.0.1:#{port}/unclass-certificates_pkcs7_ECA.zip",
+          'DOD_ECA_HTTP_URL' => "http://127.0.0.1:#{port}/unclass-certificates_pkcs7_ECA.zip",
+          'VA_AIA_URL' => "http://127.0.0.1:#{port}/PKI/AIA/VA/",
+          'VA_CERT_REPO' => "http://127.0.0.1:#{port}",
+          'BUNDLE_VA__GHE__COM' => 'prefix:mirror-token'
+        },
+        script_path.to_s
+      )
+
+      expect(status).not_to be_success
       expect(output).to include('Failed to download VA-Internal-S2-ICA1-v1.cer')
     ensure
       server&.shutdown
@@ -233,6 +375,8 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
 
       expect(script_content).to include('https://cacerts.digicert.com/DigiCertTLSRSASHA2562020CA1-1.crt.pem')
       expect(script_content).to include('https://digicert.tbs-certificats.com/DigiCertGlobalG2TLSRSASHA2562020CA1.crt')
+      expect(script_content).to include('DIGICERT_TLS_RSA_URL=')
+      expect(script_content).to include('DIGICERT_GLOBAL_G2_URL=')
 
       # Verify curl uses --fail to catch HTTP errors
       expect(script_content).to include('curl --fail')

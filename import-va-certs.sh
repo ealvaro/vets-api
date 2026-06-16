@@ -22,15 +22,25 @@
 
 set -euo pipefail
 
+CA_CERT_DIR="${CA_CERT_DIR:-/usr/local/share/ca-certificates}"
+
+# Optional endpoint overrides are useful for integration testing and mirror failover validation.
+DIGICERT_TLS_RSA_URL="${DIGICERT_TLS_RSA_URL:-https://cacerts.digicert.com/DigiCertTLSRSASHA2562020CA1-1.crt.pem}"
+DIGICERT_GLOBAL_G2_URL="${DIGICERT_GLOBAL_G2_URL:-https://digicert.tbs-certificats.com/DigiCertGlobalG2TLSRSASHA2562020CA1.crt}"
+DOD_ECA_HTTPS_URL="${DOD_ECA_HTTPS_URL:-https://dl.dod.cyber.mil/wp-content/uploads/pki-pke/zip/unclass-certificates_pkcs7_ECA.zip}"
+DOD_ECA_HTTP_URL="${DOD_ECA_HTTP_URL:-http://dl.dod.cyber.mil/wp-content/uploads/pki-pke/zip/unclass-certificates_pkcs7_ECA.zip}"
+VA_AIA_URL="${VA_AIA_URL:-http://aia.pki.va.gov/PKI/AIA/VA/}"
+VA_CERT_REPO_DEFAULT="https://raw.va.ghe.com/software/platform-va-ca-certificate/main"
+
 (
-    cd /usr/local/share/ca-certificates/
+    cd "${CA_CERT_DIR}"
 
     echo "Downloading DigiCert certificates..."
-    if ! curl --fail --show-error --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 5 -LO https://cacerts.digicert.com/DigiCertTLSRSASHA2562020CA1-1.crt.pem; then
+    if ! curl --fail --show-error --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 5 -LO "${DIGICERT_TLS_RSA_URL}"; then
         echo "✗ DigiCert TLS RSA SHA256 2020 CA1-1 download failed"
         exit 1
     fi
-    if ! curl --fail --show-error --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 5 -LO https://digicert.tbs-certificats.com/DigiCertGlobalG2TLSRSASHA2562020CA1.crt; then
+    if ! curl --fail --show-error --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 5 -LO "${DIGICERT_GLOBAL_G2_URL}"; then
         echo "✗ DigiCert Global G2 TLS RSA SHA256 2020 CA1 download failed"
         exit 1
     fi
@@ -41,12 +51,12 @@ set -euo pipefail
         echo "Downloading DoD ECA certificates..."
 
         # Primary: HTTPS with timeout and retries
-        if curl --fail --show-error --location --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 5 -o unclass-certificates_pkcs7_ECA.zip https://dl.dod.cyber.mil/wp-content/uploads/pki-pke/zip/unclass-certificates_pkcs7_ECA.zip; then
+        if curl --fail --show-error --location --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 5 -o unclass-certificates_pkcs7_ECA.zip "${DOD_ECA_HTTPS_URL}"; then
             echo "✓ DoD ECA downloaded via HTTPS"
         # Fallback 1: HTTP with timeout and retries
         ## Uncomment in case the https call fails again
         ## Last time we got this error: Failed to connect to dl.dod.cyber.mil port 443
-        elif curl --fail --show-error --location --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 5 -o unclass-certificates_pkcs7_ECA.zip http://dl.dod.cyber.mil/wp-content/uploads/pki-pke/zip/unclass-certificates_pkcs7_ECA.zip; then
+        elif curl --fail --show-error --location --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 5 -o unclass-certificates_pkcs7_ECA.zip "${DOD_ECA_HTTP_URL}"; then
             echo "✓ DoD ECA downloaded via HTTP fallback"
         else
             echo "✗ All DoD ECA download attempts failed"
@@ -78,7 +88,7 @@ set -euo pipefail
         --timeout=60 \
         --waitretry=5 \
         --accept="VA*.cer" \
-        http://aia.pki.va.gov/PKI/AIA/VA/; then
+        "${VA_AIA_URL}"; then
         # Verify wget actually downloaded VA cert files — it can exit 0
         # even when the directory listing returns no matching files.
         shopt -s nullglob
@@ -94,7 +104,7 @@ set -euo pipefail
 
     if [ "$va_certs_downloaded" = false ]; then
         echo "⚠ aia.pki.va.gov did not provide VA certs, falling back to GHEC-US mirror..."
-        VA_CERT_REPO="https://raw.va.ghe.com/software/platform-va-ca-certificate/main"
+        VA_CERT_REPO="${VA_CERT_REPO:-${VA_CERT_REPO_DEFAULT}}"
         CERT_TOKEN="${BUNDLE_VA__GHE__COM:-}"
         CERT_TOKEN="${CERT_TOKEN##*:}"
         if [ -z "${CERT_TOKEN}" ]; then
