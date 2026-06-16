@@ -163,7 +163,11 @@ module IvcChampva
     end
 
     def extract_applicant_properties(app)
-      app.symbolize_keys.slice(:applicant_ssn, :applicant_name, :applicant_dob)
+      props = app.symbolize_keys.slice(:applicant_ssn, :applicant_name, :applicant_dob)
+      if props[:applicant_ssn].blank? && app['applicant_member_number'].present?
+        props[:applicant_ssn] = app['applicant_member_number']
+      end
+      props
     end
 
     def extract_beneficiary_properties(app)

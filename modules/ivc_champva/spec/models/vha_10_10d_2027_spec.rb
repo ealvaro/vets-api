@@ -440,6 +440,57 @@ RSpec.describe IvcChampva::VHA1010d2027 do
     end
   end
 
+  describe '#extract_applicant_properties (champva_update_metadata_keys off)' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:champva_update_metadata_keys).and_return(false)
+    end
+
+    context 'when applicant_ssn is blank and applicant_member_number is present' do
+      let(:form_data) do
+        data.merge('applicants' => [
+                     { 'applicant_ssn' => '', 'applicant_name' => { 'first' => 'Sam', 'last' => 'Bene' },
+                       'applicant_dob' => '2003-01-04', 'applicant_member_number' => '345345345' }
+                   ])
+      end
+
+      it 'falls back to applicant_member_number for applicant_ssn' do
+        result = described_class.new(form_data).add_applicant_properties
+        applicant = JSON.parse(result['applicant_0'])
+        expect(applicant['applicant_ssn']).to eq('345345345')
+      end
+    end
+
+    context 'when applicant_ssn is nil and applicant_member_number is present' do
+      let(:form_data) do
+        data.merge('applicants' => [
+                     { 'applicant_name' => { 'first' => 'Sam', 'last' => 'Bene' },
+                       'applicant_dob' => '2003-01-04', 'applicant_member_number' => '345345345' }
+                   ])
+      end
+
+      it 'falls back to applicant_member_number for applicant_ssn' do
+        result = described_class.new(form_data).add_applicant_properties
+        applicant = JSON.parse(result['applicant_0'])
+        expect(applicant['applicant_ssn']).to eq('345345345')
+      end
+    end
+
+    context 'when applicant_ssn is present' do
+      let(:form_data) do
+        data.merge('applicants' => [
+                     { 'applicant_ssn' => '123456789', 'applicant_name' => { 'first' => 'Sam', 'last' => 'Bene' },
+                       'applicant_dob' => '2003-01-04', 'applicant_member_number' => '999999999' }
+                   ])
+      end
+
+      it 'uses applicant_ssn and does not fall back to applicant_member_number' do
+        result = described_class.new(form_data).add_applicant_properties
+        applicant = JSON.parse(result['applicant_0'])
+        expect(applicant['applicant_ssn']).to eq('123456789')
+      end
+    end
+  end
+
   describe '#metadata sponsor/veteran mapping' do
     it 'maps sponsor fields from veteran data, not applicant data' do
       form_data = data.merge(
