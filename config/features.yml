@@ -702,6 +702,13 @@ features:
     actor_type: user
     description: When enabled, aligns evidence request alerts in the claim status tool with VADS best practices.
     enable_in_development: true
+  cst_appeal_details_va_tabs:
+    actor_type: user
+    description: When enabled, the appeal details page uses the va-tabs component with ?tab= query params instead of route-based tabs.
+    enable_in_development: true
+  cst_claim_details_va_tabs:
+    actor_type: user
+    description: When enabled, the claim details page uses the va-tabs component with ?tab= query params instead of route-based tabs.
   cst_claim_letters_download_refactor:
     actor_type: user
     description: When enabled, refactors the claim letters download feature to use onClick behavior rather than direct navigation.
