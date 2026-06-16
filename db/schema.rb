@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_06_05_120001) do
+ActiveRecord::Schema[7.2].define(version: 2026_06_15_183404) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -26,6 +26,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_05_120001) do
   create_enum "bgs_submission_status", ["pending", "submitted", "failure"]
   create_enum "bpds_submission_status", ["pending", "submitted", "failure"]
   create_enum "claims_evidence_api_submission_status", ["pending", "accepted", "failed"]
+  create_enum "client_config_auth_method", ["pkce", "client_secret", "private_key_jwt"]
   create_enum "itf_remediation_status", ["unprocessed"]
   create_enum "lighthouse_submission_status", ["pending", "submitted", "failure", "vbms", "manually"]
   create_enum "saved_claim_group_status", ["pending", "accepted", "failure", "processing", "success"]
@@ -762,6 +763,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_05_120001) do
     t.boolean "json_api_compatibility", default: true, null: false
     t.boolean "oidc", default: false, null: false
     t.string "client_secret_digest"
+    t.enum "auth_method", enum_type: "client_config_auth_method"
     t.index ["client_id"], name: "index_client_configs_on_client_id", unique: true
   end
 
