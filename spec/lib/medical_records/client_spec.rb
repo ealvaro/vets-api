@@ -222,14 +222,14 @@ describe MedicalRecords::Client do
 
         context 'when sorting by date in ascending order' do
           it 'returns the entries sorted by date' do
-            sorted = client.sort_bundle(bundle, :onsetDateTime)
+            sorted = client.send(:sort_bundle, bundle, :onsetDateTime)
             expect(sorted.entry.map { |e| e.resource.onsetDateTime }).to eq(%w[2000 2005 2010])
           end
         end
 
         context 'when sorting by date in descending order' do
           it 'returns the entries sorted by date' do
-            sorted = client.sort_bundle(bundle, :onsetDateTime, :desc)
+            sorted = client.send(:sort_bundle, bundle, :onsetDateTime, :desc)
             expect(sorted.entry.map { |e| e.resource.onsetDateTime }).to eq(%w[2010 2005 2000])
           end
         end
@@ -240,14 +240,14 @@ describe MedicalRecords::Client do
 
           context 'in ascending order' do
             it 'places the entry with the missing field at the end' do
-              sorted = client.sort_bundle(bundle_with_missing_field, :onsetDateTime)
+              sorted = client.send(:sort_bundle, bundle_with_missing_field, :onsetDateTime)
               expect(sorted.entry.last.resource.onsetDateTime).to be_nil
             end
           end
 
           context 'in descending order' do
             it 'places the entry with the missing field at the end' do
-              sorted = client.sort_bundle(bundle_with_missing_field, :onsetDateTime, :desc)
+              sorted = client.send(:sort_bundle, bundle_with_missing_field, :onsetDateTime, :desc)
               expect(sorted.entry.last.resource.onsetDateTime).to be_nil
             end
           end
@@ -273,17 +273,17 @@ describe MedicalRecords::Client do
         end
 
         it 'sorts by a nested field in ascending order' do
-          sorted_bundle = client.sort_bundle(bundle, 'context.period.start', :asc)
+          sorted_bundle = client.send(:sort_bundle, bundle, 'context.period.start', :asc)
           expect(sorted_bundle.entry.map { |e| e.resource.id }).to eq(%w[1 3 2]) # '3' last due to missing field
         end
 
         it 'sorts by a nested field in descending order' do
-          sorted_bundle = client.sort_bundle(bundle, 'context.period.start', :desc)
+          sorted_bundle = client.send(:sort_bundle, bundle, 'context.period.start', :desc)
           expect(sorted_bundle.entry.map { |e| e.resource.id }).to eq(%w[3 1 2]) # '3' last due to missing field
         end
 
         it 'handles sorting with a non-existent nested field path' do
-          sorted_bundle = client.sort_bundle(bundle, 'context.period.end', :asc)
+          sorted_bundle = client.send(:sort_bundle, bundle, 'context.period.end', :asc)
           expect( # All entries treated as having missing field
             sorted_bundle.entry.map do |e|
               e.resource.id
@@ -309,7 +309,7 @@ describe MedicalRecords::Client do
         before { bundle.entry << entry4 }
 
         it 'sorts based on a custom criteria handling different resource types' do
-          sorted = client.sort_bundle_with_criteria(bundle) do |resource|
+          sorted = client.send(:sort_bundle_with_criteria, bundle) do |resource|
             case resource
             when FHIR::Patient
               resource.birthDate
@@ -329,7 +329,7 @@ describe MedicalRecords::Client do
         it 'returns the bundle unchanged when entry is nil' do
           bundle = double('FHIR::Bundle', entry: nil)
 
-          result = client.sort_bundle_with_criteria(bundle, :desc, &:date)
+          result = client.send(:sort_bundle_with_criteria, bundle, :desc, &:date)
           expect(result).to eq(bundle)
         end
 
@@ -339,7 +339,7 @@ describe MedicalRecords::Client do
           bundle = double('FHIR::Bundle', entry: [entry_old, entry_new])
           allow(bundle).to receive(:entry=)
 
-          result = client.sort_bundle_with_criteria(bundle, :desc, &:date)
+          result = client.send(:sort_bundle_with_criteria, bundle, :desc, &:date)
           expect(result).to eq(bundle)
         end
       end
