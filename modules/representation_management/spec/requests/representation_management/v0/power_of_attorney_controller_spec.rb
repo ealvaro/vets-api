@@ -12,62 +12,155 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorney', type: :request d
         allow(StatsD).to receive(:increment)
         allow(Rails.logger).to receive(:info)
         allow(Rails.logger).to receive(:error)
+        allow(Flipper).to receive(:enabled?)
+          .with(:arc_representative_status_use_accredited_models)
+          .and_return(false)
         sign_in_as(user)
       end
 
-      context 'when an organization is the active poa' do
-        let(:org_poa) { 'og1' }
-        let!(:organization) { create(:organization, poa: org_poa) }
+      context 'when arc_representative_status_use_accredited_models is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:arc_representative_status_use_accredited_models).and_return(false)
+        end
 
-        it 'returns the expected organization response' do
-          lh_response = {
-            'data' => {
-              'type' => 'organization',
-              'attributes' => {
-                'code' => org_poa
+        context 'when an organization is the active poa' do
+          let(:org_poa) { 'og1' }
+          let!(:organization) { create(:organization, poa: org_poa) }
+
+          it 'returns the expected organization response from Veteran::Service::Organization' do
+            lh_response = {
+              'data' => {
+                'type' => 'organization',
+                'attributes' => {
+                  'code' => org_poa
+                }
               }
             }
-          }
-          allow_any_instance_of(BenefitsClaims::Service)
-            .to receive(:get_power_of_attorney)
-            .and_return(lh_response)
+            allow_any_instance_of(BenefitsClaims::Service)
+              .to receive(:get_power_of_attorney)
+              .and_return(lh_response)
 
-          get index_path
+            get index_path
 
-          response_body = JSON.parse(response.body)
+            response_body = JSON.parse(response.body)
 
-          expect(response).to have_http_status(:ok)
-          expect(response_body['data']['id']).to eq(org_poa)
+            expect(response).to have_http_status(:ok)
+            expect(response_body['data']['id']).to eq(org_poa)
+          end
+        end
+
+        context 'when a representative is the active poa' do
+          let(:rep_poa) { 'rp1' }
+          let(:registration_number) { '12345' }
+          let!(:representative) do
+            create(:representative,
+                   representative_id: registration_number, poa_codes: [rep_poa])
+          end
+
+          it 'returns the expected representative response from Veteran::Service::Representative' do
+            lh_response = {
+              'data' => {
+                'type' => 'individual',
+                'attributes' => {
+                  'code' => rep_poa
+                }
+              }
+            }
+            allow_any_instance_of(BenefitsClaims::Service)
+              .to receive(:get_power_of_attorney)
+              .and_return(lh_response)
+
+            get index_path
+
+            response_body = JSON.parse(response.body)
+
+            expect(response).to have_http_status(:ok)
+            expect(response_body['data']['id']).to eq(registration_number)
+          end
         end
       end
 
-      context 'when a representative is the active poa' do
-        let(:rep_poa) { 'rp1' }
-        let(:registration_number) { '12345' }
-        let!(:representative) do
-          create(:representative,
-                 representative_id: registration_number, poa_codes: [rep_poa])
+      context 'when arc_representative_status_use_accredited_models is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:arc_representative_status_use_accredited_models).and_return(true)
         end
 
-        it 'returns the expected representative response' do
-          lh_response = {
-            'data' => {
-              'type' => 'individual',
-              'attributes' => {
-                'code' => rep_poa
+        context 'when an organization is the active poa' do
+          let(:org_poa) { 'og1' }
+          let!(:accredited_organization) { create(:accredited_organization, poa_code: org_poa) }
+
+          it 'returns the expected organization response from AccreditedOrganization' do
+            lh_response = {
+              'data' => {
+                'type' => 'organization',
+                'attributes' => {
+                  'code' => org_poa
+                }
               }
             }
-          }
-          allow_any_instance_of(BenefitsClaims::Service)
-            .to receive(:get_power_of_attorney)
-            .and_return(lh_response)
+            allow_any_instance_of(BenefitsClaims::Service)
+              .to receive(:get_power_of_attorney)
+              .and_return(lh_response)
 
-          get index_path
+            get index_path
 
-          response_body = JSON.parse(response.body)
+            response_body = JSON.parse(response.body)
 
-          expect(response).to have_http_status(:ok)
-          expect(response_body['data']['id']).to eq(registration_number)
+            expect(response).to have_http_status(:ok)
+            expect(response_body['data']['id']).to eq(accredited_organization.poa_code)
+            expect(response_body['data']['attributes']['name']).to eq(accredited_organization.name)
+          end
+        end
+
+        context 'when an individual is the active poa' do
+          let(:ind_poa) { 'rp1' }
+          let!(:accredited_individual) do
+            create(:accredited_individual, poa_code: ind_poa, individual_type: 'attorney')
+          end
+
+          it 'returns the expected individual response from AccreditedIndividual' do
+            lh_response = {
+              'data' => {
+                'type' => 'individual',
+                'attributes' => {
+                  'code' => ind_poa
+                }
+              }
+            }
+            allow_any_instance_of(BenefitsClaims::Service)
+              .to receive(:get_power_of_attorney)
+              .and_return(lh_response)
+
+            get index_path
+
+            response_body = JSON.parse(response.body)
+
+            expect(response).to have_http_status(:ok)
+            expect(response_body['data']['id']).to eq(accredited_individual.registration_number)
+          end
+        end
+
+        context 'when the poa record is not found in AccreditedOrganization' do
+          it 'returns the expected empty response' do
+            lh_response = {
+              'data' => {
+                'type' => 'organization',
+                'attributes' => {
+                  'code' => 'xyz'
+                }
+              }
+            }
+            allow_any_instance_of(BenefitsClaims::Service)
+              .to receive(:get_power_of_attorney)
+              .and_return(lh_response)
+
+            get index_path
+
+            response_body = JSON.parse(response.body)
+
+            expect(response).to have_http_status(:ok)
+            expect(response_body['data']).to eq({})
+          end
         end
       end
 

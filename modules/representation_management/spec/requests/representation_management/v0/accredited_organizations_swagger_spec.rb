@@ -7,7 +7,7 @@ RSpec.describe 'Accredited Organizations',
                openapi_spec: 'modules/representation_management/app/swagger/v0/swagger.json',
                type: :request do
   before do
-    allow(Flipper).to receive(:enabled?).with(:find_a_representative_use_accredited_models).and_return(true)
+    allow(Flipper).to receive(:enabled?).with(:arc_find_a_representative_backend_use_accredited_models).and_return(true)
 
     create(:accredited_organization,
            poa_code: '123',

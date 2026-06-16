@@ -71,9 +71,11 @@ RSpec.describe 'RepresentationManagement::V0::AccreditedOrganizations', type: :r
            can_accept_digital_poa_requests: false)
   end
 
-  context 'when the :find_a_representative_use_accredited_models feature is enabled' do
+  context 'when the :arc_find_a_representative_backend_use_accredited_models feature is enabled' do
     before do
-      allow(Flipper).to receive(:enabled?).with(:find_a_representative_use_accredited_models).and_return(true)
+      allow(Flipper).to receive(:enabled?)
+        .with(:arc_find_a_representative_backend_use_accredited_models)
+        .and_return(true)
     end
 
     it 'returns the two valid accredited_organizations sorted by name asc' do
@@ -87,9 +89,11 @@ RSpec.describe 'RepresentationManagement::V0::AccreditedOrganizations', type: :r
     end
   end
 
-  context 'when the :find_a_representative_use_accredited_models feature is disabled' do
+  context 'when the :arc_find_a_representative_backend_use_accredited_models feature is disabled' do
     before do
-      allow(Flipper).to receive(:enabled?).with(:find_a_representative_use_accredited_models).and_return(false)
+      allow(Flipper).to receive(:enabled?)
+        .with(:arc_find_a_representative_backend_use_accredited_models)
+        .and_return(false)
     end
 
     it 'returns the two valid veteran_organizations sorted by name asc' do

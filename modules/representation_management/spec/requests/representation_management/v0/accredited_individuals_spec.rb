@@ -12,9 +12,11 @@ RSpec.describe 'RepresentationManagement::V0::AccreditedIndividuals', type: :req
   let(:data_ingestion_log_accreditation) { build_stubbed(:accreditation_data_ingestion_log) }
   let(:data_ingestion_log_trexler) { build_stubbed(:accreditation_data_ingestion_log, :trexler_file) }
 
-  context 'when find_a_representative_use_accredited_models is disabled' do
+  context 'when arc_find_a_representative_backend_use_accredited_models is disabled' do
     before do
-      allow(Flipper).to receive(:enabled?).with(:find_a_representative_use_accredited_models).and_return(false)
+      allow(Flipper).to receive(:enabled?)
+        .with(:arc_find_a_representative_backend_use_accredited_models)
+        .and_return(false)
     end
 
     it 'returns a not found routing error' do
@@ -28,9 +30,11 @@ RSpec.describe 'RepresentationManagement::V0::AccreditedIndividuals', type: :req
     end
   end
 
-  context 'when find_a_representative_use_accredited_models is enabled' do
+  context 'when arc_find_a_representative_backend_use_accredited_models is enabled' do
     before do
-      allow(Flipper).to receive(:enabled?).with(:find_a_representative_use_accredited_models).and_return(true)
+      allow(Flipper).to receive(:enabled?)
+        .with(:arc_find_a_representative_backend_use_accredited_models)
+        .and_return(true)
     end
 
     context 'when a required param is missing' do

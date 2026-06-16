@@ -84,6 +84,22 @@ features:
   ar_poa_request_failure_rep_notification:
     actor_type: user
     description: Enables sending POA failure notifications to representatives
+  arc_appoint_a_representative_use_accredited_models:
+    actor_type: user
+    description: >
+      Gates accredited_entities_for_appoint vs original_entities routing in the
+      appoint flow. Replaces the shared find_a_representative_use_accredited_models
+      check for appoint controllers.
+  arc_find_a_representative_backend_use_accredited_models:
+    actor_type: user
+    description: >
+      Backend-only gate for the accredited_individuals and accredited_organizations
+      (accredited model path) endpoints. Decoupled from the frontend toggle.
+  arc_representative_status_use_accredited_models:
+    actor_type: user
+    description: >
+      Backend-only switch for power_of_attorney#index data source.
+      When enabled, queries the accredited models instead of the current source.
   ask_va_announcement_banner:
     actor_type: cookie_id
     description: >

@@ -28,7 +28,7 @@ module RepresentationManagement
       private
 
       def use_accredited_model?
-        Flipper.enabled?(:find_a_representative_use_accredited_models)
+        Flipper.enabled?(:arc_find_a_representative_backend_use_accredited_models)
       end
     end
   end

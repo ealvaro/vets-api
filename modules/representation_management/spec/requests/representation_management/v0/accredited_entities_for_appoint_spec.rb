@@ -52,13 +52,9 @@ RSpec.describe 'RepresentationManagement::V0::AccreditedEntitiesForAppoint', typ
     end
   end
 
-  context "when the feature flag 'find_a_representative_use_accredited_models' is disabled" do
+  context "when the feature flag 'arc_appoint_a_representative_use_accredited_models' is disabled" do
     before do
-      allow(Flipper).to receive(:enabled?).with(:find_a_representative_use_accredited_models).and_return(false)
-    end
-
-    after do
-      allow(Flipper).to receive(:enabled?).with(:find_a_representative_use_accredited_models).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:arc_appoint_a_representative_use_accredited_models).and_return(false)
     end
 
     it 'returns a 404' do

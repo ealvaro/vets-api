@@ -68,11 +68,19 @@ module RepresentationManagement
       end
 
       def organization
-        Veteran::Service::Organization.find_by(poa: poa_code)
+        if Flipper.enabled?(:arc_representative_status_use_accredited_models)
+          AccreditedOrganization.find_by(poa_code:)
+        else
+          Veteran::Service::Organization.find_by(poa: poa_code)
+        end
       end
 
       def representative
-        Veteran::Service::Representative.where('? = ANY(poa_codes)', poa_code).order(created_at: :desc).first
+        if Flipper.enabled?(:arc_representative_status_use_accredited_models)
+          AccreditedIndividual.where(poa_code:).order(created_at: :desc).first
+        else
+          Veteran::Service::Representative.where('? = ANY(poa_codes)', poa_code).order(created_at: :desc).first
+        end
       end
 
       # Custom metrics and logging for "no participant id for user" scenario

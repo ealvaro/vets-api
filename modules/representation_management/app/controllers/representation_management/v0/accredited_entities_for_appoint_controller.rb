@@ -28,7 +28,7 @@ module RepresentationManagement
       private
 
       def feature_enabled
-        routing_error unless Flipper.enabled?(:find_a_representative_use_accredited_models)
+        routing_error unless Flipper.enabled?(:arc_appoint_a_representative_use_accredited_models)
       end
 
       def current_data_source_log
