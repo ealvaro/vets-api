@@ -45,6 +45,8 @@ module VAProfile
           end
         end
 
+        # Calls the candidate endpoint. Returns the raw response body on success;
+        # raises BackendServiceException via handle_error otherwise.
         # @return [Hash] raw data from VA profile address validation API including
         #   address suggestions, validation key, and address errors
         def candidate(address)
@@ -59,6 +61,9 @@ module VAProfile
           handle_error(e)
         end
 
+        # Calls the validate endpoint. Returns the raw response body on success;
+        # raises BackendServiceException via handle_error otherwise.
+        # @return [Hash] raw validation data including address and override key
         def validate(address)
           res = perform(
             :post,
@@ -86,8 +91,12 @@ module VAProfile
         end
 
         def candidate_address_not_found?(exception)
-          details = exception.errors.map { |e| e.instance_variable_get('@detail') || e.detail } || []
-          details.any? { |detail| detail['messages'].any? { |message| message['key'] == 'CandidateAddressNotFound' } }
+          details = exception.errors.map { |e| e.instance_variable_get('@detail') || e.detail }
+          details.any? do |detail|
+            next false unless detail.is_a?(Hash) && detail['messages'].is_a?(Array)
+
+            detail['messages'].any? { |msg| msg.is_a?(Hash) && msg['key'] == 'CandidateAddressNotFound' }
+          end
         end
       end
     end

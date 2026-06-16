@@ -143,6 +143,38 @@ describe VAProfile::AddressValidation::V3::Service do
           end
         end
       end
+
+      context 'when feature flag is enabled and error body is missing the messages key' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:profile_validate_address_when_no_candidate_found).and_return(true)
+        end
+
+        it 'raises BackendServiceException without NoMethodError' do
+          allow_any_instance_of(described_class).to receive(:candidate).and_raise(
+            Common::Exceptions::BackendServiceException.new('VET360_AV_ERROR', detail: { 'other_key' => 'value' })
+          )
+
+          expect { described_class.new.address_suggestions(invalid_address) }.to raise_error(
+            Common::Exceptions::BackendServiceException
+          )
+        end
+      end
+
+      context 'when feature flag is enabled and messages is a non-Array' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:profile_validate_address_when_no_candidate_found).and_return(true)
+        end
+
+        it 'raises BackendServiceException without NoMethodError' do
+          allow_any_instance_of(described_class).to receive(:candidate).and_raise(
+            Common::Exceptions::BackendServiceException.new('VET360_AV_ERROR', detail: { 'messages' => 'oops' })
+          )
+
+          expect { described_class.new.address_suggestions(invalid_address) }.to raise_error(
+            Common::Exceptions::BackendServiceException
+          )
+        end
+      end
     end
   end
 
