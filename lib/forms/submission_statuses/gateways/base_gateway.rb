@@ -32,7 +32,7 @@ module Forms
           @allowed_forms = allowed_forms
           @options = options
           @dataset = Forms::SubmissionStatuses::Dataset.new
-          @error_handler = Forms::SubmissionStatuses::ErrorHandler.new
+          @error_handler = Forms::SubmissionStatuses::ErrorHandler.new(source: default_source)
         end
 
         def data
@@ -55,6 +55,12 @@ module Forms
         protected
 
         attr_reader :user_account, :allowed_forms, :options, :error_handler
+
+        private
+
+        def default_source
+          self.class.name.demodulize.underscore.delete_suffix('_gateway')
+        end
       end
     end
   end

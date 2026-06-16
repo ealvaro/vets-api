@@ -316,5 +316,80 @@ RSpec.describe V0::MyVA::SubmissionStatusesController, type: :controller do
         expect(attributes['created_at']).to eq('2024-01-10T09:00:00.000Z')
       end
     end
+
+    context 'StatsD and logging for response status' do
+      let(:flipper_defaults) do
+        allow(Flipper).to receive(:enabled?).with(:my_va_display_all_lighthouse_benefits_intake_forms,
+                                                  instance_of(User)).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:my_va_display_decision_reviews_forms,
+                                                  instance_of(User)).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:hca_status_card_enabled, instance_of(User)).and_return(false)
+      end
+
+      context 'when response is 200' do
+        let(:success_report) { double('Report', submission_statuses: [], errors: []) }
+
+        before do
+          flipper_defaults
+          allow(Forms::SubmissionStatuses::Report).to receive(:new).and_return(success_report)
+          allow(success_report).to receive(:run).and_return(success_report)
+        end
+
+        it 'emits a StatsD counter with status:200' do
+          expect(StatsD).to receive(:increment).with(
+            'api.forms.submission_statuses.response',
+            tags: ['status:200']
+          )
+
+          get :show
+        end
+
+        it 'does not log a partial success warning' do
+          allow(StatsD).to receive(:increment)
+          expect(Rails.logger).not_to receive(:warn).with('Submission statuses partial success (296)', anything)
+
+          get :show
+        end
+      end
+
+      context 'when response is 296' do
+        let(:partial_report) do
+          double(
+            'Report',
+            submission_statuses: [OpenStruct.new(id: '1', form_type: '21-4142', status: 'received')],
+            errors: [{ status: 500, source: 'benefits_intake', title: 'Error', detail: 'fail' }]
+          )
+        end
+
+        before do
+          flipper_defaults
+          allow(Forms::SubmissionStatuses::Report).to receive(:new).and_return(partial_report)
+          allow(partial_report).to receive(:run).and_return(partial_report)
+        end
+
+        it 'emits a StatsD counter with status:296' do
+          expect(StatsD).to receive(:increment).with(
+            'api.forms.submission_statuses.response',
+            tags: ['status:296']
+          )
+
+          get :show
+        end
+
+        it 'logs a structured summary of the partial success' do
+          allow(StatsD).to receive(:increment)
+          expect(Rails.logger).to receive(:warn).with(
+            'Submission statuses partial success (296)',
+            hash_including(
+              failed_gateways: ['benefits_intake'],
+              total_errors: 1,
+              total_submissions: 1
+            )
+          )
+
+          get :show
+        end
+      end
+    end
   end
 end

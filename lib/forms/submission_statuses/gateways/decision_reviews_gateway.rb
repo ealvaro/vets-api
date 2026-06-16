@@ -105,7 +105,7 @@ module Forms
         rescue DecisionReviews::V1::ServiceException => e
           handle_decision_reviews_error(e, submission, statuses_data, errors)
         rescue Common::Exceptions::BackendServiceException => e
-          errors << error_handler.handle_error(status: 500, body: { error: e.message })
+          errors << error_handler.handle_error(status: 500, body: { message: e.message })
         end
 
         def build_status_record(submission, attributes)

@@ -38,7 +38,9 @@ module Forms
 
           [[api_status_result], nil]
         rescue => e
-          [nil, [e.message]]
+          status = e.respond_to?(:status_code) ? e.status_code : 500
+          errors = error_handler.handle_error(status:, body: { message: e.message })
+          [nil, errors]
         end
       end
     end

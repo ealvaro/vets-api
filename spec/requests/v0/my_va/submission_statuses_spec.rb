@@ -63,7 +63,7 @@ RSpec.describe 'V0::MyVA::SubmissionStatuses', feature: :form_submission,
         error = JSON.parse(response.body)['errors'].first
         expect(error.keys.sort).to eq(keys.sort)
 
-        expect(error['source']).to eq('Lighthouse - Benefits Intake API')
+        expect(error['source']).to eq('benefits_intake')
       end
     end
 

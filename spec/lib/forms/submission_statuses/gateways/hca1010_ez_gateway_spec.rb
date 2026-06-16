@@ -80,14 +80,21 @@ describe Forms::SubmissionStatuses::Gateways::Hca1010EzGateway,
       expect(gateway.api_statuses([user_account])).to eq([nil, nil])
     end
 
-    it 'returns error status on failure' do
+    it 'returns normalized error with correct status on failure' do
       expect(HealthCareApplication)
         .to receive(:enrollment_status)
         .with(user_account.icn, true)
         .and_raise(Common::Exceptions::GatewayTimeout)
       gateway = described_class.new(user_account:)
 
-      expect(gateway.api_statuses([user_account])).to eq([nil, ['Gateway timeout']])
+      statuses, errors = gateway.api_statuses([user_account])
+      expect(statuses).to be_nil
+      expect(errors).to be_an(Array)
+      expect(errors.first).to include(
+        status: 504,
+        source: 'hca1010_ez',
+        detail: 'Gateway timeout'
+      )
     end
   end
 end

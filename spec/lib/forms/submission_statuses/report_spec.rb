@@ -500,4 +500,89 @@ describe Forms::SubmissionStatuses::Report, feature: :form_submission,
       end
     end
   end
+
+  context 'StatsD metrics' do
+    context 'when gateway succeeds' do
+      before do
+        allow_any_instance_of(benefits_intake_gateway).to receive(:submissions).and_return([])
+        allow_any_instance_of(benefits_intake_gateway).to receive(:lighthouse_submissions).and_return([])
+        allow_any_instance_of(benefits_intake_gateway).to receive(:intake_statuses).and_return([nil, nil])
+      end
+
+      it 'increments success metric for the gateway' do
+        expect(StatsD).to receive(:increment).with(
+          'api.forms.submission_statuses.gateway',
+          tags: ['service:lighthouse_benefits_intake', 'result:success']
+        )
+        expect(StatsD).to receive(:measure).with(
+          'api.forms.submission_statuses.gateway.latency',
+          instance_of(Float),
+          tags: ['service:lighthouse_benefits_intake']
+        )
+
+        subject.run
+      end
+    end
+
+    context 'when gateway returns errors' do
+      before do
+        create(:form_submission, :with_form214142, user_account_id: user_account.id)
+
+        error_response = double(status: 500, body: { 'errors' => [{ 'detail' => 'Service unavailable' }] })
+        allow(BenefitsIntake::Service).to receive(:new).and_return(benefits_intake_service)
+        allow(benefits_intake_service).to receive(:bulk_status).and_raise(
+          Common::Exceptions::BackendServiceException.new('BENEFITS_INTAKE_ERROR', {},
+                                                          error_response.status,
+                                                          error_response.body)
+        )
+      end
+
+      it 'increments error metric for the gateway' do
+        expect(StatsD).to receive(:increment).with(
+          'api.forms.submission_statuses.gateway',
+          tags: ['service:lighthouse_benefits_intake', 'result:error']
+        )
+        allow(StatsD).to receive(:measure)
+        allow(Rails.logger).to receive(:error)
+
+        subject.run
+      end
+    end
+
+    context 'when multiple gateways are enabled' do
+      subject(:report) do
+        described_class.new(
+          user_account:,
+          allowed_forms:,
+          gateway_options: {
+            benefits_intake_enabled: true,
+            decision_reviews_enabled: true
+          }
+        )
+      end
+
+      before do
+        allow_any_instance_of(benefits_intake_gateway).to receive(:submissions).and_return([])
+        allow_any_instance_of(benefits_intake_gateway).to receive(:lighthouse_submissions).and_return([])
+        allow_any_instance_of(benefits_intake_gateway).to receive(:intake_statuses).and_return([nil, nil])
+
+        allow_any_instance_of(Forms::SubmissionStatuses::Gateways::DecisionReviewsGateway)
+          .to receive(:submissions).and_return([])
+      end
+
+      it 'emits metrics for each gateway' do
+        expect(StatsD).to receive(:increment).with(
+          'api.forms.submission_statuses.gateway',
+          tags: ['service:lighthouse_benefits_intake', 'result:success']
+        )
+        expect(StatsD).to receive(:increment).with(
+          'api.forms.submission_statuses.gateway',
+          tags: ['service:decision_reviews', 'result:success']
+        )
+        allow(StatsD).to receive(:measure)
+
+        report.run
+      end
+    end
+  end
 end

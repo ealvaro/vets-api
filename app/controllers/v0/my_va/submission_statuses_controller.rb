@@ -14,8 +14,12 @@ module V0
           gateway_options: gateway_options_for_user
         )
         result = report.run
+        response_status = status_from(result)
 
-        render json: serializable_from(result).to_json, status: status_from(result)
+        log_partial_success(result) if response_status == 296
+        StatsD.increment('api.forms.submission_statuses.response', tags: ["status:#{response_status}"])
+
+        render json: serializable_from(result).to_json, status: response_status
       end
 
       private
@@ -59,6 +63,16 @@ module V0
 
       def status_from(result)
         result.errors.present? ? 296 : 200
+      end
+
+      def log_partial_success(result)
+        failed_gateways = result.errors.filter_map { |e| e[:source] }.uniq
+        Rails.logger.warn(
+          'Submission statuses partial success (296)',
+          failed_gateways:,
+          total_errors: result.errors.size,
+          total_submissions: result.submission_statuses.size
+        )
       end
 
       def forms_based_on_feature_toggle

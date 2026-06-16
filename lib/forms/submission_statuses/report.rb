@@ -12,6 +12,8 @@ require_relative 'formatters/ivc_champva_formatter'
 module Forms
   module SubmissionStatuses
     class Report
+      STATSD_KEY_PREFIX = 'api.forms.submission_statuses.gateway'
+
       FORMATTERS = {
         'lighthouse_benefits_intake' => Formatters::BenefitsIntakeFormatter.new,
         'decision_reviews' => Formatters::DecisionReviewsFormatter.new,
@@ -42,18 +44,14 @@ module Forms
           @current_service = gateway_config[:service]
           @current_operation = 'data_retrieval_from_gateway'
 
-          response = gateway_config[:gateway].data
-
-          if response.errors.present?
-            Rails.logger.error(
-              'Gateway errors encountered when retrieving data in Forms::SubmissionStatuses::Report',
-              service: gateway_config[:service],
-              errors: response.errors
-            )
+          response = measure_gateway(@current_service) do
+            gateway_config[:gateway].data
           end
 
+          log_and_track_gateway_result(response)
+
           {
-            service: gateway_config[:service],
+            service: @current_service,
             data: response
           }
         end
@@ -137,6 +135,28 @@ module Forms
         return submission.created_at >= 60.days.ago unless submission.updated_at
 
         submission.updated_at >= 60.days.ago
+      end
+
+      def log_and_track_gateway_result(response)
+        if response.errors.present?
+          StatsD.increment(STATSD_KEY_PREFIX, tags: ["service:#{@current_service}", 'result:error'])
+          Rails.logger.error(
+            'Gateway errors encountered when retrieving data in Forms::SubmissionStatuses::Report',
+            service: @current_service,
+            errors: response.errors
+          )
+        else
+          StatsD.increment(STATSD_KEY_PREFIX, tags: ["service:#{@current_service}", 'result:success'])
+        end
+      end
+
+      def measure_gateway(service)
+        start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        result = yield
+        result
+      ensure
+        duration = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000
+        StatsD.measure("#{STATSD_KEY_PREFIX}.latency", duration, tags: ["service:#{service}"])
       end
     end
   end

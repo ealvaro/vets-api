@@ -3,10 +3,14 @@
 module Forms
   module SubmissionStatuses
     class ErrorHandler
-      SOURCE = 'Lighthouse - Benefits Intake API'
       TITLE_PREFIX = 'Form Submission Status'
 
+      def initialize(source:)
+        @source = source
+      end
+
       def handle_error(status:, body:)
+        body = { message: body } unless body.is_a?(Hash)
         errors = parse_error(status, body)
         errors.is_a?(Array) ? errors : [errors]
       end
@@ -31,7 +35,7 @@ module Forms
       def normalize(status:, title:, detail:)
         {
           status:,
-          source: SOURCE,
+          source: @source,
           title: "#{TITLE_PREFIX}: #{title}",
           detail:
         }

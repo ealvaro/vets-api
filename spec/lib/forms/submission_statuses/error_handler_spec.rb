@@ -5,7 +5,13 @@ require 'forms/submission_statuses/error_handler'
 
 describe Forms::SubmissionStatuses::ErrorHandler, feature: :form_submission,
                                                   team_owner: :vfs_authenticated_experience_backend do
-  let(:error_handler) { described_class.new }
+  let(:error_handler) { described_class.new(source: 'test_gateway') }
+
+  it 'sets the source from the initializer' do
+    response = build_response(500, { 'message' => 'Something broke' })
+    errors = error_handler.handle_error(status: response.status, body: response.body)
+    expect(errors.first[:source]).to eq('test_gateway')
+  end
 
   it 'parses an error with a message key' do
     response = build_response(401, { 'message' => 'Invalid authentication credentials' })
