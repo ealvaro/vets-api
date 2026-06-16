@@ -5,8 +5,10 @@ require_relative '../../../../rails_helper'
 require 'token_validation/v2/client'
 require 'bgs_service/claimant_web_service'
 require 'bgs_service/org_web_service'
+require 'claims_api/v2/poa_pdf_constructor/organization'
+require 'claims_api/v2/poa_pdf_constructor/individual'
 
-RSpec.describe 'ClaimsApi::V1::PowerOfAttorney::2122', type: :request do
+RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::2122', type: :request do
   let(:veteran_id) { '1013062086V794840' }
   let(:appoint_organization_path) { "/services/claims/v2/veterans/#{veteran_id}/2122" }
   let(:validate2122_path) { "/services/claims/v2/veterans/#{veteran_id}/2122/validate" }
@@ -63,6 +65,56 @@ RSpec.describe 'ClaimsApi::V1::PowerOfAttorney::2122', type: :request do
                 post appoint_organization_path, params: data.to_json, headers: auth_header
 
                 expect(response).to have_http_status(:accepted)
+              end
+            end
+
+            context 'and the PoaUpdater fails for a veteran submission' do
+              before do
+                allow(Flipper).to receive(:enabled?).with(:claims_api_use_update_poa_relationship).and_return(true)
+              end
+
+              it 'raises a ServiceError, skips PDF/upload, and marks the POA as errored' do
+                mock_ccg(scopes) do |auth_header|
+                  allow_any_instance_of(claimant_web_service).to receive(:find_poa_by_participant_id)
+                    .and_return(bgs_poa)
+                  allow_any_instance_of(org_web_service).to receive(:find_poa_history_by_ptcpnt_id)
+                    .and_return({ person_poa_history: nil })
+                  allow_any_instance_of(ClaimsApi::PoaUpdater)
+                    .to receive(:find_by_ssn).and_return('123456789')
+                  mock_file_number_check
+
+                  # create POA record
+                  post appoint_organization_path, params: data.to_json, headers: auth_header
+                  poa_id = JSON.parse(response.body)['data']['id']
+
+                  # trigger POA update failure path in PoaUpdater
+                  allow_any_instance_of(ClaimsApi::ManageRepresentativeService)
+                    .to receive(:update_poa_relationship).and_return({})
+
+                  # ensure updater runs exactly once in this job execution
+                  expect_any_instance_of(ClaimsApi::PoaUpdater)
+                    .to receive(:perform).with(poa_id, '999999999999').and_call_original
+
+                  # verify PDF generation/upload is not called when POA assignment fails
+                  expect(ClaimsApi::V2::PoaPdfConstructor::Organization).not_to receive(:new)
+                  expect(ClaimsApi::V2::PoaPdfConstructor::Individual).not_to receive(:new)
+                  expect(ClaimsApi::PoaDocumentService).not_to receive(:new)
+                  expect_any_instance_of(ClaimsApi::PoaDocumentService).not_to receive(:create_upload)
+
+                  # expect PoaUpdater to set the vbms_error_message on the POA record when update fails
+                  error = nil
+                  expect do
+                    ClaimsApi::V2::PoaFormBuilderJob.new.perform(
+                      poa_id, '2122', 'post', '999999999999'
+                    )
+                  end.to raise_error(Common::Exceptions::ServiceError) { |e| error = e }
+                  expect(error.errors.first.detail).to include('BGS Error: update_birls_record failed with code')
+
+                  # expect the POA to be errored and the process to be failed when the updater fails
+                  poa = ClaimsApi::PowerOfAttorney.find(poa_id)
+                  expect(ClaimsApi::Process.find_by(processable: poa).step_status).to eq('FAILED')
+                  expect(poa.status).to eq(ClaimsApi::PowerOfAttorney::ERRORED)
+                end
               end
             end
 
@@ -267,6 +319,46 @@ RSpec.describe 'ClaimsApi::V1::PowerOfAttorney::2122', type: :request do
                         poa = ClaimsApi::PowerOfAttorney.find(poa_id)
                         auth_headers = poa.auth_headers
                         expect(auth_headers).not_to have_key('dependent')
+                      end
+                    end
+                  end
+                end
+
+                context 'when the dependent claimant POA assignment fails' do
+                  it 'does not generate or upload the PDF' do
+                    VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
+                      mock_ccg(scopes) do |auth_header|
+                        json = JSON.parse(request_body)
+                        json['data']['attributes']['claimant'] = claimant_data
+                        body = json.to_json
+
+                        post appoint_organization_path, params: body, headers: auth_header
+
+                        poa_id = JSON.parse(response.body)['data']['id']
+
+                        # Mock the dependent assignment to fail
+                        allow_any_instance_of(ClaimsApi::DependentClaimantPoaAssignmentService)
+                          .to receive(:assign_poa_to_dependent!)
+                          .and_raise(Common::Exceptions::ServiceError)
+
+                        # Verify PDF generation is not called when assignment fails
+                        expect(ClaimsApi::V2::PoaPdfConstructor::Organization).not_to receive(:new)
+                        expect(ClaimsApi::V2::PoaPdfConstructor::Individual).not_to receive(:new)
+
+                        # Verify the PDF uploader is never called
+                        expect(ClaimsApi::PoaDocumentService).not_to receive(:new)
+                        expect_any_instance_of(ClaimsApi::PoaDocumentService).not_to receive(:create_upload)
+
+                        # Execute the job directly
+                        expect do
+                          ClaimsApi::V2::PoaFormBuilderJob.new.perform(
+                            poa_id, '2122A', 'post', '123456789' # rep_id
+                          )
+                        end.to raise_error(Common::Exceptions::ServiceError)
+
+                        # Verify the POA status is set to errored
+                        poa = ClaimsApi::PowerOfAttorney.find(poa_id)
+                        expect(poa.status).to eq(ClaimsApi::PowerOfAttorney::ERRORED)
                       end
                     end
                   end

@@ -10,8 +10,9 @@ module ClaimsApi
     class PoaFormBuilderJob < ClaimsApi::ServiceBase
       sidekiq_options retry_for: 48.hours
       # Generate a 21-22 or 21-22a form for a given POA request.
-      # Uploads the generated form to BD. If successfully uploaded,
-      # it queues a job to update the POA code in BGS, as well.
+      # Upon successful update of the POA in BGS, PDF is generated and uploaded to BD.
+      # Dependent jobs are run synchronously to ensure proper order of operations
+      # since the PDF generation depends on a successful POA update.
       #
       # @param power_of_attorney_id [String] Unique identifier of the submitted POA
       def perform(power_of_attorney_id, form_number, action, rep_id)
@@ -23,8 +24,11 @@ module ClaimsApi
 
         rep = ::Veteran::Service::Representative.where(representative_id: rep_id).order(created_at: :desc).first
 
-        build_and_upload_pdf(power_of_attorney, form_number, action, rep)
         queue_poa_assignment(power_of_attorney, rep_id)
+        # POA assignment sets the status to ERRORED, validate success before uploading
+        validate_poa_assignment_successful!(power_of_attorney, process)
+
+        build_and_upload_pdf(power_of_attorney, form_number, action, rep)
         process.update!(step_status: 'SUCCESS', error_messages: [], completed_at: Time.zone.now)
       rescue Errno::ENOENT
         rescue_file_not_found(power_of_attorney, process)
@@ -42,11 +46,25 @@ module ClaimsApi
         benefits_doc_upload(poa: power_of_attorney, pdf_path: output_path, doc_type:, action:)
       end
 
+      # running the assignment synchronously to ensure the update occurs before PDF is uploaded
       def queue_poa_assignment(power_of_attorney, rep_id)
         if dependent_filing?(power_of_attorney)
-          ClaimsApi::PoaAssignDependentClaimantJob.perform_async(power_of_attorney.id, rep_id)
+          ClaimsApi::PoaAssignDependentClaimantJob.new.perform(power_of_attorney.id, rep_id)
         else
-          ClaimsApi::PoaUpdater.perform_async(power_of_attorney.id, rep_id)
+          ClaimsApi::PoaUpdater.new.perform(power_of_attorney.id, rep_id)
+        end
+      end
+
+      # validate success and mark step as FAILED if POA is errored
+      def validate_poa_assignment_successful!(power_of_attorney, process)
+        power_of_attorney.reload
+        if power_of_attorney.status == ClaimsApi::PowerOfAttorney::ERRORED
+          process.update!(step_status: 'FAILED',
+                          error_messages: [{ title: 'POA Update Failed',
+                                             detail: power_of_attorney.vbms_error_message }])
+          raise ::Common::Exceptions::ServiceError.new(
+            detail: power_of_attorney.vbms_error_message
+          )
         end
       end
 

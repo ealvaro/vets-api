@@ -6,7 +6,7 @@ require 'pdf_fill/filler'
 RSpec.describe ClaimsApi::V1::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_web_service/find_by_ssn' do
   subject { described_class }
 
-  let(:power_of_attorney) { create(:power_of_attorney, :with_full_headers) }
+  let(:power_of_attorney) { create(:power_of_attorney, :with_full_headers, :pending) }
   let(:poa_code) { 'ABC' }
   let(:bad_b64_image) { File.read('modules/claims_api/spec/fixtures/signature_b64_prefix_bad.txt') }
   let(:rep) do
@@ -19,6 +19,16 @@ RSpec.describe ClaimsApi::V1::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
     Sidekiq::Job.clear_all
     allow_any_instance_of(ClaimsApi::V2::BenefitsDocuments::Service)
       .to receive(:get_auth_token).and_return('some-value-here')
+
+    # Mock the job responses for the dependent claimant assignment/POA update to isolate testing of the form builder job
+    allow_any_instance_of(ClaimsApi::PoaAssignDependentClaimantJob)
+      .to receive(:perform)
+      .and_return(nil)
+
+    allow_any_instance_of(ClaimsApi::PoaUpdater)
+      .to receive(:perform)
+      .and_return(nil)
+
     b64_image = File.read('modules/claims_api/spec/fixtures/signature_b64.txt')
     power_of_attorney.form_data = {
       recordConsent: true,
@@ -136,6 +146,82 @@ RSpec.describe ClaimsApi::V1::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
         expect(power_of_attorney.signature_errors).not_to be_empty
       end
     end
+
+    describe 'POA update failures' do
+      context 'when dependent claimant POA assignment fails' do
+        before do
+          power_of_attorney.update(
+            auth_headers: power_of_attorney.auth_headers.merge(
+              'dependent' => { 'claimant_participant_id' => '000000000000' }
+            )
+          )
+        end
+
+        it 'does not generate or upload the PDF' do
+          expect_any_instance_of(ClaimsApi::PoaAssignDependentClaimantJob).to receive(:perform)
+            .with(power_of_attorney.id).and_raise(Common::Exceptions::ServiceError)
+
+          expect(ClaimsApi::V1::PoaPdfConstructor::Organization).not_to receive(:new)
+          expect(ClaimsApi::V1::PoaPdfConstructor::Individual).not_to receive(:new)
+          expect(ClaimsApi::PoaDocumentService).not_to receive(:new)
+
+          expect { subject.new.perform(power_of_attorney.id, 'post', '2122') }
+            .to raise_error(Common::Exceptions::ServiceError)
+
+          power_of_attorney.reload
+          expect(power_of_attorney.status).to eq(ClaimsApi::PowerOfAttorney::ERRORED)
+        end
+      end
+
+      context "when a veteran's update with PoaUpdater fails" do
+        it 'does not generate or upload the PDF' do
+          expect_any_instance_of(ClaimsApi::PoaUpdater).to receive(:perform)
+            .with(power_of_attorney.id).and_raise(Common::Exceptions::ServiceError)
+
+          expect(ClaimsApi::V1::PoaPdfConstructor::Organization).not_to receive(:new)
+          expect(ClaimsApi::V1::PoaPdfConstructor::Individual).not_to receive(:new)
+          expect(ClaimsApi::PoaDocumentService).not_to receive(:new)
+
+          expect { subject.new.perform(power_of_attorney.id, 'post', '2122') }
+            .to raise_error(Common::Exceptions::ServiceError)
+
+          power_of_attorney.reload
+          expect(power_of_attorney.status).to eq(ClaimsApi::PowerOfAttorney::ERRORED)
+        end
+      end
+
+      context 'when the veteran POA updater job fails to update via ManageRepresentativeService' do
+        # enable flipper to hit the ManageRepresentativeService path
+        before do
+          allow(Flipper).to receive(:enabled?).with(:claims_api_use_update_poa_relationship).and_return(true)
+        end
+
+        it 'marks the power of attorney as errored and does not generate or upload the PDF' do
+          # trigger POA update failure path in PoaUpdater
+          allow_any_instance_of(ClaimsApi::ManageRepresentativeService)
+            .to receive(:update_poa_relationship).and_return({})
+          allow_any_instance_of(ClaimsApi::PoaUpdater).to receive(:find_by_ssn).and_return('123456789')
+          allow_any_instance_of(ClaimsApi::PoaUpdater).to receive(:perform)
+            .with(power_of_attorney.id).and_call_original
+
+          # expect the PDF generation/upload to not occur
+          expect(ClaimsApi::V1::PoaPdfConstructor::Organization).not_to receive(:new)
+          expect(ClaimsApi::V1::PoaPdfConstructor::Individual).not_to receive(:new)
+          expect(ClaimsApi::PoaDocumentService).not_to receive(:new)
+
+          # expect the job to raise a ServiceError for Sidekiq retry and
+          # for the error detail to be set from the PoaUpdater
+          error = nil
+          expect { subject.new.perform(power_of_attorney.id, 'post', '2122') }
+            .to raise_error(Common::Exceptions::ServiceError) { |e| error = e }
+          expect(error.errors.first.detail).to include('BGS Error: update_birls_record failed with code')
+
+          # expect the POA to be marked as errored and the process to be failed
+          power_of_attorney.reload
+          expect(power_of_attorney.status).to eq(ClaimsApi::PowerOfAttorney::ERRORED)
+        end
+      end
+    end
   end
 
   context 'when an errored job has exhausted its retries' do
@@ -172,7 +258,7 @@ RSpec.describe ClaimsApi::V1::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
       allow(bd_client).to receive(:upload_document).and_return(true)
       allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
 
-      expect(ClaimsApi::PoaUpdater).to receive(:perform_async)
+      expect_any_instance_of(ClaimsApi::PoaUpdater).to receive(:perform).with(power_of_attorney.id)
 
       subject.new.perform(power_of_attorney.id, 'post')
     end
