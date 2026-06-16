@@ -702,6 +702,10 @@ features:
     actor_type: user
     description: When enabled, aligns evidence request alerts in the claim status tool with VADS best practices.
     enable_in_development: true
+  cst_claim_letters_download_refactor:
+    actor_type: user
+    description: When enabled, refactors the claim letters download feature to use onClick behavior rather than direct navigation.
+    enable_in_development: true
   cst_claim_phases:
     actor_type: user
     description: When enabled, claims status tool uses the new claim phase designs
