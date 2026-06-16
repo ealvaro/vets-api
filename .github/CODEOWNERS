@@ -53,7 +53,6 @@ app/controllers/v0/admin_controller.rb @software/backend-review-group
 app/controllers/v0/apidocs_controller.rb @software/backend-review-group
 app/controllers/v0/appeals_controller.rb @software/benefits-management-tools-be @software/backend-review-group
 app/controllers/v0/apps_controller.rb @software/lighthouse-pivot
-app/controllers/v0/ask_va @software/ask-va-engineers @software/backend-review-group
 app/controllers/v0/average_days_for_claim_completion_controller.rb @software/benefits-microservices @software/backend-review-group
 app/controllers/v0/backend_statuses_controller.rb @software/backend-review-group
 app/controllers/v0/banners_controller.rb @software/vfs-facilities-frontend @software/backend-review-group
@@ -1333,7 +1332,6 @@ spec/controllers/concerns/third_party_transaction_logging_spec.rb @software/back
 spec/controllers/sign_in @software/octo-identity
 spec/controllers/sts @software/octo-identity
 spec/controllers/v0/apps_controller_spec.rb @software/lighthouse-pivot
-spec/controllers/v0/ask_va @software/ask-va-engineers @software/backend-review-group
 spec/controllers/v0/average_days_for_claim_completion_controller_spec.rb @software/benefits-microservices @software/backend-review-group
 spec/controllers/v0/benefits_claims_controller_spec.rb @software/benefits-management-tools-be @software/backend-review-group
 spec/controllers/v0/benefits_documents_controller_spec.rb @software/benefits-management-tools-be @software/backend-review-group
