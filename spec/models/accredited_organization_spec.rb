@@ -14,6 +14,34 @@ RSpec.describe AccreditedOrganization, type: :model do
     it { expect(subject).to validate_uniqueness_of(:poa_code) }
   end
 
+  describe 'acceptance_mode enums' do
+    subject { build(:accredited_organization) }
+
+    describe 'primary_org_acceptance_mode' do
+      it 'defaults to no_acceptance' do
+        expect(subject.primary_org_acceptance_mode).to eq('no_acceptance')
+      end
+
+      it 'is prefixed with primary_' do
+        expect(subject).to respond_to(:primary_no_acceptance?)
+        expect(subject).to respond_to(:primary_any_request?)
+        expect(subject).to respond_to(:primary_self_only?)
+      end
+    end
+
+    describe 'default_new_rep_acceptance_mode' do
+      it 'defaults to no_acceptance' do
+        expect(subject.default_new_rep_acceptance_mode).to eq('no_acceptance')
+      end
+
+      it 'is prefixed with default_rep_' do
+        expect(subject).to respond_to(:default_rep_no_acceptance?)
+        expect(subject).to respond_to(:default_rep_any_request?)
+        expect(subject).to respond_to(:default_rep_self_only?)
+      end
+    end
+  end
+
   describe '.find_within_max_distance' do
     # ~6 miles from Washington, D.C.
     let!(:ai1) do

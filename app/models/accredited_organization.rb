@@ -19,6 +19,18 @@ class AccreditedOrganization < ApplicationRecord
   has_many :accreditations, dependent: :destroy
   has_many :accredited_individuals, through: :accreditations
 
+  enum :primary_org_acceptance_mode, {
+    any_request: 'any_request',
+    self_only: 'self_only',
+    no_acceptance: 'no_acceptance'
+  }, prefix: :primary, default: 'no_acceptance'
+
+  enum :default_new_rep_acceptance_mode, {
+    any_request: 'any_request',
+    self_only: 'self_only',
+    no_acceptance: 'no_acceptance'
+  }, prefix: :default_rep, default: 'no_acceptance'
+
   validates :ogc_id, :poa_code, presence: true
   validates :poa_code, length: { is: 3 }
   validates :poa_code, uniqueness: true
