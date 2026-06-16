@@ -3,7 +3,7 @@
 FactoryBot.define do
   factory :mobile_maintenance_lighthouse_first, class: '::MaintenanceWindow' do
     pagerduty_id { 'PHQI9WA' }
-    external_service { 'lighthouse' }
+    external_service { 'lighthouse_benefits_claims' }
     start_time { '2021-05-25 21:33:39' }
     end_time { '2021-05-25 22:33:39' }
     created_at { '2021-05-24 12:15:17' }
@@ -12,7 +12,7 @@ FactoryBot.define do
 
   factory :mobile_maintenance_lighthouse_second, class: '::MaintenanceWindow' do
     pagerduty_id { 'PHQI9WB' }
-    external_service { 'lighthouse' }
+    external_service { 'lighthouse_benefits_claims' }
     start_time { '2021-05-26 21:33:39' }
     end_time { '2021-05-26 22:33:39' }
     created_at { '2021-05-25 12:15:17' }
@@ -21,7 +21,7 @@ FactoryBot.define do
 
   factory :mobile_maintenance_lighthouse_third, class: '::MaintenanceWindow' do
     pagerduty_id { 'PHQI9WC' }
-    external_service { 'lighthouse' }
+    external_service { 'lighthouse_benefits_claims' }
     start_time { '2021-05-27 21:33:39' }
     end_time { '2021-05-27 22:33:39' }
     created_at { '2021-05-26 12:15:17' }

@@ -37,6 +37,8 @@ properties:
                 - disability_rating
                 - letters_and_documents
                 - immunizations
+                - allergies
+                - labs_and_tests
                 - secure_messaging
                 - appointments
                 - user_profile_update

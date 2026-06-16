@@ -924,9 +924,13 @@ maintenance:
     hcq: <%= ENV['maintenance__services__hcq'] %>
     idme: <%= ENV['maintenance__services__idme'] %>
     lighthouse_benefits_claims: <%= ENV['maintenance__services__lighthouse_benefits_claims'] %>
+    lighthouse_benefits_documents: <%= ENV['maintenance__services__lighthouse_benefits_documents'] %>
     lighthouse_benefits_education: <%= ENV['maintenance__services__lighthouse_benefits_education'] %>
     lighthouse_benefits_intake: <%= ENV['maintenance__services__lighthouse_benefits_intake'] %>
     lighthouse_direct_deposit: <%= ENV['maintenance__services__lighthouse_direct_deposit'] %>
+    lighthouse_facilities: <%= ENV['maintenance__services__lighthouse_facilities'] %>
+    lighthouse_letters_generator: <%= ENV['maintenance__services__lighthouse_letters_generator'] %>
+    lighthouse_veterans_health: <%= ENV['maintenance__services__lighthouse_veterans_health'] %>
     lighthouse_vshe: <%= ENV['maintenance__services__lighthouse_vshe'] %>
     logingov: <%= ENV['maintenance__services__logingov'] %>
     mdot: <%= ENV['maintenance__services__mdot'] %>

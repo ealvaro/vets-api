@@ -5,18 +5,18 @@ require 'rails_helper'
 RSpec.describe Mobile::V0::ServiceGraph, type: :model do
   subject do
     Mobile::V0::ServiceGraph.new(
-      %i[bgs lighthouse],
+      %i[bgs lighthouse_benefits_claims],
       %i[iam_ssoe auth],
       %i[mpi auth],
-      %i[mpi lighthouse],
+      %i[mpi lighthouse_benefits_claims],
       %i[arcgis facility_locator],
       %i[auth auth_idme],
       %i[auth auth_mhv],
       %i[caseflow appeals],
       %i[vet360 military_service_history],
-      %i[lighthouse claims],
-      %i[lighthouse direct_deposit_benefits],
-      %i[lighthouse letters_and_documents],
+      %i[lighthouse_benefits_claims claims],
+      %i[lighthouse_benefits_claims direct_deposit_benefits],
+      %i[lighthouse_benefits_claims letters_and_documents],
       %i[idme auth_idme],
       %i[mhv auth_mhv],
       %i[mhv secure_messaging],
@@ -46,7 +46,7 @@ RSpec.describe Mobile::V0::ServiceGraph, type: :model do
       end
 
       it 'does not include upstream services in the list' do
-        expect(affected_services.keys).not_to include(%i[bgs lighthouse])
+        expect(affected_services.keys).not_to include(:bgs, :lighthouse_benefits_claims)
       end
 
       it 'includes downstream windows with the upstream start time' do
@@ -69,7 +69,7 @@ RSpec.describe Mobile::V0::ServiceGraph, type: :model do
       end
 
       it 'does not include upstream services in the list' do
-        expect(affected_services.keys).not_to include(%i[bgs lighthouse])
+        expect(affected_services.keys).not_to include(:bgs, :lighthouse_benefits_claims)
       end
 
       it 'includes downstream windows with the earliest upstream start time' do

@@ -42,7 +42,7 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
       end
     end
 
-    context 'when a maintenance with many dependent services and a window not in the service map is active' do
+    context 'when upstream maintenance windows affect multiple downstream services' do
       before do
         Timecop.freeze('2021-05-25T03:33:39Z')
         create(:mobile_maintenance_lighthouse_first)
@@ -60,7 +60,7 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
       it 'returns an array of the affected services' do
         expect(response.parsed_body['data']).to eq(
           [{
-            'id' => 'ebd9fb30-4df2-52e9-b951-297a9a4cc65c',
+            'id' => mw_uuid('claims'),
             'type' => 'maintenance_window',
             'attributes' => {
               'service' => 'claims',
@@ -68,31 +68,55 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
               'endTime' => '2021-05-25T22:33:39.000Z'
             }
           }, {
-            'id' => mw_uuid('disability_rating'),
+            'id' => mw_uuid('direct_deposit_benefits'),
             'type' => 'maintenance_window',
             'attributes' => {
-              'service' => 'disability_rating',
-              'startTime' => '2021-05-25T21:33:39.000Z',
-              'endTime' => '2021-05-25T22:33:39.000Z'
+              'service' => 'direct_deposit_benefits',
+              'startTime' => '2021-05-25T23:33:39.000Z',
+              'endTime' => '2021-05-26T01:45:00.000Z'
+            }
+          }, {
+            'id' => mw_uuid('immunizations'),
+            'type' => 'maintenance_window',
+            'attributes' => {
+              'service' => 'immunizations',
+              'startTime' => '2021-05-25T23:33:39.000Z',
+              'endTime' => '2021-05-26T01:45:00.000Z'
+            }
+          }, {
+            'id' => mw_uuid('allergies'),
+            'type' => 'maintenance_window',
+            'attributes' => {
+              'service' => 'allergies',
+              'startTime' => '2021-05-25T23:33:39.000Z',
+              'endTime' => '2021-05-26T01:45:00.000Z'
+            }
+          }, {
+            'id' => mw_uuid('labs_and_tests'),
+            'type' => 'maintenance_window',
+            'attributes' => {
+              'service' => 'labs_and_tests',
+              'startTime' => '2021-05-25T23:33:39.000Z',
+              'endTime' => '2021-05-26T01:45:00.000Z'
             }
           }, {
             'id' => mw_uuid('letters_and_documents'),
             'type' => 'maintenance_window',
             'attributes' => {
               'service' => 'letters_and_documents',
-              'startTime' => '2021-05-25T21:33:39.000Z',
-              'endTime' => '2021-05-25T22:33:39.000Z'
+              'startTime' => '2021-05-25T23:33:39.000Z',
+              'endTime' => '2021-05-26T01:45:00.000Z'
             }
           }, {
-            'id' => '0ce167f8-9522-52c3-94e0-4f1e367d7064',
+            'id' => mw_uuid('disability_rating'),
             'type' => 'maintenance_window',
             'attributes' => {
-              'service' => 'immunizations',
-              'startTime' => '2021-05-25T21:33:39.000Z',
-              'endTime' => '2021-05-25T22:33:39.000Z'
+              'service' => 'disability_rating',
+              'startTime' => '2021-05-25T23:33:39.000Z',
+              'endTime' => '2021-05-26T01:45:00.000Z'
             }
           }, {
-            'id' => 'c07d7af4-b54a-5b82-b94c-3366f79cc500',
+            'id' => mw_uuid('efolder'),
             'type' => 'maintenance_window',
             'attributes' => {
               'service' => 'efolder',
@@ -101,6 +125,40 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
             }
           }]
         )
+      end
+    end
+
+    context 'when efolder_use_lighthouse_benefits_documents_service is enabled and BGS is down' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:efolder_use_lighthouse_benefits_documents_service)
+                                            .and_return(true)
+        Timecop.freeze('2021-05-25T03:33:39Z')
+        create(:mobile_maintenance_bgs_first)
+        get '/mobile/v0/maintenance_windows', headers: { 'X-Key-Inflection' => 'camel' }
+      end
+
+      after { Timecop.return }
+
+      it 'cascades the BGS outage to efolder via lighthouse_benefits_documents' do
+        services = response.parsed_body['data'].pluck('attributes').pluck('service')
+        expect(services).to include('efolder')
+      end
+    end
+
+    context 'when efolder_use_lighthouse_benefits_documents_service is disabled and BGS is down' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:efolder_use_lighthouse_benefits_documents_service)
+                                            .and_return(false)
+        Timecop.freeze('2021-05-25T03:33:39Z')
+        create(:mobile_maintenance_bgs_first)
+        get '/mobile/v0/maintenance_windows', headers: { 'X-Key-Inflection' => 'camel' }
+      end
+
+      after { Timecop.return }
+
+      it 'does not cascade the BGS outage to efolder' do
+        services = response.parsed_body['data'].pluck('attributes').pluck('service')
+        expect(services).not_to include('efolder')
       end
     end
 
@@ -152,7 +210,7 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
         lighthouse_latest_end_time = latest_lighthouse_starting.end_time.iso8601
 
         assert_schema_conform(200)
-        expect(attributes.pluck('service').uniq).to eq(%w[claims disability_rating letters_and_documents immunizations])
+        expect(attributes.pluck('service').uniq).to eq(%w[claims])
         expect(attributes.map { |w| Time.parse(w['startTime']).iso8601 }.uniq).to eq([lighthouse_earliest_start_time])
         expect(attributes.map { |w| Time.parse(w['endTime']).iso8601 }.uniq).to eq([lighthouse_earliest_end_time])
 
@@ -161,7 +219,7 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
 
         assert_schema_conform(200)
         attributes = response.parsed_body['data'].pluck('attributes')
-        expect(attributes.pluck('service').uniq).to eq(%w[claims disability_rating letters_and_documents immunizations])
+        expect(attributes.pluck('service').uniq).to eq(%w[claims])
         expect(attributes.map { |w| Time.parse(w['startTime']).iso8601 }.uniq).to eq([lighthouse_middle_start_time])
         expect(attributes.map { |w| Time.parse(w['endTime']).iso8601 }.uniq).to eq([lighthouse_middle_end_time])
 
@@ -170,7 +228,7 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
 
         assert_schema_conform(200)
         attributes = response.parsed_body['data'].pluck('attributes')
-        expect(attributes.pluck('service').uniq).to eq(%w[claims disability_rating letters_and_documents immunizations])
+        expect(attributes.pluck('service').uniq).to eq(%w[claims])
 
         expect(attributes.map { |w| Time.parse(w['startTime']).iso8601 }.uniq).to eq([lighthouse_latest_start_time])
         expect(attributes.map { |w| Time.parse(w['endTime']).iso8601 }.uniq).to eq([lighthouse_latest_end_time])
@@ -182,7 +240,7 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
       let!(:latest_lighthouse_starting) { create(:mobile_maintenance_lighthouse_second) }
       let!(:earliest_bgs_starting) { create(:mobile_maintenance_bgs_first) }
       let!(:latest_bgs_starting) { create(:mobile_maintenance_bgs_second) }
-      let(:lighthouse_services) { %w[claims disability_rating immunizations].freeze }
+      let(:lighthouse_services) { %w[claims].freeze }
       let(:bgs_services) { %w[payment_history appeals].freeze }
 
       before { Timecop.freeze('2021-05-25T03:33:39Z') }
