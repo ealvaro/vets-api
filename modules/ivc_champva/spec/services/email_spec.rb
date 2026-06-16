@@ -115,6 +115,57 @@ RSpec.describe IvcChampva::Email, type: :service do
       end
     end
 
+    context 'when sync: true' do
+      subject { described_class.new(data, sync: true) }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:va_notify_v2_ivc_champva_email).and_return(false)
+      end
+
+      it 'calls VaNotify::Service directly instead of enqueuing' do
+        service_double = instance_double(VaNotify::Service)
+        allow(VaNotify::Service).to receive(:new).and_return(service_double)
+        allow(service_double).to receive(:send_email)
+
+        expect(VANotify::EmailJob).not_to receive(:perform_async)
+        expect(VANotify::V2::QueueEmailJob).not_to receive(:enqueue)
+
+        subject.send_email
+
+        expect(VaNotify::Service).to have_received(:new).with(
+          Settings.vanotify.services.ivc_champva.api_key,
+          expected_callback_options
+        )
+        expect(service_double).to have_received(:send_email).with(
+          email_address: data[:email],
+          template_id: expected_template_id,
+          personalisation: expected_personalisation
+        )
+      end
+
+      it 'returns true on success' do
+        service_double = instance_double(VaNotify::Service)
+        allow(VaNotify::Service).to receive(:new).and_return(service_double)
+        allow(service_double).to receive(:send_email)
+
+        expect(subject.send_email).to be true
+      end
+
+      it 'logs and returns nil when VANotify::Error is raised' do
+        service_double = instance_double(VaNotify::Service)
+        allow(VaNotify::Service).to receive(:new).and_return(service_double)
+        allow(service_double).to receive(:send_email).and_raise(
+          VANotify::Error.new(400, 'Bad Request')
+        )
+        allow(Rails.logger).to receive(:error)
+
+        result = subject.send_email
+
+        expect(result).to be_nil
+        expect(Rails.logger).to have_received(:error).with(/Pega Status Update Email Error:/)
+      end
+    end
+
     context 'when optional keys are missing from payload' do
       let(:data) do
         {

@@ -65,12 +65,12 @@ module IvcChampva
                                     email: Settings.vanotify.services.ivc_champva.pega_inbox_address
                                   })
 
-      if (callback = Flipper.enabled?(:champva_vanotify_custom_pega_alert_callback, @current_user))
+      if (callback = Flipper.enabled?(:champva_vanotify_custom_pega_alert_callback))
         form_data = form_data.merge(callback_hash(form))
       end
 
       Rails.logger.info 'IVC Forms NotifyPegaMissingFormStatusJob - Sending email'
-      if IvcChampva::Email.new(form_data).send_email
+      if IvcChampva::Email.new(form_data, sync: true).send_email
         Rails.logger.info 'IVC Forms NotifyPegaMissingFormStatusJob - Email sent'
         monitor.track_send_zsf_notification_to_pega(form_data[:form_uuid], template_id) unless callback
       else
