@@ -12,6 +12,7 @@ module AuthenticationAndSSOConcerns # rubocop:disable Metrics/ModuleLength
     before_action :authenticate, :set_session_expiration_header
 
     validates_access_token_audience [IdentitySettings.sign_in.vaweb_client_id,
+                                     IdentitySettings.sign_in.vaweb_llt_client_id,
                                      ('vamock' if MockedAuthentication.mockable_env?)]
   end
 
