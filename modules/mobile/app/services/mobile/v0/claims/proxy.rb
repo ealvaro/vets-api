@@ -41,12 +41,34 @@ module Mobile
           @appeals_service ||= Caseflow::Service.new
         end
 
+        # Upstream exception classes (e.g. Common::Exceptions::BackendServiceException) expose
+        # `errors`, while EVSS-style errors expose `details`. Either may also lack `body`. Probe
+        # for whichever is available rather than assuming `details`.
         def handle_middleware_error(error)
-          response_values = {
-            details: error.details
-          }
-          raise Common::Exceptions::BackendServiceException.new('MOBL_502_upstream_error', response_values, 500,
-                                                                error.body)
+          details = if error.respond_to?(:details)
+                      error.details
+                    elsif error.respond_to?(:errors)
+                      error.errors.as_json
+                    else
+                      error.message
+                    end
+          body = error.respond_to?(:body) ? error.body : nil
+          raise Common::Exceptions::BackendServiceException.new('MOBL_502_upstream_error', { details: },
+                                                                upstream_status(error), body)
+        end
+
+        # Preferred order:
+        # 1. error.original_status (BackendServiceException upstream HTTP code)
+        # 2. error.status (Faraday-style error upstream HTTP code)
+        # 3. 500 (generic fallback)
+        def upstream_status(error)
+          if error.respond_to?(:original_status) && error.original_status
+            error.original_status
+          elsif error.respond_to?(:status) && error.status
+            error.status
+          else
+            500
+          end
         end
       end
     end

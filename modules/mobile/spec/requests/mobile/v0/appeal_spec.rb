@@ -162,6 +162,24 @@ RSpec.describe 'Mobile::V0::Appeal', type: :request do
       end
     end
 
+    context 'when the upstream Caseflow service fails' do
+      let(:upstream_error) do
+        Common::Exceptions::BackendServiceException.new('CASEFLOWSTATUS500', {}, 500, 'upstream caseflow boom')
+      end
+
+      before do
+        allow_any_instance_of(Caseflow::Service).to receive(:get_appeals).and_raise(upstream_error)
+      end
+
+      it 'surfaces an upstream error without crashing on .details' do
+        get '/mobile/v0/appeal/3294289', headers: sis_headers
+
+        assert_schema_conform(502)
+        error = response.parsed_body['errors']&.first
+        expect(error&.dig('code')).to eq('MOBL_502_upstream_error')
+      end
+    end
+
     context 'with an unauthorized user' do
       let!(:user) { sis_user(loa: { current: LOA::TWO, highest: LOA::TWO }) }
 
