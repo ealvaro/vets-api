@@ -447,34 +447,43 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
     end
 
     it 'supports adding a burial claim', run_at: 'Thu, 29 Aug 2019 17:45:03 GMT' do
+      mpi_stub = double('MPI')
       allow(SecureRandom).to receive(:uuid).and_return('c3fa0769-70cb-419a-b3a6-d2563e7b8502')
+      allow(MPI::Service).to receive(:new).and_return(mpi_stub)
+      allow(mpi_stub).to receive(:find_profile_by_identifier).and_return(
+        OpenStruct.new({ profile: OpenStruct.new({
+                                                   ssn: '123121234', participant_id: '123456789'
+                                                 }) })
+      )
+      user = build(:user, :loa3)
 
-      VCR.use_cassette(
-        'mpi/find_candidate/find_profile_with_attributes',
-        VCR::MATCH_EVERYTHING
-      ) do
-        expect(subject).to validate(
-          :post,
-          '/burials/v0/claims',
-          200,
-          '_data' => {
-            'burial_claim' => {
-              'form' => build(:burials_saved_claim).form
-            }
+      expect(subject).to validate(
+        :post,
+        '/burials/v0/claims',
+        200,
+        '_data' => {
+          'burial_claim' => {
+            'form' => build(:burials_saved_claim).form
           }
-        )
+        },
+        '_headers' => {
+          'Cookie' => sign_in(user, nil, true)
+        }
+      )
 
-        expect(subject).to validate(
-          :post,
-          '/burials/v0/claims',
-          422,
-          '_data' => {
-            'burial_claim' => {
-              'invalid-form' => { invalid: true }.to_json
-            }
+      expect(subject).to validate(
+        :post,
+        '/burials/v0/claims',
+        422,
+        '_data' => {
+          'burial_claim' => {
+            'invalid-form' => { invalid: true }.to_json
           }
-        )
-      end
+        },
+        '_headers' => {
+          'Cookie' => sign_in(user, nil, true)
+        }
+      )
     end
 
     it 'supports adding a pension claim' do

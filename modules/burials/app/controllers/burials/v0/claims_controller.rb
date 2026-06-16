@@ -14,7 +14,7 @@ module Burials
     class ClaimsController < ApplicationController
       include BPDS::SubmissionHandler
 
-      skip_before_action(:authenticate)
+      skip_before_action :authenticate, except: :create
       before_action :load_user, only: :create
 
       service_tag 'burial-application'
