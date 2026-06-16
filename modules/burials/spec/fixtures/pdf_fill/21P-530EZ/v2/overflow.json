@@ -1,0 +1,142 @@
+{
+  "privacyAgreementAccepted": true,
+  "veteranSocialSecurityNumber": "111223333",
+  "vaFileNumber": "12345678",
+  "claimantPhone": "2123456789",
+  "claimantFullName": {
+    "first": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    "middle": "middle",
+    "last": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    "suffix": "Sr."
+  },
+  "locationOfDeath": {
+    "location": "other",
+    "other": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+  },
+  "toursOfDuty": [
+    {
+      "dateRange": {
+        "from": "2012-06-01",
+        "to": "2013-07-01"
+      },
+      "serviceBranch": "army1",
+      "rank": "rank1",
+      "serviceNumber": "sn1",
+      "placeOfEntry": "placeOfEntry1",
+      "placeOfSeparation": "place1",
+      "militaryServiceNumber": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+    },
+    {
+      "dateRange": {
+        "from": "2012-06-02",
+        "to": "2013-07-02"
+      },
+      "serviceBranch": "army2",
+      "rank": "rank2",
+      "serviceNumber": "sn2",
+      "placeOfEntry": "placeOfEntry2",
+      "placeOfSeparation": "place2"
+    },
+    {
+      "dateRange": {
+        "from": "2012-06-03",
+        "to": "2013-07-03"
+      },
+      "serviceBranch": "army3",
+      "rank": "rank3",
+      "serviceNumber": "sn3",
+      "placeOfEntry": "placeOfEntry3",
+      "placeOfSeparation": "place3"
+    },
+    {
+      "dateRange": {
+        "from": "2012-06-03",
+        "to": "2013-07-03"
+      },
+      "serviceBranch": "army4",
+      "rank": "rank3",
+      "serviceNumber": "sn3",
+      "placeOfEntry": "placeOfEntry3",
+      "placeOfSeparation": "place3"
+    }
+  ],
+  "finalRestingPlace": {
+    "location": {
+      "other": "OTHER PLACE"
+    }
+  },
+  "officialPosition": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "benefitsUnclaimedRemains": false,
+  "previouslyReceivedAllowance": false,
+  "burialCost": 9999999999999999999,
+  "burialAllowance": false,
+  "plotAllowance": false,
+  "amountGovtContribution": " 9999999999999999999",
+  "amountIncurred": 9999999999999999999,
+  "stateCemetery": false,
+  "federalCemetery": false,
+  "burialAllowanceRequested": {
+    "nonService": true
+  },
+  "govtContributions": false,
+  "placeOfRemains": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "previousNames": [
+    {
+      "first": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "last": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "first": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "last": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "first": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "last": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "first": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "last": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "first": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "last": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  ],
+  "powPeriods": [
+    {"powDateRange": {"from": "1971-02-26", "to": "1973-03-02"}},
+    {"powDateRange": {"from": "1974-02-26", "to": "1976-03-02"}},
+    {"powDateRange": {"from": "1977-02-26", "to": "1979-03-02"}}
+  ],
+  "deathDate": "2012-06-27",
+  "burialDate": "2012-06-28",
+  "placeOfBirth": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "veteranDateOfBirth": "2012-06-26",
+  "relationship": {
+    "type": "other",
+    "isEntity": true,
+    "other": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+  },
+  "firmName": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "claimantAddress": {
+    "street": "cXXXXXXXXXXXXXXXXXXXXcXXXXXXXXXXXXXXXXXXXX",
+    "street2": "XXXXXXXXXXXX",
+    "aptNum": "10A",
+    "city": "cXXXXXXXXXXXXXXXXXXXXcXXXXXXXXXXXXXXXXXXXX",
+    "state": "VA",
+    "country": "US",
+    "postalCode": "12345"
+  },
+  "claimantPrintedName": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "firmNameAndAddr": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "claimantIntPhone": "+1 215-345-3455",
+  "claimantDateOfBirth": "2010-06-20",
+  "claimantEmail": "XXXXXXXXXXXXXXXXXXXX@XXXXXXXXXXXXXXXXXXXX.com",
+  "veteranFullName": {
+    "first": "XXXXXXXXXXXXXXXXXXXX",
+    "middle": "middle",
+    "last": "XXXXXXXXXXXXXXXXXXXX",
+    "suffix": "Sr."
+  },
+  "dateSigned": "2024-02-02",
+  "statementOfTruthSignature": "Wesley Ford"
+}

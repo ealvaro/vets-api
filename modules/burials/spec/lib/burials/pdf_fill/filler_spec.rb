@@ -8,17 +8,20 @@ describe PdfFill::Filler, type: :model do
   include SchemaMatchers
 
   describe '#fill_ancillary_form', run_at: '2017-07-25 00:00:00 -0400' do
-    %w[21P-530EZ].each do |form_id|
-      context "form #{form_id}" do
-        %w[simple kitchen_sink overflow].each do |type|
-          context "with #{type} test data" do
-            let(:form_data) do
-              JSON.parse(File.read("modules/burials/spec/fixtures/pdf_fill/#{form_id}/#{type}.json"))
-            end
+    context 'form 21P-530EZ' do
+      let(:form_id) { Burials::FORM_ID }
+
+      %w[simple kitchen_sink overflow].each do |type|
+        context "with #{type} test data" do
+          let(:form_data) { JSON.parse(File.read(fixture)) }
+
+          context 'with v1 pdf' do
+            let(:fixture_path) { "modules/burials/spec/fixtures/pdf_fill/#{form_id}/v1" }
+            let(:fixture) { "#{fixture_path}/#{type}.json" }
+
+            before { allow(Flipper).to receive(:enabled?).with(:burial_pdf_form_alignment).and_return(false) }
 
             it 'fills the form correctly' do
-              allow(Flipper).to receive(:enabled?).with(:burial_pdf_form_alignment).and_return(false)
-
               if type == 'overflow'
                 # pdfs_fields_match? only compares based on filled fields, it doesn't read the extras page
                 the_extras_generator = nil
@@ -36,7 +39,7 @@ describe PdfFill::Filler, type: :model do
               if type == 'overflow'
                 expect(the_extras_generator).not_to be_nil, 'combine_extras should have been called'
                 extras_path = the_extras_generator.generate
-                expected_path = "modules/burials/spec/fixtures/pdf_fill/#{form_id}/overflow_redesign_extras.pdf"
+                expected_path = "#{fixture_path}/overflow_extras.pdf"
 
                 expect(
                   FileUtils.compare_file(extras_path, expected_path)
@@ -45,15 +48,20 @@ describe PdfFill::Filler, type: :model do
                 File.delete(extras_path)
               end
 
-              expected_path = "modules/burials/spec/fixtures/pdf_fill/#{form_id}/#{type}_redesign.pdf"
+              expected_path = "#{fixture_path}/#{type}.pdf"
               expect(file_path).to match_pdf_fields(expected_path)
 
               File.delete(file_path)
             end
+          end
 
-            it 'fills the form correctly with V2' do
-              allow(Flipper).to receive(:enabled?).with(:burial_pdf_form_alignment).and_return(true)
+          context 'with v2 pdf' do
+            let(:fixture_path) { "modules/burials/spec/fixtures/pdf_fill/#{form_id}/v2" }
+            let(:fixture) { "#{fixture_path}/#{type}.json" }
 
+            before { allow(Flipper).to receive(:enabled?).with(:burial_pdf_form_alignment).and_return(true) }
+
+            it 'fills the form correctly' do
               if type == 'overflow'
                 # pdfs_fields_match? only compares based on filled fields, it doesn't read the extras page
                 the_extras_generator = nil
@@ -71,8 +79,7 @@ describe PdfFill::Filler, type: :model do
               if type == 'overflow'
                 expect(the_extras_generator).not_to be_nil, 'combine_extras should have been called'
                 extras_path = the_extras_generator.generate
-
-                expected_path = "modules/burials/spec/fixtures/pdf_fill/#{form_id}/overflow_redesign_extras_v2.pdf"
+                expected_path = "#{fixture_path}/overflow_extras.pdf"
 
                 # This gives more detailed output on where the PDFs differ
                 file_texts = [extras_path, expected_path].map do |path|
@@ -86,7 +93,7 @@ describe PdfFill::Filler, type: :model do
                 File.delete(extras_path)
               end
 
-              expected_path = "modules/burials/spec/fixtures/pdf_fill/#{form_id}/#{type}_redesign_v2.pdf"
+              expected_path = "#{fixture_path}/#{type}.pdf"
               expect(file_path).to match_pdf_fields(expected_path)
 
               File.delete(file_path)

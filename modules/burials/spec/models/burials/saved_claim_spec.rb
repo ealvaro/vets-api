@@ -154,6 +154,8 @@ RSpec.describe Burials::SavedClaim do
       allow(StatsD).to receive(:increment)
       instance.form = {
         privacyAgreementAccepted: true,
+        statementOfTruthSignature: 'Derrick A Stewart',
+        dateSigned: '2026-06-16',
         veteranFullName: {
           first: 'WESLEYREALLYLONGNAMEOVERFLOW',
           last: 'FORD'

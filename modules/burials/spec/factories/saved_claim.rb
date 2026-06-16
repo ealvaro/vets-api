@@ -121,7 +121,9 @@ FactoryBot.define do
             attachmentId: '',
             isEncrypted: false
           }
-        ]
+        ],
+        statementOfTruthSignature: 'Wesley M Ford',
+        dateSigned: '2026-06-16'
       }.to_json
     end
 

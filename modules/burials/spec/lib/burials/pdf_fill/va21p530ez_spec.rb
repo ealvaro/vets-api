@@ -74,46 +74,92 @@ describe Burials::PdfFill::Forms::Va21p530ez do
   )
 
   describe '#merge_fields' do
-    let(:fixture_path) { "#{Burials::MODULE_PATH}/spec/fixtures/pdf_fill/#{Burials::FORM_ID}" }
+    context 'with v1 pdf' do
+      let(:fixture_path) { "#{Burials::MODULE_PATH}/spec/fixtures/pdf_fill/#{Burials::FORM_ID}/v1" }
 
-    it 'merges the right fields', run_at: '2024-03-21 00:00:00 EDT' do
-      expected_path = "#{fixture_path}/kitchen_sink.json"
-      actual_path = "#{fixture_path}/merge_fields.json"
+      it 'merges the right fields', run_at: '2024-03-21 00:00:00 EDT' do
+        expected_path = "#{fixture_path}/kitchen_sink.json"
+        actual_path = "#{fixture_path}/merge_fields.json"
 
-      expected = described_class.new(JSON.parse(File.read(expected_path))).merge_fields
-      actual = JSON.parse(File.read(actual_path))
+        expected = described_class.new(JSON.parse(File.read(expected_path))).merge_fields
+        actual = JSON.parse(File.read(actual_path))
 
-      # Create a diff that is easy to read when expected/actual differ
-      diff = Hashdiff.diff(expected, actual)
+        # Create a diff that is easy to read when expected/actual differ
+        diff = Hashdiff.diff(expected, actual)
 
-      expect(diff).to eq([])
+        expect(diff).to eq([])
+      end
+
+      it 'leaves benefit selections blank on pdf if unselected', run_at: '2024-03-21 00:00:00 EDT' do
+        unselected_benefits_data = JSON.parse(
+          File.read("#{fixture_path}/kitchen_sink.json")
+        ).except(
+          'burialExpenseResponsibility', 'plotExpenseResponsibility', 'transportationExpenses',
+          'previouslyReceivedAllowance', 'govtContributions'
+        )
+
+        expected = JSON.parse(
+          File.read("#{fixture_path}/merge_fields.json")
+        ).except(
+          'burialExpenseResponsibility', 'plotExpenseResponsibility', 'transportationExpenses',
+          'previouslyReceivedAllowance', 'govtContributions', 'hasBurialExpenseResponsibility',
+          'noBurialExpenseResponsibility', 'hasPlotExpenseResponsibility', 'noPlotExpenseResponsibility'
+        )
+        expected['hasTransportation'] = nil
+        expected['hasGovtContributions'] = nil
+        expected['hasPreviouslyReceivedAllowance'] = nil
+
+        actual = described_class.new(unselected_benefits_data).merge_fields
+
+        # Create a diff that is easy to read when expected/actual differ
+        diff = Hashdiff.diff(expected, actual)
+
+        expect(diff).to eq([])
+      end
     end
 
-    it 'leaves benefit selections blank on pdf if unselected', run_at: '2024-03-21 00:00:00 EDT' do
-      unselected_benefits_data = JSON.parse(
-        File.read("#{fixture_path}/kitchen_sink.json")
-      ).except(
-        'burialExpenseResponsibility', 'plotExpenseResponsibility', 'transportationExpenses',
-        'previouslyReceivedAllowance', 'govtContributions'
-      )
+    context 'with v2 pdf' do
+      let(:fixture_path) { "#{Burials::MODULE_PATH}/spec/fixtures/pdf_fill/#{Burials::FORM_ID}/v2" }
 
-      expected = JSON.parse(
-        File.read("#{fixture_path}/merge_fields.json")
-      ).except(
-        'burialExpenseResponsibility', 'plotExpenseResponsibility', 'transportationExpenses',
-        'previouslyReceivedAllowance', 'govtContributions', 'hasBurialExpenseResponsibility',
-        'noBurialExpenseResponsibility', 'hasPlotExpenseResponsibility', 'noPlotExpenseResponsibility'
-      )
-      expected['hasTransportation'] = nil
-      expected['hasGovtContributions'] = nil
-      expected['hasPreviouslyReceivedAllowance'] = nil
+      it 'merges the right fields', run_at: '2024-03-21 00:00:00 EDT' do
+        expected_path = "#{fixture_path}/kitchen_sink.json"
+        actual_path = "#{fixture_path}/merge_fields.json"
 
-      actual = described_class.new(unselected_benefits_data).merge_fields
+        expected = described_class.new(JSON.parse(File.read(expected_path))).merge_fields
+        actual = JSON.parse(File.read(actual_path))
 
-      # Create a diff that is easy to read when expected/actual differ
-      diff = Hashdiff.diff(expected, actual)
+        # Create a diff that is easy to read when expected/actual differ
+        diff = Hashdiff.diff(expected, actual)
 
-      expect(diff).to eq([])
+        expect(diff).to eq([])
+      end
+
+      it 'leaves benefit selections blank on pdf if unselected', run_at: '2024-03-21 00:00:00 EDT' do
+        unselected_benefits_data = JSON.parse(
+          File.read("#{fixture_path}/kitchen_sink.json")
+        ).except(
+          'burialExpenseResponsibility', 'plotExpenseResponsibility', 'transportationExpenses',
+          'previouslyReceivedAllowance', 'govtContributions'
+        )
+
+        expected = JSON.parse(
+          File.read("#{fixture_path}/merge_fields.json")
+        ).except(
+          'burialExpenseResponsibility', 'plotExpenseResponsibility', 'transportationExpenses',
+          'previouslyReceivedAllowance', 'govtContributions', 'hasBurialExpenseResponsibility',
+          'noBurialExpenseResponsibility', 'hasPlotExpenseResponsibility', 'noPlotExpenseResponsibility'
+        )
+        expected['hasTransportation'] = nil
+        expected['hasGovtContributions'] = nil
+        expected['hasPreviouslyReceivedAllowance'] = nil
+
+        actual = described_class.new(unselected_benefits_data).merge_fields
+
+        # Create a diff that is easy to read when expected/actual differ
+        diff = Hashdiff.diff(expected, actual)
+
+        expect(diff).to eq([])
+      end
     end
   end
 end
