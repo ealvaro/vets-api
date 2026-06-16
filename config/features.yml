@@ -1997,6 +1997,12 @@ features:
       Replaces the duplicate records info alert with a descriptive Note shown only
       on the Allergies and Vaccines pages.
     enable_in_development: true
+  mhv_medical_records_embed_s3_thumbnail_images:
+    actor_type: user
+    description: >-
+      Directly embed thumbnail images from S3 in the <img /> tag instead of proxying
+      them through vets-api
+    enable_in_development: true
   mhv_medical_records_fetch_scdf_imaging_studies:
     actor_type: user
     description: Enables fetching imaging studies from SCDF for Medical Records
