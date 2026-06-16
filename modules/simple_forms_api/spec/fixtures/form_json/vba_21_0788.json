@@ -2,67 +2,55 @@
   "form_number": "21-0788",
   "full_name": {
     "first": "John",
-    "middle": "A",
+    "middle": "David",
     "last": "Doe"
   },
-  "date_of_birth": "1992-01-01",
   "ssn": "123-45-6789",
-  "phone": "2124241142",
-  "va_file_number": "C12345678",
-  "email": "john.doe@example.com",
-  "on_behalf_of_child": "John Doe",
-  "relationship_to_veteran": "spouse",
-  "preparer_is_veteran": false,
-  "preparer": {
-    "first": "Jane",
-    "middle": "B",
-    "last": "Smith"
+  "va_file_number": "C12-345-678",
+  "date_of_birth": "1980-02-03",
+  "claimant_full_name": {
+    "first": "Mary",
+    "middle": "Anne",
+    "last": "Doe"
   },
-  "statement_of_truth_signature": "John A Doe",
-  "statement_of_truth_date": "2026-04-29",
+  "relationship": "spouse",
   "address": {
     "street": "123 Main St",
     "street2": "Apt 4B",
     "city": "Springfield",
-    "state": "IL",
-    "postal_code": "62704",
+    "state": "PA",
+    "postal_code": "22150",
     "country": "USA"
   },
-  "apportionment_people": [
+  "phone": "2124241142",
+  "email_address": "mary.doe@example.com",
+  "apportionment_recipients": [
     {
-      "full_name": "Jane Doe",
-      "ssn": "123-45-6789",
-      "relationship": "child",
-      "currently_receiving": true
+      "full_name": { "first": "Jimmy", "last": "Doe" },
+      "ssn": "987-65-4321",
+      "relationship_to_veteran": "Child",
+      "currently_in_receipt": false
     },
     {
-      "full_name": "Jalem Doe",
-      "ssn": "123-45-3245",
-      "relationship": "spouse",
-      "currently_receiving": false
-    },
-    {
-      "full_name": "Kevin Doe",
-      "ssn": "123-45-1413",
-      "relationship": "cousin",
-      "currently_receiving": true
-    },
-    {
-      "full_name": "Mark Doe",
-      "ssn": "123-45-3453",
-      "relationship": "cousin",
-      "currently_receiving": false
+      "full_name": { "first": "Sally", "middle": "B", "last": "Doe" },
+      "ssn": "111-22-3333",
+      "relationship_to_veteran": "Child",
+      "currently_in_receipt": true
     }
   ],
+  "stepchild_living_in_household": true,
+  "stepchild_left_household_date": "2025-08-01",
   "legally_adopted": false,
-  "stepchild_living_in_household": false,
-  "reason": "veteran_incarcerated",
-  "incarceration": {
-    "felony": true,
-    "misdemeanor": false
+  "apportionment_reason": "veteran_incarcerated_felony",
+  "facility_name": "FCI Cumberland",
+  "facility_address": {
+    "street": "14601 Burbridge Rd SE",
+    "city": "Cumberland",
+    "state": "MD",
+    "postal_code": "21502",
+    "country": "USA"
   },
-  "facility_name": "Facility Here",
-  "facility_address": "121 Test Address",
-  "signature_date": "2024-04-07",
-  "remarks": "Some remarks go here"
+  "remarks": "Requesting apportionment for minor children.",
+  "claimant_signature": "Mary Anne Doe",
+  "signature_date": "2026-04-16"
 }
