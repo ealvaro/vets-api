@@ -159,10 +159,10 @@ module MedicalRecords
                      end
 
         case loinc_code
-        when PHYSICIAN_PROCEDURE_NOTE, CONSULT_RESULT
-          resource.date
         when DISCHARGE_SUMMARY
-          resource.context&.period&.end
+          resource.context&.period&.end || resource.date
+        else
+          resource.date
         end
       end
     end

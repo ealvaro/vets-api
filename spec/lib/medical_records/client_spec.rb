@@ -180,6 +180,61 @@ describe MedicalRecords::Client do
       end
     end
 
+    describe 'list_clinical_notes sorting by LOINC code' do
+      before { allow(client).to receive(:patient_found?).and_return(true) }
+
+      def make_doc_ref(date:, loinc_code: nil, period_end: nil)
+        type = if loinc_code
+                 FHIR::CodeableConcept.new(
+                   coding: [FHIR::Coding.new(system: 'http://loinc.org', code: loinc_code)]
+                 )
+               end
+        context = FHIR::DocumentReference::Context.new(period: FHIR::Period.new(end: period_end)) if period_end
+        FHIR::DocumentReference.new(type:, date:, context:)
+      end
+
+      def stub_and_sort(*resources)
+        bundle = FHIR::Bundle.new(entry: resources.map { |r| FHIR::Bundle::Entry.new(resource: r) })
+        allow(client).to receive(:fhir_search).and_return(bundle)
+        client.list_clinical_notes
+      end
+
+      it 'sorts non-discharge-summary notes by resource.date (else branch)' do
+        result = stub_and_sort(
+          make_doc_ref(loinc_code: '11506-3', date: '2023-01-01'),
+          make_doc_ref(loinc_code: '11488-4', date: '2023-06-15'),
+          make_doc_ref(loinc_code: '11506-3', date: '2024-03-10')
+        )
+        expect(result.entry.map { |e| e.resource.date }).to eq(%w[2024-03-10 2023-06-15 2023-01-01])
+      end
+
+      it 'sorts discharge summaries by context.period.end, not resource.date' do
+        result = stub_and_sort(
+          make_doc_ref(loinc_code: '11506-3', date: '2023-06-15'),
+          make_doc_ref(loinc_code: '18842-5', date: '2020-01-01', period_end: '2024-12-01')
+        )
+        # Discharge summary sorts first because period.end (2024-12-01) > procedure date (2023-06-15)
+        expect(result.entry.map { |e| e.resource.date }).to eq(%w[2020-01-01 2023-06-15])
+      end
+
+      it 'uses resource.date when LOINC code is nil (no type coding)' do
+        result = stub_and_sort(
+          make_doc_ref(loinc_code: '11506-3', date: '2023-05-01'),
+          make_doc_ref(date: '2024-01-01') # no LOINC code — falls into else branch
+        )
+        expect(result.entry.map { |e| e.resource.date }).to eq(%w[2024-01-01 2023-05-01])
+      end
+
+      it 'falls back to resource.date for discharge summaries missing context.period.end' do
+        result = stub_and_sort(
+          make_doc_ref(loinc_code: '11506-3', date: '2023-06-15'),
+          make_doc_ref(loinc_code: '18842-5', date: '2024-02-01') # discharge summary without period_end
+        )
+        # Without period.end, discharge summary falls back to resource.date (2024-02-01)
+        expect(result.entry.map { |e| e.resource.date }).to eq(%w[2024-02-01 2023-06-15])
+      end
+    end
+
     it 'gets a list of labs & tests', :vcr do
       VCR.use_cassette 'mr_client/get_a_list_of_chemhem_labs' do
         chemhem_list = client.list_labs_and_tests
