@@ -262,7 +262,7 @@ module SimpleFormsApi
         'fileNumber' => metadata_file_number,
         'zipCode' => zip_code,
         'source' => 'VA Platform Digital Forms',
-        'docType' => "StructuredData:#{data['form_number']}",
+        'docType' => data['form_number'],
         'businessLine' => 'CMP'
       }
     end
