@@ -1858,6 +1858,7 @@ spec/models/bgs_dependents @software/benefits-dependents-management @software/ba
 spec/models/category_spec.rb @software/backend-review-group
 spec/models/cave_submission_spec.rb @software/backend-review-group @software/bio-huntridge
 spec/models/chatbot @software/vfs-virtual-agent-chatbot @software/backend-review-group
+spec/models/datadog_metrics_spec.rb @software/backend-review-group
 spec/models/decision_review_notification_audit_log_spec.rb @software/benefits-decision-reviews-be @software/backend-review-group
 spec/models/debt_transaction_log_spec.rb @software/vsa-debt-resolution @software/backend-review-group
 spec/models/debts_api @software/vsa-debt-resolution @software/backend-review-group
