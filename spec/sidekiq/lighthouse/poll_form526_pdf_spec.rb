@@ -75,20 +75,22 @@ RSpec.describe Lighthouse::PollForm526Pdf, type: :job do
                            'Poll for form 526 PDF: Keep on retrying!')
       end
 
-      it 'transitions to pdf_not_found when submission is exactly 4 days old' do
+      it 'transitions to pdf_not_found when submission is exactly 4 days old and raises to continue retries' do
         form526_submission.update!(created_at: 4.days.ago)
         expect(Rails.logger).to receive(:warn).with('Poll for form 526 PDF: Submission creation date is over 4 days' \
                                                     ' old. Exiting...',
                                                     hash_including(error_class: 'PollForm526PdfError'))
 
-        subject.perform_sync(form526_submission.id)
-        form526_submission.reload
+        expect do
+          subject.perform_sync(form526_submission.id)
+        end.to raise_error(Lighthouse::PollForm526PdfError)
 
+        form526_submission.reload
         job_status = form526_submission.form526_job_statuses.find_by(job_class: 'PollForm526Pdf')
         expect(job_status.status).to eq 'pdf_not_found'
       end
 
-      it 'transitions to pdf_not_found status if submission is older than 4 days' do
+      it 'transitions to pdf_not_found status if submission is older than 4 days and raises to continue retries' do
         form526_submission.update(created_at: 5.days.ago)
         expect(Rails.logger).to receive(:warn).with(
           'Poll for form 526 PDF: Submission creation date is over 4 days old. Exiting...',
@@ -98,10 +100,12 @@ RSpec.describe Lighthouse::PollForm526Pdf, type: :job do
             job_id: kind_of(String),
             timestamp: kind_of(Time) }
         )
-        subject.perform_sync(form526_submission.id)
+
+        expect do
+          subject.perform_sync(form526_submission.id)
+        end.to raise_error(Lighthouse::PollForm526PdfError)
 
         form526_submission.reload
-
         job_status = form526_submission.form526_job_statuses.find_by(job_class: 'PollForm526Pdf')
         job_status.reload
         expect(job_status.status).to eq 'pdf_not_found'

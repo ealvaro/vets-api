@@ -136,7 +136,6 @@ module Lighthouse
     # - Log a warning if the submission is between 1 and 4 days old.
     # - If the submission is older than 4 days:
     #   - Update the job status to 'pdf_not_found'.
-    #   - Exit the job immediately.
     def update_job_status_based_on_age(form_job_status, submission)
       if submission.created_at.between?(DateTime.now - 4.days, DateTime.now - 1.day)
         PollForm526PdfStatus.update_job_status(
@@ -156,7 +155,6 @@ module Lighthouse
           error_message: 'Poll for form 526 PDF: Submission creation date is over 4 days old. Exiting...',
           status: Form526JobStatus::STATUS[:pdf_not_found]
         )
-        return
       end
       raise Lighthouse::PollForm526PdfError, 'Poll for form 526 PDF: Keep on retrying!'
     end
