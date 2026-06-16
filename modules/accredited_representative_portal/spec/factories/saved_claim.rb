@@ -31,4 +31,14 @@ FactoryBot.define do
       form { dependent_form_data.to_json }
     end
   end
+
+  factory :saved_claim_other_forms,
+          class: 'AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::Form214170' do
+    guid { SecureRandom.uuid }
+    form { veteran_form_data.to_json }
+
+    trait :dependent do
+      form { dependent_form_data.to_json }
+    end
+  end
 end

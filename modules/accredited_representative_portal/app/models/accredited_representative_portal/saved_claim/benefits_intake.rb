@@ -127,7 +127,7 @@ module AccreditedRepresentativePortal
               form_id: "#{form_id.upcase}_BENEFITS-INTAKE",
               proper_form_id: form_id,
               business_line: BusinessLines::CENTRAL_MAIL_PORTAL,
-              stamping_form_class: SimpleFormsApi::ScannedFormStamps,
+              stamping_form_class: nil,
               feature_flag: 'accredited_representative_portal_submit_any_file'
             )
           )

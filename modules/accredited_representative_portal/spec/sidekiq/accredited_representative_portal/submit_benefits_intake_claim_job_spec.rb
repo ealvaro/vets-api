@@ -228,23 +228,27 @@ RSpec.describe AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob do
 
         expect(job.send(:stamping_form_class)).to eq(SimpleFormsApi::VBA21686C)
       end
+    end
+  end
 
-      it 'raises when the claim class has no stamping from form class' do
-        claim_class = Class.new
+  context 'submit other forms upload' do
+    let(:stamper) { double }
+    let(:claim) { build(:saved_claim_other_forms) }
 
-        claim = double('claim', form_id: '21-686C')
+    it 'calls SimpleFormsApi::PdfStamper with correct parameters' do
+      job = described_class.new
 
-        allow(claim).to receive(:class).and_return(claim_class)
-
-        job = described_class.new
-
-        job.instance_variable_set(:@claim, claim)
-
-        expect { job.send(:stamping_form_class) }.to raise_error(
-          ArgumentError,
-          'No stamping form class found for form_id=21-686C'
-        )
-      end
+      job.instance_variable_set(:@claim, claim)
+      allow(SimpleFormsApi::PdfStamper).to receive(:new).with(
+        form: nil,
+        form_number: '21-4170',
+        stamped_template_path: 'stamped_template_path',
+        current_loa: SignIn::Constants::Auth::LOA_THREE,
+        timestamp: claim.created_at
+      ).and_return stamper
+      allow(claim).to receive(:to_pdf).and_return('stamped_template_path')
+      expect(stamper).to receive(:stamp_pdf)
+      job.stamp_pdf(claim)
     end
   end
 end

@@ -74,11 +74,15 @@ module AccreditedRepresentativePortal
     end
 
     def stamping_form_class
-      unless @claim.class.const_defined?(:STAMPING_FORM_CLASS, false)
-        raise ArgumentError, "No stamping form class found for form_id=#{@claim.form_id}"
-      end
-
       @claim.class::STAMPING_FORM_CLASS
+    end
+
+    def current_time_string
+      "#{Time.current.utc.strftime('%H:%M:%S  %Y-%m-%d %I:%M %p')} UTC"
+    end
+
+    def footer_stamp_text
+      "Submitted via VA.gov at #{current_time_string}. Signed in and submitted with an identity-verified account."
     end
 
     ##
@@ -87,12 +91,10 @@ module AccreditedRepresentativePortal
     def stamp_pdf(record)
       case record
       when ::PersistentAttachments::VAFormDocumentation
-        time = "#{Time.current.utc.strftime('%H:%M:%S  %Y-%m-%d %I:%M %p')} UTC"
-        text = "Submitted via VA.gov at #{time}. Signed in and submitted with an identity-verified account."
         pdf_path = record.to_pdf
 
         PDFUtilities::DatestampPdf.new(pdf_path).run(
-          text:, x: 5, y: 5, text_only: true
+          text: footer_stamp_text, x: 5, y: 5, text_only: true
         )
       when SavedClaim::BenefitsIntake
         record.to_pdf.tap do |stamped_template_path|
@@ -102,7 +104,8 @@ module AccreditedRepresentativePortal
           # not need.
           #
           SimpleFormsApi::PdfStamper.new(
-            form: stamping_form_class.new({}),
+            form: stamping_form_class&.new({}),
+            form_number: @claim.proper_form_id,
             stamped_template_path:,
             current_loa: SignIn::Constants::Auth::LOA_THREE,
             timestamp: @claim.created_at
