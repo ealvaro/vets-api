@@ -3,6 +3,95 @@
 require 'rails_helper'
 
 RSpec.describe V0::SignIn::SessionsController, type: :controller do
+  describe 'GET index' do
+    subject { get(:index) }
+
+    context 'successfully returns user sessions' do
+      let(:access_token) { SignIn::AccessTokenJwtEncoder.new(access_token: access_token_object).perform }
+      let(:authorization) { "Bearer #{access_token}" }
+      let(:user) { create(:user) }
+      let(:user_verification) { user.user_verification }
+      let(:user_account) { user.user_account }
+      let(:user_uuid) { user.uuid }
+      let(:oauth_session) { create(:oauth_session, user_account:) }
+      let(:current_session_handle) { oauth_session.handle }
+      let(:access_token_object) do
+        create(:access_token, session_handle: current_session_handle, user_uuid:, client_id: oauth_session.client_id)
+      end
+      let(:oauth_session_count) { SignIn::OAuthSession.where(user_account:).count }
+      let(:client_config) { SignIn::ClientConfig.find_by(client_id: oauth_session.client_id) }
+      let(:client_id) { client_config.client_id }
+      let(:statsd_success) { SignIn::Constants::Statsd::STATSD_SIS_SESSIONS_SUCCESS }
+      let(:expected_log) { '[SignInService] [V0::SignInController] index' }
+      let(:expected_log_values) { { user_uuid:, current_session_handle: } }
+      let(:expected_status) { :ok }
+
+      before do
+        request.headers['Authorization'] = authorization
+        allow(Rails.logger).to receive(:info)
+      end
+
+      context 'returns sessions associated with current user' do
+        it 'and returns session values' do
+          response = JSON.parse(subject.body)['data']
+          expect(response.first['handle']).to eq(current_session_handle)
+          expect(response.first['session_type']).to eq(client_config.authentication)
+          expect(response.first['client_id']).to eq(client_id)
+          expect(response.first['expiration']).to match(/\d{4}-\d{2}-\d{2}/)
+          expect(response.first['current']).to be(true)
+        end
+
+        it 'and logs the sessions call' do
+          expect(Rails.logger).to receive(:info).with(expected_log, expected_log_values)
+          subject
+        end
+
+        it 'and returns ok status' do
+          expect(subject).to have_http_status(expected_status)
+        end
+
+        it 'and returns expected body with handle' do
+          expect(JSON.parse(subject.body)['data'].first).to have_key('handle')
+        end
+
+        it 'and returns expected body with session_type' do
+          expect(JSON.parse(subject.body)['data'].first).to have_key('session_type')
+        end
+
+        it 'and returns expected body with client_id' do
+          expect(JSON.parse(subject.body)['data'].first).to have_key('client_id')
+        end
+
+        it 'and returns expected body with expiration' do
+          expect(JSON.parse(subject.body)['data'].first).to have_key('expiration')
+        end
+
+        it 'and returns expected body with current' do
+          expect(JSON.parse(subject.body)['data'].first).to have_key('current')
+        end
+
+        it 'and triggers statsd increment for successful call' do
+          expect { subject }.to trigger_statsd_increment(statsd_success)
+        end
+      end
+
+      context 'returns multiple sessions for user account' do
+        let!(:oauth_session2) { create(:oauth_session, user_account:) }
+        let!(:oauth_session3) { create(:oauth_session, user_account:) }
+
+        it 'returns all sessions for user account' do
+          expect(JSON.parse(subject.body)['data'].count).to eq(oauth_session_count)
+        end
+      end
+    end
+
+    context 'when not authenticated' do
+      it 'returns unauthorized' do
+        expect(subject).to have_http_status(:unauthorized)
+      end
+    end
+  end
+
   describe 'DELETE destroy' do
     subject { delete(:destroy, params: { handle: }) }
 

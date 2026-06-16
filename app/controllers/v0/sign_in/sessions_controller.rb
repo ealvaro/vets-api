@@ -3,6 +3,18 @@
 module V0
   module SignIn
     class SessionsController < ApplicationController
+      def index
+        current_session_handle = @current_user.session_handle
+        serialized_sessions = ::SignIn::SessionSerializer.new(
+          sessions: ::SignIn::OAuthSession.where(user_account: @current_user.user_account),
+          current_session_handle:
+        ).perform
+        context = { user_uuid: @current_user.uuid, current_session_handle: }
+        sign_in_logger.info('index', context)
+        StatsD.increment(::SignIn::Constants::Statsd::STATSD_SIS_SESSIONS_SUCCESS)
+        render json: { data: serialized_sessions }, status: :ok
+      end
+
       def destroy
         handle = params[:handle].presence
         raise ::SignIn::Errors::MalformedParamsError.new(message: 'Handle is not defined') unless handle
