@@ -35,5 +35,30 @@ RSpec.describe FormProfiles::VA10297 do
                                                         'bankName' => 'WELLS FARGO BANK' })
       end
     end
+
+    it 'strips suffix from applicantFullName when present' do
+      VCR.use_cassette('lighthouse/direct_deposit/show/200_valid_new_icn') do
+        data = profile.prefill
+        expect(data[:form_data].fetch('applicantFullName', {})).not_to have_key('suffix')
+      end
+    end
+
+    context 'when applicantFullName is absent from prefill data' do
+      let(:nameless_profile) { described_class.new(form_id: '22-10297', user:) }
+
+      before do
+        allow(nameless_profile).to receive_messages(
+          initialize_payment_information: {},
+          initialize_identity_information: FormIdentityInformation.new(full_name: nil, date_of_birth: nil,
+                                                                       gender: nil, ssn: nil),
+          initialize_contact_information: FormContactInformation.new,
+          initialize_military_information: FormMilitaryInformation.new
+        )
+      end
+
+      it 'does not raise NoMethodError' do
+        expect { nameless_profile.prefill }.not_to raise_error
+      end
+    end
   end
 end

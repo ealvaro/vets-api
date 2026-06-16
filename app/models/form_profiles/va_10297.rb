@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'vets/model'
+require 'logging/monitor'
 
 module VA10297
   FORM_ID = '22-10297'
@@ -18,10 +19,12 @@ end
 class FormProfiles::VA10297 < FormProfile
   attribute :payment_information, VA10297::FormPaymentAccountInformation
 
+  # Prefills the 22-10297 form with identity, contact, and direct-deposit data.
+  # Strips the unsupported `suffix` field from applicantFullName before returning.
   def prefill
     @payment_information = initialize_payment_information
     result = super
-    result[:form_data]['applicantFullName'].delete('suffix') # no name suffix needed in this schema
+    result[:form_data]['applicantFullName']&.delete('suffix') # no name suffix needed in this schema
 
     result
   end
@@ -57,7 +60,20 @@ class FormProfiles::VA10297 < FormProfile
       {}
     end
   rescue => e
-    Rails.logger.error "FormProfiles::VA10297 Failed to retrieve Payment Information data: #{e.message}"
+    log_payment_information_error(e)
     {}
+  end
+
+  def log_payment_information_error(error)
+    monitor.track_request(:error,
+                          'FormProfiles::VA10297 Failed to retrieve Payment Information data',
+                          'form_profiles.va10297.payment_information.failed',
+                          error_class: error.class.name,
+                          error_message: error.message)
+  end
+
+  def monitor
+    @monitor ||= Logging::Monitor.new(self.class.name,
+                                      allowlist: %w[error_class error_message])
   end
 end
