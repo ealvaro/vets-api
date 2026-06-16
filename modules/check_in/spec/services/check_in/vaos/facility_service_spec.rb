@@ -138,7 +138,7 @@ describe CheckIn::VAOS::FacilityService do
             {
               clinicIen: clinic_id,
               name: 'CHS NEUROSURGERY VARMA',
-              patientFriendlyName: 'CHS NEUROSURGERY VARMA',
+              friendlyName: 'CHS NEUROSURGERY VARMA',
               physicalLocation: '1ST FL SPECIALTY MODULE 2'
             }
           ]
@@ -379,7 +379,7 @@ describe CheckIn::VAOS::FacilityService do
             {
               clinicIen: clinic_id,
               name: 'CHS NEUROSURGERY VARMA',
-              patientFriendlyName: 'CHS NEUROSURGERY VARMA',
+              friendlyName: 'CHS NEUROSURGERY VARMA',
               physicalLocation: '1ST FL SPECIALTY MODULE 2'
             }
           ]

@@ -11,7 +11,7 @@ describe CheckIn::Vds::SiteInfo::ClinicsService do
       {
         clinicIen: '1081',
         name: 'CHS NEUROSURGERY VARMA',
-        patientFriendlyName: 'CHS NEUROSURGERY VARMA',
+        friendlyName: 'CHS NEUROSURGERY VARMA',
         physicalLocation: '1ST FL SPECIALTY MODULE 2'
       }
     ]

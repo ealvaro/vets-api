@@ -8,13 +8,13 @@ describe CheckIn::VAOS::VdsClinicMapper do
       {
         clinicIen: '1081',
         name: 'CHS NEUROSURGERY VARMA',
-        patientFriendlyName: 'CHS NEUROSURGERY VARMA',
+        friendlyName: 'CHS NEUROSURGERY VARMA',
         physicalLocation: '1ST FL SPECIALTY MODULE 2'
       },
       {
         clinicIen: '6',
         name: 'OTHER CLINIC',
-        patientFriendlyName: 'OTHER CLINIC',
+        friendlyName: 'OTHER CLINIC',
         physicalLocation: '2ND FL'
       }
     ]
@@ -57,7 +57,7 @@ describe CheckIn::VAOS::VdsClinicMapper do
       )
     end
 
-    it 'does not use internal name for friendlyName when patientFriendlyName is absent' do
+    it 'does not use internal name for friendlyName when friendlyName is absent' do
       clinic = {
         clinicIen: '1081',
         name: 'INTERNAL NAME',

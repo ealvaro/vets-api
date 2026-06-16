@@ -18,16 +18,16 @@ module CheckIn
           data: {
             clinicId: clinic[:clinicIen],
             serviceName: clinic[:name],
-            friendlyName: patient_friendly_name(clinic),
+            friendlyName: friendly_name(clinic),
             physicalLocation: clinic[:physicalLocation]
           }
         }.with_indifferent_access
       end
 
-      def self.patient_friendly_name(clinic)
-        clinic[:patientFriendlyName].presence
+      def self.friendly_name(clinic)
+        clinic[:friendlyName].presence
       end
-      private_class_method :patient_friendly_name
+      private_class_method :friendly_name
 
       def self.clinic_indifferent(clinic)
         clinic.with_indifferent_access
