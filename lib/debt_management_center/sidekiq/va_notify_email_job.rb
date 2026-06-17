@@ -2,6 +2,7 @@
 
 require 'vets/shared_logging'
 require 'sidekiq/attr_package'
+require 'logging/helper/data_scrubber'
 
 module DebtManagementCenter
   class VANotifyEmailJob
@@ -20,6 +21,10 @@ module DebtManagementCenter
       }.freeze
     }.freeze
 
+    def self.scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
+    end
+
     class UnrecognizedIdentifier < StandardError; end
 
     sidekiq_retries_exhausted do |job, ex|
@@ -31,7 +36,7 @@ module DebtManagementCenter
         StatsD.increment("#{DebtsApi::V0::Form5655Submission::STATS_KEY}.send_failed_form_email.failure")
         StatsD.increment('silent_failure', tags: %w[service:debt-resolution function:sidekiq_retries_exhausted])
       end
-      Rails.logger.error('VANotifyEmailJob retries exhausted', exception: ex)
+      Rails.logger.error('VANotifyEmailJob retries exhausted', scrub_pii(exception: ex))
 
       Sidekiq::AttrPackage.delete(cache_key) if cache_key
     end
@@ -46,7 +51,7 @@ module DebtManagementCenter
       Sidekiq::AttrPackage.delete(cache_key) if cache_key
     rescue Sidekiq::AttrPackageError => e
       # Log AttrPackage errors as application logic errors (no retries)
-      Rails.logger.error('VANotifyEmailJob AttrPackage error', { error: e.message })
+      Rails.logger.error('VANotifyEmailJob AttrPackage error', scrub_pii({ error: e.message }))
       raise ArgumentError, e.message
     rescue => e
       handle_error(e, template_id)
@@ -71,7 +76,7 @@ module DebtManagementCenter
       StatsD.increment("#{STATS_KEY}.failure")
       # Do not log error.message - it may contain PII (email, personalisation) from API responses
       Rails.logger.error("DebtManagementCenter::VANotifyEmailJob failed to send email: #{error.class}")
-      log_exception_to_sentry(error, { args: { template_id: } }, { error: :dmc_va_notify_email_job })
+      Rails.logger.error(scrub_pii(error.message), { args: { template_id: }, error: :dmc_va_notify_email_job })
       raise error
     end
 
@@ -129,6 +134,10 @@ module DebtManagementCenter
       else
         VaNotify::Service.new(Settings.vanotify.services.dmc.api_key)
       end
+    end
+
+    def scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
     end
   end
 end

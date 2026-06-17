@@ -8,6 +8,7 @@ require 'va_profile/models/veteran_status'
 require_relative 'configuration'
 require_relative 'veteran_status_response'
 require 'va_profile/veteran_status/va_profile_error'
+require 'logging/helper/data_scrubber'
 
 module VAProfile
   module VeteranStatus
@@ -66,17 +67,12 @@ module VAProfile
       def handle_client_error(e)
         additional_params = { edipi: @user&.edipi }
         if e.status == 404
-          log_exception_to_sentry(
-            e,
-            additional_params,
-            { va_profile: :veteran_status_title_not_found },
-            :warning
-          )
+          Rails.logger.error(scrub_pii(e.message),
+                             additional_params.merge({ va_profile: :veteran_status_title_not_found }))
           raise VAProfile::VeteranStatus::VAProfileError.new(status: 404)
         elsif e.status >= 400 && e.status < 500
-          log_exception_to_sentry(
-            e, additional_params, { va_profile: :client_error_related_to_title38 }, :warning
-          )
+          Rails.logger.error(scrub_pii(e.message),
+                             additional_params.merge({ va_profile: :client_error_related_to_title38 }))
           raise VAProfile::VeteranStatus::VAProfileError.new(status: e.status)
         end
         handle_error(e)
@@ -92,6 +88,10 @@ module VAProfile
 
       def aaid
         AAID if @user&.edipi.present?
+      end
+
+      def scrub_pii(message)
+        Logging::Helper::DataScrubber.scrub(message)
       end
     end
   end

@@ -11,6 +11,7 @@ require 'sm/client/messages'
 require 'sm/client/message_sending'
 require 'sm/client/triage_teams'
 require 'vets/collection'
+require 'logging/helper/data_scrubber'
 
 module SM
   ##
@@ -142,9 +143,13 @@ module SM
       track_metric(key, is_oh:, status: 'success', **additional_tags)
       result
     rescue => e
-      log_exception_to_sentry(e, { metric_key: key }, {}, 'error')
+      Rails.logger.error(scrub_pii(e.message), { metric_key: key })
       track_metric(key, is_oh:, status: 'failure', **additional_tags)
       raise e
+    end
+
+    def scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
     end
 
     # @!endgroup

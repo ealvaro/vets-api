@@ -8,6 +8,7 @@ require_relative 'configuration'
 require_relative 'demographic_response'
 require_relative 'preferred_name_response'
 require_relative 'gender_identity_response'
+require 'logging/helper/data_scrubber'
 
 module VAProfile
   module Demographics
@@ -28,12 +29,7 @@ module VAProfile
         end
       rescue Common::Client::Errors::ClientError => e
         if e.status == 404
-          log_exception_to_sentry(
-            e,
-            { csp_id_with_aaid: },
-            { va_profile: :demographics_not_found },
-            :warning
-          )
+          Rails.logger.error(scrub_pii(e.message), { csp_id_with_aaid:, va_profile: :demographics_not_found })
 
           return build_response(404, nil)
         elsif e.status >= 400 && e.status < 500
@@ -111,6 +107,10 @@ module VAProfile
         return '^PN^200VIDM^USDVA' if @user&.idme_uuid.present?
 
         '^PN^200VLGN^USDVA' if @user&.logingov_uuid.present?
+      end
+
+      def scrub_pii(message)
+        Logging::Helper::DataScrubber.scrub(message)
       end
     end
   end

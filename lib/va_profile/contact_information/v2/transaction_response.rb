@@ -3,6 +3,7 @@
 require 'va_profile/models/transaction'
 require 'va_profile/response'
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 # rubocop:disable ThreadSafety/ClassInstanceVariable
 module VAProfile
@@ -64,6 +65,10 @@ module VAProfile
         def self.error?
           @response_body.try(:[], 'tx_status') == ERROR_STATUS
         end
+
+        def self.scrub_pii(message)
+          Logging::Helper::DataScrubber.scrub(message)
+        end
       end
 
       class AddressTransactionResponse < TransactionResponse
@@ -113,7 +118,7 @@ module VAProfile
             )
           end
         rescue => e
-          log_exception_to_sentry(e)
+          Rails.logger.error(scrub_pii(e.message))
         end
       end
 
@@ -144,7 +149,7 @@ module VAProfile
             end
           end
         rescue => e
-          log_exception_to_sentry(e)
+          Rails.logger.error(scrub_pii(e.message))
         end
       end
 

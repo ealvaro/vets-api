@@ -9,6 +9,7 @@ require 'va_profile/models/dod_service_summary'
 require_relative 'configuration'
 require_relative 'service_history_response'
 require_relative 'dod_service_summary_response'
+require 'logging/helper/data_scrubber'
 
 ##
 # @see https://qa.vaprofile.va.gov:7005/profile-service/swagger-ui/index.html?urls.primaryName=ProfileServiceV3
@@ -38,9 +39,7 @@ module VAProfile
       rescue Common::Client::Errors::ClientError => e
         error_status = e.status
         if error_status == 404
-          log_exception_to_sentry(
-            e, { edipi: @user.edipi }, { va_profile: :service_history_not_found }, :warning
-          )
+          Rails.logger.error(scrub_pii(e.message), { edipi: @user.edipi, va_profile: :service_history_not_found })
 
           return ServiceHistoryResponse.new(404, episodes: nil)
         elsif error_status && error_status >= 400 && error_status < 500
@@ -105,6 +104,10 @@ module VAProfile
 
       def aaid
         AAID if @user&.edipi.present?
+      end
+
+      def scrub_pii(message)
+        Logging::Helper::DataScrubber.scrub(message)
       end
     end
   end

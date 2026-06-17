@@ -144,7 +144,7 @@ RSpec.describe DebtManagementCenter::VANotifyEmailJob, type: :worker do
       expect(StatsD).not_to receive(:increment).with(
         "#{DebtsApi::V0::Form5655Submission::STATS_KEY}.send_failed_form_email.failure"
       )
-      expect(Rails.logger).to receive(:error).with('VANotifyEmailJob retries exhausted', exception:)
+      expect(Rails.logger).to receive(:error).with('VANotifyEmailJob retries exhausted', hash_including(exception:))
       config.sidekiq_retries_exhausted_block.call(exhausted_job, exception)
     end
 

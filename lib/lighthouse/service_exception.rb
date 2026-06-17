@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 
 module Lighthouse
   # Custom exception that maps Lighthouse API errors to controller ExceptionHandling-friendly format
@@ -125,13 +126,13 @@ module Lighthouse
 
       tags_context = Sentry.set_tags(external_service: service_name)
 
-      log_exception_to_sentry(error, extra_context, tags_context)
+      Rails.logger.error(scrub_pii(error.message), scrub_pii(extra_context.merge(tags_context)))
     end
 
     def self.log_to_rails_logger(service_name, options)
       Rails.logger.error(
         service_name,
-        options
+        scrub_pii(options)
       )
     end
 
@@ -150,6 +151,10 @@ module Lighthouse
       return response[:headers]['content-type'] if response[:headers]
 
       response.headers['content-type'] if response.respond_to?(:headers)
+    end
+
+    def self.scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
     end
   end
 end

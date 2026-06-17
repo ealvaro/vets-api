@@ -5,6 +5,7 @@ require 'common/client/errors'
 require 'va_profile/service'
 require 'va_profile/stats'
 require 'va_profile/person_settings/service'
+require 'logging/helper/data_scrubber'
 require_relative 'configuration'
 require_relative 'transaction_response'
 require_relative 'person_response'
@@ -48,12 +49,7 @@ module VAProfile
           end
         rescue Common::Client::Errors::ClientError => e
           if e.status == 404
-            log_exception_to_sentry(
-              e,
-              { vet360_id: @user&.vet360_id },
-              { va_profile: :person_not_found },
-              :warning
-            )
+            Rails.logger.error(scrub_pii(e.message), { vet360_id: @user&.vet360_id, va_profile: :person_not_found })
 
             return PersonResponse.new(404, person: nil)
           elsif e.status.to_i >= 400 && e.status.to_i < 500
@@ -417,6 +413,10 @@ module VAProfile
           return path if identifier_and_route.length < 2
 
           "#{prefix}#{REDACTED_AAID}/#{identifier_and_route.last}"
+        end
+
+        def scrub_pii(message)
+          Logging::Helper::DataScrubber.scrub(message)
         end
       end
     end

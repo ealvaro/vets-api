@@ -871,11 +871,9 @@ describe VAProfile::ContactInformation::V2::Service do
 
       it 'returns a status of 400' do
         VCR.use_cassette('va_profile/v2/contact_information/person_error', VCR::MATCH_EVERYTHING) do
-          expect_any_instance_of(Vets::SharedLogging).to receive(:log_exception_to_sentry).with(
-            instance_of(Common::Client::Errors::ClientError),
-            { vet360_id: user.vet360_id },
-            { va_profile: :person_not_found },
-            :warning
+          expect(Rails.logger).to receive(:error).with(
+            instance_of(String),
+            { vet360_id: user.vet360_id, va_profile: :person_not_found }
           )
           response = subject.get_person
           expect(response).not_to be_ok

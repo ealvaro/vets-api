@@ -70,11 +70,10 @@ describe VAProfile::Demographics::Service,  feature: :personal_info,
 
       it 'logs exception to sentry' do
         VCR.use_cassette('va_profile/demographics/demographics_error_404', VCR::MATCH_EVERYTHING) do
-          expect_any_instance_of(Vets::SharedLogging).to receive(:log_exception_to_sentry).with(
-            instance_of(Common::Client::Errors::ClientError),
-            { csp_id_with_aaid: 'b2fab2b5-6af0-45e1-a9e2-394347af91ef^PN^200VIDM^USDVA' },
-            { va_profile: :demographics_not_found },
-            :warning
+          expect(Rails.logger).to receive(:error).with(
+            instance_of(String),
+            { csp_id_with_aaid: 'b2fab2b5-6af0-45e1-a9e2-394347af91ef^PN^200VIDM^USDVA',
+              va_profile: :demographics_not_found }
           )
 
           response = subject.get_demographics

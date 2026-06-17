@@ -3,6 +3,7 @@
 require 'common/client/base'
 require 'common/client/concerns/monitoring'
 require 'vets/shared_logging'
+require 'logging/helper/data_scrubber'
 require_relative 'configuration'
 require_relative 'redis_client'
 require_relative 'service_exception'
@@ -128,13 +129,13 @@ module Chip
     def with_monitoring_and_error_handling(&)
       with_monitoring(2, &)
     rescue => e
-      log_exception_to_sentry(e,
-                              {
-                                url: "#{config.url}/#{config.base_path}",
-                                original_body: e.original_body,
-                                original_status: e.original_status
-                              },
-                              { external_service: self.class.to_s.underscore, team: 'check-in' })
+      context = {
+        url: "#{config.url}/#{config.base_path}",
+        original_body: e.original_body,
+        original_status: e.original_status,
+        external_service: self.class.to_s.underscore, team: 'check-in'
+      }
+      Rails.logger.error(scrub_pii(e.message), scrub_pii(context))
 
       raise e
     end
@@ -144,6 +145,10 @@ module Chip
       raise ArgumentError, 'Invalid password' if password.blank?
       raise ArgumentError, 'Invalid tenant parameters' if tenant_name.blank? || tenant_id.blank?
       raise ArgumentError, 'Tenant parameters do not exist' unless config.valid_tenant?(tenant_name:, tenant_id:)
+    end
+
+    def scrub_pii(message)
+      Logging::Helper::DataScrubber.scrub(message)
     end
   end
 end

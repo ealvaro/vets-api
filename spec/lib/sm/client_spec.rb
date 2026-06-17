@@ -118,8 +118,8 @@ describe SM::Client do
       it 'logs the exception to Sentry with the metric key context' do
         allow(StatsD).to receive(:increment)
 
-        expect(client).to receive(:log_exception_to_sentry).with(
-          error, { metric_key: 'some_operation' }, {}, 'error'
+        expect(Rails.logger).to receive(:error).with(
+          error.message, { metric_key: 'some_operation' }
         )
 
         expect { client.send(:track_with_status, 'some_operation') { raise error } }
@@ -127,7 +127,7 @@ describe SM::Client do
       end
 
       it 'tracks a failure metric' do
-        allow(client).to receive(:log_exception_to_sentry)
+        allow(Rails.logger).to receive(:error)
 
         expect(StatsD).to receive(:increment).with(
           'mhv.sm.api.client.some_operation',
@@ -139,7 +139,7 @@ describe SM::Client do
       end
 
       it 're-raises the original exception after logging' do
-        allow(client).to receive(:log_exception_to_sentry)
+        allow(Rails.logger).to receive(:error)
         allow(StatsD).to receive(:increment)
 
         expect { client.send(:track_with_status, 'some_operation') { raise error } }
@@ -151,7 +151,7 @@ describe SM::Client do
       let(:error) { StandardError.new('oh error') }
 
       it 'passes is_oh tag to the failure metric' do
-        allow(client).to receive(:log_exception_to_sentry)
+        allow(Rails.logger).to receive(:error)
 
         expect(StatsD).to receive(:increment).with(
           'mhv.sm.api.client.some_operation',
