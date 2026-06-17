@@ -1375,6 +1375,17 @@ search_gsa:
 secret_key_base: <%= ENV['secret_key_base'] %>
 sentry:
   dsn: <%= ENV['sentry__dsn'] %>
+sharepoint:
+  mobile_survey_storage:
+    authentication_url: https://login.microsoftonline.com
+    client_id: <%= ENV['sharepoint__mobile_survey_storage__client_id'] %>
+    client_secret: <%= ENV['sharepoint__mobile_survey_storage__client_secret'] %>
+    drive_id: <%= ENV['sharepoint__mobile_survey_storage__drive_id'] %>
+    mock: false
+    scope: https://graph.microsoft.com/.default
+    sharepoint_graph_url: https://graph.microsoft.com
+    site_id: <%= ENV['sharepoint__mobile_survey_storage__site_id'] %>
+    tenant_id: <%= ENV['sharepoint__mobile_survey_storage__tenant_id'] %>
 shrine:
   claims:
     access_key_id: <%= ENV['shrine__claims__access_key_id'] %>

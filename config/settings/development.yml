@@ -1394,6 +1394,17 @@ search_gsa:
 secret_key_base: c1a13acb916e6ebf1d2a93a3924586520508b609e80e048364902cd36ab602c9ec6ddcb47ac66e7903dbc77ae876df5564658a4f786b50497440b0c7dc029361
 sentry:
   dsn: ~
+sharepoint:
+  mobile_survey_storage:
+    authentication_url: ~
+    client_id: fake_sharepoint_client_id
+    client_secret: fake_sharepoint_client_secret
+    drive_id: fake_drive_id
+    mock: ~
+    scope: ~
+    sharepoint_graph_url: ~
+    site_id: fake_site_id
+    tenant_id: fake_sharepoint_tenant_id
 shrine:
   claims:
     access_key_id: ~
