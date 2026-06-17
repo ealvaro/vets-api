@@ -64,6 +64,7 @@ app/controllers/v0/cave_controller.rb @software/bio-huntridge @software/backend-
 app/controllers/v0/chatbot @software/vfs-virtual-agent-chatbot @software/backend-review-group
 app/controllers/v0/claim_documents_controller.rb @software/disability-benefits @software/backend-review-group
 app/controllers/v0/claim_letters_controller.rb @software/benefits-management-tools-be @software/backend-review-group
+app/controllers/v0/claims_evidence_controller.rb @software/benefits-management-tools-be @software/backend-review-group
 app/controllers/v0/coe_controller.rb @software/benefits-non-disability @software/backend-review-group
 app/controllers/v0/concerns/evss_deprecation.rb @software/benefits-management-tools-be @software/backend-review-group
 app/controllers/v0/concerns/multi_provider_support.rb @software/benefits-management-tools-be @software/backend-review-group
@@ -402,6 +403,7 @@ app/openapi/openapi/requests/form21p530a.rb @software/benefits-optimization-aqui
 app/openapi/openapi/responses/benefits_intake_submission_response.rb @software/backend-review-group
 app/policies/appeals_policy.rb @software/backend-review-group
 app/policies/bgs_policy.rb @software/benefits-dependents-management @software/backend-review-group
+app/policies/claims_evidence_policy.rb @software/benefits-management-tools-be @software/backend-review-group
 app/policies/coe_policy.rb @software/benefits-non-disability @software/backend-review-group
 app/policies/communication_preferences_policy.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 app/policies/debt_letters_policy.rb @software/vsa-debt-resolution @software/backend-review-group
@@ -619,6 +621,7 @@ app/swagger/swagger/requests/caregivers_assistance_claims.rb @software/health-ap
 app/swagger/swagger/requests/cave.rb @software/bio-huntridge @software/backend-review-group
 app/swagger/swagger/requests/claim_documents.rb @software/benefits-non-disability @software/backend-review-group
 app/swagger/swagger/requests/claim_letters.rb @software/backend-review-group
+app/swagger/swagger/requests/claims_evidence.rb @software/benefits-management-tools-be @software/backend-review-group
 app/swagger/swagger/requests/claim_status.rb @software/backend-review-group
 app/swagger/swagger/requests/coe.rb @software/benefits-non-disability @software/backend-review-group
 app/swagger/swagger/requests/datadog_action.rb @software/backend-review-group
@@ -1967,6 +1970,7 @@ spec/models/concerns/pension_award_helper_spec.rb @software/benefits-dependents-
 spec/models/concerns/signature_required_spec.rb @software/vfs-mhv-integration @software/backend-review-group
 spec/policies/appeals_policy_spec.rb @software/backend-review-group
 spec/policies/bgs_policy_spec.rb @software/benefits-dependents-management @software/backend-review-group
+spec/policies/claims_evidence_policy_spec.rb @software/benefits-management-tools-be @software/backend-review-group
 spec/policies/coe_policy_spec.rb @software/benefits-non-disability @software/backend-review-group
 spec/policies/debt_policy_spec.rb @software/vsa-debt-resolution @software/backend-review-group
 spec/policies/form1095_policy_spec.rb @software/va-core-veteran-experiences @software/backend-review-group
@@ -2023,6 +2027,7 @@ spec/requests/v0/caregivers_assistance_claims_spec.rb @software/health-apps-back
 spec/requests/v0/cave_apidocs_spec.rb @software/bio-huntridge @software/backend-review-group
 spec/requests/v0/cave_spec.rb @software/bio-huntridge @software/backend-review-group
 spec/requests/v0/claim_documents_spec.rb @software/disability-benefits @software/backend-review-group
+spec/requests/v0/claims_evidence_spec.rb @software/benefits-management-tools-be @software/backend-review-group
 spec/requests/v0/coe_spec.rb @software/benefits-non-disability @software/backend-review-group
 spec/requests/v0/csrf_token_spec.rb @software/backend-review-group @software/health-apps-backend
 spec/requests/v0/debts_spec.rb @software/vsa-debt-resolution @software/backend-review-group

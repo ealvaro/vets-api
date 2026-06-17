@@ -63,6 +63,7 @@ Rails.application.routes.draw do
     resources :disability_compensation_in_progress_forms, only: %i[index show update destroy]
     resource :claim_documents, only: [:create]
     resource :claim_attachments, only: [:create], controller: :claim_documents
+    resource :claims_evidence, only: [:create], controller: 'claims_evidence'
     resources :debts, only: %i[index show]
     resources :debt_letters, only: %i[index show]
     resources :education_career_counseling_claims, only: :create

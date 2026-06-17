@@ -2929,6 +2929,66 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
       end
     end
 
+    describe 'claims evidence' do
+      let(:mhv_user) { create(:user, :loa3, :legacy_icn) }
+      let(:ce_success) { build(:claims_evidence_service_files_response, :success) }
+      let(:ce_headers) { { '_headers' => { 'Cookie' => sign_in(mhv_user, nil, true) } } }
+      let(:file_data) do
+        { '_data' => { file: fixture_file_upload('doctors-note.pdf', 'application/pdf'), documentTypeId: 34 } }
+      end
+
+      before do
+        allow(Common::VirusScan).to receive(:scan).and_return(true)
+        allow(Flipper).to receive(:enabled?)
+          .with(:cst_supplemental_claims_evidence_upload, instance_of(User))
+          .and_return(true)
+      end
+
+      it 'returns 401 when unauthenticated' do
+        expect(subject).to validate(:post, '/v0/claims_evidence', 401,
+                                    '_data' => { file: fixture_file_upload('doctors-note.pdf', 'application/pdf'),
+                                                 documentTypeId: 34 })
+      end
+
+      it 'returns 400 with a missing file' do
+        expect(subject).to validate(:post, '/v0/claims_evidence', 400,
+                                    ce_headers.merge('_data' => { documentTypeId: 34 }))
+      end
+
+      it 'returns 403 when user is not LOA3' do
+        loa1_user = create(:user, :loa1)
+        loa1_headers = { '_headers' => { 'Cookie' => sign_in(loa1_user, nil, true) } }
+        expect(subject).to validate(:post, '/v0/claims_evidence', 403, loa1_headers.merge(file_data))
+      end
+
+      it 'returns 404 when feature flag is disabled' do
+        allow(Flipper).to receive(:enabled?)
+          .with(:cst_supplemental_claims_evidence_upload, instance_of(User))
+          .and_return(false)
+        expect(subject).to validate(:post, '/v0/claims_evidence', 404, ce_headers.merge(file_data))
+      end
+
+      it 'returns 422 with an unsupported documentTypeId' do
+        invalid_data = ce_headers.merge('_data' => { file: fixture_file_upload('doctors-note.pdf', 'application/pdf'),
+                                                     documentTypeId: 9999 })
+        expect(subject).to validate(:post, '/v0/claims_evidence', 422, invalid_data)
+      end
+
+      it 'returns 503 when CE service returns an error' do
+        allow_any_instance_of(ClaimsEvidenceApi::Service::Files)
+          .to receive(:upload)
+          .and_raise(build(:claims_evidence_service_files_error, :error))
+        expect(subject).to validate(:post, '/v0/claims_evidence', 503, ce_headers.merge(file_data))
+      end
+
+      it 'returns 200 with a valid upload' do
+        allow_any_instance_of(ClaimsEvidenceApi::Service::Files)
+          .to receive(:upload)
+          .and_return(ce_success)
+        expect(subject).to validate(:post, '/v0/claims_evidence', 200, ce_headers.merge(file_data))
+      end
+    end
+
     describe 'benefits claims' do
       let(:user) { create(:user, :loa3, :accountable, :legacy_icn, uuid: 'b2fab2b5-6af0-45e1-a9e2-394347af91ef') }
       let(:invalid_user) { create(:user, :loa3, :accountable, :legacy_icn, participant_id: nil) }

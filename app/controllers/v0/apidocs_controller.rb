@@ -135,6 +135,7 @@ module V0
       Swagger::Requests::ClaimDocuments,
       Swagger::Requests::ClaimStatus,
       Swagger::Requests::ClaimLetters,
+      Swagger::Requests::ClaimsEvidence,
       Swagger::Requests::Coe,
       Swagger::Requests::Debts,
       Swagger::Requests::DebtLetters,
