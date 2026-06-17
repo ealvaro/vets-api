@@ -59,7 +59,7 @@ module SimpleFormsApi
         'fileNumber' => data.dig('id_number', 'va_file_number').presence || data.dig('id_number', 'ssn'),
         'zipCode' => data.dig('address', 'postal_code'),
         'source' => 'VA Platform Digital Forms',
-        'docType' => "StructuredData:#{data['form_number']}",
+        'docType' => data['form_number'],
         'businessLine' => 'CMP'
       }
     end
