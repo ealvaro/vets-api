@@ -28,7 +28,8 @@ module MHV
         end
 
         def as_json
-          [{ title: message, detail: body['message'], code: body['errorCode'] }]
+          data = body.is_a?(Hash) ? body : {}
+          [{ title: message, detail: data['message'], code: data['errorCode'] }]
         end
       end
     end
