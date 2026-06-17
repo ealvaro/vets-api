@@ -271,20 +271,22 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::2122', type: :request do
                     end
                   end
 
-                  it 'adds dependent values to the auth_headers' do
-                    VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
-                      mock_ccg(scopes) do |auth_header|
-                        json = JSON.parse(request_body)
-                        json['data']['attributes']['claimant'] = claimant_data
-                        request_body = json.to_json
+                  context 'adds dependent values to the auth_headers' do
+                    it 'adds the dependent object to the auth_headers' do
+                      VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
+                        mock_ccg(scopes) do |auth_header|
+                          json = JSON.parse(request_body)
+                          json['data']['attributes']['claimant'] = claimant_data
+                          request_body = json.to_json
 
-                        post appoint_organization_path, params: request_body, headers: auth_header
+                          post appoint_organization_path, params: request_body, headers: auth_header
 
-                        poa_id = JSON.parse(response.body)['data']['id']
-                        poa = ClaimsApi::PowerOfAttorney.find(poa_id)
-                        auth_headers = poa.auth_headers
+                          poa_id = JSON.parse(response.body)['data']['id']
+                          poa = ClaimsApi::PowerOfAttorney.find(poa_id)
+                          auth_headers = poa.auth_headers
 
-                        expect(auth_headers).to have_key('dependent')
+                          expect(auth_headers).to have_key('dependent')
+                        end
                       end
                     end
                   end

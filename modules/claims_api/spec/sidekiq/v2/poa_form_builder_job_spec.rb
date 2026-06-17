@@ -275,96 +275,100 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
     context '2122 veteran claimant' do
       let!(:org) { create(:organization, name: 'I Help Vets LLC', poa: poa_code) }
 
-      before do
-        power_of_attorney.form_data = {
-          recordConsent: true,
-          consentAddressChange: true,
-          consentLimits: %w[DRUG_ABUSE SICKLE_CELL],
-          veteran: {
-            address: {
-              addressLine1: '2719 Hyperion Ave',
-              city: 'Los Angeles',
-              stateCode: 'CA',
-              country: 'US',
-              zipCode: '92264'
+      context 'with lighthouse_claims_api_2122_pdf_form_update disabled' do
+        let(:org_coords) { { veteran: { x: 35, y: 240 }, representative: { x: 35, y: 200 } } }
+
+        before do
+          power_of_attorney.form_data = {
+            recordConsent: true,
+            consentAddressChange: true,
+            consentLimits: %w[DRUG_ABUSE SICKLE_CELL],
+            veteran: {
+              address: {
+                addressLine1: '2719 Hyperion Ave',
+                city: 'Los Angeles',
+                stateCode: 'CA',
+                country: 'US',
+                zipCode: '92264'
+              },
+              phone: {
+                areaCode: '555',
+                phoneNumber: '5551337'
+              }
             },
-            phone: {
-              areaCode: '555',
-              phoneNumber: '5551337'
-            }
-          },
-          serviceOrganization: {
-            poaCode: poa_code.to_s,
-            registrationNumber: '1234',
-            address: {
-              addressLine1: '2719 Hyperion Ave',
-              city: 'Los Angeles',
-              stateCode: 'CA',
-              country: 'US',
-              zipCode: '92264'
+            serviceOrganization: {
+              poaCode: poa_code.to_s,
+              registrationNumber: '1234',
+              address: {
+                addressLine1: '2719 Hyperion Ave',
+                city: 'Los Angeles',
+                stateCode: 'CA',
+                country: 'US',
+                zipCode: '92264'
+              }
             }
           }
-        }
-        power_of_attorney.save
-      end
-
-      it 'generates e-signatures correctly' do
-        data = power_of_attorney
-               .form_data
-               .deep_merge(
-                 {
-                   'veteran' => {
-                     'firstName' => power_of_attorney.auth_headers['va_eauth_firstName'],
-                     'lastName' => power_of_attorney.auth_headers['va_eauth_lastName'],
-                     'ssn' => power_of_attorney.auth_headers['va_eauth_pnid'],
-                     'birthdate' => power_of_attorney.auth_headers['va_eauth_birthdate']
-                   },
-                   'appointmentDate' => power_of_attorney.created_at,
-                   'text_signatures' => {
-                     'page2' => [
-                       {
-                         'signature' => 'JESSE GRAY - signed via api.va.gov',
-                         'x' => org_coords[:veteran][:x],
-                         'y' => org_coords[:veteran][:y]
-                       },
-                       {
-                         'signature' => 'Bob Representative - signed via api.va.gov',
-                         'x' => org_coords[:representative][:x],
-                         'y' => org_coords[:representative][:y]
-                       }
-                     ]
-                   },
-                   'serviceOrganization' => {
-                     'firstName' => 'Bob',
-                     'lastName' => 'Representative',
-                     'organizationName' => 'I Help Vets LLC'
-                   }
-                 }
-               )
-
-        allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
-        allow(bd_client).to receive(:upload_document).and_return(true)
-        allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
-        VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
-          expect_any_instance_of(ClaimsApi::V2::PoaPdfConstructor::Organization)
-            .to receive(:construct)
-            .with(data, id: power_of_attorney.id)
-            .and_call_original
-
-          subject.new.perform(power_of_attorney.id, '2122', 'post',
-                              rep.id)
+          power_of_attorney.save
         end
-      end
 
-      it 'Calls the POA updater job upon successful upload' do
-        allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
-        VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
+        it 'generates e-signatures correctly' do
+          data = power_of_attorney
+                 .form_data
+                 .deep_merge(
+                   {
+                     'veteran' => {
+                       'firstName' => power_of_attorney.auth_headers['va_eauth_firstName'],
+                       'lastName' => power_of_attorney.auth_headers['va_eauth_lastName'],
+                       'ssn' => power_of_attorney.auth_headers['va_eauth_pnid'],
+                       'birthdate' => power_of_attorney.auth_headers['va_eauth_birthdate']
+                     },
+                     'appointmentDate' => power_of_attorney.created_at,
+                     'text_signatures' => {
+                       'page2' => [
+                         {
+                           'signature' => 'JESSE GRAY - signed via api.va.gov',
+                           'x' => org_coords[:veteran][:x],
+                           'y' => org_coords[:veteran][:y]
+                         },
+                         {
+                           'signature' => 'Bob Representative - signed via api.va.gov',
+                           'x' => org_coords[:representative][:x],
+                           'y' => org_coords[:representative][:y]
+                         }
+                       ]
+                     },
+                     'serviceOrganization' => {
+                       'firstName' => 'Bob',
+                       'lastName' => 'Representative',
+                       'organizationName' => 'I Help Vets LLC'
+                     }
+                   }
+                 )
+
           allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
           allow(bd_client).to receive(:upload_document).and_return(true)
-          expect_any_instance_of(ClaimsApi::PoaUpdater).to receive(:perform).with(power_of_attorney.id, rep.id)
+          allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
+          VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
+            expect_any_instance_of(ClaimsApi::V2::PoaPdfConstructor::Organization)
+              .to receive(:construct)
+              .with(data, id: power_of_attorney.id)
+              .and_call_original
 
-          subject.new.perform(power_of_attorney.id, '2122', 'post',
-                              rep.id)
+            subject.new.perform(power_of_attorney.id, '2122', 'post',
+                                rep.id)
+          end
+        end
+
+        it 'Calls the POA updater job upon successful upload' do
+          allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
+          VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
+            allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+            allow(bd_client).to receive(:upload_document).and_return(true)
+            expect_any_instance_of(ClaimsApi::PoaUpdater).to receive(:perform).with(power_of_attorney.id, rep.id)
+
+            subject.new.perform(power_of_attorney.id, '2122', 'post',
+                                rep.id)
+          end
         end
       end
     end
@@ -372,114 +376,118 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
     context '2122 non-veteran claimant' do
       let!(:org) { create(:organization, name: 'I Help Vets LLC', poa: poa_code) }
 
-      before do
-        power_of_attorney.form_data = {
-          recordConsent: true,
-          consentAddressChange: true,
-          consentLimits: %w[DRUG_ABUSE SICKLE_CELL],
-          veteran: {
-            address: {
-              addressLine1: '2719 Hyperion Ave',
-              city: 'Los Angeles',
-              stateCode: 'CA',
-              country: 'US',
-              zipCode: '92264'
+      context 'with lighthouse_claims_api_2122_pdf_form_update disabled' do
+        let(:org_coords) { { veteran: { x: 35, y: 240 }, representative: { x: 35, y: 200 } } }
+
+        before do
+          power_of_attorney.form_data = {
+            recordConsent: true,
+            consentAddressChange: true,
+            consentLimits: %w[DRUG_ABUSE SICKLE_CELL],
+            veteran: {
+              address: {
+                addressLine1: '2719 Hyperion Ave',
+                city: 'Los Angeles',
+                stateCode: 'CA',
+                country: 'US',
+                zipCode: '92264'
+              },
+              phone: {
+                areaCode: '555',
+                phoneNumber: '5551337'
+              }
             },
-            phone: {
-              areaCode: '555',
-              phoneNumber: '5551337'
-            }
-          },
-          claimant: {
-            claimantId: '1012830872V584140',
-            email: 'mitchell@jenkins.com',
-            relationship: 'Spouse',
-            address: {
-              addressLine1: '2688 S Camino Real',
-              city: 'Palm Springs',
-              stateCode: 'CA',
-              country: 'US',
-              zipCode: '92264'
+            claimant: {
+              claimantId: '1012830872V584140',
+              email: 'mitchell@jenkins.com',
+              relationship: 'Spouse',
+              address: {
+                addressLine1: '2688 S Camino Real',
+                city: 'Palm Springs',
+                stateCode: 'CA',
+                country: 'US',
+                zipCode: '92264'
+              },
+              phone: {
+                areaCode: '555',
+                phoneNumber: '5551337'
+              }
             },
-            phone: {
-              areaCode: '555',
-              phoneNumber: '5551337'
-            }
-          },
-          serviceOrganization: {
-            poaCode: poa_code.to_s,
-            registrationNumber: '1234',
-            address: {
-              addressLine1: '2719 Hyperion Ave',
-              city: 'Los Angeles',
-              stateCode: 'CA',
-              country: 'US',
-              zipCode: '92264'
+            serviceOrganization: {
+              poaCode: poa_code.to_s,
+              registrationNumber: '1234',
+              address: {
+                addressLine1: '2719 Hyperion Ave',
+                city: 'Los Angeles',
+                stateCode: 'CA',
+                country: 'US',
+                zipCode: '92264'
+              }
             }
           }
-        }
-        power_of_attorney.save
-      end
+          power_of_attorney.save
+        end
 
-      it 'generates e-signatures correctly' do
-        data = power_of_attorney
-               .form_data
-               .deep_merge(
-                 {
-                   'veteran' => {
-                     'firstName' => power_of_attorney.auth_headers['va_eauth_firstName'],
-                     'lastName' => power_of_attorney.auth_headers['va_eauth_lastName'],
-                     'ssn' => power_of_attorney.auth_headers['va_eauth_pnid'],
-                     'birthdate' => power_of_attorney.auth_headers['va_eauth_birthdate']
-                   },
-                   'text_signatures' => {
-                     'page2' => [
-                       {
-                         'signature' => 'Mitchell Jenkins - signed via api.va.gov',
-                         'x' => org_coords[:veteran][:x],
-                         'y' => org_coords[:veteran][:y]
-                       },
-                       {
-                         'signature' => 'Bob Representative - signed via api.va.gov',
-                         'x' => org_coords[:representative][:x],
-                         'y' => org_coords[:representative][:y]
-                       }
-                     ]
-                   },
-                   'serviceOrganization' => {
-                     'firstName' => 'Bob',
-                     'lastName' => 'Representative',
-                     'organizationName' => 'I Help Vets LLC'
-                   },
-                   'dependent' => {
-                     'first_name' => 'Mitchell',
-                     'last_name' => 'Jenkins'
-                   },
-                   'appointmentDate' => power_of_attorney.created_at
-                 }
-               )
+        it 'generates e-signatures correctly' do
+          data = power_of_attorney
+                 .form_data
+                 .deep_merge(
+                   {
+                     'veteran' => {
+                       'firstName' => power_of_attorney.auth_headers['va_eauth_firstName'],
+                       'lastName' => power_of_attorney.auth_headers['va_eauth_lastName'],
+                       'ssn' => power_of_attorney.auth_headers['va_eauth_pnid'],
+                       'birthdate' => power_of_attorney.auth_headers['va_eauth_birthdate']
+                     },
+                     'text_signatures' => {
+                       'page2' => [
+                         {
+                           'signature' => 'Mitchell Jenkins - signed via api.va.gov',
+                           'x' => org_coords[:veteran][:x],
+                           'y' => org_coords[:veteran][:y]
+                         },
+                         {
+                           'signature' => 'Bob Representative - signed via api.va.gov',
+                           'x' => org_coords[:representative][:x],
+                           'y' => org_coords[:representative][:y]
+                         }
+                       ]
+                     },
+                     'serviceOrganization' => {
+                       'firstName' => 'Bob',
+                       'lastName' => 'Representative',
+                       'organizationName' => 'I Help Vets LLC'
+                     },
+                     'dependent' => {
+                       'first_name' => 'Mitchell',
+                       'last_name' => 'Jenkins'
+                     },
+                     'appointmentDate' => power_of_attorney.created_at
+                   }
+                 )
 
-        power_of_attorney.auth_headers.deep_merge!(
-          {
-            'dependent' => {
-              'first_name' => 'Mitchell',
-              'last_name' => 'Jenkins'
+          power_of_attorney.auth_headers.deep_merge!(
+            {
+              'dependent' => {
+                'first_name' => 'Mitchell',
+                'last_name' => 'Jenkins'
+              }
             }
-          }
-        )
-        power_of_attorney.save!
+          )
+          power_of_attorney.save!
 
-        allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
-        allow(bd_client).to receive(:upload_document).and_return(true)
-        allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
-        VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
-          expect_any_instance_of(ClaimsApi::V2::PoaPdfConstructor::Organization)
-            .to receive(:construct)
-            .with(data, id: power_of_attorney.id)
-            .and_call_original
+          allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+          allow(bd_client).to receive(:upload_document).and_return(true)
+          allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
+          VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
+            expect_any_instance_of(ClaimsApi::V2::PoaPdfConstructor::Organization)
+              .to receive(:construct)
+              .with(data, id: power_of_attorney.id)
+              .and_call_original
 
-          subject.new.perform(power_of_attorney.id, '2122', 'post',
-                              rep.id)
+            subject.new.perform(power_of_attorney.id, '2122', 'post',
+                                rep.id)
+          end
         end
       end
     end
