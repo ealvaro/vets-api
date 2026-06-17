@@ -26,7 +26,10 @@ module PdfFill
       add_destinations(doc, @form_class)
       add_links(doc, section_coordinates, original_page_count)
 
-      doc.write(doc_path)
+      # Skip HexaPDF write-time validation: VA-provided templates contain AcroForm field names with
+      # literal periods, which newer HexaPDF versions reject (`/T shall not contain a period`). The
+      # annotated PDFs render correctly regardless.
+      doc.write(doc_path, validate: false)
       doc_path
     end
 

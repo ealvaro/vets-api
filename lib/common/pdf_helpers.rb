@@ -11,7 +11,11 @@ module Common
     def self.unlock_pdf(input_file, password, output_file)
       doc = HexaPDF::Document.open(input_file, decryption_opts: { password: })
       doc.encrypt(name: nil)
-      doc.write(output_file)
+      # Skip HexaPDF write-time validation: VA-provided PDFs contain AcroForm field names with literal
+      # periods, which newer HexaPDF versions reject (`/T shall not contain a period`). Content
+      # validation is handled separately by PDFUtilities::PDFValidator. Decryption/parse errors still
+      # surface from HexaPDF::Document.open above.
+      doc.write(output_file, validate: false)
     rescue HexaPDF::EncryptionError => e
       Rails.logger.warn(scrub_pii(e.message))
       raise Common::Exceptions::UnprocessableEntity.new(

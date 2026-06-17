@@ -168,10 +168,12 @@ module PdfFill
         end
       end
 
-      # NOTE: In deployed environments we use the `flatten` flag when calling `fill_form`, which removes
-      # all of the form metadata. HexaPDF validation fails when the form metadata has been removed,
-      # so we should not validate the merged document in deployed environments
-      target.write(new_file_path, validate: !Rails.env.production?)
+      # NOTE: We skip HexaPDF write-time validation here. In deployed environments we use the `flatten`
+      # flag when calling `fill_form`, which removes all of the form metadata, and HexaPDF validation
+      # fails when the form metadata has been removed. Additionally, VA-provided templates contain
+      # AcroForm field names with literal periods, which newer HexaPDF versions reject during validation
+      # (`/T shall not contain a period`). These PDFs render correctly regardless, so we do not validate.
+      target.write(new_file_path, validate: false)
     end
 
     ##
@@ -223,7 +225,10 @@ module PdfFill
       raise 'No AcroForm found in PDF template.' if form.nil?
 
       form.fill(hash_data)
-      doc.write(output_path)
+      # Skip HexaPDF write-time validation: VA-provided templates contain AcroForm field names with
+      # literal periods, which newer HexaPDF versions reject (`/T shall not contain a period`). The
+      # filled PDFs render correctly regardless.
+      doc.write(output_path, validate: false)
     end
 
     ##
