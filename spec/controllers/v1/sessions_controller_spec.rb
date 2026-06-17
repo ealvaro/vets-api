@@ -1049,7 +1049,8 @@ RSpec.describe V1::SessionsController, type: :controller do
                 icn: saml_user_attributes[:mhv_icn],
                 credential_uuid: saml_user_attributes[:idme_uuid],
                 type: saml_user_attributes[:sign_in][:service_name]
-              }
+              },
+              current_user_uuid: nil
             }
           end
           let(:expected_redirect_url) { "https://int.eauth.va.gov/slo/globallogout?appKey=#{expected_app_key}" }
@@ -1084,7 +1085,8 @@ RSpec.describe V1::SessionsController, type: :controller do
       let(:error_code) { '102' }
       let(:error_message) do
         ['[V1][Sessions Controller] error',
-         { context: {}, message: 'User attributes contain multiple distinct EDIPI values' }]
+         { context: {}, message: 'User attributes contain multiple distinct EDIPI values',
+           current_user_uuid: nil }]
       end
       let(:invalid_attributes) do
         build(:ssoe_idme_mhv_loa3, va_eauth_gcIds: ['0123456789^NI^200DOD^USDOD^A|0000000054^NI^200DOD^USDOD^A|'])
@@ -1163,7 +1165,8 @@ RSpec.describe V1::SessionsController, type: :controller do
         let(:expected_error_message) do
           ['[V1][Sessions Controller] error', {
             context: {},
-            message: 'MHV account is unverified for context requiring verified account'
+            message: 'MHV account is unverified for context requiring verified account',
+            current_user_uuid: nil
           }]
         end
 
@@ -1330,7 +1333,6 @@ RSpec.describe V1::SessionsController, type: :controller do
 
           it 'logs a message to Sentry' do
             allow(saml_user).to receive(:changing_multifactor?).and_return(true)
-            expect(Sentry).to receive(:set_extras).with(current_user_uuid: user.uuid, current_user_icn: '11111111111')
             expect(Rails.logger).to receive(:warn).with(
               "[UserSessionForm] Couldn't locate existing user after MFA establishment",
               saml_uuid: 'invalid',
@@ -1435,7 +1437,8 @@ RSpec.describe V1::SessionsController, type: :controller do
         let(:expected_log_message) do
           ['[V1][Sessions Controller] error', {
             context: error_context,
-            message: 'Login Failed! Other SAML Response Error(s)'
+            message: 'Login Failed! Other SAML Response Error(s)',
+            current_user_uuid: nil
           }]
         end
 
@@ -1490,7 +1493,8 @@ RSpec.describe V1::SessionsController, type: :controller do
         let(:expected_error_message) do
           ['[V1][Sessions Controller] error', {
             context: extra_content,
-            message: "<fim:FIMStatusDetail MessageID='could_not_perform_token_exchange'/>"
+            message: "<fim:FIMStatusDetail MessageID='could_not_perform_token_exchange'/>",
+            current_user_uuid: nil
           }]
         end
 
@@ -1536,7 +1540,8 @@ RSpec.describe V1::SessionsController, type: :controller do
         let(:expected_log_message) do
           ['[V1][Sessions Controller] error', {
             context: extra_content,
-            message: expected_error_message
+            message: expected_error_message,
+            current_user_uuid: nil
           }]
         end
 
@@ -1566,7 +1571,8 @@ RSpec.describe V1::SessionsController, type: :controller do
         let(:expected_log_message) do
           ['[V1][Sessions Controller] error', {
             context: error_context,
-            message: 'Login Failed! Subject did not consent to attribute release Multiple SAML Errors'
+            message: 'Login Failed! Subject did not consent to attribute release Multiple SAML Errors',
+            current_user_uuid: nil
           }]
         end
 

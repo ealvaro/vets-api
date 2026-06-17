@@ -99,7 +99,6 @@ module V1
     end
 
     def saml_callback
-      set_sentry_context_for_callback if html_escaped_relay_state['type'] == 'mfa'
       saml_response = SAML::Responses::Login.new(params[:SAMLResponse], settings: saml_settings)
       saml_response_stats(saml_response)
       raise_saml_error(saml_response) unless saml_response.valid?
@@ -129,15 +128,6 @@ module V1
       cookies.delete(SignIn::Constants::Auth::ANTI_CSRF_COOKIE_NAME)
       cookies.delete(SignIn::Constants::Auth::INFO_COOKIE_NAME, domain: IdentitySettings.sign_in.info_cookie_domain)
       cookies[SignIn::Constants::Auth::REFRESH_TOKEN_COOKIE_NAME] = { value: '', expires: Time.at(0).utc }
-    end
-
-    def set_sentry_context_for_callback
-      temp_session_object = Session.find(session[:token])
-      temp_current_user = User.find(temp_session_object.uuid) if temp_session_object&.uuid
-      Sentry.set_extras(
-        current_user_uuid: temp_current_user.try(:uuid),
-        current_user_icn: temp_current_user.try(:mhv_icn)
-      )
     end
 
     def saml_settings(force_authn: true)
@@ -381,7 +371,7 @@ module V1
                   exc.message
                 end
 
-      Rails.logger.error('[V1][Sessions Controller] error', context:, message:)
+      Rails.logger.error('[V1][Sessions Controller] error', context:, message:, current_user_uuid: @current_user&.uuid)
       Rails.logger.info("SessionsController version:v1 saml_callback failure, user_uuid=#{@current_user&.uuid}")
 
       if exc.respond_to?(:force_logout) && exc.force_logout
