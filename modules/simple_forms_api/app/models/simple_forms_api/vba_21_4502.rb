@@ -22,9 +22,17 @@ module SimpleFormsApi
         'fileNumber' => @data['va_file_number'].presence || @data['ssn'],
         'zipCode' => mailing_address&.dig('postal_code'),
         'source' => 'VA Platform Digital Forms',
-        'docType' => @data['form_number'].presence || FORM_NUMBER,
+        'docType' => doc_type,
         'businessLine' => 'CMP'
       }
+    end
+
+    def doc_type
+      if Flipper.enabled?(:mms_structured_data_prefix, @current_user)
+        "StructuredData:#{@data['form_number'].presence || FORM_NUMBER}"
+      else
+        @data['form_number'].presence || FORM_NUMBER
+      end
     end
 
     def notification_first_name
