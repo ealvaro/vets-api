@@ -21,7 +21,7 @@ describe SignIn::Idme::Configuration do
 
       it 'returns the review instance callback proxy URI' do
         expect(subject).to eq(
-          "https://#{hostname}/#{SignIn::Constants::Auth::REVIEW_INSTANCE_CALLBACK_PROXY_PATH}"
+          "https://staging-api.va.gov/#{SignIn::Constants::Auth::REVIEW_INSTANCE_CALLBACK_PROXY_PATH}"
         )
       end
     end

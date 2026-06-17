@@ -117,7 +117,7 @@ describe SignIn::Logingov::Service do
 
           it 'renders the review instance callback proxy as redirect uri' do
             expect(response).to include(
-              CGI.escape("https://#{hostname}/#{SignIn::Constants::Auth::REVIEW_INSTANCE_CALLBACK_PROXY_PATH}")
+              CGI.escape("https://staging-api.va.gov/#{SignIn::Constants::Auth::REVIEW_INSTANCE_CALLBACK_PROXY_PATH}")
             )
           end
         end

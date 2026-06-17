@@ -16,7 +16,7 @@ module SignIn
 
       def redirect_uri
         if Settings.review_instance_slug.present?
-          "https://#{Settings.hostname}/#{Constants::Auth::REVIEW_INSTANCE_CALLBACK_PROXY_PATH}"
+          "https://staging-api.va.gov/#{Constants::Auth::REVIEW_INSTANCE_CALLBACK_PROXY_PATH}"
         else
           IdentitySettings.logingov.redirect_uri
         end
