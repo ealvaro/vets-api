@@ -19,10 +19,10 @@ RSpec.describe V0::VeteranOnboardingsController, type: :controller do
     end
 
     context 'when user has no veteran onboarding record' do
-      it 'returns a success response with nil body' do
+      it 'creates one and returns a success response with newly created record' do
         get :show
         expect(response).to be_successful
-        expect(response.parsed_body).to be_nil
+        expect(response.parsed_body['display_onboarding_flow']).to be(true)
       end
     end
   end

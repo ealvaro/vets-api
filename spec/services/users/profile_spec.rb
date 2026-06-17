@@ -731,8 +731,8 @@ RSpec.describe Users::Profile do
         before { allow(Flipper).to receive(:enabled?).with(:cve_onboarding_modal, anything).and_return(true) }
 
         context 'when user has no veteran onboarding record' do
-          it 'is false' do
-            expect(subject.onboarding).to eq({ show: false })
+          it 'creates one and returns the default onboarding value' do
+            expect(subject.onboarding).to eq({ show: true })
           end
         end
 

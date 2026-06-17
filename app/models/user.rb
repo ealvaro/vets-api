@@ -372,11 +372,12 @@ class User < Common::RedisStore
   end
 
   def onboarding
-    @onboarding ||= user_account&.veteran_onboarding
+    @onboarding ||= VeteranOnboarding.find_or_create_for_user(self)
   end
 
-  # VeteranOnboarding attributes & methods
-  delegate :show_onboarding_flow_on_login, to: :onboarding, allow_nil: true
+  def show_onboarding_flow_on_login
+    onboarding&.show_onboarding_flow_on_login(self)
+  end
 
   def vet360_contact_info
     return unless vet360_id.present? || icn.present?

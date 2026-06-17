@@ -2099,7 +2099,8 @@ veteran_enrollment_system:
   port: <%= ENV['veteran_enrollment_system__port'] %>
   timeout: 30
 veteran_onboarding:
-  onboarding_threshold_days: <%= ENV['veteran_onboarding__onboarding_threshold_days'] %>
+  onboarding_release_date: <%= ENV['veteran_onboarding__onboarding_release_date'] %>
+  onboarding_threshold_minutes: <%= ENV['veteran_onboarding__onboarding_threshold_minutes'] %>
 veteran_readiness_and_employment:
   auth_endpoint: <%= ENV['veteran_readiness_and_employment__auth_endpoint'] %>
   base_url: <%= ENV['veteran_readiness_and_employment__base_url'] %>

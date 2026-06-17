@@ -2118,7 +2118,8 @@ veteran_enrollment_system:
   port: 4430
   timeout: 30
 veteran_onboarding:
-  onboarding_threshold_days: ~
+  onboarding_release_date: ~
+  onboarding_threshold_minutes: ~
 veteran_readiness_and_employment:
   auth_endpoint: ~
   base_url: ~

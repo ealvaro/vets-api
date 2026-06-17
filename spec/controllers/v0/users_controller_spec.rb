@@ -81,21 +81,28 @@ RSpec.describe V0::UsersController, type: :controller do
       context 'with feature flag enabled' do
         before { allow(Flipper).to receive(:enabled?).with(:cve_onboarding_modal, anything).and_return(true) }
 
-        it 'returns the value of the onboarding record' do
-          create(:veteran_onboarding, user_account: user.user_account, display_onboarding_flow: true)
-          get :show
-          json = json_body_for(response)
-          expect(response).to be_successful
-          onboarding = json.dig('attributes', 'onboarding')
-          expect(onboarding['show']).to be(true)
+        context 'user has an onboarding record' do
+          before { create(:veteran_onboarding, user_account: user.user_account, display_onboarding_flow: true) }
+
+          it 'returns the value of the onboarding record' do
+            get :show
+            json = json_body_for(response)
+            expect(response).to be_successful
+            onboarding = json.dig('attributes', 'onboarding')
+            expect(onboarding['show']).to be(true)
+          end
         end
 
-        it 'returns false if user has no onboarding record' do
-          get :show
-          json = json_body_for(response)
-          expect(response).to be_successful
-          onboarding = json.dig('attributes', 'onboarding')
-          expect(onboarding['show']).to be(false)
+        context 'user has no onboarding record' do
+          it 'creates onboarding record and returns the onboarding value if user has no onboarding record' do
+            expect do
+              get :show
+            end.to change(VeteranOnboarding, :count).from(0).to(1)
+            json = json_body_for(response)
+            expect(response).to be_successful
+            onboarding = json.dig('attributes', 'onboarding')
+            expect(onboarding['show']).to be(true)
+          end
         end
       end
 

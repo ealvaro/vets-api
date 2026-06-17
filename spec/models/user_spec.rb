@@ -1269,51 +1269,119 @@ RSpec.describe User, type: :model do
   end
 
   describe '#onboarding' do
-    let(:user) { create(:user) }
+    let(:verified_at) { nil }
+    let(:user_verification) { create(:idme_user_verification, verified_at:) }
+    let(:user) { build(:user, :loa3, user_verification:, idme_uuid: user_verification.idme_uuid) }
 
-    context 'when user has no onboarding record' do
-      it 'returns nil' do
-        expect(user.onboarding).to be_nil
+    shared_examples 'user ineligible for veteran onboarding creation' do
+      it 'does not create a veteran onboarding record and returns nil' do
+        expect do
+          expect(user.onboarding).to be_nil
+        end.not_to change(VeteranOnboarding, :count)
       end
     end
-
-    context 'when user has an onboarding record' do
-      it 'returns the onboarding record' do
-        onboarding = create(:veteran_onboarding, user_account: user.user_account)
-        expect(user.onboarding).to eq(onboarding)
-      end
-    end
-  end
-
-  describe '#show_onboarding_flow_on_login' do
-    let(:user) { create(:user) }
 
     context 'when feature toggle is enabled' do
       before { allow(Flipper).to receive(:enabled?).with(:cve_onboarding_modal, anything).and_return(true) }
 
-      context 'when user has no veteran onboarding record' do
-        it 'returns nil' do
-          expect(user.show_onboarding_flow_on_login).to be_nil
+      context 'when user has no onboarding record and is not verified' do
+        it_behaves_like 'user ineligible for veteran onboarding creation'
+      end
+
+      context 'when user has no onboarding record and has just been verified' do
+        let(:verified_at) { 5.minutes.ago }
+
+        it 'creates one and returns it' do
+          expect do
+            expect(user.onboarding).to be_a(VeteranOnboarding)
+          end.to change(VeteranOnboarding, :count).by(1)
         end
       end
 
-      context 'when user has a veteran onboarding record' do
-        before { create(:veteran_onboarding, user_account: user.user_account, display_onboarding_flow: true) }
+      context 'when user has no onboarding record and was verified before cutoff' do
+        let(:verified_at) { 1.hour.ago }
 
-        it 'returns the onboarding status' do
-          expect(user.show_onboarding_flow_on_login).to be true
+        it_behaves_like 'user ineligible for veteran onboarding creation'
+      end
+
+      context 'when user has an onboarding record' do
+        it 'returns the onboarding record' do
+          onboarding = create(:veteran_onboarding, user_account: user.user_account)
+          expect do
+            expect(user.onboarding).to eq(onboarding)
+          end.not_to change(VeteranOnboarding, :count)
         end
       end
     end
 
     context 'when feature toggle is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:cve_onboarding_modal, anything).and_return(false)
-        create(:veteran_onboarding, user_account: user.user_account, display_onboarding_flow: true)
+      before { allow(Flipper).to receive(:enabled?).with(:cve_onboarding_modal, anything).and_return(false) }
+
+      context 'when user has no onboarding record' do
+        it_behaves_like 'user ineligible for veteran onboarding creation'
       end
 
-      it 'show_onboarding_flow_on_login returns false when flag is disabled, even if display_onboarding_flow is true' do
-        expect(user.show_onboarding_flow_on_login).to be(false)
+      context 'when user has an onboarding record' do
+        before { create(:veteran_onboarding, user_account: user.user_account) }
+
+        it_behaves_like 'user ineligible for veteran onboarding creation'
+      end
+    end
+  end
+
+  describe '#show_onboarding_flow_on_login' do
+    let(:user_verification) { create(:idme_user_verification) }
+    let(:user) { build(:user, :loa3, user_verification:, idme_uuid: user_verification.idme_uuid) }
+
+    context 'when feature toggle is enabled' do
+      before { allow(Flipper).to receive(:enabled?).with(:cve_onboarding_modal, anything).and_return(true) }
+
+      context 'when user has no veteran onboarding record' do
+        it 'creates a record with display_onboarding_flow set to true and returns true' do
+          expect do
+            user.show_onboarding_flow_on_login
+          end.to change(VeteranOnboarding, :count).from(0).to(1)
+        end
+      end
+
+      context 'when user has a veteran onboarding record with display_onboarding_flow set to true' do
+        it 'returns true' do
+          create(:veteran_onboarding, user_account: user.user_account, display_onboarding_flow: true)
+          expect do
+            expect(user.show_onboarding_flow_on_login).to be true
+          end.not_to change(VeteranOnboarding, :count)
+        end
+      end
+
+      context 'when the user has a veteran onboarding record with display_onboarding_flow set to false' do
+        it 'returns false' do
+          create(:veteran_onboarding, user_account: user.user_account, display_onboarding_flow: false)
+          expect do
+            expect(user.show_onboarding_flow_on_login).to be false
+          end.not_to change(VeteranOnboarding, :count)
+        end
+      end
+    end
+
+    context 'when feature toggle is disabled' do
+      before { allow(Flipper).to receive(:enabled?).with(:cve_onboarding_modal, anything).and_return(false) }
+
+      context 'the user does not have a veteran onboarding record' do
+        it 'does not create a veteran onboarding record' do
+          expect do
+            expect(user.show_onboarding_flow_on_login).to be_nil
+          end.not_to change(VeteranOnboarding, :count)
+        end
+      end
+
+      context 'the user does have a veteran onboarding record' do
+        before { create(:veteran_onboarding, user_account: user.user_account, display_onboarding_flow: true) }
+
+        it 'returns nil even if the record exists' do
+          expect do
+            expect(user.show_onboarding_flow_on_login).to be_nil
+          end.not_to change(VeteranOnboarding, :count)
+        end
       end
     end
   end
