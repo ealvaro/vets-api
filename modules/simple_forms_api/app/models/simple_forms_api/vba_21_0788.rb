@@ -60,12 +60,20 @@ module SimpleFormsApi
       data.dig('full_name', 'last')
     end
 
-    def full_name
-      [
-        data.dig('full_name', 'first'),
-        data.dig('full_name', 'middle'),
-        data.dig('full_name', 'last')
-      ].compact.join(' ')
+    def full_name(full_name_object = nil)
+      if full_name_object
+        [
+          full_name_object['first'],
+          full_name_object['middle'],
+          full_name_object['last']
+        ].compact.join(' ')
+      else
+        [
+          first_name,
+          middle_name,
+          last_name
+        ].compact.join(' ')
+      end
     end
 
     def notification_first_name

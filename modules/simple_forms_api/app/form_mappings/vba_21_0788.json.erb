@@ -8,7 +8,7 @@
 
   <%# Section 2 (INFORMATION ON CLAIMANT OR INDIVIDUAL ACTING ON BEHALF OF A MINOR CHILD) %>
 
-  "form1[0].Page_1[0].NAMEVETERAN[1]": "<%= form.on_behalf_of_child %>",
+  "form1[0].Page_1[0].NAMEVETERAN[1]": "<%= form.full_name(form.data['preparer']) %>",
 
   "form1[0].Page_1[0].RadioButtonList[0]":
     "<%= form.relationship == 'spouse' ? '0' : 'Off' %>",

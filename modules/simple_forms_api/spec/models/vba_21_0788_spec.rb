@@ -73,6 +73,18 @@ RSpec.describe SimpleFormsApi::VBA210788 do
     end
   end
 
+  describe '#full_name(name_object)' do
+    it 'joins name parts of provided object' do
+      name_obj = {
+        'first' => 'Testy',
+        'middle' => 'T',
+        'last' => 'McTestFace'
+      }.to_json
+      form.full_name(name_obj)
+      expect(subject).to eq('Testy T McTestFace')
+    end
+  end
+
   describe '#notification_first_name' do
     subject { form.notification_first_name }
 
