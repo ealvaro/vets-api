@@ -22449,7 +22449,6 @@
               "Dependent Benefit Summary Letter",
               "Foreign Medical Program enrollment",
               "Foreign Medical Program Enrollment Letter",
-              "Home loan Certificate of Eligibility (COE)",
               "Proof of Creditable Prescription Drug Coverage Letter",
               "Proof of Minimum Essential Coverage Letter",
               "Proof of minimum essential coverage",
@@ -22457,7 +22456,8 @@
               "Proof of service card",
               "Proof of VA income",
               "Service Verification Letter",
-              "TSA PreCheck application fee waiver"
+              "TSA PreCheck application fee waiver",
+              "VA home loan Certificate of Eligibility (COE)"
             ]
           },
           "letterType": {

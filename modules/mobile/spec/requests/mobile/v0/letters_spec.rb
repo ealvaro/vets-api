@@ -753,7 +753,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                       end
 
                       expect(coe_letter).to be_present
-                      expect(coe_letter['name']).to eq('Home loan Certificate of Eligibility (COE)')
+                      expect(coe_letter['name']).to eq('VA home loan Certificate of Eligibility (COE)')
                       expect(coe_letter['description']).to be_present
                       expect(coe_letter['description']['paragraphs']).to be_an(Array)
                       expect(coe_letter['referenceNumber']).to eq('16934344')
@@ -789,7 +789,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                       end
 
                       expect(coe_letter).to be_present
-                      expect(coe_letter['name']).to eq('Home loan Certificate of Eligibility (COE)')
+                      expect(coe_letter['name']).to eq('VA home loan Certificate of Eligibility (COE)')
                       expect(coe_letter['description']).to be_present
                       expect(coe_letter['description']['content']).to be_an(Array)
                       expect(coe_letter['referenceNumber']).to eq('16934344')

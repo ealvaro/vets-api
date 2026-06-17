@@ -36,8 +36,8 @@ module Lighthouse
       LETTER_NAME_OVERRIDES = {
         'benefit_summary' => 'Benefits and service verification',
         'benefit_verification' => 'Proof of VA income',
-        'certificate_of_eligibility' => 'Home loan Certificate of Eligibility (COE)',
-        'certificate_of_eligibility_home_loan' => 'Home loan Certificate of Eligibility (COE)',
+        'certificate_of_eligibility' => 'VA home loan Certificate of Eligibility (COE)',
+        'certificate_of_eligibility_home_loan' => 'VA home loan Certificate of Eligibility (COE)',
         'proof_of_service' => 'Proof of service card',
         'service_verification' => 'Service Verification Letter',
         'civil_service' => 'Civil service preference',
