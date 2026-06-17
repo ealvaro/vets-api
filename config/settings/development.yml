@@ -161,18 +161,14 @@ check_in:
     url_v2: https://vpce-06399548ef94bdb41-lk4qp2nd.execute-api.us-gov-west-1.vpce.amazonaws.com
   lorota_v2:
     api_id: 22t00c6f97
-    api_id_v2: 22t00c6f97
     api_key: fake_key
-    api_key_v2: fake_key
     base_path: dev
-    base_path_v2: dev
     key_path: fake_api_path
     mock: false
     redis_session_prefix: check_in_lorota_v2
     redis_token_expiry: 43200
     service_name: LoROTA-API
     url: https://vpce-06399548ef94bdb41-lk4qp2nd.execute-api.us-gov-west-1.vpce.amazonaws.com
-    url_v2: https://vpce-06399548ef94bdb41-lk4qp2nd.execute-api.us-gov-west-1.vpce.amazonaws.com
   map_api:
     service_name: MAP-API
     url: https://veteran.apps-staging.va.gov

@@ -160,19 +160,15 @@ check_in:
     url: <%= ENV['check_in__chip_api_v2__url'] %>
     url_v2: <%= ENV['check_in__vaec_cie__chip__url'] %>
   lorota_v2:
-    api_id: <%= ENV['check_in__lorota_v2__api_id'] %>
-    api_id_v2: <%= ENV['check_in__vaec_cie__lorota__api_id'] %>
-    api_key: <%= ENV['check_in__lorota_v2__api_key'] %>
-    api_key_v2: <%= ENV['check_in__vaec_cie__lorota__api_key'] %>
-    base_path: <%= ENV['check_in__lorota_v2__base_path'] %>
-    base_path_v2: <%= ENV['check_in__vaec_cie__lorota__base_path'] %>
+    api_id: <%= ENV['check_in__vaec_cie__lorota__api_id'] %>
+    api_key: <%= ENV['check_in__vaec_cie__lorota__api_key'] %>
+    base_path: <%= ENV['check_in__vaec_cie__lorota__base_path'] %>
     key_path: "/srv/vets-api/secret/check-in.lorota.v1.key"
     mock: <%= ENV['check_in__lorota_v2__mock'] %>
     redis_session_prefix: check_in_lorota_v2
     redis_token_expiry: 43200
     service_name: LoROTA-API
-    url: <%= ENV['check_in__lorota_v2__url'] %>
-    url_v2: <%= ENV['check_in__vaec_cie__lorota__url'] %>
+    url: <%= ENV['check_in__vaec_cie__lorota__url'] %>
   map_api:
     service_name: MAP-API
     url: https://veteran.apps-staging.va.gov

@@ -91,91 +91,42 @@ describe V2::Lorota::Client do
     end
   end
 
-  describe 'feature flag behavior' do
+  describe 'LoROTA configuration' do
     let(:token) { 'test_token' }
     let(:faraday_response) { double('Faraday::Response', body: { 'token' => token }.to_json) }
 
     before do
       allow_any_instance_of(Faraday::Connection).to receive(:post).with(anything).and_return(faraday_response)
       allow_any_instance_of(Faraday::Connection).to receive(:get).with(anything).and_return(faraday_response)
+      allow(Flipper).to receive(:enabled?).with('check_in_experience_mock_enabled').and_return(false)
     end
 
-    context 'when check_in_experience_use_vaec_cie_lorota flag is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with('check_in_experience_use_vaec_cie_lorota').and_return(false)
-        allow(Flipper).to receive(:enabled?).with('check_in_experience_mock_enabled').and_return(false)
-      end
-
-      it 'uses original (cms) settings' do
-        expect(subject.send(:url)).to eq(Settings.check_in.lorota_v2.url)
-        expect(subject.send(:base_path)).to eq(Settings.check_in.lorota_v2.base_path)
-        expect(subject.send(:api_id)).to eq(Settings.check_in.lorota_v2.api_id)
-        expect(subject.send(:api_key)).to eq(Settings.check_in.lorota_v2.api_key)
-      end
-
-      it 'makes token request to original endpoint' do
-        expect_any_instance_of(Faraday::Connection).to receive(:post).with('/dev/token')
-        subject.token
-      end
-
-      it 'makes data request to original endpoint' do
-        expect_any_instance_of(Faraday::Connection).to receive(:get)
-          .with("/dev/data/#{check_in.uuid}")
-        subject.data(token:)
-      end
+    it 'uses the configured LoROTA settings' do
+      expect(subject.send(:url)).to eq(Settings.check_in.lorota_v2.url)
+      expect(subject.send(:base_path)).to eq(Settings.check_in.lorota_v2.base_path)
+      expect(subject.send(:api_id)).to eq(Settings.check_in.lorota_v2.api_id)
+      expect(subject.send(:api_key)).to eq(Settings.check_in.lorota_v2.api_key)
     end
 
-    context 'when check_in_experience_use_vaec_cie_lorota flag is enabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with('check_in_experience_use_vaec_cie_lorota').and_return(true)
-        allow(Flipper).to receive(:enabled?).with('check_in_experience_mock_enabled').and_return(false)
-      end
-
-      it 'uses v2 (cie) settings' do
-        expect(subject.send(:url)).to eq(Settings.check_in.lorota_v2.url_v2)
-        expect(subject.send(:base_path)).to eq(Settings.check_in.lorota_v2.base_path_v2)
-        expect(subject.send(:api_id)).to eq(Settings.check_in.lorota_v2.api_id_v2)
-        expect(subject.send(:api_key)).to eq(Settings.check_in.lorota_v2.api_key_v2)
-      end
-
-      it 'makes token request to v2 endpoint' do
-        expect_any_instance_of(Faraday::Connection).to receive(:post).with('/dev/token')
-        subject.token
-      end
-
-      it 'makes data request to v2 endpoint' do
-        expect_any_instance_of(Faraday::Connection).to receive(:get)
-          .with("/dev/data/#{check_in.uuid}")
-        subject.data(token:)
-      end
-
-      it 'uses v2 headers in requests' do
-        expect_any_instance_of(Faraday::Connection).to receive(:post).with(anything) do |&block|
-          request = Faraday::Request.new
-          block.call(request)
-          expect(request.headers['x-api-key']).to eq(Settings.check_in.lorota_v2.api_key_v2)
-          expect(request.headers['x-apigw-api-id']).to eq(Settings.check_in.lorota_v2.api_id_v2)
-        end
-        subject.token
-      end
+    it 'makes the token request to the configured endpoint' do
+      expect_any_instance_of(Faraday::Connection).to receive(:post).with('/dev/token')
+      subject.token
     end
 
-    context 'is independent of the CHIP endpoints flag' do
-      before do
-        allow(Flipper).to receive(:enabled?).with('check_in_experience_mock_enabled').and_return(false)
-      end
+    it 'makes the data request to the configured endpoint' do
+      expect_any_instance_of(Faraday::Connection).to receive(:get)
+        .with("/dev/data/#{check_in.uuid}")
+      subject.data(token:)
+    end
 
-      it 'never consults the CHIP endpoints flag and stays on cms LoROTA' do
-        allow(Flipper).to receive(:enabled?).with('check_in_experience_use_vaec_cie_lorota').and_return(false)
-        expect(Flipper).not_to receive(:enabled?).with('check_in_experience_use_vaec_cie_endpoints')
-        expect(subject.send(:url)).to eq(Settings.check_in.lorota_v2.url)
+    it 'sets the api key and api id request headers' do
+      expect_any_instance_of(Faraday::Connection).to receive(:post).with(anything) do |&block|
+        request = Faraday::Request.new
+        block.call(request)
+        expect(request.headers['x-api-key']).to eq(Settings.check_in.lorota_v2.api_key)
+        expect(request.headers['x-apigw-api-id']).to eq(Settings.check_in.lorota_v2.api_id)
       end
-
-      it 'never consults the CHIP endpoints flag and moves to cie LoROTA when the LoROTA flag is on' do
-        allow(Flipper).to receive(:enabled?).with('check_in_experience_use_vaec_cie_lorota').and_return(true)
-        expect(Flipper).not_to receive(:enabled?).with('check_in_experience_use_vaec_cie_endpoints')
-        expect(subject.send(:url)).to eq(Settings.check_in.lorota_v2.url_v2)
-      end
+      subject.token
     end
   end
 
@@ -187,14 +138,13 @@ describe V2::Lorota::Client do
       allow_any_instance_of(Faraday::Connection).to receive(:post).with(anything).and_return(faraday_response)
       allow_any_instance_of(Faraday::Connection).to receive(:get).with(anything).and_return(faraday_response)
       allow(Flipper).to receive(:enabled?).with('check_in_experience_mock_enabled').and_return(false)
-      allow(Flipper).to receive(:enabled?).with('check_in_experience_use_vaec_cie_endpoints').and_return(true)
     end
 
     context 'when url contains only the host and base_path carries the stage' do
       before do
         allow(Settings.check_in.lorota_v2).to receive_messages(
-          url_v2: 'https://example.execute-api.us-gov-west-1.amazonaws.com',
-          base_path_v2: 'dev'
+          url: 'https://example.execute-api.us-gov-west-1.amazonaws.com',
+          base_path: 'dev'
         )
       end
 
@@ -212,8 +162,8 @@ describe V2::Lorota::Client do
     context 'when url already contains the stage path' do
       before do
         allow(Settings.check_in.lorota_v2).to receive_messages(
-          url_v2: 'https://example.execute-api.us-gov-west-1.amazonaws.com/dev',
-          base_path_v2: '/dev'
+          url: 'https://example.execute-api.us-gov-west-1.amazonaws.com/dev',
+          base_path: '/dev'
         )
       end
 
@@ -231,8 +181,8 @@ describe V2::Lorota::Client do
     context 'when base_path has a leading slash and url has no path' do
       before do
         allow(Settings.check_in.lorota_v2).to receive_messages(
-          url_v2: 'https://example.execute-api.us-gov-west-1.amazonaws.com',
-          base_path_v2: '/dev/'
+          url: 'https://example.execute-api.us-gov-west-1.amazonaws.com',
+          base_path: '/dev/'
         )
       end
 
@@ -245,8 +195,8 @@ describe V2::Lorota::Client do
     context 'when url has a trailing slash on its path' do
       before do
         allow(Settings.check_in.lorota_v2).to receive_messages(
-          url_v2: 'https://example.execute-api.us-gov-west-1.amazonaws.com/dev/',
-          base_path_v2: ''
+          url: 'https://example.execute-api.us-gov-west-1.amazonaws.com/dev/',
+          base_path: ''
         )
       end
 
