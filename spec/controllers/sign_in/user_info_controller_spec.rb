@@ -141,7 +141,7 @@ describe SignIn::UserInfoController do
           let(:expected_response_body) do
             {
               sub: credential_uuid,
-              name: "#{user.first_name} #{user.middle_name} #{user.last_name}".squish,
+              name: user.full_name_normalized.values.compact.join(' '),
               given_name: user.first_name,
               middle_name: user.middle_name,
               family_name: user.last_name,
