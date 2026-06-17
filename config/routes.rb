@@ -369,10 +369,6 @@ Rails.application.routes.draw do
 
     resource :mhv_opt_in_flags, only: %i[show create]
 
-    namespace :contact_us do
-      resources :inquiries, only: %i[index create]
-    end
-
     namespace :coe do
       get 'status'
       get 'download_coe'

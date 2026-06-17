@@ -1598,14 +1598,6 @@ features:
   form_pdf_change_detection:
     actor_type: user
     description: If enabled runs the FormPdfChangeDetectionJob daily
-  get_help_ask_form:
-    actor_type: user
-    description: Enables inquiry form for users to submit questions, suggestions, and complaints.
-    enable_in_development: true
-  get_help_messages:
-    actor_type: user
-    description: Enables secure messaging
-    enable_in_development: true
   ha_cpap_supplies_cta:
     actor_type: user
     description: Toggle CTA for reordering Hearing Aid and CPAP supplies form within static pages.
