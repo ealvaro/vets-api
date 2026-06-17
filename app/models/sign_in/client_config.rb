@@ -34,6 +34,9 @@ module SignIn
     validates :json_api_compatibility, inclusion: [true, false]
     validate :validate_client_secret_configuration
 
+    enum :auth_method, { pkce: 'pkce', client_secret: 'client_secret', private_key_jwt: 'private_key_jwt' },
+         prefix: true
+
     def self.valid_client_id?(client_id:)
       find_by(client_id:).present?
     end

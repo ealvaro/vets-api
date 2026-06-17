@@ -7,6 +7,7 @@ RSpec.describe SignIn::ClientConfig, type: :model do
     create(:client_config,
            client_id:,
            pkce:,
+           auth_method:,
            authentication:,
            shared_sessions:,
            anti_csrf:,
@@ -24,6 +25,7 @@ RSpec.describe SignIn::ClientConfig, type: :model do
   end
   let(:client_id) { 'some-client-id' }
   let(:pkce) { true }
+  let(:auth_method) { 'pkce' }
   let(:authentication) { SignIn::Constants::Auth::API }
   let(:anti_csrf) { false }
   let(:shared_sessions) { false }
