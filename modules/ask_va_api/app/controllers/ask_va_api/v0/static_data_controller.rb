@@ -23,6 +23,16 @@ module AskVAApi
         render_result(@categories)
       end
 
+      def topics
+        get_resource('topics', user_mock_data: params[:user_mock_data], parent_id: params[:category_id])
+        render_result(@topics)
+      end
+
+      def subtopics
+        get_resource('subtopics', user_mock_data: params[:user_mock_data], parent_id: params[:topic_id])
+        render_result(@subtopics)
+      end
+
       def contents
         get_resource('contents',
                      user_mock_data: params[:user_mock_data],

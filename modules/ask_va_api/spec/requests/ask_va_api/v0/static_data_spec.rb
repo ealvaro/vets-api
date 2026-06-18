@@ -178,6 +178,88 @@ RSpec.describe 'AskVAApi StaticData', type: :request do
     end
   end
 
+  describe 'GET #topics' do
+    let(:topics_path) { '/ask_va_api/v0/categories/75524deb-d864-eb11-bb24-000d3a579c45/topics' }
+    let(:expected_hash) do
+      { 'id' => '1b2b8586-e764-eb11-bb23-000d3a579c3f',
+        'type' => 'topics',
+        'attributes' =>
+         { 'name' => 'Benefits for survivors and dependents',
+           'allow_attachments' => true,
+           'description' => nil,
+           'display_name' => 'Benefits for survivors and dependents',
+           'parent_id' => '75524deb-d864-eb11-bb24-000d3a579c45',
+           'rank_order' => 0,
+           'requires_authentication' => true,
+           'topic_type' => 'Topic',
+           'contact_preferences' => ['Email'] } }
+    end
+
+    context 'when successful' do
+      before do
+        get topics_path, params: { user_mock_data: true }
+      end
+
+      it 'returns topics data' do
+        expect(JSON.parse(response.body)['data']).to include(a_hash_including(expected_hash))
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context 'when an error occurs' do
+      before do
+        allow_any_instance_of(Crm::CacheData)
+          .to receive(:call)
+          .and_raise(StandardError)
+        get topics_path
+      end
+
+      it_behaves_like 'common error handling', :unprocessable_entity, 'service_error',
+                      'StandardError: StandardError'
+    end
+  end
+
+  describe 'GET #subtopics' do
+    let(:subtopics_path) { '/ask_va_api/v0/topics/152b8586-e764-eb11-bb23-000d3a579c3f/subtopics' }
+    let(:expected_hash) do
+      { 'id' => '952dbcee-eb64-eb11-bb23-000d3a579b83',
+        'type' => 'subtopics',
+        'attributes' =>
+         { 'name' => 'Application',
+           'allow_attachments' => true,
+           'description' => nil,
+           'display_name' => 'Application',
+           'parent_id' => '152b8586-e764-eb11-bb23-000d3a579c3f',
+           'rank_order' => 0,
+           'requires_authentication' => false,
+           'topic_type' => 'SubTopic',
+           'contact_preferences' => ['Email'] } }
+    end
+
+    context 'when successful' do
+      before do
+        get subtopics_path, params: { user_mock_data: true }
+      end
+
+      it 'returns subtopics data' do
+        expect(JSON.parse(response.body)['data']).to include(a_hash_including(expected_hash))
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context 'when an error occurs' do
+      before do
+        allow_any_instance_of(Crm::CacheData)
+          .to receive(:call)
+          .and_raise(StandardError)
+        get subtopics_path
+      end
+
+      it_behaves_like 'common error handling', :unprocessable_entity, 'service_error',
+                      'StandardError: StandardError'
+    end
+  end
+
   describe 'GET #contents' do
     let(:contents_path) { '/ask_va_api/v0/contents' }
     let(:expected_hash) do

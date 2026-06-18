@@ -1,5 +1,5 @@
 ---
-applyTo: "modules/ask_va_api/app/controllers/ask_va_api/v0/static_data_controller.rb,modules/ask_va_api/app/lib/ask_va_api/base_retriever.rb,modules/ask_va_api/app/lib/ask_va_api/categories/**/*,modules/ask_va_api/app/lib/ask_va_api/contents/**/*,modules/ask_va_api/app/lib/ask_va_api/announcements/**/*,modules/ask_va_api/app/lib/ask_va_api/branch_of_service/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/categories/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/contents/**/*,modules/ask_va_api/spec/requests/ask_va_api/v0/static_data_spec.rb,modules/ask_va_api/config/routes.rb"
+applyTo: "modules/ask_va_api/app/controllers/ask_va_api/v0/static_data_controller.rb,modules/ask_va_api/app/lib/ask_va_api/base_retriever.rb,modules/ask_va_api/app/lib/ask_va_api/categories/**/*,modules/ask_va_api/app/lib/ask_va_api/contents/**/*,modules/ask_va_api/app/lib/ask_va_api/topics/**/*,modules/ask_va_api/app/lib/ask_va_api/subtopics/**/*,modules/ask_va_api/app/lib/ask_va_api/announcements/**/*,modules/ask_va_api/app/lib/ask_va_api/branch_of_service/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/categories/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/contents/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/topics/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/subtopics/**/*,modules/ask_va_api/spec/requests/ask_va_api/v0/static_data_spec.rb,modules/ask_va_api/config/routes.rb"
 ---
 
 # Copilot Instructions for Ask VA API / Static Data
@@ -130,6 +130,61 @@ end
 
 ---
 
+## Nested Route / Child Resource Pattern
+
+### When to use
+When adding an endpoint with a parent resource in the URL (e.g., `/categories/:category_id/topics`).
+
+### Controller action
+Map the route param to the retriever's `parent_id` kwarg:
+```ruby
+def topics
+  get_resource('topics', user_mock_data: params[:user_mock_data], parent_id: params[:category_id])
+  render_result(@topics)
+end
+
+def subtopics
+  get_resource('subtopics', user_mock_data: params[:user_mock_data], parent_id: params[:topic_id])
+  render_result(@subtopics)
+end
+```
+
+The route param name (`category_id`, `topic_id`) comes from the route definition in `routes.rb`. The retriever always receives it as `parent_id`.
+
+### Retriever with `parent_id:`
+Override `initialize` to accept `parent_id:`, then filter by `ParentId == @parent_id`:
+```ruby
+module AskVAApi
+  module Topics
+    class Retriever < BaseRetriever
+      def initialize(parent_id:, **args)
+        super(**args)
+        @parent_id = parent_id
+      end
+
+      private
+
+      def fetch_data
+        data = user_mock_data ? static_data : fetch_from_cache
+        filter_data(data)
+      end
+
+      # ... static_data and fetch_from_cache same as base pattern ...
+
+      def filter_data(data)
+        return [] if data[:Topics].blank?
+
+        data[:Topics]
+          .select { |topic| topic[:ParentId] == @parent_id }
+          .sort_by { |topic| topic[:Name] }
+      end
+    end
+  end
+end
+```
+
+**Why `**args` + `super`:** `get_resource` merges `entity_class:` into the options hash before calling `retriever_class.new(**options)`. Using `**args` captures `user_mock_data:` and `entity_class:` and forwards them to `BaseRetriever#initialize` via `super`.
+
 ## Data Source: CRM Cache
 
 Static data endpoints share the same CRM cache:
@@ -189,3 +244,13 @@ Each class in the triad should have its own spec file under `spec/app/lib/ask_va
 ## Deprecation Context
 
 `/contents` is a multiplexed endpoint that serves categories, topics, and subtopics via a `type` query parameter. It is being replaced by dedicated endpoints (`/categories`, `/topics/:id/subtopics`, etc.) per issues #2170, #2414, #2415, #2428, #2429. Each new endpoint gets its own class triad so `/contents` and `Contents::*` can be fully removed later.
+
+---
+
+## Maintenance: Updating This File
+
+When adding a new resource directory (e.g., `app/lib/ask_va_api/new_resource/`), update the `applyTo` frontmatter at the top of this file to include the new paths. Without this, Copilot won't apply these instructions when working on files in the new directory.
+
+Add both the source and spec paths:
+- `modules/ask_va_api/app/lib/ask_va_api/new_resource/**/*`
+- `modules/ask_va_api/spec/app/lib/ask_va_api/new_resource/**/*`
