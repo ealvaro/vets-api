@@ -18,9 +18,6 @@ module CheckIn
             response = perform(:get, clinics_url(site_id:), {}, headers)
             Oj.load(response.body)
           end
-        rescue Common::Exceptions::BackendServiceException => e
-          log_vds_clinics_fetch_failure(site_id:, error: e)
-          raise
         end
 
         def config
@@ -37,13 +34,6 @@ module CheckIn
           {
             'Content-Type' => 'application/json'
           }
-        end
-
-        def log_vds_clinics_fetch_failure(site_id:, error:)
-          Rails.logger.info('HCE-Check-In') do
-            "appointments_vds_clinics_fetch_failed site_id=#{site_id} " \
-              "error=#{error.class} status=#{error.try(:status)}"
-          end
         end
       end
     end

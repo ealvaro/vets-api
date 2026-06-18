@@ -39,9 +39,7 @@ describe CheckIn::Vds::SiteInfo::ClinicsService do
         allow_any_instance_of(Faraday::Connection).to receive(:get).and_raise(exception)
       end
 
-      it 'logs the failure and re-raises' do
-        expect(Rails.logger).to receive(:info).with('HCE-Check-In')
-
+      it 're-raises so the caller decides how to handle it' do
         expect do
           subject.get_clinics(site_id:)
         end.to(raise_error do |error|

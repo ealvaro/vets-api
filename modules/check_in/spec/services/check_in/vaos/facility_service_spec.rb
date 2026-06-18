@@ -251,9 +251,7 @@ describe CheckIn::VAOS::FacilityService do
         allow_any_instance_of(Faraday::Connection).to receive(:get).and_raise(exception)
       end
 
-      it 'logs the failure and re-raises' do
-        expect(Rails.logger).to receive(:info).with('HCE-Check-In')
-
+      it 're-raises so the caller decides how to handle it' do
         expect do
           subject.get_facility(facility_id:)
         end.to(raise_error do |error|
@@ -432,6 +430,128 @@ describe CheckIn::VAOS::FacilityService do
           expect_any_instance_of(described_class).not_to receive(:perform)
           expect(subject.get_clinic_with_cache(facility_id:, clinic_id:)).to be_nil
         end
+      end
+    end
+  end
+
+  describe 'enrichment failures degrade gracefully' do
+    # Cached enrichment must never take down the appointments response, which has already been
+    # fetched successfully. A failed facility/clinic lookup should return nil, not raise.
+    let(:resp) { Faraday::Response.new(body: 'bad request', status: 400) }
+    let(:exception) do
+      Common::Exceptions::BackendServiceException.new('VAOS_400', { detail: 'bad request' }, resp.status, resp.body)
+    end
+
+    before { allow(StatsD).to receive(:increment) }
+
+    # Captures the lazily-evaluated 'HCE-Check-In' log lines emitted while the block runs.
+    def hce_logs_during
+      logs = []
+      allow(Rails.logger).to receive(:info) { |*_args, &block| logs << block.call if block }
+      yield
+      logs
+    end
+
+    context 'when the facility fetch returns a client error' do
+      before do
+        allow_any_instance_of(Faraday::Connection).to receive(:get).and_raise(exception)
+      end
+
+      it 'returns nil instead of raising' do
+        expect(subject.get_facility_with_cache(facility_id:)).to be_nil
+      end
+
+      it 'increments the facility enrichment failure metric' do
+        subject.get_facility_with_cache(facility_id:)
+        expect(StatsD).to have_received(:increment)
+          .with(CheckIn::Constants::STATSD_FACILITY_ENRICHMENT_FAILED)
+      end
+
+      it 'caches the miss so repeated lookups do not re-hit the upstream' do
+        subject.get_facility_with_cache(facility_id:)
+        subject.get_facility_with_cache(facility_id:)
+        expect(StatsD).to have_received(:increment)
+          .with(CheckIn::Constants::STATSD_FACILITY_ENRICHMENT_FAILED).once
+      end
+
+      it 'logs the upstream status, code, path, and likely cause' do
+        logs = hce_logs_during { subject.get_facility_with_cache(facility_id:) }
+        log = logs.find { |line| line.include?('enrichment_skipped') }
+
+        expect(log).to include('appointments_facility_enrichment_skipped', "facility_id=#{facility_id}",
+                               'facilities_version=v2', 'error=CheckIn::VAOS::ServiceException',
+                               'code=VAOS_400', 'status=400',
+                               'likely_cause=unrecognized_or_non_vista_facility')
+      end
+    end
+
+    context 'when the facility lookup hits an open circuit breaker' do
+      let(:outage_error) { Breakers::OutageException.new(nil, nil) }
+
+      before do
+        allow_any_instance_of(Faraday::Connection).to receive(:get).and_raise(outage_error)
+      end
+
+      it 'degrades to nil and logs the breaker as the likely cause' do
+        logs = hce_logs_during { expect(subject.get_facility_with_cache(facility_id:)).to be_nil }
+        log = logs.find { |line| line.include?('enrichment_skipped') }
+
+        expect(log).to include('error=Breakers::OutageException', 'likely_cause=upstream_circuit_breaker_open')
+        expect(StatsD).to have_received(:increment)
+          .with(CheckIn::Constants::STATSD_FACILITY_ENRICHMENT_FAILED)
+      end
+    end
+
+    context 'when the MFS clinic fetch returns a client error' do
+      before do
+        allow_any_instance_of(Faraday::Connection).to receive(:get).and_raise(exception)
+      end
+
+      it 'returns nil and increments the clinic enrichment failure metric' do
+        expect(subject.get_clinic_with_cache(facility_id:, clinic_id:)).to be_nil
+        expect(StatsD).to have_received(:increment)
+          .with(CheckIn::Constants::STATSD_CLINIC_ENRICHMENT_FAILED)
+      end
+    end
+
+    context 'when the VDS clinic list fetch fails for a non-VistA (Oracle Health) site' do
+      let(:facility_id) { '983GC' }
+
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:check_in_experience_va_mobile_facilities_v3_enabled).and_return(true)
+        allow(Flipper).to receive(:enabled?)
+          .with(:check_in_experience_vds_site_info_clinics_enabled).and_return(true)
+        allow_any_instance_of(Faraday::Connection).to receive(:get)
+          .with("/vds/info/v1/sites/#{facility_id}/clinics", {})
+          .and_raise(exception)
+      end
+
+      it 'returns nil so the appointment is still rendered without clinic info' do
+        expect(subject.get_clinic_with_cache(facility_id:, clinic_id:)).to be_nil
+      end
+
+      it 'increments the clinic enrichment failure metric' do
+        subject.get_clinic_with_cache(facility_id:, clinic_id:)
+        expect(StatsD).to have_received(:increment)
+          .with(CheckIn::Constants::STATSD_CLINIC_ENRICHMENT_FAILED)
+      end
+
+      it 'caches the miss so the site is not re-fetched within the response' do
+        subject.get_clinic_with_cache(facility_id:, clinic_id:)
+        subject.get_clinic_with_cache(facility_id:, clinic_id:)
+        expect(StatsD).to have_received(:increment)
+          .with(CheckIn::Constants::STATSD_CLINIC_ENRICHMENT_FAILED).once
+      end
+
+      it 'logs the non-VistA likely cause along with the VDS path context' do
+        logs = hce_logs_during { subject.get_clinic_with_cache(facility_id:, clinic_id:) }
+        log = logs.find { |line| line.include?('enrichment_skipped') }
+
+        expect(log).to include('appointments_clinic_enrichment_skipped', 'facility_id=983GC',
+                               "clinic_id=#{clinic_id}", 'facilities_version=v3', 'vds_clinics=enabled',
+                               'code=VAOS_400', 'status=400',
+                               'likely_cause=non_vista_site_or_unknown_clinic')
       end
     end
   end

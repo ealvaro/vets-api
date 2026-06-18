@@ -17,6 +17,13 @@ module CheckIn
       def get_facility_with_cache(facility_id:)
         Rails.cache.fetch(facility_cache_key(facility_id), expires_in: 12.hours) do
           get_facility(facility_id:)
+        rescue Common::Exceptions::BackendServiceException, Breakers::OutageException => e
+          # Enrichment is best-effort: a facility lookup failure must not take down the appointments
+          # response, which has already been fetched successfully. Cache the miss so other
+          # appointments at the same facility don't re-hit (and trip the circuit breaker on) a
+          # known-bad upstream within the same response.
+          record_enrichment_failure(kind: 'facility', facility_id:, error: e,
+                                    metric: CheckIn::Constants::STATSD_FACILITY_ENRICHMENT_FAILED)
         end
       end
 
@@ -25,9 +32,6 @@ module CheckIn
           response = perform(:get, facilities_url(facility_id:), {}, headers)
           Oj.load(response.body).with_indifferent_access
         end
-      rescue Common::Exceptions::BackendServiceException => e
-        log_facility_fetch_failure(facility_id:, error: e)
-        raise
       end
 
       def track_vds_clinics_skipped_flag_off!
@@ -45,11 +49,22 @@ module CheckIn
 
           clinics = Rails.cache.fetch(vds_site_clinics_cache_key(facility_id), expires_in: 12.hours) do
             vds_site_info_clinics_service.get_clinics(site_id: facility_id)
+          rescue Common::Exceptions::BackendServiceException, Breakers::OutageException => e
+            # Best-effort enrichment: e.g. a non-VistA (Oracle Health) site_id sent to the VDS
+            # site-info endpoint returns a 400. Cache the miss and degrade to nil so the appointment
+            # is still returned without clinic info.
+            record_enrichment_failure(kind: 'clinic', facility_id:, clinic_id:, error: e,
+                                      metric: CheckIn::Constants::STATSD_CLINIC_ENRICHMENT_FAILED)
           end
+          return nil if clinics.nil?
+
           clinic_from_vds_list(clinics, clinic_id, site_id: facility_id)
         else
           Rails.cache.fetch("check_in.vaos_clinic_#{facility_id}_#{clinic_id}", expires_in: 12.hours) do
             get_clinic(facility_id:, clinic_id:)
+          rescue Common::Exceptions::BackendServiceException, Breakers::OutageException => e
+            record_enrichment_failure(kind: 'clinic', facility_id:, clinic_id:, error: e,
+                                      metric: CheckIn::Constants::STATSD_CLINIC_ENRICHMENT_FAILED)
           end
         end
       end
@@ -133,11 +148,38 @@ module CheckIn
         }
       end
 
-      def log_facility_fetch_failure(facility_id:, error:)
-        Rails.logger.info('HCE-Check-In') do
-          "appointments_facility_fetch_failed facility_id=#{facility_id} " \
-            "facilities_version=#{facilities_v3_enabled? ? 'v3' : 'v2'} " \
-            "error=#{error.class} status=#{error.try(:status)}"
+      # Logs the skip with enough context to triage, increments the metric, and returns nil so the
+      # cache stores the miss. No PII: only station/clinic identifiers and upstream error metadata.
+      def record_enrichment_failure(kind:, facility_id:, error:, metric:, clinic_id: nil)
+        Rails.logger.info('HCE-Check-In') { enrichment_failure_log(kind:, facility_id:, clinic_id:, error:) }
+        StatsD.increment(metric)
+        nil
+      end
+
+      def enrichment_failure_log(kind:, facility_id:, error:, clinic_id: nil)
+        parts = ["appointments_#{kind}_enrichment_skipped", "facility_id=#{facility_id}"]
+        parts << "clinic_id=#{clinic_id}" if clinic_id
+        parts << "facilities_version=#{facilities_v3_enabled? ? 'v3' : 'v2'}"
+        parts << "vds_clinics=#{vds_site_info_clinics_enabled? ? 'enabled' : 'disabled'}" if kind == 'clinic'
+        parts << "error=#{error.class}"
+        parts << "code=#{error.try(:key)}"
+        parts << "status=#{error.try(:original_status)}"
+        parts << "likely_cause=#{enrichment_failure_cause(kind, error)}"
+        parts.join(' ')
+      end
+
+      # Best-effort heuristic to point on-call at the probable root cause. VDS site-info and MFS
+      # only serve VistA sites, so a 400 most often means a non-VistA (e.g. Oracle Health) or
+      # otherwise unrecognized identifier was sent upstream.
+      def enrichment_failure_cause(kind, error)
+        return 'upstream_circuit_breaker_open' if error.is_a?(Breakers::OutageException)
+
+        case error.try(:original_status)
+        when 400
+          kind == 'clinic' ? 'non_vista_site_or_unknown_clinic' : 'unrecognized_or_non_vista_facility'
+        when 404 then 'identifier_not_found_upstream'
+        when 500..599 then 'upstream_server_error'
+        else 'unknown'
         end
       end
     end

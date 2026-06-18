@@ -514,30 +514,27 @@ RSpec.describe 'CheckIn::V2::Sessions::Appointments', type: :request do
       end
 
       context 'when facility service returns 500' do
-        let(:error_response) do
-          {
-            errors: [
-              {
-                title: 'Operation failed',
-                detail: 'Operation failed',
-                code: 'VA900',
-                status: '400'
-              }
-            ]
-          }.to_json
-        end
+        # Enrichment is best-effort: a facility failure must not fail the whole appointments
+        # response. The appointment is still returned with the facility fields left blank.
+        it 'returns appointments with facility fields blank and records the enrichment failure' do
+          allow(StatsD).to receive(:increment)
 
-        it 'returns error' do
-          VCR.use_cassette 'check_in/facilities/get_facilities_500' do
-            VCR.use_cassette 'check_in/appointments/get_appointments_200' do
-              VCR.use_cassette 'map/security_token_service_200_response' do
-                get "/check_in/v2/sessions/#{id}/appointments", params: { start: start_date, end: end_date }
+          VCR.use_cassette 'check_in/clinics/get_clinics_200' do
+            VCR.use_cassette 'check_in/facilities/get_facilities_500' do
+              VCR.use_cassette 'check_in/appointments/get_appointments_200' do
+                VCR.use_cassette 'map/security_token_service_200_response' do
+                  get "/check_in/v2/sessions/#{id}/appointments", params: { start: start_date, end: end_date }
+                end
               end
             end
           end
 
-          expect(response).to have_http_status(:bad_request)
-          expect(response.body).to eq(error_response)
+          expect(response).to have_http_status(:ok)
+          expect(response.parsed_body['data'].map { |appt| appt['id'] }).to eq(%w[180766 180770])
+          attributes = response.parsed_body['data'].map { |appt| appt['attributes'] }
+          expect(attributes.map { |attr| attr['facilityName'] }).to all(be_nil)
+          expect(StatsD).to have_received(:increment)
+            .with(CheckIn::Constants::STATSD_FACILITY_ENRICHMENT_FAILED).at_least(:once)
         end
 
         context 'when clinic observability flipper is enabled' do
@@ -550,15 +547,17 @@ RSpec.describe 'CheckIn::V2::Sessions::Appointments', type: :request do
           it 'still records clinic key observability when facility enrichment fails' do
             allow(StatsD).to receive(:increment)
 
-            VCR.use_cassette 'check_in/facilities/get_facilities_500' do
-              VCR.use_cassette 'check_in/appointments/get_appointments_200' do
-                VCR.use_cassette 'map/security_token_service_200_response' do
-                  get "/check_in/v2/sessions/#{id}/appointments", params: { start: start_date, end: end_date }
+            VCR.use_cassette 'check_in/clinics/get_clinics_200' do
+              VCR.use_cassette 'check_in/facilities/get_facilities_500' do
+                VCR.use_cassette 'check_in/appointments/get_appointments_200' do
+                  VCR.use_cassette 'map/security_token_service_200_response' do
+                    get "/check_in/v2/sessions/#{id}/appointments", params: { start: start_date, end: end_date }
+                  end
                 end
               end
             end
 
-            expect(response).to have_http_status(:bad_request)
+            expect(response).to have_http_status(:ok)
             expect(StatsD).to have_received(:increment)
               .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_OBSERVABILITY_TOTAL, 2).once
             expect(StatsD).to have_received(:increment)
@@ -570,20 +569,9 @@ RSpec.describe 'CheckIn::V2::Sessions::Appointments', type: :request do
       end
 
       context 'when facility service succeeds 200 but clinic service returns 500' do
-        let(:error_response) do
-          {
-            errors: [
-              {
-                title: 'Operation failed',
-                detail: 'Operation failed',
-                code: 'VA900',
-                status: '400'
-              }
-            ]
-          }.to_json
-        end
+        it 'returns appointments with clinic fields blank and records the enrichment failure' do
+          allow(StatsD).to receive(:increment)
 
-        it 'returns error' do
           VCR.use_cassette 'check_in/clinics/get_clinics_500' do
             VCR.use_cassette 'check_in/facilities/get_facilities_200' do
               VCR.use_cassette 'check_in/appointments/get_appointments_200' do
@@ -594,8 +582,12 @@ RSpec.describe 'CheckIn::V2::Sessions::Appointments', type: :request do
             end
           end
 
-          expect(response).to have_http_status(:bad_request)
-          expect(response.body).to eq(error_response)
+          expect(response).to have_http_status(:ok)
+          attributes = response.parsed_body['data'].map { |appt| appt['attributes'] }
+          expect(attributes.map { |attr| attr['facilityName'] }).to all(be_present)
+          expect(attributes.map { |attr| attr['clinicServiceName'] }).to all(be_nil)
+          expect(StatsD).to have_received(:increment)
+            .with(CheckIn::Constants::STATSD_CLINIC_ENRICHMENT_FAILED).at_least(:once)
         end
       end
 
@@ -825,20 +817,11 @@ RSpec.describe 'CheckIn::V2::Sessions::Appointments', type: :request do
           end
 
           context 'when facility service succeeds 200 but VDS clinic service returns 500' do
-            let(:error_response) do
-              {
-                errors: [
-                  {
-                    title: 'Operation failed',
-                    detail: 'Operation failed',
-                    code: 'VA900',
-                    status: '400'
-                  }
-                ]
-              }.to_json
-            end
+            # A non-VistA (Oracle Health) site_id sent to the VDS site-info endpoint returns an
+            # error; the appointment is still returned with the facility info but no clinic info.
+            it 'returns appointments with clinic fields blank and records the enrichment failure' do
+              allow(StatsD).to receive(:increment)
 
-            it 'returns error' do
               VCR.use_cassette 'check_in/vds_site_info/get_site_clinics_500' do
                 VCR.use_cassette 'check_in/facilities/get_facilities_v3_200' do
                   VCR.use_cassette 'check_in/appointments/get_appointments_200' do
@@ -849,8 +832,12 @@ RSpec.describe 'CheckIn::V2::Sessions::Appointments', type: :request do
                 end
               end
 
-              expect(response).to have_http_status(:bad_request)
-              expect(response.body).to eq(error_response)
+              expect(response).to have_http_status(:ok)
+              attributes = response.parsed_body['data'].map { |appt| appt['attributes'] }
+              expect(attributes.map { |attr| attr['facilityName'] }).to all(be_present)
+              expect(attributes.map { |attr| attr['clinicServiceName'] }).to all(be_nil)
+              expect(StatsD).to have_received(:increment)
+                .with(CheckIn::Constants::STATSD_CLINIC_ENRICHMENT_FAILED).at_least(:once)
             end
 
             context 'when clinic observability flipper is enabled' do
@@ -874,7 +861,7 @@ RSpec.describe 'CheckIn::V2::Sessions::Appointments', type: :request do
                   end
                 end
 
-                expect(response).to have_http_status(:bad_request)
+                expect(response).to have_http_status(:ok)
                 expect(StatsD).to have_received(:increment)
                   .with(CheckIn::Constants::STATSD_V2_APPOINTMENTS_CLINIC_OBSERVABILITY_TOTAL, 2).once
                 expect(StatsD).to have_received(:increment)
@@ -1089,20 +1076,9 @@ RSpec.describe 'CheckIn::V2::Sessions::Appointments', type: :request do
         end
 
         context 'when facility service returns 500' do
-          let(:error_response) do
-            {
-              errors: [
-                {
-                  title: 'Operation failed',
-                  detail: 'Operation failed',
-                  code: 'VA900',
-                  status: '400'
-                }
-              ]
-            }.to_json
-          end
+          it 'returns appointments with facility fields blank and records the enrichment failure' do
+            allow(StatsD).to receive(:increment)
 
-          it 'returns error' do
             VCR.use_cassette 'check_in/facilities/get_facilities_v3_500' do
               VCR.use_cassette 'check_in/appointments/get_appointments_200' do
                 VCR.use_cassette 'map/security_token_service_200_response' do
@@ -1111,8 +1087,11 @@ RSpec.describe 'CheckIn::V2::Sessions::Appointments', type: :request do
               end
             end
 
-            expect(response).to have_http_status(:bad_request)
-            expect(response.body).to eq(error_response)
+            expect(response).to have_http_status(:ok)
+            attributes = response.parsed_body['data'].map { |appt| appt['attributes'] }
+            expect(attributes.map { |attr| attr['facilityName'] }).to all(be_nil)
+            expect(StatsD).to have_received(:increment)
+              .with(CheckIn::Constants::STATSD_FACILITY_ENRICHMENT_FAILED).at_least(:once)
           end
         end
       end
