@@ -31,9 +31,10 @@ module DecisionReviews
 
       private
 
-      def post_create_log_msg(appeal_submission_id:, submitted_appeal_uuid:)
+      def post_create_log_msg(appeal_submission_id:, submitted_appeal_uuid:, sc_redesign:)
         {
           message: 'Supplemental Claim Appeal Record Created',
+          sc_redesign:,
           appeal_submission_id:,
           lighthouse_submission: {
             id: submitted_appeal_uuid
@@ -91,6 +92,7 @@ module DecisionReviews
 
       def process_submission
         req_body_obj = request_body_hash.is_a?(String) ? JSON.parse(request_body_hash) : request_body_hash
+        sc_redesign = ActiveModel::Type::Boolean.new.cast(req_body_obj['scRedesign']) || false
 
         normalizer = DecisionReviews::V1::SupplementalClaims::RequestBodyNormalizer.new(req_body_obj)
         req_body_obj = normalizer.normalize
@@ -107,7 +109,7 @@ module DecisionReviews
           appeal_submission_id = create_appeal_submission(submitted_appeal_uuid, zip_from_frontend)
           handle_saved_claim(form: saved_claim_request_body, guid: submitted_appeal_uuid, form4142:)
 
-          ::Rails.logger.info(post_create_log_msg(appeal_submission_id:, submitted_appeal_uuid:))
+          ::Rails.logger.info(post_create_log_msg(appeal_submission_id:, submitted_appeal_uuid:, sc_redesign:))
           handle_4142(request_body: req_body_obj, form4142:, appeal_submission_id:, submitted_appeal_uuid:)
           submit_evidence(sc_evidence, appeal_submission_id, submitted_appeal_uuid) if sc_evidence.present?
 

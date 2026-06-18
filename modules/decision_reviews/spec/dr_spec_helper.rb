@@ -13,6 +13,7 @@ require 'webmock/rspec'
 require 'shoulda/matchers'
 require 'support/stub_va_profile'
 require 'support/mpi/stub_mpi'
+require 'support/mhv_user_account/stub_mhv_user_account'
 require 'support/factory_bot'
 require 'support/authenticated_session_helper'
 

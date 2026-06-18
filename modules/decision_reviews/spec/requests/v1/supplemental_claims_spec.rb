@@ -115,6 +115,70 @@ RSpec.describe 'DecisionReviews::V1::SupplementalClaims', type: :request do
         expect(pil.data['additional_data']['request']['body']).not_to be_empty
       end
     end
+
+    context 'when scRedesign is true in the payload' do
+      let(:redesign_params) do
+        VetsJsonSchema::EXAMPLES.fetch('SC-CREATE-REQUEST-BODY_V1').deep_dup.merge('scRedesign' => true)
+      end
+
+      it 'includes sc_redesign: true in the post-create log' do
+        VCR.use_cassette('decision_review/SC-CREATE-RESPONSE-200_V1') do
+          allow(Rails.logger).to receive(:info)
+          allow(StatsD).to receive(:increment)
+
+          expect(Rails.logger).to receive(:info).with(hash_including(
+                                                        message: 'Supplemental Claim Appeal Record Created',
+                                                        sc_redesign: true
+                                                      ))
+
+          post('/decision_reviews/v1/supplemental_claims',
+               params: redesign_params.to_json,
+               headers:)
+          expect(response).to be_successful
+        end
+      end
+    end
+
+    context 'when scRedesign is false in the payload' do
+      let(:non_redesign_params) do
+        VetsJsonSchema::EXAMPLES.fetch('SC-CREATE-REQUEST-BODY_V1').deep_dup.merge('scRedesign' => false)
+      end
+
+      it 'includes sc_redesign: false in the post-create log' do
+        VCR.use_cassette('decision_review/SC-CREATE-RESPONSE-200_V1') do
+          allow(Rails.logger).to receive(:info)
+          allow(StatsD).to receive(:increment)
+
+          expect(Rails.logger).to receive(:info).with(hash_including(
+                                                        message: 'Supplemental Claim Appeal Record Created',
+                                                        sc_redesign: false
+                                                      ))
+
+          post('/decision_reviews/v1/supplemental_claims',
+               params: non_redesign_params.to_json,
+               headers:)
+          expect(response).to be_successful
+        end
+      end
+    end
+
+    context 'when scRedesign is absent in the payload' do
+      it 'includes sc_redesign: false in the post-create log' do
+        VCR.use_cassette('decision_review/SC-CREATE-RESPONSE-200_V1') do
+          allow(Rails.logger).to receive(:info)
+          allow(StatsD).to receive(:increment)
+
+          expect(Rails.logger).to receive(:info).with(hash_including(
+                                                        message: 'Supplemental Claim Appeal Record Created',
+                                                        sc_redesign: false
+                                                      ))
+
+          subject
+
+          expect(response).to be_successful
+        end
+      end
+    end
   end
 
   describe '#create with 4142' do
