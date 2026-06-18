@@ -117,15 +117,19 @@ module ClaimsApi
         normalized_errors = errors.is_a?(Array) ? errors : [errors]
         errors_to_add.concat(normalized_errors)
       else
-        error_message = get_error_message(error)
-        normalized_error_message = error_message.is_a?(Array) ? error_message : [error_message]
-        errors_to_add.concat(normalized_error_message.compact)
+        errors_to_add.concat(normalize_error_message(error))
       end
 
       # Set collected errors to the auto_claim evss_response
       auto_claim.evss_response = normalize_evss_response(errors_to_add)
 
       auto_claim.save!
+    end
+
+    def normalize_error_message(error)
+      error_message = get_error_message(error)
+      messages = error_message.is_a?(Array) ? error_message : [error_message]
+      messages.compact.map { |msg| msg.is_a?(Hash) ? msg : { 'detail' => msg.to_s } }
     end
 
     def normalize_evss_response(errors)

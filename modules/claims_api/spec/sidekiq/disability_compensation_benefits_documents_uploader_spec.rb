@@ -114,7 +114,7 @@ RSpec.describe ClaimsApi::DisabilityCompensationBenefitsDocumentsUploader, type:
       expect { service.perform(claim.id) }.to raise_error(StandardError)
 
       claim.reload
-      expect(claim.evss_response).to eq(['Connection timeout'])
+      expect(claim.evss_response).to eq([{ 'detail' => 'Connection timeout' }])
     end
 
     context 'when the error has original_body array payload' do

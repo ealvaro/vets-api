@@ -181,7 +181,7 @@ RSpec.describe ClaimsApi::V1::DisabilityCompensationPdfGenerator, type: :job do
             claim.reload
             expect(claim.status).to eq('errored')
             expect(claim.evss_response).to include(
-              a_string_including('Operation failed')
+              a_hash_including('detail' => a_string_including('Operation failed'))
             )
           end
         end
@@ -274,7 +274,7 @@ RSpec.describe ClaimsApi::V1::DisabilityCompensationPdfGenerator, type: :job do
             expect(claim.status).to eq('errored')
             expect(claim.evss_response).to be_present
             expect(claim.evss_response).to be_a(Array)
-            expect(claim.evss_response[0]).to include('Unexpected error occurred')
+            expect(claim.evss_response[0]).to eq({ 'detail' => 'Unexpected error occurred' })
           end
         end
       end

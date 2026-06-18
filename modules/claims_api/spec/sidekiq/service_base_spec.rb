@@ -285,7 +285,7 @@ RSpec.describe ClaimsApi::ServiceBase do
       service.send(:set_evss_response, claim, StandardError.new('fresh error'))
 
       claim.reload
-      expect(claim.evss_response).to eq(['fresh error'])
+      expect(claim.evss_response).to eq([{ 'detail' => 'fresh error' }])
     end
 
     it 'stores original_body array errors as-is' do
@@ -345,11 +345,11 @@ RSpec.describe ClaimsApi::ServiceBase do
                                         ])
     end
 
-    it 'stores a standard error message as a one-element array' do
+    it 'stores a standard error message as a hash with detail key' do
       service.send(:set_evss_response, claim, StandardError.new('Unexpected error occurred'))
 
       claim.reload
-      expect(claim.evss_response).to eq(['Unexpected error occurred'])
+      expect(claim.evss_response).to eq([{ 'detail' => 'Unexpected error occurred' }])
     end
 
     it 'stores errors from objects exposing an errors array' do
@@ -359,6 +359,29 @@ RSpec.describe ClaimsApi::ServiceBase do
 
       claim.reload
       expect(claim.evss_response).to eq([{ 'detail' => 'errors accessor payload' }])
+    end
+  end
+
+  describe '#normalize_error_message' do
+    it 'wraps a plain string error in a hash with a detail key' do
+      error = StandardError.new('something went wrong')
+      result = service.send(:normalize_error_message, error)
+
+      expect(result).to eq([{ 'detail' => 'something went wrong' }])
+    end
+
+    it 'passes through a hash error without modification' do
+      error = double(:error, original_body: { 'detail' => 'already structured' })
+      result = service.send(:normalize_error_message, error)
+
+      expect(result).to eq([{ 'detail' => 'already structured' }])
+    end
+
+    it 'compacts nil messages out of the result' do
+      error = double(:error, original_body: nil)
+      result = service.send(:normalize_error_message, error)
+
+      expect(result).to eq([])
     end
   end
 
