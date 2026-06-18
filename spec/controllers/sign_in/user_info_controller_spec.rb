@@ -141,6 +141,7 @@ describe SignIn::UserInfoController do
           let(:expected_response_body) do
             {
               sub: credential_uuid,
+              icn: user.icn,
               name: user.full_name_normalized.values.compact.join(' '),
               given_name: user.first_name,
               middle_name: user.middle_name,

@@ -265,6 +265,7 @@ RSpec.describe SignIn::UserInfo do
       let(:expected_oidc_hash) do
         {
           sub: 'some-sub',
+          icn: 'some-icn',
           name: 'some-full-name',
           given_name: 'some-first-name',
           middle_name: 'some-middle-name',

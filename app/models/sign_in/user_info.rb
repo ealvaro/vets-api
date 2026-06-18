@@ -63,6 +63,7 @@ module SignIn
     def oidc_serializable_hash
       {
         sub:,
+        icn:,
         name: full_name,
         given_name: first_name,
         middle_name:,
