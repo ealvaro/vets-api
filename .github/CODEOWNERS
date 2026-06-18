@@ -5,7 +5,7 @@
 .devcontainer/ @software/backend-review-group @software/cto-engineers
 .dockerignore @software/backend-review-group @software/cto-engineers
 .github/ @software/backend-review-group
-.github/instructions/ask-va-static-data.instructions.md @software/ask-va-team @software/backend-review-group
+.github/instructions/ask-va-static-data.instructions.md @software/ask-va-engineers @software/backend-review-group
 .github/instructions/my-health-medical-records.instructions.md @software/vfs-mhv-integration @software/backend-review-group
 .github/instructions/my-health-messaging.instructions.md @software/vfs-mhv-integration @software/backend-review-group
 .github/instructions/my-health-prescriptions.instructions.md @software/vfs-mhv-integration @software/backend-review-group
@@ -2485,8 +2485,6 @@ spec/support/vcr_cassettes/lighthouse/benefits_claims/submit_power_of_attorney_r
 spec/support/vcr_cassettes/lighthouse/benefits_claims/submit_power_of_attorney_request/422_response.yml @software/accredited-representative-crew @software/backend-review-group
 spec/support/vcr_cassettes/lighthouse/claims @software/backend-review-group @software/disability-benefits
 spec/support/vcr_cassettes/apps @software/lighthouse-pivot
-spec/support/vcr_cassettes/ask_va_api @software/ask-va-engineers @software/backend-review-group
-spec/support/vcr_cassettes/ask_va_api/dynamics @software/ask-va-engineers @software/backend-review-group
 spec/support/vcr_cassettes/avs @software/backend-review-group @software/after-visit-summary
 spec/support/vcr_cassettes/banners/get_banners_success.yml @software/vfs-facilities-frontend @software/backend-review-group
 spec/support/vcr_cassettes/banners/get_banners_with_type_success.yml @software/vfs-facilities-frontend @software/backend-review-group
