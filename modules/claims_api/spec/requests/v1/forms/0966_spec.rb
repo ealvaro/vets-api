@@ -69,6 +69,16 @@ RSpec.describe 'ClaimsApi::V1::Forms::0966', type: :request do
         end
       end
 
+      it 'posts a 502 error with detail when bgs_itf_service returns nil' do
+        mock_acg(scopes) do |auth_header|
+          allow_any_instance_of(ClaimsApi::IntentToFileWebService).to receive(:insert_intent_to_file).and_return(nil)
+
+          data[:data][:attributes] = { type: 'pension' }
+          post path, params: data.to_json, headers: headers.merge(auth_header)
+          expect(response).to have_http_status(:bad_gateway)
+        end
+      end
+
       it 'posts a 404 error with detail when BGS returns a Veteran Not Found' do
         mock_acg(scopes) do |auth_header|
           VCR.use_cassette('claims_api/bgs/intent_to_file_web_service/insert_intent_to_file_404') do

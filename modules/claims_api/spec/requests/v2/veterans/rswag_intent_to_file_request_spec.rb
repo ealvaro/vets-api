@@ -359,7 +359,7 @@ describe 'IntentToFile', openapi_spec: Rswag::TextHelpers.new.claims_api_docs do
           before do |example|
             mock_ccg(scopes) do
               expect_any_instance_of(ClaimsApi::IntentToFileWebService)
-                .to receive(:insert_intent_to_file).and_return({})
+                .to receive(:insert_intent_to_file).and_return(nil)
 
               submit_request(example.metadata)
             end

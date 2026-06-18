@@ -56,7 +56,8 @@ module ClaimsApi
 
           bgs_response = bgs_itf_service.insert_intent_to_file(options)
 
-          if bgs_response.empty?
+          # guard clause in bgs soap_error_handler can return nil if no Fault key present, so use blank? to handle here
+          if bgs_response.blank?
             ClaimsApi::IntentToFile.create!(status: ClaimsApi::IntentToFile::ERRORED, cid: token.payload['cid'])
             raise ::Common::Exceptions::BadGateway
           elsif bgs_response[:detail] == 'Veteran ID not found'

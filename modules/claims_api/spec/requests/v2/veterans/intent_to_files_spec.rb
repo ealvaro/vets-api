@@ -492,6 +492,19 @@ RSpec.describe 'ClaimsApi::V2::Veterans::IntentToFile', type: :request do
             end
           end
         end
+
+        context 'when bgs_itf_service returns nil' do
+          it 'posts a 502 error with detail' do
+            mock_ccg(scopes) do |auth_header|
+              allow_any_instance_of(
+                ClaimsApi::IntentToFileWebService
+              ).to receive(:insert_intent_to_file).and_return(nil)
+
+              post itf_submit_path, params: data.to_json, headers: auth_header
+              expect(response).to have_http_status(:bad_gateway)
+            end
+          end
+        end
       end
 
       context 'CCG (Client Credentials Grant) flow' do
