@@ -6,7 +6,6 @@ module V0
       skip_before_action :authenticate, only: :logout
 
       def logout # rubocop:disable Metrics/MethodLength
-        client_id = params[:client_id].presence
         anti_csrf_token = anti_csrf_token_param.presence
 
         if client_config(client_id).blank?
@@ -29,8 +28,8 @@ module V0
           user_uuid: @access_token.user_uuid,
           session_handle: @access_token.session_handle
         }
-        sign_in_logger.info('logout', context)
-        StatsD.increment(::SignIn::Constants::Statsd::STATSD_SIS_LOGOUT_SUCCESS)
+        sign_in_logger.info(logout_event, context)
+        StatsD.increment(logout_success_statsd_key)
 
         logout_redirect = ::SignIn::LogoutRedirectGenerator.new(
           credential_type: session.user_verification.credential_type,
@@ -41,16 +40,36 @@ module V0
       rescue ::SignIn::Errors::LogoutAuthorizationError,
              ::SignIn::Errors::SessionNotAuthorizedError,
              ::SignIn::Errors::SessionNotFoundError => e
-        sign_in_logger.error('logout error', exception: e, context: { client_id: })
-        StatsD.increment(::SignIn::Constants::Statsd::STATSD_SIS_LOGOUT_FAILURE)
+        log_logout_error(e)
         logout_redirect = ::SignIn::LogoutRedirectGenerator.new(client_config: client_config(client_id)).perform
 
         logout_redirect ? redirect_to(logout_redirect) : render(status: :ok)
       rescue => e
-        sign_in_logger.error('logout error', exception: e, context: { client_id: })
-        StatsD.increment(::SignIn::Constants::Statsd::STATSD_SIS_LOGOUT_FAILURE)
-
+        log_logout_error(e)
         render json: { errors: e }, status: :bad_request
+      end
+
+      private
+
+      def client_id
+        @client_id ||= params[:client_id].presence
+      end
+
+      def logout_event
+        'logout'
+      end
+
+      def logout_success_statsd_key
+        ::SignIn::Constants::Statsd::STATSD_SIS_LOGOUT_SUCCESS
+      end
+
+      def logout_failure_statsd_key
+        ::SignIn::Constants::Statsd::STATSD_SIS_LOGOUT_FAILURE
+      end
+
+      def log_logout_error(error)
+        sign_in_logger.error("#{logout_event} error", exception: error, context: { client_id: })
+        StatsD.increment(logout_failure_statsd_key)
       end
     end
   end

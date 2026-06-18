@@ -19,6 +19,8 @@ module SignIn
       STATSD_SIS_SESSIONS_SUCCESS = 'api.sis.sessions.success'
       STATSD_SIS_LOGOUT_SUCCESS = 'api.sis.logout.success'
       STATSD_SIS_LOGOUT_FAILURE = 'api.sis.logout.failure'
+      STATSD_SIS_OKTA_LOGOUT_SUCCESS = 'api.sis.okta_logout.success'
+      STATSD_SIS_OKTA_LOGOUT_FAILURE = 'api.sis.okta_logout.failure'
       STATSD_SIS_REVOKE_ALL_SESSIONS_SUCCESS = 'api.sis.revoke_all_sessions.success'
       STATSD_SIS_REVOKE_ALL_SESSIONS_FAILURE = 'api.sis.revoke_all_sessions.failure'
       STATSD_SIS_DESTROY_SESSION_SUCCESS = 'api.sis.revoke_session.success'
