@@ -358,7 +358,8 @@ module IvcChampva
           Rails.logger.error("VES Submission: Error for #{form_type}", e)
         ensure
           ves_request_data = ves_request_data_for_storage(form_type, request)
-          update_ves_records(metadata['uuid'], request.application_uuid, response, ves_request_data)
+          update_ves_records(metadata['uuid'], request.application_uuid, response, ves_request_data,
+                             request.transaction_uuid)
         end
 
         response
@@ -390,7 +391,7 @@ module IvcChampva
         end
       end
 
-      def update_ves_records(form_uuid, application_uuid, ves_response, ves_request_data)
+      def update_ves_records(form_uuid, application_uuid, ves_response, ves_request_data, transaction_uuid = nil)
         # this should be unique
         persisted_forms = IvcChampvaForm.where(form_uuid:)
 
@@ -403,11 +404,16 @@ module IvcChampva
                      end
 
         persisted_forms.each do |form|
-          form.update(
+          attrs = {
             application_uuid:,
             ves_status:,
             ves_request_data:
-          )
+          }
+          # Only set transaction_uuid when we have one and the row doesn't already
+          # have one — prevents subform submissions from overwriting the parent
+          # 10-10D UUID that is needed for later VES ICN lookups.
+          attrs[:transaction_uuid] = transaction_uuid if transaction_uuid.present? && form.transaction_uuid.blank?
+          form.update(attrs)
         end
       end
 

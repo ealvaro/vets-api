@@ -21,7 +21,7 @@ RSpec.describe 'IvcChampva::V1::Forms::VesUploads', type: :request do
   end
   let(:ves_client) { double('IvcChampva::VesApi::Client') }
   let(:ves_response) { double('IvcChampva::VesApi::Response', status: 200, body: { result: 'success' }) }
-  let(:mock_form) { double(first_name: 'Veteran', last_name: 'Surname', form_uuid: 'some_uuid') }
+  let(:mock_form) { double(first_name: 'Veteran', last_name: 'Surname', form_uuid: 'some_uuid', transaction_uuid: nil) }
   let(:mock_s3) { instance_double(IvcChampva::S3) }
 
   before do
@@ -86,7 +86,8 @@ RSpec.describe 'IvcChampva::V1::Forms::VesUploads', type: :request do
         expect(mock_form).to have_received(:update)
           .with(hash_including(
                   application_uuid: 'test-uuid',
-                  ves_status: 'ok'
+                  ves_status: 'ok',
+                  transaction_uuid: 'fake-id'
                 ))
 
         expect(response).to have_http_status(:ok)
