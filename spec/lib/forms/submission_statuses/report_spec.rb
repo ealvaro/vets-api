@@ -100,10 +100,10 @@ describe Forms::SubmissionStatuses::Report, feature: :form_submission,
           allow(HealthCareApplication).to receive(:enrollment_status).with(user_account.icn, true).and_return(
             {
               application_date: (DateTime.current - 15.days).to_s,
-              enrollment_date: 1.day.ago.to_s,
+              effective_date: (DateTime.current - 1.day).to_s,
+              enrollment_date: 0.days.ago.to_s,
               preferred_facility: '988 - DAYT20',
               parsed_status: :enrolled,
-              effective_date: (DateTime.current - 14.days).to_s,
               priority_group: 'Group 3',
               can_submit_financial_info: true
             }

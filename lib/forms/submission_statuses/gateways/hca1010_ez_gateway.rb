@@ -33,7 +33,7 @@ module Forms
             id: submitted_current_user.id,
             status:,
             created_at: record[:application_date],
-            updated_at: record[:enrollment_date]
+            updated_at: record[:effective_date]
           }
 
           [[api_status_result], nil]

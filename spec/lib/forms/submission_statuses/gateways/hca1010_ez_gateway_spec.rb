@@ -22,10 +22,10 @@ describe Forms::SubmissionStatuses::Gateways::Hca1010EzGateway,
     it 'returns enrolled status as received and nil errors on success' do
       result = {
         application_date: created_at,
-        enrollment_date: updated_at,
+        effective_date: updated_at,
+        enrollment_date: '2019-01-02T21:58:55.000-06:00',
         preferred_facility: '988 - DAYT20',
         parsed_status: :enrolled,
-        effective_date: '2019-01-02T21:58:55.000-06:00',
         priority_group: 'Group 3',
         can_submit_financial_info: true
       }
@@ -44,10 +44,10 @@ describe Forms::SubmissionStatuses::Gateways::Hca1010EzGateway,
     it 'returns pending status as in_progress and nil errors on success' do
       result = {
         application_date: created_at,
-        enrollment_date: updated_at,
+        effective_date: updated_at,
+        enrollment_date: '2019-01-02T21:58:55.000-06:00',
         preferred_facility: '988 - DAYT20',
         parsed_status: :pending_other,
-        effective_date: '2019-01-02T21:58:55.000-06:00',
         priority_group: 'Group 3',
         can_submit_financial_info: true
       }
@@ -66,10 +66,10 @@ describe Forms::SubmissionStatuses::Gateways::Hca1010EzGateway,
     it 'returns unexpected status as nil and nil errors on success' do
       result = {
         application_date: created_at,
-        enrollment_date: updated_at,
+        effective_date: updated_at,
+        enrollment_date: '2019-01-02T21:58:55.000-06:00',
         preferred_facility: '988 - DAYT20',
         parsed_status: :status_we_do_not_recognize,
-        effective_date: '2019-01-02T21:58:55.000-06:00',
         priority_group: 'Group 3',
         can_submit_financial_info: true
 
