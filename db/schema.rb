@@ -1346,6 +1346,22 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_15_183404) do
     t.index ["edipi"], name: "index_invalid_letter_address_edipis_on_edipi", unique: true
   end
 
+  create_table "ivc_champva_applicants", force: :cascade do |t|
+    t.uuid "transaction_uuid", null: false
+    t.string "applicant_icn", null: false
+    t.string "applicant_first_name"
+    t.string "applicant_last_name"
+    t.string "person_type", null: false, comment: "SPONSOR or BENEFICIARY, as returned by VES ICN lookup"
+    t.string "ves_eligibility_status"
+    t.string "ves_eligibility_reason"
+    t.string "sponsor_icn"
+    t.string "sponsor_eligibility_status"
+    t.string "sponsor_eligibility_reason"
+    t.boolean "eligibility_resolved", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   create_table "ivc_champva_forms", force: :cascade do |t|
     t.string "email"
     t.string "first_name"
@@ -1367,6 +1383,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_15_183404) do
     t.text "request_json_ciphertext"
     t.string "submitted_by_icn", comment: "ICN of the authenticated user who submitted the form. Null for unauthenticated submissions or forms created before this column existed."
     t.uuid "transaction_uuid"
+    t.boolean "application_decided", default: false, null: false
     t.index ["form_uuid"], name: "index_ivc_champva_forms_on_form_uuid"
     t.index ["form_uuid"], name: "index_ivc_champva_forms_on_pending_form_uuid", where: "((pega_status IS NULL) OR ((pega_status)::text <> ALL ((ARRAY['eligiblity denied/additional information needed'::character varying, 'eligibility denied/additional information needed'::character varying, 'processed - eligiblity determination unknown'::character varying, 'processed - eligibility determination unknown'::character varying, 'eligible - issued a card'::character varying, 'duplicate application'::character varying, 'eligible - reissued a card'::character varying, 'document identification error'::character varying, 'processed'::character varying, 'manually processed'::character varying])::text[])))"
     t.index ["needs_kms_rotation"], name: "index_ivc_champva_forms_on_needs_kms_rotation"
