@@ -92,6 +92,10 @@ module SurvivorsBenefits
       # rubocop:enable Rails/SkipsModelValidations
     end
 
+    def filler
+      ::PdfFill::Filler
+    end
+
     ##
     # Generates a PDF from the saved claim data
     #
@@ -100,8 +104,6 @@ module SurvivorsBenefits
     # @return [String] Path to the generated PDF file
     #
     def to_pdf(file_name = nil, fill_options = {})
-      filler = ::PdfFill::Filler
-
       pdf_path = filler.fill_form(self, file_name, fill_options)
       return unless pdf_path
 
