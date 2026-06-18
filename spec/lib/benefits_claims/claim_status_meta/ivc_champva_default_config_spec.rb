@@ -130,6 +130,13 @@ RSpec.describe BenefitsClaims::ClaimStatusMeta::ConfigLoader, '#load ivc_champva
     it 'currentStepByStatus covers pending, claimReceived, vbms, and complete' do
       expect(overview['currentStepByStatus'].keys).to match_array(%w[pending claimReceived vbms complete])
     end
+
+    it 'step 1 has noteText, uploadLinkText, and uploadLinkUrl for supporting document guidance' do
+      step1 = overview.dig('steps', 0)
+      expect(step1['noteText']).to be_present
+      expect(step1['uploadLinkText']).to be_present
+      expect(step1['uploadLinkUrl']).to be_present
+    end
   end
 end
 # rubocop:enable RSpec/SpecFilePathFormat

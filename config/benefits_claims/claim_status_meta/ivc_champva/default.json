@@ -76,7 +76,10 @@
           "If we need more information, we'll mail you a letter."
         ],
         "linkText": "Learn more about what to do after you apply for CHAMPVA benefits",
-        "linkUrl": "https://www.va.gov/resources/what-to-do-after-applying-for-champva-benefits/"
+        "linkUrl": "https://www.va.gov/resources/what-to-do-after-applying-for-champva-benefits/",
+        "noteText": "You can submit supporting documents while we review your application. But this may delay our decision.",
+        "uploadLinkText": "Upload supporting documents",
+        "uploadLinkUrl": "../files"
       },
       {
         "phase": 2,
