@@ -13,6 +13,8 @@ module Mobile
         ERROR_STATUS = ::VeteranStatusCard::Constants::ERROR_STATUS
 
         STANDARD_ERROR_TITLE = ::VeteranStatusCard::Constants::STANDARD_ERROR_TITLE
+        CURRENTLY_SERVING_TITLE = ::VeteranStatusCard::Constants::CURRENTLY_SERVING_TITLE
+        UNKNOWN_ELIGIBILITY_TITLE = ::VeteranStatusCard::Constants::UNKNOWN_ELIGIBILITY_TITLE
 
         DISCHARGE_STATUS_RESPONSE = {
           title: STANDARD_ERROR_TITLE,
@@ -21,13 +23,13 @@ module Mobile
         }.freeze
 
         UNKNOWN_ELIGIBILITY_RESPONSE = {
-          title: ::VeteranStatusCard::Constants::UNKNOWN_ELIGIBILITY_TITLE,
+          title: UNKNOWN_ELIGIBILITY_TITLE,
           message: ::VeteranStatusCard::Constants::UNKNOWN_ELIGIBILITY_MESSAGE,
           status: WARNING_STATUS
         }.freeze
 
         CURRENTLY_SERVING_RESPONSE = {
-          title: STANDARD_ERROR_TITLE,
+          title: CURRENTLY_SERVING_TITLE,
           message: ::VeteranStatusCard::Constants::CURRENTLY_SERVING_MESSAGE,
           status: WARNING_STATUS
         }.freeze
@@ -39,7 +41,7 @@ module Mobile
         }.freeze
 
         PERSON_NOT_FOUND_RESPONSE = {
-          title: STANDARD_ERROR_TITLE,
+          title: UNKNOWN_ELIGIBILITY_TITLE,
           message: ::VeteranStatusCard::Constants::PERSON_NOT_FOUND_MESSAGE,
           status: WARNING_STATUS
         }.freeze

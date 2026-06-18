@@ -9,11 +9,18 @@ module VeteranStatusCard
     ERROR_STATUS = 'error'
 
     STANDARD_ERROR_TITLE = "You're not eligible for a Veteran Status Card"
+    CURRENTLY_SERVING_TITLE = "You can't get a Veteran Status Card while you're on active duty"
 
     DISCHARGE_STATUS_MESSAGE = [
       {
         type: 'text',
-        value: "Your service history and discharge status don't meet the requirements for a Veteran Status Card."
+        value: "Your recorded discharge status doesn't meet the requirements for " \
+               'this card. Only honorable and general discharges qualify.'
+      },
+      {
+        type: 'link',
+        value: 'Learn how to apply for a discharge upgrade or correction',
+        url: 'https://www.va.gov/discharge-upgrade-instructions/'
       },
       {
         type: 'text',
@@ -26,9 +33,7 @@ module VeteranStatusCard
       }
     ].freeze
     DISCHARGE_STATUS_RESPONSE = {
-      title: STANDARD_ERROR_TITLE,
-      message: DISCHARGE_STATUS_MESSAGE,
-      status: WARNING_STATUS
+      title: STANDARD_ERROR_TITLE, message: DISCHARGE_STATUS_MESSAGE, status: WARNING_STATUS
     }.freeze
 
     UNKNOWN_ELIGIBILITY_TITLE = "We don't know if you're eligible for this card"
@@ -39,7 +44,7 @@ module VeteranStatusCard
       },
       {
         type: 'text',
-        value: "To fix the problem, call us. We're here #{SUPPORT_HOURS}"
+        value: "To fix the issue, call us. We're here #{SUPPORT_HOURS}"
       },
       {
         type: 'phone',
@@ -48,19 +53,13 @@ module VeteranStatusCard
       }
     ].freeze
     UNKNOWN_ELIGIBILITY_RESPONSE = {
-      title: UNKNOWN_ELIGIBILITY_TITLE,
-      message: UNKNOWN_ELIGIBILITY_MESSAGE,
-      status: WARNING_STATUS
+      title: UNKNOWN_ELIGIBILITY_TITLE, message: UNKNOWN_ELIGIBILITY_MESSAGE, status: WARNING_STATUS
     }.freeze
 
     CURRENTLY_SERVING_MESSAGE = [
       {
         type: 'text',
-        value: "You can't get a Veteran Status Card if you're currently serving."
-      },
-      {
-        type: 'text',
-        value: "If you have a previous period of service, call us. We're here #{SUPPORT_HOURS}"
+        value: "If you think this is incorrect based on your service history, call us. We're here #{SUPPORT_HOURS}"
       },
       {
         type: 'phone',
@@ -69,9 +68,7 @@ module VeteranStatusCard
       }
     ].freeze
     CURRENTLY_SERVING_RESPONSE = {
-      title: STANDARD_ERROR_TITLE,
-      message: CURRENTLY_SERVING_MESSAGE,
-      status: WARNING_STATUS
+      title: CURRENTLY_SERVING_TITLE, message: CURRENTLY_SERVING_MESSAGE, status: WARNING_STATUS
     }.freeze
 
     SOMETHING_WENT_WRONG_TITLE = 'Something went wrong'
@@ -82,11 +79,8 @@ module VeteranStatusCard
       }
     ].freeze
     SOMETHING_WENT_WRONG_RESPONSE = {
-      title: SOMETHING_WENT_WRONG_TITLE,
-      message: SOMETHING_WENT_WRONG_MESSAGE,
-      status: ERROR_STATUS
+      title: SOMETHING_WENT_WRONG_TITLE, message: SOMETHING_WENT_WRONG_MESSAGE, status: ERROR_STATUS
     }.freeze
-
     PERSON_NOT_FOUND_MESSAGE = [
       {
         type: 'text',
@@ -103,9 +97,7 @@ module VeteranStatusCard
       }
     ].freeze
     PERSON_NOT_FOUND_RESPONSE = {
-      title: STANDARD_ERROR_TITLE,
-      message: PERSON_NOT_FOUND_MESSAGE,
-      status: WARNING_STATUS
+      title: UNKNOWN_ELIGIBILITY_TITLE, message: PERSON_NOT_FOUND_MESSAGE, status: WARNING_STATUS
     }.freeze
   end
 end
