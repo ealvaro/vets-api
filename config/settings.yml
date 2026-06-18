@@ -1708,6 +1708,9 @@ vanotify:
         form526_submission_failure_notification_template_id: <%= ENV['vanotify__services__benefits_disability__template_id__form526_submission_failure_notification_template_id'] %>
     benefits_management_tools:
       api_key: <%= ENV['vanotify__services__benefits_management_tools__api_key'] %>
+      sms_blackout_defer:
+        delivery_start_hour_eastern: <%= ENV['vanotify__services__benefits_management_tools__sms_blackout_defer__delivery_start_hour_eastern'] %>
+        window_minutes: <%= ENV['vanotify__services__benefits_management_tools__sms_blackout_defer__window_minutes'] %>
       sms_sender_id: <%= ENV['vanotify__services__benefits_management_tools__sms_sender_id'] %>
       template_id:
         decision_letter_ready_email: <%= ENV['vanotify__services__benefits_management_tools__template_id__decision_letter_ready_email'] %>

@@ -34,7 +34,7 @@ module EventBusGateway
     end
 
     def perform(participant_id, template_id, cache_key = nil)
-      return if sms_blocked?(template_id)
+      return if sms_blocked?(participant_id, template_id, cache_key)
 
       icn = resolve_icn(participant_id, cache_key)
 
@@ -56,9 +56,13 @@ module EventBusGateway
 
     private
 
-    def sms_blocked?(template_id)
+    def sms_blocked?(participant_id, template_id, cache_key)
       if Flipper.enabled?(:event_bus_gateway_sms_blackout) && Constants.sms_blackout_period?
-        log_sms_blackout_blocked('LetterReadySmsJob', template_id)
+        if Flipper.enabled?(:event_bus_gateway_sms_blackout_defer)
+          defer_sms_until_delivery_window(participant_id, template_id, cache_key)
+        else
+          log_sms_blackout_blocked('LetterReadySmsJob', template_id)
+        end
         return true
       end
 
@@ -68,6 +72,12 @@ module EventBusGateway
       end
 
       false
+    end
+
+    def defer_sms_until_delivery_window(participant_id, template_id, cache_key)
+      deferred_at = Constants.next_blackout_defer_time(jid)
+      self.class.perform_at(deferred_at, participant_id, template_id, cache_key)
+      log_sms_blackout_deferred(template_id, deferred_at)
     end
 
     def resolve_icn(participant_id, cache_key)
@@ -101,6 +111,20 @@ module EventBusGateway
       )
       tags = Constants::DD_TAGS + ['notification_type:sms', 'reason:blackout_period']
       StatsD.increment("#{STATSD_METRIC_PREFIX}.blocked", tags:)
+    end
+
+    def log_sms_blackout_deferred(template_id, deferred_at)
+      ::Rails.logger.info(
+        'LetterReadySmsJob deferred until SMS delivery window',
+        {
+          notification_type: 'sms',
+          reason: 'blackout_deferred',
+          template_id:,
+          deferred_until_utc: deferred_at.utc.iso8601
+        }
+      )
+      tags = Constants::DD_TAGS + ['notification_type:sms', 'reason:blackout_deferred']
+      StatsD.increment("#{STATSD_METRIC_PREFIX}.blackout_deferred", tags:)
     end
 
     def validate_sms_prerequisites(template_id, icn)

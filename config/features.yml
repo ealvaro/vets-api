@@ -1203,6 +1203,10 @@ features:
     actor_type: user
     description: When enabled, blocks SMS notifications from being sent during the blackout period (21:00-09:00 Eastern)
     enable_in_development: true
+  event_bus_gateway_sms_blackout_defer:
+    actor_type: user
+    description: When enabled (alongside event_bus_gateway_sms_blackout), defers blackout-blocked SMS notifications to the next morning delivery window instead of dropping them
+    enable_in_development: true
   event_bus_gateway_sms_dry_run:
     actor_type: user
     description: When enabled, logs SMS notifications instead of sending them via VA Notify

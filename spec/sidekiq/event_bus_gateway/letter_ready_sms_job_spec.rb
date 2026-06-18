@@ -68,6 +68,7 @@ RSpec.describe EventBusGateway::LetterReadySmsJob, type: :job do
     allow(Sidekiq::AttrPackage).to receive(:delete)
     allow(Flipper).to receive(:enabled?).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:event_bus_gateway_sms_blackout).and_return(false)
+    allow(Flipper).to receive(:enabled?).with(:event_bus_gateway_sms_blackout_defer).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:event_bus_gateway_sms_dry_run).and_return(false)
   end
 
@@ -531,6 +532,81 @@ RSpec.describe EventBusGateway::LetterReadySmsJob, type: :job do
 
       it 'sends the SMS normally' do
         expect(va_notify_service).to receive(:send_sms).with(expected_sms_args)
+        subject.new.perform(participant_id, template_id)
+      end
+    end
+
+    context 'when both the blackout and blackout-defer flags are enabled within the blackout window' do
+      let(:job) { described_class.new }
+      let(:pinned_jid) { 'test-jid-abc' }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:event_bus_gateway_sms_blackout).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:event_bus_gateway_sms_blackout_defer).and_return(true)
+        allow(EventBusGateway::Constants).to receive(:sms_blackout_period?).and_return(true)
+        allow(Rails.logger).to receive(:info)
+        allow(job).to receive(:jid).and_return(pinned_jid)
+        allow(described_class).to receive(:perform_at)
+      end
+
+      it 'does not send an SMS via VA Notify' do
+        expect(va_notify_service).not_to receive(:send_sms)
+        job.perform(participant_id, template_id)
+      end
+
+      it 'reschedules itself via perform_at into the next delivery window' do
+        expected_time = EventBusGateway::Constants.next_blackout_defer_time(pinned_jid)
+        expect(described_class).to receive(:perform_at).with(expected_time, participant_id, template_id, nil)
+        job.perform(participant_id, template_id)
+      end
+
+      it 'preserves the cache_key when rescheduling' do
+        expect(described_class).to receive(:perform_at).with(anything, participant_id, template_id, 'cache-key-xyz')
+        job.perform(participant_id, template_id, 'cache-key-xyz')
+      end
+
+      it 'increments the blackout_deferred metric' do
+        expect(StatsD).to receive(:increment).with(
+          "#{described_class::STATSD_METRIC_PREFIX}.blackout_deferred",
+          tags: array_including('reason:blackout_deferred')
+        )
+        job.perform(participant_id, template_id)
+      end
+
+      it 'logs the deferral' do
+        expect(Rails.logger).to receive(:info).with(
+          'LetterReadySmsJob deferred until SMS delivery window',
+          hash_including(reason: 'blackout_deferred', template_id:)
+        )
+        job.perform(participant_id, template_id)
+      end
+
+      it 'does not increment the legacy .blocked metric' do
+        expect(StatsD).not_to receive(:increment).with(
+          "#{described_class::STATSD_METRIC_PREFIX}.blocked", anything
+        )
+        job.perform(participant_id, template_id)
+      end
+    end
+
+    context 'when the blackout flag is enabled but the defer flag is off (in blackout)' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:event_bus_gateway_sms_blackout).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:event_bus_gateway_sms_blackout_defer).and_return(false)
+        allow(EventBusGateway::Constants).to receive(:sms_blackout_period?).and_return(true)
+        allow(Rails.logger).to receive(:info)
+      end
+
+      it 'falls back to existing drop behavior (no perform_at)' do
+        expect(described_class).not_to receive(:perform_at)
+        expect(va_notify_service).not_to receive(:send_sms)
+        subject.new.perform(participant_id, template_id)
+      end
+
+      it 'does not increment blackout_deferred' do
+        expect(StatsD).not_to receive(:increment).with(
+          "#{described_class::STATSD_METRIC_PREFIX}.blackout_deferred", anything
+        )
         subject.new.perform(participant_id, template_id)
       end
     end
