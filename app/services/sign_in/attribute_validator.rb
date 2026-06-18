@@ -120,13 +120,27 @@ module SignIn
       if scrub_attribute(credential_attribute) != scrub_attribute(mpi_attribute)
         error = prevent_auth ? Errors::AttributeMismatchError : nil
 
-        error_code = type == :ssn ? Constants::ErrorCode::SSN_ATTRIBUTE_MISMATCH : Constants::ErrorCode::GENERIC_EXTERNAL_ISSUE
+        if type == :ssn
+          error_code = Constants::ErrorCode::SSN_ATTRIBUTE_MISMATCH
+          unlink_mismatched_credential unless Rails.env.production?
+        else
+          error_code = Constants::ErrorCode::GENERIC_EXTERNAL_ISSUE
+        end
 
         handle_error("Attribute mismatch, #{type} in credential does not match MPI attribute",
                      error_code,
                      error:,
                      new_record:)
       end
+    end
+
+    def unlink_mismatched_credential
+      identifier, identifier_type = case service_name
+                                    when Constants::Auth::MHV      then [mhv_credential_uuid, MPI::Constants::MHV_UUID]
+                                    when Constants::Auth::IDME     then [idme_uuid, MPI::Constants::IDME_UUID]
+                                    when Constants::Auth::LOGINGOV then [logingov_uuid, MPI::Constants::LOGINGOV_UUID]
+                                    end
+      mpi_service.unlink_profile_identifier(icn: verified_icn, identifier:, identifier_type:)
     end
 
     def scrub_attribute(attribute)

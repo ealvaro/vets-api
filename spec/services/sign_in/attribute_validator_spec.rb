@@ -70,6 +70,7 @@ RSpec.describe SignIn::AttributeValidator do
       let(:add_person_response) { 'some-add-person-response' }
       let(:find_profile_response) { 'some-find-profile-response' }
       let(:update_profile_response) { 'some-update-profile-response' }
+      let(:unlink_response) { 'some-unlink-response' }
       let(:identifier) { idme_uuid }
       let(:identifier_type) { MPI::Constants::IDME_UUID }
       let(:mpi_service) { instance_double(MPI::Service) }
@@ -82,7 +83,8 @@ RSpec.describe SignIn::AttributeValidator do
         allow(mpi_service).to receive(:find_profile_by_identifier).with(identifier:, identifier_type:)
                                                                   .and_return(find_profile_response)
         allow(mpi_service).to receive_messages(add_person_implicit_search: add_person_response,
-                                               update_profile: update_profile_response)
+                                               update_profile: update_profile_response,
+                                               unlink_profile_identifier: unlink_response)
 
         allow(SignIn::Logger).to receive(:new).and_return(sign_in_logger)
         allow(sign_in_logger).to receive(:info)
@@ -315,6 +317,34 @@ RSpec.describe SignIn::AttributeValidator do
           let(:expected_error_code) { SignIn::Constants::ErrorCode::SSN_ATTRIBUTE_MISMATCH }
 
           it_behaves_like 'error response'
+
+          context 'in non-production' do
+            before do
+              allow(Rails.env).to receive(:production?).and_return(false)
+            end
+
+            it 'calls unlink_profile_identifier with correct parameters' do
+              expect(mpi_service).to receive(:unlink_profile_identifier).with(
+                icn:,
+                identifier:,
+                identifier_type:
+              )
+
+              expect { subject }.to raise_error(expected_error, expected_error_message)
+            end
+          end
+
+          context 'in production' do
+            before do
+              allow(Rails.env).to receive(:production?).and_return(true)
+            end
+
+            it 'does not call unlink_profile_identifier' do
+              expect(mpi_service).not_to receive(:unlink_profile_identifier)
+
+              expect { subject }.to raise_error(expected_error, expected_error_message)
+            end
+          end
         end
       end
 

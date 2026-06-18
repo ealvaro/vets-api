@@ -108,5 +108,14 @@ describe MPI::Messages::UnlinkProfileIdentifierMessage do
 
       it_behaves_like 'successfully built unlink message'
     end
+
+    context 'when mhv uuid is defined' do
+      let(:identifier_type) { MPI::Constants::MHV_UUID }
+      let(:formatted_identifier) do
+        "#{identifier}^#{MPI::Constants::MHV_FULL_IDENTIFIER}"
+      end
+
+      it_behaves_like 'successfully built unlink message'
+    end
   end
 end

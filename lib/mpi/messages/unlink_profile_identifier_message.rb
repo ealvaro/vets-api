@@ -30,9 +30,10 @@ module MPI
         missing_values << :icn if icn.blank?
         missing_values << :identifier if identifier.blank?
 
-        unless [Constants::IDME_UUID, Constants::LOGINGOV_UUID].include?(identifier_type)
+        unless [Constants::IDME_UUID, Constants::LOGINGOV_UUID, Constants::MHV_UUID].include?(identifier_type)
           raise Errors::ArgumentError,
-                "Invalid identifier type: #{identifier_type}. Must be one of: #{Constants::IDME_UUID}, #{Constants::LOGINGOV_UUID}"
+                "Invalid identifier type: #{identifier_type}. Must be one of: " \
+                "#{Constants::IDME_UUID}, #{Constants::LOGINGOV_UUID}, #{Constants::MHV_UUID}"
         end
 
         raise Errors::ArgumentError, "Required values missing: #{missing_values}" if missing_values.present?
@@ -90,6 +91,8 @@ module MPI
           Constants::IDME_FULL_IDENTIFIER
         when Constants::LOGINGOV_UUID
           Constants::LOGINGOV_FULL_IDENTIFIER
+        when Constants::MHV_UUID
+          Constants::MHV_FULL_IDENTIFIER
         end
       end
 
