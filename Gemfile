@@ -141,7 +141,7 @@ gem 'pkce_challenge'
 gem 'prawn', '~> 2.4.0' # Pinned to version 2.4.0 to avoid embedded font issues (https://github.com/prawnpdf/ttfunk/issues/102)
 gem 'prawn-markup'
 gem 'prawn-table'
-gem 'puma', '~> 7.2'
+gem 'puma', '~> 8.0'
 gem 'pundit'
 gem 'rack'
 gem 'rack-attack'
