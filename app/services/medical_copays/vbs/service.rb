@@ -19,6 +19,16 @@ module MedicalCopays
       attr_reader :request, :request_data, :user
 
       STATSD_KEY_PREFIX = 'api.mcp.vbs'
+      STATSD_PRE_RETRIEVAL = "#{STATSD_KEY_PREFIX}.pdf.total".freeze
+      STATSD_RETRIEVAL_SUCCESS = "#{STATSD_KEY_PREFIX}.pdf.success".freeze
+      STATSD_RETRIEVAL_INVALID = "#{STATSD_KEY_PREFIX}.pdf.invalid_body".freeze
+      STATSD_RETRIEVAL_FAILURE = "#{STATSD_KEY_PREFIX}.pdf.failure".freeze
+      STATSD_CACHED_COPAYS_FIRED = "#{STATSD_KEY_PREFIX}.init_cached_copays.fired".freeze
+      STATSD_CACHED_COPAYS_RETURNED = "#{STATSD_KEY_PREFIX}.init_cached_copays.cached_response_returned".freeze
+      STATSD_CACHED_COPAYS_EMPTY = "#{STATSD_KEY_PREFIX}.init_cached_copays.empty_response_cached".freeze
+      STATSD_CACHED_COPAYS_FAILURE = "#{STATSD_KEY_PREFIX}.summary.failure".freeze
+      STATSD_COPAYS_INVALID_REQUEST = "#{STATSD_KEY_PREFIX}.summary.invalid_request".freeze
+      STATSD_COPAY_NOT_FOUND = "#{STATSD_KEY_PREFIX}.summary.not_found".freeze
 
       ##
       # Builds a Service instance
@@ -42,11 +52,12 @@ module MedicalCopays
       # @return [Hash]
       #
       def get_copays
-        raise InvalidVBSRequestError, request_data.errors unless request_data.valid?
-
-        if Flipper.enabled?(:debts_copay_logging)
-          Rails.logger.info("MedicalCopays::VBS::Service#get_copays request data: #{@user.uuid}")
+        unless request_data.valid?
+          track_invalid_request
+          raise InvalidVBSRequestError, request_data.errors
         end
+
+        info_if_logging("MedicalCopays::VBS::Service#get_copays request data: #{@user.uuid}")
 
         response = get_cached_copay_response
 
@@ -59,17 +70,23 @@ module MedicalCopays
           response.body.concat(zero_balance_statements.list)
         end
 
-        ResponseData.build(response:).handle
+        result = ResponseData.build(response:).handle
+        count = result[:data].is_a?(Array) ? result[:data].size : 0
+        info_if_logging("MedicalCopays::VBS::Service#get_copays returned, status: #{result[:status]}, count: #{count}")
+        result
       end
 
       def get_cached_copay_response
-        StatsD.increment("#{STATSD_KEY_PREFIX}.init_cached_copays.fired")
+        StatsD.increment(STATSD_CACHED_COPAYS_FIRED)
 
         cached_response = get_user_cached_response
         if cached_response
-          StatsD.increment("#{STATSD_KEY_PREFIX}.init_cached_copays.cached_response_returned")
+          StatsD.increment(STATSD_CACHED_COPAYS_RETURNED)
+          info_if_logging('MedicalCopays::VBS::Service#get_cached_copay_response cache hit')
           return cached_response
         end
+
+        info_if_logging('MedicalCopays::VBS::Service#get_cached_copay_response cache miss, requesting from backend')
 
         response = request.post(
           "#{settings.base_path}/GetStatementsByEDIPIAndVistaAccountNumber", request_data.to_hash
@@ -78,14 +95,13 @@ module MedicalCopays
         response_body = response.body
 
         if response_body.is_a?(Array) && response_body.empty?
-          StatsD.increment("#{STATSD_KEY_PREFIX}.init_cached_copays.empty_response_cached")
+          StatsD.increment(STATSD_CACHED_COPAYS_EMPTY)
           Rails.cache.write("vbs_copays_data_#{user.uuid}", response, expires_in: self.class.time_until_5am_utc)
         end
 
         response
       rescue => e
-        StatsD.increment("#{STATSD_KEY_PREFIX}.summary.failure")
-        Rails.logger.error("MedicalCopays::VBS::Service#get_cached_copay_response error: #{e.class}")
+        track_cached_copay_error(e)
         raise ServiceError
       end
 
@@ -96,15 +112,21 @@ module MedicalCopays
       # @return [Hash] - JSON data of statement and status
       #
       def get_copay_by_id(id)
+        info_if_logging("MedicalCopays::VBS::Service#get_copay_by_id requested, id: #{id}")
+
         all_statements = get_copays
 
         # Return hash with error information if bad response
         return all_statements unless all_statements[:status] == 200
 
-        statement = get_copays[:data].find { |copay| copay['id'] == id }
+        statement = all_statements[:data].find { |copay| copay['id'] == id }
 
-        raise StatementNotFound if statement.nil?
+        if statement.nil?
+          track_copay_not_found(id)
+          raise StatementNotFound
+        end
 
+        info_if_logging("MedicalCopays::VBS::Service#get_copay_by_id statement found, id: #{id}")
         { data: statement, status: 200 }
       end
 
@@ -114,12 +136,16 @@ module MedicalCopays
       # @return [Hash]
       #
       def get_pdf_statement_by_id(statement_id)
-        StatsD.increment("#{STATSD_KEY_PREFIX}.pdf.total")
-        response = request.get("#{settings.base_path}/GetPDFStatementById/#{statement_id}")
+        track_pdf_request(statement_id)
 
-        Base64.decode64(response.body['statement'])
+        response = request.get("#{settings.base_path}/GetPDFStatementById/#{statement_id}")
+        decoded = Base64.decode64(response.body['statement'])
+
+        track_pdf_result(decoded, statement_id)
+
+        decoded
       rescue => e
-        StatsD.increment("#{STATSD_KEY_PREFIX}.pdf.failure")
+        track_pdf_error(e, statement_id)
         raise e
       end
 
@@ -137,6 +163,66 @@ module MedicalCopays
 
       def settings
         Settings.mcp.vbs_v2
+      end
+
+      private
+
+      def info_if_logging(message)
+        Rails.logger.info(message) if Flipper.enabled?(:debts_copay_logging)
+      end
+
+      def track_invalid_request
+        StatsD.increment(STATSD_COPAYS_INVALID_REQUEST)
+        Rails.logger.error('MedicalCopays::VBS::Service#get_copays invalid request data')
+      end
+
+      def track_copay_not_found(id)
+        StatsD.increment(STATSD_COPAY_NOT_FOUND)
+        Rails.logger.error("MedicalCopays::VBS::Service#get_copay_by_id statement not found, id: #{id}")
+      end
+
+      def track_cached_copay_error(error)
+        StatsD.increment(STATSD_CACHED_COPAYS_FAILURE)
+        Rails.logger.error("MedicalCopays::VBS::Service#get_cached_copay_response error: #{safe_error_details(error)}")
+      end
+
+      def track_pdf_request(statement_id)
+        StatsD.increment(STATSD_PRE_RETRIEVAL)
+        info_if_logging("MedicalCopays::VBS::Service#get_pdf_statement_by_id requested, statement_id: #{statement_id}")
+      end
+
+      def track_pdf_result(decoded, statement_id)
+        # bytes distinguishes a real PDF (KB-MB) from a 200 with an empty or
+        # non-PDF body (0 or a few hundred bytes); the %PDF- header confirms it is a PDF
+        if decoded.start_with?('%PDF-')
+          StatsD.increment(STATSD_RETRIEVAL_SUCCESS)
+          info_if_logging(
+            'MedicalCopays::VBS::Service#get_pdf_statement_by_id success, ' \
+            "statement_id: #{statement_id}, bytes: #{decoded.bytesize}"
+          )
+        else
+          StatsD.increment(STATSD_RETRIEVAL_INVALID)
+          Rails.logger.error(
+            'MedicalCopays::VBS::Service#get_pdf_statement_by_id invalid PDF body on 200 response, ' \
+            "statement_id: #{statement_id}, bytes: #{decoded.bytesize}"
+          )
+        end
+      end
+
+      def track_pdf_error(error, statement_id)
+        StatsD.increment(STATSD_RETRIEVAL_FAILURE)
+        Rails.logger.error(
+          "MedicalCopays::VBS::Service#get_pdf_statement_by_id error: #{safe_error_details(error)}, " \
+          "statement_id: #{statement_id}"
+        )
+      end
+
+      def safe_error_details(error)
+        if error.is_a?(Common::Exceptions::BackendServiceException)
+          "#{error.class} - status: #{error.original_status}, key: #{error.key}"
+        else
+          error.class.to_s
+        end
       end
     end
   end
