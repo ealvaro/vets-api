@@ -74,10 +74,10 @@ GIT
 
 GIT
   remote: https://va.ghe.com/software/vets-json-schema
-  revision: 1e9150360498aaf1a97e2cd42221704bbbe8d27c
+  revision: dc45499a3527daa6365e01e7a2a1f051367d3c87
   branch: master
   specs:
-    vets_json_schema (25.5.0)
+    vets_json_schema (25.5.4)
       multi_json (~> 1.0)
       script_utils (= 0.0.4)
 

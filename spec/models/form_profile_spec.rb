@@ -1779,15 +1779,6 @@ RSpec.describe FormProfile, type: :model do
             allow(Flipper).to receive(:enabled?).with(:va_dependents_v3, anything).and_return(true)
           end
 
-          context 'with a 686c-674 v1 form' do
-            it 'omits address fields in 686c-674 form' do
-              VCR.use_cassette('va_profile/military_personnel/post_read_service_histories_200',
-                               allow_playback_repeats: true) do
-                expect_prefilled('686C-674')
-              end
-            end
-          end
-
           context 'with a 686c-674-v2 form' do
             it 'omits address fields in 686c-674-V2 form' do
               VCR.use_cassette('va_profile/military_personnel/post_read_service_histories_200',
@@ -2036,19 +2027,6 @@ RSpec.describe FormProfile, type: :model do
         context 'with a 686c-674 form v3 disabled' do
           before do
             allow(Flipper).to receive(:enabled?).with(:va_dependents_v3, anything).and_return(false)
-          end
-
-          context 'with a 686c-674 v1 form' do
-            before do
-              expect(user).to receive(:authorize).with(:va_profile, :access_to_v2?).and_return(true).at_least(:once)
-            end
-
-            it 'omits address fields in 686c-674 form' do
-              VCR.use_cassette('va_profile/military_personnel/post_read_service_histories_200',
-                               allow_playback_repeats: true) do
-                expect_prefilled('686C-674')
-              end
-            end
           end
 
           context 'with a 686c-674-v2 form' do
@@ -2455,7 +2433,6 @@ RSpec.describe FormProfile, type: :model do
           1010ez
           22-0993
           FEEDBACK-TOOL
-          686C-674
           28-8832
           28-1900
           26-1880
