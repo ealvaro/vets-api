@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'mhv_medical_records_policy'
-require 'mhv/account_creation/service'
 
 describe MHVMedicalRecordsPolicy do
   let(:mhv_medical_records) { double('mhv_medical_records') }
