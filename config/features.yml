@@ -2717,6 +2717,10 @@ features:
     actor_type: user
     enable_in_development: false
     description: Toggle for the vaos module to use an alternate vaos-service route
+  va_online_scheduling_metric_tracking_eligibility:
+    actor_type: user
+    enable_in_development: true
+    description: Toggle for the vaos module to activate eligibility metric tracking
   va_dependents_verification:
     actor_type: user
     description: Toggles new features for the dependents verification form

@@ -12,6 +12,8 @@ describe VAOS::V2::PatientsService do
   describe '#index' do
     before do
       allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_vaos_alternate_route).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_metric_tracking_eligibility,
+                                                user).and_return(true)
     end
 
     context 'with an patient' do
@@ -29,6 +31,68 @@ describe VAOS::V2::PatientsService do
             expect(response[:ineligibility_reasons][0][:coding][0][:code]).to eq('facility-cs-direct-disabled')
           end
         end
+
+        it 'increments StatsD ineligibility' do
+          VCR.use_cassette('vaos/v2/patients/get_patient_appointment_metadata_vaos',
+                           match_requests_on: %i[method path query]) do
+            allow(StatsD).to receive(:increment)
+            expect(StatsD).to receive(:increment).with(
+              'api.vaos.patient_eligibility.ineligible',
+              tags: array_including(
+                'ehr:vista',
+                'eligible:false',
+                'type_of_care:primaryCare',
+                'scheduling_type:direct',
+                'facility_id:100',
+                'ineligibility_reasons_code:facility-cs-direct-disabled',
+                'ineligibility_reasons_display:direct booking is disabled for the clinical service at the facility'
+              )
+            )
+            subject.get_patient_appointment_metadata('primaryCare', '100', 'direct')
+          end
+        end
+
+        it 'increments StatsD eligibility' do
+          VCR.use_cassette('vaos/v2/patients/get_patient_appointment_metadata_vaos_eligible',
+                           match_requests_on: %i[method path query]) do
+            allow(StatsD).to receive(:increment)
+            expect(StatsD).to receive(:increment).with(
+              'api.vaos.patient_eligibility.eligible',
+              tags: array_including(
+                'ehr:vista',
+                'eligible:true',
+                'type_of_care:primaryCare',
+                'scheduling_type:direct',
+                'facility_id:999',
+                'ineligibility_reasons_code:',
+                'ineligibility_reasons_display:'
+              )
+            )
+            subject.get_patient_appointment_metadata('primaryCare', '999', 'direct')
+          end
+        end
+
+        it 'does not increment StatsD when flipper is off' do
+          allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_metric_tracking_eligibility,
+                                                    user).and_return(false)
+          VCR.use_cassette('vaos/v2/patients/get_patient_appointment_metadata_vaos_eligible',
+                           match_requests_on: %i[method path query]) do
+            allow(StatsD).to receive(:increment)
+            expect(StatsD).not_to receive(:increment).with(
+              'api.vaos.patient_eligibility.eligible',
+              tags: array_including(
+                'ehr:vista',
+                'eligible:true',
+                'type_of_care:primaryCare',
+                'scheduling_type:direct',
+                'facility_id:999',
+                'ineligibility_reasons_code:',
+                'ineligibility_reasons_display:'
+              )
+            )
+            subject.get_patient_appointment_metadata('primaryCare', '999', 'direct')
+          end
+        end
       end
 
       context 'using VPG' do
@@ -43,6 +107,68 @@ describe VAOS::V2::PatientsService do
             expect(response[:eligible]).to be(false)
 
             expect(response[:ineligibility_reasons][0][:coding][0][:code]).to eq('facility-cs-direct-disabled')
+          end
+        end
+
+        it 'increments StatsD ineligibility' do
+          VCR.use_cassette('vaos/v2/patients/get_patient_appointment_metadata_vpg',
+                           match_requests_on: %i[method path query]) do
+            allow(StatsD).to receive(:increment)
+            expect(StatsD).to receive(:increment).with(
+              'api.vaos.patient_eligibility.ineligible',
+              tags: array_including(
+                'ehr:cerner',
+                'eligible:false',
+                'type_of_care:primaryCare',
+                'scheduling_type:direct',
+                'facility_id:100',
+                'ineligibility_reasons_code:facility-cs-direct-disabled',
+                'ineligibility_reasons_display:direct booking is disabled for the clinical service at the facility'
+              )
+            )
+            subject.get_patient_appointment_metadata('primaryCare', '100', 'direct')
+          end
+        end
+
+        it 'increments StatsD eligibility' do
+          VCR.use_cassette('vaos/v2/patients/get_patient_appointment_metadata_vpg_eligible',
+                           match_requests_on: %i[method path query]) do
+            allow(StatsD).to receive(:increment)
+            expect(StatsD).to receive(:increment).with(
+              'api.vaos.patient_eligibility.eligible',
+              tags: array_including(
+                'ehr:cerner',
+                'eligible:true',
+                'type_of_care:primaryCare',
+                'scheduling_type:direct',
+                'facility_id:999',
+                'ineligibility_reasons_code:',
+                'ineligibility_reasons_display:'
+              )
+            )
+            subject.get_patient_appointment_metadata('primaryCare', '999', 'direct')
+          end
+        end
+
+        it 'does not increment StatsD when flipper is off' do
+          allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_metric_tracking_eligibility,
+                                                    user).and_return(false)
+          VCR.use_cassette('vaos/v2/patients/get_patient_appointment_metadata_vpg_eligible',
+                           match_requests_on: %i[method path query]) do
+            allow(StatsD).to receive(:increment)
+            expect(StatsD).not_to receive(:increment).with(
+              'api.vaos.patient_eligibility.eligible',
+              tags: array_including(
+                'ehr:cerner',
+                'eligible:true',
+                'type_of_care:primaryCare',
+                'scheduling_type:direct',
+                'facility_id:999',
+                'ineligibility_reasons_code:',
+                'ineligibility_reasons_display:'
+              )
+            )
+            subject.get_patient_appointment_metadata('primaryCare', '999', 'direct')
           end
         end
 
