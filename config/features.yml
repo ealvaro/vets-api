@@ -2720,6 +2720,9 @@ features:
   va_dependents_verification:
     actor_type: user
     description: Toggles new features for the dependents verification form
+  va_dependents_verification_controller_authentication:
+    actor_type: user
+    description: If enabled, enforce user authentication at the controller level for 0538 (dependents_verification)
   va_dependents_v3:
     actor_type: user
     description: Allows us to toggle v3 of the 686c-674 form.

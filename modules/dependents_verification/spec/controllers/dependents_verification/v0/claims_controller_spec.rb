@@ -11,7 +11,6 @@ RSpec.describe DependentsVerification::V0::ClaimsController, type: :request do
   let(:claim) { build(:dependents_verification_claim) }
 
   before do
-    sign_in_as(user)
     allow(DependentsVerification::Monitor).to receive(:new).and_return(monitor)
     allow(DependentsVerification::SavedClaim).to receive(:new).and_return(claim)
     allow(monitor).to receive_messages(track_show404: nil, track_show_error: nil, track_create_attempt: nil,
@@ -26,36 +25,87 @@ RSpec.describe DependentsVerification::V0::ClaimsController, type: :request do
       post '/dependents_verification/v0/claims', params: { param_name => { form: claim.form } }
     end
 
-    it 'logs validation errors' do
-      allow(claim).to receive_messages(save: false, errors: 'mock error')
-
-      expect(monitor).to receive(:track_create_attempt).once
-      expect(monitor).to receive(:track_create_error).once
-      expect(monitor).to receive(:track_create_validation_error).once
-
-      request
-
-      expect(response).to have_http_status(:internal_server_error)
-    end
-
-    context 'when the claim is valid' do
-      context 'when the veteran file number is not present' do
-        it 'returns a serialized claim' do
-          allow(BGS::People::Request)
-            .to receive(:new)
-            .and_return(
-              double(find_person_by_participant_id: double(file_number: nil))
-            )
-          request
-          expect(response).to have_http_status(:success)
-        end
+    context 'with a signed in user' do
+      before do
+        sign_in_as(user)
+        allow(Flipper).to receive(:enabled?)
+          .with(:va_dependents_verification_controller_authentication)
+          .and_return(false)
       end
 
-      context 'when the veteran file number is present' do
-        context 'when the veteran file number does not contain dashes' do
+      it 'logs validation errors' do
+        allow(claim).to receive_messages(save: false, errors: 'mock error')
+
+        expect(monitor).to receive(:track_create_attempt).once
+        expect(monitor).to receive(:track_create_error).once
+        expect(monitor).to receive(:track_create_validation_error).once
+
+        request
+
+        expect(response).to have_http_status(:internal_server_error)
+      end
+
+      context 'when the claim is valid' do
+        context 'when the veteran file number is not present' do
           it 'returns a serialized claim' do
-            VCR.use_cassette('bgs/people_service/person_data') do
+            allow(BGS::People::Request)
+              .to receive(:new)
+              .and_return(
+                double(find_person_by_participant_id: double(file_number: nil))
+              )
+            request
+            expect(response).to have_http_status(:success)
+          end
+        end
+
+        context 'when the veteran file number is present' do
+          context 'when the veteran file number does not contain dashes' do
+            it 'returns a serialized claim' do
+              VCR.use_cassette('bgs/people_service/person_data') do
+                expect(monitor).to receive(:track_create_attempt).once
+                expect(monitor).to receive(:track_create_success).once
+
+                request
+
+                expect(response).to have_http_status(:success)
+              end
+            end
+          end
+
+          context 'when the veteran file number contains dashes' do
+            it 'returns a serialized claim' do
+              allow(BGS::People::Request)
+                .to receive(:new)
+                .and_return(
+                  double(find_person_by_participant_id: double(file_number: '796-33-0625'))
+                )
+              request
+              expect(response).to have_http_status(:success)
+            end
+          end
+
+          context 'when VA Profile Email is enabled' do
+            before do
+              allow(Flipper).to receive(:enabled?)
+                .with(:lifestage_va_profile_email)
+                .and_return(true)
+            end
+
+            it 'adds the VA profile email to the claim form data' do
+              allow(SavedClaim).to receive(:new).and_return(claim)
               expect(monitor).to receive(:track_create_attempt).once
+              expect(monitor).to receive(:track_create_success).once
+              request
+              expect(response).to have_http_status(:success)
+              expect(claim.parsed_form['va_profile_email']).to eq(user.va_profile_email)
+            end
+
+            it 'logs an error but succeeds when adding VA profile email fails' do
+              allow_any_instance_of(User).to receive(:va_profile_email)
+                .and_raise(StandardError.new('Mock profile error'))
+
+              expect(monitor).to receive(:track_create_attempt).once
+              expect(monitor).to receive(:track_add_va_profile_email_error).once
               expect(monitor).to receive(:track_create_success).once
 
               request
@@ -63,71 +113,52 @@ RSpec.describe DependentsVerification::V0::ClaimsController, type: :request do
               expect(response).to have_http_status(:success)
             end
           end
-        end
 
-        context 'when the veteran file number contains dashes' do
-          it 'returns a serialized claim' do
-            allow(BGS::People::Request)
-              .to receive(:new)
-              .and_return(
-                double(find_person_by_participant_id: double(file_number: '796-33-0625'))
-              )
-            request
-            expect(response).to have_http_status(:success)
+          context 'when VA Profile Email is disabled' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(:lifestage_va_profile_email).and_return(false)
+            end
+
+            it 'does not add the VA profile email to the claim form data' do
+              expect(monitor).to receive(:track_create_attempt).once
+              expect(monitor).to receive(:track_create_success).once
+              allow(SavedClaim).to receive(:new).and_return(claim)
+
+              request
+
+              expect(response).to have_http_status(:success)
+              expect(claim.parsed_form['va_profile_email']).to be_nil
+            end
           end
         end
 
-        context 'when VA Profile Email is enabled' do
-          before do
-            allow(Flipper).to receive(:enabled?).with(:lifestage_va_profile_email).and_return(true)
-          end
+        it 'sets the user account on the claim' do
+          allow(DependentsVerification::SavedClaim).to receive(:new).and_call_original
+          post '/dependents_verification/v0/claims', params: { dependents_verification_claim: { form: claim.form } }
+          created_claim = DependentsVerification::SavedClaim.last
 
-          it 'adds the VA profile email to the claim form data' do
-            allow(SavedClaim).to receive(:new).and_return(claim)
-            expect(monitor).to receive(:track_create_attempt).once
-            expect(monitor).to receive(:track_create_success).once
-            request
-            expect(response).to have_http_status(:success)
-            expect(claim.parsed_form['va_profile_email']).to eq(user.va_profile_email)
-          end
-
-          it 'logs an error but succeeds when adding VA profile email fails' do
-            allow_any_instance_of(User).to receive(:va_profile_email).and_raise(StandardError.new('Mock profile error'))
-
-            expect(monitor).to receive(:track_create_attempt).once
-            expect(monitor).to receive(:track_add_va_profile_email_error).once
-            expect(monitor).to receive(:track_create_success).once
-
-            request
-
-            expect(response).to have_http_status(:success)
-          end
-        end
-
-        context 'when VA Profile Email is disabled' do
-          before do
-            allow(Flipper).to receive(:enabled?).with(:lifestage_va_profile_email).and_return(false)
-          end
-
-          it 'does not add the VA profile email to the claim form data' do
-            expect(monitor).to receive(:track_create_attempt).once
-            expect(monitor).to receive(:track_create_success).once
-            allow(SavedClaim).to receive(:new).and_return(claim)
-
-            request
-
-            expect(response).to have_http_status(:success)
-            expect(claim.parsed_form['va_profile_email']).to be_nil
-          end
+          expect(created_claim.user_account).to eq(user.user_account)
         end
       end
+    end
 
-      it 'sets the user account on the claim' do
-        allow(DependentsVerification::SavedClaim).to receive(:new).and_call_original
-        post '/dependents_verification/v0/claims', params: { dependents_verification_claim: { form: claim.form } }
-        created_claim = DependentsVerification::SavedClaim.last
+    context 'without a signed in user' do
+      context 'with the authentication feature flag on' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:va_dependents_verification_controller_authentication)
+            .and_return(true)
+        end
 
-        expect(created_claim.user_account).to eq(user.user_account)
+        it 'returns an unauthorized error' do
+          allow(BGS::People::Request)
+            .to receive(:new)
+            .and_return(
+              double(find_person_by_participant_id: double(file_number: '796-33-0625'))
+            )
+          request
+          expect(response).to have_http_status(:unauthorized)
+        end
       end
     end
   end

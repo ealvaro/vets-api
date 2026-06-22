@@ -12,6 +12,8 @@ module DependentsVerification
       before_action :check_flipper_flag
       service_tag 'dependents-verification-application'
 
+      before_action :authenticate_if_feature_flag_enabled, only: :create
+
       # an identifier that matches the parameter that the form will be set as in the JSON submission.
       def short_name
         'dependents_verification_claim'
@@ -147,6 +149,17 @@ module DependentsVerification
       #
       def monitor
         @monitor ||= DependentsVerification::Monitor.new
+      end
+
+      ##
+      # Conditionally use the standard `authenticate` method based on a flipper flag
+      # The front-end should enable authentication, but it's always a good idea to
+      # have the back-end be the final arbiter.
+      #
+      # @return [void]
+      #
+      def authenticate_if_feature_flag_enabled
+        authenticate if Flipper.enabled?(:va_dependents_verification_controller_authentication)
       end
     end
   end
