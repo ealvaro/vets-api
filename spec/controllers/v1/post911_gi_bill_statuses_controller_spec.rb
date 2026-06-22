@@ -41,6 +41,7 @@ RSpec.describe V1::Post911GIBillStatusesController, type: :controller do
     end
 
     it 'returns a 404 when vet isn\'t found' do
+      allow(StatsD).to receive(:increment)
       VCR.use_cassette('lighthouse/benefits_education/gi_bill_status/404_response') do
         expect(StatsD).to receive(:increment).with("#{V1::Post911GIBillStatusesController::STATSD_KEY_PREFIX}.fail",
                                                    tags: ['error:404'])
@@ -55,6 +56,31 @@ RSpec.describe V1::Post911GIBillStatusesController, type: :controller do
       error = json_response['errors'][0]
       expect(error['title']).to eq('Not Found')
       expect(error['detail']).to eq('Icn not found.')
+    end
+  end
+
+  context 'when the Veteran has no ICN' do
+    before do
+      allow(BenefitsEducation::Service).to receive(:new).and_raise(
+        ArgumentError, 'no ICN passed in for LH API request.'
+      )
+    end
+
+    it 'returns 422 unprocessable entity' do
+      allow(StatsD).to receive(:increment)
+      expect(StatsD).to receive(:increment).with(
+        "#{V1::Post911GIBillStatusesController::STATSD_KEY_PREFIX}.fail", tags: ['error:422']
+      )
+      expect(StatsD).to receive(:increment).with(
+        "#{V1::Post911GIBillStatusesController::STATSD_KEY_PREFIX}.total"
+      )
+
+      get :show
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      json = JSON.parse(response.body)
+      expect(json['errors'][0]['status']).to eq('422')
+      expect(json['errors'][0]['detail']).to eq('no ICN passed in for LH API request.')
     end
   end
 
