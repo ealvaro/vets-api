@@ -128,15 +128,33 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::PowerOfAttorney', type: :request
     end
 
     describe 'status' do
+      let(:veteran_participant_id) { '9100792239' }
+
+      before do
+        stub_mpi(build(:mpi_profile, participant_id: veteran_participant_id))
+      end
+
       it 'returns the status of a POA' do
         mock_ccg(scopes) do |auth_header|
-          poa = create(:power_of_attorney, :submitted, auth_headers: auth_header)
+          poa = create(:power_of_attorney, :submitted,
+                       auth_headers: auth_header.merge('va_eauth_pid' => veteran_participant_id))
 
           get "#{get_poa_path}/#{poa.id}", params: nil, headers: auth_header
           json = JSON.parse(response.body)
 
           expect(json['data']['type']).to eq('claimsApiPowerOfAttorneys')
           expect(json['data']['attributes']['status']).to eq('submitted')
+        end
+      end
+
+      it 'returns 404 when the POA belongs to a different veteran' do
+        mock_ccg(scopes) do |auth_header|
+          poa = create(:power_of_attorney, :submitted,
+                       auth_headers: auth_header.merge('va_eauth_pid' => '0000000000'))
+
+          get "#{get_poa_path}/#{poa.id}", params: nil, headers: auth_header
+
+          expect(response).to have_http_status(:not_found)
         end
       end
 

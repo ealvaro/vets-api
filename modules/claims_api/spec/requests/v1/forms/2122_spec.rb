@@ -737,7 +737,14 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
     end
 
     describe '#status' do
-      let(:power_of_attorney) { create(:power_of_attorney, :submitted, auth_headers: headers) }
+      let(:veteran_participant_id) { '600043201' }
+      let(:power_of_attorney) do
+        create(:power_of_attorney, :submitted, auth_headers: { 'va_eauth_pid' => veteran_participant_id })
+      end
+
+      before do
+        stub_mpi(build(:mpi_profile, participant_id: veteran_participant_id))
+      end
 
       it 'return the status of a POA based on GUID' do
         mock_acg(scopes) do |auth_header|
@@ -748,10 +755,20 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
           expect(parsed['data']['attributes']['status']).to eq('submitted')
         end
       end
+
+      it 'returns 404 when the POA belongs to a different veteran' do
+        other_poa = create(:power_of_attorney, :submitted, auth_headers: { 'va_eauth_pid' => '0000000000' })
+
+        mock_acg(scopes) do |auth_header|
+          get("#{path}/#{other_poa.id}", params: nil, headers: headers.merge(auth_header))
+
+          expect(response).to have_http_status(:not_found)
+        end
+      end
     end
 
     describe '#upload' do
-      let(:power_of_attorney) { create(:power_of_attorney) }
+      let(:veteran_participant_id) { '600043201' }
       let(:binary_params) do
         { attachment: Rack::Test::UploadedFile.new(Rails.root.join(
           *'/modules/claims_api/spec/fixtures/extras.pdf'.split('/')
@@ -762,6 +779,13 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
       end
       let(:base64_params_attachment1) do
         { attachment1: base64_params[:attachment] }
+      end
+      let(:power_of_attorney) do
+        create(:power_of_attorney, auth_headers: { 'va_eauth_pid' => veteran_participant_id })
+      end
+
+      before do
+        stub_mpi(build(:mpi_profile, participant_id: veteran_participant_id))
       end
 
       it 'submit binary and change the document status' do
@@ -967,6 +991,22 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
             expect(response.parsed_body['errors'][0]['title']).to eq('Missing parameter')
             expect(response.parsed_body['errors'][0]['detail']).to eq('Must include attachment')
           end
+        end
+      end
+
+      it 'returns 404 when the POA belongs to a different veteran' do
+        other_poa = create(:power_of_attorney, auth_headers: { 'va_eauth_pid' => '0000000000' })
+
+        mock_acg(scopes) do |auth_header|
+          allow_any_instance_of(ClaimsApi::V1::Forms::PowerOfAttorneyController)
+            .to receive(:check_request_ssn_matches_mpi).and_return(nil)
+          allow_any_instance_of(ClaimsApi::PowerOfAttorneyUploader).to receive(:store!)
+          allow_any_instance_of(pws)
+            .to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
+
+          put("#{path}/#{other_poa.id}", params: binary_params, headers: headers.merge(auth_header))
+
+          expect(response).to have_http_status(:not_found)
         end
       end
     end

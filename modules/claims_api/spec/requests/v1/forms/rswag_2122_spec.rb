@@ -312,7 +312,10 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
                                             'power_of_attorney', 'upload.json').read)
 
           let(:scopes) { %w[claim.read claim.write] }
-          let(:power_of_attorney) { create(:power_of_attorney) }
+          let(:veteran_participant_id) { '600043201' }
+          let(:power_of_attorney) do
+            create(:power_of_attorney, auth_headers: { 'va_eauth_pid' => veteran_participant_id })
+          end
           let(:attachment) do
             Rack::Test::UploadedFile.new(Rails.root.join(*'/modules/claims_api/spec/fixtures/extras.pdf'.split('/'))
                                                      .to_s)
@@ -320,6 +323,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
           let(:id) { power_of_attorney.id }
 
           before do |example|
+            stub_mpi(build(:mpi_profile, participant_id: veteran_participant_id))
             stub_poa_verification
 
             mock_acg(scopes) do
@@ -468,7 +472,10 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
                                             'default.json').read)
 
           let(:scopes) { %w[claim.read claim.write] }
-          let(:power_of_attorney) { create(:power_of_attorney) }
+          let(:veteran_participant_id) { '600043201' }
+          let(:power_of_attorney) do
+            create(:power_of_attorney, auth_headers: { 'va_eauth_pid' => veteran_participant_id })
+          end
           let(:attachment) do
             Rack::Test::UploadedFile.new(Rails.root.join(*'/modules/claims_api/spec/fixtures/extras.pdf'.split('/'))
                                                      .to_s)
@@ -476,6 +483,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
           let(:id) { power_of_attorney.id }
 
           before do |example|
+            stub_mpi(build(:mpi_profile, participant_id: veteran_participant_id))
             allow_any_instance_of(ClaimsApi::V1::Forms::PowerOfAttorneyController)
               .to receive(:check_request_ssn_matches_mpi).and_return(nil)
             stub_poa_verification
@@ -571,6 +579,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
           schema JSON.parse(Rails.root.join('spec', 'support', 'schemas', 'claims_api', 'forms',
                                             'power_of_attorney', 'get.json').read)
 
+          let(:veteran_participant_id) { '600043201' }
           let(:headers) do
             { 'X-VA-SSN': '796-04-3735',
               'X-VA-First-Name': 'WESLEY',
@@ -580,10 +589,13 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
               'X-VA-Gender': 'M' }
           end
           let(:scopes) { %w[claim.read claim.write] }
-          let(:power_of_attorney) { create(:power_of_attorney, auth_headers: headers) }
+          let(:power_of_attorney) do
+            create(:power_of_attorney, auth_headers: headers.merge('va_eauth_pid' => veteran_participant_id))
+          end
           let(:id) { power_of_attorney.id }
 
           before do |example|
+            stub_mpi(build(:mpi_profile, participant_id: veteran_participant_id))
             stub_poa_verification
 
             mock_acg(scopes) do

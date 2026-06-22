@@ -243,6 +243,11 @@ module ClaimsApi
         def find_poa_by_id
           @power_of_attorney = ClaimsApi::PowerOfAttorney.find_by id: params[:id]
           raise ::Common::Exceptions::ResourceNotFound.new(detail: 'Resource not found') unless @power_of_attorney
+          unless @power_of_attorney.belongs_to_veteran?(target_veteran.participant_id)
+            raise ::Common::Exceptions::ResourceNotFound.new(
+              detail: 'Invalid Power of Attorney record for the veteran identified.'
+            )
+          end
         end
 
         def validation_success

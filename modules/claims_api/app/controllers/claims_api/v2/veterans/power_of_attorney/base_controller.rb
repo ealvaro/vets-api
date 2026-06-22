@@ -47,6 +47,11 @@ module ClaimsApi
               detail: "Could not find Power of Attorney with id: #{params[:id]}"
             )
           end
+          unless poa.belongs_to_veteran?(target_veteran.participant_id)
+            raise ::ClaimsApi::Common::Exceptions::Lighthouse::ResourceNotFound.new(
+              detail: 'Invalid Power of Attorney record for the veteran identified.'
+            )
+          end
 
           render json: ClaimsApi::V2::Blueprints::PowerOfAttorneyBlueprint.render(poa, view: :status, root: :data),
                  status: :ok

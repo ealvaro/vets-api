@@ -117,6 +117,81 @@ RSpec.describe ClaimsApi::PowerOfAttorney, type: :model do
     end
   end
 
+  describe '#belongs_to_veteran?' do
+    let(:veteran_pid) { '600049703' }
+    let(:dependent_pid) { '600264235' }
+    let(:poa_with_veteran_only) do
+      create(:power_of_attorney, auth_headers: { 'va_eauth_pid' => veteran_pid })
+    end
+    let(:poa_with_dependent) do
+      create(:power_of_attorney, auth_headers: {
+               'va_eauth_pid' => veteran_pid,
+               'dependent' => { 'participant_id' => dependent_pid }
+             })
+    end
+    let(:poa_with_legacy_key) do
+      create(:power_of_attorney, auth_headers: { 'participant_id' => veteran_pid })
+    end
+
+    context 'when the POA has no dependent' do
+      it 'returns true when participant_id matches va_eauth_pid' do
+        expect(poa_with_veteran_only.belongs_to_veteran?(veteran_pid)).to be true
+      end
+
+      it 'returns false when participant_id does not match' do
+        expect(poa_with_veteran_only.belongs_to_veteran?('9999999')).to be false
+      end
+    end
+
+    context 'when the POA uses the legacy participant_id key' do
+      it 'returns true when participant_id matches' do
+        expect(poa_with_legacy_key.belongs_to_veteran?(veteran_pid)).to be true
+      end
+
+      it 'returns false when participant_id does not match' do
+        expect(poa_with_legacy_key.belongs_to_veteran?('9999999')).to be false
+      end
+    end
+
+    context 'when participant_id types differ (string vs integer)' do
+      it 'matches after coercion to string' do
+        poa = create(:power_of_attorney, auth_headers: { 'va_eauth_pid' => 600_049_703 })
+        expect(poa.belongs_to_veteran?('600049703')).to be true
+      end
+    end
+
+    context 'when the POA has a dependent claimant' do
+      it 'returns true when participant_id matches the veteran' do
+        expect(poa_with_dependent.belongs_to_veteran?(veteran_pid)).to be true
+      end
+
+      it 'returns true when participant_id matches the dependent' do
+        expect(poa_with_dependent.belongs_to_veteran?(dependent_pid)).to be true
+      end
+
+      it 'returns false when participant_id matches neither' do
+        expect(poa_with_dependent.belongs_to_veteran?('9999999')).to be false
+      end
+    end
+
+    context 'when auth_headers is empty' do
+      it 'returns false' do
+        poa = create(:power_of_attorney, auth_headers: {})
+        expect(poa.belongs_to_veteran?(veteran_pid)).to be false
+      end
+    end
+
+    context 'when participant_id is nil or blank' do
+      it 'returns false for nil' do
+        expect(poa_with_veteran_only.belongs_to_veteran?(nil)).to be false
+      end
+
+      it 'returns false for empty string' do
+        expect(poa_with_veteran_only.belongs_to_veteran?('')).to be false
+      end
+    end
+  end
+
   describe 'process error handling' do
     let(:poa) do
       ClaimsApi::PowerOfAttorney.create!(

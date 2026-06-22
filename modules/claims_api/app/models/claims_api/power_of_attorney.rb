@@ -60,6 +60,22 @@ module ClaimsApi
       current_poa
     end
 
+    # Returns true if the given participant_id matches the veteran or dependent claimant on this record.
+    # Checks both 'va_eauth_pid' (set by EVSS::AuthHeaders) and 'participant_id' (set explicitly by v1)
+    # All comparisons are string-based.
+    def belongs_to_veteran?(participant_id)
+      pid = participant_id.to_s
+      return false if pid.blank?
+
+      record_pids = [
+        auth_headers&.dig('va_eauth_pid'),
+        auth_headers&.dig('participant_id'),
+        auth_headers&.dig('dependent', 'participant_id')
+      ].compact.map(&:to_s)
+
+      record_pids.include?(pid)
+    end
+
     def set_md5
       headers = auth_headers.except('va_eauth_authenticationauthority',
                                     'va_eauth_service_transaction_id',

@@ -1556,8 +1556,15 @@ describe 'PowerOfAttorney',
       let(:veteranId) { '1013062086V794840' } # rubocop:disable RSpec/VariableName
       let(:Authorization) { 'Bearer token' }
       let(:scopes) { %w[system/claim.read system/claim.write] }
-      let(:poa) { create(:power_of_attorney, :pending) }
+      let(:veteran_participant_id) { '600043201' }
+      let(:poa) do
+        create(:power_of_attorney, :pending, auth_headers: { 'va_eauth_pid' => veteran_participant_id })
+      end
       let(:id) { poa.id }
+
+      before do
+        stub_mpi(build(:mpi_profile, participant_id: veteran_participant_id))
+      end
 
       describe 'Getting a successful response' do
         response '200', 'Valid request response' do
