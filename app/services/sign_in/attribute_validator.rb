@@ -122,7 +122,7 @@ module SignIn
 
         if type == :ssn
           error_code = Constants::ErrorCode::SSN_ATTRIBUTE_MISMATCH
-          unlink_mismatched_credential unless Rails.env.production?
+          unlink_mismatched_credential unless Settings.vsp_environment == 'production'
         else
           error_code = Constants::ErrorCode::GENERIC_EXTERNAL_ISSUE
         end

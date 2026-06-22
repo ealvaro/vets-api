@@ -320,7 +320,7 @@ RSpec.describe SignIn::AttributeValidator do
 
           context 'in non-production' do
             before do
-              allow(Rails.env).to receive(:production?).and_return(false)
+              allow(Settings).to receive(:vsp_environment).and_return('development')
             end
 
             it 'calls unlink_profile_identifier with correct parameters' do
@@ -336,7 +336,7 @@ RSpec.describe SignIn::AttributeValidator do
 
           context 'in production' do
             before do
-              allow(Rails.env).to receive(:production?).and_return(true)
+              allow(Settings).to receive(:vsp_environment).and_return('production')
             end
 
             it 'does not call unlink_profile_identifier' do
