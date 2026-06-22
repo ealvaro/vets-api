@@ -246,10 +246,6 @@ features:
     actor_type: user
     description: If enabled, Form 21-526EZ will show the new form navigation menu and remove the progress bar.
     enable_in_development: false
-  disability_compensation_new_conditions_workflow:
-    actor_type: user
-    description: enables new Conditions/Rated Disabilities workflow in 526EZ
-    enable_in_development: true
   disability_compensation_fix_poisoned_ipf:
     actor_type: user
     description: >
@@ -1326,10 +1322,6 @@ features:
   form526_send_4142_failure_notification:
     actor_type: user
     description: Enables enqueuing of a Form4142DocumentUploadFailureEmail if a SubmitForm4142Job job exhausts its retries
-    enable_in_development: true
-  form526_0781_automate_mst_consent:
-    actor_type: user
-    description: Enables mst consent to send automatically when the 0781 form is submitted in the 526 flow, when the veteran given consent
     enable_in_development: true
   form526_send_0781_failure_notification:
     actor_type: user

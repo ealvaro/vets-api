@@ -579,8 +579,6 @@ class Form526Submission < ApplicationRecord
   end
 
   def submit_mst_consent
-    return unless Flipper.enabled?(:form526_0781_automate_mst_consent, user)
-
     VHANotification::SendMstConsentJob.perform_async(id, 'primary')
   end
 

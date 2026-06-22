@@ -106,13 +106,9 @@ module Sidekiq
 
       def process_submission(form526_submission_id, submission)
         Processor.new(form526_submission_id).process!
-        if submission.form[Form526Submission::FORM_0781].present? && mst_consent_feature_enabled?(submission)
+        if submission.form[Form526Submission::FORM_0781].present?
           VHANotification::SendMstConsentJob.perform_async(form526_submission_id, 'backup')
         end
-      end
-
-      def mst_consent_feature_enabled?(submission)
-        Flipper.enabled?(:form526_0781_automate_mst_consent, OpenStruct.new({ flipper_id: submission.user_uuid }))
       end
 
       def update_job_status_bgjob_errors(job_status, e)

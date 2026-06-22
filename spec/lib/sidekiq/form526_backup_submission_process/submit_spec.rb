@@ -46,28 +46,10 @@ RSpec.describe Sidekiq::Form526BackupSubmissionProcess::Submit, type: :job do
     context 'when submission includes 0781 data' do
       let(:submission) { create(:form526_submission, :with_0781v2, user_account:) }
 
-      context 'when mst consent feature flag is enabled' do
-        before do
-          allow(Flipper).to receive(:enabled?).with(:form526_0781_automate_mst_consent, anything).and_return(true)
-        end
+      it 'enqueues the VHA MST notification job for backup path' do
+        expect(VHANotification::SendMstConsentJob).to receive(:perform_async).with(submission.id, 'backup')
 
-        it 'enqueues the VHA MST notification job for backup path' do
-          expect(VHANotification::SendMstConsentJob).to receive(:perform_async).with(submission.id, 'backup')
-
-          job.perform(submission.id)
-        end
-      end
-
-      context 'when mst consent feature flag is disabled' do
-        before do
-          allow(Flipper).to receive(:enabled?).with(:form526_0781_automate_mst_consent, anything).and_return(false)
-        end
-
-        it 'does not enqueue the VHA MST notification job' do
-          expect(VHANotification::SendMstConsentJob).not_to receive(:perform_async)
-
-          job.perform(submission.id)
-        end
+        job.perform(submission.id)
       end
     end
 
@@ -78,18 +60,6 @@ RSpec.describe Sidekiq::Form526BackupSubmissionProcess::Submit, type: :job do
         expect(VHANotification::SendMstConsentJob).not_to receive(:perform_async)
 
         job.perform(submission.id)
-      end
-
-      context 'when mst consent feature flag is enabled' do
-        before do
-          allow(Flipper).to receive(:enabled?).with(:form526_0781_automate_mst_consent, anything).and_return(true)
-        end
-
-        it 'still does not enqueue the VHA MST notification job' do
-          expect(VHANotification::SendMstConsentJob).not_to receive(:perform_async)
-
-          job.perform(submission.id)
-        end
       end
     end
   end
