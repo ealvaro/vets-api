@@ -1918,6 +1918,12 @@ features:
   mhv_supply_reordering_enabled:
     actor_type: user
     description: Enables the launch of mhv supply reordering application at /my-health/order-medical-supplies
+  mhv_secure_messaging_attachment_download_feedback:
+    actor_type: user
+    description: >
+      When enabled, users are provided with feedback on download progress and download status of message attachments in Secure Messaging.
+      Default off means no download progress feedback is shown and large attachment downloads may appear to be unresponsive.
+    enable_in_development: true
   mhv_secure_messaging_can_reply_field:
     actor_type: user
     description: Enables/disables Secure Messaging use of canReply field from SM API
