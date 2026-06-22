@@ -7,7 +7,11 @@ module Form1010cg
     include UploaderVirusScan
     include CarrierWave::MiniMagick
 
-    process(convert: 'jpg', if: :heic?)
+    # NOTE: We intentionally avoid CarrierWave's conditional convert macro
+    # (`process(convert: 'jpg', if: :heic?)`) due to intermittent behavior
+    # observed with conditional processing callbacks. We perform an explicit,
+    # deterministic conversion for HEIC/HEIF files in `normalize_heic_to_jpg`.
+    process :normalize_heic_to_jpg
 
     storage :aws
 
@@ -40,8 +44,17 @@ module Form1010cg
 
     private
 
+    def normalize_heic_to_jpg
+      return unless heic?(file)
+
+      converted_file = MiniMagick::Image.new(file.file)
+      converted_file.format('jpg')
+
+      file.content_type = 'image/jpeg' if file.respond_to?(:content_type=)
+    end
+
     def heic?(file)
-      file.content_type.to_s.downcase =~ %r{^image/(heic|heif)$}
+      %w[image/heic image/heif].include? file.content_type.downcase
     end
   end
 end

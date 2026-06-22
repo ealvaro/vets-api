@@ -174,8 +174,8 @@ describe Form1010cg::PoaUploader, :uploader_helpers do
     let(:heic_file) { Rack::Test::UploadedFile.new('spec/fixtures/files/steelers.heic', 'image/heic') }
     let(:heif_file) { Rack::Test::UploadedFile.new('spec/fixtures/files/steelers.heif', 'image/heif') }
 
-    it 'registers HEIC/HEIF conversion processing' do
-      expect(described_class.processors).to include([:convert, 'jpg', :heic?, :if])
+    it 'registers explicit HEIC/HEIF normalization processing' do
+      expect(described_class.processors).to include([:normalize_heic_to_jpg, [], nil, nil])
     end
 
     it 'marks HEIC files for conversion' do

@@ -114,7 +114,8 @@ RSpec.describe 'V0::Form1010CG::Attachments', type: :request do
 
       before do
         allow(SecureRandom).to receive(:uuid).and_return(form_attachment_guid)
-        expect_any_instance_of(Form1010cg::PoaUploader).to receive(:convert).with('jpg').and_return(true)
+        expect_any_instance_of(Form1010cg::PoaUploader)
+          .to receive(:normalize_heic_to_jpg).at_least(:once).and_return(true)
       end
 
       it 'accepts a file upload with lowercase extension' do
@@ -164,7 +165,8 @@ RSpec.describe 'V0::Form1010CG::Attachments', type: :request do
 
       before do
         allow(SecureRandom).to receive(:uuid).and_return(form_attachment_guid)
-        expect_any_instance_of(Form1010cg::PoaUploader).to receive(:convert).with('jpg').and_return(true)
+        expect_any_instance_of(Form1010cg::PoaUploader)
+          .to receive(:normalize_heic_to_jpg).at_least(:once).and_return(true)
       end
 
       it 'accepts a file upload' do
