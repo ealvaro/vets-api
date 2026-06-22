@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_06_15_183404) do
+ActiveRecord::Schema[7.2].define(version: 2026_06_19_120001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -27,6 +27,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_15_183404) do
   create_enum "bpds_submission_status", ["pending", "submitted", "failure"]
   create_enum "claims_evidence_api_submission_status", ["pending", "accepted", "failed"]
   create_enum "client_config_auth_method", ["pkce", "client_secret", "private_key_jwt"]
+  create_enum "digital_forms_api_submission_status", ["pending", "accepted", "failed"]
   create_enum "itf_remediation_status", ["unprocessed"]
   create_enum "lighthouse_submission_status", ["pending", "submitted", "failure", "vbms", "manually"]
   create_enum "saved_claim_group_status", ["pending", "accepted", "failure", "processing", "success"]
@@ -877,6 +878,39 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_15_183404) do
     t.index ["needs_kms_rotation"], name: "index_digital_dispute_submissions_on_needs_kms_rotation"
     t.index ["user_account_id"], name: "index_digital_dispute_submissions_on_user_account_id"
     t.index ["user_uuid"], name: "index_digital_dispute_submissions_on_user_uuid"
+  end
+
+  create_table "digital_forms_api_submission_attempts", force: :cascade do |t|
+    t.bigint "digital_forms_api_submission_id", null: false, comment: "parent submission"
+    t.enum "status", default: "pending", comment: "attempt status; cascaded into the parent latest_status by the base callback", enum_type: "digital_forms_api_submission_status"
+    t.jsonb "metadata_ciphertext", comment: "encrypted metadata sent with the submission"
+    t.jsonb "response_ciphertext", comment: "encrypted response from the digital forms api submission"
+    t.jsonb "error_message_ciphertext", comment: "encrypted error message from the digital forms api submission"
+    t.text "encrypted_kms_key", comment: "KMS key used to encrypt sensitive data"
+    t.boolean "needs_kms_rotation", default: false, null: false, comment: "flag for daily KmsKeyRotation::BatchInitiatorJob re-encryption"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["digital_forms_api_submission_id"], name: "idx_on_digital_forms_api_submission_id_fdfe22899a"
+    t.index ["needs_kms_rotation"], name: "index_dfa_submission_attempts_on_needs_kms_rotation"
+    t.index ["status"], name: "index_dfa_submission_attempts_on_status"
+  end
+
+  create_table "digital_forms_api_submissions", force: :cascade do |t|
+    t.string "form_id", null: false, comment: "form type of the submission, e.g. 21-686c"
+    t.enum "latest_status", default: "pending", comment: "latest status, cascaded from the most recent submission attempt", enum_type: "digital_forms_api_submission_status"
+    t.uuid "user_account_id", comment: "owning UserAccount (uuid PK); nullable for unlinked pilot rows"
+    t.integer "saved_claim_id", comment: "ID of the associated SavedClaim in vets-api, if any"
+    t.string "claim_guid", comment: "vets-api SavedClaim guid for cross-system correlation"
+    t.string "bip_submission_id", comment: "upstream BIP (Benefits Intake Platform) submission identifier"
+    t.jsonb "reference_data_ciphertext", comment: "encrypted data used to identify the resource"
+    t.text "encrypted_kms_key", comment: "KMS key used to encrypt the reference data"
+    t.boolean "needs_kms_rotation", default: false, null: false, comment: "flag for daily KmsKeyRotation::BatchInitiatorJob re-encryption"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["bip_submission_id"], name: "index_digital_forms_api_submissions_on_bip_submission_id", unique: true
+    t.index ["form_id"], name: "index_digital_forms_api_submissions_on_form_id"
+    t.index ["needs_kms_rotation"], name: "index_digital_forms_api_submissions_on_needs_kms_rotation"
+    t.index ["user_account_id"], name: "index_digital_forms_api_submissions_on_user_account_id"
   end
 
   create_table "directory_applications", force: :cascade do |t|
@@ -2356,6 +2390,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_15_183404) do
   add_foreign_key "deprecated_user_accounts", "user_accounts"
   add_foreign_key "deprecated_user_accounts", "user_verifications"
   add_foreign_key "digital_dispute_submissions", "user_accounts"
+  add_foreign_key "digital_forms_api_submission_attempts", "digital_forms_api_submissions"
+  add_foreign_key "digital_forms_api_submissions", "user_accounts"
   add_foreign_key "education_stem_automated_decisions", "user_accounts"
   add_foreign_key "event_bus_gateway_notifications", "user_accounts"
   add_foreign_key "event_bus_gateway_push_notifications", "user_accounts"
