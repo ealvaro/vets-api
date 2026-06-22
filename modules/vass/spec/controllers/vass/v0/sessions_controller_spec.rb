@@ -40,7 +40,7 @@ RSpec.describe Vass::V0::SessionsController, type: :controller do
 
   describe 'POST #request_otp' do
     before do
-      allow(session_model).to receive(:valid_veteran_contact_email_format?).and_return(true)
+      allow(session_model).to receive(:invitation_params_error).and_return(nil)
     end
 
     let(:params) do
@@ -152,21 +152,7 @@ RSpec.describe Vass::V0::SessionsController, type: :controller do
         post :request_otp, params: invalid_params, format: :json
       end
 
-      it 'returns bad request status when veteran_contact_email is blank' do
-        post :request_otp,
-             params: params.merge(veteran_contact_email: '   '),
-             format: :json
-
-        expect(response).to have_http_status(:bad_request)
-        json_response = JSON.parse(response.body)
-        expect(json_response['errors'].first['code']).to eq('missing_parameter')
-      end
-    end
-
-    context 'when veteran_contact_email is not a valid email format' do
-      it 'returns bad request with a specific detail and does not call VASS' do
-        expect(appointments_service).not_to receive(:get_veteran_info)
-
+      it 'returns bad request status when veteran_contact_email is invalid' do
         post :request_otp,
              params: params.merge(veteran_contact_email: 'not-an-email'),
              format: :json
@@ -177,6 +163,67 @@ RSpec.describe Vass::V0::SessionsController, type: :controller do
         expect(json_response['errors'].first['detail']).to eq(
           'veteranContactEmail must be a valid email address'
         )
+      end
+
+      it 'returns bad request when neither invitation param is provided' do
+        post :request_otp,
+             params: params.except(:veteran_contact_email),
+             format: :json
+
+        expect(response).to have_http_status(:bad_request)
+        json_response = JSON.parse(response.body)
+        expect(json_response['errors'].first['detail']).to eq(
+          'veteranContactEmail or data is required'
+        )
+      end
+    end
+
+    context 'when data invitation param is used' do
+      let(:data_params) do
+        params.except(:veteran_contact_email).merge(
+          data: Base64.strict_encode64('emailAddress1')
+        )
+      end
+
+      it 'returns bad request when the data param flag is disabled' do
+        allow(Flipper).to receive(:enabled?)
+          .with(Vass::V0::Session::INVITATION_EMAIL_LINK_DATA_PARAM_FLAG)
+          .and_return(false)
+
+        post :request_otp, params: data_params, format: :json
+
+        expect(response).to have_http_status(:bad_request)
+        json_response = JSON.parse(response.body)
+        expect(json_response['errors'].first['detail']).to eq('data parameter is not supported')
+      end
+
+      it 'accepts a valid data param when the flag is enabled' do
+        allow(Flipper).to receive(:enabled?)
+          .with(Vass::V0::Session::INVITATION_EMAIL_LINK_DATA_PARAM_FLAG)
+          .and_return(true)
+        allow(Vass::V0::Session).to receive(:build).and_return(session_model)
+        allow(session_model).to receive_messages(
+          invitation_params_error: nil,
+          valid_for_creation?: true,
+          uuid:,
+          last_name:,
+          date_of_birth:,
+          contact_value: 'link-recipient@example.com',
+          contact_method: 'email'
+        )
+        allow(session_model).to receive(:set_contact_from_veteran_data)
+        allow(session_model).to receive(:validate_identity_against_veteran_data)
+        allow(session_model).to receive(:generate_and_save_otp).and_return('123456')
+        allow(redis_client).to receive_messages(rate_limit_exceeded?: false, validation_rate_limit_exceeded?: false,
+                                                redis_otp_expiry: 15)
+        allow(redis_client).to receive(:increment_rate_limit)
+        allow(vanotify_service).to receive(:send_otp)
+        allow(appointments_service).to receive(:get_veteran_info).and_return(veteran_data)
+        allow(session_model).to receive(:save_veteran_metadata_for_session)
+
+        post :request_otp, params: data_params, format: :json
+
+        expect(response).to have_http_status(:ok)
       end
     end
 
@@ -496,15 +543,29 @@ RSpec.describe Vass::V0::SessionsController, type: :controller do
           uuid:,
           last_name:,
           dob: date_of_birth,
-          veteran_contact_email: 'invitation@example.com'
+          veteran_contact_email: 'link-recipient@example.com',
+          data: Base64.strict_encode64('emailAddress2')
         }
         controller.params = ActionController::Parameters.new(raw)
         permitted = controller.send(:request_otp_params)
-        expect(permitted).to be_permitted
         expect(permitted[:uuid]).to eq(uuid)
         expect(permitted[:last_name]).to eq(last_name)
         expect(permitted[:dob]).to eq(date_of_birth)
-        expect(permitted[:veteran_contact_email]).to eq('invitation@example.com')
+        expect(permitted[:veteran_contact_email]).to eq('link-recipient@example.com')
+        expect(permitted[:invitation_data]).to eq(Base64.strict_encode64('emailAddress2'))
+        expect(permitted).not_to have_key(:data)
+      end
+
+      it 'does not leave a blank data key in the returned hash' do
+        controller.params = ActionController::Parameters.new(
+          uuid:,
+          last_name:,
+          dob: date_of_birth,
+          data: '   '
+        )
+        permitted = controller.send(:request_otp_params)
+        expect(permitted).not_to have_key(:data)
+        expect(permitted).not_to have_key(:invitation_data)
       end
     end
 

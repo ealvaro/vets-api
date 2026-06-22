@@ -21,22 +21,18 @@ module Vass
       # Validates veteran identity and generates an OTP.
       #
       # Flow:
-      # 1. Accepts UUID (veteran_id from welcome email), last_name, dob, and veteran_contact_email
-      #    (email from the invitation/scheduling link)
+      # 1. Accepts UUID, last_name, dob, and either veteran_contact_email (legacy link) or data
+      #    (base64-encoded GetVeteran email field key; gated by Flipper)
       # 2. Calls VASS GetVeteran to fetch veteran info using UUID
       # 3. Validates last_name and dob match VASS response
-      # 4. Generates OTP and sends via VANotify to veteran_contact_email
+      # 4. Sends OTP to the resolved destination email via VANotify
       #
-      # @param uuid [String] Veteran UUID from welcome email
-      # @param last_name [String] Veteran's last name for validation
-      # @param dob [String] Veteran's date of birth for validation (YYYY-MM-DD)
-      # @param veteran_contact_email [String] Email address the scheduling link was sent to (required)
-      #
-      # @return [JSON] Success message and expiration time per spec
+      # @param veteran_contact_email [String] Legacy invitation email from the scheduling link
+      # @param data [String] Base64-encoded emailAddressN key from the scheduling link (when enabled)
       #
       def request_otp
-        session = Vass::V0::Session.build(data: request_otp_params.to_h)
-        return unless validate_veteran_contact_email_for_request_otp(session)
+        session = Vass::V0::Session.build(data: request_otp_params)
+        return unless validate_invitation_params_for_request_otp(session)
 
         check_all_rate_limits(session.uuid)
         process_otp_creation(session)
@@ -46,6 +42,8 @@ module Vass
         handle_request_otp_error(e, session, :rate_limit)
       rescue Vass::Errors::IdentityValidationError => e
         handle_request_otp_error(e, session, :identity_validation)
+      rescue Vass::Errors::ValidationError => e
+        handle_request_otp_error(e, session, :missing_contact)
       rescue *vass_api_exceptions => e
         handle_request_otp_error(e, session, :vass_api)
       rescue VANotify::Error => e
@@ -144,14 +142,16 @@ module Vass
       # Strong params for POST /vass/v0/request-otp: requires keys, permits assignable keys, and rejects
       # blank or whitespace-only values (params.require alone allows empty strings).
       #
-      # @return [ActionController::Parameters]
+      # @return [Hash{Symbol=>Object}] symbolized strong params for Session.build
       #
       def request_otp_params
-        required_keys = %i[uuid last_name dob veteran_contact_email]
-        required_keys.each { |key| params.require(key) }
-        permitted = params.permit(:uuid, :last_name, :dob, :veteran_contact_email)
-        reject_blank_required_strings!(permitted, required_keys)
-        permitted
+        %i[uuid last_name dob].each { |key| params.require(key) }
+        permitted = params.permit(:uuid, :last_name, :dob, :veteran_contact_email, :data)
+        reject_blank_required_strings!(permitted, %i[uuid last_name dob])
+        hash = permitted.to_h.symbolize_keys
+        data = hash.delete(:data)
+        hash[:invitation_data] = data if data.present?
+        hash
       end
 
       ##
@@ -186,15 +186,25 @@ module Vass
       # @param session [Vass::V0::Session]
       # @return [Boolean] false if response already rendered
       #
-      def validate_veteran_contact_email_for_request_otp(session)
-        return true if session.valid_veteran_contact_email_format?
+      def validate_invitation_params_for_request_otp(session)
+        detail = session.invitation_params_error(
+          data_param_enabled: invitation_email_link_data_param_enabled?
+        )
+        return true unless detail
 
         render_session_error_response(
           code: 'missing_parameter',
-          detail: 'veteranContactEmail must be a valid email address',
+          detail:,
           status: :bad_request
         )
         false
+      end
+
+      ##
+      # @return [Boolean] true when +data+ invitation param handling is enabled
+      #
+      def invitation_email_link_data_param_enabled?
+        Flipper.enabled?(Vass::V0::Session::INVITATION_EMAIL_LINK_DATA_PARAM_FLAG)
       end
 
       ##
@@ -386,6 +396,12 @@ module Vass
         when :identity_validation
           increment_rate_limit(session.uuid)
           handle_identity_validation_error(session, error)
+        when :missing_contact
+          render_session_error_response(
+            code: 'missing_contact_info',
+            detail: 'Unable to resolve contact email for this invitation.',
+            status: :bad_request
+          )
         when :vass_api then handle_vass_api_error(session, error)
         when :vanotify then handle_vanotify_error(session, error)
         end

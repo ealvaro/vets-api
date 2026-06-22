@@ -32,9 +32,23 @@ module Vass
       # OTP code length
       OTP_LENGTH = 6
 
+      # Base64-decoded UDO GetVeteran field names allowed in invitation +data+ param
+      VALID_INVITATION_EMAIL_FIELD_KEYS = %w[emailAddress1 emailAddress2 emailAddress3].freeze
+
+      INVITATION_EMAIL_LINK_DATA_PARAM_FLAG = :vass_invitation_email_link_data_param_enabled
+
+      # Error detail strings for invalid request-otp invitation params (API-facing copy).
+      INVITATION_PARAM_ERROR_DETAILS = {
+        both: 'Provide veteranContactEmail or data, not both',
+        missing: 'veteranContactEmail or data is required',
+        data_disabled: 'data parameter is not supported',
+        invalid_data: 'data must be a valid base64-encoded invitation email field',
+        invalid_email: 'veteranContactEmail must be a valid email address'
+      }.freeze
+
       attr_accessor :contact_method, :contact_value, :edipi, :veteran_id
       attr_reader :uuid, :last_name, :date_of_birth, :otp_code, :redis_client,
-                  :veteran_contact_email
+                  :veteran_contact_email, :invitation_data
 
       ##
       # Builds a Session instance.
@@ -44,7 +58,8 @@ module Vass
       # @option opts [String] :last_name Veteran's last name for validation
       # @option opts [String] :dob Veteran's date of birth for validation (YYYY-MM-DD)
       # @option opts [String] :otp User-provided OTP for validation
-      # @option opts [String] :veteran_contact_email Email from the invitation/scheduling link (required for OTP flow)
+      # @option opts [String] :veteran_contact_email Email from legacy invitation link (required for legacy OTP flow)
+      # @option opts [String] :invitation_data Base64-encoded GetVeteran email field key from +data+ URL param
       # @option opts [Vass::RedisClient] :redis_client Optional Redis client
       #
       # @return [Vass::V0::Session] An instance of this class
@@ -76,6 +91,7 @@ module Vass
         @otp_code = opts[:otp_code] || opts[:otp] || data[:otp_code] || data[:otp]
         link_email = opts[:veteran_contact_email] || data[:veteran_contact_email]
         @veteran_contact_email = link_email.to_s.strip.presence
+        @invitation_data = (opts[:invitation_data] || data[:invitation_data]).to_s.strip.presence
         @edipi = opts[:edipi] || data[:edipi]
         @veteran_id = opts[:veteran_id] || data[:veteran_id]
         @redis_client = opts[:redis_client] || Vass::RedisClient.build
@@ -91,12 +107,57 @@ module Vass
       end
 
       ##
-      # Validates +veteran_contact_email+ format for request-otp (invitation link email).
+      # Validates +veteran_contact_email+ format for legacy request-otp invitations.
       #
       # @return [Boolean] true if present and matches EMAIL_REGEX
       #
       def valid_veteran_contact_email_format?
         veteran_contact_email.present? && EMAIL_REGEX.match?(veteran_contact_email)
+      end
+
+      ##
+      # Validates +invitation_data+ decodes to an allowed GetVeteran email field key.
+      #
+      # @return [Boolean] true if base64 decodes to emailAddress1–3
+      #
+      def valid_invitation_data_param?
+        decoded_invitation_email_field_key.present?
+      end
+
+      ##
+      # @return [Boolean] true when the legacy invitation email param is present
+      #
+      def legacy_invitation_email?
+        veteran_contact_email.present?
+      end
+
+      ##
+      # @return [Boolean] true when the base64 +data+ invitation param is present
+      #
+      def data_param_invitation?
+        invitation_data.present?
+      end
+
+      ##
+      # Validates invitation params for request-otp before VASS/VANotify work.
+      #
+      # @param data_param_enabled [Boolean] whether +data+ param handling is enabled
+      # @return [String, nil] API error detail when invalid, nil when valid
+      #
+      def invitation_params_error(data_param_enabled:)
+        return INVITATION_PARAM_ERROR_DETAILS[:both] if legacy_invitation_email? && data_param_invitation?
+        return INVITATION_PARAM_ERROR_DETAILS[:missing] unless legacy_invitation_email? || data_param_invitation?
+
+        if data_param_invitation?
+          return INVITATION_PARAM_ERROR_DETAILS[:data_disabled] unless data_param_enabled
+          return INVITATION_PARAM_ERROR_DETAILS[:invalid_data] unless valid_invitation_data_param?
+
+          return nil
+        end
+
+        return nil if valid_veteran_contact_email_format?
+
+        INVITATION_PARAM_ERROR_DETAILS[:invalid_email]
       end
 
       ##
@@ -242,21 +303,47 @@ module Vass
       end
 
       ##
-      # Sets EDIPI from VASS response and applies invitation-link email for OTP delivery and Redis metadata.
+      # Sets EDIPI from VASS response and resolves OTP delivery email from the invitation.
       #
-      # OTP is sent to +veteran_contact_email+ (from the scheduling link), not to email fields from VASS.
+      # Legacy invitations use +veteran_contact_email+ from the link. New invitations use
+      # base64 +data+ to look up +emailAddressN+ on GetVeteran (after snake_case conversion).
       #
-      # @param veteran_data [Hash] Veteran data from VASS API (+data.edipi+, identity fields, etc.)
+      # @param veteran_data [Hash] Veteran data from VASS API
+      # @raise [Vass::Errors::ValidationError] when the invitation does not resolve to a valid email
       #
       def set_contact_from_veteran_data(veteran_data)
         return unless veteran_data
 
         self.edipi = veteran_data.dig('data', 'edipi')
         self.veteran_id = uuid
+        resolved_email = if legacy_invitation_email?
+                           veteran_contact_email
+                         else
+                           resolve_invitation_email_from_veteran_data(veteran_data)
+                         end
+        raise Vass::Errors::ValidationError, 'Missing contact email for invitation' unless resolved_email
+
         self.contact_method = 'email'
-        self.contact_value = veteran_contact_email
+        self.contact_value = resolved_email
 
         save_veteran_metadata_for_session if edipi.present?
+      end
+
+      ##
+      # Resolves OTP destination from GetVeteran using decoded +invitation_data+ field key.
+      #
+      # @param veteran_data [Hash] Veteran data from VASS API
+      # @return [String, nil] Email address or nil if missing or invalid
+      #
+      def resolve_invitation_email_from_veteran_data(veteran_data)
+        field_key = decoded_invitation_email_field_key
+        return nil unless field_key
+
+        raw = veteran_data.dig('data', field_key.underscore)
+        email = raw.to_s.strip.presence
+        return email if email && EMAIL_REGEX.match?(email)
+
+        nil
       end
 
       ##
@@ -378,6 +465,22 @@ module Vass
       end
 
       private
+
+      ##
+      # Base64-decodes +invitation_data+ and returns the field key when allowed.
+      #
+      # @return [String, nil] emailAddress1–3 or nil
+      #
+      def decoded_invitation_email_field_key
+        return nil if invitation_data.blank?
+
+        decoded = Base64.strict_decode64(invitation_data).strip
+        return decoded if VALID_INVITATION_EMAIL_FIELD_KEYS.include?(decoded)
+
+        nil
+      rescue ArgumentError
+        nil
+      end
 
       ##
       # Safely compares OTP codes using constant-time comparison.

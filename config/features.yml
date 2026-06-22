@@ -2860,6 +2860,12 @@ features:
       whose name, facility name, or specialty name matches the category-
       appropriate pattern list are returned. Disable to fall back to NUCC-only
       server-side filtering.
+  vass_invitation_email_link_data_param_enabled:
+    actor_type: user
+    description: >-
+      Enables VASS request-otp to accept the base64 data invitation URL parameter
+      (GetVeteran email field key) instead of legacy veteranContactEmail only.
+    enable_in_development: true
   vba_documents_enable_kafka_tracking:
     actor_type: user
     description: Enables Kafka event tracking for 21P-527EZ uploads

@@ -33,6 +33,7 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
 
   describe 'POST /vass/v0/request-otp' do
     let(:veteran_contact_email) { 'link-recipient@example.com' }
+    let(:resolved_contact_email) { veteran_contact_email }
 
     let(:params) do
       {
@@ -126,6 +127,52 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
               expect(metadata).to be_present
               expect(metadata[:edipi]).to eq(edipi)
               expect(metadata[:veteran_id]).to eq(uuid)
+              expect(metadata[:email]).to eq(resolved_contact_email)
+            end
+          end
+        end
+      end
+    end
+
+    context 'with a valid data invitation param and successful VASS API response' do
+      let(:data_params) do
+        params.except(:veteran_contact_email).merge(data: Base64.strict_encode64('emailAddress1'))
+      end
+
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(Vass::V0::Session::INVITATION_EMAIL_LINK_DATA_PARAM_FLAG)
+          .and_return(true)
+      end
+
+      it 'resolves the email from GetVeteran and sends OTP' do
+        VCR.use_cassette('vass/sessions/oauth_token', match_requests_on: %i[method uri]) do
+          VCR.use_cassette('vass/sessions/get_veteran_success', match_requests_on: %i[method uri]) do
+            VCR.use_cassette('vass/sessions/vanotify_send_otp', match_requests_on: %i[method uri]) do
+              post '/vass/v0/request-otp', params: data_params, as: :json
+
+              expect(response).to have_http_status(:ok)
+              json_response = JSON.parse(response.body)
+              expect(json_response['data']['message']).to eq('OTP sent to registered email address')
+              expect(json_response['data']['expiresIn']).to be_a(Integer)
+              expect(json_response['data']['email']).to eq('l*************@example.com')
+            end
+          end
+        end
+      end
+
+      it 'stores veteran metadata with the resolved email in Redis' do
+        VCR.use_cassette('vass/sessions/oauth_token', match_requests_on: %i[method uri]) do
+          VCR.use_cassette('vass/sessions/get_veteran_success', match_requests_on: %i[method uri]) do
+            VCR.use_cassette('vass/sessions/vanotify_send_otp', match_requests_on: %i[method uri]) do
+              post '/vass/v0/request-otp', params: data_params, as: :json
+
+              expect(response).to have_http_status(:ok)
+              redis_client = Vass::RedisClient.build
+              metadata = redis_client.veteran_metadata(uuid:)
+              expect(metadata).to be_present
+              expect(metadata[:edipi]).to eq(edipi)
+              expect(metadata[:veteran_id]).to eq(uuid)
               expect(metadata[:email]).to eq(veteran_contact_email)
             end
           end
@@ -133,7 +180,7 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
       end
     end
 
-    context 'when veteran_contact_email is missing' do
+    context 'when invitation email param is missing' do
       it 'returns bad request status' do
         post '/vass/v0/request-otp',
              params: {
@@ -146,18 +193,24 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
         expect(response).to have_http_status(:bad_request)
         json_response = JSON.parse(response.body)
         expect(json_response['errors'].first['code']).to eq('missing_parameter')
+        expect(json_response['errors'].first['detail']).to eq(
+          'veteranContactEmail or data is required'
+        )
       end
     end
 
-    context 'when veteran_contact_email is blank' do
+    context 'when veteran_contact_email is invalid' do
       it 'returns bad request status' do
         post '/vass/v0/request-otp',
-             params: params.merge(veteran_contact_email: '   '),
+             params: params.merge(veteran_contact_email: 'not-an-email'),
              as: :json
 
         expect(response).to have_http_status(:bad_request)
         json_response = JSON.parse(response.body)
         expect(json_response['errors'].first['code']).to eq('missing_parameter')
+        expect(json_response['errors'].first['detail']).to eq(
+          'veteranContactEmail must be a valid email address'
+        )
       end
     end
 
@@ -173,24 +226,51 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
       end
     end
 
-    context 'when veteran_contact_email is not a valid email format' do
+    context 'when data invitation param is invalid' do
       let(:appointments_service_spy) { instance_spy(Vass::AppointmentsService) }
 
       before do
         allow(Vass::AppointmentsService).to receive(:build).and_return(appointments_service_spy)
+        allow(Flipper).to receive(:enabled?)
+          .with(Vass::V0::Session::INVITATION_EMAIL_LINK_DATA_PARAM_FLAG)
+          .and_return(true)
       end
 
       it 'returns bad request without calling upstream VASS' do
         post '/vass/v0/request-otp',
-             params: params.merge(veteran_contact_email: 'not-an-email'),
+             params: params.except(:veteran_contact_email).merge(data: Base64.strict_encode64('emailAddress4')),
              as: :json
 
         expect(response).to have_http_status(:bad_request)
         json_response = JSON.parse(response.body)
         expect(json_response['errors'].first['code']).to eq('missing_parameter')
         expect(json_response['errors'].first['detail']).to eq(
-          'veteranContactEmail must be a valid email address'
+          'data must be a valid base64-encoded invitation email field'
         )
+        expect(appointments_service_spy).not_to have_received(:get_veteran_info)
+      end
+    end
+
+    context 'when data invitation param is used without the feature flag' do
+      let(:appointments_service_spy) { instance_spy(Vass::AppointmentsService) }
+
+      before do
+        allow(Vass::AppointmentsService).to receive(:build).and_return(appointments_service_spy)
+        allow(Flipper).to receive(:enabled?)
+          .with(Vass::V0::Session::INVITATION_EMAIL_LINK_DATA_PARAM_FLAG)
+          .and_return(false)
+      end
+
+      it 'returns bad request without calling upstream VASS' do
+        post '/vass/v0/request-otp',
+             params: params.except(:veteran_contact_email).merge(
+               data: Base64.strict_encode64('emailAddress1')
+             ),
+             as: :json
+
+        expect(response).to have_http_status(:bad_request)
+        json_response = JSON.parse(response.body)
+        expect(json_response['errors'].first['detail']).to eq('data parameter is not supported')
         expect(appointments_service_spy).not_to have_received(:get_veteran_info)
       end
     end
@@ -217,17 +297,25 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
       end
     end
 
-    context 'when VASS has no notification email on file' do
-      it 'still sends OTP to the invitation email from the request' do
+    context 'when VASS has no email for the invitation data param' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(Vass::V0::Session::INVITATION_EMAIL_LINK_DATA_PARAM_FLAG)
+          .and_return(true)
+      end
+
+      it 'returns bad request with missing_contact_info' do
         VCR.use_cassette('vass/sessions/oauth_token', match_requests_on: %i[method uri]) do
           VCR.use_cassette('vass/sessions/get_veteran_missing_contact', match_requests_on: %i[method uri]) do
-            VCR.use_cassette('vass/sessions/vanotify_send_otp', match_requests_on: %i[method uri]) do
-              post '/vass/v0/request-otp', params:, as: :json
+            post '/vass/v0/request-otp',
+                 params: params.except(:veteran_contact_email).merge(
+                   data: Base64.strict_encode64('emailAddress1')
+                 ),
+                 as: :json
 
-              expect(response).to have_http_status(:ok)
-              json_response = JSON.parse(response.body)
-              expect(json_response['data']['email']).to eq('l*************@example.com')
-            end
+            expect(response).to have_http_status(:bad_request)
+            json_response = JSON.parse(response.body)
+            expect(json_response['errors'].first['code']).to eq('missing_contact_info')
           end
         end
       end

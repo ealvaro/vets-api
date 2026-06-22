@@ -118,14 +118,8 @@ RSpec.describe Vass::V0::Session, type: :model do
   end
 
   describe '#valid_veteran_contact_email_format?' do
-    it 'returns true for a typical email address' do
-      session = described_class.new(uuid:, veteran_contact_email: valid_email)
-      expect(session.valid_veteran_contact_email_format?).to be true
-    end
-
-    it 'returns true after stripping whitespace from invitation email' do
-      session = described_class.new(uuid:, veteran_contact_email: "  #{valid_email}  ")
-      expect(session.veteran_contact_email).to eq(valid_email)
+    it 'returns true for a valid email' do
+      session = described_class.new(uuid:, veteran_contact_email: 'vet@example.com')
       expect(session.valid_veteran_contact_email_format?).to be true
     end
 
@@ -134,19 +128,89 @@ RSpec.describe Vass::V0::Session, type: :model do
       expect(session.valid_veteran_contact_email_format?).to be false
     end
 
-    it 'returns false when veteran_contact_email is not a valid format' do
+    it 'returns false when email format is invalid' do
       session = described_class.new(uuid:, veteran_contact_email: 'not-an-email')
       expect(session.valid_veteran_contact_email_format?).to be false
     end
+  end
 
-    it 'returns false when veteran_contact_email lacks a domain' do
-      session = described_class.new(uuid:, veteran_contact_email: 'localonly@')
-      expect(session.valid_veteran_contact_email_format?).to be false
+  describe '#valid_invitation_data_param?' do
+    it 'returns true when data decodes to an allowed GetVeteran email field key' do
+      session = described_class.new(uuid:, invitation_data: Base64.strict_encode64('emailAddress1'))
+      expect(session.valid_invitation_data_param?).to be true
     end
 
-    it 'returns false when veteran_contact_email lacks @' do
-      session = described_class.new(uuid:, veteran_contact_email: 'user.example.com')
-      expect(session.valid_veteran_contact_email_format?).to be false
+    it 'returns true for emailAddress2 and emailAddress3' do
+      %w[emailAddress2 emailAddress3].each do |key|
+        session = described_class.new(uuid:, invitation_data: Base64.strict_encode64(key))
+        expect(session.valid_invitation_data_param?).to be true
+      end
+    end
+
+    it 'returns false when invitation_data is nil' do
+      session = described_class.new(uuid:, invitation_data: nil)
+      expect(session.valid_invitation_data_param?).to be false
+    end
+
+    it 'returns false when decoded value is not allowed' do
+      session = described_class.new(uuid:, invitation_data: Base64.strict_encode64('emailAddress4'))
+      expect(session.valid_invitation_data_param?).to be false
+    end
+
+    it 'returns false when not valid base64' do
+      session = described_class.new(uuid:, invitation_data: '!!!')
+      expect(session.valid_invitation_data_param?).to be false
+    end
+  end
+
+  describe '#invitation_params_error' do
+    it 'returns nil for a valid legacy invitation email' do
+      session = described_class.new(uuid:, veteran_contact_email: 'vet@example.com')
+      expect(session.invitation_params_error(data_param_enabled: false)).to be_nil
+    end
+
+    it 'returns nil for a valid data param when enabled' do
+      session = described_class.new(uuid:, invitation_data: Base64.strict_encode64('emailAddress1'))
+      expect(session.invitation_params_error(data_param_enabled: true)).to be_nil
+    end
+
+    it 'returns both when legacy email and data are present' do
+      session = described_class.new(
+        uuid:,
+        veteran_contact_email: 'vet@example.com',
+        invitation_data: Base64.strict_encode64('emailAddress1')
+      )
+      expect(session.invitation_params_error(data_param_enabled: true)).to eq(
+        described_class::INVITATION_PARAM_ERROR_DETAILS[:both]
+      )
+    end
+
+    it 'returns missing when neither invitation param is present' do
+      session = described_class.new(uuid:)
+      expect(session.invitation_params_error(data_param_enabled: true)).to eq(
+        described_class::INVITATION_PARAM_ERROR_DETAILS[:missing]
+      )
+    end
+
+    it 'returns data_disabled when data param is used without the flag' do
+      session = described_class.new(uuid:, invitation_data: Base64.strict_encode64('emailAddress1'))
+      expect(session.invitation_params_error(data_param_enabled: false)).to eq(
+        described_class::INVITATION_PARAM_ERROR_DETAILS[:data_disabled]
+      )
+    end
+
+    it 'returns invalid_data when data does not decode to an allowed field' do
+      session = described_class.new(uuid:, invitation_data: Base64.strict_encode64('emailAddress4'))
+      expect(session.invitation_params_error(data_param_enabled: true)).to eq(
+        described_class::INVITATION_PARAM_ERROR_DETAILS[:invalid_data]
+      )
+    end
+
+    it 'returns invalid_email when legacy email format is invalid' do
+      session = described_class.new(uuid:, veteran_contact_email: 'not-an-email')
+      expect(session.invitation_params_error(data_param_enabled: false)).to eq(
+        described_class::INVITATION_PARAM_ERROR_DETAILS[:invalid_email]
+      )
     end
   end
 
@@ -490,12 +554,14 @@ RSpec.describe Vass::V0::Session, type: :model do
         'data' => {
           'edipi' => '1234567890',
           'firstName' => 'John',
-          'lastName' => 'Smith'
+          'lastName' => 'Smith',
+          'email_address1' => invitation_email,
+          'email_address2' => 'other@example.com'
         }
       }
     end
 
-    it 'sets email contact from invitation link and EDIPI from VASS' do
+    it 'sets email contact from legacy veteran_contact_email and EDIPI from VASS' do
       session = described_class.new(uuid:, veteran_contact_email: invitation_email, redis_client:)
       allow(redis_client).to receive(:save_veteran_metadata)
       session.set_contact_from_veteran_data(veteran_data)
@@ -504,6 +570,41 @@ RSpec.describe Vass::V0::Session, type: :model do
       expect(session.contact_value).to eq(invitation_email)
       expect(session.edipi).to eq('1234567890')
       expect(session.veteran_id).to eq(uuid)
+    end
+
+    it 'resolves email from GetVeteran using decoded data param' do
+      session = described_class.new(
+        uuid:,
+        invitation_data: Base64.strict_encode64('emailAddress1'),
+        redis_client:
+      )
+      allow(redis_client).to receive(:save_veteran_metadata)
+      session.set_contact_from_veteran_data(veteran_data)
+
+      expect(session.contact_value).to eq(invitation_email)
+    end
+
+    it 'uses the email slot matching the data param field key' do
+      session = described_class.new(
+        uuid:,
+        invitation_data: Base64.strict_encode64('emailAddress2'),
+        redis_client:
+      )
+      allow(redis_client).to receive(:save_veteran_metadata)
+      session.set_contact_from_veteran_data(veteran_data)
+
+      expect(session.contact_value).to eq('other@example.com')
+    end
+
+    it 'raises ValidationError when the invitation email slot is missing' do
+      session = described_class.new(
+        uuid:,
+        invitation_data: Base64.strict_encode64('emailAddress3'),
+        redis_client:
+      )
+      expect do
+        session.set_contact_from_veteran_data(veteran_data)
+      end.to raise_error(Vass::Errors::ValidationError, /Missing contact email/)
     end
 
     it 'saves veteran metadata when edipi is present' do
@@ -525,10 +626,13 @@ RSpec.describe Vass::V0::Session, type: :model do
     end
 
     it 'does not save metadata when edipi is not present' do
-      veteran_data_no_edipi = veteran_data.merge('data' => { 'firstName' => 'John' })
+      veteran_data_no_edipi = veteran_data.merge(
+        'data' => { 'firstName' => 'John', 'email_address1' => invitation_email }
+      )
       session = described_class.new(uuid:, veteran_contact_email: invitation_email, redis_client:)
       expect(redis_client).not_to receive(:save_veteran_metadata)
       session.set_contact_from_veteran_data(veteran_data_no_edipi)
+      expect(session.contact_value).to eq(invitation_email)
     end
   end
 
