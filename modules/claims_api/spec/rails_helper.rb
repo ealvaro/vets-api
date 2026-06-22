@@ -6,6 +6,7 @@ require_relative 'support/auth_helper'
 require_relative 'support/mock_bgs_file_number_check'
 require_relative 'support/stub_claims_api_auth_token'
 require_relative 'support/bgs_client_spec_helpers'
+require_relative 'support/shared_examples/dependent_claimant_headers'
 require 'bd/bd'
 require 'evss_service/base'
 

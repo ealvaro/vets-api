@@ -200,6 +200,10 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::2122a', type: :request do
                   .to receive(:validate_dependent_by_participant_id!).and_return(nil)
               end
 
+              it_behaves_like 'dependent claimant headers' do
+                let(:appoint_path) { appoint_individual_path }
+              end
+
               context 'when the lighthouse_claims_api_poa_dependent_claimants feature is enabled' do
                 before do
                   allow_any_instance_of(ClaimsApi::V2::Veterans::PowerOfAttorney::BaseController)
@@ -221,67 +225,6 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::2122a', type: :request do
                           post appoint_individual_path, params: request_body, headers: auth_header
                         end.to change(ClaimsApi::V2::PoaFormBuilderJob.jobs, :size).by(1)
                       end
-                    end
-                  end
-
-                  it 'adds dependent values to the auth_headers when flipper enabled' do
-                    VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
-                      mock_ccg(scopes) do |auth_header|
-                        json = JSON.parse(request_body)
-                        json['data']['attributes']['claimant'] = claimant_data
-                        request_body = json.to_json
-
-                        post appoint_individual_path, params: request_body, headers: auth_header
-
-                        poa_id = JSON.parse(response.body)['data']['id']
-                        poa = ClaimsApi::PowerOfAttorney.find(poa_id)
-                        auth_headers = poa.auth_headers
-                        expect(auth_headers).to have_key('dependent')
-                      end
-                    end
-                  end
-
-                  it "does not add dependent values to the auth_headers if relationship is 'Self'" do
-                    VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
-                      mock_ccg(scopes) do |auth_header|
-                        json = JSON.parse(request_body)
-                        json['data']['attributes']['claimant'] = claimant_data
-                        json['data']['attributes']['claimant']['relationship'] =
-                          'Self'
-                        request_body = json.to_json
-
-                        post appoint_individual_path, params: request_body,
-                                                      headers: auth_header
-                        poa_id = JSON.parse(response.body)['data']['id']
-                        poa = ClaimsApi::PowerOfAttorney.find(poa_id)
-                        auth_headers = poa.auth_headers
-                        expect(auth_headers).not_to have_key('dependent')
-                      end
-                    end
-                  end
-                end
-              end
-
-              context 'when the lighthouse_claims_api_poa_dependent_claimants feature is disabled' do
-                before do
-                  allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_poa_dependent_claimants)
-                                                      .and_return false
-                  mock_file_number_check
-                end
-
-                it 'does not add the dependent object to the auth_headers' do
-                  VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
-                    mock_ccg(scopes) do |auth_header|
-                      json = JSON.parse(request_body)
-                      json['data']['attributes']['claimant'] = claimant_data
-                      request_body = json.to_json
-
-                      post appoint_individual_path, params: request_body, headers: auth_header
-
-                      poa_id = JSON.parse(response.body)['data']['id']
-                      poa = ClaimsApi::PowerOfAttorney.find(poa_id)
-                      auth_headers = poa.auth_headers
-                      expect(auth_headers).not_to have_key('dependent')
                     end
                   end
                 end
