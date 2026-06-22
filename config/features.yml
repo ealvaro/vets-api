@@ -307,6 +307,9 @@ features:
     description: Percentage rollout flag for push notifications in LetterReadyNotificationJob
   event_bus_gateway_letter_ready_sms_notifications:
     description: Percentage rollout flag for SMS notifications in LetterReadyNotificationJob
+  event_bus_gateway_log_most_recent_claim_letter:
+    actor_type: user
+    description: When enabled, LetterReadyNotificationJob logs the most recent claim letter available for the user when a decision letter event arrives
   event_bus_gateway_pension_email_template:
     description: Toggle to enable pension email template in eventbus-gateway
   event_bus_gateway_push_notifications:

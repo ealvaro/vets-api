@@ -30,6 +30,9 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
       .and_return(true)
     allow(Flipper).to receive(:enabled?).with(:event_bus_gateway_sms_blackout).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:event_bus_gateway_sms_dry_run).and_return(false)
+    allow(Flipper).to receive(:enabled?)
+      .with(:event_bus_gateway_log_most_recent_claim_letter, instance_of(Flipper::Actor))
+      .and_return(false)
   end
 
   let(:participant_id) { '1234' }
@@ -742,6 +745,89 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
 
           subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
         end
+      end
+    end
+  end
+
+  describe '#perform most recent claim letter logging' do
+    let(:letters) do
+      [
+        { doc_type: '184', document_id: 'doc-new', type_description: 'Decision Letter',
+          received_at: Date.new(2026, 6, 10), upload_date: Date.new(2026, 6, 11) },
+        { doc_type: '184', document_id: 'doc-old', type_description: 'Decision Letter',
+          received_at: Date.new(2024, 1, 1), upload_date: Date.new(2024, 1, 2) },
+        { doc_type: '702', document_id: 'doc-other', type_description: 'Other',
+          received_at: Date.new(2026, 6, 12), upload_date: Date.new(2026, 6, 12) }
+      ]
+    end
+    let(:provider) { instance_double(LighthouseClaimLettersProvider, get_letters: letters) }
+
+    before do
+      allow(Flipper).to receive(:enabled?)
+        .with(:event_bus_gateway_log_most_recent_claim_letter, instance_of(Flipper::Actor))
+        .and_return(true)
+      allow_any_instance_of(described_class).to receive(:claim_letters_service).and_return(provider)
+    end
+
+    it 'logs the most recent claim letter with received date and useful metadata' do
+      expect(Rails.logger).to receive(:info).with(
+        'LetterReadyNotificationJob most recent claim letter',
+        hash_including(
+          message_type: 'ebg.letter_ready.most_recent_claim_letter',
+          letter_count: 3,
+          decision_letter_count: 2,
+          most_recent_received_at: '2026-06-12',
+          most_recent_doc_type: '702',
+          most_recent_document_id: 'doc-other',
+          most_recent_decision_received_at: '2026-06-10',
+          most_recent_decision_document_id: 'doc-new'
+        )
+      )
+
+      subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+    end
+
+    it 'builds the claim letters user with the UserAccount UUID' do
+      captured_user = nil
+      allow_any_instance_of(described_class).to receive(:claim_letters_service) do |_job, user|
+        captured_user = user
+        provider
+      end
+
+      subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+
+      expect(captured_user.uuid).to eq(user_account.id)
+    end
+
+    context 'when the feature flag is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:event_bus_gateway_log_most_recent_claim_letter, instance_of(Flipper::Actor))
+          .and_return(false)
+      end
+
+      it 'does not fetch or log claim letters' do
+        expect(provider).not_to receive(:get_letters)
+        expect(Rails.logger).not_to receive(:info)
+          .with('LetterReadyNotificationJob most recent claim letter', anything)
+
+        subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+      end
+    end
+
+    context 'when fetching claim letters raises' do
+      before { allow(provider).to receive(:get_letters).and_raise(StandardError.new('boom')) }
+
+      it 'logs a warning, increments a failure metric, and still enqueues notifications' do
+        expect(Rails.logger).to receive(:warn).with(
+          'LetterReadyNotificationJob failed to log most recent claim letter',
+          hash_including(error_class: 'StandardError', error_message: 'boom')
+        )
+        expect(StatsD).to receive(:increment)
+          .with('event_bus_gateway.letter_ready_notification.most_recent_claim_letter_failure', any_args)
+        expect(EventBusGateway::LetterReadyEmailJob).to receive(:perform_async)
+
+        subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
       end
     end
   end

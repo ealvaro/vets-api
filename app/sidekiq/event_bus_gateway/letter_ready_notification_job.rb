@@ -2,6 +2,7 @@
 
 require 'sidekiq'
 require 'sidekiq/attr_package'
+require 'claim_letters/providers/claim_letters/lighthouse_claim_letters_provider'
 require_relative 'constants'
 require_relative 'errors'
 require_relative 'letter_ready_job_concern'
@@ -15,6 +16,9 @@ module EventBusGateway
     include LetterReadyJobConcern
 
     STATSD_METRIC_PREFIX = 'event_bus_gateway.letter_ready_notification'
+
+    # Lighthouse/VBMS doc type id for a benefits decision letter (a.k.a. "184").
+    DECISION_LETTER_DOC_TYPE = '184'
 
     sidekiq_options retry: Constants::SIDEKIQ_RETRY_COUNT_FIRST_NOTIFICATION
 
@@ -34,11 +38,12 @@ module EventBusGateway
       # Fetch participant data upfront
       icn = get_icn(participant_id)
 
+      # Snapshot the most recent claim letter visible for this user as the
+      # decision-letter event arrives (logging only; never affects the send).
+      log_most_recent_claim_letter(icn)
+
       # Determine which notification types are requested based on template IDs
-      requested_types = []
-      requested_types << 'email' if email_template_id.present?
-      requested_types << 'sms' if sms_template_id.present?
-      requested_types << 'push' if push_template_id.present?
+      requested_types = requested_notification_types(email_template_id, sms_template_id, push_template_id)
 
       errors = []
       errors << handle_email_notification(participant_id, email_template_id, icn)
@@ -61,6 +66,98 @@ module EventBusGateway
     end
 
     private
+
+    def requested_notification_types(email_template_id, sms_template_id, push_template_id)
+      types = []
+      types << 'email' if email_template_id.present?
+      types << 'sms' if sms_template_id.present?
+      types << 'push' if push_template_id.present?
+      types
+    end
+
+    # Logs the most recent claim letter available for the user when the decision
+    # letter event arrives. Gated behind a feature flag and fully guarded: any
+    # failure here is logged but never interrupts the notification flow.
+    def log_most_recent_claim_letter(icn)
+      return if icn.blank?
+      return unless Flipper.enabled?(:event_bus_gateway_log_most_recent_claim_letter, Flipper::Actor.new(icn))
+
+      user = build_user_from_icn(icn, uuid: user_account(icn)&.id)
+      letters = claim_letters_service(user).get_letters || []
+
+      ::Rails.logger.info('LetterReadyNotificationJob most recent claim letter',
+                          most_recent_claim_letter_payload(letters))
+    rescue => e
+      handle_claim_letter_log_error(e)
+    end
+
+    def most_recent_claim_letter_payload(letters)
+      decision_letters = letters.select { |d| d[:doc_type] == DECISION_LETTER_DOC_TYPE }
+      most_recent = most_recent_letter(letters)
+      most_recent_decision = most_recent_letter(decision_letters)
+
+      {
+        message_type: 'ebg.letter_ready.most_recent_claim_letter',
+        letter_count: letters.size,
+        decision_letter_count: decision_letters.size,
+        most_recent_received_at: format_letter_date(most_recent&.dig(:received_at)),
+        most_recent_upload_date: format_letter_date(most_recent&.dig(:upload_date)),
+        most_recent_doc_type: most_recent&.dig(:doc_type),
+        most_recent_type_description: most_recent&.dig(:type_description),
+        most_recent_document_id: most_recent&.dig(:document_id),
+        most_recent_decision_received_at: format_letter_date(most_recent_decision&.dig(:received_at)),
+        most_recent_decision_document_id: most_recent_decision&.dig(:document_id)
+      }
+    end
+
+    def handle_claim_letter_log_error(error)
+      ::Rails.logger.warn(
+        'LetterReadyNotificationJob failed to log most recent claim letter',
+        { error_class: error.class.name, error_message: Logging::Helper::DataScrubber.scrub(error.message) }
+      )
+      tags = Constants::DD_TAGS + ["error:#{error.class.name}"]
+      StatsD.increment("#{STATSD_METRIC_PREFIX}.most_recent_claim_letter_failure", tags:)
+      nil
+    end
+
+    # Returns the letter with the newest received_at. Computes the max rather than
+    # trusting provider sort order; falls back to the first letter if none are dated.
+    def most_recent_letter(letters)
+      return nil if letters.blank?
+
+      dated = letters.select { |d| d[:received_at].present? }
+      return letters.first if dated.empty?
+
+      dated.max_by { |d| d[:received_at].to_datetime }
+    end
+
+    def format_letter_date(value)
+      return nil if value.blank?
+
+      value.respond_to?(:iso8601) ? value.iso8601 : value.to_s
+    end
+
+    # Builds a minimal LOA3 user from the ICN so the claim letters providers can
+    # resolve participant_id/file_number via MPI, mirroring a real page request.
+    # Uses the UserAccount UUID when available so provider log lines correlate
+    # back to the veteran; falls back to a random UUID when there's no account.
+    def build_user_from_icn(icn, uuid: nil)
+      uuid = SecureRandom.uuid if uuid.blank?
+      user_identity = UserIdentity.new(
+        icn:,
+        uuid:,
+        loa: { current: 3, highest: 3 }
+      )
+      user = User.new(uuid: user_identity.uuid)
+      user.instance_variable_set(:@identity, user_identity)
+      user
+    end
+
+    # Always uses the Lighthouse Benefits Documents provider (the strategic
+    # claim-letters source) regardless of the VBMS migration flag.
+    def claim_letters_service(user)
+      LighthouseClaimLettersProvider.new(user)
+    end
 
     def should_send_email?(email_template_id, icn)
       email_template_id.present? && icn.present?
