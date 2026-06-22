@@ -5,7 +5,14 @@ module Common
     module Concerns
       module StreamingClient
         extend ActiveSupport::Concern
-
+        # Performs a streaming HTTP GET request, writing response chunks to the yielder.
+        #
+        # @param [URI] uri - The URI to request
+        # @param [Hash] headers - HTTP headers to include in the request
+        # @param [Proc] header_callback - Callback invoked with response headers
+        # @param [Enumerator::Yielder, StringIO, #<<] yielder - An object responding to << that receives
+        #   chunks of the response body
+        # @return [void]
         def streaming_get(uri, headers, header_callback, yielder)
           request = Net::HTTP::Get.new(uri)
           headers.each { |k, v| request[k] = v }

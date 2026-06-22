@@ -127,10 +127,12 @@ module BBInternal
     ##
     # Pass-through to get a binary stream of a radiology image JPG file.
     #
-    # @param [String] study_id - The radiology study from which to retrieve images
+    # @param [String] id - A UUID used to look up the study_id from cache
     # @param [String] series - The series number, e.g. "01"
     # @param [String] image - The image number, e.g. "01"
-    # @param [Enumerator::Yielder] yielder - An enumerator yielder used to yield chunks of the response body.
+    # @param [Proc] header_callback - Callback invoked with response headers
+    # @param [Enumerator::Yielder, StringIO, #<<] yielder - An object responding to << used to receive chunks of the
+    #   response body (e.g. Enumerator::Yielder or StringIO).
     #
     # @return [void] This method does not return a value. Instead, it yields chunks of the response
     # body via the provided yielder.
@@ -145,7 +147,10 @@ module BBInternal
     ##
     # Pass-through to get a binary stream of a DICOM zip file. This file can be very large.
     #
-    # @param [String] study_id - The radiology study from which to retrieve images
+    # @param [String] id - A UUID used to look up the study_id from cache
+    # @param [Proc] header_callback - Callback invoked with response headers
+    # @param [Enumerator::Yielder, StringIO, #<<] yielder - An object responding to << used to receive chunks of the
+    #   response body (e.g. Enumerator::Yielder or StringIO).
     #
     # @return [void] This method does not return a value. Instead, it yields chunks of the response
     # body via the provided yielder.
