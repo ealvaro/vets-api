@@ -201,6 +201,104 @@ RSpec.describe SimpleFormsApi::FormRemediation::SubmissionArchive do
         end
       end
 
+      describe '#form_number' do
+        context 'with structured data prefix' do
+          subject(:build_archive) { archive_instance.build! }
+
+          let(:form_data4140) do
+            Rails.root.join(fixtures_path, 'form_json', 'vba_21_4140.json').read
+          end
+          let(:file_path_prefixed) { Rails.root.join(fixtures_path, 'pdfs', 'vba_21_4140-completed.pdf') }
+          let(:metadata_prefixed) do
+            {
+              'veteranFirstName' => 'John',
+              'veteranLastName' => 'Veteran',
+              'fileNumber' => '321540987',
+              'zipCode' => '12345',
+              'source' => 'VA Platform Digital Forms',
+              'docType' => 'StructuredData:21-4140',
+              'businessLine' => 'CMP'
+            }
+          end
+          let(:submission_prefixed) do
+            create(:form_submission, :pending, form_type: '21-4140', form_data: form_data4140)
+          end
+          let(:archive_instance_prefixed) do
+            described_class.new(
+              id: benefits_intake_uuid,
+              config: SimpleFormsApi::FormRemediation::Configuration::VffConfig.new,
+              type: :submission,
+              submission: submission_prefixed,
+              file_path: file_path_prefixed,
+              attachments: [],
+              metadata: metadata_prefixed
+            )
+          end
+
+          it 'returns the form number with : replaced with _ when enabled' do
+            allow(Flipper).to receive(:enabled?)
+              .with(:simple_forms_s3_mms_prefix_bugfix)
+              .and_return(true)
+            expect(archive_instance_prefixed.send(:form_number)).to eq('StructuredData_21-4140')
+          end
+
+          it 'returns the incorrect form number format for prefixed form numbers' do
+            allow(Flipper).to receive(:enabled?)
+              .with(:simple_forms_s3_mms_prefix_bugfix)
+              .and_return(false)
+            expect(archive_instance_prefixed.send(:form_number)).to eq('StructuredData:21-4140')
+          end
+        end
+
+        context 'without structured data prefixes' do
+          subject(:build_archive) { archive_instance.build! }
+
+          let(:form_data4140) do
+            Rails.root.join(fixtures_path, 'form_json', 'vba_21_4140.json').read
+          end
+          let(:file_path_prefixed) { Rails.root.join(fixtures_path, 'pdfs', 'vba_21_4140-completed.pdf') }
+          let(:metadata_prefixed) do
+            {
+              'veteranFirstName' => 'John',
+              'veteranLastName' => 'Veteran',
+              'fileNumber' => '321540987',
+              'zipCode' => '12345',
+              'source' => 'VA Platform Digital Forms',
+              'docType' => '21-4140',
+              'businessLine' => 'CMP'
+            }
+          end
+          let(:submission_prefixed) do
+            create(:form_submission, :pending, form_type: '21-4140', form_data: form_data4140)
+          end
+          let(:archive_instance_prefixed) do
+            described_class.new(
+              id: benefits_intake_uuid,
+              config: SimpleFormsApi::FormRemediation::Configuration::VffConfig.new,
+              type: :submission,
+              submission: submission_prefixed,
+              file_path: file_path_prefixed,
+              attachments: [],
+              metadata: metadata_prefixed
+            )
+          end
+
+          it 'returns the form number flipper enabled' do
+            allow(Flipper).to receive(:enabled?)
+              .with(:simple_forms_s3_mms_prefix_bugfix)
+              .and_return(true)
+            expect(archive_instance_prefixed.send(:form_number)).to eq('21-4140')
+          end
+
+          it 'returns the form number when disabled' do
+            allow(Flipper).to receive(:enabled?)
+              .with(:simple_forms_s3_mms_prefix_bugfix)
+              .and_return(false)
+            expect(archive_instance_prefixed.send(:form_number)).to eq('21-4140')
+          end
+        end
+      end
+
       describe '#retrieval_data' do
         subject(:retrieval_data) { archive_instance.retrieval_data }
 

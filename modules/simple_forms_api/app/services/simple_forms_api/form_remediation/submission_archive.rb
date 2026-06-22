@@ -154,7 +154,11 @@ module SimpleFormsApi
       end
 
       def form_number
-        @form_number ||= metadata&.dig('docType') || submission_form_number
+        @form_number ||= if Flipper.enabled?(:simple_forms_s3_mms_prefix_bugfix)
+                           metadata&.dig('docType')&.gsub(':', '_') || submission_form_number
+                         else
+                           metadata&.dig('docType') || submission_form_number
+                         end
       end
 
       def submission_form_number

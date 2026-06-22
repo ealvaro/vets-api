@@ -375,7 +375,7 @@ RSpec.describe SimpleFormsApi::VBA210788 do
         'fileNumber' => form.metadata_file_number,
         'zipCode' => form.zip_code,
         'source' => 'VA Platform Digital Forms',
-        'docType' => data['form_number'],
+        'docType' => "StructuredData:#{data['form_number']}",
         'businessLine' => 'CMP'
       )
     end

@@ -270,9 +270,17 @@ module SimpleFormsApi
         'fileNumber' => metadata_file_number,
         'zipCode' => zip_code,
         'source' => 'VA Platform Digital Forms',
-        'docType' => data['form_number'],
+        'docType' => doc_type,
         'businessLine' => 'CMP'
       }
+    end
+
+    def doc_type
+      if Flipper.enabled?(:simple_forms_s3_mms_prefix_bugfix)
+        "StructuredData:#{data['form_number']}"
+      else
+        data['form_number']
+      end
     end
 
     def format_phone(phone)
