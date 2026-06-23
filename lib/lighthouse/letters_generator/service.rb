@@ -123,11 +123,6 @@ module Lighthouse
           )
         end
       rescue Faraday::ClientError, Faraday::ServerError => e
-        Sentry.set_tags(
-          team: 'benefits-claim-appeal-status',
-          feature: 'letters-generator'
-        )
-
         handle_error(e, config.service_name, endpoint)
       end
 

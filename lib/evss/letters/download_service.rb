@@ -39,7 +39,6 @@ module EVSS
           when 404
             raise Common::Exceptions::RecordNotFound, type
           else
-            Sentry.set_extras(url: config.base_path, body: response.body)
             raise_backend_exception('EVSS502', 'Letters')
           end
         end

@@ -9,7 +9,6 @@ module V0
   class ClaimLettersController < ApplicationController
     before_action :set_api_provider
 
-    Sentry.set_tags(feature: 'claim-letters')
     service_tag 'claim-status'
 
     VBMS_LIGHTHOUSE_MIGRATION_STATSD_KEY_PREFIX = 'vbms_lighthouse_claim_letters_provider_error'

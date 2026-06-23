@@ -19,10 +19,7 @@ module V0
 
     def show
       claim = EVSSClaim.for_user(current_user).find_by(evss_id: params[:id])
-      unless claim
-        Sentry.set_tags(team: 'benefits-memorial-1') # tag sentry logs with team name
-        raise Common::Exceptions::RecordNotFound, params[:id]
-      end
+      raise Common::Exceptions::RecordNotFound, params[:id] unless claim
 
       claim, synchronized = service.update_from_remote(claim)
       options = { meta: { successful_sync: synchronized } }
@@ -31,10 +28,7 @@ module V0
 
     def request_decision
       claim = EVSSClaim.for_user(current_user).find_by(evss_id: params[:id])
-      unless claim
-        Sentry.set_tags(team: 'benefits-memorial-1') # tag sentry logs with team name
-        raise Common::Exceptions::RecordNotFound, params[:id]
-      end
+      raise Common::Exceptions::RecordNotFound, params[:id] unless claim
 
       jid = service.request_decision(claim)
       claim.update(requested_decision: true)

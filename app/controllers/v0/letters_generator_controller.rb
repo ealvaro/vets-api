@@ -9,7 +9,6 @@ module V0
     before_action { authorize :lighthouse, :access? }
     before_action :validate_letter_type, only: %i[download]
 
-    Sentry.set_tags(team: 'benefits-claim-appeal-status', feature: 'letters-generator')
     DOWNLOAD_PARAMS = %i[
       id
       format

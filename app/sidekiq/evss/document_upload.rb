@@ -165,7 +165,6 @@ class EVSS::DocumentUpload
   private
 
   def validate_document!
-    Sentry.set_tags(source: 'claims-status')
     raise Common::Exceptions::ValidationErrors unless document.valid?
   end
 

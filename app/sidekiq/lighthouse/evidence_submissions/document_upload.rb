@@ -138,7 +138,6 @@ module Lighthouse
 
       def initialize_upload_document
         Datadog::Tracing.trace('Config/Initialize Upload Document') do
-          Sentry.set_tags(source: 'documents-upload')
           validate_document!
           uploader.retrieve_from_store!(document.file_name)
         end
