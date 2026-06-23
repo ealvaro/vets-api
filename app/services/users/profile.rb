@@ -199,7 +199,6 @@ module Users
     def veteran_status
       if user.edipi.blank?
         log_for_missing_edipi
-
         return build_veteran_status_object(nil, nil)
       end
 
@@ -281,11 +280,8 @@ module Users
     end
 
     def build_veteran_status_object(is_veteran, served_in_military)
-      {
-        status: RESPONSE_STATUS[:ok],
-        is_veteran:,
-        served_in_military:
-      }
+      Rails.logger.info('user_veteran_status', user_uuid: user.uuid, is_veteran:)
+      { status: RESPONSE_STATUS[:ok], is_veteran:, served_in_military: }
     end
 
     def handle_service_error(error, service, method_name)
