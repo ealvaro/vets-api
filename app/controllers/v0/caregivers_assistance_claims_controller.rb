@@ -22,7 +22,6 @@ module V0
 
     def create
       if @claim.valid?
-        Sentry.set_tags(claim_guid: @claim.guid)
         auditor.record_caregivers(@claim)
 
         ::Form1010cg::Service.new(@claim).assert_veteran_status

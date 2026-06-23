@@ -76,7 +76,6 @@ describe CARMA::Client::MuleSoftClient do
               )
               expect(Rails.logger).to receive(:info)
                 .with("[Form 10-10CG] Submission to '#{resource}' resource resulted in response code #{status}")
-              expect(Sentry).to receive(:set_extras).with(response_body: mock_response.body)
 
               subject
             end

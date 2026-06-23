@@ -201,12 +201,6 @@ RSpec.describe 'V0::HealthCareApplications', type: %i[request serializer] do
           }.to_json
         end
 
-        it 'logs user loa' do
-          allow(Sentry).to receive(:set_extras)
-          expect(Sentry).to receive(:set_extras).with(user_loa: nil)
-          post(enrollment_status_v0_health_care_applications_path, params:, headers:)
-        end
-
         it 'returns the enrollment status data' do
           expect(HealthCareApplication).to receive(:user_icn).and_return('123')
           expect(HealthCareApplication).to receive(:enrollment_status).with(
@@ -366,10 +360,6 @@ RSpec.describe 'V0::HealthCareApplications', type: %i[request serializer] do
     end
 
     context 'with invalid params' do
-      before do
-        allow(Settings.sentry).to receive(:dsn).and_return('asdf')
-      end
-
       let(:params) do
         {
           form: test_veteran.except('privacyAgreementAccepted').to_json
@@ -556,10 +546,6 @@ RSpec.describe 'V0::HealthCareApplications', type: %i[request serializer] do
 
         context 'with a SOAP error' do
           let(:error) { Common::Client::Errors::HTTPError.new('error message') }
-
-          before do
-            allow(Settings.sentry).to receive(:dsn).and_return('asdf')
-          end
 
           it 'renders error message' do
             expect(HealthCareApplication).to receive(:user_icn).twice.and_return('123')

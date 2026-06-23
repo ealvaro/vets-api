@@ -526,8 +526,6 @@ RSpec.describe HealthCareApplication, type: :model do
 
     context 'with an invalid record' do
       it 'adds user loa to extra context' do
-        expect(Sentry).to receive(:set_extras).with(user_loa: { current: 1, highest: 3 })
-
         expect do
           described_class.new(form: {}.to_json, user: build(:user)).process!
         end.to raise_error(Common::Exceptions::ValidationErrors)

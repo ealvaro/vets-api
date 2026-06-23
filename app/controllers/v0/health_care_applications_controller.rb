@@ -67,7 +67,6 @@ module V0
               # Return nil if `GET` request and user is not loa3
               nil
             else
-              Sentry.set_extras(user_loa: current_user&.loa)
               user_attributes = params[:user_attributes]&.deep_transform_keys! do |key|
                 key.to_s.camelize(:lower).to_sym
               end || params[:userAttributes]

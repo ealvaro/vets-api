@@ -49,11 +49,12 @@ module FormIntake
     end
 
     def log_job_start
-      Rails.logger.info('FormIntake::SubmitFormDataJob started', {
-                          form_submission_id: @form_submission.id,
-                          form_type: @form_submission.form_type,
-                          benefits_intake_uuid: @benefits_intake_uuid
-                        })
+      context = {
+        form_submission_id: @form_submission.id,
+        form_type: @form_submission.form_type,
+        benefits_intake_uuid: @benefits_intake_uuid
+      }
+      Rails.logger.info('FormIntake::SubmitFormDataJob started', context)
     end
 
     def execute_with_tracing(mapper)
@@ -64,18 +65,22 @@ module FormIntake
     end
 
     def handle_record_not_found(form_submission_id, benefits_intake_uuid, error)
-      Rails.logger.warn('Form submission deleted during job execution', scrub_pii({
-                                                                                    form_submission_id:,
-                                                                                    benefits_intake_uuid:,
-                                                                                    error: error.message
-                                                                                  }))
+      context = {
+        form_submission_id:,
+        benefits_intake_uuid:,
+        error: scrub_pii(error.message)
+      }
+      Rails.logger.warn('Form submission deleted during job execution', context)
     end
 
     def handle_and_log_unexpected_error(error)
       handle_unexpected_error(error)
-      Rails.logger.error(scrub_pii(error.message),
-                         { form_submission_id: @form_submission&.id, form_type: @form_submission&.form_type,
-                           benefits_intake_uuid: @benefits_intake_uuid })
+      context = {
+        form_submission_id: @form_submission&.id,
+        form_type: @form_submission&.form_type,
+        benefits_intake_uuid: @benefits_intake_uuid
+      }
+      Rails.logger.error(scrub_pii(error.message), context)
     end
 
     private
@@ -165,21 +170,22 @@ module FormIntake
     def handle_non_retryable_error(error, status_code, error_message)
       @form_intake_submission.fail!
 
+      context = {
+        form_submission_id: @form_submission.id,
+        form_intake_submission_id: @form_intake_submission.id,
+        error: scrub_pii(error_message),
+        status_code:,
+        benefits_intake_uuid: @benefits_intake_uuid
+      }
       Rails.logger.error(
-        'GCIO submission non-retryable error',
-        scrub_pii({
-                    form_submission_id: @form_submission.id,
-                    form_intake_submission_id: @form_intake_submission.id,
-                    error: error_message,
-                    status_code:,
-                    benefits_intake_uuid: @benefits_intake_uuid
-                  })
+        'GCIO submission non-retryable error', context
       )
 
-      # Log non-retryable errors to Sentry for visibility
-      Rails.logger.error(scrub_pii(error.message),
-                         { form_submission_id: @form_submission.id, form_type: @form_submission.form_type,
-                           status_code: })
+      # Log non-retryable errors for visibility
+      Rails.logger.error(
+        scrub_pii(error.message),
+        { form_submission_id: @form_submission.id, form_type: @form_submission.form_type, status_code: }
+      )
 
       StatsD.increment("#{STATSD_KEY_PREFIX}.non_retryable_error",
                        tags: tags + ["status:#{status_code}"])
@@ -189,18 +195,16 @@ module FormIntake
 
     def handle_retryable_error(status_code, error_message)
       # Retryable error - log as warning (will be retried by Sidekiq)
-      Rails.logger.warn(
-        'GCIO submission retryable error - will retry',
-        scrub_pii({
-                    form_submission_id: @form_submission.id,
-                    form_intake_submission_id: @form_intake_submission.id,
-                    error: error_message,
-                    status_code:,
-                    retry_count: @form_intake_submission.retry_count,
-                    max_retries: 16,
-                    benefits_intake_uuid: @benefits_intake_uuid
-                  })
-      )
+      context = {
+        form_submission_id: @form_submission.id,
+        form_intake_submission_id: @form_intake_submission.id,
+        error: scrub_pii(error_message),
+        status_code:,
+        retry_count: @form_intake_submission.retry_count,
+        max_retries: 16,
+        benefits_intake_uuid: @benefits_intake_uuid
+      }
+      Rails.logger.warn('GCIO submission retryable error - will retry', context)
 
       StatsD.increment("#{STATSD_KEY_PREFIX}.retryable_error",
                        tags: tags + ["status:#{status_code}"])
@@ -209,16 +213,14 @@ module FormIntake
     end
 
     def handle_unexpected_error(error)
-      Rails.logger.error(
-        'GCIO submission unexpected error',
-        scrub_pii({
-                    form_submission_id: @form_submission.id,
-                    form_intake_submission_id: @form_intake_submission&.id,
-                    error_class: error.class.name,
-                    error: error.message,
-                    benefits_intake_uuid: @benefits_intake_uuid
-                  })
-      )
+      context = {
+        form_submission_id: @form_submission.id,
+        form_intake_submission_id: @form_intake_submission&.id,
+        error_class: error.class.name,
+        error: scrub_pii(error.message),
+        benefits_intake_uuid: @benefits_intake_uuid
+      }
+      Rails.logger.error('GCIO submission unexpected error', context)
 
       StatsD.increment("#{STATSD_KEY_PREFIX}.unexpected_error",
                        tags: tags + ["error_class:#{error.class.name}"])
@@ -297,13 +299,13 @@ module FormIntake
       end
 
       def log_exhaustion_handler_error(form_submission_id, error)
+        context = {
+          form_submission_id:,
+          error: scrub_pii(error.message),
+          backtrace: error.backtrace&.first(5)
+        }
         Rails.logger.error(
-          'Error in FormIntake::SubmitFormDataJob exhaustion handler',
-          scrub_pii({
-                      form_submission_id:,
-                      error: error.message,
-                      backtrace: error.backtrace&.first(5)
-                    })
+          'Error in FormIntake::SubmitFormDataJob exhaustion handler', context
         )
       end
 

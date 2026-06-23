@@ -104,8 +104,6 @@ class HealthCareApplication < ApplicationRecord
 
       StatsD.increment("#{HCA::Service::STATSD_KEY_PREFIX}.validation_error_short_form") if short_form?
 
-      Sentry.set_extras(user_loa: user&.loa)
-
       PersonalInformationLog.create(
         data: parsed_form,
         error_class: 'HealthCareApplication ValidationError'

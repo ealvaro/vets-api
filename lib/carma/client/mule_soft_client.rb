@@ -61,7 +61,6 @@ module CARMA
       end
 
       def handle_response(resource, response)
-        Sentry.set_extras(response_body: response.body)
         raise_error_unless_success(resource, response.status)
         JSON.parse(response.body)
       end
