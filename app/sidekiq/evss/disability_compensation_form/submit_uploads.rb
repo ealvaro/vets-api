@@ -138,7 +138,6 @@ module EVSS
       # @param guid_or_upload_data [String, Hash] Either the attachment GUID or the old upload_data hash
       #
       def perform(submission_id, guid_or_upload_data)
-        Sentry.set_tags(source: '526EZ-all-claims')
         super(submission_id)
         submission = Form526Submission.find(submission_id)
         upload_data_list = submission.form[Form526Submission::FORM_526_UPLOADS] || []

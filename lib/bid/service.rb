@@ -8,7 +8,6 @@ module BID
   class Service < Common::Client::Base
     include Common::Client::Concerns::Monitoring
     include Vets::SharedLogging
-    SENTRY_TAG = { team: 'vfs-ebenefits' }.freeze
 
     def initialize(user)
       @user = user
