@@ -10,7 +10,7 @@ module Forms
     module Gateways
       class Hca1010EzGateway < BaseGateway
         NORMALIZED_STATUSES = {
-          enrolled: :received,
+          enrolled: :vbms,
           pending_mt: :in_progress,
           pending_other: :in_progress,
           pending_purpleheart: :in_progress,

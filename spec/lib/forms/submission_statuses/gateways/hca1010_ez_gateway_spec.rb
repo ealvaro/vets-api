@@ -34,7 +34,7 @@ describe Forms::SubmissionStatuses::Gateways::Hca1010EzGateway,
 
       expected_status = {
         id: user_account.id,
-        status: :received,
+        status: :vbms,
         created_at:,
         updated_at:
       }
