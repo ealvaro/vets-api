@@ -6,8 +6,6 @@ metadata:
   description: This project provides common APIs for applications that live on VA.gov (formerly vets.gov APIs).
   annotations:
     va.ghe.com/project-slug: software/vets-api
-    # project slug for the VSP sentry project
-    sentry.io/project-slug: platform-api
     backstage.io/techdocs-ref: dir:.
   tags:
     - ruby
@@ -24,9 +22,6 @@ metadata:
       icon: dashboard
     - url: https://grafana.vfs.va.gov/
       title: Grafana
-      icon: dashboard
-    - url: http://sentry.vfs.va.gov/organizations/vsp/
-      title: Sentry - VSP
       icon: dashboard
     - url: https://api.va.gov/sidekiq
       title: Sidekiq UI (Production)
