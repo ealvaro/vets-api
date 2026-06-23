@@ -3,14 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe HCAAttachmentUploader, type: :uploader do
-  shared_examples 'converts image to jpg' do |uploaded_file_let|
-    it 'converts the file to jpg' do
-      expect(uploader).to receive(:convert).with('jpg')
-
-      uploader.store!(send(uploaded_file_let))
-    end
-  end
-
   let(:uploader) { described_class.new(guid) }
 
   let(:guid) { 'test-guid' }
@@ -92,52 +84,58 @@ RSpec.describe HCAAttachmentUploader, type: :uploader do
   end
 
   describe 'processing' do
-    context 'when the file is a PNG' do
-      include_examples 'converts image to jpg', :file
-
-      it 'converts the file to jpg when MIME type casing varies' do
-        uppercase_mime_file = Rack::Test::UploadedFile.new(
-          Rails.root.join('spec', 'fixtures', 'files', 'doctors-note.png'),
-          'IMAGE/PNG'
-        )
-
-        expect(uploader).to receive(:convert).with('jpg')
-
-        uploader.store!(uppercase_mime_file)
-      end
+    it 'registers conditional processor for PNG, HEIC, and HEIF files' do
+      expect(described_class.processors).to include([:convert_png_or_heic_to_jpg, [], nil, nil])
     end
 
-    context 'when the file is a HEIC' do
-      let(:file) do
-        Rack::Test::UploadedFile.new(
-          Rails.root.join('spec', 'fixtures', 'files', 'steelers.heic'),
-          'image/heic'
-        )
-      end
+    it 'converts a PNG file to jpg' do
+      png_file = Rack::Test::UploadedFile.new(
+        Rails.root.join('spec', 'fixtures', 'files', 'doctors-note.png'),
+        'IMAGE/PNG'
+      )
 
-      include_examples 'converts image to jpg', :file
+      image_processor = instance_double(MiniMagick::Image)
+      expect(MiniMagick::Image).to receive(:new).and_return(image_processor)
+      expect(image_processor).to receive(:format).with('jpg')
 
-      it 'converts the file to jpg when MIME type casing varies' do
-        uppercase_mime_file = Rack::Test::UploadedFile.new(
-          Rails.root.join('spec', 'fixtures', 'files', 'steelers.heic'),
-          'IMAGE/HEIC'
-        )
-
-        expect(uploader).to receive(:convert).with('jpg')
-
-        uploader.store!(uppercase_mime_file)
-      end
+      uploader.store!(png_file)
     end
 
-    context 'when the file is a HEIF' do
-      let(:file) do
-        Rack::Test::UploadedFile.new(
-          Rails.root.join('spec', 'fixtures', 'files', 'steelers.heif'),
-          'image/heif'
-        )
-      end
+    it 'converts a HEIC file to jpg' do
+      heic_file = Rack::Test::UploadedFile.new(
+        Rails.root.join('spec', 'fixtures', 'files', 'steelers.heic'),
+        'IMAGE/HEIC'
+      )
 
-      include_examples 'converts image to jpg', :file
+      image_processor = instance_double(MiniMagick::Image)
+      expect(MiniMagick::Image).to receive(:new).and_return(image_processor)
+      expect(image_processor).to receive(:format).with('jpg')
+
+      uploader.store!(heic_file)
+    end
+
+    it 'converts a HEIF file to jpg' do
+      heif_file = Rack::Test::UploadedFile.new(
+        Rails.root.join('spec', 'fixtures', 'files', 'steelers.heif'),
+        'image/heif'
+      )
+
+      image_processor = instance_double(MiniMagick::Image)
+      expect(MiniMagick::Image).to receive(:new).and_return(image_processor)
+      expect(image_processor).to receive(:format).with('jpg')
+
+      uploader.store!(heif_file)
+    end
+
+    it 'does not modify a PDF file' do
+      pdf_file = Rack::Test::UploadedFile.new(
+        Rails.root.join('spec', 'fixtures', 'files', 'doctors-note.pdf'),
+        'application/pdf'
+      )
+
+      expect(MiniMagick::Image).not_to receive(:new)
+
+      uploader.store!(pdf_file)
     end
   end
 end

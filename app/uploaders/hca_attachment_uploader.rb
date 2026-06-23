@@ -9,8 +9,12 @@ class HCAAttachmentUploader < CarrierWave::Uploader::Base
     (1.byte)...(10.megabytes)
   end
 
-  process(convert: 'jpg', if: :png?)
-  process(convert: 'jpg', if: :heic?)
+  # NOTE: We intentionally avoid CarrierWave's conditional convert macro
+  # (`process(convert: 'jpg', if: :heic?)`) due to intermittent behavior
+  # observed with conditional processing callbacks. We perform an explicit,
+  # deterministic conversion for HEIC/HEIF files in `convert_png_or_heic_to_jpg`.
+  # https://github.com/carrierwaveuploader/carrierwave/issues/2723
+  process :convert_png_or_heic_to_jpg
 
   def initialize(guid)
     super
@@ -42,11 +46,16 @@ class HCAAttachmentUploader < CarrierWave::Uploader::Base
 
   private
 
-  def png?(file)
-    file.content_type.to_s.downcase == 'image/png'
+  def convert_png_or_heic_to_jpg
+    return unless png_or_heic?(file)
+
+    converted_file = MiniMagick::Image.new(file.file)
+    converted_file.format('jpg')
+
+    file.content_type = 'image/jpeg' if file.respond_to?(:content_type=)
   end
 
-  def heic?(file)
-    file.content_type.to_s.downcase =~ %r{^image/(heic|heif)$}
+  def png_or_heic?(file)
+    %w[image/png image/heic image/heif].include? file.content_type.downcase
   end
 end

@@ -11,6 +11,7 @@ module Form1010cg
     # (`process(convert: 'jpg', if: :heic?)`) due to intermittent behavior
     # observed with conditional processing callbacks. We perform an explicit,
     # deterministic conversion for HEIC/HEIF files in `normalize_heic_to_jpg`.
+    # https://github.com/carrierwaveuploader/carrierwave/issues/2723
     process :normalize_heic_to_jpg
 
     storage :aws
