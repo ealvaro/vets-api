@@ -1435,4 +1435,4 @@
       :file_path: "dgi/vye/verify_claimant"
       :cache_multiple_responses:
         :uid_location: body
-        :uid_locator: 'claimantId":"(\w+)"'
+        :uid_locator: 'claimantId":(\d+)'
