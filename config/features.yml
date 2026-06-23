@@ -781,8 +781,8 @@ features:
     enable_in_development: false
   cst_letters_description_content_format:
     description: >-
-      When enabled, letter descriptions are returned as a typed content array (nodes with type, text,
-      listType, and items fields) instead of the legacy paragraphs and lists shape.
+      When enabled, letter descriptions are returned as a typed content array (nodes with type, text, 
+      and items fields) instead of the legacy paragraphs and lists shape.
     enable_in_development: false
   cst_use_claim_title_generator_web:
     description: When enabled, use the title generator to insert claim titles into claim list responses.

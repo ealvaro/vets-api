@@ -6,7 +6,6 @@ benefit_summary:
     - type: paragraph
       text: 'When to use this letter:'
     - type: list
-      listType: unordered
       items:
         - Applying for housing assistance
         - Applying for a civil service job
@@ -20,7 +19,6 @@ benefit_verification:
     - type: paragraph
       text: 'When to use this letter:'
     - type: list
-      listType: unordered
       items:
         - Applying for a car loan
         - Applying for a mortgage
@@ -42,7 +40,6 @@ proof_of_service:
     - type: paragraph
       text: 'When to use this letter:'
     - type: list
-      listType: unordered
       items:
         - Requesting Veteran discounts
         - Accessing Veteran-only programs or community services
@@ -60,7 +57,6 @@ civil_service:
     - type: paragraph
       text: 'When to use this letter:'
     - type: list
-      listType: unordered
       items:
         - Applying for a federal government job
         - Applying for state or local civil service positions
@@ -72,14 +68,12 @@ minimum_essential_coverage:
     - type: paragraph
       text: 'This letter confirms that you have:'
     - type: list
-      listType: unordered
       items:
         - Minimum essential health coverage under the Affordable Care Act (ACA)
         - Creditable prescription drug coverage
     - type: paragraph
       text: 'When to use this letter:'
     - type: list
-      listType: unordered
       items:
         - Filing your taxes
         - Applying for Medicare Part D prescription drug coverage
@@ -92,7 +86,6 @@ commissary:
     - type: paragraph
       text: 'When to use this letter:'
     - type: list
-      listType: unordered
       items:
         - Registering for commissary or exchange privileges
         - Verifying eligibility for base shopping access
@@ -106,7 +99,6 @@ foreign_medical_program:
     - type: paragraph
       text: 'When to use this letter:'
     - type: list
-      listType: unordered
       items:
         - Seeking medical care outside the United States
         - Providing documentation to an overseas provider
