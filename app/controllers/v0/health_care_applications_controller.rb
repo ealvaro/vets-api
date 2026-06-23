@@ -120,7 +120,7 @@ module V0
       end
     end
 
-    def skip_sentry_exception_types
+    def skip_reportable_types
       super + [Common::Exceptions::BackendServiceException]
     end
   end

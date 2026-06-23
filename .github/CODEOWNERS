@@ -32,6 +32,7 @@ app/controllers/concerns/failed_request_loggable.rb @software/backend-review-gro
 app/controllers/concerns/filterable.rb @software/backend-review-group
 app/controllers/concerns/form_attachment_create.rb @software/backend-review-group
 app/controllers/concerns/headers.rb @software/backend-review-group
+app/controllers/concerns/ignore_not_found.rb @software/backend-review-group
 app/controllers/concerns/instrumentation.rb @software/backend-review-group @software/octo-identity
 app/controllers/concerns/inbound_request_logging.rb @software/benefits-management-tools-be @software/backend-review-group
 app/controllers/concerns/json_api_pagination_links.rb @software/backend-review-group

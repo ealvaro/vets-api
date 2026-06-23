@@ -43,7 +43,7 @@ module V0
       log_inbound_request(message_type: 'evss.cst.inbound_request', message: 'Inbound request (EVSS claim status)')
     end
 
-    def skip_sentry_exception_types
+    def skip_reportable_types
       super + [Common::Exceptions::BackendServiceException]
     end
 

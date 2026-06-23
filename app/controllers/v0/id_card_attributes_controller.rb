@@ -24,7 +24,7 @@ module V0
       Logging::Helper::DataScrubber.scrub(message)
     end
 
-    def skip_sentry_exception_types
+    def skip_reportable_types
       super + [::VIC::IDCardAttributeError]
     end
 

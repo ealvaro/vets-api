@@ -119,10 +119,6 @@ module Vets
       case exception
       when Pundit::NotAuthorizedError
         'info'
-      when Common::Exceptions::BaseError
-        # could change this attribute to log_level
-        # to make clear it is not just a Sentry concern
-        exception.sentry_type.to_s
       else
         level.to_s
       end

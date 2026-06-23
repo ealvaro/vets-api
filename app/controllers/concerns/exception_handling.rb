@@ -11,9 +11,9 @@ module ExceptionHandling
   extend ActiveSupport::Concern
   include Vets::SharedLogging
 
-  # In addition to Common::Exceptions::BackendServiceException that have sentry_type :none the following exceptions
-  # will also be skipped.
-  SKIP_SENTRY_EXCEPTION_TYPES = [
+  # In addition to Common::Exceptions::BackendServiceException that are configured with
+  # `reportable: false` the following exceptions will also be skipped.
+  SKIP_REPORTABLE_TYPES = [
     Breakers::OutageException,
     JsonSchema::JsonApiMissingAttribute,
     Pundit::NotAuthorizedError
@@ -21,14 +21,16 @@ module ExceptionHandling
 
   private
 
-  def skip_sentry_exception_types
-    SKIP_SENTRY_EXCEPTION_TYPES
+  def skip_reportable_types
+    SKIP_REPORTABLE_TYPES
   end
 
-  def skip_sentry_exception?(exception)
-    return true if exception.class.in?(skip_sentry_exception_types)
+  def skip_reportable?(exception)
+    return true if exception.class.in?(skip_reportable_types)
 
-    exception.respond_to?(:sentry_type) && !exception.log_to_sentry?
+    # Per-exception opt-out: e.g. BackendServiceExceptions configured with
+    # `reportable: false` are expected and not reported.
+    exception.respond_to?(:reportable?) && !exception.reportable?
   end
 
   included do
@@ -55,7 +57,7 @@ module ExceptionHandling
           Common::Exceptions::InternalServerError.new(exception)
         end
 
-      unless skip_sentry_exception?(exception)
+      unless skip_reportable?(exception)
         report_original_exception(exception)
         report_mapped_exception(exception, va_exception)
       end
@@ -78,7 +80,7 @@ module ExceptionHandling
 
   def report_original_exception(exception)
     # report the original 'cause' of the exception when present
-    if skip_sentry_exception?(exception)
+    if skip_reportable?(exception)
       Rails.logger.error "#{scrub_pii(exception.message)}.", backtrace: exception.backtrace
     elsif exception.is_a?(Common::Exceptions::BackendServiceException) && exception.generic_error?
       # Warn about VA900 needing to be added to exception.en.yml

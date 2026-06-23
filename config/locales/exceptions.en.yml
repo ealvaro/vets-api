@@ -9,12 +9,12 @@ en:
         # links: optional, could contain an 'about' link to further details
         # source: optional, an object containing references to the source of the error (pointer to json in validation)
         # meta: optional, contains information suitable for debugging, VISIBLE IN PRODUCTION
-        # sentry_type: optional, defaults to 'error', supported values = debug, info, warn, error, fatal, and 'none'
+        # reportable: optional, defaults to true; set to false to skip error reporting for an expected exception
         detail: ~
         links: ~
         source: ~
         meta: ~
-        sentry_type: 'error'
+        reportable: true
 # INTERNAL EXCEPTIONS
       validation_errors: &validation_errors
         <<: *defaults
@@ -111,13 +111,13 @@ en:
         title: Not authorized
         code: 401
         status: 401
-        sentry_type: 'none'
+        reportable: false
       forbidden:
         <<: *defaults
         title: Forbidden
         code: 403
         status: 403
-        sentry_type: 'none'
+        reportable: false
       service_error:
         <<: *defaults
         title: Unknown Service Error
@@ -152,7 +152,7 @@ en:
         detail: "There are no routes matching your request: %{path}"
         code: 411
         status: 404
-        sentry_type: 'none'
+        reportable: false
       unknown_format:
         <<: *defaults
         title: Not acceptable
@@ -239,8 +239,6 @@ en:
         detail: "Did not receive a timely response from an upstream server"
         code: 504
         status: 504
-      sentry_ignored_gateway_timeout:
-        <<: *gateway_timeout
       id_card_attribute_error:
         <<: *defaults
         title: Request failed
@@ -954,7 +952,6 @@ en:
         code: 'VAOS_409A'
         detail: # deliberately left nil to reference response.body which is unparsable string (not json)
         status: 409
-        sentry_type: 'warn'
       VAOS_400:
         <<: *external_defaults
         title: Bad Request

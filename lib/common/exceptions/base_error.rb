@@ -19,14 +19,13 @@ module Common
         i18n_data[:title]
       end
 
-      # This determines how the exception should get logged to Sentry
-      # in adddition to available types from Sentry: 'warn', 'info', 'error' there is 'none' to not log to Sentry at all
-      def sentry_type
-        i18n_data[:sentry_type].presence || 'error'
-      end
+      # Whether this exception should be reported to the error tracking backend.
+      # Individual exceptions opt out by setting `reportable: false` in exceptions.en.yml;
+      # anything else, including an absent key, is reportable.
+      def reportable?
+        return true unless i18n_data.is_a?(Hash)
 
-      def log_to_sentry?
-        sentry_type != 'none'
+        i18n_data[:reportable] != false
       end
 
       private

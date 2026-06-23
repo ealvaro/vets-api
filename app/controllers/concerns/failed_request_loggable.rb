@@ -10,7 +10,7 @@ module FailedRequestLoggable
         as_json attributes backtrace body errors
         inspect instance_values key message
         original_body original_status
-        response_values sentry_type
+        response_values
         serializable_hash status status_code
         to_a to_h to_json to_s
       ].each do |method|
