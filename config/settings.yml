@@ -2237,7 +2237,7 @@ vye:
     r: 8
     salt: <%= ENV['vye__scrypt__salt'] %>
 web_origin: <%= ENV['web_origin'] %>
-web_origin_regex: "\\Ahttps?:\\/\\/.*\\.cms\\.va\\.gov\\z"
+web_origin_regex: "\\Ahttps?:\\/\\/.*(?:\\.cms\\.va\\.gov|\\.tugboat\\.vfs\\.va\\.gov)\\z"
 websockets:
   require_https: <%= ENV['websockets__require_https'] %>
   websocket_settings: <%= ENV['websockets__websocket_settings'] %>
