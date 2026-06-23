@@ -23,7 +23,6 @@ module Gibft
       response_body = with_monitoring do
         client.post('/services/apexrest/educationcomplaint', form).body
       end
-      Sentry.set_extras(submit_response_body: response_body)
 
       response_body.slice('case_id', 'case_number')
     end

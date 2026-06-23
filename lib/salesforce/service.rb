@@ -32,8 +32,6 @@ module Salesforce
 
     def get_oauth_token
       body = with_monitoring { request(:post, '', oauth_params).body }
-      Sentry.set_extras(oauth_response_body: body)
-
       body['access_token']
     end
 
