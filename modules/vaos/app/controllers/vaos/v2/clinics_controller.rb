@@ -14,39 +14,7 @@ module VAOS
         render json: VAOS::V2::ClinicsSerializer.new(response)
       end
 
-      def last_visited_clinic
-        # get the last clinic appointment from the appointments service
-        latest_appointment = appointments_service.get_most_recent_visited_clinic_appointment
-
-        # if we don't have the information to lookup the clinic, return 404
-        if unable_to_lookup_clinic?(latest_appointment)
-          log_unable_to_lookup_clinic(latest_appointment)
-          render json: { message: 'Unable to lookup latest clinic.' }, status: :not_found
-          return
-        end
-
-        # get the clinic details using the station id and clinic id
-        station_id = latest_appointment.location_id
-        clinic_id = latest_appointment.clinic
-        clinic = mobile_facility_service.get_clinic_with_cache(station_id:, clinic_id:)
-
-        # if clinic details are not returned, return 404
-        if clinic.nil?
-          log_no_clinic_details_found(station_id, clinic_id)
-          render json: { message: 'No clinic details found' }, status: :not_found
-          return
-        end
-
-        # return the clinic details
-        render json: VAOS::V2::ClinicsSerializer.new(clinic)
-      end
-
       private
-
-      def appointments_service
-        @appointments_service ||=
-          VAOS::V2::AppointmentsService.new(current_user)
-      end
 
       def filter_type_of_care_facilities(facilities)
         # Return facilities without filtering if no service id is provided
@@ -70,28 +38,6 @@ module VAOS
         log_no_supported_facilities(service_id) if supported_facilities.blank?
 
         supported_facilities
-      end
-
-      def log_unable_to_lookup_clinic(appt)
-        message = ''
-        if appt.nil?
-          message = 'Appointment not found'
-        elsif appt.location_id.nil?
-          message = 'Appointment does not have location id'
-        elsif appt.clinic.nil?
-          message = 'Appointment does not have clinic id'
-        end
-
-        Rails.logger.info('VAOS last_visited_clinic', message) if message.present?
-      end
-
-      def log_no_clinic_details_found(station_id, clinic_id)
-        Rails.logger.info 'VAOS last_visited_clinic', "No clinic details found for station: #{station_id} " \
-                                                      "and clinic: #{clinic_id}"
-      end
-
-      def unable_to_lookup_clinic?(appt)
-        appt.nil? || appt.location_id.nil? || appt.clinic.nil?
       end
 
       def log_no_supported_facilities(service_id)

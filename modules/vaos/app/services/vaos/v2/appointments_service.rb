@@ -434,34 +434,6 @@ module VAOS
       # rubocop:enable Metrics/ParameterLists
       # rubocop:enable Metrics/MethodLength
 
-      # Retrieves the most recent clinic appointment within the last year.
-      #
-      # Returns:
-      # - The most recent appointment of kind == 'clinic' or
-      # - nil if no appointment is found.
-      #
-      def get_most_recent_visited_clinic_appointment
-        current_check = Date.current.end_of_day.yesterday
-        three_month_interval = 3.months
-        look_back_limit = 1.year.ago
-        statuses = 'booked,fulfilled,arrived'
-
-        # starting yesterday loop in three month intervals until we find an appointment
-        # or we run into the look back limit
-        while current_check > look_back_limit
-          end_time = current_check
-          start_time = current_check - three_month_interval
-
-          appointments = fetch_clinic_appointments(start_time, end_time, statuses)
-
-          return most_recent_appointment(appointments) unless appointments.empty?
-
-          current_check -= three_month_interval
-        end
-
-        nil
-      end
-
       def get_sorted_recent_appointments
         appointments = get_appointments(1.year.ago, Date.current.end_of_day.yesterday, 'booked,fulfilled,arrived')
         unless appointments[:data].is_a?(Array)
@@ -929,14 +901,6 @@ module VAOS
         utc_date.change(offset: timezone_offset).to_datetime
       end
 
-      def fetch_clinic_appointments(start_time, end_time, statuses)
-        appts_data = get_appointments(start_time, end_time, statuses)[:data]
-        return appts_data.select { |appt| appt.kind == 'clinic' } if appts_data.is_a?(Array)
-
-        Rails.logger.warn('VAOS fetch_clinic_appointments - appointments response data is not an array')
-        []
-      end
-
       # rubocop:disable Metrics/MethodLength
       def prepare_appointment(appointment, include = {}, avs_metadata = {})
         # for CnP, covid, CC and telehealth appointments set cancellable to false per GH#57824, GH#58690, ZH#326
@@ -1021,10 +985,6 @@ module VAOS
 
       def appointment_provider_name_service
         @appointment_provider_name_service ||= AppointmentProviderName.new(user)
-      end
-
-      def most_recent_appointment(appointments)
-        appointments.max_by { |appointment| DateTime.parse(appointment.start) }
       end
 
       def mobile_facility_service
