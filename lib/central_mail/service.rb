@@ -28,13 +28,7 @@ module CentralMail
 
     configuration CentralMail::Configuration
 
-    # rubocop:disable Metrics/MethodLength
     def upload(body)
-      Sentry.set_extras(
-        request: {
-          metadata: body['metadata']
-        }
-      )
       body['token'] = Settings.central_mail.upload.token
 
       response = with_monitoring do
@@ -45,18 +39,10 @@ module CentralMail
         )
       end
 
-      Sentry.set_extras(
-        response: {
-          status: response.status,
-          body: response.body
-        }
-      )
-
       StatsD.increment("#{STATSD_KEY_PREFIX}.upload.fail") unless response.success?
 
       response
     end
-    # rubocop:enable Metrics/MethodLength
 
     def status(uuid_or_list)
       body = {

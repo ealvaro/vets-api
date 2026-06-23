@@ -24,6 +24,7 @@ module ClaimsApi
       before_action :validate_json_format, if: -> { request.post? }
       before_action :validate_header_values_format, if: -> { header_request? }
       before_action :validate_veteran_identifiers
+      before_action :set_request_context
 
       # fetch_audience: defines the audience used for oauth
       # NOTE: required for oauth through claims_api to function
@@ -238,8 +239,7 @@ module ClaimsApi
         vet
       end
 
-      # This is still called by the ApplicationController even though sentry use has been deprecated
-      def set_sentry_tags_and_extra_context
+      def set_request_context
         RequestStore.store['additional_request_attributes'] = { 'source' => 'claims_api' }
       end
 

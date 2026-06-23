@@ -7,6 +7,8 @@ module TestUserDashboard
     include Vets::SharedLogging
     include Traceable
 
+    before_action :set_request_context
+
     def require_jwt
       token = request.headers['JWT']
       pub_key = request.headers['PK']
@@ -30,9 +32,8 @@ module TestUserDashboard
       false
     end
 
-    def set_sentry_tags_and_extra_context
+    def set_request_context
       RequestStore.store['additional_request_attributes'] = { 'source' => 'test-user-dashboard' }
-      Sentry.set_tags(source: 'test-user-dashboard')
     end
   end
 end

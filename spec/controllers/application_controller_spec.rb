@@ -83,45 +83,6 @@ RSpec.describe ApplicationController, type: :controller do
     end
   end
 
-  describe 'a sentry logger' do
-    subject { class_instance }
-
-    let(:class_instance) { described_class.new }
-    let(:exception) { StandardError.new }
-
-    context 'with SENTRY_DSN set' do
-      before { allow(Settings.sentry).to receive(:dsn).and_return('asdf') }
-
-      describe '#log_message_to_rails' do
-        it 'error logs to Rails logger' do
-          expect(Rails.logger).to receive(:error).with(/blah/).with(/context/)
-          subject.log_message_to_rails('blah', :error, { extra: 'context' })
-        end
-      end
-
-      describe '#log_exception_to_rails' do
-        it 'warn logs to Rails logger' do
-          expect(Rails.logger).to receive(:error).with(exception)
-          subject.log_exception_to_rails(exception)
-        end
-      end
-    end
-
-    context 'without SENTRY_DSN set' do
-      describe '#log_message_to_sentry' do
-        it 'warn logs to Rails logger' do
-          expect(Rails.logger).to receive(:warn).with(/blah/).with(/context/)
-          subject.log_message_to_sentry('blah', :warn, { extra: 'context' }, tags: 'tagging')
-        end
-
-        it 'does not log to Sentry' do
-          expect(Sentry).to receive(:capture_exception).exactly(0).times
-          subject.log_message_to_sentry('blah', :warn, { extra: 'context' }, tags: 'tagging')
-        end
-      end
-    end
-  end
-
   describe 'SharedLogging (Rails logger routing)' do
     subject { described_class.new }
 
@@ -256,44 +217,6 @@ RSpec.describe ApplicationController, type: :controller do
     end
   end
 
-  describe 'Sentry Handling' do
-    around do |example|
-      with_settings(Settings.sentry, dsn: 'T') do
-        example.run
-      end
-    end
-
-    it 'does not log exceptions to sentry if Pundit::NotAuthorizedError' do
-      expect(Sentry).not_to receive(:capture_exception).with(Pundit::NotAuthorizedError, { level: 'info' })
-      expect(Sentry).not_to receive(:capture_message)
-      get :not_authorized
-    end
-
-    it 'does not log to sentry if Breakers::OutageException' do
-      expect(Sentry).not_to receive(:capture_exception)
-      expect(Sentry).not_to receive(:capture_message)
-      get :breakers_outage
-    end
-
-    it 'does not log to sentry if Common::Exceptions::Unauthorized' do
-      expect(Sentry).not_to receive(:capture_exception)
-      expect(Sentry).not_to receive(:capture_message)
-      get :unauthorized
-    end
-
-    it 'does not log to sentry if Common::Exceptions::RoutingError' do
-      expect(Sentry).not_to receive(:capture_exception)
-      expect(Sentry).not_to receive(:capture_message)
-      get :routing_error
-    end
-
-    it 'does not log to sentry if Common::Exceptions::Forbidden' do
-      expect(Sentry).not_to receive(:capture_exception)
-      expect(Sentry).not_to receive(:capture_message)
-      get :forbidden
-    end
-  end
-
   describe 'Datadog tracing' do
     let(:active_span) do
       instance_double(Datadog::Tracing::Span)
@@ -415,33 +338,6 @@ RSpec.describe ApplicationController, type: :controller do
       context 'with Rails.env.test or Rails.env.development' do
         it 'renders json object with developer attributes' do
           get :not_authorized
-
-          expect(response).to have_http_status(:forbidden)
-          expect(subject.keys).to eq(keys_for_all_env)
-        end
-
-        it 'does not log info level and extra context to Sentry' do
-          expect(Sentry).not_to receive(:capture_exception).with(
-            Pundit::NotAuthorizedError,
-            level: 'info'
-          )
-          expect(Sentry).not_to receive(:set_extras).with(
-            va_exception_errors: [{
-              title: 'Forbidden',
-              detail: 'User does not have access to the requested resource',
-              code: '403',
-              status: '403'
-            }]
-          )
-          expect(Sentry).to receive(:set_extras).once.with(
-            request_uuid: nil
-          )
-
-          expect(Sentry).not_to receive(:capture_exception)
-
-          with_settings(Settings.sentry, dsn: 'T') do
-            get :not_authorized
-          end
 
           expect(response).to have_http_status(:forbidden)
           expect(subject.keys).to eq(keys_for_all_env)

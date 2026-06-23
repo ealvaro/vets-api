@@ -1208,7 +1208,6 @@ RSpec.describe V1::SessionsController, type: :controller do
           expect(existing_user.multifactor).to be_falsey
           expect(existing_user.loa).to eq(highest: IAL::ONE, current: IAL::ONE)
           expect(existing_user.ssn).to eq('796111863')
-          expect(Sentry).to receive(:set_tags).once
 
           callback_tags = ['status:success',
                            "context:#{IAL::LOGIN_GOV_IAL1}",
@@ -1331,15 +1330,14 @@ RSpec.describe V1::SessionsController, type: :controller do
             allow(User).to receive(:find).with('invalid').and_return(nil)
           end
 
-          it 'logs a message to Sentry' do
+          it 'logs a message' do
             allow(saml_user).to receive(:changing_multifactor?).and_return(true)
             expect(Rails.logger).to receive(:warn).with(
               "[UserSessionForm] Couldn't locate existing user after MFA establishment",
               saml_uuid: 'invalid',
               saml_icn: '11111111111'
             )
-            expect(Sentry).to receive(:set_extras).at_least(:once) # From PostURLService#initialize
-            with_settings(Settings.sentry, dsn: 'T') { call_endpoint }
+            call_endpoint
           end
         end
       end
@@ -1364,7 +1362,6 @@ RSpec.describe V1::SessionsController, type: :controller do
         before { allow(SAML::Responses::Login).to receive(:new).and_return(saml_response_click_deny) }
 
         it 'redirects to an auth failure page' do
-          expect(Sentry).to receive(:set_tags).once
           expect(Rails.logger)
             .to receive(:error).with(
               '[V1][Sessions Controller] error',

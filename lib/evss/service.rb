@@ -64,17 +64,10 @@ module EVSS
     end
 
     def handle_error(error)
-      Sentry.set_extras(
-        message: error.message,
-        url: config.base_path,
-        transaction_id: @transaction_id
-      )
-
       case error
       when Faraday::ParsingError
         raise_backend_exception('EVSS502', self.class)
       when Common::Client::Errors::ClientError
-        Sentry.set_extras(body: error.body)
         raise Common::Exceptions::Forbidden if error.status == 403
 
         raise_backend_exception('EVSS400', self.class, error) if error.status == 400

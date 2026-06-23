@@ -12,7 +12,6 @@ require 'rspec/rails'
 require 'webmock/rspec'
 require 'shoulda/matchers'
 require 'sidekiq/semantic_logging'
-require 'sidekiq/error_tag'
 require 'support/stub_va_profile'
 require 'support/mpi/stub_mpi'
 require 'support/mhv_user_account/stub_mhv_user_account'
@@ -104,7 +103,6 @@ Sidekiq::Testing.fake!
 Sidekiq::Testing.server_middleware do |chain|
   chain.add Sidekiq::SemanticLogging
   chain.add SidekiqStatsInstrumentation::ServerMiddleware
-  chain.add Sidekiq::ErrorTag
   chain.add Sidekiq::Batch::Server if defined?(Sidekiq::Batch)
 end
 

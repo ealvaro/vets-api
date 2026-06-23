@@ -37,7 +37,6 @@ app/controllers/concerns/instrumentation.rb @software/backend-review-group @soft
 app/controllers/concerns/inbound_request_logging.rb @software/benefits-management-tools-be @software/backend-review-group
 app/controllers/concerns/json_api_pagination_links.rb @software/backend-review-group
 app/controllers/concerns/medical_records/error_handler.rb @software/vfs-mhv-integration @software/backend-review-group
-app/controllers/concerns/sentry_controller_logging.rb @software/backend-review-group
 app/controllers/concerns/pdf_filename_generator.rb @software/health-apps-backend @software/backend-review-group
 app/controllers/concerns/pdf_s3_operations.rb @software/backend-review-group @software/benefits-intake-pingwind @software/bio-huntridge
 app/controllers/concerns/sign_in @software/octo-identity
@@ -260,7 +259,6 @@ app/models/form_profiles/va_1010ezr.rb @software/health-apps-backend @software/b
 app/models/form_profiles/va_10203.rb @software/govcio-vfep-codereviewers @software/backend-review-group
 app/models/form_profiles/va_10272.rb @software/govcio-vfep-codereviewers @software/backend-review-group
 app/models/form_profiles/va_10278.rb @software/govcio-vfep-codereviewers @software/backend-review-group
-app/models/form_profiles/va_10297.rb @software/govcio-vfep-codereviewers @software/backend-review-group
 app/models/form_profiles/va_1330m.rb @software/bah-mbs-selfserv @software/backend-review-group
 app/models/form_profiles/va_2122.rb @software/accredited-representative-crew @software/backend-review-group
 app/models/form_profiles/va_2122a.rb @software/accredited-representative-crew @software/backend-review-group
@@ -311,6 +309,7 @@ app/models/messaging_signature.rb @software/vfs-mhv-integration @software/backen
 app/models/mhv_metrics_unique_user_event.rb @software/vfs-mhv-integration @software/backend-review-group
 app/models/mhv_opt_in_flag.rb @software/vfs-mhv-integration @software/backend-review-group @software/octo-identity
 app/models/mhv_user_account.rb @software/octo-identity
+app/models/mhv/mr @software/vfs-mhv-integration @software/backend-review-group
 app/models/mpi_data.rb @software/octo-identity
 app/models/old_email.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 app/models/onsite_notification.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
@@ -1154,7 +1153,6 @@ lib/sftp_writer @software/backend-review-group
 lib/sharepoint/service.rb @software/mobile-api-team @software/backend-review-group
 lib/shrine @software/backend-review-group
 lib/sidekiq/attr_package.rb @software/octo-identity @software/backend-review-group
-lib/sidekiq/error_tag.rb @software/backend-review-group
 lib/sidekiq/form526_backup_submission_process @software/disability-benefits @software/backend-review-group
 lib/sidekiq/form526_backup_submission_process/submit_spec.rb @software/disability-benefits @software/disability-benefits @software/backend-review-group
 lib/sidekiq/form526_historical_data_exporter @software/vagov-claim-classification @software/backend-review-group
@@ -1335,6 +1333,7 @@ spec/controllers/concerns/third_party_transaction_logging_spec.rb @software/back
 spec/controllers/sign_in @software/octo-identity
 spec/controllers/sts @software/octo-identity
 spec/controllers/v0/apps_controller_spec.rb @software/lighthouse-pivot
+spec/controllers/v0/ask_va @software/ask-va-engineers @software/backend-review-group
 spec/controllers/v0/average_days_for_claim_completion_controller_spec.rb @software/benefits-microservices @software/backend-review-group
 spec/controllers/v0/benefits_claims_controller_spec.rb @software/benefits-management-tools-be @software/backend-review-group
 spec/controllers/v0/benefits_documents_controller_spec.rb @software/benefits-management-tools-be @software/backend-review-group
@@ -1780,7 +1779,6 @@ spec/lib/share_point/service_spec.rb @software/mobile-api-team @software/backend
 spec/lib/shrine @software/backend-review-group
 spec/lib/sidekiq_stats_instrumentation @software/backend-review-group
 spec/lib/sidekiq/attr_package_spec.rb @software/octo-identity @software/backend-review-group
-spec/lib/sidekiq/error_tag_spec.rb @software/backend-review-group
 spec/lib/sidekiq/form526_backup_submission_process @software/disability-benefits @software/backend-review-group
 spec/lib/sidekiq/form526_backup_submission_process/submit_spec.rb @software/disability-benefits @software/backend-review-group
 spec/lib/sidekiq/form526_historical_data_exporter @software/vagov-claim-classification @software/backend-review-group
@@ -1857,7 +1855,6 @@ spec/models/bgs_dependents @software/benefits-dependents-management @software/ba
 spec/models/category_spec.rb @software/backend-review-group
 spec/models/cave_submission_spec.rb @software/backend-review-group @software/bio-huntridge
 spec/models/chatbot @software/vfs-virtual-agent-chatbot @software/backend-review-group
-spec/models/datadog_metrics_spec.rb @software/backend-review-group
 spec/models/decision_review_notification_audit_log_spec.rb @software/benefits-decision-reviews-be @software/backend-review-group
 spec/models/debt_transaction_log_spec.rb @software/vsa-debt-resolution @software/backend-review-group
 spec/models/debts_api @software/vsa-debt-resolution @software/backend-review-group
@@ -1915,6 +1912,7 @@ spec/models/message_spec.rb @software/vfs-mhv-integration @software/backend-revi
 spec/models/mhv_metrics_unique_user_event_spec.rb @software/vfs-mhv-integration @software/backend-review-group
 spec/models/mhv_opt_in_flag_spec.rb @software/vfs-mhv-integration @software/backend-review-group
 spec/models/mhv_user_account_spec.rb @software/octo-identity
+spec/models/mhv/mr @software/vfs-mhv-integration @software/backend-review-group
 spec/models/mpi_data_spec.rb @software/octo-identity
 spec/models/onsite_notification_spec.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 spec/models/persistent_attachments @software/benefits-non-disability @software/pension-and-burials @software/backend-review-group

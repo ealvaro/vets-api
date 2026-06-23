@@ -8,7 +8,6 @@ module SignIn
     include ExceptionHandling
     include Headers
     include ControllerLoggingContext
-    include SentryControllerLogging
     include Traceable
 
     before_action :authenticate_service_account

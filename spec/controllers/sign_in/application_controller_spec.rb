@@ -403,11 +403,6 @@ RSpec.describe SignIn::ApplicationController, type: :controller do
           it 'returns ok status' do
             expect(subject).to have_http_status(:ok)
           end
-
-          it 'does not log a warning to sentry' do
-            expect(Rails.logger).not_to receive(:debug)
-            subject
-          end
         end
       end
     end
@@ -465,11 +460,6 @@ RSpec.describe SignIn::ApplicationController, type: :controller do
 
         it 'returns ok status' do
           expect(subject).to have_http_status(:ok)
-        end
-
-        it 'does not log a warning to sentry' do
-          expect(Rails.logger).not_to receive(:debug)
-          subject
         end
       end
     end
@@ -689,18 +679,6 @@ RSpec.describe SignIn::ApplicationController, type: :controller do
     before do
       request.headers['Authorization'] = authorization
       allow_any_instance_of(Rx::Client).to receive(:connection).and_raise(Faraday::ConnectionFailed, 'some message')
-      allow(Settings.sentry).to receive(:dsn).and_return('T')
-    end
-
-    it 'makes a call to sentry with appropriate tags' do
-      expect(Sentry).to receive(:set_tags).once.with(tags_context)
-      expect(Sentry).to receive(:set_tags).once.with(error: client_type)
-      subject
-    end
-
-    it 'makes a call to sentry with the appropriate user context' do
-      expect(Sentry).to receive(:set_user).once.with(user_context)
-      subject
     end
 
     it 'logs the exception message to Rails.logger.error' do
