@@ -328,8 +328,8 @@ GEM
     carrierwave-aws (1.6.1)
       aws-sdk-s3 (~> 1.0)
       carrierwave (>= 2.0, < 4)
-    cgi (0.5.1)
-    cgi (0.5.1-java)
+    cgi (0.5.2)
+    cgi (0.5.2-java)
     claide (1.1.0)
     claide-plugins (0.9.2)
       cork
@@ -395,7 +395,7 @@ GEM
       activerecord (>= 5.a)
       database_cleaner-core (~> 2.0.0)
     database_cleaner-core (2.0.1)
-    datadog (2.34.0)
+    datadog (2.35.0)
       cgi
       datadog-ruby_core_source (~> 3.5, >= 3.5.2)
       libdatadog (~> 33.0.0.1.0)
@@ -752,8 +752,8 @@ GEM
     minitest (5.27.0)
     mock_redis (0.55.0)
       redis (~> 5)
-    msgpack (1.8.0)
-    msgpack (1.8.0-java)
+    msgpack (1.8.3)
+    msgpack (1.8.3-java)
     multi_json (1.21.1)
     multi_json (1.21.1-java)
       concurrent-ruby (~> 1.2)
@@ -1308,7 +1308,7 @@ DEPENDENCIES
   csv
   danger
   database_cleaner
-  datadog (~> 2.34.0)
+  datadog (~> 2.35.0)
   date_validator
   debts_api!
   debug
