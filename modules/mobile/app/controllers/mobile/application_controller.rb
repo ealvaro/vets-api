@@ -10,7 +10,7 @@ module Mobile
                                      ('vamock-mobile' if MockedAuthentication.mockable_env?)]
 
     before_action :authenticate
-    before_action :set_sentry_tags_and_extra_context
+    before_action :set_request_context
     skip_before_action :authenticate, only: :cors_preflight
 
     private
@@ -32,9 +32,8 @@ module Mobile
       raise Common::Exceptions::Unauthorized.new(detail:)
     end
 
-    def set_sentry_tags_and_extra_context
+    def set_request_context
       RequestStore.store['additional_request_attributes'] = { 'source' => 'mobile' }
-      Sentry.set_tags(source: 'mobile')
     end
   end
 end

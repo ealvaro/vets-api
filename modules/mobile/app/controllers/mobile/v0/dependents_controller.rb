@@ -15,10 +15,7 @@ module Mobile
       def create
         claim = SavedClaim::DependencyClaim.new(form: dependent_params.to_json)
 
-        unless claim.save
-          Raven.tags_context(team: 'mobile') # tag sentry logs with team name
-          raise Common::Exceptions::ValidationErrors, claim
-        end
+        raise Common::Exceptions::ValidationErrors, claim unless claim.save
 
         claim.process_attachments!
         response = dependent_service.submit_686c_form(claim)

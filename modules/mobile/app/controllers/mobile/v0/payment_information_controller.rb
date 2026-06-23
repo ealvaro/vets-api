@@ -83,10 +83,7 @@ module Mobile
       end
 
       def validate_pay_info
-        unless pay_info.valid?
-          Sentry.set_tags(validation: 'direct_deposit')
-          raise Common::Exceptions::ValidationErrors, pay_info
-        end
+        raise Common::Exceptions::ValidationErrors, pay_info unless pay_info.valid?
       end
 
       def send_confirmation_email
