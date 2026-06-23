@@ -94,6 +94,10 @@ bid:
     jwt_secret: abcd1234abcd1234abcd1234abcd1234abcd1234
     mock: true
     net_worth_limit: '163699'
+  persons:
+    base_url: https://fake_url.com
+    jwt_secret: abcd1234abcd1234abcd1234abcd1234abcd1234
+    mock: true
 binaries:
   clamdscan: "/usr/bin/clamdscan"
   pdfinfo: pdfinfo

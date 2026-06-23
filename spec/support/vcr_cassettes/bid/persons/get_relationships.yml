@@ -1,0 +1,92 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://fake_url.com/api/v1/relationships/600293960
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Authorization:
+      - Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJhMzMxNTAxMC1lZWRmLTRiNmEtYTUyOC05NjFhNjc2NjQyMmMiLCJpYXQiOjE3ODA2MDU0MjEsImV4cCI6MTc4MDYwNzQyMSwiaXNzIjoidmV0cy1hcGkiLCJhcHBsaWNhdGlvbklEIjoiVkJNUyIsInVzZXJJRCI6IlZBR09WU1lTQUNDVCIsInN0YXRpb25JRCI6IjI4MyJ9.yqt-wEUva_aPN_dZqzApBIUccIlXPkrsr2ngRdn_onY
+      Accept:
+      - application/json
+      User-Agent:
+      - Faraday v2.14.2
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Thu, 04 Jun 2026 20:42:41 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Vary:
+      - Accept-Encoding
+      - Origin,Access-Control-Request-Method,Access-Control-Request-Headers
+      X-Oneagent-Js-Injection:
+      - 'true'
+      Server-Timing:
+      - dtRpid;desc="-523426134", dtSInfo;desc="0"
+      X-Content-Type-Options:
+      - nosniff
+      X-Xss-Protection:
+      - '0'
+      Cache-Control:
+      - no-cache, no-store, max-age=0, must-revalidate
+      Pragma:
+      - no-cache
+      Expires:
+      - '0'
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      X-Frame-Options:
+      - DENY
+      Content-Security-Policy:
+      - script-src 'self'
+      X-Envoy-Upstream-Service-Time:
+      - '12'
+    body:
+      encoding: ASCII-8BIT
+      string: |-
+        {
+          "messages" : [ ],
+          "findRelationshipsResponse" : [ {
+            "compId" : {
+              "fiduciaryInd" : "N",
+              "ptcpntIdA" : 600293960,
+              "ptcpntIdB" : 600057338,
+              "ptcpntRlnshpTypeNm" : "Spouse"
+            },
+            "jrnDt" : "2025-01-13T07:08:12-06:00",
+            "jrnLctnId" : "101",
+            "jrnUserId" : "DA",
+            "jrnStatusTypeCd" : "U",
+            "jrnObjId" : "RFAC113434 backfill",
+            "createDt" : "2019-09-12T10:27:30-05:00",
+            "createLctnId" : "317",
+            "createUserId" : "VBACOREEHEE",
+            "createObjId" : "SHARE  - CDEP",
+            "personOrOrganizationIndicator" : "P",
+            "ptcpntId" : 600057338,
+            "ptcpntTypeNm" : "Person",
+            "lastNm" : "Lane",
+            "firstNm" : "duane",
+            "middleNm" : "B",
+            "ssnNbr" : "796295979",
+            "fileNbr" : "796295979",
+            "brthdyDt" : "1963-02-11T00:00:00-06:00",
+            "genderCd" : "M",
+            "deathDt" : "2021-07-01T00:00:00-05:00",
+            "vetInd" : "Y"
+          } ]
+        }
+  recorded_at: Thu, 04 Jun 2026 20:42:41 GMT
+recorded_with: VCR 6.4.0

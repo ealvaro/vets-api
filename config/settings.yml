@@ -95,6 +95,10 @@ bid:
     jwt_secret: <%= ENV['bid__awards__jwt_secret'] %>
     mock: <%= ENV['bid__awards__mock'] %>
     net_worth_limit: <%= ENV['bid__awards__net_worth_limit'] %>
+  persons:
+    base_url: <%= ENV['bid__persons__base_url'] %>
+    jwt_secret: <%= ENV['bid__persons__jwt_secret'] %>
+    mock: <%= ENV['bid__persons__mock'] %>
 binaries:
   clamdscan: "/usr/bin/clamdscan"
   pdfinfo: pdfinfo
