@@ -45,6 +45,15 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
 
   before do
     stub_poa_verification
+    allow_any_instance_of(ClaimsApi::V1::ClaimsController)
+      .to receive(:validate_access_against_bgs).and_return(true)
+    # Most request specs in this file validate legacy show behavior, not access-validation internals.
+    # Stub find_lighthouse_claim! to use a simple DB lookup (no ICN requirement) so existing
+    # show-branch examples remain focused on response serialization, not claim access validation.
+    allow_any_instance_of(ClaimsApi::V1::ClaimsController)
+      .to receive(:find_lighthouse_claim!) do |_controller, claim_id:|
+        ClaimsApi::AutoEstablishedClaim.find_by(id: claim_id)
+      end
   end
 
   context 'index' do
@@ -76,6 +85,205 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
           VCR.use_cassette('claims_api/bgs/claims/claims_with_errors') do
             get '/services/claims/v1/claims', params: nil, headers: request_headers.merge(auth_header)
             expect(response).to have_http_status(:not_found)
+          end
+        end
+      end
+    end
+  end
+
+  describe 'show with validate_id_with_icn' do
+    let(:veteran_id) { '1012667169V030190' }
+    let(:bgs_claim_response) { build(:bgs_response_with_one_lc_status).to_h }
+    let(:bnft_claim_web_service) { ClaimsApi::EbenefitsBnftClaimStatusWebService }
+    let(:evss_id) { '111111111' }
+    let(:veteran_participant_id) { '600045025' }
+    let(:evss_claim_data) do
+      {
+        'date' => '11/06/2018',
+        'max_est_claim_date' => '11/06/2019',
+        'claim_complete_date' => nil,
+        'waiver5103_submitted' => false,
+        'attention_needed' => 'No',
+        'development_letter_sent' => 'No',
+        'decision_notification_sent' => 'No',
+        'status_type' => 'Compensation',
+        'poa' => 'Disabled American Veterans',
+        'contention_list' => [],
+        'claim_tracked_items' => {},
+        'vba_document_list' => [],
+        'claim_phase_dates' => {
+          'latest_phase_type' => 'Claim received'
+        }
+      }
+    end
+
+    before do
+      allow_any_instance_of(ClaimsApi::V1::ClaimsController)
+        .to receive(:validate_access_against_bgs).and_call_original
+      allow_any_instance_of(ClaimsApi::V1::ClaimsController)
+        .to receive(:find_lighthouse_claim!).and_call_original
+    end
+
+    def mock_target_veteran(icn, participant_id, ssn: '796043735')
+      OpenStruct.new(
+        icn:,
+        first_name: 'Wesley',
+        last_name: 'Ford',
+        loa: { current: 3, highest: 3 },
+        edipi: '1007697216',
+        ssn:,
+        participant_id:,
+        mpi: OpenStruct.new(
+          icn:,
+          profile: OpenStruct.new(ssn:)
+        )
+      )
+    end
+
+    def stub_evss_service_response
+      allow_any_instance_of(bnft_claim_web_service)
+        .to receive(:update_from_remote).and_return(
+          ClaimsApi::EVSSClaim.new(
+            evss_id:,
+            data: evss_claim_data
+          )
+        )
+    end
+
+    def make_claim_request(headers)
+      get "/services/claims/v1/claims/#{bgs_claim_id}", params: nil, headers:
+    end
+
+    context 'User is a veteran trying to access their claim information' do
+      it 'validates successfully and returns the claim information', run_at: 'Wed, 13 Dec 2017 03:28:23 GMT' do
+        lh_claim = create(
+          :auto_established_claim,
+          status: 'PENDING',
+          veteran_icn: veteran_id,
+          evss_id:
+        )
+        mock_acg(scopes) do |auth_header|
+          VCR.use_cassette('claims_api/bgs/tracked_items/find_tracked_items') do
+            VCR.use_cassette('claims_api/evss/documents/get_claim_documents') do
+              allow_any_instance_of(ClaimsApi::V1::ApplicationController)
+                .to receive(:target_veteran).and_return(mock_target_veteran(veteran_id, veteran_participant_id))
+
+              bgs_claim_response[:benefit_claim_details_dto][:ptcpnt_vet_id] = veteran_participant_id
+              expect_any_instance_of(bnft_claim_web_service)
+                .to receive(:find_benefit_claim_details_by_benefit_claim_id).and_return(bgs_claim_response)
+
+              stub_evss_service_response
+              expect(ClaimsApi::AutoEstablishedClaim)
+                .to receive(:get_by_id_and_icn).and_return(lh_claim)
+
+              make_claim_request(auth_header)
+
+              json_response = JSON.parse(response.body)
+              expect(response).to have_http_status(:ok)
+              expect(json_response.keys).to include('data')
+              expect(json_response['data']['id']).to eq(lh_claim.id)
+              expect(response).to match_response_schema('claims_api/claim')
+            end
+          end
+        end
+      end
+    end
+
+    context 'User is a veteran attempting to access a claim that does not belong to them' do
+      it 'raises a not found error', run_at: 'Wed, 13 Dec 2017 03:28:23 GMT' do
+        mock_acg(scopes) do |auth_header|
+          VCR.use_cassette('claims_api/bgs/tracked_items/find_tracked_items') do
+            VCR.use_cassette('claims_api/evss/documents/get_claim_documents') do
+              allow_any_instance_of(ClaimsApi::V1::ApplicationController)
+                .to receive(:target_veteran).and_return(mock_target_veteran('some-other-icn', veteran_participant_id))
+
+              make_claim_request(auth_header)
+
+              expect(response).to have_http_status(:not_found)
+              expect(JSON.parse(response.body)['errors'][0]['detail']).to eq('Claim not found')
+            end
+          end
+        end
+      end
+    end
+
+    context "POA accessing a veteran's claim with header request" do
+      it 'validates successfully and returns the claim information', run_at: 'Wed, 13 Dec 2017 03:28:23 GMT' do
+        lh_claim = create(
+          :auto_established_claim,
+          status: 'PENDING',
+          veteran_icn: veteran_id,
+          evss_id:
+        )
+
+        mock_acg(scopes) do |auth_header|
+          VCR.use_cassette('claims_api/bgs/tracked_items/find_tracked_items') do
+            VCR.use_cassette('claims_api/evss/documents/get_claim_documents') do
+              # target_veteran represents the veteran the POA is acting on behalf of
+              allow_any_instance_of(ClaimsApi::V1::ApplicationController)
+                .to receive(:target_veteran).and_return(mock_target_veteran(veteran_id, veteran_participant_id))
+
+              # BGS claim participant IDs match the veteran — validation should pass
+              bgs_claim_response[:benefit_claim_details_dto][:ptcpnt_vet_id] = veteran_participant_id
+              bgs_claim_response[:benefit_claim_details_dto][:ptcpnt_clmant_id] = veteran_participant_id
+
+              expect_any_instance_of(bnft_claim_web_service)
+                .to receive(:find_benefit_claim_details_by_benefit_claim_id).and_return(bgs_claim_response)
+
+              stub_evss_service_response
+              expect(ClaimsApi::AutoEstablishedClaim)
+                .to receive(:get_by_id_and_icn).and_return(lh_claim)
+
+              header_request_headers = request_headers.merge(auth_header).merge(
+                {
+                  'X-VA-First-Name' => 'POA',
+                  'X-VA-Last-Name' => 'Representative',
+                  'X-VA-SSN' => '111223333'
+                }
+              )
+
+              make_claim_request(header_request_headers)
+
+              json_response = JSON.parse(response.body)
+              expect(response).to have_http_status(:ok)
+              expect(json_response.keys).to include('data')
+              expect(json_response['data']['id']).to eq(lh_claim.id)
+              expect(response).to match_response_schema('claims_api/claim')
+            end
+          end
+        end
+      end
+    end
+
+    context "The BGS claim ptcpnt_vet_id or ptcpnt_clmant_id does not match the veteran's participant ID" do
+      it 'raises a not found error', run_at: 'Wed, 13 Dec 2017 03:28:23 GMT' do
+        create(
+          :auto_established_claim,
+          status: 'PENDING',
+          veteran_icn: veteran_id,
+          evss_id:
+        )
+
+        mock_acg(scopes) do |auth_header|
+          VCR.use_cassette('claims_api/bgs/tracked_items/find_tracked_items') do
+            allow_any_instance_of(ClaimsApi::V1::ApplicationController)
+              .to receive(:target_veteran).and_return(mock_target_veteran(veteran_id, veteran_participant_id))
+
+            bgs_claim_response[:benefit_claim_details_dto][:ptcpnt_vet_id] = 'some-other-participant-id'
+            bgs_claim_response[:benefit_claim_details_dto][:ptcpnt_clmant_id] = 'some-other-participant-id'
+
+            expect_any_instance_of(bnft_claim_web_service)
+              .to receive(:find_benefit_claim_details_by_benefit_claim_id).and_return(bgs_claim_response)
+            expect(ClaimsApi::AutoEstablishedClaim)
+              .to receive(:get_by_id_and_icn).and_return(nil)
+            expect_any_instance_of(bnft_claim_web_service)
+              .not_to receive(:update_from_remote)
+
+            make_claim_request(auth_header)
+
+            expect(response).to have_http_status(:not_found)
+            expect(JSON.parse(response.body)['errors'][0]['detail'])
+              .to eq('Invalid claim ID for the veteran identified.')
           end
         end
       end

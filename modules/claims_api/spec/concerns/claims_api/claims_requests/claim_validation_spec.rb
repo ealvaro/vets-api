@@ -4,7 +4,7 @@ require 'rails_helper'
 require 'bd/bd'
 
 class ClaimValidationTestController
-  include ClaimsApi::V2::ClaimsRequests::ClaimValidation
+  include ClaimsApi::ClaimsRequests::ClaimValidation
 
   def target_veteran
     OpenStruct.new(
@@ -23,7 +23,7 @@ class ClaimValidationTestController
   end
 end
 
-describe ClaimsApi::V2::ClaimsRequests::ClaimValidation do
+describe ClaimsApi::ClaimsRequests::ClaimValidation do
   let(:target_veteran) do
     OpenStruct.new(
       icn: '1013062086V794840',

@@ -6,7 +6,11 @@ require 'claims_api/evss_bgs_mapper'
 module ClaimsApi
   module V1
     class ClaimsController < ApplicationController
+      INVALID_CLAIM_ACCESS_DETAIL = 'Invalid claim ID for the veteran identified.'
+
       include ClaimsApi::PoaVerification
+      include ClaimsApi::ClaimsRequests::ClaimValidation
+
       before_action { permit_scopes %w[claim.read] }
       before_action :verify_power_of_attorney!, if: :header_request?
 
@@ -22,7 +26,9 @@ module ClaimsApi
       end
 
       def show
-        claim = ClaimsApi::AutoEstablishedClaim.find_by(id: params[:id])
+        # find the claim and validate against BGS before returning
+        claim = find_lighthouse_claim!(claim_id: params[:id])
+        validate_access_against_bgs(claim)
 
         if claim && claim.status == 'errored'
           fetch_errored(claim)
@@ -36,19 +42,37 @@ module ClaimsApi
           # NOTE: source doesn't seem to be accessible within a remote evss_claim
           render json: ClaimsApi::ClaimDetailSerializer.new(claim)
         else
-          claims_v1_logging('claims_show', message: 'Claim not found')
-          raise ::Common::Exceptions::ResourceNotFound.new(detail: 'Claim not found')
+          raise_claim_not_found!
         end
       rescue => e
-        claims_v1_logging('claims_show', message: e.message) unless e.is_a?(::Common::Exceptions::ResourceNotFound)
-
-        raise if e.is_a?(::Common::Exceptions::UnprocessableEntity)
-
-        claims_v1_logging('claims_show', message: 'Claim not found')
-        raise ::Common::Exceptions::ResourceNotFound.new(detail: 'Claim not found')
+        show_error_response(e)
       end
 
       private
+
+      def show_error_response(error)
+        if invalid_claim_access_error?(error)
+          claims_v1_logging('claims_show', message: error.message)
+          raise error
+        end
+
+        unless error.is_a?(::Common::Exceptions::ResourceNotFound)
+          claims_v1_logging('claims_show', message: error.message)
+          raise if error.is_a?(::Common::Exceptions::UnprocessableEntity)
+        end
+
+        raise_claim_not_found!
+      end
+
+      def invalid_claim_access_error?(error)
+        error.is_a?(::Common::Exceptions::ResourceNotFound) &&
+          error.errors[0]&.detail == INVALID_CLAIM_ACCESS_DETAIL
+      end
+
+      def raise_claim_not_found!
+        claims_v1_logging('claims_show', message: 'Claim not found')
+        raise ::Common::Exceptions::ResourceNotFound.new(detail: 'Claim not found')
+      end
 
       def fetch_errored(claim)
         if claim.evss_response&.any?
@@ -67,6 +91,40 @@ module ClaimsApi
           formatted = error[:key] ? error[:key].to_s.gsub('.', '/') : error[:key]
           { status: 422, detail: "#{error[:severity]} #{error[:detail] || error[:text]}".squish, source: formatted }
         end
+      end
+
+      def validate_access_against_bgs(claim)
+        # use evss_id unless claim could not be found
+        benefit_claim_id = claim&.evss_id || params[:id]
+        bgs_claim = find_bgs_claim!(claim_id: benefit_claim_id)
+
+        raise ::Common::Exceptions::ResourceNotFound.new(detail: 'Claim not found') if claim.blank? && bgs_claim.blank?
+
+        validate_id_with_icn(bgs_claim, claim, target_veteran&.mpi&.icn)
+      end
+
+      def find_lighthouse_claim!(claim_id:)
+        lighthouse_claim = ClaimsApi::AutoEstablishedClaim.get_by_id_and_icn(
+          claim_id, target_veteran&.mpi&.icn
+        )
+
+        if looking_for_lighthouse_claim?(claim_id:) && lighthouse_claim.blank?
+          raise ::Common::Exceptions::ResourceNotFound.new(detail: 'Claim not found')
+        end
+
+        lighthouse_claim
+      end
+
+      def looking_for_lighthouse_claim?(claim_id:)
+        claim_id.to_s.include?('-')
+      end
+
+      def find_bgs_claim!(claim_id:)
+        return if claim_id.blank?
+
+        claims_status_service&.find_benefit_claim_details_by_benefit_claim_id(
+          claim_id
+        )
       end
     end
   end

@@ -185,6 +185,14 @@ Rspec.describe 'EVSS Claims management', openapi_spec: 'modules/claims_api/app/s
 
       before do
         allow(Flipper).to receive(:enabled?).with(:claims_load_testing).and_return false
+        # Keep rswag examples focused on documented responses for show branches.
+        # Validation behavior is covered in dedicated request specs.
+        allow_any_instance_of(ClaimsApi::V1::ClaimsController)
+          .to receive(:validate_access_against_bgs).and_return(true)
+        allow_any_instance_of(ClaimsApi::V1::ClaimsController)
+          .to receive(:find_lighthouse_claim!) do |_controller, claim_id:|
+            ClaimsApi::AutoEstablishedClaim.find_by(id: claim_id)
+          end
       end
 
       describe 'Getting a 200 response' do
