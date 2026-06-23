@@ -4,13 +4,17 @@ x-app: &common
   build:
     args:
       BUNDLE_ENTERPRISE__CONTRIBSYS__COM: "${BUNDLE_ENTERPRISE__CONTRIBSYS__COM}"
+      BUNDLE_VA__GHE__COM: "${BUNDLE_VA__GHE__COM}"
       USER_ID: ${VETS_API_USER_ID}
       IMAGEMAGICK_IMAGE: "${IMAGEMAGICK_IMAGE:-dpokidov/imagemagick:7.1.1-47-bookworm}"
       RUBY_IMAGE: "${RUBY_IMAGE:-public.ecr.aws/docker/library/ruby:3.3.6-slim-bookworm}"
+      CERTS_IMAGE: "${CERTS_IMAGE:-008577686731.dkr.ecr.us-gov-west-1.amazonaws.com/dsva/va-certs:v0.14.0}"
+      SHOULD_USE_CERT_IMAGE: "true"
     context: .
   environment:
     RAILS_ENV: development
     BUNDLE_ENTERPRISE__CONTRIBSYS__COM: "${BUNDLE_ENTERPRISE__CONTRIBSYS__COM}"
+    BUNDLE_VA__GHE__COM: "${BUNDLE_VA__GHE__COM}"
     SETTINGS__DATABASE_URL: "postgis://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DATABASE:-vets_api_development}?pool=4"
     SETTINGS__TEST_DATABASE_URL: "postgis://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DATABASE:-vets_api_test}"
     SETTINGS__REDIS__APP_DATA__URL: "redis://redis:6379"
