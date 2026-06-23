@@ -9,25 +9,20 @@ module IncomeAndAssets
     # sidekiq job to send pdfs to Lighthouse:BenefitsIntake API
     # @see https://developer.va.gov/explore/api/benefits-intake/docs
     class SubmitClaimJob < ::BenefitsIntake::SubmitClaimJob
-      ##
-      # Process income and assets pdfs and upload to Benefits Intake API
+      # @see IncomeAndAssets::SavedClaim#submit_to_benefits_intake
       #
-      # @param saved_claim_id [Integer] the pension claim id
-      # @param user_account_uuid [UUID] the user submitting the form
+      # @param user [User, nil] the user who submitted the claim
       #
-      # @return [UUID] benefits intake upload uuid
-      #
-      def perform(saved_claim_id, user_account_uuid = nil)
-        config = {
-          claim_class: 'IncomeAndAssets::SavedClaim',
-          user_account_uuid:,
+      # @return [Hash] config for processing benefits intake submission
+      def self.build_config_hash(user = nil)
+        {
+          user_account_uuid: user&.user_account_uuid,
+          participant_id: user&.participant_id,
           email_type: :submitted,
           claim_stamp_set: :income_and_assets_generated_claim,
           attachment_stamp_set: :income_and_assets_received_at,
-          source: self.class.to_s,
           submit_kafka_event: Flipper.enabled?(:income_and_assets_kafka_event_enabled)
         }
-        super(saved_claim_id, **config)
       end
 
       private

@@ -172,5 +172,17 @@ module Burials
     def send_email(email_type)
       Burials::NotificationEmail.new(id).deliver(email_type)
     end
+
+    ##
+    # Submits claim to LH Benefits Intake API
+    #
+    # @param user [User]
+    #
+    # @return [String] Benefits Intake UUID
+    def submit_to_benefits_intake(user = nil)
+      job_class = Burials::BenefitsIntake::SubmitClaimJob
+      config = job_class.build_config_hash(user)
+      job_class.perform_async(id, **config)
+    end
   end
 end

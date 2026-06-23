@@ -128,5 +128,17 @@ module Pensions
     def to_pdf(file_name = nil, fill_options = {})
       ::PdfFill::Filler.fill_form(self, file_name, fill_options)
     end
+
+    ##
+    # Submits claim to LH Benefits Intake API
+    #
+    # @param user [User]
+    #
+    # @return [String] Benefits Intake UUID
+    def submit_to_benefits_intake(user = nil)
+      job_class = Pensions::BenefitsIntake::SubmitClaimJob
+      config = job_class.build_config_hash(user)
+      job_class.perform_async(id, **config)
+    end
   end
 end

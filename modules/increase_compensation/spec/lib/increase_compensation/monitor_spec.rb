@@ -321,7 +321,8 @@ RSpec.describe IncreaseCompensation::Monitor do
 
       context 'without a claim parameter' do
         it 'logs sidekiq job exhaustion' do
-          msg = { 'args' => [claim.id, current_user.uuid], 'error_message' => 'Final error message' }
+          bad_claim_id = 0
+          msg = { 'args' => [bad_claim_id, current_user.uuid], 'error_message' => 'Final error message' }
 
           expect(IncreaseCompensation::NotificationEmail).not_to receive(:new)
 
@@ -331,7 +332,7 @@ RSpec.describe IncreaseCompensation::Monitor do
             "#{submission_stats_key}.exhausted",
             hash_including(
               call_location: anything,
-              claim_id: claim.id,
+              claim_id: nil,
               user_account_uuid: current_user.uuid,
               confirmation_number: nil,
               form_id: nil,
@@ -346,7 +347,7 @@ RSpec.describe IncreaseCompensation::Monitor do
             'silent_failure',
             hash_including(
               call_location: anything,
-              claim_id: claim.id,
+              claim_id: nil,
               user_account_uuid: current_user.uuid,
               error: msg,
               tags: monitor.tags

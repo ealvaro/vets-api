@@ -186,4 +186,17 @@ RSpec.describe Burials::SavedClaim do
       expect(StatsD).to have_received(:increment).with('saved_claim.pdf.overflow', tags:)
     end
   end
+
+  describe '#submit_to_benefits_intake' do
+    it 'builds a config hash and queues claim for submission to Benefits Intake API' do
+      user = build(:user)
+      claim = build(:burials_saved_claim)
+      config = { user_account_uuid: user.user_account.id }
+
+      expect(Burials::BenefitsIntake::SubmitClaimJob).to receive(:build_config_hash).with(user).and_return(config)
+      expect(Burials::BenefitsIntake::SubmitClaimJob).to receive(:perform_async).with(claim.id, **config)
+
+      claim.submit_to_benefits_intake(user)
+    end
+  end
 end

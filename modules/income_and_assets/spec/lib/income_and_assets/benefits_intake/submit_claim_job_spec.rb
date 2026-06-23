@@ -26,48 +26,20 @@ RSpec.describe IncomeAndAssets::BenefitsIntake::SubmitClaimJob, :uploader_helper
     }
   end
 
-  describe '#perform' do
-    let(:response) { double('response') }
-    let(:pdf_path) { 'random/path/to/pdf' }
-    let(:location) { 'test_location' }
-    let(:omit_esign_stamp) { true }
-    let(:extras_redesign) { true }
-
-    before do
-      allow(Flipper).to receive(:enabled?).with(:income_and_assets_kafka_event_enabled).and_return false
-      allow(Flipper).to receive(:enabled?).with(:validate_saved_claims_with_json_schemer).and_return true
-
-      allow(IncomeAndAssets::SavedClaim).to receive(:find_by).and_return(claim)
-      allow(claim).to receive_messages(to_pdf: pdf_path, persistent_attachments: [])
-
-      allow(BenefitsIntake::Service).to receive(:new).and_return(service)
-      allow(service).to receive(:uuid)
-      allow(service).to receive(:request_upload)
-      allow(service).to receive_messages(location:, perform_upload: response)
-      allow(response).to receive(:success?).and_return true
-
-      allow(IncomeAndAssets::Monitor).to receive(:new).and_return(monitor)
-    end
-
-    it 'submits the saved claim successfully' do
-      expect(UserAccount).to receive(:find_by).and_return(user_account)
-      expect(IncomeAndAssets::SavedClaim).to receive(:find_by).and_return(claim)
-
-      expect(Lighthouse::Submission).to receive(:create)
-      expect(Lighthouse::SubmissionAttempt).to receive(:create)
-      expect(Datadog::Tracing).to receive(:active_trace)
-
-      stamper = IncomeAndAssets::PDFStamper.new([])
-      expect(IncomeAndAssets::PDFStamper).to receive(:new).with(:income_and_assets_generated_claim).and_return(stamper)
-      expect(stamper).to receive(:run).and_return(pdf_path)
-      expect(service).to receive(:valid_document?).with(document: pdf_path).and_return(pdf_path)
-
-      expect(service).to receive(:perform_upload).with(
-        upload_url: 'test_location', document: pdf_path, metadata: generated_metadata.to_json, attachments: []
+  describe '.build_config_hash' do
+    it 'returns hash of job config options' do
+      allow(Flipper).to receive(:enabled?).with(:income_and_assets_kafka_event_enabled).and_return(false)
+      user = build(:user)
+      expect(described_class.build_config_hash(user)).to eq(
+        {
+          user_account_uuid: user.user_account.id,
+          participant_id: user.participant_id,
+          email_type: :submitted,
+          claim_stamp_set: :income_and_assets_generated_claim,
+          attachment_stamp_set: :income_and_assets_received_at,
+          submit_kafka_event: false
+        }
       )
-      expect(job).to receive(:cleanup_file_paths)
-
-      job.perform(claim.id, user_account.id)
     end
   end
 
@@ -101,16 +73,14 @@ RSpec.describe IncomeAndAssets::BenefitsIntake::SubmitClaimJob, :uploader_helper
       end
 
       it 'logs a distinct error when only claim_id provided' do
-        config = { claim_class: 'IncomeAndAssets::SavedClaim' }
+        config = { email_type: :submitted }
         msg = { 'args' => [claim.id, config], 'class' => 'IncomeAndAssets::BenefitsIntake::SubmitClaimJob', 'error_message' => 'An error occurred', 'queue' => 'low' }
         IncomeAndAssets::BenefitsIntake::SubmitClaimJob.within_sidekiq_retries_exhausted_block(msg) do
-          expect(IncomeAndAssets::SavedClaim).to receive(:find_by).with(id: claim.id).and_return(claim)
+          expect(SavedClaim).to receive(:find_by).with(id: claim.id).and_return(claim)
 
           expect(monitor).to receive(:track_submission_exhaustion).with(msg, claim)
         end
       end
     end
   end
-
-  # Rspec.describe
 end

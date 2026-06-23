@@ -132,5 +132,16 @@ module IncomeAndAssets
 
       self.form = data.to_json
     end
+
+    # submit claim to LH Benefits Intake API
+    #
+    # @param user [User]
+    #
+    # @return [String] Benefits Intake UUID
+    def submit_to_benefits_intake(user = nil)
+      job_class = IncomeAndAssets::BenefitsIntake::SubmitClaimJob
+      config = job_class.build_config_hash(user)
+      job_class.perform_async(id, **config)
+    end
   end
 end

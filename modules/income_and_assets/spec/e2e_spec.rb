@@ -52,7 +52,10 @@ RSpec.describe 'Income and Assets End to End', type: :request do
     expect(BenefitsIntake::Metadata).to receive(:generate).and_call_original
 
     expect(service).to receive(:valid_document?).and_return(pdf_path)
-    expect(service).to receive(:request_upload)
+    upload_request_data = { 'id' => '123', 'attributes' => { 'location' => 'test_location' } }
+    upload_request = double(body: { 'data' => upload_request_data })
+    expect(service).to receive(:perform).with(:post, 'uploads', {}, {}).and_return(upload_request)
+    expect(service).to receive(:request_upload).and_call_original
     expect(monitor).to receive(:track_submission_begun).and_call_original
 
     expect(Lighthouse::Submission).to receive(:create).and_call_original
@@ -75,7 +78,8 @@ RSpec.describe 'Income and Assets End to End', type: :request do
     expect(Common::FileHelpers).to receive(:delete_file_if_exists).at_least(1).and_call_original
 
     # submission process, external api is stubbed - BenefitsIntake::Service methods above
-    lh_bi_uuid = IncomeAndAssets::BenefitsIntake::SubmitClaimJob.new.perform(saved_claim_id)
+    config = IncomeAndAssets::BenefitsIntake::SubmitClaimJob.build_config_hash
+    lh_bi_uuid = IncomeAndAssets::BenefitsIntake::SubmitClaimJob.new.perform(saved_claim_id, **config)
 
     # verify upload artifacts - form_submission and claim_va_notification
     submission = Lighthouse::Submission.find_by(saved_claim_id:)
@@ -92,8 +96,8 @@ RSpec.describe 'Income and Assets End to End', type: :request do
     # submission status update
     updated_at = Time.zone.now
     attributes = { 'status' => 'vbms', 'updated_at' => updated_at }
-    data = [{ 'id' => attempt.benefits_intake_uuid, 'attributes' => attributes }]
-    bulk_status = double(body: { 'data' => data }, success?: true)
+    bulk_status_data = [{ 'id' => attempt.benefits_intake_uuid, 'attributes' => attributes }]
+    bulk_status = double(body: { 'data' => bulk_status_data }, success?: true)
 
     expect(service).to receive(:bulk_status).and_return(bulk_status)
 

@@ -66,8 +66,7 @@ module Pensions
 
         process_attachments(in_progress_form, claim)
 
-        Pensions::BenefitsIntake::SubmitClaimJob.perform_async(claim.id, current_user&.user_account_uuid,
-                                                               current_user&.participant_id)
+        claim.submit_to_benefits_intake(current_user)
 
         monitor.track_create_success(in_progress_form, claim, current_user)
 

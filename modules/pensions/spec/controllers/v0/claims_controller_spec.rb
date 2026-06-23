@@ -54,33 +54,21 @@ RSpec.describe Pensions::V0::ClaimsController, type: :controller do
       end
 
       it('returns a serialized claim') do
+        allow(controller).to receive(:current_user).and_return(user)
         allow(Pensions::SavedClaim).to receive(:new).and_return(claim)
+        allow(claim).to receive(:submit_to_benefits_intake).with(user).and_return(nil)
         allow(Flipper).to receive(:enabled?).with(:bpds_service_enabled).and_return(true)
 
         expect(monitor).to receive(:track_create_attempt).once
         expect(monitor).to receive(:track_create_success).once
         expect(claim).to receive(:process_attachments!).once
-        expect(Pensions::BenefitsIntake::SubmitClaimJob).to receive(:perform_async).once
-        expect(BPDS::Sidekiq::SubmitToBPDSJob).to receive(:perform_async).with(claim.id, /^v1:insecure\+data\+.+/).once
+        expect(claim).to receive(:submit_to_benefits_intake).with(user)
+        expect(BPDS::Sidekiq::SubmitToBPDSJob).to receive(:perform_async).with(claim.id,
+                                                                               /^v1:insecure\+data\+.+/).once
         expect(Kafka).to receive(:submit_event).once
 
         response = post(:create, params: { param_name => { form: claim.form } })
 
-        expect(response).to have_http_status(:success)
-      end
-
-      it 'passes participant_id to SubmitClaimJob' do
-        pid = '99887766'
-        user = create(:user, participant_id: pid)
-        sign_in_as(user)
-
-        allow(Pensions::SavedClaim).to receive(:new).and_return(claim)
-        allow(claim).to receive(:process_attachments!)
-
-        expect(Pensions::BenefitsIntake::SubmitClaimJob).to receive(:perform_async)
-          .with(anything, user.user_account_uuid, user.participant_id)
-
-        response = post(:create, params: { param_name => { form: claim.form } })
         expect(response).to have_http_status(:success)
       end
     end

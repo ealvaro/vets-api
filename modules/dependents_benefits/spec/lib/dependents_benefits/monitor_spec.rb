@@ -183,10 +183,27 @@ RSpec.describe DependentsBenefits::Monitor do
   end
 
   describe '#track_submission_exhaustion' do
-    context 'without a claim parameter' do
-      it 'logs sidekiq job exhaustion' do
-        msg = { 'args' => [claim.id, current_user.uuid], 'error_message' => 'Final error message' }
-        log = "#{message_prefix} submission to LH exhausted!"
+    context 'without a valid claim' do
+      it 'logs sidekiq job exhaustion with nil claim' do
+        bad_claim_id = 0
+        msg = { 'args' => [bad_claim_id, current_user.uuid], 'error_message' => 'Final error message' }
+
+        expect(DependentsBenefits::NotificationEmail).not_to receive(:new)
+
+        expect(monitor).to receive(:track_request).with(
+          :error,
+          "#{message_prefix} submission to LH exhausted!",
+          "#{submission_stats_key}.exhausted",
+          hash_including(
+            call_location: anything,
+            claim_id: nil,
+            user_account_uuid: current_user.uuid,
+            confirmation_number: nil,
+            form_id: nil,
+            error: msg['error_message'],
+            tags: monitor.tags
+          )
+        )
 
         expect(monitor).to receive(:track_request).with(
           :error,
@@ -194,26 +211,13 @@ RSpec.describe DependentsBenefits::Monitor do
           'silent_failure',
           hash_including(
             call_location: anything,
-            claim_id: claim.id,
-            user_account_uuid: current_user.user_account_uuid,
+            claim_id: nil,
+            user_account_uuid: current_user.uuid,
             error: msg,
             tags: monitor.tags
           )
         )
-
-        expect(monitor).to receive(:track_request).with(
-          :error, log, "#{submission_stats_key}.exhausted",
-          hash_including(
-            call_location: anything,
-            claim_id: claim.id,
-            user_account_uuid: current_user.user_account_uuid,
-            confirmation_number: nil,
-            form_id: nil,
-            error: msg['error_message'],
-            tags: monitor.tags
-          )
-        )
-        monitor.track_submission_exhaustion(msg, nil)
+        monitor.track_submission_exhaustion(msg)
       end
     end
   end

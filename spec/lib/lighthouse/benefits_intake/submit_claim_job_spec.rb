@@ -112,6 +112,51 @@ RSpec.describe BenefitsIntake::SubmitClaimJob, :uploader_helpers do
 
       expect { job.perform(claim.id) }.to raise_error(RuntimeError, service.uuid)
     end
+
+    context 'when document processing and validation fails' do
+      let(:service) { instance_double(BenefitsIntake::Service, uuid: SecureRandom.uuid, location:) }
+      let(:config) { { user_account_uuid: user_account.id } }
+
+      before do
+        allow(BenefitsIntake::Monitor).to receive(:new).and_return(monitor)
+        allow(UserAccount).to receive(:find_by).and_return(user_account)
+        allow(SavedClaim).to receive(:find_by).and_return(claim)
+        allow(claim).to receive_messages(to_pdf: pdf_path, persistent_attachments: [])
+        allow(BenefitsIntake::Service).to receive(:new).and_return(service)
+        allow(PDFUtilities::PDFStamper).to receive(:new).and_return(stamper)
+        expect(job).to receive(:cleanup_file_paths).and_return(nil)
+        allow(stamper).to receive(:run).with(pdf_path, timestamp: claim.created_at)
+      end
+
+      it 'raises retriable error if rate limiting encountered' do
+        error = Common::Client::Errors::ClientError.new('Unknown error occurred', 429)
+        expect(service).to receive(:valid_document?).once.and_raise(error)
+        expect(monitor).to receive(:track_submission_retry).with(
+          claim,
+          service,
+          user_account.id,
+          error
+        )
+        expect { job.perform(claim.id, **config) }.to raise_error(error) do |error|
+          expect(error.status).to eq(429)
+        end
+      end
+
+      it 'raises NoRetryError if error status is not 429' do
+        error_message = 'Unauthorized'
+        msg = {
+          'args' => [claim.id, config],
+          'error_message' => error_message,
+          'class' => described_class.name
+        }
+        error = Common::Client::Errors::ClientError.new(error_message, 401)
+        expect(service).to receive(:valid_document?).once.and_raise(error)
+
+        expect(described_class).to receive(:exhaustion).with(msg)
+
+        expect { job.perform(claim.id, **config) }.to raise_error(Sidekiq::JobRetry::Skip)
+      end
+    end
   end
 
   describe '#send_claim_email' do
@@ -143,7 +188,7 @@ RSpec.describe BenefitsIntake::SubmitClaimJob, :uploader_helpers do
 
   describe 'sidekiq_retries_exhausted block' do
     context 'when retries are exhausted' do
-      it 'logs a distrinct error when no claim_id provided' do
+      it 'logs a distinct error when no claim_id provided' do
         msg = { 'args' => [], 'class' => 'BenefitsIntake::SubmitClaimJob', 'error_message' => 'An error occurred', 'queue' => 'low' }
         BenefitsIntake::SubmitClaimJob.within_sidekiq_retries_exhausted_block do
           expect(monitor).to receive(:track_submission_exhaustion).with(msg, nil)

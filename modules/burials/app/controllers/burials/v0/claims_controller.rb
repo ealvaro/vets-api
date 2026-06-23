@@ -62,7 +62,7 @@ module Burials
 
         process_attachments(in_progress_form, claim)
 
-        Burials::BenefitsIntake::SubmitClaimJob.perform_async(claim.id)
+        claim.submit_to_benefits_intake(current_user)
 
         monitor.track_create_success(in_progress_form, claim, current_user)
 

@@ -9,26 +9,21 @@ module Pensions
     # sidekiq job to send pdfs to Lighthouse:BenefitsIntake API
     # @see https://developer.va.gov/explore/api/benefits-intake/docs
     class SubmitClaimJob < ::BenefitsIntake::SubmitClaimJob
-      # Process claim pdfs and upload to Benefits Intake API
-      # On success send confirmation email
+      # @see IncomeAndAssets::SavedClaim#submit_to_benefits_intake
       #
-      # @param saved_claim_id [Integer] the pension claim id
-      # @param user_account_uuid [UUID] the user submitting the form
-      # @param participant_id [String, nil] the participant ID for Kafka event traceability
+      # @param user [User, nil] the user who submitted the claim
       #
-      # @return [UUID] benefits intake upload uuid
-      def perform(saved_claim_id, user_account_uuid = nil, participant_id = nil)
-        config = {
-          claim_class: 'Pensions::SavedClaim',
-          user_account_uuid:,
-          participant_id:,
+      # @return [Hash] config for processing benefits intake submission
+      def self.build_config_hash(user = nil)
+        {
+          claim_class: 'Pensions::SavedClaim', # single table inheritance issue
+          user_account_uuid: user&.user_account_uuid,
+          participant_id: user&.participant_id,
           email_type: :submitted,
           claim_stamp_set: :pensions_generated_claim,
           attachment_stamp_set: :pensions_received_at,
-          source: self.class.to_s,
           submit_kafka_event: true # always submit Kafka event for pensions claims
         }
-        super(saved_claim_id, **config)
       end
 
       private

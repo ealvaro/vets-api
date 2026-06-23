@@ -43,12 +43,14 @@ RSpec.describe IncomeAndAssets::V0::ClaimsController, type: :request do
     end
 
     it('returns a serialized claim') do
+      allow_any_instance_of(described_class).to receive(:current_user).and_return(user)
       allow(IncomeAndAssets::SavedClaim).to receive(:new).and_return(claim)
+      allow(claim).to receive(:submit_to_benefits_intake).with(user).and_return(nil)
 
       expect(monitor).to receive(:track_create_attempt).once
       expect(monitor).to receive(:track_create_success).once
       expect(claim).to receive(:process_attachments!).once
-      expect(IncomeAndAssets::BenefitsIntake::SubmitClaimJob).to receive(:perform_async)
+      expect(claim).to receive(:submit_to_benefits_intake).with(user)
 
       post '/income_and_assets/v0/claims', params: { param_name => { form: claim.form } }
 

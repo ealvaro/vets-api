@@ -84,23 +84,24 @@ module Logging
       # @option msg [String] 'error_message' the error message
       # @param claim [SavedClaim]
       def track_submission_exhaustion(msg, claim = nil)
-        user_account_uuid = msg['args'].length <= 1 ? nil : msg['args'][1]
+        claim_or_nil, user_account_uuid = safely_parse_exhaustion_args(*msg['args'])
+        claim ||= claim_or_nil
 
         submit_event(
           :error,
           "#{message_prefix} submission to LH exhausted!",
           "#{submission_stats_key}.exhausted",
-          claim: claim || msg['args'].first,
+          claim:,
           user_account_uuid:,
           error: msg['error_message'],
           call_location: caller_locations.second
         )
 
-        if claim
-          claim.send_email(:error) if claim.respond_to?(:send_email)
+        if claim.respond_to?(:send_email)
+          claim.send_email(:error)
         else
           log_silent_failure(
-            { user_account_uuid:, claim_id: msg['args'].first, error: msg, tags: },
+            { user_account_uuid:, claim_id: claim&.id, error: msg, tags: },
             user_account_uuid,
             call_location: caller_locations.second
           )
@@ -143,6 +144,25 @@ module Logging
           benefits_intake_uuid: lighthouse_service&.uuid,
           error: e&.message
         )
+      end
+
+      private
+
+      # Don't let anything that isn't claim/claim_id or user_account_uuid pass through.
+      #
+      # @param first_arg [SavedClaim, Integer, String]
+      # @param second_arg [String, Hash, Object]
+      #
+      # @return [Array(SavedClaim, String, nil)]
+      def safely_parse_exhaustion_args(first_arg, second_arg)
+        claim = first_arg.is_a?(SavedClaim) ? first_arg : SavedClaim.find_by(id: first_arg)
+        user_account_uuid = if second_arg.is_a?(String)
+                              UserAccount.find_by(id: second_arg)&.id
+                            elsif second_arg.is_a?(Hash)
+                              second_arg[:user_account_uuid]
+                            end
+
+        [claim, user_account_uuid]
       end
     end
   end

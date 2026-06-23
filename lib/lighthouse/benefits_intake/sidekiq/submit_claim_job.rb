@@ -34,10 +34,11 @@ module BenefitsIntake
     #
     # @param msg [Hash] sidekiq exhaustion response; 'args', 'error_message' are required
     def self.exhaustion(msg)
-      config = msg['args'][1] || {}
-      claim_class = config[:claim_class]&.to_s&.constantize || ::SavedClaim
+      saved_claim_id, config = msg['args']
+      config = {} unless config.is_a?(Hash)
+      claim_class = config[:claim_class]&.to_s&.constantize || SavedClaim
 
-      claim = claim_class.find_by(id: msg['args'][0])
+      claim = claim_class.find_by(id: saved_claim_id)
       if claim.present? && config[:submit_kafka_event]
         user_account_uuid = config[:user_account_uuid]
         user_icn = UserAccount.find_by(id: user_account_uuid)&.icn.to_s
@@ -67,12 +68,11 @@ module BenefitsIntake
     # @option config [Symbol|String] :email_type the email template to be sent on success
     # @option config [Symbol|Array<Hash>] :claim_stamp_set stamp set name or list to apply to generated pdf
     # @option config [Symbol|Array<Hash>] :attachment_stamp_set stamp set name or list to apply to evidence pdf
-    # @option config [String] :source the `source` to be recorded in the metadata for the upload; default: class name
     # @option config [Boolean] :submit_kafka_event flag to send event data to Kafka
     #
     # @return [UUID] benefits intake upload uuid
     def perform(saved_claim_id, **config)
-      init(saved_claim_id, config || {})
+      init(saved_claim_id, config)
 
       generate_form_pdf
       generate_attachment_pdfs
@@ -87,7 +87,7 @@ module BenefitsIntake
       benefits_intake_uuid
     rescue NoRetryError => e
       submission_attempt&.fail!
-      msg = { 'args' => [saved_claim_id, config], 'error_message' => e.message, 'class' => self.class.to_s }
+      msg = { 'args' => [saved_claim_id, config], 'error_message' => e.message, 'class' => self.class.name }
       BenefitsIntake::SubmitClaimJob.exhaustion(msg)
       raise ::Sidekiq::JobRetry::Skip
     rescue => e
@@ -158,8 +158,8 @@ module BenefitsIntake
     # @raise [BenefitIntakeError] if unable to find claim
     #
     # @param (see #perform)
-    def init(saved_claim_id, config)
-      @config = config || {}
+    def init(saved_claim_id, config = {})
+      @config = config
 
       user_account_uuid = config[:user_account_uuid]
       if user_account_uuid.present?
@@ -203,6 +203,10 @@ module BenefitsIntake
       document = stamper(stamp_set).run(file_path, timestamp: claim.created_at)
       service.valid_document?(document:)
     rescue => e
+      # benefits intake api enforces 60 requests per minute rate limit
+      # avoid prematurely exhausting job by allowing retries if/when rate limited
+      raise e if e.try(:status) == 429
+
       raise NoRetryError, e
     end
 
@@ -228,7 +232,7 @@ module BenefitsIntake
         claim.veteran_last_name,
         claim.veteran_filenumber,
         claim.postal_code,
-        config[:source] || self.class.to_s,
+        self.class.name,
         claim.form_id,
         claim.business_line
       )

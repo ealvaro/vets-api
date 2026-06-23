@@ -17,48 +17,19 @@ RSpec.describe Burials::BenefitsIntake::SubmitClaimJob, :uploader_helpers do
   let(:monitor) { Burials::Monitor.new }
   let(:user_account) { double('user_account', id: SecureRandom.uuid, icn: 'FOOBAR') }
 
-  describe '#perform' do
-    let(:response) { double('response') }
-    let(:pdf_path) { 'random/path/to/pdf' }
-    let(:location) { 'test_location' }
-
-    before do
-      allow(Flipper).to receive(:enabled?).with(:burial_kafka_event_enabled).and_return false
-      allow(Flipper).to receive(:enabled?).with(:validate_saved_claims_with_json_schemer).and_return true
-
-      allow(Burials::SavedClaim).to receive(:find_by).and_return(claim)
-      allow(claim).to receive_messages(to_pdf: pdf_path, persistent_attachments: [])
-
-      allow(BenefitsIntake::Service).to receive(:new).and_return(service)
-      allow(service).to receive(:uuid)
-      allow(service).to receive(:request_upload)
-      allow(service).to receive_messages(location:, perform_upload: response)
-      allow(response).to receive(:success?).and_return true
-
-      allow(Burials::Monitor).to receive(:new).and_return(monitor)
-    end
-
-    it 'submits the saved claim successfully' do
-      expect(UserAccount).to receive(:find_by).and_return(user_account)
-      expect(Burials::SavedClaim).to receive(:find_by).and_return(claim)
-
-      expect(Lighthouse::Submission).to receive(:create)
-      expect(Lighthouse::SubmissionAttempt).to receive(:create)
-      expect(Datadog::Tracing).to receive(:active_trace)
-
-      stamper = Burials::PDFStamper.new([])
-      expect(Burials::PDFStamper).to receive(:new).with(:burials_generated_claim).and_return(stamper)
-      expect(stamper).to receive(:run).and_return(pdf_path)
-      expect(service).to receive(:valid_document?).with(document: pdf_path).and_return(pdf_path)
-
-      expect(service).to receive(:perform_upload).with(
-        upload_url: 'test_location', document: pdf_path, metadata: anything, attachments: []
+  describe '.build_config_hash' do
+    it 'returns hash of job config options' do
+      allow(Flipper).to receive(:enabled?).with(:burial_kafka_event_enabled).and_return(false)
+      user = build(:user)
+      expect(described_class.build_config_hash(user)).to eq(
+        { claim_class: 'Burials::SavedClaim',
+          user_account_uuid: user.user_account.id,
+          participant_id: user.participant_id,
+          email_type: :submitted,
+          claim_stamp_set: :burials_generated_claim,
+          attachment_stamp_set: :burials_received_at,
+          submit_kafka_event: false }
       )
-
-      expect(job).to receive(:send_claim_email)
-      expect(job).to receive(:cleanup_file_paths)
-
-      job.perform(claim.id, user_account.id)
     end
   end
 
@@ -95,7 +66,7 @@ RSpec.describe Burials::BenefitsIntake::SubmitClaimJob, :uploader_helpers do
         config = { claim_class: 'Burials::SavedClaim' }
         msg = { 'args' => [claim.id, config], 'class' => 'Burials::BenefitsIntake::SubmitClaimJob', 'error_message' => 'An error occurred', 'queue' => 'low' }
         Burials::BenefitsIntake::SubmitClaimJob.within_sidekiq_retries_exhausted_block(msg) do
-          expect(Burials::SavedClaim).to receive(:find_by).with(id: claim.id).and_return(claim)
+          expect(SavedClaim).to receive(:find_by).with(id: claim.id).and_return(claim)
 
           expect(monitor).to receive(:track_submission_exhaustion).with(msg, claim)
         end
