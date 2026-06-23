@@ -60,14 +60,6 @@ module Vass
       return unless body.is_a?(Hash)
       return unless body['success'] == false
 
-      # Log to Sentry with safe context (no PHI)
-      Sentry.set_extras(
-        vass_error: true,
-        correlation_id: body['correlation_id'],
-        timestamp: body['time_stamp'],
-        has_message: body['message'].present?
-      )
-
       # Map error message to appropriate HTTP status code
       status = map_error_to_status(body['message'])
 

@@ -9,7 +9,6 @@ module V0
 
       unless claim.save
         StatsD.increment("#{stats_key}.failure")
-        Sentry.set_tags(team: 'vfs-ebenefits') # tag sentry logs with team name
         raise Common::Exceptions::ValidationErrors, claim
       end
 

@@ -201,29 +201,6 @@ describe Vass::ResponseMiddleware do
         end
       end
 
-      it 'logs to Sentry with safe context' do
-        env = create_env(
-          body: {
-            'success' => false,
-            'message' => 'Test error',
-            'data' => nil,
-            'correlation_id' => 'req123',
-            'time_stamp' => '2025-12-02T12:00:00Z'
-          }
-        )
-
-        expect(Sentry).to receive(:set_extras).with(
-          vass_error: true,
-          correlation_id: 'req123',
-          timestamp: '2025-12-02T12:00:00Z',
-          has_message: true
-        )
-
-        expect { middleware.on_complete(env) }.to raise_error(
-          Vass::ServiceException
-        )
-      end
-
       it 'logs StatsD metrics for HTTP 200 errors' do
         env = create_env(
           body: {

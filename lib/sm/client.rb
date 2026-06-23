@@ -74,11 +74,8 @@ module SM
     end
 
     def get_session_tagged
-      Sentry.set_tags(error: 'mhv_sm_session')
       path = append_requires_oh_messages_query('session')
-      env = perform(:get, path, nil, auth_headers)
-      Sentry.get_current_scope.tags.delete(:error)
-      env
+      perform(:get, path, nil, auth_headers)
     end
 
     private
