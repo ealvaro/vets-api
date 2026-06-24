@@ -80,7 +80,7 @@ module CheckIn
     ##
     # Handles errors after all retries have been exhausted
     #
-    # Logs the error to Sentry and increments failure metrics based on template type.
+    # Logs the error and increments failure metrics based on template type.
     # Job arguments are extracted to retrieve context data from Redis for logging.
     #
     # @param job [Hash] The Sidekiq job hash containing args: [uuid, appointment_date, template_id, claim_number]

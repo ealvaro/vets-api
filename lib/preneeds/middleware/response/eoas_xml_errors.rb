@@ -28,7 +28,6 @@ module Preneeds
           @status = status_200_error?(env) ? return_code(env) : env.status
           @detail = fault || return_description(env)
 
-          # strip percentages from xml because Sentry uses it for interpolation
           extra_context = { original_status: status, original_body: env.body&.delete('%') }
           Rails.logger.warn('Generalized XML error response from EOAS', scrub_pii(extra_context))
 

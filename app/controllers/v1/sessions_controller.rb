@@ -364,7 +364,7 @@ module V1
     # rubocop:disable Metrics/ParameterLists
     def handle_callback_error(exc, status, response, context = {}, # rubocop:disable Metrics/MethodLength
                               code = SAML::Responses::Base::UNKNOWN_OR_BLANK_ERROR_CODE, tag = nil)
-      # replaces bundled Sentry error message with specific XML messages
+      # replaces bundled error message with specific XML messages
       message = if response && response.normalized_errors.count > 1 && response.status_detail
                   response.status_detail
                 else

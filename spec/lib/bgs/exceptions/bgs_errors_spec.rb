@@ -14,7 +14,7 @@ RSpec.describe BGS::Exceptions::BGSErrors do
 
   describe '#notify_of_service_exception' do
     context 'large stacktrace with oracle error message and PII returned' do
-      it 'logs the oracle error message to Sentry, but not the stacktrace or PII' do
+      it 'logs the oracle error message, but not the stacktrace or PII' do
         error_message = File.read('spec/fixtures/bgs/bgs_oracle_error.txt')
         dummy_error = StandardError.new(error_message)
         expect(Rails.logger).to receive(:error).with(

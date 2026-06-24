@@ -239,7 +239,7 @@ RSpec.describe BGS::VnpVeteran do
       end
 
       context 'User#ssn returns ********' do
-        it 'logs an error to Sentry' do
+        it 'logs an error' do
           VCR.use_cassette('bgs/vnp_veteran/create') do
             allow_any_instance_of(User).to receive(:ssn).and_return('********')
             vnp_veteran = BGS::VnpVeteran.new(

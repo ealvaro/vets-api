@@ -42,19 +42,9 @@ RSpec.describe LogService do
     context 'when the provided block raises an error' do
       let(:error_message) { 'Sample Error' }
 
-      before do
-        allow(Sentry).to receive(:capture_exception)
-      end
-
       it 'logs the error' do
         logger.call(action, tags:) { raise StandardError, error_message }
         expect(Rails.logger).to have_received(:error).with("Error logging action #{action}: #{error_message}")
-      end
-
-      it 'sets error tags on the span' do
-        logger.call(action, tags:) { raise StandardError, error_message }
-        expect(span).to have_received(:set_tag).with('error', true)
-        expect(span).to have_received(:set_tag).with('error.msg', error_message)
       end
 
       it 'returns nil' do

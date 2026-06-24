@@ -39,14 +39,6 @@ describe VAProfile::Service do
     context 'when given a Common::Client::Errors::ParsingError from a VAProfile service call' do
       let(:error) { Common::Client::Errors::ParsingError.new }
 
-      it 'logs an error message to sentry', :aggregate_failures do
-        expect(Sentry).to receive(:set_extras)
-
-        expect { subject.send('handle_error', error) }.to raise_error do |e|
-          expect(e).to be_a(Common::Exceptions::BackendServiceException)
-        end
-      end
-
       it 'raises a VET360_502 backend exception', :aggregate_failures do
         expect { subject.send('handle_error', error) }.to raise_error do |e|
           expect(e.errors.first.code).to eq('VET360_502')
@@ -66,44 +58,6 @@ describe VAProfile::Service do
           expect(e).to be_a(Common::Exceptions::BackendServiceException)
         end
       end
-    end
-  end
-
-  describe '#log_dates' do
-    it 'logs dates in the request' do
-      expect(Sentry).to receive(:set_extras).with(
-        request_dates: {
-          'effectiveStartDate' => '2018-06-06T15:35:55.000Z',
-          'effectiveEndDate' => nil, 'sourceDate' => '2018-06-06T15:35:55.000Z'
-        }
-      )
-
-      subject.send(
-        :log_dates,
-        { 'bio' =>
-          { 'addressId' => 42,
-            'addressLine1' => '1493 Martin Luther King Rd',
-            'addressLine2' => nil,
-            'addressLine3' => nil,
-            'addressPOU' => 'RESIDENCE',
-            'addressType' => 'DOMESTIC',
-            'cityName' => 'Fulton',
-            'countryCodeISO2' => nil,
-            'countryCodeISO3' => 'USA',
-            'countryName' => 'USA',
-            'county' => { 'countyCode' => nil, 'countyName' => nil },
-            'intPostalCode' => nil,
-            'provinceName' => nil,
-            'stateCode' => 'MS',
-            'zipCode5' => '38843',
-            'zipCode4' => nil,
-            'originatingSourceSystem' => 'VETSGOV',
-            'sourceSystemUser' => '1234',
-            'sourceDate' => '2018-06-06T15:35:55.000Z',
-            'vet360Id' => '123456789',
-            'effectiveStartDate' => '2018-06-06T15:35:55.000Z',
-            'effectiveEndDate' => nil } }.to_json
-      )
     end
   end
 

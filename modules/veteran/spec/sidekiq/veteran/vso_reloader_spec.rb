@@ -678,7 +678,7 @@ RSpec.describe Veteran::VSOReloader, type: :job do
         reloader.send(:notify_threshold_exceeded, :attorneys, 100, 70, 0.30, 0.20)
       end
 
-      it 'logs to Sentry' do
+      it 'logs warning' do
         expect(Rails.logger).to receive(:warn).with(
           'VSO Reloader threshold exceeded for attorneys',
           hash_including(previous_count: 100, new_count: 70, decrease_percentage: 0.30)

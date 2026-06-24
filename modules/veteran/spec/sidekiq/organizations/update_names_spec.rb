@@ -29,7 +29,7 @@ RSpec.describe Organizations::UpdateNames, type: :job do
       described_class.new.perform
     end
 
-    it 'logs an error to Sentry if an exception is raised' do
+    it 'logs an error if an exception is raised' do
       allow(Organizations::Names).to receive(:all).and_return([{ poa: '80', name: 'Updated Name' }])
       allow(Veteran::Service::Organization).to receive(:find_by).with(poa: '80').and_raise(StandardError,
                                                                                            'Unexpected error')

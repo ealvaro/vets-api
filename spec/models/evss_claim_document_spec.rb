@@ -11,7 +11,7 @@ RSpec.describe EVSSClaimDocument do
       let(:bad_password) { 'bad_pw' }
 
       context 'when provided password is incorrect' do
-        it 'logs a sanitized message to Sentry' do
+        it 'logs a sanitized message' do
           error_message = nil
           allow(Rails.logger).to receive(:warn) do |message|
             error_message = message

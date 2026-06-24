@@ -79,10 +79,7 @@ module V0
         schema = VetsJsonSchema::SCHEMAS[FORM]
         validation_errors = ::Preneeds::BurialForm.validate(schema, form)
 
-        if validation_errors.present?
-          Sentry.set_tags(validation: 'preneeds')
-          raise Common::Exceptions::SchemaValidationErrors, validation_errors
-        end
+        raise Common::Exceptions::SchemaValidationErrors, validation_errors if validation_errors.present?
       end
     end
   end

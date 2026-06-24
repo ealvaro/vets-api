@@ -118,15 +118,13 @@ module Lighthouse
 
       log_to_rails_logger(service_name, logging_options)
 
-      extra_context = Sentry.set_extras(
-        message: error.message,
+      context = {
         url:,
-        client_id: lighthouse_client_id
-      )
+        client_id: lighthouse_client_id,
+        external_service: service_name
+      }
 
-      tags_context = Sentry.set_tags(external_service: service_name)
-
-      Rails.logger.error(scrub_pii(error.message), scrub_pii(extra_context.merge(tags_context)))
+      Rails.logger.error(scrub_pii(error.message), context)
     end
 
     def self.log_to_rails_logger(service_name, options)

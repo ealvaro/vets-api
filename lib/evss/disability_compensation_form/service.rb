@@ -101,7 +101,7 @@ module EVSS
         # there is a 200-response with an error message in the body
         if ((error.is_a?(Common::Client::Errors::ClientError) && error.status != 403) ||
            error.is_a?(EVSS::ErrorMiddleware::EVSSError)) && error.body.is_a?(Hash)
-          save_error_details(error) # Sentry extra_context
+          save_error_details(error)
           raise EVSS::DisabilityCompensationForm::ServiceException, error.body
         else
           super(error)

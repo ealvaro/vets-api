@@ -191,10 +191,7 @@ module Rx
     end
 
     def get_session_tagged
-      Sentry.set_tags(error: 'mhv_session')
-      env = perform(:get, 'usermgmt/auth/session', nil, auth_headers)
-      Sentry.get_current_scope.tags.delete(:error)
-      env
+      perform(:get, 'usermgmt/auth/session', nil, auth_headers)
     end
 
     private

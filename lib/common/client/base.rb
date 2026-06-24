@@ -115,12 +115,10 @@ module Common
           options.each { |option, value| request.options.send("#{option}=", value) }
         end.env
       rescue Common::Exceptions::BackendServiceException => e
-        # convert BackendServiceException into a more meaningful exception title for Sentry
         raise config.service_exception.new(
           e.key, e.response_values, e.original_status, e.original_body
         )
       rescue Timeout::Error, Faraday::TimeoutError => e
-        Sentry.set_extras(service_name:, url: path)
         raise Common::Exceptions::GatewayTimeout, e.class.name
       rescue Faraday::ClientError, Faraday::ServerError, Faraday::Error => e
         error_class = case e

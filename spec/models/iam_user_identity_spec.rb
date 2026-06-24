@@ -74,7 +74,6 @@ RSpec.describe IAMUserIdentity, type: :model do
 
     it 'ignores non-unique duplicates' do
       attrs = mhv_attrs.merge(fediam_mhv_ien: '123456,123456')
-      expect(Sentry).not_to receive(:capture_message)
       id = described_class.build_from_iam_profile(attrs)
       expect(id.iam_mhv_id).to eq('123456')
     end

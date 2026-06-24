@@ -125,7 +125,7 @@ RSpec.describe 'DhpConnectedDevices::Fitbit', type: :request do
       let(:missing_auth_error) { DhpConnectedDevices::Fitbit::MissingAuthError }
       let(:access_token) { '{"access_token":"token"}' }
 
-      it 'logs errors to Sentry' do
+      it 'logs errors' do
         allow(Rails.logger).to receive(:error)
 
         expect(Rails.logger).to receive(:error).with(anything, hash_including(:user_account))

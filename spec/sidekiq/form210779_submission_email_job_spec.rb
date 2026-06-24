@@ -170,7 +170,7 @@ RSpec.describe Form210779SubmissionEmailJob, type: :job do
         allow(notify_client).to receive(:send_email).and_raise(notify_error)
       end
 
-      it 'tracks failure, logs to Sentry, and re-raises for Sidekiq retry' do
+      it 'tracks failure, logs error, and re-raises for Sidekiq retry' do
         expect do
           perform_job
         end.to raise_error(Common::Exceptions::BackendServiceException)

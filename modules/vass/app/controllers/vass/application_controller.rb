@@ -21,7 +21,6 @@ module Vass
 
     # Catch-all for unexpected errors to ensure they're logged to Rails.logger
     # (and therefore Datadog Logs) before the global handler processes them.
-    # This addresses a gap where errors may only go to Sentry if configured.
     # NOTE: Must be declared FIRST so it runs LAST (rescue_from uses reverse order)
     rescue_from StandardError, with: :handle_unexpected_error
 

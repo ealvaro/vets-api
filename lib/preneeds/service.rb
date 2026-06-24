@@ -49,8 +49,6 @@ module Preneeds
       body_and_headers = build_body_and_headers(soap, burial_form)
 
       json = with_monitoring { perform(:post, '', body_and_headers[:body], body_and_headers[:headers]).body }
-      Sentry.set_extras(response: json)
-
       json = json[:data].merge('tracking_number' => tracking_number)
 
       ReceiveApplication.new(json)

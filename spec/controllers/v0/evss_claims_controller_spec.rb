@@ -6,5 +6,5 @@ require 'rails_helper'
 require 'support/controller_spec_helper'
 
 RSpec.describe V0::EVSSClaimsController, type: :controller do
-  it_behaves_like 'a controller that does not log 404 to Sentry'
+  it_behaves_like 'a controller that does not log 404'
 end

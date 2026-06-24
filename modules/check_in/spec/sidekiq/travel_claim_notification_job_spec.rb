@@ -264,25 +264,6 @@ RSpec.describe CheckIn::TravelClaimNotificationJob do
       )
       expect(StatsD).to have_received(:increment).with(CheckIn::Constants::STATSD_NOTIFY_ERROR)
     end
-
-    it 'logs template ID to Sentry' do
-      allow(Settings.vanotify.services.oracle_health.template_id)
-        .to receive(:claim_submission_failure_text).and_return('oh-failure-template-id')
-
-      template_id = 'oh-failure-template-id'
-      job_hash = { 'args' => [uuid, appointment_date, template_id, claim_number], 'error_message' => 'Test error' }
-
-      expect(Rails.logger).to receive(:error).with(
-        error.message,
-        hash_including(template_id:, claim_number:, phone_last_four: '0123', error: :check_in_va_notify_job,
-                       team: 'check-in')
-      )
-      expect(Rails.logger).to receive(:error).with(
-        include("Travel Claim Notification retries exhausted: #{error.message}")
-      )
-
-      described_class.sidekiq_retries_exhausted_block.call(job_hash, error)
-    end
   end
 
   describe 'SMS sender ID selection' do

@@ -1489,7 +1489,7 @@ RSpec.describe FormProfile, type: :model do
     end
 
     context 'when VA Profile returns 500', :skip_va_profile do
-      it 'sends a BackendServiceException to Sentry and returns and empty hash' do
+      it 'logs a BackendServiceException and returns and empty hash' do
         VCR.use_cassette('va_profile/military_personnel/post_read_service_history_500',
                          allow_playback_repeats: true, match_requests_on: %i[method uri]) do
           expect(form_profile).to receive(:log_exception_to_rails)

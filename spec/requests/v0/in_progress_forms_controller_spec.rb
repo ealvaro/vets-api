@@ -5,7 +5,7 @@ require 'support/controller_spec_helper'
 
 # Because of the shared_example this is behaving like a controller and request spec
 RSpec.describe V0::InProgressFormsController do
-  it_behaves_like 'a controller that does not log 404 to Sentry'
+  it_behaves_like 'a controller that does not log 404'
 
   context 'with a user' do
     let(:loa3_user) { build(:user, :loa3, :with_terms_of_use_agreement) }

@@ -573,6 +573,7 @@ app/sidekiq/gi_bill_feedback_submission_job.rb @software/backend-review-group
 app/sidekiq/hca @software/health-apps-backend @software/backend-review-group
 app/sidekiq/identity @software/octo-identity
 app/sidekiq/lighthouse/poll_form526_pdf.rb @software/disability-benefits @software/backend-review-group
+app/sidekiq/lighthouse/document_upload_synchronous.rb @software/benefits-management-tools-be @software/backend-review-group
 app/sidekiq/in_progress_form_cleaner.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 app/sidekiq/income_limits @software/vfs-public-websites-frontend @software/backend-review-group
 app/sidekiq/kms_key_rotation @software/backend-review-group

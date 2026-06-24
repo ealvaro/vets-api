@@ -10,7 +10,6 @@ class Lighthouse::DocumentUploadSynchronous
     document, file_body, uploader = nil
 
     Datadog::Tracing.trace('Config/Initialize Synchronous Upload Document') do
-      Sentry.set_tags(source: 'documents-upload')
       document = LighthouseDocument.new document_hash
 
       raise Common::Exceptions::ValidationErrors, document_data unless document.valid?

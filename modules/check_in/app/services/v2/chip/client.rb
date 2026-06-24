@@ -117,7 +117,7 @@ module V2
 
       ##
       # HTTP POST call to the CHIP API to set e-check-in started status. Any downstream error (non HTTP 200 response)
-      # is handled by logging to Sentry and returning the original status and body.
+      # is handled by logging and returning the original status and body.
       #
       # @return [Faraday::Response]
       #

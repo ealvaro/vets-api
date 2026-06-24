@@ -18,8 +18,6 @@ module VAProfile
     end
 
     def perform(method, path, body = nil, headers = {})
-      log_dates(body)
-
       VAProfile::Stats.increment('total_operations')
       config.base_request_headers.merge(headers)
       super(method, path, body, headers)
@@ -31,23 +29,9 @@ module VAProfile
 
     private
 
-    def log_dates(body)
-      parsed_body = JSON.parse(body)
-
-      Sentry.set_extras(
-        request_dates: parsed_body['bio'].slice('effectiveStartDate', 'effectiveEndDate', 'sourceDate')
-      )
-    rescue
-      nil
-    end
-
     def handle_error(error)
       case error
       when Common::Client::Errors::ParsingError # VAProfile sent a non-JSON response
-        Sentry.set_extras(
-          message: error.message,
-          url: config.base_path
-        )
         raise_backend_exception('VET360_502', self.class)
       when Common::Client::Errors::ClientError
         save_error_details(error)

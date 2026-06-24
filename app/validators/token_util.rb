@@ -20,9 +20,7 @@ class TokenUtil
   end
 
   def self.error_klass(error_detail_string)
-    # Errors from the jwt gem (and other dependencies) are reraised with
-    # this class so we can exclude them from Sentry without needing to know
-    # all the classes used by our dependencies.
+    # Errors from the jwt gem (and other dependencies) are reraised with this class
     Common::Exceptions::TokenValidationError.new(detail: error_detail_string)
   end
 end

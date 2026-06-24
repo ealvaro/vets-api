@@ -106,7 +106,7 @@ RSpec.describe DebtManagementCenter::DebtLetterDownloader, vcr: vcr_options do
     end
 
     describe '#list_letters' do
-      it 'notifies Sentry upon downstream service error', :skip_before do
+      it 'logs error upon downstream service error', :skip_before do
         expect_any_instance_of(Vets::SharedLogging).to receive(:log_exception_to_rails)
         expect(subject.list_letters.to_json).to eq('[]')
       end

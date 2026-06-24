@@ -115,7 +115,7 @@ describe SM::Client do
     context 'when the block raises an exception' do
       let(:error) { StandardError.new('something went wrong') }
 
-      it 'logs the exception to Sentry with the metric key context' do
+      it 'logs the exception with the metric key context' do
         allow(StatsD).to receive(:increment)
 
         expect(Rails.logger).to receive(:error).with(

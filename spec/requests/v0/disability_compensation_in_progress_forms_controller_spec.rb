@@ -6,7 +6,7 @@ require 'disability_compensation/factories/api_provider_factory'
 
 # Because of the shared_example this is behaving like a controller and request spec
 RSpec.describe V0::DisabilityCompensationInProgressFormsController do
-  it_behaves_like 'a controller that does not log 404 to Sentry'
+  it_behaves_like 'a controller that does not log 404'
 
   context 'with a user' do
     let(:loa3_user) { build(:disabilities_compensation_user) }

@@ -53,9 +53,7 @@ module BGS
 
       # BGS sometimes returns errors containing an enormous stacktrace with an oracle error. This method logs the oracle
       # error message and excludes everything else. These oracle errors start with the signature `ORA-` and are
-      # bookended by a `prepstmnt` clause. See `spec/fixtures/bgs/bgs_oracle_error.txt` for an example. We want to log
-      # these errors separately because the original error message is so long that it obscures its only relevant
-      # information and actually breaks Sentry's UI.
+      # bookended by a `prepstmnt` clause. See `spec/fixtures/bgs/bgs_oracle_error.txt` for an example.
       def log_oracle_errors!(error:)
         match_data = oracle_error_match_data(error:)
         monitor.error(match_data[0], 'oracle_error') if match_data
