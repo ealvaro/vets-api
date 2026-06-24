@@ -6,6 +6,11 @@ require_relative '../../../lib/travel_pay/constants'
 
 module TravelPay
   class ExpensesClient < TravelPay::BaseClient
+    def initialize(user = nil)
+      super()
+      @user = user
+    end
+
     ##
     # Generic HTTP POST call to the BTSSS 'expenses' endpoints to add a new expense
     # Routes to appropriate endpoint based on expense type
@@ -196,10 +201,27 @@ module TravelPay
       endpoints = TravelPay::Constants::BASE_EXPENSE_PATHS.transform_values do |base|
         { add: base, delete: "#{base}/%<expense_id>s", get: "#{base}/%<expense_id>s", patch: "#{base}/%<expense_id>s" }
       end
+
+      # v4 mileage only supports add (POST) and patch (PATCH); get and delete stay on v2
+      if expense_type.to_sym == :mileage
+        v4_path = mileage_expense_path
+        endpoints[:mileage][:add] = v4_path
+        endpoints[:mileage][:patch] = "#{v4_path}/%<expense_id>s"
+      end
+
       endpoint_data = endpoints[expense_type.to_sym]
       raise ArgumentError, "Unsupported expense type: #{expense_type}" unless endpoint_data
 
       endpoint_data[action]
+    end
+
+    def mileage_expense_path
+      if Flipper.enabled?(:travel_pay_enable_one_way_mileage, @user)
+        # TODO: Move to BASE_EXPENSE_PATHS[:mileage] after migration is complete
+        'api/v4/expenses/mileage'
+      else
+        TravelPay::Constants::BASE_EXPENSE_PATHS[:mileage]
+      end
     end
   end
 end

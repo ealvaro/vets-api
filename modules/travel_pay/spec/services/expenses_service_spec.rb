@@ -154,7 +154,7 @@ describe TravelPay::ExpensesService do
   end
 
   context 'get_expense method' do
-    let(:auth_manager) { object_double(TravelPay::AuthManager.new(123, user), authorize: auth_session) }
+    let(:auth_manager) { object_double(TravelPay::AuthManager.new(123, user), authorize: auth_session, user:) }
     let(:service) { TravelPay::ExpensesService.new(auth_manager) }
     let(:expense_id) { SecureRandom.uuid }
     let(:get_expense_data) do
@@ -316,7 +316,7 @@ describe TravelPay::ExpensesService do
   end
 
   describe 'add_mileage_expense method' do
-    let(:auth_manager) { object_double(TravelPay::AuthManager.new(123, user), authorize: auth_session) }
+    let(:auth_manager) { object_double(TravelPay::AuthManager.new(123, user), authorize: auth_session, user:) }
     let(:service) { TravelPay::ExpensesService.new(auth_manager) }
 
     it 'returns an expense ID when passed a valid claim id and appointment date' do

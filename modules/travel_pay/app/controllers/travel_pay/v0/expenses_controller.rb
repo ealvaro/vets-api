@@ -165,7 +165,9 @@ module TravelPay
         # Only add claim_id if it exists in params
         expense_params[:claim_id] = params[:claim_id] if params[:claim_id].present?
 
-        expense_class.new(expense_params)
+        expense = expense_class.new(expense_params)
+        expense.user = @current_user if expense.respond_to?(:user=)
+        expense
       end
 
       def expense_class_for_type(expense_type)
@@ -194,7 +196,7 @@ module TravelPay
 
       def permitted_params
         expense_class = expense_class_for_type(params[:expense_type])
-        params.permit(*expense_class.permitted_params)
+        params.permit(*expense_class.permitted_params(@current_user))
       end
 
       def expense_params_for_service(expense)

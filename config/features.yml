@@ -3272,6 +3272,13 @@ features:
       A switch that toggles the availability of user-created appointment features for Travel Pay.
       Enabled - User-created appointment features are available to users.
       Disabled - User-created appointment features are not available to users.
+  travel_pay_enable_one_way_mileage:
+    actor_type: user
+    enable_in_development: true
+    description: >-
+      A switch that enables one way mileage expenses for Travel Pay reimbursement.
+      Enabled - The mileage expense endpoint uses the v4 Travel Pay API.
+      Disabled - The mileage expense endpoint uses the v2 Travel Pay API.
   travel_pay_unified_error_handling:
     actor_type: user
     enable_in_development: true

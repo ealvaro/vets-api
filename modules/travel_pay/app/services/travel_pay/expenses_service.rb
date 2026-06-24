@@ -143,7 +143,7 @@ module TravelPay
     end
 
     def client
-      TravelPay::ExpensesClient.new
+      TravelPay::ExpensesClient.new(@auth_manager.user)
     end
 
     def heic_converter

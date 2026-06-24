@@ -105,20 +105,49 @@ RSpec.describe TravelPay::MileageExpense, type: :model do
   end
 
   describe '.permitted_params' do
-    it 'returns mileage-specific permitted parameters' do
-      params = described_class.permitted_params
-      expect(params).to eq(%i[purchase_date trip_type description])
+    let(:user) { build(:user) }
+
+    context 'when travel_pay_enable_one_way_mileage is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_one_way_mileage, user).and_return(false)
+      end
+
+      it 'returns base mileage-specific permitted parameters' do
+        params = described_class.permitted_params(user)
+        expect(params).to eq(%i[purchase_date trip_type description])
+      end
+
+      it 'does not include address params' do
+        params = described_class.permitted_params(user)
+        expect(params).not_to include(a_hash_including(:start_address))
+        expect(params).not_to include(a_hash_including(:end_address))
+      end
+    end
+
+    context 'when travel_pay_enable_one_way_mileage is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_one_way_mileage, user).and_return(true)
+      end
+
+      it 'includes address params' do
+        params = described_class.permitted_params(user)
+        address_hash = params.find { |p| p.is_a?(Hash) }
+        expect(address_hash).to include(
+          start_address: %i[address_line1 address_line2 city state_code postal_code],
+          end_address: %i[address_line1 address_line2 city state_code postal_code]
+        )
+      end
+
+      it 'still includes base params' do
+        params = described_class.permitted_params(user)
+        expect(params).to include(:purchase_date, :trip_type, :description)
+      end
     end
 
     it 'does not include cost_requested or receipt' do
       params = described_class.permitted_params
       expect(params).not_to include(:cost_requested)
       expect(params).not_to include(:receipt)
-    end
-
-    it 'includes purchase_date' do
-      params = described_class.permitted_params
-      expect(params).to include(:purchase_date)
     end
 
     it 'overrides the base class permitted_params' do
@@ -128,12 +157,16 @@ RSpec.describe TravelPay::MileageExpense, type: :model do
 
   describe '#to_service_params' do
     subject do
-      described_class.new(
+      expense = described_class.new(
         purchase_date: Date.new(2024, 3, 15),
         trip_type: 'RoundTrip',
         claim_id: 'claim-uuid-456'
       )
+      expense.user = user
+      expense
     end
+
+    let(:user) { build(:user) }
 
     it 'returns a hash with expense_type' do
       params = subject.to_service_params
@@ -164,6 +197,54 @@ RSpec.describe TravelPay::MileageExpense, type: :model do
     it 'does include description' do
       params = subject.to_service_params
       expect(params).to have_key('description')
+    end
+
+    context 'when travel_pay_enable_one_way_mileage is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_one_way_mileage, user).and_return(false)
+      end
+
+      it 'excludes start_address and end_address even when set' do
+        subject.start_address = { 'address_line1' => '123 Main St', 'city' => 'Anytown',
+                                  'state_code' => 'VA', 'postal_code' => '22030' }
+        subject.end_address = { 'address_line1' => '456 Oak Ave', 'city' => 'Othertown',
+                                'state_code' => 'MD', 'postal_code' => '20910' }
+        params = subject.to_service_params
+        expect(params).not_to have_key('start_address')
+        expect(params).not_to have_key('end_address')
+      end
+    end
+
+    context 'when travel_pay_enable_one_way_mileage is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_one_way_mileage, user).and_return(true)
+      end
+
+      it 'includes start_address when present' do
+        subject.start_address = { 'address_line1' => '123 Main St', 'city' => 'Anytown',
+                                  'state_code' => 'VA', 'postal_code' => '22030' }
+        params = subject.to_service_params
+        expect(params['start_address']).to include('address_line1' => '123 Main St')
+      end
+
+      it 'includes end_address when present' do
+        subject.end_address = { 'address_line1' => '456 Oak Ave', 'city' => 'Othertown',
+                                'state_code' => 'MD', 'postal_code' => '20910' }
+        params = subject.to_service_params
+        expect(params['end_address']).to include('address_line1' => '456 Oak Ave')
+      end
+
+      it 'excludes start_address when nil' do
+        subject.start_address = nil
+        params = subject.to_service_params
+        expect(params).not_to have_key('start_address')
+      end
+
+      it 'excludes end_address when nil' do
+        subject.end_address = nil
+        params = subject.to_service_params
+        expect(params).not_to have_key('end_address')
+      end
     end
   end
 end

@@ -4,7 +4,7 @@ require 'rails_helper'
 
 describe TravelPay::ExpensesClient do
   let(:user) { build(:user) }
-  let(:client) { described_class.new }
+  let(:client) { described_class.new(user) }
   let(:auth_session) { TravelPay::AuthSession.new(veis_token: 'test_veis_token', btsss_token: 'test_btsss_token') }
 
   expected_log_prefix = 'travel_pay.expense.response_time'
@@ -375,6 +375,85 @@ describe TravelPay::ExpensesClient do
         expect do
           client.update_expense(auth_session, expense_id, 'other', expense_body)
         end.to raise_error(Faraday::ServerError)
+      end
+    end
+  end
+
+  describe 'mileage endpoint v4 upgrade' do
+    let(:expense_id) { '3fa85f64-5717-4562-b3fc-2c963f66afa6' }
+    let(:connection_double) { instance_double(Faraday::Connection) }
+    let(:mock_response) { instance_double(Faraday::Response, body: { 'data' => { 'expenseId' => expense_id } }) }
+    let(:request_double) { double('request', headers: {}) }
+
+    before do
+      allow(client).to receive_messages(connection: connection_double, claim_headers: {})
+      allow(client).to receive(:log_to_statsd).and_yield
+      allow(request_double).to receive(:body=)
+    end
+
+    context 'when travel_pay_enable_one_way_mileage is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_one_way_mileage, user).and_return(true)
+      end
+
+      it 'routes add_expense for mileage to v4' do
+        expect(connection_double).to receive(:post)
+          .with('api/v4/expenses/mileage')
+          .and_yield(request_double)
+          .and_return(mock_response)
+
+        client.add_expense(auth_session, 'mileage', {})
+      end
+
+      it 'routes update_expense for mileage to v4' do
+        expect(connection_double).to receive(:patch)
+          .with("api/v4/expenses/mileage/#{expense_id}")
+          .and_yield(request_double)
+          .and_return(mock_response)
+
+        client.update_expense(auth_session, expense_id, 'mileage', {})
+      end
+
+      it 'keeps get_expense for mileage on v2' do
+        expect(connection_double).to receive(:get)
+          .with("api/v2/expenses/mileage/#{expense_id}")
+          .and_yield(request_double)
+          .and_return(mock_response)
+
+        client.get_expense(auth_session, 'mileage', expense_id)
+      end
+
+      it 'keeps delete_expense for mileage on v2' do
+        expect(connection_double).to receive(:delete)
+          .with("api/v2/expenses/mileage/#{expense_id}")
+          .and_yield(request_double)
+          .and_return(mock_response)
+
+        client.delete_expense(auth_session, expense_id, 'mileage')
+      end
+    end
+
+    context 'when travel_pay_enable_one_way_mileage is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_one_way_mileage, user).and_return(false)
+      end
+
+      it 'routes add_expense for mileage to v2' do
+        expect(connection_double).to receive(:post)
+          .with('api/v2/expenses/mileage')
+          .and_yield(request_double)
+          .and_return(mock_response)
+
+        client.add_expense(auth_session, 'mileage', {})
+      end
+
+      it 'routes update_expense for mileage to v2' do
+        expect(connection_double).to receive(:patch)
+          .with("api/v2/expenses/mileage/#{expense_id}")
+          .and_yield(request_double)
+          .and_return(mock_response)
+
+        client.update_expense(auth_session, expense_id, 'mileage', {})
       end
     end
   end

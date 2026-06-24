@@ -571,6 +571,140 @@ RSpec.describe TravelPay::V0::ExpensesController, type: :request do
     end
   end
 
+  describe 'mileage v4 upgrade with one-way addresses' do
+    let(:start_address) do
+      {
+        address_line1: '123 Main St',
+        city: 'Anytown',
+        state_code: 'VA',
+        postal_code: '22030'
+      }
+    end
+
+    let(:end_address) do
+      {
+        address_line1: '456 Oak Ave',
+        address_line2: 'Suite 200',
+        city: 'Othertown',
+        state_code: 'MD',
+        postal_code: '20910'
+      }
+    end
+
+    let(:mileage_params) do
+      {
+        purchase_date: 1.day.ago.iso8601,
+        trip_type: 'OneWay',
+        description: 'One way mileage expense',
+        start_address:,
+        end_address:
+      }
+    end
+
+    let(:expenses_client) { instance_double(TravelPay::ExpensesClient) }
+
+    before do
+      allow(TravelPay::ExpensesClient).to receive(:new).and_return(expenses_client)
+    end
+
+    context 'when travel_pay_enable_one_way_mileage is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_one_way_mileage,
+                                                  instance_of(User)).and_return(true)
+      end
+
+      it 'passes start and end addresses through to the client for create' do
+        expect(expenses_client).to receive(:add_expense) do |_auth, expense_type, body|
+          expect(expense_type).to eq('mileage')
+          expect(body['startAddress']).to include(
+            'addressLine1' => '123 Main St',
+            'city' => 'Anytown',
+            'stateCode' => 'VA',
+            'postalCode' => '22030'
+          )
+          expect(body['endAddress']).to include(
+            'addressLine1' => '456 Oak Ave',
+            'addressLine2' => 'Suite 200',
+            'city' => 'Othertown',
+            'stateCode' => 'MD',
+            'postalCode' => '20910'
+          )
+        end.and_return(instance_double(Faraday::Response, body: { 'data' => { 'expenseId' => 'new-id' } }))
+
+        post "/travel_pay/v0/claims/#{claim_id}/expenses/mileage",
+             params: mileage_params,
+             headers: { 'Authorization' => 'Bearer vagov_token' }
+
+        expect(response).to have_http_status(:created)
+      end
+
+      it 'sends mileage create request to the v4 endpoint' do
+        expect(expenses_client).to receive(:add_expense) do |_auth, expense_type, _body|
+          expect(expense_type).to eq('mileage')
+        end.and_return(instance_double(Faraday::Response, body: { 'data' => { 'expenseId' => 'new-id' } }))
+
+        post "/travel_pay/v0/claims/#{claim_id}/expenses/mileage",
+             params: mileage_params,
+             headers: { 'Authorization' => 'Bearer vagov_token' }
+
+        expect(response).to have_http_status(:created)
+      end
+
+      it 'passes addresses through to the client for update' do
+        expect(expenses_client).to receive(:update_expense) do |_auth, exp_id, expense_type, body|
+          expect(exp_id).to eq(expense_id)
+          expect(expense_type).to eq('mileage')
+          expect(body['startAddress']).to include('addressLine1' => '123 Main St')
+          expect(body['endAddress']).to include('addressLine1' => '456 Oak Ave')
+        end.and_return(instance_double(Faraday::Response, body: { 'data' => { 'id' => expense_id } }))
+
+        patch "/travel_pay/v0/expenses/mileage/#{expense_id}",
+              params: mileage_params,
+              headers: { 'Authorization' => 'Bearer vagov_token' }
+
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'creates mileage expense without addresses when not provided' do
+        params_without_address = { purchase_date: 1.day.ago.iso8601, trip_type: 'RoundTrip',
+                                   description: 'Round trip mileage' }
+
+        expect(expenses_client).to receive(:add_expense) do |_auth, expense_type, body|
+          expect(expense_type).to eq('mileage')
+          expect(body).not_to have_key('startAddress')
+          expect(body).not_to have_key('endAddress')
+        end.and_return(instance_double(Faraday::Response, body: { 'data' => { 'expenseId' => 'new-id' } }))
+
+        post "/travel_pay/v0/claims/#{claim_id}/expenses/mileage",
+             params: params_without_address,
+             headers: { 'Authorization' => 'Bearer vagov_token' }
+
+        expect(response).to have_http_status(:created)
+      end
+    end
+
+    context 'when travel_pay_enable_one_way_mileage is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_one_way_mileage,
+                                                  instance_of(User)).and_return(false)
+      end
+
+      it 'strips address params from the request' do
+        expect(expenses_client).to receive(:add_expense) do |_auth, expense_type, body|
+          expect(expense_type).to eq('mileage')
+          expect(body).not_to have_key('startAddress')
+          expect(body).not_to have_key('endAddress')
+        end.and_return(instance_double(Faraday::Response, body: { 'data' => { 'expenseId' => 'new-id' } }))
+
+        post "/travel_pay/v0/claims/#{claim_id}/expenses/mileage",
+             params: mileage_params,
+             headers: { 'Authorization' => 'Bearer vagov_token' }
+
+        expect(response).to have_http_status(:created)
+      end
+    end
+  end
+
   def expense_path(expense_type, id = nil)
     "/travel_pay/v0/expenses/#{expense_type}/#{id || expense_id}"
   end

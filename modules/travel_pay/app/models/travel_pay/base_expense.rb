@@ -23,8 +23,9 @@ module TravelPay
     # Returns the list of permitted parameters for this expense type
     # Subclasses can override completely or extend with super + [...]
     #
+    # @param _user [User, nil] optional user for actor-based feature flag checks
     # @return [Array<Symbol>] list of permitted parameter names
-    def self.permitted_params
+    def self.permitted_params(_user = nil)
       %i[purchase_date description cost_requested receipt]
     end
 
