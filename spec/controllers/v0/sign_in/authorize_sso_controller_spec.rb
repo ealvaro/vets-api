@@ -61,6 +61,10 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
     end
 
     shared_examples 'a redirect to USIP' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:identity_auth_sso_enabled).and_return(true)
+      end
+
       let(:expected_redirect_uri) { 'http://localhost:3001/sign-in' }
       let(:expected_query_params) do
         authorize_sso_params.merge(oauth: true, authorize_sso_id:).to_query
@@ -145,7 +149,10 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
         let(:client_id_param) { nil }
         let(:expected_error_message) { "Invalid params: Client can't be blank" }
 
-        before { request.cookies.clear }
+        before do
+          request.cookies.clear
+          allow(Flipper).to receive(:enabled?).with(:identity_auth_sso_enabled).and_return(true)
+        end
 
         it_behaves_like 'an error response' do
           let(:expected_log_payload) do
@@ -161,6 +168,20 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
 
         it 'does not persist a container' do
           subject
+          expect(SignIn::AuthorizeSSOContainer.find(authorize_sso_id)).to be_nil
+        end
+      end
+
+      context 'when redirecting to USIP and the identity_auth_sso_enabled flag is disabled' do
+        before do
+          request.cookies.clear
+          allow(Flipper).to receive(:enabled?).with(:identity_auth_sso_enabled).and_return(false)
+        end
+
+        let(:expected_query_params) { authorize_sso_params.merge(oauth: true).to_query }
+
+        it 'redirects to USIP without stashing a container' do
+          expect(subject).to redirect_to("http://localhost:3001/sign-in?#{expected_query_params}")
           expect(SignIn::AuthorizeSSOContainer.find(authorize_sso_id)).to be_nil
         end
       end

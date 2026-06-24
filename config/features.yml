@@ -781,7 +781,7 @@ features:
     enable_in_development: false
   cst_letters_description_content_format:
     description: >-
-      When enabled, letter descriptions are returned as a typed content array (nodes with type, text, 
+      When enabled, letter descriptions are returned as a typed content array (nodes with type, text,
       and items fields) instead of the legacy paragraphs and lists shape.
     enable_in_development: false
   cst_use_claim_title_generator_web:
@@ -1629,6 +1629,10 @@ features:
   in_progress_form_reminder_526ez:
     actor_type: user
     description: Enable/disable 526ez in progress form reminders (sent via VaNotify)
+    enable_in_development: true
+  identity_auth_sso_enabled:
+    actor_type: user
+    description: Enables auth sso container stashing
     enable_in_development: true
   identity_idme_ial2_enforcement:
     actor_type: user

@@ -98,7 +98,9 @@ module V0
       def redirect_to_usip
         stash_authorize_sso_request
 
-        query_params = authorize_sso_params.to_h.merge(oauth: true, authorize_sso_id: @authorize_sso_id)
+        query_params = authorize_sso_params.to_h.merge(oauth: true)
+        query_params[:authorize_sso_id] = @authorize_sso_id if @authorize_sso_id
+
         uri = URI.parse(IdentitySettings.sign_in.usip_uri)
         uri.query = query_params.to_query
 
@@ -109,6 +111,8 @@ module V0
       end
 
       def stash_authorize_sso_request
+        return unless Flipper.enabled?(:identity_auth_sso_enabled)
+
         @authorize_sso_id = SecureRandom.uuid
 
         container = ::SignIn::AuthorizeSSOContainer.new(
