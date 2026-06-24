@@ -256,7 +256,7 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
 
       it 'includes redirect_uri in the JWT' do
         decoded_jwt = OpenStruct.new(JWT.decode(subject, false, nil).first)
-        expect(decoded_jwt.redirect_uri).to eq('https://review_slug.vfs.va.gov/auth/login/callback')
+        expect(decoded_jwt.redirect_uri).to eq('https://review_slug-api.vfs.va.gov/v0/sign_in/callback')
       end
     end
 

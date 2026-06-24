@@ -116,10 +116,12 @@ module SignIn
     end
 
     def set_redirect_uri
-      if Settings.review_instance_slug.present?
-        URI::HTTPS.build(host: "#{Settings.review_instance_slug}.#{Constants::Auth::REVIEW_INSTANCES_HOST}",
-                         path: Constants::Auth::REVIEW_INSTANCES_CALLBACK_PATH).to_s
-      end
+      return if Settings.review_instance_slug.blank?
+
+      host = "#{Settings.review_instance_slug}-api.#{Constants::Auth::REVIEW_INSTANCES_HOST}"
+      path = Constants::Auth::CALLBACK_PATH
+
+      URI::HTTPS.build(host:, path:).to_s
     end
 
     def sso_not_enabled_for_device_sso_scope?

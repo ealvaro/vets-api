@@ -35,6 +35,7 @@ module SignIn
       AUTHORIZE_ROUTE_PATH = '/v0/sign_in/authorize'
       AUTHORIZE_SSO_ROUTE_PATH = '/v0/sign_in/authorize_sso'
       BROKER_CODE = 'sis'
+      CALLBACK_PATH = '/v0/sign_in/callback'
       CERTS_ROUTE_PATH = '/sign_in/openid_connect/certs'
       CLIENT_STATE_MINIMUM_LENGTH = 22
       CODE_CHALLENGE_METHOD = 'S256'
@@ -69,7 +70,6 @@ module SignIn
       TOKEN_ROUTE_PATH = '/v0/sign_in/token'
       USERINFO_ROUTE_PATH = '/sign_in/user_info'
       REVIEW_INSTANCES_HOST = 'vfs.va.gov'
-      REVIEW_INSTANCES_CALLBACK_PATH = '/auth/login/callback'
     end
   end
 end
