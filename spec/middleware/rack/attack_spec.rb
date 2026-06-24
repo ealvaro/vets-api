@@ -325,12 +325,12 @@ RSpec.describe Rack::Attack do
       context 'when GET endpoint' do
         before do
           30.times do
-            expect(get('/vaos/v2/providers/12345', headers:)).to have_http_status(:unauthorized)
+            expect(get('/vaos/v2/providers', headers:)).to have_http_status(:unauthorized)
           end
         end
 
         it 'throttles with status 429' do
-          expect(get('/vaos/v2/providers/12345', headers:)).to have_http_status(:too_many_requests)
+          expect(get('/vaos/v2/providers', headers:)).to have_http_status(:too_many_requests)
         end
       end
     end

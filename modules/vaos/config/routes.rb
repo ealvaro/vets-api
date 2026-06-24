@@ -9,7 +9,6 @@ VAOS::Engine.routes.draw do
     put '/appointments/:id', to: 'appointments#update'
     get '/eps_appointments/:id', to: 'eps_appointments#show'
     get '/providers', to: 'providers#index'
-    get '/providers/:provider_id', to: 'providers#show'
     get 'community_care/eligibility/:service_type', to: 'cc_eligibility#show'
     get '/locations/:location_id/clinics', to: 'clinics#index'
     get '/locations/:location_id/clinics/:clinic_id/slots', to: 'slots#index'
