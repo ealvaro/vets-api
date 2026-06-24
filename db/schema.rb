@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_06_19_120001) do
+ActiveRecord::Schema[7.2].define(version: 2026_06_23_162653) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -2041,7 +2041,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_19_120001) do
     t.string "backing_idme_uuid"
     t.boolean "locked", default: false, null: false
     t.string "credential_attributes_digest"
+    t.string "clear_uuid"
     t.index ["backing_idme_uuid"], name: "index_user_verifications_on_backing_idme_uuid"
+    t.index ["clear_uuid"], name: "index_user_verifications_on_clear_uuid", unique: true
     t.index ["dslogon_uuid"], name: "index_user_verifications_on_dslogon_uuid", unique: true
     t.index ["idme_uuid"], name: "index_user_verifications_on_idme_uuid", unique: true
     t.index ["logingov_uuid"], name: "index_user_verifications_on_logingov_uuid", unique: true
