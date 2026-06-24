@@ -11,6 +11,8 @@ require 'claims_evidence_api/uploader'
 require 'digital_forms_api/service/submissions'
 require 'pdf_utilities/pdf_stamper'
 
+require 'bid/persons/service'
+
 module DependentsBenefits
   module V0
     ###
@@ -28,6 +30,9 @@ module DependentsBenefits
       def show
         dependents = create_dependent_service.get_dependents
         dependents[:diaries] = dependency_verification_service.read_diaries
+        if Flipper.enabled?(:enable_date_last_verified_for_dependents)
+          dependents[:bip_persons_data] = fetch_persons_api_data
+        end
         render json: DependentsBenefits::DependentsSerializer.new(dependents)
       rescue => e
         monitor.track_show_error(nil, current_user, e)
@@ -217,6 +222,33 @@ module DependentsBenefits
       # Creates the BGS dependency verification service for the current user
       def dependency_verification_service
         @dependency_verification_service ||= BGS::DependencyVerificationService.new(current_user)
+      end
+
+      # Calls the Persons API to fetch additional information for a users dependents,
+      # in particular we are interested in the last verified date
+      def fetch_persons_api_data
+        monitor.track_info_event('Fetching last verified dates',
+                                 action: 'fetch_dlv.start')
+
+        service = BID::Persons::Service.new(current_user)
+        response = service.get_relationships(current_user.participant_id)
+
+        if response.success?
+          data = response.body['find_relationships_response']
+          num_dlv = data.count { |e| e['last_verfd_dt'].present? }
+          monitor.track_info_event('Successfully fetched last verified dates', action: 'fetch_dlv.success',
+                                                                               non_blank_dlvs: num_dlv)
+          data
+        else
+          monitor.track_error_event('Unsuccessful response when fetching last verified dates',
+                                    action: 'fetch_dlv.failed_response', error: response.body)
+          []
+        end
+      rescue => e
+        monitor.track_error_event('Failed to fetch last verified dates',
+                                  action: 'fetch_dlv.error',
+                                  error: e)
+        []
       end
 
       ##

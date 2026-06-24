@@ -39,6 +39,7 @@ module DependentsBenefits
       saved_claim_id
       submission_id
       tags
+      non_blank_dlvs
     ].freeze
 
     # Additional safe keys specific to dependents_benefits

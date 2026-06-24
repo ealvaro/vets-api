@@ -39,6 +39,7 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
     sign_in_as(user)
     allow(Flipper).to receive(:enabled?).with(:dependents_module_enabled, instance_of(User)).and_return(true)
     allow(Flipper).to receive(:enabled?).with(:va_dependents_v3, instance_of(User)).and_return(false)
+    allow(Flipper).to receive(:enabled?).with(:enable_date_last_verified_for_dependents).and_return(false)
     allow_any_instance_of(SavedClaim).to receive(:pdf_overflow_tracking)
     allow(DependentsBenefits::Monitor).to receive(:new).and_return(monitor)
     allow(DependentsBenefits::UserData).to receive(:new).and_return(user_data)
@@ -71,6 +72,51 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
       it 'returns forbidden error' do
         get(:show, params: { id: user.participant_id }, as: :json)
         expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context 'with the last verified date feature flag on' do
+      let(:persons_service) { double('BID::Persons::Service') }
+      let(:persons_response) do
+        OpenStruct.new(
+          success?: true,
+          status: 200,
+          body: {
+            'find_relationships_response' => [{
+              'ptcpnt_id' => 600_140_899,
+              'ptcpnt_type_nm' => 'Person',
+              'last_nm' => 'Person',
+              'first_nm' => 'Test',
+              'middle_nm' => 'B',
+              'ssn_nbr' => '123456789',
+              'file_nbr' => '123456789',
+              'last_verfd_dt' => '2026-06-24T15:15:02.463Z'
+            }]
+          }
+        )
+      end
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:enable_date_last_verified_for_dependents).and_return(true)
+        allow(BID::Persons::Service).to receive(:new).and_return(persons_service)
+        allow(persons_service).to receive(:get_relationships).with(user.participant_id).and_return(persons_response)
+      end
+
+      it 'returns a response with last date verified populated' do
+        VCR.use_cassette('bgs/claimant_web_service/dependents') do
+          expect(monitor).to receive(:track_info_event).with('Fetching last verified dates',
+                                                             action: 'fetch_dlv.start')
+          expect(monitor).to receive(:track_info_event).with('Successfully fetched last verified dates',
+                                                             action: 'fetch_dlv.success',
+                                                             non_blank_dlvs: 1)
+
+          get(:show, params: { id: user.participant_id }, as: :json)
+          expect(response).to have_http_status(:ok)
+          parsed_body = JSON.parse(response.body)
+          expect(parsed_body['data']['type']).to eq('dependents')
+          dependent_entry = parsed_body['data']['attributes']['persons'].find { |e| e['ptcpnt_id'] == '600140899' }
+          expect(dependent_entry['date_last_verified']).to eq('2026-06-24T15:15:02.463Z')
+        end
       end
     end
   end

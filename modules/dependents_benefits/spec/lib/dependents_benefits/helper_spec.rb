@@ -541,18 +541,18 @@ RSpec.describe DependentsBenefits::Helper do
     context 'when diaries is a hash with nil dependency_decs' do
       let(:diaries) { { dependency_decs: nil } }
 
-      it 'returns nil' do
+      it 'returns an empty array' do
         result = helper.dependency_decisions(diaries)
-        expect(result).to be_nil
+        expect(result).to eq([])
       end
     end
 
     context 'when diaries is not a hash' do
-      it 'logs error and returns nil' do
+      it 'logs error and returns an empty array' do
         expect(helper).to receive(:monitor).and_return(double(track_error_event: nil))
 
         result = helper.dependency_decisions('not a hash')
-        expect(result).to be_nil
+        expect(result).to eq([])
       end
 
       it 'tracks error event with class name' do
@@ -570,9 +570,9 @@ RSpec.describe DependentsBenefits::Helper do
     context 'when diaries is a hash without dependency_decs key' do
       let(:diaries) { { other_key: 'value' } }
 
-      it 'returns nil' do
+      it 'returns an empty array' do
         result = helper.dependency_decisions(diaries)
-        expect(result).to be_nil
+        expect(result).to eq([])
       end
     end
   end

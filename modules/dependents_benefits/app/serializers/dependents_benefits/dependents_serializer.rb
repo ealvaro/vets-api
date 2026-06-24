@@ -31,13 +31,13 @@ module DependentsBenefits
       next [object[:persons]] if object[:persons].instance_of?(Hash)
 
       arr = object[:persons]
-      diaries = object[:diaries]
-
-      next arr if dependency_decisions(diaries).blank?
+      diaries = object[:diaries] || []
+      persons_data = object[:bip_persons_data] || []
 
       decisions = current_and_pending_decisions(diaries)
 
       arr.each do |person|
+        # find diary entry and extract useful data
         upcoming_removal = person[:upcoming_removal] = upcoming_removals(decisions)[person[:ptcpnt_id]]
         if upcoming_removal
           person[:upcoming_removal_date] = parse_time(upcoming_removal[:award_effective_date])
@@ -45,6 +45,10 @@ module DependentsBenefits
         end
 
         person[:dependent_benefit_type] = dependent_benefit_types(decisions)[person[:ptcpnt_id]]
+
+        # find persons api data and extract useful data
+        matching_person_entry = persons_data.find { |e| e['ptcpnt_id'].to_s == person[:ptcpnt_id].to_s }
+        person[:date_last_verified] = matching_person_entry['last_verfd_dt'] if matching_person_entry
       end
     end
   end

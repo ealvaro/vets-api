@@ -174,7 +174,7 @@ module DependentsBenefits::Helper
     # value is always an Array (or nil if input is invalid).
     #
     # @param diaries [Hash, Object] The diaries object from BGS
-    # @return [Array<Hash>, nil] Array of dependency decisions or nil if invalid
+    # @return [Array<Hash>] Array of dependency decisions
     def dependency_decisions(diaries)
       decisions = if diaries.is_a?(Hash)
                     diaries[:dependency_decs]
@@ -185,7 +185,7 @@ module DependentsBenefits::Helper
                     )
                     nil
                   end
-      return if decisions.nil?
+      return [] if decisions.nil?
 
       decisions.is_a?(Hash) ? [decisions] : decisions
     end

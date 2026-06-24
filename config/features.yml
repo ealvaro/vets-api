@@ -3922,3 +3922,6 @@ features:
     description: Enables prefill update for 21p-526ez and 21p-0969 forms
   mms_structured_data_prefix:
     actor_type: user
+  enable_date_last_verified_for_dependents:
+    actor_type: user
+    description: Enables fetching date-last-verified from Persons API when fetching dependents
