@@ -22,10 +22,8 @@ describe UnifiedHealthData::ImagingService, type: :service do
 
   describe '#get_imaging_studies' do
     let(:response) do
-      Faraday::Response.new(body: {
-                              'resourceType' => 'Bundle',
-                              'entry' => []
-                            })
+      response_body = { 'resourceType' => 'Bundle', 'entry' => [] }
+      build_faraday_response(response_body)
     end
 
     before do
@@ -59,10 +57,8 @@ describe UnifiedHealthData::ImagingService, type: :service do
     it 'passes flat entry records to the adapter for parsing' do
       entry1 = { 'resource' => { 'resourceType' => 'ImagingStudy', 'id' => 'study-1' } }
       entry2 = { 'resource' => { 'resourceType' => 'ImagingStudy', 'id' => 'study-2' } }
-      flat_response = Faraday::Response.new(body: {
-                                              'resourceType' => 'Bundle',
-                                              'entry' => [entry1, entry2]
-                                            })
+      response_body = { 'resourceType' => 'Bundle', 'entry' => [entry1, entry2] }
+      flat_response = build_faraday_response(response_body)
       allow(client).to receive(:get_imaging_studies).and_return(flat_response)
 
       service.get_imaging_studies(**date_params)
@@ -79,7 +75,8 @@ describe UnifiedHealthData::ImagingService, type: :service do
   end
 
   describe '#get_imaging_study' do
-    let(:response) { Faraday::Response.new(body: { 'entry' => [] }) }
+    let(:response_body) { { 'entry' => [] } }
+    let(:response) { build_faraday_response(response_body) }
 
     before do
       allow(client).to receive(:get_imaging_study).and_return(response)
@@ -105,7 +102,8 @@ describe UnifiedHealthData::ImagingService, type: :service do
   end
 
   describe '#get_dicom_zip' do
-    let(:response) { Faraday::Response.new(body: { 'entry' => [] }) }
+    let(:response_body) { { 'entry' => [] } }
+    let(:response) { build_faraday_response(response_body) }
 
     before do
       allow(client).to receive(:get_dicom_zip).and_return(response)

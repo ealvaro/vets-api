@@ -49,7 +49,7 @@ RSpec.describe UnifiedHealthData::Client do
     end
 
     context 'when SCDF returns success response' do
-      let(:success_response) { Faraday::Response.new(body: success_body) }
+      let(:success_response) { build_faraday_response(success_body) }
 
       it 'does not raise an exception' do
         expect do
@@ -59,7 +59,7 @@ RSpec.describe UnifiedHealthData::Client do
     end
 
     context 'when SCDF returns OperationOutcome with error severity' do
-      let(:partial_failure_response) { Faraday::Response.new(body: partial_failure_body) }
+      let(:partial_failure_response) { build_faraday_response(partial_failure_body) }
 
       before do
         allow(Rails.logger).to receive(:warn)
@@ -124,7 +124,7 @@ RSpec.describe UnifiedHealthData::Client do
           }
         }
       end
-      let(:warning_response) { Faraday::Response.new(body: warning_body) }
+      let(:warning_response) { build_faraday_response(warning_body) }
 
       before do
         allow(Rails.logger).to receive(:warn)
@@ -158,7 +158,7 @@ RSpec.describe UnifiedHealthData::Client do
     end
 
     context 'when response body is not a Hash (non-FHIR response)' do
-      let(:array_response) { Faraday::Response.new(body: [{ 'success' => true }]) }
+      let(:array_response) { build_faraday_response([{ 'success' => true }]) }
 
       it 'does not raise an exception' do
         # Detector only parses when body.is_a?(Hash), so array bodies are skipped entirely
@@ -175,7 +175,7 @@ RSpec.describe UnifiedHealthData::Client do
           'issue' => [{ 'severity' => 'error', 'code' => 'exception' }]
         }
       end
-      let(:response) { Faraday::Response.new(body: non_scdf_body) }
+      let(:response) { build_faraday_response(non_scdf_body) }
 
       it 'does not raise an exception' do
         # Detector looks for body['vista'] and body['oracle-health'], finds neither
@@ -210,7 +210,7 @@ RSpec.describe UnifiedHealthData::Client do
           }
         }
       end
-      let(:response) { Faraday::Response.new(body: recoverable_body) }
+      let(:response) { build_faraday_response(recoverable_body) }
 
       before do
         allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_partial_failure_handling).and_return(true)
@@ -269,7 +269,7 @@ RSpec.describe UnifiedHealthData::Client do
           }
         }
       end
-      let(:response) { Faraday::Response.new(body: non_recoverable_body) }
+      let(:response) { build_faraday_response(non_recoverable_body) }
 
       before do
         allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_partial_failure_handling).and_return(true)
@@ -315,7 +315,7 @@ RSpec.describe UnifiedHealthData::Client do
           }
         }
       end
-      let(:response) { Faraday::Response.new(body: both_failed_body) }
+      let(:response) { build_faraday_response(both_failed_body) }
 
       before do
         allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_partial_failure_handling).and_return(true)
@@ -355,7 +355,7 @@ RSpec.describe UnifiedHealthData::Client do
           }
         }
       end
-      let(:response) { Faraday::Response.new(body: recoverable_body) }
+      let(:response) { build_faraday_response(recoverable_body) }
 
       before do
         allow(Flipper).to receive(:enabled?).with(:mhv_medical_records_partial_failure_handling).and_return(false)

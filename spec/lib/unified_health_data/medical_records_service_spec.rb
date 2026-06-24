@@ -23,9 +23,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
     end
 
     let(:sample_client_response) do
-      Faraday::Response.new(
-        body: labs_sample_response
-      )
+      build_faraday_response(labs_sample_response)
     end
 
     before do
@@ -144,7 +142,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
           modified_response['oracle-health'] = {}
           allow_any_instance_of(UnifiedHealthData::Client)
             .to receive(:get_labs_by_date)
-            .and_return(Faraday::Response.new(body: modified_response))
+            .and_return(build_faraday_response(modified_response))
 
           labs = service.get_labs(start_date: '2025-01-01', end_date: '2025-12-31')[:records]
           # 12 VistA records, 1 filtered (nil status) = 11 parsed
@@ -157,7 +155,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
           modified_response['vista'] = {}
           allow_any_instance_of(UnifiedHealthData::Client)
             .to receive(:get_labs_by_date)
-            .and_return(Faraday::Response.new(body: modified_response))
+            .and_return(build_faraday_response(modified_response))
 
           labs = service.get_labs(start_date: '2025-01-01', end_date: '2025-12-31')[:records]
           # 9 OH records, 2 filtered (nil status and status "partial") = 7 parsed
@@ -170,7 +168,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
         it 'returns empty array' do
           allow_any_instance_of(UnifiedHealthData::Client)
             .to receive(:get_labs_by_date)
-            .and_return(Faraday::Response.new(body: { 'vista' => {}, 'oracle-health' => {} }))
+            .and_return(build_faraday_response({ 'vista' => {}, 'oracle-health' => {} }))
 
           labs = service.get_labs(start_date: '2025-01-01', end_date: '2025-12-31')[:records]
           expect(labs.size).to eq(0)
@@ -213,7 +211,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
       it 'handles gracefully' do
         allow_any_instance_of(UnifiedHealthData::Client)
           .to receive(:get_labs_by_date)
-          .and_return(Faraday::Response.new(body: nil))
+          .and_return(build_faraday_response(nil))
 
         expect { service.get_labs(start_date: '2025-01-01', end_date: '2025-12-31') }.not_to raise_error
       end
@@ -227,7 +225,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
         ]
         allow_any_instance_of(UnifiedHealthData::Client)
           .to receive(:get_labs_by_date)
-          .and_return(Faraday::Response.new(body: response_with_warnings))
+          .and_return(build_faraday_response(response_with_warnings))
 
         result = service.get_labs(start_date: '2025-01-01', end_date: '2025-12-31')
         expect(result[:warnings]).to eq(
@@ -342,9 +340,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
     end
 
     let(:sample_client_response) do
-      Faraday::Response.new(
-        body: allergies_sample_response
-      )
+      build_faraday_response(allergies_sample_response)
     end
 
     context 'happy path' do
@@ -424,9 +420,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
           modified_response['oracle-health'] = {}
           allow_any_instance_of(UnifiedHealthData::Client)
             .to receive(:get_allergies_by_date)
-            .and_return(Faraday::Response.new(
-                          body: modified_response
-                        ))
+            .and_return(build_faraday_response(modified_response))
           allergies = service.get_allergies[:records]
           # 5 AllergyIntolerance resources, only 4 have active clinicalStatus
           expect(allergies.size).to eq(4)
@@ -456,9 +450,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
           modified_response['vista'] = {}
           allow_any_instance_of(UnifiedHealthData::Client)
             .to receive(:get_allergies_by_date)
-            .and_return(Faraday::Response.new(
-                          body: modified_response
-                        ))
+            .and_return(build_faraday_response(modified_response))
           allergies = service.get_allergies[:records]
           # 8 AllergyIntolerance resources, only 6 have active clinicalStatus
           expect(allergies.size).to eq(6)
@@ -490,9 +482,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
         it 'returns empty array allergies' do
           allow_any_instance_of(UnifiedHealthData::Client)
             .to receive(:get_allergies_by_date)
-            .and_return(Faraday::Response.new(
-                          body: { 'vista' => {}, 'oracle-health' => {} }
-                        ))
+            .and_return(build_faraday_response({ 'vista' => {}, 'oracle-health' => {} }))
           allergies = service.get_allergies[:records]
           expect(allergies.size).to eq(0)
         end
@@ -569,9 +559,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
     end
 
     let(:sample_client_response) do
-      Faraday::Response.new(
-        body: allergies_sample_response
-      )
+      build_faraday_response(allergies_sample_response)
     end
 
     before do
@@ -647,9 +635,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
     end
 
     let(:sample_client_response) do
-      Faraday::Response.new(
-        body: vitals_sample_response
-      )
+      build_faraday_response(vitals_sample_response)
     end
 
     before do
@@ -755,9 +741,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
           modified_response['oracle-health'] = {}
           allow_any_instance_of(UnifiedHealthData::Client)
             .to receive(:get_vitals_by_date)
-            .and_return(Faraday::Response.new(
-                          body: modified_response
-                        ))
+            .and_return(build_faraday_response(modified_response))
           vitals = service.get_vitals[:records]
           expect(vitals.size).to eq(10)
           expect(vitals.map(&:type)).to contain_exactly(
@@ -791,9 +775,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
           modified_response['vista'] = {}
           allow_any_instance_of(UnifiedHealthData::Client)
             .to receive(:get_vitals_by_date)
-            .and_return(Faraday::Response.new(
-                          body: modified_response
-                        ))
+            .and_return(build_faraday_response(modified_response))
           vitals = service.get_vitals[:records]
           expect(vitals.size).to eq(8)
           expect(vitals.map(&:type)).to contain_exactly(
@@ -824,9 +806,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
         it 'returns empty array for vitals' do
           allow_any_instance_of(UnifiedHealthData::Client)
             .to receive(:get_vitals_by_date)
-            .and_return(Faraday::Response.new(
-                          body: { 'vista' => {}, 'oracle-health' => {} }
-                        ))
+            .and_return(build_faraday_response({ 'vista' => {}, 'oracle-health' => {} }))
           vitals = service.get_vitals[:records]
           expect(vitals.size).to eq(0)
         end
@@ -923,9 +903,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
     end
 
     let(:sample_client_response) do
-      Faraday::Response.new(
-        body: notes_sample_response
-      )
+      build_faraday_response(notes_sample_response)
     end
 
     before do
@@ -1029,9 +1007,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
         it 'returns care summaries and notes for VistA only' do
           allow_any_instance_of(UnifiedHealthData::Client)
             .to receive(:get_notes_by_date)
-            .and_return(Faraday::Response.new(
-                          body: notes_no_oh_response
-                        ))
+            .and_return(build_faraday_response(notes_no_oh_response))
           notes = service.get_care_summaries_and_notes[:records]
           expect(notes.size).to eq(4)
           expect(notes.map(&:note_type)).to contain_exactly(
@@ -1065,9 +1041,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
         it 'returns care summaries and notes for OH only' do
           allow_any_instance_of(UnifiedHealthData::Client)
             .to receive(:get_notes_by_date)
-            .and_return(Faraday::Response.new(
-                          body: notes_no_vista_response
-                        ))
+            .and_return(build_faraday_response(notes_no_vista_response))
           notes = service.get_care_summaries_and_notes[:records]
           expect(notes.size).to eq(2)
           expect(notes.map(&:note_type)).to contain_exactly(
@@ -1101,9 +1075,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
         it 'returns care summaries and notes' do
           allow_any_instance_of(UnifiedHealthData::Client)
             .to receive(:get_notes_by_date)
-            .and_return(Faraday::Response.new(
-                          body: notes_empty_response
-                        ))
+            .and_return(build_faraday_response(notes_empty_response))
           notes = service.get_care_summaries_and_notes[:records]
           expect(notes.size).to eq(0)
         end
@@ -1231,7 +1203,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
         ]
         allow_any_instance_of(UnifiedHealthData::Client)
           .to receive(:get_notes_by_date)
-          .and_return(Faraday::Response.new(body: response_with_warnings))
+          .and_return(build_faraday_response(response_with_warnings))
 
         result = service.get_care_summaries_and_notes
         expect(result[:warnings]).to eq(
@@ -1460,9 +1432,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
     end
 
     let(:sample_client_response) do
-      Faraday::Response.new(
-        body: notes_sample_response
-      )
+      build_faraday_response(notes_sample_response)
     end
 
     context 'when source is not provided (defaults to oracle-health)' do
@@ -1473,7 +1443,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
       end
 
       let(:oh_client_response) do
-        Faraday::Response.new(body: single_oh_note_response)
+        build_faraday_response(single_oh_note_response)
       end
 
       before do
@@ -1511,7 +1481,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
       end
 
       let(:oh_client_response) do
-        Faraday::Response.new(body: single_oh_note_response)
+        build_faraday_response(single_oh_note_response)
       end
 
       before do
@@ -1559,7 +1529,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
       it 'returns nil when the response body is blank' do
         allow_any_instance_of(UnifiedHealthData::Client)
           .to receive(:get_note_by_source)
-          .and_return(Faraday::Response.new(body: nil))
+          .and_return(build_faraday_response(nil))
 
         note = service.get_single_summary_or_note('20875576613', source: 'oracle-health')
         expect(note).to be_nil
@@ -1574,7 +1544,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
         }
         allow_any_instance_of(UnifiedHealthData::Client)
           .to receive(:get_note_by_source)
-          .and_return(Faraday::Response.new(body: bundle_without_doc_ref))
+          .and_return(build_faraday_response(bundle_without_doc_ref))
 
         note = service.get_single_summary_or_note('20875576613', source: 'oracle-health')
         expect(note).to be_nil
@@ -1617,7 +1587,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
         before do
           allow_any_instance_of(UnifiedHealthData::Client)
             .to receive(:get_note_by_source)
-            .and_return(Faraday::Response.new(body: single_oh_note_response))
+            .and_return(build_faraday_response(single_oh_note_response))
         end
 
         it 'logs with source not specified and note_found true' do
@@ -1646,7 +1616,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
         it 'emits StatsD not_found increment when note is missing' do
           allow_any_instance_of(UnifiedHealthData::Client)
             .to receive(:get_note_by_source)
-            .and_return(Faraday::Response.new(body: nil))
+            .and_return(build_faraday_response(nil))
 
           service.get_single_summary_or_note('nonexistent-id')
 
@@ -1657,7 +1627,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
         it 'logs note_found false when note is not found' do
           allow_any_instance_of(UnifiedHealthData::Client)
             .to receive(:get_note_by_source)
-            .and_return(Faraday::Response.new(body: nil))
+            .and_return(build_faraday_response(nil))
 
           service.get_single_summary_or_note('nonexistent-id')
 
@@ -1682,7 +1652,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
         before do
           allow_any_instance_of(UnifiedHealthData::Client)
             .to receive(:get_note_by_source)
-            .and_return(Faraday::Response.new(body: single_oh_note_response))
+            .and_return(build_faraday_response(single_oh_note_response))
         end
 
         it 'logs with source oracle-health and note_found true' do
@@ -1739,9 +1709,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
     end
 
     let(:sample_client_response) do
-      Faraday::Response.new(
-        body: conditions_sample_response
-      )
+      build_faraday_response(conditions_sample_response)
     end
 
     before do
@@ -1800,9 +1768,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
     it 'returns empty array when no data exists' do
       allow_any_instance_of(UnifiedHealthData::Client)
         .to receive(:get_conditions_by_date)
-        .and_return(Faraday::Response.new(
-                      body: conditions_empty_response
-                    ))
+        .and_return(build_faraday_response(conditions_empty_response))
 
       conditions = service.get_conditions[:records]
       expect(conditions).to eq([])
@@ -1811,9 +1777,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
     it 'returns conditions from Oracle Health only when VistA is empty' do
       allow_any_instance_of(UnifiedHealthData::Client)
         .to receive(:get_conditions_by_date)
-        .and_return(Faraday::Response.new(
-                      body: conditions_empty_vista_response
-                    ))
+        .and_return(build_faraday_response(conditions_empty_vista_response))
 
       conditions = service.get_conditions[:records]
       expect(conditions.size).to eq(2)
@@ -1825,9 +1789,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
     it 'returns conditions from VistA only when Oracle Health is empty' do
       allow_any_instance_of(UnifiedHealthData::Client)
         .to receive(:get_conditions_by_date)
-        .and_return(Faraday::Response.new(
-                      body: conditions_empty_oh_response
-                    ))
+        .and_return(build_faraday_response(conditions_empty_oh_response))
 
       conditions = service.get_conditions[:records]
       expect(conditions.size).to eq(16)
@@ -1841,7 +1803,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
     # it 'handles malformed responses gracefully' do
     #   allow_any_instance_of(UnifiedHealthData::Client)
     #     .to receive(:get_conditions_by_date)
-    #     .and_return(Faraday::Response.new(
+    #     .and_return(instance_double(Faraday::Response,
     #                   body: 'invalid'
     #                 ))
 
@@ -1856,9 +1818,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
 
       allow_any_instance_of(UnifiedHealthData::Client)
         .to receive(:get_conditions_by_date)
-        .and_return(Faraday::Response.new(
-                      body: modified_response
-                    ))
+        .and_return(build_faraday_response(modified_response))
 
       expect { service.get_conditions }.not_to raise_error
       expect(service.get_conditions[:records]).to be_an(Array)
@@ -1879,9 +1839,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
       it 'returns nil when condition not found' do
         allow_any_instance_of(UnifiedHealthData::Client)
           .to receive(:get_conditions_by_date)
-          .and_return(Faraday::Response.new(
-                        body: conditions_empty_response
-                      ))
+          .and_return(build_faraday_response(conditions_empty_response))
         condition = service.get_single_condition('nonexistent-id')
         expect(condition).to be_nil
       end
@@ -1889,9 +1847,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
       it 'handles malformed responses gracefully' do
         allow_any_instance_of(UnifiedHealthData::Client)
           .to receive(:get_conditions_by_date)
-          .and_return(Faraday::Response.new(
-                        body: nil
-                      ))
+          .and_return(build_faraday_response(nil))
         expect { service.get_single_condition(condition_id) }.not_to raise_error
         condition = service.get_single_condition(condition_id)
         expect(condition).to be_nil
@@ -1957,9 +1913,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
     end
 
     let(:sample_client_response) do
-      Faraday::Response.new(
-        body: vaccines_sample_response
-      )
+      build_faraday_response(vaccines_sample_response)
     end
 
     context 'happy path' do
@@ -2061,9 +2015,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
           modified_response['oracle-health'] = {}
           allow_any_instance_of(UnifiedHealthData::Client)
             .to receive(:get_immunizations_by_date)
-            .and_return(Faraday::Response.new(
-                          body: modified_response
-                        ))
+            .and_return(build_faraday_response(modified_response))
           vaccines = service.get_immunizations[:records]
           expect(vaccines.size).to eq(15)
 
@@ -2092,9 +2044,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
           modified_response['vista'] = {}
           allow_any_instance_of(UnifiedHealthData::Client)
             .to receive(:get_immunizations_by_date)
-            .and_return(Faraday::Response.new(
-                          body: modified_response
-                        ))
+            .and_return(build_faraday_response(modified_response))
           vaccines = service.get_immunizations[:records]
           expect(vaccines.size).to eq(9)
 
@@ -2123,9 +2073,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
         it 'returns empty array vaccines' do
           allow_any_instance_of(UnifiedHealthData::Client)
             .to receive(:get_immunizations_by_date)
-            .and_return(Faraday::Response.new(
-                          body: { 'vista' => {}, 'oracle-health' => {} }
-                        ))
+            .and_return(build_faraday_response({ 'vista' => {}, 'oracle-health' => {} }))
           vaccines = service.get_immunizations[:records]
           expect(vaccines.size).to eq(0)
         end
@@ -2332,9 +2280,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
       allow(StatsD).to receive(:gauge)
       allow_any_instance_of(UnifiedHealthData::Client)
         .to receive(:get_notes_by_date)
-        .and_return(Faraday::Response.new(
-                      body: { 'vista' => { 'entry' => [] }, 'oracle-health' => { 'entry' => [] } }
-                    ))
+        .and_return(build_faraday_response({ 'vista' => { 'entry' => [] }, 'oracle-health' => { 'entry' => [] } }))
     end
 
     it 'raises ArgumentError for invalid start_date' do

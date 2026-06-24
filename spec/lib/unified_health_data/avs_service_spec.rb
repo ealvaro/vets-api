@@ -105,7 +105,7 @@ describe UnifiedHealthData::AvsService, type: :service do
     before do
       allow_any_instance_of(UnifiedHealthData::Client)
         .to receive(:get_all_avs)
-        .and_return(Faraday::Response.new(body: all_avs_response))
+        .and_return(build_faraday_response(all_avs_response))
     end
 
     it 'returns extracted document references and encounters' do
@@ -159,7 +159,7 @@ describe UnifiedHealthData::AvsService, type: :service do
     end
 
     let(:sample_client_response) do
-      Faraday::Response.new(body: avs_sample_response)
+      build_faraday_response(avs_sample_response)
     end
 
     before do

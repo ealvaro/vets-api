@@ -19,7 +19,7 @@ describe UnifiedHealthData::CcdService, type: :service do
     let(:ccd_body) do
       JSON.parse(Rails.root.join('spec', 'fixtures', 'unified_health_data', 'ccd_ready_success.json').read)
     end
-    let(:ccd_response) { Faraday::Response.new(body: ccd_body) }
+    let(:ccd_response) { build_faraday_response(ccd_body) }
     let(:job_id) { '12043' }
 
     before do
@@ -87,7 +87,7 @@ describe UnifiedHealthData::CcdService, type: :service do
 
   describe '#get_ccd_status' do
     let(:client_double) { instance_double(UnifiedHealthData::Client) }
-    let(:ccd_response) { Faraday::Response.new(response_body: ccd_body, status: response_status) }
+    let(:ccd_response) { build_faraday_response(ccd_body, status: response_status) }
 
     before do
       allow(UnifiedHealthData::Client).to receive(:new).and_return(client_double)
@@ -185,7 +185,7 @@ describe UnifiedHealthData::CcdService, type: :service do
       JSON.parse(Rails.root.join('spec', 'fixtures', 'unified_health_data', 'ccd_patient_all_jobs_mixed.json').read)
     end
 
-    let(:jobs_response) { Faraday::Response.new(body: mixed_jobs_body) }
+    let(:jobs_response) { build_faraday_response(mixed_jobs_body) }
 
     before do
       allow(UnifiedHealthData::Client).to receive(:new).and_return(client_double)
@@ -266,7 +266,7 @@ describe UnifiedHealthData::CcdService, type: :service do
       }
     end
 
-    let(:initiate_response) { Faraday::Response.new(response_body: initiate_body, status: 202) }
+    let(:initiate_response) { build_faraday_response(initiate_body, status: 202) }
 
     before do
       allow(UnifiedHealthData::Client).to receive(:new).and_return(client_double)

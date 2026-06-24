@@ -2287,6 +2287,7 @@ spec/support/disability_compensation_form @software/disability-benefits @softwar
 spec/support/error_details.rb @software/backend-review-group
 spec/support/excel_helpers.rb @software/govcio-vfep-codereviewers @software/backend-review-group
 spec/support/factory_bot.rb @software/backend-review-group
+spec/support/faraday_response_helper.rb @software/va-cto-health-products @software/backend-review-group
 spec/support/fake_api_key_for_lighthouse.txt @software/backend-review-group
 spec/support/financial_status_report_helpers.rb @software/vsa-debt-resolution @software/backend-review-group
 spec/support/fixture_helpers.rb @software/vfs-vaos @software/backend-review-group
