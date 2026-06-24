@@ -7,6 +7,10 @@ x-app: &common
       BUNDLE_VA__GHE__COM: "${BUNDLE_VA__GHE__COM}"
       IMAGEMAGICK_IMAGE: "${IMAGEMAGICK_IMAGE:-dpokidov/imagemagick:7.1.1-47-bookworm}"
       RUBY_IMAGE: "${RUBY_IMAGE:-ruby:3.3.6-slim-bookworm}"
+      # Local builds can't pull the ECR va-certs image. The certs stage is only consumed when
+      # SHOULD_USE_CERT_IMAGE=true (review instances); locally those certs are discarded, so point
+      # at the public Ruby image that's already being pulled to satisfy the unconditional COPY.
+      CERTS_IMAGE: "${CERTS_IMAGE:-ruby:3.3.6-slim-bookworm}"
     context: .
   environment:
     BUNDLE_ENTERPRISE__CONTRIBSYS__COM: "${BUNDLE_ENTERPRISE__CONTRIBSYS__COM}"
