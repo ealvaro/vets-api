@@ -27,6 +27,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_23_162653) do
   create_enum "bpds_submission_status", ["pending", "submitted", "failure"]
   create_enum "claims_evidence_api_submission_status", ["pending", "accepted", "failed"]
   create_enum "client_config_auth_method", ["pkce", "client_secret", "private_key_jwt"]
+  create_enum "form21a_document_submission_status", ["pending", "uploading", "succeeded", "failed_transient", "failed_permanent", "abandoned"]
+  create_enum "form21a_upload_failure_classification", ["transient", "permanent"]
   create_enum "digital_forms_api_submission_status", ["pending", "accepted", "failed"]
   create_enum "itf_remediation_status", ["unprocessed"]
   create_enum "lighthouse_submission_status", ["pending", "submitted", "failure", "vbms", "manually"]
@@ -1116,6 +1118,44 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_23_162653) do
     t.uuid "claim_guid", null: false
     t.index ["carma_case_id"], name: "index_form1010cg_submissions_on_carma_case_id", unique: true
     t.index ["claim_guid"], name: "index_form1010cg_submissions_on_claim_guid", unique: true
+  end
+
+  create_table "form21a_document_submission_attempts", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "form21a_document_submission_id", null: false
+    t.jsonb "metadata_ciphertext", comment: "encrypted metadata sent with the submission"
+    t.jsonb "error_message_ciphertext", comment: "encrypted error message from the GCLAWS upload"
+    t.jsonb "response_ciphertext", comment: "encrypted response from the GCLAWS upload"
+    t.text "encrypted_kms_key", comment: "KMS key used to encrypt sensitive data"
+    t.boolean "needs_kms_rotation", default: false, null: false
+    t.enum "status", default: "pending", enum_type: "form21a_document_submission_status"
+    t.integer "last_http_status", comment: "HTTP status from GCLAWS on this attempt"
+    t.enum "failure_classification", enum_type: "form21a_upload_failure_classification"
+    t.datetime "attempted_at", comment: "timestamp when this upload attempt ran"
+    t.index ["form21a_document_submission_id"], name: "idx_form21a_doc_attempts_on_submission_id"
+    t.index ["needs_kms_rotation"], name: "idx_form21a_doc_attempts_on_needs_kms_rotation"
+  end
+
+  create_table "form21a_document_submissions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "form_id", null: false, comment: "form type of the submission"
+    t.string "application_id", null: false, comment: "GCLAWS application this document belongs to"
+    t.uuid "form21a_attachment_guid", null: false, comment: "guid of the Form21aAttachment / S3 object"
+    t.integer "document_type", comment: "GCLAWS document-type code"
+    t.string "content_type", comment: "content type needed to re-upload the document"
+    t.jsonb "reference_data_ciphertext", comment: "encrypted data that can be used to identify the resource - ie, original filename, ICN, user account ID, etc"
+    t.text "encrypted_kms_key", comment: "KMS key used to encrypt the reference data"
+    t.boolean "needs_kms_rotation", default: false, null: false
+    t.enum "latest_status", default: "pending", enum_type: "form21a_document_submission_status"
+    t.datetime "next_retry_at", comment: "timestamp when this document is eligible for re-drive"
+    t.datetime "last_attempted_at", comment: "timestamp of the last upload attempt"
+    t.datetime "succeeded_at", comment: "timestamp when this document upload succeeded"
+    t.index ["application_id"], name: "idx_form21a_doc_subs_on_application_id"
+    t.index ["form21a_attachment_guid"], name: "idx_form21a_doc_subs_on_attachment_guid", unique: true
+    t.index ["latest_status", "next_retry_at"], name: "idx_form21a_doc_subs_on_status_and_retry_at"
+    t.index ["needs_kms_rotation"], name: "idx_form21a_doc_subs_on_needs_kms_rotation"
   end
 
   create_table "form526_job_statuses", id: :serial, force: :cascade do |t|
@@ -2399,6 +2439,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_23_162653) do
   add_foreign_key "event_bus_gateway_push_notifications", "user_accounts"
   add_foreign_key "evidence_submissions", "user_accounts"
   add_foreign_key "evss_claims", "user_accounts"
+  add_foreign_key "form21a_document_submission_attempts", "form21a_document_submissions", name: "fk_form21a_doc_attempts_on_submission_id"
   add_foreign_key "form526_submission_remediations", "form526_submissions"
   add_foreign_key "form526_submissions", "user_accounts"
   add_foreign_key "form5655_submissions", "user_accounts"
