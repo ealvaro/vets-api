@@ -24,6 +24,8 @@ module SignIn
         translate_logingov_values
       when Constants::Auth::MHV
         translate_mhv_values
+      when Constants::Auth::CLEAR
+        translate_clear_values
       else
         raise Errors::InvalidTypeError.new message: 'Invalid Type value'
       end
@@ -39,6 +41,15 @@ module SignIn
                end
 
       [Constants::Auth::IDME_COMPARISON_MINIMUM, *values].join(' ') if values.present?
+    end
+
+    def translate_clear_values
+      case acr
+      when 'ial2'
+        Constants::Auth::CLEAR_IAL2
+      else
+        invalid_acr!(type:)
+      end
     end
 
     def translate_idme_values

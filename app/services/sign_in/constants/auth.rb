@@ -27,7 +27,9 @@ module SignIn
                           LOGIN_GOV_IAL2 = 'http://idmanagement.gov/ns/assurance/ial/2',
                           LOGIN_GOV_VERIFIED = 'urn:acr.login.gov:verified',
                           LOGIN_GOV_IAL2_REQUIRED = 'urn:acr.login.gov:verified-facial-match-required',
-                          LOGIN_GOV_IAL2_PREFERRED = 'urn:acr.login.gov:verified-facial-match-preferred'].freeze
+                          LOGIN_GOV_IAL2_PREFERRED = 'urn:acr.login.gov:verified-facial-match-preferred',
+                          CLEAR_IAL1 = 'ial1',
+                          CLEAR_IAL2 = 'ial2'].freeze
       ANTI_CSRF_COOKIE_NAME = 'vagov_anti_csrf_token'
       AUTHENTICATION_TYPES = [COOKIE = 'cookie', API = 'api', MOCK = 'mock'].freeze
       AUTHORIZE_ROUTE_PATH = '/v0/sign_in/authorize'
@@ -36,7 +38,7 @@ module SignIn
       CERTS_ROUTE_PATH = '/sign_in/openid_connect/certs'
       CLIENT_STATE_MINIMUM_LENGTH = 22
       CODE_CHALLENGE_METHOD = 'S256'
-      CSP_TYPES = [IDME = 'idme', LOGINGOV = 'logingov', MHV = 'mhv'].freeze
+      CSP_TYPES = [IDME = 'idme', LOGINGOV = 'logingov', MHV = 'mhv', CLEAR = 'clear'].freeze
       OPERATION_TYPES = [SIGN_UP = 'sign_up',
                          AUTHORIZE = 'authorize',
                          AUTHORIZE_SSO = 'authorize_sso',
