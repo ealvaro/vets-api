@@ -1706,7 +1706,8 @@ module IvcChampva
           merge_fields = {
             'submissionType' => parsed_form_data['submission_type'].to_s,
             'docType' => "#{parsed_form_data['form_number']}-#{parsed_form_data['submission_type'].to_s.upcase}",
-            'supportingDocApplicants' => supporting_document_applicants(parsed_form_data).to_json
+            'supportingDocApplicants' => supporting_document_applicants(parsed_form_data).to_json,
+            'standalone-flag' => 'true'
           }
           merge_fields['uuid'] = parsed_form_data['claim_id'] if parsed_form_data['claim_id'].present?
           raw_metadata = form.metadata.merge(merge_fields)

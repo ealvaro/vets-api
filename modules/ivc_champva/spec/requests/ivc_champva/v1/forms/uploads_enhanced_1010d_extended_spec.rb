@@ -142,6 +142,7 @@ RSpec.describe 'IvcChampva::V1::Uploads — 10-10D supplemental docs-only resubm
     )
     expect(metadata['docType']).to eq('10-10D-SUPPLEMENTAL-EXISTING')
     expect(metadata['submissionType']).to eq('existing')
+    expect(metadata['standalone-flag']).to eq('true')
     expect(metadata['uuid']).to eq(form_uuid)
 
     # With claim_id, uuid comes from claim_id
