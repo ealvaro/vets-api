@@ -90,6 +90,8 @@ module BGSDependents
       return nil if date.nil?
 
       DateTime.parse("#{date} 12:00:00").to_time.iso8601
+    rescue Date::Error
+      nil
     end
 
     def generate_address(address)

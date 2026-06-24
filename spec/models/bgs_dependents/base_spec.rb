@@ -41,6 +41,21 @@ RSpec.describe BGSDependents::Base do
     }
   end
 
+  describe '#format_date' do
+    it 'returns nil for nil input' do
+      expect(base.format_date(nil)).to be_nil
+    end
+
+    it 'returns iso8601 string for valid date' do
+      expect(base.format_date('2000-01-15')).to match(/\A2000-01-15/)
+    end
+
+    it 'returns nil for invalid date without raising' do
+      expect { base.format_date('00/00/0000') }.not_to raise_error
+      expect(base.format_date('00/00/0000')).to be_nil
+    end
+  end
+
   describe '#dependent_address' do
     it 'returns the vet\'s address' do
       address = base.dependent_address(
