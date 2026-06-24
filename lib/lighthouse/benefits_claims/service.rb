@@ -412,11 +412,16 @@ module BenefitsClaims
       tracked_items = claim['attributes']['trackedItems']
       return unless tracked_items
 
-      tracked_items
-        .select { |i| BenefitsClaims::Constants::FIRST_PARTY_AS_THIRD_PARTY_OVERRIDES.include?(i['displayName']) }
-        .each do |i|
-          i['status'] = 'NEEDED_FROM_OTHERS'
-        end
+      # Only reclassify items that are still in the initial first-party-requested state.
+      # Items that have already advanced (SUBMITTED_AWAITING_REVIEW, INITIAL_REVIEW_COMPLETE,
+      # ACCEPTED, NO_LONGER_REQUIRED) must keep their true status so the frontend doesn't
+      # rewind them to an outstanding third-party request.
+      tracked_items.each do |i|
+        next unless i['status'] == 'NEEDED_FROM_YOU' &&
+                    BenefitsClaims::Constants::FIRST_PARTY_AS_THIRD_PARTY_OVERRIDES.include?(i['displayName'])
+
+        i['status'] = 'NEEDED_FROM_OTHERS'
+      end
 
       tracked_items
     end

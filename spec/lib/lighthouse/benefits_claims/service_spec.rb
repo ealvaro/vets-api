@@ -397,6 +397,36 @@ RSpec.describe BenefitsClaims::Service do
           end
         end
 
+        describe '#override_tracked_items' do
+          let(:claim) do
+            {
+              'attributes' => {
+                'trackedItems' => [
+                  { 'displayName' => 'PMR Pending', 'status' => 'NEEDED_FROM_YOU' },
+                  { 'displayName' => 'PMR Pending', 'status' => 'SUBMITTED_AWAITING_REVIEW' },
+                  { 'displayName' => 'Proof of service (DD214, etc.)', 'status' => 'ACCEPTED' },
+                  { 'displayName' => 'Proof of service (DD214, etc.)', 'status' => 'NO_LONGER_REQUIRED' }
+                ]
+              }
+            }
+          end
+
+          it 'only overrides items that still have the status of NEEDED_FROM_YOU to NEEDED_FROM_OTHERS' do
+            service.send(:override_tracked_items, claim)
+
+            expect(claim.dig('attributes', 'trackedItems', 0, 'status')).to eq('NEEDED_FROM_OTHERS')
+          end
+
+          it 'does not override items that do not have the status of NEEDED_FROM_YOU' do
+            service.send(:override_tracked_items, claim)
+            statuses = claim['attributes']['trackedItems'].map { |i| i['status'] }
+
+            expect(statuses[1]).to eq('SUBMITTED_AWAITING_REVIEW')
+            expect(statuses[2]).to eq('ACCEPTED')
+            expect(statuses[3]).to eq('NO_LONGER_REQUIRED')
+          end
+        end
+
         context 'missing API description metric tracking' do
           before do
             allow(StatsD).to receive(:increment)
