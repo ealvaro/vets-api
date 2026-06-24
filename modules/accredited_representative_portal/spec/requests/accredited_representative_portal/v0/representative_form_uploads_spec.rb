@@ -492,10 +492,10 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
           form_const = "Form#{form_number.gsub(/-/, '').camelize}"
           post('/accredited_representative_portal/v0/submit_representative_form', params: veteran_params)
           expect(response).to have_http_status(:ok)
+          claim_class = AccreditedRepresentativePortal::SavedClaim::BenefitsIntake.const_get(form_const)
           expect(parsed_response).to eq(
             {
-              'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake.const_get(form_const)
-                                      .order(created_at: :desc).first.guid,
+              'confirmationNumber' => claim_class.order(created_at: :desc).first.guid,
               'status' => '200',
               'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
             }
@@ -506,10 +506,10 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
           form_const = "Form#{form_number.gsub(/-/, '').camelize}"
           post('/accredited_representative_portal/v0/submit_representative_form', params: multi_form_veteran_params)
           expect(response).to have_http_status(:ok)
+          claim_class = AccreditedRepresentativePortal::SavedClaim::BenefitsIntake.const_get(form_const)
           expect(parsed_response).to eq(
             {
-              'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake.const_get(form_const)
-                                      .order(created_at: :desc).first.guid,
+              'confirmationNumber' => claim_class.order(created_at: :desc).first.guid,
               'status' => '200',
               'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
             }

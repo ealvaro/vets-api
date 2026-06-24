@@ -187,8 +187,8 @@ module RepresentationManagement
     # @param data [Hash] The metrics data to merge
     def merge_entity_metrics!(entity_type, data)
       self.metrics ||= {}
-      self.metrics[entity_type.to_s] ||= {}
-      self.metrics[entity_type.to_s].merge!(data.deep_stringify_keys)
+      metrics[entity_type.to_s] ||= {}
+      metrics[entity_type.to_s].merge!(data.deep_stringify_keys)
     end
 
     # Merges metrics data into the metrics JSONB column at the top level
@@ -196,7 +196,7 @@ module RepresentationManagement
     # @param data [Hash] The metrics data to merge
     def merge_metrics!(data)
       self.metrics ||= {}
-      self.metrics.merge!(data.deep_stringify_keys)
+      metrics.merge!(data.deep_stringify_keys)
     end
   end
 end

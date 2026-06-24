@@ -41,7 +41,7 @@ class Form526SubmissionRemediation < ApplicationRecord
 
   def add_context_to_lifecycle(context)
     if context.is_a?(String) && context.strip.present?
-      self.lifecycle << "#{Time.current.strftime('%Y-%m-%d %H:%M:%S')} -- #{context}"
+      lifecycle << "#{Time.current.strftime('%Y-%m-%d %H:%M:%S')} -- #{context}"
       true
     else
       errors.add(:base, 'Context must be a non-empty string')
