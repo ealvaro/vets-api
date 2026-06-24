@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'mms/data_formatting'
-require 'mms/attachments'
 
 module SurvivorsBenefits
   module StructuredData
@@ -19,7 +18,6 @@ module SurvivorsBenefits
       include SurvivorsBenefits::StructuredData::Section11
       include SurvivorsBenefits::StructuredData::Section12
       include Mms::DataFormatting
-      include Mms::Attachments
 
       attr_reader :form
       attr_accessor :fields
@@ -61,7 +59,8 @@ module SurvivorsBenefits
         build_section10
         build_section11(form['bankAccount'])
         build_section12
-        add_attached_files_data if Flipper.enabled?(:include_CAVE_attachment_structured_data)
+        # NOTE: CAVE-extracted artifact data is routed to BPDS (via the claim's idpArtifacts),
+        # not MMS — MMS does not accept attachment data. (Previously add_attached_files_data here.)
         fill_veteran_ssn_reference_fields
         add_amounts_with_separation
         transform_booleans(fields)
@@ -105,17 +104,6 @@ module SurvivorsBenefits
 
         (1..MEDAMNT_YOU_PAY_COUNT).each do |i|
           fields["MEDAMNT_YOU_PAY#{i}_WITH_SEPARATION"] = fields["MEDAMNT_YOU_PAY#{i}"]
-        end
-      end
-
-      def add_attached_files_data
-        return unless form['files']
-
-        attachments_service = Mms::Attachments::Service.new(form['files'])
-        attachments_service.files.each_value do |attached_file|
-          next unless attached_file&.form_data
-
-          fields.merge!(attached_file.form_data)
         end
       end
     end

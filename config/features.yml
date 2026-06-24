@@ -1725,6 +1725,12 @@ features:
     actor_type: user
     description: Enables notifications to be sent for new copay statements
     enable_in_development: true
+  medical_expense_reports_bpds_service_enabled:
+    actor_type: user
+    description: Enables the BPDS service for Medical Expense Reports (21P-8416)
+  medical_expense_reports_bpds_submit_after_vbms:
+    actor_type: user
+    description: When enabled, BPDS submission for Medical Expense Reports is enqueued from the SubmissionHandler after VBMS upload success instead of from the controller
   medical_expense_reports_form_enabled:
     actor_type: user
     description: Enables the Medical Expense Reports form (Form 21P-8416)

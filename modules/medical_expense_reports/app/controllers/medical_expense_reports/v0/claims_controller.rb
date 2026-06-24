@@ -4,6 +4,7 @@ require 'medical_expense_reports/benefits_intake/submit_claim_job'
 require 'medical_expense_reports/monitor'
 require 'medical_expense_reports/zsf_config'
 require 'persistent_attachments/sanitizer'
+require 'bpds/submission_handler'
 
 module MedicalExpenseReports
   module V0
@@ -12,6 +13,7 @@ module MedicalExpenseReports
     #
     class ClaimsController < ClaimsBaseController
       include PdfS3Operations
+      include BPDS::SubmissionHandler
 
       before_action :check_flipper_flag
       skip_after_action :set_csrf_header, only: [:create]
@@ -60,6 +62,11 @@ module MedicalExpenseReports
 
         process_attachments(in_progress_form, claim)
 
+        # Parallel BPDS submission (mirrors the survivors_benefits 21P-534EZ pattern). No-op when the
+        # per-form flag is off OR after-VBMS mode is on. BPDS is experimental and must never disrupt
+        # claim submission, so submit_claim_to_bpds_safely swallows MPI/BGS/KMS errors here.
+        submit_claim_to_bpds_safely(claim) if medical_expense_reports_bpds_parallel_enabled?
+
         MedicalExpenseReports::BenefitsIntake::SubmitClaimJob.perform_async(claim.id, current_user&.user_account_uuid)
 
         monitor.track_create_success(in_progress_form, claim, current_user)
@@ -93,6 +100,26 @@ module MedicalExpenseReports
       rescue => e
         monitor.track_process_attachment_error(in_progress_form, claim, current_user)
         raise e
+      end
+
+      # Invokes the BPDS submission, isolating any failure so it cannot abort claim submission.
+      # A raised error here would otherwise propagate to #create's rescue and prevent
+      # SubmitClaimJob from being enqueued, orphaning the saved claim.
+      #
+      # @param claim [MedicalExpenseReports::SavedClaim]
+      def submit_claim_to_bpds_safely(claim)
+        submit_claim_to_bpds(claim.id, current_user)
+      rescue => e
+        bpds_monitor.track_submit_failure(claim.id, e)
+        Rails.logger.warn('[MedicalExpenseReports] BPDS parallel submission failed; claim submission continues',
+                          claim_id: claim.id, exception: e)
+      end
+
+      # True when the per-form BPDS flag is on AND the after-VBMS timing flag is off.
+      # The master :bpds_service_enabled flag is checked inside BPDS::SubmissionHandler#submit_claim_to_bpds.
+      def medical_expense_reports_bpds_parallel_enabled?
+        Flipper.enabled?(:medical_expense_reports_bpds_service_enabled, current_user) &&
+          !Flipper.enabled?(:medical_expense_reports_bpds_submit_after_vbms, current_user)
       end
 
       # Filters out the parameters to form access.

@@ -19,8 +19,7 @@ RSpec.describe SurvivorsBenefits::StructuredData::StructuredDataService do
       SurvivorsBenefits::StructuredData::Section10,
       SurvivorsBenefits::StructuredData::Section11,
       SurvivorsBenefits::StructuredData::Section12,
-      Mms::DataFormatting,
-      Mms::Attachments
+      Mms::DataFormatting
     )
   end
 
