@@ -6,6 +6,7 @@ module SimpleFormsApi
   class VBA210788 < BaseForm
     STATS_KEY = 'api.simple_forms_api.21_0788'
     FORM_NUMBER = '21-0788'
+    COORDINATES = [105.0, 395.0].freeze
 
     APPORTIONMENT_RADIOS = [
       [7, 6],
@@ -185,7 +186,7 @@ module SimpleFormsApi
       people.first(4).each_with_index do |person, i|
         mapped["form1[0].Page_1[0].NAMEVETERAN[#{3 + i}]"] = person['full_name']
         mapped["form1[0].Page_1[0].NAMEVETERAN[#{7 + i}]"] = person['ssn']
-        mapped["form1[0].Page_1[0].NAMEVETERAN[#{11 + i}]"] = person['relationship']
+        mapped["form1[0].Page_1[0].NAMEVETERAN[#{11 + i}]"] = apportionment_fields_relationship(person)
 
         yes_idx, no_idx = APPORTIONMENT_RADIOS[i]
 
@@ -197,6 +198,10 @@ module SimpleFormsApi
       end
 
       mapped
+    end
+
+    def apportionment_fields_relationship(person)
+      person['relationship'] == 'other' ? person['other_relationship_description'] : person['relationship']
     end
 
     def incarceration_fields
@@ -288,6 +293,46 @@ module SimpleFormsApi
       return nil if phone.nil?
 
       "#{phone[0...-7]}-#{phone[-7...-4]}-#{phone[-4..]}"
+    end
+
+    # -------------------------
+    # Manual PDF Writing
+    # -------------------------
+    def coordinates
+      COORDINATES
+    end
+
+    def manual_fills(pdf_path)
+      unless data['relationship_to_veteran'] == 'other' && data['other_relationship_description'].present?
+        return pdf_path
+      end
+
+      begin
+        coords = coordinates
+        temp_path = "#{pdf_path}.modified.pdf"
+        doc = HexaPDF::Document.open(pdf_path)
+        canvas = doc.pages[0].canvas(type: :overlay)
+        canvas.save_graphics_state do
+          write_to_form(canvas, coords, data['other_relationship_description'])
+        end
+        # returns a Hexapdf doc, so use string for path reference
+        doc.write(temp_path, optimize: true)
+        # overwrite old pdf with new markings
+        FileUtils.mv(temp_path, pdf_path)
+        # delete old pdf
+        Common::FileHelpers.delete_file_if_exists(temp_path)
+        Rails.logger.info('simple forms api - manual additions complete')
+        pdf_path
+      rescue => e
+        Rails.logger.error('simple forms api - manual additions error', { error: e.message })
+        pdf_path
+      end
+    end
+
+    def write_to_form(canvas, coordinates, other_text)
+      canvas.fill_color(0, 0, 0)
+      canvas.font('Helvetica', size: 12)
+      canvas.text(other_text, at: coordinates)
     end
   end
 end
