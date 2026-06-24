@@ -1150,7 +1150,7 @@ lib/search_gsa @software/backend-review-group
 lib/semantic_logger/safe_json_formatter.rb @software/backend-review-group
 lib/sentry @software/backend-review-group
 lib/sftp_writer @software/backend-review-group
-lib/sharepoint/service.rb @software/mobile-api-team @software/backend-review-group
+lib/share_point/service.rb @software/mobile-api-team @software/backend-review-group
 lib/shrine @software/backend-review-group
 lib/sidekiq/attr_package.rb @software/octo-identity @software/backend-review-group
 lib/sidekiq/form526_backup_submission_process @software/disability-benefits @software/backend-review-group

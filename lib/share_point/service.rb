@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'cgi'
 require 'forwardable'
 
 module SharePoint
@@ -26,7 +27,9 @@ module SharePoint
     #
     # @return [Faraday::Response]
     def upload_csv(csv_data, sharepoint_path, file_name)
-      file_upload_path = "/v1.0/sites/#{site_id}/drives/#{drive_id}/root:/#{sharepoint_path}/#{file_name}:/content"
+      encoded_path = encode_sharepoint_path(sharepoint_path)
+      encoded_file_name = encode_sharepoint_path_segment(file_name)
+      file_upload_path = "/v1.0/sites/#{site_id}/drives/#{drive_id}/root:/#{encoded_path}/#{encoded_file_name}:/content"
 
       csv_headers = {
         'Content-Type' => 'text/csv',
@@ -128,6 +131,14 @@ module SharePoint
 
     def mock_enabled?
       ActiveModel::Type::Boolean.new.cast(settings.mock)
+    end
+
+    def encode_sharepoint_path(path)
+      path.to_s.split('/').compact_blank.map { |segment| encode_sharepoint_path_segment(segment) }.join('/')
+    end
+
+    def encode_sharepoint_path_segment(segment)
+      CGI.escape(segment.to_s).tr('+', '%20')
     end
   end
 end

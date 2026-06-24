@@ -1403,6 +1403,7 @@ sharepoint:
     client_id: fake_sharepoint_client_id
     client_secret: fake_sharepoint_client_secret
     drive_id: fake_drive_id
+    filepath: 'Survey Responses'
     mock: ~
     scope: ~
     sharepoint_graph_url: ~

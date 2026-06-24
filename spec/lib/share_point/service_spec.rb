@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'sharepoint/service'
+require 'share_point/service'
 
 RSpec.describe SharePoint::Service, skip: 'recording cassettes' do
   let(:sharepoint_feature) { :mobile_survey_storage }
@@ -26,6 +26,32 @@ RSpec.describe SharePoint::Service, skip: 'recording cassettes' do
   end
 
   describe '#upload_csv' do
+    context 'when sharepoint path and filename contain spaces' do
+      let(:sharepoint_path) { 'staging/Survey Responses/give_feedback' }
+      let(:file_name) { 'give feedback report.csv' }
+
+      it 'encodes each path segment and filename before upload' do
+        response = instance_double(Faraday::Response, success?: true)
+        expected_upload_path =
+          "/v1.0/sites/#{Settings.sharepoint.mobile_survey_storage.site_id}" \
+          "/drives/#{Settings.sharepoint.mobile_survey_storage.drive_id}" \
+          '/root:/staging/Survey%20Responses/give_feedback/give%20feedback%20report.csv:/content'
+
+        expect(service).to receive(:upload_file)
+          .with(
+            csv_data,
+            expected_upload_path,
+            addl_headers: hash_including('Content-Type' => 'text/csv',
+                                         'Content-Length' => csv_data.bytesize.to_s)
+          )
+          .and_return(response)
+        expect(StatsD).to receive(:increment)
+          .with('api.sharepoint.mobile_survey_storage.upload_csv.success')
+
+        service.upload_csv(csv_data, sharepoint_path, file_name)
+      end
+    end
+
     context 'when the upload succeeds' do
       it 'returns a successful response and increments the success StatsD metric' do
         expect(StatsD).to receive(:increment)
