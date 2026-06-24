@@ -138,7 +138,7 @@ module SharePoint
     end
 
     def encode_sharepoint_path_segment(segment)
-      CGI.escape(segment.to_s).tr('+', '%20')
+      CGI.escape(segment.to_s).gsub('+', '%20')
     end
   end
 end
