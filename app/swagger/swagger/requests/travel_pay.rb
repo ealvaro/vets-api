@@ -93,11 +93,17 @@ module Swagger
             end
           end
 
-          response 400 do
+          response 404 do
             key :description, 'Missing claim'
             schema do
-              property :error, type: :string, example: 'Not Found: No claim with that id'
-              property :correlation_id, type: :string, example: '33333333-5555-4444-bbbb-222222444444'
+              property :errors, type: :array do
+                items do
+                  property :title, type: :string
+                  property :detail, type: :string
+                  property :code, type: :string
+                  property :status, type: :string
+                end
+              end
             end
           end
         end

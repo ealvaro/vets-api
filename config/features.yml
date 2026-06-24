@@ -3270,6 +3270,14 @@ features:
       A switch that toggles the availability of user-created appointment features for Travel Pay.
       Enabled - User-created appointment features are available to users.
       Disabled - User-created appointment features are not available to users.
+  travel_pay_unified_error_handling:
+    actor_type: user
+    enable_in_development: true
+    description: >-
+      Gates the unified ErrorHandling concern for Travel Pay controllers.
+      Enabled - Controllers use the shared ErrorHandling concern with normalized
+      BTSSS error codes and structured error responses.
+      Disabled - Controllers use legacy inline rescue blocks with per-action error handling.
   yellow_ribbon_automated_date_on_school_search:
     actor_type: user
     description: Enable the automated date displayed in the Find a Yellow Ribbon school search results

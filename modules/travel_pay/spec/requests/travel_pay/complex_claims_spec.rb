@@ -32,6 +32,7 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
     sign_in(user)
     allow_any_instance_of(TravelPay::V0::ComplexClaimsController).to receive(:current_user).and_return(user)
     allow(Flipper).to receive(:enabled?).with(:travel_pay_power_switch, instance_of(User)).and_return(true)
+    allow(Flipper).to receive(:enabled?).with(:travel_pay_unified_error_handling, instance_of(User)).and_return(true)
   end
 
   # POST /travel_pay/v0/complex_claims/
@@ -279,7 +280,8 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
               post('/travel_pay/v0/complex_claims', params: params_v2, as: :json)
 
               expect(response).to have_http_status(:not_found)
-              expect(JSON.parse(response.body)['error']).to match(/Resource not found/)
+              body = JSON.parse(response.body)
+              expect(body['errors']).to be_present
               expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
                                                                tags: ['appointment_source:vaos',
                                                                       'result:failure'])
@@ -305,14 +307,14 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
                 .to receive(:claims_service).and_return(claims_service_double)
             end
 
-            it 'returns a 500 error with generic error message' do
+            it 'returns a 502 error matching the upstream status' do
               allow(StatsD).to receive(:increment)
 
               post('/travel_pay/v0/complex_claims', params: params_v2, as: :json)
 
               expect(response).to have_http_status(:bad_gateway)
               body = JSON.parse(response.body)
-              expect(body['error']).to eq('Error creating complex claim')
+              expect(body['errors']).to be_present
               expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
                                                                tags: ['appointment_source:vaos',
                                                                       'result:failure'])
@@ -553,7 +555,8 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
               post('/travel_pay/v0/complex_claims', params: params_v4, as: :json)
 
               expect(response).to have_http_status(:not_found)
-              expect(JSON.parse(response.body)['error']).to match(/Resource not found/)
+              body = JSON.parse(response.body)
+              expect(body['errors']).to be_present
               expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
                                                                tags: ['appointment_source:vaos',
                                                                       'result:failure'])
@@ -579,14 +582,14 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
                 .to receive(:claims_service).and_return(claims_service_double)
             end
 
-            it 'returns a 500 error with generic error message' do
+            it 'returns a 502 error matching the upstream status' do
               allow(StatsD).to receive(:increment)
 
               post('/travel_pay/v0/complex_claims', params: params_v4, as: :json)
 
               expect(response).to have_http_status(:bad_gateway)
               body = JSON.parse(response.body)
-              expect(body['error']).to eq('Error creating complex claim')
+              expect(body['errors']).to be_present
               expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
                                                                tags: ['appointment_source:vaos',
                                                                       'result:failure'])
@@ -639,7 +642,7 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
           VCR.use_cassette('travel_pay/submit/500_submit_claim', match_requests_on: %i[method path]) do
             patch("/travel_pay/v0/complex_claims/#{claim_id}/submit")
 
-            expect(response).to have_http_status(:internal_server_error)
+            expect(response).to have_http_status(:service_unavailable)
           end
         end
       end
@@ -708,33 +711,30 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
         end
 
         context 'when there are errors' do
-          it 'falls back to :internal_server_error - 500, when Faraday::Error and response is nil' do
+          it 'returns 503 when Faraday::ConnectionFailed' do
             error = Faraday::ConnectionFailed.new('Failed to open TCP connection')
             allow(claims_service).to receive(:submit_claim).with(claim_id).and_raise(error)
 
             patch("/travel_pay/v0/complex_claims/#{claim_id}/submit")
-            expect(response).to have_http_status(:internal_server_error)
+            expect(response).to have_http_status(:service_unavailable)
             body = JSON.parse(response.body)
-            expect(body['errors'].first['detail']).to eq('Error creating complex claim')
+            expect(body['errors']).to be_present
+            expect(body['errors'].first['code']).to eq('BTSSS-API_CONNECTION_FAILED')
           end
 
           context 'when claims service raises Faraday::ClientError' do
-            # This simulates a rare edge case where a Faraday::ClientError is raised
-            # without a response object (e.response is nil). Normally Faraday provides
-            # a response, but we test this fallback path to ensure the controller still
-            # returns a structured 400 Bad Request error.
-            it 'falls back to :bad_request - 400 error, when response is nil' do
+            it 'returns 503 when response is nil' do
               error = Faraday::ClientError.new('Connection failed', nil)
               allow(claims_service).to receive(:submit_claim).with(claim_id).and_raise(error)
 
               patch("/travel_pay/v0/complex_claims/#{claim_id}/submit")
 
-              expect(response).to have_http_status(:bad_request)
+              expect(response).to have_http_status(:service_unavailable)
               body = JSON.parse(response.body)
-              expect(body['errors'].first['detail']).to eq('Invalid request for complex claim')
+              expect(body['errors'].first['code']).to eq('BTSSS-API_CONNECTION_FAILED')
             end
 
-            it 'uses status from Faraday response and shows default message when is blank' do
+            it 'returns 404 when upstream status is 404' do
               error = Faraday::ClientError.new('Connection failed', { status: 404, body: '' })
               allow(claims_service).to receive(:submit_claim).with(claim_id).and_raise(error)
 
@@ -742,10 +742,10 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
 
               expect(response).to have_http_status(:not_found)
               body = JSON.parse(response.body)
-              expect(body['errors'].first['detail']).to eq('Invalid request for complex claim')
+              expect(body['errors'].first['code']).to eq('BTSSS-API_404')
             end
 
-            it 'uses status from Faraday response if present (e.g. 404)' do
+            it 'returns 404 when upstream status is 404 with body' do
               error = Faraday::ClientError.new('404 Not Found', { status: 404, body: 'Claim not found' })
               allow(claims_service).to receive(:submit_claim).with(claim_id).and_raise(error)
 
@@ -753,27 +753,23 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
 
               expect(response).to have_http_status(:not_found)
               body = JSON.parse(response.body)
-              expect(body['errors'].first['detail']).to eq('Claim not found')
+              expect(body['errors'].first['code']).to eq('BTSSS-API_404')
             end
           end
 
           context 'when claims service raises ServerError' do
-            # This simulates a rare edge case where a Faraday::ServerError is raised
-            # without a response object (e.response is nil). Normally Faraday includes
-            # a response with a status code, but this ensures we gracefully fall back
-            # to returning a 500 Internal Server Error with a consistent error payload.
-            it 'falls back to :internal_server_error - 500, when response is nil' do
+            it 'returns 503 when response is nil' do
               error = Faraday::ServerError.new('Service unavailable', nil)
               allow(claims_service).to receive(:submit_claim).with(claim_id).and_raise(error)
 
               patch("/travel_pay/v0/complex_claims/#{claim_id}/submit")
 
-              expect(response).to have_http_status(:internal_server_error)
+              expect(response).to have_http_status(:service_unavailable)
               body = JSON.parse(response.body)
-              expect(body['errors'].first['detail']).to eq('Server error submitting complex claim')
+              expect(body['errors'].first['code']).to eq('BTSSS-API_CONNECTION_FAILED')
             end
 
-            it 'uses status from Faraday response and shows default message when body is blank' do
+            it 'returns 503 when upstream status is 503' do
               error = Faraday::ServerError.new('Service Unavailable', { status: 503, body: '' })
               allow(claims_service).to receive(:submit_claim).with(claim_id).and_raise(error)
 
@@ -781,10 +777,10 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
 
               expect(response).to have_http_status(:service_unavailable)
               body = JSON.parse(response.body)
-              expect(body['errors'].first['detail']).to eq('Server error submitting complex claim')
+              expect(body['errors'].first['code']).to eq('BTSSS-API_503')
             end
 
-            it 'uses status from Faraday response if present (e.g. 503)' do
+            it 'returns 503 when Faraday::ClientError with 503 response' do
               error = Faraday::ClientError.new(
                 'Service Unavailable',
                 { status: 503, body: 'TravelPay service is temporarily unavailable' }
@@ -795,7 +791,7 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
 
               expect(response).to have_http_status(:service_unavailable)
               body = JSON.parse(response.body)
-              expect(body['errors'].first['detail']).to eq('TravelPay service is temporarily unavailable')
+              expect(body['errors'].first['code']).to eq('BTSSS-API_503')
             end
           end
         end
@@ -816,6 +812,48 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
         body = JSON.parse(response.body)
         expect(body['errors'].first['detail'])
           .to include('Travel Pay complex claim endpoint unavailable per feature toggle')
+      end
+    end
+  end
+
+  context 'with unified error handling disabled (legacy)' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:travel_pay_unified_error_handling,
+                                                instance_of(User)).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_complex_claims,
+                                                instance_of(User)).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:travel_pay_appt_add_v4_upgrade,
+                                                instance_of(User)).and_return(false)
+    end
+
+    describe '#submit' do
+      let(:claims_service) { instance_double(TravelPay::ClaimsService) }
+
+      before do
+        allow_any_instance_of(TravelPay::V0::ComplexClaimsController)
+          .to receive(:claims_service).and_return(claims_service)
+      end
+
+      it 'uses legacy error handling for Faraday::ClientError' do
+        error = Faraday::ClientError.new('Bad request', { status: 400, body: 'invalid claim' })
+        allow(claims_service).to receive(:submit_claim).with(claim_id).and_raise(error)
+
+        patch("/travel_pay/v0/complex_claims/#{claim_id}/submit")
+
+        expect(response).to have_http_status(:bad_request)
+        body = JSON.parse(response.body)
+        expect(body['errors'].first['detail']).to eq('invalid claim')
+      end
+
+      it 'uses legacy error handling for Faraday::ServerError' do
+        error = Faraday::ServerError.new('Service unavailable', { status: 503, body: '' })
+        allow(claims_service).to receive(:submit_claim).with(claim_id).and_raise(error)
+
+        patch("/travel_pay/v0/complex_claims/#{claim_id}/submit")
+
+        expect(response).to have_http_status(:service_unavailable)
+        body = JSON.parse(response.body)
+        expect(body['errors'].first['detail']).to eq('Server error submitting complex claim')
       end
     end
   end

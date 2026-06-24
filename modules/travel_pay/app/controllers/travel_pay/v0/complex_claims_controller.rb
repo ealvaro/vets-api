@@ -7,8 +7,7 @@ module TravelPay
       include AppointmentHelper
       include ClaimHelper
       include IdValidation
-
-      rescue_from Common::Exceptions::BadRequest, with: :render_bad_request
+      include ErrorHandling
 
       before_action :complex_claims_enabled?
 
@@ -23,18 +22,14 @@ module TravelPay
 
         increment_submit_statsd('success')
         render json: submitted_claim, status: :created
-      rescue Faraday::ClientError => e
-        # 400-level errors (bad request, unauthorized, forbidden)
-        increment_submit_statsd('failure')
-        handle_faraday_error(e, 'Invalid request for complex claim', log_prefix: 'Submitting complex claim: ')
-      rescue Faraday::ServerError => e
-        # 500-level errors
-        increment_submit_statsd('failure')
-        handle_faraday_error(e, 'Server error submitting complex claim', log_prefix: 'Submitting complex claim: ')
       rescue Faraday::Error => e
-        # Catch all for Faraday::ConnectionFailed, Faraday::TimeoutError, Faraday::SSLError
         increment_submit_statsd('failure')
-        handle_faraday_error(e, 'Error creating complex claim', log_prefix: 'Submitting complex claim: ')
+        raise if unified_error_handling_enabled?
+
+        legacy_handle_submit_error(e)
+      rescue
+        increment_submit_statsd('failure')
+        raise
       end
 
       def create
@@ -47,20 +42,20 @@ module TravelPay
         claim_id = create_claim(appt_id, 'Complex')
         increment_statsd(appointment_source, 'success')
         render json: { claimId: claim_id }, status: :created
-      rescue Common::Exceptions::BadRequest
-        increment_statsd(appointment_source, 'failure') if appointment_source
-        raise
       rescue Common::Exceptions::ResourceNotFound => e
         increment_statsd(appointment_source, 'failure')
+        raise if unified_error_handling_enabled?
+
         Rails.logger.error("Appointment not found: #{e.message}")
         render json: { error: e.message }, status: :not_found
       rescue Faraday::Error => e
         increment_statsd(appointment_source, 'failure')
-        Rails.logger.error("Faraday error creating complex claim: #{e.message}")
-        # Some Faraday errors may not have a response object (e.response can be nil),
-        # so we fall back to :internal_server_error
-        status_code = (e.respond_to?(:response) && e.response && e.response[:status]) || :internal_server_error
-        render json: { error: 'Error creating complex claim' }, status: status_code
+        raise if unified_error_handling_enabled?
+
+        legacy_handle_create_faraday_error(e)
+      rescue
+        increment_statsd(appointment_source, 'failure') if appointment_source
+        raise
       end
 
       private
@@ -131,6 +126,23 @@ module TravelPay
                   end
 
         render json: { errors: [{ detail: message }] }, status: http_status
+      end
+
+      def legacy_handle_submit_error(e)
+        case e
+        when Faraday::ClientError
+          handle_faraday_error(e, 'Invalid request for complex claim', log_prefix: 'Submitting complex claim: ')
+        when Faraday::ServerError
+          handle_faraday_error(e, 'Server error submitting complex claim', log_prefix: 'Submitting complex claim: ')
+        else
+          handle_faraday_error(e, 'Error creating complex claim', log_prefix: 'Submitting complex claim: ')
+        end
+      end
+
+      def legacy_handle_create_faraday_error(e)
+        Rails.logger.error("Faraday error creating complex claim: #{e.message}")
+        status_code = (e.respond_to?(:response) && e.response && e.response[:status]) || :internal_server_error
+        render json: { error: 'Error creating complex claim' }, status: status_code
       end
 
       def complex_claims_enabled?

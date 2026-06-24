@@ -1,0 +1,26 @@
+en:
+  travel_pay:
+    errors:
+      claims:
+        index_failed: 'Error retrieving claims'
+        show_failed: 'Error retrieving claim details'
+        create_failed: 'Error creating claim'
+      complex_claims:
+        create_failed: 'Error creating complex claim'
+        submit_failed: 'Error submitting complex claim'
+      expenses:
+        show_failed: 'Error retrieving expense'
+        create_failed: 'Error creating expense'
+        update_failed: 'Error updating expense'
+        destroy_failed: 'Error deleting expense'
+      documents:
+        show_failed: 'Error downloading document'
+        create_failed: 'Error uploading document'
+        destroy_failed: 'Error deleting document'
+      contacts:
+        show_failed: 'Error retrieving contact'
+      appointments:
+        index_failed: 'Error searching appointments'
+        create_failed: 'Error creating appointment'
+      facilities:
+        index_failed: 'Error retrieving facilities'

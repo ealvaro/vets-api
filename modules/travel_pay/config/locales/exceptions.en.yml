@@ -1,0 +1,106 @@
+en:
+  common:
+    exceptions:
+      defaults: &defaults
+        # title: required always
+        # detail: optional, if not provided it will default to title
+        # code: required always, must be unique to a specific title - no two code and titles can overlap
+        # status: require always, corresponds to the HTTP Status code
+        # links: optional, could contain an 'about' link to further details
+        # source: optional, an object containing references to the source of the error (pointer to json in validation)
+        # meta: optional, contains information suitable for debugging, VISIBLE IN PRODUCTION
+        # sentry_type: optional, defaults to 'error', supported values = debug, info, warn, error, fatal, and 'none'
+        detail: ~
+        links: ~
+        source: ~
+        meta: ~
+        sentry_type: 'error'
+      backend_service_exception: &external_defaults
+        <<: *defaults
+        title: 'Operation failed'
+        code: 'VA900'
+        status: 400
+      BTSSS-API_400:
+        <<: *external_defaults
+        title: Bad Request
+        code: 'BTSSS-API_400'
+        detail: 'BTSSS bad request'
+        status: 400
+      BTSSS-API_401:
+        <<: *external_defaults
+        title: Unauthorized
+        code: 'BTSSS-API_401'
+        detail: 'BTSSS authentication failed'
+        status: 401
+      BTSSS-API_403:
+        <<: *external_defaults
+        title: Forbidden
+        code: 'BTSSS-API_403'
+        detail: 'BTSSS access denied'
+        status: 403
+      BTSSS-API_404:
+        <<: *external_defaults
+        title: Not Found
+        code: 'BTSSS-API_404'
+        detail: 'BTSSS resource not found'
+        status: 404
+      BTSSS-API_409:
+        <<: *external_defaults
+        title: Conflict
+        code: 'BTSSS-API_409'
+        detail: 'BTSSS resource conflict'
+        status: 409
+      BTSSS-API_413:
+        <<: *external_defaults
+        title: Payload Too Large
+        code: 'BTSSS-API_413'
+        detail: 'BTSSS request payload too large'
+        status: 413
+      BTSSS-API_422:
+        <<: *external_defaults
+        title: Unprocessable Entity
+        code: 'BTSSS-API_422'
+        detail: 'BTSSS validation failed'
+        status: 422
+      BTSSS-API_429:
+        <<: *external_defaults
+        title: Too Many Requests
+        code: 'BTSSS-API_429'
+        detail: 'BTSSS rate limit exceeded'
+        status: 429
+      BTSSS-API_500:
+        <<: *external_defaults
+        title: Internal Server Error
+        code: 'BTSSS-API_500'
+        detail: 'BTSSS internal server error'
+        status: 500
+      BTSSS-API_502:
+        <<: *external_defaults
+        title: Bad Gateway
+        code: 'BTSSS-API_502'
+        detail: 'BTSSS bad gateway'
+        status: 502
+      BTSSS-API_503:
+        <<: *external_defaults
+        title: Service Unavailable
+        code: 'BTSSS-API_503'
+        detail: 'BTSSS service temporarily unavailable'
+        status: 503
+      BTSSS-API_504:
+        <<: *external_defaults
+        title: Gateway Timeout
+        code: 'BTSSS-API_504'
+        detail: 'BTSSS gateway timeout'
+        status: 504
+      BTSSS-API_CONNECTION_FAILED:
+        <<: *external_defaults
+        title: Service Unavailable
+        code: 'BTSSS-API_CONNECTION_FAILED'
+        detail: 'Unable to reach BTSSS service. No HTTP response was received'
+        status: 503
+      BTSSS-API_CONNECTION_TIMEOUT:
+        <<: *external_defaults
+        title: Gateway Timeout
+        code: 'BTSSS-API_CONNECTION_TIMEOUT'
+        detail: 'BTSSS service request timed out. No HTTP response was received'
+        status: 504

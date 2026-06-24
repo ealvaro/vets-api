@@ -93,13 +93,12 @@ RSpec.describe TravelPay::V0::ClaimsController, type: :request do
       end
     end
 
-    # Should be a 404 but for now a 400
     it 'returns a Not Found response if claim ID valid but claim not found' do
       VCR.use_cassette('travel_pay/404_claim_details', match_requests_on: %i[method path]) do
         claim_id = 'aa0f63e0-5fa7-4d74-a17a-a6f510dbf69e'
 
         get "/travel_pay/v0/claims/#{claim_id}", headers: { 'Authorization' => 'Bearer vagov_token' }
-        expect(response).to have_http_status(:bad_request)
+        expect(response).to have_http_status(:not_found)
       end
     end
 
