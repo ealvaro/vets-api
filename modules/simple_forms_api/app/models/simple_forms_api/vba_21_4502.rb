@@ -28,7 +28,7 @@ module SimpleFormsApi
     end
 
     def doc_type
-      if Flipper.enabled?(:mms_structured_data_prefix, @current_user)
+      if Flipper.enabled?(:simple_forms_s3_mms_prefix_bugfix)
         "StructuredData:#{@data['form_number'].presence || FORM_NUMBER}"
       else
         @data['form_number'].presence || FORM_NUMBER

@@ -154,7 +154,8 @@ RSpec.describe SimpleFormsApi::VBA108678 do
   describe '#metadata' do
     subject { form.metadata }
 
-    it 'returns the proper hash' do
+    it 'returns the proper hash with bug fix off' do
+      allow(Flipper).to receive(:enabled?).with(:simple_forms_s3_mms_prefix_bugfix).and_return(false)
       expect(subject).to eq(
         {
           'veteranFirstName' => data.dig('full_name', 'first'),
@@ -163,6 +164,21 @@ RSpec.describe SimpleFormsApi::VBA108678 do
           'fileNumber' => data['va_file_number'].presence || data['ssn'],
           'source' => 'VA Platform Digital Forms',
           'docType' => data['form_number'],
+          'businessLine' => 'CMP'
+        }
+      )
+    end
+
+    it 'returns the proper hash with bug fix on' do
+      allow(Flipper).to receive(:enabled?).with(:simple_forms_s3_mms_prefix_bugfix).and_return(true)
+      expect(subject).to eq(
+        {
+          'veteranFirstName' => data.dig('full_name', 'first'),
+          'veteranLastName' => data.dig('full_name', 'last'),
+          'zipCode' => data.dig('address', 'postal_code'),
+          'fileNumber' => data['va_file_number'].presence || data['ssn'],
+          'source' => 'VA Platform Digital Forms',
+          'docType' => 'StructuredData:10-8678',
           'businessLine' => 'CMP'
         }
       )

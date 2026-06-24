@@ -5,6 +5,7 @@ require_rel '../form_engine'
 module SimpleFormsApi
   class VBA210788 < BaseForm
     STATS_KEY = 'api.simple_forms_api.21_0788'
+    FORM_NUMBER = '21-0788'
 
     APPORTIONMENT_RADIOS = [
       [7, 6],
@@ -277,9 +278,9 @@ module SimpleFormsApi
 
     def doc_type
       if Flipper.enabled?(:simple_forms_s3_mms_prefix_bugfix)
-        "StructuredData:#{data['form_number']}"
+        "StructuredData:#{data['form_number'].presence || FORM_NUMBER}"
       else
-        data['form_number']
+        data['form_number'].presence || FORM_NUMBER
       end
     end
 

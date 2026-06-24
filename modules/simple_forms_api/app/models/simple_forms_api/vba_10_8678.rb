@@ -6,6 +6,7 @@ require 'simple_forms_api/overflow_108678'
 module SimpleFormsApi
   class VBA108678 < BaseForm
     STATS_KEY = 'api.simple_forms_api.10_8678'
+    FORM_NUMBER = '10-8678'
     CHECK_BOX_COORDINATES = [
       {
         upper_checkbox: [313.5, 304.0],
@@ -120,9 +121,17 @@ module SimpleFormsApi
         'zipCode' => address.zip_code,
         'fileNumber' => data['va_file_number'].presence || data['ssn'],
         'source' => 'VA Platform Digital Forms',
-        'docType' => data['form_number'],
+        'docType' => doc_type,
         'businessLine' => 'CMP'
       }
+    end
+
+    def doc_type
+      if Flipper.enabled?(:simple_forms_s3_mms_prefix_bugfix)
+        "StructuredData:#{data['form_number'].presence || FORM_NUMBER}"
+      else
+        data['form_number'].presence || FORM_NUMBER
+      end
     end
 
     # Format appliances for PDF
