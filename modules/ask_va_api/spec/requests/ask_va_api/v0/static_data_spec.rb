@@ -26,59 +26,6 @@ RSpec.describe 'AskVAApi StaticData', type: :request do
     end
   end
 
-  describe 'GET #announcements' do
-    let(:announcements_path) { '/ask_va_api/v0/announcements' }
-    let(:expected_hash) do
-      {
-        'id' => nil,
-        'type' => 'announcements',
-        'attributes' => {
-          'text' => 'Test',
-          'start_date' => '8/18/2024 1:00:00 PM',
-          'end_date' => '8/18/2024 1:00:00 PM',
-          'is_portal' => false
-        }
-      }
-    end
-
-    context 'when successful' do
-      before do
-        get announcements_path, params: { user_mock_data: true }
-      end
-
-      it 'returns announcements data' do
-        expect(JSON.parse(response.body)['data']).to include(a_hash_including(expected_hash))
-        expect(response).to have_http_status(:ok)
-      end
-    end
-
-    context 'when an error occurs' do
-      let(:service) { instance_double(Crm::Service) }
-      let(:body) do
-        '{"Data":null,"Message"' \
-          ':"Data Validation: No Announcements Posted with End Date Greater than 8/5/2024 5:49:23 PM"' \
-          ',"ExceptionOccurred":true,"ExceptionMessage"' \
-          ':"Data Validation: No Announcements Posted with End Date Greater than 8/5/2024 5:49:23 PM"' \
-          ',"MessageId":"b8b6e029-bbea-4451-9ce1-5bd8e2b04520"}'
-      end
-      let(:failure) { Faraday::Response.new(response_body: body, status: 400) }
-
-      before do
-        allow_any_instance_of(Crm::CrmToken).to receive(:call).and_return('token')
-        allow(Crm::Service).to receive(:new).and_return(service)
-        allow(service).to receive(:call).and_return(failure)
-        get announcements_path
-      end
-
-      it_behaves_like 'common error handling', :unprocessable_entity, 'service_error',
-                      'AskVAApi::Announcements::AnnouncementsRetrieverError: {"Data":null,"Message"' \
-                      ':"Data Validation: No Announcements Posted with End Date Greater than 8/5/2024 5:49:23 PM"' \
-                      ',"ExceptionOccurred":true,"ExceptionMessage"' \
-                      ':"Data Validation: No Announcements Posted with End Date Greater than 8/5/2024 5:49:23 PM"' \
-                      ',"MessageId":"b8b6e029-bbea-4451-9ce1-5bd8e2b04520"}'
-    end
-  end
-
   describe 'GET #branch_of_service' do
     context 'when successful' do
       before do

@@ -8,11 +8,6 @@ module AskVAApi
       skip_before_action :authenticate
       around_action :handle_exceptions
 
-      def announcements
-        get_resource('announcements', user_mock_data: params[:user_mock_data])
-        render_result(@announcements)
-      end
-
       def branch_of_service
         get_resource('branch_of_service', user_mock_data: params[:user_mock_data])
         render_result(@branch_of_service)

@@ -28,13 +28,27 @@ The CRM optionset data has **two independent consumers** — be careful not to c
 The controller uses a `get_resource` private method that dynamically resolves classes by convention:
 
 ```ruby
-# For resource_type 'announcements':
-AskVAApi::Announcements::Retriever  # fetches data
-AskVAApi::Announcements::Serializer # serializes response
-AskVAApi::Announcements::Entity     # data model
+# For resource_type 'contents':
+AskVAApi::Contents::Retriever  # fetches data
+AskVAApi::Contents::Serializer # serializes response
+AskVAApi::Contents::Entity     # data model
 ```
 
 Each endpoint needs an explicit public action method in the controller **and** the corresponding Retriever/Serializer/Entity classes. A route without both will fail at runtime.
+
+### Removing a StaticDataController Endpoint
+
+When deprecating an endpoint (e.g., `announcements`, `optionset`), remove **all 7+ artifacts** in this order:
+
+1. **Route** — `config/routes.rb` (delete the `get` line)
+2. **Controller action** — `app/controllers/ask_va_api/v0/static_data_controller.rb` (delete the method)
+3. **Lib classes** — delete the entire directory `app/lib/ask_va_api/<resource>/` (entity.rb, retriever.rb, serializer.rb)
+4. **Mock data** — `config/locales/get_<resource>_mock_data.json`
+5. **Request spec block** — remove the `describe` block from `spec/requests/ask_va_api/v0/static_data_spec.rb`
+6. **Lib specs** — delete the entire directory `spec/app/lib/ask_va_api/<resource>/`
+7. **Grep check** — confirm zero remaining references to the resource name in `modules/ask_va_api/`
+
+**Do NOT touch** the shared `get_resource` private method or any other endpoint's code.
 
 ## Test Layout
 
