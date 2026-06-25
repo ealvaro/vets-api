@@ -32,9 +32,8 @@
       "currently_receiving": false,
       "is_stepchild": true,
       "stepchild_lives_with_veteran": false,
-      "step_child_departure_date": "2000-03-17"
+      "stepchild_departure_date": "2000-03-17"
     }
-
   ],
   "apportionment_reason": "veteran_incarcerated_felony",
   "facility_name": "FCI Cumberland",

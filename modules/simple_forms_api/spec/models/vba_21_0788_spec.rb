@@ -411,7 +411,7 @@ RSpec.describe SimpleFormsApi::VBA210788 do
           'currently_receiving' => false,
           'is_stepchild' => true,
           'stepchild_lives_with_veteran' => false,
-          'step_child_departure_date' => '2000-03-15'
+          'stepchild_departure_date' => '2000-03-15'
         }
       ]
 
@@ -427,7 +427,7 @@ RSpec.describe SimpleFormsApi::VBA210788 do
           'currently_receiving' => false,
           'is_stepchild' => true,
           'stepchild_lives_with_veteran' => false,
-          'step_child_departure_date' => '2000-03-11'
+          'stepchild_departure_date' => '2000-03-11'
         },
         {
           'full_name' => 'Gawain',
@@ -436,7 +436,7 @@ RSpec.describe SimpleFormsApi::VBA210788 do
           'currently_receiving' => false,
           'is_stepchild' => true,
           'stepchild_lives_with_veteran' => false,
-          'step_child_departure_date' => '2000-03-12'
+          'stepchild_departure_date' => '2000-03-12'
         },
         {
           'full_name' => 'Percival',
@@ -445,7 +445,7 @@ RSpec.describe SimpleFormsApi::VBA210788 do
           'currently_receiving' => false,
           'is_stepchild' => true,
           'stepchild_lives_with_veteran' => false,
-          'step_child_departure_date' => '2000-03-13'
+          'stepchild_departure_date' => '2000-03-13'
         },
         {
           'full_name' => 'Sagramor',
@@ -454,7 +454,7 @@ RSpec.describe SimpleFormsApi::VBA210788 do
           'currently_receiving' => false,
           'is_stepchild' => true,
           'stepchild_lives_with_veteran' => false,
-          'step_child_departure_date' => '2000-03-14'
+          'stepchild_departure_date' => '2000-03-14'
         }
       ]
 
@@ -470,7 +470,7 @@ RSpec.describe SimpleFormsApi::VBA210788 do
           'currently_receiving' => false,
           'is_stepchild' => true,
           'stepchild_lives_with_veteran' => false,
-          'step_child_departure_date' => '2000-13-13' # <- invaid date
+          'stepchild_departure_date' => '2000-13-13' # <- invaid date
         },
         {
           'full_name' => 'Galahad',
@@ -479,7 +479,7 @@ RSpec.describe SimpleFormsApi::VBA210788 do
           'currently_receiving' => false,
           'is_stepchild' => true,
           'stepchild_lives_with_veteran' => false,
-          'step_child_departure_date' => '2000-32-32' # <- invaid date
+          'stepchild_departure_date' => '2000-32-32' # <- invaid date
         },
         {
           'full_name' => 'Percival',
@@ -488,7 +488,7 @@ RSpec.describe SimpleFormsApi::VBA210788 do
           'currently_receiving' => false,
           'is_stepchild' => true,
           'stepchild_lives_with_veteran' => false,
-          'step_child_departure_date' => 'Not a Date String'
+          'stepchild_departure_date' => 'Not a Date String'
         },
         {
           'full_name' => 'Sagramor',
@@ -497,7 +497,7 @@ RSpec.describe SimpleFormsApi::VBA210788 do
           'currently_receiving' => false,
           'is_stepchild' => true,
           'stepchild_lives_with_veteran' => false,
-          'step_child_departure_date' => ''
+          'stepchild_departure_date' => ''
         }
       ]
 
@@ -513,7 +513,7 @@ RSpec.describe SimpleFormsApi::VBA210788 do
           'currently_receiving' => false,
           'is_stepchild' => false,
           'stepchild_lives_with_veteran' => false,
-          'step_child_departure_date' => '2001-01-11'
+          'stepchild_departure_date' => '2001-01-11'
         },
         {
           'full_name' => 'Gawain',
@@ -522,7 +522,7 @@ RSpec.describe SimpleFormsApi::VBA210788 do
           'currently_receiving' => false,
           'is_stepchild' => true,
           'stepchild_lives_with_veteran' => true,
-          'step_child_departure_date' => '2020-02-12'
+          'stepchild_departure_date' => '2020-02-12'
         },
         {
           'full_name' => 'Percival',
@@ -531,7 +531,7 @@ RSpec.describe SimpleFormsApi::VBA210788 do
           'currently_receiving' => false,
           'is_stepchild' => true,
           'stepchild_lives_with_veteran' => false,
-          'step_child_departure_date' => '2013-03-13'
+          'stepchild_departure_date' => '2013-03-13'
         },
         {
           'full_name' => 'Sagramor',
@@ -540,7 +540,7 @@ RSpec.describe SimpleFormsApi::VBA210788 do
           'currently_receiving' => false,
           'is_stepchild' => false,
           'stepchild_lives_with_veteran' => true,
-          'step_child_departure_date' => '2024-24-14'
+          'stepchild_departure_date' => '2024-24-14'
         }
       ]
 

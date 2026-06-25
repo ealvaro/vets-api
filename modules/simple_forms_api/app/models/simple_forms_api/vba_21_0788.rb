@@ -207,10 +207,10 @@ module SimpleFormsApi
     def departure_date
       dates = people.map do |p|
         if p['is_stepchild'] && !p['stepchild_lives_with_veteran']
-          next if p['step_child_departure_date'].blank?
-          next unless parsable_date?(p['step_child_departure_date'])
+          next if p['stepchild_departure_date'].blank?
+          next unless parsable_date?(p['stepchild_departure_date'])
 
-          Date.strptime(p['step_child_departure_date']).strftime('%m/%d/%Y')
+          Date.strptime(p['stepchild_departure_date']).strftime('%m/%d/%Y')
         end
       end.compact
       dates.join(',')
