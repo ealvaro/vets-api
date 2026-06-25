@@ -8,7 +8,7 @@ module UnifiedHealthData
   # Service for fetching VA facility information, specifically timezone data.
   # This is a standalone service for Medical Records, independent of VAOS.
   #
-  # Uses the VA Mobile Facilities API: /facilities/v2/facilities/:id
+  # Uses the VA Mobile Facilities API: /facilities/v3/facilities/:id
   #
   # Example usage:
   #   service = UnifiedHealthData::FacilityService.new
@@ -75,7 +75,7 @@ module UnifiedHealthData
     private
 
     def facilities_url(facility_id)
-      "/facilities/v2/facilities/#{facility_id}"
+      "/facilities/v3/facilities/#{facility_id}"
     end
 
     def headers

@@ -19,7 +19,7 @@ RSpec.describe UnifiedHealthData::FacilityService, type: :service do
 
     context 'when facility is found with timezone' do
       before do
-        stub_request(:get, %r{/facilities/v2/facilities/668})
+        stub_request(:get, %r{/facilities/v3/facilities/668})
           .to_return(
             status: 200,
             body: {
@@ -38,7 +38,7 @@ RSpec.describe UnifiedHealthData::FacilityService, type: :service do
 
     context 'when facility is found without timezone' do
       before do
-        stub_request(:get, %r{/facilities/v2/facilities/668})
+        stub_request(:get, %r{/facilities/v3/facilities/668})
           .to_return(
             status: 200,
             body: {
@@ -56,7 +56,7 @@ RSpec.describe UnifiedHealthData::FacilityService, type: :service do
 
     context 'when facility is not found' do
       before do
-        stub_request(:get, %r{/facilities/v2/facilities/999})
+        stub_request(:get, %r{/facilities/v3/facilities/999})
           .to_return(status: 404, body: { error: 'Not found' }.to_json)
         allow(Rails.logger).to receive(:warn)
       end
@@ -72,7 +72,7 @@ RSpec.describe UnifiedHealthData::FacilityService, type: :service do
     let(:cache_key) { "uhd_facility_#{facility_id}" }
 
     before do
-      stub_request(:get, %r{/facilities/v2/facilities/668})
+      stub_request(:get, %r{/facilities/v3/facilities/668})
         .to_return(
           status: 200,
           body: { id: '668', name: 'API Facility' }.to_json,
@@ -99,7 +99,7 @@ RSpec.describe UnifiedHealthData::FacilityService, type: :service do
 
     context 'when API returns success' do
       before do
-        stub_request(:get, %r{/facilities/v2/facilities/983})
+        stub_request(:get, %r{/facilities/v3/facilities/983})
           .to_return(
             status: 200,
             body: {
@@ -120,7 +120,7 @@ RSpec.describe UnifiedHealthData::FacilityService, type: :service do
 
     context 'when API returns error' do
       before do
-        stub_request(:get, %r{/facilities/v2/facilities/999})
+        stub_request(:get, %r{/facilities/v3/facilities/999})
           .to_return(status: 404, body: { error: 'Not found' }.to_json)
       end
 
@@ -137,7 +137,7 @@ RSpec.describe UnifiedHealthData::FacilityService, type: :service do
 
     context 'when API returns invalid JSON' do
       before do
-        stub_request(:get, %r{/facilities/v2/facilities/668})
+        stub_request(:get, %r{/facilities/v3/facilities/668})
           .to_return(
             status: 200,
             body: 'not valid json {{{',
