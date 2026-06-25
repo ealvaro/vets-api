@@ -691,8 +691,8 @@
     "marriageType": 1,
     "otherExplanation": "Other reason"
   },
-  "additionalMarriages": 1,
-  "additionalSpouseMarriages": 1,
+  "additionalMarriages": 0,
+  "additionalSpouseMarriages": 0,
   "dependentChildrenInHousehold": "2",
   "dependentsNotWithYouAtSameAddress": 0,
   "custodians": [

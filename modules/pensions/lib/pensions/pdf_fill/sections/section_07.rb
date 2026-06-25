@@ -241,10 +241,12 @@ module Pensions
         form_data['marriages'] = build_marital_history(form_data['marriages'], 'VETERAN')
         form_data['spouseMarriages'] = build_marital_history(form_data['spouseMarriages'], 'SPOUSE')
         if form_data['marriages']&.any?
-          form_data['additionalMarriages'] = to_radio_yes_no(form_data['marriages'].length.to_i > 3)
+          # in the pdf this radio button has reversed values from the usual
+          form_data['additionalMarriages'] = to_radio_yes_no(form_data['marriages'].length.to_i <= 3)
         end
         if form_data['spouseMarriages']&.any?
-          form_data['additionalSpouseMarriages'] = to_radio_yes_no(form_data['spouseMarriages'].length.to_i > 2)
+          # in the pdf this radio button has reversed values from the usual
+          form_data['additionalSpouseMarriages'] = to_radio_yes_no(form_data['spouseMarriages'].length.to_i <= 2)
         end
       end
 
