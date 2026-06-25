@@ -3731,6 +3731,10 @@ features:
   cve_onboarding_modal:
     actor_type: user
     description: If enabled, displays onboarding modal to users
+  cve_profile_service_refactor:
+    actor_type: user
+    description: Enables modernization refactor of VA Profile Service Component
+    enable_in_development: true
   cve_veteran_status_new_service:
     actor_type: user
     description: "If enabled, displays new veteran status page"
