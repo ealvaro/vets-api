@@ -1684,6 +1684,10 @@ features:
     actor_type: user
     description: Update the PDF form used for V2 21-22a POA requests in Lighthouse Benefits Claims API
     enable_in_development: false
+  lighthouse_claims_api_v1_2122a_pdf_form_update:
+    actor_type: user
+    description: Update the PDF form used for V1 21-22a POA requests in Lighthouse Benefits Claims API
+    enable_in_development: false
   lighthouse_claims_api_poa_use_bd:
     actor_type: user
     description: Lighthouse Benefits Claims API uses Lighthouse Benefits Documents API to upload POA forms instead of VBMS

@@ -9,16 +9,21 @@ module ClaimsApi
       class Individual < ClaimsApi::V1::PoaPdfConstructor::Base
         protected
 
+        def page_template_base_path
+          path = Rails.root.join('modules', 'claims_api', 'config', 'pdf_templates', '21-22A')
+          Flipper.enabled?(:lighthouse_claims_api_v1_2122a_pdf_form_update) ? path.join('rev_07_2023') : path
+        end
+
         def page1_template_path
-          Rails.root.join('modules', 'claims_api', 'config', 'pdf_templates', '21-22A', '1.pdf')
+          page_template_base_path.join('1.pdf')
         end
 
         def page2_template_path
-          Rails.root.join('modules', 'claims_api', 'config', 'pdf_templates', '21-22A', '2.pdf')
+          page_template_base_path.join('2.pdf')
         end
 
         def page3_template_path
-          Rails.root.join('modules', 'claims_api', 'config', 'pdf_templates', '21-22A', '3.pdf')
+          page_template_base_path.join('3.pdf')
         end
 
         def page4_template_path
@@ -26,6 +31,18 @@ module ClaimsApi
         end
 
         def page1_signatures(signatures)
+          if Flipper.enabled?(:lighthouse_claims_api_v1_2122a_pdf_form_update)
+            return updated_page1_signatures(signatures)
+          end
+
+          legacy_page1_signatures(signatures)
+        end
+
+        def updated_page1_signatures(_signatures)
+          [] # TODO: Update signature positions for rev_07_2023
+        end
+
+        def legacy_page1_signatures(signatures)
           [
             ClaimsApi::V1::PoaPdfConstructor::Signature.new(data: signatures['veteran'], x: 35, y: 90),
             ClaimsApi::V1::PoaPdfConstructor::Signature.new(data: signatures['representative'], x: 35, y: 118)
@@ -33,6 +50,18 @@ module ClaimsApi
         end
 
         def page2_signatures(signatures)
+          if Flipper.enabled?(:lighthouse_claims_api_v1_2122a_pdf_form_update)
+            return updated_page2_signatures(signatures)
+          end
+
+          legacy_page2_signatures(signatures)
+        end
+
+        def updated_page2_signatures(_signatures)
+          [] # TODO: Update signature positions for rev_07_2023
+        end
+
+        def legacy_page2_signatures(signatures)
           [
             ClaimsApi::V1::PoaPdfConstructor::Signature.new(data: signatures['veteran'], x: 35, y: 322),
             ClaimsApi::V1::PoaPdfConstructor::Signature.new(data: signatures['representative'], x: 35, y: 216)
@@ -40,6 +69,16 @@ module ClaimsApi
         end
 
         def page2_options(data)
+          return updated_page2_options(data) if Flipper.enabled?(:lighthouse_claims_api_v1_2122a_pdf_form_update)
+
+          legacy_page2_options(data)
+        end
+
+        def updated_page2_options(_data)
+          {} # TODO: Add new form field mappings for rev_07_2023 page 2
+        end
+
+        def legacy_page2_options(data)
           base_form = 'form1[0].#subform[1]'
           {
             "#{base_form}.SocialSecurityNumber_FirstThreeNumbers[1]": data.dig('veteran', 'ssn')[0..2],
@@ -53,9 +92,29 @@ module ClaimsApi
           }
         end
 
+        def page3_options(data)
+          return updated_page3_options(data) if Flipper.enabled?(:lighthouse_claims_api_v1_2122a_pdf_form_update)
+
+          {} # legacy form has no page 3 fields
+        end
+
+        def updated_page3_options(_data)
+          {} # TODO: Add new form field mappings for rev_07_2023 page 3
+        end
+
         # rubocop:disable Metrics/MethodLength
         # rubocop:disable Layout/LineLength
         def page1_options(data)
+          return updated_page1_options(data) if Flipper.enabled?(:lighthouse_claims_api_v1_2122a_pdf_form_update)
+
+          legacy_page1_options(data)
+        end
+
+        def updated_page1_options(_data)
+          {} # TODO: Add new form field mappings for rev_07_2023 page 1
+        end
+
+        def legacy_page1_options(data)
           base_form = 'form1[0].#subform[0]'
           {
             # Veteran

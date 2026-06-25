@@ -10,6 +10,7 @@ describe ClaimsApi::V1::PoaPdfConstructor::Individual do
   let(:rep) { create(:veteran_representative, :with_address, representative_id: '12345') }
 
   before do
+    allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_2122a_pdf_form_update).and_return(false)
     Timecop.freeze(Time.zone.parse('2020-01-01T08:00:00Z'))
     b64_image = File.read('modules/claims_api/spec/fixtures/signature_b64.txt')
     temp.form_data = {
@@ -102,6 +103,29 @@ describe ClaimsApi::V1::PoaPdfConstructor::Individual do
     expected_pdf = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', '21-22A', 'signed_filled_final.pdf')
     generated_pdf = constructor.construct(data, id: power_of_attorney.id)
     expect(generated_pdf).to match_pdf_content_of(expected_pdf)
+  end
+
+  context 'flipper-gated template paths' do
+    let(:constructor) { described_class.new }
+
+    [true, false].each do |flipper_enabled|
+      context "when flipper is #{flipper_enabled ? 'enabled' : 'disabled'}" do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_2122a_pdf_form_update)
+                                              .and_return(flipper_enabled)
+        end
+
+        it "#{flipper_enabled ? 'uses rev_07_2023' : 'uses legacy'} template paths" do
+          %i[page1_template_path page2_template_path page3_template_path].each do |m|
+            if flipper_enabled
+              expect(constructor.send(m).to_s).to include('rev_07_2023')
+            else
+              expect(constructor.send(m).to_s).not_to include('rev_07_2023')
+            end
+          end
+        end
+      end
+    end
   end
 
   it 'constructs the pdf when phone country codes are present on form' do
