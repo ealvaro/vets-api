@@ -259,20 +259,78 @@ RSpec.describe 'ivc_champva:pega_status_update rake tasks', type: :task do
       end
     end
 
-    context 'with invalid input' do
+    context 'with auto-detection (no FORM_UUIDS provided)' do
       before do
+        ENV.delete('FORM_UUIDS')
         task.reenable
       end
 
-      it 'raises error when FORM_UUIDS is empty' do
-        ENV['FORM_UUIDS'] = ''
-        expect { task.invoke }.to raise_error('FORM_UUIDS required - provide comma-separated list')
-        ENV.delete('FORM_UUIDS')
+      it 'auto-detects forms with missing pega_status and updates them' do
+        output = capture_stdout { task.invoke }
+        expect(output).to include('No FORM_UUIDS provided')
+        expect(output).to include('Auto-detected 2 form UUIDs')
+        expect(@record1.reload.pega_status).to eq('Manually Processed')
+        expect(@record2.reload.pega_status).to eq('Manually Processed')
       end
 
-      it 'raises error when FORM_UUIDS is not provided' do
-        task.reenable # Need to re-enable after first test
-        expect { task.invoke }.to raise_error('FORM_UUIDS required - provide comma-separated list')
+      it 'does not touch records with existing status' do
+        capture_stdout { task.invoke }
+        expect(@record3.reload.pega_status).to eq('Processed')
+      end
+
+      it 'does not touch records created within the last minute' do
+        capture_stdout { task.invoke }
+        expect(@record4.reload.pega_status).to be_nil
+      end
+
+      it 'exits gracefully when no missing statuses exist' do
+        [@record1, @record2, @record4].each { |r| r.update!(pega_status: 'Processed') }
+        output = capture_stdout { task.invoke }
+        expect(output).to include('No forms found with missing pega_status. Nothing to do.')
+      end
+    end
+
+    context 'with batching' do
+      before do
+        ENV['FORM_UUIDS'] = "#{@record1.form_uuid},#{@record2.form_uuid}"
+        ENV['BATCH_SIZE'] = '1'
+        allow($stdin).to receive(:gets).and_return("\n")
+        task.reenable
+      end
+
+      after do
+        ENV.delete('FORM_UUIDS')
+        ENV.delete('BATCH_SIZE')
+      end
+
+      it 'processes UUIDs in batches of BATCH_SIZE' do
+        output = capture_stdout { task.invoke }
+        expect(output).to include('2 batches of 1')
+        expect(output).to include('BATCH 2/2 ready')
+      end
+
+      it 'shows verification counts between batches' do
+        output = capture_stdout { task.invoke }
+        expect(output).to match(/Records confirmed 'Manually Processed': \d+/)
+        expect(output).to match(/Records still nil: \d+/)
+      end
+
+      it 'pauses for user input between batches' do
+        expect($stdin).to receive(:gets).once
+        capture_stdout { task.invoke }
+      end
+
+      it 'skips pause between batches during dry run' do
+        ENV['DRY_RUN'] = 'true'
+        expect($stdin).not_to receive(:gets)
+        capture_stdout { task.invoke }
+        ENV.delete('DRY_RUN')
+      end
+
+      it 'still updates all records across batches' do
+        capture_stdout { task.invoke }
+        expect(@record1.reload.pega_status).to eq('Manually Processed')
+        expect(@record2.reload.pega_status).to eq('Manually Processed')
       end
     end
 
