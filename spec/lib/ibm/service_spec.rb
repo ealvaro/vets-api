@@ -41,7 +41,7 @@ RSpec.describe Ibm::Service do
     end
 
     context 'when the upload fails' do
-      it 'logs an error message' do
+      it 'logs an error message and re-raises the client error' do
         stub_request(:put, "#{service_path}/#{valid_guid}")
           .with(
             body: valid_form,
@@ -55,7 +55,9 @@ RSpec.describe Ibm::Service do
           { guid: valid_guid }
         )
 
-        service.upload_form(form: valid_form, guid: valid_guid)
+        expect do
+          service.upload_form(form: valid_form, guid: valid_guid)
+        end.to raise_error(Common::Client::Errors::ClientError)
       end
     end
   end

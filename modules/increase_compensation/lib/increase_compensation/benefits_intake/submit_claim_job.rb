@@ -162,8 +162,7 @@ module IncreaseCompensation
         monitor.track_submission_attempted(@claim, @intake_service, @user_account_uuid, tracked_payload)
         response = @intake_service.perform_upload(**payload)
         update_form_submission_attempt # these are created in the s3 upload so update if different or on retry
-        mms_send = govcio_upload if response.success?
-        log_mms_response(mms_send)
+        govcio_upload if response.success?
         raise IncreaseCompensationBenefitIntakeError, response.to_s unless response.success?
       end
 
@@ -192,13 +191,21 @@ module IncreaseCompensation
         @intake_service = ::BenefitsIntake::Service.new
       end
 
-      # Upload to IBM MMS if the govcio flipper is enabled
+      # Upload to IBM MMS if the govcio flipper is enabled.
+      #
+      # The MMS send is best-effort: a failure here is logged but must NOT fail the job,
+      # because the Lighthouse Benefits Intake upload has already succeeded by this point
+      # and re-running the job would re-submit it. Ibm::Service#upload_form raises on any
+      # failure, so we rescue here to keep the job green while still surfacing the error.
       def govcio_upload
-        if Flipper.enabled?(:increase_compensation_govcio_mms)
-          ibm_service = Ibm::Service.new
-          Rails.logger.info('Start send to IBM service', form: @claim.form_id, guid: @intake_service.uuid)
-          ibm_service.upload_form(form: @ibm_payload.to_json, guid: @intake_service.uuid)
-        end
+        return unless Flipper.enabled?(:increase_compensation_govcio_mms)
+
+        ibm_service = Ibm::Service.new
+        Rails.logger.info('Start send to IBM service', form: @claim.form_id, guid: @intake_service.uuid)
+        ibm_service.upload_form(form: @ibm_payload.to_json, guid: @intake_service.uuid)
+        log_mms_success
+      rescue => e
+        log_mms_failure(e)
       end
 
       # Insert submission polling entries
@@ -221,16 +228,6 @@ module IncreaseCompensation
         Datadog::Tracing.active_trace&.set_tag('benefits_intake_uuid', @intake_service.uuid)
       end
 
-      def log_mms_response(mms_response)
-        return unless Flipper.enabled?(:increase_compensation_govcio_mms)
-
-        if mms_response.success?
-          log_mms_success
-        else
-          log_mms_failure(mms_response)
-        end
-      end
-
       def log_mms_success
         Rails.logger.info(
           'IncreaseCompensation::Monitor 21-8940V1 submission to MMS succeeded',
@@ -242,14 +239,13 @@ module IncreaseCompensation
         )
       end
 
-      def log_mms_failure(mms_response)
+      def log_mms_failure(error)
         Rails.logger.warn(
-          "IncreaseCompensation::Monitor 21-8940V1 submission to MMS failed - #{mms_response.status}",
+          "IncreaseCompensation::Monitor 21-8940V1 submission to MMS failed - #{error.message}",
           {
             benefits_intake_uuid: @intake_service.uuid,
             claim_id: @claim.id,
-            user_account_uuid: @user_account_uuid,
-            status: mms_response.status
+            user_account_uuid: @user_account_uuid
           }
         )
       end

@@ -141,57 +141,21 @@ RSpec.describe IncreaseCompensation::BenefitsIntake::SubmitClaimJob, :uploader_h
   end
 
   describe '#log_mms_failure' do
-    let(:response) { double('response') }
+    let(:error) { StandardError.new('Failed to open TCP connection') }
 
-    it 'logs a failure message' do
-      allow(response).to receive(:status).and_return 301
+    it 'logs a warning with the error message' do
       job.instance_variable_set(:@intake_service, service)
       job.instance_variable_set(:@claim, claim)
 
       allow(service).to receive(:uuid).and_return('111')
       allow(Rails.logger).to receive(:warn)
       expect(Rails.logger).to receive(:warn).with(
-        'IncreaseCompensation::Monitor 21-8940V1 submission to MMS failed - 301',
+        'IncreaseCompensation::Monitor 21-8940V1 submission to MMS failed - Failed to open TCP connection',
         { benefits_intake_uuid: '111',
           claim_id: claim.id,
-          status: 301,
           user_account_uuid: nil }
       )
-      job.send(:log_mms_failure, response)
-    end
-  end
-
-  describe '#log_mms_response' do
-    let(:response) { double('response') }
-
-    it 'if flipper on, check status of response and log success' do
-      allow(Flipper).to receive(:enabled?).with(:increase_compensation_govcio_mms).and_return(true)
-      job.instance_variable_set(:@intake_service, service)
-      job.instance_variable_set(:@claim, claim)
-
-      allow(service).to receive(:uuid).and_return('111')
-      allow(response).to receive(:success?).and_return(true)
-      allow(Rails.logger).to receive(:info)
-      expect(Rails.logger).to receive(:info)
-      job.send(:log_mms_response, response)
-    end
-
-    it 'if flipper on, check status and log failure' do
-      allow(Flipper).to receive(:enabled?).with(:increase_compensation_govcio_mms).and_return(true)
-      allow(response).to receive(:status).and_return 301
-      job.instance_variable_set(:@intake_service, service)
-      job.instance_variable_set(:@claim, claim)
-
-      allow(service).to receive(:uuid).and_return('111')
-      allow(response).to receive_messages(status: 301, success?: false)
-      allow(Rails.logger).to receive(:warn)
-      expect(Rails.logger).to receive(:warn)
-      job.send(:log_mms_response, response)
-    end
-
-    it 'if flipper off do nothing' do
-      allow(Flipper).to receive(:enabled?).with(:increase_compensation_govcio_mms).and_return(false)
-      expect(job.send(:log_mms_response, response)).to be_nil
+      job.send(:log_mms_failure, error)
     end
   end
 
@@ -209,14 +173,14 @@ RSpec.describe IncreaseCompensation::BenefitsIntake::SubmitClaimJob, :uploader_h
 
       allow(Ibm::Service).to receive(:new).and_return(ibm_service)
       allow(ibm_service).to receive(:upload_form).and_return(response)
-      allow(response).to receive(:success?).and_return(true)
     end
 
-    it 'uploads to IBM MMS when govcio flipper is enabled' do
+    it 'uploads to IBM MMS and logs success when govcio flipper is enabled' do
       allow(Flipper).to receive(:enabled?).with(:increase_compensation_govcio_mms).and_return(true)
 
       expect(Ibm::Service).to receive(:new)
       expect(ibm_service).to receive(:upload_form).with(form: { test: 'data' }.to_json, guid: 'test_guid')
+      expect(job).to receive(:log_mms_success)
 
       job.send(:govcio_upload)
     end
@@ -228,6 +192,15 @@ RSpec.describe IncreaseCompensation::BenefitsIntake::SubmitClaimJob, :uploader_h
       expect(ibm_service).not_to receive(:upload_form)
 
       job.send(:govcio_upload)
+    end
+
+    it 'logs the failure without raising when the MMS upload errors' do
+      allow(Flipper).to receive(:enabled?).with(:increase_compensation_govcio_mms).and_return(true)
+      allow(ibm_service).to receive(:upload_form).and_raise(StandardError.new('IBM upload failed'))
+
+      expect(job).to receive(:log_mms_failure).with(an_instance_of(StandardError))
+
+      expect { job.send(:govcio_upload) }.not_to raise_error
     end
   end
 
