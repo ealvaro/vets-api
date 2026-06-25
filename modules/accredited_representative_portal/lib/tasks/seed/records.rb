@@ -132,7 +132,7 @@ module AccreditedRepresentativePortal
           last_name: 'Lowe',
           representative_id: '10001',
           user_types: ['veteran_service_officer'],
-          poa_codes: %w[YHZ],
+          poa_codes: %w[YHZ 008],
           email: 'vets.gov.user+1@gmail.com'
         },
         {
@@ -156,7 +156,7 @@ module AccreditedRepresentativePortal
           last_name: 'Cruickshank',
           representative_id: '10004',
           user_types: ['veteran_service_officer'],
-          poa_codes: %w[YHZ SVS FIX],
+          poa_codes: %w[YHZ SVS FIX 008],
           email: 'vets.gov.user+5@gmail.com'
         },
         {
@@ -176,6 +176,16 @@ module AccreditedRepresentativePortal
           email: 'vets.gov.user+7@gmail.com'
         }
       ].freeze
+
+      ORGANIZATION_REPRESENTATIVES = REPRESENTATIVES.flat_map do |rep|
+        rep[:poa_codes].map do |poa_code|
+          {
+            representative_id: rep[:representative_id],
+            organization_poa: poa_code,
+            acceptance_mode: 'self_only'
+          }
+        end
+      end.freeze
 
       CLAIMANTS = [
         {

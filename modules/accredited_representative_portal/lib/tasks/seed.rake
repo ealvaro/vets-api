@@ -69,6 +69,12 @@ module AccreditedRepresentativePortal
           end
 
           insert_all(
+            Records::ORGANIZATION_REPRESENTATIVES,
+            factory: [:organization_representative],
+            unique_by: %i[organization_poa representative_id]
+          )
+
+          insert_all(
             Records::CLAIMANTS,
             factory: [
               :user_account
@@ -113,16 +119,19 @@ module AccreditedRepresentativePortal
             accredited_representative = Veteran::Service::Representative.find_by(
               representative_id: accreditation[:accredited_individual_id]
             )
-            poa_requests.push(
-              id: Records::POA_REQUEST_IDS.next,
-              claimant_type: 'veteran',
-              claimant_id:,
-              power_of_attorney_holder_type: 'veteran_service_organization',
-              poa_code: accreditation[:accredited_organization_id],
-              accredited_individual_registration_number: accreditation[:accredited_individual_id],
-              accredited_individual: accredited_representative,
-              created_at:
-            )
+            id = Records::POA_REQUEST_IDS.next
+            unless AccreditedRepresentativePortal::PowerOfAttorneyRequest.exists?(id:)
+              poa_requests.push(
+                id:,
+                claimant_type: 'veteran',
+                claimant_id:,
+                power_of_attorney_holder_type: 'veteran_service_organization',
+                poa_code: accreditation[:accredited_organization_id],
+                accredited_individual_registration_number: accreditation[:accredited_individual_id],
+                accredited_individual: accredited_representative,
+                created_at:
+              )
+            end
           end
         end
 
@@ -150,7 +159,8 @@ module AccreditedRepresentativePortal
             poa_requests,
             factory: [
               :power_of_attorney_request
-            ]
+            ],
+            unique_by: :id
           )
 
         ##
