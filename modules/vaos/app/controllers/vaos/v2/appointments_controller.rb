@@ -5,7 +5,7 @@ require 'unique_user_events'
 
 module VAOS
   module V2
-    class AppointmentsController < VAOS::BaseController # rubocop:disable Metrics/ClassLength
+    class AppointmentsController < VAOS::BaseController
       before_action :authorize_with_facilities
 
       include VAOS::CommunityCareConstants
@@ -15,9 +15,6 @@ module VAOS
       PARTIAL_RESPONSE_METRIC = 'api.vaos.va_mobile.response.partial'
       APPT_DRAFT_CREATION_SUCCESS_METRIC = "#{STATSD_PREFIX}.appointment_draft_creation.success".freeze
       APPT_DRAFT_CREATION_FAILURE_METRIC = "#{STATSD_PREFIX}.appointment_draft_creation.failure".freeze
-      APPT_CREATION_SUCCESS_METRIC = "#{STATSD_PREFIX}.appointment_creation.success".freeze
-      APPT_CREATION_FAILURE_METRIC = "#{STATSD_PREFIX}.appointment_creation.failure".freeze
-      APPT_CREATION_DURATION_METRIC = "#{STATSD_PREFIX}.appointment_creation.duration".freeze
       PAP_COMPLIANCE_TELE = 'PAP COMPLIANCE/TELE'
       APPT_INDEX_VAOS = "GET '/vaos/v1/patients/<icn>/appointments'"
       APPT_INDEX_VPG = "GET '/vpg/v1/patients/<icn>/appointments'"
@@ -105,41 +102,6 @@ module VAOS
         serializer = VAOS::V2::VAOSSerializer.new
         serialized = serializer.serialize(updated_appointment, 'appointments')
         render json: { data: serialized }
-      end
-
-      ##
-      # Submits a referral appointment to the EPS service for final scheduling.
-      # Validates the appointment response and handles various error conditions.
-      #
-      # The method processes appointment submission parameters, calls the EPS service,
-      # and performs validation on the returned appointment data.
-      #
-      # @return [void] Renders JSON response with appointment ID on success,
-      #   or error response on failure
-      # @raise [StandardError] For any unexpected errors during submission
-      #
-      def submit_referral_appointment
-        type_of_care = 'no_value'
-        begin
-          type_of_care = get_type_of_care_for_metrics(submit_params[:referral_number])
-        rescue
-          Rails.logger.error('Failed to retrieve type of care for metrics')
-        end
-
-        submit_args = build_submit_args
-        appointment = eps_appointment_service.submit_appointment(submit_params[:id], submit_args)
-
-        if appointment[:error]
-          record_appt_metric(APPT_CREATION_FAILURE_METRIC, type_of_care)
-          return render(json: submission_error_response(appointment[:error]), status: :conflict)
-        end
-
-        log_referral_booking_duration(submit_params[:referral_number])
-        record_appt_metric(APPT_CREATION_SUCCESS_METRIC, type_of_care)
-        render json: { data: { id: appointment.id } }, status: :created
-      rescue => e
-        record_appt_metric(APPT_CREATION_FAILURE_METRIC, type_of_care)
-        handle_appointment_creation_error(e)
       end
 
       def get_avs_binaries
@@ -446,59 +408,6 @@ module VAOS
         end
       end
 
-      def submit_params
-        params.require(%i[id network_id provider_service_id slot_id referral_number])
-        params.permit(
-          :id,
-          :network_id,
-          :provider_service_id,
-          :slot_id,
-          :referral_number,
-          :birth_date,
-          :email,
-          :phone_number,
-          :gender,
-          address: submit_address_params,
-          name: [
-            :family,
-            { given: [] }
-          ]
-        )
-      end
-
-      def submit_address_params
-        [
-          :type,
-          { line: [] },
-          :city,
-          :state,
-          :postal_code,
-          :country,
-          :text
-        ]
-      end
-
-      def patient_attributes(params)
-        {
-          name: {
-            family: params.dig(:name, :family),
-            given: params.dig(:name, :given)
-          }.compact.presence,
-          phone: params[:phone_number],
-          email: params[:email],
-          birth_date: params[:birth_date],
-          gender: params[:gender],
-          address: {
-            line: params.dig(:address, :line),
-            city: params.dig(:address, :city),
-            state: params.dig(:address, :state),
-            country: params.dig(:address, :country),
-            postal_code: params.dig(:address, :postal_code),
-            type: params.dig(:address, :type)
-          }.compact.presence
-        }.compact
-      end
-
       ##
       # Handles Redis connection and operational errors throughout the controller.
       # Provides a consistent error response when Redis is unavailable or operations fail.
@@ -601,93 +510,6 @@ module VAOS
             }
           }]
         }
-      end
-
-      ##
-      # Builds a standardized error response for appointment submission errors.
-      # Used specifically for EPS appointment errors that contain error codes
-      # in the appointment response data.
-      #
-      # @param error_code [String] The error code from the appointment response,
-      #   defaults to 'unknown EPS error' if nil
-      # @return [Hash] Formatted error response with title, detail, and error code
-      #
-      def submission_error_response(error_code)
-        {
-          errors: [{
-            title: 'Appointment submission failed',
-            detail: "An error occurred: #{error_code}",
-            code: error_code
-          }]
-        }
-      end
-
-      # Records the duration between when a referral booking was started and when it completes
-      # by measuring the time between the cached start time and current time.
-      # The duration is recorded as a StatsD metric in milliseconds.
-      #
-      # @param referral_number [String] The referral number to lookup the start time for
-      # @return [void]
-      def log_referral_booking_duration(referral_number)
-        start_time = ccra_referral_service.get_booking_start_time(
-          referral_number,
-          current_user.icn
-        )
-
-        return unless start_time
-
-        duration = (Time.current.to_f - start_time) * 1000
-        StatsD.histogram(APPT_CREATION_DURATION_METRIC, duration, tags: [COMMUNITY_CARE_SERVICE_TAG])
-      end
-
-      ##
-      # Builds the arguments hash for submitting an appointment
-      #
-      # @return [Hash] The arguments for the EPS appointment submission
-      def build_submit_args
-        args = { referral_number: submit_params[:referral_number],
-                 network_id: submit_params[:network_id],
-                 provider_service_id: submit_params[:provider_service_id],
-                 slot_ids: [submit_params[:slot_id]] }
-
-        patient_attrs = patient_attributes(submit_params)
-        args[:additional_patient_attributes] = patient_attrs if patient_attrs.present?
-        args
-      end
-
-      ##
-      # Records an appointment metric with type of care tag
-      #
-      # @param metric [String] The metric name to record
-      # @param type_of_care [String] The type of care value
-      def record_appt_metric(metric, type_of_care)
-        StatsD.increment(metric, tags: [COMMUNITY_CARE_SERVICE_TAG, "type_of_care:#{type_of_care}"])
-      end
-
-      ##
-      # Retrieves the type of care for metrics, defaulting to 'no_value' if unavailable
-      #
-      # @param referral_number [String] The referral number to lookup
-      # @return [String] The sanitized type of care, or 'no_value' if not found
-      def get_type_of_care_for_metrics(referral_number)
-        return 'no_value' if referral_number.blank?
-
-        cached_referral = ccra_referral_service.get_cached_referral_data(referral_number, current_user.icn)
-        sanitize_log_value(cached_referral&.category_of_care)
-      rescue Redis::BaseError
-        'no_value'
-      end
-
-      ##
-      # Sanitizes values for safe logging and metrics
-      # Replaces blank values with 'no_value' and removes whitespace
-      #
-      # @param value [String, nil] The value to sanitize
-      # @return [String] The sanitized value safe for logging
-      def sanitize_log_value(value)
-        return 'no_value' if value.blank?
-
-        value.to_s.gsub(/\s+/, '_')
       end
     end
   end

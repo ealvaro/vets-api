@@ -21,7 +21,6 @@ VAOS::Engine.routes.draw do
     get '/relationships', to: 'relationships#index'
     post '/appointments', to: 'appointments#create'
     post '/appointments/draft', to: 'appointments#create_draft'
-    post '/appointments/submit', to: 'appointments#submit_referral_appointment'
 
     # Unified scheduling (CC Hybrid: VA + EPS via referral flow)
     get '/provider_slots', to: 'unified_slots#index'
