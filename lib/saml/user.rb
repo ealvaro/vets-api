@@ -43,19 +43,7 @@ module SAML
       @saml_response = saml_response
       @saml_attributes = saml_response.attributes
       @tracker_uuid = saml_response.in_response_to
-
-      Sentry.set_extras(
-        saml_attributes: saml_attributes&.to_h,
-        saml_response: Base64.encode64(saml_response&.response || '')
-      )
-
       @user_attributes = SAML::UserAttributes::SSOe.new(saml_attributes, authn_context, tracker_uuid)
-
-      Sentry.set_tags(
-        sign_in_service_name: user_attributes.sign_in&.fetch(:service_name, nil),
-        sign_in_account_type: user_attributes.sign_in&.fetch(:account_type, nil),
-        sign_in_auth_broker: user_attributes.sign_in&.fetch(:auth_broker, nil)
-      )
     end
 
     delegate :validate!, to: :@user_attributes
@@ -71,7 +59,15 @@ module SAML
     def authn_context
       saml_response.authn_context_text
     rescue
-      Sentry.set_tags(controller_name: 'sessions', sign_in_method: 'not-signed-in:error')
+      context = {
+        controller_name: 'sessions',
+        sign_in_method: 'not-signed-in:error',
+        sign_in_service_name: user_attributes&.sign_in&.fetch(:service_name, nil),
+        sign_in_account_type: user_attributes&.sign_in&.fetch(:account_type, nil),
+        sign_in_auth_broker: user_attributes&.sign_in&.fetch(:auth_broker, nil)
+      }
+      Rails.logger.error('authn_context error', context)
+
       raise
     end
   end

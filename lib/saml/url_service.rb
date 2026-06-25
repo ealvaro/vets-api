@@ -49,9 +49,6 @@ module SAML
       end
       @query_params = {}
       @tracker = initialize_tracker(params)
-
-      Sentry.set_extras(params:)
-      Sentry.set_user(session:, user:)
     end
 
     # REDIRECT_URLS
