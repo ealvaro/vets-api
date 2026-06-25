@@ -204,6 +204,18 @@ module SimpleFormsApi
       person['relationship'] == 'other' ? person['other_relationship_description'] : person['relationship']
     end
 
+    def departure_date
+      dates = people.map do |p|
+        if p['is_stepchild'] && !p['stepchild_lives_with_veteran']
+          next if p['step_child_departure_date'].blank?
+          next unless parsable_date?(p['step_child_departure_date'])
+
+          Date.strptime(p['step_child_departure_date']).strftime('%m/%d/%Y')
+        end
+      end.compact
+      dates.join(',')
+    end
+
     def incarceration_fields
       mapped = {}
 
@@ -333,6 +345,15 @@ module SimpleFormsApi
       canvas.fill_color(0, 0, 0)
       canvas.font('Helvetica', size: 12)
       canvas.text(other_text, at: coordinates)
+    end
+
+    private
+
+    def parsable_date?(str)
+      Date.parse(str)
+      true
+    rescue ArgumentError
+      false
     end
   end
 end

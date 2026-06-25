@@ -368,7 +368,21 @@ RSpec.describe SimpleFormsApi::VBA210788 do
   describe '#metadata' do
     subject { form.metadata }
 
-    it 'returns expected structure' do
+    it 'returns expected structure when bugfix is off' do
+      allow(Flipper).to receive(:enabled?).with(:simple_forms_s3_mms_prefix_bugfix).and_return(false)
+      expect(subject).to include(
+        'veteranFirstName' => form.first_name,
+        'veteranLastName' => form.last_name,
+        'fileNumber' => form.metadata_file_number,
+        'zipCode' => form.zip_code,
+        'source' => 'VA Platform Digital Forms',
+        'docType' => data['form_number'],
+        'businessLine' => 'CMP'
+      )
+    end
+
+    it 'returns expected structure when bug fix is on' do
+      allow(Flipper).to receive(:enabled?).with(:simple_forms_s3_mms_prefix_bugfix).and_return(true)
       expect(subject).to include(
         'veteranFirstName' => form.first_name,
         'veteranLastName' => form.last_name,
@@ -384,6 +398,153 @@ RSpec.describe SimpleFormsApi::VBA210788 do
   describe '#format_phone' do
     it 'formats phone correctly' do
       expect(form.format_phone('1234567890')).to eq('123-456-7890')
+    end
+  end
+
+  describe '#departure_date' do
+    it 'extracts and formats dates from people' do
+      data['apportionment_people'] = [
+        {
+          'full_name' => 'Philip J Fry',
+          'ssn' => '123-12-2134',
+          'relationship' => 'child',
+          'currently_receiving' => false,
+          'is_stepchild' => true,
+          'stepchild_lives_with_veteran' => false,
+          'step_child_departure_date' => '2000-03-15'
+        }
+      ]
+
+      expect(form.departure_date).to eq('03/15/2000')
+    end
+
+    it 'extracts and formats dates from multiple people' do
+      data['apportionment_people'] = [
+        {
+          'full_name' => 'Lancelot',
+          'ssn' => '123-12-2134',
+          'relationship' => 'child',
+          'currently_receiving' => false,
+          'is_stepchild' => true,
+          'stepchild_lives_with_veteran' => false,
+          'step_child_departure_date' => '2000-03-11'
+        },
+        {
+          'full_name' => 'Gawain',
+          'ssn' => '123-12-2134',
+          'relationship' => 'child',
+          'currently_receiving' => false,
+          'is_stepchild' => true,
+          'stepchild_lives_with_veteran' => false,
+          'step_child_departure_date' => '2000-03-12'
+        },
+        {
+          'full_name' => 'Percival',
+          'ssn' => '123-12-2134',
+          'relationship' => 'child',
+          'currently_receiving' => false,
+          'is_stepchild' => true,
+          'stepchild_lives_with_veteran' => false,
+          'step_child_departure_date' => '2000-03-13'
+        },
+        {
+          'full_name' => 'Sagramor',
+          'ssn' => '123-12-2134',
+          'relationship' => 'child',
+          'currently_receiving' => false,
+          'is_stepchild' => true,
+          'stepchild_lives_with_veteran' => false,
+          'step_child_departure_date' => '2000-03-14'
+        }
+      ]
+
+      expect(form.departure_date).to eq('03/11/2000,03/12/2000,03/13/2000,03/14/2000')
+    end
+
+    it 'extracts and formats dates from multiple people when there is a date to parse' do
+      data['apportionment_people'] = [
+        {
+          'full_name' => 'Lancelot',
+          'ssn' => '123-12-2134',
+          'relationship' => 'child',
+          'currently_receiving' => false,
+          'is_stepchild' => true,
+          'stepchild_lives_with_veteran' => false,
+          'step_child_departure_date' => '2000-13-13' # <- invaid date
+        },
+        {
+          'full_name' => 'Galahad',
+          'ssn' => '123-12-2134',
+          'relationship' => 'child',
+          'currently_receiving' => false,
+          'is_stepchild' => true,
+          'stepchild_lives_with_veteran' => false,
+          'step_child_departure_date' => '2000-32-32' # <- invaid date
+        },
+        {
+          'full_name' => 'Percival',
+          'ssn' => '123-12-2134',
+          'relationship' => 'child',
+          'currently_receiving' => false,
+          'is_stepchild' => true,
+          'stepchild_lives_with_veteran' => false,
+          'step_child_departure_date' => 'Not a Date String'
+        },
+        {
+          'full_name' => 'Sagramor',
+          'ssn' => '123-12-2134',
+          'relationship' => 'child',
+          'currently_receiving' => false,
+          'is_stepchild' => true,
+          'stepchild_lives_with_veteran' => false,
+          'step_child_departure_date' => ''
+        }
+      ]
+
+      expect(form.departure_date).to eq('')
+    end
+
+    it 'extracts and formats dates from only childs who meet criteria' do
+      data['apportionment_people'] = [
+        {
+          'full_name' => 'Lancelot',
+          'ssn' => '123-12-2134',
+          'relationship' => 'child',
+          'currently_receiving' => false,
+          'is_stepchild' => false,
+          'stepchild_lives_with_veteran' => false,
+          'step_child_departure_date' => '2001-01-11'
+        },
+        {
+          'full_name' => 'Gawain',
+          'ssn' => '123-12-2134',
+          'relationship' => 'child',
+          'currently_receiving' => false,
+          'is_stepchild' => true,
+          'stepchild_lives_with_veteran' => true,
+          'step_child_departure_date' => '2020-02-12'
+        },
+        {
+          'full_name' => 'Percival',
+          'ssn' => '123-12-2134',
+          'relationship' => 'child',
+          'currently_receiving' => false,
+          'is_stepchild' => true,
+          'stepchild_lives_with_veteran' => false,
+          'step_child_departure_date' => '2013-03-13'
+        },
+        {
+          'full_name' => 'Sagramor',
+          'ssn' => '123-12-2134',
+          'relationship' => 'child',
+          'currently_receiving' => false,
+          'is_stepchild' => false,
+          'stepchild_lives_with_veteran' => true,
+          'step_child_departure_date' => '2024-24-14'
+        }
+      ]
+
+      expect(form.departure_date).to eq('03/13/2013')
     end
   end
 end
