@@ -6,6 +6,14 @@ require 'unique_user_events'
 
 module Mobile
   module V1
+    ##
+    # Mobile (v1) controller for a Veteran's lab and test results served through
+    # the Unified Health Data (UHD) Medical Records service.
+    #
+    # Gated behind the +:mhv_accelerated_delivery_uhd_enabled+ feature flag.
+    # Supports date-range filtering; SCDF warnings are not surfaced to the mobile
+    # app.
+    #
     class LabsAndTestsController < ApplicationController
       include MedicalRecords::ErrorHandler
 
@@ -13,6 +21,12 @@ module Mobile
 
       before_action :controller_enabled?
 
+      ##
+      # Lists the current user's labs and tests within an optional date range
+      # and logs unique-user access events.
+      #
+      # @return [JSON] serialized labs and tests
+      #
       def index
         start_date = params[:startDate]
         end_date = params[:endDate]

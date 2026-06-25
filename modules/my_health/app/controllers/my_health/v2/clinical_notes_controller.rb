@@ -6,12 +6,24 @@ require 'unique_user_events'
 
 module MyHealth
   module V2
+    ##
+    # V2 controller for clinical notes (care summaries and notes) served through
+    # the Unified Health Data (UHD) Medical Records service. Supports date-range
+    # filtering and sorting; single-note lookup requires an Oracle Health source.
+    #
     class ClinicalNotesController < ApplicationController
       include MyHealth::V2::Concerns::ErrorHandler
       include SortableRecords
       service_tag 'mhv-medical-records'
       before_action :validate_source_param, only: :show
 
+      ##
+      # Lists the current user's clinical notes within an optional date range,
+      # optionally sorted, and logs unique-user access events.
+      #
+      # @return [JSON] serialized clinical notes; 206 Partial Content when
+      #   warnings are present, otherwise 200 OK
+      #
       def index
         @result = service.get_care_summaries_and_notes(start_date: params[:start_date], end_date: params[:end_date])
         care_notes = sort_records(@result[:records], params[:sort])
@@ -36,6 +48,11 @@ module MyHealth
         handle_error(e, resource_name: 'clinical notes', api_type: 'SCDF')
       end
 
+      ##
+      # Retrieves a single clinical note by id and source.
+      #
+      # @return [JSON] serialized clinical note, or a 404 error envelope if not found
+      #
       def show
         care_note = service.get_single_summary_or_note(params['id'], source: params['source'])
         if care_note.nil?

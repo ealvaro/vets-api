@@ -6,6 +6,15 @@ require 'medical_records/phr_mgr/client'
 require 'medical_records/lighthouse_client'
 
 module MyHealth
+  ##
+  # Base controller for all Medical Records features.
+  #
+  # Provides shared client initialization (MedicalRecords, Lighthouse, PHRMgr,
+  # BBInternal), MHV/Blue Button session management, patient-resource rendering
+  # helpers, and authorization against the +:mhv_medical_records+ policy. Feature
+  # flags select between the legacy MHV data path and the Accelerated Delivery
+  # (Oracle Health / Lighthouse) data path.
+  #
   class MRController < ApplicationController
     include MyHealth::MHVControllerConcerns
     service_tag 'mhv-medical-records'
@@ -27,6 +36,13 @@ module MyHealth
       end
     end
 
+    ##
+    # Renders 202 Accepted if the upstream client returns :patient_not_found,
+    # otherwise renders the resource as JSON.
+    #
+    # @param resource [Object] the resource returned by the upstream client
+    # @return [void]
+    #
     def render_resource(resource)
       if resource.equal?(:patient_not_found)
         render plain: '', status: :accepted
@@ -35,6 +51,13 @@ module MyHealth
       end
     end
 
+    ##
+    # Returns the memoized upstream client, selecting the Lighthouse (Oracle
+    # Health) client when the Accelerated Delivery feature flag is enabled and
+    # the +use_oh_data_path+ param is set, otherwise the MHV MedicalRecords client.
+    #
+    # @return [MedicalRecords::LighthouseClient, MedicalRecords::Client] the client
+    #
     def client
       use_oh_data_path = Flipper.enabled?(:mhv_accelerated_delivery_enabled, @current_user) &&
                          params[:use_oh_data_path].to_i == 1

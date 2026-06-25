@@ -3,6 +3,11 @@
 module MyHealth
   module V1
     module MedicalRecords
+      ##
+      # Controller for retrieving a Veteran's DoD military service record via
+      # the PHR Manager client, keyed by EDIPI. Logs an AAL download entry when
+      # the record is not fetched as part of a Blue Button report.
+      #
       class MilitaryServiceController < ApplicationController
         include MyHealth::AALClientConcerns
         service_tag 'mhv-medical-records'

@@ -2,6 +2,11 @@
 
 module Mobile
   module V0
+    ##
+    # JSONAPI serializer for a Veteran's allergy intolerance records in the
+    # mobile (v0) response shape, exposing FHIR-derived attributes such as
+    # clinical status, code, reactions, and category.
+    #
     class AllergyIntoleranceSerializer
       include JSONAPI::Serializer
 

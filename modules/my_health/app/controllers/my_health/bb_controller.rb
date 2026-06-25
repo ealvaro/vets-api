@@ -3,6 +3,13 @@
 require 'bb/client'
 
 module MyHealth
+  ##
+  # Base controller for Blue Button (BB) health records features.
+  #
+  # Provides the MHV Blue Button client and authorization against the
+  # +:mhv_health_records+ policy. Subclassed by controllers that expose
+  # extract status, eligible data classes, and Blue Button report downloads.
+  #
   class BBController < ApplicationController
     include MyHealth::MHVControllerConcerns
     service_tag 'mhv-medical-records'

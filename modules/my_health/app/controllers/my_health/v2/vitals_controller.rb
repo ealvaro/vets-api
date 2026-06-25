@@ -5,11 +5,22 @@ require 'unified_health_data/serializers/vital_serializer'
 
 module MyHealth
   module V2
+    ##
+    # V2 controller for vital signs served through the Unified Health Data (UHD)
+    # Medical Records service. Supports sorting and surfaces partial-failure
+    # warnings as 206 Partial Content responses.
+    #
     class VitalsController < ApplicationController
       include MyHealth::V2::Concerns::ErrorHandler
       include SortableRecords
       service_tag 'mhv-medical-records'
 
+      ##
+      # Lists the current user's vitals, optionally sorted.
+      #
+      # @return [JSON] serialized vitals; 206 Partial Content when warnings are
+      #   present, otherwise 200 OK
+      #
       def index
         @result = service.get_vitals
         vitals = sort_records(@result[:records], params[:sort])

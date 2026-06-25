@@ -5,12 +5,25 @@ require 'unified_health_data/serializers/allergy_serializer'
 
 module Mobile
   module V1
+    ##
+    # Mobile (v1) controller for a Veteran's allergy records served through the
+    # Unified Health Data (UHD) Medical Records service.
+    #
+    # Gated behind the +:mhv_accelerated_delivery_uhd_enabled+ and
+    # +:mhv_accelerated_delivery_allergies_enabled+ feature flags. Paginates
+    # results; SCDF partial-failure warnings are not surfaced to the mobile app.
+    #
     class AllergyIntolerancesController < ApplicationController
       service_tag 'mhv-medical-records'
 
       before_action :controller_enabled?
       before_action :validate_feature_flag
 
+      ##
+      # Lists the current user's allergies, paginated.
+      #
+      # @return [JSON] serialized, paginated allergies
+      #
       def index
         result = service.get_allergies
         # Warnings (e.g., Partial Failure responses from SCDF) are not surfaced to the mobile app.

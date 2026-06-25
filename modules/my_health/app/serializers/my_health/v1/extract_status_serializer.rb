@@ -2,6 +2,10 @@
 
 module MyHealth
   module V1
+    ##
+    # JSONAPI serializer for the status of a Blue Button data extract, describing
+    # the extract type, station, and timing/status of the most recent extract.
+    #
     class ExtractStatusSerializer
       include JSONAPI::Serializer
 

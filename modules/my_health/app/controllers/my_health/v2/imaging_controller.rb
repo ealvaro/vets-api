@@ -6,12 +6,26 @@ require 'sidekiq/api'
 
 module MyHealth
   module V2
+    ##
+    # V2 controller for medical imaging studies served through the Unified Health
+    # Data (UHD) imaging service.
+    #
+    # Lists imaging studies (filtered by date, type, and the user's resolved
+    # site IDs), returns per-study thumbnails and DICOM zip metadata, and proxies
+    # thumbnail images from presigned S3 URLs (validated against an allowlist to
+    # prevent SSRF). Enqueues a background imaging refresh job on +index+.
+    #
     class ImagingController < ApplicationController
       include MyHealth::V2::Concerns::ErrorHandler
       include SortableRecords
       service_tag 'mhv-medical-records'
       before_action :enqueue_imaging_refresh_job, only: :index
 
+      ##
+      # Lists the current user's imaging studies, optionally sorted.
+      #
+      # @return [JSON] serialized imaging studies
+      #
       def index
         imaging_studies = sort_records(
           service.get_imaging_studies(
@@ -33,6 +47,11 @@ module MyHealth
         handle_error(e, resource_name: 'imaging studies', api_type: 'FHIR')
       end
 
+      ##
+      # Returns thumbnail data for a single imaging study.
+      #
+      # @return [JSON] serialized imaging study thumbnails
+      #
       def thumbnails
         # NOTE: params[:id] is a FHIR imaging study identifier URN (e.g. 'urn-vastudy-...')
         record_id = params[:id]
@@ -53,6 +72,11 @@ module MyHealth
         handle_error(e, resource_name: 'imaging study', api_type: 'FHIR')
       end
 
+      ##
+      # Returns DICOM zip metadata for a single imaging study.
+      #
+      # @return [JSON] serialized imaging study DICOM data
+      #
       def dicom
         # NOTE: params[:id] is a FHIR imaging study identifier URN (e.g. 'urn-vastudy-...')
         record_id = params[:id]

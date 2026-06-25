@@ -5,11 +5,23 @@ require 'medical_records/bb_internal/client'
 module MyHealth
   module V1
     module MedicalRecords
+      ##
+      # Controller for Self-Entered Information (SEI) recorded by the Veteran in
+      # MHV. Each action returns a specific SEI dataset (vitals, allergies, family
+      # history, etc.) via the BBInternal client. The +index+ action aggregates
+      # all SEI data and logs an AAL download entry once per session.
+      #
       class SelfEnteredController < ApplicationController
         include MyHealth::MHVControllerConcerns
         include MyHealth::AALClientConcerns
         service_tag 'mhv-medical-records'
 
+        ##
+        # Returns all self-entered information for the current user, logging an
+        # AAL download entry once per session.
+        #
+        # @return [JSON] aggregated self-entered information
+        #
         def index
           resource = handle_aal('Self entered health information', 'Download', once_per_session: true) do
             client.get_all_sei_data.to_json

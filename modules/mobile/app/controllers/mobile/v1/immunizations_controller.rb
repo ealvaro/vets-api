@@ -6,6 +6,15 @@ require 'unified_health_data/serializers/immunization_serializer'
 
 module Mobile
   module V1
+    ##
+    # Mobile (v1) controller for a Veteran's immunization records.
+    #
+    # Reads from the Unified Health Data (UHD) Medical Records service when the
+    # +:mhv_accelerated_delivery_vaccines_enabled+ flag is on, otherwise falls
+    # back to the Lighthouse Health service. Tags the active Datadog span with
+    # the data source, sorts ascending by date, and returns pagination metadata
+    # for backwards compatibility with the mobile frontend.
+    #
     class ImmunizationsController < ApplicationController
       include MedicalRecords::ErrorHandler
 
@@ -13,6 +22,12 @@ module Mobile
 
       FUTURE_DATE = '3000-01-01'
 
+      ##
+      # Lists the current user's immunizations from UHD or Lighthouse, sorted by
+      # date, and logs unique-user access events.
+      #
+      # @return [JSON] serialized immunizations with pagination metadata
+      #
       def index
         data_source = uhd_enabled? ? 'uhd' : 'lighthouse'
         tag_data_source_span(data_source)

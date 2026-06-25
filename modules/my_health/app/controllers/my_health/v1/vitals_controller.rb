@@ -4,7 +4,17 @@ require 'unique_user_events'
 
 module MyHealth
   module V1
+    ##
+    # Exposes a Veteran's vital signs sourced from MHV or the Accelerated
+    # Delivery (Oracle Health) data path.
+    #
     class VitalsController < MRController
+      ##
+      # Lists the current user's vital signs within an optional date range and
+      # logs unique-user access events for medical records and vitals.
+      #
+      # @return [JSON] serialized list of vitals, or 202 if the patient is not found
+      #
       def index
         resource = client.list_vitals(params[:from], params[:to])
 

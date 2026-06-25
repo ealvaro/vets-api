@@ -6,11 +6,24 @@ require 'unique_user_events'
 
 module MyHealth
   module V2
+    ##
+    # V2 controller for allergy records served through the Unified Health Data
+    # (UHD) Medical Records service, which aggregates VistA and Oracle Health
+    # data. Supports sorting and surfaces partial-failure warnings as 206
+    # Partial Content responses.
+    #
     class AllergiesController < ApplicationController
       include MyHealth::V2::Concerns::ErrorHandler
       include SortableRecords
       service_tag 'mhv-medical-records'
 
+      ##
+      # Lists the current user's allergies, optionally sorted, and logs
+      # unique-user access events.
+      #
+      # @return [JSON] serialized allergies; 206 Partial Content when warnings
+      #   are present, otherwise 200 OK
+      #
       def index
         @result = service.get_allergies
         allergies = sort_records(@result[:records], params[:sort])
@@ -35,6 +48,11 @@ module MyHealth
         handle_error(e, resource_name: 'allergies', api_type: 'SCDF')
       end
 
+      ##
+      # Retrieves a single allergy by id.
+      #
+      # @return [JSON] serialized allergy, or a 404 error envelope if not found
+      #
       def show
         allergy = service.get_single_allergy(params['id'])
         unless allergy

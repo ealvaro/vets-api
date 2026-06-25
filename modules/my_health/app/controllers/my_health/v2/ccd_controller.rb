@@ -5,10 +5,24 @@ require 'unified_health_data/serializers/ccd_serializer'
 
 module MyHealth
   module V2
+    ##
+    # V2 controller for Continuity of Care Document (CCD) generation, status
+    # polling, and download.
+    #
+    # Generation and status are served through the Unified Health Data (UHD) CCD
+    # service. Download fetches the document from a presigned S3 URL, validated
+    # against an allowlist to prevent SSRF, and supports XML, HTML, and PDF.
+    #
     class CcdController < ApplicationController
       include MyHealth::V2::Concerns::ErrorHandler
       service_tag 'mhv-medical-records'
 
+      ##
+      # Initiates generation of a CCD for the current user.
+      #
+      # @return [JSON] serialized CCD job; 200 OK when already complete,
+      #   otherwise 202 Accepted
+      #
       def generate
         ccd = service.initiate_ccd
         http_status = ccd.http_status == 200 ? :ok : :accepted
@@ -20,6 +34,11 @@ module MyHealth
         handle_error(e, resource_name: 'CCD', api_type: 'SCDF')
       end
 
+      ##
+      # Returns the status of a CCD generation job.
+      #
+      # @return [JSON] serialized CCD job; 200 OK when complete, otherwise 202 Accepted
+      #
       def status
         job_id = params[:job_id]
         ccd = service.get_ccd_status(job_id:)
@@ -32,6 +51,11 @@ module MyHealth
         handle_error(e, resource_name: 'CCD', api_type: 'SCDF')
       end
 
+      ##
+      # Downloads the generated CCD in the requested format from S3.
+      #
+      # @return [void] sends the CCD document as an attachment (XML, HTML, or PDF)
+      #
       def download
         file_format = params[:format] || 'xml'
         presigned_url = resolve_presigned_url!(file_format)

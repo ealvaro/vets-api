@@ -11,6 +11,14 @@ require 'unique_user_events'
 
 module MyHealth
   module V2
+    ##
+    # V2 controller for immunization (vaccine) records.
+    #
+    # Reads from the Unified Health Data (UHD) Medical Records service when the
+    # +:mhv_accelerated_delivery_vaccines_enabled+ flag is on, otherwise falls
+    # back to the Lighthouse Veterans Health API. Tags the active Datadog span
+    # with the selected data source and emits StatsD/unique-user metrics.
+    #
     class ImmunizationsController < ApplicationController
       include MyHealth::V2::Concerns::ErrorHandler
       include SortableRecords
@@ -18,6 +26,13 @@ module MyHealth
 
       STATSD_KEY_PREFIX = 'api.my_health.immunizations'
 
+      ##
+      # Lists the current user's immunizations from UHD or Lighthouse, records
+      # metrics, and logs unique-user access events.
+      #
+      # @return [JSON] serialized immunizations; 206 Partial Content when UHD
+      #   warnings are present, otherwise 200 OK
+      #
       def index
         tag_datadog_data_source(uhd_enabled? ? 'uhd' : 'lighthouse')
 
@@ -43,7 +58,13 @@ module MyHealth
         handle_error(e, resource_name: 'immunization records', api_type: uhd_enabled? ? 'SCDF' : 'FHIR')
       end
 
-      # Until SCDF offers a get by ID endpoint this only returns LH records
+      ##
+      # Retrieves a single immunization by id.
+      #
+      # Until SCDF offers a get-by-id endpoint, this only returns Lighthouse records.
+      #
+      # @return [JSON] serialized immunization, or a 404 error envelope if not found
+      #
       def show
         id = params[:id]
         begin

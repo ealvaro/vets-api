@@ -6,11 +6,23 @@ require 'unique_user_events'
 
 module MyHealth
   module V2
+    ##
+    # V2 controller for health conditions served through the Unified Health Data
+    # (UHD) Medical Records service. Supports sorting and surfaces partial-failure
+    # warnings as 206 Partial Content responses.
+    #
     class ConditionsController < ApplicationController
       include MyHealth::V2::Concerns::ErrorHandler
       include SortableRecords
       service_tag 'mhv-medical-records'
 
+      ##
+      # Lists the current user's health conditions, optionally sorted, and logs
+      # unique-user access events.
+      #
+      # @return [JSON] serialized conditions; 206 Partial Content when warnings
+      #   are present, otherwise 200 OK
+      #
       def index
         @result = service.get_conditions
         conditions = sort_records(@result[:records], params[:sort])
@@ -34,6 +46,11 @@ module MyHealth
         handle_error(e, resource_name: 'conditions', api_type: 'SCDF')
       end
 
+      ##
+      # Retrieves a single health condition by id.
+      #
+      # @return [JSON] serialized condition, or a 404 error envelope if not found
+      #
       def show
         condition = service.get_single_condition(params[:id])
         unless condition

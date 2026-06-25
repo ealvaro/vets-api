@@ -2,6 +2,11 @@
 
 module Mobile
   module V0
+    ##
+    # JSONAPI serializer for a Veteran's immunization records in the mobile (v0)
+    # response shape. Exposes vaccine attributes (CVX code, dose, manufacturer,
+    # etc.) and a related link to the administering location.
+    #
     class ImmunizationSerializer
       include JSONAPI::Serializer
 

@@ -3,6 +3,13 @@
 module MyHealth
   module V1
     module MedicalRecords
+      ##
+      # Controller for Continuity of Care Document (CCD) generation and download.
+      #
+      # Generates a CCD via the Blue Button client and serves the completed
+      # document in XML, HTML, or PDF format. Logs AAL (Account Activity Log)
+      # entries for download activity.
+      #
       class CcdController < MRController
         include MyHealth::AALClientConcerns
 
