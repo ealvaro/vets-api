@@ -76,19 +76,19 @@ jobs:
 
       - id: read_yaml
         name: 'Read in the Service Catalog data'
-        uses: mikefarah/yq@8e2c9b612d3dabc6fe1390dfdca2af49bf4c6e66 # master
+        uses: mikefarah/yq@e95bb7e472727cada92b9ffbeb992653a0aa4184 # master
         with:
           cmd: yq '.' ${{matrix.file}}
 
       - name: 'Get service name from file'
         id: parse_service_name
-        uses: mikefarah/yq@8e2c9b612d3dabc6fe1390dfdca2af49bf4c6e66 # master
+        uses: mikefarah/yq@e95bb7e472727cada92b9ffbeb992653a0aa4184 # master
         with:
           cmd: yq -o=json '.dd-service' ${{matrix.file}}
 
       - name: 'Get schema version from file'
         id: parse_schema_version
-        uses: mikefarah/yq@8e2c9b612d3dabc6fe1390dfdca2af49bf4c6e66 # master
+        uses: mikefarah/yq@e95bb7e472727cada92b9ffbeb992653a0aa4184 # master
         with:
           cmd: yq -o=json '."schema-version"' ${{matrix.file}}
 
