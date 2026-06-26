@@ -67,6 +67,19 @@ RSpec.describe SurvivorsBenefits::StructuredData::V2025::Section02 do
         )
       end
 
+      it 'treats USA the same as US — does not set INT_PHONE_NUMBER' do
+        form = {
+          'claimantPhone' => '5551234567',
+          'claimantAddress' => { 'country' => 'USA' }
+        }
+        service = SurvivorsBenefits::StructuredData::V2025::StructuredDataService.new(form)
+        service.build_section2
+        expect(service.fields).to include(
+          'PHONE_NUMBER' => '5551234567',
+          'INT_PHONE_NUMBER' => nil
+        )
+      end
+
       describe 'when claimant phone and non-US address country are present' do
         it 'merges phone number as international phone number' do
           form = {

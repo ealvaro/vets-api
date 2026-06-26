@@ -13,7 +13,9 @@ module SurvivorsBenefits::StructuredData::V2025::Section02
     merge_claim_type_fields(form['claims'])
 
     fields.merge!(y_n_pair(form['claimantIsVeteran'], 'CLAIMANT_VETERAN_Y', 'CLAIMANT_VETERAN_N'))
-    primary_phone = { 'contact' => form['claimantPhone'], 'countryCode' => form.dig('claimantAddress', 'country') }
+    country_code = form.dig('claimantAddress', 'country')
+    country_code = 'US' if country_code&.casecmp?('USA')
+    primary_phone = { 'contact' => form['claimantPhone'], 'countryCode' => country_code }
     fields.merge!(
       {
         'CLAIMANT_SSN' => form['claimantSocialSecurityNumber'],

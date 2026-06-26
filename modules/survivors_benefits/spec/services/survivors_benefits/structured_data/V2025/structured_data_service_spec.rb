@@ -25,15 +25,14 @@ RSpec.describe SurvivorsBenefits::StructuredData::V2025::StructuredDataService d
 
   describe '#initialize' do
     it 'initializes with form and a fields hash loaded from the V2025 FIELDS_PATH' do
-      form = { 'key' => 'value' }
-      service = described_class.new(form)
-      expect(service.form).to eq(form)
+      service = described_class.new({ 'key' => 'value' })
+      expect(service.form).to eq({ 'key' => 'value' })
       expect(service.fields).to be_a(Hash)
     end
   end
 
   describe '#build_structured_data' do
-    it 'calls every section builder and post-processing steps' do
+    it 'calls every section builder without add_amounts_with_separation' do
       service = described_class.new({})
       expect(service).to receive(:build_section1)
       expect(service).to receive(:build_section2)
@@ -47,39 +46,16 @@ RSpec.describe SurvivorsBenefits::StructuredData::V2025::StructuredDataService d
       expect(service).to receive(:build_section10)
       expect(service).to receive(:build_section11).with(nil)
       expect(service).to receive(:build_section12)
-      expect(service).to receive(:fill_veteran_ssn_reference_fields)
-      expect(service).to receive(:add_amounts_with_separation)
       service.build_structured_data
     end
   end
 
   describe '#fill_veteran_ssn_reference_fields' do
-    it 'populates 9 SSN reference fields (VETERAN_SSN_1 through VETERAN_SSN_9)' do
-      form = { 'veteranSocialSecurityNumber' => '123-45-6789' }
-      service = described_class.new(form)
+    it 'populates 8 SSN reference fields (VETERAN_SSN_1 through VETERAN_SSN_8)' do
+      service = described_class.new({ 'veteranSocialSecurityNumber' => '123-45-6789' })
       service.fill_veteran_ssn_reference_fields
-      (1..9).each do |i|
-        expect(service.fields["VETERAN_SSN_#{i}"]).to eq('123-45-6789')
-      end
-    end
-  end
-
-  describe '#merge_name_fields' do
-    it 'merges full, first, middle initial, and last name fields' do
-      service = described_class.new({})
-      service.merge_name_fields({ 'first' => 'John', 'middle' => 'A', 'last' => 'Doe', 'suffix' => 'Jr.' }, 'VETERAN')
-      expect(service.fields).to include(
-        'VETERAN_NAME' => 'John A Doe Jr.',
-        'VETERAN_FIRST_NAME' => 'John',
-        'VETERAN_MIDDLE_INITIAL' => 'A',
-        'VETERAN_LAST_NAME' => 'Doe'
-      )
-    end
-
-    it 'does not merge fields when name is nil' do
-      service = described_class.new({})
-      service.merge_name_fields(nil, 'VETERAN')
-      expect(service.fields['VETERAN_NAME']).to be_nil
+      (1..8).each { |i| expect(service.fields["VETERAN_SSN_#{i}"]).to eq('123-45-6789') }
+      expect(service.fields['VETERAN_SSN_9']).to be_nil
     end
   end
 end

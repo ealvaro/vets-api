@@ -12,7 +12,9 @@ module SurvivorsBenefits::StructuredData::V2025::Section04
     fields.merge!(y_n_pair(form['childWithVeteran'], 'CHILD_DURING_MARRIAGE_YES', 'CHILD_DURING_MARRIAGE_NO'))
     fields.merge!(y_n_pair(pregnant_with_veteran, 'EXPECTING_BIRTH_VET_CHILD_YES', 'EXPECTING_BIRTH_VET_CHILD_NO'))
     fields.merge!(y_n_pair(lived_with_veteran, 'LIVE_WITH_VET_TILL_DEATH_YES', 'LIVE_WITH_VET_TILL_DEATH_NO'))
-    fields.merge!(y_n_pair(discordant_separation, 'MARITAL_DISCORD_SEPARATION_Y', 'MARITAL_DISCORD_SEPARATION_N'))
+    # V2025: separation reason splits into two named checkboxes instead of a Y/N radio pair
+    fields['SEPARATION_MEDICAL_FINANCIAL'] = discordant_separation == true
+    fields['MARITAL_DISCORD_OTHER'] = discordant_separation == false
     fields.merge!(y_n_pair(marriage_type == 'ceremonial', 'CB_CL_MARR_1_TYPE_CEREMONIAL', 'CB_CL_MARR_1_TYPE_OTHER'))
     fields.merge!(
       {
@@ -61,7 +63,8 @@ module SurvivorsBenefits::StructuredData::V2025::Section04
   ##
   # Build and merge the claimant remarriage fields
   def merge_claimant_remarriage_fields
-    has_remarried = form['remarriedAfterVeteralDeath'] || false
+    # V2025 form uses 'remarriedAfterVeteranDeath' (fixed typo from V2022 'remarriedAfterVeteralDeath')
+    has_remarried = form['remarriedAfterVeteranDeath'] || form['remarriedAfterVeteralDeath'] || false
     expand_and_merge_remarriage_end_cause(has_remarried, form['remarriageEndCause'])
     fields.merge!(y_n_pair(has_remarried, 'REMARRIED_AFTER_VET_DEATH_YES', 'REMARRIED_AFTER_VET_DEATH_NO'))
     fields.merge!(y_n_pair(form['claimantHasAdditionalMarriages'], 'ADDITIONAL_MARRIAGES_Y', 'ADDITIONAL_MARRIAGES_N'))
@@ -85,7 +88,7 @@ module SurvivorsBenefits::StructuredData::V2025::Section04
         {
           'CB_REMARRIAGE_END_BY_DEATH' => remarriage_end_cause == 'death',
           'CB_REMARRIAGE_END_BY_DIVORCE' => remarriage_end_cause == 'divorce',
-          'CB_MARRIAGE_DID_NOT_END' => remarriage_end_cause == 'didNotEnd',
+          'CB_REMARRIAGE_DID_NOT_END' => remarriage_end_cause == 'didNotEnd',
           'CB_REMARRIAGE_END_BY_OTHER' => remarriage_end_cause == 'other'
         }
       )

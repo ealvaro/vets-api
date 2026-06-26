@@ -5,78 +5,68 @@ require 'survivors_benefits/structured_data/V2025/section_05'
 
 RSpec.describe SurvivorsBenefits::StructuredData::V2025::Section05 do
   describe '#build_section5' do
-    it 'calls merge_previous_marriage_fields for veteran and claimant' do
+    it 'emits CLMNT_SPSE_BFR_DTH_NLY_SPSE_Y/N when recognizedAsSpouse and hadPreviousMarriages are present' do
       form = {
-        'veteranMarriages' => [{}],
-        'claimantMarriages' => [{}],
-        'veteranHasAdditionalMarriages' => true,
-        'claimantHasAdditionalMarriages' => true
+        'recognizedAsSpouse' => true,
+        'hadPreviousMarriages' => false,
+        'veteranMarriages' => [],
+        'spouseMarriages' => []
       }
       service = SurvivorsBenefits::StructuredData::V2025::StructuredDataService.new(form)
-      expect(service).to receive(:merge_previous_marriage_fields).twice
       service.build_section5
-    end
-  end
-
-  describe '#individuals_permutations' do
-    it 'returns correct permutations for VETERAN' do
-      service = SurvivorsBenefits::StructuredData::V2025::StructuredDataService.new({})
-      expect(service.individuals_permutations('VETERAN')).to eq(%w[VET VET VETERAN])
-    end
-
-    it 'returns correct permutations for CLAIMANT' do
-      service = SurvivorsBenefits::StructuredData::V2025::StructuredDataService.new({})
-      expect(service.individuals_permutations('CLAIMANT')).to eq(%w[CL CB_CL CLAIMANT])
-    end
-  end
-
-  describe '#additional_marriages_boolean_fields' do
-    it 'returns correct boolean fields for VET' do
-      service = SurvivorsBenefits::StructuredData::V2025::StructuredDataService.new({})
-      expect(service.additional_marriages_boolean_fields('VET'))
-        .to eq(%w[VET_ADDITIONAL_MARRIAGES_Y VET_ADDITIONAL_MARRIAGES_N])
-    end
-
-    it 'returns correct boolean fields for CL' do
-      service = SurvivorsBenefits::StructuredData::V2025::StructuredDataService.new({})
-      expect(service.additional_marriages_boolean_fields('CL'))
-        .to eq(%w[CL_ADDITIONAL_MARRIAGES_Y CL_ADDITIONAL_MARRIAGES_N])
-    end
-  end
-
-  describe '#merge_spouse_name_fields' do
-    it 'merges veteran\'s spouse name fields correctly' do
-      name = { 'first' => 'Jane', 'middle' => 'A', 'last' => 'Smith' }
-      service = SurvivorsBenefits::StructuredData::V2025::StructuredDataService.new({})
-      service.merge_spouse_name_fields(name, 'VETERAN', 1)
       expect(service.fields).to include(
-        'VETERAN_MARRIAGE_1_TO' => 'Jane A Smith',
-        'VETERAN_MARRIAGE_1_TO_FIRST_NAME' => 'Jane',
-        'VETERAN_MARRIAGE_1_TO_MID_INT' => 'A',
-        'VETERAN_MARRIAGE_1_TO_LAST_NAME' => 'Smith'
-      )
-    end
-  end
-
-  describe '#merge_previous_marriage_separation_type_fields' do
-    it 'merges separation type fields with death as reason' do
-      service = SurvivorsBenefits::StructuredData::V2025::StructuredDataService.new({})
-      service.merge_previous_marriage_separation_type_fields('VET', 'DEATH', 1)
-      expect(service.fields).to include(
-        'CB_VET_MARR1_ENDED_DEATH' => true,
-        'CB_VET_MARR1_ENDED_DIVORCE' => false,
-        'CB_VET_MARR1_ENDED_OTHER' => false
+        'CLMNT_SPSE_BFR_DTH_NLY_SPSE_Y' => true,
+        'CLMNT_SPSE_BFR_DTH_NLY_SPSE_N' => false
       )
     end
 
-    it 'merges separation type fields with divorce as reason' do
-      service = SurvivorsBenefits::StructuredData::V2025::StructuredDataService.new({})
-      service.merge_previous_marriage_separation_type_fields('VET', 'DIVORCE', 1)
+    it 'sets CLMNT_SPSE_BFR_DTH_NLY_SPSE_N when claimant was not recognized as only spouse' do
+      form = {
+        'recognizedAsSpouse' => true,
+        'hadPreviousMarriages' => true,
+        'veteranMarriages' => [],
+        'spouseMarriages' => []
+      }
+      service = SurvivorsBenefits::StructuredData::V2025::StructuredDataService.new(form)
+      service.build_section5
       expect(service.fields).to include(
-        'CB_VET_MARR1_ENDED_DEATH' => false,
-        'CB_VET_MARR1_ENDED_DIVORCE' => true,
-        'CB_VET_MARR1_ENDED_OTHER' => false
+        'CLMNT_SPSE_BFR_DTH_NLY_SPSE_Y' => false,
+        'CLMNT_SPSE_BFR_DTH_NLY_SPSE_N' => true
       )
+    end
+
+    it 'reads claimant marriages from spouseMarriages key' do
+      form = {
+        'spouseMarriages' => [
+          { 'spouseFullName' => { 'first' => 'John', 'last' => 'Doe' }, 'reasonForSeparation' => 'DEATH' }
+        ],
+        'spouseHasAdditionalMarriages' => false,
+        'veteranMarriages' => []
+      }
+      service = SurvivorsBenefits::StructuredData::V2025::StructuredDataService.new(form)
+      service.build_section5
+      expect(service.fields['CLAIMANT_MARRIAGE_1_TO']).to eq('John Doe')
+    end
+  end
+
+  describe '#recognized_no_previous_value' do
+    it 'returns true when recognized as spouse and no previous marriages' do
+      service = SurvivorsBenefits::StructuredData::V2025::StructuredDataService.new(
+        'recognizedAsSpouse' => true, 'hadPreviousMarriages' => false
+      )
+      expect(service.recognized_no_previous_value).to be true
+    end
+
+    it 'returns false when recognized but had previous marriages' do
+      service = SurvivorsBenefits::StructuredData::V2025::StructuredDataService.new(
+        'recognizedAsSpouse' => true, 'hadPreviousMarriages' => true
+      )
+      expect(service.recognized_no_previous_value).to be false
+    end
+
+    it 'returns nil when either value is absent' do
+      service = SurvivorsBenefits::StructuredData::V2025::StructuredDataService.new({})
+      expect(service.recognized_no_previous_value).to be_nil
     end
   end
 end

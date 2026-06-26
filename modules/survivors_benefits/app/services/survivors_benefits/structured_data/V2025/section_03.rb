@@ -17,7 +17,8 @@ module SurvivorsBenefits::StructuredData::V2025::Section03
         'DATE_SEPARATED_FROM_SERVICE' => format_date(form.dig('activeServiceDateRange', 'to')),
         'PLACE_SEPARATED_FROM_SERVICE_1' => form['placeOfSeparation'],
         'DATE_OF_ACTIVATION' => format_date(form['nationalGuardActivationDate']),
-        'NAME_ADDRESS_RESERVE_UNIT' => form['unitNameAndAddress'],
+        'NAME_RESERVE_UNIT' => form['unitName'],
+        'ADDRESS_RESERVE_UNIT' => form['unitAddress'],
         'RESERVE_PHONE_NUMBER' => form['unitPhone'],
         'DATE_OF_CONFINEMENT_START' => form['pow'] ? format_date(form.dig('powDateRange', 'from')) : nil,
         'DATE_OF_CONFINEMENT_END' => form['pow'] ? format_date(form.dig('powDateRange', 'to')) : nil

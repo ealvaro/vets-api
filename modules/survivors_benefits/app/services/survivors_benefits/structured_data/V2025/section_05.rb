@@ -7,8 +7,24 @@ module SurvivorsBenefits::StructuredData::V2025::Section05
   def build_section5
     vet_prev_marriages = form['veteranMarriages'] || []
     spouse_prev_marriages = form['spouseMarriages'] || []
+    fields.merge!(
+      y_n_pair(
+        recognized_no_previous_value,
+        'CLMNT_SPSE_BFR_DTH_NLY_SPSE_Y',
+        'CLMNT_SPSE_BFR_DTH_NLY_SPSE_N'
+      )
+    )
     merge_previous_marriage_fields(vet_prev_marriages, 'VETERAN', form['veteranHasAdditionalMarriages'])
     merge_previous_marriage_fields(spouse_prev_marriages, 'CLAIMANT', form['spouseHasAdditionalMarriages'])
+  end
+
+  # Returns true if the claimant was recognized as the veteran's only prior spouse, nil if data is incomplete.
+  def recognized_no_previous_value
+    recognized = form['recognizedAsSpouse']
+    had_previous = form['hadPreviousMarriages']
+    return nil unless [true, false].include?(recognized) && [true, false].include?(had_previous)
+
+    recognized && !had_previous
   end
 
   ##
