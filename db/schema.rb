@@ -1433,6 +1433,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_25_191713) do
     t.boolean "eligibility_resolved", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["applicant_icn"], name: "index_ivc_champva_applicants_on_applicant_icn"
+    t.index ["transaction_uuid", "applicant_icn"], name: "index_ivc_champva_applicants_on_txn_uuid_and_icn", unique: true
   end
 
   create_table "ivc_champva_forms", force: :cascade do |t|
