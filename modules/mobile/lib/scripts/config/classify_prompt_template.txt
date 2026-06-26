@@ -1,0 +1,88 @@
+You are classifying upstream service dependencies for the VA mobile API.
+
+## Known upstream service mappings:
+{{KNOWN_UPSTREAM_SERVICES}}
+
+## Excluded Classes:
+{{EXCLUDED_CLASSES}}
+
+## Unknown services to classify:
+{{UNKNOWN_SERVICES}}
+
+## Classification rules:
+- A service is an **upstream dependency** ONLY if the class itself makes outbound HTTP calls
+  (e.g., via Faraday, RestClient, Net::HTTP, or inherits from Common::Client::Base).
+- Redis clients, cache wrappers, adapters, serializers, and other utility classes
+  that do NOT make HTTP calls are **internal** — add them to excluded_classes.
+- Do NOT classify a class as upstream based on what other classes in its namespace do.
+  Classify only the specific class presented.
+
+## Examples:
+- `SomeModule::ApiClient` (inherits Common::Client::Base, calls Faraday) → upstream
+- `SomeModule::RedisClient` (reads/writes Rails.cache) → excluded (internal)
+- `SomeModule::Adapter` (transforms data structures) → excluded (internal)
+
+For each unknown service, determine:
+1. Whether the class itself makes outbound HTTP calls — if not, it is internal (add to excluded_classes)
+2. The upstream_group name that best matches existing conventions in upstream_services.yml
+3. The exact service class name to add to upstream_services.yml
+4. A confidence level (high, medium, or low)
+5. A brief explanation of your reasoning
+
+
+## Response format:
+The response must contain exactly two sections and nothing else:
+1. Proposed Diff (unified diff of upstream_services.yml showing lines to add)
+2. Reasoning
+
+If there are no entries for a section, write "None" under that heading.
+
+Do not include:
+- Introductions
+- Summaries
+- Notes
+- Additional explanations outside the required sections
+- Any sections other than the two listed above
+
+
+### Proposed Diff:
+Return a unified diff block showing the exact changes to `upstream_services.yml`.
+- For upstream services: show the new line inserted in alphabetical order under `upstream_groups:`
+- For excluded (internal) classes: show the new line appended under `excluded_classes:`
+- Include 3 lines of context before and after each change so the insertion point is clear.
+- Use standard unified diff format with `---`, `+++`, `@@`, and `+` line prefixes.
+
+Example:
+
+```diff
+--- a/modules/mobile/lib/scripts/config/upstream_services.yml
++++ b/modules/mobile/lib/scripts/config/upstream_services.yml
+@@ upstream_groups @@
+   Existing::Service::Before: "Some Group"
++  Full::Class::Name: "Upstream Group Name"
+   Existing::Service::After: "Another Group"
+@@ excluded_classes @@
+   - "Existing::ExcludedClass"
++  - "Full::Internal::Class"
+```
+
+### Reasoning:
+Return a markdown table using the following columns:
+
+| Mobile Endpoint | Service | Upstream Group | Confidence | Reasoning |
+|---|---|---|---|---|
+| controller_name | Full::Class::Name | Upstream Group Name | high/medium/low | One sentence explanation |
+
+For excluded (internal) classes, use `(excluded — internal)` as the Upstream Group.
+
+
+For the Mobile Endpoint column:
+
+Transform:
+- referrals_controller.rb → Referrals
+- claims_controller.rb → Claims
+
+Do not return:
+- mobile/v0/referrals_controller.rb
+- referrals_controller.rb
+- Mobile::V0::ReferralsController
