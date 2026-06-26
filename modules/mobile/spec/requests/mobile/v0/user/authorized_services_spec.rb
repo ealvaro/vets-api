@@ -201,12 +201,30 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
                                                   instance_of(User)).and_return(false)
       end
 
-      it 'returns true for cstLettersContentUpdates' do
+      it 'returns true for cstLettersContentUpdates when App-Version meets the requirement' do
+        get '/mobile/v0/user/authorized-services',
+            headers: sis_headers({ 'App-Version' => '2.78.0' }),
+            params: { 'appointmentIEN' => '123', 'locationId' => '123' }
+        assert_schema_conform(200)
+
+        expect(attributes['authorizedServices']['cstLettersContentUpdates']).to be true
+      end
+
+      it 'returns false for cstLettersContentUpdates when App-Version is below the requirement' do
+        get '/mobile/v0/user/authorized-services',
+            headers: sis_headers({ 'App-Version' => '2.77.0' }),
+            params: { 'appointmentIEN' => '123', 'locationId' => '123' }
+        assert_schema_conform(200)
+
+        expect(attributes['authorizedServices']['cstLettersContentUpdates']).to be false
+      end
+
+      it 'returns false for cstLettersContentUpdates when App-Version is missing' do
         get '/mobile/v0/user/authorized-services', headers: sis_headers,
                                                    params: { 'appointmentIEN' => '123', 'locationId' => '123' }
         assert_schema_conform(200)
 
-        expect(attributes['authorizedServices']['cstLettersContentUpdates']).to be true
+        expect(attributes['authorizedServices']['cstLettersContentUpdates']).to be false
       end
     end
   end

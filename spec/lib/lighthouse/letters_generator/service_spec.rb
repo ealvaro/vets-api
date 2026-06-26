@@ -418,6 +418,32 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
         end
       end
 
+      context 'when cst_letters_content_updates is enabled but apply_content_updates is false' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
+        end
+
+        it 'returns the legacy lighthouse content regardless of the flag' do
+          expect_any_instance_of(Lighthouse::LettersGenerator::Configuration)
+            .to receive(:get_access_token)
+            .once
+            .and_return('faketoken')
+
+          client = Lighthouse::LettersGenerator::Service.new
+          response = client.get_eligible_letter_types('DOLLYPARTON', user, apply_content_updates: false)
+
+          expect(response[:letters]).to eq(
+            [
+              { letterType: 'service_verification', name: 'Service Verification Letter' },
+              { letterType: 'benefit_summary', name: 'Benefits summary letter from LH' },
+              { letterType: 'proof_of_service', name: 'Proof of service letter from LH' }
+            ]
+          )
+        end
+      end
+
       context 'consolidation of medicare_partd to minimum_essential_coverage when both flags are enabled' do
         let(:user) { build(:user) }
         let(:consolidation_response) do

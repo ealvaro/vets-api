@@ -32,7 +32,9 @@ module Mobile
             :event_bus_gateway_letter_ready_push_notifications, icn_actor
           ),
           claims: access?(lighthouse: :access?),
-          cstLettersContentUpdates: Flipper.enabled?(:cst_letters_content_updates, @user),
+          cstLettersContentUpdates: versioned_flagged_access?(
+            %i[cst_letters_content_updates], Mobile::V0::Letter::CONTENT_UPDATES_APP_VERSION
+          ),
           cstMultiClaimProvider: @user.icn.present? && Flipper.enabled?(
             :cst_multi_claim_provider_mobile, icn_actor
           ),
@@ -61,10 +63,11 @@ module Mobile
 
       private
 
-      # Returns true if the provided app version meets or exceeds the minimum required version for the feature
+      # Returns true if the provided app version meets or exceeds the minimum required version.
+      # A Symbol is looked up in settings (vahb.version_requirement); a String is used as a literal version.
       def min_version?(feature)
         app_version = @request&.headers&.[]('App-Version')
-        required_version = Settings.vahb.version_requirement[feature]
+        required_version = feature.is_a?(Symbol) ? Settings.vahb.version_requirement[feature] : feature
 
         # Treat missing versions as an old version
         return false if app_version.nil? || required_version.nil?

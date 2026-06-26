@@ -33,6 +33,11 @@ module Mobile
         service_verification
       ].freeze
 
+      # Minimum mobile app version that receives the updated letters content. Below this version,
+      # both the letters API payload and the cstLettersContentUpdates authorized service fall back
+      # to legacy content.
+      CONTENT_UPDATES_APP_VERSION = '2.78.0'
+
       attribute :name, Types::String
       attribute :letter_type, LETTER_TYPE
       attribute :description, Types::Hash.optional.default(nil)

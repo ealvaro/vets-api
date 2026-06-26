@@ -243,6 +243,11 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
           expect(letter_types).not_to include('medicare_partd', 'minimum_essential_coverage')
           benefit_summary = letters.find { |l| l['letterType'] == 'benefit_summary' }
           expect(benefit_summary['name']).to eq('Benefit Summary and Service Verification Letter')
+
+          # Legacy payload: every letter falls back to upstream names and carries no server description.
+          expect(letters.map { |l| l['description'] }).to all(be_nil)
+          benefit_verification = letters.find { |l| l['letterType'] == 'benefit_verification' }
+          expect(benefit_verification['name']).not_to eq('Proof of VA income') if benefit_verification
         end
 
         context 'when :cst_letters_content_updates is disabled' do

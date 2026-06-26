@@ -46,14 +46,17 @@ module Lighthouse
         response.body
       end
 
-      def get_eligible_letter_types(icn, user = nil)
+      # apply_content_updates controls whether this caller receives the updated letter content:
+      # pass false to force the legacy payload regardless of the Flipper flag (mobile uses this to
+      # suppress updates on older app versions). Defaults to true, so other callers are unaffected.
+      def get_eligible_letter_types(icn, user = nil, apply_content_updates: true)
         endpoint = 'eligible-letters'
         log = "Retrieving eligible letter types and destination from #{config.generator_url}/#{endpoint}"
         params = { icn: }
 
         response = get_from_lighthouse(endpoint, params, log)
         {
-          letters: transform_letters(response.body['letters'], user),
+          letters: transform_letters(response.body['letters'], user, apply_content_updates:),
           letter_destination: response.body['letterDestination']
         }
       end
@@ -135,25 +138,27 @@ module Lighthouse
         )
       end
 
-      def transform_letters(letters, user = nil)
+      def transform_letters(letters, user = nil, apply_content_updates: true)
         filtered_letters = letters.select { |l| valid_type?(l['letterType'], user) }
+        show_updated_content = content_updates_enabled?(user) && apply_content_updates
 
-        unless content_updates_enabled?(user)
-          return filtered_letters.map do |letter|
+        if show_updated_content
+          letters_to_transform =
+            if description_content_format_enabled?
+              consolidate_coverage_letters(filtered_letters)
+            else
+              filtered_letters
+            end
+
+          sort_letters_by_order(updated_letter_transformation(letters_to_transform))
+        else
+          filtered_letters.map do |letter|
             {
               letterType: letter['letterType'].downcase,
               name: letter['letterName']
             }
           end
         end
-
-        letters_to_transform = if description_content_format_enabled?
-                                 consolidate_coverage_letters(filtered_letters)
-                               else
-                                 filtered_letters
-                               end
-        transformed = updated_letter_transformation(letters_to_transform)
-        sort_letters_by_order(transformed)
       end
 
       def consolidate_coverage_letters(letters)

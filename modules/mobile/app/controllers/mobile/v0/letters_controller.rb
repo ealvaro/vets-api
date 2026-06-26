@@ -29,7 +29,6 @@ module Mobile
       COE_STATUSES = %w[AVAILABLE ELIGIBLE].freeze
       COE_LETTER_TYPE = 'certificate_of_eligibility_home_loan'
       COE_APP_VERSION = '2.58.0'
-      CONTENT_UPDATES_APP_VERSION = '2.78.0'
 
       before_action { authorize :lighthouse, :access? }
 
@@ -39,7 +38,9 @@ module Mobile
 
       # returns list of letters available for a given user. List includes letter display name and letter type
       def index
-        letters = lighthouse_service.get_eligible_letter_types(icn, @current_user)[:letters]
+        letters = lighthouse_service.get_eligible_letter_types(
+          icn, @current_user, apply_content_updates: content_updates_app_version?
+        )[:letters]
         response = letters.filter_map do |letter|
           # The following letters need to be filtered out due to outdated content when flag is off
           # or the app version is below CONTENT_UPDATES_APP_VERSION
@@ -210,7 +211,7 @@ module Mobile
 
         begin
           version = Gem::Version.new(request.headers['App-Version'])
-          version >= Gem::Version.new(CONTENT_UPDATES_APP_VERSION)
+          version >= Gem::Version.new(Mobile::V0::Letter::CONTENT_UPDATES_APP_VERSION)
         rescue ArgumentError
           false
         end
