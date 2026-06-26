@@ -2218,6 +2218,16 @@ vha:
     service_name: VHA-SHAREPOINT
     sharepoint_url: dvagov.sharepoint.com
     tenant_id: fake_sharepoint_tenant_id
+  sharepoint_graph:
+    authentication:
+      base_url: https://login.microsoftonline.com
+      client_id: 12345fgh-lklk-lolo-haha-123456789010
+      client_secret: 1234~big.secret.string*here %>
+      tenant_url: /123/oauth2/v2.0/token
+    mock: true
+    upload:
+      base_url: https://graph.microsoft.com %>
+      path: /v1.0/drives/123!abcjkjklol
 vha_notification:
   application_id: fake_application_id
   base_url: "https://vha-notification-api.example.com"
