@@ -20,12 +20,8 @@ RSpec.describe Pensions::BenefitsIntake::SubmitClaimJob, :uploader_helpers do
 
   describe '.build_config_hash' do
     it 'returns hash of job config options' do
-      user = build(:user)
-      expect(described_class.build_config_hash(user)).to eq(
+      expect(described_class.build_config_hash).to eq(
         {
-          claim_class: 'Pensions::SavedClaim',
-          user_account_uuid: user.user_account.id,
-          participant_id: user.participant_id,
           email_type: :submitted,
           claim_stamp_set: :pensions_generated_claim,
           attachment_stamp_set: :pensions_received_at,

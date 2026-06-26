@@ -78,8 +78,8 @@ RSpec.describe 'Income and Assets End to End', type: :request do
     expect(Common::FileHelpers).to receive(:delete_file_if_exists).at_least(1).and_call_original
 
     # submission process, external api is stubbed - BenefitsIntake::Service methods above
-    config = IncomeAndAssets::BenefitsIntake::SubmitClaimJob.build_config_hash
-    lh_bi_uuid = IncomeAndAssets::BenefitsIntake::SubmitClaimJob.new.perform(saved_claim_id, **config)
+    IncomeAndAssets::BenefitsIntake::SubmitClaimJob.build_config_hash
+    lh_bi_uuid = IncomeAndAssets::BenefitsIntake::SubmitClaimJob.new.perform(saved_claim_id, nil, nil)
 
     # verify upload artifacts - form_submission and claim_va_notification
     submission = Lighthouse::Submission.find_by(saved_claim_id:)

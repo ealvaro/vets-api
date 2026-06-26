@@ -20,12 +20,8 @@ RSpec.describe Burials::BenefitsIntake::SubmitClaimJob, :uploader_helpers do
   describe '.build_config_hash' do
     it 'returns hash of job config options' do
       allow(Flipper).to receive(:enabled?).with(:burial_kafka_event_enabled).and_return(false)
-      user = build(:user)
-      expect(described_class.build_config_hash(user)).to eq(
-        { claim_class: 'Burials::SavedClaim',
-          user_account_uuid: user.user_account.id,
-          participant_id: user.participant_id,
-          email_type: :submitted,
+      expect(described_class.build_config_hash).to eq(
+        { email_type: :submitted,
           claim_stamp_set: :burials_generated_claim,
           attachment_stamp_set: :burials_received_at,
           submit_kafka_event: false }
@@ -52,6 +48,7 @@ RSpec.describe Burials::BenefitsIntake::SubmitClaimJob, :uploader_helpers do
   describe 'sidekiq_retries_exhausted block' do
     before do
       allow(Burials::Monitor).to receive(:new).and_return(monitor)
+      allow(Flipper).to receive(:enabled?).with(:burial_kafka_event_enabled).and_return(false)
     end
 
     context 'when retries are exhausted' do

@@ -34,45 +34,64 @@ module BenefitsIntake
     #
     # @param msg [Hash] sidekiq exhaustion response; 'args', 'error_message' are required
     def self.exhaustion(msg)
-      saved_claim_id, config = msg['args']
-      config = {} unless config.is_a?(Hash)
-      claim_class = config[:claim_class]&.to_s&.constantize || SavedClaim
+      job_class = msg['class'].constantize || BenefitsIntake::SubmitClaimJob
+      claim_class = if job_class.const_defined?(:CLAIM_CLASS)
+                      job_class.const_get(:CLAIM_CLASS).constantize
+                    else
+                      ::SavedClaim
+                    end
+      saved_claim_id, user_account_uuid, participant_id = msg['args']
+      claim = claim_class&.find_by(id: saved_claim_id)
+      config = job_class.build_config_hash
 
-      claim = claim_class.find_by(id: saved_claim_id)
       if claim.present? && config[:submit_kafka_event]
-        user_account_uuid = config[:user_account_uuid]
         user_icn = UserAccount.find_by(id: user_account_uuid)&.icn.to_s
 
         Kafka.submit_event(
-          icn: user_icn,
-          current_id: claim.confirmation_number.to_s,
-          submission_name: claim.form_id,
-          state: Kafka::State::ERROR,
-          additional_ids: Kafka.build_additional_ids(participant_id: config[:participant_id])
+          icn: user_icn, current_id: claim.confirmation_number.to_s,
+          submission_name: claim.form_id, state: Kafka::State::ERROR,
+          additional_ids: Kafka.build_additional_ids(participant_id:)
         )
       end
 
-      job_class_name = msg['class'] || 'BenefitsIntake::SubmitClaimJob'
-      job_instance = job_class_name.constantize.new
-      monitor = job_instance.send(:monitor)
+      monitor = job_class.new.send(:monitor)
       monitor.track_submission_exhaustion(msg, claim)
+    end
+
+    # Build the config hash
+    # Subclasses should override/amend this
+    #
+    # @return [Hash] config hash
+    def self.build_config_hash
+      {
+        email_type: :submitted,
+        submit_kafka_event: false
+      }
     end
 
     # Process claim pdfs and upload to Benefits Intake API
     # On success send email
     #
     # @param saved_claim_id [Integer] the claim id
-    # @param config [Mixed] key-value pairs for process steps
-    # @option config [UUID] :user_account_uuid the user submitting the form
-    # @option config [UUID] :participant_id the participant ID for Kafka event traceability
-    # @option config [Symbol|String] :email_type the email template to be sent on success
-    # @option config [Symbol|Array<Hash>] :claim_stamp_set stamp set name or list to apply to generated pdf
-    # @option config [Symbol|Array<Hash>] :attachment_stamp_set stamp set name or list to apply to evidence pdf
-    # @option config [Boolean] :submit_kafka_event flag to send event data to Kafka
+    # @param user_account_uuid [String]
+    # @param participant_id [String, nil]
     #
     # @return [UUID] benefits intake upload uuid
-    def perform(saved_claim_id, **config)
-      init(saved_claim_id, config)
+    # rubocop:disable Metrics/MethodLength
+    def perform(saved_claim_id, user_account_uuid = nil, participant_id = nil)
+      # for a while there we were calling this with a hash in the second argument
+      # e.g. .perform_async(123, {"user_account_uuid"=>"abc"})
+      # but now that we are reverting to using strings as the arguments, we
+      # still need to account for any jobs already in the queue and ready
+      # to retry when this code goes live. Once all 'old' jobs have been
+      # processed we can remove this block of code.
+      if user_account_uuid.is_a?(Hash)
+        temp_hash = user_account_uuid
+        user_account_uuid = temp_hash[:user_account_uuid] || temp_hash['user_account_uuid']
+        participant_id = temp_hash[:participant_id] || temp_hash['participant_id']
+      end
+
+      init(saved_claim_id, user_account_uuid)
 
       generate_form_pdf
       generate_attachment_pdfs
@@ -80,14 +99,15 @@ module BenefitsIntake
 
       upload_claim_to_lighthouse
 
-      submit_kafka_event
+      submit_kafka_event(participant_id)
       send_claim_email
       monitor.track_submission_success(claim, service, user_account_uuid)
 
       benefits_intake_uuid
     rescue NoRetryError => e
       submission_attempt&.fail!
-      msg = { 'args' => [saved_claim_id, config], 'error_message' => e.message, 'class' => self.class.name }
+      msg = { 'args' => [saved_claim_id, user_account_uuid, participant_id], 'error_message' => e.message,
+              'class' => self.class.name }
       BenefitsIntake::SubmitClaimJob.exhaustion(msg)
       raise ::Sidekiq::JobRetry::Skip
     rescue => e
@@ -97,6 +117,7 @@ module BenefitsIntake
     ensure
       cleanup_file_paths
     end
+    # rubocop:enable Metrics/MethodLength
 
     private
 
@@ -130,7 +151,8 @@ module BenefitsIntake
     # The claim class to be used
     # inheriting class may want/need to override
     def claim_class
-      @config[:claim_class]&.to_s&.constantize || ::SavedClaim
+      klass = self.class.const_get(:CLAIM_CLASS) if self.class.const_defined?(:CLAIM_CLASS)
+      klass&.to_s&.constantize || ::SavedClaim
     end
 
     # the default stamp set to be used if none specified in config
@@ -158,10 +180,9 @@ module BenefitsIntake
     # @raise [BenefitIntakeError] if unable to find claim
     #
     # @param (see #perform)
-    def init(saved_claim_id, config = {})
-      @config = config
+    def init(saved_claim_id, user_account_uuid)
+      @config = self.class.build_config_hash
 
-      user_account_uuid = config[:user_account_uuid]
       if user_account_uuid.present?
         @user_account = ::UserAccount.find_by(id: user_account_uuid)
         raise NoRetryError, "Unable to find ::UserAccount #{user_account_uuid}" unless @user_account
@@ -277,7 +298,7 @@ module BenefitsIntake
     end
 
     # build payload and submit SENT event to Kafka
-    def submit_kafka_event
+    def submit_kafka_event(participant_id)
       return unless config[:submit_kafka_event]
 
       Kafka.submit_event(
@@ -286,7 +307,7 @@ module BenefitsIntake
         submission_name: claim&.form_id,
         state: Kafka::State::SENT,
         next_id: service&.uuid.to_s,
-        additional_ids: Kafka.build_additional_ids(participant_id: config[:participant_id])
+        additional_ids: Kafka.build_additional_ids(participant_id:)
       )
     end
 

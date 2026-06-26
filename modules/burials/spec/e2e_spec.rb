@@ -80,8 +80,10 @@ RSpec.describe 'Burials End to End', type: :request do
     expect(monitor).to receive(:track_submission_success).and_call_original
     expect(Common::FileHelpers).to receive(:delete_file_if_exists).at_least(1).and_call_original
 
-    config = Burials::BenefitsIntake::SubmitClaimJob.build_config_hash
-    lh_bi_uuid = Burials::BenefitsIntake::SubmitClaimJob.new.perform(saved_claim_id, **config)
+    Burials::BenefitsIntake::SubmitClaimJob.build_config_hash
+    lh_bi_uuid = Burials::BenefitsIntake::SubmitClaimJob.new.perform(saved_claim_id,
+                                                                     user.user_account_uuid,
+                                                                     user.participant_id)
 
     # verify upload artifacts - form_submission and claim_va_notification
     submission = Lighthouse::Submission.find_by(saved_claim_id:)

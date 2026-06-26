@@ -154,7 +154,7 @@ module Logging
       # @param second_arg [String, Hash, Object]
       #
       # @return [Array(SavedClaim, String, nil)]
-      def safely_parse_exhaustion_args(first_arg, second_arg)
+      def safely_parse_exhaustion_args(first_arg, second_arg = nil, _third_arg = nil)
         claim = first_arg.is_a?(SavedClaim) ? first_arg : SavedClaim.find_by(id: first_arg)
         user_account_uuid = if second_arg.is_a?(String)
                               UserAccount.find_by(id: second_arg)&.id

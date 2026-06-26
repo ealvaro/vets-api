@@ -92,17 +92,4 @@ RSpec.describe Pensions::SavedClaim, :uploader_helpers do
       claim.send_email(email_type)
     end
   end
-
-  describe '#submit_to_benefits_intake' do
-    it 'builds a config hash and queues claim for submission to Benefits Intake API' do
-      user = build(:user)
-      claim = build(:pensions_saved_claim)
-      config = { user_account_uuid: user.user_account.id }
-
-      expect(Pensions::BenefitsIntake::SubmitClaimJob).to receive(:build_config_hash).with(user).and_return(config)
-      expect(Pensions::BenefitsIntake::SubmitClaimJob).to receive(:perform_async).with(claim.id, **config)
-
-      claim.submit_to_benefits_intake(user)
-    end
-  end
 end

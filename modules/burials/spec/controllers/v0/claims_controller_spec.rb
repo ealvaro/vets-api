@@ -75,13 +75,9 @@ RSpec.describe Burials::V0::ClaimsController, type: :request do
         end
 
         it 'creates a claim and enqueues the benefits intake job' do
-          allow_any_instance_of(described_class).to receive(:current_user).and_return(user)
-          allow(Burials::SavedClaim).to receive(:new).and_return(claim)
-          allow(claim).to receive(:submit_to_benefits_intake).with(user).and_return(nil)
-
           expect(monitor).to receive(:track_create_attempt).with(claim, User).once
           expect(monitor).to receive(:track_create_success).with(nil, claim, User).once
-          expect(claim).to receive(:submit_to_benefits_intake).with(user)
+          expect(Burials::BenefitsIntake::SubmitClaimJob).to receive(:perform_async).once
 
           post '/burials/v0/claims', params: { param_name => { form: form_data.to_json } }
 

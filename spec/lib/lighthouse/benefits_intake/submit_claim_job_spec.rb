@@ -62,22 +62,13 @@ RSpec.describe BenefitsIntake::SubmitClaimJob, :uploader_helpers do
 
       expect(response).to receive(:success?).and_return true
 
-      expect(Kafka).to receive(:submit_event)
-
       expect(claim).to receive(:send_email).with(:submitted)
       expect(monitor).to receive(:track_submission_success).with(claim, service, user_account.id)
 
       expect(job).to receive(:cleanup_file_paths).and_call_original
 
-      config = {
-        user_account_uuid: user_account.id,
-        email_type: :submitted,
-        submit_kafka_event: true,
-        attachment_stamp_set: 'test'
-      }
-      benefits_intake_uuid = job.perform(claim.id, **config)
+      benefits_intake_uuid = job.perform(claim.id, user_account.id)
       expect(benefits_intake_uuid).to eq service.uuid
-      expect(job.send(:attachment_stamp_set)).to eq 'test'
     end
 
     it 'is unable to find user_account' do
@@ -137,7 +128,7 @@ RSpec.describe BenefitsIntake::SubmitClaimJob, :uploader_helpers do
           user_account.id,
           error
         )
-        expect { job.perform(claim.id, **config) }.to raise_error(error) do |error|
+        expect { job.perform(claim.id, user_account.id) }.to raise_error(error) do |error|
           expect(error.status).to eq(429)
         end
       end
@@ -145,7 +136,7 @@ RSpec.describe BenefitsIntake::SubmitClaimJob, :uploader_helpers do
       it 'raises NoRetryError if error status is not 429' do
         error_message = 'Unauthorized'
         msg = {
-          'args' => [claim.id, config],
+          'args' => [claim.id, user_account.id, nil],
           'error_message' => error_message,
           'class' => described_class.name
         }
@@ -154,7 +145,7 @@ RSpec.describe BenefitsIntake::SubmitClaimJob, :uploader_helpers do
 
         expect(described_class).to receive(:exhaustion).with(msg)
 
-        expect { job.perform(claim.id, **config) }.to raise_error(Sidekiq::JobRetry::Skip)
+        expect { job.perform(claim.id, user_account.id) }.to raise_error(Sidekiq::JobRetry::Skip)
       end
     end
   end
@@ -199,22 +190,6 @@ RSpec.describe BenefitsIntake::SubmitClaimJob, :uploader_helpers do
         msg = { 'args' => [claim.id, {}], 'class' => 'BenefitsIntake::SubmitClaimJob', 'error_message' => 'An error occurred', 'queue' => 'low' }
         BenefitsIntake::SubmitClaimJob.within_sidekiq_retries_exhausted_block(msg) do
           expect(SavedClaim).to receive(:find_by).with(id: claim.id).and_return(claim)
-
-          expect(monitor).to receive(:track_submission_exhaustion).with(msg, claim)
-        end
-      end
-
-      it 'logs a distinct error and sends a kafka event' do
-        config = { user_account_uuid: 2, participant_id: '99887766', submit_kafka_event: true }
-        msg = { 'args' => [claim.id, config], 'class' => 'BenefitsIntake::SubmitClaimJob', 'error_message' => 'An error occurred', 'queue' => 'low' }
-        BenefitsIntake::SubmitClaimJob.within_sidekiq_retries_exhausted_block(msg) do
-          expect(SavedClaim).to receive(:find_by).with(id: claim.id).and_return(claim)
-          expect(UserAccount).to receive(:find_by).with(id: 2).and_return(user_account)
-
-          addl_ids = Kafka.build_additional_ids(participant_id: '99887766')
-          expect(Kafka).to receive(:submit_event).with(icn: user_account.icn, current_id: claim.confirmation_number,
-                                                       submission_name: claim.form_id, state: Kafka::State::ERROR,
-                                                       additional_ids: addl_ids)
 
           expect(monitor).to receive(:track_submission_exhaustion).with(msg, claim)
         end

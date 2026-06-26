@@ -29,11 +29,8 @@ RSpec.describe IncomeAndAssets::BenefitsIntake::SubmitClaimJob, :uploader_helper
   describe '.build_config_hash' do
     it 'returns hash of job config options' do
       allow(Flipper).to receive(:enabled?).with(:income_and_assets_kafka_event_enabled).and_return(false)
-      user = build(:user)
-      expect(described_class.build_config_hash(user)).to eq(
+      expect(described_class.build_config_hash).to eq(
         {
-          user_account_uuid: user.user_account.id,
-          participant_id: user.participant_id,
           email_type: :submitted,
           claim_stamp_set: :income_and_assets_generated_claim,
           attachment_stamp_set: :income_and_assets_received_at,
@@ -62,6 +59,7 @@ RSpec.describe IncomeAndAssets::BenefitsIntake::SubmitClaimJob, :uploader_helper
   describe 'sidekiq_retries_exhausted block' do
     before do
       allow(IncomeAndAssets::Monitor).to receive(:new).and_return(monitor)
+      allow(Flipper).to receive(:enabled?).with(:income_and_assets_kafka_event_enabled).and_return(false)
     end
 
     context 'when retries are exhausted' do

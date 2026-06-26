@@ -9,16 +9,13 @@ module Burials
     # sidekiq job to send pdfs to Lighthouse:BenefitsIntake API
     # @see https://developer.va.gov/explore/api/benefits-intake/docs
     class SubmitClaimJob < ::BenefitsIntake::SubmitClaimJob
-      # @see Burials::SavedClaim#submit_to_benefits_intake
-      #
-      # @param user [User, nil] the user who submitted the claim
+      CLAIM_CLASS = 'Burials::SavedClaim' # single table inheritance issue
+
+      # @see ::BenefitsIntake::SubmitClaimJob#build_config_hash
       #
       # @return [Hash] config for processing benefits intake submission
-      def self.build_config_hash(user = nil)
+      def self.build_config_hash
         {
-          claim_class: 'Burials::SavedClaim', # single table inheritance issue
-          user_account_uuid: user&.user_account_uuid,
-          participant_id: user&.participant_id,
           email_type: :submitted,
           claim_stamp_set: :burials_generated_claim,
           attachment_stamp_set: :burials_received_at,
