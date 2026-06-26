@@ -149,12 +149,24 @@ module AccreditedRepresentativePortal
       end
 
       def authorize_poa_check
-        raise Common::Exceptions::BadRequest.new(detail: 'invalid') if claimant_icn.blank?
+        monitoring = ar_monitoring(with_organization: true)
+        monitoring.track_count('ar.claims.form_upload.check_poa_status.attempt')
+
+        raise Common::Exceptions::RecordNotFound, 'invalid' if claimant_icn.blank?
 
         authorize(claimant_icn, policy_class: FormSubmissionPolicy)
-      rescue Common::Exceptions::BadRequest,
-             Common::Exceptions::RecordNotFound,
-             Pundit::NotAuthorizedError
+        monitoring.track_count('ar.claims.form_upload.check_poa_status.success')
+      rescue Pundit::NotAuthorizedError,
+             Common::Exceptions::RecordNotFound
+        monitoring = ar_monitoring(with_organization: true)
+        monitoring.track_count('ar.claims.form_upload.check_poa_status.unauthorized')
+        render json: {
+          status: 'failure',
+          error: 'Unable to verify claimant information'
+        }, status: :unprocessable_content
+      rescue
+        monitoring = ar_monitoring(with_organization: true)
+        monitoring.track_count('ar.claims.form_upload.check_poa_status.error')
         render json: {
           status: 'failure',
           error: 'Unable to verify claimant information'

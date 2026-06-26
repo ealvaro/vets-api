@@ -957,6 +957,8 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
       }
     end
 
+    let(:real_monitor) { double }
+
     before do
       allow_any_instance_of(Auth::ClientCredentials::Service)
         .to receive(:get_token).and_return('<TOKEN>')
@@ -965,6 +967,11 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
         .to receive(:get_icn)
         .with('Peter', 'Severino', '091541857', '1970-01-01')
         .and_return(icn)
+
+      allow(AccreditedRepresentativePortal::Monitoring)
+        .to receive(:new)
+        .and_return(real_monitor)
+      allow(real_monitor).to receive(:track_count)
     end
 
     context 'when claimant is not found' do
@@ -984,6 +991,13 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
                                         'error' => 'Unable to verify claimant information'
                                       })
       end
+
+      it 'registers an attempt and an unauthorized poa check' do
+        expect(real_monitor).to receive(:track_count).with('ar.unique_session.count')
+        expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.attempt')
+        expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.unauthorized')
+        post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+      end
     end
 
     context 'when claimant is found without matching POA' do
@@ -1001,6 +1015,13 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
                                         'status' => 'failure',
                                         'error' => 'Unable to verify claimant information'
                                       })
+      end
+
+      it 'registers an attempt and an unauthorized poa check' do
+        expect(real_monitor).to receive(:track_count).with('ar.unique_session.count')
+        expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.attempt')
+        expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.unauthorized')
+        post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
       end
     end
 
@@ -1020,6 +1041,13 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
         expect(parsed_response).to eq({
                                         'status' => 'success'
                                       })
+      end
+
+      it 'registers an attempt and an successful poa check' do
+        expect(real_monitor).to receive(:track_count).with('ar.unique_session.count')
+        expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.attempt')
+        expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.success')
+        post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
       end
     end
   end

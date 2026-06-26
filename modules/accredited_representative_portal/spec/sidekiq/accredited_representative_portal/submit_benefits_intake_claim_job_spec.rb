@@ -107,7 +107,7 @@ RSpec.describe AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob do
   end
 
   describe 'StatsD metrics' do
-    let(:form_id) { saved_claim.form_id }
+    let(:form_id) { saved_claim.proper_form_id }
 
     before do
       allow(StatsD).to receive(:increment)

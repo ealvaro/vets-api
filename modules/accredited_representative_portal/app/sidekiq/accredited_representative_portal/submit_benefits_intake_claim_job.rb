@@ -10,7 +10,7 @@ module AccreditedRepresentativePortal
       super
       StatsD.increment(SUCCESS_METRIC_SUBMIT, tags: success_metric_tags)
     rescue
-      StatsD.increment(ERROR_METRIC_SUBMIT, tags: ["form_id:#{@claim&.form_id}", 'reason:unknown_error'])
+      StatsD.increment(ERROR_METRIC_SUBMIT, tags: ["form_id:#{@claim&.proper_form_id}", 'reason:unknown_error'])
       raise
     end
 
@@ -31,7 +31,7 @@ module AccreditedRepresentativePortal
     #
     def init(saved_claim_id)
       @claim = ::SavedClaim.find(saved_claim_id)
-      StatsD.increment(ATTEMPT_METRIC_SUBMIT, tags: ["form_id:#{@claim.form_id}"])
+      StatsD.increment(ATTEMPT_METRIC_SUBMIT, tags: ["form_id:#{@claim.proper_form_id}"])
       @lighthouse_service = lighthouse_service
     end
 
@@ -119,7 +119,7 @@ module AccreditedRepresentativePortal
     private
 
     def success_metric_tags
-      tags = ["form_id:#{@claim.form_id}"]
+      tags = ["form_id:#{@claim.proper_form_id}"]
       tags << "bdd_status:#{bdd_status}" if @claim.form_id.include?('526EZ')
       tags
     end
