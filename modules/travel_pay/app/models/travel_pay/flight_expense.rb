@@ -25,7 +25,7 @@ module TravelPay
     # Extends base params with flight-specific fields
     #
     # @return [Array<Symbol>] list of permitted parameter names
-    def self.permitted_params
+    def self.permitted_params(_user = nil)
       super + %i[vendor_name trip_type departed_from arrived_to departure_date return_date]
     end
 

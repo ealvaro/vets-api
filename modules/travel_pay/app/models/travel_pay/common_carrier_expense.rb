@@ -20,7 +20,7 @@ module TravelPay
     # Extends base params with common carrier-specific fields
     #
     # @return [Array<Symbol>] list of permitted parameter names
-    def self.permitted_params
+    def self.permitted_params(_user = nil)
       super + %i[reason_not_using_pov carrier_type]
     end
 

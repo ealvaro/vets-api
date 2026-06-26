@@ -22,7 +22,7 @@ module TravelPay
     # Extends base params with lodging-specific fields
     #
     # @return [Array<Symbol>] list of permitted parameter names
-    def self.permitted_params
+    def self.permitted_params(_user = nil)
       super + %i[vendor check_in_date check_out_date]
     end
 

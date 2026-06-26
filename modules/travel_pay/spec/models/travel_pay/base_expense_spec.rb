@@ -450,6 +450,33 @@ RSpec.describe TravelPay::BaseExpense, type: :model do
       expect(params).to be_an(Array)
       expect(params).to all(be_a(Symbol))
     end
+
+    describe 'subclass compatibility' do
+      let(:user) { build(:user) }
+
+      # The controller calls permitted_params(@current_user) for all expense types.
+      # Every subclass must accept an optional user argument to match the base signature.
+      expense_classes = [
+        TravelPay::BaseExpense,
+        TravelPay::MealExpense,
+        TravelPay::MileageExpense,
+        TravelPay::LodgingExpense,
+        TravelPay::FlightExpense,
+        TravelPay::CommonCarrierExpense,
+        TravelPay::ParkingExpense,
+        TravelPay::TollExpense
+      ].freeze
+
+      expense_classes.each do |klass|
+        it "#{klass.name}.permitted_params accepts a user argument" do
+          expect { klass.permitted_params(user) }.not_to raise_error
+        end
+
+        it "#{klass.name}.permitted_params works without a user argument" do
+          expect { klass.permitted_params }.not_to raise_error
+        end
+      end
+    end
   end
 
   describe '#to_service_params' do
