@@ -11,7 +11,6 @@ module V0
     # and should NOT be applied to other providers.
     #
     # Transforms applied:
-    # - rename_rv1: Manual status override for RV1 tracked items
     # - suppress_evidence_requests: Filters certain evidence requests (feature-flagged)
     #
     # This pattern ensures future providers don't inherit Lighthouse-specific workarounds.
@@ -31,21 +30,7 @@ module V0
       private
 
       def apply_web_transforms(claim)
-        claim = rename_rv1(claim)
         claim = suppress_evidence_requests(claim) if Flipper.enabled?(:cst_suppress_evidence_requests_website)
-        claim
-      end
-
-      # Manual status override for certain tracked items
-      # See https://va.ghe.com/software/va.gov-team/issues/101447
-      # This should be removed when the items are re-categorized by BGS
-      # We are not doing this in the Lighthouse service because we want web and mobile to have
-      # separate rollouts and testing.
-      def rename_rv1(claim)
-        tracked_items = claim.dig('data', 'attributes', 'trackedItems')
-        tracked_items&.select { |i| i['displayName'] == 'RV1 - Reserve Records Request' }&.each do |i|
-          i['status'] = 'NEEDED_FROM_OTHERS'
-        end
         claim
       end
 

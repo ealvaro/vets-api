@@ -46,40 +46,6 @@ RSpec.describe V0::LighthouseClaims::Proxy do
       expect(provider).to have_received(:get_claim).with(claim_id)
     end
 
-    describe 'rename_rv1 transform' do
-      it 'changes RV1 tracked item status to NEEDED_FROM_OTHERS' do
-        claim_with_rv1 = {
-          'data' => {
-            'id' => claim_id,
-            'attributes' => {
-              'trackedItems' => [
-                { 'id' => 1, 'displayName' => 'RV1 - Reserve Records Request', 'status' => 'NEEDED_FROM_YOU' },
-                { 'id' => 2, 'displayName' => 'Other Item', 'status' => 'NEEDED_FROM_YOU' }
-              ]
-            }
-          }
-        }
-        allow(provider).to receive(:get_claim).with(claim_id).and_return(claim_with_rv1)
-
-        result = proxy.get_claim(claim_id)
-
-        rv1_item = result['data']['attributes']['trackedItems'].find do |i|
-          i['displayName'] == 'RV1 - Reserve Records Request'
-        end
-        other_item = result['data']['attributes']['trackedItems'].find { |i| i['displayName'] == 'Other Item' }
-
-        expect(rv1_item['status']).to eq('NEEDED_FROM_OTHERS')
-        expect(other_item['status']).to eq('NEEDED_FROM_YOU') # unchanged
-      end
-
-      it 'handles claims without tracked items' do
-        claim_without_tracked_items = { 'data' => { 'id' => claim_id, 'attributes' => {} } }
-        allow(provider).to receive(:get_claim).with(claim_id).and_return(claim_without_tracked_items)
-
-        expect { proxy.get_claim(claim_id) }.not_to raise_error
-      end
-    end
-
     describe 'suppress_evidence_requests transform' do
       let(:claim_with_suppressed_items) do
         {

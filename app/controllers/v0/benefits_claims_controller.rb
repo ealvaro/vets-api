@@ -188,7 +188,6 @@ module V0
 
     def get_legacy_claim(claim_id)
       legacy_claim = service.get_claim(claim_id)
-      legacy_claim = rename_rv1(legacy_claim)
       if Flipper.enabled?(:cst_suppress_evidence_requests_website)
         legacy_claim = suppress_evidence_requests(legacy_claim)
       end
@@ -380,14 +379,6 @@ module V0
                               tracked_item_type: ti['displayName'],
                               tracked_item_status: ti['status'] })
       end
-    end
-
-    def rename_rv1(claim)
-      tracked_items = claim.dig('data', 'attributes', 'trackedItems')
-      tracked_items&.select { |i| i['displayName'] == 'RV1 - Reserve Records Request' }&.each do |i|
-        i['status'] = 'NEEDED_FROM_OTHERS'
-      end
-      claim
     end
 
     def suppress_evidence_requests(claim)

@@ -749,10 +749,6 @@ features:
     actor_type: user
     description: When enabled, CST does not show Attorney Fees, Secondary Action Required, or Stage 2 Development on mobile
     enable_in_development: false
-  cst_override_reserve_records_mobile:
-    actor_type: user
-    description: When enabled, CST overrides RV1 - Reserve Records Request tracked items to be NEEDED_FROM_OTHERS on mobile app
-    enable_in_development: true
   cst_intents_to_file:
     actor_type: user
     description: Gates the intents to file endpoint and frontend functionality for retrieving all ITFs from Lighthouse Benefits Claims API v2.

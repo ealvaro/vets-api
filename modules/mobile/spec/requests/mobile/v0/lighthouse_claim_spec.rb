@@ -26,7 +26,6 @@ RSpec.describe 'Mobile::V0::Claim', type: :request do
         allow(Flipper).to receive(:enabled?).and_call_original
         allow(Flipper).to receive(:enabled?).with(:cst_multi_claim_provider_mobile, anything).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:cst_suppress_evidence_requests_mobile).and_return(false)
-        allow(Flipper).to receive(:enabled?).with(:cst_override_reserve_records_mobile).and_return(false)
         allow(Flipper).to receive(:enabled?)
           .with(:efolder_use_lighthouse_benefits_documents_service, anything)
           .and_return(false)
@@ -70,34 +69,15 @@ RSpec.describe 'Mobile::V0::Claim', type: :request do
         expect(download_eligible_documents[0]['filename'].strip).to eq('7B434B58-477C-4379-816F-05E6D3A10487.pdf')
       end
 
-      context 'when cst_override_reserve_records_mobile flipper is enabled' do
-        before do
-          allow(Flipper).to receive(:enabled?).with(:cst_override_reserve_records_mobile).and_return(true)
+      it 'overrides the RV1 tracked item status to NEEDED_FROM_OTHERS', run_at: 'Wed, 13 Dec 2017 03:28:23 GMT' do
+        VCR.use_cassette('mobile/lighthouse_claims/show/200_response') do
+          get '/mobile/v0/claim/600117255', headers: sis_headers
         end
-
-        it 'overrides the tracked item status to NEEDED_FROM_OTHERS', run_at: 'Wed, 13 Dec 2017 03:28:23 GMT' do
-          VCR.use_cassette('mobile/lighthouse_claims/show/200_response') do
-            get '/mobile/v0/claim/600117255', headers: sis_headers
-          end
-          tracked_item = response.parsed_body.dig('data', 'attributes', 'eventsTimeline').select do |event|
-            event['trackedItemId'] == 360_057
-          end.first
-          expect(tracked_item['displayName']).to eq('RV1 - Reserve Records Request')
-          expect(tracked_item['type']).to eq('still_need_from_others_list')
-        end
-      end
-
-      context 'when cst_override_reserve_records_mobile flipper is disabled' do
-        it 'leaves the tracked item status as NEEDED_FROM_YOU', run_at: 'Wed, 13 Dec 2017 03:28:23 GMT' do
-          VCR.use_cassette('mobile/lighthouse_claims/show/200_response') do
-            get '/mobile/v0/claim/600117255', headers: sis_headers
-          end
-          tracked_item = response.parsed_body.dig('data', 'attributes', 'eventsTimeline').select do |event|
-            event['trackedItemId'] == 360_057
-          end.first
-          expect(tracked_item['displayName']).to eq('RV1 - Reserve Records Request')
-          expect(tracked_item['type']).to eq('still_need_from_you_list')
-        end
+        tracked_item = response.parsed_body.dig('data', 'attributes', 'eventsTimeline').select do |event|
+          event['trackedItemId'] == 360_057
+        end.first
+        expect(tracked_item['displayName']).to eq('RV1 - Reserve Records Request')
+        expect(tracked_item['type']).to eq('still_need_from_others_list')
       end
 
       context 'when tracked item content overrides are available' do

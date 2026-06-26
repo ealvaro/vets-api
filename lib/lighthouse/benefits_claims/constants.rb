@@ -39,6 +39,7 @@ module BenefitsClaims
       'PMR Pending',
       'Prison Development - 21-4193 Needed',
       'Proof of service (DD214, etc.)',
+      'RV1 - Reserve Records Request',
       'VHA Outpatient Treatment Records (10-7131)'
     ].freeze
   end
