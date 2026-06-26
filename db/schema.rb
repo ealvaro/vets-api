@@ -557,6 +557,12 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_25_191713) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "needs_kms_rotation", default: false, null: false
+    t.text "change_log_ciphertext"
+    t.string "cave_document_id"
+    t.string "kvpid"
+    t.string "idp_user_id"
+    t.datetime "delete_date"
+    t.index ["delete_date"], name: "index_cave_submissions_on_delete_date"
     t.index ["saved_claim_id"], name: "index_cave_submissions_on_saved_claim_id"
   end
 
