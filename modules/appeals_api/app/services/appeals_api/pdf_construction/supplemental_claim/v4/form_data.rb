@@ -55,6 +55,8 @@ module AppealsApi
 
           LONG_SIGNATURE_THRESHOLD = 70
           LONG_EMAIL_THRESHOLD = 120
+          # ~202 chars fit in the Prawn PDF field; 200 is a conservative round-number cutoff
+          LONG_EVIDENCE_LOCATION_THRESHOLD = 200
           MAX_SIGNATURE_LENGTH = 180
 
           def initialize(supplemental_claim)
@@ -321,6 +323,12 @@ module AppealsApi
 
           def veteran_long_email?
             veteran_email.length > LONG_EMAIL_THRESHOLD
+          end
+
+          def long_evidence_location?
+            new_evidence_locations
+              .take(Structure::MAX_EVIDENCE_LOCATIONS_ON_MAIN_FORM)
+              .any? { |loc| loc.length > LONG_EVIDENCE_LOCATION_THRESHOLD }
           end
 
           def veteran_claimant_rep_signature

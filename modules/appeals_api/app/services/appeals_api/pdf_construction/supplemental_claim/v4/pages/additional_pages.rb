@@ -62,12 +62,17 @@ module AppealsApi
             end
 
             def extra_locations_dates_table_data
-              locations = form_data.new_evidence_locations.drop(Structure::MAX_EVIDENCE_LOCATIONS_ON_MAIN_FORM)
-              dates = form_data.new_evidence_dates.drop(Structure::MAX_EVIDENCE_LOCATIONS_ON_MAIN_FORM)
-              no_dates = form_data.new_evidence_no_dates.drop(Structure::MAX_EVIDENCE_LOCATIONS_ON_MAIN_FORM)
+              locations = form_data.new_evidence_locations
+              dates = form_data.new_evidence_dates
+              no_dates = form_data.new_evidence_no_dates
 
-              data = locations.each_with_index.map do |location, i|
-                [location, dates[i].join(', '), no_dates[i]]
+              overflow_indices = locations.each_index.select do |i|
+                i >= Structure::MAX_EVIDENCE_LOCATIONS_ON_MAIN_FORM ||
+                  locations[i].length > FormData::LONG_EVIDENCE_LOCATION_THRESHOLD
+              end
+
+              data = overflow_indices.map do |i|
+                [locations[i], dates[i].join(', '), no_dates[i]]
               end
 
               data.unshift(['A. Name and Location', 'B. Date(s) of Records', "Don't have date"]) unless data.empty?

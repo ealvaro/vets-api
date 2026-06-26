@@ -58,7 +58,8 @@ module AppealsApi
           end
 
           def additional_pages?
-            additional_issues? || additional_evidence_locations? || form_data.long_signature?
+            additional_issues? || additional_evidence_locations? ||
+              form_data.long_signature? || form_data.long_evidence_location?
           end
 
           def add_additional_pages
@@ -114,8 +115,13 @@ module AppealsApi
           def fill_evidence_name_location_text(pdf)
             form_data.new_evidence_locations.take(MAX_EVIDENCE_LOCATIONS_ON_MAIN_FORM).each_with_index do |location, i|
               text_opts = DEFAULT_TEXT_OPTIONS.merge(form_fields.boxes[:new_evidence_locations][i])
+              display_text = if location.length > FormData::LONG_EVIDENCE_LOCATION_THRESHOLD
+                               'See attached page for name and location'
+                             else
+                               location
+                             end
               whiteout pdf, **text_opts
-              pdf.text_box(location, DEFAULT_TEXT_OPTIONS.merge(form_fields.boxes[:new_evidence_locations][i]))
+              pdf.text_box(display_text, text_opts)
             end
           end
 
