@@ -627,10 +627,6 @@ features:
     actor_type: user
     description: Enables users to access the claim letters page
     enable_in_development: true
-  claim_or_appeal_card_enabled:
-    actor_type: user
-    description: When enabled, renders Claims Status Tool list items through the shared ClaimOrAppealCard component
-    enable_in_development: true
   claims_api_flash_updater_uses_local_bgs:
     actor_type: user
     description: Enables flash updater to use local_bgs
@@ -697,6 +693,10 @@ features:
   cst_claim_letters_download_refactor:
     actor_type: user
     description: When enabled, refactors the claim letters download feature to use onClick behavior rather than direct navigation.
+    enable_in_development: true
+  cst_claim_or_appeal_card:
+    actor_type: user
+    description: When enabled, renders Claims Status Tool list items through the shared ClaimOrAppealCard component
     enable_in_development: true
   cst_claim_phases:
     actor_type: user
@@ -2382,6 +2382,10 @@ features:
   pw_ehr_cta_use_slo:
     actor_type: user
     description: Use single-logout (SLO) paths for Public Websites-managed EHR CTAs
+  my_va_claim_or_appeal_card:
+    actor_type: user
+    description: When enabled, renders the MyVA highlighted claim or appeal through the shared ClaimOrAppealCard component
+    enable_in_development: true
   my_va_experimental:
     actor_type: user
     description: Use for experimental features for My VA application (general)
