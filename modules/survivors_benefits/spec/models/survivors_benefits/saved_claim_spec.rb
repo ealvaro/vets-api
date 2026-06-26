@@ -108,9 +108,40 @@ RSpec.describe SurvivorsBenefits::SavedClaim do
   end
 
   describe '#to_ibm' do
+    context 'when the 2025 flag is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:survivors_benefits_form_2025_version_enabled).and_return(false)
+      end
+
+      it 'uses V2022::StructuredDataService' do
+        expect(SurvivorsBenefits::StructuredData::V2022::StructuredDataService)
+          .to receive(:new).with(instance.parsed_form).and_call_original
+        instance.to_ibm
+      end
+    end
+
+    context 'when the 2025 flag is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:survivors_benefits_form_2025_version_enabled).and_return(true)
+      end
+
+      it 'uses V2025::StructuredDataService' do
+        expect(SurvivorsBenefits::StructuredData::V2025::StructuredDataService)
+          .to receive(:new).with(instance.parsed_form).and_call_original
+        instance.to_ibm
+      end
+    end
+
     context 'when building structured data raises an error' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:survivors_benefits_form_2025_version_enabled).and_return(false)
+      end
+
       it 'logs an error and returns nil' do
-        allow(SurvivorsBenefits::StructuredData::StructuredDataService)
+        allow(SurvivorsBenefits::StructuredData::V2022::StructuredDataService)
           .to receive(:new).and_raise(StandardError.new('Structured data error'))
         expect(Rails.logger).to receive(:error)
           .with('Error building structured data for IBM submission: Structured data error')

@@ -177,8 +177,12 @@ module SurvivorsBenefits
     # Converts the form_data into json that can be read by the IBM - GOVCIO mms connection
     #
     def to_ibm
-      structured_data_service = SurvivorsBenefits::StructuredData::StructuredDataService.new(parsed_form)
-      structured_data_service.build_structured_data
+      service_class = if Flipper.enabled?(:survivors_benefits_form_2025_version_enabled)
+                        SurvivorsBenefits::StructuredData::V2025::StructuredDataService
+                      else
+                        SurvivorsBenefits::StructuredData::V2022::StructuredDataService
+                      end
+      service_class.new(parsed_form).build_structured_data
     rescue => e
       Rails.logger.error("Error building structured data for IBM submission: #{e.message}")
       nil
