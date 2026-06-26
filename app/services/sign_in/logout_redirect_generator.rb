@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'sign_in/logingov/service'
-require 'public_suffix'
 
 module SignIn
   class LogoutRedirectGenerator
@@ -26,11 +25,7 @@ module SignIn
     private
 
     def redirect_uri
-      @redirect_uri ||= if valid_post_logout_redirect_uri?
-                          logout_redirect_uri_with_post_logout
-                        else
-                          logout_redirect_uri
-                        end
+      @redirect_uri ||= valid_post_logout_redirect_uri? ? post_logout_redirect_uri : logout_redirect_uri
     end
 
     def logout_redirect_uri
@@ -40,33 +35,19 @@ module SignIn
     def valid_post_logout_redirect_uri?
       return false if post_logout_redirect_uri.blank? || logout_redirect_uri.blank?
 
-      requested_host = uri_host(post_logout_redirect_uri)
-      configured_host = uri_host(logout_redirect_uri)
-      return false if requested_host.blank? || configured_host.blank?
-      return true if requested_host == configured_host
-
-      requested_domain = domain(requested_host)
-      requested_domain.present? && requested_domain == domain(configured_host)
+      same_redirect_base?(post_logout_redirect_uri, logout_redirect_uri)
     end
 
-    def uri_host(uri)
-      URI.parse(uri).host
+    def same_redirect_base?(requested, registered)
+      requested_uri = URI.parse(requested)
+      registered_uri = URI.parse(registered)
+
+      requested_uri.scheme == registered_uri.scheme &&
+        requested_uri.host == registered_uri.host &&
+        requested_uri.port == registered_uri.port &&
+        requested_uri.path == registered_uri.path
     rescue URI::InvalidURIError
-      nil
-    end
-
-    def domain(host)
-      PublicSuffix.domain(host)
-    rescue PublicSuffix::Error
-      nil
-    end
-
-    def logout_redirect_uri_with_post_logout
-      return logout_redirect_uri if post_logout_redirect_uri.blank?
-
-      uri = URI.parse(logout_redirect_uri)
-      uri.query = { post_logout_redirect_uri: }.to_query
-      uri.to_s
+      false
     end
 
     def authenticated_with_logingov?

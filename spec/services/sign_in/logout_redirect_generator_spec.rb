@@ -79,21 +79,16 @@ RSpec.describe SignIn::LogoutRedirectGenerator do
       end
 
       context 'when a post_logout_redirect_uri is provided' do
-        let(:logout_redirect_uri) { 'https://login-stg.va.gov/logout' }
+        let(:logout_redirect_uri) { 'https://login-stg.va.gov/login/signout' }
 
-        context 'and it shares the domain of the configured logout redirect uri' do
-          let(:post_logout_redirect_uri) { 'https://some-site.va.gov/' }
-          let(:logout_redirect_uri_with_param) do
-            uri = URI.parse(logout_redirect_uri)
-            uri.query = { 'post_logout_redirect_uri' => post_logout_redirect_uri }.to_query
-            uri.to_s
-          end
+        context 'and its base matches the configured logout redirect uri' do
+          let(:post_logout_redirect_uri) { 'https://login-stg.va.gov/login/signout?fromURI=some-from-uri' }
 
           context 'and the user is not authenticated with the login.gov credential' do
             let(:credential_type) { 'idme' }
 
-            it 'attaches the post_logout_redirect_uri to the configured logout uri' do
-              expect(subject).to eq(logout_redirect_uri_with_param)
+            it 'redirects to the post_logout_redirect_uri, preserving its query' do
+              expect(subject).to eq(post_logout_redirect_uri)
             end
           end
 
@@ -106,7 +101,7 @@ RSpec.describe SignIn::LogoutRedirectGenerator do
             let(:logout_state_payload) do
               {
                 client_id: client_config.client_id,
-                logout_redirect: logout_redirect_uri_with_param,
+                logout_redirect: post_logout_redirect_uri,
                 seed: random_seed
               }
             end
@@ -127,13 +122,23 @@ RSpec.describe SignIn::LogoutRedirectGenerator do
               allow_any_instance_of(SignIn::Logingov::Configuration).to receive(:ssl_key).and_return(ssl_key)
             end
 
-            it 'wraps the attached uri in the login.gov logout redirect' do
+            it 'wraps the post_logout_redirect_uri in the login.gov logout redirect' do
               expect(subject).to eq(expected_url)
             end
           end
         end
 
-        context 'and it is on a different domain than the configured logout redirect uri' do
+        context 'and its path differs from the configured logout redirect uri' do
+          let(:credential_type) { 'idme' }
+          let(:post_logout_redirect_uri) { 'https://login-stg.va.gov/some-other-path' }
+          let(:expected_url) { URI.parse(logout_redirect_uri).to_s }
+
+          it 'drops the param and returns the configured logout redirect uri' do
+            expect(subject).to eq(expected_url)
+          end
+        end
+
+        context 'and it is on a different host than the configured logout redirect uri' do
           let(:credential_type) { 'idme' }
           let(:post_logout_redirect_uri) { 'https://malicious.example.com/login/signout' }
           let(:expected_url) { URI.parse(logout_redirect_uri).to_s }

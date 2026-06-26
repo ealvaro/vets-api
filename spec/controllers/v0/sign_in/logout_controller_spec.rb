@@ -211,18 +211,13 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
 
       context 'and a post_logout_redirect_uri param is provided' do
         let(:logout_params) { { client_id: client_id_value, post_logout_redirect_uri: } }
-        let(:logout_redirect_uri) { 'https://login-stg.va.gov/logout' }
+        let(:logout_redirect_uri) { 'https://login-stg.va.gov/login/signout' }
 
-        context 'and it shares the domain of the configured logout redirect uri' do
-          let(:post_logout_redirect_uri) { 'https://some-site.va.gov/' }
-          let(:expected_redirect_uri) do
-            uri = URI.parse(logout_redirect_uri)
-            uri.query = { 'post_logout_redirect_uri' => post_logout_redirect_uri }.to_query
-            uri.to_s
-          end
+        context 'and its base matches the configured logout redirect uri' do
+          let(:post_logout_redirect_uri) { 'https://login-stg.va.gov/login/signout?fromURI=some-from-uri' }
 
-          it 'redirects with the post_logout_redirect_uri attached' do
-            expect(subject).to redirect_to(expected_redirect_uri)
+          it 'redirects to the post_logout_redirect_uri, preserving its query' do
+            expect(subject).to redirect_to(post_logout_redirect_uri)
           end
 
           it 'logs the post_logout_redirect_uri' do
@@ -232,7 +227,7 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
           end
         end
 
-        context 'and it is on a different domain than the configured logout redirect uri' do
+        context 'and it is on a different host than the configured logout redirect uri' do
           let(:post_logout_redirect_uri) { 'https://malicious.example.com/login/signout' }
 
           it 'redirects to the configured logout redirect uri' do

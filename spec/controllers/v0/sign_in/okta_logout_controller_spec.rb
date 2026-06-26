@@ -78,19 +78,14 @@ RSpec.describe V0::SignIn::OktaLogoutController, type: :controller do
         end
       end
 
-      context 'and a same domain post_logout_redirect_uri param is provided' do
+      context 'and a post_logout_redirect_uri param matching the configured base is provided' do
         subject { get(:logout, params: { post_logout_redirect_uri: }) }
 
-        let(:logout_redirect_uri) { 'https://login-stg.va.gov/logout' }
-        let(:post_logout_redirect_uri) { 'https://some-site.va.gov/' }
-        let(:expected_redirect_uri) do
-          uri = URI.parse(logout_redirect_uri)
-          uri.query = { 'post_logout_redirect_uri' => post_logout_redirect_uri }.to_query
-          uri.to_s
-        end
+        let(:logout_redirect_uri) { 'https://login-stg.va.gov/login/signout' }
+        let(:post_logout_redirect_uri) { 'https://login-stg.va.gov/login/signout?fromURI=some-from-uri' }
 
-        it 'redirects with the post_logout_redirect_uri attached' do
-          expect(subject).to redirect_to(expected_redirect_uri)
+        it 'redirects to the post_logout_redirect_uri, preserving its query' do
+          expect(subject).to redirect_to(post_logout_redirect_uri)
         end
       end
     end

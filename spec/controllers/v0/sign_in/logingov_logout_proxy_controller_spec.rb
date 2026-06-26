@@ -101,7 +101,7 @@ RSpec.describe V0::SignIn::LogingovLogoutProxyController, type: :controller do
 
       context 'and the state has a post_logout_redirect_uri' do
         let(:logout_redirect_uri) { 'https://login-stg.va.gov/oauth2/v1/logout' }
-        let(:post_logout_redirect_uri) { 'https://some-site.va.gov/' }
+        let(:post_logout_redirect_uri) { 'https://login-stg.va.gov/oauth2/v1/logout?fromURI=some-from-uri' }
         let(:logingov_logout_url) do
           SignIn::LogoutRedirectGenerator.new(
             client_config:,
@@ -111,9 +111,9 @@ RSpec.describe V0::SignIn::LogingovLogoutProxyController, type: :controller do
         end
         let(:state_value) { Rack::Utils.parse_query(URI.parse(logingov_logout_url).query)['state'] }
 
-        it 'renders the attached post_logout_redirect_uri' do
+        it 'renders the post_logout_redirect_uri with its query preserved' do
           expect(subject).to have_http_status(:ok)
-          expect(subject.body).to include('post_logout_redirect_uri')
+          expect(subject.body).to include('fromURI')
         end
       end
     end
