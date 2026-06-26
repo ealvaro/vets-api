@@ -38,7 +38,8 @@ RSpec.describe V0::SignIn::OktaLogoutController, type: :controller do
           user_uuid: access_token_object.user_uuid,
           session_handle: access_token_object.session_handle,
           client_id: access_token_object.client_id,
-          session_duration: Time.zone.now.to_i - oauth_session.created_at.to_i
+          session_duration: Time.zone.now.to_i - oauth_session.created_at.to_i,
+          post_logout_redirect_uri: nil
         }
       end
 
@@ -74,6 +75,22 @@ RSpec.describe V0::SignIn::OktaLogoutController, type: :controller do
 
         it 'returns ok status' do
           expect(subject).to have_http_status(:ok)
+        end
+      end
+
+      context 'and a same domain post_logout_redirect_uri param is provided' do
+        subject { get(:logout, params: { post_logout_redirect_uri: }) }
+
+        let(:logout_redirect_uri) { 'https://login-stg.va.gov/logout' }
+        let(:post_logout_redirect_uri) { 'https://some-site.va.gov/' }
+        let(:expected_redirect_uri) do
+          uri = URI.parse(logout_redirect_uri)
+          uri.query = { 'post_logout_redirect_uri' => post_logout_redirect_uri }.to_query
+          uri.to_s
+        end
+
+        it 'redirects with the post_logout_redirect_uri attached' do
+          expect(subject).to redirect_to(expected_redirect_uri)
         end
       end
     end

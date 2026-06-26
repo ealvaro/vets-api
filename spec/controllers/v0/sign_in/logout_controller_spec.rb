@@ -13,6 +13,7 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
     let(:client_id_value) { client_config.client_id }
     let!(:client_config) { create(:client_config, logout_redirect_uri:) }
     let(:logout_redirect_uri) { 'some-logout-redirect-uri' }
+    let(:post_logout_redirect_uri) { nil }
     let(:access_token) { SignIn::AccessTokenJwtEncoder.new(access_token: access_token_object).perform }
     let(:authorization) { "Bearer #{access_token}" }
     let(:created_at) { 1.day.ago }
@@ -31,7 +32,9 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
     shared_context 'error response' do
       let(:statsd_failure) { SignIn::Constants::Statsd::STATSD_SIS_LOGOUT_FAILURE }
       let(:expected_error_log) { '[SignInService] [V0::SignInController] logout error' }
-      let(:expected_error_context) { { errors: expected_error_message, error_code:, client_id: client_id_value } }
+      let(:expected_error_context) do
+        { errors: expected_error_message, error_code:, client_id: client_id_value, post_logout_redirect_uri: }
+      end
       let(:expected_error_status) { :bad_request }
       let(:expected_error_json) { { 'errors' => expected_error_message } }
       let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
@@ -57,7 +60,9 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
     shared_context 'authorization error response' do
       let(:statsd_failure) { SignIn::Constants::Statsd::STATSD_SIS_LOGOUT_FAILURE }
       let(:expected_error_log) { '[SignInService] [V0::SignInController] logout error' }
-      let(:expected_error_context) { { errors: expected_error_message, error_code:, client_id: client_id_value } }
+      let(:expected_error_context) do
+        { errors: expected_error_message, error_code:, client_id: client_id_value, post_logout_redirect_uri: }
+      end
       let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
 
       it 'triggers statsd increment for failed call' do
@@ -102,7 +107,8 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
           user_uuid: access_token_object.user_uuid,
           session_handle: access_token_object.session_handle,
           client_id: access_token_object.client_id,
-          session_duration: expected_session_duration
+          session_duration: expected_session_duration,
+          post_logout_redirect_uri:
         }
       end
       let(:expected_status) { :redirect }
@@ -203,6 +209,44 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
         end
       end
 
+      context 'and a post_logout_redirect_uri param is provided' do
+        let(:logout_params) { { client_id: client_id_value, post_logout_redirect_uri: } }
+        let(:logout_redirect_uri) { 'https://login-stg.va.gov/logout' }
+
+        context 'and it shares the domain of the configured logout redirect uri' do
+          let(:post_logout_redirect_uri) { 'https://some-site.va.gov/' }
+          let(:expected_redirect_uri) do
+            uri = URI.parse(logout_redirect_uri)
+            uri.query = { 'post_logout_redirect_uri' => post_logout_redirect_uri }.to_query
+            uri.to_s
+          end
+
+          it 'redirects with the post_logout_redirect_uri attached' do
+            expect(subject).to redirect_to(expected_redirect_uri)
+          end
+
+          it 'logs the post_logout_redirect_uri' do
+            expect(Rails.logger).to receive(:info)
+              .with(expected_log, hash_including(client_id: client_id_value, post_logout_redirect_uri:))
+            subject
+          end
+        end
+
+        context 'and it is on a different domain than the configured logout redirect uri' do
+          let(:post_logout_redirect_uri) { 'https://malicious.example.com/login/signout' }
+
+          it 'redirects to the configured logout redirect uri' do
+            expect(subject).to redirect_to(logout_redirect_uri)
+          end
+
+          it 'still logs the requested post_logout_redirect_uri' do
+            expect(Rails.logger).to receive(:info)
+              .with(expected_log, hash_including(client_id: client_id_value, post_logout_redirect_uri:))
+            subject
+          end
+        end
+      end
+
       context 'and no session is found matching the access token session_handle' do
         let(:expected_error) { SignIn::Errors::SessionNotFoundError }
         let(:expected_error_message) { 'Session not found' }
@@ -228,7 +272,7 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
         it 'logs a logout error' do
           expect(Rails.logger).to receive(:info).with('[SignInService] [V0::SignInController] logout error',
                                                       { errors: expected_error, error_code:,
-                                                        client_id: client_id_value })
+                                                        client_id: client_id_value, post_logout_redirect_uri: })
           subject
         end
 

@@ -23,11 +23,24 @@ module V0
 
       private
 
-      def validate_logout_redirect_uri!(client_id, uri)
-        config = client_config(client_id)
-        if config.blank? || config.logout_redirect_uri != uri
+      def validate_logout_redirect_uri!(client_id, logout_redirect)
+        registered_uri = client_config(client_id)&.logout_redirect_uri
+
+        if registered_uri.blank? || !same_logout_redirect_base?(logout_redirect, registered_uri)
           raise ::SignIn::Errors::InvalidLogoutRedirectUriError.new message: 'Logout redirect URI is not registered'
         end
+      end
+
+      def same_logout_redirect_base?(logout_redirect, registered_uri)
+        actual   = URI.parse(logout_redirect.to_s)
+        expected = URI.parse(registered_uri.to_s)
+
+        actual.scheme == expected.scheme &&
+          actual.host == expected.host &&
+          actual.port == expected.port &&
+          actual.path == expected.path
+      rescue URI::InvalidURIError
+        false
       end
     end
   end

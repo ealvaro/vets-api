@@ -24,6 +24,7 @@ module V0
 
         context = {
           client_id: @access_token.client_id,
+          post_logout_redirect_uri:,
           session_duration: Time.zone.now.to_i - session.created_at.to_i,
           user_uuid: @access_token.user_uuid,
           session_handle: @access_token.session_handle
@@ -33,7 +34,8 @@ module V0
 
         logout_redirect = ::SignIn::LogoutRedirectGenerator.new(
           credential_type: session.user_verification.credential_type,
-          client_config: client_config(client_id)
+          client_config: client_config(client_id),
+          post_logout_redirect_uri:
         ).perform
 
         logout_redirect ? redirect_to(logout_redirect) : render(status: :ok)
@@ -41,7 +43,9 @@ module V0
              ::SignIn::Errors::SessionNotAuthorizedError,
              ::SignIn::Errors::SessionNotFoundError => e
         log_logout_error(e)
-        logout_redirect = ::SignIn::LogoutRedirectGenerator.new(client_config: client_config(client_id)).perform
+
+        logout_redirect = ::SignIn::LogoutRedirectGenerator.new(client_config: client_config(client_id),
+                                                                post_logout_redirect_uri:).perform
 
         logout_redirect ? redirect_to(logout_redirect) : render(status: :ok)
       rescue => e
@@ -53,6 +57,10 @@ module V0
 
       def client_id
         @client_id ||= params[:client_id].presence
+      end
+
+      def post_logout_redirect_uri
+        @post_logout_redirect_uri ||= params[:post_logout_redirect_uri].presence
       end
 
       def logout_event
@@ -68,7 +76,8 @@ module V0
       end
 
       def log_logout_error(error)
-        sign_in_logger.error("#{logout_event} error", exception: error, context: { client_id: })
+        context = { client_id:, post_logout_redirect_uri: }
+        sign_in_logger.error("#{logout_event} error", exception: error, context:)
         StatsD.increment(logout_failure_statsd_key)
       end
     end

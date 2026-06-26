@@ -61,17 +61,37 @@ RSpec.describe V0::SignIn::LogingovLogoutProxyController, type: :controller do
         allow_any_instance_of(SignIn::Logingov::Configuration).to receive(:ssl_key).and_return(ssl_key)
       end
 
-      context 'when state matches the registered client config exactly' do
+      context 'and the state is a valid signed token' do
         it 'returns ok status' do
           expect(subject).to have_http_status(:ok)
         end
 
-        it 'renders expected logout redirect uri in template' do
-          expect(subject.body).to match(logout_redirect_uri)
+        it 'renders the logout redirect uri from the state in the template' do
+          expect(subject.body).to include(logout_redirect_uri)
         end
       end
 
-      context 'when client_id does not match any client config' do
+      context 'and the state cannot be decoded' do
+        let(:state_value) { 'not-a-valid-jwt' }
+
+        it 'returns bad request status' do
+          expect(subject).to have_http_status(:bad_request)
+        end
+      end
+
+      context 'and the logout_redirect does not match the registered client redirect uri' do
+        let(:state_logout_redirect_uri) { 'https://attacker.example.com/logout' }
+
+        it 'returns bad request status' do
+          expect(subject).to have_http_status(:bad_request)
+        end
+
+        it 'does not render the unregistered redirect uri' do
+          expect(subject.body).not_to include('attacker.example.com')
+        end
+      end
+
+      context 'and the state references a client_id with no configuration' do
         let(:state_client_id) { 'unregistered-client-id' }
 
         it 'returns bad request status' do
@@ -79,11 +99,21 @@ RSpec.describe V0::SignIn::LogingovLogoutProxyController, type: :controller do
         end
       end
 
-      context "when logout_redirect does not match the client config's registered uri" do
-        let(:state_logout_redirect_uri) { 'https://different-uri.example.com/logout' }
+      context 'and the state has a post_logout_redirect_uri' do
+        let(:logout_redirect_uri) { 'https://login-stg.va.gov/oauth2/v1/logout' }
+        let(:post_logout_redirect_uri) { 'https://some-site.va.gov/' }
+        let(:logingov_logout_url) do
+          SignIn::LogoutRedirectGenerator.new(
+            client_config:,
+            credential_type: SignIn::Constants::Auth::LOGINGOV,
+            post_logout_redirect_uri:
+          ).perform
+        end
+        let(:state_value) { Rack::Utils.parse_query(URI.parse(logingov_logout_url).query)['state'] }
 
-        it 'returns bad request status' do
-          expect(subject).to have_http_status(:bad_request)
+        it 'renders the attached post_logout_redirect_uri' do
+          expect(subject).to have_http_status(:ok)
+          expect(subject.body).to include('post_logout_redirect_uri')
         end
       end
     end
