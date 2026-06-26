@@ -234,6 +234,14 @@ features:
     actor_type: user
     description: Enables enhancements to the Chapter 36 form 25-8832
     enable_in_development: true
+  decision_review_form_21_4138_validation_logs:
+    actor_type: user
+    description: Enables data validation logging for form 21-4138.
+    enable_in_development: false
+  decision_review_form_21_4138_visibility_logs:
+    actor_type: user
+    description: Enables low-risk event path visibility logging for form 21-4138.
+    enable_in_development: false
   disability_526_document_validation_enabled:
     actor_type: user
     description: If enabled, the Form 21-526EZ upload endpoint will attempt to validate the uploaded document against the provided expected form type.
