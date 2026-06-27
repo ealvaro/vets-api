@@ -122,7 +122,7 @@ module SignIn
 
         if type == :ssn
           error_code = Constants::ErrorCode::SSN_ATTRIBUTE_MISMATCH
-          unlink_mismatched_credential unless Settings.vsp_environment == 'production'
+          log_skipped_mpi_unlink
         else
           error_code = Constants::ErrorCode::GENERIC_EXTERNAL_ISSUE
         end
@@ -141,6 +141,16 @@ module SignIn
                                     when Constants::Auth::LOGINGOV then [logingov_uuid, MPI::Constants::LOGINGOV_UUID]
                                     end
       mpi_service.unlink_profile_identifier(icn: verified_icn, identifier:, identifier_type:)
+    end
+
+    def log_skipped_mpi_unlink
+      identifier, identifier_type = case service_name
+                                    when Constants::Auth::MHV      then [mhv_credential_uuid, MPI::Constants::MHV_UUID]
+                                    when Constants::Auth::IDME     then [idme_uuid, MPI::Constants::IDME_UUID]
+                                    when Constants::Auth::LOGINGOV then [logingov_uuid, MPI::Constants::LOGINGOV_UUID]
+                                    end
+      sign_in_logger.info('attribute validator mpi unlink skipped',
+                          icn: verified_icn, identifier:, identifier_type:)
     end
 
     def scrub_attribute(attribute)

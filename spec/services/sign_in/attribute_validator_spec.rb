@@ -318,32 +318,18 @@ RSpec.describe SignIn::AttributeValidator do
 
           it_behaves_like 'error response'
 
-          context 'in non-production' do
-            before do
-              allow(Settings).to receive(:vsp_environment).and_return('development')
-            end
+          it 'does not call unlink_profile_identifier in any environment' do
+            expect(mpi_service).not_to receive(:unlink_profile_identifier)
 
-            it 'calls unlink_profile_identifier with correct parameters' do
-              expect(mpi_service).to receive(:unlink_profile_identifier).with(
-                icn:,
-                identifier:,
-                identifier_type:
-              )
-
-              expect { subject }.to raise_error(expected_error, expected_error_message)
-            end
+            expect { subject }.to raise_error(expected_error, expected_error_message)
           end
 
-          context 'in production' do
-            before do
-              allow(Settings).to receive(:vsp_environment).and_return('production')
-            end
-
-            it 'does not call unlink_profile_identifier' do
-              expect(mpi_service).not_to receive(:unlink_profile_identifier)
-
-              expect { subject }.to raise_error(expected_error, expected_error_message)
-            end
+          it 'logs that the mpi unlink was skipped' do
+            expect { subject }.to raise_error(expected_error, expected_error_message)
+            expect(sign_in_logger).to have_received(:info).with(
+              'attribute validator mpi unlink skipped',
+              icn:, identifier:, identifier_type:
+            )
           end
         end
       end
