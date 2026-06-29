@@ -153,17 +153,22 @@ module ClaimsApi
 
       def individual_signatures(power_of_attorney, rep)
         first_name, last_name = veteran_or_claimant_signature(power_of_attorney)
+        coords = ClaimsApi::V2::PoaPdfConstructor::Individual.signature_coordinates
+        build_signatures(coords, first_name, last_name, rep)
+      end
+
+      def build_signatures(coords, first_name, last_name, rep)
         {
-          'page2' => [
+          coords[:page] => [
             {
               'signature' => "#{first_name} #{last_name} - signed via api.va.gov",
-              'x' => 35,
-              'y' => 306
+              'x' => coords[:veteran][:x],
+              'y' => coords[:veteran][:y]
             },
             {
               'signature' => "#{rep.first_name} #{rep.last_name} - signed via api.va.gov",
-              'x' => 35,
-              'y' => 200
+              'x' => coords[:representative][:x],
+              'y' => coords[:representative][:y]
             }
           ]
         }
