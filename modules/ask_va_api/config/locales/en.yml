@@ -65,6 +65,7 @@ en:
           - :email_address
           - :family_members_location_of_residence
           - :family_member_postal_code
+          - :flow_type
           - :is_military_base
           - :is_question_about_veteran_or_someone_else
           - :military_base_post_office
