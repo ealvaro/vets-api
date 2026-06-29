@@ -4123,7 +4123,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
     end
   end
 
-  describe 'POST #submit_form_526 using md5 lookup' do
+  describe 'POST #submit_form_526 using header hash lookup' do
     let(:claim_date) { (Time.zone.today - 1.day).to_s }
     let(:auto_cest_pdf_generation_disabled) { false }
     let(:data) do

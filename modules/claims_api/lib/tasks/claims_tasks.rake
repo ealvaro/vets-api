@@ -11,12 +11,6 @@ namespace :claims do
     claims.each { |claim| puts "#{claim.id},#{claim.evss_id},#{claim.flashes.any?},#{claim.special_issues.any?}" }
   end
 
-  task update_poa_md5: :environment do
-    power_of_attorneys = ClaimsApi::PowerOfAttorney.all
-    # save! reruns validations, which includes set_md5
-    power_of_attorneys.each(&:save!)
-  end
-
   # rake task used in production to fix 526 claims that failed to establish.
   # matches PUT and POST request in disability_compensation_controller.rb (upload_form_526, and submit_form_526)
   task :fix_failed_claims, [:claim_ids] => :environment do |_task, args|

@@ -25,8 +25,6 @@ module ClaimsApi
 
     ORG_POA_FORM_NUMBER = '2122'
     IND_POA_FORM_NUMBER = '2122A'
-
-    before_save :set_md5
     before_save :set_header_hash
 
     def self.find_using_identifier_and_source(primary_identifier, source_name)
@@ -74,16 +72,6 @@ module ClaimsApi
       ].compact.map(&:to_s)
 
       record_pids.include?(pid)
-    end
-
-    def set_md5
-      headers = auth_headers.except('va_eauth_authenticationauthority',
-                                    'va_eauth_service_transaction_id',
-                                    'va_eauth_issueinstant',
-                                    'Authorization')
-      headers['status'] = status
-      self.header_md5 = Digest::MD5.hexdigest headers.to_json
-      self.md5 = Digest::MD5.hexdigest form_data.merge(headers).to_json
     end
 
     def set_header_hash
