@@ -394,9 +394,10 @@ RSpec.describe BenefitsClaims::Service do
             expect(response.dig('data', 'attributes', 'trackedItems', 2, 'status')).to eq('NEEDED_FROM_OTHERS')
             expect(response.dig('data', 'attributes', 'trackedItems', 2,
                                 'displayName')).to eq('NG1 - National Guard Records Request')
-            expect(response.dig('data', 'attributes', 'trackedItems', 4, 'status')).to eq('NEEDED_FROM_OTHERS')
-            expect(response.dig('data', 'attributes', 'trackedItems', 4,
-                                'displayName')).to eq('RV1 - Reserve Records Request')
+            tracked_items = response.dig('data', 'attributes', 'trackedItems')
+            reserve_item = tracked_items&.find { |i| i['displayName'] == 'RV1 - Reserve Records Request' }
+            expect(reserve_item).to include('status' => 'NEEDED_FROM_OTHERS',
+                                            'displayName' => 'RV1 - Reserve Records Request')
           end
         end
 
