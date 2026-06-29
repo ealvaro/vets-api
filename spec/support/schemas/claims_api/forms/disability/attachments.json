@@ -133,7 +133,8 @@
                   "md5": {
                     "type": "string",
                     "nullable": true,
-                    "description": "Hashed representation of document"
+                    "description": "Deprecated hashed representation of document. Use header_hash instead",
+                    "deprecated": true
                   },
                   "header_hash": {
                     "type": "string",
