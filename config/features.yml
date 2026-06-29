@@ -127,6 +127,14 @@ features:
       We need to remove this feature from the codebase ASAP.
       Mocks shouldn't live in the app logic. If needed, add at the API/middleware level.
     enable_in_development: true
+  ask_va_specific_data_endpoints:
+    actor_type: cookie_id
+    description: >
+      Ask VA - When enabled, the frontend fetches categories, topics, and
+      subtopics from the resource-specific endpoints
+      (/ask_va_api/v0/categories, /categories/:id/topics, /topics/:id/subtopics)
+      instead of the legacy /ask_va_api/v0/contents endpoint. See software/ask-va#2428.
+    enable_in_development: true
   ask_va_api_ava_int_for_staging:
     actor_type: user
     description: >

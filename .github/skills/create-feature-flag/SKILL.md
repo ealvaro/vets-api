@@ -61,7 +61,7 @@ After receiving the description, present the following summary and **stop**. Wai
 >
 > | Field | Default | What it means |
 > |---|---|---|
-> | `actor_type` | `user` | Flag is evaluated per logged-in veteran. Use `cookie_id` instead only for pre-login features (e.g. landing pages, banners). |
+> | `actor_type` | `user` | Flag is evaluated per logged-in veteran. Use `cookie_id` instead when the flag is read in any **unauthenticated** request flow — not just pre-login pages (landing pages, banners) but also features that hit endpoints served without sign-in (e.g. a controller with `skip_before_action :authenticate`). A `user` actor can't be resolved for logged-out visitors, so percentage rollouts won't reach them. |
 > | `enable_in_development` | `false` | Flag is off everywhere until explicitly enabled in the Flipper UI — the right choice for a controlled rollout. Set to `true` only if you want it always-on for local `development` and on `dev-api.va.gov`. Note: the `test` env auto-enables all new flags regardless of this setting. |
 >
 > **Would you like to use the defaults?** Reply `yes` to proceed with `actor_type: user` and `enable_in_development: false`, or `no` to configure each field individually.
@@ -78,7 +78,7 @@ Ask the user the following question and **stop**. Wait for the reply before aski
 > **Who is this flag checked against?**
 >
 > - **`user`** *(recommended)* — Evaluated per logged-in veteran. Targets individual users by UUID or email.
-> - **`cookie_id`** — Evaluated using the Google Analytics cookie ID. Works for unauthenticated visitors. Use for pre-login features like landing pages or banners.
+> - **`cookie_id`** — Evaluated using the Google Analytics cookie ID. Works for unauthenticated visitors. Use whenever the flag is read in an unauthenticated request flow — pre-login pages (landing pages, banners) **or** features that call endpoints served without sign-in (e.g. a controller with `skip_before_action :authenticate`). A `user` actor can't be resolved when logged out, so percentage rollouts won't apply to anonymous visitors.
 >
 > Reply with `user` or `cookie_id`.
 

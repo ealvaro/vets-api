@@ -247,6 +247,16 @@ Each class in the triad should have its own spec file under `spec/app/lib/ask_va
 
 ---
 
+## Authentication: Static Data Endpoints Are Public
+
+`StaticDataController` declares `skip_before_action :authenticate`, so **all** static data endpoints (`/categories`, `/topics`, `/subtopics`, `/contents`, `/branch_of_service`) are served in **unauthenticated** request flows. The frontend hits these to populate the category/topic/subtopic pickers early in the Ask VA form, before sign-in.
+
+### Implication for feature flags gating these endpoints
+
+When registering a Flipper flag in `config/features.yml` that gates frontend use of these endpoints, use **`actor_type: cookie_id`**, not `user`. A `user` actor has no value for logged-out visitors, so a percentage rollout would not apply to them — only a blanket "enable for everyone" would. `cookie_id` keys off the Google Analytics cookie and supports consistent percentage rollouts to anonymous visitors. This matches the convention of most frontend `ask_va_*` flags (e.g. `ask_va_announcement_banner`, `ask_va_enhanced_inbox`), which use `cookie_id`. (See #2428.)
+
+---
+
 ## Maintenance: Updating This File
 
 When adding a new resource directory (e.g., `app/lib/ask_va_api/new_resource/`), update the `applyTo` frontmatter at the top of this file to include the new paths. Without this, Copilot won't apply these instructions when working on files in the new directory.
