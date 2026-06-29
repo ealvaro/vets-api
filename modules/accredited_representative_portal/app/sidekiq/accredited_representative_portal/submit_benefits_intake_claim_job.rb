@@ -8,9 +8,11 @@ module AccreditedRepresentativePortal
 
     def perform(saved_claim_id)
       super
-      StatsD.increment(SUCCESS_METRIC_SUBMIT, tags: success_metric_tags)
+      monitoring = ar_monitoring
+      monitoring.track_count(SUCCESS_METRIC_SUBMIT)
     rescue
-      StatsD.increment(ERROR_METRIC_SUBMIT, tags: ["form_id:#{@claim&.proper_form_id}", 'reason:unknown_error'])
+      monitoring = ar_monitoring
+      monitoring.track_count(ERROR_METRIC_SUBMIT, tags: ['reason:unknown_error'])
       raise
     end
 
@@ -31,7 +33,8 @@ module AccreditedRepresentativePortal
     #
     def init(saved_claim_id)
       @claim = ::SavedClaim.find(saved_claim_id)
-      StatsD.increment(ATTEMPT_METRIC_SUBMIT, tags: ["form_id:#{@claim.proper_form_id}"])
+      monitoring = ar_monitoring
+      monitoring.track_count(ATTEMPT_METRIC_SUBMIT)
       @lighthouse_service = lighthouse_service
     end
 
@@ -118,10 +121,19 @@ module AccreditedRepresentativePortal
 
     private
 
-    def success_metric_tags
-      tags = ["form_id:#{@claim.proper_form_id}"]
-      tags << "bdd_status:#{bdd_status}" if @claim.form_id.include?('526EZ')
-      tags
+    def ar_monitoring
+      form_id = @claim&.proper_form_id || 'unknown'
+      org_code = @claim&.power_of_attorney_holder_poa_code
+      org_code = 'N/A' if org_code.blank?
+
+      AccreditedRepresentativePortal::Monitoring.new(
+        AccreditedRepresentativePortal::Monitoring::NAME,
+        default_tags: [
+          "form_id:#{form_id}",
+          "org:#{org_code}",
+          ("bdd_status:#{bdd_status}" if @claim&.form_id&.include?('526EZ'))
+        ].compact
+      )
     end
 
     def bdd_status

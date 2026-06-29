@@ -24,6 +24,9 @@ RSpec.describe AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob do
       persistent_attachments: [documentation]
     )
   end
+  let(:saved_claim_claimant_representative) do
+    create(:saved_claim_claimant_representative, saved_claim:)
+  end
 
   let(:vcr_options) do
     ##
@@ -55,6 +58,8 @@ RSpec.describe AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob do
     allow_any_instance_of(Shrine::UploadedFile).to(
       receive(:storage).and_return(Shrine.storages[:store])
     )
+    saved_claim.saved_claim_claimant_representative = saved_claim_claimant_representative
+    saved_claim.save
   end
 
   after do
@@ -108,6 +113,13 @@ RSpec.describe AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob do
 
   describe 'StatsD metrics' do
     let(:form_id) { saved_claim.proper_form_id }
+    let(:expected_tags) do
+      [
+        "form_id:#{form_id}",
+        'org:067',
+        'service:accredited-representative-portal'
+      ]
+    end
 
     before do
       allow(StatsD).to receive(:increment)
@@ -123,9 +135,9 @@ RSpec.describe AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob do
         end
 
         expect(StatsD).to have_received(:increment)
-          .with(described_class::ATTEMPT_METRIC_SUBMIT, tags: ["form_id:#{form_id}"])
+          .with(described_class::ATTEMPT_METRIC_SUBMIT, tags: expected_tags)
         expect(StatsD).to have_received(:increment)
-          .with(described_class::SUCCESS_METRIC_SUBMIT, tags: ["form_id:#{form_id}"])
+          .with(described_class::SUCCESS_METRIC_SUBMIT, tags: expected_tags)
       end
     end
 
@@ -136,16 +148,17 @@ RSpec.describe AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob do
             Common::Client::Errors::ClientError.new('500 Internal Server Error')
           )
         )
+        allow(StatsD).to receive(:increment)
       end
 
       it 'increments ATTEMPT then ERROR with reason:unknown_error' do
         suppress(Common::Client::Errors::ClientError) { perform }
 
         expect(StatsD).to have_received(:increment)
-          .with(described_class::ATTEMPT_METRIC_SUBMIT, tags: ["form_id:#{form_id}"])
+          .with(described_class::ATTEMPT_METRIC_SUBMIT, tags: expected_tags)
         expect(StatsD).to have_received(:increment)
           .with(described_class::ERROR_METRIC_SUBMIT,
-                tags: ["form_id:#{form_id}", 'reason:unknown_error'])
+                tags: ['reason:unknown_error'].concat(expected_tags))
       end
     end
 
@@ -160,10 +173,10 @@ RSpec.describe AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob do
         suppress(StandardError) { perform }
 
         expect(StatsD).to have_received(:increment)
-          .with(described_class::ATTEMPT_METRIC_SUBMIT, tags: ["form_id:#{form_id}"])
+          .with(described_class::ATTEMPT_METRIC_SUBMIT, tags: expected_tags)
         expect(StatsD).to have_received(:increment)
           .with(described_class::ERROR_METRIC_SUBMIT,
-                tags: ["form_id:#{form_id}", 'reason:unknown_error'])
+                tags: ['reason:unknown_error'].concat(expected_tags))
       end
     end
   end

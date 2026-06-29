@@ -170,6 +170,11 @@ module AccreditedRepresentativePortal
         )
       end
 
+      has_one :saved_claim_claimant_representative,
+              class_name: 'AccreditedRepresentativePortal::SavedClaimClaimantRepresentative',
+              foreign_key: :saved_claim_id
+
+      delegate :power_of_attorney_holder_poa_code, to: :saved_claim_claimant_representative, allow_nil: true
       delegate :to_pdf, to: :form_attachment
 
       def latest_submission_attempt
