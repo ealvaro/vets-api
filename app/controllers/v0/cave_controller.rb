@@ -32,7 +32,12 @@ module V0
 
       raw_payload = client.download(document_id, kvpid:, user_id: idp_user_id)
 
-      cave_submission = CaveSubmission.new(cave_response: raw_payload.to_json)
+      cave_submission = CaveSubmission.new(
+        cave_response: raw_payload.to_json,
+        cave_document_id: document_id,
+        kvpid:,
+        idp_user_id:
+      )
       cave_submission.save!
 
       render json: {

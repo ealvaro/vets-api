@@ -536,6 +536,7 @@ app/sidekiq/benefits_intake_status_job.rb @software/platform-va-product-forms @s
 app/sidekiq/scanned_upload_purge_job.rb @software/platform-va-product-forms @software/backend-review-group
 app/sidekiq/bio_submission_status_report_job.rb @software/benefits-optimization-aquia @software/backend-review-group
 app/sidekiq/bgs @software/benefits-dependents-management @software/backend-review-group
+app/sidekiq/cave_submission_purge_job.rb @software/bio-huntridge @software/backend-review-group
 app/sidekiq/central_mail/submit_form4142_job.rb @software/disability-benefits @software/backend-review-group
 app/sidekiq/console1984_log_upload_job.rb @software/backend-review-group
 app/sidekiq/copay_notifications @software/vsa-debt-resolution @software/backend-review-group
@@ -2174,6 +2175,7 @@ spec/services/users @software/octo-identity
 spec/services/v0/lighthouse_claims/proxy_spec.rb @software/benefits-management-tools-be @software/backend-review-group
 spec/sidekiq/benefits_intake_status_job_spec.rb @software/platform-va-product-forms @software/disability-benefits @software/backend-review-group
 spec/sidekiq/scanned_upload_purge_job_spec.rb @software/platform-va-product-forms @software/backend-review-group
+spec/sidekiq/cave_submission_purge_job_spec.rb @software/bio-huntridge @software/backend-review-group
 spec/sidekiq/bio_submission_status_report_job_spec.rb @software/benefits-optimization-aquia @software/backend-review-group
 spec/sidekiq/bgs @software/backend-review-group @software/benefits-dependents-management
 spec/sidekiq/central_mail/submit_central_form686c_job_spec.rb @software/backend-review-group @software/benefits-dependents-management

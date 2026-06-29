@@ -207,6 +207,19 @@ RSpec.describe 'CAVE API', type: :request do
       expect(response).to have_http_status(:ok)
     end
 
+    it 'persists the OCR response with the CAVE document id, kvpid, and user id' do
+      sign_in_as(user)
+      allow(client).to receive(:download).with('abc123', kvpid: 'kvp1', user_id: idp_user_id).and_return('data' => {})
+
+      expect { get '/v0/cave/abc123/download', params: { kvpid: 'kvp1' } }
+        .to change(CaveSubmission, :count).by(1)
+
+      submission = CaveSubmission.last
+      expect(submission.cave_document_id).to eq('abc123')
+      expect(submission.kvpid).to eq('kvp1')
+      expect(submission.idp_user_id).to eq(idp_user_id)
+    end
+
     it 'preserves actionable upstream ownership failures' do
       sign_in_as(user)
       allow(client).to receive(:download).with('abc123', kvpid: 'kvp1', user_id: idp_user_id).and_raise(

@@ -35,6 +35,9 @@ PERIODIC_JOBS = lambda { |mgr| # rubocop:disable Metrics/BlockLength
   # Remove PII from appeal records after they have been successfully processed by the VA
   mgr.register('45 0 * * *', 'AppealsApi::CleanUpPii')
 
+  # Purge expired CAVE submissions (extracted document PII) past their retention window
+  mgr.register('15 3 * * *', 'CaveSubmissionPurgeJob')
+
   # Ensures that appeal evidence received "late" (after the appeal has reached "success") is submitted to Central Mail
   mgr.register('30 * * * *', 'AppealsApi::EvidenceSubmissionBackup')
 
