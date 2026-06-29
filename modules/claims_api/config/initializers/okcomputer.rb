@@ -136,8 +136,6 @@ def faraday_client
 end
 
 OkComputer::Registry.register 'mpi', MpiCheck.new
-OkComputer::Registry.register 'form-526-docker-container',
-                              Form526DockerContainerCheck.new('wss-form526-services-web/tools/version.jsp')
 OkComputer::Registry.register 'pdf-generator', PDFGenratorCheck.new('form-526ez-pdf-generator/actuator/health')
 OkComputer::Registry.register 'localbgs-org',
                               FaradayBGSCheck.new('OrgWebServiceBean/OrgWebService')
