@@ -3425,9 +3425,6 @@ features:
   va_notify_v2_health_care_application_model_send_failure_email:
     actor_type: user
     description: If enabled, HealthCareApplication will use VANotify::V2::QueueEmailJob instead of VANotify::EmailJob
-  va_notify_v2_in_progress_form_reminder:
-    actor_type: user
-    description: If enabled, InProgressFormReminder uses VANotify::V2::QueueUserAccountJob instead of VANotify::UserAccountJob
   va_notify_v2_ivc_champva_email:
     actor_type: user
     description: >-

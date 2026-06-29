@@ -19,20 +19,10 @@ module VANotify
 
       if only_one_supported_in_progress_form?
         template_id = VANotify::InProgressFormHelper::TEMPLATE_ID.fetch(in_progress_form.form_id)
-
-        if Flipper.enabled?(:va_notify_v2_in_progress_form_reminder)
-          send_v2_single(in_progress_form, template_id)
-        else
-          send_with_callback_metadata_single(in_progress_form, template_id)
-        end
+        send_single(in_progress_form, template_id)
       elsif oldest_in_progress_form?
         template_id = VANotify::InProgressFormHelper::TEMPLATE_ID.fetch('generic')
-
-        if Flipper.enabled?(:va_notify_v2_in_progress_form_reminder)
-          send_v2_multiple(in_progress_form, template_id)
-        else
-          send_with_callback_metadata_multiple(in_progress_form, template_id)
-        end
+        send_multiple(in_progress_form, template_id)
       end
     rescue VANotify::Veteran::MPINameError, VANotify::Veteran::MPIError
       nil
@@ -46,7 +36,7 @@ module VANotify
       @veteran ||= VANotify::Veteran.new(in_progress_form)
     end
 
-    def send_v2_single(in_progress_form, template_id)
+    def send_single(in_progress_form, template_id)
       form_number = in_progress_form.form_id
       statsd_tags = { 'service' => 'va-notify',
                       'function' => "#{form_number} in progress reminder" }
@@ -58,19 +48,7 @@ module VANotify
                                                              statsd_tags: } })
     end
 
-    def send_with_callback_metadata_single(in_progress_form, template_id)
-      form_number = in_progress_form.form_id
-      statsd_tags = { 'service' => 'va-notify',
-                      'function' => "#{form_number} in progress reminder" }
-      UserAccountJob.perform_async(in_progress_form.user_account_id,
-                                   template_id,
-                                   personalisation_details_single,
-                                   Settings.vanotify.services.va_gov.api_key,
-                                   { callback_metadata: { notification_type: 'in_progress_reminder', form_number:,
-                                                          statsd_tags: } })
-    end
-
-    def send_v2_multiple(in_progress_form, template_id)
+    def send_multiple(in_progress_form, template_id)
       form_number = 'multiple'
       statsd_tags = { 'service' => 'va-notify',
                       'function' => "#{form_number} in progress reminder" }
@@ -80,18 +58,6 @@ module VANotify
                                       API_KEY_PATH,
                                       { callback_metadata: { notification_type: 'in_progress_reminder', form_number:,
                                                              statsd_tags: } })
-    end
-
-    def send_with_callback_metadata_multiple(in_progress_form, template_id)
-      form_number = 'multiple'
-      statsd_tags = { 'service' => 'va-notify',
-                      'function' => "#{form_number} in progress reminder" }
-      UserAccountJob.perform_async(in_progress_form.user_account_id,
-                                   template_id,
-                                   personalisation_details_multiple,
-                                   Settings.vanotify.services.va_gov.api_key,
-                                   { callback_metadata: { notification_type: 'in_progress_reminder', form_number:,
-                                                          statsd_tags: } })
     end
 
     def enabled?
