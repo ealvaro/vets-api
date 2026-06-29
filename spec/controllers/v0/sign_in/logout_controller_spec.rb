@@ -33,7 +33,8 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
       let(:statsd_failure) { SignIn::Constants::Statsd::STATSD_SIS_LOGOUT_FAILURE }
       let(:expected_error_log) { '[SignInService] [V0::SignInController] logout error' }
       let(:expected_error_context) do
-        { errors: expected_error_message, error_code:, client_id: client_id_value, post_logout_redirect_uri: }
+        { errors: expected_error_message, error_code:, client_id: client_id_value, post_logout_redirect_uri:,
+          csp_type: nil }
       end
       let(:expected_error_status) { :bad_request }
       let(:expected_error_json) { { 'errors' => expected_error_message } }
@@ -61,7 +62,8 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
       let(:statsd_failure) { SignIn::Constants::Statsd::STATSD_SIS_LOGOUT_FAILURE }
       let(:expected_error_log) { '[SignInService] [V0::SignInController] logout error' }
       let(:expected_error_context) do
-        { errors: expected_error_message, error_code:, client_id: client_id_value, post_logout_redirect_uri: }
+        { errors: expected_error_message, error_code:, client_id: client_id_value, post_logout_redirect_uri:,
+          csp_type: nil }
       end
       let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
 
@@ -108,7 +110,8 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
           session_handle: access_token_object.session_handle,
           client_id: access_token_object.client_id,
           session_duration: expected_session_duration,
-          post_logout_redirect_uri:
+          post_logout_redirect_uri:,
+          csp_type: nil
         }
       end
       let(:expected_status) { :redirect }
@@ -266,8 +269,8 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
 
         it 'logs a logout error' do
           expect(Rails.logger).to receive(:info).with('[SignInService] [V0::SignInController] logout error',
-                                                      { errors: expected_error, error_code:,
-                                                        client_id: client_id_value, post_logout_redirect_uri: })
+                                                      { errors: expected_error, error_code:, client_id: client_id_value,
+                                                        post_logout_redirect_uri:, csp_type: nil })
           subject
         end
 
@@ -300,6 +303,64 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
         let(:expected_error_message) { 'Unable to authorize access token' }
 
         it_behaves_like 'authorization error response'
+      end
+    end
+
+    context 'when the client is the okta client' do
+      let(:logout_redirect_uri) { 'https://login-stg.va.gov/login/signout' }
+      let(:ssl_key) { OpenSSL::PKey::RSA.generate(2048) }
+      let(:login_gov_logout_url) { "#{IdentitySettings.logingov.oauth_url}/openid_connect/logout" }
+
+      before do
+        allow(IdentitySettings.sign_in).to receive(:okta_client_id).and_return(client_config.client_id)
+        allow_any_instance_of(SignIn::Logingov::Configuration).to receive(:ssl_key).and_return(ssl_key)
+      end
+
+      context 'and there is no authenticated session' do
+        let(:access_token) { 'some-invalid-access-token' }
+
+        context 'and csp_type is 200VLGN' do
+          let(:logout_params) { { client_id: client_id_value, csp_type: '200VLGN' } }
+
+          it 'redirects through the login.gov logout endpoint' do
+            expect(subject).to have_http_status(:redirect)
+            expect(subject.location).to start_with(login_gov_logout_url)
+          end
+        end
+
+        context 'and csp_type is missing' do
+          let(:logout_params) { { client_id: client_id_value } }
+
+          it 'redirects through the login.gov logout endpoint' do
+            expect(subject).to have_http_status(:redirect)
+            expect(subject.location).to start_with(login_gov_logout_url)
+          end
+        end
+
+        context 'and csp_type is not 200VLGN' do
+          let(:logout_params) { { client_id: client_id_value, csp_type: '200VIDM' } }
+
+          it 'redirects to the configured logout redirect uri without login.gov' do
+            expect(subject).to redirect_to(logout_redirect_uri)
+          end
+        end
+      end
+
+      context 'and there is an authenticated session' do
+        let(:logout_params) { { client_id: client_id_value, csp_type: '200VLGN' } }
+
+        it 'ignores csp_type and lets the session credential decide' do
+          expect(subject).to redirect_to(logout_redirect_uri)
+        end
+      end
+    end
+
+    context 'when a non-okta client passes csp_type 200VLGN with no authenticated session' do
+      let(:access_token) { 'some-invalid-access-token' }
+      let(:logout_params) { { client_id: client_id_value, csp_type: '200VLGN' } }
+
+      it 'redirects to the configured logout redirect uri without login.gov' do
+        expect(subject).to redirect_to(logout_redirect_uri)
       end
     end
 

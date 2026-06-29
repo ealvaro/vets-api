@@ -39,7 +39,8 @@ RSpec.describe V0::SignIn::OktaLogoutController, type: :controller do
           session_handle: access_token_object.session_handle,
           client_id: access_token_object.client_id,
           session_duration: Time.zone.now.to_i - oauth_session.created_at.to_i,
-          post_logout_redirect_uri: nil
+          post_logout_redirect_uri: nil,
+          csp_type: nil
         }
       end
 
