@@ -10,10 +10,11 @@ module ClaimsApi
         include ClaimsApi::V2::ClaimsRequests::TrackedItems
         include ClaimsApi::V2::ClaimsRequests::SupportingDocuments
         include ClaimsApi::V2::ClaimsRequests::TrackedItemsAssistance
-        include ClaimsApi::ClaimsRequests::ClaimValidation
+        include ClaimsApi::V2::ClaimsRequests::ClaimValidation
 
         def index
           bgs_claims = find_bgs_claims!
+
           lighthouse_claims = ClaimsApi::AutoEstablishedClaim.where(veteran_icn: target_veteran.mpi.icn)
 
           return render json: [] if bgs_claims.blank? && lighthouse_claims.blank?
