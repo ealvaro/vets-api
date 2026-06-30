@@ -2670,6 +2670,9 @@ features:
     actor_type: user
     description: Enables users with emails tied to MHV classic accounts to be redirected to the confirm contact email interstitial page (Identity)
     enable_in_development: false
+  error_113_tech_support_line_active:
+    actor_type: user
+    description: Shows the tech support phone number and call-to-action on the error 113 sign-in page when enabled.
   medical_copays_zero_debt:
     actor_type: user
     description: Enables zero debt balances feature on the medical copays application
