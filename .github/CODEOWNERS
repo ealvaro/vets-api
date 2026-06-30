@@ -947,6 +947,7 @@ lib/bgs @software/benefits-dependents-management @software/backend-review-group
 lib/bid @software/disability-benefits @software/backend-review-group
 lib/carma @software/health-apps-backend @software/backend-review-group
 lib/caseflow @software/lighthouse-banana-peels @software/backend-review-group
+lib/cave @software/bio-huntridge @software/backend-review-group
 lib/ccra/configuration.rb @software/backend-review-group @software/vfs-vaos
 lib/central_mail @software/backend-review-group
 lib/chatbot @software/vfs-virtual-agent-chatbot @software/backend-review-group
@@ -1630,6 +1631,7 @@ spec/lib/bid @software/disability-benefits @software/backend-review-group
 spec/lib/breakers @software/backend-review-group
 spec/lib/carma @software/health-apps-backend @software/backend-review-group
 spec/lib/caseflow @software/lighthouse-banana-peels @software/backend-review-group
+spec/lib/cave @software/bio-huntridge @software/backend-review-group
 spec/lib/central_mail @software/vfs-authenticated-experience-backend @software/backend-review-group
 spec/lib/chatbot @software/vfs-virtual-agent-chatbot @software/backend-review-group
 spec/lib/chip @software/vsa-healthcare-health-quest-1-backend @software/patient-check-in @software/backend-review-group
