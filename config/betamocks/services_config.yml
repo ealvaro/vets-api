@@ -38,6 +38,13 @@
       :path: <%= "/#{Settings.ask_va_api.crm_api.veis_api_path}/ping" %>
       :file_path: "/ask_va/dynamics_api"
       :response_delay: 15
+    - :method: :get
+      :path: <%= "/#{Settings.ask_va_api.crm_api.veis_api_path}/attachment" %>
+      :file_path: "/ask_va/crm_api/get_attachment"
+      :response_delay: 0.3
+      :cache_multiple_responses:
+        :uid_location: body
+        :uid_locator: 'id'
     - :method: :post
       :path: <%= "/#{Settings.ask_va_api.crm_api.veis_api_path}/inquiries/new" %>
       :file_path: "/ask_va/crm_api/post_inquiries/default"
