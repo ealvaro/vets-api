@@ -162,6 +162,26 @@ RSpec.describe V0::DisabilityCompensationFormsController, type: :controller do
           expect(response).to have_http_status(:forbidden)
         end
       end
+
+      context 'when Lighthouse returns a 500' do
+        before do
+          allow_any_instance_of(LighthouseRatedDisabilitiesProvider).to receive(:get_combined_disability_rating)
+            .and_raise(Common::Exceptions::ExternalServerInternalServerError)
+        end
+
+        it 'responds with bad_gateway (502)' do
+          allow_any_instance_of(DisabilityCompensation::Loggers::Monitor).to receive(:track_request)
+          get(:rating_info)
+          expect(response).to have_http_status(:bad_gateway)
+        end
+
+        it 'logs the upstream error via monitor' do
+          expect_any_instance_of(DisabilityCompensation::Loggers::Monitor)
+            .to receive(:track_request).with(:warn, 'rating_info upstream error',
+                                             'api.disability_compensation.rating_info.upstream_error', anything)
+          get(:rating_info)
+        end
+      end
     end
 
     context 'retrieve from EVSS' do

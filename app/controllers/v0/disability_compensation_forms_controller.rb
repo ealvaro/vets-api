@@ -87,22 +87,31 @@ module V0
     end
 
     def rating_info
-      if lighthouse?
-        service = LighthouseRatedDisabilitiesProvider.new(@current_user.icn)
-
-        disability_rating = service.get_combined_disability_rating
-
-        rating_info = { user_percent_of_disability: disability_rating }
-        render json: LighthouseRatingInfoSerializer.new(rating_info)
-      else
-        rating_info_service = EVSS::CommonService.new(auth_headers)
-        response = rating_info_service.get_rating_info
-
-        render json: RatingInfoSerializer.new(response)
-      end
+      render_rating_info
+    rescue Common::Exceptions::ExternalServerInternalServerError => e
+      monitor.track_request(:warn, 'rating_info upstream error',
+                            'api.disability_compensation.rating_info.upstream_error',
+                            user_uuid: @current_user&.uuid, error: e.class.to_s)
+      raise Common::Exceptions::BadGateway
+    rescue Common::Exceptions::BaseError
+      raise
+    rescue => e
+      monitor.track_request(:error, 'rating_info error', 'api.disability_compensation.rating_info.error',
+                            user_uuid: @current_user&.uuid, error: e.class.to_s)
+      raise
     end
 
     private
+
+    def render_rating_info
+      if lighthouse?
+        service = LighthouseRatedDisabilitiesProvider.new(@current_user.icn)
+        disability_rating = service.get_combined_disability_rating
+        render json: LighthouseRatingInfoSerializer.new({ user_percent_of_disability: disability_rating })
+      else
+        render json: RatingInfoSerializer.new(EVSS::CommonService.new(auth_headers).get_rating_info)
+      end
+    end
 
     def auth_rating_info
       api = lighthouse? ? :lighthouse : :evss
