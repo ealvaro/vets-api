@@ -12,6 +12,16 @@ module Mobile
       # to use mobile-specific constants and messaging
       #
       class Service < ::VeteranStatusCard::Service
+        def status_card
+          # Manually raise a response for testing purposes when a specific user is in non-production environments
+          if Settings.vsp_environment&.to_s&.downcase != 'production' && @user&.email == 'vets.gov.user+9@gmail.com'
+            @confirmation_status = PERSON_NOT_FOUND_MESSAGE
+            return person_not_found_response_hash
+          end
+
+          super
+        end
+
         protected
 
         ##
