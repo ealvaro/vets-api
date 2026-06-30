@@ -18,7 +18,7 @@
       "required": ["currentMailingAddress", "currentlyVAEmployee"],
       "properties": {
         "flashes": {
-          "description": "Attributes that describe special circumstances which apply to a Veteran.",
+          "description": "Attributes that describe special circumstances which apply to a Veteran. The 'Hardship' flash creation is deprecated but remains on the schema for backward compatibility.",
           "type": "array",
           "items": {
             "type": "string",
@@ -40,7 +40,7 @@
               "Terminally Ill"
             ]
           },
-          "example": "Hardship"
+          "example": "Homeless"
         },
         "currentlyVAEmployee": {
           "type": "boolean",

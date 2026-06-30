@@ -15,7 +15,7 @@ RSpec.describe ClaimsApi::FlashUpdater, type: :job do
       'ssn' => user_mock.ssn
     }
   end
-  let(:flashes) { %w[Hardship Homeless] }
+  let(:flashes) { %w[Homeless POW] }
   let(:claim) { create(:auto_established_claim, :with_full_headers) }
   let(:assigned_flashes) do
     { flashes: flashes.map do |flash|

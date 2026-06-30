@@ -48,7 +48,7 @@ FactoryBot.define do
 
   # traits
   trait :flashes do
-    flashes { %w[Hardship Homeless] }
+    flashes { %w[Homeless] }
   end
   trait :special_issues do
     form_data do

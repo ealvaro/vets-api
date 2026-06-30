@@ -752,7 +752,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
               post path, params: data, headers: headers.merge(auth_header)
               token = JSON.parse(response.body)['data']['attributes']['token']
               aec = ClaimsApi::AutoEstablishedClaim.find(token)
-              expect(aec.flashes).to eq(%w[Hardship Homeless])
+              expect(aec.flashes).to eq(['Homeless'])
             end
           end
         end
@@ -1628,7 +1628,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
                 VCR.use_cassette('claims_api/brd/countries') do
                   mock_acg(scopes) do |auth_header|
                     params = json_data
-                    params['data']['attributes']['veteran']['flashes'] = %w[Hardship POW]
+                    params['data']['attributes']['veteran']['flashes'] = %w[POW Homeless]
                     post path, params: params.to_json, headers: headers.merge(auth_header)
                     expect(response).to have_http_status(:ok)
                   end

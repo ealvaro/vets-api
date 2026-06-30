@@ -4559,7 +4559,7 @@
                           ],
                           "properties": {
                             "flashes": {
-                              "description": "Attributes that describe special circumstances which apply to a Veteran.",
+                              "description": "Attributes that describe special circumstances which apply to a Veteran. The 'Hardship' flash creation is deprecated but remains on the schema for backward compatibility.",
                               "type": "array",
                               "items": {
                                 "type": "string",
@@ -4581,7 +4581,7 @@
                                   "Terminally Ill"
                                 ]
                               },
-                              "example": "Hardship"
+                              "example": "Homeless"
                             },
                             "currentlyVAEmployee": {
                               "type": "boolean",
@@ -6039,7 +6039,6 @@
                       "token": "00000000-0000-0000-0000-000000000005",
                       "status": "pending",
                       "flashes": [
-                        "Hardship",
                         "Homeless"
                       ]
                     }
@@ -6396,7 +6395,7 @@
                             ],
                             "properties": {
                               "flashes": {
-                                "description": "Attributes that describe special circumstances which apply to a Veteran.",
+                                "description": "Attributes that describe special circumstances which apply to a Veteran. The 'Hardship' flash creation is deprecated but remains on the schema for backward compatibility.",
                                 "type": "array",
                                 "items": {
                                   "type": "string",
@@ -6418,7 +6417,7 @@
                                     "Terminally Ill"
                                   ]
                                 },
-                                "example": "Hardship"
+                                "example": "Homeless"
                               },
                               "currentlyVAEmployee": {
                                 "type": "boolean",
@@ -8617,7 +8616,7 @@
                             ],
                             "properties": {
                               "flashes": {
-                                "description": "Attributes that describe special circumstances which apply to a Veteran.",
+                                "description": "Attributes that describe special circumstances which apply to a Veteran. The 'Hardship' flash creation is deprecated but remains on the schema for backward compatibility.",
                                 "type": "array",
                                 "items": {
                                   "type": "string",
@@ -8639,7 +8638,7 @@
                                     "Terminally Ill"
                                   ]
                                 },
-                                "example": "Hardship"
+                                "example": "Homeless"
                               },
                               "currentlyVAEmployee": {
                                 "type": "boolean",

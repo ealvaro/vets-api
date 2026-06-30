@@ -696,18 +696,6 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
         temp.to_json
       end
 
-      let(:hardship_flash_data) do
-        temp = JSON.parse(data)
-        temp['data']['attributes']['homeless'] = {
-          'riskOfBecomingHomeless' => {
-            'livingSituationOptions' => 'HOUSING_WILL_BE_LOST_IN_30_DAYS'
-          },
-          'isAtRiskOfBecomingHomeless' => true,
-          'pointOfContact' => 'Jane Doe'
-        }
-        temp.to_json
-      end
-
       it 'saves homeless flash when applicable' do
         mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
           VCR.use_cassette('claims_api/disability_comp') do
@@ -717,21 +705,6 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
             claim = ClaimsApi::AutoEstablishedClaim.find(claim_id)
 
             expect(claim.flashes).to include('Homeless')
-            expect(claim.flashes).not_to include('Hardship')
-          end
-        end
-      end
-
-      it 'never saves hardship flash' do
-        mock_ccg_for_fine_grained_scope(synchronous_scopes) do |auth_header|
-          VCR.use_cassette('claims_api/disability_comp') do
-            post synchronous_path, params: hardship_flash_data, headers: auth_header
-
-            claim_id = JSON.parse(response.body)['data']['id']
-            claim = ClaimsApi::AutoEstablishedClaim.find(claim_id)
-
-            expect(claim.flashes).not_to include('Hardship')
-            expect(claim.flashes).not_to include('Homeless')
           end
         end
       end

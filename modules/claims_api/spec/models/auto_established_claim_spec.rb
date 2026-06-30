@@ -16,7 +16,7 @@ RSpec.describe ClaimsApi::AutoEstablishedClaim, type: :model do
 
   it 'writes flashes and special issues to log on create' do
     expect(Rails.logger).to receive(:info)
-      .with(/ClaimsApi: Claim\[.+\] contains the following flashes - \["Hardship", "Homeless"\]/)
+      .with(/ClaimsApi: Claim\[.+\] contains the following flashes - \["Homeless"\]/)
     expect(Rails.logger).to receive(:info)
       .with(%r{ClaimsApi: Claim\[.+\] contains the following special issues - \[.*FDC.*PTSD/2.*\]})
     pending_record
@@ -27,7 +27,7 @@ RSpec.describe ClaimsApi::AutoEstablishedClaim, type: :model do
     va_gov_claim = ClaimsApi::AutoEstablishedClaim.find(auto_form.id)
 
     expect(pending_claim.form_data['disabilities'][0]['specialIssues']).to eq(['Fully Developed Claim', 'PTSD/2'])
-    expect(pending_claim.flashes).to eq(%w[Hardship Homeless])
+    expect(pending_claim.flashes).to eq(%w[Homeless])
     expect(va_gov_claim.form_data['disabilities'][0]['specialIssues']).to eq([])
   end
 
