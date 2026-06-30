@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_06_25_191713) do
+ActiveRecord::Schema[7.2].define(version: 2026_06_30_173823) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -27,9 +27,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_25_191713) do
   create_enum "bpds_submission_status", ["pending", "submitted", "failure"]
   create_enum "claims_evidence_api_submission_status", ["pending", "accepted", "failed"]
   create_enum "client_config_auth_method", ["pkce", "client_secret", "private_key_jwt"]
+  create_enum "digital_forms_api_submission_status", ["pending", "accepted", "failed"]
   create_enum "form21a_document_submission_status", ["pending", "uploading", "succeeded", "failed_transient", "failed_permanent", "abandoned"]
   create_enum "form21a_upload_failure_classification", ["transient", "permanent"]
-  create_enum "digital_forms_api_submission_status", ["pending", "accepted", "failed"]
   create_enum "itf_remediation_status", ["unprocessed"]
   create_enum "lighthouse_submission_status", ["pending", "submitted", "failure", "vbms", "manually"]
   create_enum "saved_claim_group_status", ["pending", "accepted", "failure", "processing", "success"]
@@ -1465,8 +1465,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_25_191713) do
     t.string "submitted_by_icn", comment: "ICN of the authenticated user who submitted the form. Null for unauthenticated submissions or forms created before this column existed."
     t.uuid "transaction_uuid"
     t.boolean "application_decided", default: false, null: false
+    t.index ["email"], name: "index_ivc_champva_forms_on_email"
     t.index ["form_uuid"], name: "index_ivc_champva_forms_on_form_uuid"
-    t.index ["form_uuid"], name: "index_ivc_champva_forms_on_pending_form_uuid", where: "((pega_status IS NULL) OR ((pega_status)::text <> ALL ((ARRAY['eligiblity denied/additional information needed'::character varying, 'eligibility denied/additional information needed'::character varying, 'processed - eligiblity determination unknown'::character varying, 'processed - eligibility determination unknown'::character varying, 'eligible - issued a card'::character varying, 'duplicate application'::character varying, 'eligible - reissued a card'::character varying, 'document identification error'::character varying, 'processed'::character varying, 'manually processed'::character varying])::text[])))"
+    t.index ["form_uuid"], name: "index_ivc_champva_forms_on_pending_form_uuid", where: "((pega_status IS NULL) OR ((pega_status)::text <> ALL (ARRAY[('eligiblity denied/additional information needed'::character varying)::text, ('eligibility denied/additional information needed'::character varying)::text, ('processed - eligiblity determination unknown'::character varying)::text, ('processed - eligibility determination unknown'::character varying)::text, ('eligible - issued a card'::character varying)::text, ('duplicate application'::character varying)::text, ('eligible - reissued a card'::character varying)::text, ('document identification error'::character varying)::text, ('processed'::character varying)::text, ('manually processed'::character varying)::text])))"
     t.index ["needs_kms_rotation"], name: "index_ivc_champva_forms_on_needs_kms_rotation"
     t.index ["updated_at"], name: "index_ivc_champva_forms_on_updated_at"
   end
