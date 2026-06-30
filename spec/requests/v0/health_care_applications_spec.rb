@@ -28,7 +28,7 @@ RSpec.describe 'V0::HealthCareApplications', type: %i[request serializer] do
     end
 
     it 'returns the users rating info' do
-      VCR.use_cassette('bgs/service/find_rating_data', VCR::MATCH_EVERYTHING) do
+      VCR.use_cassette('bgs/service/find_rating_data') do
         get(rating_info_v0_health_care_applications_path)
       end
 

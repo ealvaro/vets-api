@@ -64,7 +64,7 @@ gem 'aws-sdk-s3', '~> 1'
 gem 'aws-sdk-sns', '~> 1'
 gem 'bcrypt', '~> 3.1.7'
 gem 'betamocks', git: 'https://va.ghe.com/software/betamocks', branch: 'master'
-gem 'bgs_ext', git: 'https://va.ghe.com/software/bgs-ext.git', require: 'bgs', ref: 'a68ea30'
+gem 'bgs_ext', git: 'https://va.ghe.com/software/bgs-ext.git', require: 'bgs', ref: '1a9fb615ba76c436be0bca9d7d18328ec16738d5'
 gem 'blind_index'
 gem 'blueprinter'
 gem 'bootsnap', require: false
