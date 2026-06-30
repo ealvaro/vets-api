@@ -7,6 +7,7 @@ RSpec.describe UserVerification, type: :model do
     create(:user_verification,
            idme_uuid:,
            logingov_uuid:,
+           clear_uuid:,
            mhv_uuid:,
            backing_idme_uuid:,
            verified_at:,
@@ -16,6 +17,7 @@ RSpec.describe UserVerification, type: :model do
 
   let(:idme_uuid) { nil }
   let(:logingov_uuid) { nil }
+  let(:clear_uuid) { nil }
   let(:mhv_uuid) { nil }
   let(:user_account) { nil }
   let(:backing_idme_uuid) { nil }
@@ -33,7 +35,7 @@ RSpec.describe UserVerification, type: :model do
 
     shared_examples 'failed backing uuid credentials validation' do
       let(:expected_error_message) do
-        'Validation failed: Must define either an idme_uuid, logingov_uuid, or backing_idme_uuid'
+        'Validation failed: Must define either an idme_uuid, logingov_uuid, clear_uuid, or backing_idme_uuid'
       end
 
       it 'raises validation error' do
@@ -44,7 +46,7 @@ RSpec.describe UserVerification, type: :model do
     shared_examples 'failed both validations' do
       let(:expected_error_message) do
         'Validation failed: Must specify one, and only one, credential identifier, ' \
-          'Must define either an idme_uuid, logingov_uuid, or backing_idme_uuid'
+          'Must define either an idme_uuid, logingov_uuid, clear_uuid, or backing_idme_uuid'
       end
 
       it 'raises validation error' do
@@ -198,6 +200,55 @@ RSpec.describe UserVerification, type: :model do
         end
       end
     end
+
+    describe '#clear_uuid' do
+      subject { user_verification.clear_uuid }
+
+      let(:user_account) { create(:user_account) }
+
+      context 'when another credential is defined' do
+        let(:idme_uuid) { 'some-idme-uuid-id' }
+
+        context 'and clear_uuid is not defined' do
+          it 'returns nil' do
+            expect(subject).to be_nil
+          end
+        end
+
+        context 'and clear_uuid is defined' do
+          let(:clear_uuid) { 'some-clear-uuid' }
+
+          it_behaves_like 'failed credential identifier validation'
+        end
+      end
+
+      context 'when another credential is not defined' do
+        context 'and clear_uuid is not defined' do
+          let(:clear_uuid) { nil }
+
+          it_behaves_like 'failed both validations'
+        end
+
+        context 'and clear_uuid is defined' do
+          let(:clear_uuid) { 'some-clear-uuid' }
+
+          it 'returns clear_uuid' do
+            expect(subject).to eq(clear_uuid)
+          end
+        end
+      end
+    end
+
+    context 'when three credential identifiers are defined' do
+      subject { user_verification }
+
+      let(:user_account) { create(:user_account) }
+      let(:idme_uuid) { 'some-idme-uuid' }
+      let(:logingov_uuid) { 'some-logingov-uuid' }
+      let(:clear_uuid) { 'some-clear-uuid' }
+
+      it_behaves_like 'failed credential identifier validation'
+    end
   end
 
   describe '.lock!' do
@@ -262,6 +313,15 @@ RSpec.describe UserVerification, type: :model do
         let(:mhv_uuid) { 'some-mhv-uuid' }
         let(:backing_idme_uuid) { 'some-backing-idme-uuid' }
         let(:type) { 'mhv' }
+
+        it 'returns the user verification' do
+          expect(subject).to eq(user_verification)
+        end
+      end
+
+      context 'when a CLEAR user verification is found' do
+        let(:clear_uuid) { 'some-clear-uuid' }
+        let(:type) { 'clear' }
 
         it 'returns the user verification' do
           expect(subject).to eq(user_verification)
@@ -336,6 +396,15 @@ RSpec.describe UserVerification, type: :model do
         expect(subject).to eq(expected_credential_type)
       end
     end
+
+    context 'when clear_uuid is present' do
+      let(:clear_uuid) { 'some-clear-uuid' }
+      let(:expected_credential_type) { SAML::User::CLEAR_CSID }
+
+      it 'returns expected credential type' do
+        expect(subject).to eq(expected_credential_type)
+      end
+    end
   end
 
   describe '#credential_identifier' do
@@ -365,6 +434,15 @@ RSpec.describe UserVerification, type: :model do
     context 'when logingov_uuid is present' do
       let(:logingov_uuid) { 'some-logingov-uuid' }
       let(:expected_credential_identifier) { logingov_uuid }
+
+      it 'returns expected credential identifier' do
+        expect(subject).to eq(expected_credential_identifier)
+      end
+    end
+
+    context 'when clear_uuid is present' do
+      let(:clear_uuid) { 'some-clear-uuid' }
+      let(:expected_credential_identifier) { clear_uuid }
 
       it 'returns expected credential identifier' do
         expect(subject).to eq(expected_credential_identifier)
@@ -400,12 +478,28 @@ RSpec.describe UserVerification, type: :model do
 
       context 'and idme_uuid is not present' do
         let(:idme_uuid) { nil }
-        let(:mhv_uuid) { 'some-mhv-uuid' }
-        let(:backing_idme_uuid) { 'some-backing-idme-uuid' }
-        let(:expected_identifier) { backing_idme_uuid }
 
-        it 'returns backing_idme_uuid identifier' do
-          expect(subject).to eq(expected_identifier)
+        context 'and clear_uuid is present' do
+          let(:clear_uuid) { 'some-clear-uuid' }
+          let(:expected_identifier) { clear_uuid }
+
+          it 'returns clear_uuid identifier' do
+            expect(subject).to eq(expected_identifier)
+          end
+        end
+
+        context 'and clear_uuid is not present' do
+          let(:clear_uuid) { nil }
+
+          context 'and backing_idme_uuid is present' do
+            let(:mhv_uuid) { 'some-mhv-uuid' }
+            let(:backing_idme_uuid) { 'some-backing-idme-uuid' }
+            let(:expected_identifier) { backing_idme_uuid }
+
+            it 'returns backing_idme_uuid identifier' do
+              expect(subject).to eq(expected_identifier)
+            end
+          end
         end
       end
     end

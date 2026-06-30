@@ -10,6 +10,7 @@ module SAML
     MHV_MAPPED_CSID = 'myhealthevet'
     IDME_CSID = 'idme'
     LOGINGOV_CSID = 'logingov'
+    CLEAR_CSID = 'clear'
 
     AUTHN_CONTEXTS = {
       LOA::IDME_LOA1_VETS => { loa_current: LOA::ONE, sign_in: { service_name: IDME_CSID } },
@@ -32,7 +33,7 @@ module SAML
       IAL::LOGIN_GOV_IAL2_MFA => { loa_current: LOA::THREE, sign_in: { service_name: LOGINGOV_CSID } }
     }.freeze
 
-    LOGIN_TYPES = [MHV_ORIGINAL_CSID, IDME_CSID, LOGINGOV_CSID].freeze
+    LOGIN_TYPES = [MHV_ORIGINAL_CSID, IDME_CSID, LOGINGOV_CSID, CLEAR_CSID].freeze
 
     attr_reader :saml_response, :saml_attributes, :user_attributes, :tracker_uuid
 

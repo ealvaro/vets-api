@@ -11,6 +11,7 @@ class UserVerification < ApplicationRecord
   scope :idme, -> { where.not(idme_uuid: nil) }
   scope :logingov, -> { where.not(logingov_uuid: nil) }
   scope :mhv, -> { where.not(mhv_uuid: nil) }
+  scope :clear, -> { where.not(clear_uuid: nil) }
 
   def self.find_by_type!(type, identifier)
     user_verification =
@@ -21,6 +22,8 @@ class UserVerification < ApplicationRecord
         find_by(idme_uuid: identifier)
       when SAML::User::MHV_ORIGINAL_CSID
         find_by(mhv_uuid: identifier)
+      when SAML::User::CLEAR_CSID
+        find_by(clear_uuid: identifier)
       end
     raise ActiveRecord::RecordNotFound unless user_verification
 
@@ -48,33 +51,34 @@ class UserVerification < ApplicationRecord
   def credential_type
     return SAML::User::IDME_CSID if idme_uuid
     return SAML::User::LOGINGOV_CSID if logingov_uuid
+    return SAML::User::CLEAR_CSID if clear_uuid
 
     SAML::User::MHV_ORIGINAL_CSID if mhv_uuid
   end
 
   def credential_identifier
-    idme_uuid || logingov_uuid || mhv_uuid
+    idme_uuid || logingov_uuid || clear_uuid || mhv_uuid
   end
 
   def backing_credential_identifier
-    logingov_uuid || idme_uuid || backing_idme_uuid
+    logingov_uuid || idme_uuid || clear_uuid || backing_idme_uuid
   end
 
   private
 
-  # XOR operators between the four credential identifiers mean one, and only one, of these can be
-  # defined, If two or more are defined, or if none are defined, then a validation error is raised
+  # One, and only one, of these can be defined
+  # If two or more are defined, or if none are defined, then a validation error is raised
   def single_credential_identifier
-    unless idme_uuid.present? ^ logingov_uuid.present? ^ mhv_uuid.present?
+    unless [idme_uuid, logingov_uuid, clear_uuid, mhv_uuid].count(&:present?) == 1
       errors.add(:base, 'Must specify one, and only one, credential identifier')
     end
   end
 
-  # All credentials require either an idme_uuid or logingov_uuid credential types
+  # All credentials require either an idme_uuid, logingov_uuid, or clear_uuid credential types
   # store the backing idme_uuid as backing_idme_uuid
   def backing_uuid_credentials
-    unless idme_uuid || logingov_uuid || backing_idme_uuid
-      errors.add(:base, 'Must define either an idme_uuid, logingov_uuid, or backing_idme_uuid')
+    unless idme_uuid || logingov_uuid || clear_uuid || backing_idme_uuid
+      errors.add(:base, 'Must define either an idme_uuid, logingov_uuid, clear_uuid, or backing_idme_uuid')
     end
   end
 end
