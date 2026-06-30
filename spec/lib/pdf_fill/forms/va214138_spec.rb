@@ -144,8 +144,8 @@ RSpec.describe PdfFill::Forms::Va214138 do
     context 'with short remarks (fits in one chunk)' do
       let(:remarks) { 'Short remark.' }
 
-      it 'prepends the CAVE Response header' do
-        expect(subject[:remarks]).to start_with('CAVE Response: ')
+      it 'returns the remarks verbatim (caller owns any header/formatting)' do
+        expect(subject[:remarks]).to eq('Short remark.')
       end
 
       it 'does not set remarksContinued' do
@@ -156,12 +156,27 @@ RSpec.describe PdfFill::Forms::Va214138 do
     context 'with remarks exceeding 1450 characters' do
       let(:remarks) { 'A' * 1500 }
 
-      it 'sets remarks to first 1450 chars (with header)' do
-        expect(subject[:remarks]).to start_with('CAVE Response: ')
+      it 'sets remarks to the first 1450 chars' do
+        expect(subject[:remarks].length).to eq(1450)
       end
 
-      it 'sets remarksContinued with overflow' do
-        expect(subject[:remarksContinued]).to be_present
+      it 'sets remarksContinued with the overflow' do
+        expect(subject[:remarksContinued]).to eq('A' * 50)
+      end
+    end
+  end
+
+  describe '#merge_fields remarks propagation' do
+    # Regression: merge_fields previously called `form_data.merge(...)` (non-destructive) and
+    # discarded the result, so multi-field remarks over 1450 chars never reached the form.
+    subject(:merged) { form.merge_fields }
+
+    context 'when remarks overflow the first REMARKS field' do
+      before { base_data[:remarks] = 'A' * 1600 }
+
+      it 'propagates the chunked remarks into form_data' do
+        expect(merged['remarks'].length).to eq(1450)
+        expect(merged['remarksContinued']).to eq('A' * 150)
       end
     end
   end

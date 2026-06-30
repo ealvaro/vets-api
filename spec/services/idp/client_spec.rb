@@ -233,6 +233,29 @@ RSpec.describe Idp::Client do
       }
     end
 
+    it 'sends corrections request and returns parsed payload' do
+      stub_request(:post, %r{#{Regexp.escape(request_url)}/corrections}).to_return(
+        status: 200,
+        body: { received: true }.to_json,
+        headers: { 'Content-Type' => 'application/json' }
+      )
+
+      response = client.corrections(
+        'abc123',
+        kvpid: 'kvp1',
+        payload: { corrections: [{ field: 'VETERAN_NAME', ocr_value: 'JON', user_value: 'John' }] },
+        user_id:
+      )
+
+      expect(response).to eq('received' => true)
+      expect(WebMock).to have_requested(:post, %r{#{Regexp.escape(request_url)}/corrections}).with { |request|
+        request_query(request) == { 'id' => 'abc123', 'kvpid' => 'kvp1' } &&
+          request.body.include?('VETERAN_NAME') &&
+          request.headers['Content-Type'].to_s.include?('application/json') &&
+          valid_signed_headers?(request, user_id:, hmac_key_id:)
+      }
+    end
+
     it 'raises an error when user identity is missing' do
       expect { client.status('abc123', user_id: nil) }.to raise_error(Idp::Error, /user identity is required/)
     end

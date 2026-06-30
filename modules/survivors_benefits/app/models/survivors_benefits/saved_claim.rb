@@ -138,7 +138,7 @@ module SurvivorsBenefits
           claimantInternationalPhone: claimant_international_phone(form_data),
           claimantEmailAddress: form_data['claimantEmail'] || form_data['veteranEmail'] || form_data['email'],
           claimantAddress: form_data['claimantAddress'] || form_data['veteranAddress'],
-          remarks: cave_submissions&.last&.cave_response
+          remarks: cave_change_log_remarks(form_data)
         }
       )
       filler.fill_ancillary_form(result.to_h, id, '21-4138', { extras_redesign: true })

@@ -235,6 +235,14 @@ features:
     actor_type: user
     description: Enables multiple file input (V3) upload pattern in the 10-10CG form.
     enable_in_development: false
+  cave_change_log_forward_corrections:
+    actor_type: cookie_id
+    description: Forwards CAVE user-correction change records to CAVE for accuracy metrics on claim submit
+    enable_in_development: false
+  cave_change_log_remarks:
+    actor_type: cookie_id
+    description: Renders the system-generated user-change log into the CAVE 21-4138 Remarks (vs. raw OCR dump)
+    enable_in_development: false
   cave_idp:
     actor_type: cookie_id
     description: Enables the CAVE (Common Attachment Validation Engine) IDP proxy endpoints

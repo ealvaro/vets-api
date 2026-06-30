@@ -75,6 +75,14 @@ module Idp
       payload
     end
 
+    # Accepts a corrections change set (no-op echo in dev/test).
+    def corrections(id, kvpid:, payload:, **)
+      validated_document_id(id)
+      raise Idp::Error, 'Corrections payload must be a JSON object' unless payload.is_a?(Hash)
+
+      { 'id' => id, 'kvpid' => kvpid, 'received' => true }
+    end
+
     private
 
     attr_reader :storage_dir

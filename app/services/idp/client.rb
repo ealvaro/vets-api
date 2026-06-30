@@ -61,6 +61,17 @@ module Idp
       )
     end
 
+    # Forwards a user-correction change set to CAVE for accuracy metrics. The PDFs are not
+    # sent — only the per-field { field, label, ocr_value, user_value } records.
+    def corrections(id, kvpid:, payload:, user_id:)
+      post(
+        'corrections',
+        payload,
+        request_context: { operation: 'corrections', user_id: },
+        params: { id:, kvpid: }
+      )
+    end
+
     private
 
     attr_reader :base_url, :connect_url, :timeout, :hmac_key_id, :hmac_secret

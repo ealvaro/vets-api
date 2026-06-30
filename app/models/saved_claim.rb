@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'pdf_fill/filler'
+require 'cave/claim_change_log'
 
 # Base class to hold common functionality for Claim submissions.
 # Subclasses need to several constants and methods defined:
@@ -70,6 +71,21 @@ class SavedClaim < ApplicationRecord
 
   def confirmation_number
     guid
+  end
+
+  # Builds the CAVE 21-4138 "system generated" change-log Remarks documenting the fields a
+  # user corrected on the extracted documents (DD-214, Death Certificate). Used by CAVE-enabled
+  # forms when filling the ancillary 21-4138. Falls back to the legacy raw-response dump until
+  # :cave_change_log_remarks is enabled.
+  #
+  # @param form_data [Hash] the parsed claim form (provides files[].idpArtifacts)
+  # @return [String] the Remarks text for the 21-4138
+  def cave_change_log_remarks(form_data)
+    if Flipper.enabled?(:cave_change_log_remarks)
+      Cave::ClaimChangeLog.remarks_for(self, form_data)
+    else
+      cave_submissions&.last&.cave_response
+    end
   end
 
   # Convert the json into an OStruct

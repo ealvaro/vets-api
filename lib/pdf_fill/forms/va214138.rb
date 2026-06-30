@@ -6,8 +6,6 @@ module PdfFill
       include ::PdfFill::Forms::FormHelper
       include ::PdfFill::Forms::FormHelper::PhoneNumberFormatting
 
-      CAVE_RESPONSE_HEADER = 'CAVE Response'
-
       QUESTION_KEY = [
         { question_number: '1', question_text: "Veteran or Beneficiary's Name" },
         { question_number: '2', question_text: "Veteran's Social Security Number" },
@@ -17,8 +15,8 @@ module PdfFill
         { question_number: '6', question_text: "Claimant's Phone Number" },
         { question_number: '7', question_text: "Claimant's E-Mail Address" },
         { question_number: '8', question_text: "Claimant's Address" },
-        { question_number: '9', question_text: 'CAVE Response' },
-        { question_number: '10', question_text: "CAVE Response (Cont'd)" }
+        { question_number: '9', question_text: 'Remarks' },
+        { question_number: '10', question_text: "Remarks (Cont'd)" }
       ].freeze
 
       # because multiple forms will render the 4138
@@ -242,7 +240,12 @@ module PdfFill
 
         form_data[:claimantEmailAddress] = merge_email_address(form_data[:claimantEmailAddress])
 
-        form_data.merge(merge_remarks(form_data[:remarks] || ''))
+        # NOTE: merge_remarks splits the (already-formatted) remarks string across the
+        # REMARKS / REMARKS (Cont'd) fields. The result MUST be assigned back — a bare
+        # `form_data.merge(...)` is non-destructive and silently drops the split, leaving
+        # any text over 1450 chars off the rendered form.
+        remarks_fields = merge_remarks(form_data[:remarks] || '')
+        form_data.merge!(remarks_fields) if remarks_fields
 
         form_data[:claimantPhone] = expand_phone_number(form_data[:claimantPhone].to_s)
         form_data[:claimantInternationalPhone] = form_data[:claimantInternationalPhone].to_s
@@ -262,15 +265,20 @@ module PdfFill
         end
       end
 
+      # Splits the remarks string across the REMARKS (limit 1450) and
+      # REMARKS (Cont'd) (limit 2109) fields. The caller is responsible for any
+      # header/formatting of the remarks text itself (e.g. Cave::ChangeLog already
+      # emits its own "SYSTEM GENERATED..." header), so this only chunks the string.
       def merge_remarks(remarks)
-        remarks_parts = (remarks || '').scan(/.{1,1450}/)
+        remarks_parts = (remarks || '').scan(/.{1,1450}/m)
         case remarks_parts.length
         when 0 # empty string, no-op
+          nil
         when 1
-          { remarks: "#{CAVE_RESPONSE_HEADER}: #{remarks_parts[0]}" }
+          { remarks: remarks_parts[0] }
         else
           {
-            remarks: "#{CAVE_RESPONSE_HEADER}: #{remarks_parts[0]}",
+            remarks: remarks_parts[0],
             remarksContinued: remarks_parts.drop(1).join
           }
         end
