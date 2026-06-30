@@ -213,6 +213,60 @@ describe Mobile::V0::Adapters::VAOSV2Appointments, :aggregate_failures do
         appt = appointment_by_id(missing_vvs_kind_id, overrides: { extension: { vvs_vista_video_appt: true } })
         expect(appt.appointment_type).to eq('VA_VIDEO_CONNECT_HOME')
       end
+
+      context 'with new mobile appointment modality logic enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:mobile_va_appointment_modality_alignment).and_return(true)
+        end
+
+        it 'sets telehealth appointments without vvs_kind to VA_VIDEO_CONNECT_HOME
+            when source system is cerner and telehealth url is present' do
+          appt = appointment_by_id(missing_vvs_kind_id,
+                                   overrides: { is_cerner: true,
+                                                identifier: [{ system: 'urn:va.gov:cfa:cerner:appointment' }] })
+          expect(appt.appointment_type).to eq('VA_VIDEO_CONNECT_HOME')
+        end
+
+        it 'sets telehealth appointments without vvs_kind to VA
+            when source system is cerner and telehealth url is absent' do
+          appt = appointment_by_id(missing_vvs_kind_id,
+                                   overrides: { is_cerner: true,
+                                                identifier: [{ system: 'urn:va.gov:cfa:cerner:appointment' }] },
+                                   without: [{ key: :url, at: :telehealth }])
+          expect(appt.appointment_type).to eq('VA')
+        end
+      end
+
+      context 'with new mobile appointment modality logic disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:mobile_va_appointment_modality_alignment).and_return(false)
+        end
+
+        it 'sets telehealth appointments without vvs_kind to VA
+            when source system is cerner and telehealth url is present and vvs_vista_video_appt is absent' do
+          appt = appointment_by_id(missing_vvs_kind_id,
+                                   overrides: { is_cerner: true,
+                                                identifier: [{ system: 'urn:va.gov:cfa:cerner:appointment' }] })
+          expect(appt.appointment_type).to eq('VA')
+        end
+
+        it 'sets telehealth appointments without vvs_kind to VA
+            when source system is cerner and telehealth url is absent and vvs_vista_video_appt is absent' do
+          appt = appointment_by_id(missing_vvs_kind_id,
+                                   overrides: { is_cerner: true,
+                                                identifier: [{ system: 'urn:va.gov:cfa:cerner:appointment' }] },
+                                   without: [{ key: :url, at: :telehealth }])
+          expect(appt.appointment_type).to eq('VA')
+        end
+
+        it 'sets telehealth appointments without vvs_kind to VA_VIDEO_CONNECT_HOME when source system is cerner
+            and vvs_vista_video_appt is true' do
+          appt = appointment_by_id(missing_vvs_kind_id,
+                                   overrides: { is_cerner: true, extension: { vvs_vista_video_appt: true },
+                                                identifier: [{ system: 'urn:va.gov:cfa:cerner:appointment' }] })
+          expect(appt.appointment_type).to eq('VA_VIDEO_CONNECT_HOME')
+        end
+      end
     end
   end
 

@@ -275,6 +275,11 @@ module Mobile
           return APPOINTMENT_TYPES[:va_video_connect_atlas] if appointment.dig(:telehealth, :atlas)
 
           vvs_kind = appointment.dig(:telehealth, :vvs_kind)
+
+          appointment_modality(appointment, vvs_kind)
+        end
+
+        def appointment_modality(appointment, vvs_kind)
           if VIDEO_CODE.include?(vvs_kind)
             if vvs_kind == 'MOBILE_GFE' || appointment.dig(:extension, :patient_has_mobile_gfe)
               APPOINTMENT_TYPES[:va_video_connect_gfe]
@@ -283,6 +288,14 @@ module Mobile
             end
           elsif VIDEO_CONNECT_AT_VA.include?(vvs_kind)
             APPOINTMENT_TYPES[:va_video_connect_onsite]
+          elsif appointment[:is_cerner] &&
+                Flipper.enabled?(:mobile_va_appointment_modality_alignment)
+            if appointment.dig(:telehealth,
+                               :url).nil?
+              APPOINTMENT_TYPES[:va]
+            else
+              APPOINTMENT_TYPES[:va_video_connect_home]
+            end
           else
             vvs_video_appt = appointment.dig(:extension, :vvs_vista_video_appt)
             vvs_video_appt.to_s.downcase == 'true' ? APPOINTMENT_TYPES[:va_video_connect_home] : APPOINTMENT_TYPES[:va]

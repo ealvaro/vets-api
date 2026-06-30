@@ -2244,6 +2244,10 @@ features:
     actor_type: user
     description: Use AccreditedIndividual and AccreditedOrganization models for mobile power of attorney lookups instead of Veteran::Service::Representative and Veteran::Service::Organization
     enable_in_development: false
+  mobile_va_appointment_modality_alignment:
+    actor_type: user
+    description: Aligns va appointment modality mobile logic with web logic for OH appointments
+    enable_in_development: true
   multiple_address_10_10ez:
     actor_type: cookie_id
     description: >
