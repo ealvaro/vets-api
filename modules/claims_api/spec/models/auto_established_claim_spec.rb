@@ -922,4 +922,43 @@ RSpec.describe ClaimsApi::AutoEstablishedClaim, type: :model do
       end
     end
   end
+
+  describe '.get_by_id_and_icn' do
+    let(:icn) { '1012667169V030190' }
+    let!(:claim) do
+      create(:auto_established_claim, veteran_icn: icn, evss_id: '600118851',
+                                      auth_headers: { some: 'data' })
+    end
+
+    context 'when id is a UUID' do
+      it 'finds the claim by id and icn' do
+        result = described_class.get_by_id_and_icn(claim.id, icn)
+        expect(result).to eq(claim)
+      end
+
+      it 'returns nil when icn does not match' do
+        result = described_class.get_by_id_and_icn(claim.id, 'wrong_icn')
+        expect(result).to be_nil
+      end
+    end
+
+    context 'when id is a numeric evss_id' do
+      it 'falls back to finding by evss_id and icn' do
+        result = described_class.get_by_id_and_icn('600118851', icn)
+        expect(result).to eq(claim)
+      end
+
+      it 'returns nil when icn does not match' do
+        result = described_class.get_by_id_and_icn('600118851', 'wrong_icn')
+        expect(result).to be_nil
+      end
+    end
+
+    context 'when no claim exists' do
+      it 'returns nil' do
+        result = described_class.get_by_id_and_icn('nonexistent', icn)
+        expect(result).to be_nil
+      end
+    end
+  end
 end

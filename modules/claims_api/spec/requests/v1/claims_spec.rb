@@ -118,7 +118,7 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
                 params: nil, headers: request_headers.merge(auth_header)
               )
               expect(response).to match_response_schema('claims_api/claim')
-              expect(JSON.parse(response.body)['data']['id']).to eq(bgs_claim_id)
+              expect(JSON.parse(response.body)['data']['id']).to eq('d5536c5c-0465-4038-a368-1a9d9daf65c9')
             end
           end
         end
@@ -138,7 +138,7 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
                 params: nil, headers: request_headers_camel.merge(auth_header)
               )
               expect(response).to match_camelized_response_schema('claims_api/claim')
-              expect(JSON.parse(response.body)['data']['id']).to eq(bgs_claim_id)
+              expect(JSON.parse(response.body)['data']['id']).to eq('d5536c5c-0465-4038-a368-1a9d9daf65c9')
             end
           end
         end
@@ -283,6 +283,27 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
             headers = request_headers.merge(auth_header)
             get('/services/claims/v1/claims/d5536c5c-0465-4038-a368-1a9d9daf65c9', params: nil, headers:)
             expect(response).to have_http_status(:unprocessable_content)
+          end
+        end
+      end
+
+      context 'when looking up an errored claim by evss_id' do
+        it 'finds the claim and returns errors', run_at: 'Wed, 13 Dec 2017 03:28:23 GMT' do
+          mock_acg(scopes) do |auth_header|
+            create(:auto_established_claim,
+                   source: 'abraham lincoln',
+                   auth_headers: auth_header,
+                   evss_id: 600_118_851,
+                   id: 'd5536c5c-0465-4038-a368-1a9d9daf65c9',
+                   status: 'errored',
+                   evss_response: [{ 'key' => 'Error', 'severity' => 'FATAL', 'text' => 'BD upload failed' }])
+            VCR.use_cassette('claims_api/bgs/claims/claim') do
+              headers = request_headers.merge(auth_header)
+              get("/services/claims/v1/claims/#{bgs_claim_id}", params: nil, headers:)
+              expect(response).to have_http_status(:unprocessable_content)
+              body = JSON.parse(response.body)
+              expect(body['errors'].first['detail']).to include('BD upload failed')
+            end
           end
         end
       end

@@ -22,7 +22,7 @@ module ClaimsApi
       end
 
       def show
-        claim = ClaimsApi::AutoEstablishedClaim.find_by(id: params[:id])
+        claim = ClaimsApi::AutoEstablishedClaim.get_by_id_or_evss_id(params[:id])
 
         if claim && claim.status == 'errored'
           fetch_errored(claim)

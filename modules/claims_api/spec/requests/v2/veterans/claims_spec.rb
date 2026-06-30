@@ -881,6 +881,40 @@ RSpec.describe 'ClaimsApi::V2::Veterans::Claims', type: :request do
             end
           end
 
+          context 'and a Lighthouse claim is found via evss_id fallback' do
+            let(:lh_claim_with_errors) do
+              create(:auto_established_claim,
+                     status: 'errored',
+                     veteran_icn: veteran_id,
+                     evss_id: claim_id,
+                     evss_response: [{ 'key' => 'BD.upload', 'severity' => 'FATAL',
+                                       'detail' => 'Benefits Documents upload failed' }])
+            end
+
+            it 'surfaces errors from the Lighthouse claim' do
+              mock_ccg(scopes) do |auth_header|
+                VCR.use_cassette('claims_api/bgs/tracked_items/find_tracked_items') do
+                  VCR.use_cassette('claims_api/evss/documents/get_claim_documents') do
+                    expect_any_instance_of(bnft_claim_web_service)
+                      .to receive(:find_benefit_claim_details_by_benefit_claim_id).and_return(bgs_claim)
+                    expect(ClaimsApi::AutoEstablishedClaim)
+                      .to receive(:get_by_id_and_icn).and_return(lh_claim_with_errors)
+
+                    get claim_by_id_path, headers: auth_header
+
+                    json_response = JSON.parse(response.body)
+                    expect(response).to have_http_status(:ok)
+                    errors = json_response['data']['attributes']['errors']
+                    expect(errors).not_to be_empty
+                    expect(errors.first['detail']).to include('Benefits Documents upload failed')
+                    expect(errors.first['source']).to eq('BD/upload')
+                    expect(json_response['data']['attributes']['lighthouseId']).to eq(lh_claim_with_errors.id)
+                  end
+                end
+              end
+            end
+          end
+
           describe 'when there is no file number returned from BGS' do
             context 'when the file_number is nil' do
               it 'returns an empty array and not a 404' do

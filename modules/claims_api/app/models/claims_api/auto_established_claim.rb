@@ -108,7 +108,11 @@ module ClaimsApi
     end
 
     def self.get_by_id_and_icn(id, icn)
-      find_by(id:, veteran_icn: icn)
+      if id.to_s.include?('-')
+        find_by(id:, veteran_icn: icn)
+      else
+        find_by(evss_id: id, veteran_icn: icn)
+      end
     end
 
     def set_header_hash
