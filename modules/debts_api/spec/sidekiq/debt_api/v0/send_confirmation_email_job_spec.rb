@@ -35,7 +35,9 @@ RSpec.describe DebtsApi::V0::Form5655::SendConfirmationEmailJob, type: :worker d
     # --- Path 1: job has user_pii only (no cache_key) ---
     context 'when job has user_pii only (no cache_key)' do
       let(:lockbox) { DebtsApi::V0::DigitalDisputeSubmission::LOCKBOX }
-      let!(:form_submission) { create(:debts_api_form5655_submission, **submission_attrs) }
+      let!(:form_submission) do
+        create(:debts_api_form5655_submission, **submission_attrs.merge(state: :submitted))
+      end
       let(:job_params) do
         {
           'user_uuid' => user.uuid,
@@ -108,10 +110,21 @@ RSpec.describe DebtsApi::V0::Form5655::SendConfirmationEmailJob, type: :worker d
 
       context 'with FSR submission type' do
         context 'when submissions are found' do
-          let!(:form_submission) { create(:debts_api_form5655_submission, **submission_attrs) }
+          let!(:form_submission) do
+            create(:debts_api_form5655_submission, **submission_attrs.merge(state: :submitted))
+          end
           let(:job_params) { job_params_with_cache }
 
           include_examples 'sends email using PII from cache'
+        end
+
+        context 'when only in-progress submissions are found' do
+          let!(:form_submission) do
+            create(:debts_api_form5655_submission, **submission_attrs.merge(state: :in_progress))
+          end
+          let(:job_params) { job_params_with_cache }
+
+          include_examples 'logs no submissions warning', 'fsr'
         end
 
         context 'when no submissions are found' do
@@ -127,7 +140,9 @@ RSpec.describe DebtsApi::V0::Form5655::SendConfirmationEmailJob, type: :worker d
         end
 
         context 'when an error occurs' do
-          let!(:form_submission) { create(:debts_api_form5655_submission, **submission_attrs) }
+          let!(:form_submission) do
+            create(:debts_api_form5655_submission, **submission_attrs.merge(state: :submitted))
+          end
           let(:job_params) { job_params_with_cache }
 
           it 'raises and logs the error' do

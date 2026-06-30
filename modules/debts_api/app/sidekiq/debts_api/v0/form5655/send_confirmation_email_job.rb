@@ -128,7 +128,7 @@ module DebtsApi
         DebtsApi::V0::DigitalDisputeSubmission.where(user_uuid:, state: 1)
                                               .order(created_at: :desc).first
       else
-        DebtsApi::V0::Form5655Submission.where(user_uuid:, state: 1)
+        DebtsApi::V0::Form5655Submission.submitted.where(user_uuid:)
       end
     end
   end
