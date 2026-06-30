@@ -6,13 +6,11 @@ require 'common/client/concerns/monitoring'
 require_relative 'configuration'
 require_relative 'error'
 require_relative 'client'
-require 'vets/shared_logging'
 require 'datadog'
 
 module VaNotify
   class Service < Common::Client::Base
     include Common::Client::Concerns::Monitoring
-    include Vets::SharedLogging
 
     STATSD_KEY_PREFIX = 'api.vanotify'
     UUID_LENGTH = 36
@@ -134,11 +132,7 @@ module VaNotify
     end
 
     def log_error_details(error)
-      log_message_to_rails(
-        error.message,
-        'error',
-        { url: config.base_path, body: error.try(:body) }
-      )
+      Rails.logger.error(error.message, { url: config.base_path, body: error.try(:body) })
     end
 
     def append_callback_url(args)

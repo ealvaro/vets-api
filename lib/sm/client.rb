@@ -18,7 +18,6 @@ module SM
   # Core class responsible for SM API interface operations
   #
   class Client < Common::Client::Base
-    include Vets::SharedLogging
     include Common::Client::Concerns::MHVSessionBasedClient
     include Preferences
     include Folders

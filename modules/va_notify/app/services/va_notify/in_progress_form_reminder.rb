@@ -5,7 +5,6 @@ require 'va_notify/in_progress_form_helper'
 module VANotify
   class InProgressFormReminder
     include Sidekiq::Job
-    include Vets::SharedLogging
     sidekiq_options retry: 14
 
     API_KEY_PATH = 'Settings.vanotify.services.va_gov.api_key'

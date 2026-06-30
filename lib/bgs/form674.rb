@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
-
 require_relative 'benefit_claim'
 require_relative 'dependents'
 require_relative 'service'
@@ -14,8 +12,6 @@ require_relative '../bid/awards/service'
 
 module BGS
   class Form674
-    include Vets::SharedLogging
-
     attr_reader :user, :saved_claim, :proc_id, :claim_type_end_product
 
     def initialize(user, saved_claim, options = {})

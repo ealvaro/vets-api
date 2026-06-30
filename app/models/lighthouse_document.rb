@@ -7,7 +7,6 @@ require 'common/pdf_helpers'
 class LighthouseDocument
   include Vets::Model
   include ActiveModel::Validations::Callbacks
-  include Vets::SharedLogging
 
   attribute :first_name, String
   attribute :claim_id, Integer
@@ -160,7 +159,7 @@ class LighthouseDocument
                         error.class.new(sanitized_message)
                       end
     sanitized_error.set_backtrace(error.backtrace)
-    log_exception_to_rails(sanitized_error, :warn)
+    Rails.logger.warn(sanitized_error)
   end
 
   def cleanup_after_unlock(tempfile_without_pass, unlock_succeeded)
@@ -190,7 +189,7 @@ class LighthouseDocument
     Rails.logger.info("Document for claim #{claim_id} is encrypted") if metadata.encrypted?
     file_obj.tempfile.rewind
   rescue PdfInfo::MetadataReadError => e
-    log_exception_to_rails(e, :warn)
+    Rails.logger.warn(e)
     Rails.logger.info("MetadataReadError: Document for claim #{claim_id}")
     if e.message.include?('Incorrect password')
       errors.add(:base, I18n.t('errors.messages.uploads.pdf.locked'))

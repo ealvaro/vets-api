@@ -1,14 +1,11 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
-
 module TravelClaim
   ##
   # A service client for handling HTTP requests to the Travel Reimbursement API.
   #
   class Client
     extend Forwardable
-    include Vets::SharedLogging
 
     GRANT_TYPE = 'client_credentials'
     CLAIMANT_ID_TYPE = 'icn'

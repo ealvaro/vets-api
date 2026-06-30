@@ -1,12 +1,8 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
-
 module VAProfileRedis
   module V2
     class Cache
-      include Vets::SharedLogging
-
       # Invalidates the cache set in VAProfileRedis::V2::ContactInformation through
       # our Common::RedisStore#destroy method.
       #

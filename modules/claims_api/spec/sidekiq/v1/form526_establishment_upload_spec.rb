@@ -328,7 +328,7 @@ RSpec.describe ClaimsApi::V1::Form526EstablishmentUpload, type: :job do
         expect(@should_retry).to be(true)
       end
 
-      it 'logs BackendServiceException errors at ERROR level via log_exception_to_rails' do
+      it 'logs BackendServiceException errors at ERROR level via Rails.logger.error' do
         body = [{
           key: 'form526.submit.establishClaim.serviceError',
           severity: 'FATAL',
@@ -341,8 +341,8 @@ RSpec.describe ClaimsApi::V1::Form526EstablishmentUpload, type: :job do
 
         allow_any_instance_of(ClaimsApi::FesService::Base).to receive(:submit).and_raise(backend_error)
 
-        # Spy on the service instance to verify log_exception_to_rails is called
-        allow(service).to receive(:log_exception_to_rails).and_call_original
+        # Spy on Rails.logger to verify error is called
+        allow(Rails.logger).to receive(:error).and_call_original
 
         Sidekiq::Testing.inline! do
           expect do
@@ -350,8 +350,11 @@ RSpec.describe ClaimsApi::V1::Form526EstablishmentUpload, type: :job do
           end.to raise_error(Common::Exceptions::BackendServiceException)
         end
 
-        # Verify that log_exception_to_rails was called with the BackendServiceException
-        expect(service).to have_received(:log_exception_to_rails).with(backend_error)
+        # Verify that Rails.logger.error was called with the exception message, the
+        # BackendServiceException's structured error details as context, and the
+        # exception itself (so SemanticLogger captures the class, backtrace, and cause)
+        expected_context = backend_error.errors.first.attributes.compact
+        expect(Rails.logger).to have_received(:error).with(backend_error.message, expected_context, backend_error)
       end
     end
   end

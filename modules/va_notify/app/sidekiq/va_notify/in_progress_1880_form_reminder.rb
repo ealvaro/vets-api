@@ -5,7 +5,6 @@ require 'va_notify/in_progress_form_helper'
 module VANotify
   class InProgress1880FormReminder
     include Sidekiq::Job
-    include Vets::SharedLogging
     sidekiq_options retry: 14
 
     FORM_NAME = '26-1880'

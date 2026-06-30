@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
-
 module Common
   module Client
     module Middleware
@@ -11,7 +9,6 @@ module Common
         # the appropriate exception for our application.
         #
         class MHVXmlHtmlErrors < Faraday::Middleware
-          include Vets::SharedLogging
           attr_reader :status
 
           ##
@@ -25,7 +22,7 @@ module Common
             @status = env.status.to_i
 
             extra_context = { original_status: @status, original_body: env.body }
-            log_message_to_rails('Could not parse XML/HTML response from MHV', :warn, extra_context)
+            Rails.logger.warn('Could not parse XML/HTML response from MHV', extra_context)
             raise Common::Exceptions::BackendServiceException.new('VA900', response_values, @status, env.body)
           end
 

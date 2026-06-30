@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 module Organizations

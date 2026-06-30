@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'sidekiq'
-require 'vets/shared_logging'
 require 'meb_api/confirmation_email_config'
 require 'meb_api/email_error_logger'
 
@@ -9,7 +8,6 @@ module MebApi
   module V0
     class BaseConfirmationEmailWorker
       include Sidekiq::Worker
-      include Vets::SharedLogging
       sidekiq_options retry: 14
 
       STATS_KEY = 'api.meb.confirmation_email'

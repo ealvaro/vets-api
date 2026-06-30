@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 module FormIntake
@@ -8,7 +7,6 @@ module FormIntake
   # Retries with exponential backoff for ~2 days
   class SubmitFormDataJob
     include Sidekiq::Job
-    include Vets::SharedLogging
 
     # retry for 2d 1h 47m 12s (matches Lighthouse pattern)
     # https://github.com/sidekiq/sidekiq/wiki/Error-Handling

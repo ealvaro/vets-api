@@ -1,13 +1,11 @@
 # frozen_string_literal: true
 
 require 'sidekiq'
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 module Veteran
   class VSOReloader < BaseReloader
     include Sidekiq::Job
-    include Vets::SharedLogging
 
     # The total number of representatives and organizations parsed from the ingested .ASP files
     # must not decrease by more than this percentage from the previous count

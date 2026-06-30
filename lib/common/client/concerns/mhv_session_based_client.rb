@@ -18,7 +18,6 @@ module Common
       module MHVSessionBasedClient
         extend ActiveSupport::Concern
         include MhvLockedSessionClient
-        include Vets::SharedLogging
 
         attr_reader :session
 

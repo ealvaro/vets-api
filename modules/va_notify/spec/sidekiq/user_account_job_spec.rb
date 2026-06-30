@@ -68,8 +68,11 @@ RSpec.describe VANotify::UserAccountJob, type: :worker do
       it 'rescues and logs the error' do
         VCR.use_cassette('va_notify/bad_request_invalid_template_id') do
           job = described_class.new
-          expect(job).to receive(:log_exception_to_rails).with(
-            instance_of(VANotify::BadRequest)
+          allow(Rails.logger).to receive(:error)
+          expect(Rails.logger).to receive(:error).with(instance_of(VANotify::BadRequest))
+          expect(Rails.logger).to receive(:error).with(
+            'VANotify malformed request (400)',
+            hash_including(template_id: 'template_id', status_code: 400)
           )
 
           job.perform(user_account.id, template_id)

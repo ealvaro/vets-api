@@ -4,7 +4,6 @@ module VANotify
   module V2
     class QueueUserAccountJob
       include Sidekiq::Job
-      include Vets::SharedLogging
 
       sidekiq_options retry: 14
 
@@ -82,7 +81,7 @@ module VANotify
 
       def handle_backend_exception(e)
         if e.status_code == 400
-          log_exception_to_rails(e)
+          Rails.logger.error(e)
         else
           raise e
         end

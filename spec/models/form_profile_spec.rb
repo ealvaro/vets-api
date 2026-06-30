@@ -1129,7 +1129,7 @@ RSpec.describe FormProfile, type: :model do
   describe '#initialize_va_profile_prefill_military_information' do
     context 'when va profile is down in production' do
       it 'logs exception and returns empty hash' do
-        expect(form_profile).to receive(:log_exception_to_rails)
+        expect(Rails.logger).to receive(:error)
         expect(form_profile.send(:initialize_va_profile_prefill_military_information)).to eq({})
       end
     end
@@ -1492,7 +1492,8 @@ RSpec.describe FormProfile, type: :model do
       it 'logs a BackendServiceException and returns and empty hash' do
         VCR.use_cassette('va_profile/military_personnel/post_read_service_history_500',
                          allow_playback_repeats: true, match_requests_on: %i[method uri]) do
-          expect(form_profile).to receive(:log_exception_to_rails)
+          allow(Rails.logger).to receive(:error)
+          expect(Rails.logger).to receive(:error).with(instance_of(Common::Exceptions::BackendServiceException))
           expect(form_profile.send(:initialize_va_profile_prefill_military_information)).to eq({})
         end
       end

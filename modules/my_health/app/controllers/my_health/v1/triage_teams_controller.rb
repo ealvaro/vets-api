@@ -3,8 +3,6 @@
 module MyHealth
   module V1
     class TriageTeamsController < SMController
-      include Vets::SharedLogging
-
       STATSD_KEY_PREFIX = 'api.my_health.triage_teams'
 
       def index
@@ -20,7 +18,8 @@ module MyHealth
         render json: TriageTeamSerializer.new(resource.data, { meta: resource.metadata })
       rescue => e
         StatsD.increment("#{STATSD_KEY_PREFIX}.fail")
-        log_exception_to_rails(e)
+        context = e.try(:errors)&.first&.try(:attributes)&.compact
+        Rails.logger.error(e.message, context, e)
         raise e
       end
     end

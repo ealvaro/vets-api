@@ -2,13 +2,11 @@
 
 require 'vets/model'
 require 'pdf_info'
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 class EVSSClaimDocument
   include Vets::Model
   include ActiveModel::Validations::Callbacks
-  include Vets::SharedLogging
 
   attribute :evss_claim_id, Integer
   attribute :tracked_item_id, Integer

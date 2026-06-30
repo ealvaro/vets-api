@@ -46,7 +46,8 @@ module ClaimsApi
         set_evss_response(auto_claim, e)
         log_job_progress(claim_id,
                          "Form 526 Est. job errored #{e.class}")
-        log_exception_to_rails e
+        context = e.try(:errors)&.first&.try(:attributes)&.compact
+        Rails.logger.error(e.message, context, e)
         if will_retry?(auto_claim, e)
           raise e
         else
@@ -58,7 +59,8 @@ module ClaimsApi
         set_evss_response(auto_claim, e) if auto_claim.evss_response.blank?
         log_job_progress(claim_id,
                          "Form 526 Est. job errored #{e.class}")
-        log_exception_to_rails e
+        context = e.try(:errors)&.first&.try(:attributes)&.compact
+        Rails.logger.error(e.message, context, e)
 
         raise e
       end

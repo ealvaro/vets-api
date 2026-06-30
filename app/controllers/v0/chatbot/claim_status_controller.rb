@@ -5,13 +5,11 @@ require 'concurrent'
 require 'chatbot/report_to_cxi'
 require 'lighthouse/benefits_claims/service'
 require 'lighthouse/benefits_claims/constants'
-require 'vets/shared_logging'
 
 module V0
   module Chatbot
     class ClaimStatusController < ::SignIn::ServiceAccountApplicationController
       include IgnoreNotFound
-      include Vets::SharedLogging
       include ::Chatbot::RequiresEdipi
 
       service_tag 'chatbot'
@@ -110,14 +108,15 @@ module V0
       end
 
       def service_exception_handler(exception)
-        context = 'An error occurred while attempting to retrieve the claim(s).'
-        log_exception_to_rails(exception, 'error', context)
+        message_prefix = 'An error occurred while attempting to retrieve the claim(s).'
+        Rails.logger.error("#{message_prefix}: #{exception.message}", exception)
+
         render nothing: true, status: :service_unavailable
       end
 
       def report_exception_handler(exception)
-        context = 'An error occurred while attempting to report the claim(s).'
-        log_exception_to_rails(exception, 'error', context)
+        message_prefix = 'An error occurred while attempting to report the claim(s).'
+        Rails.logger.error("#{message_prefix}: #{exception.message}", exception)
       end
 
       def log_no_claims_found(exception)

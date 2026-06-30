@@ -1,12 +1,9 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
 require 'vre/notification_email'
 
 module VRE
   class VREVeteranReadinessEmploymentClaim < ::SavedClaim
-    include Vets::SharedLogging
-
     FORM = Constants::FORM
     VBMS_CONFIRMATION = :confirmation_vbms
     LIGHTHOUSE_CONFIRMATION = :confirmation_lighthouse

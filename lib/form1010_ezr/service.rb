@@ -7,12 +7,10 @@ require 'hca/ezr_postfill'
 require 'hca/overrides_parser'
 require 'va1010_forms/enrollment_system/service'
 require 'form1010_ezr/veteran_enrollment_system/associations/service'
-require 'vets/shared_logging'
 
 module Form1010Ezr
   class Service < Common::Client::Base
     include Common::Client::Concerns::Monitoring
-    extend Vets::SharedLogging
 
     STATSD_KEY_PREFIX = 'api.1010ezr'
 
@@ -37,7 +35,7 @@ module Form1010Ezr
     end
 
     def self.log_submission_failure(parsed_form, msg)
-      log_message_to_rails(msg, :error, veteran_initials(parsed_form))
+      Rails.logger.error(msg, veteran_initials(parsed_form))
     end
 
     def submit_async(parsed_form)

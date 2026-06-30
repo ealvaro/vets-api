@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 module Preneeds
@@ -10,7 +9,6 @@ module Preneeds
       # exception for our application.
       #
       class EoasXmlErrors < Faraday::Middleware
-        include Vets::SharedLogging
         attr_reader :status, :fault, :code, :detail
 
         # Checks the response for service errors and raises an exception if appropriate

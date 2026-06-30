@@ -1,12 +1,9 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 module BGS
   class AwardsService
-    include Vets::SharedLogging
-
     attr_reader :participant_id, :ssn, :common_name, :email, :icn, :user_account_id
 
     def initialize(user)

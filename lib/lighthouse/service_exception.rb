@@ -1,14 +1,11 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 module Lighthouse
   # Custom exception that maps Lighthouse API errors to controller ExceptionHandling-friendly format
   #
   class ServiceException
-    extend Vets::SharedLogging
-
     # a map of the known Lighthouse errors based on the documentation
     # https://developer.va.gov/
     ERROR_MAP = {

@@ -1,11 +1,9 @@
 # frozen_string_literal: true
 
 require 'res/ch31_form'
-require 'vets/shared_logging'
 require 'vre/notification_email'
 
 class SavedClaim::VeteranReadinessEmploymentClaim < SavedClaim
-  include Vets::SharedLogging
   include ::VREClaimsEvidenceUpload
 
   FORM = '28-1900'

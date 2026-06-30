@@ -5,12 +5,10 @@ require 'evss/documents_service'
 require 'evss/auth_headers'
 require 'lighthouse/benefits_documents/constants'
 require 'lighthouse/benefits_documents/utilities/helpers'
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 # EVSS Claims Status Tool
 class EVSSClaimService
-  include Vets::SharedLogging
   EVSS_CLAIM_KEYS = %w[open_claims historical_claims].freeze
 
   def initialize(user)

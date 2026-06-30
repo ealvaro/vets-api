@@ -14,8 +14,8 @@ RSpec.describe LighthouseDocument do
         shared_examples 'logs a sanitized error message' do
           it 'logs a sanitized message without sensitive data' do
             error_message = nil
-            allow_any_instance_of(Vets::SharedLogging).to receive(:log_exception_to_rails) do |_, error, _level|
-              error_message = error.message
+            allow(Rails.logger).to receive(:warn) do |error|
+              error_message = error.respond_to?(:message) ? error.message : error
             end
 
             tempfile = Tempfile.new(['', "-#{file_name}"])

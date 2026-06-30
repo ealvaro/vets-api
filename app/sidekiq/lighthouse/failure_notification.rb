@@ -1,11 +1,9 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 class Lighthouse::FailureNotification
   include Sidekiq::Job
-  include Vets::SharedLogging
 
   NOTIFY_SETTINGS = Settings.vanotify.services.benefits_management_tools
   MAILER_TEMPLATE_ID = NOTIFY_SETTINGS.template_id.evidence_submission_failure_email

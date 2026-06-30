@@ -1645,10 +1645,9 @@ module VAOS
           failure[:detail] = VAOS::Anonymizers.anonymize_icns(detail) if detail.present?
         end
 
-        log_message_to_rails(
+        Rails.logger.info(
           "VAOS::V2::AppointmentService##{method_name} has response errors.",
-          :info,
-          failures: failures_dup.to_json
+          { failures: failures_dup.to_json }
         )
       end
 

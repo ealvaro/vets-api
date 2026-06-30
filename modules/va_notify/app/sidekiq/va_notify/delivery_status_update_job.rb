@@ -5,7 +5,6 @@ require 'sidekiq/attr_package'
 module VANotify
   class DeliveryStatusUpdateJob
     include Sidekiq::Job
-    include Vets::SharedLogging
 
     class NotificationNotFound < StandardError; end
 

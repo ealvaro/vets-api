@@ -1,12 +1,10 @@
 # frozen_string_literal: true
 
 require 'sidekiq'
-require 'vets/shared_logging'
 
 module CheckIn
   class TravelClaimBaseJob
     include Sidekiq::Job
-    include Vets::SharedLogging
 
     sidekiq_options retry: false
 

@@ -2,7 +2,6 @@
 
 require 'common/client/base'
 require 'common/client/concerns/monitoring'
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 require_relative 'configuration'
 require_relative 'responses/response'
@@ -13,7 +12,6 @@ module Forms
   # @example Get all forms or filter by a wildcard query.
   #
   class Client < Common::Client::Base
-    include Vets::SharedLogging
     include Common::Client::Concerns::Monitoring
 
     configuration Forms::Configuration

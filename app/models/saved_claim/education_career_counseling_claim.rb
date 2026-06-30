@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
-
 class SavedClaim::EducationCareerCounselingClaim < CentralMailClaim
-  include Vets::SharedLogging
   FORM = '28-8832'
 
   def regional_office

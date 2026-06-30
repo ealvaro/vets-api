@@ -140,14 +140,13 @@ RSpec.describe HCA::EzrSubmissionJob, type: :job do
 
           described_class.within_sidekiq_retries_exhausted_block(msg) do
             allow(VANotify::EmailJob).to receive(:perform_async)
-            expect_any_instance_of(Vets::SharedLogging).to receive(:log_message_to_rails).with(
+            expect(Rails.logger).to receive(:error).with(
               '[10-10EZR] total failure',
-              :error,
-              {
+              hash_including(
                 first_initial: 'F',
                 middle_initial: 'M',
                 last_initial: 'Z'
-              }
+              )
             )
           end
         end
@@ -278,7 +277,7 @@ RSpec.describe HCA::EzrSubmissionJob, type: :job do
 
         it 'logs the error' do
           allow(ezr_service).to receive(:submit_sync).with(form).once.and_raise(error)
-          expect(HCA::EzrSubmissionJob).to receive(:log_exception_to_rails)
+          expect(Rails.logger).to receive(:error)
           expect(Form1010Ezr::Service).to receive(:log_submission_failure).with(
             form,
             '[10-10EZR] failure'

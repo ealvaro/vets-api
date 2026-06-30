@@ -1,14 +1,11 @@
 # frozen_string_literal: true
 
 require 'common/exceptions/backend_service_exception'
-require 'vets/shared_logging'
 
 module BenefitsClaims
   # Custom exception that maps Benefits Claims errors to error details defined in config/locales/exceptions.en.yml
   #
   class ServiceException
-    include Vets::SharedLogging
-
     ERROR_MAP = {
       504 => Common::Exceptions::GatewayTimeout,
       503 => Common::Exceptions::ServiceUnavailable,

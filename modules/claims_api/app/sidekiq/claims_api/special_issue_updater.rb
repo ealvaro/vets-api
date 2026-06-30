@@ -1,11 +1,9 @@
 # frozen_string_literal: true
 
 require 'bgs_service/contention_service'
-require 'vets/shared_logging'
 
 module ClaimsApi
   class SpecialIssueUpdater < UpdaterService
-    include Vets::SharedLogging
     # Update special issues for a single contention/disability
     #
     # @param user [OpenStruct] Veteran to attach special issues to
@@ -27,7 +25,8 @@ module ClaimsApi
       service.manage_contentions(options)
     rescue BGS::ShareError, BGS::PublicError => e
       log_exception_to_claim_record(auto_claim_id, { key: e.code, text: e.message })
-      log_exception_to_rails e
+      context = e.try(:errors)&.first&.try(:attributes)&.compact
+      Rails.logger.error(e.message, context, e)
     end
 
     # Store off exception information on the claim record within the database

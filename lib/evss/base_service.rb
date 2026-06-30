@@ -2,12 +2,9 @@
 
 require 'common/client/middleware/response/json_parser'
 require 'evss/error_middleware'
-require 'vets/shared_logging'
 
 module EVSS
   class BaseService
-    include Vets::SharedLogging
-
     SYSTEM_NAME = 'vets.gov'
     DEFAULT_TIMEOUT = 40 # in seconds
 

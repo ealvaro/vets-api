@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 module EducationForm
@@ -9,7 +8,6 @@ module EducationForm
 
   class Create10203ApplicantDecisionLetters
     include Sidekiq::Job
-    include Vets::SharedLogging
     sidekiq_options queue: 'default',
                     backtrace: true
 

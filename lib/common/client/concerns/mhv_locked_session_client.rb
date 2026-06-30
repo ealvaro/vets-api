@@ -17,7 +17,6 @@ module Common
       #
       module MhvLockedSessionClient
         extend ActiveSupport::Concern
-        include Vets::SharedLogging
 
         LOCK_RETRY_DELAY = 0.3 # Number of seconds to wait between attempts to acquire a session lock
         RETRY_ATTEMPTS = 40 # How many times to attempt await of acquiring a session lock by a preceding request

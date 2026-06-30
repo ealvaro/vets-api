@@ -4,7 +4,6 @@ require 'sidekiq/attr_package'
 
 class EmailVerificationJob
   include Sidekiq::Job
-  include Vets::SharedLogging
   sidekiq_options retry: 5 # exponential backoff, retries for ~17 mins
 
   STATS_KEY = 'api.vanotify.email_verification'

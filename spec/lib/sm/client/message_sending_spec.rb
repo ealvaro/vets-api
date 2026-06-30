@@ -31,7 +31,7 @@ describe SM::Client, '#message_sending' do
       end
 
       it 'does not log an error' do
-        expect(client).not_to receive(:log_message_to_rails)
+        expect(Rails.logger).not_to receive(:error)
         client.send(:perform_with_logging, :post, path, args)
       end
     end
@@ -42,9 +42,8 @@ describe SM::Client, '#message_sending' do
       end
 
       it 'logs the error with correct message, level, and context' do
-        expect(client).to receive(:log_message_to_rails).with(
+        expect(Rails.logger).to receive(:error).with(
           'MHV SM: Message Send Failed',
-          'error',
           hash_including(
             error: 'connection timeout',
             path: 'message',
@@ -57,15 +56,15 @@ describe SM::Client, '#message_sending' do
       end
 
       it 're-raises the original exception' do
-        allow(client).to receive(:log_message_to_rails)
+        allow(Rails.logger).to receive(:error)
 
         expect { client.send(:perform_with_logging, :post, path, args) }
           .to raise_error(error)
       end
 
       it 'masks recipient_id to last 6 digits' do
-        expect(client).to receive(:log_message_to_rails).with(
-          anything, anything,
+        expect(Rails.logger).to receive(:error).with(
+          anything,
           hash_including(recipient_id: '***987654')
         )
 
@@ -74,8 +73,8 @@ describe SM::Client, '#message_sending' do
       end
 
       it 'masks mhv_correlation_id to last 6 digits' do
-        expect(client).to receive(:log_message_to_rails).with(
-          anything, anything,
+        expect(Rails.logger).to receive(:error).with(
+          anything,
           hash_including(mhv_correlation_id: '****789012')
         )
 
@@ -84,8 +83,8 @@ describe SM::Client, '#message_sending' do
       end
 
       it 'includes the path in the log context' do
-        expect(client).to receive(:log_message_to_rails).with(
-          anything, anything,
+        expect(Rails.logger).to receive(:error).with(
+          anything,
           hash_including(path: 'message')
         )
 
@@ -102,8 +101,8 @@ describe SM::Client, '#message_sending' do
       end
 
       it 'handles nil recipient_id gracefully with masked placeholder' do
-        expect(client).to receive(:log_message_to_rails).with(
-          anything, anything,
+        expect(Rails.logger).to receive(:error).with(
+          anything,
           hash_including(recipient_id: '***')
         )
 
@@ -119,8 +118,8 @@ describe SM::Client, '#message_sending' do
       end
 
       it 'handles nil current_user gracefully with masked placeholder' do
-        expect(client).to receive(:log_message_to_rails).with(
-          anything, anything,
+        expect(Rails.logger).to receive(:error).with(
+          anything,
           hash_including(mhv_correlation_id: '****')
         )
 

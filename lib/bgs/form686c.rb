@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
-
 require_relative 'benefit_claim'
 require_relative 'dependents'
 require_relative 'marriages'
@@ -15,8 +13,6 @@ require_relative '../bid/awards/service'
 
 module BGS
   class Form686c
-    include Vets::SharedLogging
-
     attr_reader :user, :saved_claim, :proc_id, :claim_type_end_product
 
     REMOVE_CHILD_OPTIONS = %w[report_child18_or_older_is_not_attending_school

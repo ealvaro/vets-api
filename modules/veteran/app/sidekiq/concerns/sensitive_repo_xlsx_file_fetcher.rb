@@ -3,14 +3,11 @@
 require 'octokit'
 require 'faraday'
 require 'uri'
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 # Fetches the Trexler XLSX file from the sensitive repo.
 # Only returns content if the file was committed within the last 24 hours.
 class SensitiveRepoXlsxFileFetcher
-  include Vets::SharedLogging
-
   ORG = 'software'
   REPO = 'va.gov-team-sensitive'
   PATH = 'products/accredited-representation-management/data/rep-org-addresses.xlsx'

@@ -41,10 +41,6 @@ describe DebtManagementCenter::PaymentsService do
     described_class.new(user)
   end
 
-  it 'includes Vets::SharedLogging' do
-    expect(described_class.ancestors).to include(Vets::SharedLogging)
-  end
-
   describe '::new' do
     it 'requires a user' do
       expect { described_class.new }.to raise_error(ArgumentError) do |e|

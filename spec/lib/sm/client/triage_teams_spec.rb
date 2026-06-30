@@ -110,7 +110,8 @@ describe 'sm client' do
         end
 
         expect(Rails.logger).to have_received(:info).with(
-          /AllTriageTeams healthCareSystemName validation.*health_care_system_names/
+          'AllTriageTeams healthCareSystemName validation',
+          hash_including(:health_care_system_names)
         ).once
       end
 
@@ -127,11 +128,13 @@ describe 'sm client' do
         end
 
         expect(Rails.logger).to have_received(:info).with(
-          /AllTriageTeams healthCareSystemName validation.*health_care_system_names/
+          'AllTriageTeams healthCareSystemName validation',
+          hash_including(:health_care_system_names)
         ).once
 
         expect(Rails.logger).to have_received(:warn).with(
-          /AllTriageTeams missing healthCareSystemName.*Team C/
+          'AllTriageTeams missing healthCareSystemName',
+          hash_including(triage_team_names: array_including('Team C'))
         ).once
       end
 

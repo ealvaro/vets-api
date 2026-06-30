@@ -1,13 +1,10 @@
 # frozen_string_literal: true
 
 require 'hexapdf'
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 module Common
   module PdfHelpers
-    extend Vets::SharedLogging
-
     def self.unlock_pdf(input_file, password, output_file)
       doc = HexaPDF::Document.open(input_file, decryption_opts: { password: })
       doc.encrypt(name: nil)

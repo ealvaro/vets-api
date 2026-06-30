@@ -1,10 +1,7 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
-
 module TestUserDashboard
   class ApplicationController < ActionController::API
-    include Vets::SharedLogging
     include Traceable
 
     before_action :set_request_context

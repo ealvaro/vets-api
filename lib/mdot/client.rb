@@ -3,7 +3,6 @@
 require 'common/client/base'
 require 'common/client/concerns/monitoring'
 require 'common/exceptions/gateway_timeout'
-require 'vets/shared_logging'
 require_relative 'configuration'
 require_relative 'response'
 require_relative 'token'
@@ -20,7 +19,6 @@ module MDOT
 
   class Client < Common::Client::Base
     include Common::Client::Concerns::Monitoring
-    include Vets::SharedLogging
 
     configuration MDOT::Configuration
 
@@ -88,7 +86,7 @@ module MDOT
     end
 
     def log_error_details(error)
-      log_message_to_rails(error.message, 'error', { url: config.base_path, body: error.try(:body) })
+      Rails.logger.error(error.message, { url: config.base_path, body: error.try(:body) })
     end
 
     def raise_backend_exception(key, source = self.class, error = nil)

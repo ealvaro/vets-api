@@ -2,7 +2,6 @@
 
 require 'feature_flipper'
 require 'aes_256_cbc_encryptor'
-require 'vets/shared_logging'
 
 class ApplicationController < ActionController::API
   include AuthenticationAndSSOConcerns
@@ -12,7 +11,6 @@ class ApplicationController < ActionController::API
   include Instrumentation
   include Pundit::Authorization
   include ControllerLoggingContext
-  include Vets::SharedLogging
   include Traceable
 
   protect_from_forgery with: :exception, if: -> { ActionController::Base.allow_forgery_protection }

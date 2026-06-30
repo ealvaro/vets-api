@@ -1,13 +1,11 @@
 # frozen_string_literal: true
 
 require 'pagerduty/maintenance_client'
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 module PagerDuty
   class PollMaintenanceWindows
     include Sidekiq::Job
-    include Vets::SharedLogging
     sidekiq_options retry: 1, queue: 'critical'
 
     MESSAGE_INDICATOR = 'USER_MESSAGE:'

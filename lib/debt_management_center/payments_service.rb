@@ -2,8 +2,6 @@
 
 module DebtManagementCenter
   class PaymentsService
-    include Vets::SharedLogging
-
     ##
     # Retrieves the person and payments data, from BGS, that relates to the provided user.
     #
@@ -77,7 +75,7 @@ module DebtManagementCenter
     end
 
     def report_error(error)
-      log_exception_to_rails(error)
+      Rails.logger.error(error)
     end
   end
 end

@@ -2,7 +2,6 @@
 
 require 'debt_management_center/statement_identifier_service'
 require 'debt_management_center/sidekiq/va_notify_email_job'
-require 'vets/shared_logging'
 
 module CopayNotifications
   class Vet360IdNotFound < StandardError
@@ -14,7 +13,6 @@ module CopayNotifications
 
   class NewStatementNotificationJob
     include Sidekiq::Job
-    include Vets::SharedLogging
     MCP_NOTIFICATION_TEMPLATE = Settings.vanotify.services.dmc.template_id.vha_new_copay_statement_email
     STATSD_KEY_PREFIX = 'api.copay_notifications.new_statement'
 

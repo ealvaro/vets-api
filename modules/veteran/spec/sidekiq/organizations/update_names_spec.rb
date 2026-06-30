@@ -2,12 +2,9 @@
 
 require 'rails_helper'
 require 'sidekiq/testing'
-require 'vets/shared_logging'
 Sidekiq::Testing.fake!
 
 RSpec.describe Organizations::UpdateNames, type: :job do
-  include Vets::SharedLogging
-
   describe '#perform' do
     let(:organization_double) { instance_double(Veteran::Service::Organization) }
 
@@ -36,9 +33,6 @@ RSpec.describe Organizations::UpdateNames, type: :job do
       expect(Rails.logger).to receive(:error).with(
         "Error updating organization name for POA in Organizations::UpdateNames: Unexpected error. POA: '80', Org Name: 'Updated Name'." # rubocop:disable Layout/LineLength
       )
-      # expect_any_instance_of(Vets::SharedLogging).to receive(:log_message_to_rails).with(
-      #   "Error updating organization name for POA in Organizations::UpdateNames: Unexpected error. POA: '80', Org Name: 'Updated Name'." # rubocop:disable Layout/LineLength
-      # )
 
       described_class.new.perform
     end

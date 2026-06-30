@@ -2,12 +2,10 @@
 
 require 'bid/configuration'
 require 'common/client/base'
-require 'vets/shared_logging'
 
 module BID
   class Service < Common::Client::Base
     include Common::Client::Concerns::Monitoring
-    include Vets::SharedLogging
 
     def initialize(user)
       @user = user

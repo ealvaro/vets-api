@@ -1,13 +1,11 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
 require 'sidekiq/attr_package'
 require 'logging/helper/data_scrubber'
 
 module DebtManagementCenter
   class VANotifyEmailJob
     include Sidekiq::Job
-    include Vets::SharedLogging
     sidekiq_options retry: 14
     STATS_KEY = 'api.dmc.va_notify_email'
     VA_NOTIFY_CALLBACK_OPTIONS = {

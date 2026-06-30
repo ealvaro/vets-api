@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'lighthouse/benefits_claims/service'
-require 'vets/shared_logging'
 require 'logging/third_party_transaction'
 require 'sidekiq/form526_job_status_tracker/job_tracker'
 require 'sidekiq/form526_job_status_tracker/metrics'
@@ -44,7 +43,6 @@ module Lighthouse
     include Sidekiq::Job
     include Sidekiq::Form526JobStatusTracker::JobTracker
     extend ActiveSupport::Concern
-    extend Vets::SharedLogging
     extend Logging::ThirdPartyTransaction::MethodWrapper
 
     attr_accessor :submission_id
@@ -105,7 +103,7 @@ module Lighthouse
         )
       end
     rescue => e
-      log_exception_to_rails(e)
+      Rails.logger.error(e)
     end
     # :nocov:
 

@@ -9,7 +9,6 @@ module CheckIn
     module SiteInfo
       class ClinicsService < Common::Client::Base
         include Common::Client::Concerns::Monitoring
-        include Vets::SharedLogging
 
         STATSD_KEY_PREFIX = 'api.check_in.vds_site_info.clinics'
 

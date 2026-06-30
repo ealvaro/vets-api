@@ -4,12 +4,10 @@ require 'common/exceptions'
 require 'common/client/errors'
 require 'json_schema/json_api_missing_attribute'
 require 'datadog'
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 module ExceptionHandling
   extend ActiveSupport::Concern
-  include Vets::SharedLogging
 
   # In addition to Common::Exceptions::BackendServiceException that are configured with
   # `reportable: false` the following exceptions will also be skipped.

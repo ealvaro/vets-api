@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
-
 require 'logging/helper/data_scrubber'
 require 'pagerduty/maintenance_client'
 require 'pagerduty/maintenance_windows_uploader'
@@ -9,7 +7,6 @@ require 'pagerduty/maintenance_windows_uploader'
 module PagerDuty
   class CacheGlobalDowntime
     include Sidekiq::Job
-    include Vets::SharedLogging
     sidekiq_options retry: 1, queue: 'critical'
 
     def perform

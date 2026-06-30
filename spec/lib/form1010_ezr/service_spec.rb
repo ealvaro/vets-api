@@ -353,14 +353,14 @@ RSpec.describe Form1010Ezr::Service do
               'form1010_ezr/authorized_submit',
               { match_requests_on: %i[method uri body], erb: true }
             ) do
-              expect_any_instance_of(Vets::SharedLogging).to receive(:log_message_to_rails).with(
+              allow(Rails.logger).to receive(:error)
+              expect(Rails.logger).to receive(:error).with(
                 '[10-10EZR] failure',
-                :error,
-                {
+                hash_including(
                   first_initial: 'F',
                   middle_initial: 'M',
                   last_initial: 'Z'
-                }
+                )
               )
               expect { submit_form(form_with_associations) }.to raise_error(Common::Exceptions::ResourceNotFound)
             end
@@ -388,14 +388,13 @@ RSpec.describe Form1010Ezr::Service do
         end
 
         it 'logs the error' do
-          expect_any_instance_of(Vets::SharedLogging).to receive(:log_message_to_rails).with(
+          expect(Rails.logger).to receive(:error).with(
             '[10-10EZR] failure',
-            :error,
-            {
+            hash_including(
               first_initial: 'F',
               middle_initial: 'M',
               last_initial: 'Z'
-            }
+            )
           )
 
           expect { submit_form(form) }.to raise_error(
@@ -420,14 +419,14 @@ RSpec.describe Form1010Ezr::Service do
       end
 
       it 'logs error' do
-        expect_any_instance_of(Vets::SharedLogging).to receive(:log_message_to_rails).with(
+        allow(Rails.logger).to receive(:error)
+        expect(Rails.logger).to receive(:error).with(
           '[10-10EZR] failure',
-          :error,
-          {
+          hash_including(
             first_initial: 'F',
             middle_initial: 'M',
             last_initial: 'Z'
-          }
+          )
         )
         expect { service.submit_sync(form_with_ves_fields) }.to raise_error(StandardError)
       end

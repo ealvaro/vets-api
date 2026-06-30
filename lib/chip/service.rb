@@ -2,7 +2,6 @@
 
 require 'common/client/base'
 require 'common/client/concerns/monitoring'
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 require_relative 'configuration'
 require_relative 'redis_client'
@@ -10,7 +9,6 @@ require_relative 'service_exception'
 
 module Chip
   class Service < Common::Client::Base
-    include Vets::SharedLogging
     include Common::Client::Concerns::Monitoring
 
     configuration Chip::Configuration

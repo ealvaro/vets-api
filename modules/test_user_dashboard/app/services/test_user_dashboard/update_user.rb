@@ -1,11 +1,7 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
-
 module TestUserDashboard
   class UpdateUser
-    include Vets::SharedLogging
-
     attr_accessor :tud_account, :user
 
     def initialize(user)

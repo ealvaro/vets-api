@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 module V2
@@ -30,7 +29,6 @@ module V2
     #   @return (see Config::Options#service_name)
     class Client
       extend Forwardable
-      include Vets::SharedLogging
 
       attr_reader :settings, :claims_token, :check_in_session
 

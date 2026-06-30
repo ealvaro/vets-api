@@ -111,12 +111,6 @@ module CheckIn
       log_failure_no_retry('Retries exhausted', { uuid:, phone_number:, template_id:, facility_type: })
     end
 
-    # Helper to enable logging in class method contexts
-    # Vets::SharedLogging requires instance methods, so we create a temporary object
-    def self.logging_helper
-      @logging_helper ||= Class.new { include Vets::SharedLogging }.new # rubocop:disable ThreadSafety/ClassInstanceVariable
-    end
-
     ##
     # Logs failure when retries are exhausted or not applicable
     #

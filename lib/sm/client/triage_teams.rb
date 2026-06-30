@@ -138,20 +138,12 @@ module SM
       # Logs count of triage teams with missing healthCareSystemName values
       def log_health_care_system_names(triage_teams)
         system_names = triage_teams.map(&:health_care_system_name).uniq
-        log_message_to_rails(
-          'AllTriageTeams healthCareSystemName validation',
-          'info',
-          { health_care_system_names: system_names }
-        )
+        Rails.logger.info('AllTriageTeams healthCareSystemName validation', { health_care_system_names: system_names })
 
         missing_system_teams = triage_teams.select { |team| team.health_care_system_name.blank? }
         if missing_system_teams.present?
           missing_names = missing_system_teams.map(&:name)
-          log_message_to_rails(
-            'AllTriageTeams missing healthCareSystemName',
-            'warn',
-            { triage_team_names: missing_names }
-          )
+          Rails.logger.warn('AllTriageTeams missing healthCareSystemName', { triage_team_names: missing_names })
         end
       end
     end

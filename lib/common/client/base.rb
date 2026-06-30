@@ -3,7 +3,6 @@
 require 'faraday'
 require 'common/client/errors'
 require 'common/models/collection'
-require 'vets/shared_logging'
 
 module Common
   module Client
@@ -45,8 +44,6 @@ module Common
     #   end
     #
     class Base
-      include Vets::SharedLogging
-
       ##
       # Sets the configuration singleton to use
       #

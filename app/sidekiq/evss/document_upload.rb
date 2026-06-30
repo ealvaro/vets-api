@@ -7,11 +7,9 @@ require 'logging/helper/data_scrubber'
 require 'evss/failure_notification'
 require 'lighthouse/benefits_documents/constants'
 require 'lighthouse/benefits_documents/utilities/helpers'
-require 'vets/shared_logging'
 
 class EVSS::DocumentUpload
   include Sidekiq::Job
-  extend Vets::SharedLogging
   extend Logging::ThirdPartyTransaction::MethodWrapper
 
   DD_ZSF_TAGS = ['service:claim-status', 'function: evidence upload to EVSS'].freeze

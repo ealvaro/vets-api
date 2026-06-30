@@ -21,8 +21,6 @@ module DebtsApi
   # Allows users to submit financial status reports, and download copies of completed reports.
   #
   class V0::FinancialStatusReportService < DebtManagementCenter::BaseService
-    include Vets::SharedLogging
-
     class FSRNotFoundInRedis < StandardError; end
     class FSRInvalidRequest < StandardError; end
     class FailedFormToPdfResponse < StandardError; end
@@ -257,7 +255,7 @@ module DebtsApi
         # Instead use #validate! to raise an ActiveModel::ValidationError error which contains a more detailed message
         fsr.validate!
       rescue ActiveModel::ValidationError => e
-        log_exception_to_rails(e)
+        Rails.logger.error(e)
       end
     end
 

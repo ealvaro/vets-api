@@ -5,13 +5,11 @@ require 'common/client/concerns/monitoring'
 require_relative 'configuration'
 require_relative 'responses/response'
 require 'erb'
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 module Apps
   # Proxy Service for Apps API.
   class Client < Common::Client::Base
-    include Vets::SharedLogging
     include Common::Client::Concerns::Monitoring
 
     configuration Apps::Configuration

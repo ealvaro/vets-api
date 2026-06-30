@@ -2,7 +2,6 @@
 
 require 'va_profile/models/transaction'
 require 'va_profile/response'
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 # rubocop:disable ThreadSafety/ClassInstanceVariable
@@ -10,8 +9,6 @@ module VAProfile
   module ContactInformation
     module V2
       class TransactionResponse < VAProfile::Response
-        extend Vets::SharedLogging
-
         REDACTED_KEYS = %w[
           source_system_user
           address_line1

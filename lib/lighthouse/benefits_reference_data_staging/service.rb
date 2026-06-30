@@ -7,7 +7,6 @@ require 'common/exceptions/forbidden'
 require 'common/exceptions/schema_validation_errors'
 require 'lighthouse/benefits_reference_data_staging/configuration'
 require 'lighthouse/benefits_reference_data/service_exception'
-require 'vets/shared_logging'
 
 module BenefitsReferenceData
   ##
@@ -15,7 +14,6 @@ module BenefitsReferenceData
 
   module Staging
     class Service < Common::Client::Base
-      include Vets::SharedLogging
       include Common::Client::Concerns::Monitoring
 
       configuration BenefitsReferenceData::Staging::Configuration

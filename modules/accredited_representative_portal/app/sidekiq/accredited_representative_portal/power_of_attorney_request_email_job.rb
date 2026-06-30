@@ -1,12 +1,10 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 module AccreditedRepresentativePortal
   class PowerOfAttorneyRequestEmailJob
     include Sidekiq::Job
-    include Vets::SharedLogging
     sidekiq_options retry: 14 # The retry logic here matches VANotify::EmailJob.
 
     sidekiq_retries_exhausted do |msg, _ex|

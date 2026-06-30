@@ -1,11 +1,9 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 class Form210779SubmissionEmailJob
   include Sidekiq::Job
-  include Vets::SharedLogging
 
   STATS_KEY = 'api.form210779.email'
 

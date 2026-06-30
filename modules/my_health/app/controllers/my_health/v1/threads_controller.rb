@@ -5,8 +5,6 @@ require 'unique_user_events'
 module MyHealth
   module V1
     class ThreadsController < SMController
-      include Vets::SharedLogging
-
       STATSD_KEY_PREFIX = 'api.my_health.threads'
 
       def index
@@ -46,12 +44,13 @@ module MyHealth
       def handle_error(e)
         error = e.try(:errors).try(:first)
         if error&.status.to_i == 400 && error.detail == 'No messages in the requested folder'
-          log_exception_to_rails(error, 'info')
+          Rails.logger.info(error)
           return Common::Collection.new(
             MessageThread, data: []
           )
         else
-          log_exception_to_rails(e)
+          context = e.try(:errors)&.first&.try(:attributes)&.compact
+          Rails.logger.error(e.message, context, e)
         end
         StatsD.increment("#{STATSD_KEY_PREFIX}.fail")
         raise e

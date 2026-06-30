@@ -4,12 +4,10 @@ require 'common/exceptions'
 require 'common/client/errors'
 require 'json'
 require 'memoist'
-require 'vets/shared_logging'
 
 module CheckIn
   module VAOS
     class FacilityService < Common::Client::Base
-      include Vets::SharedLogging
       include Common::Client::Concerns::Monitoring
 
       STATSD_KEY_PREFIX = 'api.check_in.vaos.facilities'

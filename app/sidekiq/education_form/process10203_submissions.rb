@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 module EducationForm
@@ -12,7 +11,6 @@ module EducationForm
 
   class Process10203Submissions
     include Sidekiq::Job
-    include Vets::SharedLogging
     sidekiq_options queue: 'default', backtrace: true, unique_for: 24.hours
 
     # Get all 10203 submissions that have a row in education_stem_automated_decisions

@@ -107,7 +107,7 @@ RSpec.describe DebtManagementCenter::DebtLetterDownloader, vcr: vcr_options do
 
     describe '#list_letters' do
       it 'logs error upon downstream service error', :skip_before do
-        expect_any_instance_of(Vets::SharedLogging).to receive(:log_exception_to_rails)
+        expect(Rails.logger).to receive(:error)
         expect(subject.list_letters.to_json).to eq('[]')
       end
     end

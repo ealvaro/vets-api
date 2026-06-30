@@ -5,7 +5,6 @@ module SM
     ##
     # Module containing attachment-related methods for the SM Client
     #
-    include Vets::SharedLogging
     module Attachments
       CONTENT_DISPOSITION = 'attachment; filename='
 
@@ -103,7 +102,7 @@ module SM
 
         unless response.is_a?(Net::HTTPSuccess)
           clean_uri = URI::Generic.build(scheme: uri.scheme, host: uri.host, port: uri.port, path: uri.path)
-          log_exception_to_rails("Failed to upload Messaging attachment to S3: \\#{clean_uri}")
+          Rails.logger.error("Failed to upload Messaging attachment to S3: \\#{clean_uri}")
           raise Common::Exceptions::BackendServiceException.new('SM_UPLOAD_ATTACHMENT_ERROR', 500)
         end
       end

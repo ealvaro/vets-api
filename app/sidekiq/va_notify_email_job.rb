@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 ###########################################################################################
@@ -10,7 +9,6 @@ require 'logging/helper/data_scrubber'
 # TODO: Remove this class
 class VANotifyEmailJob
   include Sidekiq::Job
-  include Vets::SharedLogging
   # retry for  2d 1h 47m 12s
   # https://github.com/sidekiq/sidekiq/wiki/Error-Handling
   sidekiq_options retry: 16

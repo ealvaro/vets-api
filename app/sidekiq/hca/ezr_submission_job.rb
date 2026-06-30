@@ -18,12 +18,10 @@
 
 require 'hca/soap_parser'
 require 'form1010_ezr/service'
-require 'vets/shared_logging'
 
 module HCA
   class EzrSubmissionJob
     include Sidekiq::Job
-    extend Vets::SharedLogging
 
     FORM_ID = '10-10EZR'
     VALIDATION_ERROR = HCA::SOAPParser::ValidationError
@@ -127,7 +125,7 @@ module HCA
 
     def log_validation_error(parsed_form, e)
       Form1010Ezr::Service.log_submission_failure(parsed_form, '[10-10EZR] failure')
-      self.class.log_exception_to_rails(e)
+      Rails.logger.error(e)
     end
 
     def log_parse_error(parsed_form, e)

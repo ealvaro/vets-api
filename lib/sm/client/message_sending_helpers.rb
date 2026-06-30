@@ -50,13 +50,13 @@ module SM
       def log_oh_pilot_message(message, method_name)
         return unless oh_pilot_user?
 
-        log_message_to_rails("MHV SM OH Pilot User: #{method_name}", 'info', {
-                               message_id: message&.id,
-                               recipient_id: "***#{message&.recipient_id&.to_s&.last(6)}",
-                               is_oh_message: message&.is_oh_message,
-                               mhv_correlation_id: "****#{current_user&.mhv_correlation_id.to_s.last(6)}",
-                               client_type: client_type_name
-                             })
+        Rails.logger.info("MHV SM OH Pilot User: #{method_name}", {
+                            message_id: message&.id,
+                            recipient_id: "***#{message&.recipient_id&.to_s&.last(6)}",
+                            is_oh_message: message&.is_oh_message,
+                            mhv_correlation_id: "****#{current_user&.mhv_correlation_id.to_s.last(6)}",
+                            client_type: client_type_name
+                          })
       end
     end
   end

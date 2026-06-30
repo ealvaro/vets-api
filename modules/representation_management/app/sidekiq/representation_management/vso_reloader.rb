@@ -1,13 +1,11 @@
 # frozen_string_literal: true
 
 require 'sidekiq'
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 module RepresentationManagement
   class VSOReloader < BaseReloader
     include Sidekiq::Job
-    include Vets::SharedLogging
 
     sidekiq_options retry: 10 # Retry for about 21 hours
 

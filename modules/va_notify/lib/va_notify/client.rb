@@ -5,13 +5,11 @@ require 'common/client/concerns/monitoring'
 require 'jwt'
 require_relative 'configuration'
 require_relative 'error'
-require 'vets/shared_logging'
 
 module VaNotify
   # Client for VA Notify Push Notification API
   class Client < Common::Client::Base
     include Common::Client::Concerns::Monitoring
-    include Vets::SharedLogging
 
     configuration VaNotify::Configuration
 
@@ -113,7 +111,7 @@ module VaNotify
     end
 
     def log_error_details(error)
-      log_message_to_rails(error.message, 'error', { url: config.base_path, body: error.try(:body) })
+      Rails.logger.error(error.message, { url: config.base_path, body: error.try(:body) })
     end
   end
 end

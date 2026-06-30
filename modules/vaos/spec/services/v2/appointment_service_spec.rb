@@ -578,17 +578,19 @@ describe VAOS::V2::AppointmentsService do
         it 'logs the failures and anonymizes the ICNs sent to the log' do
           VCR.use_cassette('vaos/v2/appointments/get_appointments_200_with_facilities_200_and_log_data',
                            match_requests_on: %i[method path query]) do
-            expected_msg = 'VAOS::V2::AppointmentService#get_appointments has response errors. : ' \
-                           '{:failures=>"[{\\"system\\":\\"VSP\\",\\"status\\":\\"500\\",\\"code\\":10000,\\"' \
-                           'message\\":\\"Could not fetch appointments from Vista Scheduling Provider\\",\\"' \
-                           'detail\\":\\"icn=d12672eba61b7e9bc50bb6085a0697133a5fbadf195e6cade452ddaad7921c1d, ' \
-                           'startDate=2022-04-01T19:25Z, endDate=2023-03-01T19:45Z\\"}]"}'
+            expected_failures = '[{"system":"VSP","status":"500","code":10000,' \
+                                '"message":"Could not fetch appointments from Vista Scheduling Provider",' \
+                                '"detail":"icn=d12672eba61b7e9bc50bb6085a0697133a5fbadf195e6cade452ddaad7921c1d, ' \
+                                'startDate=2022-04-01T19:25Z, endDate=2023-03-01T19:45Z"}]'
 
             allow(Rails.logger).to receive(:info)
 
             subject.get_appointments(start_date3, end_date3)
 
-            expect(Rails.logger).to have_received(:info).with(expected_msg)
+            expect(Rails.logger).to have_received(:info).with(
+              'VAOS::V2::AppointmentService#get_appointments has response errors.',
+              { failures: expected_failures }
+            )
           end
         end
       end
@@ -2320,16 +2322,18 @@ describe VAOS::V2::AppointmentsService do
           it 'logs the failures, anonymizes the ICNs sent to the log, and returns the failure messages' do
             VCR.use_cassette('vaos/v2/appointments/get_appointments_200_with_partial_errors_v2',
                              match_requests_on: %i[method path query]) do
-              expected_msg = 'VAOS::V2::AppointmentService#get_all_appointments has response errors. : ' \
-                             '{:failures=>"[{\\"system\\":\\"VSP\\",\\"status\\":\\"500\\",\\"code\\":10000,\\"' \
-                             'message\\":\\"Could not fetch appointments from Vista Scheduling Provider\\",\\"' \
-                             'detail\\":\\"icn=d12672eba61b7e9bc50bb6085a0697133a5fbadf195e6cade452ddaad7921c1d, ' \
-                             'startDate=1921-09-02T00:00:00Z, endDate=2121-09-02T00:00:00Z\\"}]"}'
+              expected_failures = '[{"system":"VSP","status":"500","code":10000,' \
+                                  '"message":"Could not fetch appointments from Vista Scheduling Provider",' \
+                                  '"detail":"icn=d12672eba61b7e9bc50bb6085a0697133a5fbadf195e6cade452ddaad7921c1d, ' \
+                                  'startDate=1921-09-02T00:00:00Z, endDate=2121-09-02T00:00:00Z"}]'
 
               allow(Rails.logger).to receive(:info)
 
               check = subject.referral_appointment_already_exists?('ref-150')
-              expect(Rails.logger).to have_received(:info).with(expected_msg)
+              expect(Rails.logger).to have_received(:info).with(
+                'VAOS::V2::AppointmentService#get_all_appointments has response errors.',
+                { failures: expected_failures }
+              )
               expect(check).to be_a(Hash)
               expect(check).not_to have_key(:exists)
               expect(check[:error]).to be(true)

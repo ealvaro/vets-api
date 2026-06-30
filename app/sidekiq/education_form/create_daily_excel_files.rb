@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'net/sftp'
-require 'vets/shared_logging'
 require 'sftp_writer/factory'
 
 module EducationForm
@@ -34,7 +33,6 @@ module EducationForm
                'Are you currently employed?', 'What is your current salary?',
                'Are you currently working in the technology industry? (If so, please select one)'].freeze
     include Sidekiq::Job
-    include Vets::SharedLogging
     sidekiq_options queue: 'default',
                     unique_for: 30.minutes,
                     retry: 5
@@ -76,12 +74,12 @@ module EducationForm
       rescue => e
         StatsD.increment("#{STATSD_FAILURE_METRIC}.general")
         if retry_count < MAX_RETRIES
-          log_exception_to_rails(e)
+          Rails.logger.error(e)
           retry_count += 1
           sleep(10 * retry_count) # exponential backoff for retries
           retry
         else
-          log_exception_to_rails(e)
+          Rails.logger.error(e)
         end
       end
       true
@@ -108,7 +106,7 @@ module EducationForm
 
               csv << row_data
             rescue => e
-              log_exception_to_rails(e)
+              Rails.logger.error(e)
               next
             end
           end
@@ -122,15 +120,15 @@ module EducationForm
         csv_contents
       rescue => e
         StatsD.increment("#{STATSD_FAILURE_METRIC}.general")
-        log_exception_to_rails(e)
+        Rails.logger.error(e)
 
         if retry_count < MAX_RETRIES
-          log_exception_to_rails(DailyExcelFileError.new("Retry count: #{retry_count}. Retrying..... "))
+          Rails.logger.error(DailyExcelFileError.new("Retry count: #{retry_count}. Retrying..... "))
           retry_count += 1
           sleep(5)
           retry
         else
-          log_exception_to_rails(DailyExcelFileError.new("Job failed after #{MAX_RETRIES} retries \n\n#{e}"))
+          Rails.logger.error(DailyExcelFileError.new("Job failed after #{MAX_RETRIES} retries \n\n#{e}"))
         end
       end
     end
@@ -147,7 +145,7 @@ module EducationForm
       track_form_type("22-#{data.form_type}")
       form
     rescue => e
-      log_exception_to_rails(e)
+      Rails.logger.error(e)
       nil
     end
 
@@ -183,7 +181,7 @@ module EducationForm
 
       log_info('Form 10282 SFTP Upload: Complete')
     rescue => e
-      log_exception_to_rails(e)
+      Rails.logger.error(e)
       raise
     ensure
       writer&.close

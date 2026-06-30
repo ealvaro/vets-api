@@ -1,13 +1,11 @@
 # frozen_string_literal: true
 
 require 'sidekiq'
-require 'vets/shared_logging'
 require_relative 'names'
 
 module Organizations
   class UpdateNames
     include Sidekiq::Job
-    include Vets::SharedLogging
 
     def perform
       Organizations::Names.all.each do |org| # rubocop:disable Rails/FindEach

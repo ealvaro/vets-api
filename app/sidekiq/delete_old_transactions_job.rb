@@ -1,10 +1,7 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
-
 class DeleteOldTransactionsJob
   include Sidekiq::Job
-  include Vets::SharedLogging
 
   # :nocov:
   def perform

@@ -11,10 +11,6 @@ RSpec.describe DebtsApi::V0::FinancialStatusReportService, type: :service do
     mock_pdf_fill
   end
 
-  it 'inherits Vets::SharedLogging' do
-    expect(described_class.ancestors).to include(Vets::SharedLogging)
-  end
-
   def mock_sharepoint_upload
     sp_stub = instance_double(DebtManagementCenter::Sharepoint::Request)
     allow(DebtManagementCenter::Sharepoint::Request).to receive(:new).and_return(sp_stub)
@@ -268,7 +264,8 @@ RSpec.describe DebtsApi::V0::FinancialStatusReportService, type: :service do
       subject { described_class.new(user_data) }
 
       before do
-        expect_any_instance_of(Vets::SharedLogging).to receive(:log_exception_to_rails).with(
+        allow(Rails.logger).to receive(:error)
+        expect(Rails.logger).to receive(:error).with(
           an_instance_of(ActiveModel::ValidationError)
         )
       end

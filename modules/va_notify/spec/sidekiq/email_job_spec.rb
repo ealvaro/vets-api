@@ -62,8 +62,11 @@ RSpec.describe VANotify::EmailJob, type: :worker do
       it 'rescues and logs the error' do
         VCR.use_cassette('va_notify/bad_request_invalid_template_id') do
           job = described_class.new
-          expect(job).to receive(:log_exception_to_rails).with(
-            instance_of(VANotify::BadRequest)
+          allow(Rails.logger).to receive(:error)
+          expect(Rails.logger).to receive(:error).with(instance_of(VANotify::BadRequest))
+          expect(Rails.logger).to receive(:error).with(
+            'VANotify malformed request (400)',
+            hash_including(template_id: 'template_id', status_code: 400)
           )
 
           job.perform(email, template_id)
@@ -72,14 +75,13 @@ RSpec.describe VANotify::EmailJob, type: :worker do
     end
 
     context 'when vanotify returns a non-400 error' do
-      it 'raises the error and does not log to sentry' do
+      it 'raises the error and logs it' do
         # Match the cassette's data exactly
         email = 'test@email.com'
         template_id = '1234'
         personalisation = { 'foo' => 'bar' }
 
         job = described_class.new
-        expect(job).not_to receive(:log_exception_to_rails)
 
         VCR.use_cassette('va_notify/auth_error_invalid_token') do
           expect do

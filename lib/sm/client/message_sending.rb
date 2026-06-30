@@ -6,7 +6,6 @@ require 'sm/client/message_sending_helpers'
 
 module SM
   class Client < Common::Client::Base
-    include Vets::SharedLogging
     ##
     # Module containing message sending and reply methods for the SM Client
     #
@@ -164,13 +163,13 @@ module SM
       def perform_with_logging(method, path, args, headers: token_headers)
         perform(method, path, args.to_h, headers).body
       rescue => e
-        log_message_to_rails('MHV SM: Message Send Failed', 'error', {
-                               error: e.message,
-                               recipient_id: "***#{args[:recipient_id]&.to_s&.last(6)}",
-                               path:,
-                               mhv_correlation_id: "****#{current_user&.mhv_correlation_id.to_s.last(6)}",
-                               client_type: client_type_name
-                             })
+        Rails.logger.error('MHV SM: Message Send Failed', {
+                             error: e.message,
+                             recipient_id: "***#{args[:recipient_id]&.to_s&.last(6)}",
+                             path:,
+                             mhv_correlation_id: "****#{current_user&.mhv_correlation_id.to_s.last(6)}",
+                             client_type: client_type_name
+                           })
         raise e
       end
     end

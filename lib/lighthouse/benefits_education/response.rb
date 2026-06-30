@@ -3,7 +3,6 @@
 require 'vets/model'
 require 'lighthouse/benefits_education/enrollment'
 require 'lighthouse/benefits_education/entitlement'
-require 'vets/shared_logging'
 
 module BenefitsEducation
   ##
@@ -41,7 +40,6 @@ module BenefitsEducation
   #   @return [Array[Enrollment]] An array of the user's enrollments
   class Response
     include Vets::Model
-    include Vets::SharedLogging
 
     attribute :first_name, String
     attribute :last_name, String

@@ -2,13 +2,10 @@
 
 require 'claims_api/vbms_uploader'
 require 'bgs_service/person_web_service'
-require 'vets/shared_logging'
 require 'claims_api/claim_logger'
 
 module ClaimsApi
   module PoaVbmsSidekiq
-    include Vets::SharedLogging
-
     def upload_to_vbms(power_of_attorney, path)
       uploader = VBMSUploader.new(
         filepath: path,
@@ -45,7 +42,7 @@ module ClaimsApi
         status: ClaimsApi::PowerOfAttorney::ERRORED,
         vbms_error_message: error_message
       )
-      log_message_to_rails error_message, :warn, class: self.class.name
+      Rails.logger.warn(error_message, { class: self.class.name })
     end
 
     private

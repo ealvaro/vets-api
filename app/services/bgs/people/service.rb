@@ -1,14 +1,11 @@
 # frozen_string_literal: true
 
-require 'vets/shared_logging'
 require 'logging/helper/data_scrubber'
 
 module BGS
   module People
     class Service
       class VAFileNumberNotFound < StandardError; end
-
-      include Vets::SharedLogging
 
       attr_reader :ssn,
                   :participant_id,
