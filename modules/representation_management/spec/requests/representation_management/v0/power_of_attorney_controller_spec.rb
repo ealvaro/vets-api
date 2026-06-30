@@ -112,7 +112,7 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorney', type: :request d
           end
         end
 
-        context 'when an individual is the active poa' do
+        context 'when an attorney individual is the active poa' do
           let(:ind_poa) { 'rp1' }
           let!(:accredited_individual) do
             create(:accredited_individual, poa_code: ind_poa, individual_type: 'attorney')
@@ -137,6 +137,36 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorney', type: :request d
 
             expect(response).to have_http_status(:ok)
             expect(response_body['data']['id']).to eq(accredited_individual.registration_number)
+            expect(response_body['data']['attributes']['individual_type']).to eq('attorney')
+          end
+        end
+
+        context 'when a claims agent individual is the active poa' do
+          let(:ind_poa) { 'ca1' }
+          let!(:accredited_individual) do
+            create(:accredited_individual, poa_code: ind_poa, individual_type: 'claims_agent')
+          end
+
+          it 'returns the expected individual response from AccreditedIndividual' do
+            lh_response = {
+              'data' => {
+                'type' => 'individual',
+                'attributes' => {
+                  'code' => ind_poa
+                }
+              }
+            }
+            allow_any_instance_of(BenefitsClaims::Service)
+              .to receive(:get_power_of_attorney)
+              .and_return(lh_response)
+
+            get index_path
+
+            response_body = JSON.parse(response.body)
+
+            expect(response).to have_http_status(:ok)
+            expect(response_body['data']['id']).to eq(accredited_individual.registration_number)
+            expect(response_body['data']['attributes']['individual_type']).to eq('claims_agent')
           end
         end
 
