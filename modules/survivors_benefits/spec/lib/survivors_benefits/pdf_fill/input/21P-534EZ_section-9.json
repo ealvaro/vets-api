@@ -8,6 +8,7 @@
   "homeAcreageValue": 125000,
   "landMarketable": true,
   "moreThanFourIncomeSources": true,
+  "incomeSourcesCount": "ONE_TO_FOUR_SOURCES",
   "otherIncome": true,
   "incomeEntries": [
     {

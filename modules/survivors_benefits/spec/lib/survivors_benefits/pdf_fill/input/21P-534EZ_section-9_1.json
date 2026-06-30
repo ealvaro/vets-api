@@ -5,6 +5,7 @@
   "homeAcreageMoreThanTwo": false,
   "landMarketable": false,
   "moreThanFourIncomeSources": false,
+  "incomeSourcesCount": "NO_INCOME",
   "otherIncome": false,
   "incomeEntries": [
     {

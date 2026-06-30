@@ -199,10 +199,9 @@ module SurvivorsBenefits
 
           expand_income_entries(form_data)
 
-          # TODO: figure out key from frontend, using incomeSources as placeholder
-          form_data['noIncome'] = form_data['moreThanFourIncomeSources'] == 'NO_INCOME' ? '1' : 'Off'
-          form_data['oneToFour'] = form_data['moreThanFourIncomeSources'] == 'ONE_TO_FOUR_SOURCES' ? '1' : 'Off'
-          form_data['fivePlus'] = form_data['moreThanFourIncomeSources'] == 'MORE_THAN_FIVE_SOURCES' ? '1' : 'Off'
+          form_data['noIncome'] = form_data['incomeSourcesCount'] == 'NO_INCOME' ? '1' : 'Off'
+          form_data['oneToFour'] = form_data['incomeSourcesCount'] == 'ONE_TO_FOUR_SOURCES' ? '1' : 'Off'
+          form_data['fivePlus'] = form_data['incomeSourcesCount'] == 'MORE_THAN_FIVE_SOURCES' ? '1' : 'Off'
 
           map_yes_no_checkboxes(form_data, 'otherIncome', 'otherIncomeYes', 'otherIncomeNo')
 
