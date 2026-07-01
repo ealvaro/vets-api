@@ -1441,6 +1441,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_30_173823) do
     t.datetime "updated_at", null: false
     t.index ["applicant_icn"], name: "index_ivc_champva_applicants_on_applicant_icn"
     t.index ["transaction_uuid", "applicant_icn"], name: "index_ivc_champva_applicants_on_txn_uuid_and_icn", unique: true
+    t.index ["transaction_uuid"], name: "index_ivc_champva_applicants_on_transaction_uuid"
   end
 
   create_table "ivc_champva_forms", force: :cascade do |t|
@@ -1465,11 +1466,25 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_30_173823) do
     t.string "submitted_by_icn", comment: "ICN of the authenticated user who submitted the form. Null for unauthenticated submissions or forms created before this column existed."
     t.uuid "transaction_uuid"
     t.boolean "application_decided", default: false, null: false
+    t.datetime "last_ves_fetch_at"
     t.index ["email"], name: "index_ivc_champva_forms_on_email"
     t.index ["form_uuid"], name: "index_ivc_champva_forms_on_form_uuid"
     t.index ["form_uuid"], name: "index_ivc_champva_forms_on_pending_form_uuid", where: "((pega_status IS NULL) OR ((pega_status)::text <> ALL (ARRAY[('eligiblity denied/additional information needed'::character varying)::text, ('eligibility denied/additional information needed'::character varying)::text, ('processed - eligiblity determination unknown'::character varying)::text, ('processed - eligibility determination unknown'::character varying)::text, ('eligible - issued a card'::character varying)::text, ('duplicate application'::character varying)::text, ('eligible - reissued a card'::character varying)::text, ('document identification error'::character varying)::text, ('processed'::character varying)::text, ('manually processed'::character varying)::text])))"
     t.index ["needs_kms_rotation"], name: "index_ivc_champva_forms_on_needs_kms_rotation"
     t.index ["updated_at"], name: "index_ivc_champva_forms_on_updated_at"
+  end
+
+  create_table "ivc_champva_sponsors", force: :cascade do |t|
+    t.uuid "transaction_uuid", null: false
+    t.text "sponsor_icn_ciphertext"
+    t.text "first_name_ciphertext"
+    t.text "last_name_ciphertext"
+    t.string "eligibility_status"
+    t.string "reason"
+    t.text "encrypted_kms_key"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["transaction_uuid"], name: "index_ivc_champva_sponsors_on_transaction_uuid", unique: true
   end
 
   create_table "lighthouse526_document_uploads", force: :cascade do |t|
