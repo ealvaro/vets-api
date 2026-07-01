@@ -21,6 +21,14 @@ RSpec.describe VAOS::V2::Unified::BaseProvider do
     end
   end
 
+  describe '#online_scheduling?' do
+    it 'defaults to true (VA providers reach the list only after a direct-eligible check)' do
+      provider = described_class.new
+
+      expect(provider.online_scheduling?).to be true
+    end
+  end
+
   describe '#formatted_address' do
     it 'joins address parts with commas' do
       provider = described_class.new(

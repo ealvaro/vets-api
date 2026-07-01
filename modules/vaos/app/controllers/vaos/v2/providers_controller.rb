@@ -16,7 +16,8 @@ module VAOS
 
         serialized = unified_serializer.serialize(
           providers,
-          referral_npi: referral.provider_npi
+          referral_npi: referral.provider_npi,
+          include_online_scheduling: call_to_schedule_providers_enabled?
         )
 
         render json: { data: serialized }
@@ -45,6 +46,11 @@ module VAOS
         parsed_radius.positive? ? parsed_radius : default_radius
       rescue ArgumentError, TypeError
         default_radius
+      end
+
+      # Flag gating the call-to-schedule (non-online-scheduling) provider enhancements.
+      def call_to_schedule_providers_enabled?
+        Flipper.enabled?(:va_online_scheduling_cc_direct_scheduling_v2_post_mvp, current_user)
       end
 
       def unified_search_service

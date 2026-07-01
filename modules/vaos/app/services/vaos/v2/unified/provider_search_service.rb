@@ -3,7 +3,7 @@
 module VAOS
   module V2
     module Unified
-      class ProviderSearchService
+      class ProviderSearchService # rubocop:disable Metrics/ClassLength
         include VAOS::CommunityCareConstants
 
         STATSD_KEY_PREFIX = 'api.vaos.unified_provider_search'
@@ -303,15 +303,22 @@ module VAOS
           draft_id = resolve_eps_draft_id(referral_number)
           return if draft_id.blank?
 
+          # Only online-schedulable providers have self-schedulable appointment types/slots. Phone-only
+          # (call-to-schedule) providers would raise in first_self_schedulable_appointment_type_id! and
+          # inflate the ...eps_next_available_slot.failure metric, so skip them -- they correctly keep a
+          # blank next_available_date.
+          schedulable_providers = eps_providers.select(&:online_scheduling?)
+          return if schedulable_providers.blank?
+
           start_date = Time.current.utc.iso8601
           end_date = (Time.current.utc + NEXT_AVAILABLE_WINDOW_DAYS.days).iso8601
-          futures = eps_providers.map do |provider|
+          futures = schedulable_providers.map do |provider|
             Concurrent::Promises.future do
               [provider.id.to_s, fetch_next_available_for_eps_provider(provider, draft_id, start_date, end_date)]
             end
           end
           next_available_by_provider = resolve_eps_next_available_futures(futures)
-          eps_providers.each { |p| p.next_available_date = next_available_by_provider[p.id.to_s] }
+          schedulable_providers.each { |p| p.next_available_date = next_available_by_provider[p.id.to_s] }
         end
 
         # Prefers a cached draft from an earlier slots step; on miss, mints one
@@ -389,16 +396,15 @@ module VAOS
         end
 
         def fetch_eps_providers(user_address, radius, eps_client:, specialty_ids:, name_patterns:)
-          providers = eps_client.search_by_location(
-            latitude: user_address.latitude,
-            longitude: user_address.longitude,
-            radius:,
-            specialty_ids: specialty_ids.presence
-          )
+          # When enabled, also surface providers that can only be scheduled by phone
+          # (call-to-schedule). When off, behavior is unchanged -- self-schedulable providers only.
+          call_to_schedule = call_to_schedule_providers_enabled?
+          query = build_eps_search_query(user_address, radius, specialty_ids, call_to_schedule)
+          providers = eps_client.search_by_location(query)
 
-          filtered = apply_name_filter(providers || [], name_patterns)
-
-          filtered.map { |provider_hash| build_eps_provider_with_distance(provider_hash, user_address) }
+          apply_name_filter(providers || [], name_patterns)
+            .map { |provider_hash| build_eps_provider_with_distance(provider_hash, user_address) }
+            .tap { |eps_providers| log_non_online_scheduling_count(eps_providers) if call_to_schedule }
         rescue => e
           Rails.logger.error("#{log_prefix}: EPS provider search failed",
                              {
@@ -409,6 +415,15 @@ module VAOS
                              }.compact)
           StatsD.increment("#{STATSD_KEY_PREFIX}.eps_search.failure")
           []
+        end
+
+        def build_eps_search_query(user_address, radius, specialty_ids, call_to_schedule)
+          Eps::ProviderSearchQuery.new(
+            coordinates: { latitude: user_address.latitude, longitude: user_address.longitude },
+            radius:,
+            specialty_ids: specialty_ids.presence,
+            self_schedulable_only: !call_to_schedule
+          )
         end
 
         # Client-side regex post-filter applied to raw Wellhive provider hashes.
@@ -564,6 +579,25 @@ module VAOS
 
         def eps_appointment_service
           @eps_appointment_service ||= Eps::AppointmentService.new(current_user)
+        end
+
+        # Flag gating the call-to-schedule (non-online-scheduling) provider enhancements:
+        # surfacing phone-only providers and emitting the +onlineScheduling+ indicator.
+        def call_to_schedule_providers_enabled?
+          Flipper.enabled?(:va_online_scheduling_cc_direct_scheduling_v2_post_mvp, current_user)
+        end
+
+        # Emits a metric for how many EPS providers in the list are phone-only (call-to-schedule)
+        # vs. online-schedulable, so we can observe adoption/volume of the post-MVP enhancement.
+        def log_non_online_scheduling_count(eps_providers)
+          phone_only = eps_providers.count { |p| !p.online_scheduling? }
+          return if phone_only.zero?
+
+          StatsD.increment("#{STATSD_KEY_PREFIX}.eps_non_online_scheduling.count", phone_only)
+          Rails.logger.info(
+            "#{log_prefix}: surfaced #{phone_only} call-to-schedule (phone-only) provider(s)",
+            { phone_only:, eps_total: eps_providers.size, user_uuid: @cached_user_uuid }.compact
+          )
         end
 
         def log_prefix

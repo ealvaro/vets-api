@@ -16,6 +16,19 @@ module VAOS
         end
 
         ##
+        # Whether this EPS provider can be scheduled online.
+        #
+        # Mirrors +Eps::ProviderService#filter_self_schedulable+: a provider is online-schedulable only
+        # when Wellhive reports both digital capability and direct booking enabled. Phone-only providers
+        # (surfaced behind the post-MVP flag) return +false+ and are scheduled by calling +phone+.
+        #
+        # @return [Boolean]
+        def online_scheduling?
+          digital_booking_features&.dig(:is_digital) == true &&
+            digital_booking_features&.dig(:direct_booking, :is_enabled) == true
+        end
+
+        ##
         # First self-schedulable EPS appointment type id
         #
         # @return [String]

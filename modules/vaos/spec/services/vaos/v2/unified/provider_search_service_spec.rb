@@ -112,6 +112,11 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
       # default. Tests that want CCRA_TO_TARGETS entries to win override this.
       allow(Flipper).to receive(:enabled?)
         .with(:va_online_scheduling_unified_non_primary_care, user).and_return(false)
+      # Default the post-MVP call-to-schedule flag OFF (production default), so the
+      # structural tests assert self-schedulable-only behavior. The dedicated
+      # post-MVP describe block overrides this to true.
+      allow(Flipper).to receive(:enabled?)
+        .with(:va_online_scheduling_cc_direct_scheduling_v2_post_mvp, user).and_return(false)
     end
 
     it 'returns a combined list of VA clinics and EPS providers' do
@@ -177,10 +182,12 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
       service.search(referral:, radius: 30)
 
       expect(eps_provider_service).to have_received(:search_by_location).with(
-        latitude: 28.08,
-        longitude: -80.60,
-        radius: 30,
-        specialty_ids: %w[207Q00000X 207R00000X 208D00000X]
+        an_object_having_attributes(
+          coordinates: { latitude: 28.08, longitude: -80.60 },
+          radius: 30,
+          specialty_ids: %w[207Q00000X 207R00000X 208D00000X],
+          self_schedulable_only: true
+        )
       )
     end
 
@@ -194,10 +201,12 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
       service.search(referral: primary_care_referral, radius: 30)
 
       expect(eps_provider_service).to have_received(:search_by_location).with(
-        latitude: 28.08,
-        longitude: -80.60,
-        radius: 30,
-        specialty_ids: %w[207Q00000X 207R00000X 208D00000X]
+        an_object_having_attributes(
+          coordinates: { latitude: 28.08, longitude: -80.60 },
+          radius: 30,
+          specialty_ids: %w[207Q00000X 207R00000X 208D00000X],
+          self_schedulable_only: true
+        )
       )
     end
 
@@ -652,6 +661,26 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
         expect(eps_appointment_service).not_to have_received(:create_draft_appointment)
         expect(eps_provider_service).not_to have_received(:get_provider_slots)
       end
+
+      it 'skips enrichment for phone-only providers (no slot call, blank date) while enriching online ones' do
+        phone_only_hash = eps_provider_hash.merge(
+          id: 'phone-only-1',
+          individual_providers: [{ name: 'Dr. Phone', npi: '7777777' }],
+          features: { is_digital: false, direct_booking: { is_enabled: false } }
+        )
+        allow(eps_provider_service).to receive(:search_by_location)
+          .and_return([eps_provider_hash, phone_only_hash])
+
+        results = service.search(referral:)
+
+        online = results.find { |p| p.id == '9mN718pH' }
+        phone_only = results.find { |p| p.id == 'phone-only-1' }
+        expect(online.next_available_date).to eq('2026-06-15')
+        expect(phone_only.next_available_date).to be_nil
+        # The phone-only provider must never reach the slot fetch (which would raise and
+        # inflate the eps_next_available_slot.failure metric).
+        expect(eps_provider_service).not_to have_received(:get_provider_slots).with('phone-only-1', anything)
+      end
     end
 
     describe 'staging facility-id translation' do
@@ -843,7 +872,7 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
           service.search(referral: primary_care_referral)
 
           expect(eps_provider_service).to have_received(:search_by_location).with(
-            hash_including(specialty_ids: %w[207Q00000X 207R00000X 208D00000X])
+            an_object_having_attributes(specialty_ids: %w[207Q00000X 207R00000X 208D00000X])
           )
         end
 
@@ -874,7 +903,7 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
           results = service.search(referral: primary_care_referral)
 
           expect(eps_provider_service).to have_received(:search_by_location).with(
-            hash_including(specialty_ids: %w[207Q00000X 207R00000X 208D00000X])
+            an_object_having_attributes(specialty_ids: %w[207Q00000X 207R00000X 208D00000X])
           )
           eps_results = results.select { |p| p.provider_type == 'eps' }
           expect(eps_results.map(&:id)).to eq(['match-1'])
@@ -901,7 +930,7 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
           results = service.search(referral: cardiology_referral)
 
           expect(eps_provider_service).to have_received(:search_by_location).with(
-            hash_including(specialty_ids: %w[207Q00000X 207R00000X 208D00000X])
+            an_object_having_attributes(specialty_ids: %w[207Q00000X 207R00000X 208D00000X])
           )
           eps_results = results.select { |p| p.provider_type == 'eps' }
           expect(eps_results.map(&:id)).to eq(['match-1'])
@@ -938,7 +967,7 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
           service.search(referral: cardiology_referral)
 
           expect(eps_provider_service).to have_received(:search_by_location).with(
-            hash_including(specialty_ids: %w[207RC0000X])
+            an_object_having_attributes(specialty_ids: %w[207RC0000X])
           )
         end
 
@@ -973,7 +1002,7 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
           service.search(referral: gastro_referral)
 
           expect(eps_provider_service).to have_received(:search_by_location).with(
-            hash_including(specialty_ids: %w[207Q00000X 207R00000X 208D00000X])
+            an_object_having_attributes(specialty_ids: %w[207Q00000X 207R00000X 208D00000X])
           )
           expect(Rails.logger).to have_received(:warn).with(
             'CcraCategoryMapper: unmapped category_of_care, defaulting to primaryCare',
@@ -1251,6 +1280,60 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
           results = service.search(referral: primary_care_referral)
           eps_results = results.select { |p| p.provider_type == 'eps' }
           expect(eps_results).not_to be_empty
+        end
+      end
+    end
+
+    describe 'post-MVP call-to-schedule providers (va_online_scheduling_cc_direct_scheduling_v2_post_mvp)' do
+      let(:phone_only_provider) do
+        eps_provider_hash.merge(
+          id: 'phone-only-1',
+          individual_providers: [{ name: 'Dr. Phone', npi: '7777777' }],
+          features: { is_digital: false, direct_booking: { is_enabled: false } }
+        )
+      end
+
+      context 'when the flag is disabled (default)' do
+        it 'requests only self-schedulable providers from EPS' do
+          service.search(referral:)
+
+          expect(eps_provider_service).to have_received(:search_by_location)
+            .with(an_object_having_attributes(self_schedulable_only: true))
+        end
+      end
+
+      context 'when the flag is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:va_online_scheduling_cc_direct_scheduling_v2_post_mvp, user).and_return(true)
+          allow(eps_provider_service).to receive(:search_by_location)
+            .and_return([eps_provider_hash, phone_only_provider])
+        end
+
+        it 'asks EPS to include non-self-schedulable (phone-only) providers' do
+          service.search(referral:)
+
+          expect(eps_provider_service).to have_received(:search_by_location)
+            .with(an_object_having_attributes(self_schedulable_only: false))
+        end
+
+        it 'returns both online-schedulable and phone-only EPS providers' do
+          results = service.search(referral:)
+
+          eps_results = results.select { |p| p.provider_type == 'eps' }
+          expect(eps_results.map(&:id)).to contain_exactly('9mN718pH', 'phone-only-1')
+          phone_only = eps_results.find { |p| p.id == 'phone-only-1' }
+          expect(phone_only.online_scheduling?).to be false
+        end
+
+        it 'logs and increments a metric for surfaced phone-only providers' do
+          allow(StatsD).to receive(:increment)
+          allow(Rails.logger).to receive(:info)
+
+          service.search(referral:)
+
+          expect(StatsD).to have_received(:increment)
+            .with('api.vaos.unified_provider_search.eps_non_online_scheduling.count', 1)
         end
       end
     end

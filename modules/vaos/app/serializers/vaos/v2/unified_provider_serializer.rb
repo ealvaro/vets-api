@@ -3,7 +3,10 @@
 module VAOS
   module V2
     class UnifiedProviderSerializer
-      def serialize(providers, referral_npi: nil)
+      # @param include_online_scheduling [Boolean] When true, adds the +onlineScheduling+ attribute
+      #   indicating whether each provider can be scheduled online (vs. call-to-schedule only).
+      #   Gated by the post-MVP flag so the key only appears once the enhancement is enabled.
+      def serialize(providers, referral_npi: nil, include_online_scheduling: false)
         providers.map.with_index do |provider, index|
           attrs = {
             name: provider.name,
@@ -18,6 +21,8 @@ module VAOS
             nextAvailableDate: provider.next_available_date,
             sortOrder: index
           }.merge(type_specific_attributes(provider))
+
+          attrs[:onlineScheduling] = provider.online_scheduling? if include_online_scheduling
 
           { id: provider.id, type: 'unified_provider', attributes: attrs }
         end

@@ -2827,6 +2827,11 @@ features:
     actor_type: user
     description: Enables CC and VA unified direct scheduling.
     enable_in_development: true
+  va_online_scheduling_cc_direct_scheduling_v2_post_mvp:
+    actor_type: user
+    description: Enables post-MVP unified scheduling enhancements, including surfacing providers that can only
+      be scheduled by phone (non-online-scheduling) and the onlineScheduling indicator on the provider list.
+    enable_in_development: true
   va_online_scheduling_community_care_cancellations:
     actor_type: user
     description: Enables community care direct scheduled cancellations.

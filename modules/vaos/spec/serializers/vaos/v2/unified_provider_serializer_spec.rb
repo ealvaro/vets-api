@@ -116,6 +116,34 @@ RSpec.describe VAOS::V2::UnifiedProviderSerializer do
       expect(result[1][:attributes][:sortOrder]).to eq(1)
     end
 
+    context 'onlineScheduling (post-MVP)' do
+      it 'is omitted by default (flag off)' do
+        result = serializer.serialize([va_provider, eps_provider])
+
+        expect(result.first[:attributes]).not_to have_key(:onlineScheduling)
+        expect(result.last[:attributes]).not_to have_key(:onlineScheduling)
+      end
+
+      it 'adds the onlineScheduling key to every provider when include_online_scheduling is true' do
+        result = serializer.serialize([va_provider, eps_provider], include_online_scheduling: true)
+
+        expect(result).to all(satisfy { |p| p[:attributes].key?(:onlineScheduling) })
+      end
+
+      it 'reflects the EPS provider digital-booking features' do
+        eps_provider.digital_booking_features = { is_digital: true, direct_booking: { is_enabled: false } }
+        result = serializer.serialize([eps_provider], include_online_scheduling: true).first
+
+        expect(result[:attributes][:onlineScheduling]).to be false
+      end
+
+      it 'is true for VA providers (always direct-eligible)' do
+        result = serializer.serialize([va_provider], include_online_scheduling: true).first
+
+        expect(result[:attributes][:onlineScheduling]).to be true
+      end
+    end
+
     context 'nextAvailableDate' do
       it 'emits nextAvailableDate when populated on a VA provider' do
         va_provider.next_available_date = '2026-06-10'

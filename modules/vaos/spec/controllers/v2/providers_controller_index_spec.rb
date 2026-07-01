@@ -138,6 +138,30 @@ RSpec.describe VAOS::V2::ProvidersController, type: :request do
         types = body['data'].map { |p| p['type'] }
         expect(types).to all(eq('unified_provider'))
       end
+
+      context 'onlineScheduling indicator (post-MVP flag)' do
+        it 'omits onlineScheduling when the flag is disabled' do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:va_online_scheduling_cc_direct_scheduling_v2_post_mvp, anything).and_return(false)
+
+          get '/vaos/v2/providers', params: { referral_id: }
+
+          body = JSON.parse(response.body)
+          expect(body['data']).to all(satisfy { |p| !p['attributes'].key?('onlineScheduling') })
+        end
+
+        it 'includes onlineScheduling when the flag is enabled' do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:va_online_scheduling_cc_direct_scheduling_v2_post_mvp, anything).and_return(true)
+
+          get '/vaos/v2/providers', params: { referral_id: }
+
+          body = JSON.parse(response.body)
+          expect(body['data']).to all(satisfy { |p| p['attributes'].key?('onlineScheduling') })
+        end
+      end
     end
 
     context 'when referral_id is missing' do

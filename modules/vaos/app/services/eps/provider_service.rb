@@ -156,23 +156,18 @@ module Eps
     # legacy +specialty+ string is provided, a best-effort client-side name match
     # is applied instead.
     #
-    # @param latitude [Float] Latitude of the search origin
-    # @param longitude [Float] Longitude of the search origin
-    # @param radius [Integer] Maximum miles from the origin (default: 25)
-    # @param specialty [String] Optional specialty name for client-side filtering (case-insensitive).
-    #   Ignored when +specialty_ids+ is provided.
-    # @param specialty_ids [Array<String>] Optional NUCC Healthcare Provider Taxonomy codes
-    #   forwarded to Wellhive as +specialtyId+ for server-side filtering.
-    # @return [Array<Hash>] Self-schedulable provider services near the location
+    # @param query [Eps::ProviderSearchQuery] Search criteria (coordinates, radius, and optional
+    #   specialty / self-schedulable filters). See {Eps::ProviderSearchQuery}.
+    # @return [Array<Hash>] Provider services near the location
     #
-    def search_by_location(latitude:, longitude:, radius: 25, specialty: nil, specialty_ids: nil)
-      lat, lon, radius_miles = validate_location_search_params!(latitude, longitude, radius)
-      normalized_specialty_ids = Array(specialty_ids).compact.uniq.presence
+    def search_by_location(query)
+      lat, lon, radius_miles = validate_location_search_params!(query.coordinates, query.radius)
+      normalized_specialty_ids = Array(query.specialty_ids).compact.uniq.presence
 
       query_params = build_search_params(
         near_location: "#{lat},#{lon}",
         max_miles_from_near: radius_miles,
-        is_self_schedulable: true,
+        is_self_schedulable: query.self_schedulable_only ? true : nil,
         specialty_ids: normalized_specialty_ids
       )
 
@@ -180,7 +175,8 @@ module Eps
         response = perform(:get, "/#{config.base_path}/provider-services", query_params,
                            request_headers_with_correlation_id)
         all_providers = response.body[:provider_services] || []
-        apply_specialty_filters(all_providers, specialty, normalized_specialty_ids)
+        apply_specialty_filters(all_providers, query.specialty, normalized_specialty_ids,
+                                self_schedulable_only: query.self_schedulable_only)
       end
     rescue Eps::ServiceException => e
       handle_eps_error!(e, 'search_by_location')
@@ -196,11 +192,14 @@ module Eps
     # server-side by +specialtyId+; we only apply the self-schedulable filter.
     # Otherwise we fall back to the legacy client-side name-match behavior.
     #
-    def apply_specialty_filters(all_providers, specialty, normalized_specialty_ids)
-      self_schedulable = filter_self_schedulable(all_providers)
-      return self_schedulable if normalized_specialty_ids || specialty.blank?
+    # When +self_schedulable_only+ is false, phone-only providers are retained
+    # (no self-schedulable filtering) so the post-MVP provider list can surface them.
+    #
+    def apply_specialty_filters(all_providers, specialty, normalized_specialty_ids, self_schedulable_only: true)
+      candidates = self_schedulable_only ? filter_self_schedulable(all_providers) : all_providers
+      return candidates if normalized_specialty_ids || specialty.blank?
 
-      filter_by_specialty(self_schedulable, specialty)
+      filter_by_specialty(candidates, specialty)
     end
 
     ##
@@ -612,7 +611,9 @@ module Eps
       }.compact
     end
 
-    def validate_location_search_params!(latitude, longitude, radius)
+    def validate_location_search_params!(coordinates, radius)
+      latitude = coordinates&.dig(:latitude)
+      longitude = coordinates&.dig(:longitude)
       raise ArgumentError, 'latitude is required' if latitude.blank?
       raise ArgumentError, 'longitude is required' if longitude.blank?
 

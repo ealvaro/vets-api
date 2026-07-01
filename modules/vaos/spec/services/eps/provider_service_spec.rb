@@ -1869,6 +1869,12 @@ describe Eps::ProviderService do
       allow_any_instance_of(VAOS::SessionService).to receive(:perform).and_return(response)
     end
 
+    # Wraps the search criteria in the value object the service now takes, so each example
+    # can keep passing plain keyword args.
+    def perform_search(**attrs)
+      service.search_by_location(Eps::ProviderSearchQuery.new(**attrs))
+    end
+
     it 'maps location params to EPS query params and filters by specialty' do
       expect_any_instance_of(VAOS::SessionService).to receive(:perform).with(
         :get,
@@ -1881,13 +1887,15 @@ describe Eps::ProviderService do
         headers
       ).and_return(response)
 
-      result = service.search_by_location(latitude: '28.08', longitude: '-80.6', radius: '30', specialty: 'Urology')
+      result = perform_search(
+        coordinates: { latitude: '28.08', longitude: '-80.6' }, radius: '30', specialty: 'Urology'
+      )
 
       expect(result.map { |p| p[:id] }).to eq(['provider-self-urology'])
     end
 
     it 'returns self-schedulable providers when specialty is not provided' do
-      result = service.search_by_location(latitude: 28.08, longitude: -80.6, radius: 30)
+      result = perform_search(coordinates: { latitude: 28.08, longitude: -80.6 }, radius: 30)
 
       expect(result.map { |p| p[:id] }).to contain_exactly('provider-self-urology', 'provider-self-cardiology')
     end
@@ -1903,8 +1911,8 @@ describe Eps::ProviderService do
         headers
       ).and_return(response)
 
-      service.search_by_location(
-        latitude: 28.08, longitude: -80.6, radius: 30,
+      perform_search(
+        coordinates: { latitude: 28.08, longitude: -80.6 }, radius: 30,
         specialty_ids: %w[207Q00000X 207R00000X 208D00000X]
       )
     end
@@ -1916,7 +1924,7 @@ describe Eps::ProviderService do
         response
       end
 
-      service.search_by_location(latitude: 28.08, longitude: -80.6, radius: 30)
+      perform_search(coordinates: { latitude: 28.08, longitude: -80.6 }, radius: 30)
     end
 
     it 'compacts and de-duplicates specialty_ids before sending' do
@@ -1927,21 +1935,50 @@ describe Eps::ProviderService do
         headers
       ).and_return(response)
 
-      service.search_by_location(
-        latitude: 28.08, longitude: -80.6, radius: 30,
+      perform_search(
+        coordinates: { latitude: 28.08, longitude: -80.6 }, radius: 30,
         specialty_ids: ['207Q00000X', nil, '208D00000X', '207Q00000X']
       )
     end
 
+    context 'when self_schedulable_only is false (post-MVP call-to-schedule)' do
+      it 'omits the isSelfSchedulable query param' do
+        expect_any_instance_of(VAOS::SessionService).to receive(:perform) do |_inst, _verb, _path, query, _headers|
+          expect(query).not_to have_key(:isSelfSchedulable)
+          response
+        end
+
+        perform_search(coordinates: { latitude: 28.08, longitude: -80.6 }, radius: 30,
+                       self_schedulable_only: false)
+      end
+
+      it 'returns phone-only providers alongside self-schedulable ones' do
+        result = perform_search(coordinates: { latitude: 28.08, longitude: -80.6 }, radius: 30,
+                                self_schedulable_only: false)
+
+        expect(result.map { |p| p[:id] })
+          .to contain_exactly('provider-self-urology', 'provider-self-cardiology', 'provider-not-self')
+      end
+
+      it 'still applies client-side specialty filtering without dropping phone-only matches' do
+        result = perform_search(
+          coordinates: { latitude: 28.08, longitude: -80.6 }, radius: 30, specialty: 'Urology',
+          self_schedulable_only: false
+        )
+
+        expect(result.map { |p| p[:id] }).to contain_exactly('provider-self-urology', 'provider-not-self')
+      end
+    end
+
     it 'raises ArgumentError when latitude is blank' do
       expect do
-        service.search_by_location(latitude: nil, longitude: -80.6, radius: 30)
+        perform_search(coordinates: { latitude: nil, longitude: -80.6 }, radius: 30)
       end.to raise_error(ArgumentError, 'latitude is required')
     end
 
     it 'raises ArgumentError when longitude is blank' do
       expect do
-        service.search_by_location(latitude: 28.08, longitude: nil, radius: 30)
+        perform_search(coordinates: { latitude: 28.08, longitude: nil }, radius: 30)
       end.to raise_error(ArgumentError, 'longitude is required')
     end
 
@@ -1972,7 +2009,7 @@ describe Eps::ProviderService do
         )
 
         expect do
-          service.search_by_location(latitude: 28.08, longitude: -80.6, radius: 25)
+          perform_search(coordinates: { latitude: 28.08, longitude: -80.6 }, radius: 25)
         end.to raise_error(Eps::ServiceException)
       end
     end

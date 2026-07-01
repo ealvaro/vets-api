@@ -11,6 +11,18 @@ module VAOS
           attrs.each { |key, value| send(:"#{key}=", value) if respond_to?(:"#{key}=") }
         end
 
+        ##
+        # Whether this provider can be scheduled online (vs. call-to-schedule only).
+        #
+        # Defaults to +true+: VA providers only reach the unified provider list after passing a
+        # +direct_eligible+ check, so they are always online-schedulable. EPS providers override
+        # this to derive the value from their Wellhive digital-booking features.
+        #
+        # @return [Boolean]
+        def online_scheduling?
+          true
+        end
+
         def formatted_address
           return nil if address.blank?
 

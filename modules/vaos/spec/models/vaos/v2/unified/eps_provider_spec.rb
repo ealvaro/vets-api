@@ -102,6 +102,48 @@ RSpec.describe VAOS::V2::Unified::EpsProvider do
     end
   end
 
+  describe '#online_scheduling?' do
+    it 'is true when the provider is digital and direct booking is enabled' do
+      provider = described_class.new(
+        digital_booking_features: { is_digital: true, direct_booking: { is_enabled: true } }
+      )
+
+      expect(provider.online_scheduling?).to be true
+    end
+
+    it 'is false when direct booking is disabled (phone-only)' do
+      provider = described_class.new(
+        digital_booking_features: { is_digital: true, direct_booking: { is_enabled: false } }
+      )
+
+      expect(provider.online_scheduling?).to be false
+    end
+
+    it 'is false when the provider is not digital' do
+      provider = described_class.new(
+        digital_booking_features: { is_digital: false, direct_booking: { is_enabled: true } }
+      )
+
+      expect(provider.online_scheduling?).to be false
+    end
+
+    it 'is false when digital booking features are absent' do
+      provider = described_class.new
+
+      expect(provider.online_scheduling?).to be false
+    end
+
+    it 'reflects the features mapped from an EPS provider service response' do
+      provider = described_class.from_eps_provider_service(
+        id: 'abc',
+        name: 'Phone Only Clinic',
+        features: { is_digital: false, direct_booking: { is_enabled: false } }
+      )
+
+      expect(provider.online_scheduling?).to be false
+    end
+  end
+
   describe '#first_self_schedulable_appointment_type_id!' do
     it 'returns the first self-schedulable type id' do
       provider = described_class.new(
