@@ -15,6 +15,7 @@ RSpec.describe LighthouseRatedDisabilitiesProvider do
 
   before do
     allow_any_instance_of(Auth::ClientCredentials::Service).to receive(:get_token).and_return('blahblech')
+    allow(StatsD).to receive(:increment)
   end
 
   it_behaves_like 'rated disabilities provider'

@@ -584,7 +584,7 @@ form_10_10cg:
 form_intake:
   api_version: 'v1'
   breakers_error_threshold: 80
-  host: <%= ENV['form_intake__host'] %>
+  host: 'http://localhost:3000'
   path: <%= ENV['form_intake__path'] %>
   timeout: 30
   use_mocks: false
@@ -671,7 +671,7 @@ iam_ssoe:
   timeout: 20
 ibm:
   breakers_error_threshold: 80
-  host: ~
+  host: http://example.com
   path: "/api/validated-forms"
   use_mocks: false
   version: v1

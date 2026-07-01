@@ -57,9 +57,12 @@ RSpec.describe BenefitsIntake::Configuration do
       expect(headers).to eq(expected)
     end
 
-    it 'errors if missing api_key' do
-      allow(Settings.lighthouse.benefits_intake).to receive(:api_key).and_return(nil)
-      expect { config.base_request_headers }.to raise_error StandardError, /^No api_key set.+/
+    it 'errors if missing api_key in production' do
+      allow(settings).to receive(:api_key).and_return(nil)
+      allow(Settings).to receive(:vsp_environment).and_return('production')
+
+      expect { config.base_request_headers }
+        .to raise_error(StandardError, /^No api_key set.+/)
     end
   end
 

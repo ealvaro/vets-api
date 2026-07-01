@@ -20,6 +20,10 @@ RSpec.describe Lighthouse::Form526DocumentUploadPollingJob, type: :job do
   end
 
   describe '#perform' do
+    before do
+      allow(StatsD).to receive(:increment)
+    end
+
     shared_examples 'document status updates' do |state, request_id, cassette|
       around { |example| VCR.use_cassette(cassette, match_requests_on: [:body]) { example.run } }
 

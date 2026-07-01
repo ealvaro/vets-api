@@ -22,6 +22,7 @@ module Ibm
       ]
       "https://#{url.map { |segment| segment.sub(%r{^/}, '').chomp('/') }.join('/')}"
     end
+    alias base_path service_path
 
     # @return [String] Service name to use in breakers and metrics.
     def service_name

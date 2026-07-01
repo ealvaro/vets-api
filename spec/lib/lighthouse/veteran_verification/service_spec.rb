@@ -50,6 +50,10 @@ RSpec.describe VeteranVerification::Service do
       end
 
       describe 'when requesting status' do
+        before do
+          allow(StatsD).to receive(:increment)
+        end
+
         context 'when confirmed' do
           let(:user) { build(:user, icn: '1012667145V762142') }
 

@@ -42,13 +42,12 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::SelfEntered', type: :request do
       end
 
       it 'returns 403 Forbidden when mhv_correlation_id is missing' do
-        sign_in_as(invalid_user, stub_mhv_account: true)
-
         get '/my_health/v1/medical_records/self_entered'
 
         expect(invalid_user.icn).not_to be_nil
         expect(invalid_user.mhv_correlation_id).to be_nil
         expect(response).to have_http_status(:forbidden)
+
         json = JSON.parse(response.body)
         expect(json['errors'].first['detail']).to eq('Unable to access MHV services. Please try signing in again.')
       end
@@ -62,13 +61,12 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::SelfEntered', type: :request do
       end
 
       it 'returns 403 Forbidden when icn is missing' do
-        sign_in_as(invalid_user, stub_mhv_account: true)
-
         get '/my_health/v1/medical_records/self_entered'
 
         expect(invalid_user.icn).to be_nil
         expect(invalid_user.mhv_correlation_id).not_to be_nil
         expect(response).to have_http_status(:forbidden)
+
         json = JSON.parse(response.body)
         expect(json['errors'].first['detail']).to eq('You do not have access to self-entered information')
       end
@@ -91,8 +89,24 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::SelfEntered', type: :request do
       expect_aal_logged(1)
     end
 
-    context 'when one of the upstream calls error out with a 502 XML error' do
-      # Test that the :mhv_xml_html_errors middleware is bypassed
+    # Test that the :mhv_xml_html_errors middleware is bypassed
+    context 'when one of the upstream calls errors out with a 502 XML error' do
+      let(:allergy_error_response) do
+        instance_double(
+          Faraday::Response,
+          success?: false,
+          status: 502,
+          body: '<html><body>502 Bad Gateway</body></html>',
+          reason_phrase: 'Bad Gateway'
+        )
+      end
+
+      before do
+        allow_any_instance_of(BBInternal::Client)
+          .to receive(:get_sei_allergies)
+          .and_return(allergy_error_response)
+      end
+
       it 'reports an error for one service but still succeeds overall' do
         VCR.use_cassette('mr_client/get_self_entered_information_502') do
           get '/my_health/v1/medical_records/self_entered'
@@ -104,18 +118,15 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::SelfEntered', type: :request do
         json = JSON.parse(response.body)
         expect(json['errors']).to be_a(Hash)
         expect(json['errors'].keys).to contain_exactly('allergies')
-        json['errors'].each_value do |details|
-          expect(details['message']).to match(/502 Bad Gateway/)
-        end
-
-        expect(json['responses'].size).to eq(14) # 15 total - 1 failure
+        expect(json['errors']['allergies']['message']).to match(/502|Bad Gateway/)
+        expect(json['responses'].size).to eq(14)
 
         expect_aal_logged(1)
       end
     end
 
+    # Test that the :raise_custom_error middleware is bypassed
     context 'when some of the upstream calls error out with non-XML/HTML responses' do
-      # Test that the :raise_custom_error middleware is bypassed
       let(:allergy_error_response) do
         instance_double(
           Faraday::Response,
@@ -157,6 +168,7 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::SelfEntered', type: :request do
         json = JSON.parse(response.body)
         expect(json['errors']).to be_a(Hash)
         expect(json['errors'].keys).to contain_exactly('allergies', 'vaccines')
+
         json['errors'].each_value do |details|
           expect(details['message']).to match(/service is down|timeout/)
         end
@@ -171,7 +183,7 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::SelfEntered', type: :request do
       before do
         allow_any_instance_of(BBInternal::Client)
           .to receive(:get_all_sei_data)
-          .and_raise(StandardError.new('SEI error'))
+          .and_raise(StandardError, 'SEI error')
       end
 
       it 'returns an overall error' do

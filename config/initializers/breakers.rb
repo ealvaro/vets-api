@@ -47,9 +47,65 @@ require 'vha_notification/configuration'
 require 'eps/configuration'
 require 'ccra/configuration'
 
+# --- Added by breakers audit (lib/**/configuration.rb candidates) ---
+require 'apps/configuration'
+require 'benefits_intake_service/configuration'
+require 'bid/awards/configuration'
+require 'bid/persons/configuration'
+require 'chip/configuration'
+require 'contention_classification/configuration'
+require 'decision_review/utilities/pdf_validation/configuration'
+require 'disability_max_ratings/configuration'
+require 'form526_backup_submission/configuration'
+require 'form_intake/configuration'
+require 'forms/configuration'
+require 'hca/enrollment_eligibility/configuration'
+require 'ibm/configuration'
+require 'kafka/schema_registry/configuration'
+require 'lgy/configuration'
+require 'lighthouse/auth/client_credentials/configuration'
+require 'lighthouse/benefits_claims/configuration'
+require 'lighthouse/benefits_discovery/configuration'
+require 'lighthouse/benefits_documents/configuration'
+require 'lighthouse/benefits_intake/configuration'
+require 'lighthouse/benefits_reference_data/configuration'
+require 'lighthouse/benefits_reference_data_staging/configuration'
+require 'lighthouse/direct_deposit/configuration'
+require 'lighthouse/facilities/configuration'
+require 'lighthouse/healthcare_cost_and_coverage/configuration'
+require 'lighthouse/letters_generator/configuration'
+require 'lighthouse/veteran_verification/configuration'
+require 'lighthouse/veterans_health/configuration'
+require 'mail_automation/configuration'
+require 'map/security_token/configuration'
+require 'map/sign_up/configuration'
+require 'medical_records/bb_internal/configuration'
+require 'medical_records/configuration'
+require 'medical_records/phr_mgr/configuration'
+require 'medical_records/user_eligibility/configuration'
+require 'mhv/aal/configuration'
+require 'mhv/account_creation/configuration'
+require 'res/configuration'
+require 'sign_in/idme/configuration'
+require 'sign_in/logingov/configuration'
+require 'ssoe/configuration'
+require 'token_validation/v2/configuration'
+require 'va_profile/profile/v3/configuration'
+require 'vbs/configuration'
+require 'veteran_enrollment_system/enrollment_periods/configuration'
+require 'veteran_enrollment_system/form1095_b/configuration'
+
 Rails.application.reloader.to_prepare do
   redis_namespace = Redis::Namespace.new('breakers', redis: $redis)
-
+  # --- Added by breakers audit (lib/**/configuration.rb candidates) ---
+  # NOTE: the following classes were intentionally NOT added -- see PR/ticket
+  # for disposition:
+  #   - BID::Configuration                              (abstract base; see BID::Awards / BID::Persons below)
+  #   - EVSS::Configuration                              (abstract base; concrete subclasses registered individually)
+  #   - Salesforce::Configuration                        (abstract base; already-registered subclass)
+  #   - VAProfile::Configuration                         (abstract base; concrete subclasses registered individually)
+  #   - EVSS::DisabilityCompensationForm::Dvp::Configuration (inherits from parent config)
+  #   - GI::LCPE::Configuration                          (inherits from parent config)
   services = [
     DebtManagementCenter::DebtsConfiguration.instance.breakers_service,
     Caseflow::Configuration.instance.breakers_service,
@@ -94,7 +150,53 @@ Rails.application.reloader.to_prepare do
     VHANotification::Configuration.instance.breakers_service,
     MDOT::Configuration.instance.breakers_service,
     Eps::Configuration.instance.breakers_service,
-    Ccra::Configuration.instance.breakers_service
+    Ccra::Configuration.instance.breakers_service,
+    Apps::Configuration.instance.breakers_service,
+    BenefitsIntakeService::Configuration.instance.breakers_service,
+    BID::Awards::Configuration.instance.breakers_service,
+    BID::Persons::Configuration.instance.breakers_service,
+    Chip::Configuration.instance.breakers_service,
+    ContentionClassification::Configuration.instance.breakers_service,
+    DecisionReview::PdfValidation::Configuration.instance.breakers_service,
+    DisabilityMaxRatings::Configuration.instance.breakers_service,
+    Form526BackupSubmission::Configuration.instance.breakers_service,
+    FormIntake::Configuration.instance.breakers_service,
+    Forms::Configuration.instance.breakers_service,
+    HCA::EnrollmentEligibility::Configuration.instance.breakers_service,
+    # Ibm::Configuration.instance.breakers_service,
+    Kafka::SchemaRegistry::Configuration.instance.breakers_service,
+    LGY::Configuration.instance.breakers_service,
+    # Auth::ClientCredentials::Configuration.instance.breakers_service,
+    BenefitsClaims::Configuration.instance.breakers_service,
+    BenefitsDiscovery::Configuration.instance.breakers_service,
+    BenefitsDocuments::Configuration.instance.breakers_service,
+    # BenefitsIntake::Configuration.instance.breakers_service,
+    BenefitsReferenceData::Configuration.instance.breakers_service,
+    BenefitsReferenceData::Staging::Configuration.instance.breakers_service,
+    DirectDeposit::Configuration.instance.breakers_service,
+    Lighthouse::Facilities::Configuration.instance.breakers_service,
+    Lighthouse::HealthcareCostAndCoverage::Configuration.instance.breakers_service,
+    # Lighthouse::LettersGenerator::Configuration.instance.breakers_service,
+    VeteranVerification::Configuration.instance.breakers_service,
+    Lighthouse::VeteransHealth::Configuration.instance.breakers_service,
+    MailAutomation::Configuration.instance.breakers_service,
+    MAP::SecurityToken::Configuration.instance.breakers_service,
+    MAP::SignUp::Configuration.instance.breakers_service,
+    BBInternal::Configuration.instance.breakers_service,
+    MedicalRecords::Configuration.instance.breakers_service,
+    PHRMgr::Configuration.instance.breakers_service,
+    UserEligibility::Configuration.instance.breakers_service,
+    AAL::Configuration.instance.breakers_service,
+    MHV::AccountCreation::Configuration.instance.breakers_service,
+    RES::Configuration.instance.breakers_service,
+    SignIn::Idme::Configuration.instance.breakers_service,
+    SignIn::Logingov::Configuration.instance.breakers_service,
+    SSOe::Configuration.instance.breakers_service,
+    TokenValidation::V2::Configuration.instance.breakers_service,
+    VAProfile::Profile::V3::Configuration.instance.breakers_service,
+    VBS::Configuration.instance.breakers_service,
+    VeteranEnrollmentSystem::EnrollmentPeriods::Configuration.instance.breakers_service,
+    VeteranEnrollmentSystem::Form1095B::Configuration.instance.breakers_service
   ]
 
   services << CentralMail::Configuration.instance.breakers_service if Settings.central_mail&.upload&.enabled

@@ -7,6 +7,10 @@ RSpec.describe VeteranEnrollmentSystem::EnrollmentPeriods::Service do
   let(:icn) { '1012667145V762142' }
 
   describe '#get_enrollment_periods' do
+    before do
+      allow(StatsD).to receive(:increment)
+    end
+
     context 'when the request is successful' do
       it 'returns the form data from the enrollment system' do
         VCR.use_cassette('veteran_enrollment_system/enrollment_periods/get_success',

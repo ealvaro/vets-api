@@ -212,6 +212,8 @@ describe LGY::Service do
     context 'LGY returns an error' do
       it 'logs response body and headers' do
         VCR.use_cassette 'lgy/application_put_500' do
+          allow(Rails.logger).to receive(:error)
+
           expect(Rails.logger).to receive(:error).with(
             'COE application submission failed with http status: 500',
             {
@@ -220,6 +222,7 @@ describe LGY::Service do
               body: { 'errors' => [{ 'message' => 'Fake error message' }] }
             }
           )
+
           expect do
             subject.put_application(payload: coe_claim)
           end.to raise_error(Common::Client::Errors::ClientError)

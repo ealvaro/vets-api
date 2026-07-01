@@ -30,7 +30,10 @@ describe MAP::SecurityToken::Service do
       let(:expected_log_values) { { status: expected_error_status, application:, icn:, context: } }
 
       it 'raises a client error with the expected message and creates a log' do
+        allow(Rails.logger).to receive(:error).and_call_original
+
         expect(Rails.logger).to receive(:error).with(expected_message, expected_log_values)
+
         expect { subject }.to raise_error(expected_error, expected_error_response)
       end
     end
@@ -143,6 +146,7 @@ describe MAP::SecurityToken::Service do
         end
 
         it 'raises an gateway timeout error and creates a log' do
+          allow(Rails.logger).to receive(:error).and_call_original
           expect(Rails.logger).to receive(:error).with(expected_logger_message, expected_log_values)
           expect { subject }.to raise_exception(expected_error, expected_error_message)
         end

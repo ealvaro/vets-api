@@ -28,7 +28,9 @@ module BenefitsIntake
     # @return [Hash] The basic headers required for any Lighthouse API call
     def self.base_request_headers
       key = Settings.lighthouse.benefits_intake.api_key
-      raise "No api_key set for benefits_intake. Please set 'lighthouse.benefits_intake.api_key'" if key.nil?
+      if key.nil? && Settings.vsp_environment == 'production'
+        raise "No api_key set for benefits_intake. Please set 'lighthouse.benefits_intake.api_key'"
+      end
 
       super.merge('apikey' => key)
     end

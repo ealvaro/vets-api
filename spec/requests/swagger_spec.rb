@@ -1262,6 +1262,11 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
                                                   any_args).and_return(false)
         allow_any_instance_of(Auth::ClientCredentials::Service).to receive(:get_token).and_return('fake_token')
         allow_any_instance_of(User).to receive(:icn).and_return('123498767V234859')
+        allow_any_instance_of(Breakers::UptimeMiddleware)
+          .to receive(:call)
+          .and_wrap_original do |original, env|
+            original.receiver.instance_variable_get(:@app).call(env)
+          end
       end
 
       let(:form526v2) do
@@ -1322,15 +1327,22 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
 
       it 'supports getting separation_locations' do
         expect(subject).to validate(:get, '/v0/disability_compensation_form/separation_locations', 401)
-        VCR.use_cassette('brd/separation_locations_502') do
-          expect(subject).to validate(:get, '/v0/disability_compensation_form/separation_locations', 502, headers)
-        end
-        VCR.use_cassette('brd/separation_locations_503') do
-          expect(subject).to validate(:get, '/v0/disability_compensation_form/separation_locations', 503, headers)
-        end
+
         VCR.use_cassette('brd/separation_locations') do
           expect(subject).to validate(:get, '/v0/disability_compensation_form/separation_locations', 200, headers)
         end
+
+        allow_any_instance_of(V0::DisabilityCompensationFormsController)
+          .to receive(:separation_locations)
+          .and_raise(Common::Exceptions::BadGateway.new)
+
+        expect(subject).to validate(:get, '/v0/disability_compensation_form/separation_locations', 502, headers)
+
+        allow_any_instance_of(V0::DisabilityCompensationFormsController)
+          .to receive(:separation_locations)
+          .and_raise(Common::Exceptions::ServiceUnavailable.new)
+
+        expect(subject).to validate(:get, '/v0/disability_compensation_form/separation_locations', 503, headers)
       end
 
       it 'supports getting suggested conditions' do

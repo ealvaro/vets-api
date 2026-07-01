@@ -8,6 +8,10 @@ RSpec.describe VeteranEnrollmentSystem::Form1095B::Service do
   let(:icn) { '1012667145V762142' }
 
   describe '#get_form_by_icn' do
+    before do
+      allow(StatsD).to receive(:increment)
+    end
+
     context 'when the request is successful' do
       it 'returns the form data from the enrollment system' do
         VCR.use_cassette('veteran_enrollment_system/form1095_b/get_form_success',

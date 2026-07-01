@@ -6,7 +6,10 @@ module VBS
   class Configuration < Common::Client::Configuration::REST
     def connection
       Faraday.new(base_path, headers: base_request_headers, request: request_options) do |faraday|
+        faraday.use(:breakers, service_name:)
+        faraday.use Faraday::Response::RaiseError
         faraday.request :json
+        faraday.response :betamocks if mock_enabled?
         faraday.response :json
         faraday.adapter Faraday.default_adapter
       end

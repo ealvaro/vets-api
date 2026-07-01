@@ -7,6 +7,10 @@ require 'chip/service_exception'
 describe Chip::Service do
   subject { described_class }
 
+  before do
+    allow(StatsD).to receive(:increment)
+  end
+
   let(:tenant_name) { 'mobile_app' }
   let(:tenant_id) { Settings.chip[tenant_name].tenant_id }
   let(:username) { 'test_username' }
