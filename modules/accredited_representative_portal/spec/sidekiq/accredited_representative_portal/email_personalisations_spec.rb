@@ -1,27 +1,38 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative '../../support/poa_holder_fixtures'
 
 RSpec.describe AccreditedRepresentativePortal::EmailPersonalisations do
   describe '.generate' do
     context 'when type is requested' do
       let(:type) { 'requested' }
       let(:notification) { create(:power_of_attorney_request_notification, type:) }
-      let(:organization) { create(:organization, name: 'Org Name') }
 
-      it 'returns the full hash for the digital submit confirmation email' do
-        notification.power_of_attorney_request.power_of_attorney_holder_poa_code = organization.poa
-        expiration_date = (Time.zone.now.in_time_zone('Eastern Time (US & Canada)') + 60.days).strftime('%B %d, %Y')
-        rep_name = notification.accredited_individual.full_name.strip
-        org_name = notification.accredited_organization.name.strip
-        expected_hash = {
-          'first_name' => notification.claimant_hash['name']['first'],
-          'last_name' => notification.claimant_hash['name']['last'],
-          'submit_date' => Time.zone.now.in_time_zone('Eastern Time (US & Canada)').strftime('%B %d, %Y'),
-          'expiration_date' => expiration_date,
-          'representative_name' => "#{rep_name} accredited with #{org_name}"
-        }
-        expect(described_class::Requested.new(notification).generate).to eq(expected_hash)
+      shared_examples 'requested personalisation hash' do
+        it 'returns the full hash for the digital submit confirmation email' do
+          expiration_date = (Time.zone.now.in_time_zone('Eastern Time (US & Canada)') + 60.days).strftime('%B %d, %Y')
+          rep_name = notification.accredited_individual.full_name.strip
+          org_name = notification.accredited_organization.name.strip
+          expected_hash = {
+            'first_name' => notification.claimant_hash['name']['first'],
+            'last_name' => notification.claimant_hash['name']['last'],
+            'submit_date' => Time.zone.now.in_time_zone('Eastern Time (US & Canada)').strftime('%B %d, %Y'),
+            'expiration_date' => expiration_date,
+            'representative_name' => "#{rep_name} accredited with #{org_name}"
+          }
+          expect(described_class::Requested.new(notification).generate).to eq(expected_hash)
+        end
+      end
+
+      context 'with legacy models' do
+        include_context 'with legacy poa holders'
+        include_examples 'requested personalisation hash'
+      end
+
+      context 'with accredited models' do
+        include_context 'with accredited poa holders'
+        include_examples 'requested personalisation hash'
       end
     end
 
@@ -129,7 +140,6 @@ RSpec.describe AccreditedRepresentativePortal::EmailPersonalisations do
 
   describe 'Requested subclass' do
     let(:notification) { create(:power_of_attorney_request_notification, type: 'requested') }
-    let(:organization) { create(:organization, name: 'Org Name') }
     let(:personalisation) { described_class::Requested.new(notification) }
 
     it 'returns the submit date' do
@@ -142,12 +152,23 @@ RSpec.describe AccreditedRepresentativePortal::EmailPersonalisations do
       expect(personalisation.send(:expiration_date)).to eq(expected_date)
     end
 
-    it 'returns the representative name' do
-      notification.power_of_attorney_request.power_of_attorney_holder_poa_code = organization.poa
-      accredited_individual_name = notification.accredited_individual.full_name.strip
-      accredited_organization_name = notification.accredited_organization.name.strip
-      expected_name = "#{accredited_individual_name} accredited with #{accredited_organization_name}"
-      expect(personalisation.send(:representative_name)).to eq(expected_name)
+    shared_examples 'representative name' do
+      it 'returns the representative name' do
+        accredited_individual_name = notification.accredited_individual.full_name.strip
+        accredited_organization_name = notification.accredited_organization.name.strip
+        expected_name = "#{accredited_individual_name} accredited with #{accredited_organization_name}"
+        expect(personalisation.send(:representative_name)).to eq(expected_name)
+      end
+    end
+
+    context 'with legacy models' do
+      include_context 'with legacy poa holders'
+      include_examples 'representative name'
+    end
+
+    context 'with accredited models' do
+      include_context 'with accredited poa holders'
+      include_examples 'representative name'
     end
   end
 
@@ -199,90 +220,107 @@ RSpec.describe AccreditedRepresentativePortal::EmailPersonalisations do
   end
 
   describe 'FailedRep subclass' do
-    let!(:organization) { create(:organization, name: 'Org Name') }
-    let!(:individual) { create(:representative, :with_rep_id) }
-    let!(:user_account) { create(:user_account) }
+    let(:poa_code) { 'ABC' }
+    let(:registration_number) { '1234' }
 
-    let(:poa_request) do
-      create(
-        :power_of_attorney_request,
-        id: 123,
-        accredited_organization: organization,
-        accredited_individual: individual,
-        power_of_attorney_holder_poa_code: organization.poa
-      )
-    end
+    shared_examples 'failed rep personalisation' do
+      let!(:organization) { create_holder_organization(poa_code:, name: 'Org Name') }
+      let!(:individual) do
+        create_holder_registration(type: :vso, registration_number:, first_name: 'Bob', last_name: 'Law')
+      end
+      let!(:user_account) { create(:user_account) }
 
-    let(:poa_form) do
-      poa_request.power_of_attorney_form
-    end
-
-    let(:notification) do
-      create(
-        :power_of_attorney_request_notification,
-        type: 'enqueue_failed',
-        recipient_type: 'resolver',
-        power_of_attorney_request: poa_request
-      )
-    end
-
-    let(:personalisation) { described_class::FailedRep.new(notification) }
-
-    before do
-      allow(Flipper).to receive(:enabled?).with(:ar_poa_request_failure_rep_notification).and_return(true)
-      allow(poa_form).to receive(:parsed_data).and_return({
-                                                            'veteran' => {
-                                                              'name' => { 'first' => 'Jane', 'last' => 'Doe' },
-                                                              'email' => 'jane@example.com'
-                                                            }
-                                                          })
-
-      memberships =
-        AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships.new(
-          icn: '1234', emails: []
+      let(:poa_request) do
+        create(
+          :power_of_attorney_request,
+          id: 123,
+          accredited_organization: organization,
+          accredited_individual: individual,
+          power_of_attorney_holder_poa_code: poa_code
         )
-
-      allow(memberships).to(
-        receive(:all).and_return(
-          [
-            AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships::Membership.new(
-              registration_number: '1234',
-              power_of_attorney_holder:
-                AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
-                  poa_code: poa_request.power_of_attorney_holder_poa_code,
-                  type: poa_request.power_of_attorney_holder_type,
-                  can_accept_digital_poa_requests: false,
-                  name: 'Org Name'
-                )
-            )
-          ]
-        )
-      )
-
-      AccreditedRepresentativePortal::PowerOfAttorneyRequestDecision.create_declination!(
-        creator_id: user_account.id,
-        power_of_attorney_holder_memberships: memberships,
-        power_of_attorney_request: poa_request,
-        declination_reason: :OTHER
-      )
-    end
-
-    it 'returns the correct URL' do
-      result = personalisation.generate
-
-      base = Settings.accredited_representative_portal.frontend_base_url
-      expected = begin
-        u = URI.parse(base)
-        u.path = File.join(u.path.presence || '/', 'poa_requests', poa_request.id.to_s)
-        u.to_s
       end
 
-      expect(result['poa_request_url']).to eq(expected)
+      let(:poa_form) do
+        poa_request.power_of_attorney_form
+      end
+
+      let(:notification) do
+        create(
+          :power_of_attorney_request_notification,
+          type: 'enqueue_failed',
+          recipient_type: 'resolver',
+          power_of_attorney_request: poa_request
+        )
+      end
+
+      let(:personalisation) { described_class::FailedRep.new(notification) }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:ar_poa_request_failure_rep_notification).and_return(true)
+        allow(poa_form).to receive(:parsed_data).and_return({
+                                                              'veteran' => {
+                                                                'name' => { 'first' => 'Jane', 'last' => 'Doe' },
+                                                                'email' => 'jane@example.com'
+                                                              }
+                                                            })
+
+        memberships =
+          AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships.new(
+            icn: '1234', emails: []
+          )
+
+        allow(memberships).to(
+          receive(:all).and_return(
+            [
+              AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships::Membership.new(
+                registration_number: '1234',
+                power_of_attorney_holder:
+                  AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
+                    poa_code: poa_request.power_of_attorney_holder_poa_code,
+                    type: poa_request.power_of_attorney_holder_type,
+                    can_accept_digital_poa_requests: false,
+                    name: 'Org Name'
+                  )
+              )
+            ]
+          )
+        )
+
+        AccreditedRepresentativePortal::PowerOfAttorneyRequestDecision.create_declination!(
+          creator_id: user_account.id,
+          power_of_attorney_holder_memberships: memberships,
+          power_of_attorney_request: poa_request,
+          declination_reason: :OTHER
+        )
+      end
+
+      it 'returns the correct URL' do
+        result = personalisation.generate
+
+        base = Settings.accredited_representative_portal.frontend_base_url
+        expected = begin
+          u = URI.parse(base)
+          u.path = File.join(u.path.presence || '/', 'poa_requests', poa_request.id.to_s)
+          u.to_s
+        end
+
+        expect(result['poa_request_url']).to eq(expected)
+      end
+
+      it 'returns the first name' do
+        result = personalisation.generate
+        expect(result['first_name']).to eq('Bob')
+      end
     end
 
-    it 'returns the first name' do
-      result = personalisation.generate
-      expect(result['first_name']).to eq('Bob')
+    context 'with legacy models' do
+      include_context 'with legacy poa holders'
+      include_examples 'failed rep personalisation'
+    end
+
+    context 'with accredited models' do
+      include_context 'with accredited poa holders'
+      include_examples 'failed rep personalisation'
     end
   end
 end

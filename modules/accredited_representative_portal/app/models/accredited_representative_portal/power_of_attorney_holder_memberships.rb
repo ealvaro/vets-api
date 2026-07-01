@@ -49,7 +49,9 @@ module AccreditedRepresentativePortal
     # When any of the above properties is violated, an exception is raised.
     #
     def all # rubocop:disable Metrics/MethodLength
-      @memberships ||=
+      return accredited_memberships if AccreditedRepresentativePortal.use_accredited_models?
+
+      @legacy_memberships ||=
         get_registrations.flat_map do |registration|
           case registration.user_type
           when 'veteran_service_officer'
@@ -200,6 +202,99 @@ module AccreditedRepresentativePortal
       registrations.empty? and
         raise InvalidRegistrationsError, <<~MSG.squish
           No registrations found.
+        MSG
+    end
+
+    ##
+    # AccreditedX path. `registrations` are `AccreditedIndividual`s. A VSO representative's
+    # org relationships + per-org acceptance_mode live in `Accreditation` (vs the legacy
+    # `Veteran::Service::Representative#poa_codes` + `OrganizationRepresentative`); attorneys
+    # and claims agents carry their `poa_code` directly.
+    #
+    def accredited_memberships
+      @accredited_memberships ||=
+        accredited_registrations.flat_map do |individual|
+          case individual.individual_type
+          when 'representative'
+            accredited_vso_memberships(individual)
+          when 'claims_agent'
+            [accredited_holder_membership(individual, PowerOfAttorneyHolder::Types::CLAIMS_AGENT)]
+          when 'attorney'
+            [accredited_holder_membership(individual, PowerOfAttorneyHolder::Types::ATTORNEY)]
+          else
+            []
+          end
+        end
+    end
+
+    def accredited_vso_memberships(individual)
+      individual
+        .accreditations
+        .active
+        .includes(:accredited_organization)
+        .filter_map do |accreditation|
+          organization = accreditation.accredited_organization
+          next if organization.nil?
+
+          Membership.new(
+            registration_number: individual.registration_number,
+            power_of_attorney_holder:
+              PowerOfAttorneyHolder.new(
+                type: PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
+                name: organization.name,
+                poa_code: organization.poa_code,
+                can_accept_digital_poa_requests: organization.can_accept_digital_poa_requests,
+                acceptance_mode: accreditation.acceptance_mode || DEFAULT_ACCEPTANCE_MODE
+              )
+          )
+        end
+    end
+
+    def accredited_holder_membership(individual, type)
+      Membership.new(
+        registration_number: individual.registration_number,
+        power_of_attorney_holder:
+          PowerOfAttorneyHolder.new(
+            type:,
+            name: "#{individual.first_name} #{individual.last_name}",
+            poa_code: individual.poa_code,
+            can_accept_digital_poa_requests: false,
+            acceptance_mode: nil
+          )
+      )
+    end
+
+    def accredited_registrations
+      registrations = accredited_upstream_registrations
+      unless registrations.empty?
+        validate_accredited_uniqueness!(registrations)
+        return registrations
+      end
+
+      accredited_record_registrations.tap do |found|
+        validate_nonempty!(found)
+        validate_accredited_uniqueness!(found)
+        found.each { |individual| put_upstream_registration!(individual.registration_number) }
+      end
+    rescue InvalidRegistrationsError => e
+      raise Common::Exceptions::Forbidden, detail: e.message
+    end
+
+    def accredited_upstream_registrations
+      registration_numbers = @ogc_client.find_registration_numbers_for_icn(@icn).to_a
+      AccreditedIndividual.where(registration_number: registration_numbers).to_a
+    end
+
+    def accredited_record_registrations
+      emails = @emails.map(&:downcase)
+      AccreditedIndividual.where(%{LOWER(email) IN (:email)}, email: emails).to_a
+    end
+
+    def validate_accredited_uniqueness!(registrations)
+      groups = registrations.group_by(&:individual_type)
+      groups.values.any?(&:many?) and
+        raise InvalidRegistrationsError, <<~MSG.squish
+          Multiple registrations of the same type found.
         MSG
     end
   end

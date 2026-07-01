@@ -155,8 +155,6 @@ RSpec.describe AccreditedRepresentativePortal::PowerOfAttorneyRequestSerializer,
     describe ':power_of_attorney_holder' do
       context 'when the holder is an AccreditedOrganization' do
         it 'serializes the accredited organization' do
-          allow(veteran_declined_poa_request).to receive(:accredited_organization)
-            .and_return(Veteran::Service::Organization.first)
           veteran_declined_holder_data = veteran_declined_data[:powerOfAttorneyHolder]
           expect(veteran_declined_holder_data[:type]).to eq 'veteran_service_organization'
           expect(veteran_declined_holder_data[:name]).to eq veteran_declined_poa_request.accredited_organization.name

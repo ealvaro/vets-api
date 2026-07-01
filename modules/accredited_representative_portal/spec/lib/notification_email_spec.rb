@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require 'accredited_representative_portal/notification_email'
+require_relative '../support/poa_holder_fixtures'
 
 RSpec.describe AccreditedRepresentativePortal::NotificationEmail do
   let(:saved_claim) { create(:saved_claim_benefits_intake) }
@@ -19,95 +20,111 @@ RSpec.describe AccreditedRepresentativePortal::NotificationEmail do
     end
   end
 
-  describe '#deliver' do
-    it 'successfully sends an error email' do
-      saved_claim_claimant_representative = create(:saved_claim_claimant_representative,
-                                                   saved_claim_id: saved_claim.id)
-      create(:representative,
-             representative_id: saved_claim_claimant_representative.accredited_individual_registration_number)
+  shared_examples 'notification email delivery' do
+    describe '#deliver' do
+      it 'successfully sends an error email' do
+        saved_claim_claimant_representative = create(:saved_claim_claimant_representative,
+                                                     saved_claim_id: saved_claim.id)
+        create_holder_registration(
+          type: :attorney,
+          registration_number: saved_claim_claimant_representative.accredited_individual_registration_number
+        )
 
-      expect(SavedClaim).to receive(:find).with(saved_claim.id).and_return(saved_claim)
+        expect(SavedClaim).to receive(:find).with(saved_claim.id).and_return(saved_claim)
 
-      allow_any_instance_of(described_class).to receive(:email).and_return('example@email.com')
+        allow_any_instance_of(described_class).to receive(:email).and_return('example@email.com')
 
-      expected_personalization = {
-        'form_id' => saved_claim.class::PROPER_FORM_ID,
-        'confirmation_number' => saved_claim.latest_submission_attempt&.benefits_intake_uuid,
-        'date_submitted' => saved_claim.created_at,
-        'first_name' => 'Bob',
-        'submission_date' => saved_claim.created_at&.strftime('%B %-d, %Y')
-      }
-
-      api_key = Settings.vanotify.services.accredited_representative_portal.api_key
-      callback_options = {
-        callback_klass: AccreditedRepresentativePortal::NotificationCallback.to_s,
-        callback_metadata: {
-          claim_id: saved_claim_claimant_representative.saved_claim_id,
-          email_template_id: 'arp_error_email_template_id',
-          email_type: :error, form_id: '21-686C_BENEFITS-INTAKE',
-          saved_claim_id: saved_claim_claimant_representative.saved_claim_id,
-          service_name: 'accredited_representative_portal'
+        expected_personalization = {
+          'form_id' => saved_claim.class::PROPER_FORM_ID,
+          'confirmation_number' => saved_claim.latest_submission_attempt&.benefits_intake_uuid,
+          'date_submitted' => saved_claim.created_at,
+          'first_name' => 'Bob',
+          'submission_date' => saved_claim.created_at&.strftime('%B %-d, %Y')
         }
-      }
 
-      expect(VaNotify::Service).to receive(:new).with(api_key, callback_options).and_return(vanotify)
-      expect(vanotify).to receive(:send_email).with(
-        {
-          email_address: 'example@email.com',
-          template_id: Settings.vanotify.services.accredited_representative_portal.email.error.template_id,
-          personalisation: expected_personalization
-        }.compact
-      )
+        api_key = Settings.vanotify.services.accredited_representative_portal.api_key
+        callback_options = {
+          callback_klass: AccreditedRepresentativePortal::NotificationCallback.to_s,
+          callback_metadata: {
+            claim_id: saved_claim_claimant_representative.saved_claim_id,
+            email_template_id: 'arp_error_email_template_id',
+            email_type: :error, form_id: '21-686C_BENEFITS-INTAKE',
+            saved_claim_id: saved_claim_claimant_representative.saved_claim_id,
+            service_name: 'accredited_representative_portal'
+          }
+        }
 
-      described_class.new(saved_claim.id).deliver(:error)
+        expect(VaNotify::Service).to receive(:new).with(api_key, callback_options).and_return(vanotify)
+        expect(vanotify).to receive(:send_email).with(
+          {
+            email_address: 'example@email.com',
+            template_id: Settings.vanotify.services.accredited_representative_portal.email.error.template_id,
+            personalisation: expected_personalization
+          }.compact
+        )
+
+        described_class.new(saved_claim.id).deliver(:error)
+      end
+    end
+
+    describe '#deliver for ITF claims' do
+      let(:itf_saved_claim) { create(:saved_claim_intent_to_file) }
+
+      it 'successfully sends a confirmation email for an ITF claim' do
+        saved_claim_claimant_representative = create(:saved_claim_claimant_representative,
+                                                     saved_claim: itf_saved_claim)
+        create_holder_registration(
+          type: :attorney,
+          registration_number: saved_claim_claimant_representative.accredited_individual_registration_number
+        )
+
+        expect(SavedClaim).to receive(:find).with(itf_saved_claim.id).and_return(itf_saved_claim)
+
+        allow_any_instance_of(described_class).to receive(:email).and_return('example@email.com')
+
+        expected_personalization = {
+          'form_id' => '21-0966',
+          'confirmation_number' => itf_saved_claim.confirmation_number,
+          'date_submitted' => itf_saved_claim.created_at,
+          'first_name' => 'Bob',
+          'submission_date' => itf_saved_claim.created_at&.strftime('%B %-d, %Y'),
+          'benefit_type' => 'Disability compensation (VA Form 21-526EZ)'
+        }
+
+        api_key = Settings.vanotify.services.accredited_representative_portal.api_key
+        callback_options = {
+          callback_klass: AccreditedRepresentativePortal::NotificationCallback.to_s,
+          callback_metadata: {
+            claim_id: itf_saved_claim.id,
+            email_template_id:
+              Settings.vanotify.services.accredited_representative_portal.email.itf_confirmation.template_id,
+            email_type: :itf_confirmation, form_id: '21-0966',
+            saved_claim_id: itf_saved_claim.id,
+            service_name: 'accredited_representative_portal'
+          }
+        }
+
+        expect(VaNotify::Service).to receive(:new).with(api_key, callback_options).and_return(vanotify)
+        expect(vanotify).to receive(:send_email).with(
+          {
+            email_address: 'example@email.com',
+            template_id: Settings.vanotify.services.accredited_representative_portal.email.itf_confirmation.template_id,
+            personalisation: expected_personalization
+          }.compact
+        )
+
+        described_class.new(itf_saved_claim.id).deliver(:itf_confirmation)
+      end
     end
   end
 
-  describe '#deliver for ITF claims' do
-    let(:itf_saved_claim) { create(:saved_claim_intent_to_file) }
+  context 'with legacy models' do
+    include_context 'with legacy poa holders'
+    include_examples 'notification email delivery'
+  end
 
-    it 'successfully sends a confirmation email for an ITF claim' do
-      saved_claim_claimant_representative = create(:saved_claim_claimant_representative,
-                                                   saved_claim: itf_saved_claim)
-      create(:representative,
-             representative_id: saved_claim_claimant_representative.accredited_individual_registration_number)
-
-      expect(SavedClaim).to receive(:find).with(itf_saved_claim.id).and_return(itf_saved_claim)
-
-      allow_any_instance_of(described_class).to receive(:email).and_return('example@email.com')
-
-      expected_personalization = {
-        'form_id' => '21-0966',
-        'confirmation_number' => itf_saved_claim.confirmation_number,
-        'date_submitted' => itf_saved_claim.created_at,
-        'first_name' => 'Bob',
-        'submission_date' => itf_saved_claim.created_at&.strftime('%B %-d, %Y'),
-        'benefit_type' => 'Disability compensation (VA Form 21-526EZ)'
-      }
-
-      api_key = Settings.vanotify.services.accredited_representative_portal.api_key
-      callback_options = {
-        callback_klass: AccreditedRepresentativePortal::NotificationCallback.to_s,
-        callback_metadata: {
-          claim_id: itf_saved_claim.id,
-          email_template_id:
-            Settings.vanotify.services.accredited_representative_portal.email.itf_confirmation.template_id,
-          email_type: :itf_confirmation, form_id: '21-0966',
-          saved_claim_id: itf_saved_claim.id,
-          service_name: 'accredited_representative_portal'
-        }
-      }
-
-      expect(VaNotify::Service).to receive(:new).with(api_key, callback_options).and_return(vanotify)
-      expect(vanotify).to receive(:send_email).with(
-        {
-          email_address: 'example@email.com',
-          template_id: Settings.vanotify.services.accredited_representative_portal.email.itf_confirmation.template_id,
-          personalisation: expected_personalization
-        }.compact
-      )
-
-      described_class.new(itf_saved_claim.id).deliver(:itf_confirmation)
-    end
+  context 'with accredited models' do
+    include_context 'with accredited poa holders'
+    include_examples 'notification email delivery'
   end
 end

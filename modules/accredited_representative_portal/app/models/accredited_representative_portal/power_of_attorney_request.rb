@@ -21,15 +21,64 @@ module AccreditedRepresentativePortal
              class_name: 'PowerOfAttorneyRequestNotification',
              inverse_of: :power_of_attorney_request
 
-    belongs_to :accredited_organization, class_name: 'Veteran::Service::Organization',
-                                         foreign_key: :power_of_attorney_holder_poa_code,
-                                         primary_key: :poa,
-                                         optional: true
+    # The same FK columns back both the legacy and AccreditedX targets. The public
+    # accredited_organization / accredited_individual readers below select based on the
+    # arc_accredited_representative_portal_use_accredited_models flag. Both remain real
+    # associations (approach A) so any future joins/preloads can reference them by name.
+    belongs_to :legacy_accredited_organization, class_name: 'Veteran::Service::Organization',
+                                                foreign_key: :power_of_attorney_holder_poa_code,
+                                                primary_key: :poa,
+                                                optional: true
+    belongs_to :accredited_models_organization, class_name: 'AccreditedOrganization',
+                                                foreign_key: :power_of_attorney_holder_poa_code,
+                                                primary_key: :poa_code,
+                                                optional: true
 
-    belongs_to :accredited_individual, class_name: 'Veteran::Service::Representative',
-                                       foreign_key: :accredited_individual_registration_number,
-                                       primary_key: :representative_id,
-                                       optional: true
+    # AccreditedIndividual.registration_number is unique only when scoped to individual_type;
+    # in practice a registration number maps to a single individual, so resolving by it alone
+    # is acceptable for this association.
+    belongs_to :legacy_accredited_individual, class_name: 'Veteran::Service::Representative',
+                                              foreign_key: :accredited_individual_registration_number,
+                                              primary_key: :representative_id,
+                                              optional: true
+    belongs_to :accredited_models_individual, class_name: 'AccreditedIndividual',
+                                              foreign_key: :accredited_individual_registration_number,
+                                              primary_key: :registration_number,
+                                              optional: true
+
+    def accredited_organization
+      if AccreditedRepresentativePortal.use_accredited_models?
+        accredited_models_organization
+      else
+        legacy_accredited_organization
+      end
+    end
+
+    def accredited_individual
+      if AccreditedRepresentativePortal.use_accredited_models?
+        accredited_models_individual
+      else
+        legacy_accredited_individual
+      end
+    end
+
+    # Writers route to the matching association by record class so both flag states (and
+    # mixed test fixtures) assign the shared FK columns correctly.
+    def accredited_organization=(record)
+      if record.is_a?(AccreditedOrganization)
+        self.accredited_models_organization = record
+      else
+        self.legacy_accredited_organization = record
+      end
+    end
+
+    def accredited_individual=(record)
+      if record.is_a?(AccreditedIndividual)
+        self.accredited_models_individual = record
+      else
+        self.legacy_accredited_individual = record
+      end
+    end
 
     before_validation :set_claimant_type
 

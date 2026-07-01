@@ -2,7 +2,10 @@
 
 module AccreditedRepresentativePortal
   class PowerOfAttorneyRequestPolicy < ApplicationPolicy
-    VALID_ACCEPTANCE_MODES = Veteran::Service::OrganizationRepresentative.acceptance_modes.values.freeze
+    # The legacy and AccreditedX acceptance_mode enums share identical values
+    # (any_request / self_only / no_acceptance), so sourcing from Accreditation is valid
+    # for both flag states and removes the legacy-model coupling here.
+    VALID_ACCEPTANCE_MODES = Accreditation.acceptance_modes.values.freeze
 
     def index?
       legacy_authorize

@@ -133,11 +133,18 @@ module AccreditedRepresentativePortal
       end
 
       def scope_includes
+        individual, organization =
+          if AccreditedRepresentativePortal.use_accredited_models?
+            %i[accredited_models_individual accredited_models_organization]
+          else
+            %i[legacy_accredited_individual legacy_accredited_organization]
+          end
+
         [
           :power_of_attorney_form,
           :power_of_attorney_form_submission,
-          :accredited_individual,
-          :accredited_organization,
+          individual,
+          organization,
           { resolution: :resolving }
         ]
       end

@@ -39,7 +39,17 @@ module AccreditedRepresentativePortal
     def representative
       @representative ||= begin
         rep_id = saved_claim_claimant_representative&.accredited_individual_registration_number
-        Veteran::Service::Representative.find_by(representative_id: rep_id) if rep_id
+        find_representative(rep_id) if rep_id
+      end
+    end
+
+    def find_representative(rep_id)
+      if AccreditedRepresentativePortal.use_accredited_models?
+        # registration_number uniqueness is scoped to individual_type, but it's unique in
+        # practice and only first_name/email are needed here, so resolving by it alone is fine.
+        AccreditedIndividual.find_by(registration_number: rep_id)
+      else
+        Veteran::Service::Representative.find_by(representative_id: rep_id)
       end
     end
 

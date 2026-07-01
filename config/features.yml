@@ -87,6 +87,14 @@ features:
   ar_poa_request_failure_rep_notification:
     actor_type: user
     description: Enables sending POA failure notifications to representatives
+  arc_accredited_representative_portal_use_accredited_models:
+    actor_type: user
+    description: >
+      Gates the Accredited Representative Portal migration from the legacy
+      Veteran::Service::* models to the AccreditedX models (AccreditedIndividual /
+      AccreditedOrganization / Accreditation) across its read-side: POA-request
+      associations, holder memberships, claimant-representative authorization, the
+      acceptance-mode policy, and notification emails. Off (default) = legacy.
   arc_appoint_a_representative_use_accredited_models:
     actor_type: user
     description: >

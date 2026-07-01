@@ -11,7 +11,11 @@ FactoryBot.define do
     power_of_attorney_holder_type { AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION }
     power_of_attorney_holder_poa_code { Faker::Alphanumeric.alphanumeric(number: 3) }
     accredited_individual {
-      create(:representative, representative_id: Faker::Number.unique.number(digits: 6))
+      if AccreditedRepresentativePortal.use_accredited_models?
+        create(:accredited_individual, registration_number: Faker::Number.unique.number(digits: 6).to_s)
+      else
+        create(:representative, representative_id: Faker::Number.unique.number(digits: 6))
+      end
     }
 
     trait :acceptance do

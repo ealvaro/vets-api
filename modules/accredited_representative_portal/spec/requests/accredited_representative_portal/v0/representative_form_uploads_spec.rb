@@ -1,12 +1,14 @@
 # frozen_string_literal: true
 
 require_relative '../../../rails_helper'
+require_relative '../../../support/poa_holder_fixtures'
 require 'benefits_intake_service/service'
 
 RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadController, :uploader_helpers,
                type: :request do
   stub_virus_scan
   let!(:poa_code) { '067' }
+  let(:registration_number) { '357458' }
   let(:icn) { '123498767V234859' }
   let(:representative_user) do
     create(
@@ -18,271 +20,236 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
   end
   let(:service) { BenefitsIntakeService::Service.new }
   let(:pdf_path) { 'random/path/to/pdf' }
-  let!(:representative) do
-    create(
-      :representative,
-      :vso,
-      email: representative_user.email,
-      representative_id: '357458',
-      poa_codes: [poa_code]
-    )
-  end
-
-  let!(:vso) { create(:organization, poa: poa_code) }
   let(:form_number) { '21-686c' }
   let(:arp_vcr_path) do
     'accredited_representative_portal/requests/accredited_representative_portal/v0/representative_form_uploads_spec/'
   end
 
-  before do
-    VCR.eject_cassette("#{arp_vcr_path}mpi/valid_icn_full")
-    login_as(representative_user)
-    allow(Flipper).to receive(:enabled?).and_call_original
-    allow(Flipper).to receive(:enabled?)
-      .with(:accredited_representative_portal_killswitch)
-      .and_return(false)
-
-    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
-      .to receive(:empty?).and_return(false)
-    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
-      .to receive(:power_of_attorney_holders).and_return([
-                                                           AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
-                                                             type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
-                                                             poa_code:,
-                                                             name: 'Test VSO',
-                                                             can_accept_digital_poa_requests: true,
-                                                             acceptance_mode: 'any_request'
-                                                           )
-                                                         ])
-    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
-      .to receive(:registration_numbers).and_return([representative.representative_id])
-    allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
-      .to receive(:find).and_return(
-        AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships::Membership.new(
-          registration_number: representative.representative_id,
-          power_of_attorney_holder: AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
-            type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
-            poa_code:,
-            name: 'Test VSO',
-            can_accept_digital_poa_requests: true,
-            acceptance_mode: 'any_request'
-          )
-        )
-      )
-
-    create(
-      :veteran_organization_representative,
-      organization_poa: poa_code,
-      representative_id: representative.representative_id,
-      acceptance_mode: :any_request,
-      deactivated_at: nil
-    )
-  end
-
-  describe 'accredited_representative_portal_killswitch' do
-    let(:killswitch_params) { { form_id: 'invalid-form' } }
-
-    context 'when killswitch is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).and_call_original
-        allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_killswitch).and_return(false)
-      end
-
-      it 'allows request to reach endpoint logic' do
-        post('/accredited_representative_portal/v0/representative_form_upload',
-             params: killswitch_params)
-        expect(response).not_to have_http_status(:service_unavailable)
-      end
-    end
-
-    context 'when killswitch is enabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).and_call_original
-        allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_killswitch).and_return(true)
-      end
-
-      it 'denies access with service unavailable before reaching endpoint logic' do
-        post('/accredited_representative_portal/v0/representative_form_upload',
-             params: killswitch_params)
-        expect(response).to have_http_status(:service_unavailable)
-      end
-    end
-  end
-
-  describe '#submit' do
-    let(:attachment_guid) { '743a0ec2-6eeb-49b9-bd70-0a195b74e9f3' }
-    let(:supporting_attachment_guid) { '743a0ec2-6eeb-49b9-bd70-0a195b74e9f2' }
-    let(:sha_bdd_guid) { '0bdd91fb-ded2-4bb1-96b3-9bb62b84482a' }
-    let!(:attachment) { PersistentAttachments::VAForm.create!(guid: attachment_guid, form_id: '21-686c') }
-    let!(:supporting_attachment) do
-      PersistentAttachments::VAFormDocumentation.create!(guid: supporting_attachment_guid, form_id: '21-686c')
-    end
-    let!(:bdd_attachment) do
-      AccreditedRepresentativePortal::PersistentAttachments::SeparationHealthAssessment.create!(
-        guid: sha_bdd_guid, form_id: '21-526EZ'
+  shared_examples 'representative form upload controller' do
+    let!(:representative) do
+      create_holder_registration(
+        type: :vso,
+        registration_number:,
+        poa_codes: [poa_code],
+        email: representative_user.email
       )
     end
-    let(:representative_fixture_path) do
-      Rails.root.join(
-        'modules', 'accredited_representative_portal', 'spec', 'fixtures', 'form_data',
-        'representative_form_upload_21_686c.json'
-      )
-    end
-    let(:veteran_params) do
-      JSON.parse(representative_fixture_path.read).tap do |memo|
-        memo['representative_form_upload']['confirmationCode'] = attachment_guid
-      end
-    end
 
-    let(:multi_form_veteran_params) do
-      JSON.parse(representative_fixture_path.read).tap do |memo|
-        memo['representative_form_upload']['confirmationCode'] = attachment_guid
-        memo['representative_form_upload']['supportingDocuments'] = [
-          {
-            'confirmationCode' => supporting_attachment_guid,
-            'name' => 'supporting_document.pdf',
-            'size' => 12_345
-          }
-        ]
-      end
-    end
-
-    let(:bdd_form_veteran_params) do
-      JSON.parse(representative_fixture_path.read).tap do |memo|
-        memo['representative_form_upload']['confirmationCode'] = attachment_guid
-        memo['representative_form_upload']['supportingDocuments'] = [
-          {
-            'confirmationCode' => supporting_attachment_guid,
-            'name' => 'supporting_document.pdf',
-            'size' => 12_345
-          }
-        ]
-        memo['representative_form_upload']['bddConfirmationCode'] = sha_bdd_guid
-        memo['representative_form_upload']['formData']['selectBddClaim'] = true
-      end
-    end
-
-    let(:invalid_form_fixture_path) do
-      Rails.root.join(
-        'modules', 'accredited_representative_portal', 'spec', 'fixtures', 'form_data',
-        'invalid_form_number.json'
-      )
-    end
-    let(:invalid_form_params) do
-      JSON.parse(invalid_form_fixture_path.read).merge('confirmationCode' => attachment_guid)
-    end
-
-    let(:claimant_fixture_path) do
-      Rails.root.join(
-        'modules', 'accredited_representative_portal', 'spec', 'fixtures', 'form_data',
-        'claimant_form_upload_21_686c.json'
-      )
-    end
-    let(:claimant_params) do
-      JSON.parse(claimant_fixture_path.read).tap do |memo|
-        memo['representative_form_upload']['confirmationCode'] = attachment_guid
-      end
-    end
-    let(:form_name) do
-      'Request for Nursing Home Information in Connection with Claim for Aid and Attendance'
-    end
-    let(:pdf_path) do
-      Rails.root.join(
-        'modules', 'accredited_representative_portal', 'spec', 'fixtures', 'files',
-        '21_686c_empty_form.pdf'
-      )
-    end
+    let!(:vso) { create_holder_organization(poa_code:, name: 'Test VSO', can_accept: true) }
 
     before do
-      allow_any_instance_of(Auth::ClientCredentials::Service).to receive(:get_token).and_return('<TOKEN>')
+      VCR.eject_cassette("#{arp_vcr_path}mpi/valid_icn_full")
+      login_as(representative_user)
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:accredited_representative_portal_killswitch)
+        .and_return(false)
+
+      allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+        .to receive(:empty?).and_return(false)
+      allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+        .to receive(:power_of_attorney_holders).and_return([
+                                                             AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
+                                                               type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
+                                                               poa_code:,
+                                                               name: 'Test VSO',
+                                                               can_accept_digital_poa_requests: true,
+                                                               acceptance_mode: 'any_request'
+                                                             )
+                                                           ])
+      allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+        .to receive(:registration_numbers).and_return([registration_number])
+      allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
+        .to receive(:find).and_return(
+          AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships::Membership.new(
+            registration_number:,
+            power_of_attorney_holder: AccreditedRepresentativePortal::PowerOfAttorneyHolder.new(
+              type: AccreditedRepresentativePortal::PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION,
+              poa_code:,
+              name: 'Test VSO',
+              can_accept_digital_poa_requests: true,
+              acceptance_mode: 'any_request'
+            )
+          )
+        )
+
+      create_holder_acceptance(
+        registration_number:,
+        poa_code:,
+        acceptance_mode: :any_request,
+        active: true
+      )
     end
 
-    context 'cannot lookup claimant' do
-      it 'returns a 404 error' do
-        VCR.use_cassette('mpi/find_candidate/invalid_icn') do
-          post('/accredited_representative_portal/v0/submit_representative_form', params: veteran_params)
-          expect(response).to have_http_status(:not_found)
+    describe 'accredited_representative_portal_killswitch' do
+      let(:killswitch_params) { { form_id: 'invalid-form' } }
+
+      context 'when killswitch is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_killswitch).and_return(false)
+        end
+
+        it 'allows request to reach endpoint logic' do
+          post('/accredited_representative_portal/v0/representative_form_upload',
+               params: killswitch_params)
+          expect(response).not_to have_http_status(:service_unavailable)
+        end
+      end
+
+      context 'when killswitch is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?).with(:accredited_representative_portal_killswitch).and_return(true)
+        end
+
+        it 'denies access with service unavailable before reaching endpoint logic' do
+          post('/accredited_representative_portal/v0/representative_form_upload',
+               params: killswitch_params)
+          expect(response).to have_http_status(:service_unavailable)
         end
       end
     end
 
-    context 'claimant found without matching poa' do
-      it 'returns a 403 error' do
-        VCR.use_cassette("#{arp_vcr_path}mpi/invalid_icn_full") do
-          VCR.use_cassette("#{arp_vcr_path}lighthouse/empty_response") do
-            post('/accredited_representative_portal/v0/submit_representative_form', params: veteran_params)
-            expect(response).to have_http_status(:forbidden)
-          end
+    describe '#submit' do
+      let(:attachment_guid) { '743a0ec2-6eeb-49b9-bd70-0a195b74e9f3' }
+      let(:supporting_attachment_guid) { '743a0ec2-6eeb-49b9-bd70-0a195b74e9f2' }
+      let(:sha_bdd_guid) { '0bdd91fb-ded2-4bb1-96b3-9bb62b84482a' }
+      let!(:attachment) { PersistentAttachments::VAForm.create!(guid: attachment_guid, form_id: '21-686c') }
+      let!(:supporting_attachment) do
+        PersistentAttachments::VAFormDocumentation.create!(guid: supporting_attachment_guid, form_id: '21-686c')
+      end
+      let!(:bdd_attachment) do
+        AccreditedRepresentativePortal::PersistentAttachments::SeparationHealthAssessment.create!(
+          guid: sha_bdd_guid, form_id: '21-526EZ'
+        )
+      end
+      let(:representative_fixture_path) do
+        Rails.root.join(
+          'modules', 'accredited_representative_portal', 'spec', 'fixtures', 'form_data',
+          'representative_form_upload_21_686c.json'
+        )
+      end
+      let(:veteran_params) do
+        JSON.parse(representative_fixture_path.read).tap do |memo|
+          memo['representative_form_upload']['confirmationCode'] = attachment_guid
         end
       end
-    end
 
-    context '21-686c form' do
-      before do
-        allow(AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob).to(
-          receive(:perform_async) do |saved_claim_id|
-            claim = SavedClaim.find(saved_claim_id)
-            claim.form_submissions << create(:form_submission, :pending)
-            claim.save!
-          end
+      let(:multi_form_veteran_params) do
+        JSON.parse(representative_fixture_path.read).tap do |memo|
+          memo['representative_form_upload']['confirmationCode'] = attachment_guid
+          memo['representative_form_upload']['supportingDocuments'] = [
+            {
+              'confirmationCode' => supporting_attachment_guid,
+              'name' => 'supporting_document.pdf',
+              'size' => 12_345
+            }
+          ]
+        end
+      end
+
+      let(:bdd_form_veteran_params) do
+        JSON.parse(representative_fixture_path.read).tap do |memo|
+          memo['representative_form_upload']['confirmationCode'] = attachment_guid
+          memo['representative_form_upload']['supportingDocuments'] = [
+            {
+              'confirmationCode' => supporting_attachment_guid,
+              'name' => 'supporting_document.pdf',
+              'size' => 12_345
+            }
+          ]
+          memo['representative_form_upload']['bddConfirmationCode'] = sha_bdd_guid
+          memo['representative_form_upload']['formData']['selectBddClaim'] = true
+        end
+      end
+
+      let(:invalid_form_fixture_path) do
+        Rails.root.join(
+          'modules', 'accredited_representative_portal', 'spec', 'fixtures', 'form_data',
+          'invalid_form_number.json'
+        )
+      end
+      let(:invalid_form_params) do
+        JSON.parse(invalid_form_fixture_path.read).merge('confirmationCode' => attachment_guid)
+      end
+
+      let(:claimant_fixture_path) do
+        Rails.root.join(
+          'modules', 'accredited_representative_portal', 'spec', 'fixtures', 'form_data',
+          'claimant_form_upload_21_686c.json'
+        )
+      end
+      let(:claimant_params) do
+        JSON.parse(claimant_fixture_path.read).tap do |memo|
+          memo['representative_form_upload']['confirmationCode'] = attachment_guid
+        end
+      end
+      let(:form_name) do
+        'Request for Nursing Home Information in Connection with Claim for Aid and Attendance'
+      end
+      let(:pdf_path) do
+        Rails.root.join(
+          'modules', 'accredited_representative_portal', 'spec', 'fixtures', 'files',
+          '21_686c_empty_form.pdf'
         )
       end
 
-      context 'claimant with matching claims agent POA found' do
-        let!(:claims_agent) do
-          create(
-            :representative,
-            :claim_agents,
-            email: representative_user.email,
-            representative_id: '468569',
-            poa_codes: ['068']
-          )
-        end
+      before do
+        allow_any_instance_of(Auth::ClientCredentials::Service).to receive(:get_token).and_return('<TOKEN>')
+      end
 
-        around do |example|
-          VCR.use_cassette("#{arp_vcr_path}mpi/valid_icn_full") do
-            VCR.use_cassette("#{arp_vcr_path}lighthouse/200_type_individual_response") do
-              VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload_location') do
-                VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload') do
-                  example.run
-                end
-              end
-            end
+      context 'cannot lookup claimant' do
+        it 'returns a 404 error' do
+          VCR.use_cassette('mpi/find_candidate/invalid_icn') do
+            post('/accredited_representative_portal/v0/submit_representative_form', params: veteran_params)
+            expect(response).to have_http_status(:not_found)
           end
-        end
-
-        it 'makes the veteran request' do
-          post('/accredited_representative_portal/v0/submit_representative_form', params: veteran_params)
-          expect(response).to have_http_status(:ok)
-          expect(parsed_response).to eq(
-            {
-              'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DependencyClaim
-                                      .order(created_at: :desc).first.guid,
-              'status' => '200',
-              'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
-            }
-          )
         end
       end
 
-      context 'claimant with matching VSO POA found' do
-        around do |example|
-          VCR.use_cassette("#{arp_vcr_path}mpi/valid_icn_full") do
-            VCR.use_cassette("#{arp_vcr_path}lighthouse/200_type_organization_response") do
-              VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload_location') do
-                VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload') do
-                  example.run
-                end
-              end
+      context 'claimant found without matching poa' do
+        it 'returns a 403 error' do
+          VCR.use_cassette("#{arp_vcr_path}mpi/invalid_icn_full") do
+            VCR.use_cassette("#{arp_vcr_path}lighthouse/empty_response") do
+              post('/accredited_representative_portal/v0/submit_representative_form', params: veteran_params)
+              expect(response).to have_http_status(:forbidden)
             end
           end
         end
+      end
 
-        context 'when email sending succeeds' do
-          before do
-            notification_double = double('notification')
-            allow(AccreditedRepresentativePortal::NotificationEmail).to receive(:new).and_return(notification_double)
-            expect(notification_double).to receive(:deliver).with(:confirmation)
+      context '21-686c form' do
+        before do
+          allow(AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob).to(
+            receive(:perform_async) do |saved_claim_id|
+              claim = SavedClaim.find(saved_claim_id)
+              claim.form_submissions << create(:form_submission, :pending)
+              claim.save!
+            end
+          )
+        end
+
+        context 'claimant with matching claims agent POA found' do
+          let!(:claims_agent) do
+            create_holder_registration(
+              type: :claims_agent,
+              registration_number: '468569',
+              poa_codes: ['068'],
+              email: representative_user.email
+            )
+          end
+
+          around do |example|
+            VCR.use_cassette("#{arp_vcr_path}mpi/valid_icn_full") do
+              VCR.use_cassette("#{arp_vcr_path}lighthouse/200_type_individual_response") do
+                VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload_location') do
+                  VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload') do
+                    example.run
+                  end
+                end
+              end
+            end
           end
 
           it 'makes the veteran request' do
@@ -297,147 +264,154 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
               }
             )
           end
-
-          it 'makes the veteran request with multiple attachments' do
-            post('/accredited_representative_portal/v0/submit_representative_form', params: multi_form_veteran_params)
-            expect(response).to have_http_status(:ok)
-            expect(parsed_response).to eq(
-              {
-                'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DependencyClaim
-                                        .order(created_at: :desc).first.guid,
-                'status' => '200',
-                'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
-              }
-            )
-          end
-
-          it 'makes the claimant request' do
-            post('/accredited_representative_portal/v0/submit_representative_form', params: claimant_params)
-            expect(response).to have_http_status(:ok)
-            expect(parsed_response).to eq(
-              {
-                'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DependencyClaim
-                                        .order(created_at: :desc).first.guid,
-                'status' => '200',
-                'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
-              }
-            )
-          end
         end
 
-        it 'applies form_id and org tags on span and root trace during submit' do
-          span_double  = double('Span')
-          trace_double = double('Trace')
+        context 'claimant with matching VSO POA found' do
+          around do |example|
+            VCR.use_cassette("#{arp_vcr_path}mpi/valid_icn_full") do
+              VCR.use_cassette("#{arp_vcr_path}lighthouse/200_type_organization_response") do
+                VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload_location') do
+                  VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload') do
+                    example.run
+                  end
+                end
+              end
+            end
+          end
 
-          allow(span_double).to receive(:set_tag)
-          allow(trace_double).to receive(:set_tag)
+          context 'when email sending succeeds' do
+            before do
+              notification_double = double('notification')
+              allow(AccreditedRepresentativePortal::NotificationEmail).to receive(:new).and_return(notification_double)
+              expect(notification_double).to receive(:deliver).with(:confirmation)
+            end
 
-          real_monitor = AccreditedRepresentativePortal::Monitoring.new(
-            AccreditedRepresentativePortal::Monitoring::NAME,
-            default_tags: []
-          )
+            it 'makes the veteran request' do
+              post('/accredited_representative_portal/v0/submit_representative_form', params: veteran_params)
+              expect(response).to have_http_status(:ok)
+              expect(parsed_response).to eq(
+                {
+                  'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DependencyClaim
+                                          .order(created_at: :desc).first.guid,
+                  'status' => '200',
+                  'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
+                }
+              )
+            end
 
-          allow(AccreditedRepresentativePortal::Monitoring)
-            .to receive(:new)
-            .and_return(real_monitor)
+            it 'makes the veteran request with multiple attachments' do
+              post('/accredited_representative_portal/v0/submit_representative_form', params: multi_form_veteran_params)
+              expect(response).to have_http_status(:ok)
+              expect(parsed_response).to eq(
+                {
+                  'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DependencyClaim
+                                          .order(created_at: :desc).first.guid,
+                  'status' => '200',
+                  'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
+                }
+              )
+            end
 
-          allow(real_monitor).to receive(:trace) { |*_args, &blk| blk.call(span_double) }
-          allow(Datadog::Tracing).to receive(:active_trace).and_return(trace_double)
+            it 'makes the claimant request' do
+              post('/accredited_representative_portal/v0/submit_representative_form', params: claimant_params)
+              expect(response).to have_http_status(:ok)
+              expect(parsed_response).to eq(
+                {
+                  'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DependencyClaim
+                                          .order(created_at: :desc).first.guid,
+                  'status' => '200',
+                  'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
+                }
+              )
+            end
+          end
 
-          post('/accredited_representative_portal/v0/submit_representative_form', params: veteran_params)
-          expect(response).to have_http_status(:ok)
+          it 'applies form_id and org tags on span and root trace during submit' do
+            span_double  = double('Span')
+            trace_double = double('Trace')
 
-          expect(span_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'form_id' }, form_number)
-          expect(span_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'org' }, '067')
+            allow(span_double).to receive(:set_tag)
+            allow(trace_double).to receive(:set_tag)
 
-          expect(trace_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'form_id' }, form_number)
-          expect(trace_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'org' }, '067')
-        end
+            real_monitor = AccreditedRepresentativePortal::Monitoring.new(
+              AccreditedRepresentativePortal::Monitoring::NAME,
+              default_tags: []
+            )
 
-        context 'when email sending fails' do
-          it 'still returns success but logs the error' do
-            allow(AccreditedRepresentativePortal::NotificationEmail)
-              .to receive(:new).and_raise(StandardError.new('Email failed'))
-            expect_any_instance_of(AccreditedRepresentativePortal::Monitor).to receive(:track_send_email_failure)
+            allow(AccreditedRepresentativePortal::Monitoring)
+              .to receive(:new)
+              .and_return(real_monitor)
+
+            allow(real_monitor).to receive(:trace) { |*_args, &blk| blk.call(span_double) }
+            allow(Datadog::Tracing).to receive(:active_trace).and_return(trace_double)
 
             post('/accredited_representative_portal/v0/submit_representative_form', params: veteran_params)
             expect(response).to have_http_status(:ok)
+
+            expect(span_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'form_id' }, form_number)
+            expect(span_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'org' }, '067')
+
+            expect(trace_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'form_id' }, form_number)
+            expect(trace_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'org' }, '067')
           end
-        end
-      end
-    end
 
-    context '21-526EZ form' do
-      let(:form_number) { '21-526EZ' }
-      let(:representative_fixture_path) do
-        Rails.root.join(
-          'modules', 'accredited_representative_portal', 'spec', 'fixtures', 'form_data',
-          'representative_form_upload_21_526EZ.json'
-        )
-      end
-      let(:pdf_path) do
-        Rails.root.join(
-          'modules', 'accredited_representative_portal', 'spec', 'fixtures', 'files',
-          'VBA-21-526EZ-ARE.pdf'
-        )
-      end
-      let!(:attachment) { PersistentAttachments::VAForm.create!(guid: attachment_guid, form_id: '21-526EZ') }
-      let!(:supporting_attachment) do
-        PersistentAttachments::VAFormDocumentation.create!(guid: supporting_attachment_guid, form_id: '21-526EZ')
-      end
+          context 'when email sending fails' do
+            it 'still returns success but logs the error' do
+              allow(AccreditedRepresentativePortal::NotificationEmail)
+                .to receive(:new).and_raise(StandardError.new('Email failed'))
+              expect_any_instance_of(AccreditedRepresentativePortal::Monitor).to receive(:track_send_email_failure)
 
-      before do
-        allow(AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob).to(
-          receive(:perform_async) do |saved_claim_id|
-            claim = SavedClaim.find(saved_claim_id)
-            claim.form_submissions << create(:form_submission, :pending)
-            claim.save!
-          end
-        )
-      end
-
-      around do |example|
-        VCR.use_cassette("#{arp_vcr_path}mpi/valid_icn_full") do
-          VCR.use_cassette("#{arp_vcr_path}lighthouse/200_type_organization_response") do
-            VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload_location') do
-              VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload') do
-                example.run
-              end
+              post('/accredited_representative_portal/v0/submit_representative_form', params: veteran_params)
+              expect(response).to have_http_status(:ok)
             end
           end
         end
       end
 
-      context 'claimant with matching poa found' do
-        it 'makes the veteran request' do
-          post('/accredited_representative_portal/v0/submit_representative_form', params: veteran_params)
-          expect(response).to have_http_status(:ok)
-          expect(parsed_response).to eq(
-            {
-              'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DisabilityClaim
-                                      .order(created_at: :desc).first.guid,
-              'status' => '200',
-              'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
-            }
+      context '21-526EZ form' do
+        let(:form_number) { '21-526EZ' }
+        let(:representative_fixture_path) do
+          Rails.root.join(
+            'modules', 'accredited_representative_portal', 'spec', 'fixtures', 'form_data',
+            'representative_form_upload_21_526EZ.json'
+          )
+        end
+        let(:pdf_path) do
+          Rails.root.join(
+            'modules', 'accredited_representative_portal', 'spec', 'fixtures', 'files',
+            'VBA-21-526EZ-ARE.pdf'
+          )
+        end
+        let!(:attachment) { PersistentAttachments::VAForm.create!(guid: attachment_guid, form_id: '21-526EZ') }
+        let!(:supporting_attachment) do
+          PersistentAttachments::VAFormDocumentation.create!(guid: supporting_attachment_guid, form_id: '21-526EZ')
+        end
+
+        before do
+          allow(AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob).to(
+            receive(:perform_async) do |saved_claim_id|
+              claim = SavedClaim.find(saved_claim_id)
+              claim.form_submissions << create(:form_submission, :pending)
+              claim.save!
+            end
           )
         end
 
-        it 'makes the veteran request with multiple attachments' do
-          post('/accredited_representative_portal/v0/submit_representative_form', params: multi_form_veteran_params)
-          expect(response).to have_http_status(:ok)
-          expect(parsed_response).to eq(
-            {
-              'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DisabilityClaim
-                                      .order(created_at: :desc).first.guid,
-              'status' => '200',
-              'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
-            }
-          )
+        around do |example|
+          VCR.use_cassette("#{arp_vcr_path}mpi/valid_icn_full") do
+            VCR.use_cassette("#{arp_vcr_path}lighthouse/200_type_organization_response") do
+              VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload_location') do
+                VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload') do
+                  example.run
+                end
+              end
+            end
+          end
         end
 
-        context 'bdd checkbox is checked' do
-          it 'makes the veteran request with multiple attachments' do
-            post('/accredited_representative_portal/v0/submit_representative_form', params: bdd_form_veteran_params)
+        context 'claimant with matching poa found' do
+          it 'makes the veteran request' do
+            post('/accredited_representative_portal/v0/submit_representative_form', params: veteran_params)
             expect(response).to have_http_status(:ok)
             expect(parsed_response).to eq(
               {
@@ -448,420 +422,389 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
               }
             )
           end
-        end
-      end
-    end
 
-    context 'Other forms' do
-      let(:form_number) { '21-4170' }
-      let(:representative_fixture_path) do
-        Rails.root.join(
-          'modules', 'accredited_representative_portal', 'spec', 'fixtures', 'form_data',
-          'representative_form_upload_21_4170.json'
-        )
-      end
-      let!(:attachment) { PersistentAttachments::VAForm.create!(guid: attachment_guid, form_id: '21-4170') }
-      let!(:supporting_attachment) do
-        PersistentAttachments::VAFormDocumentation.create!(guid: supporting_attachment_guid, form_id: '21-4170')
-      end
-
-      before do
-        allow(AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob).to(
-          receive(:perform_async) do |saved_claim_id|
-            claim = SavedClaim.find(saved_claim_id)
-            claim.form_submissions << create(:form_submission, :pending)
-            claim.save!
+          it 'makes the veteran request with multiple attachments' do
+            post('/accredited_representative_portal/v0/submit_representative_form', params: multi_form_veteran_params)
+            expect(response).to have_http_status(:ok)
+            expect(parsed_response).to eq(
+              {
+                'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DisabilityClaim
+                                        .order(created_at: :desc).first.guid,
+                'status' => '200',
+                'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
+              }
+            )
           end
-        )
-      end
 
-      around do |example|
-        VCR.use_cassette("#{arp_vcr_path}mpi/valid_icn_full") do
-          VCR.use_cassette("#{arp_vcr_path}lighthouse/200_type_organization_response") do
-            VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload_location') do
-              VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload') do
-                example.run
-              end
+          context 'bdd checkbox is checked' do
+            it 'makes the veteran request with multiple attachments' do
+              post('/accredited_representative_portal/v0/submit_representative_form', params: bdd_form_veteran_params)
+              expect(response).to have_http_status(:ok)
+              expect(parsed_response).to eq(
+                {
+                  'confirmationNumber' => AccreditedRepresentativePortal::SavedClaim::BenefitsIntake::DisabilityClaim
+                                          .order(created_at: :desc).first.guid,
+                  'status' => '200',
+                  'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
+                }
+              )
             end
           end
         end
       end
 
-      context 'claimant with matching poa found' do
-        it 'makes the veteran request' do
-          form_const = "Form#{form_number.gsub(/-/, '').camelize}"
-          post('/accredited_representative_portal/v0/submit_representative_form', params: veteran_params)
-          expect(response).to have_http_status(:ok)
-          claim_class = AccreditedRepresentativePortal::SavedClaim::BenefitsIntake.const_get(form_const)
-          expect(parsed_response).to eq(
-            {
-              'confirmationNumber' => claim_class.order(created_at: :desc).first.guid,
-              'status' => '200',
-              'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
-            }
+      context 'Other forms' do
+        let(:form_number) { '21-4170' }
+        let(:representative_fixture_path) do
+          Rails.root.join(
+            'modules', 'accredited_representative_portal', 'spec', 'fixtures', 'form_data',
+            'representative_form_upload_21_4170.json'
+          )
+        end
+        let!(:attachment) { PersistentAttachments::VAForm.create!(guid: attachment_guid, form_id: '21-4170') }
+        let!(:supporting_attachment) do
+          PersistentAttachments::VAFormDocumentation.create!(guid: supporting_attachment_guid, form_id: '21-4170')
+        end
+
+        before do
+          allow(AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob).to(
+            receive(:perform_async) do |saved_claim_id|
+              claim = SavedClaim.find(saved_claim_id)
+              claim.form_submissions << create(:form_submission, :pending)
+              claim.save!
+            end
           )
         end
 
-        it 'makes the veteran request with multiple attachments' do
-          form_const = "Form#{form_number.gsub(/-/, '').camelize}"
-          post('/accredited_representative_portal/v0/submit_representative_form', params: multi_form_veteran_params)
-          expect(response).to have_http_status(:ok)
-          claim_class = AccreditedRepresentativePortal::SavedClaim::BenefitsIntake.const_get(form_const)
-          expect(parsed_response).to eq(
-            {
-              'confirmationNumber' => claim_class.order(created_at: :desc).first.guid,
-              'status' => '200',
-              'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
-            }
-          )
+        around do |example|
+          VCR.use_cassette("#{arp_vcr_path}mpi/valid_icn_full") do
+            VCR.use_cassette("#{arp_vcr_path}lighthouse/200_type_organization_response") do
+              VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload_location') do
+                VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload') do
+                  example.run
+                end
+              end
+            end
+          end
         end
-      end
-    end
 
-    describe 'track_count is called for a submission error (RecordInvalidError)' do
-      let(:monitor_instance) do
-        AccreditedRepresentativePortal::Monitoring.new(
-          AccreditedRepresentativePortal::Monitoring::NAME,
-          default_tags: []
-        )
-      end
-
-      before do
-        allow(AccreditedRepresentativePortal::Monitoring).to receive(:new).and_return(monitor_instance)
-        allow(monitor_instance).to receive(:track_count)
-
-        record = double('invalid_record', errors: double(full_messages: ['some error']))
-        allow(AccreditedRepresentativePortal::SavedClaimService::Create)
-          .to receive(:perform)
-          .and_raise(AccreditedRepresentativePortal::SavedClaimService::Create::RecordInvalidError.new(record))
-      end
-
-      it 'increments ar.claims.form_upload.submit.error once per RecordInvalidError error' do
-        VCR.use_cassette("#{arp_vcr_path}mpi/valid_icn_full") do
-          VCR.use_cassette("#{arp_vcr_path}lighthouse/200_type_organization_response") do
+        context 'claimant with matching poa found' do
+          it 'makes the veteran request' do
+            form_const = "Form#{form_number.gsub(/-/, '').camelize}"
             post('/accredited_representative_portal/v0/submit_representative_form', params: veteran_params)
+            expect(response).to have_http_status(:ok)
+            claim_class = AccreditedRepresentativePortal::SavedClaim::BenefitsIntake.const_get(form_const)
+            expect(parsed_response).to eq(
+              {
+                'confirmationNumber' => claim_class.order(created_at: :desc).first.guid,
+                'status' => '200',
+                'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
+              }
+            )
+          end
 
-            expect(monitor_instance).to have_received(:track_count).with(
-              'ar.claims.form_upload.submit.error',
-              tags: array_including("form_id:#{form_number}", 'reason:record_invalid')
+          it 'makes the veteran request with multiple attachments' do
+            form_const = "Form#{form_number.gsub(/-/, '').camelize}"
+            post('/accredited_representative_portal/v0/submit_representative_form', params: multi_form_veteran_params)
+            expect(response).to have_http_status(:ok)
+            claim_class = AccreditedRepresentativePortal::SavedClaim::BenefitsIntake.const_get(form_const)
+            expect(parsed_response).to eq(
+              {
+                'confirmationNumber' => claim_class.order(created_at: :desc).first.guid,
+                'status' => '200',
+                'claimantId' => AccreditedRepresentativePortal::IcnTemporaryIdentifier.find_by(icn:).id
+              }
             )
           end
         end
       end
-    end
 
-    describe 'track_count is called for a submission error (WrongAttachmentsError)' do
-      let(:monitor_instance) do
-        AccreditedRepresentativePortal::Monitoring.new(
-          AccreditedRepresentativePortal::Monitoring::NAME,
-          default_tags: []
-        )
-      end
+      describe 'track_count is called for a submission error (RecordInvalidError)' do
+        let(:monitor_instance) do
+          AccreditedRepresentativePortal::Monitoring.new(
+            AccreditedRepresentativePortal::Monitoring::NAME,
+            default_tags: []
+          )
+        end
 
-      before do
-        allow(AccreditedRepresentativePortal::Monitoring).to receive(:new).and_return(monitor_instance)
-        allow(monitor_instance).to receive(:track_count)
+        before do
+          allow(AccreditedRepresentativePortal::Monitoring).to receive(:new).and_return(monitor_instance)
+          allow(monitor_instance).to receive(:track_count)
 
-        record = double('wrong_attachment', errors: double(full_messages: ['some error']))
-        allow(AccreditedRepresentativePortal::SavedClaimService::Create)
-          .to receive(:perform)
-          .and_raise(AccreditedRepresentativePortal::SavedClaimService::Create::WrongAttachmentsError.new(record))
-      end
+          record = double('invalid_record', errors: double(full_messages: ['some error']))
+          allow(AccreditedRepresentativePortal::SavedClaimService::Create)
+            .to receive(:perform)
+            .and_raise(AccreditedRepresentativePortal::SavedClaimService::Create::RecordInvalidError.new(record))
+        end
 
-      it 'increments ar.claims.form_upload.submit.error once per WrongAttachmentsError error' do
-        VCR.use_cassette("#{arp_vcr_path}mpi/valid_icn_full") do
-          VCR.use_cassette("#{arp_vcr_path}lighthouse/200_type_organization_response") do
-            post('/accredited_representative_portal/v0/submit_representative_form', params: veteran_params)
+        it 'increments ar.claims.form_upload.submit.error once per RecordInvalidError error' do
+          VCR.use_cassette("#{arp_vcr_path}mpi/valid_icn_full") do
+            VCR.use_cassette("#{arp_vcr_path}lighthouse/200_type_organization_response") do
+              post('/accredited_representative_portal/v0/submit_representative_form', params: veteran_params)
 
-            expect(monitor_instance).to have_received(:track_count).with(
-              'ar.claims.form_upload.submit.error',
-              tags: array_including("form_id:#{form_number}", 'reason:wrong_attachments')
-            )
+              expect(monitor_instance).to have_received(:track_count).with(
+                'ar.claims.form_upload.submit.error',
+                tags: array_including("form_id:#{form_number}", 'reason:record_invalid')
+              )
+            end
           end
         end
       end
-    end
 
-    describe 'submit adds org_resolve:failed when organization resolution fails' do
-      before do
-        allow_any_instance_of(described_class).to receive(:verify_authorized).and_return(true)
+      describe 'track_count is called for a submission error (WrongAttachmentsError)' do
+        let(:monitor_instance) do
+          AccreditedRepresentativePortal::Monitoring.new(
+            AccreditedRepresentativePortal::Monitoring::NAME,
+            default_tags: []
+          )
+        end
 
-        # Force org resolution to fail so org_resolve:failed is added
-        allow_any_instance_of(described_class).to receive(:organization).and_return(nil)
-        # Spy on Monitoring.new, allow real behavior
-        allow(AccreditedRepresentativePortal::Monitoring).to receive(:new).and_call_original
+        before do
+          allow(AccreditedRepresentativePortal::Monitoring).to receive(:new).and_return(monitor_instance)
+          allow(monitor_instance).to receive(:track_count)
 
-        allow(AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob).to(
-          receive(:perform_async) do |saved_claim_id|
-            claim = SavedClaim.find(saved_claim_id)
-            claim.form_submissions << create(:form_submission, :pending)
-            claim.save!
+          record = double('wrong_attachment', errors: double(full_messages: ['some error']))
+          allow(AccreditedRepresentativePortal::SavedClaimService::Create)
+            .to receive(:perform)
+            .and_raise(AccreditedRepresentativePortal::SavedClaimService::Create::WrongAttachmentsError.new(record))
+        end
+
+        it 'increments ar.claims.form_upload.submit.error once per WrongAttachmentsError error' do
+          VCR.use_cassette("#{arp_vcr_path}mpi/valid_icn_full") do
+            VCR.use_cassette("#{arp_vcr_path}lighthouse/200_type_organization_response") do
+              post('/accredited_representative_portal/v0/submit_representative_form', params: veteran_params)
+
+              expect(monitor_instance).to have_received(:track_count).with(
+                'ar.claims.form_upload.submit.error',
+                tags: array_including("form_id:#{form_number}", 'reason:wrong_attachments')
+              )
+            end
           end
-        )
+        end
       end
 
-      it 'includes org_resolve:failed in Monitoring.new default_tags' do
-        VCR.use_cassette("#{arp_vcr_path}mpi/valid_icn_full") do
-          VCR.use_cassette("#{arp_vcr_path}lighthouse/200_type_organization_response") do
-            VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload_location') do
-              VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload') do
-                post('/accredited_representative_portal/v0/submit_representative_form', params: veteran_params)
+      describe 'submit adds org_resolve:failed when organization resolution fails' do
+        before do
+          allow_any_instance_of(described_class).to receive(:verify_authorized).and_return(true)
 
-                expect(response).to have_http_status(:ok)
+          # Force org resolution to fail so org_resolve:failed is added
+          allow_any_instance_of(described_class).to receive(:organization).and_return(nil)
+          # Spy on Monitoring.new, allow real behavior
+          allow(AccreditedRepresentativePortal::Monitoring).to receive(:new).and_call_original
 
-                # Assert AccreditedRepresentativePortal::Monitoring constructor saw org_resolve:failed in default_tags
-                expect(AccreditedRepresentativePortal::Monitoring).to have_received(:new).with(
-                  AccreditedRepresentativePortal::Monitoring::NAME,
-                  hash_including(default_tags: array_including('org_resolve:failed'))
-                ).exactly(2).times
+          allow(AccreditedRepresentativePortal::SubmitBenefitsIntakeClaimJob).to(
+            receive(:perform_async) do |saved_claim_id|
+              claim = SavedClaim.find(saved_claim_id)
+              claim.form_submissions << create(:form_submission, :pending)
+              claim.save!
+            end
+          )
+        end
+
+        it 'includes org_resolve:failed in Monitoring.new default_tags' do
+          VCR.use_cassette("#{arp_vcr_path}mpi/valid_icn_full") do
+            VCR.use_cassette("#{arp_vcr_path}lighthouse/200_type_organization_response") do
+              VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload_location') do
+                VCR.use_cassette('lighthouse/benefits_intake/200_lighthouse_intake_upload') do
+                  post('/accredited_representative_portal/v0/submit_representative_form', params: veteran_params)
+
+                  expect(response).to have_http_status(:ok)
+
+                  # Assert AccreditedRepresentativePortal::Monitoring constructor saw org_resolve:failed in default_tags
+                  expect(AccreditedRepresentativePortal::Monitoring).to have_received(:new).with(
+                    AccreditedRepresentativePortal::Monitoring::NAME,
+                    hash_including(default_tags: array_including('org_resolve:failed'))
+                  ).exactly(2).times
+                end
               end
             end
           end
         end
       end
     end
-  end
 
-  describe '#upload_scanned_form' do
-    it 'renders the attachment as json' do
-      clamscan = double(safe?: true)
-      allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
-      file = fixture_file_upload('doctors-note.gif')
-
-      params = { form_id: form_number, file: }
-      allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?).and_return(pdf_path)
-
-      expect do
-        post '/accredited_representative_portal/v0/representative_form_upload', params:
-      end.to change(PersistentAttachments::VAForm, :count).by(1)
-      attachment = PersistentAttachment.last
-
-      expect(response).to have_http_status(:ok)
-      expect(parsed_response).to eq({
-                                      'data' => {
-                                        'id' => attachment.id.to_s,
-                                        'type' => 'persistent_attachment_va_form',
-                                        'attributes' => {
-                                          'confirmationCode' => attachment.guid,
-                                          'name' => 'doctors-note.gif',
-                                          'size' => 83_403,
-                                          'warnings' => ['wrong_form']
-                                        }
-                                      }
-                                    })
-      expect(PersistentAttachment.last).to be_a(PersistentAttachments::VAForm)
-    end
-
-    it 'returns an error if the document is invalid' do
-      clamscan = double(safe?: true)
-      allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
-      file = fixture_file_upload('doctors-note.gif')
-
-      params = { form_id: form_number, file: }
-
-      allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?)
-        .and_raise(BenefitsIntakeService::Service::InvalidDocumentError.new('Invalid form'))
-
-      expect do
-        post '/accredited_representative_portal/v0/representative_form_upload', params:
-      end.not_to change(PersistentAttachments::VAForm, :count)
-
-      expect(response).to have_http_status(:unprocessable_entity)
-      expect(parsed_response).to eq({
-                                      'errors' => [{
-                                        'title' => 'Unprocessable Entity',
-                                        'detail' => 'Invalid form',
-                                        'code' => '422',
-                                        'status' => '422'
-                                      }]
-                                    })
-    end
-
-    it 'applies form_id and org tags on span and root trace during supporting documents upload' do
-      # Make uploads pass
-      clamscan = double(safe?: true)
-      allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
-      allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?).and_return(pdf_path)
-      file = fixture_file_upload('doctors-note.gif')
-
-      allow_any_instance_of(
-        AccreditedRepresentativePortal::V0::RepresentativeFormUploadController
-      ).to receive(:organization).and_return('Org Name')
-
-      span_double  = double('Span')
-      trace_double = double('Trace')
-      allow(span_double).to receive(:set_tag)
-      allow(trace_double).to receive(:set_tag)
-
-      real_monitor = AccreditedRepresentativePortal::Monitoring.new(
-        AccreditedRepresentativePortal::Monitoring::NAME,
-        default_tags: []
-      )
-      allow(AccreditedRepresentativePortal::Monitoring).to receive(:new).and_return(real_monitor)
-      allow(real_monitor).to receive(:trace) { |*_args, &blk| blk.call(span_double) }
-      allow(real_monitor).to receive(:track_count) if real_monitor.respond_to?(:track_count)
-
-      allow(Datadog::Tracing).to receive(:active_trace).and_return(trace_double)
-
-      expect do
-        post '/accredited_representative_portal/v0/upload_supporting_documents',
-             params: { form_id: form_number, file: }
-      end.to change(PersistentAttachments::VAFormDocumentation, :count).by(1)
-      expect(response).to have_http_status(:ok)
-
-      expect(span_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'form_id' }, form_number)
-
-      expect(trace_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'form_id' }, form_number)
-
-      expect(span_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'form_upload.form_id' }, form_number)
-      expect(span_double).to have_received(:set_tag).with(
-        satisfy { |k| k.to_s == 'form_upload.attachment_type' },
-        'PersistentAttachments::VAFormDocumentation'
-      )
-    end
-  end
-
-  describe '#upload_supporting_documents' do
-    it 'renders the attachment as json' do
-      clamscan = double(safe?: true)
-      allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
-      file = fixture_file_upload('doctors-note.gif')
-
-      params = { form_id: form_number, file: }
-
-      allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?).and_return(pdf_path)
-
-      expect do
-        post '/accredited_representative_portal/v0/upload_supporting_documents', params:
-      end.to change(PersistentAttachments::VAFormDocumentation, :count).by(1)
-      attachment = PersistentAttachment.last
-
-      expect(response).to have_http_status(:ok)
-      expect(parsed_response).to eq({
-                                      'data' => {
-                                        'id' => attachment.id.to_s,
-                                        'type' => 'persistent_attachment',
-                                        'attributes' => {
-                                          'confirmationCode' => attachment.guid,
-                                          'name' => 'doctors-note.gif',
-                                          'size' => 83_403
-                                        }
-                                      }
-                                    })
-      expect(PersistentAttachment.last).to be_a(PersistentAttachments::VAFormDocumentation)
-    end
-
-    it 'returns an error if the document is invalid' do
-      clamscan = double(safe?: true)
-      allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
-      file = fixture_file_upload('doctors-note.gif')
-
-      params = { form_id: form_number, file: }
-
-      allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?)
-        .and_raise(BenefitsIntakeService::Service::InvalidDocumentError.new('Invalid form'))
-
-      expect do
-        post '/accredited_representative_portal/v0/upload_supporting_documents', params:
-      end.not_to change(PersistentAttachments::VAFormDocumentation, :count)
-
-      expect(response).to have_http_status(:unprocessable_entity)
-      expect(parsed_response).to eq({
-                                      'errors' => [{
-                                        'title' => 'Unprocessable Entity',
-                                        'detail' => 'Invalid form',
-                                        'code' => '422',
-                                        'status' => '422'
-                                      }]
-                                    })
-    end
-
-    context 'when form_id includes -UPLOAD suffix' do
-      it 'strips the suffix and processes upload' do
+    describe '#upload_scanned_form' do
+      it 'renders the attachment as json' do
         clamscan = double(safe?: true)
         allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
         file = fixture_file_upload('doctors-note.gif')
 
-        params = { form_id: "#{form_number}-UPLOAD", file: }
+        params = { form_id: form_number, file: }
+        allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?).and_return(pdf_path)
+
+        expect do
+          post '/accredited_representative_portal/v0/representative_form_upload', params:
+        end.to change(PersistentAttachments::VAForm, :count).by(1)
+        attachment = PersistentAttachment.last
+
+        expect(response).to have_http_status(:ok)
+        expect(parsed_response).to eq({
+                                        'data' => {
+                                          'id' => attachment.id.to_s,
+                                          'type' => 'persistent_attachment_va_form',
+                                          'attributes' => {
+                                            'confirmationCode' => attachment.guid,
+                                            'name' => 'doctors-note.gif',
+                                            'size' => 83_403,
+                                            'warnings' => ['wrong_form']
+                                          }
+                                        }
+                                      })
+        expect(PersistentAttachment.last).to be_a(PersistentAttachments::VAForm)
+      end
+
+      it 'returns an error if the document is invalid' do
+        clamscan = double(safe?: true)
+        allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
+        file = fixture_file_upload('doctors-note.gif')
+
+        params = { form_id: form_number, file: }
+
+        allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?)
+          .and_raise(BenefitsIntakeService::Service::InvalidDocumentError.new('Invalid form'))
+
+        expect do
+          post '/accredited_representative_portal/v0/representative_form_upload', params:
+        end.not_to change(PersistentAttachments::VAForm, :count)
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(parsed_response).to eq({
+                                        'errors' => [{
+                                          'title' => 'Unprocessable Entity',
+                                          'detail' => 'Invalid form',
+                                          'code' => '422',
+                                          'status' => '422'
+                                        }]
+                                      })
+      end
+
+      it 'applies form_id and org tags on span and root trace during supporting documents upload' do
+        # Make uploads pass
+        clamscan = double(safe?: true)
+        allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
+        allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?).and_return(pdf_path)
+        file = fixture_file_upload('doctors-note.gif')
+
+        allow_any_instance_of(
+          AccreditedRepresentativePortal::V0::RepresentativeFormUploadController
+        ).to receive(:organization).and_return('Org Name')
+
+        span_double  = double('Span')
+        trace_double = double('Trace')
+        allow(span_double).to receive(:set_tag)
+        allow(trace_double).to receive(:set_tag)
+
+        real_monitor = AccreditedRepresentativePortal::Monitoring.new(
+          AccreditedRepresentativePortal::Monitoring::NAME,
+          default_tags: []
+        )
+        allow(AccreditedRepresentativePortal::Monitoring).to receive(:new).and_return(real_monitor)
+        allow(real_monitor).to receive(:trace) { |*_args, &blk| blk.call(span_double) }
+        allow(real_monitor).to receive(:track_count) if real_monitor.respond_to?(:track_count)
+
+        allow(Datadog::Tracing).to receive(:active_trace).and_return(trace_double)
+
+        expect do
+          post '/accredited_representative_portal/v0/upload_supporting_documents',
+               params: { form_id: form_number, file: }
+        end.to change(PersistentAttachments::VAFormDocumentation, :count).by(1)
+        expect(response).to have_http_status(:ok)
+
+        expect(span_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'form_id' }, form_number)
+
+        expect(trace_double).to have_received(:set_tag).with(satisfy { |k| k.to_s == 'form_id' }, form_number)
+
+        expect(span_double).to have_received(:set_tag).with(satisfy { |k|
+          k.to_s == 'form_upload.form_id'
+        }, form_number)
+        expect(span_double).to have_received(:set_tag).with(
+          satisfy { |k| k.to_s == 'form_upload.attachment_type' },
+          'PersistentAttachments::VAFormDocumentation'
+        )
+      end
+    end
+
+    describe '#upload_supporting_documents' do
+      it 'renders the attachment as json' do
+        clamscan = double(safe?: true)
+        allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
+        file = fixture_file_upload('doctors-note.gif')
+
+        params = { form_id: form_number, file: }
+
         allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?).and_return(pdf_path)
 
         expect do
           post '/accredited_representative_portal/v0/upload_supporting_documents', params:
         end.to change(PersistentAttachments::VAFormDocumentation, :count).by(1)
+        attachment = PersistentAttachment.last
 
         expect(response).to have_http_status(:ok)
-      end
-    end
-  end
-
-  describe '#upload_bdd_sha_documents' do
-    it 'renders the attachment as json' do
-      clamscan = double(safe?: true)
-      allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
-      file = fixture_file_upload('doctors-note.gif')
-
-      params = { form_id: form_number, file: }
-
-      allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?).and_return(pdf_path)
-
-      expect do
-        post '/accredited_representative_portal/v0/upload_bdd_sha_documents', params:
-      end.to change(
-        AccreditedRepresentativePortal::PersistentAttachments::SeparationHealthAssessment, :count
-      ).by(1)
-      attachment = PersistentAttachment.last
-
-      expect(response).to have_http_status(:ok)
-      expect(parsed_response).to eq({
-                                      'data' => {
-                                        'id' => attachment.id.to_s,
-                                        'type' => 'persistent_attachment',
-                                        'attributes' => {
-                                          'confirmationCode' => attachment.guid,
-                                          'name' => 'doctors-note.gif',
-                                          'size' => 83_403
+        expect(parsed_response).to eq({
+                                        'data' => {
+                                          'id' => attachment.id.to_s,
+                                          'type' => 'persistent_attachment',
+                                          'attributes' => {
+                                            'confirmationCode' => attachment.guid,
+                                            'name' => 'doctors-note.gif',
+                                            'size' => 83_403
+                                          }
                                         }
-                                      }
-                                    })
-      expect(PersistentAttachment.last).to be_a(
-        AccreditedRepresentativePortal::PersistentAttachments::SeparationHealthAssessment
-      )
-    end
+                                      })
+        expect(PersistentAttachment.last).to be_a(PersistentAttachments::VAFormDocumentation)
+      end
 
-    it 'returns an error if the document is invalid' do
-      clamscan = double(safe?: true)
-      allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
-      file = fixture_file_upload('doctors-note.gif')
-
-      params = { form_id: form_number, file: }
-
-      allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?)
-        .and_raise(BenefitsIntakeService::Service::InvalidDocumentError.new('Invalid form'))
-
-      expect do
-        post '/accredited_representative_portal/v0/upload_bdd_sha_documents', params:
-      end.not_to change(
-        AccreditedRepresentativePortal::PersistentAttachments::SeparationHealthAssessment, :count
-      )
-
-      expect(response).to have_http_status(:unprocessable_entity)
-      expect(parsed_response).to eq({
-                                      'errors' => [{
-                                        'title' => 'Unprocessable Entity',
-                                        'detail' => 'Invalid form',
-                                        'code' => '422',
-                                        'status' => '422'
-                                      }]
-                                    })
-    end
-
-    context 'when form_id includes -UPLOAD suffix' do
-      it 'strips the suffix and processes upload' do
+      it 'returns an error if the document is invalid' do
         clamscan = double(safe?: true)
         allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
         file = fixture_file_upload('doctors-note.gif')
 
-        params = { form_id: "#{form_number}-UPLOAD", file: }
+        params = { form_id: form_number, file: }
+
+        allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?)
+          .and_raise(BenefitsIntakeService::Service::InvalidDocumentError.new('Invalid form'))
+
+        expect do
+          post '/accredited_representative_portal/v0/upload_supporting_documents', params:
+        end.not_to change(PersistentAttachments::VAFormDocumentation, :count)
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(parsed_response).to eq({
+                                        'errors' => [{
+                                          'title' => 'Unprocessable Entity',
+                                          'detail' => 'Invalid form',
+                                          'code' => '422',
+                                          'status' => '422'
+                                        }]
+                                      })
+      end
+
+      context 'when form_id includes -UPLOAD suffix' do
+        it 'strips the suffix and processes upload' do
+          clamscan = double(safe?: true)
+          allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
+          file = fixture_file_upload('doctors-note.gif')
+
+          params = { form_id: "#{form_number}-UPLOAD", file: }
+          allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?).and_return(pdf_path)
+
+          expect do
+            post '/accredited_representative_portal/v0/upload_supporting_documents', params:
+          end.to change(PersistentAttachments::VAFormDocumentation, :count).by(1)
+
+          expect(response).to have_http_status(:ok)
+        end
+      end
+    end
+
+    describe '#upload_bdd_sha_documents' do
+      it 'renders the attachment as json' do
+        clamscan = double(safe?: true)
+        allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
+        file = fixture_file_upload('doctors-note.gif')
+
+        params = { form_id: form_number, file: }
+
         allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?).and_return(pdf_path)
 
         expect do
@@ -869,186 +812,258 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
         end.to change(
           AccreditedRepresentativePortal::PersistentAttachments::SeparationHealthAssessment, :count
         ).by(1)
+        attachment = PersistentAttachment.last
 
         expect(response).to have_http_status(:ok)
-      end
-    end
-  end
-
-  describe 'handle_attachment_upload error handling' do
-    before do
-      stub_const('AccreditedRepresentativePortal::SavedClaimService', Module.new)
-      stub_const('AccreditedRepresentativePortal::SavedClaimService::Attach', Module.new)
-
-      stub_const(
-        'AccreditedRepresentativePortal::SavedClaimService::Attach::RecordInvalidError',
-        Class.new(StandardError) do
-          attr_reader :record
-
-          def initialize(record)
-            super()
-            @record = record
-          end
-        end
-      )
-
-      stub_const(
-        'AccreditedRepresentativePortal::SavedClaimService::Attach::UpstreamInvalidError',
-        Class.new(StandardError)
-      )
-
-      stub_const(
-        'AccreditedRepresentativePortal::SavedClaimService::Attach::UnknownError',
-        Class.new(StandardError) do
-          attr_reader :cause
-
-          def initialize(cause)
-            super()
-            @cause = cause
-          end
-        end
-      )
-
-      AccreditedRepresentativePortal::SavedClaimService::Attach.define_singleton_method(:perform) do |_klass, **_kwargs|
-        nil
+        expect(parsed_response).to eq({
+                                        'data' => {
+                                          'id' => attachment.id.to_s,
+                                          'type' => 'persistent_attachment',
+                                          'attributes' => {
+                                            'confirmationCode' => attachment.guid,
+                                            'name' => 'doctors-note.gif',
+                                            'size' => 83_403
+                                          }
+                                        }
+                                      })
+        expect(PersistentAttachment.last).to be_a(
+          AccreditedRepresentativePortal::PersistentAttachments::SeparationHealthAssessment
+        )
       end
 
-      clamscan = double(safe?: true)
-      allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
-      allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?).and_return(pdf_path)
-    end
+      it 'returns an error if the document is invalid' do
+        clamscan = double(safe?: true)
+        allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
+        file = fixture_file_upload('doctors-note.gif')
 
-    it 'maps UpstreamInvalidError to UpstreamUnprocessableEntity' do
-      expect(AccreditedRepresentativePortal::SavedClaimService::Attach)
-        .to receive(:perform)
-        .and_raise(
-          AccreditedRepresentativePortal::SavedClaimService::Attach::UpstreamInvalidError.new('bad upstream')
+        params = { form_id: form_number, file: }
+
+        allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?)
+          .and_raise(BenefitsIntakeService::Service::InvalidDocumentError.new('Invalid form'))
+
+        expect do
+          post '/accredited_representative_portal/v0/upload_bdd_sha_documents', params:
+        end.not_to change(
+          AccreditedRepresentativePortal::PersistentAttachments::SeparationHealthAssessment, :count
         )
 
-      post '/accredited_representative_portal/v0/representative_form_upload',
-           params: { form_id: form_number, file: fixture_file_upload('doctors-note.gif') }
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(parsed_response).to eq({
+                                        'errors' => [{
+                                          'title' => 'Unprocessable Entity',
+                                          'detail' => 'Invalid form',
+                                          'code' => '422',
+                                          'status' => '422'
+                                        }]
+                                      })
+      end
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      context 'when form_id includes -UPLOAD suffix' do
+        it 'strips the suffix and processes upload' do
+          clamscan = double(safe?: true)
+          allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
+          file = fixture_file_upload('doctors-note.gif')
+
+          params = { form_id: "#{form_number}-UPLOAD", file: }
+          allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?).and_return(pdf_path)
+
+          expect do
+            post '/accredited_representative_portal/v0/upload_bdd_sha_documents', params:
+          end.to change(
+            AccreditedRepresentativePortal::PersistentAttachments::SeparationHealthAssessment, :count
+          ).by(1)
+
+          expect(response).to have_http_status(:ok)
+        end
+      end
     end
 
-    it 'maps UnknownError to InternalServerError' do
-      expect(AccreditedRepresentativePortal::SavedClaimService::Attach)
-        .to receive(:perform)
-        .and_raise(
-          AccreditedRepresentativePortal::SavedClaimService::Attach::UnknownError.new(StandardError.new('oops'))
-        )
-
-      post '/accredited_representative_portal/v0/representative_form_upload',
-           params: { form_id: form_number, file: fixture_file_upload('doctors-note.gif') }
-
-      expect(response).to have_http_status(:internal_server_error)
-    end
-  end
-
-  describe '#check_poa_status' do
-    let(:icn) { '1234567890V123456' }
-
-    let(:verify_params) do
-      {
-        firstName: 'Peter',
-        lastName: 'Severino',
-        ssn: '091541857',
-        dateOfBirth: '1970-01-01'
-      }
-    end
-
-    let(:real_monitor) { double }
-
-    before do
-      allow_any_instance_of(Auth::ClientCredentials::Service)
-        .to receive(:get_token).and_return('<TOKEN>')
-
-      allow(AccreditedRepresentativePortal::ClaimantLookupService)
-        .to receive(:get_icn)
-        .with('Peter', 'Severino', '091541857', '1970-01-01')
-        .and_return(icn)
-
-      allow(AccreditedRepresentativePortal::Monitoring)
-        .to receive(:new)
-        .and_return(real_monitor)
-      allow(real_monitor).to receive(:track_count)
-    end
-
-    context 'when claimant is not found' do
+    describe 'handle_attachment_upload error handling' do
       before do
+        stub_const('AccreditedRepresentativePortal::SavedClaimService', Module.new)
+        stub_const('AccreditedRepresentativePortal::SavedClaimService::Attach', Module.new)
+
+        stub_const(
+          'AccreditedRepresentativePortal::SavedClaimService::Attach::RecordInvalidError',
+          Class.new(StandardError) do
+            attr_reader :record
+
+            def initialize(record)
+              super()
+              @record = record
+            end
+          end
+        )
+
+        stub_const(
+          'AccreditedRepresentativePortal::SavedClaimService::Attach::UpstreamInvalidError',
+          Class.new(StandardError)
+        )
+
+        stub_const(
+          'AccreditedRepresentativePortal::SavedClaimService::Attach::UnknownError',
+          Class.new(StandardError) do
+            attr_reader :cause
+
+            def initialize(cause)
+              super()
+              @cause = cause
+            end
+          end
+        )
+
+        attach_service = AccreditedRepresentativePortal::SavedClaimService::Attach
+        attach_service.define_singleton_method(:perform) do |_klass, **_kwargs|
+          nil
+        end
+
+        clamscan = double(safe?: true)
+        allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
+        allow_any_instance_of(BenefitsIntakeService::Service).to receive(:valid_document?).and_return(pdf_path)
+      end
+
+      it 'maps UpstreamInvalidError to UpstreamUnprocessableEntity' do
+        expect(AccreditedRepresentativePortal::SavedClaimService::Attach)
+          .to receive(:perform)
+          .and_raise(
+            AccreditedRepresentativePortal::SavedClaimService::Attach::UpstreamInvalidError.new('bad upstream')
+          )
+
+        post '/accredited_representative_portal/v0/representative_form_upload',
+             params: { form_id: form_number, file: fixture_file_upload('doctors-note.gif') }
+
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+
+      it 'maps UnknownError to InternalServerError' do
+        expect(AccreditedRepresentativePortal::SavedClaimService::Attach)
+          .to receive(:perform)
+          .and_raise(
+            AccreditedRepresentativePortal::SavedClaimService::Attach::UnknownError.new(StandardError.new('oops'))
+          )
+
+        post '/accredited_representative_portal/v0/representative_form_upload',
+             params: { form_id: form_number, file: fixture_file_upload('doctors-note.gif') }
+
+        expect(response).to have_http_status(:internal_server_error)
+      end
+    end
+
+    describe '#check_poa_status' do
+      let(:icn) { '1234567890V123456' }
+
+      let(:verify_params) do
+        {
+          firstName: 'Peter',
+          lastName: 'Severino',
+          ssn: '091541857',
+          dateOfBirth: '1970-01-01'
+        }
+      end
+
+      let(:real_monitor) { double }
+
+      before do
+        allow_any_instance_of(Auth::ClientCredentials::Service)
+          .to receive(:get_token).and_return('<TOKEN>')
+
         allow(AccreditedRepresentativePortal::ClaimantLookupService)
           .to receive(:get_icn)
           .with('Peter', 'Severino', '091541857', '1970-01-01')
-          .and_raise(Common::Exceptions::RecordNotFound, 'Claimant not found')
+          .and_return(icn)
+
+        allow(AccreditedRepresentativePortal::Monitoring)
+          .to receive(:new)
+          .and_return(real_monitor)
+        allow(real_monitor).to receive(:track_count)
       end
 
-      it 'returns a generic 422 failure response' do
-        post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+      context 'when claimant is not found' do
+        before do
+          allow(AccreditedRepresentativePortal::ClaimantLookupService)
+            .to receive(:get_icn)
+            .with('Peter', 'Severino', '091541857', '1970-01-01')
+            .and_raise(Common::Exceptions::RecordNotFound, 'Claimant not found')
+        end
 
-        expect(response).to have_http_status(:unprocessable_content)
-        expect(parsed_response).to eq({
-                                        'status' => 'failure',
-                                        'error' => 'Unable to verify claimant information'
-                                      })
+        it 'returns a generic 422 failure response' do
+          post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+
+          expect(response).to have_http_status(:unprocessable_content)
+          expect(parsed_response).to eq({
+                                          'status' => 'failure',
+                                          'error' => 'Unable to verify claimant information'
+                                        })
+        end
+
+        it 'registers an attempt and an unauthorized poa check' do
+          expect(real_monitor).to receive(:track_count).with('ar.unique_session.count')
+          expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.attempt')
+          expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.unauthorized')
+          post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+        end
       end
 
-      it 'registers an attempt and an unauthorized poa check' do
-        expect(real_monitor).to receive(:track_count).with('ar.unique_session.count')
-        expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.attempt')
-        expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.unauthorized')
-        post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+      context 'when claimant is found without matching POA' do
+        before do
+          allow_any_instance_of(described_class)
+            .to receive(:authorize)
+            .and_raise(Pundit::NotAuthorizedError)
+        end
+
+        it 'returns a generic 422 failure response' do
+          post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+
+          expect(response).to have_http_status(:unprocessable_content)
+          expect(parsed_response).to eq({
+                                          'status' => 'failure',
+                                          'error' => 'Unable to verify claimant information'
+                                        })
+        end
+
+        it 'registers an attempt and an unauthorized poa check' do
+          expect(real_monitor).to receive(:track_count).with('ar.unique_session.count')
+          expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.attempt')
+          expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.unauthorized')
+          post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+        end
+      end
+
+      context 'when claimant is found with matching POA' do
+        before do
+          allow_any_instance_of(described_class)
+            .to receive(:authorize) do |controller, *|
+              controller.instance_variable_set(:@_pundit_policy_authorized, true)
+              true
+            end
+        end
+
+        it 'returns success' do
+          post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+
+          expect(response).to have_http_status(:ok)
+          expect(parsed_response).to eq({
+                                          'status' => 'success'
+                                        })
+        end
+
+        it 'registers an attempt and an successful poa check' do
+          expect(real_monitor).to receive(:track_count).with('ar.unique_session.count')
+          expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.attempt')
+          expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.success')
+          post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+        end
       end
     end
+  end
 
-    context 'when claimant is found without matching POA' do
-      before do
-        allow_any_instance_of(described_class)
-          .to receive(:authorize)
-          .and_raise(Pundit::NotAuthorizedError)
-      end
+  context 'with legacy models' do
+    include_context 'with legacy poa holders'
+    include_examples 'representative form upload controller'
+  end
 
-      it 'returns a generic 422 failure response' do
-        post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
-
-        expect(response).to have_http_status(:unprocessable_content)
-        expect(parsed_response).to eq({
-                                        'status' => 'failure',
-                                        'error' => 'Unable to verify claimant information'
-                                      })
-      end
-
-      it 'registers an attempt and an unauthorized poa check' do
-        expect(real_monitor).to receive(:track_count).with('ar.unique_session.count')
-        expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.attempt')
-        expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.unauthorized')
-        post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
-      end
-    end
-
-    context 'when claimant is found with matching POA' do
-      before do
-        allow_any_instance_of(described_class)
-          .to receive(:authorize) do |controller, *|
-            controller.instance_variable_set(:@_pundit_policy_authorized, true)
-            true
-          end
-      end
-
-      it 'returns success' do
-        post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
-
-        expect(response).to have_http_status(:ok)
-        expect(parsed_response).to eq({
-                                        'status' => 'success'
-                                      })
-      end
-
-      it 'registers an attempt and an successful poa check' do
-        expect(real_monitor).to receive(:track_count).with('ar.unique_session.count')
-        expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.attempt')
-        expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.success')
-        post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
-      end
-    end
+  context 'with accredited models' do
+    include_context 'with accredited poa holders'
+    include_examples 'representative form upload controller'
   end
 end

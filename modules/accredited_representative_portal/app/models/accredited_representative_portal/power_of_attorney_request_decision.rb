@@ -40,11 +40,35 @@ module AccreditedRepresentativePortal
     end
 
     belongs_to :creator, class_name: 'UserAccount'
-    belongs_to :accredited_individual, class_name: 'Veteran::Service::Representative',
-                                       foreign_key: :accredited_individual_registration_number,
-                                       primary_key: :representative_id,
-                                       optional: true,
-                                       inverse_of: false
+
+    # See PowerOfAttorneyRequest: same FK column, legacy + AccreditedX targets, selected by the
+    # arc_accredited_representative_portal_use_accredited_models flag via the reader below.
+    belongs_to :legacy_accredited_individual, class_name: 'Veteran::Service::Representative',
+                                              foreign_key: :accredited_individual_registration_number,
+                                              primary_key: :representative_id,
+                                              optional: true,
+                                              inverse_of: false
+    belongs_to :accredited_models_individual, class_name: 'AccreditedIndividual',
+                                              foreign_key: :accredited_individual_registration_number,
+                                              primary_key: :registration_number,
+                                              optional: true,
+                                              inverse_of: false
+
+    def accredited_individual
+      if AccreditedRepresentativePortal.use_accredited_models?
+        accredited_models_individual
+      else
+        legacy_accredited_individual
+      end
+    end
+
+    def accredited_individual=(record)
+      if record.is_a?(AccreditedIndividual)
+        self.accredited_models_individual = record
+      else
+        self.legacy_accredited_individual = record
+      end
+    end
 
     validates :type, inclusion: { in: Types::ALL }
 

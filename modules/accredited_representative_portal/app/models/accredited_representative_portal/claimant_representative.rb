@@ -64,10 +64,18 @@ module AccreditedRepresentativePortal
         # This active-accreditation check also excludes attorney and claims-agent
         # memberships, which PowerOfAttorneyHolderMemberships#all builds without an
         # OrganizationRepresentative record, so it is not redundant with that builder.
-        Veteran::Service::OrganizationRepresentative.active.exists?(
-          organization_poa: membership.power_of_attorney_holder.poa_code,
-          representative_id: membership.registration_number
-        )
+        if AccreditedRepresentativePortal.use_accredited_models?
+          Accreditation
+            .active
+            .for_organization_poa_codes(membership.power_of_attorney_holder.poa_code)
+            .for_registration_numbers(membership.registration_number)
+            .exists?
+        else
+          Veteran::Service::OrganizationRepresentative.active.exists?(
+            organization_poa: membership.power_of_attorney_holder.poa_code,
+            representative_id: membership.registration_number
+          )
+        end
       end
     end
 
