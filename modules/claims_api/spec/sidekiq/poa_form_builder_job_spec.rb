@@ -17,6 +17,7 @@ RSpec.describe ClaimsApi::V1::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
 
   before do
     Sidekiq::Job.clear_all
+    allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_2122a_pdf_form_update).and_return(false)
     allow_any_instance_of(ClaimsApi::V2::BenefitsDocuments::Service)
       .to receive(:get_auth_token).and_return('some-value-here')
 
@@ -101,6 +102,28 @@ RSpec.describe ClaimsApi::V1::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
         expect_any_instance_of(ClaimsApi::V1::PoaPdfConstructor::Individual).to receive(:construct).and_call_original
 
         subject.new.perform(power_of_attorney.id, 'post')
+      end
+
+      context 'when lighthouse_claims_api_v1_2122a_pdf_form_update is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_2122a_pdf_form_update).and_return(true)
+        end
+
+        it 'generates a 3-page PDF using the updated form' do
+          allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+          allow(bd_client).to receive(:upload_document).and_return(true)
+          allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
+
+          pdf_path = nil
+          allow_any_instance_of(ClaimsApi::PoaDocumentService).to receive(:create_upload) do |_instance, args|
+            pdf_path = args[:pdf_path]
+          end
+
+          subject.new.perform(power_of_attorney.id, 'post')
+
+          expect(pdf_path).to be_present
+          expect(PDF::Reader.new(pdf_path).pages.size).to eq(3)
+        end
       end
     end
 
