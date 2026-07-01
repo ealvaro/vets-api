@@ -510,18 +510,31 @@ RSpec.describe 'Mobile::V0::Efolder', type: :request do
       context 'with a working upstream service' do
         let(:document_uuid) { '93631483-E9F9-44AA-BB55-3552376400D8' }
         let(:content) { File.read('spec/fixtures/files/tiny.pdf') }
+        let(:authorization_response) do
+          {
+            'data' => {
+              'documents' => [
+                { 'documentUuid' => "{#{document_uuid}}", 'docTypeId' => 137,
+                  'documentTypeLabel' => 'Test', 'receivedAt' => '2024-01-01' }
+              ]
+            },
+            'pagination' => { 'pageNumber' => 1, 'pageSize' => 100 }
+          }
+        end
 
         before do
           benefits_document_service_double = double
-          expect(BenefitsDocuments::Service).to receive(:new).and_return(benefits_document_service_double)
-          expect(benefits_document_service_double)
+          allow(BenefitsDocuments::Service).to receive(:new).and_return(benefits_document_service_double)
+          allow(benefits_document_service_double)
+            .to receive(:participant_documents_search).and_return(
+              Faraday::Response.new(status: 200, body: authorization_response)
+            )
+          allow(benefits_document_service_double)
             .to receive(:participant_documents_download).with(
               document_uuid:,
               participant_id: user.participant_id
             ).and_return(
-              Faraday::Response.new(
-                status: 200, body: content
-              )
+              Faraday::Response.new(status: 200, body: content)
             )
         end
 
@@ -536,7 +549,40 @@ RSpec.describe 'Mobile::V0::Efolder', type: :request do
         end
       end
 
+      context 'when downloading a document that does not belong to the user (IDOR)' do
+        let(:attacker_document_uuid) { 'AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE' }
+        let(:users_own_documents) do
+          {
+            'data' => {
+              'documents' => [
+                { 'documentUuid' => '{11111111-2222-3333-4444-555555555555}', 'docTypeId' => 137,
+                  'documentTypeLabel' => 'Legitimate Doc', 'receivedAt' => '2024-01-01' }
+              ]
+            },
+            'pagination' => { 'pageNumber' => 1, 'pageSize' => 100 }
+          }
+        end
+
+        before do
+          benefits_document_service_double = double
+          allow(BenefitsDocuments::Service).to receive(:new).and_return(benefits_document_service_double)
+          allow(benefits_document_service_double)
+            .to receive(:participant_documents_search).and_return(
+              Faraday::Response.new(status: 200, body: users_own_documents)
+            )
+        end
+
+        it 'returns 404 instead of downloading the document' do
+          post "/mobile/v0/efolder/documents/#{CGI.escape("{#{attacker_document_uuid}}")}/download",
+               params: { file_name: 'stolen.pdf' },
+               headers: sis_headers
+
+          expect(response).to have_http_status(:not_found)
+        end
+      end
+
       context 'with an error from upstream' do
+        let(:document_uuid) { '00000000-0000-0000-0000-000000000123' }
         let(:bad_request_error) do
           Faraday::BadRequestError.new(
             status: 400,
@@ -552,14 +598,30 @@ RSpec.describe 'Mobile::V0::Efolder', type: :request do
             }
           )
         end
+        let(:authorization_response) do
+          {
+            'data' => {
+              'documents' => [
+                { 'documentUuid' => "{#{document_uuid}}", 'docTypeId' => 137,
+                  'documentTypeLabel' => 'Test', 'receivedAt' => '2024-01-01' }
+              ]
+            },
+            'pagination' => { 'pageNumber' => 1, 'pageSize' => 100 }
+          }
+        end
 
         before do
+          allow_any_instance_of(BenefitsDocuments::Service)
+            .to receive(:participant_documents_search).and_return(
+              Faraday::Response.new(status: 200, body: authorization_response)
+            )
           allow_any_instance_of(BenefitsDocuments::Configuration)
             .to receive(:participant_documents_download).and_raise(bad_request_error)
         end
 
         it 'returns expected error' do
-          post '/mobile/v0/efolder/documents/123/download', params: { file_name: 'test' }, headers: sis_headers
+          post "/mobile/v0/efolder/documents/#{CGI.escape("{#{document_uuid}}")}/download",
+               params: { file_name: 'test' }, headers: sis_headers
 
           expect(response).to have_http_status(:bad_request)
           expect(response.parsed_body).to eq({ 'errors' => [{ 'title' => 'Invalid field value',

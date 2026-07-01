@@ -40,8 +40,10 @@ module Mobile
         document = if Flipper.enabled?(:efolder_use_lighthouse_benefits_documents_service, @current_user)
                      # Backwards Compatibility: Delete {} brackets from document id as the
                      # benefit documents service doesn't support them
+                     sanitized_id = params[:document_id].delete('{}')
+                     verify_document_belongs_to_user!(sanitized_id)
                      lighthouse_document_service
-                       .participant_documents_download(document_uuid: params[:document_id].delete('{}'),
+                       .participant_documents_download(document_uuid: sanitized_id,
                                                        participant_id: @current_user.participant_id).body
                    else
                      service.get_document(params[:document_id])
@@ -61,6 +63,19 @@ module Mobile
       end
 
       private
+
+      # Verify that the requested document actually belongs to the authenticated user.
+      # Without this check an attacker who knows (or guesses) a document UUID can download
+      # another veteran's eFolder documents (IDOR). The web eFolder controller in
+      # lib/efolder/service.rb already performs this check via verify_document_in_folder;
+      # the mobile controller was missing it for the Lighthouse path.
+      def verify_document_belongs_to_user!(document_uuid)
+        authorized_ids = retrieve_all_documents.to_set { |doc| normalize_id(doc['documentUuid']) }
+        normalized_request_id = normalize_id(document_uuid)
+        return if authorized_ids.include?(normalized_request_id)
+
+        raise Common::Exceptions::RecordNotFound, document_uuid
+      end
 
       def requested_document_ids
         requested = params.permit(documents: %i[document_id filename]).fetch(:documents, [])
