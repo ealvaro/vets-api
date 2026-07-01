@@ -25,8 +25,8 @@ class DebtTransactionLog < ApplicationRecord
     DebtTransactionLogService.track_dispute(submission, user)
   end
 
-  def self.track_waiver(submission, user)
-    DebtTransactionLogService.track_waiver(submission, user)
+  def self.track_waiver(submission, user_uuid:)
+    DebtTransactionLogService.track_waiver(submission, user_uuid:)
   end
 
   def mark_submitted(external_reference_id: nil)

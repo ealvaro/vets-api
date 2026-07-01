@@ -13,11 +13,11 @@ class DebtTransactionLogService
     )
   end
 
-  def self.track_waiver(submission, user)
+  def self.track_waiver(submission, user_uuid:)
     create_transaction_log(
       transactionable: submission,
       transaction_type: 'waiver',
-      user_uuid: user.uuid,
+      user_uuid:,
       debt_identifiers: extract_waiver_debt_identifiers(submission),
       summary_data: DebtTransactionLog::SummaryBuilders::WaiverSummaryBuilder.build(submission)
     )

@@ -71,7 +71,7 @@ module DebtsApi
         'submission_id' => id
       )
       batch.jobs do
-        DebtsApi::V0::Form5655::VHA::VBSSubmissionJob.perform_async(id, user_cache_id)
+        DebtsApi::V0::Form5655::VHA::VBSSubmissionJob.perform_async(id)
         # Delay sharepoint submission to allow VBA to process the form
         unless Flipper.enabled?(:financial_management_vbs_only)
           DebtsApi::V0::Form5655::VHA::SharepointSubmissionJob.perform_in(5.seconds, id)
@@ -220,8 +220,7 @@ module DebtsApi
       existing_log = find_transaction_log
       return existing_log if existing_log
 
-      user = User.find(user_uuid)
-      DebtTransactionLog.track_waiver(self, user)
+      DebtTransactionLog.track_waiver(self, user_uuid:)
     end
 
     def find_transaction_log

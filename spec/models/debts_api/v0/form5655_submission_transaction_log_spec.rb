@@ -15,7 +15,7 @@ RSpec.describe DebtsApi::V0::Form5655Submission, type: :model do
     it 'calls DebtTransactionLog.track_waiver when no log exists' do
       allow(form5655_submission).to receive(:find_transaction_log).and_return(nil)
       expect(DebtTransactionLog).to receive(:track_waiver)
-        .with(form5655_submission, anything)
+        .with(form5655_submission, user_uuid: form5655_submission.user_uuid)
         .and_return(mock_log)
 
       form5655_submission.send(:create_transaction_log_if_needed)
@@ -26,6 +26,17 @@ RSpec.describe DebtsApi::V0::Form5655Submission, type: :model do
 
       result = form5655_submission.send(:create_transaction_log_if_needed)
       expect(result).to eq(mock_log)
+    end
+
+    it 'tracks with the persisted user UUID when the user is stale' do
+      form5655_submission.user_uuid = '00000'
+      allow(form5655_submission).to receive(:find_transaction_log).and_return(nil)
+
+      expect(DebtTransactionLog).to receive(:track_waiver)
+        .with(form5655_submission, user_uuid: '00000')
+        .and_return(mock_log)
+
+      form5655_submission.send(:create_transaction_log_if_needed)
     end
   end
 
@@ -43,10 +54,17 @@ RSpec.describe DebtsApi::V0::Form5655Submission, type: :model do
 
   describe '#submit_to_vha' do
     it 'creates transaction log and marks as submitted' do
+      stub_const('Sidekiq::Batch', Class.new) unless defined?(Sidekiq::Batch)
+      batch = instance_double(Sidekiq::Batch)
+
+      allow(Sidekiq::Batch).to receive(:new).and_return(batch)
+      allow(batch).to receive(:on)
+      allow(batch).to receive(:jobs).and_yield
       allow(DebtsApi::V0::Form5655::VHA::VBSSubmissionJob).to receive(:perform_async)
       allow(DebtsApi::V0::Form5655::VHA::SharepointSubmissionJob).to receive(:perform_in)
-      allow(form5655_submission).to receive_messages(user_cache_id: 'cache123',
-                                                     create_transaction_log_if_needed: mock_log)
+      allow(form5655_submission).to receive(:create_transaction_log_if_needed)
+        .with(no_args)
+        .and_return(mock_log)
 
       expect(mock_log).to receive(:mark_submitted)
 

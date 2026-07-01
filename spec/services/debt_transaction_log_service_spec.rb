@@ -50,7 +50,7 @@ RSpec.describe DebtTransactionLogService do
     end
 
     it 'creates a transaction log with correct attributes' do
-      log = DebtTransactionLogService.track_waiver(form5655_submission, user)
+      log = DebtTransactionLogService.track_waiver(form5655_submission, user_uuid: user.uuid)
 
       expect(log).to be_persisted
       expect(log.transactionable).to eq(form5655_submission)
@@ -61,14 +61,14 @@ RSpec.describe DebtTransactionLogService do
     end
 
     it 'fires StatsD metrics on create' do
-      DebtTransactionLogService.track_waiver(form5655_submission, user)
+      DebtTransactionLogService.track_waiver(form5655_submission, user_uuid: user.uuid)
       expect(StatsD).to have_received(:increment).with('api.debt_transaction_log.waiver.created')
     end
 
     it 'returns nil on creation failure' do
       allow(DebtTransactionLog).to receive(:create!).and_raise(StandardError, 'DB error')
 
-      log = DebtTransactionLogService.track_waiver(form5655_submission, user)
+      log = DebtTransactionLogService.track_waiver(form5655_submission, user_uuid: user.uuid)
 
       expect(log).to be_nil
       expect(StatsD).to have_received(:increment).with('api.debt_transaction_log.waiver.creation_failed')

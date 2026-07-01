@@ -78,8 +78,8 @@ RSpec.describe DebtTransactionLog, type: :model do
 
     it 'delegates track_waiver to service' do
       expect(DebtTransactionLogService).to receive(:track_waiver)
-        .with(form5655_submission, user)
-      DebtTransactionLog.track_waiver(form5655_submission, user)
+        .with(form5655_submission, user_uuid: user.uuid)
+      DebtTransactionLog.track_waiver(form5655_submission, user_uuid: user.uuid)
     end
   end
 

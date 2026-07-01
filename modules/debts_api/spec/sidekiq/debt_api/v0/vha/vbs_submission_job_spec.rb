@@ -17,8 +17,17 @@ RSpec.describe DebtsApi::V0::Form5655::VHA::VBSSubmissionJob, type: :worker do
         }.to_json
       )
     end
-    let(:user) { build(:user, :loa3) }
-    let(:user_data) { build(:user_profile_attributes) }
+
+    it 'submits to VBS with the persisted submission and no user cache' do
+      service = instance_double(DebtsApi::V0::FinancialStatusReportService)
+
+      expect(UserProfileAttributes).not_to receive(:find)
+      expect(DebtsApi::V0::FinancialStatusReportService).to receive(:new).with(no_args).and_return(service)
+      expect(service).to receive(:submit_to_vbs).with(form_submission)
+      expect(StatsD).to receive(:increment).with("#{described_class::STATS_KEY}.success")
+
+      described_class.new.perform(form_submission.id)
+    end
 
     context 'when all retries are exhausted' do
       let(:config) { described_class }
@@ -30,7 +39,7 @@ RSpec.describe DebtsApi::V0::Form5655::VHA::VBSSubmissionJob, type: :worker do
       let(:msg) do
         {
           'class' => 'YourJobClassName',
-          'args' => [form_submission.id, '123-abc'],
+          'args' => [form_submission.id],
           'jid' => '12345abcde',
           'retry_count' => 5
         }
@@ -60,7 +69,7 @@ RSpec.describe DebtsApi::V0::Form5655::VHA::VBSSubmissionJob, type: :worker do
 
         expect(Rails.logger).to receive(:error).with(
           'V0::Form5655::VHA::VBSSubmissionJob retries exhausted',
-          submission_id: form_submission.id, user_id: '123-abc', exception: standard_exception
+          submission_id: form_submission.id, user_id: form_submission.user_uuid, exception: standard_exception
         )
         config.sidekiq_retries_exhausted_block.call(msg, standard_exception)
         expect(form_submission.reload.error_message).to eq('VBS Submission Failed: abc-123')

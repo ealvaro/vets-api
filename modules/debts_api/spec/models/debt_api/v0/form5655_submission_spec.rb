@@ -79,6 +79,10 @@ RSpec.describe DebtsApi::V0::Form5655Submission do
     let(:form5655_submission) { create(:debts_api_form5655_submission) }
     let(:guy) { create(:form5655_submission) }
 
+    before do
+      allow(form5655_submission).to receive(:create_transaction_log_if_needed)
+    end
+
     it 'enqueues a VBA submission job' do
       expect do
         form5655_submission.submit_to_vba
@@ -93,12 +97,32 @@ RSpec.describe DebtsApi::V0::Form5655Submission do
       )
       form5655_submission.submit_to_vba
     end
+
+    it 'builds the VBA user cache without submission data fallback' do
+      allow(StatsD).to receive(:increment)
+      allow(form5655_submission).to receive(:user_cache_id).and_return('cache-id')
+
+      form5655_submission.submit_to_vba
+
+      expect(form5655_submission).to have_received(:user_cache_id).with(no_args)
+      expect(DebtsApi::V0::Form5655::VBASubmissionJob.jobs.last['args'])
+        .to eq([form5655_submission.id, 'cache-id'])
+    end
   end
 
   describe '.submit_to_vha' do
     let(:form5655_submission) { create(:debts_api_form5655_submission) }
+    let(:batch) { instance_double(Sidekiq::Batch) }
 
-    context 'when financial_management_vbs_only is enabled' do
+    before do
+      stub_const('Sidekiq::Batch', Class.new) unless defined?(Sidekiq::Batch)
+      allow(Sidekiq::Batch).to receive(:new).and_return(batch)
+      allow(batch).to receive(:on)
+      allow(batch).to receive(:jobs).and_yield
+      allow(form5655_submission).to receive(:create_transaction_log_if_needed)
+    end
+
+    context 'when financial_management_vbs_only is disabled' do
       before do
         allow(Flipper).to receive(:enabled?).with(:financial_management_vbs_only).and_return(false)
       end
@@ -113,7 +137,7 @@ RSpec.describe DebtsApi::V0::Form5655Submission do
       end
     end
 
-    context 'when financial_management_vbs_only is disabled' do
+    context 'when financial_management_vbs_only is enabled' do
       before do
         allow(Flipper).to receive(:enabled?).with(:financial_management_vbs_only).and_return(true)
       end
@@ -124,6 +148,17 @@ RSpec.describe DebtsApi::V0::Form5655Submission do
         end.to change(DebtsApi::V0::Form5655::VHA::VBSSubmissionJob.jobs, :size).by(1)
            .and not_change(DebtsApi::V0::Form5655::VHA::SharepointSubmissionJob.jobs, :size)
       end
+    end
+
+    it 'enqueues VBS with only the submission ID' do
+      allow(Flipper).to receive(:enabled?).with(:financial_management_vbs_only).and_return(true)
+
+      expect(form5655_submission).not_to receive(:user_cache_id)
+
+      form5655_submission.submit_to_vha
+
+      expect(DebtsApi::V0::Form5655::VHA::VBSSubmissionJob.jobs.last['args'])
+        .to eq([form5655_submission.id])
     end
   end
 
@@ -143,6 +178,7 @@ RSpec.describe DebtsApi::V0::Form5655Submission do
     context 'with stale user id' do
       before do
         form5655_submission.user_uuid = '00000'
+        allow(StatsD).to receive(:increment)
       end
 
       it 'returns an error' do
