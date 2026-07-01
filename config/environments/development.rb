@@ -86,10 +86,14 @@ Rails.application.configure do
   config.rails_semantic_logger.processing = true   # Log when processing completes
   config.rails_semantic_logger.rendered   = true   # Log rendering details (views/partials)
 
+  # PIIFilteringColorFormatter must be set via rails_semantic_logger.format so the
+  # initialize_logger hook applies it to stdout and development.log appenders.
+  config.rails_semantic_logger.format = PIIFilteringColorFormatter.new
+
   # Set SemanticLogger to log to stdout for foreman and rails console.
   config.semantic_logger.add_appender(
     io: $stdout,
     level: :info, # For debug, see log/development.log
-    formatter: SafeJsonFormatter.new
+    formatter: PIIFilteringColorFormatter.new
   )
 end

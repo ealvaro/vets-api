@@ -1150,6 +1150,9 @@ lib/search @software/backend-review-group
 lib/search/pii_redactor.rb @software/backend-review-group
 lib/search_click_tracking @software/backend-review-group
 lib/search_gsa @software/backend-review-group
+lib/semantic_logger/pii_filtering_color_formatter.rb @software/backend-review-group
+lib/semantic_logger/pii_filtering_formatter.rb @software/backend-review-group
+lib/semantic_logger/pii_payload_scrubber.rb @software/backend-review-group
 lib/semantic_logger/safe_json_formatter.rb @software/backend-review-group
 lib/sentry @software/backend-review-group
 lib/sftp_writer @software/backend-review-group
@@ -1774,6 +1777,8 @@ spec/lib/search @software/backend-review-group
 spec/lib/search/pii_redactor_spec.rb @software/backend-review-group
 spec/lib/search_click_tracking @software/backend-review-group
 spec/lib/search_gsa @software/backend-review-group
+spec/lib/semantic_logger/pii_filtering_color_formatter_spec.rb @software/backend-review-group
+spec/lib/semantic_logger/pii_filtering_formatter_spec.rb @software/backend-review-group
 spec/lib/semantic_logger/safe_json_formatter_spec.rb @software/backend-review-group
 spec/lib/sentry @software/backend-review-group
 spec/lib/sftp_writer @software/backend-review-group

@@ -20,6 +20,9 @@ require 'rails/test_unit/railtie'
 # you've limited to :test, :development, or :production.
 Bundler.require(*Rails.groups)
 require_relative '../lib/semantic_logger/safe_json_formatter'
+require_relative '../lib/semantic_logger/pii_payload_scrubber'
+require_relative '../lib/semantic_logger/pii_filtering_formatter'
+require_relative '../lib/semantic_logger/pii_filtering_color_formatter'
 require_relative '../lib/olive_branch_patch'
 
 module VetsAPI
