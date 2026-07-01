@@ -282,7 +282,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
       it 'passes valid dates through unchanged' do
         expect_any_instance_of(UnifiedHealthData::Client)
           .to receive(:get_labs_by_date)
-          .with(patient_id: user.icn, start_date: '2025-01-01', end_date: '2025-12-31')
+          .with(patient_id: user.icn, start_date: '2025-01-01', end_date: '2025-12-31', no_cache: false)
           .and_return(sample_client_response)
 
         service.get_labs(start_date: '2025-01-01', end_date: '2025-12-31')
@@ -303,7 +303,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
       it 'defaults nil start_date to 1900-01-01' do
         expect_any_instance_of(UnifiedHealthData::Client)
           .to receive(:get_labs_by_date)
-          .with(patient_id: user.icn, start_date: '1900-01-01', end_date: '2025-12-31')
+          .with(patient_id: user.icn, start_date: '1900-01-01', end_date: '2025-12-31', no_cache: false)
           .and_return(sample_client_response)
 
         service.get_labs(start_date: nil, end_date: '2025-12-31')
@@ -313,7 +313,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
         freeze_time do
           expect_any_instance_of(UnifiedHealthData::Client)
             .to receive(:get_labs_by_date)
-            .with(patient_id: user.icn, start_date: '2025-01-01', end_date: Time.zone.today.to_s)
+            .with(patient_id: user.icn, start_date: '2025-01-01', end_date: Time.zone.today.to_s, no_cache: false)
             .and_return(sample_client_response)
 
           service.get_labs(start_date: '2025-01-01', end_date: nil)
@@ -323,7 +323,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
       it 'defaults blank start_date to 1900-01-01' do
         expect_any_instance_of(UnifiedHealthData::Client)
           .to receive(:get_labs_by_date)
-          .with(patient_id: user.icn, start_date: '1900-01-01', end_date: '2025-12-31')
+          .with(patient_id: user.icn, start_date: '1900-01-01', end_date: '2025-12-31', no_cache: false)
           .and_return(sample_client_response)
 
         service.get_labs(start_date: '', end_date: '2025-12-31')
@@ -623,6 +623,59 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
           uhd_service.get_single_allergy('banana')
         end.to raise_error(StandardError, 'Unknown fetch error')
       end
+    end
+  end
+
+  describe 'no_cache forwarding' do
+    let(:empty_response) { build_faraday_response({ 'vista' => {}, 'oracle-health' => {} }) }
+
+    it 'forwards no_cache to get_allergies_by_date' do
+      expect_any_instance_of(UnifiedHealthData::Client)
+        .to receive(:get_allergies_by_date).with(hash_including(no_cache: true)).and_return(empty_response)
+
+      service.get_allergies(no_cache: true)
+    end
+
+    it 'defaults no_cache to false for get_allergies_by_date' do
+      expect_any_instance_of(UnifiedHealthData::Client)
+        .to receive(:get_allergies_by_date).with(hash_including(no_cache: false)).and_return(empty_response)
+
+      service.get_allergies
+    end
+
+    it 'forwards no_cache to get_labs_by_date' do
+      expect_any_instance_of(UnifiedHealthData::Client)
+        .to receive(:get_labs_by_date).with(hash_including(no_cache: true)).and_return(empty_response)
+
+      service.get_labs(start_date: '2025-01-01', end_date: '2025-12-31', no_cache: true)
+    end
+
+    it 'forwards no_cache to get_conditions_by_date' do
+      expect_any_instance_of(UnifiedHealthData::Client)
+        .to receive(:get_conditions_by_date).with(hash_including(no_cache: true)).and_return(empty_response)
+
+      service.get_conditions(no_cache: true)
+    end
+
+    it 'forwards no_cache to get_notes_by_date' do
+      expect_any_instance_of(UnifiedHealthData::Client)
+        .to receive(:get_notes_by_date).with(hash_including(no_cache: true)).and_return(empty_response)
+
+      service.get_care_summaries_and_notes(no_cache: true)
+    end
+
+    it 'forwards no_cache to get_vitals_by_date' do
+      expect_any_instance_of(UnifiedHealthData::Client)
+        .to receive(:get_vitals_by_date).with(hash_including(no_cache: true)).and_return(empty_response)
+
+      service.get_vitals(no_cache: true)
+    end
+
+    it 'forwards no_cache to get_immunizations_by_date' do
+      expect_any_instance_of(UnifiedHealthData::Client)
+        .to receive(:get_immunizations_by_date).with(hash_including(no_cache: true)).and_return(empty_response)
+
+      service.get_immunizations(no_cache: true)
     end
   end
 
@@ -1133,7 +1186,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
         # Verify blank strings are converted to nil and defaults are applied
         expect_any_instance_of(UnifiedHealthData::Client)
           .to receive(:get_notes_by_date)
-          .with(patient_id: user.icn, start_date: '1900-01-01', end_date: anything)
+          .with(patient_id: user.icn, start_date: '1900-01-01', end_date: anything, no_cache: false)
           .and_return(sample_client_response)
 
         # Blank strings should be treated as nil and use defaults
@@ -1149,7 +1202,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
       it 'accepts and uses provided start_date and end_date' do
         expect_any_instance_of(UnifiedHealthData::Client)
           .to receive(:get_notes_by_date)
-          .with(patient_id: user.icn, start_date: '2024-01-01', end_date: '2024-12-31')
+          .with(patient_id: user.icn, start_date: '2024-01-01', end_date: '2024-12-31', no_cache: false)
           .and_return(sample_client_response)
 
         service.get_care_summaries_and_notes(start_date: '2024-01-01', end_date: '2024-12-31')
@@ -1158,7 +1211,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
       it 'uses default dates when parameters not provided' do
         expect_any_instance_of(UnifiedHealthData::Client)
           .to receive(:get_notes_by_date)
-          .with(patient_id: user.icn, start_date: '1900-01-01', end_date: anything)
+          .with(patient_id: user.icn, start_date: '1900-01-01', end_date: anything, no_cache: false)
           .and_return(sample_client_response)
 
         service.get_care_summaries_and_notes
@@ -1167,7 +1220,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
       it 'uses default start_date when only end_date provided' do
         expect_any_instance_of(UnifiedHealthData::Client)
           .to receive(:get_notes_by_date)
-          .with(patient_id: user.icn, start_date: '1900-01-01', end_date: '2024-12-31')
+          .with(patient_id: user.icn, start_date: '1900-01-01', end_date: '2024-12-31', no_cache: false)
           .and_return(sample_client_response)
 
         service.get_care_summaries_and_notes(end_date: '2024-12-31')
@@ -1176,7 +1229,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
       it 'uses default end_date when only start_date provided' do
         expect_any_instance_of(UnifiedHealthData::Client)
           .to receive(:get_notes_by_date)
-          .with(patient_id: user.icn, start_date: '2024-01-01', end_date: anything)
+          .with(patient_id: user.icn, start_date: '2024-01-01', end_date: anything, no_cache: false)
           .and_return(sample_client_response)
 
         service.get_care_summaries_and_notes(start_date: '2024-01-01')

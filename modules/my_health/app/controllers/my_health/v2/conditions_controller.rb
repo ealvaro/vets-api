@@ -24,7 +24,7 @@ module MyHealth
       #   are present, otherwise 200 OK
       #
       def index
-        @result = service.get_conditions
+        @result = service.get_conditions(no_cache: no_cache_requested?)
         conditions = sort_records(@result[:records], params[:sort])
         opts = warnings_present? ? { meta: { warnings: @result[:warnings] } } : {}
 
@@ -73,6 +73,10 @@ module MyHealth
 
       def service
         @service ||= UnifiedHealthData::MedicalRecordsService.new(@current_user)
+      end
+
+      def no_cache_requested?
+        ActiveModel::Type::Boolean.new.cast(params[:no_cache]) || false
       end
 
       def warnings_present?

@@ -25,7 +25,8 @@ module MyHealth
       #   warnings are present, otherwise 200 OK
       #
       def index
-        @result = service.get_care_summaries_and_notes(start_date: params[:start_date], end_date: params[:end_date])
+        @result = service.get_care_summaries_and_notes(start_date: params[:start_date], end_date: params[:end_date],
+                                                       no_cache: no_cache_requested?)
         care_notes = sort_records(@result[:records], params[:sort])
         opts = warnings_present? ? { meta: { warnings: @result[:warnings] } } : {}
 
@@ -75,6 +76,10 @@ module MyHealth
 
       def service
         @service ||= UnifiedHealthData::MedicalRecordsService.new(@current_user)
+      end
+
+      def no_cache_requested?
+        ActiveModel::Type::Boolean.new.cast(params[:no_cache]) || false
       end
 
       def warnings_present?

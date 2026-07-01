@@ -32,7 +32,8 @@ module MyHealth
             start_date: params[:start_date],
             end_date: params[:end_date],
             imaging_study_type: params[:imaging_study_type].presence || 'RADIOLOGY',
-            site_ids: user_site_ids
+            site_ids: user_site_ids,
+            no_cache: no_cache_requested?
           ),
           params[:sort]
         )
@@ -178,6 +179,10 @@ module MyHealth
 
       def service
         @service ||= UnifiedHealthData::ImagingService.new(@current_user)
+      end
+
+      def no_cache_requested?
+        ActiveModel::Type::Boolean.new.cast(params[:no_cache]) || false
       end
 
       # SCDF requires date params for thumbnails and DICOM but they do not

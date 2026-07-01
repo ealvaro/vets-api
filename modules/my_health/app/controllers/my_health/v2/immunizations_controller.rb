@@ -37,7 +37,7 @@ module MyHealth
         tag_datadog_data_source(uhd_enabled? ? 'uhd' : 'lighthouse')
 
         if uhd_enabled?
-          @result = uhd_service.get_immunizations
+          @result = uhd_service.get_immunizations(no_cache: no_cache_requested?)
           immunizations = sort_records(@result[:records], params[:sort])
           opts = warnings_present? ? { meta: { warnings: @result[:warnings] } } : {}
           log_vaccines(immunizations.length)
@@ -125,6 +125,10 @@ module MyHealth
 
       def uhd_service
         @uhd_service ||= UnifiedHealthData::MedicalRecordsService.new(current_user)
+      end
+
+      def no_cache_requested?
+        ActiveModel::Type::Boolean.new.cast(params[:no_cache]) || false
       end
 
       def warnings_present?

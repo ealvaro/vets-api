@@ -577,6 +577,25 @@ RSpec.describe UnifiedHealthData::Client do
         .with(headers: { 'Content-Type' => 'application/json' })
     end
 
+    context 'when no_cache is true' do
+      it 'includes Cache-Control: no-cache header' do
+        client.get_allergies_by_date(patient_id: '123', start_date: '2024-01-01', end_date: '2025-01-01',
+                                     no_cache: true)
+
+        expect(WebMock).to have_requested(:get, %r{#{Regexp.escape(host)}/v1/medicalrecords/allergies})
+          .with(headers: { 'Cache-Control' => 'no-cache' })
+      end
+    end
+
+    context 'when no_cache is false (default)' do
+      it 'does not include Cache-Control header' do
+        client.get_allergies_by_date(patient_id: '123', start_date: '2024-01-01', end_date: '2025-01-01')
+
+        expect(WebMock).to have_requested(:get, %r{#{Regexp.escape(host)}/v1/medicalrecords/allergies})
+          .with { |req| !req.headers.key?('Cache-Control') }
+      end
+    end
+
     context 'x-mhv-client-application header' do
       after do
         RequestStore.store['additional_request_attributes'] = nil

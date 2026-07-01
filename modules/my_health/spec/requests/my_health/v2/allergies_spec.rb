@@ -34,6 +34,43 @@ RSpec.describe 'MyHealth::V2::AllergiesController', :skip_json_api_validation, t
   end
 
   describe 'GET /my_health/v2/medical_records/allergies#index' do
+    context 'no_cache parameter' do
+      it 'passes no_cache: true to the service when no_cache param is present' do
+        allow(UniqueUserEvents).to receive(:log_events)
+        expect_any_instance_of(UnifiedHealthData::MedicalRecordsService)
+          .to receive(:get_allergies).with(no_cache: true).and_call_original
+        VCR.use_cassette('unified_health_data/get_allergies_200', match_requests_on: %i[method path]) do
+          get '/my_health/v2/medical_records/allergies',
+              params: { no_cache: true },
+              headers: { 'X-Key-Inflection' => 'camel' }
+        end
+        expect(response).to be_successful
+      end
+
+      it 'passes no_cache: false to the service when no_cache param is absent' do
+        allow(UniqueUserEvents).to receive(:log_events)
+        expect_any_instance_of(UnifiedHealthData::MedicalRecordsService)
+          .to receive(:get_allergies).with(no_cache: false).and_call_original
+        VCR.use_cassette('unified_health_data/get_allergies_200', match_requests_on: %i[method path]) do
+          get '/my_health/v2/medical_records/allergies',
+              headers: { 'X-Key-Inflection' => 'camel' }
+        end
+        expect(response).to be_successful
+      end
+
+      it 'passes no_cache: false to the service when no_cache param is "false"' do
+        allow(UniqueUserEvents).to receive(:log_events)
+        expect_any_instance_of(UnifiedHealthData::MedicalRecordsService)
+          .to receive(:get_allergies).with(no_cache: false).and_call_original
+        VCR.use_cassette('unified_health_data/get_allergies_200', match_requests_on: %i[method path]) do
+          get '/my_health/v2/medical_records/allergies',
+              params: { no_cache: 'false' },
+              headers: { 'X-Key-Inflection' => 'camel' }
+        end
+        expect(response).to be_successful
+      end
+    end
+
     context 'happy path' do
       it 'returns a successful response' do
         allow(UniqueUserEvents).to receive(:log_events)

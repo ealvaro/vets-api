@@ -13,26 +13,26 @@ module UnifiedHealthData
 
     configuration UnifiedHealthData::Configuration
 
-    def get_allergies_by_date(patient_id:, start_date:, end_date:)
+    def get_allergies_by_date(patient_id:, start_date:, end_date:, no_cache: false)
       path = "#{config.base_path}allergies?patientId=#{patient_id}&startDate=#{start_date}&endDate=#{end_date}"
-      perform(:get, path, nil, request_headers)
+      perform(:get, path, nil, request_headers(no_cache:))
     end
 
-    def get_labs_by_date(patient_id:, start_date:, end_date:)
+    def get_labs_by_date(patient_id:, start_date:, end_date:, no_cache: false)
       path = "#{config.base_path}labs?patientId=#{patient_id}&startDate=#{start_date}&endDate=#{end_date}"
-      perform(:get, path, nil, request_headers)
+      perform(:get, path, nil, request_headers(no_cache:))
     end
 
-    def get_conditions_by_date(patient_id:, start_date:, end_date:)
+    def get_conditions_by_date(patient_id:, start_date:, end_date:, no_cache: false)
       path = "#{config.base_path}conditions?patientId=#{patient_id}&startDate=#{start_date}&endDate=#{end_date}"
-      perform(:get, path, nil, request_headers)
+      perform(:get, path, nil, request_headers(no_cache:))
     end
 
-    def get_notes_by_date(patient_id:, start_date:, end_date:)
+    def get_notes_by_date(patient_id:, start_date:, end_date:, no_cache: false)
       path = "#{config.base_path}notes?" \
              "patientId=#{patient_id}&startDate=#{start_date}" \
              "&endDate=#{end_date}&includeBinary=false"
-      perform(:get, path, nil, request_headers)
+      perform(:get, path, nil, request_headers(no_cache:))
     end
 
     def get_note_by_source(patient_id:, source:, record_id:, start_date:, end_date:)
@@ -43,14 +43,14 @@ module UnifiedHealthData
       perform(:get, path, params, request_headers)
     end
 
-    def get_vitals_by_date(patient_id:, start_date:, end_date:)
+    def get_vitals_by_date(patient_id:, start_date:, end_date:, no_cache: false)
       path = "#{config.base_path}vitals?patientId=#{patient_id}&startDate=#{start_date}&endDate=#{end_date}"
-      perform(:get, path, nil, request_headers)
+      perform(:get, path, nil, request_headers(no_cache:))
     end
 
-    def get_immunizations_by_date(patient_id:, start_date:, end_date:)
+    def get_immunizations_by_date(patient_id:, start_date:, end_date:, no_cache: false)
       path = "#{config.base_path}immunizations?patientId=#{patient_id}&startDate=#{start_date}&endDate=#{end_date}"
-      perform(:get, path, nil, request_headers)
+      perform(:get, path, nil, request_headers(no_cache:))
     end
 
     def get_prescriptions_by_date(patient_id:, start_date:, end_date:)
@@ -91,11 +91,13 @@ module UnifiedHealthData
       perform(:get, path, nil, request_headers)
     end
 
-    def get_imaging_studies(patient_id:, start_date:, end_date:, imaging_study_type: 'RADIOLOGY', site_ids: [])
+    def get_imaging_studies(patient_id:, start_date:, end_date:, no_cache: false, **options)
+      imaging_study_type = options.fetch(:imaging_study_type, 'RADIOLOGY')
+      site_ids = options.fetch(:site_ids, [])
       path = "#{config.base_path}imaging-studies?patientId=#{patient_id}&startDate=#{start_date}&endDate=#{end_date}"
       body = { siteIds: site_ids }
       body[:imagingStudyType] = imaging_study_type
-      perform(:post, path, body.to_json, request_headers(include_content_type: true))
+      perform(:post, path, body.to_json, request_headers(include_content_type: true, no_cache:))
     end
 
     def get_imaging_study(patient_id:, start_date:, end_date:, record_id:)
@@ -203,7 +205,7 @@ module UnifiedHealthData
       end
     end
 
-    def request_headers(include_content_type: false)
+    def request_headers(include_content_type: false, no_cache: false)
       request_id = RequestStore.store['request_id']
       unless request_id
         request_id = SecureRandom.uuid
@@ -215,6 +217,7 @@ module UnifiedHealthData
         'X-Request-Id' => request_id,
         'x-mhv-client-application' => client_application
       }
+      headers['Cache-Control'] = 'no-cache' if ActiveModel::Type::Boolean.new.cast(no_cache)
       headers['Content-Type'] = 'application/json' if include_content_type
       headers
     end

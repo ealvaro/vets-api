@@ -25,18 +25,12 @@ module MyHealth
       #   warnings are present, otherwise 200 OK
       #
       def index
-        @result = service.get_labs(start_date: params[:start_date], end_date: params[:end_date], caller: 'web_v2')
+        @result = service.get_labs(start_date: params[:start_date], end_date: params[:end_date], caller: 'web_v2',
+                                   no_cache: no_cache_requested?)
         labs = sort_records(@result[:records], params[:sort])
         opts = warnings_present? ? { meta: { warnings: @result[:warnings] } } : {}
         serialized_labs = UnifiedHealthData::Serializers::LabOrTestSerializer.new(labs, opts)
-
-        UniqueUserEvents.log_events(
-          user: @current_user,
-          event_names: [
-            UniqueUserEvents::EventRegistry::MEDICAL_RECORDS_ACCESSED,
-            UniqueUserEvents::EventRegistry::MEDICAL_RECORDS_LABS_ACCESSED
-          ]
-        )
+        log_unique_user_events
 
         render json: serialized_labs,
                status: warnings_present? ? :partial_content : :ok
@@ -53,6 +47,20 @@ module MyHealth
 
       def service
         @service ||= UnifiedHealthData::MedicalRecordsService.new(@current_user)
+      end
+
+      def no_cache_requested?
+        ActiveModel::Type::Boolean.new.cast(params[:no_cache]) || false
+      end
+
+      def log_unique_user_events
+        UniqueUserEvents.log_events(
+          user: @current_user,
+          event_names: [
+            UniqueUserEvents::EventRegistry::MEDICAL_RECORDS_ACCESSED,
+            UniqueUserEvents::EventRegistry::MEDICAL_RECORDS_LABS_ACCESSED
+          ]
+        )
       end
 
       def warnings_present?

@@ -26,12 +26,12 @@ module UnifiedHealthData
     include Concerns::VitalsLogging
     include Concerns::FacilityCacheWarming
 
-    def get_labs(start_date:, end_date:, caller: nil)
+    def get_labs(start_date:, end_date:, caller: nil, no_cache: false)
       validate_icn!
       @labs_caller = caller
       start_date, end_date = normalize_date_range(start_date, end_date)
       with_monitoring do
-        response = uhd_client.get_labs_by_date(patient_id: @user.icn, start_date:, end_date:)
+        response = uhd_client.get_labs_by_date(patient_id: @user.icn, start_date:, end_date:, no_cache:)
         body = response.body
         warnings = extract_warnings(body)
 
@@ -55,13 +55,13 @@ module UnifiedHealthData
       end
     end
 
-    def get_conditions
+    def get_conditions(no_cache: false)
       validate_icn!
       with_monitoring do
         start_date = default_start_date
         end_date = default_end_date
 
-        response = uhd_client.get_conditions_by_date(patient_id: @user.icn, start_date:, end_date:)
+        response = uhd_client.get_conditions_by_date(patient_id: @user.icn, start_date:, end_date:, no_cache:)
         body = response.body
         warnings = extract_warnings(body)
 
@@ -95,12 +95,12 @@ module UnifiedHealthData
       end
     end
 
-    def get_care_summaries_and_notes(start_date: nil, end_date: nil)
+    def get_care_summaries_and_notes(start_date: nil, end_date: nil, no_cache: false)
       validate_icn!
       with_monitoring do
         start_date, end_date = normalize_date_range(start_date, end_date)
 
-        response = uhd_client.get_notes_by_date(patient_id: @user.icn, start_date:, end_date:)
+        response = uhd_client.get_notes_by_date(patient_id: @user.icn, start_date:, end_date:, no_cache:)
         body = response.body
         warnings = extract_warnings(body)
 
@@ -130,14 +130,14 @@ module UnifiedHealthData
       end
     end
 
-    def get_vitals
+    def get_vitals(no_cache: false)
       validate_icn!
       with_monitoring do
         # NOTE: we must pass in a startDate and endDate to SCDF
         start_date = default_start_date
         end_date = default_end_date
 
-        response = uhd_client.get_vitals_by_date(patient_id: @user.icn, start_date:, end_date:)
+        response = uhd_client.get_vitals_by_date(patient_id: @user.icn, start_date:, end_date:, no_cache:)
         body = response.body
         warnings = extract_warnings(body)
 
@@ -155,14 +155,14 @@ module UnifiedHealthData
       end
     end
 
-    def get_allergies
+    def get_allergies(no_cache: false)
       validate_icn!
       with_monitoring do
         # NOTE: we must pass in a startDate and endDate to SCDF
         start_date = default_start_date
         end_date = default_end_date
 
-        response = uhd_client.get_allergies_by_date(patient_id: @user.icn, start_date:, end_date:)
+        response = uhd_client.get_allergies_by_date(patient_id: @user.icn, start_date:, end_date:, no_cache:)
         body = response.body
         warnings = extract_warnings(body)
 
@@ -201,14 +201,14 @@ module UnifiedHealthData
       end
     end
 
-    def get_immunizations
+    def get_immunizations(no_cache: false)
       validate_icn!
       with_monitoring do
         # NOTE: we must pass in a startDate and endDate to SCDF
         start_date = default_start_date
         end_date = default_end_date
 
-        response = uhd_client.get_immunizations_by_date(patient_id: @user.icn, start_date:, end_date:)
+        response = uhd_client.get_immunizations_by_date(patient_id: @user.icn, start_date:, end_date:, no_cache:)
         body = response.body
         warnings = extract_warnings(body)
 

@@ -38,7 +38,8 @@ describe UnifiedHealthData::ImagingService, type: :service do
         start_date: '2024-01-01',
         end_date: '2025-01-01',
         imaging_study_type: 'CT',
-        site_ids: %w[200CRNR 123]
+        site_ids: %w[200CRNR 123],
+        no_cache: false
       )
     end
 
@@ -50,7 +51,21 @@ describe UnifiedHealthData::ImagingService, type: :service do
         start_date: '2024-01-01',
         end_date: '2025-01-01',
         imaging_study_type: 'RADIOLOGY',
-        site_ids: []
+        site_ids: [],
+        no_cache: false
+      )
+    end
+
+    it 'forwards no_cache: true to the client' do
+      service.get_imaging_studies(**date_params, no_cache: true)
+
+      expect(client).to have_received(:get_imaging_studies).with(
+        patient_id: user.icn,
+        start_date: '2024-01-01',
+        end_date: '2025-01-01',
+        imaging_study_type: 'RADIOLOGY',
+        site_ids: [],
+        no_cache: true
       )
     end
 

@@ -11,14 +11,15 @@ module UnifiedHealthData
     include Common::Client::Concerns::Monitoring
     include Concerns::ImagingLogging
 
-    def get_imaging_studies(start_date:, end_date:, imaging_study_type: 'RADIOLOGY', site_ids: [])
+    def get_imaging_studies(start_date:, end_date:, imaging_study_type: 'RADIOLOGY', site_ids: [], no_cache: false)
       with_monitoring do
         response = uhd_client.get_imaging_studies(
           patient_id: @user.icn,
           start_date:,
           end_date:,
           imaging_study_type:,
-          site_ids:
+          site_ids:,
+          no_cache:
         )
         records = response.body['entry'] || []
         log_operation_outcomes(records)
