@@ -13,7 +13,7 @@ module SurvivorsBenefits::StructuredData::V2022::Section04
     fields.merge!(y_n_pair(pregnant_with_veteran, 'EXPECTING_BIRTH_VET_CHILD_YES', 'EXPECTING_BIRTH_VET_CHILD_NO'))
     fields.merge!(y_n_pair(lived_with_veteran, 'LIVE_WITH_VET_TILL_DEATH_YES', 'LIVE_WITH_VET_TILL_DEATH_NO'))
     fields.merge!(y_n_pair(discordant_separation, 'MARITAL_DISCORD_SEPARATION_Y', 'MARITAL_DISCORD_SEPARATION_N'))
-    fields.merge!(y_n_pair(marriage_type == 'ceremonial', 'CB_CL_MARR_1_TYPE_CEREMONIAL', 'CB_CL_MARR_1_TYPE_OTHER'))
+    fields.merge!(y_n_pair((marriage_type&.== 'ceremonial'), 'CB_CL_MARR_1_TYPE_CEREMONIAL', 'CB_CL_MARR_1_TYPE_OTHER'))
     fields.merge!(
       {
         'VET_CLAIMANT_MARRIAGE_1_DATE' => format_date(form.dig('marriageDates', 'from')),
@@ -42,7 +42,7 @@ module SurvivorsBenefits::StructuredData::V2022::Section04
   ##
   # Build and merge the veteran separation fields
   def merge_veteran_separation_fields
-    married_at_death = form['marriedToVeteranAtTimeOfDeath'] || false
+    married_at_death = form['marriedToVeteranAtTimeOfDeath']
     marriages_end_cause = form['howMarriageEnded']
     marriages_end_cause = 'death' if married_at_death
     fields.merge!(y_n_pair(married_at_death, 'MARRIED_WHILE_VET_DEATH_Y', 'MARRIED_WHILE_VET_DEATH_N'))
@@ -61,7 +61,7 @@ module SurvivorsBenefits::StructuredData::V2022::Section04
   ##
   # Build and merge the claimant remarriage fields
   def merge_claimant_remarriage_fields
-    has_remarried = form['remarriedAfterVeteralDeath'] || false
+    has_remarried = form['remarriedAfterVeteralDeath']
     expand_and_merge_remarriage_end_cause(has_remarried, form['remarriageEndCause'])
     fields.merge!(y_n_pair(has_remarried, 'REMARRIED_AFTER_VET_DEATH_YES', 'REMARRIED_AFTER_VET_DEATH_NO'))
     fields.merge!(y_n_pair(form['claimantHasAdditionalMarriages'], 'ADDITIONAL_MARRIAGES_Y', 'ADDITIONAL_MARRIAGES_N'))

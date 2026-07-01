@@ -54,6 +54,14 @@ RSpec.describe SurvivorsBenefits::StructuredData::V2025::Section04 do
     end
   end
 
+  describe '#merge_veteran_separation_fields when marriedToVeteranAtTimeOfDeath is nil' do
+    it 'sets both MARRIED_WHILE_VET_DEATH flags to empty string' do
+      service = SurvivorsBenefits::StructuredData::V2025::StructuredDataService.new({})
+      service.merge_veteran_separation_fields
+      expect(service.fields).to include('MARRIED_WHILE_VET_DEATH_Y' => '', 'MARRIED_WHILE_VET_DEATH_N' => '')
+    end
+  end
+
   describe '#merge_claimant_remarriage_fields' do
     it 'reads remarried flag from the corrected field name remarriedAfterVeteranDeath' do
       form = { 'remarriedAfterVeteranDeath' => true, 'remarriageEndCause' => 'divorce' }
@@ -70,6 +78,12 @@ RSpec.describe SurvivorsBenefits::StructuredData::V2025::Section04 do
       service = SurvivorsBenefits::StructuredData::V2025::StructuredDataService.new(form)
       service.merge_claimant_remarriage_fields
       expect(service.fields['REMARRIED_AFTER_VET_DEATH_YES']).to be true
+    end
+
+    it 'sets both REMARRIED_AFTER_VET_DEATH flags to empty string when field is nil' do
+      service = SurvivorsBenefits::StructuredData::V2025::StructuredDataService.new({})
+      service.merge_claimant_remarriage_fields
+      expect(service.fields).to include('REMARRIED_AFTER_VET_DEATH_YES' => '', 'REMARRIED_AFTER_VET_DEATH_NO' => '')
     end
   end
 

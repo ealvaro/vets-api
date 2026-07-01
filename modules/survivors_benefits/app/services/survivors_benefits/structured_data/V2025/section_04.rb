@@ -15,7 +15,7 @@ module SurvivorsBenefits::StructuredData::V2025::Section04
     # V2025: separation reason splits into two named checkboxes instead of a Y/N radio pair
     fields['SEPARATION_MEDICAL_FINANCIAL'] = discordant_separation == true
     fields['MARITAL_DISCORD_OTHER'] = discordant_separation == false
-    fields.merge!(y_n_pair(marriage_type == 'ceremonial', 'CB_CL_MARR_1_TYPE_CEREMONIAL', 'CB_CL_MARR_1_TYPE_OTHER'))
+    fields.merge!(y_n_pair((marriage_type&.== 'ceremonial'), 'CB_CL_MARR_1_TYPE_CEREMONIAL', 'CB_CL_MARR_1_TYPE_OTHER'))
     fields.merge!(
       {
         'VET_CLAIMANT_MARRIAGE_1_DATE' => format_date(form.dig('marriageDates', 'from')),
@@ -44,7 +44,7 @@ module SurvivorsBenefits::StructuredData::V2025::Section04
   ##
   # Build and merge the veteran separation fields
   def merge_veteran_separation_fields
-    married_at_death = form['marriedToVeteranAtTimeOfDeath'] || false
+    married_at_death = form['marriedToVeteranAtTimeOfDeath']
     marriages_end_cause = form['howMarriageEnded']
     marriages_end_cause = 'death' if married_at_death
     fields.merge!(y_n_pair(married_at_death, 'MARRIED_WHILE_VET_DEATH_Y', 'MARRIED_WHILE_VET_DEATH_N'))
@@ -64,7 +64,7 @@ module SurvivorsBenefits::StructuredData::V2025::Section04
   # Build and merge the claimant remarriage fields
   def merge_claimant_remarriage_fields
     # V2025 form uses 'remarriedAfterVeteranDeath' (fixed typo from V2022 'remarriedAfterVeteralDeath')
-    has_remarried = form['remarriedAfterVeteranDeath'] || form['remarriedAfterVeteralDeath'] || false
+    has_remarried = form['remarriedAfterVeteranDeath'] || form['remarriedAfterVeteralDeath']
     expand_and_merge_remarriage_end_cause(has_remarried, form['remarriageEndCause'])
     fields.merge!(y_n_pair(has_remarried, 'REMARRIED_AFTER_VET_DEATH_YES', 'REMARRIED_AFTER_VET_DEATH_NO'))
     fields.merge!(y_n_pair(form['claimantHasAdditionalMarriages'], 'ADDITIONAL_MARRIAGES_Y', 'ADDITIONAL_MARRIAGES_N'))

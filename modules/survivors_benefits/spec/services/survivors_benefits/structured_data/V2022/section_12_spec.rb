@@ -14,7 +14,7 @@ RSpec.describe SurvivorsBenefits::StructuredData::V2022::Section12 do
       service.build_section12
       expect(service.fields).to include(
         'CB_FURTHER_EVD_CLAIM_SUPPORT' => false,
-        'CLAIM_TYPE_FULLY_DEVELOPED_CHK' => true,
+        'CLAIM_TYPE_FULLY_DEVELOPED_CHK' => '',
         'CLAIMANT_SIGNATURE_X' => nil,
         'CLAIMANT_SIGNATURE' => 'John Doe',
         'DATE_OF_CLAIMANT_SIGNATURE' => '01/01/2024'

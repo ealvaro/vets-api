@@ -139,6 +139,14 @@ RSpec.describe SurvivorsBenefits::StructuredData::Section04 do
     end
   end
 
+  describe '#merge_veteran_separation_fields when marriedToVeteranAtTimeOfDeath is nil' do
+    it 'sets both MARRIED_WHILE_VET_DEATH flags to empty string' do
+      service = SurvivorsBenefits::StructuredData::StructuredDataService.new({})
+      service.merge_veteran_separation_fields
+      expect(service.fields).to include('MARRIED_WHILE_VET_DEATH_Y' => '', 'MARRIED_WHILE_VET_DEATH_N' => '')
+    end
+  end
+
   describe '#merge_claimant_remarriage_fields' do
     it 'calls expand_and_merge_remarriage_end_cause' do
       form = { 'remarriedAfterVeteralDeath' => true, 'remarriageEndCause' => 'death' }
@@ -197,6 +205,12 @@ RSpec.describe SurvivorsBenefits::StructuredData::Section04 do
           'CB_REMARRIAGE_END_BY_OTHER' => true
         )
       end
+    end
+
+    it 'sets both REMARRIED_AFTER_VET_DEATH flags to empty string when field is nil' do
+      service = SurvivorsBenefits::StructuredData::StructuredDataService.new({})
+      service.merge_claimant_remarriage_fields
+      expect(service.fields).to include('REMARRIED_AFTER_VET_DEATH_YES' => '', 'REMARRIED_AFTER_VET_DEATH_NO' => '')
     end
   end
 

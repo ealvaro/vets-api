@@ -170,7 +170,7 @@ module Mms
     # @param no [String] The IBM field name to use for the "no" value.
     # @return [Hash] A hash with the yes and no field names as keys, and boolean values indicating which one is true.
     def y_n_pair(field, yes, no)
-      return {} if field.nil?
+      return { yes => '', no => '' } if field.nil?
 
       { yes => field == true, no => field == false }
     end

@@ -75,10 +75,10 @@ RSpec.describe SurvivorsBenefits::StructuredData::V2025::Section03 do
       )
     end
 
-    it 'sets Y/N flags correctly when aliases are nil' do
+    it 'sets both VET_NAME_OTHER flags to empty string when aliases are nil (question not answered)' do
       service = SurvivorsBenefits::StructuredData::V2025::StructuredDataService.new({})
       service.merge_vet_aliases(nil)
-      expect(service.fields).to include('VET_NAME_OTHER_Y' => false, 'VET_NAME_OTHER_N' => true)
+      expect(service.fields).to include('VET_NAME_OTHER_Y' => '', 'VET_NAME_OTHER_N' => '')
     end
   end
 

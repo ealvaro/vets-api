@@ -9,7 +9,7 @@ module SurvivorsBenefits::StructuredData::Section12
     fields.merge!(
       {
         'CB_FURTHER_EVD_CLAIM_SUPPORT' => false,
-        'CLAIM_TYPE_FULLY_DEVELOPED_CHK' => true,
+        'CLAIM_TYPE_FULLY_DEVELOPED_CHK' => '',
         'CLAIMANT_SIGNATURE' => claimant_name[:full],
         'DATE_OF_CLAIMANT_SIGNATURE' => format_date(form['dateSigned'] || Date.current)
       }

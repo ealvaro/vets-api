@@ -83,6 +83,12 @@ RSpec.describe SurvivorsBenefits::StructuredData::Section03 do
         'VET_NAME_OTHER_2' => 'J Doe'
       )
     end
+
+    it 'sets both VET_NAME_OTHER flags to empty string when aliases are nil (question not answered)' do
+      service = SurvivorsBenefits::StructuredData::StructuredDataService.new({})
+      service.merge_vet_aliases(nil)
+      expect(service.fields).to include('VET_NAME_OTHER_Y' => '', 'VET_NAME_OTHER_N' => '')
+    end
   end
 
   describe '#merge_service_branch_fields' do

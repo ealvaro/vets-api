@@ -340,9 +340,9 @@ RSpec.describe Mms::DataFormatting do
   end
 
   describe '#y_n_pair' do
-    it 'returns an empty hash when the field is nil' do
+    it 'returns both fields as empty strings when the field is nil' do
       result = subject.y_n_pair(nil, 'YES_FIELD', 'NO_FIELD')
-      expect(result).to eq({})
+      expect(result).to eq({ 'YES_FIELD' => '', 'NO_FIELD' => '' })
     end
 
     it 'returns a hash with the yes field set to true when the field is true' do

@@ -31,7 +31,7 @@ module SurvivorsBenefits::StructuredData::V2025::Section03
   #
   # @param aliases [Array<Hash>]
   def merge_vet_aliases(aliases = [])
-    has_aliases = aliases&.length&.positive? || false
+    has_aliases = aliases&.length&.positive?
     fields.merge!(y_n_pair(has_aliases, 'VET_NAME_OTHER_Y', 'VET_NAME_OTHER_N'))
     n1_name = alias_name_hash(aliases&.first)
     n2_name = alias_name_hash(aliases&.second)
