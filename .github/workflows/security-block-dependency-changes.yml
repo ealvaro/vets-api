@@ -1,0 +1,51 @@
+# Emergency lockdown workflow for supply chain attack response.
+# Blocks PRs and pushes that modify Ruby dependency files (Gemfile, Gemfile.lock).
+# The job is SKIPPED by default — it must be explicitly activated.
+#
+# ACTIVATION:
+#   GH_HOST=va.ghe.com gh variable set BLOCK_DEPENDENCY_CHANGES --body "true" --repo software/vets-api
+#
+# DEACTIVATION:
+#   GH_HOST=va.ghe.com gh variable set BLOCK_DEPENDENCY_CHANGES --body "false" --repo software/vets-api
+
+name: Security - Block Dependency Changes
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  check-dependencies:
+    name: Block Dependency Changes
+    if: vars.BLOCK_DEPENDENCY_CHANGES == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Determine diff base
+        id: diff_base
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            git fetch --no-tags --depth=1 origin "$BASE"
+          elif [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            BASE="${{ github.event.before }}"
+            git fetch --no-tags --depth=1 origin "$BASE"
+          else
+            git fetch --no-tags --depth=1 origin master
+            BASE="origin/master"
+          fi
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+      - name: Check for dependency file changes
+        run: |
+          if git diff --name-only --diff-filter=ACMR "${{ steps.diff_base.outputs.base }}" HEAD \
+            | grep -qE '^(Gemfile|Gemfile\.lock)$'; then
+            echo "::error::Dependency file changes detected - blocked during active security lockdown"
+            echo "Contact SRE to deactivate: GH_HOST=va.ghe.com gh variable set BLOCK_DEPENDENCY_CHANGES --body 'false' --repo software/vets-api"
+            exit 1
+          fi
+          echo "No dependency file changes detected."
