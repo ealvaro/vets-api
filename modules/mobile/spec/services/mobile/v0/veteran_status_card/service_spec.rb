@@ -749,7 +749,7 @@ RSpec.describe Mobile::V0::VeteranStatusCard::Service do
       context 'when environment is not production' do
         before { allow(Settings).to receive(:vsp_environment).and_return('staging') }
 
-        it 'returns ineligible_response for person not found' do
+        it 'returns person not found response' do
           response = subject.status_card
 
           expect(response[:attributes][:confirmation_status]).to eq(described_class::PERSON_NOT_FOUND_MESSAGE.upcase)
@@ -761,7 +761,7 @@ RSpec.describe Mobile::V0::VeteranStatusCard::Service do
         before { allow(Settings).to receive(:vsp_environment).and_return('production') }
 
         it 'does not trigger special test cases, continues regular logic' do
-          expect_any_instance_of(described_class).not_to receive(:ineligible_response)
+          expect_any_instance_of(described_class).not_to receive(:person_not_found_response_hash)
           subject.status_card
         end
       end

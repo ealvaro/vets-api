@@ -121,6 +121,11 @@ module VeteranStatusCard
           @ssc_code = 'U'
           return ineligible_response(unknown_eligibility_response, testing: true)
         end
+
+        if @user&.email == 'vets.gov.user+9@gmail.com'
+          @confirmation_status = PERSON_NOT_FOUND_MESSAGE
+          return person_not_found_response_hash
+        end
       end
 
       # Check up front that the ICN is present, as this is required for the VetVerificationStatus service

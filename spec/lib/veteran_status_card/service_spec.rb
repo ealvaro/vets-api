@@ -958,6 +958,30 @@ RSpec.describe VeteranStatusCard::Service do
       end
     end
 
+    context 'when user is +9' do
+      let(:user) { build(:user, email: 'vets.gov.user+9@gmail.com') }
+
+      context 'when environment is not production' do
+        before { allow(Settings).to receive(:vsp_environment).and_return('staging') }
+
+        it 'returns person not found response' do
+          response = subject.status_card
+
+          expect(response[:attributes][:confirmation_status]).to eq(described_class::PERSON_NOT_FOUND_MESSAGE.upcase)
+          expect(response[:attributes][:service_summary_code]).to be_nil
+        end
+      end
+
+      context 'when environment is production' do
+        before { allow(Settings).to receive(:vsp_environment).and_return('production') }
+
+        it 'does not trigger special test cases, continues regular logic' do
+          expect_any_instance_of(described_class).not_to receive(:person_not_found_response_hash)
+          subject.status_card
+        end
+      end
+    end
+
     context 'when user is not a test user' do
       let(:user) { build(:user, email: 'normal.user@example.com') }
 
