@@ -3763,6 +3763,10 @@ features:
   vre_use_claims_evidence_api:
     actor_type: user
     description: If enabled, use Claims Evidence API for VRE document uploads instead of legacy VBMS uploader
+  cve_email_verification:
+    actor_type: user
+    description: Enables Email Verification for VAP-SVC
+    enable_in_development: true
   cve_onboarding_modal:
     actor_type: user
     description: If enabled, displays onboarding modal to users
