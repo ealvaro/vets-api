@@ -235,6 +235,19 @@
                     "format": "float",
                     "example": -122.4194,
                     "nullable": true
+                  },
+                  "can_accept_digital_poa_requests": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "acceptance_mode": {
+                    "type": "string",
+                    "enum": [
+                      "any_request",
+                      "self_only",
+                      "no_acceptance"
+                    ],
+                    "example": "any_request"
                   }
                 }
               }

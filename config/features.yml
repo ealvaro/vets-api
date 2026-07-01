@@ -18,6 +18,9 @@ features:
   this_is_only_a_test_two:
     actor_type: user
     description: Used in feature toggle specs.
+  accredited_entity_models_populate_with_accreditation_api:
+    actor_type: user
+    description: When enabled, the daily accredited-entity ingestion populates from the GCLAWS Accreditation API; when disabled (default), it uses the trexler/XLSX file source
   accredited_entity_models_populate_with_xlsx_data:
     actor_type: user
     description: Enables the population of accredited entity models with data from the GCLAWS Accreditation XLSX file

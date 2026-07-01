@@ -13,8 +13,14 @@ module RepresentationManagement
                  :phone, :email,
                  :individual_type
 
-      attribute :accredited_organizations do |object|
-        RepresentationManagement::AccreditedIndividuals::OrganizationSerializer.new(object.accredited_organizations)
+      attribute :accredited_organizations do |object, params|
+        modes = (params[:acceptance_modes] || {})[object.registration_number] || {}
+        organizations = object.accredited_organizations.map do |org|
+          RepresentationManagement::OrganizationWithAcceptanceMode.new(
+            org, acceptance_mode: modes[org.poa_code]
+          )
+        end
+        RepresentationManagement::AccreditedIndividuals::OrganizationSerializer.new(organizations)
       end
     end
   end

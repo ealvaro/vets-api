@@ -4,11 +4,16 @@ This directory contains Sidekiq background jobs that handle the synchronization 
 
 ## Overview
 
-The synchronization process consists of two main jobs that work together, plus a fallback mechanism:
+The daily accredited-entities ingestion populates the database from one of two sources, selected by the `accredited_entity_models_populate_with_accreditation_api` flag:
 
-1. **AccreditedEntitiesQueueUpdates** - Fetches and processes entity data from GCLAWS API
+- **flag ON** → GCLAWS Accreditation API (`AccreditedEntitiesQueueUpdates`)
+- **flag OFF (default)** → trexler/XLSX file (`AccreditationXlsxProcessor`)
+
+Jobs involved:
+
+1. **AccreditedEntitiesQueueUpdates** - Fetches and processes entity data from the GCLAWS API
 2. **AccreditedIndividualsUpdate** - Validates addresses and updates database records
-3. **AccreditationXlsxProcessor** *(fallback)* - Processes GCLAWS XLSX data for entity types that failed API processing
+3. **AccreditationXlsxProcessor** - Scheduled daily; populates from the GCLAWS XLSX file, or hands off to the API job when the flag is on
 
 ## Jobs
 
@@ -16,9 +21,9 @@ The synchronization process consists of two main jobs that work together, plus a
 
 **Location:** `app/sidekiq/representation_management/accredited_entities_queue_updates.rb`
 
-**Schedule:** Daily at 4:00 AM ET (cron: `0 4 * * *`)
+**Schedule:** Invoked by `AccreditationXlsxProcessor` during the daily 4:00 AM ET ingestion when `accredited_entity_models_populate_with_accreditation_api` is enabled; can also be run manually.
 
-This is the primary job that initiates the accredited entities update process. It performs the following tasks:
+This is the API-source job for the accredited entities update process. It performs the following tasks:
 
 #### Key Features:
 - Fetches accredited entities data from GCLAWS API (agents, attorneys, representatives, VSOs)
@@ -62,13 +67,12 @@ RepresentationManagement::AccreditedEntitiesQueueUpdates.perform_async(['represe
    - Representative-VSO associations are tracked and stored
    - Accreditation join records are created/updated
 5. Removes obsolete records (individuals, organizations, and accreditations)
-6. **XLSX Fallback**: After processing completes (or fails), any entity types that encountered processing errors or count mismatches are automatically enqueued for processing via `AccreditationXlsxProcessor.perform_async`. This runs as a separate Sidekiq job with its own retry policy (10 retries over ~21 hours) and independent Slack reporting.
 
-### AccreditationXlsxProcessor (XLSX Fallback)
+### AccreditationXlsxProcessor
 
 **Location:** `app/sidekiq/representation_management/accreditation_xlsx_processor.rb`
 
-**Schedule:** Not scheduled independently — enqueued as a fallback by `AccreditedEntitiesQueueUpdates` when entity types fail API processing.
+**Schedule:** Daily at 4:00 AM ET (cron: `0 4 * * *`). This is the scheduled entry point for the daily ingestion: when `accredited_entity_models_populate_with_accreditation_api` is enabled it hands off to `AccreditedEntitiesQueueUpdates` (API source); otherwise it runs the trexler/XLSX path below. (This dispatch role is temporary, pending a rename.)
 
 **Retry Policy:** 10 retries (~21 hours) with `sidekiq_retries_exhausted` Slack alerting.
 
@@ -80,7 +84,6 @@ This job provides a secondary data pipeline using the GCLAWS SSRS XLSX export. I
 - Directly writes email, phone, name, and raw_address updates to the database
 - Queues address validation jobs for records with changed addresses
 - Independent Slack reporting (separate from the parent job's report)
-- Feature-flagged via `accredited_entity_models_populate_with_xlsx_data`
 
 #### Usage:
 ```ruby
@@ -135,12 +138,6 @@ AccreditedEntitiesQueueUpdates
     ├─► Fetches entity data
     ├─► Creates/updates records
     ├─► Identifies address changes
-    │
-    ├─► On failure ──► AccreditationXlsxProcessor (async fallback)
-    │                       │
-    │                       ├─► Downloads GCLAWS XLSX
-    │                       ├─► Parses & writes to DB
-    │                       └─► Queues address validation
     │
     ▼
 AccreditedIndividualsUpdate (batched)

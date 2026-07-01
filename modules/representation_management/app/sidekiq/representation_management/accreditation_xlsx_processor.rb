@@ -38,7 +38,14 @@ module RepresentationManagement
     # @param types [Array<String>] API-level entity types to process (defaults to all)
     #   Valid types: 'agents', 'attorneys', 'representatives', 'veteran_service_organizations'
     def perform(types = VALID_TYPES)
-      return unless feature_enabled?
+      # When the accreditation API source is enabled, hand off to the API ingestion job
+      # instead of the trexler/XLSX path. The `types` argument is ignored in this mode — the
+      # API job runs its full default ingestion. This job is the legacy (default) source and
+      # is slated to be renamed/removed once the API source is fully live.
+      if Flipper.enabled?(:accredited_entity_models_populate_with_accreditation_api)
+        RepresentationManagement::AccreditedEntitiesQueueUpdates.perform_async
+        return
+      end
 
       @report = []
       @start_time = Time.current
@@ -64,18 +71,6 @@ module RepresentationManagement
     end
 
     private
-
-    # Checks if the feature flag is enabled; logs and returns false if not
-    # @return [Boolean]
-    def feature_enabled?
-      return true if Flipper.enabled?(:accredited_entity_models_populate_with_xlsx_data)
-
-      log_info('RepresentationManagement::AccreditationXlsxProcessor: Feature flag ' \
-               'accredited_entity_models_populate_with_xlsx_data is disabled. Job skipped.')
-      log_to_slack('RepresentationManagement::AccreditationXlsxProcessor: Feature flag ' \
-                   'accredited_entity_models_populate_with_xlsx_data is disabled. Job skipped.')
-      false
-    end
 
     # Validates and normalizes the types parameter
     # @param types [Array<String>] The types to validate

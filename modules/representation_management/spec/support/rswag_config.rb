@@ -247,7 +247,11 @@ class RepresentationManagement::RswagConfig
   end
 
   def accredited_organization_schema
-    build_organization_schema
+    optional_attributes = {
+      can_accept_digital_poa_requests: { type: :boolean, example: true },
+      acceptance_mode: { type: :string, enum: %w[any_request self_only no_acceptance], example: 'any_request' }
+    }
+    build_organization_schema(optional_attributes:)
   end
 
   def accredited_organization_with_limited_properties_schema

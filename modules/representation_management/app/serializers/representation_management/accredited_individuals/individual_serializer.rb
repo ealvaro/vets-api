@@ -18,8 +18,14 @@ module RepresentationManagement
         object.distance / AccreditedRepresentation::Constants::METERS_PER_MILE
       end
 
-      attribute :accredited_organizations do |object|
-        OrganizationSerializer.new(object.accredited_organizations)
+      attribute :accredited_organizations do |object, params|
+        modes = (params[:acceptance_modes] || {})[object.registration_number] || {}
+        organizations = object.accredited_organizations.map do |org|
+          RepresentationManagement::OrganizationWithAcceptanceMode.new(
+            org, acceptance_mode: modes[org.poa_code]
+          )
+        end
+        OrganizationSerializer.new(organizations)
       end
     end
   end

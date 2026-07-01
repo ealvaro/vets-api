@@ -23,7 +23,8 @@ describe RepresentationManagement::AccreditedIndividuals::OrganizationSerializer
            zip_suffix: '6789',
            phone: '222-222-2222',
            lat: '39',
-           long: '-75')
+           long: '-75',
+           can_accept_digital_poa_requests: true)
   end
   let(:data) { subject.serializable_hash.with_indifferent_access['data'] }
   let(:attributes) { data['attributes'] }
@@ -98,5 +99,25 @@ describe RepresentationManagement::AccreditedIndividuals::OrganizationSerializer
 
   it 'includes long' do
     expect(attributes['long']).to eq(-75)
+  end
+
+  it 'includes can_accept_digital_poa_requests' do
+    expect(attributes['can_accept_digital_poa_requests']).to be true
+  end
+
+  it 'defaults acceptance_mode to no_acceptance for a bare organization' do
+    expect(attributes['acceptance_mode']).to eq('no_acceptance')
+  end
+
+  context 'when wrapped with acceptance context' do
+    subject do
+      described_class.new(
+        RepresentationManagement::OrganizationWithAcceptanceMode.new(organization, acceptance_mode: 'any_request')
+      )
+    end
+
+    it 'includes the supplied acceptance_mode' do
+      expect(attributes['acceptance_mode']).to eq('any_request')
+    end
   end
 end

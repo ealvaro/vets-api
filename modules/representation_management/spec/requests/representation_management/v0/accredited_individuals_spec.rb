@@ -9,9 +9,6 @@ RSpec.describe 'RepresentationManagement::V0::AccreditedIndividuals', type: :req
   let(:lat) { 42.65140884 }
   let(:long) { -73.77623285 }
 
-  let(:data_ingestion_log_accreditation) { build_stubbed(:accreditation_data_ingestion_log) }
-  let(:data_ingestion_log_trexler) { build_stubbed(:accreditation_data_ingestion_log, :trexler_file) }
-
   context 'when arc_find_a_representative_backend_use_accredited_models is disabled' do
     before do
       allow(Flipper).to receive(:enabled?)
@@ -63,104 +60,63 @@ RSpec.describe 'RepresentationManagement::V0::AccreditedIndividuals', type: :req
     end
 
     context 'when the search is valid' do
-      context 'when the current data source is the Accreditation API' do
-        let!(:ind1) { create(:accredited_individual, :with_organizations, :with_location, first_name: 'August') }
-        let!(:ind2) { create(:accredited_individual, :with_organizations, :with_location, first_name: 'Bob') }
-        let!(:ind3) { create(:accredited_individual, :with_organizations, :with_location, first_name: 'Cindy') }
-        let!(:ind4) { create(:accredited_individual, :with_organizations, :with_location, first_name: 'Debra') }
+      let!(:ind1) { create(:accredited_individual, :with_organizations, :with_location, first_name: 'August') }
+      let!(:ind2) { create(:accredited_individual, :with_organizations, :with_location, first_name: 'Bob') }
+      let!(:ind3) { create(:accredited_individual, :with_organizations, :with_location, first_name: 'Cindy') }
+      let!(:ind4) { create(:accredited_individual, :with_organizations, :with_location, first_name: 'Debra') }
 
-        before do
-          expect(RepresentationManagement::AccreditationDataIngestionLog)
-            .to receive(:most_recent_successful)
-            .and_return(data_ingestion_log_accreditation)
-        end
+      it 'returns ok for a successful request' do
+        get path, params: { type:, lat:, long: }
 
-        it 'returns ok for a successful request' do
-          get path, params: { type:, lat:, long: }
-
-          expect(response).to have_http_status(:ok)
-        end
-
-        it 'returns the accredited individuals in the body' do
-          get path, params: { type:, lat:, long: }
-
-          parsed_response = JSON.parse(response.body)
-
-          expect(parsed_response['data'].pluck('id')).to contain_exactly(ind1.id, ind2.id, ind3.id, ind4.id)
-        end
-
-        it 'paginates' do
-          get path, params: { type:, lat:, long:, sort: 'first_name_asc', page: 1, per_page: 2 }
-
-          parsed_response = JSON.parse(response.body)
-
-          expect(parsed_response['data'].pluck('id')).to contain_exactly(ind1.id, ind2.id)
-          expect(parsed_response['meta']['pagination']['current_page']).to eq(1)
-          expect(parsed_response['meta']['pagination']['per_page']).to eq(2)
-          expect(parsed_response['meta']['pagination']['total_pages']).to eq(2)
-          expect(parsed_response['meta']['pagination']['total_entries']).to eq(4)
-        end
-
-        context 'when there are no results for the search criteria' do
-          it 'returns an empty list' do
-            get path, params: { type: 'claims_agent', lat:, long: }
-
-            parsed_response = JSON.parse(response.body)
-
-            expect(parsed_response['data']).to eq([])
-            expect(parsed_response['meta']['pagination']['total_entries']).to eq(0)
-          end
-        end
+        expect(response).to have_http_status(:ok)
       end
 
-      context 'when the current data source is the Trexler file' do
-        let!(:org) { create(:veteran_organization, poa: 'A1Q') }
-        let!(:rep1) { create(:veteran_representative, :vso, :with_address, first_name: 'August') }
-        let!(:rep2) { create(:veteran_representative, :vso, :with_address, first_name: 'Bob') }
-        let!(:rep3) { create(:veteran_representative, :vso, :with_address, first_name: 'Cindy') }
-        let!(:rep4) { create(:veteran_representative, :vso, :with_address, first_name: 'Debra') }
+      it 'returns the accredited individuals in the body' do
+        get path, params: { type:, lat:, long: }
 
-        before do
-          expect(RepresentationManagement::AccreditationDataIngestionLog)
-            .to receive(:most_recent_successful)
-            .and_return(data_ingestion_log_trexler)
+        parsed_response = JSON.parse(response.body)
+
+        expect(parsed_response['data'].pluck('id')).to contain_exactly(ind1.id, ind2.id, ind3.id, ind4.id)
+      end
+
+      it 'surfaces each per-rep acceptance_mode on the nested organization' do
+        ind1.accreditations.first.update!(acceptance_mode: 'any_request')
+        ind2.accreditations.first.update!(acceptance_mode: 'self_only')
+        # ind3 keeps the factory default (no_acceptance)
+
+        get path, params: { type:, lat:, long: }
+
+        parsed_response = JSON.parse(response.body)
+        acceptance_mode_for = lambda do |individual|
+          entry = parsed_response['data'].find { |e| e['id'] == individual.id }
+          entry['attributes']['accredited_organizations']['data'].first['attributes']['acceptance_mode']
         end
 
-        it 'returns ok for a successful request' do
-          get path, params: { type:, lat:, long: }
+        expect(acceptance_mode_for.call(ind1)).to eq('any_request')
+        expect(acceptance_mode_for.call(ind2)).to eq('self_only')
+        expect(acceptance_mode_for.call(ind3)).to eq('no_acceptance')
+      end
 
-          expect(response).to have_http_status(:ok)
-        end
+      it 'paginates' do
+        get path, params: { type:, lat:, long:, sort: 'first_name_asc', page: 1, per_page: 2 }
 
-        it 'returns the veteran representatives in the body' do
-          get path, params: { type:, lat:, long: }
+        parsed_response = JSON.parse(response.body)
+
+        expect(parsed_response['data'].pluck('id')).to contain_exactly(ind1.id, ind2.id)
+        expect(parsed_response['meta']['pagination']['current_page']).to eq(1)
+        expect(parsed_response['meta']['pagination']['per_page']).to eq(2)
+        expect(parsed_response['meta']['pagination']['total_pages']).to eq(2)
+        expect(parsed_response['meta']['pagination']['total_entries']).to eq(4)
+      end
+
+      context 'when there are no results for the search criteria' do
+        it 'returns an empty list' do
+          get path, params: { type: 'claims_agent', lat:, long: }
 
           parsed_response = JSON.parse(response.body)
 
-          expect(parsed_response['data'].pluck('id')).to contain_exactly(rep1.id, rep2.id, rep3.id, rep4.id)
-        end
-
-        it 'paginates' do
-          get path, params: { type:, lat:, long:, sort: 'first_name_asc', page: 1, per_page: 2 }
-
-          parsed_response = JSON.parse(response.body)
-
-          expect(parsed_response['data'].pluck('id')).to contain_exactly(rep1.id, rep2.id)
-          expect(parsed_response['meta']['pagination']['current_page']).to eq(1)
-          expect(parsed_response['meta']['pagination']['per_page']).to eq(2)
-          expect(parsed_response['meta']['pagination']['total_pages']).to eq(2)
-          expect(parsed_response['meta']['pagination']['total_entries']).to eq(4)
-        end
-
-        context 'when there are no results for the search criteria' do
-          it 'returns an empty list' do
-            get path, params: { type: 'claims_agent', lat:, long: }
-
-            parsed_response = JSON.parse(response.body)
-
-            expect(parsed_response['data']).to eq([])
-            expect(parsed_response['meta']['pagination']['total_entries']).to eq(0)
-          end
+          expect(parsed_response['data']).to eq([])
+          expect(parsed_response['meta']['pagination']['total_entries']).to eq(0)
         end
       end
     end

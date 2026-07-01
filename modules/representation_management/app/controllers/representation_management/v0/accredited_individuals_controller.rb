@@ -11,20 +11,17 @@ module RepresentationManagement
       DEFAULT_PER_PAGE = 10
 
       def index
-        model_class = use_veteran_model? ? Veteran::Service::Representative : AccreditedIndividual
-        search = RepresentationManagement::AccreditedIndividualSearch.new(search_params.merge({ model_class: }))
+        search = RepresentationManagement::AccreditedIndividualSearch.new(
+          search_params.merge({ model_class: AccreditedIndividual })
+        )
 
         if search.valid?
           results = search.perform
-
-          if model_class == Veteran::Service::Representative
-            model_class = RepresentationManagement::VeteranRepresentativeAdapter
-            results = results.map { |record| model_class.new(record) }
-          end
-
-          collection = Common::Collection.new(model_class, data: results)
+          collection = Common::Collection.new(AccreditedIndividual, data: results)
           resource = collection.paginate(**pagination_params)
-          options = { meta: resource.metadata }
+          acceptance_modes =
+            RepresentationManagement::OrganizationWithAcceptanceMode.acceptance_modes_for(resource.data)
+          options = { meta: resource.metadata, params: { acceptance_modes: } }
 
           render json: RepresentationManagement::AccreditedIndividuals::IndividualSerializer.new(resource.data, options)
         else
@@ -50,14 +47,6 @@ module RepresentationManagement
 
       def feature_enabled
         routing_error unless Flipper.enabled?(:arc_find_a_representative_backend_use_accredited_models)
-      end
-
-      def current_data_source_log
-        RepresentationManagement::AccreditationDataIngestionLog.most_recent_successful
-      end
-
-      def use_veteran_model?
-        current_data_source_log&.trexler_file?
       end
     end
   end

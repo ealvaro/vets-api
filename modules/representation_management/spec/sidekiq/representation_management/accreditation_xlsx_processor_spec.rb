@@ -18,23 +18,21 @@ RSpec.describe RepresentationManagement::AccreditationXlsxProcessor do
     before do
       allow_any_instance_of(RepresentationManagement::VSOReloader).to receive(:perform)
       allow(Settings).to receive(:vsp_environment).and_return('development')
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:accredited_entity_models_populate_with_accreditation_api).and_return(false)
     end
 
-    context 'when accredited_entity_models_populate_with_xlsx_data feature flag is disabled' do
+    context 'when the accreditation API source is enabled' do
       before do
-        allow(Flipper).to receive(:enabled?).with(:accredited_entity_models_populate_with_xlsx_data).and_return(false)
+        allow(Flipper).to receive(:enabled?)
+          .with(:accredited_entity_models_populate_with_accreditation_api).and_return(true)
       end
 
-      it 'does not proceed with processing' do
+      it 'hands off to the API ingestion job and skips the XLSX path' do
+        expect(RepresentationManagement::AccreditedEntitiesQueueUpdates).to receive(:perform_async)
         expect_any_instance_of(RepresentationManagement::VSOReloader).not_to receive(:perform)
         expect(RepresentationManagement::GCLAWS::XlsxClient).not_to receive(:download_accreditation_xlsx)
-
-        subject.perform
-      end
-
-      it 'logs that the feature flag is disabled' do
-        expect(Rails.logger).to receive(:info)
-          .with(/Feature flag accredited_entity_models_populate_with_xlsx_data is disabled/)
 
         subject.perform
       end
