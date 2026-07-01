@@ -22,6 +22,13 @@ RSpec.describe DebtsApi::V0::Form5655::SendConfirmationEmailJob, type: :worker d
       allow(Sidekiq::AttrPackage).to receive(:create).and_return('vanotify_cache_key')
     end
 
+    it 'raises for an unknown submission_type' do
+      job_params = { 'submission_type' => 'banana', 'user_uuid' => user.uuid, 'template_id' => fsr_template_id }
+
+      expect(DebtManagementCenter::VANotifyEmailJob).not_to receive(:perform_async)
+      expect { described_class.new.perform(job_params) }.to raise_error(KeyError)
+    end
+
     shared_examples 'logs no submissions warning' do |submission_type|
       it "logs a warning message#{submission_type == 'digital_dispute' ? ' for digital dispute' : ''}" do
         expect(Rails.logger).to receive(:warn).with(
@@ -116,6 +123,14 @@ RSpec.describe DebtsApi::V0::Form5655::SendConfirmationEmailJob, type: :worker d
           let(:job_params) { job_params_with_cache }
 
           include_examples 'sends email using PII from cache'
+
+          it 'increments the FSR confirmation email sent counter' do
+            allow(DebtManagementCenter::VANotifyEmailJob).to receive(:perform_async)
+
+            expect(StatsD).to receive(:increment).with('api.form5655.send_confirmation_email.sent')
+
+            described_class.new.perform(job_params)
+          end
         end
 
         context 'when only in-progress submissions are found' do
@@ -169,6 +184,14 @@ RSpec.describe DebtsApi::V0::Form5655::SendConfirmationEmailJob, type: :worker d
           let(:job_params) { digital_dispute_job_params_with_cache }
 
           include_examples 'sends email using PII from cache'
+
+          it 'increments the Digital Dispute confirmation email sent counter' do
+            allow(DebtManagementCenter::VANotifyEmailJob).to receive(:perform_async)
+
+            expect(StatsD).to receive(:increment).with('api.digital_dispute.send_confirmation_email.sent')
+
+            described_class.new.perform(job_params)
+          end
         end
 
         context 'when no digital dispute submissions are found' do

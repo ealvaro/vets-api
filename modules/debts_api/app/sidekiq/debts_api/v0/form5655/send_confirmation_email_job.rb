@@ -7,20 +7,24 @@ module DebtsApi
   class V0::Form5655::SendConfirmationEmailJob
     include Sidekiq::Job
 
-    FSR_STATS_KEY = 'api.form5655.send_confirmation_email'
-    DIGITAL_DISPUTE_STATS_KEY = 'api.digital_dispute.send_confirmation_email'
+    STATS_KEYS = {
+      'fsr' => 'api.form5655.send_confirmation_email',
+      'digital_dispute' => 'api.digital_dispute.send_confirmation_email'
+    }.freeze
+
+    def self.validated_submission_type(job_args)
+      submission_type = job_args['submission_type'].presence || 'fsr'
+      STATS_KEYS.fetch(submission_type)
+      submission_type
+    end
 
     sidekiq_options retry: 5
 
     sidekiq_retries_exhausted do |job, ex|
       args = job['args'][0]
       cache_key = args['cache_key']
-      submission_type = args['submission_type'] || 'fsr'
-      stats_key = if submission_type == 'fsr'
-                    FSR_STATS_KEY
-                  else
-                    DIGITAL_DISPUTE_STATS_KEY
-                  end
+      submission_type = validated_submission_type(args)
+      stats_key = STATS_KEYS.fetch(submission_type)
 
       StatsD.increment("#{stats_key}.retries_exhausted")
       user_uuid = args['user_uuid']
@@ -32,7 +36,7 @@ module DebtsApi
     end
 
     def perform(args)
-      submission_type = args['submission_type'] || 'fsr' # TODO: make this file not fsr specific
+      submission_type = self.class.validated_submission_type(args)
       submissions_data = find_submissions(args['user_uuid'], submission_type)
       return if no_submissions_abort?(submission_type, args['user_uuid'], args, submissions_data)
 
@@ -45,7 +49,7 @@ module DebtsApi
       identifier = pii&.dig(:email) unless should_use_cache
       options = should_use_cache ? { id_type: 'email', cache_key: vanotify_cache_key } : {}
 
-      send_vanotify_email(identifier, args['template_id'], personalisation, options, args['user_uuid'])
+      send_vanotify_email(identifier, args, personalisation, options, submission_type)
       Sidekiq::AttrPackage.delete(is_retry) if is_retry
       Sidekiq::AttrPackage.delete(vanotify_cache_key) if vanotify_cache_key
     rescue Sidekiq::AttrPackageError => e
@@ -82,7 +86,10 @@ module DebtsApi
       true
     end
 
-    def send_vanotify_email(identifier, template_id, personalisation, options, user_uuid)
+    def send_vanotify_email(identifier, args, personalisation, options, submission_type)
+      template_id = args['template_id']
+      user_uuid = args['user_uuid']
+
       Rails.logger.info(
         '#send_confirmation_email_job ' \
         "template_id=#{template_id} identifier_present=#{identifier.present?} user_uuid=#{user_uuid}"
@@ -90,6 +97,8 @@ module DebtsApi
       DebtManagementCenter::VANotifyEmailJob.perform_async(
         identifier, template_id, personalisation, options
       )
+      stats_key = STATS_KEYS.fetch(submission_type)
+      StatsD.increment("#{stats_key}.sent")
     end
 
     def fetch_pii_from_cache(cache_key)
