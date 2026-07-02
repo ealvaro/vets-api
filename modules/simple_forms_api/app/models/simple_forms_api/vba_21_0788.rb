@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_rel '../form_engine'
+require 'simple_forms_api/overflow_210788'
 
 module SimpleFormsApi
   class VBA210788 < BaseForm
@@ -176,6 +177,10 @@ module SimpleFormsApi
       Date.parse(data['signature_date']).strftime('%m/%d/%Y')
     end
 
+    def other_relationship_text
+      clip_text_for_length(data['other_relationship_description'], 105)
+    end
+
     def people
       data['apportionment_people'] || []
     end
@@ -201,12 +206,16 @@ module SimpleFormsApi
     end
 
     def apportionment_fields_relationship(person)
-      person['relationship'] == 'other' ? person['other_relationship_description'] : person['relationship']
+      if person['relationship'] == 'other'
+        clip_text_for_length(person['other_relationship_description'], 25)
+      else
+        person['relationship']
+      end
     end
 
     def departure_date
       dates = people.map do |p|
-        if p['is_stepchild'] && !p['stepchild_lives_with_veteran']
+        if p['is_stepchild'] == true && p['stepchild_lives_with_veteran'] == false
           next if p['stepchild_departure_date'].blank?
           next unless parsable_date?(p['stepchild_departure_date'])
 
@@ -308,43 +317,26 @@ module SimpleFormsApi
     end
 
     # -------------------------
-    # Manual PDF Writing
+    # Overflow
     # -------------------------
-    def coordinates
-      COORDINATES
-    end
-
-    def manual_fills(pdf_path)
-      unless data['relationship_to_veteran'] == 'other' && data['other_relationship_description'].present?
-        return pdf_path
+    def overflow_pdf
+      people_for = people.select do |p|
+        p['relationship'] == 'other' &&
+          p['other_relationship_description'].present? &&
+          p['other_relationship_description'].length > 25
       end
+      claimant_is_other = data['relationship_to_veteran'] == 'other' && data['other_relationship_description'].present?
+      return nil if people_for.length.zero? && claimant_is_other == false
 
-      begin
-        coords = coordinates
-        temp_path = "#{pdf_path}.modified.pdf"
-        doc = HexaPDF::Document.open(pdf_path)
-        canvas = doc.pages[0].canvas(type: :overlay)
-        canvas.save_graphics_state do
-          write_to_form(canvas, coords, data['other_relationship_description'])
-        end
-        # returns a Hexapdf doc, so use string for path reference
-        doc.write(temp_path, optimize: true)
-        # overwrite old pdf with new markings
-        FileUtils.mv(temp_path, pdf_path)
-        # delete old pdf
-        Common::FileHelpers.delete_file_if_exists(temp_path)
-        Rails.logger.info('simple forms api - manual additions complete')
-        pdf_path
-      rescue => e
-        Rails.logger.error('simple forms api - manual additions error', { error: e.message })
-        pdf_path
+      overflow_data = {}
+      if data['other_relationship_description'].length > 105
+        overflow_data['question_6'] = data['other_relationship_description']
       end
-    end
+      overflow_data['people_for'] = people_for if people_for.length.positive?
 
-    def write_to_form(canvas, coordinates, other_text)
-      canvas.fill_color(0, 0, 0)
-      canvas.font('Helvetica', size: 12)
-      canvas.text(other_text, at: coordinates)
+      return nil if overflow_data['question_6'].nil? && overflow_data['people_for'].nil?
+
+      Overflow210788.new(overflow_data, cutoff: 1).generate
     end
 
     private
@@ -354,6 +346,13 @@ module SimpleFormsApi
       true
     rescue ArgumentError
       false
+    end
+
+    def clip_text_for_length(string, length = 50)
+      return '' if string.nil?
+      return string if length.nil?
+
+      string.length > length ? "See Add'l page" : string
     end
   end
 end

@@ -365,6 +365,98 @@ RSpec.describe SimpleFormsApi::VBA210788 do
     end
   end
 
+  describe '#other_relationship_text' do
+    it 'clips text for the relationship fields' do
+      # under limit
+      str = "father's, brother's, nephew's, cousin's, former roommate, but for only one semester aboard in canada12345"
+      data['other_relationship_description'] = str
+      expect(form.other_relationship_text).to eq(str)
+
+      # over limit
+      str = "father's, brother's, nephew's, cousin's, former roommate, but for only one semester aboard in canada123456"
+      data['other_relationship_description'] = str
+      expect(form.other_relationship_text).to eq("See Add'l page")
+    end
+  end
+
+  describe '#apportionment_fields_relationship' do
+    it 'formats and uses the correct relationship text for people in the table' do
+      person = { 'relationship' => 'child' }
+      expect(form.apportionment_fields_relationship(person)).to eq('child')
+
+      person = { 'relationship' => 'other', 'other_relationship_description' => 'under the limit' }
+      expect(form.apportionment_fields_relationship(person)).to eq('under the limit')
+
+      person = { 'relationship' => 'other', 'other_relationship_description' => 'over the 25 character limit' }
+      expect(form.apportionment_fields_relationship(person)).to eq("See Add'l page")
+    end
+  end
+
+  describe '#apportionment_fields' do
+    it 'Maps field to json for the pdf' do
+      data['apportionment_people'] = [
+        {
+          'full_name' => 'Lancelot',
+          'ssn' => '123-12-2134',
+          'relationship' => 'child',
+          'currently_receiving' => false,
+          'is_stepchild' => false,
+          'stepchild_lives_with_veteran' => false,
+          'stepchild_departure_date' => '2001-01-11'
+        },
+        {
+          'full_name' => 'Gawain',
+          'ssn' => '123-12-2134',
+          'relationship' => 'other',
+          'currently_receiving' => false,
+          'is_stepchild' => true,
+          'stepchild_lives_with_veteran' => true,
+          'other_relationship_description' => 'captain',
+          'stepchild_departure_date' => '2020-02-12'
+        },
+        {
+          'full_name' => 'Percival',
+          'ssn' => '123-12-2134',
+          'relationship' => 'child',
+          'currently_receiving' => false,
+          'is_stepchild' => true,
+          'stepchild_lives_with_veteran' => false,
+          'stepchild_departure_date' => '2013-03-13'
+        },
+        {
+          'full_name' => 'Sagramor',
+          'ssn' => '123-12-2134',
+          'relationship' => 'child',
+          'currently_receiving' => false,
+          'is_stepchild' => false,
+          'stepchild_lives_with_veteran' => true,
+          'stepchild_departure_date' => '2024-24-14'
+        }
+      ]
+      mapped = form.apportionment_fields
+      expect(mapped).to eq(
+        {
+          'form1[0].Page_1[0].NAMEVETERAN[3]' => 'Lancelot',
+          'form1[0].Page_1[0].NAMEVETERAN[7]' => '123-12-2134',
+          'form1[0].Page_1[0].NAMEVETERAN[11]' => 'child',
+          'form1[0].Page_1[0].RadioButtonList[6]' => '1',
+          'form1[0].Page_1[0].NAMEVETERAN[4]' => 'Gawain',
+          'form1[0].Page_1[0].NAMEVETERAN[8]' => '123-12-2134',
+          'form1[0].Page_1[0].NAMEVETERAN[12]' => 'captain',
+          'form1[0].Page_1[0].RadioButtonList[10]' => '1',
+          'form1[0].Page_1[0].NAMEVETERAN[5]' => 'Percival',
+          'form1[0].Page_1[0].NAMEVETERAN[9]' => '123-12-2134',
+          'form1[0].Page_1[0].NAMEVETERAN[13]' => 'child',
+          'form1[0].Page_1[0].RadioButtonList[9]' => '1',
+          'form1[0].Page_1[0].NAMEVETERAN[6]' => 'Sagramor',
+          'form1[0].Page_1[0].NAMEVETERAN[10]' => '123-12-2134',
+          'form1[0].Page_1[0].NAMEVETERAN[14]' => 'child',
+          'form1[0].Page_1[0].RadioButtonList[11]' => '1'
+        }
+      )
+    end
+  end
+
   describe '#metadata' do
     subject { form.metadata }
 
@@ -528,9 +620,9 @@ RSpec.describe SimpleFormsApi::VBA210788 do
           'full_name' => 'Percival',
           'ssn' => '123-12-2134',
           'relationship' => 'child',
-          'currently_receiving' => false,
-          'is_stepchild' => true,
-          'stepchild_lives_with_veteran' => false,
+          'currently_receiving' => true,
+          'is_stepchild' => true, # <- needs to be false
+          'stepchild_lives_with_veteran' => false, # <-needs to be true
           'stepchild_departure_date' => '2013-03-13'
         },
         {
