@@ -39,24 +39,25 @@
     "<%= k %>": "<%= v %>",
   <% end %>
 
-  <%# 11 - 12 %>
-
+  <%# Question 11 %>
+  <%# Yes %>
   "form1[0].Page_1[0].RadioButtonList[14]":
-    "<%= form.stepchild_living_in_household? ? '1' : 'Off' %>",
-
+    "<%= form.stepchild_living_in_household? == true ? '1' : 'Off' %>",
+  <%# No %>
   "form1[0].Page_1[0].RadioButtonList[15]":
-    "<%= form.stepchild_living_in_household? ? 'Off' : '1' %>",
+    "<%= form.stepchild_living_in_household? == false ? '1' : 'Off' %>",
 
   "form1[0].Page_1[0].NAMEVETERAN[16]": "<%= form.departure_date %>",
 
+  <%# Question 12 %>
+  <%# Yes %>
   "form1[0].Page_2[0].RadioButtonList[0]":
-    "<%= form.legally_adopted? ? '1' : 'Off' %>",
-
+    "<%= form.legally_adopted? == true ? '1' : 'Off' %>",
+  <%# No %>
   "form1[0].Page_2[0].RadioButtonList[1]":
-    "<%= form.legally_adopted? ? 'Off' : '1' %>",
+    "<%= form.legally_adopted? == false ? '1' : 'Off' %>",
 
   <%# 13A %>
-
   <% form.incarceration_fields.each do |k, v| %>
     "<%= k %>": "<%= v %>",
   <% end %>
