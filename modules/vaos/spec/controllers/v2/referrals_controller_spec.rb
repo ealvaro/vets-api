@@ -393,6 +393,45 @@ RSpec.describe VAOS::V2::ReferralsController, type: :request do
         end
       end
 
+      context 'when a referral is missing scheduling-critical data' do
+        let(:incomplete_referral) do
+          build(:ccra_referral_list_entry,
+                category_of_care: nil,
+                referral_expiration_date: nil,
+                station_id: '528A6')
+        end
+        let(:referral_list_entries) { [incomplete_referral] }
+
+        before do
+          allow_any_instance_of(Ccra::ReferralService).to receive(:get_vaos_referral_list)
+            .with(icn, referral_statuses)
+            .and_return(referral_list_entries)
+        end
+
+        it 'logs missing referral data and increments the missing_data metric' do
+          expect(Rails.logger).to receive(:error).with(
+            VAOS::V2::ReferralMissingDataMonitor::LIST_LOG_MESSAGE,
+            {
+              missing_data: %w[category_of_care expiration_date],
+              station_id: '528A6',
+              user_uuid: user.uuid
+            }
+          )
+          expect(StatsD).to receive(:increment).with(
+            VAOS::V2::ReferralMissingDataMonitor::LIST_METRIC,
+            tags: [
+              'service:community_care_appointments',
+              'station_id:528A6'
+            ]
+          )
+          allow(StatsD).to receive(:increment)
+
+          get '/vaos/v2/referrals'
+
+          expect(response).to have_http_status(:ok)
+        end
+      end
+
       context 'when va_online_scheduling_referral_list_has_appointments is disabled' do
         before do
           allow(Flipper).to receive(:enabled?).and_call_original
@@ -591,7 +630,7 @@ RSpec.describe VAOS::V2::ReferralsController, type: :request do
         end
 
         it 'logs missing provider data with JSON structured format' do
-          expected_error_message = 'Community Care Appointments: Referral detail view: Missing provider data'
+          expected_error_message = VAOS::V2::ReferralMissingDataMonitor::DETAIL_LOG_MESSAGE
           expected_json_data = {
             missing_data: %w[referring_facility_code referral_provider_npi],
             station_id: '528A6',
@@ -599,6 +638,13 @@ RSpec.describe VAOS::V2::ReferralsController, type: :request do
           }
 
           expect(Rails.logger).to receive(:error).with(expected_error_message, expected_json_data)
+          expect(StatsD).to receive(:increment).with(
+            VAOS::V2::ReferralMissingDataMonitor::DETAIL_METRIC,
+            tags: [
+              'service:community_care_appointments',
+              'station_id:528A6'
+            ]
+          )
           expect(StatsD).to receive(:increment)
             .with(
               described_class::REFERRAL_DETAIL_VIEW_METRIC,
@@ -638,7 +684,7 @@ RSpec.describe VAOS::V2::ReferralsController, type: :request do
           end
 
           it 'logs only the missing referring facility code in structured format' do
-            expected_error_message = 'Community Care Appointments: Referral detail view: Missing provider data'
+            expected_error_message = VAOS::V2::ReferralMissingDataMonitor::DETAIL_LOG_MESSAGE
             expected_json_data = {
               missing_data: ['referring_facility_code'],
               station_id: '528A6',
@@ -646,6 +692,14 @@ RSpec.describe VAOS::V2::ReferralsController, type: :request do
             }
 
             expect(Rails.logger).to receive(:error).with(expected_error_message, expected_json_data)
+            expect(StatsD).to receive(:increment).with(
+              VAOS::V2::ReferralMissingDataMonitor::DETAIL_METRIC,
+              tags: [
+                'service:community_care_appointments',
+                'station_id:528A6'
+              ]
+            )
+            allow(StatsD).to receive(:increment)
 
             get "/vaos/v2/referrals/#{encrypted_referral_consult_id}"
 
@@ -664,9 +718,11 @@ RSpec.describe VAOS::V2::ReferralsController, type: :request do
               .and_return({ EPS: { data: [] }, VAOS: { data: [] } })
           end
 
-          it 'does not log any missing provider data errors' do
+          it 'does not log any missing referral data errors' do
             expect(Rails.logger).not_to receive(:error)
-              .with('Community Care Appointments: Referral detail view: Missing provider data', anything)
+              .with(VAOS::V2::ReferralMissingDataMonitor::DETAIL_LOG_MESSAGE, anything)
+            expect(StatsD).not_to receive(:increment)
+              .with(VAOS::V2::ReferralMissingDataMonitor::DETAIL_METRIC, anything)
 
             get "/vaos/v2/referrals/#{encrypted_referral_consult_id}"
 

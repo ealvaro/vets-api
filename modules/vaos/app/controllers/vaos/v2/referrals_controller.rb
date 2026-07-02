@@ -9,8 +9,6 @@ module VAOS
 
       REFERRAL_DETAIL_VIEW_METRIC = "#{STATSD_PREFIX}.referral_detail.access".freeze
       REFERRAL_STATIONID_METRIC = "#{STATSD_PREFIX}.referral_station_id.access".freeze
-      REFERRING_FACILITY_CODE_FIELD = 'referring_facility_code'
-      REFERRAL_PROVIDER_NPI_FIELD = 'referral_provider_npi'
 
       # GET /v2/referrals
       # Fetches a list of referrals for the current user
@@ -29,6 +27,7 @@ module VAOS
         add_referral_uuids(response)
         # Annotate each referral with whether it has any active appointments
         add_has_appointments_to_referrals(response)
+        ReferralMissingDataMonitor.log_list(response, user: current_user)
 
         render json: Ccra::ReferralListSerializer.new(response)
       end
@@ -176,11 +175,10 @@ module VAOS
         value.to_s.gsub(/\s+/, '_')
       end
 
-      # Logs referral provider metrics and errors for missing provider IDs
+      # Logs referral detail access metrics and delegates missing-data observability.
       # @param response [Ccra::ReferralDetail] the referral response object
       def log_referral_metrics(response)
         referring_facility_code = sanitize_log_value(response&.referring_facility_code)
-        provider_npi = sanitize_log_value(response&.provider_npi)
         station_id = sanitize_log_value(response&.station_id)
         type_of_care = sanitize_log_value(response&.category_of_care)
 
@@ -191,27 +189,7 @@ module VAOS
                            "type_of_care:#{type_of_care}"
                          ])
 
-        log_missing_provider_ids(referring_facility_code, provider_npi, station_id)
-      end
-
-      # Logs specific errors when provider IDs are missing using structured logging
-      #
-      # @param referring_facility_code [String] the sanitized referring facility code ('no_value' if originally blank)
-      # @param provider_npi [String] the sanitized provider NPI ('no_value' if originally blank)
-      # @param station_id [String] the sanitized station ID of the referral ('no_value' if originally blank)
-      # @return [void]
-      def log_missing_provider_ids(referring_facility_code, provider_npi, station_id)
-        missing_fields = []
-        missing_fields << REFERRING_FACILITY_CODE_FIELD if referring_facility_code == 'no_value'
-        missing_fields << REFERRAL_PROVIDER_NPI_FIELD if provider_npi == 'no_value'
-
-        return if missing_fields.empty?
-
-        Rails.logger.error('Community Care Appointments: Referral detail view: Missing provider data', {
-                             missing_data: missing_fields,
-                             station_id:,
-                             user_uuid: current_user.uuid
-                           })
+        ReferralMissingDataMonitor.log_detail(response, user: current_user)
       end
 
       def user_has_residential_address?

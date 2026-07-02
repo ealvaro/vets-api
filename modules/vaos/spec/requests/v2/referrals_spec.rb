@@ -456,32 +456,51 @@ RSpec.describe 'VAOS V2 Referrals', type: :request do
                             VAOS: { data: [] }
                           })
 
+            referring_facility_code = facility_code.presence || 'no_value'
+            expect(StatsD).to receive(:increment).with(
+              VAOS::V2::ReferralsController::REFERRAL_DETAIL_VIEW_METRIC,
+              tags: [
+                'service:community_care_appointments',
+                "referring_facility_code:#{referring_facility_code}",
+                "station_id:#{test_station_id}",
+                'type_of_care:CARDIOLOGY'
+              ]
+            )
             expect(Rails.logger).to receive(:error)
-              .with('Community Care Appointments: Referral detail view: Missing provider data', {
+              .with(VAOS::V2::ReferralMissingDataMonitor::DETAIL_LOG_MESSAGE, {
                       missing_data: expected_missing_fields,
                       station_id: test_station_id,
                       user_uuid: user.uuid
                     })
+            expect(StatsD).to receive(:increment).with(
+              VAOS::V2::ReferralMissingDataMonitor::DETAIL_METRIC,
+              tags: [
+                'service:community_care_appointments',
+                "station_id:#{test_station_id}"
+              ]
+            )
+            allow(StatsD).to receive(:increment)
+
             get "/vaos/v2/referrals/#{encrypted_uuid}"
           end
         end
 
         context 'when both IDs are missing' do
           include_examples 'logs missing provider ID error', nil, '', [
-            VAOS::V2::ReferralsController::REFERRING_FACILITY_CODE_FIELD,
-            VAOS::V2::ReferralsController::REFERRAL_PROVIDER_NPI_FIELD
+            VAOS::V2::ReferralMissingDataMonitor::REFERRING_FACILITY_CODE_FIELD,
+            VAOS::V2::ReferralMissingDataMonitor::REFERRAL_PROVIDER_NPI_FIELD
           ]
         end
 
         context 'when referring provider ID is missing' do
           include_examples 'logs missing provider ID error', '', '1234567890', [
-            VAOS::V2::ReferralsController::REFERRING_FACILITY_CODE_FIELD
+            VAOS::V2::ReferralMissingDataMonitor::REFERRING_FACILITY_CODE_FIELD
           ]
         end
 
         context 'when referral provider ID is missing' do
           include_examples 'logs missing provider ID error', '552', nil, [
-            VAOS::V2::ReferralsController::REFERRAL_PROVIDER_NPI_FIELD
+            VAOS::V2::ReferralMissingDataMonitor::REFERRAL_PROVIDER_NPI_FIELD
           ]
         end
 
@@ -502,12 +521,30 @@ RSpec.describe 'VAOS V2 Referrals', type: :request do
                             VAOS: { data: [] }
                           })
 
+            expect(StatsD).to receive(:increment).with(
+              VAOS::V2::ReferralsController::REFERRAL_DETAIL_VIEW_METRIC,
+              tags: [
+                'service:community_care_appointments',
+                'referring_facility_code:no_value',
+                'station_id:no_value',
+                'type_of_care:CARDIOLOGY'
+              ]
+            )
             expect(Rails.logger).to receive(:error)
-              .with('Community Care Appointments: Referral detail view: Missing provider data', {
-                      missing_data: [VAOS::V2::ReferralsController::REFERRING_FACILITY_CODE_FIELD],
+              .with(VAOS::V2::ReferralMissingDataMonitor::DETAIL_LOG_MESSAGE, {
+                      missing_data: %w[station_id referring_facility_code],
                       station_id: 'no_value',
                       user_uuid: user.uuid
                     })
+            expect(StatsD).to receive(:increment).with(
+              VAOS::V2::ReferralMissingDataMonitor::DETAIL_METRIC,
+              tags: [
+                'service:community_care_appointments',
+                'station_id:no_value'
+              ]
+            )
+            allow(StatsD).to receive(:increment)
+
             get "/vaos/v2/referrals/#{encrypted_uuid}"
           end
         end

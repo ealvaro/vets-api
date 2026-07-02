@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module Ccra
+  PRIMARY_CARE_CATEGORY = 'PRIMARY CARE' unless const_defined?(:PRIMARY_CARE_CATEGORY)
+
   # ReferralListEntry represents the essential referral data from the CCRA ReferralList endpoint.
   class ReferralListEntry
     attr_reader :category_of_care, :expiration_date, :station_id

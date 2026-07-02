@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Ccra
-  PRIMARY_CARE_CATEGORY = 'PRIMARY CARE'
+  PRIMARY_CARE_CATEGORY = 'PRIMARY CARE' unless const_defined?(:PRIMARY_CARE_CATEGORY)
 
   class ReferralDetail
     include ActiveModel::Serializers::JSON
