@@ -29,6 +29,11 @@ module Identity
     end
 
     def perform
+      unless mpi_profile
+        Rails.logger.info('[Identity] [CernerProvisioner] MPI profile not found', { icn:, source: })
+        raise Errors::CernerProvisionerError, 'MPI profile not found'
+      end
+
       response = update_provisioning
 
       if response[:agreement_signed].blank?

@@ -79,13 +79,13 @@ class User < Common::RedisStore
 
   # Returns a Date string in iso8601 format, eg. '{year}-{month}-{day}'
   def birth_date
-    birth_date = identity.birth_date || birth_date_mpi
+    birth_date = identity&.birth_date || birth_date_mpi
 
     Formatters::DateFormatter.format_date(birth_date)
   end
 
   def first_name
-    identity.first_name.presence || first_name_mpi
+    identity&.first_name.presence || first_name_mpi
   end
 
   def common_name
@@ -106,7 +106,7 @@ class User < Common::RedisStore
   end
 
   def gender
-    identity.gender.presence || gender_mpi
+    identity&.gender.presence || gender_mpi
   end
 
   def icn
@@ -138,11 +138,11 @@ class User < Common::RedisStore
   attr_reader :mhv_user_account_error
 
   def middle_name
-    identity.middle_name.presence || middle_name_mpi
+    identity&.middle_name.presence || middle_name_mpi
   end
 
   def last_name
-    identity.last_name.presence || last_name_mpi
+    identity&.last_name.presence || last_name_mpi
   end
 
   def sec_id

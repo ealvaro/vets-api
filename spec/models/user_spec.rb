@@ -955,6 +955,36 @@ RSpec.describe User, type: :model do
     end
   end
 
+  describe 'identity-based getters when identity is nil' do
+    let(:user) { build(:user, :loa3) }
+
+    before do
+      allow(user).to receive_messages(identity: nil, birth_date_mpi: '1980-01-01', first_name_mpi: 'some-first-name',
+                                      middle_name_mpi: 'some-middle-name', last_name_mpi: 'some-last-name',
+                                      gender_mpi: 'M')
+    end
+
+    it 'falls back to MPI for birth_date' do
+      expect(user.birth_date).to eq('1980-01-01')
+    end
+
+    it 'falls back to MPI for first_name' do
+      expect(user.first_name).to eq('some-first-name')
+    end
+
+    it 'falls back to MPI for middle_name' do
+      expect(user.middle_name).to eq('some-middle-name')
+    end
+
+    it 'falls back to MPI for last_name' do
+      expect(user.last_name).to eq('some-last-name')
+    end
+
+    it 'falls back to MPI for gender' do
+      expect(user.gender).to eq('M')
+    end
+  end
+
   describe '#deceased_date' do
     let!(:user) { described_class.new(build(:user, :mhv, mhv_icn: 'some-mhv-icn')) }
 
