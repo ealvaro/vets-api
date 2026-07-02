@@ -877,7 +877,6 @@ config/initializers/rgeo.rb @software/backend-review-group
 config/initializers/rswag-ui.rb @software/backend-review-group
 config/initializers/rubyzip.rb @software/backend-review-group
 config/initializers/saml.rb @software/octo-identity
-config/initializers/sentry.rb @software/backend-review-group
 config/initializers/session_store.rb @software/backend-review-group
 config/initializers/sidekiq.rb @software/backend-review-group
 config/initializers/sign_in_service.rb @software/octo-identity
@@ -1154,7 +1153,6 @@ lib/semantic_logger/pii_filtering_color_formatter.rb @software/backend-review-gr
 lib/semantic_logger/pii_filtering_formatter.rb @software/backend-review-group
 lib/semantic_logger/pii_payload_scrubber.rb @software/backend-review-group
 lib/semantic_logger/safe_json_formatter.rb @software/backend-review-group
-lib/sentry @software/backend-review-group
 lib/sftp_writer @software/backend-review-group
 lib/share_point/service.rb @software/mobile-api-team @software/backend-review-group
 lib/shrine @software/backend-review-group
@@ -1781,7 +1779,6 @@ spec/lib/search_gsa @software/backend-review-group
 spec/lib/semantic_logger/pii_filtering_color_formatter_spec.rb @software/backend-review-group
 spec/lib/semantic_logger/pii_filtering_formatter_spec.rb @software/backend-review-group
 spec/lib/semantic_logger/safe_json_formatter_spec.rb @software/backend-review-group
-spec/lib/sentry @software/backend-review-group
 spec/lib/sftp_writer @software/backend-review-group
 spec/lib/sftp_writer/factory_spec.rb @software/backend-review-group
 spec/lib/sftp_writer/remote_spec.rb @software/backend-review-group
