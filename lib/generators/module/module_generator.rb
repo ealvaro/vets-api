@@ -40,7 +40,7 @@ class ModuleGenerator < Rails::Generators::NamedBase
     template 'Rakefile.erb', File.join(path, 'Rakefile')
 
     # create readme
-    template 'README.rdoc.erb', File.join(path, 'README.rdoc')
+    template 'README.md.erb', File.join(path, 'README.md')
 
     # create bin/rails
     template 'bin/rails.erb', File.join(path, 'bin', 'rails')

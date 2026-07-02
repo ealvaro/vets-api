@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
-module <%= class_name %>
+module Validations
+  # Rails engine for the Validations module
+  #
   # @see https://api.rubyonrails.org/classes/Rails/Engine.html
   class Engine < ::Rails::Engine
-    isolate_namespace <%= class_name %>
+    isolate_namespace Validations
     config.generators.api_only = true
 
     # Make sure Rails eager loads lib/ properly for this engine.
@@ -15,9 +17,9 @@ module <%= class_name %>
     config.eager_load_paths << root.join('lib').to_s
 
     # Zeitwerk expects version.rb to define a Version class/module, but we use VERSION constant per Ruby convention.
-    # Tell Zeitwerk to ignore this file to avoid "uninitialized constant <%= class_name %>::Version" errors.
-    initializer '<%= class_name.underscore %>.zeitwerk_ignore' do
-      Rails.autoloaders.main.ignore(root.join('lib/<%= class_name.underscore %>/version.rb'))
+    # Tell Zeitwerk to ignore this file to avoid "uninitialized constant Validations::Version" errors.
+    initializer 'validations.zeitwerk_ignore' do
+      Rails.autoloaders.main.ignore(root.join('lib/validations/version.rb'))
     end
 
     initializer 'model_core.factories', after: 'factory_bot.set_factory_paths' do

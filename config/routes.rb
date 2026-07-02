@@ -488,6 +488,7 @@ Rails.application.routes.draw do
   mount VRE::Engine, at: '/vre'
   mount VaNotify::Engine, at: '/va_notify'
   mount VAOS::Engine, at: '/vaos'
+  mount Validations::Engine, at: '/validations'
   mount Vass::Engine, at: '/vass'
   mount Vye::Engine, at: '/vye'
   mount Pensions::Engine, at: '/pensions'

@@ -61,7 +61,7 @@ MESSAGES
     before do
       create_message = <<MESSAGES
       create  modules/foo/Rakefile
-      create  modules/foo/README.rdoc
+      create  modules/foo/README.md
       create  modules/foo/bin/rails
        chmod  modules/foo/bin/rails
       create  modules/foo/spec/spec_helper.rb
@@ -85,7 +85,7 @@ MESSAGES
     end
 
     it 'creates the readme' do
-      expect(File).to exist("#{path}/README.rdoc")
+      expect(File).to exist("#{path}/README.md")
     end
 
     it 'creates the rails file' do

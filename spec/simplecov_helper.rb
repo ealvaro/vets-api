@@ -128,6 +128,7 @@ class SimpleCovHelper
     ctx.add_group 'TravelPay', 'modules/travel_pay/'
     ctx.add_group 'Uploaders', 'app/uploaders'
     ctx.add_group 'VRE', 'modules/vre/'
+    ctx.add_group 'Validations', 'modules/validations/'
     ctx.add_group 'VaNotify', 'modules/va_notify/'
     ctx.add_group 'VAOS', 'modules/vaos/'
     ctx.add_group 'VBADocuments', 'modules/vba_documents/'

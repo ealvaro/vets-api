@@ -41,6 +41,7 @@ path 'modules' do
   gem 'survivors_benefits'
   gem 'test_user_dashboard'
   gem 'travel_pay'
+  gem 'validations'
   gem 'va_notify'
   gem 'vaos'
   gem 'vass'

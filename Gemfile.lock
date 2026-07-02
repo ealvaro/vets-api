@@ -131,6 +131,7 @@ PATH
       rails
     travel_pay (0.1.0)
     va_notify (0.1.0)
+    validations (0.1.0)
     vaos (0.1.0)
       sidekiq
     vass (0.0.1)
@@ -1468,6 +1469,7 @@ DEPENDENCIES
   tzinfo-data
   utf8-cleaner
   va_notify!
+  validations!
   vaos!
   vass!
   vba_documents!

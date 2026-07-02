@@ -17,7 +17,8 @@ on: # `on` parses to `true` in ruby
       - modules/income_and_assets/**/*.rb
       - modules/medical_expense_reports/**/*.rb
       - modules/pensions/**/*.rb
-      
+      - modules/validations/**/*.rb
+
 permissions:
   contents: read
   id-token: write

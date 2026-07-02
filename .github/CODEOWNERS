@@ -1271,6 +1271,7 @@ modules/test_user_dashboard @software/qa-standards @software/backend-review-grou
 modules/travel_claims @software/vsa-healthcare-health-quest-1-backend @software/patient-check-in @software/backend-review-group
 modules/travel_pay @software/travel-pay-integration @software/backend-review-group
 modules/va_notify @software/va-notify-write @software/backend-review-group
+modules/validations @software/disability-benefits @software/backend-review-group
 modules/vass @software/vsa-healthcare-health-quest-1-backend @software/patient-check-in @software/backend-review-group
 modules/vaos @software/vfs-vaos @software/backend-review-group
 modules/vaos/app/services/vaos/v2 @software/vfs-vaos @software/backend-review-group

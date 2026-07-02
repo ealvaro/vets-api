@@ -1,5 +1,6 @@
 Description:
-    This generator will create an initial file structure and engine file for VFS developers.  The purpose of this being so they can quickly start developing code in an isolated file structure exclusive to the new business logic thay are creating.
+    This generator will create an initial file structure and engine file for VFS developers.
+    The purpose of this being so they can quickly start developing code in an isolated file structure exclusive to the new business logic they are creating.
 
 When a generator is invoked, each public method in the generator is executed sequentially in the order that it is defined.
 
