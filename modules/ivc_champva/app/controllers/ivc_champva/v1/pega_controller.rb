@@ -9,6 +9,8 @@ module IvcChampva
       service_tag 'veteran-ivc-champva-forms'
       VALID_KEYS = %w[form_uuid file_names status case_id].freeze
 
+      before_action :halt_disabled_staging_status_updates, only: :update_status
+
       def update_status
         Datadog::Tracing.trace('IVC Champva Forms - Update Pega Status') do
           data = JSON.parse(params.to_json)
@@ -39,6 +41,24 @@ module IvcChampva
       end
 
       private
+
+      # On staging only, let the champva_pega_update_status_disabled flag short-circuit the
+      # callback so Pega staging traffic stops overwriting pega_status during accessibility
+      # testing. Everywhere else the callback always processes.
+      def halt_disabled_staging_status_updates
+        return unless staging_status_updates_disabled?
+
+        Rails.logger.info(
+          'IVC CHAMPVA: Pega update_status callback skipped on staging ' \
+          '(champva_pega_update_status_disabled on)'
+        )
+        render json: {}, status: :ok
+      end
+
+      def staging_status_updates_disabled?
+        Settings.vsp_environment.to_s == 'staging' &&
+          Flipper.enabled?(:champva_pega_update_status_disabled)
+      end
 
       def update_data(form_uuid, file_names, status, case_id)
         # First get the query that defines which records we want to update

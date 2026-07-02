@@ -634,5 +634,65 @@ RSpec.describe 'IvcChampva::V1::Forms::StatusUpdates', type: :request do
         expect(response.body).to include('error')
       end
     end
+
+    context 'when the champva_pega_update_status_disabled flag is enabled on staging' do
+      before do
+        allow(Settings).to receive(:vsp_environment).and_return('staging')
+        allow(Flipper).to receive(:enabled?).with(:champva_pega_update_status_disabled).and_return(true)
+      end
+
+      it 'acknowledges the callback without modifying any records' do
+        IvcChampvaForm.delete_all
+        form = IvcChampvaForm.create!(
+          form_uuid: valid_payload[:form_uuid],
+          email: 'test@email.com',
+          first_name: 'Veteran',
+          last_name: 'Surname',
+          form_number: '10-10D',
+          file_name: "#{valid_payload[:form_uuid]}_vha_10_10d.pdf",
+          s3_status: 'Submitted',
+          pega_status: nil,
+          case_id: nil,
+          email_sent: false
+        )
+
+        post '/ivc_champva/v1/forms/status_updates', params: valid_payload
+
+        expect(response).to have_http_status(:ok)
+        expect(form.reload.pega_status).to be_nil
+        expect(form.case_id).to be_nil
+      end
+    end
+
+    context 'when the champva_pega_update_status_disabled flag is enabled outside staging' do
+      before do
+        allow(Settings).to receive(:vsp_environment).and_return('production')
+        allow(Flipper).to receive(:enabled?).with(:champva_pega_update_status_disabled).and_return(true)
+        allow_any_instance_of(IvcChampva::Email).to receive(:valid_environment?).and_return(true)
+        allow_any_instance_of(IvcChampva::Email).to receive(:send_email).and_return(true)
+      end
+
+      it 'still processes the callback and updates the records' do
+        IvcChampvaForm.delete_all
+        form = IvcChampvaForm.create!(
+          form_uuid: valid_payload[:form_uuid],
+          email: 'test@email.com',
+          first_name: 'Veteran',
+          last_name: 'Surname',
+          form_number: '10-10D',
+          file_name: "#{valid_payload[:form_uuid]}_vha_10_10d.pdf",
+          s3_status: 'Submitted',
+          pega_status: nil,
+          case_id: nil,
+          email_sent: false
+        )
+
+        post '/ivc_champva/v1/forms/status_updates', params: valid_payload
+
+        expect(response).to have_http_status(:ok)
+        expect(form.reload.pega_status).to eq('Processed')
+        expect(form.case_id).to eq('ABC-1234')
+      end
+    end
   end
 end

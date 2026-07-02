@@ -494,6 +494,9 @@ features:
   champva_claims_insurance_dates:
     actor_type: user
     description: Enables insurance policy dates for the 10-7959a
+  champva_pega_update_status_disabled:
+    actor_type: user
+    description: When enabled on the staging environment only, the IVC CHAMPVA Pega status callback endpoint (POST /ivc_champva/v1/forms/status_updates) acknowledges callbacks without modifying any records. This flag has no effect in any other environment (production, development, etc.), where callbacks are always processed. Used to stop Pega staging callbacks from overwriting pega_status during accessibility testing.
   champva_resubmission_attachment_ids:
     actor_type: user
     description: Corrects attachment IDs for resubmission of form 10-7959a
