@@ -36,6 +36,16 @@ module SignIn
       },
       '400' => {
         alert_text: "We're sorry. Something went wrong on our end, and we couldn't sign you in."
+      },
+      '113' => {
+        alert_text: "There's an issue with one of our systems that's affecting sign-in for your account. " \
+                    "We're working to fix it as soon as possible.",
+        flag_overrides: {
+          error_113_tech_support_line_active: {
+            alert_text: "There's an issue with one of our systems that's affecting sign-in for your " \
+                        "account. To request a fix, you'll need to call our technical support team."
+          }
+        }
       }
     }.freeze
 
@@ -72,7 +82,12 @@ module SignIn
     private
 
     def content
-      @content ||= DEFAULT_CONTENT.merge(ERROR_CONTENT.fetch(error_code.to_s, {}))
+      @content ||= begin
+        entry = ERROR_CONTENT.fetch(error_code.to_s, {})
+        override = entry[:flag_overrides]&.find { |flag, _| Flipper.enabled?(flag) }&.last
+
+        DEFAULT_CONTENT.merge(entry.except(:flag_overrides)).merge(override || {})
+      end
     end
 
     def format_timestamp

@@ -88,5 +88,33 @@ RSpec.describe SignIn::ErrorPageRenderer do
       html = renderer.perform
       expect(html).to include('href="https://staging.va.gov"')
     end
+
+    context 'with error code 113' do
+      let(:error_code) { '113' }
+
+      context 'when error_113_tech_support_line_active is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:error_113_tech_support_line_active).and_return(true)
+        end
+
+        it 'renders the tech support call-to-action instead of the legacy issue-status message' do
+          html = renderer.perform
+          expect(html).to include('To request a fix, you&#39;ll need to call our technical support team.')
+          expect(html).not_to include('We&#39;re working to fix it as soon as possible')
+        end
+      end
+
+      context 'when error_113_tech_support_line_active is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:error_113_tech_support_line_active).and_return(false)
+        end
+
+        it 'renders the legacy issue-status message instead of the tech support call-to-action' do
+          html = renderer.perform
+          expect(html).to include('We&#39;re working to fix it as soon as possible')
+          expect(html).not_to include('To request a fix, you&#39;ll need to call our technical support team.')
+        end
+      end
+    end
   end
 end
