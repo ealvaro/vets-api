@@ -62,7 +62,7 @@ RSpec.describe SignIn::ErrorPageRenderer do
       it 'renders the verification denied content' do
         html = renderer.perform
         expect(html).to include('selected &quot;Deny&quot;')
-        expect(html).to include('select &quot;Accept&quot;')
+        expect(html).to include('select "Accept"')
       end
     end
 
@@ -101,6 +101,12 @@ RSpec.describe SignIn::ErrorPageRenderer do
           html = renderer.perform
           expect(html).to include('To request a fix, you&#39;ll need to call our technical support team.')
           expect(html).not_to include('We&#39;re working to fix it as soon as possible')
+        end
+
+        it 'renders the secondary section for accessing benefits in other ways' do
+          html = renderer.perform
+          expect(html).to include('Access your VA benefits in other ways')
+          expect(html).to include('manage your VA benefits over the phone')
         end
       end
 

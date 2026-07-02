@@ -43,7 +43,14 @@ module SignIn
         flag_overrides: {
           error_113_tech_support_line_active: {
             alert_text: "There's an issue with one of our systems that's affecting sign-in for your " \
-                        "account. To request a fix, you'll need to call our technical support team."
+                        "account. To request a fix, you'll need to call our technical support team.",
+            section_title: 'Contact support to request a fix',
+            intro_text: "Contact technical support at <a href=\"tel:+18662793677\">866-279-3677</a>. We're here " \
+                        "Monday through Friday, 8:00 a.m. to 8:00 p.m. ET. Tell the support representative you're " \
+                        'calling to request a fix for <strong>error 113</strong>.' \
+                        "<br><br>After you call, we'll submit a request to fix your account in our system.",
+            secondary_section_title: 'Access your VA benefits in other ways',
+            secondary_intro_text: DEFAULT_CONTENT[:intro_text]
           }
         }
       }
@@ -70,6 +77,8 @@ module SignIn
           alert_text: content[:alert_text],
           section_title: content[:section_title],
           intro_text: content[:intro_text],
+          secondary_section_title: content[:secondary_section_title],
+          secondary_intro_text: content[:secondary_intro_text],
           error_code:,
           request_id:,
           redirect_uri:,

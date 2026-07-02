@@ -199,7 +199,14 @@
     <h2><%= section_title %></h2>
 
     <% if intro_text %>
-      <p><%= intro_text %></p>
+      <p><%= sanitize(intro_text, tags: %w[a strong br], attributes: %w[href]) %></p>
+    <% end %>
+
+    <% if secondary_section_title %>
+      <h2><%= secondary_section_title %></h2>
+      <% if secondary_intro_text %>
+        <p><%= sanitize(secondary_intro_text, tags: %w[a strong br], attributes: %w[href]) %></p>
+      <% end %>
     <% end %>
 
     <div class="va-links">
