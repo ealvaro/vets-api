@@ -1,17 +1,10 @@
 # frozen_string_literal: true
 
-require 'brd/brd'
-
 module AskVAApi
   module V0
     class StaticDataController < ApplicationController
       skip_before_action :authenticate
       around_action :handle_exceptions
-
-      def branch_of_service
-        get_resource('branch_of_service', user_mock_data: params[:user_mock_data])
-        render_result(@branch_of_service)
-      end
 
       def categories
         get_resource('categories', user_mock_data: params[:user_mock_data])

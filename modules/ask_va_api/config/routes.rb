@@ -20,7 +20,6 @@ AskVAApi::Engine.routes.draw do
     get '/categories/:category_id/topics', to: 'static_data#topics'
     get '/topics/:topic_id/subtopics', to: 'static_data#subtopics'
     get '/contents', to: 'static_data#contents'
-    get '/branch_of_service', to: 'static_data#branch_of_service'
 
     # address_validation
     post '/address_validation', to: 'address_validation#create'

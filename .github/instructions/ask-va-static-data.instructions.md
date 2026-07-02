@@ -1,5 +1,5 @@
 ---
-applyTo: "modules/ask_va_api/app/controllers/ask_va_api/v0/static_data_controller.rb,modules/ask_va_api/app/lib/ask_va_api/base_retriever.rb,modules/ask_va_api/app/lib/ask_va_api/categories/**/*,modules/ask_va_api/app/lib/ask_va_api/contents/**/*,modules/ask_va_api/app/lib/ask_va_api/topics/**/*,modules/ask_va_api/app/lib/ask_va_api/subtopics/**/*,modules/ask_va_api/app/lib/ask_va_api/announcements/**/*,modules/ask_va_api/app/lib/ask_va_api/branch_of_service/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/categories/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/contents/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/topics/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/subtopics/**/*,modules/ask_va_api/spec/requests/ask_va_api/v0/static_data_spec.rb,modules/ask_va_api/config/routes.rb"
+applyTo: "modules/ask_va_api/app/controllers/ask_va_api/v0/static_data_controller.rb,modules/ask_va_api/app/lib/ask_va_api/base_retriever.rb,modules/ask_va_api/app/lib/ask_va_api/categories/**/*,modules/ask_va_api/app/lib/ask_va_api/contents/**/*,modules/ask_va_api/app/lib/ask_va_api/topics/**/*,modules/ask_va_api/app/lib/ask_va_api/subtopics/**/*,modules/ask_va_api/app/lib/ask_va_api/announcements/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/categories/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/contents/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/topics/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/subtopics/**/*,modules/ask_va_api/spec/requests/ask_va_api/v0/static_data_spec.rb,modules/ask_va_api/config/routes.rb"
 ---
 
 # Copilot Instructions for Ask VA API / Static Data
@@ -201,6 +201,56 @@ Filtering by hierarchy:
 - **Subtopics:** `ParentId == topic_id`, sorted by `Name`
 
 Mock data: `modules/ask_va_api/config/locales/static_data.json` (used when `user_mock_data` param is truthy).
+
+---
+
+## Endpoint Removal Checklist
+
+### When to use
+When removing a deprecated static data endpoint from `StaticDataController`.
+
+### Artifacts to remove (the "full triad + wiring")
+
+For a resource named `foo`, delete these files and code:
+
+| # | Artifact | Path/Location |
+|---|----------|---------------|
+| 1 | Route | `config/routes.rb` — the `get` line |
+| 2 | Controller action | `static_data_controller.rb` — the `def foo` method |
+| 3 | Retriever | `app/lib/ask_va_api/foo/retriever.rb` |
+| 4 | Entity | `app/lib/ask_va_api/foo/entity.rb` |
+| 5 | Serializer | `app/lib/ask_va_api/foo/serializer.rb` |
+| 6 | Mock data | `config/locales/get_foo_mock_data.json` (if separate from `static_data.json`) |
+| 7 | i18n mock list | `config/locales/en.yml` — the data list used by the retriever's mock mode |
+| 8-10 | Spec files | `spec/app/lib/ask_va_api/foo/{retriever,entity,serializer}_spec.rb` |
+| 11 | Request spec block | `spec/requests/ask_va_api/v0/static_data_spec.rb` — the `describe` block |
+
+Also check: `require` statements in the controller that were only needed by the removed retriever (e.g., `require 'brd/brd'`).
+
+### Critical: Preserve CRM payload field references
+
+Field names like `branch_of_service` can appear in **two unrelated contexts**:
+1. **Endpoint code** (the triad, route, mock data) — REMOVE
+2. **CRM payload fields** (inquiry builders, translator, optionset cache) — KEEP
+
+Before removing, grep the module to distinguish endpoint-specific references from CRM payload references:
+
+```bash
+# Find ALL references — then classify each as endpoint vs. CRM payload
+grep -rn "foo_name" modules/ask_va_api/app/ modules/ask_va_api/config/
+```
+
+**Anti-pattern:**
+```bash
+# DON'T blindly remove all references matching the resource name.
+# CRM payload builders and optionset cache use the same field names.
+```
+
+**Why:** The CRM `Translator` and inquiry payload builders (`veteran_profile.rb`, `submitter_profile.rb`) use field names like `BranchOfService` for mapping form data to CRM payloads. These are completely independent of the endpoint serving that data.
+
+### Post-removal cleanup
+- Remove the resource's glob from this instruction file's `applyTo` pattern
+- Verify: `bundle exec rspec modules/ask_va_api/spec/` passes
 
 ---
 
