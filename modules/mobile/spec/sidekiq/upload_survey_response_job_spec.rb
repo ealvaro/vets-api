@@ -7,6 +7,32 @@ require 'share_point/service'
 RSpec.describe Mobile::V0::UploadSurveyResponseJob, type: :job do
   let(:service) { instance_double(SharePoint::Service) }
 
+  describe '.sidekiq_retries_exhausted_block' do
+    it 'logs retries exhausted with job and error details' do
+      block = described_class.sidekiq_retries_exhausted_block
+      msg = {
+        'class' => described_class.name,
+        'jid' => 'test-jid-123',
+        'error_class' => 'RuntimeError',
+        'error_message' => 'boom'
+      }
+
+      expect(StatsD).to receive(:increment).with('worker.mobile.v0.upload_survey_response.retries_exhausted')
+
+      expect(Rails.logger).to receive(:error).with(
+        'Mobile survey response upload retries exhausted',
+        hash_including(
+          job_class: described_class.name,
+          jid: 'test-jid-123',
+          error_class: 'RuntimeError',
+          error_message: 'boom'
+        )
+      )
+
+      block.call(msg, RuntimeError.new('boom'))
+    end
+  end
+
   describe '#perform' do
     context 'when no matching responses exist' do
       it 'does not call SharePoint and returns' do

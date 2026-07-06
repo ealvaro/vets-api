@@ -2601,6 +2601,7 @@ spec/support/vcr_cassettes/saml @software/octo-identity
 spec/support/vcr_cassettes/search @software/backend-review-group
 spec/support/vcr_cassettes/search_click_tracking @software/backend-review-group
 spec/support/vcr_cassettes/shared @software/backend-review-group
+spec/support/vcr_cassettes/sharepoint @software/mobile-api-team @software/backend-review-group
 spec/support/vcr_cassettes/sign_in_service @software/octo-identity
 spec/support/vcr_cassettes/slack/slack_bot_notify.yml @software/octo-identity
 spec/support/vcr_cassettes/sm_client @software/vfs-mhv-integration @software/backend-review-group

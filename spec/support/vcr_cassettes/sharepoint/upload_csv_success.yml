@@ -1,0 +1,118 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: "<SHAREPOINT_AUTHENTICATION_URL>/<SHAREPOINT_MSS_TENANT_ID>/oauth2/v2.0/token"
+    body:
+      encoding: UTF-8
+      string: client_id=<SHAREPOINT_MSS_CLIENT_ID>&client_secret=<SHAREPOINT_MSS_CLIENT_SECRET>&grant_type=client_credentials&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default
+    headers:
+      User-Agent:
+      - "<FARADAY_VERSION>"
+      Host:
+      - login.microsoftonline.com
+      Content-Type:
+      - application/x-www-form-urlencoded
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Cache-Control:
+      - no-store, no-cache
+      Pragma:
+      - no-cache
+      Content-Type:
+      - application/json; charset=utf-8
+      Expires:
+      - "-1"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      X-Content-Type-Options:
+      - nosniff
+      X-Ms-Clientdata:
+      - e|||microsoftonline.com|none
+      P3p:
+      - CP="DSP CUR OTPi IND OTRi ONL FIN"
+      X-Ms-Request-Id:
+      - b5588c14-72ea-4f17-8695-7589fb130200
+      X-Ms-Ests-Server:
+      - 2.1.24676.5 - EUS ProdSlices
+      X-Ms-Srs:
+      - 1.P
+      Content-Security-Policy-Report-Only:
+      - object-src 'none'; base-uri 'self'; script-src 'self' 'nonce-18Y7sgqvzSeE9j2ot4G1dA'
+        'unsafe-inline' 'unsafe-eval' https://*.msauth.net https://*.msftauth.net
+        https://*.msftauthimages.net https://*.msauthimages.net https://*.msidentity.com
+        https://*.microsoftonline-p.com https://*.microsoftazuread-sso.com https://*.azureedge.net
+        https://*.outlook.com https://*.office.com https://*.office365.com https://*.microsoft.com
+        https://*.bing.com 'report-sample'; report-uri https://csp.microsoft.com/report/ESTS-UX-All
+      X-Xss-Protection:
+      - '0'
+      Set-Cookie:
+      - fpc=AvmLvo0dq1FFj3VMudNACxWszFaiAQAAAFbF0OEOAAAA; expires=Sun, 26-Jul-2026
+        19:09:10 GMT; path=/; secure; HttpOnly; SameSite=None
+      - stsservicecookie=estsfd; path=/; secure; samesite=none; httponly
+      - x-ms-gateway-slice=estsfd; path=/; secure; samesite=none; httponly
+      Date:
+      - Fri, 26 Jun 2026 19:09:09 GMT
+      Content-Length:
+      - '2189'
+    body:
+      encoding: UTF-8
+      string: '{"token_type":"Bearer","expires_in":3599,"ext_expires_in":3599,"access_token":"<token>"}'
+  recorded_at: Fri, 26 Jun 2026 19:09:10 GMT
+- request:
+    method: put
+    uri: "<SHAREPOINT_GRAPH_URL>/v1.0/sites/<SHAREPOINT_MSS_SITE_ID>/drives/<SHAREPOINT_MSS_DRIVE_ID>/root:/DEV%20ONLY/test/Survey%20Responses/give_feedback/test_run.csv:/content"
+    body:
+      encoding: UTF-8
+      string: |
+        name,value
+        foo,bar
+    headers:
+      Authorization: Bearer <TOKEN>
+      Accept:
+      - application/json
+      User-Agent:
+      - "<FARADAY_VERSION>"
+      Content-Type:
+      - text/csv
+      Content-Length:
+      - '19'
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Cache-Control:
+      - no-store, no-cache
+      Transfer-Encoding:
+      - chunked
+      Content-Type:
+      - application/json;odata.metadata=minimal;odata.streaming=true;IEEE754Compatible=false;charset=utf-8
+      Vary:
+      - Accept-Encoding
+      Request-Id:
+      - 86800239-0eb7-4aaf-bec1-e63af6861e4e
+      Client-Request-Id:
+      - 86800239-0eb7-4aaf-bec1-e63af6861e4e
+      X-Ms-Ags-Diagnostic:
+      - '{"ServerInfo":{"DataCenter":"West US","Slice":"E","Ring":"4","ScaleUnit":"001","RoleInstance":"BY1PEPF0002597E"}}'
+      Splogid:
+      - 2d7821a2-e0c0-d000-f5c0-380013fda2f9
+      Odata-Version:
+      - '4.0'
+      Date:
+      - Fri, 26 Jun 2026 19:09:11 GMT
+    body:
+      encoding: ASCII-8BIT
+      string: '{"id":"01QHTGQ2ICDXTLNWKEBVA2XABHFJVILFM3","name":"test_run.csv"}'
+  recorded_at: Fri, 26 Jun 2026 19:09:11 GMT
+recorded_with: VCR 6.4.0

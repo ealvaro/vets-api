@@ -110,6 +110,15 @@ VCR.configure do |c|
   c.filter_sensitive_data('<VASS_AUTH_URL>') { Settings.vass.auth_url }
   c.filter_sensitive_data('<VASS_API_URL>') { Settings.vass.api_url }
   c.filter_sensitive_data('<APPIAN_API_KEY>') { Settings.res.api_key.to_s }
+  c.filter_sensitive_data('<SHAREPOINT_AUTHENTICATION_URL>') do
+    Settings.sharepoint.mobile_survey_storage.authentication_url
+  end
+  c.filter_sensitive_data('<SHAREPOINT_GRAPH_URL>') { Settings.sharepoint.mobile_survey_storage.sharepoint_graph_url }
+  c.filter_sensitive_data('<SHAREPOINT_MSS_CLIENT_ID>') { Settings.sharepoint.mobile_survey_storage.client_id }
+  c.filter_sensitive_data('<SHAREPOINT_MSS_CLIENT_SECRET>') { Settings.sharepoint.mobile_survey_storage.client_secret }
+  c.filter_sensitive_data('<SHAREPOINT_MSS_DRIVE_ID>') { Settings.sharepoint.mobile_survey_storage.drive_id }
+  c.filter_sensitive_data('<SHAREPOINT_MSS_SITE_ID>') { Settings.sharepoint.mobile_survey_storage.site_id }
+  c.filter_sensitive_data('<SHAREPOINT_MSS_TENANT_ID>') { Settings.sharepoint.mobile_survey_storage.tenant_id }
   c.before_record do |i|
     %i[response request].each do |env|
       next unless i.send(env).headers.keys.include?('Token')

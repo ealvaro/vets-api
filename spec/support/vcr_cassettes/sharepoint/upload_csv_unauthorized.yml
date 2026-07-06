@@ -1,0 +1,74 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: "<SHAREPOINT_AUTHENTICATION_URL>/<SHAREPOINT_MSS_TENANT_ID>/oauth2/v2.0/token"
+    body:
+      encoding: UTF-8
+      string: client_id=<SHAREPOINT_MSS_CLIENT_ID>&client_secret=<SHAREPOINT_MSS_CLIENT_SECRET>&grant_type=client_credentials&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default
+    headers:
+      User-Agent:
+      - "<FARADAY_VERSION>"
+      Host:
+      - login.microsoftonline.com
+      Content-Type:
+      - application/x-www-form-urlencoded
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 401
+      message: Unauthorized
+    headers:
+      Cache-Control:
+      - no-store, no-cache
+      Pragma:
+      - no-cache
+      Content-Type:
+      - application/json; charset=utf-8
+      Expires:
+      - "-1"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      X-Content-Type-Options:
+      - nosniff
+      X-Ms-Clientdata:
+      - e|7000215||microsoftonline.com|none
+      P3p:
+      - CP="DSP CUR OTPi IND OTRi ONL FIN"
+      X-Ms-Request-Id:
+      - 54a86626-32c7-420b-9494-054b6b000400
+      X-Ms-Ests-Server:
+      - 2.1.24676.5 - NCUS ProdSlices
+      X-Ms-Srs:
+      - 1.P
+      Content-Security-Policy-Report-Only:
+      - object-src 'none'; base-uri 'self'; script-src 'self' 'nonce-HxbTLa3EDw9j89KUHgtWog'
+        'unsafe-inline' 'unsafe-eval' https://*.msauth.net https://*.msftauth.net
+        https://*.msftauthimages.net https://*.msauthimages.net https://*.msidentity.com
+        https://*.microsoftonline-p.com https://*.microsoftazuread-sso.com https://*.azureedge.net
+        https://*.outlook.com https://*.office.com https://*.office365.com https://*.microsoft.com
+        https://*.bing.com 'report-sample'; report-uri https://csp.microsoft.com/report/ESTS-UX-All
+      X-Xss-Protection:
+      - '0'
+      Set-Cookie:
+      - fpc=Ajm80vV-Mf1Eim5UMY-LYhGszFaiAQAAAFXF0OEOAAAA; expires=Sun, 26-Jul-2026
+        19:09:10 GMT; path=/; secure; HttpOnly; SameSite=None
+      - stsservicecookie=estsfd; path=/; secure; samesite=none; httponly
+      - x-ms-gateway-slice=estsfd; path=/; secure; samesite=none; httponly
+      Date:
+      - Fri, 26 Jun 2026 19:09:09 GMT
+      Content-Length:
+      - '623'
+    body:
+      encoding: UTF-8
+      string: '{"error":"invalid_client","error_description":"AADSTS7000215: Invalid
+        client secret provided. Ensure the secret being sent in the request is the
+        client secret value, not the client secret ID, for a secret added to app ''<SHAREPOINT_MMS  _CLIENT_ID>''.
+        Trace ID: 54a86626-32c7-420b-9494-054b6b000400 Correlation ID: b408fbeb-d77e-4b65-a066-f5ee9af60adc
+        Timestamp: 2026-06-26 19:09:10Z","error_codes":[7000215],"timestamp":"2026-06-26
+        19:09:10Z","trace_id":"54a86626-32c7-420b-9494-054b6b000400","correlation_id":"b408fbeb-d77e-4b65-a066-f5ee9af60adc","error_uri":"https://login.microsoftonline.com/error?code=7000215"}'
+  recorded_at: Fri, 26 Jun 2026 19:09:10 GMT
+recorded_with: VCR 6.4.0

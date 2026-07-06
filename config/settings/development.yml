@@ -1403,14 +1403,14 @@ sentry:
   dsn: ~
 sharepoint:
   mobile_survey_storage:
-    authentication_url: ~
+    authentication_url: https://login.microsoftonline.com
     client_id: fake_sharepoint_client_id
     client_secret: fake_sharepoint_client_secret
     drive_id: fake_drive_id
     filepath: 'Survey Responses'
-    mock: ~
-    scope: ~
-    sharepoint_graph_url: ~
+    mock: false
+    scope: https://graph.microsoft.com/.default
+    sharepoint_graph_url: https://graph.microsoft.com
     site_id: fake_site_id
     tenant_id: fake_sharepoint_tenant_id
 shrine:

@@ -9,7 +9,26 @@ module Mobile
     class UploadSurveyResponseJob
       include Sidekiq::Job
 
+      STATSD_KEY_PREFIX = 'worker.mobile.v0.upload_survey_response'
+
       sidekiq_options(retry: 5, unique_for: 1.day)
+
+      sidekiq_retries_exhausted do |msg, ex|
+        error_class = msg['error_class'] || ex&.class&.to_s
+        error_message = msg['error_message'] || ex&.message
+
+        StatsD.increment("#{STATSD_KEY_PREFIX}.retries_exhausted")
+
+        Rails.logger.error(
+          'Mobile survey response upload retries exhausted',
+          {
+            job_class: msg['class'],
+            jid: msg['jid'],
+            error_class:,
+            error_message:
+          }
+        )
+      end
 
       class UploadError < StandardError; end
 
