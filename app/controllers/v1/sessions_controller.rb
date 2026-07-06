@@ -72,7 +72,7 @@ module V1
 
         url.query = query_strings.to_query
 
-        redirect_to url.to_s
+        redirect_to url.to_s, allow_other_host: true
       else
         render_login(type)
       end
@@ -84,7 +84,7 @@ module V1
       Rails.logger.info("SessionsController version:v1 ssoe_slo_callback, user_uuid=#{@current_user&.uuid}")
 
       if ActiveModel::Type::Boolean.new.cast(params[:agreements_declined])
-        redirect_to url_service.tou_declined_logout_redirect_url
+        redirect_to url_service.tou_declined_logout_redirect_url, allow_other_host: true
       elsif (exc_cookie = cookies.signed[LOGIN_EXCEPTION_COOKIE_NAME]).present?
         code = exc_cookie[:code].presence
         request_id = exc_cookie[:request_id].presence
@@ -92,9 +92,9 @@ module V1
         Rails.logger.info('[V1][SessionsController] SLO Callback error cookie found', code:, request_id:)
         cookies.delete(LOGIN_EXCEPTION_COOKIE_NAME)
 
-        redirect_to url_service.login_redirect_url(auth: 'fail', code:, request_id:)
+        redirect_to url_service.login_redirect_url(auth: 'fail', code:, request_id:), allow_other_host: true
       else
-        redirect_to url_service.logout_redirect_url
+        redirect_to url_service.logout_redirect_url, allow_other_host: true
       end
     end
 
@@ -168,9 +168,9 @@ module V1
 
       user_verification = current_user.user_verification
       if user_verification.user_account.needs_accepted_terms_of_use?
-        redirect_to url_service.terms_of_use_redirect_url
+        redirect_to url_service.terms_of_use_redirect_url, allow_other_host: true
       else
-        redirect_to url_service.login_redirect_url
+        redirect_to url_service.login_redirect_url, allow_other_host: true
       end
       UserAudit.logger.success(event: :sign_in, user_verification:)
       login_stats(:success)
@@ -386,10 +386,13 @@ module V1
         url.query = { appKey: CGI.escape(IdentitySettings.saml_ssoe.logout_app_key),
                       clientId: params[:client_id] }.compact.to_query
 
-        redirect_to url.to_s
+        redirect_to url.to_s, allow_other_host: true
       end
 
-      redirect_to url_service.login_redirect_url(auth: 'fail', code:, request_id: request.request_id) unless performed?
+      unless performed?
+        redirect_to url_service.login_redirect_url(auth: 'fail', code:, request_id: request.request_id),
+                    allow_other_host: true
+      end
 
       login_stats(:failure, exc) unless response.nil?
       callback_stats(status, response, tag)

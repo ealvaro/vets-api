@@ -12,8 +12,13 @@ module RepresentationManagement
       end
     end
 
-    initializer 'representation_management.autoload', before: :set_autoload_paths do |app|
-      app.config.autoload_paths << Rails.root.join('modules', 'representation_management', 'lib')
+    config.eager_load_paths << root.join('lib').to_s
+
+    initializer 'representation_management.zeitwerk_ignore' do
+      loader = Rails.autoloaders.main
+      loader.ignore(root.join('lib/fonts'))
+      loader.ignore(root.join('lib/tasks'))
+      loader.ignore(root.join('lib/representation_management/version.rb'))
     end
   end
 end

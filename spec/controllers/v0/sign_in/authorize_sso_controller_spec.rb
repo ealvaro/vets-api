@@ -146,7 +146,7 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
       end
 
       context 'when stashing the request params fails validation' do
-        let(:client_id_param) { nil }
+        let(:client_id_param) { '' }
         let(:expected_error_message) { "Invalid params: Client can't be blank" }
 
         before do
@@ -189,7 +189,7 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
 
     context 'when authentication succeeds' do
       context 'and client_id is not given' do
-        let(:client_id_param) { nil }
+        let(:client_id_param) { '' }
         let(:expected_error_message) { 'Invalid params: client_id' }
 
         it_behaves_like 'an error response'

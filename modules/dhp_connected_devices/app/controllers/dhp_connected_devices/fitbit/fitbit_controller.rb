@@ -12,7 +12,7 @@ module DhpConnectedDevices
 
       def connect
         auth_url = fitbit_api.auth_url_with_pkce
-        redirect_to auth_url
+        redirect_to auth_url, allow_other_host: true
       end
 
       def callback
@@ -79,7 +79,7 @@ module DhpConnectedDevices
       end
 
       def redirect_with_status(status)
-        redirect_to website_host_service.get_redirect_url({ status:, vendor: device_key })
+        redirect_to website_host_service.get_redirect_url({ status:, vendor: device_key }), allow_other_host: true
       end
 
       def log_error(error)

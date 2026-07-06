@@ -1764,6 +1764,7 @@ spec/lib/pdf_info/metadata_spec.rb @software/backend-review-group
 spec/lib/pdf_utilities @software/backend-review-group
 spec/lib/periodic_jobs_spec.rb @software/govcio-vfep-codereviewers @software/backend-review-group
 spec/lib/persistent_attachments/sanitizer_spec.rb @software/benefits-lifestage @software/pension-and-burials @software/backend-review-group
+spec/lib/postgis_schema_roundtrip_spec.rb @software/backend-review-group
 spec/lib/preneeds @software/bah-mbs-selfserv @software/backend-review-group
 spec/lib/request_context_middleware_spec.rb @software/octo-identity
 spec/lib/res/ch31_form_spec.rb @software/backend-review-group @software/govcio-vfep-codereviewers
@@ -2014,6 +2015,7 @@ spec/requests/admin_controller_spec.rb @software/backend-review-group
 spec/requests/authentication/standard_authentication_spec.rb @software/octo-identity
 spec/requests/breakers_integration_spec.rb @software/backend-review-group
 spec/requests/connected_applications_request_spec.rb @software/lighthouse-pivot
+spec/requests/cookie_session_compatibility_spec.rb @software/backend-review-group
 spec/requests/csrf_request_spec.rb @software/octo-identity
 spec/requests/debts_spec.rb @software/vsa-debt-resolution @software/backend-review-group
 spec/requests/decision_review_evidences_request_spec.rb @software/benefits-decision-reviews-be @software/backend-review-group

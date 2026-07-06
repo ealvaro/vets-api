@@ -45,7 +45,7 @@ module VetsAPI
     config.active_record.raise_on_assign_to_attr_readonly = false
 
     # 7.0
-    config.action_controller.raise_on_open_redirects = false
+    config.action_controller.action_on_open_redirect = :log
 
     # RAILS 7 CONFIG END
 

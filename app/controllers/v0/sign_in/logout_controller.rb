@@ -47,7 +47,7 @@ module V0
           post_logout_redirect_uri:
         ).perform
 
-        logout_redirect ? redirect_to(logout_redirect) : render(status: :ok)
+        logout_redirect ? redirect_to(logout_redirect, allow_other_host: true) : render(status: :ok)
       end
 
       def client_id

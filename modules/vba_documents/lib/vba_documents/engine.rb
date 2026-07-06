@@ -6,8 +6,15 @@ module VBADocuments
   class Engine < ::Rails::Engine
     isolate_namespace VBADocuments
 
-    config.autoload_paths << File.expand_path('lib', __dir__) if Rails.env.development?
-    config.eager_load_paths << File.expand_path('lib', __dir__) unless Rails.env.development?
+    config.eager_load_paths << root.join('lib').to_s
+
+    initializer 'vba_documents.zeitwerk_ignore' do
+      loader = Rails.autoloaders.main
+      loader.ignore(root.join('lib/tasks'))
+      loader.ignore(root.join('lib/vba_documents/version.rb'))
+      loader.ignore(root.join('lib/vba_documents/pdf_inspector.rb'))
+      loader.ignore(root.join('lib/vba_documents/upload_validator.rb'))
+    end
 
     initializer :append_migrations do |app|
       unless app.root.to_s.match? root.to_s

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'logging/base_monitor'
+
 module AccreditedRepresentativePortal
   class Monitor < ::Logging::BaseMonitor
     CLAIM_STATS_KEY = 'api.accredited_representative_portal_claim'

@@ -15,9 +15,12 @@ module AccreditedRepresentativePortal
 
     config.generators.api_only = true
 
-    # Make sure Rails autoloads lib/ properly
-    initializer :append_lib_to_autoload_paths do |_app|
-      ActiveSupport::Dependencies.autoload_paths << root.join('lib')
+    config.eager_load_paths << root.join('lib').to_s
+
+    initializer 'accredited_representative_portal.zeitwerk_ignore' do
+      loader = Rails.autoloaders.main
+      loader.ignore(root.join('lib/tasks'))
+      loader.ignore(root.join('lib/accredited_representative_portal/version.rb'))
     end
 
     # So that the app-wide migration command notices our engine's migrations.
@@ -37,8 +40,7 @@ module AccreditedRepresentativePortal
       end
     end
 
-    initializer 'accredited_representative_portal.benefits_intake.register_handler',
-                after: :append_lib_to_autoload_paths do |app|
+    initializer 'accredited_representative_portal.benefits_intake.register_handler' do |app|
       app.config.to_prepare do
         require 'lighthouse/benefits_intake/sidekiq/submission_status_job'
         require 'accredited_representative_portal/submission_handler'

@@ -193,7 +193,7 @@ RSpec.describe 'V0::CaregiversAssistanceClaims', type: :request do
         expect_any_instance_of(Form1010cg::Auditor).to receive(:record).with(:submission_attempt)
         expect_any_instance_of(Form1010cg::Auditor).to receive(:record).with(
           :submission_failure_client_data,
-          errors: ['param is missing or the value is empty: caregivers_assistance_claim']
+          errors: ['param is missing or the value is empty or invalid: caregivers_assistance_claim']
         )
         subject
       end
@@ -206,7 +206,7 @@ RSpec.describe 'V0::CaregiversAssistanceClaims', type: :request do
         expect_any_instance_of(Form1010cg::Auditor).to receive(:record).with(:submission_attempt)
         expect_any_instance_of(Form1010cg::Auditor).to receive(:record).with(
           :submission_failure_client_data,
-          errors: ['param is missing or the value is empty: form']
+          errors: ['param is missing or the value is empty or invalid: form']
         )
         subject
       end

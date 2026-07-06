@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'lighthouse/benefits_intake/submission_handler/saved_claim'
+
 module AccreditedRepresentativePortal
   class SubmissionHandler < ::BenefitsIntake::SubmissionHandler::SavedClaim
     def self.pending_attempts

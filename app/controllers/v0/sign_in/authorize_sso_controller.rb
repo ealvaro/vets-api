@@ -104,7 +104,7 @@ module V0
         uri = URI.parse(IdentitySettings.sign_in.usip_uri)
         uri.query = query_params.to_query
 
-        redirect_to uri, status: :found
+        redirect_to uri, status: :found, allow_other_host: true
       rescue ::SignIn::Errors::MalformedParamsError => e
         log_authorize_sso_error(e, :error)
         handle_pre_login_error(e, authorize_sso_params[:client_id])
