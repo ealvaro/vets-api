@@ -27,7 +27,9 @@ module SimpleFormsApi
           { question_number: '6',
             question_text: 'RELATIONSHIP TO VETERAN' },
           { question_number: '10',
-            question_text: 'RELATIONSHIP TO VETERAN' }
+            question_text: 'RELATIONSHIP TO VETERAN' },
+          { question_number: '14',
+            question_text: 'REMARKS' }
         ]
       )
 
@@ -53,6 +55,17 @@ module SimpleFormsApi
             show_suffix: true
           )
         end
+      end
+
+      if @data['remarks'].present?
+        gen.add_text(
+          @data['remarks'],
+          question_num: 14,
+          question_suffix: '',
+          question_text: 'REMARKS',
+          question_type: 'free_text',
+          show_suffix: false
+        )
       end
 
       gen.generate

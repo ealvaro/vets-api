@@ -338,7 +338,30 @@ RSpec.describe SimpleFormsApi::VBA210788 do
   describe '#remarks' do
     subject { form.remarks }
 
-    it { is_expected.to eq data['remarks'] }
+    # rubocop:disable Layout/LineLength
+    it 'returns string if under limit' do
+      under_limit_string =
+        'King Arthur is the legendary King of Britain who united the realm from Camelot. Advised by Merlin, he wielded Excalibur and led the Knights of the Round Table—elite warriors bound by chivalry. His most honorable knights include: Lancelot (bravest but flawed by love for Guinevere), Gawain, Galahad, Perceval, and others. They quested for the Holy Grail until betrayal and civil war ended the golden age. Arthur was taken to Avalon, destined to return'
+      data['remarks'] = under_limit_string
+
+      expect(form.remarks).to eq(under_limit_string)
+    end
+
+    it "returns 'See Additional Page' if over the limit" do
+      over_limit_string =
+        "The Charge of the Winged Hussars Battle of Vienna (1683)
+        This is one of history's most legendary cavalry moments. In September 1683, the Ottoman Empire under Grand Vizier Kara Mustafa besieged Vienna for two months, coming close to capturing the city and potentially opening the way for further expansion into Europe. The Habsburg defenders held out desperately, but relief arrived when King John III Sobieski of Poland led a coalition force to the rescue.
+        The climax was the largest cavalry charge in recorded history: around 18,000 horsemen"
+      data['remarks'] = over_limit_string
+
+      expect(form.remarks).to eq('See Additional Page')
+    end
+    # rubocop:enable Layout/LineLength
+
+    it 'a blank string if not present' do
+      data['remarks'] = nil
+      expect(form.remarks).to eq('')
+    end
   end
 
   describe '#signature' do

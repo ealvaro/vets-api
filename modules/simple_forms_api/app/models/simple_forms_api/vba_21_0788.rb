@@ -7,7 +7,9 @@ module SimpleFormsApi
   class VBA210788 < BaseForm
     STATS_KEY = 'api.simple_forms_api.21_0788'
     FORM_NUMBER = '21-0788'
-    COORDINATES = [105.0, 395.0].freeze
+    REMARKS_LIMIT = 461
+    RELATIONSHIP_LIMIT = 105
+    TABLE_OTHER_LIMIT = 25
 
     APPORTIONMENT_RADIOS = [
       [7, 6],
@@ -163,7 +165,11 @@ module SimpleFormsApi
     end
 
     def remarks
-      data['remarks']
+      if data['remarks'].present?
+        data['remarks'].length < REMARKS_LIMIT ? data['remarks'] : 'See Additional Page'
+      else
+        ''
+      end
     end
 
     def signature
@@ -178,7 +184,7 @@ module SimpleFormsApi
     end
 
     def other_relationship_text
-      clip_text_for_length(data['other_relationship_description'], 105)
+      clip_text_for_length(data['other_relationship_description'], RELATIONSHIP_LIMIT)
     end
 
     def people
@@ -207,7 +213,7 @@ module SimpleFormsApi
 
     def apportionment_fields_relationship(person)
       if person['relationship'] == 'other'
-        clip_text_for_length(person['other_relationship_description'], 25)
+        clip_text_for_length(person['other_relationship_description'], TABLE_OTHER_LIMIT)
       else
         person['relationship']
       end
@@ -333,18 +339,22 @@ module SimpleFormsApi
       people_for = people.select do |p|
         p['relationship'] == 'other' &&
           p['other_relationship_description'].present? &&
-          p['other_relationship_description'].length > 25
+          p['other_relationship_description'].length > TABLE_OTHER_LIMIT
       end
       claimant_is_other = data['relationship_to_veteran'] == 'other' && data['other_relationship_description'].present?
-      return nil if people_for.length.zero? && claimant_is_other == false
+      remarks_over_limit = remarks == 'See Additional Page'
+      # nothing qualifies for overflow so return early
+      return nil if people_for.length.zero? && claimant_is_other == false && !remarks_over_limit
 
       overflow_data = {}
-      if data['other_relationship_description'].length > 105
+      if data['other_relationship_description'].length > RELATIONSHIP_LIMIT
         overflow_data['question_6'] = data['other_relationship_description']
       end
       overflow_data['people_for'] = people_for if people_for.length.positive?
+      overflow_data['remarks'] = data['remarks'] if remarks_over_limit
 
-      return nil if overflow_data['question_6'].nil? && overflow_data['people_for'].nil?
+      # Overflow Object as nothing in it, so return
+      return nil if overflow_data.values_at('question_6', 'people_for', 'remarks').all?(&:blank?)
 
       Overflow210788.new(overflow_data, cutoff: 1).generate
     end
