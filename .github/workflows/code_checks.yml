@@ -459,7 +459,7 @@ jobs:
           mask-password: true
 
       - name: Restore Docker image from cache
-        uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /tmp/vets-api.tar.zst
           key: docker-image-${{ github.sha }}
@@ -479,7 +479,7 @@ jobs:
       #   2. master branch (so new PRs get balanced shards immediately)
       #   3. Any previous run (catch-all fallback)
       - name: Restore runtime log from cache
-        uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: tmp/parallel_runtime_rspec.log
           key: parallel-runtime-log-${{ github.ref }}-${{ github.run_id }}
@@ -490,7 +490,7 @@ jobs:
 
       - name: Restore shard manifest from cache
         id: shard_manifest_restore
-        uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: tmp/shard-manifest-group-${{ matrix.test_group }}.txt
           key: shard-manifest-${{ github.run_id }}-group-${{ matrix.test_group }}
