@@ -226,6 +226,16 @@ module SimpleFormsApi
     end
 
     def incarceration_fields
+      # 2 = Veteran is incarcerated for more than 60 days...
+      # 3 felony
+      # 4 misdemeanor
+      # 5 = Surviving spouse or child is incarcerated for more than 60 days...
+      # 6 felony
+      # 7 misdemeanor
+      # 8 = Veteran is incompetent, without fiduciary,receiving hospital, nursing home, or domiciliary care
+      # 9 = Veteran is in receipt of pension and is receiving hospital, domiciliary or nursing home care
+      # 10 = The primary beneficiary resides under the control of an enemny
+      # 11 = The veteran has disappeared for 90 days or more and his/her whereabouts remain unknown
       mapped = {}
 
       (2..11).each do |i|

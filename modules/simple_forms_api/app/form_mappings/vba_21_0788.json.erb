@@ -10,21 +10,28 @@
 
   "form1[0].Page_1[0].NAMEVETERAN[1]": "<%= form.full_name(form.data['preparer']) %>",
 
+  <%# Question 6 %>
+  <%# CURRENT SPOUSE %>
   "form1[0].Page_1[0].RadioButtonList[0]":
     "<%= form.relationship == 'spouse' ? '0' : 'Off' %>",
 
+  <%# CHILD 18-23 IN SCHOOL %>
   "form1[0].Page_1[0].RadioButtonList[1]":
     "<%= form.relationship == 'child_18_23' ? '0' : 'Off' %>",
 
+  <%# CUSTODIAN FOR MINOR %>
   "form1[0].Page_1[0].RadioButtonList[2]":
     "<%= form.relationship == 'custodian' ? '0' : 'Off' %>",
 
-  "form1[0].Page_1[0].RadioButtonList[3]":
+  <%# DEPENDENT PARENT %>
+  "form1[0].Page_1[0].RadioButtonList[4]":
     "<%= form.relationship == 'parent' ? '0' : 'Off' %>",
 
-  "form1[0].Page_1[0].RadioButtonList[4]":
+  <%# CHILD OVER 18 PERMANENTLY INCAPABLE OR SELF-SUPPORT %>
+  "form1[0].Page_1[0].RadioButtonList[3]":
     "<%= form.relationship == 'child_disabled' ? '0' : 'Off' %>",
 
+  <%# OTHER %>
   "form1[0].Page_1[0].RadioButtonList[5]":
     "<%= form.relationship == 'other' ? '0' : 'Off' %>",
 
