@@ -736,6 +736,8 @@ lighthouse:
     ccg:
       client_id: <%= ENV['lighthouse__auth__ccg__client_id'] %>
       rsa_key: <%= ENV['lighthouse__auth__ccg__rsa_key'] %>
+    client_credentials:
+      verify_ssl: true
   benefits_claims:
     access_token:
       aud_claim_url: <%= ENV['lighthouse__benefits_claims__access_token__aud_claim_url'] %>
@@ -751,6 +753,7 @@ lighthouse:
       use_mocks: <%= ENV['lighthouse__benefits_claims__form526__use_mocks'] %>
     host: <%= ENV['lighthouse__benefits_claims__host'] %>
     use_mocks: <%= ENV['lighthouse__benefits_claims__use_mocks'] %>
+    verify_ssl: true
   benefits_discovery:
     host: <%= ENV['lighthouse__benefits_discovery__host'] %>
     x_api_key: <%= ENV['lighthouse__benefits_discovery__x_api_key'] %>

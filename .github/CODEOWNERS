@@ -1056,8 +1056,7 @@ lib/kafka @software/ves-submission-traceability @software/backend-review-group
 lib/lgy @software/benefits-non-disability @software/backend-review-group
 lib/lgy/configuration.rb @software/benefits-non-disability @software/backend-review-group
 lib/lgy/service.rb @software/benefits-non-disability @software/backend-review-group
-lib/lighthouse/auth/client_credentials/jwt_generator.rb @software/backend-review-group
-lib/lighthouse/auth/client_credentials/service.rb @software/backend-review-group
+lib/lighthouse/auth/client_credentials @software/backend-review-group
 lib/lighthouse/healthcare_cost_and_coverage @software/vsa-debt-resolution @software/backend-review-group
 lib/lighthouse/benefits_claims @software/disability-benefits @software/benefits-management-tools-be @software/backend-review-group
 lib/lighthouse/benefits_claims/monitor.rb @software/benefits-lifestage @software/disability-benefits @software/backend-review-group

@@ -89,7 +89,12 @@ module BenefitsClaims
     # @return [Faraday::Connection] a Faraday connection instance.
     #
     def connection
-      @conn ||= Faraday.new(base_api_path, headers: base_request_headers, request: request_options) do |faraday|
+      options = {
+        headers: base_request_headers,
+        request: request_options,
+        ssl: { verify: verify_ssl? }
+      }
+      @conn ||= Faraday.new(base_api_path, **options) do |faraday|
         faraday.use(:breakers, service_name:)
         faraday.use Faraday::Response::RaiseError
 
@@ -98,19 +103,32 @@ module BenefitsClaims
 
         faraday.response :json, content_type: /\bjson/
         faraday.response :betamocks if use_mocks?
+
         faraday.adapter Faraday.default_adapter
       end
     end
 
-    private
-
-    ##
     # @return [Boolean] Should the service use mock data in lower environments.
-    #
     def use_mocks?
-      settings.use_mocks || false
+      ActiveModel::Type::Boolean.new.cast(settings.use_mocks) || false
     end
 
+    # @return [Boolean] Should the service verify SSL certificates.
+    def verify_ssl?
+      value = settings.verify_ssl
+      value = true if value.nil?
+      ActiveModel::Type::Boolean.new.cast(value)
+    end
+
+    # breakers will be tripped if error rate exceeds the threshold over a two minute period.
+    def breakers_error_threshold
+      value = settings.breakers_error_threshold.to_i
+      value.positive? ? value : 80
+    end
+
+    private
+
+    # @return [Boolean] Should the service get an access token.
     def get_access_token?
       !use_mocks? || Settings.betamocks.recording
     end
@@ -126,9 +144,7 @@ module BenefitsClaims
       end
     end
 
-    ##
     # @return [BenefitsClaims::AccessToken::Service] Service used to generate access tokens.
-    #
     def token_service(lighthouse_client_id, lighthouse_rsa_key_path, aud_claim_url = nil, host = nil)
       lighthouse_client_id = settings.access_token.client_id if lighthouse_client_id.nil?
       lighthouse_rsa_key_path = settings.access_token.rsa_key if lighthouse_rsa_key_path.nil?
