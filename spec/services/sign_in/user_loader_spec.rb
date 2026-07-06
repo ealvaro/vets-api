@@ -154,7 +154,8 @@ RSpec.describe SignIn::UserLoader do
                 service_name: user_verification.credential_type,
                 auth_broker: SignIn::Constants::Auth::BROKER_CODE,
                 client_id:
-              }
+              },
+              safe_keys: [:icn]
             }
           end
 

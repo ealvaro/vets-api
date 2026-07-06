@@ -44,7 +44,8 @@ module SignIn
         user_credentials:,
         credential_uuid: user_verification.credential_identifier,
         icn: user_account.icn,
-        sign_in:
+        sign_in:,
+        safe_keys: [:icn]
       }
       SignIn::Logger.new(prefix: self.class).info('reload_user', context)
 

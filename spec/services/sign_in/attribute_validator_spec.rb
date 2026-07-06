@@ -163,7 +163,8 @@ RSpec.describe SignIn::AttributeValidator do
               error_code: expected_error_code,
               credential_uuid: csp_id,
               mhv_icn:,
-              type: service_name }.compact
+              type: service_name,
+              safe_keys: [:mhv_icn] }.compact
           end
           let(:auto_uplevel) { true }
 
@@ -328,7 +329,7 @@ RSpec.describe SignIn::AttributeValidator do
             expect { subject }.to raise_error(expected_error, expected_error_message)
             expect(sign_in_logger).to have_received(:info).with(
               'attribute validator mpi unlink skipped',
-              icn:, identifier:, identifier_type:
+              icn:, identifier:, identifier_type:, safe_keys: [:icn]
             )
           end
         end
@@ -375,7 +376,8 @@ RSpec.describe SignIn::AttributeValidator do
               subject
               expect(sign_in_logger).to have_received(:info).with(a_string_including(expected_sec_id_log),
                                                                   icn:,
-                                                                  pce_status: expected_pce_status)
+                                                                  pce_status: expected_pce_status,
+                                                                  safe_keys: [:icn])
             end
           end
 
@@ -387,7 +389,8 @@ RSpec.describe SignIn::AttributeValidator do
               subject
               expect(sign_in_logger).to have_received(:info).with(a_string_including(expected_sec_id_log),
                                                                   icn:,
-                                                                  pce_status: expected_pce_status)
+                                                                  pce_status: expected_pce_status,
+                                                                  safe_keys: [:icn])
             end
           end
         end
@@ -667,7 +670,8 @@ RSpec.describe SignIn::AttributeValidator do
                                                                       credential_uuid: csp_id,
                                                                       mhv_icn:,
                                                                       new_record: false,
-                                                                      type: service_name })
+                                                                      type: service_name,
+                                                                      safe_keys: [:mhv_icn] })
               end
             end
 

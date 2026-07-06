@@ -317,7 +317,8 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
                 let(:authentication_time) { 0 }
                 let(:expected_logger_context) do
                   logger_context = { type:, client_id:, ial:, acr:, icn: mpi_profile.icn,
-                                     credential_uuid: logingov_uuid, authentication_time:, operation: }
+                                     credential_uuid: logingov_uuid, authentication_time:, operation:,
+                                     safe_keys: [:icn] }
                   app_name ? logger_context.merge(app_name:) : logger_context
                 end
                 let(:mpi_profile) do
@@ -450,7 +451,8 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
               let(:expected_log) { '[SignInService] [V0::SignInController] callback' }
               let(:expected_logger_context) do
                 logger_context = { type:, client_id:, ial:, acr:, icn: mpi_profile.icn,
-                                   credential_uuid: idme_uuid, authentication_time:, operation: }
+                                   credential_uuid: idme_uuid, authentication_time:, operation:,
+                                   safe_keys: [:icn] }
                 app_name ? logger_context.merge(app_name:) : logger_context
               end
 
@@ -653,7 +655,8 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
 
               let(:expected_logger_context) do
                 logger_context = { type:, client_id:, ial:, acr:, icn: expected_icn,
-                                   credential_uuid: backing_idme_uuid, authentication_time:, operation: }
+                                   credential_uuid: backing_idme_uuid, authentication_time:, operation:,
+                                   safe_keys: [:icn] }
                 app_name ? logger_context.merge(app_name:) : logger_context
               end
               let(:meta_refresh_tag) { '<meta http-equiv="refresh" content="0;' }

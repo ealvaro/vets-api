@@ -104,7 +104,8 @@ module V0
           icn: verified_icn,
           credential_uuid: user_info.sub,
           authentication_time: Time.zone.now.to_i - state_payload.created_at,
-          operation: state_payload.operation
+          operation: state_payload.operation,
+          safe_keys: [:icn]
         }
         context[:app_name] = state_payload.app_name if state_payload.app_name
         sign_in_logger.info('callback', context)

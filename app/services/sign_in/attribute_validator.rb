@@ -44,7 +44,8 @@ module SignIn
     def validate_sec_id
       return if sec_id.present?
 
-      sign_in_logger.info('mpi record missing sec_id', icn: verified_icn, pce_status: sec_id_pce_status)
+      sign_in_logger.info('mpi record missing sec_id', icn: verified_icn, pce_status: sec_id_pce_status,
+                                                       safe_keys: [:icn])
     end
 
     def add_mpi_user
@@ -150,7 +151,7 @@ module SignIn
                                     when Constants::Auth::LOGINGOV then [logingov_uuid, MPI::Constants::LOGINGOV_UUID]
                                     end
       sign_in_logger.info('attribute validator mpi unlink skipped',
-                          icn: verified_icn, identifier:, identifier_type:)
+                          icn: verified_icn, identifier:, identifier_type:, safe_keys: [:icn])
     end
 
     def scrub_attribute(attribute)
@@ -188,7 +189,8 @@ module SignIn
                                                          credential_uuid:,
                                                          mhv_icn:,
                                                          new_record:,
-                                                         type: service_name }.compact)
+                                                         type: service_name,
+                                                         safe_keys: [:mhv_icn] }.compact)
       raise error.new message: error_message, code: error_code if error && raise_error
     end
 

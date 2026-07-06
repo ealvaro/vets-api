@@ -215,7 +215,8 @@ RSpec.describe V0::SignIn::RefreshController, type: :controller do
               session_handle: access_token['session_handle'],
               client_id: access_token['client_id'],
               type: user_verification.credential_type,
-              icn: user_account.icn
+              icn: user_account.icn,
+              safe_keys: [:icn]
             }
             expect(Rails.logger).to have_received(:info).with(expected_log_message, logger_context)
           end
@@ -259,7 +260,8 @@ RSpec.describe V0::SignIn::RefreshController, type: :controller do
               session_handle: access_token['session_handle'],
               client_id: access_token['client_id'],
               type: user_verification.credential_type,
-              icn: user_account.icn
+              icn: user_account.icn,
+              safe_keys: [:icn]
             }
             expect(Rails.logger).to have_received(:info).with(expected_log_message, logger_context)
           end
