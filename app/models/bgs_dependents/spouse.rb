@@ -71,7 +71,7 @@ module BGSDependents
       @middle = @spouse_information['full_name']['middle']
       @last = @spouse_information['full_name']['last']
       @suffix = @spouse_information['full_name']['suffix']
-      @va_file_number = @spouse_information['va_file_number'] if spouse_is_veteran == 'Y'
+      @va_file_number = nil # no need to send VA File number to BGS for spouses
     end
 
     def lives_with_vet

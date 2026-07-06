@@ -16,7 +16,7 @@ RSpec.describe BGSDependents::Spouse do
       'middle' => 'Lauren',
       'last' => 'McCarthy',
       'suffix' => 'Sr.',
-      'va_file_number' => '00000000'
+      'va_file_number' => nil
     }
   end
   let(:address_output_v2) do

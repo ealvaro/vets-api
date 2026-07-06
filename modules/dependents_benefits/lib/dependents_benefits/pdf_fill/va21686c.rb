@@ -350,20 +350,6 @@ module DependentsBenefits
                 question_text: 'INFORMATION NEEDED TO ADD SPOUSE > SPOUSE\'S SSN LAST FOUR NUMBERS'
               }
             }, # end spouse ssn
-            'va_file_number' => { # XXX this group needs three parts like SSN, name looks v. sim
-              key: 'form1[0].#subform[17].SpouseVAFileNumber[0]',
-              limit: 9,
-              question_num: 12,
-              question_suffix: 'B',
-              question_text: 'Spouse\'s VA File Number (If Applicable)'
-            }, # end of spouse va file number
-            'service_number' => {
-              key: 'form1[0].#subform[17].SPOUSEServiceNumber[0]',
-              limit: 9,
-              question_num: 12,
-              question_suffix: 'C',
-              question_text: 'INFORMATION NEEDED TO ADD SPOUSE > IS YOUR SPOUSE A VETERAN'
-            }, # end of spouse service number
             'is_veteran' => {
               'is_veteran_yes' => { key: 'form1[0].#subform[17].YES[0]' },
               'is_veteran_no' => { key: 'form1[0].#subform[17].NO[0]' }

@@ -60,7 +60,7 @@ RSpec.describe BGS::Marriages do
           birth_state_cd: nil,
           death_dt: nil,
           ever_maried_ind: 'Y',
-          file_nbr: '00000000',
+          file_nbr: nil,
           first_nm: 'Jenny',
           last_nm: 'McCarthy',
           martl_status_type_cd: 'Married',
