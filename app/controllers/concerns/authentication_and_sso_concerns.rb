@@ -119,7 +119,8 @@ module AuthenticationAndSSOConcerns # rubocop:disable Metrics/ModuleLength
 
     Rails.logger.info('[SessionsController] Cerner Eligibility', eligible:, previous_value:, cookie_action: :set,
                                                                  icn: @current_user.icn,
-                                                                 cerner_limited: current_user.cerner_limited?)
+                                                                 cerner_limited: current_user.cerner_limited?,
+                                                                 safe_keys: [:icn])
   end
 
   def set_session_expiration_header

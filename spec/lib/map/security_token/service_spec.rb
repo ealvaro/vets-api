@@ -13,7 +13,7 @@ describe MAP::SecurityToken::Service do
     let(:cache_key) { "map_sts_token_#{application}_#{icn}" }
     let(:log_prefix) { '[MAP][SecurityToken][Service]' }
     let(:expected_request_message) { "#{log_prefix} token request" }
-    let(:expected_request_payload) { { application:, icn: } }
+    let(:expected_request_payload) { { application:, icn:, safe_keys: [:icn] } }
     let(:jwks_cache_key) { 'map_public_jwks' }
     let(:jwk_payload) { JSON.parse(File.read('spec/fixtures/map/jwks.json'))['keys'].first }
     let(:map_jwks) { JWT::JWK::Set.new([jwk_payload]) }
@@ -27,7 +27,7 @@ describe MAP::SecurityToken::Service do
         "#{expected_message}, status: #{expected_error_status}, application: #{application}, " \
           "icn: #{icn}, context: #{context}"
       end
-      let(:expected_log_values) { { status: expected_error_status, application:, icn:, context: } }
+      let(:expected_log_values) { { status: expected_error_status, application:, icn:, context:, safe_keys: [:icn] } }
 
       it 'raises a client error with the expected message and creates a log' do
         allow(Rails.logger).to receive(:error).and_call_original
@@ -63,9 +63,11 @@ describe MAP::SecurityToken::Service do
         shared_examples 'new token request' do
           it 'calls for a new token, caches it, and logs a MAP STS token success message with cached_response: false',
              vcr: { cassette_name: 'map/security_token_service_200_response' } do
-            expect(Rails.logger).to receive(:info).with(expected_request_message, { application:, icn: })
+            expect(Rails.logger).to receive(:info).with(expected_request_message,
+                                                        { application:, icn:, safe_keys: [:icn] })
             expect(Rails.logger).to receive(:info).with(expected_log_message,
-                                                        { application:, icn:, cached_response: false })
+                                                        { application:, icn:, cached_response: false,
+                                                          safe_keys: [:icn] })
             expect(Rails.cache).to receive(:write_entry).with(cache_key, anything,
                                                               hash_including(expires_in: 5.minutes, force: !cache))
             expect(subject[:access_token]).not_to eq(map_sts_token)
@@ -83,9 +85,10 @@ describe MAP::SecurityToken::Service do
             end
 
             it 'returns the cached token and logs a MAP STS token success message with cached_response: true' do
-              expect(Rails.logger).to receive(:info).with(expected_request_message, { application:, icn: })
+              expect(Rails.logger).to receive(:info).with(expected_request_message,
+                                                          { application:, icn:, safe_keys: [:icn] })
               expect(Rails.logger).to receive(:info).with(expected_log_message,
-                                                          { application:, icn:, cached_response: })
+                                                          { application:, icn:, cached_response:, safe_keys: [:icn] })
               expect(Rails.cache).not_to receive(:write_entry)
               expect(subject[:access_token]).to eq(map_sts_token)
             end
@@ -139,7 +142,7 @@ describe MAP::SecurityToken::Service do
         let(:expected_error) { Common::Exceptions::GatewayTimeout }
         let(:expected_error_message) { 'Gateway timeout' }
         let(:expected_logger_message) { "#{log_prefix} token failed, gateway timeout" }
-        let(:expected_log_values) { { application:, icn: } }
+        let(:expected_log_values) { { application:, icn:, safe_keys: [:icn] } }
 
         before do
           stub_request(:post, token_endpoint).to_raise(Net::ReadTimeout)
@@ -157,7 +160,7 @@ describe MAP::SecurityToken::Service do
         let(:expected_error) { Common::Client::Errors::ParsingError }
         let(:expected_error_message) { "unexpected token 'Not' at line 1 column 1" }
         let(:expected_logger_message) { "#{log_prefix} token failed, parsing error" }
-        let(:expected_log_values) { { application:, icn:, context: expected_error_message } }
+        let(:expected_log_values) { { application:, icn:, context: expected_error_message, safe_keys: [:icn] } }
 
         it 'raises an gateway timeout error and creates a log' do
           expect(Rails.logger).to receive(:error).with(expected_logger_message, expected_log_values)
@@ -167,7 +170,7 @@ describe MAP::SecurityToken::Service do
 
       context 'and response is successful' do
         let(:expected_log_message) { "#{log_prefix} token success" }
-        let(:expected_log_payload) { { application:, icn:, cached_response: false } }
+        let(:expected_log_payload) { { application:, icn:, cached_response: false, safe_keys: [:icn] } }
 
         context 'when validating the response token' do
           before do
@@ -203,7 +206,7 @@ describe MAP::SecurityToken::Service do
             let(:expected_error) { JWT::DecodeError }
             let(:expected_error_context) { 'Signature verification failed' }
             let(:expected_logger_message) { "#{log_prefix} token failed, JWT decode error" }
-            let(:expected_log_values) { { application:, icn:, context: expected_error_context } }
+            let(:expected_log_values) { { application:, icn:, context: expected_error_context, safe_keys: [:icn] } }
 
             it 'raises a JWT Decode error and creates a log' do
               expect(Rails.logger).to receive(:error).with(expected_logger_message, expected_log_values)
@@ -214,7 +217,8 @@ describe MAP::SecurityToken::Service do
 
         it 'logs a token success message',
            vcr: { cassette_name: 'map/security_token_service_200_response' } do
-          expect(Rails.logger).to receive(:info).with(expected_request_message, { application:, icn: })
+          expect(Rails.logger).to receive(:info).with(expected_request_message,
+                                                      { application:, icn:, safe_keys: [:icn] })
           expect(Rails.logger).to receive(:info).with(expected_log_message, expected_log_payload)
           subject
         end
@@ -259,7 +263,7 @@ describe MAP::SecurityToken::Service do
       let(:application) { :some_application }
       let(:expected_error) { MAP::SecurityToken::Errors::ApplicationMismatchError }
       let(:expected_error_message) { "#{log_prefix} token failed, application mismatch detected" }
-      let(:expected_log_values) { { application:, icn: } }
+      let(:expected_log_values) { { application:, icn:, safe_keys: [:icn] } }
 
       it 'raises an application mismatch error and creates a log' do
         expect(Rails.logger).to receive(:error).with(expected_error_message, expected_log_values)

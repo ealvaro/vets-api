@@ -1443,7 +1443,8 @@ RSpec.describe User, type: :model do
       it 'logs the error' do
         subject
         expect(Rails.logger).to have_received(:info).with('[User] mhv_user_account error',
-                                                          { error_message: expected_error_message, icn: user.icn })
+                                                          { error_message: expected_error_message, icn: user.icn,
+                                                            safe_keys: [:icn] })
       end
 
       it "sets mhv_user_account_error to :#{error_key}" do

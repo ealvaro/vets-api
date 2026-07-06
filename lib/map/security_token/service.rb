@@ -12,28 +12,29 @@ module MAP
 
       def token(application:, icn:, cache: true)
         cached_response = true
-        Rails.logger.info("#{config.log_prefix} token request", { application:, icn: })
+        Rails.logger.info("#{config.log_prefix} token request", { application:, icn:, safe_keys: [:icn] })
         token = Rails.cache.fetch("map_sts_token_#{application}_#{icn}", expires_in: 5.minutes, force: !cache) do
           cached_response = false
           request_token(application, icn)
         end
-        Rails.logger.info("#{config.log_prefix} token success", { application:, icn:, cached_response: })
+        Rails.logger.info("#{config.log_prefix} token success",
+                          { application:, icn:, cached_response:, safe_keys: [:icn] })
         token
       rescue Common::Client::Errors::ParsingError => e
         Rails.logger.error("#{config.log_prefix} token failed, parsing error", application:, icn:,
-                                                                               context: e.message)
+                                                                               context: e.message, safe_keys: [:icn])
         raise e
       rescue JWT::DecodeError => e
         Rails.logger.error("#{config.log_prefix} token failed, JWT decode error", application:, icn:,
-                                                                                  context: e.message)
+                                                                                  context: e.message, safe_keys: [:icn])
         raise e
       rescue Common::Client::Errors::ClientError => e
         parse_and_raise_error(e, icn, application)
       rescue Common::Exceptions::GatewayTimeout => e
-        Rails.logger.error("#{config.log_prefix} token failed, gateway timeout", application:, icn:)
+        Rails.logger.error("#{config.log_prefix} token failed, gateway timeout", application:, icn:, safe_keys: [:icn])
         raise e
       rescue Errors::ApplicationMismatchError => e
-        Rails.logger.error(e.message, application:, icn:)
+        Rails.logger.error(e.message, application:, icn:, safe_keys: [:icn])
         raise e
       rescue Errors::MissingICNError => e
         Rails.logger.error(e.message, application:)
@@ -57,7 +58,7 @@ module MAP
         context = { error: parse_body['error'] }
         message = "#{config.log_prefix} token failed, #{error_source} error"
 
-        Rails.logger.error(message, status:, application:, icn:, context:)
+        Rails.logger.error(message, status:, application:, icn:, context:, safe_keys: [:icn])
         raise e, "#{message}, status: #{status}, application: #{application}, icn: #{icn}, context: #{context}"
       end
 
@@ -73,7 +74,7 @@ module MAP
         raise e
       rescue => e
         message = "#{config.log_prefix} token failed, response unknown"
-        Rails.logger.error(message, application:, icn:)
+        Rails.logger.error(message, application:, icn:, safe_keys: [:icn])
         raise e, "#{message}, application: #{application}, icn: #{icn}"
       end
 

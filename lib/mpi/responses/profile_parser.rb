@@ -237,7 +237,7 @@ module MPI
       def validate_dob(dob, icn)
         Date.iso8601(dob)
       rescue Date::Error
-        Rails.logger.warn 'MPI::Response.parse_dob failed', { dob:, icn: }
+        Rails.logger.warn 'MPI::Response.parse_dob failed', { dob:, icn:, safe_keys: [:icn] }
       end
 
       def parse_relationship_name(name)

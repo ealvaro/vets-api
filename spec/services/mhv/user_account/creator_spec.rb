@@ -39,7 +39,7 @@ RSpec.describe MHV::UserAccount::Creator do
 
   describe '#perform' do
     shared_examples 'an invalid creator' do
-      let(:expected_log_payload) { { error_message: /#{expected_error_message}/, icn: } }
+      let(:expected_log_payload) { { error_message: /#{expected_error_message}/, icn:, safe_keys: [:icn] } }
       let(:expected_log_message) { '[MHV][UserAccount][Creator] validation error' }
 
       it 'logs and raises an error' do
@@ -143,7 +143,8 @@ RSpec.describe MHV::UserAccount::Creator do
       let(:expected_log_payload) do
         {
           error_message: 'Validation failed: User profile can\'t be blank',
-          icn:
+          icn:,
+          safe_keys: [:icn]
         }
       end
 
@@ -159,7 +160,8 @@ RSpec.describe MHV::UserAccount::Creator do
     let(:expected_log_payload) do
       {
         error_message: 'error',
-        icn:
+        icn:,
+        safe_keys: [:icn]
       }
     end
     let(:mhv_error_body) { { 'message' => 'some-message', 'errorCode' => 'some-code' } }
@@ -184,7 +186,8 @@ RSpec.describe MHV::UserAccount::Creator do
     let(:expected_log_payload) do
       {
         error_message: 'error',
-        icn:
+        icn:,
+        safe_keys: [:icn]
       }
     end
 

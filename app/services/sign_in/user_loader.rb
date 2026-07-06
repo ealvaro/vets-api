@@ -67,7 +67,8 @@ module SignIn
 
       Rails.logger.info('[SignIn][UserLoader] Cerner Eligibility', eligible:, previous_value:, cookie_action: :set,
                                                                    icn: user_account.icn,
-                                                                   cerner_limited: current_user.cerner_limited?)
+                                                                   cerner_limited: current_user.cerner_limited?,
+                                                                   safe_keys: [:icn])
     end
 
     def user_attributes

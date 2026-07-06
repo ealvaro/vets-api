@@ -14,7 +14,7 @@ module MAP
         build_response(response.body)
       rescue Common::Client::Errors::ParsingError => e
         message = "#{logging_prefix} status response parsing error"
-        logger.error(message, { icn: })
+        logger.error(message, { icn:, safe_keys: [:icn] })
         raise e, "#{message}, response unknown, icn: #{icn}"
       rescue Common::Client::Errors::ClientError => e
         parse_and_raise_error(e, icn, 'status')
@@ -28,7 +28,7 @@ module MAP
         logger.info("#{logging_prefix} agreements accept success, icn: #{icn}")
       rescue Common::Client::Errors::ParsingError => e
         message = "#{logging_prefix} agreements accept response parsing error"
-        logger.error(message, { icn: })
+        logger.error(message, { icn:, safe_keys: [:icn] })
         raise e, "#{message}, response unknown, icn: #{icn}"
       rescue Common::Client::Errors::ClientError => e
         parse_and_raise_error(e, icn, 'agreements accept')
@@ -39,7 +39,7 @@ module MAP
         logger.info("#{logging_prefix} agreements decline success, icn: #{icn}")
       rescue Common::Client::Errors::ParsingError => e
         message = "#{logging_prefix} agreements decline response parsing error"
-        logger.error(message, { icn: })
+        logger.error(message, { icn:, safe_keys: [:icn] })
         raise e, "#{message}, response unknown, icn: #{icn}"
       rescue Common::Client::Errors::ClientError => e
         parse_and_raise_error(e, icn, 'agreements decline')
@@ -53,7 +53,7 @@ module MAP
         successful_update_provisioning_response(response, icn)
       rescue Common::Client::Errors::ParsingError => e
         message = "#{logging_prefix} update provisioning response parsing error"
-        logger.error(message, { icn: })
+        logger.error(message, { icn:, safe_keys: [:icn] })
         raise e, "#{message}, response unknown, icn: #{icn}"
       rescue Common::Client::Errors::ClientError => e
         if config.provisioning_acceptable_status.include?(e.status)

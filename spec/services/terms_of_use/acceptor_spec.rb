@@ -90,7 +90,9 @@ RSpec.describe TermsOfUse::Acceptor, type: :service do
 
           it 'logs update_sign_up_service' do
             acceptor.perform!
-            expect(Rails.logger).to have_received(:info).with('[TermsOfUse] [Acceptor] update_sign_up_service', icn:)
+            expect(Rails.logger).to have_received(:info).with('[TermsOfUse] [Acceptor] update_sign_up_service',
+                                                              icn:,
+                                                              safe_keys: [:icn])
           end
         end
       end
@@ -111,7 +113,9 @@ RSpec.describe TermsOfUse::Acceptor, type: :service do
 
           it 'logs update_sign_up_service' do
             acceptor.perform!
-            expect(Rails.logger).to have_received(:info).with('[TermsOfUse] [Acceptor] update_sign_up_service', icn:)
+            expect(Rails.logger).to have_received(:info).with('[TermsOfUse] [Acceptor] update_sign_up_service',
+                                                              icn:,
+                                                              safe_keys: [:icn])
           end
         end
 

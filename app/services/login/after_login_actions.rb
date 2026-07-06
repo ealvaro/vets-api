@@ -44,7 +44,7 @@ module Login
       return if mpi_value.blank?
 
       if identity_value != mpi_value
-        error_data = { icn: current_user.icn }
+        error_data = { icn: current_user.icn, safe_keys: [:icn] }
         error_data.merge!(identity_value:, mpi_value:) unless error_message.include?('SSN')
         Rails.logger.warn("[SessionsController version:v1] #{error_message}", error_data)
       end

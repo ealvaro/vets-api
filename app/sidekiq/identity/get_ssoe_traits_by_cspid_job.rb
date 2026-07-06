@@ -85,7 +85,8 @@ module Identity
         '[GetSSOeTraitsByCspidJob] SSOe::Service.get_traits success',
         icn:,
         credential_method:,
-        credential_id:
+        credential_id:,
+        safe_keys: [:icn]
       )
     end
 
@@ -96,6 +97,7 @@ module Identity
       }
       log_payload[:error] = error if error
       log_payload[:icn] = icn if icn
+      log_payload[:safe_keys] = [:icn]
 
       Rails.logger.error("[GetSSOeTraitsByCspidJob] #{message}", log_payload)
       StatsD.increment("#{STATSD_KEY_PREFIX}.failure", tags: ["credential_method:#{credential_method}"])

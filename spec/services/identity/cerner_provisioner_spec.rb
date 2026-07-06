@@ -51,7 +51,7 @@ RSpec.describe Identity::CernerProvisioner do
       it 'logs the missing profile' do
         expect(Rails.logger).to receive(:info).with(
           '[Identity] [CernerProvisioner] MPI profile not found',
-          { icn:, source: }
+          { icn:, source:, safe_keys: [:icn] }
         )
         expect { provisioner.perform }.to raise_error(Identity::Errors::CernerProvisionerError)
       end
@@ -97,7 +97,8 @@ RSpec.describe Identity::CernerProvisioner do
           it 'raises and logs an error' do
             expect { provisioner.perform }.to raise_error(Identity::Errors::CernerProvisionerError)
             expect(Rails.logger).to have_received(:info).with(expected_log,
-                                                              { icn:, response: service_response, source: })
+                                                              { icn:, response: service_response, source:,
+                                                                safe_keys: [:icn] })
           end
         end
 
@@ -122,7 +123,7 @@ RSpec.describe Identity::CernerProvisioner do
             provisioner.perform
             expect(Rails.logger).to have_received(:info).with(
               expected_log,
-              { icn:, messaging_only:, source:, response: service_response }
+              { icn:, messaging_only:, source:, response: service_response, safe_keys: [:icn] }
             )
           end
         end
@@ -140,7 +141,9 @@ RSpec.describe Identity::CernerProvisioner do
 
         it 'raises and logs an error' do
           expect { provisioner.perform }.to raise_error(Identity::Errors::CernerProvisionerError)
-          expect(Rails.logger).to have_received(:info).with(expected_log, { icn:, response: service_response, source: })
+          expect(Rails.logger).to have_received(:info).with(expected_log,
+                                                            { icn:, response: service_response, source:,
+                                                              safe_keys: [:icn] })
         end
       end
 
@@ -156,7 +159,7 @@ RSpec.describe Identity::CernerProvisioner do
         end
 
         it 'logs the error and raises a ProvisionerError' do
-          expect(Rails.logger).to receive(:error).with(expected_log, { icn:, source: })
+          expect(Rails.logger).to receive(:error).with(expected_log, { icn:, source:, safe_keys: [:icn] })
           expect { provisioner.perform }.to raise_error(Identity::Errors::CernerProvisionerError)
         end
       end

@@ -526,6 +526,6 @@ class User < Common::RedisStore
   end
 
   def log_mhv_user_account_error(error_message)
-    Rails.logger.info('[User] mhv_user_account error', error_message:, icn:)
+    Rails.logger.info('[User] mhv_user_account error', error_message:, icn:, safe_keys: [:icn])
   end
 end

@@ -59,11 +59,13 @@ module MHV
 
       def sts_token(user_identifier:)
         token = sts_client(user_identifier).token
-        Rails.logger.info("#{logging_prefix} sts token request success", user_identifier:)
+        Rails.logger.info("#{logging_prefix} sts token request success", user_identifier:,
+                                                                         safe_keys: [:user_identifier])
         token
       rescue SignInService::Error => e
         error_message = e.message
-        Rails.logger.error("#{logging_prefix} sts token request failed", user_identifier:, error_message:)
+        Rails.logger.error("#{logging_prefix} sts token request failed", user_identifier:, error_message:,
+                                                                         safe_keys: [:user_identifier])
         raise Common::Client::Errors::ClientError, error_message
       end
 

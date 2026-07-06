@@ -81,7 +81,7 @@ RSpec.describe TermsOfUse::Decliner, type: :service do
       it 'logs the update_sign_up_service' do
         decliner.perform!
         expect(Rails.logger).to have_received(:info).with('[TermsOfUse] [Decliner] update_sign_up_service',
-                                                          { icn: })
+                                                          { icn:, safe_keys: [:icn] })
       end
     end
   end

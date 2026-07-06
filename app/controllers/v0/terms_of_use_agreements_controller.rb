@@ -134,12 +134,13 @@ module V0
     end
 
     def render_success(action:, body:, status: :ok, icn: @user_account.icn)
-      Rails.logger.info("[TermsOfUseAgreementsController] #{action} success", { icn: })
+      Rails.logger.info("[TermsOfUseAgreementsController] #{action} success", { icn:, safe_keys: [:icn] })
       render json: body, status:
     end
 
     def render_error(action:, message:, status: :unprocessable_entity)
-      Rails.logger.error("[TermsOfUseAgreementsController] #{action} error: #{message}", { icn: @user_account.icn })
+      Rails.logger.error("[TermsOfUseAgreementsController] #{action} error: #{message}",
+                         { icn: @user_account.icn, safe_keys: [:icn] })
       render json: { error: message }, status:
     end
   end

@@ -329,7 +329,7 @@ RSpec.describe V0::TermsOfUseAgreementsController, type: :controller do
 
       it 'logs the expected log' do
         subject
-        expect(Rails.logger).to have_received(:info).with(expected_log, { icn: })
+        expect(Rails.logger).to have_received(:info).with(expected_log, { icn:, safe_keys: [:icn] })
       end
 
       context 'when creating a MHV account' do
@@ -374,7 +374,7 @@ RSpec.describe V0::TermsOfUseAgreementsController, type: :controller do
 
       it 'logs the expected log' do
         subject
-        expect(Rails.logger).to have_received(:error).with(expected_log, { icn: user.icn })
+        expect(Rails.logger).to have_received(:error).with(expected_log, { icn: user.icn, safe_keys: [:icn] })
       end
     end
 
@@ -472,7 +472,7 @@ RSpec.describe V0::TermsOfUseAgreementsController, type: :controller do
 
       it 'logs the expected log' do
         subject
-        expect(Rails.logger).to have_received(:info).with(expected_log, { icn: user.icn })
+        expect(Rails.logger).to have_received(:info).with(expected_log, { icn: user.icn, safe_keys: [:icn] })
       end
     end
 
@@ -490,7 +490,7 @@ RSpec.describe V0::TermsOfUseAgreementsController, type: :controller do
 
       it 'logs the expected log' do
         subject
-        expect(Rails.logger).to have_received(:error).with(expected_log, { icn: user.icn })
+        expect(Rails.logger).to have_received(:error).with(expected_log, { icn: user.icn, safe_keys: [:icn] })
       end
     end
 

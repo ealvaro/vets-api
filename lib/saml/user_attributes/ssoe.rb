@@ -230,7 +230,7 @@ module SAML
         return if ids.compact.uniq.count <= 1
 
         mismatched_ids_error = SAML::UserAttributeError::ERRORS[multiple_ids_error_type]
-        error_data = { mismatched_ids: ids, icn: mhv_icn }
+        error_data = { mismatched_ids: ids, icn: mhv_icn, safe_keys: [:icn] }
 
         Rails.logger.warn("[SAML::UserAttributes::SSOe] #{mismatched_ids_error[:message]}", error_data)
 

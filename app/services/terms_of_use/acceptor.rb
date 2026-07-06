@@ -40,7 +40,7 @@ module TermsOfUse
     end
 
     def update_sign_up_service
-      Rails.logger.info('[TermsOfUse] [Acceptor] update_sign_up_service', { icn: })
+      Rails.logger.info('[TermsOfUse] [Acceptor] update_sign_up_service', { icn:, safe_keys: [:icn] })
       SignUpServiceUpdaterJob.set(sync:).perform_async(user_account.id, version)
     end
 

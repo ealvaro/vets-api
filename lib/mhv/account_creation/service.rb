@@ -12,13 +12,13 @@ module MHV
         params = build_create_account_params(icn:, email:, tou_occurred_at:)
 
         create_account_with_cache(icn:, session_id:, force: break_cache, expires_in: 1.day) do
-          Rails.logger.info("#{config.logging_prefix} create_account request", { icn: })
+          Rails.logger.info("#{config.logging_prefix} create_account request", { icn:, safe_keys: [:icn] })
           response = perform(:post, config.account_creation_path, params, authenticated_header(icn:))
           normalize_response_body(response.body)
         end
       rescue Common::Client::Errors::ParsingError, Common::Client::Errors::ClientError => e
         Rails.logger.error("#{config.logging_prefix} create_account #{e.class.name.demodulize.underscore}",
-                           { error_message: e.message, body: e.body, status: e.status, icn: })
+                           { error_message: e.message, body: e.body, status: e.status, icn:, safe_keys: [:icn] })
         raise
       end
 
@@ -36,7 +36,7 @@ module MHV
         unless cache_hit
           duration_ms = (Time.current - start).seconds.in_milliseconds
           Rails.logger.info("#{config.logging_prefix} create_account success",
-                            { icn:, account:, duration_ms: })
+                            { icn:, account:, duration_ms:, safe_keys: [:icn] })
         end
         account
       end

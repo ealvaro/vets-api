@@ -36,7 +36,8 @@ module TermsOfUse
         user_account_uuid: user_account.id,
         icn: user_account.icn,
         agreement_version: terms_of_use_agreement.agreement_version,
-        response: terms_of_use_agreement.response
+        response: terms_of_use_agreement.response,
+        safe_keys: [:icn]
       }
     end
 

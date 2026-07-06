@@ -29,7 +29,7 @@ RSpec.describe Sts::TermsOfUseController, type: :controller do
     context 'when authenticated' do
       shared_examples 'logs a success message' do
         it 'logs a success message' do
-          expect(Rails.logger).to have_received(:info).with(expected_log_message, icn:)
+          expect(Rails.logger).to have_received(:info).with(expected_log_message, icn:, safe_keys: [:icn])
         end
       end
 

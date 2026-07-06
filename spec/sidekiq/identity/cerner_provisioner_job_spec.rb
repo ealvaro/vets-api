@@ -66,7 +66,7 @@ RSpec.describe Identity::CernerProvisionerJob, type: :job do
 
       it 'logs the error message' do
         expect(Rails.logger).to receive(:info).with('[Identity] [CernerProvisionerJob] error',
-                                                    { icn:, error_message:, source: })
+                                                    { icn:, error_message:, source:, safe_keys: [:icn] })
         job.perform(icn, messaging_only, source)
       end
 

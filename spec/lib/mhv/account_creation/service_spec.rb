@@ -47,7 +47,7 @@ describe MHV::AccountCreation::Service do
     context 'when making a request' do
       let(:expected_tou_datetime) { tou_occurred_at.iso8601 }
       let(:expected_log_message) { "#{log_prefix} create_account request" }
-      let(:expected_log_payload) { { icn: } }
+      let(:expected_log_payload) { { icn:, safe_keys: [:icn] } }
       let(:expected_request_headers) do
         {
           'Authorization' => "Bearer #{config.sts_token(user_identifier: icn)}",
@@ -109,7 +109,8 @@ describe MHV::AccountCreation::Service do
           VCR.use_cassette('mhv/account_creation/account_creation_service_200_created') do
             subject
             expect(a_request(:post, "#{account_creation_base_url}/#{account_creation_path}")).to have_been_made
-            expect(Rails.logger).to have_received(:info).with("#{log_prefix} create_account request", { icn: })
+            expect(Rails.logger).to have_received(:info).with("#{log_prefix} create_account request",
+                                                              { icn:, safe_keys: [:icn] })
           end
         end
       end
@@ -143,7 +144,8 @@ describe MHV::AccountCreation::Service do
           VCR.use_cassette('mhv/account_creation/account_creation_service_200_created') do
             subject
             expect(a_request(:post, "#{account_creation_base_url}/#{account_creation_path}")).to have_been_made
-            expect(Rails.logger).to have_received(:info).with("#{log_prefix} create_account request", { icn: })
+            expect(Rails.logger).to have_received(:info).with("#{log_prefix} create_account request",
+                                                              { icn:, safe_keys: [:icn] })
           end
         end
       end
@@ -153,7 +155,7 @@ describe MHV::AccountCreation::Service do
       let(:successful_response_cassette) { 'mhv/account_creation/account_creation_service_200_found' }
       let(:expected_log_message) { "#{log_prefix} create_account success" }
       let(:expected_log_payload) do
-        { icn:, account: expected_response_body, duration_ms: expected_duration }.compact
+        { icn:, account: expected_response_body, duration_ms: expected_duration, safe_keys: [:icn] }.compact
       end
 
       let(:expected_duration) { 10_000.0 }
@@ -271,7 +273,8 @@ describe MHV::AccountCreation::Service do
             body: { errorCode: 812, message: 'Required ICN field is missing or invalid in the JWT' }.as_json,
             error_message: match(/the server responded with status 400/),
             status: 400,
-            icn:
+            icn:,
+            safe_keys: [:icn]
           }
         end
 
@@ -286,7 +289,8 @@ describe MHV::AccountCreation::Service do
             body: { errorCode: 805, message: 'Deactivated Account found in MHV for ICN' }.as_json,
             error_message: match(/the server responded with status 400/),
             status: 400,
-            icn:
+            icn:,
+            safe_keys: [:icn]
           }
         end
 
@@ -301,7 +305,8 @@ describe MHV::AccountCreation::Service do
             body: { errorCode: 808, message: 'Application authentication failed' }.as_json,
             error_message: match(/the server responded with status 403/),
             status: 403,
-            icn:
+            icn:,
+            safe_keys: [:icn]
           }
         end
 
@@ -316,7 +321,8 @@ describe MHV::AccountCreation::Service do
           body: 'Internal Server Error',
           error_message: "unexpected token 'Internal' at line 1 column 1",
           status: 500,
-          icn:
+          icn:,
+          safe_keys: [:icn]
         }
       end
 
@@ -330,7 +336,9 @@ describe MHV::AccountCreation::Service do
 
     context 'when the STS token request fails' do
       let(:expected_log_message) { "#{log_prefix} sts token request failed" }
-      let(:expected_log_payload) { { user_identifier: icn, error_message: 'Service account config not found' } }
+      let(:expected_log_payload) do
+        { user_identifier: icn, error_message: 'Service account config not found', safe_keys: [:user_identifier] }
+      end
 
       it 'logs and re-raises the STS token request failure' do
         VCR.use_cassette('sign_in_service/sts/sts_token_400_response') do

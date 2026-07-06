@@ -956,7 +956,7 @@ RSpec.describe V1::SessionsController, type: :controller do
         let(:previous_value) { nil }
         let(:cerner_limited) { false }
         let(:expected_log_payload) do
-          { eligible:, previous_value:, cookie_action: :set, icn: user.icn, cerner_limited: }
+          { eligible:, previous_value:, cookie_action: :set, icn: user.icn, cerner_limited:, safe_keys: [:icn] }
         end
 
         before do
@@ -1252,7 +1252,7 @@ RSpec.describe V1::SessionsController, type: :controller do
           let(:mpi_profile) { build(:mpi_profile) }
           let(:user) { build(:user, :loa3, mpi_profile:) }
           let(:expected_error_data) do
-            { identity_value: expected_identity_value, mpi_value: expected_mpi_value, icn: user.icn }
+            { identity_value: expected_identity_value, mpi_value: expected_mpi_value, icn: user.icn, safe_keys: [:icn] }
           end
           let(:expected_error_message) do
             "[SessionsController version:v1] User Identity & MPI #{validation_id} values conflict"
@@ -1271,7 +1271,7 @@ RSpec.describe V1::SessionsController, type: :controller do
             let(:expected_identity_value) { user.identity.ssn }
             let(:expected_mpi_value) { user.ssn_mpi }
             let(:validation_id) { 'SSN' }
-            let(:expected_error_data) { { icn: user.icn } }
+            let(:expected_error_data) { { icn: user.icn, safe_keys: [:icn] } }
 
             it_behaves_like 'identity-mpi id validation'
           end
@@ -1335,7 +1335,8 @@ RSpec.describe V1::SessionsController, type: :controller do
             expect(Rails.logger).to receive(:warn).with(
               "[UserSessionForm] Couldn't locate existing user after MFA establishment",
               saml_uuid: 'invalid',
-              saml_icn: '11111111111'
+              saml_icn: '11111111111',
+              safe_keys: [:saml_icn]
             )
             call_endpoint
           end
@@ -1621,7 +1622,7 @@ RSpec.describe V1::SessionsController, type: :controller do
         let(:edipi_ids) { %w[0123456789 0000000054] }
         let(:expected_icn) { '1013183292V131165' }
         let(:expected_warning_message) { '[SAML::UserAttributes::SSOe] User attributes contain multiple distinct EDIPI values' }
-        let(:expected_warning_data) { { mismatched_ids: edipi_ids, icn: expected_icn } }
+        let(:expected_warning_data) { { mismatched_ids: edipi_ids, icn: expected_icn, safe_keys: [:icn] } }
         let(:saml_attributes) do
           build(:ssoe_idme_mhv_loa3,
                 va_eauth_gcIds: ['0123456789^NI^200DOD^USDOD^A|0000000054^NI^200DOD^USDOD^A|'])

@@ -78,7 +78,7 @@ describe MPI::Responses::ProfileParser do
           )
         end
         let(:expected_log_message) { 'MPI::Response.parse_dob failed' }
-        let(:expected_log_values) { { dob: '198003', icn: } }
+        let(:expected_log_values) { { dob: '198003', icn:, safe_keys: [:icn] } }
 
         it 'sets the birth_date to nil' do
           expect(parser.parse).to have_deep_attributes(mpi_profile)

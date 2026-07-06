@@ -68,7 +68,8 @@ RSpec.describe Login::AfterLoginActions do
       let(:mpi_profile) { build(:mpi_profile) }
       let(:loa3_user) { build(:user, :loa3, mpi_profile:) }
       let(:expected_error_data) do
-        { identity_value: expected_identity_value, mpi_value: expected_mpi_value, icn: loa3_user.icn }
+        { identity_value: expected_identity_value, mpi_value: expected_mpi_value, icn: loa3_user.icn,
+          safe_keys: [:icn] }
       end
       let(:expected_error_message) do
         "[SessionsController version:v1] User Identity & MPI #{validation_id} values conflict"
@@ -90,7 +91,7 @@ RSpec.describe Login::AfterLoginActions do
         let(:expected_identity_value) { loa3_user.identity.ssn }
         let(:expected_mpi_value) { loa3_user.ssn_mpi }
         let(:validation_id) { 'SSN' }
-        let(:expected_error_data) { { icn: loa3_user.icn } }
+        let(:expected_error_data) { { icn: loa3_user.icn, safe_keys: [:icn] } }
 
         it_behaves_like 'identity-mpi id validation'
       end

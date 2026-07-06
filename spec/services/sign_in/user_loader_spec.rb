@@ -204,7 +204,8 @@ RSpec.describe SignIn::UserLoader do
 
               expect(Rails.logger).to have_received(:info).with(
                 '[SignIn][UserLoader] Cerner Eligibility',
-                { eligible: true, previous_value: nil, cookie_action: :set, icn: user_icn, cerner_limited: false }
+                { eligible: true, previous_value: nil, cookie_action: :set, icn: user_icn, cerner_limited: false,
+                  safe_keys: [:icn] }
               )
             end
           end
@@ -232,7 +233,8 @@ RSpec.describe SignIn::UserLoader do
 
               expect(Rails.logger).to have_received(:info).with(
                 '[SignIn][UserLoader] Cerner Eligibility',
-                { eligible: false, previous_value: nil, cookie_action: :set, icn: user_icn, cerner_limited: true }
+                { eligible: false, previous_value: nil, cookie_action: :set, icn: user_icn, cerner_limited: true,
+                  safe_keys: [:icn] }
               )
             end
           end

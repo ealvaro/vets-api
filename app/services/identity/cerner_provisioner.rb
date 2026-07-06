@@ -30,23 +30,25 @@ module Identity
 
     def perform
       unless mpi_profile
-        Rails.logger.info('[Identity] [CernerProvisioner] MPI profile not found', { icn:, source: })
+        Rails.logger.info('[Identity] [CernerProvisioner] MPI profile not found', { icn:, source:, safe_keys: [:icn] })
         raise Errors::CernerProvisionerError, 'MPI profile not found'
       end
 
       response = update_provisioning
 
       if response[:agreement_signed].blank?
-        Rails.logger.info('[Identity] [CernerProvisioner] update_provisioning error', { icn:, response:, source: })
+        Rails.logger.info('[Identity] [CernerProvisioner] update_provisioning error',
+                          { icn:, response:, source:, safe_keys: [:icn] })
         raise(Errors::CernerProvisionerError, 'Agreement not accepted')
       end
       if response[:cerner_provisioned].blank?
-        Rails.logger.info('[Identity] [CernerProvisioner] update_provisioning error', { icn:, response:, source: })
+        Rails.logger.info('[Identity] [CernerProvisioner] update_provisioning error',
+                          { icn:, response:, source:, safe_keys: [:icn] })
         raise(Errors::CernerProvisionerError, 'Account not Provisioned')
       end
 
       Rails.logger.info('[Identity] [CernerProvisioner] update_provisioning success',
-                        { icn:, messaging_only:, response:, source: })
+                        { icn:, messaging_only:, response:, source:, safe_keys: [:icn] })
     rescue Common::Client::Errors::ClientError => e
       log_provisioner_error(e)
       raise Errors::CernerProvisionerError, e.message
@@ -59,7 +61,7 @@ module Identity
     end
 
     def log_provisioner_error(error)
-      Rails.logger.error("[Identity] [CernerProvisioner] Error: #{error.message}", { icn:, source: })
+      Rails.logger.error("[Identity] [CernerProvisioner] Error: #{error.message}", { icn:, source:, safe_keys: [:icn] })
     end
 
     def mpi_profile

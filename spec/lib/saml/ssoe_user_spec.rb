@@ -529,7 +529,7 @@ RSpec.describe SAML::User do
                 va_eauth_icn: [mhv_icn])
         end
         let(:expected_error) { SAML::UserAttributeError::ERRORS[:multiple_mhv_ids] }
-        let(:expected_error_data) { { mismatched_ids: [mhv_ien, mhv_uuid], icn: mhv_icn } }
+        let(:expected_error_data) { { mismatched_ids: [mhv_ien, mhv_uuid], icn: mhv_icn, safe_keys: [:icn] } }
         let(:expected_error_message) { expected_error[:message] }
         let(:expected_log) { "[SAML::UserAttributes::SSOe] #{expected_error_message}" }
 
@@ -564,7 +564,9 @@ RSpec.describe SAML::User do
                 va_eauth_mhvicn: [va_eauth_mhvicn],
                 va_eauth_icn: [va_eauth_icn])
         end
-        let(:expected_error_data) { { mismatched_ids: [va_eauth_icn, va_eauth_mhvicn], icn: va_eauth_icn } }
+        let(:expected_error_data) do
+          { mismatched_ids: [va_eauth_icn, va_eauth_mhvicn], icn: va_eauth_icn, safe_keys: [:icn] }
+        end
         let(:expected_error_message) { SAML::UserAttributeError::ERRORS[:mhv_icn_mismatch][:message] }
         let(:expected_log) { "[SAML::UserAttributes::SSOe] #{expected_error_message}" }
 
@@ -665,7 +667,7 @@ RSpec.describe SAML::User do
           let(:first_ien) { '999888' }
           let(:second_ien) { '888777' }
           let(:expected_error) { SAML::UserAttributeError::ERRORS[:multiple_mhv_ids] }
-          let(:expected_error_data) { { mismatched_ids: [first_ien, second_ien], icn: mhv_icn } }
+          let(:expected_error_data) { { mismatched_ids: [first_ien, second_ien], icn: mhv_icn, safe_keys: [:icn] } }
           let(:expected_error_message) { expected_error[:message] }
           let(:expected_log) { "[SAML::UserAttributes::SSOe] #{expected_error_message}" }
 
@@ -680,7 +682,7 @@ RSpec.describe SAML::User do
           let(:first_ien) { '999888' }
           let(:second_ien) { '888777' }
           let(:expected_error) { SAML::UserAttributeError::ERRORS[:multiple_mhv_ids] }
-          let(:expected_error_data) { { mismatched_ids: [first_ien, second_ien], icn: mhv_icn } }
+          let(:expected_error_data) { { mismatched_ids: [first_ien, second_ien], icn: mhv_icn, safe_keys: [:icn] } }
           let(:expected_error_message) { expected_error[:message] }
           let(:expected_log) { "[SAML::UserAttributes::SSOe] #{expected_error_message}" }
 
@@ -734,7 +736,9 @@ RSpec.describe SAML::User do
 
       context 'with different values' do
         let(:expected_error) { SAML::UserAttributeError::ERRORS[:multiple_corp_ids] }
-        let(:expected_error_data) { { mismatched_ids: [first_corp_id, second_corp_id], icn: mhv_icn } }
+        let(:expected_error_data) do
+          { mismatched_ids: [first_corp_id, second_corp_id], icn: mhv_icn, safe_keys: [:icn] }
+        end
         let(:expected_error_message) { expected_error[:message] }
         let(:expected_log) { "[SAML::UserAttributes::SSOe] #{expected_error_message}" }
 
@@ -786,7 +790,7 @@ RSpec.describe SAML::User do
         let(:first_edipi) { '0123456789' }
         let(:second_edipi) { '0000000054' }
         let(:expected_error) { SAML::UserAttributeError::ERRORS[:multiple_edipis] }
-        let(:expected_error_data) { { mismatched_ids: [first_edipi, second_edipi], icn: mhv_icn } }
+        let(:expected_error_data) { { mismatched_ids: [first_edipi, second_edipi], icn: mhv_icn, safe_keys: [:icn] } }
         let(:expected_error_message) { expected_error[:message] }
         let(:expected_log) { "[SAML::UserAttributes::SSOe] #{expected_error_message}" }
 

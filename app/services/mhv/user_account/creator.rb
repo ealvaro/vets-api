@@ -80,7 +80,8 @@ module MHV
       end
 
       def log_error(error, type)
-        Rails.logger.error("[MHV][UserAccount][Creator] #{type} error", error_message: error.message, icn:)
+        Rails.logger.error("[MHV][UserAccount][Creator] #{type} error", error_message: error.message, icn:,
+                                                                        safe_keys: [:icn])
       end
     end
   end

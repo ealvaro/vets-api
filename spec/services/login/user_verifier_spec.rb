@@ -95,7 +95,7 @@ RSpec.describe Login::UserVerifier do
           let(:verified_at) { 1.day.ago }
 
           it 'does not make new user log to rails logger' do
-            expect(Rails.logger).not_to receive(:info).with(expected_log, { icn: })
+            expect(Rails.logger).not_to receive(:info).with(expected_log, { icn:, safe_keys: [:icn] })
             subject
           end
 
@@ -281,7 +281,7 @@ RSpec.describe Login::UserVerifier do
           end
 
           it 'makes a new user log to rails logger' do
-            expect(Rails.logger).to receive(:info).with(expected_log, { icn: })
+            expect(Rails.logger).to receive(:info).with(expected_log, { icn:, safe_keys: [:icn] })
             subject
           end
 
@@ -325,7 +325,7 @@ RSpec.describe Login::UserVerifier do
                 let(:locked) { true }
 
                 it 'creates a locked UserVerification object and logs the event' do
-                  expect(Rails.logger).to receive(:info).with(expected_log, { icn: })
+                  expect(Rails.logger).to receive(:info).with(expected_log, { icn:, safe_keys: [:icn] })
                   expect(subject.locked).to be(true)
                 end
               end
@@ -369,7 +369,7 @@ RSpec.describe Login::UserVerifier do
           end
 
           it 'does not make new user log to rails logger' do
-            expect(Rails.logger).not_to receive(:info).with(expected_log, { icn: })
+            expect(Rails.logger).not_to receive(:info).with(expected_log, { icn:, safe_keys: [:icn] })
             subject
           end
 
@@ -408,7 +408,7 @@ RSpec.describe Login::UserVerifier do
 
         context 'and user_verification for user credential does not already exist' do
           it 'makes a new user log to rails logger' do
-            expect(Rails.logger).to receive(:info).with(expected_log, { icn: })
+            expect(Rails.logger).to receive(:info).with(expected_log, { icn:, safe_keys: [:icn] })
             subject
           end
 

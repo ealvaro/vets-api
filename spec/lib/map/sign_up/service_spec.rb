@@ -37,7 +37,7 @@ describe MAP::SignUp::Service do
     it 'logs the expected error message and raises a parsing error' do
       VCR.use_cassette('map/security_token_service_200_response') do
         VCR.use_cassette('map/sign_up_service_200_malformed_responses') do
-          expect(Rails.logger).to receive(:error).with(expected_log_message, { icn: })
+          expect(Rails.logger).to receive(:error).with(expected_log_message, { icn:, safe_keys: [:icn] })
           expect { subject }.to raise_error(Common::Client::Errors::ParsingError)
         end
       end

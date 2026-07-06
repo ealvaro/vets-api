@@ -55,7 +55,7 @@ RSpec.describe TermsOfUse::SignUpServiceUpdaterJob, type: :job do
 
       context 'when the attr_package is found' do
         let(:expected_log_payload) do
-          { icn:, response:, response_time:, version:, exception_message: }
+          { icn:, response:, response_time:, version:, exception_message:, safe_keys: [:icn] }
         end
 
         it 'logs a warning message with the expected payload' do
@@ -68,7 +68,7 @@ RSpec.describe TermsOfUse::SignUpServiceUpdaterJob, type: :job do
       context 'when the agreement is not found' do
         let(:terms_of_use_agreement) { nil }
         let(:expected_log_payload) do
-          { icn:, response: nil, response_time: nil, version: nil, exception_message: }
+          { icn:, response: nil, response_time: nil, version: nil, exception_message:, safe_keys: [:icn] }
         end
 
         it 'logs a warning message with the expected payload' do
@@ -92,7 +92,7 @@ RSpec.describe TermsOfUse::SignUpServiceUpdaterJob, type: :job do
           job.perform(user_account_uuid, version)
         end.to raise_error('MPI profile lookup failed')
 
-        expect(Rails.logger).to have_received(:error).with(expected_log, { icn: })
+        expect(Rails.logger).to have_received(:error).with(expected_log, { icn:, safe_keys: [:icn] })
       end
     end
 
@@ -117,7 +117,7 @@ RSpec.describe TermsOfUse::SignUpServiceUpdaterJob, type: :job do
         it 'logs that the agreement is not changed' do
           job.perform(user_account_uuid, version)
 
-          expect(Rails.logger).to have_received(:info).with(expected_log, icn:)
+          expect(Rails.logger).to have_received(:info).with(expected_log, icn:, safe_keys: [:icn])
         end
       end
 
@@ -136,7 +136,8 @@ RSpec.describe TermsOfUse::SignUpServiceUpdaterJob, type: :job do
           job.perform(user_account_uuid, version)
 
           expect(MAP::SignUp::Service).to have_received(:new)
-          expect(Rails.logger).to have_received(:info).with(expected_log, { icn:, mpi_icn: })
+          expect(Rails.logger).to have_received(:info).with(expected_log,
+                                                            { icn:, mpi_icn:, safe_keys: %i[icn mpi_icn] })
         end
       end
 
@@ -148,7 +149,7 @@ RSpec.describe TermsOfUse::SignUpServiceUpdaterJob, type: :job do
         it 'logs a warning message' do
           job.perform(user_account_uuid, version)
 
-          expect(Rails.logger).to have_received(:info).with(expected_log, icn:)
+          expect(Rails.logger).to have_received(:info).with(expected_log, icn:, safe_keys: [:icn])
         end
       end
 
@@ -239,7 +240,7 @@ RSpec.describe TermsOfUse::SignUpServiceUpdaterJob, type: :job do
         job.perform(user_account_uuid, version)
 
         expect(MAP::SignUp::Service).not_to have_received(:new)
-        expect(Rails.logger).to have_received(:info).with(expected_log, icn:)
+        expect(Rails.logger).to have_received(:info).with(expected_log, icn:, safe_keys: [:icn])
       end
     end
   end

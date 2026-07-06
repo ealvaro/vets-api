@@ -8,7 +8,7 @@ module Sts
     before_action :set_current_terms_of_use_agreement, only: %i[current_status]
 
     def current_status
-      Rails.logger.info('[Sts][TermsOfUseController] current_status success', icn:)
+      Rails.logger.info('[Sts][TermsOfUseController] current_status success', icn:, safe_keys: [:icn])
 
       render json: serialized_response, status: :ok
     end

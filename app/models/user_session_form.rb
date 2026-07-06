@@ -201,6 +201,6 @@ class UserSessionForm
 
   def log_existing_user_warning(saml_uuid, saml_icn)
     message = "Couldn't locate existing user after MFA establishment"
-    Rails.logger.warn("[UserSessionForm] #{message}", saml_uuid:, saml_icn:)
+    Rails.logger.warn("[UserSessionForm] #{message}", saml_uuid:, saml_icn:, safe_keys: [:saml_icn])
   end
 end

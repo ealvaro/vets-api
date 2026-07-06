@@ -21,7 +21,8 @@ module TermsOfUse
         version:,
         response: agreement&.response,
         response_time: agreement&.created_at&.iso8601,
-        exception_message: exception.message
+        exception_message: exception.message,
+        safe_keys: [:icn]
       }
 
       Rails.logger.warn("#{LOG_TITLE} retries exhausted", payload)
@@ -44,7 +45,7 @@ module TermsOfUse
     def log_updated_icn
       if user_account.icn != mpi_profile.icn
         Rails.logger.info("#{LOG_TITLE} Detected changed ICN for user",
-                          { icn: user_account.icn, mpi_icn: mpi_profile.icn })
+                          { icn: user_account.icn, mpi_icn: mpi_profile.icn, safe_keys: %i[icn mpi_icn] })
       end
     end
 
@@ -63,7 +64,7 @@ module TermsOfUse
       end
 
       Rails.logger.info("#{LOG_TITLE} Not updating Sign Up Service due to unchanged agreement",
-                        { icn: user_account.icn })
+                        { icn: user_account.icn, safe_keys: [:icn] })
       true
     end
 
@@ -82,13 +83,13 @@ module TermsOfUse
       end
 
       Rails.logger.info("#{LOG_TITLE} Sign Up Service not updated due to user missing sec_id",
-                        { icn: user_account.icn })
+                        { icn: user_account.icn, safe_keys: [:icn] })
       true
     end
 
     def validate_multiple_sec_ids
       if mpi_profile.sec_ids.many?
-        Rails.logger.info("#{LOG_TITLE} Multiple sec_id values detected", { icn: user_account.icn })
+        Rails.logger.info("#{LOG_TITLE} Multiple sec_id values detected", { icn: user_account.icn, safe_keys: [:icn] })
       end
     end
 
@@ -109,7 +110,7 @@ module TermsOfUse
         response = MPI::Service.new.find_profile_by_identifier(identifier: user_account.icn,
                                                                identifier_type: MPI::Constants::ICN)
         if response.nil?
-          Rails.logger.error("#{LOG_TITLE} MPI profile lookup failed", { icn: user_account.icn })
+          Rails.logger.error("#{LOG_TITLE} MPI profile lookup failed", { icn: user_account.icn, safe_keys: [:icn] })
           raise 'MPI profile lookup failed'
         end
 
