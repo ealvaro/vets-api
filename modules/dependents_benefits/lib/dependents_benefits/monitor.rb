@@ -42,11 +42,6 @@ module DependentsBenefits
       non_blank_dlvs
     ].freeze
 
-    # Additional safe keys specific to dependents_benefits
-    SAFE_KEYS = %w[
-      parent_claim_id
-    ].freeze
-
     # @param claim_id [Integer, nil] optional SavedClaim id used to inspect claim for tags
     # @param user [Object, nil] optional user used for flipper checks
     def initialize(claim_id = nil, user = nil)
@@ -54,7 +49,7 @@ module DependentsBenefits
       @claim = find_claim(claim_id)
       @user = user
 
-      super(service_name, allowlist: ALLOWLIST, safe_keys: SAFE_KEYS)
+      super(service_name, allowlist: ALLOWLIST, safe_keys: %w[parent_claim_id])
 
       @use_v3 = get_use_v3
       @use_v3_removal = get_use_v3_removal(@claim)
