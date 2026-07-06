@@ -358,6 +358,7 @@ module V0
                           { message_type: 'lh.cst.claim_types',
                             claim_type: claim_info['claimType'],
                             claim_type_code: claim_info['claimTypeCode'],
+                            claim_date: claim_info['claimDate'],
                             num_contentions: claim_info['contentions'].count,
                             ep_code: claim_info['endProductCode'],
                             current_phase_back: claim_info['claimPhaseDates']['currentPhaseBack'],

@@ -1551,6 +1551,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
                 { message_type: 'lh.cst.claim_types',
                   claim_type: 'Compensation',
                   claim_type_code: '020NEW',
+                  claim_date: '2022-09-27',
                   num_contentions: 1,
                   ep_code: '020',
                   current_phase_back: false,
