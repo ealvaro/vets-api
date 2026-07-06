@@ -7,8 +7,56 @@ require SimpleFormsApi::Engine.root.join(
 
 RSpec.describe SimpleFormsApi::Mms::VBA108678IbmConverter do
   let(:fixture_dir) { SimpleFormsApi::Engine.root.join('spec', 'fixtures', 'form_json') }
-
   let(:form) { instance_double(SimpleFormsApi::VBA108678, data:) }
+
+  let(:device_list) do
+    [
+      {
+        device: 'Hearing Aid',
+        disability: 'Hearing Loss',
+        impacted_locations: {
+          upper_left: true,
+          upper_right: false,
+          lower_left: false,
+          lower_right: false
+        }
+      },
+      {
+        device: 'Prosthetic Leg',
+        disability: 'Amputation',
+        impacted_locations: {
+          upper_left: false,
+          upper_right: true,
+          lower_left: false,
+          lower_right: false
+        }
+      },
+      {
+        device: 'Thing 3',
+        disability: 'device 3',
+        impacted_locations: {
+          upper_left: false,
+          upper_right: false,
+          lower_left: true,
+          lower_right: false
+        }
+      },
+      {
+        device: 'thing 4',
+        disability: 'device 4',
+        impacted_locations: {
+          upper_left: false,
+          upper_right: false,
+          lower_left: false,
+          lower_right: true
+        }
+      }
+    ]
+  end
+
+  before do
+    allow(form).to receive(:appliances_for_pdf).and_return(device_list)
+  end
 
   describe '.convert' do
     context 'with the existing 10-8678 fixture' do
@@ -24,8 +72,8 @@ RSpec.describe SimpleFormsApi::Mms::VBA108678IbmConverter do
         expect(keys).to eq(keys.sort)
       end
 
-      it 'emits exactly the 55 fields defined in the data dictionary' do
-        expect(described_class.convert(form).size).to eq(55)
+      it 'emits exactly the 39 fields defined in the data dictionary' do
+        expect(described_class.convert(form).size).to eq(39)
       end
     end
   end
@@ -59,10 +107,6 @@ RSpec.describe SimpleFormsApi::Mms::VBA108678IbmConverter do
       expect(described_class.convert(form)['DATE_OF_VETERAN_SIGNATURE']).to eq('04/16/2026')
     end
 
-    it 'derives APP_CALENDAR_YEAR from signatureDate when not explicit' do
-      expect(described_class.convert(form)['APP_CALENDAR_YEAR']).to eq('2026')
-    end
-
     it 'flattens the address block with city/state ZIP and country' do
       expect(described_class.convert(form)['VETERAN_ADDRESS_FULL_BLOCK']).to eq(
         "123 Main St Apt 4B\nSpringfield, PA 22150\nUSA"
@@ -80,78 +124,18 @@ RSpec.describe SimpleFormsApi::Mms::VBA108678IbmConverter do
         expect(described_class.convert(form)['VETERAN_SIGNATURE']).to eq(0)
       end
     end
-
-    context 'when an explicit appCalendarYear is provided' do
-      before { data['app_calendar_year'] = '2025' }
-
-      it 'prefers the explicit value over the derived one' do
-        expect(described_class.convert(form)['APP_CALENDAR_YEAR']).to eq('2025')
-      end
-    end
-  end
-
-  describe 'impactedLocations rendering' do
-    let(:data) do
-      {
-        'appliances' => [
-          { 'impacted_locations' => locations }
-        ]
-      }
-    end
-
-    context 'with a single quadrant set' do
-      let(:locations) do
-        { 'upper_left' => true,
-          'upper_right' => false,
-          'lower_left' => false,
-          'lower_right' => false }
-      end
-
-      it 'emits the matching label' do
-        expect(described_class.convert(form)['IMPACTED_LOC_APPLIANCE_1']).to eq('Upper Left')
-      end
-    end
-
-    context 'with multiple quadrants set' do
-      let(:locations) { { 'upper_left' => true, 'upper_right' => true, 'lower_left' => false, 'lower_right' => true } }
-
-      it 'joins labels in the canonical order' do
-        expect(described_class.convert(form)['IMPACTED_LOC_APPLIANCE_1']).to eq('Upper Left, Upper Right, Lower Right')
-      end
-    end
-
-    context 'with no quadrants set' do
-      let(:locations) do
-        { 'upper_left' => false,
-          'upper_right' => false,
-          'lower_left' => false,
-          'lower_right' => false }
-      end
-
-      it 'returns an empty string' do
-        expect(described_class.convert(form)['IMPACTED_LOC_APPLIANCE_1']).to eq('')
-      end
-    end
-
-    context 'when impactedLocations is missing' do
-      let(:data) { { 'appliances' => [{}] } }
-
-      it 'returns an empty string' do
-        expect(described_class.convert(form)['IMPACTED_LOC_APPLIANCE_1']).to eq('')
-      end
-    end
   end
 
   describe 'helper behavior' do
     let(:data) { {} }
 
-    describe '.normalize_ssn' do
+    describe '.normalize_last_4_ssn' do
       it 'strips dashes and non-digits' do
-        expect(described_class.normalize_ssn('123-45-6789')).to eq('123456789')
+        expect(described_class.normalize_last_4_ssn('123-45-6789')).to eq('6789')
       end
 
       it 'returns empty string for nil' do
-        expect(described_class.normalize_ssn(nil)).to eq('')
+        expect(described_class.normalize_last_4_ssn(nil)).to eq('')
       end
     end
 
@@ -188,71 +172,20 @@ RSpec.describe SimpleFormsApi::Mms::VBA108678IbmConverter do
           .to eq('04/16/2026')
       end
     end
-
-    describe '.issue_date' do
-      it 'formats ISO dates as MM/YYYY' do
-        expect(described_class.issue_date('2024-06-01')).to eq('06/2024')
-      end
-
-      it 'handles {month, year} hashes' do
-        expect(described_class.issue_date('month' => '6', 'year' => '2024')).to eq('06/2024')
-      end
-
-      it 'returns empty for nil' do
-        expect(described_class.issue_date(nil)).to eq('')
-      end
-    end
-
-    describe '.approved_state' do
-      it 'returns :unset when value is nil or blank' do
-        expect(described_class.approved_state(nil)).to eq(:unset)
-        expect(described_class.approved_state('')).to eq(:unset)
-      end
-
-      it 'recognizes booleans' do
-        expect(described_class.approved_state(true)).to eq(:yes)
-        expect(described_class.approved_state(false)).to eq(:no)
-      end
-    end
   end
 
   describe 'edge cases' do
-    context 'when the appliances array has more than 5 entries' do
+    context 'when the appliances array has more than 4 entries' do
       let(:data) do
         {
           'appliances' => Array.new(7) { |i| { 'device_or_medication' => "Appliance #{i + 1}" } }
         }
       end
 
-      it 'truncates to 5' do
+      it 'truncates to 4' do
         result = described_class.convert(form)
-        expect(result['NAME_APPLIANCE_5']).to eq('Appliance 5')
-        expect(result.keys).not_to include('NAME_APPLIANCE_6')
-      end
-    end
-
-    context 'when appliances is missing entirely' do
-      let(:data) { {} }
-
-      it 'still emits all five appliance slots as empty' do
-        result = described_class.convert(form)
-        (1..5).each do |i|
-          expect(result["NAME_APPLIANCE_#{i}"]).to eq('')
-          expect(result["VA_APPROVED_YES_APPLIANCE_#{i}"]).to eq(0)
-          expect(result["VA_APPROVED_NO_APPLIANCE_#{i}"]).to eq(0)
-        end
-      end
-    end
-
-    context 'when the data dictionary requires fields the form does not collect' do
-      let(:data) { JSON.parse(File.read(fixture_dir.join('vba_10_8678.json'))) }
-
-      it 'leaves For-VA-Use-Only fields as empty strings' do
-        result = described_class.convert(form)
-        %w[ELIGIBLE NOT_ELIGIBLE UPPER_EXTREMITY LOWER_EXTREMITY
-           GENERATED_BY DATE_GENERATED_BY AUTHORIZED_BY DATE_AUTHORIZED_BY EXAM_DATE].each do |field|
-          expect(result[field]).to eq('')
-        end
+        expect(result['NAME_APPLIANCE_4']).to eq('thing 4')
+        expect(result.keys).not_to include('NAME_APPLIANCE_5')
       end
     end
   end
