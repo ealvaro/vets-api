@@ -4,8 +4,9 @@ require 'rails_helper'
 require 'tmpdir'
 require 'fileutils'
 require 'open3'
+require 'puma'
+require 'rack'
 require 'timeout'
-require 'webrick'
 
 RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
   let(:script_path) { Rails.root.join('import-va-certs.sh') }
@@ -102,23 +103,23 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
     end
 
     it 'exits non-zero when DoD cert endpoints return non-200' do
-      server = WEBrick::HTTPServer.new(Port: 0, Logger: WEBrick::Log.new(File::NULL), AccessLog: [])
-      server.mount_proc('/DigiCertTLSRSASHA2562020CA1-1.crt.pem') do |_req, res|
-        res.status = 200
-        res.body = "dummy cert\n"
-      end
-      server.mount_proc('/DigiCertGlobalG2TLSRSASHA2562020CA1.crt') do |_req, res|
-        res.status = 200
-        res.body = "dummy cert\n"
-      end
-      server.mount_proc('/unclass-certificates_pkcs7_ECA.zip') do |_req, res|
-        res.status = 404
-        res.body = 'Not Found'
-      end
+      app = Rack::Builder.new do
+        map '/DigiCertTLSRSASHA2562020CA1-1.crt.pem' do
+          run ->(_env) { [200, { 'Content-Type' => 'application/octet-stream' }, ["dummy cert\n"]] }
+        end
+        map '/DigiCertGlobalG2TLSRSASHA2562020CA1.crt' do
+          run ->(_env) { [200, { 'Content-Type' => 'application/octet-stream' }, ["dummy cert\n"]] }
+        end
+        map '/unclass-certificates_pkcs7_ECA.zip' do
+          run ->(_env) { [404, { 'Content-Type' => 'text/plain' }, ['Not Found']] }
+        end
+      end.to_app
 
-      server_thread = Thread.new { server.start } # rubocop:disable ThreadSafety/NewThread
-      Timeout.timeout(2) { sleep 0.01 until server.status == :Running }
-      port = server.listeners.first.addr[1]
+      server = Puma::Server.new(app)
+      server.add_tcp_listener('127.0.0.1', 0)
+      server_thread = server.run
+      Timeout.timeout(2) { sleep 0.01 until server.connected_ports.any? }
+      port = server.connected_ports.first
 
       output, status = Open3.capture2e(
         {
@@ -134,7 +135,7 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
       expect(status).not_to be_success
       expect(output).to include('All DoD ECA download attempts failed')
     ensure
-      server&.shutdown
+      server&.stop(true)
       server_thread&.join(5)
     end
   end
@@ -198,14 +199,13 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
 
     it 'exits non-zero when a configured cert endpoint returns non-200' do
       # Executes the real script with endpoint overrides and a local cert directory.
-      server = WEBrick::HTTPServer.new(Port: 0, Logger: WEBrick::Log.new(File::NULL), AccessLog: [])
-      server.mount_proc('/') do |_req, res|
-        res.status = 404
-        res.body = 'Not Found'
-      end
-      server_thread = Thread.new { server.start } # rubocop:disable ThreadSafety/NewThread
-      Timeout.timeout(2) { sleep 0.01 until server.status == :Running }
-      port = server.listeners.first.addr[1]
+      app = proc { |_env| [404, { 'Content-Type' => 'text/plain' }, ['Not Found']] }
+
+      server = Puma::Server.new(app)
+      server.add_tcp_listener('127.0.0.1', 0)
+      server_thread = server.run
+      Timeout.timeout(2) { sleep 0.01 until server.connected_ports.any? }
+      port = server.connected_ports.first
 
       output, status = Open3.capture2e(
         {
@@ -218,7 +218,7 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
       expect(status).not_to be_success
       expect(output).to include('DigiCert TLS RSA SHA256 2020 CA1-1 download failed')
     ensure
-      server&.shutdown
+      server&.stop(true)
       server_thread&.join(5)
     end
 
@@ -289,28 +289,29 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
         -----END CERTIFICATE-----
       PEM
 
-      server = WEBrick::HTTPServer.new(Port: 0, Logger: WEBrick::Log.new(File::NULL), AccessLog: [])
-      server.mount_proc('/DigiCertTLSRSASHA2562020CA1-1.crt.pem') do |_req, res|
-        res.status = 200
-        res.body = pem_cert
-      end
-      server.mount_proc('/DigiCertGlobalG2TLSRSASHA2562020CA1.crt') do |_req, res|
-        res.status = 200
-        res.body = pem_cert
-      end
-      server.mount_proc('/unclass-certificates_pkcs7_ECA.zip') do |_req, res|
-        res.status = 200
-        res.body = 'fake-zip'
-      end
-      server.mount_proc('/PKI/AIA/VA/') do |_req, res|
-        res.status = 200
-        res['Content-Type'] = 'text/html'
-        res.body = '<html><body><h1>VA AIA</h1><p>No cert links here.</p></body></html>'
-      end
-
-      server_thread = Thread.new { server.start } # rubocop:disable ThreadSafety/NewThread
-      Timeout.timeout(2) { sleep 0.01 until server.status == :Running }
-      port = server.listeners.first.addr[1]
+      server = Puma::Server.new(
+        Rack::Builder.new do
+          map '/DigiCertTLSRSASHA2562020CA1-1.crt.pem' do
+            run ->(_env) { [200, { 'Content-Type' => 'application/x-pem-file' }, [pem_cert]] }
+          end
+          map '/DigiCertGlobalG2TLSRSASHA2562020CA1.crt' do
+            run ->(_env) { [200, { 'Content-Type' => 'application/x-pem-file' }, [pem_cert]] }
+          end
+          map '/unclass-certificates_pkcs7_ECA.zip' do
+            run ->(_env) { [200, { 'Content-Type' => 'application/zip' }, ['fake-zip']] }
+          end
+          map '/PKI/AIA/VA/' do
+            run lambda { |_env|
+              [200, { 'Content-Type' => 'text/html' },
+               ['<html><body><h1>VA AIA</h1><p>No cert links here.</p></body></html>']]
+            }
+          end
+        end.to_app
+      )
+      server.add_tcp_listener('127.0.0.1', 0)
+      server_thread = server.run
+      Timeout.timeout(2) { sleep 0.01 until server.connected_ports.any? }
+      port = server.connected_ports.first
 
       output, status = Open3.capture2e(
         {
@@ -330,7 +331,7 @@ RSpec.describe 'import-va-certs' do # rubocop:disable RSpec/DescribeClass
       expect(status).not_to be_success
       expect(output).to include('Failed to download VA-Internal-S2-ICA1-v1.cer')
     ensure
-      server&.shutdown
+      server&.stop(true)
       server_thread&.join(5)
     end
   end

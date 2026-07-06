@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'puma'
+require 'rack'
 
 describe Common::Client::Middleware::Request::RemoveCookies do
   module Specs
@@ -16,35 +18,27 @@ describe Common::Client::Middleware::Request::RemoveCookies do
       end
     end
   end
-  # This test requires the creation of a new thread
-  # rubocop:disable ThreadSafety/NewThread
+  # This test requires the creation of a new thread via Puma's internal threading
   describe '#request' do
-    let!(:server_thread) do
-      Thread.new do
-        dev_null = WEBrick::Log.new('/dev/null', 7) # suppress logging to $stdout
-
-        server = WEBrick::HTTPServer.new(
-          Port: Specs::RemoveCookies::TestConfiguration.instance.port,
-          Logger: dev_null,
-          AccessLog: dev_null
-        )
-
-        server.mount_proc '/' do |req, res|
-          res.cookies << WEBrick::Cookie.new('foo', 'bar')
-          res.body = req.cookies.to_json
-        end
-
-        server.start
+    let!(:puma_server) do
+      app = proc do |env|
+        cookie_header = env['HTTP_COOKIE'].to_s
+        cookies = cookie_header.strip.empty? ? [] : cookie_header.split(/;\s*/)
+        [200, { 'Set-Cookie' => 'foo=bar', 'Content-Type' => 'application/json' }, [cookies.to_json]]
       end
+
+      server = Puma::Server.new(app)
+      server.add_tcp_listener('127.0.0.1', Specs::RemoveCookies::TestConfiguration.instance.port)
+      server.run
+      server
     end
-    # rubocop:enable ThreadSafety/NewThread
 
     after do
       VCR.configure do |c|
         c.allow_http_connections_when_no_cassette = false
       end
 
-      server_thread.kill
+      puma_server.stop(true)
     end
 
     it 'strips cookies' do

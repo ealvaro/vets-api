@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-require 'webrick'
+require 'rack'
+require 'puma'
 require 'json'
 require 'yaml'
 require 'erb'
@@ -12,7 +13,52 @@ require_relative 'cassette_parser'
 require_relative 'test_analyzer'
 
 module VcrInspector
-  # Main web application using WEBrick
+  # Thin adapter so internal routing methods can use the same WEBrick-style API
+  # against a Rack environment without wholesale changes to all handler methods.
+  class RackRequest
+    attr_reader :query
+
+    def initialize(env)
+      @env = env
+      @query = CGI.parse(env['QUERY_STRING'] || '').transform_values(&:first)
+    end
+
+    def path
+      @env['PATH_INFO']
+    end
+
+    def request_method
+      @env['REQUEST_METHOD']
+    end
+  end
+
+  class RackResponse
+    attr_reader :status
+
+    def initialize
+      @status = 200
+      @headers = { 'Content-Type' => 'text/html; charset=utf-8' }
+      @body = ''
+    end
+
+    def status=(val)
+      @status = val.to_i
+    end
+
+    def []=(key, val) # rubocop:disable Rails/Delegate
+      @headers[key] = val
+    end
+
+    def body=(val)
+      @body = val.to_s
+    end
+
+    def to_rack
+      [@status, @headers, [@body]]
+    end
+  end
+
+  # Main web application using Puma/Rack
   class App
     attr_reader :cassette_root, :spec_root, :modules_root, :views_dir, :public_dir, :request
 
@@ -31,23 +77,23 @@ module VcrInspector
       app = new
       port = options[:port] || 4567
 
-      server = WEBrick::HTTPServer.new(
-        Port: port,
-        Logger: WEBrick::Log.new($stderr, WEBrick::Log::ERROR),
-        AccessLog: []
-      )
-
-      server.mount_proc '/' do |req, res|
+      rack_app = proc do |env|
+        req = RackRequest.new(env)
+        res = RackResponse.new
         app.handle_request(req, res)
+        res.to_rack
       end
+
+      server = Puma::Server.new(rack_app)
+      server.add_tcp_listener('127.0.0.1', port)
 
       puts "\n📼 VCR Inspector is running at http://localhost:#{port}"
       puts "   Press Ctrl+C to stop\n\n"
 
-      trap('INT') { server.shutdown }
-      trap('TERM') { server.shutdown }
-
-      server.start
+      server_thread = server.run
+      trap('INT') { server.stop }
+      trap('TERM') { server.stop }
+      server_thread.join
     end
 
     # Main request handler
