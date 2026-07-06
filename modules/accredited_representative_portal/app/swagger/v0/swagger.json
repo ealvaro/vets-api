@@ -1,0 +1,178 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Accredited Representative Portal API",
+    "version": "0.1.0",
+    "termsOfService": "https://developer.va.gov/terms-of-service",
+    "description": "APIs powering the Accredited Representative Portal, including Form 21a submission and background detail document uploads."
+  },
+  "tags": [
+    {
+      "name": "Form 21a",
+      "description": "Form 21a submission and background detail document uploads"
+    }
+  ],
+  "components": {
+    "schemas": {
+      "detailUploadResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "attributes": {
+                "type": "object",
+                "properties": {
+                  "errorMessage": {
+                    "type": "string",
+                    "example": ""
+                  },
+                  "confirmationCode": {
+                    "type": "string",
+                    "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "document.pdf"
+                  },
+                  "size": {
+                    "type": "integer",
+                    "example": 12345
+                  },
+                  "type": {
+                    "type": "string",
+                    "example": "application/pdf"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "missingFileError": {
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "string",
+            "example": "file is required"
+          }
+        }
+      },
+      "unprocessableEntityError": {
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "string",
+            "example": "Invalid file type"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/accredited_representative_portal/v0/form21a/{details_slug}": {
+      "post": {
+        "summary": "Upload a background detail document",
+        "tags": [
+          "Form 21a"
+        ],
+        "operationId": "uploadBackgroundDetailDocument",
+        "description": "Uploads a supporting document for a specific background detail section of Form 21a. The uploaded file is stored and associated with the in-progress form. Valid detail slugs correspond to background question sections such as conviction-details, court-martialed-details, etc.",
+        "parameters": [
+          {
+            "name": "details_slug",
+            "in": "path",
+            "required": true,
+            "description": "The background detail section identifier",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "conviction-details",
+                "court-martialed-details",
+                "under-charges-details",
+                "resigned-from-education-details",
+                "withdrawn-from-education-details",
+                "disciplined-for-dishonesty-details",
+                "resigned-for-dishonesty-details",
+                "representative-for-agency-details",
+                "reprimanded-in-agency-details",
+                "resigned-from-agency-details",
+                "applied-for-va-accreditation-details",
+                "terminated-by-vsorg-details",
+                "condition-that-affects-representation-details",
+                "condition-that-affects-examination-details"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "unprocessable entity - invalid file type or unable to store document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/unprocessableEntityError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "document uploaded successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/detailUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "file is missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/missingFileError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The document file to upload"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://localhost:3000",
+      "description": "Local"
+    },
+    {
+      "url": "https://dev-api.va.gov",
+      "description": "Sandbox"
+    },
+    {
+      "url": "https://staging-api.va.gov",
+      "description": "Staging"
+    },
+    {
+      "url": "https://api.va.gov",
+      "description": "Production"
+    }
+  ]
+}

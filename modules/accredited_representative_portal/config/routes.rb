@@ -21,6 +21,8 @@ end
 
 AccreditedRepresentativePortal::Engine.routes.draw do
   namespace :v0, defaults: { format: :json } do
+    get 'apidocs', to: 'apidocs#index'
+
     get 'authorize_as_representative', to: 'representative_users#authorize_as_representative'
     get 'user', to: 'representative_users#show'
 

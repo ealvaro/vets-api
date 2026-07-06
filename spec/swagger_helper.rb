@@ -17,7 +17,7 @@ RSpec.configure do |config|
   # the root example_group in your specs e.g.
   # describe '...', openapi_spec: 'modules/claims_api/app/swagger/claims_api/v2/swagger.json'
 
-  mods = [RepresentationManagement, ClaimsApi, AppealsApi]
+  mods = [RepresentationManagement, ClaimsApi, AppealsApi, AccreditedRepresentativePortal]
 
   # Load each engine’s rswag config file
   mods.each do |m|

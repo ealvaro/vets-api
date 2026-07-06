@@ -85,6 +85,16 @@ namespace :rswag do
       Rake::Task['rswag:specs:swaggerize'].invoke
     end
   end
+
+  namespace :accredited_representative_portal do
+    desc 'Generate rswag docs for accredited_representative_portal'
+    task build: :environment do
+      ENV['PATTERN'] = 'modules/accredited_representative_portal/spec/requests/**/*swagger*_spec.rb'
+      ENV['RAILS_MODULE'] = 'accredited_representative_portal'
+      ENV['SWAGGER_DRY_RUN'] = '0'
+      Rake::Task['rswag:specs:swaggerize'].invoke
+    end
+  end
 end
 
 def generate_appeals_docs(dev: false)
