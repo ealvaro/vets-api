@@ -21,7 +21,9 @@ module MebApi
             options = { timeout: 60 }
             raw_response = perform(:post, end_point(type), { ssn: @user.ssn.to_s }.to_json, headers, options)
 
-            MebApi::DGI::Automation::ClaimantResponse.new(raw_response.status, raw_response)
+            res = MebApi::DGI::Automation::ClaimantResponse.new(raw_response.status, raw_response)
+            res.ssn = "XXX-XX-#{@user.ssn[5..8]}"
+            res
           end
         end
 

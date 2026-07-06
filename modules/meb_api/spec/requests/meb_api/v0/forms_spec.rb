@@ -779,7 +779,19 @@ RSpec.describe 'MebApi::V0 Forms', type: :request do
           body: { error: 'Internal error' },
           claimant: nil,
           service_data: nil,
-          toe_sponsors: nil
+          toe_sponsors: nil,
+          ssn: nil,
+          benefits: nil,
+          has_ch_33_original_claim_in_progress: false,
+          has_ch_35_original_claim_in_progress: false,
+          has_fry_original_claim_in_progress: false,
+          has_toe_original_claim_in_progress: false,
+          ch_1606_received_date: nil,
+          ch_30_received_date: nil,
+          ch_33_received_date: nil,
+          ch_35_received_date: nil,
+          fry_received_date: nil,
+          toe_received_date: nil
         )
       end
       let(:claim_status_response) { double('claim_status_response', claim_status: 'ELIGIBLE', status: 200) }
@@ -787,6 +799,7 @@ RSpec.describe 'MebApi::V0 Forms', type: :request do
       before do
         allow(claimant_service).to receive(:get_claimant_info).and_return(claimant_response)
         allow(status_service).to receive(:get_claim_status).and_return(claim_status_response)
+        allow(Flipper).to receive(:enabled?).with(:meb_supplemental_coe).and_return(true)
       end
 
       it 'returns ToeClaimantInfoSerializer for invalid claimant response' do

@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require 'dgi/automation/claimant_response'
+require 'dgi/letters/service'
 
 describe AutomationSerializer, type: :serializer do
   subject { serialize(automation_claimant_response, serializer_class: described_class) }
@@ -45,13 +46,87 @@ describe AutomationSerializer, type: :serializer do
     ]
   end
 
+  let(:cs_claimant) do
+    {
+      'eligibility_results' => [
+        {
+          'benefit_type' => 'CH33',
+          'eligibility_period' => {
+            'delimiting_date' => '2019-06-01'
+          }
+        }
+      ],
+      'entitlement_results' => [
+        {
+          'id' => 300_000_000_000_045,
+          'orig_entitled_days' => 1080.00000,
+          'days_used' => 157.50000,
+          'days_remaining' => 922.50000,
+          'vt2_entitlement_charged_days' => nil,
+          'vt2_exhaustion_date' => nil,
+          'exhaustion_date' => nil,
+          'is_current' => true,
+          'benefit_type' => 'CH33'
+        }
+      ]
+    }
+  end
+
+  let(:coe_information) do
+    [
+      {
+        'claim_id' => nil,
+        'wp_key' => 99_000_000_113_358_373,
+        'benefit_or_source_type' => 'CH33',
+        'is_in_progress' => false,
+        'is_eligible' => true,
+        'date_authorized' => '2025-06-24 11:17:21'
+      }
+    ]
+  end
+
+  let(:latest_ch33) do
+    [
+      {
+        'wp_key' => 99_000_000_113_358_386,
+        'ch33_original_entitled_days' => 1080.0,
+        'ch33_days_used' => 157.5,
+        'entitlement_transfers' => [],
+        'ch33_days_remaining' => 0.5,
+        'percentage_benefit' => 100,
+        'delimiting_date' => nil,
+        'date_authorized' => '2025-06-24 16:18:33',
+        'veteran_is_eligible' => nil,
+        'benefit_or_source_type' => 'CH33'
+      }
+    ]
+  end
+
   let(:automation_claimant_response) do
-    response = double('response', body: { 'claimant' => claimant, 'service_data' => service_data })
+    response = double('response',
+                      body: { 'claimant' => claimant,
+                              'service_data' => service_data,
+                              'cs_claimant' => cs_claimant,
+                              'coe_information' => coe_information,
+                              'latest_ch33_eligibilites' => latest_ch33 })
     MebApi::DGI::Automation::ClaimantResponse.new(201, response)
   end
 
   let(:data) { JSON.parse(subject)['data'] }
   let(:attributes) { data['attributes'] }
+
+  let(:letter_service) { instance_double(MebApi::DGI::Letters::Service) }
+  let(:coe_letter_response) do
+    double('response',
+           status: 200,
+           body: "%PDF-1.4\ntrailer<</Root<</Pages<</Kids[<</MediaBox[0 0 3 3]>>]>>>>>>")
+  end
+
+  before do
+    allow(Flipper).to receive(:enabled?)
+      .with(:meb_supplemental_coe)
+      .and_return(false)
+  end
 
   it 'includes :id' do
     expect(data['id']).to be_blank
@@ -63,5 +138,52 @@ describe AutomationSerializer, type: :serializer do
 
   it 'includes :service_data' do
     expect_data_eq(attributes['service_data'], service_data)
+  end
+
+  describe 'meb_supplemental_coe flag on' do
+    before do
+      allow(Flipper).to receive(:enabled?)
+        .with(:meb_supplemental_coe)
+        .and_return(true)
+      allow(MebApi::DGI::Letters::Service).to receive(:new).and_return(letter_service)
+      allow(letter_service).to receive(:get_claim_letter_by_claim_id).and_return(coe_letter_response)
+    end
+
+    it 'includes :benefits' do
+      result = [{
+        'benefit_type' => 'CH33',
+        'amount_received' => { 'months' => 36, 'days' => 0.0 },
+        'amount_used' => { 'months' => 5, 'days' => 8 },
+        'amount_left' => { 'months' => 0, 'days' => 1.0 },
+        'eligibility_percentage' => 100,
+        'benefit_end_date' => nil,
+        'coe_issued_date' => '2025-06-24 11:17:21',
+        'coe_letter' => "data:application/pdf;base64,#{Base64.strict_encode64(coe_letter_response.body)}"
+      }]
+      expect(attributes['benefits']).to eq(result)
+    end
+
+    it 'includes in progress flags' do
+      expect(attributes['has_ch_1606_original_claim_in_progress']).to be(false)
+      expect(attributes['has_ch_30_original_claim_in_progress']).to be(false)
+      expect(attributes['has_ch_35_original_claim_in_progress']).to be(false)
+      expect(attributes['has_ch_33_original_claim_in_progress']).to be(false)
+      expect(attributes['has_fry_original_claim_in_progress']).to be(false)
+      expect(attributes['has_toe_original_claim_in_progress']).to be(false)
+    end
+
+    it 'returns benefits even if coe letter fetch fails' do
+      expect(letter_service).to receive(:get_claim_letter_by_claim_id).and_raise(StandardError)
+      expect(attributes['benefits']).to eq([{
+                                             'benefit_type' => 'CH33',
+                                             'amount_received' => { 'months' => 36, 'days' => 0.0 },
+                                             'amount_used' => { 'months' => 5, 'days' => 8 },
+                                             'amount_left' => { 'months' => 0, 'days' => 1.0 },
+                                             'eligibility_percentage' => 100,
+                                             'benefit_end_date' => nil,
+                                             'coe_issued_date' => '2025-06-24 11:17:21',
+                                             'coe_letter' => nil
+                                           }])
+    end
   end
 end

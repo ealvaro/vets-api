@@ -22,10 +22,24 @@ module MebApi
           end
         end
 
+        def get_claim_letter_by_claim_id(claim_id, claimant_id, type)
+          type = get_mapped_type(type)
+
+          with_monitoring do
+            headers = request_headers
+            options = { timeout: 60 }
+            perform(:get, claim_letter_by_claim_id_endpoint(claim_id, claimant_id, type), {}, headers, options)
+          end
+        end
+
         private
 
         def end_point(claimant_id, type)
           "claimant/#{claimant_id}/claimType/#{type}/letter"
+        end
+
+        def claim_letter_by_claim_id_endpoint(claim_id, claimant_id, type)
+          "claimant/#{claimant_id}/claim/#{claim_id}/claimType/#{type}/letter"
         end
 
         def request_headers
@@ -35,6 +49,25 @@ module MebApi
             'Accept-Encoding': 'gzip, deflate, br',
             Connection: 'keep-alive'
           }
+        end
+
+        def get_mapped_type(type)
+          case type
+          when 'CH33'
+            'Chapter33'
+          when 'CH30'
+            'Chapter30'
+          when 'CH1606'
+            'Chapter1606'
+          when 'CH35'
+            'Chapter35'
+          when 'Fry'
+            'Fry'
+          when 'Toe'
+            'toe'
+          else
+            type
+          end
         end
       end
     end
