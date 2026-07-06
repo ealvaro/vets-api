@@ -72,7 +72,7 @@ module DependentsBenefits
     #   - SCHOOL_ATTENDANCE_APPROVAL: Template key for 674 only
     # @raise [StandardError] If email delivery fails, logs error to monitor and re-raises
     # @return [void]
-    def deliver_status_email_by_claim_type(status, claim_type_options)
+    def deliver_status_email_by_claim_type(_status, claim_type_options)
       @claim = claim_class.find(saved_claim_id)
       key = if claim.submittable_686? && claim.submittable_674?
               claim_type_options[FORM_ID]
@@ -82,13 +82,6 @@ module DependentsBenefits
               claim_type_options[SCHOOL_ATTENDANCE_APPROVAL]
             end
       deliver(key)
-    rescue => e
-      # we cannot overwrite the monitor used in the base class so create a new one here
-      monitor = DependentsBenefits::Monitor.new
-      monitor.track_error_event("Error sending #{status} notification email",
-                                action: 'notification_failure', component: self.class.name,
-                                error: e, claim_id: claim.id)
-      raise e
     end
 
     # @see VeteranFacingServices::NotificationEmail::SavedClaim#claim_class

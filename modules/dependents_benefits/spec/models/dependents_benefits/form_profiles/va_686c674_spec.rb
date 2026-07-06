@@ -679,6 +679,16 @@ RSpec.describe FormProfile, type: :model do
         result = va686c674_form_profile.send(:parse_date_safely, 'some-date')
         expect(result).to be_nil
       end
+
+      it 'correctly parses m/d/Y formatted dates' do
+        result = va686c674_form_profile.send(:parse_date_safely, '01/02/2026')
+        expect(result).to eq(Date.new(2026, 1, 2))
+      end
+
+      it 'correctly parses YYYY-MM-DD formatted dates' do
+        result = va686c674_form_profile.send(:parse_date_safely, '2026-01-02')
+        expect(result).to eq(Date.new(2026, 1, 2))
+      end
     end
   end
 end

@@ -43,7 +43,7 @@ module DependentsBenefits
         require 'lighthouse/benefits_intake/sidekiq/submission_status_job'
         require 'dependents_benefits/benefits_intake/submission_handler'
 
-        # Register our Pension Benefits Intake Submission Handler
+        # Register our Dependents Benefits Intake Submission Handler
         ::BenefitsIntake::SubmissionStatusJob.register_handler(DependentsBenefits::FORM_ID_V2,
                                                                DependentsBenefits::BenefitsIntake::SubmissionHandler)
       end
