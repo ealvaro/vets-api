@@ -22,6 +22,7 @@ module BGS
       return empty_response if response[:payments].nil?
 
       payments = Array.wrap(response[:payments][:payment])
+      response[:payments][:payment] = payments
       exclude_third_party_payments(payments)
       recategorize_hardship(payments)
 

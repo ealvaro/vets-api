@@ -496,7 +496,7 @@ app/serializers/valid_va_file_number_serializer.rb @software/vfs-authenticated-e
 app/services/bgs/awards_service.rb @software/backend-review-group
 app/services/bgs/dependency_verification_service.rb @software/benefits-dependents-management @software/backend-review-group
 app/services/bgs/dependent_service.rb @software/benefits-dependents-management @software/backend-review-group
-app/services/bgs/payment_service.rb @software/benefits-dependents-management @software/backend-review-group
+app/services/bgs/payment_service.rb @software/vsa-debt-resolution @software/backend-review-group
 app/services/bgs/people/service.rb @software/benefits-dependents-management @software/backend-review-group
 app/services/bgs/people/request.rb @software/benefits-dependents-management @software/backend-review-group
 app/services/bgs/uploaded_document_service.rb @software/benefits-dependents-management @software/backend-review-group
@@ -2153,6 +2153,7 @@ spec/serializers/user_serializer_spec.rb @software/octo-identity
 spec/serializers/user_verification_serializer_spec.rb @software/octo-identity
 spec/serializers/valid_va_file_number_serializer_spec.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 spec/services/bgs @software/benefits-dependents-management @software/backend-review-group
+spec/services/bgs/payment_service_spec.rb @software/vsa-debt-resolution @software/backend-review-group
 spec/services/claim_fast_tracking @software/disability-benefits @software/backend-review-group
 spec/services/debt_transaction_log_service_spec.rb @software/vsa-debt-resolution @software/backend-review-group
 spec/services/email_verification_callback_spec.rb @software/vfs-authenticated-experience-backend @software/backend-review-group

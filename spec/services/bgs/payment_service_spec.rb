@@ -45,6 +45,52 @@ RSpec.describe BGS::PaymentService do
       end
     end
 
+    it 'returns a single payment response as an array' do
+      payment = {
+        payment_type: 'Compensation & Pension - Recurring',
+        payee_type: 'Veteran',
+        beneficiary_participant_id: participant_id,
+        recipient_participant_id: participant_id
+      }
+      response = { payments: { payment: } }
+      payment_information = double('payment information')
+      service = BGS::PaymentService.new(user)
+
+      allow(service).to receive(:service).and_return(double(payment_information:))
+      expect(payment_information).to receive(:retrieve_payment_summary_with_bdn)
+        .with(participant_id, file_number, '00', ssn_number)
+        .and_return(response)
+
+      expect(service.payment_history(person)[:payments][:payment]).to eq([payment])
+    end
+
+    it 'returns a multi-payment response as an array' do
+      payments = [
+        {
+          payment_type: 'Compensation & Pension - Recurring',
+          payee_type: 'Veteran',
+          beneficiary_participant_id: participant_id,
+          recipient_participant_id: participant_id
+        },
+        {
+          payment_type: 'Post-9/11 GI Bill',
+          payee_type: 'Veteran',
+          beneficiary_participant_id: participant_id,
+          recipient_participant_id: participant_id
+        }
+      ]
+      response = { payments: { payment: payments } }
+      payment_information = double('payment information')
+      service = BGS::PaymentService.new(user)
+
+      allow(service).to receive(:service).and_return(double(payment_information:))
+      expect(payment_information).to receive(:retrieve_payment_summary_with_bdn)
+        .with(participant_id, file_number, '00', ssn_number)
+        .and_return(response)
+
+      expect(service.payment_history(person)[:payments][:payment]).to eq(payments)
+    end
+
     context 'if there are no results for the user' do
       let(:file_number) { '000000000' }
       let(:participant_id) { '000000000' }
