@@ -847,6 +847,7 @@ module PdfFill
       def merge_reports(event)
         (event['militaryReports'] || {})
           .merge(event['otherReports'] || {})
+          .merge(event['noReport'] || {})
           .merge('unlistedReport' => event['unlistedReport'])
       end
 

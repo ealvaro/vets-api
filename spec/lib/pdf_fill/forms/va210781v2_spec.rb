@@ -365,6 +365,20 @@ describe PdfFill::Forms::Va210781v2 do
         end
       end
 
+      context 'when noReport checkbox is used instead of otherReports to indicate no report' do
+        let(:event_with_no_report_field) do
+          { 'events' => [{ 'noReport' => { 'none' => true } }] }
+        end
+
+        it 'sets noReportFiled to 1' do
+          new_form_class.instance_variable_set(:@form_data, event_with_no_report_field)
+          new_form_class.send(:process_reports)
+
+          expect(new_form_class.instance_variable_get(:@form_data)['noReportFiled']).to eq(1)
+          expect(new_form_class.instance_variable_get(:@form_data)['reportFiled']).to be_nil
+        end
+      end
+
       context 'when both reportFiled and noReportFiled conditions are met' do
         it 'sets only reportFiled to 0' do
           new_form_class.instance_variable_set(:@form_data, {
@@ -753,6 +767,72 @@ describe PdfFill::Forms::Va210781v2 do
             "Treatment Date: Don't have date"
           ]
         )
+      end
+    end
+  end
+
+  describe '#merge_reports' do
+    context 'when only militaryReports is present' do
+      it 'returns only military report keys' do
+        event = { 'militaryReports' => { 'restricted' => true } }
+        result = new_form_class.send(:merge_reports, event)
+
+        expect(result).to include('restricted' => true)
+        expect(result).not_to have_key('none')
+      end
+    end
+
+    context 'when only otherReports is present' do
+      it 'returns only other report keys' do
+        event = { 'otherReports' => { 'police' => true } }
+        result = new_form_class.send(:merge_reports, event)
+
+        expect(result).to include('police' => true)
+      end
+    end
+
+    context 'when only noReport is present' do
+      it 'includes the none key from noReport' do
+        event = { 'noReport' => { 'none' => true } }
+        result = new_form_class.send(:merge_reports, event)
+
+        expect(result).to include('none' => true)
+      end
+    end
+
+    context 'when noReport and militaryReports are both present' do
+      it 'merges keys from both hashes' do
+        event = {
+          'militaryReports' => { 'restricted' => true },
+          'noReport' => { 'none' => true }
+        }
+        result = new_form_class.send(:merge_reports, event)
+
+        expect(result).to include('restricted' => true, 'none' => true)
+      end
+    end
+
+    context 'when all report fields are absent' do
+      it 'returns only the unlistedReport key' do
+        event = {}
+        result = new_form_class.send(:merge_reports, event)
+
+        expect(result).to eq('unlistedReport' => nil)
+      end
+    end
+
+    context 'when all report fields are present' do
+      it 'merges all fields together' do
+        event = {
+          'militaryReports' => { 'restricted' => true },
+          'otherReports' => { 'police' => true },
+          'noReport' => { 'none' => false },
+          'unlistedReport' => 'some report'
+        }
+        result = new_form_class.send(:merge_reports, event)
+
+        expect(result).to include('restricted' => true, 'police' => true, 'none' => false,
+                                  'unlistedReport' => 'some report')
       end
     end
   end
