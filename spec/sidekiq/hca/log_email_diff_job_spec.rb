@@ -94,6 +94,43 @@ RSpec.describe HCA::LogEmailDiffJob, type: :job do
       end
     end
 
+    context 'when user lookup returns nil' do
+      before do
+        allow(User).to receive(:find).with(user.uuid).and_return(nil)
+      end
+
+      it 'exits gracefully without raising' do
+        expect { subject }.not_to raise_error
+      end
+
+      it 'increments the user_not_found metric' do
+        expect do
+          subject
+        end.to trigger_statsd_increment('api.1010ez.in_progress_form_email.user_not_found')
+      end
+
+      it 'logs structured context' do
+        expect(Rails.logger).to receive(:warn).with(
+          'HCA::LogEmailDiffJob: User not found',
+          in_progress_form_id: in_progress_form.id,
+          user_uuid: user.uuid,
+          user_account_id: user.user_account_uuid
+        )
+
+        subject
+      end
+
+      it 'does not create a FormEmailMatchesProfileLog' do
+        subject
+
+        expect(FormEmailMatchesProfileLog.where(
+                 user_uuid: user.uuid,
+                 in_progress_form_id: in_progress_form.id,
+                 user_account_id: user.user_account_uuid
+               )).not_to exist
+      end
+    end
+
     context 'when form email is blank' do
       before do
         in_progress_form.update!(

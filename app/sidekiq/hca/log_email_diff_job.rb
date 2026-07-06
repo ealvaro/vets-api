@@ -37,6 +37,12 @@ module HCA
       return if form_email.blank?
 
       user = User.find(user_uuid)
+
+      if user.nil?
+        record_nil_user(in_progress_form_id, user_uuid, user_account_id)
+        return
+      end
+
       va_profile_email = user.va_profile_email
 
       tag_text = va_profile_email&.downcase == form_email.downcase ? 'same' : 'different'
@@ -45,6 +51,21 @@ module HCA
     end
 
     private
+
+    def record_nil_user(in_progress_form_id, user_uuid, user_account_id)
+      StatsD.increment('api.1010ez.in_progress_form_email.user_not_found',
+                       tags: [
+                         "in_progress_form_id:#{in_progress_form_id}",
+                         "user_uuid:#{user_uuid}",
+                         "user_account_id:#{user_account_id}"
+                       ])
+      Rails.logger.warn(
+        'HCA::LogEmailDiffJob: User not found',
+        in_progress_form_id:,
+        user_uuid:,
+        user_account_id:
+      )
+    end
 
     def record_email_diff(tag_text, user_uuid, user_account_id, in_progress_form_id)
       email_diff_log = FormEmailMatchesProfileLog.find_or_create_by(
