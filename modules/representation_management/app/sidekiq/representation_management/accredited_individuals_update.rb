@@ -7,7 +7,7 @@ module RepresentationManagement
   # This class finds AccreditedIndividual records and calls their validate_address method.
   # Works for all individual types: agents, attorneys, and representatives.
   # Contact field updates (email, phone, raw_address) are written directly by
-  # AccreditationXlsxProcessor before this job is queued.
+  # AccreditedEntitiesDailyUpdate before this job is queued.
   class AccreditedIndividualsUpdate
     include Sidekiq::Job
 

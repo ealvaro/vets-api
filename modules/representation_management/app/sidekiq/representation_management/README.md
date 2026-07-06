@@ -7,13 +7,13 @@ This directory contains Sidekiq background jobs that handle the synchronization 
 The daily accredited-entities ingestion populates the database from one of two sources, selected by the `accredited_entity_models_populate_with_accreditation_api` flag:
 
 - **flag ON** → GCLAWS Accreditation API (`AccreditedEntitiesQueueUpdates`)
-- **flag OFF (default)** → trexler/XLSX file (`AccreditationXlsxProcessor`)
+- **flag OFF (default)** → trexler/XLSX file (`AccreditedEntitiesDailyUpdate`)
 
 Jobs involved:
 
 1. **AccreditedEntitiesQueueUpdates** - Fetches and processes entity data from the GCLAWS API
 2. **AccreditedIndividualsUpdate** - Validates addresses and updates database records
-3. **AccreditationXlsxProcessor** - Scheduled daily; populates from the GCLAWS XLSX file, or hands off to the API job when the flag is on
+3. **AccreditedEntitiesDailyUpdate** - Scheduled daily; populates from the GCLAWS XLSX file, or hands off to the API job when the flag is on
 
 ## Jobs
 
@@ -21,7 +21,7 @@ Jobs involved:
 
 **Location:** `app/sidekiq/representation_management/accredited_entities_queue_updates.rb`
 
-**Schedule:** Invoked by `AccreditationXlsxProcessor` during the daily 4:00 AM ET ingestion when `accredited_entity_models_populate_with_accreditation_api` is enabled; can also be run manually.
+**Schedule:** Invoked by `AccreditedEntitiesDailyUpdate` during the daily 4:00 AM ET ingestion when `accredited_entity_models_populate_with_accreditation_api` is enabled; can also be run manually.
 
 This is the API-source job for the accredited entities update process. It performs the following tasks:
 
@@ -68,11 +68,11 @@ RepresentationManagement::AccreditedEntitiesQueueUpdates.perform_async(['represe
    - Accreditation join records are created/updated
 5. Removes obsolete records (individuals, organizations, and accreditations)
 
-### AccreditationXlsxProcessor
+### AccreditedEntitiesDailyUpdate
 
-**Location:** `app/sidekiq/representation_management/accreditation_xlsx_processor.rb`
+**Location:** `app/sidekiq/representation_management/accredited_entities_daily_update.rb`
 
-**Schedule:** Daily at 4:00 AM ET (cron: `0 4 * * *`). This is the scheduled entry point for the daily ingestion: when `accredited_entity_models_populate_with_accreditation_api` is enabled it hands off to `AccreditedEntitiesQueueUpdates` (API source); otherwise it runs the trexler/XLSX path below. (This dispatch role is temporary, pending a rename.)
+**Schedule:** Daily at 4:00 AM ET (cron: `0 4 * * *`). This is the scheduled entry point for the daily ingestion: when `accredited_entity_models_populate_with_accreditation_api` is enabled it hands off to `AccreditedEntitiesQueueUpdates` (API source); otherwise it runs the trexler/XLSX path below.
 
 **Retry Policy:** 10 retries (~21 hours) with `sidekiq_retries_exhausted` Slack alerting.
 
@@ -88,10 +88,10 @@ This job provides a secondary data pipeline using the GCLAWS SSRS XLSX export. I
 #### Usage:
 ```ruby
 # Process specific failed entity types (called automatically by AccreditedEntitiesQueueUpdates)
-RepresentationManagement::AccreditationXlsxProcessor.perform_async(%w[agents attorneys])
+RepresentationManagement::AccreditedEntitiesDailyUpdate.perform_async(%w[agents attorneys])
 
 # Process all entity types manually
-RepresentationManagement::AccreditationXlsxProcessor.perform_async
+RepresentationManagement::AccreditedEntitiesDailyUpdate.perform_async
 ```
 
 ### AccreditedIndividualsUpdate

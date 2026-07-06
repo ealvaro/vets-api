@@ -11,7 +11,7 @@ module RepresentationManagement
   # This is a third data pipeline alongside:
   # - AccreditedEntitiesQueueUpdates (GCLAWS REST API)
   # - VSOReloader (OGC ASP endpoints)
-  class AccreditationXlsxProcessor
+  class AccreditedEntitiesDailyUpdate
     include Sidekiq::Job
 
     sidekiq_options retry: 10 # Retry for about 21 hours
@@ -19,7 +19,7 @@ module RepresentationManagement
     sidekiq_retries_exhausted do |msg, _ex|
       job = new
       job.send(:log_error, "retries exhausted: #{msg['error_message']}")
-      job.send(:log_to_slack, "AccreditationXlsxProcessor retries exhausted: #{msg['error_message']}")
+      job.send(:log_to_slack, "AccreditedEntitiesDailyUpdate retries exhausted: #{msg['error_message']}")
     end
 
     # Maps API-level type names to internal type names used by VSOReloader and XlsxFileProcessor
@@ -41,7 +41,7 @@ module RepresentationManagement
       # When the accreditation API source is enabled, hand off to the API ingestion job
       # instead of the trexler/XLSX path. The `types` argument is ignored in this mode — the
       # API job runs its full default ingestion. This job is the legacy (default) source and
-      # is slated to be renamed/removed once the API source is fully live.
+      # is slated to be removed once the API source is fully live.
       if Flipper.enabled?(:accredited_entity_models_populate_with_accreditation_api)
         RepresentationManagement::AccreditedEntitiesQueueUpdates.perform_async
         return
@@ -52,7 +52,7 @@ module RepresentationManagement
       @types = validate_types(types)
       @mapped_types = @types.map { |t| API_TYPE_MAP[t] }
 
-      log_info("Starting AccreditationXlsxProcessor for types: #{@types.join(', ')}")
+      log_info("Starting AccreditedEntitiesDailyUpdate for types: #{@types.join(', ')}")
 
       # Step 1: Ensure records exist via VSOReloader
       reload_entities
@@ -64,7 +64,7 @@ module RepresentationManagement
     rescue ArgumentError
       raise
     rescue => e
-      log_error("AccreditationXlsxProcessor failed: #{e.message}")
+      log_error("AccreditedEntitiesDailyUpdate failed: #{e.message}")
       @report << "ERROR: #{e.message}"
       finalize_report
       raise
@@ -320,7 +320,7 @@ module RepresentationManagement
       duration = Time.current - @start_time
       @report << "\nDuration: #{duration.round(2)}s"
 
-      report_text = "RepresentationManagement::AccreditationXlsxProcessor Report\n" \
+      report_text = "RepresentationManagement::AccreditedEntitiesDailyUpdate Report\n" \
                     "#{@report.join("\n")}"
 
       log_info(report_text)
@@ -328,11 +328,11 @@ module RepresentationManagement
     end
 
     def log_info(message)
-      Rails.logger.info("RepresentationManagement::AccreditationXlsxProcessor: #{message}")
+      Rails.logger.info("RepresentationManagement::AccreditedEntitiesDailyUpdate: #{message}")
     end
 
     def log_error(message)
-      Rails.logger.error("RepresentationManagement::AccreditationXlsxProcessor: #{message}")
+      Rails.logger.error("RepresentationManagement::AccreditedEntitiesDailyUpdate: #{message}")
     end
 
     def log_to_slack(message)
@@ -340,7 +340,7 @@ module RepresentationManagement
 
       client = SlackNotify::Client.new(webhook_url: Settings.edu.slack.webhook_url,
                                        channel: '#benefits-representation-management-notifications',
-                                       username: 'RepresentationManagement::AccreditationXlsxProcessor Bot')
+                                       username: 'RepresentationManagement::AccreditedEntitiesDailyUpdate Bot')
       client.notify(message)
     end
   end

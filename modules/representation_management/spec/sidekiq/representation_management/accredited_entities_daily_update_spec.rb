@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe RepresentationManagement::AccreditationXlsxProcessor do
+RSpec.describe RepresentationManagement::AccreditedEntitiesDailyUpdate do
   let(:fixture_path) { 'modules/representation_management/spec/fixtures/xlsx_files/rep-mock-data.xlsx' }
   let(:fixture_file_content) { File.read(fixture_path) }
   let(:batch) { double('Sidekiq::Batch', description: nil, 'description=': nil) }

@@ -6,7 +6,7 @@ module RepresentationManagement
   # Processes address validation for AccreditedOrganization records by ID.
   # This class finds AccreditedOrganization records and calls their validate_address method.
   # Contact field updates (name, phone, raw_address) are written directly by
-  # AccreditationXlsxProcessor before this job is queued.
+  # AccreditedEntitiesDailyUpdate before this job is queued.
   class AccreditedOrganizationsUpdate
     include Sidekiq::Job
 
