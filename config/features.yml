@@ -134,6 +134,15 @@ features:
       We need to remove this feature from the codebase ASAP.
       Mocks shouldn't live in the app logic. If needed, add at the API/middleware level.
     enable_in_development: true
+  ask_va_predictive_category:
+    actor_type: user
+    description: >
+      Ask VA - When enabled, personal users will be given the option to ask a simple question
+      and have an AI model categorize their request.  This will enable frontend form pages
+      and utilize VETS-API routes to get the AI predictions from AWS Prediction Service and
+      save the model predictions to CRM Dynamics AVA.
+      See Ask VA repository Epic issue #2090
+    enable_in_development: false
   ask_va_specific_data_endpoints:
     actor_type: cookie_id
     description: >
