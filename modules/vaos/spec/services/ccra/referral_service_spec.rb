@@ -104,17 +104,16 @@ describe Ccra::ReferralService do
             .and_return(true)
         end
 
-        it 'logs detailed error information with scrubbed PHI' do
-          # Expect the Rails logger to receive the error with scrubbed data
+        it 'logs detailed error information with PHI' do
+          # Expect the Rails logger to receive the error
           expect(Rails.logger).to receive(:error) do |message, data|
             expect(message).to eq('Community Care Appointments: Failed to fetch VAOS referral list')
             expect(data[:referral_status]).to eq(referral_status)
             expect(data[:service]).to eq('ccra')
             expect(data[:method]).to eq('get_vaos_referral_list')
             expect(data[:error_class]).to eq('Common::Exceptions::BackendServiceException')
-            # The scrub method should have replaced the ICN with [REDACTED]
-            expect(data[:error_message]).to include('[REDACTED]')
-            expect(data[:error_message]).not_to include(icn)
+            # ICN is intentionally preserved in logs for Datadog monitoring
+            expect(data[:error_message]).to include(icn)
             expect(data[:error_backtrace]).to be_an(Array)
           end
 
@@ -123,15 +122,12 @@ describe Ccra::ReferralService do
           end.to raise_error(Common::Exceptions::BackendServiceException)
         end
 
-        it 'ensures PHI like ICN numbers are scrubbed from error messages' do
-          # Verify the logged message does not contain the actual ICN
-          # The scrub method should automatically replace ICN with [REDACTED]
+        it 'ensures ICN numbers are preserved in error messages for Datadog monitoring' do
+          # ICN is intentionally not scrubbed — it is needed for Datadog account compromise detection
           expect(Rails.logger).to receive(:error) do |message, data|
             expect(message).to eq('Community Care Appointments: Failed to fetch VAOS referral list')
-            expect(data[:error_message]).not_to include(icn)
-            expect(data[:error_message]).to include('[REDACTED]')
-            # Verify the error message contains the scrubbed detail
-            expect(data[:error_message]).to match(/Connection failed for patient \[REDACTED\]/)
+            expect(data[:error_message]).to include(icn)
+            expect(data[:error_message]).to match(/Connection failed for patient #{Regexp.escape(icn)}/)
           end
 
           expect do

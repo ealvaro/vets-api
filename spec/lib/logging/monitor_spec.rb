@@ -82,7 +82,7 @@ RSpec.describe Logging::Monitor do
           claim_id: 1,
           form_id: '12345',
           error: 'Error with SSN: [REDACTED]',
-          errors: ['Phone: [REDACTED]', 'Email: [REDACTED]', 'ICN: [REDACTED]', 'Credit card: [REDACTED]'],
+          errors: ['Phone: [REDACTED]', 'Email: [REDACTED]', 'ICN: 1234567890V123456', 'Credit card: [REDACTED]'],
           icn: '[FILTERED]',
           debug_info: '[FILTERED]',
           nested_info: '[FILTERED]',

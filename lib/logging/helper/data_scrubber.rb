@@ -66,7 +66,6 @@ module Logging
 
       # Order matters: most specific patterns first to avoid conflicts
       PATTERN_ORDER = %i[
-        ICN
         SSN
         EMAIL
         PHONE
@@ -97,6 +96,7 @@ module Logging
         completely_removed
         confirmation_number
         form_id
+        icn
         id
         in_progress_form_id
         removed_keys

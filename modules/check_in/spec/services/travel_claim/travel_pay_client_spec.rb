@@ -458,13 +458,12 @@ RSpec.describe TravelClaim::TravelPayClient do
       )
     end
 
-    it 'removes ICN from error message using DataScrubber' do
+    it 'preserves ICN in error messages (ICN is not scrubbed by DataScrubber)' do
       icn = '1234567890V123456'
       body = { 'message' => "Error occurred for patient #{icn}" }.to_json
       result = client.send(:extract_and_redact_message, body)
 
-      expect(result).to eq('Error occurred for patient [REDACTED]')
-      expect(result).not_to include(icn)
+      expect(result).to eq("Error occurred for patient #{icn}")
     end
 
     it 'returns nil when body is nil' do

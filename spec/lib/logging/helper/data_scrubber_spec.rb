@@ -41,7 +41,7 @@ RSpec.describe Logging::Helper::DataScrubber do
         ['EDIPI: 1234567890', 'EDIPI: [REDACTED]'],
         ['Participant: 12345678', 'Participant: [REDACTED]'],
         ['ID: 1234567890', 'ID: [REDACTED]'],
-        ['ICN: 1234567890V123456', 'ICN: [REDACTED]'],
+        ['ICN: 1234567890V123456', 'ICN: 1234567890V123456'],
         # Multiple PII
         ['Contact John at john@email.com or 555-123-4567, SSN: 123-45-6789',
          'Contact John at [REDACTED] or [REDACTED], SSN: [REDACTED]']
@@ -353,10 +353,6 @@ RSpec.describe Logging::Helper::DataScrubber do
       'PARTICIPANT_ID' => {
         valid: %w[12345678 123456789 1234567890],
         invalid: %w[1234567 12345678901 abcdefgh]
-      },
-      'ICN' => {
-        valid: %w[1234567890V123456 9876543210V654321 1111111111V111111],
-        invalid: %w[123456789V123456 1234567890V12345 1234567890X123456]
       },
       'ZIP_CODE' => {
         valid: %w[12345 12345-6789],

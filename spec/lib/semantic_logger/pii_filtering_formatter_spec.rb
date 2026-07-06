@@ -49,8 +49,12 @@ RSpec.describe PIIFilteringFormatter do
       parsed = format_log(message: 'User action', payload: pii_payload)
 
       pii_payload.each_key do |key|
+        next if key == :icn # ICN is intentionally not scrubbed — it is needed for Datadog monitoring
+
         expect(parsed['payload'][key.to_s]).to eq(redaction), "expected #{key} to be redacted"
       end
+
+      expect(parsed['payload']['icn']).to eq('1234567890V123456')
     end
 
     it 'leaves string-only log messages unchanged' do

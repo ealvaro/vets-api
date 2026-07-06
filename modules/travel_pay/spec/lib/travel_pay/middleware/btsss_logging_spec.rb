@@ -82,8 +82,8 @@ RSpec.describe TravelPay::Middleware::BtsssLogging do
         expect(Rails.logger).to receive(:warn) do |msg, **tags|
           expect(msg).to eq('BTSSS service call failed')
           expect(tags[:status]).to eq(400)
-          # DataScrubber detects the ICN pattern in the value and redacts it
-          expect(tags[:request_body]['icn']).to eq('[REDACTED]')
+          # ICN is intentionally preserved — it is needed for Datadog monitoring
+          expect(tags[:request_body]['icn']).to eq('1234567890V123456')
           expect(tags[:response_body]).to be_a(Hash)
         end
 
@@ -132,7 +132,7 @@ RSpec.describe TravelPay::Middleware::BtsssLogging do
   end
 
   describe 'PII scrubbing via DataScrubber' do
-    it 'scrubs SSNs, emails, ICNs, and phone numbers from response values' do
+    it 'scrubs SSNs, emails, and phone numbers from response values (ICN is preserved)' do
       response_body = {
         'veteranContact' => {
           'ssn' => '123-45-6789',
@@ -155,7 +155,7 @@ RSpec.describe TravelPay::Middleware::BtsssLogging do
         contact = tags[:response_body]['veteranContact']
         expect(contact['ssn']).to eq('[REDACTED]')
         expect(contact['email']).to eq('[REDACTED]')
-        expect(contact['icn']).to eq('[REDACTED]')
+        expect(contact['icn']).to eq('1234567890V123456') # ICN intentionally preserved for Datadog monitoring
         expect(contact['phone']).to eq('[REDACTED]')
 
         # Non-PII values pass through
