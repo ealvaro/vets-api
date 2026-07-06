@@ -4,6 +4,11 @@ require 'rails_helper'
 require 'sidekiq/testing'
 
 describe VANotify::ClearStaleInProgressRemindersSent, type: :worker do
+  before do
+    allow(Flipper).to receive(:enabled?).and_call_original
+    allow(Flipper).to receive(:enabled?).with(:clear_stale_in_progress_reminders_sent).and_return(true)
+  end
+
   describe '#perform' do
     let(:user_account) { create(:user_account) }
 

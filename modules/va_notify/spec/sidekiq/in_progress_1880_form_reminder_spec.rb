@@ -9,6 +9,7 @@ describe VANotify::InProgress1880FormReminder, type: :worker do
 
   before do
     allow(Flipper).to receive(:enabled?).and_call_original
+    allow(Flipper).to receive(:enabled?).with(:in_progress_1880_form_reminder).and_return(true)
   end
 
   describe '#perform' do
@@ -119,6 +120,21 @@ describe VANotify::InProgress1880FormReminder, type: :worker do
         described_class.new.perform(in_progress_form.id)
       end
 
+      expect(VANotify::V2::QueueUserAccountJob).not_to have_received(:enqueue)
+    end
+
+    it 'returns nil and skips sending when the in progress form does not exist' do
+      allow(VANotify::Veteran).to receive(:new)
+      allow(VANotify::V2::QueueUserAccountJob).to receive(:enqueue)
+
+      missing_form_id = in_progress_form.id + 1_000
+
+      result = Sidekiq::Testing.inline! do
+        described_class.new.perform(missing_form_id)
+      end
+
+      expect(result).to be_nil
+      expect(VANotify::Veteran).not_to have_received(:new)
       expect(VANotify::V2::QueueUserAccountJob).not_to have_received(:enqueue)
     end
   end

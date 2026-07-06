@@ -13,7 +13,9 @@ module VANotify
     def perform(form_id)
       return unless Flipper.enabled?(:in_progress_1880_form_reminder)
 
-      in_progress_form = InProgressForm.find(form_id)
+      in_progress_form = InProgressForm.find_by(id: form_id)
+
+      return unless in_progress_form
 
       veteran = VANotify::Veteran.new(in_progress_form)
 

@@ -4,6 +4,11 @@ require 'rails_helper'
 require 'sidekiq/testing'
 
 describe VANotify::InProgress1880Form, type: :worker do
+  before do
+    allow(Flipper).to receive(:enabled?).and_call_original
+    allow(Flipper).to receive(:enabled?).with(:in_progress_1880_form_cron).and_return(true)
+  end
+
   describe '#perform' do
     it 'creates additional async workers to send messages to va notify' do
       in_progress_form1 = create_in_progress_form_hours_ago(22, user_uuid: create(:user, uuid: SecureRandom.uuid).uuid,
