@@ -46,6 +46,10 @@ class FormProfiles::VA108678 < FormProfile
 
     form_data = generate_prefill(mappings) if FormProfile.prefill_enabled_forms.include?(form_id)
 
+    if form_data['fullName']['middle']
+      form_data['fullName']['middle'] = initial_letter_or_blank(form_data['fullName']['middle'])
+    end
+
     { form_data:, metadata: }
   end
 
@@ -68,5 +72,9 @@ class FormProfiles::VA108678 < FormProfile
         :city, :state_code, :province
       ).merge(country_name: mailing_address.country_code_iso3, zip_code:)
     )
+  end
+
+  def initial_letter_or_blank(middle_name = '')
+    middle_name.blank? ? '' : middle_name[0]
   end
 end
