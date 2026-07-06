@@ -364,7 +364,7 @@ jobs:
         run: zstd -T0 /tmp/vets-api.tar -o /tmp/vets-api.tar.zst
 
       - name: Save Docker image to cache
-        uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /tmp/vets-api.tar.zst
           key: docker-image-${{ github.sha }}
@@ -518,7 +518,7 @@ jobs:
 
       - name: Save shard manifest to cache
         if: steps.shard_manifest_restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: tmp/shard-manifest-group-${{ matrix.test_group }}.txt
           key: shard-manifest-${{ github.run_id }}-group-${{ matrix.test_group }}
@@ -764,7 +764,7 @@ jobs:
 
       - name: Save runtime log to cache
         if: needs.tests.result == 'success'
-        uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: tmp/parallel_runtime_rspec.log
           key: parallel-runtime-log-${{ github.ref }}-${{ github.run_id }}
