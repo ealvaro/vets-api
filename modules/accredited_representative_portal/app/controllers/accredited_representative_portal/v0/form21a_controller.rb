@@ -16,6 +16,8 @@ module AccreditedRepresentativePortal
       end
 
       FORM_ID = '21a'
+      RESUBMITTABLE_STATUS = 'resubmittable'
+      RESUBMITTABLE_MESSAGE = 'We saved your application. Please try submitting Form 21a again.'
 
       # NOTE: The order of before_action calls is important here.
       before_action :feature_enabled, :loa3_user?
@@ -122,7 +124,8 @@ module AccreditedRepresentativePortal
         Rails.logger.error(
           "Form21aController: Network error: #{error.class} #{error.message} for user_uuid=#{@current_user&.uuid}"
         )
-        render json: { errors: 'Service temporarily unavailable' }, status: :service_unavailable
+
+        render json: resubmittable_error_response('Service temporarily unavailable'), status: :service_unavailable
       end
 
       def handle_submit_unexpected_error(error)
@@ -247,7 +250,8 @@ module AccreditedRepresentativePortal
           "Form21aController: OGC service returned error response (status=#{response.status}) " \
           "for user with user_uuid=#{@current_user&.uuid} application_id=#{application_id}"
         )
-        render json: response.body, status: response.status
+
+        render json: resubmittable_error_response(response.body), status: response.status
       end
 
       def render_ogc_blank_response
@@ -255,7 +259,19 @@ module AccreditedRepresentativePortal
           'Form21aController: Blank or unparsable response from external OGC service ' \
           "for user with user_uuid=#{@current_user&.uuid}"
         )
-        render status: :no_content
+
+        render json: resubmittable_error_response('Blank or unparsable response from external OGC service'),
+               status: :service_unavailable
+      end
+
+      def resubmittable_error_response(errors)
+        {
+          errors:,
+          formSubmission: {
+            status: RESUBMITTABLE_STATUS,
+            message: RESUBMITTABLE_MESSAGE
+          }
+        }
       end
 
       def extract_application_id(response)

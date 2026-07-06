@@ -44,6 +44,16 @@ RSpec.describe 'AccreditedRepresentativePortal::V0::Form21a', type: :request do
   let(:representative_user) { create(:representative_user) }
   let(:headers) { { 'Content-Type' => 'application/json' } }
 
+  def expected_resubmittable_response(errors)
+    {
+      'errors' => errors,
+      'formSubmission' => {
+        'status' => 'resubmittable',
+        'message' => 'We saved your application. Please try submitting Form 21a again.'
+      }
+    }
+  end
+
   before do
     login_as(representative_user)
   end
@@ -405,10 +415,15 @@ RSpec.describe 'AccreditedRepresentativePortal::V0::Form21a', type: :request do
     end
 
     context 'when service returns a blank response' do
-      it 'logs and returns no content' do
+      let!(:in_progress_form) { create(:in_progress_form, form_id: '21a', user_uuid: representative_user.uuid) }
+
+      it 'logs, returns resubmittable messaging, and retains the in-progress form' do
         allow(AccreditationService).to receive(:submit_form21a).and_return(
           instance_double(Faraday::Response, success?: false, body: nil, status: 204)
         )
+
+        expect(AccreditedRepresentativePortal::Form21aDocumentUploadService)
+          .not_to receive(:enqueue_uploads)
 
         expect(Rails.logger).to receive(:error).with(
           a_string_including(
@@ -416,8 +431,13 @@ RSpec.describe 'AccreditedRepresentativePortal::V0::Form21a', type: :request do
           )
         )
 
-        make_post_request
-        expect(response).to have_http_status(:no_content)
+        expect { make_post_request }.not_to change(InProgressForm, :count)
+
+        expect(response).to have_http_status(:service_unavailable)
+        expect(parsed_response).to eq(
+          expected_resubmittable_response('Blank or unparsable response from external OGC service')
+        )
+        expect(InProgressForm.form_for_user('21a', representative_user)).to be_present
       end
     end
 
@@ -442,14 +462,21 @@ RSpec.describe 'AccreditedRepresentativePortal::V0::Form21a', type: :request do
         )
       end
 
-      it 'logs, renders error JSON and returns 400' do
+      it 'logs, returns resubmittable messaging, and retains the in-progress form' do
+        create(:in_progress_form, form_id: '21a', user_uuid: representative_user.uuid)
+
+        expect(AccreditedRepresentativePortal::Form21aDocumentUploadService)
+          .not_to receive(:enqueue_uploads)
+
         expect(Rails.logger).to receive(:error).with(
           a_string_including('OGC service returned error response (status=400)')
         )
 
-        make_post_request
+        expect { make_post_request }.not_to change(InProgressForm, :count)
+
         expect(response).to have_http_status(:bad_request)
-        expect(parsed_response).to eq(error_body)
+        expect(parsed_response).to eq(expected_resubmittable_response(error_body))
+        expect(InProgressForm.form_for_user('21a', representative_user)).to be_present
       end
     end
 
@@ -462,14 +489,21 @@ RSpec.describe 'AccreditedRepresentativePortal::V0::Form21a', type: :request do
         )
       end
 
-      it 'logs and returns a 503 with error body' do
+      it 'logs, returns resubmittable messaging, and retains the in-progress form' do
+        create(:in_progress_form, form_id: '21a', user_uuid: representative_user.uuid)
+
+        expect(AccreditedRepresentativePortal::Form21aDocumentUploadService)
+          .not_to receive(:enqueue_uploads)
+
         expect(Rails.logger).to receive(:error).with(
           a_string_including('OGC service returned error response (status=503)')
         )
 
-        make_post_request
+        expect { make_post_request }.not_to change(InProgressForm, :count)
+
         expect(response).to have_http_status(:service_unavailable)
-        expect(parsed_response).to eq(error_body)
+        expect(parsed_response).to eq(expected_resubmittable_response(error_body))
+        expect(InProgressForm.form_for_user('21a', representative_user)).to be_present
       end
     end
 
@@ -501,16 +535,23 @@ RSpec.describe 'AccreditedRepresentativePortal::V0::Form21a', type: :request do
     end
 
     context 'when a network error occurs' do
-      it 'logs the error and returns a 503' do
+      let!(:in_progress_form) { create(:in_progress_form, form_id: '21a', user_uuid: representative_user.uuid) }
+
+      it 'logs, returns resubmittable messaging, and retains the in-progress form' do
         allow(AccreditationService).to receive(:submit_form21a).and_raise(Faraday::TimeoutError.new('timeout'))
+
+        expect(AccreditedRepresentativePortal::Form21aDocumentUploadService)
+          .not_to receive(:enqueue_uploads)
 
         expect(Rails.logger).to receive(:error).with(
           a_string_including('Form21aController: Network error: Faraday::TimeoutError')
         )
 
-        make_post_request
+        expect { make_post_request }.not_to change(InProgressForm, :count)
+
         expect(response).to have_http_status(:service_unavailable)
-        expect(parsed_response).to eq('errors' => 'Service temporarily unavailable')
+        expect(parsed_response).to eq(expected_resubmittable_response('Service temporarily unavailable'))
+        expect(InProgressForm.form_for_user('21a', representative_user)).to be_present
       end
     end
 
@@ -580,17 +621,24 @@ RSpec.describe 'AccreditedRepresentativePortal::V0::Form21a', type: :request do
     end
 
     context 'when a connection error occurs' do
-      it 'logs the error and returns a 503 (ConnectionFailed)' do
+      let!(:in_progress_form) { create(:in_progress_form, form_id: '21a', user_uuid: representative_user.uuid) }
+
+      it 'logs, returns resubmittable messaging, and retains the in-progress form' do
         allow(AccreditationService).to receive(:submit_form21a)
           .and_raise(Faraday::ConnectionFailed.new('connection down'))
+
+        expect(AccreditedRepresentativePortal::Form21aDocumentUploadService)
+          .not_to receive(:enqueue_uploads)
 
         expect(Rails.logger).to receive(:error).with(
           a_string_including('Form21aController: Network error: Faraday::ConnectionFailed')
         )
 
-        make_post_request
+        expect { make_post_request }.not_to change(InProgressForm, :count)
+
         expect(response).to have_http_status(:service_unavailable)
-        expect(parsed_response).to eq('errors' => 'Service temporarily unavailable')
+        expect(parsed_response).to eq(expected_resubmittable_response('Service temporarily unavailable'))
+        expect(InProgressForm.form_for_user('21a', representative_user)).to be_present
       end
     end
   end

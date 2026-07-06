@@ -6,24 +6,29 @@ module AccreditedRepresentativePortal
   class UploadForm21aDocumentToGCLAWSJob
     include Sidekiq::Job
 
-    class GclawsDocumentUploadError < StandardError; end
+    class GclawsDocumentUploadError < StandardError
+      attr_reader :status, :response_body
+
+      def initialize(status, response_body = nil)
+        @status = status
+        @response_body = response_body
+
+        super("GCLAWS Document API returned #{status}")
+      end
+    end
+
+    class MissingAttachmentFileError < StandardError; end
+
+    FORM_ID = '21a'
+    DATADOG_EXHAUSTED_METRIC = 'api.form21a.document_upload.retries_exhausted'
+    SLACK_BACKTRACE_LINE_LIMIT = 50
+    SLACK_BACKTRACE_CHARACTER_LIMIT = 4000
 
     # 3 total attempts: 1 initial + 2 retries
     sidekiq_options retry: 2
 
     sidekiq_retries_exhausted do |job, exception|
-      form21a_attachment_guid, application_id, document_type, _original_file_name, content_type = job['args']
-
-      Rails.logger.error(
-        'UploadForm21aDocumentToGCLAWSJob: All retries exhausted. ' \
-        "guid=#{form21a_attachment_guid} " \
-        "application_id=#{application_id} " \
-        "document_type=#{document_type} " \
-        "content_type=#{content_type}",
-        exception:
-      )
-
-      # TODO: Add handling for silent GCLAWS document upload failures.
+      new.send(:record_retries_exhausted, job['args'], exception)
     end
 
     # @param form21a_attachment_guid [String] GUID of the Form21aAttachment record
@@ -45,10 +50,12 @@ module AccreditedRepresentativePortal
 
       attachment = find_attachment
       file = retrieve_file(attachment)
-      return unless file
 
       upload_to_gclaws(file)
       delete_attachment(attachment)
+    rescue => e
+      record_failed_attempt(exception: e)
+      raise
     end
 
     private
@@ -67,7 +74,16 @@ module AccreditedRepresentativePortal
     end
 
     def retrieve_file(attachment)
-      attachment.get_file
+      file = attachment.get_file
+      return file if file.present?
+
+      Rails.logger.error(
+        'UploadForm21aDocumentToGCLAWSJob: Form21aAttachment returned no file; ' \
+        "unable to upload document to GCLAWS. guid=#{form21a_attachment_guid} " \
+        "application_id=#{application_id}"
+      )
+
+      raise MissingAttachmentFileError, 'Form21aAttachment returned no file for document upload'
     rescue Aws::S3::Errors::ServiceError, Errno::ENOENT => e
       Rails.logger.error(
         "UploadForm21aDocumentToGCLAWSJob: Failed to retrieve file for guid=#{form21a_attachment_guid}.",
@@ -149,7 +165,7 @@ module AccreditedRepresentativePortal
           "Status: #{response.status}"
         )
 
-        raise GclawsDocumentUploadError, "GCLAWS Document API returned #{response.status}"
+        raise GclawsDocumentUploadError.new(response.status, response.body)
       end
     end
 
@@ -165,6 +181,251 @@ module AccreditedRepresentativePortal
         exception: e
       )
       # Don't re-raise - the upload succeeded, deletion failure shouldn't cause retry
+    end
+
+    def record_failed_attempt(exception:)
+      classification = failure_classification_for(exception)
+      submission = find_or_create_submission
+
+      submission.submission_attempts.create!(
+        status: failed_status_for(classification),
+        failure_classification: classification,
+        last_http_status: http_status_for(exception),
+        attempted_at: Time.current,
+        metadata: attempt_metadata(exception),
+        error_message: exception.message,
+        response: response_data_for(exception)
+      )
+    rescue => e
+      Rails.logger.error(
+        'UploadForm21aDocumentToGCLAWSJob: Failed to record Form21aDocumentSubmissionAttempt. ' \
+        "guid=#{form21a_attachment_guid} application_id=#{application_id}",
+        exception: e
+      )
+    end
+
+    def record_retries_exhausted(job_args, exception)
+      assign_job_args(job_args)
+
+      classification = failure_classification_for(exception)
+      terminal_status = failed_status_for(classification)
+      submission = find_or_create_submission
+
+      # The ticket explicitly asks the exhausted hook to append a final terminal attempt row.
+      # This keeps retry failures and terminal exhaustion as separate audit events.
+      append_terminal_attempt!(
+        submission:,
+        classification:,
+        terminal_status:,
+        exception:
+      )
+
+      emit_retries_exhausted_alert(
+        classification:,
+        terminal_status:,
+        exception:
+      )
+    rescue => e
+      log_retries_exhausted_recording_failure(e, exception)
+    end
+
+    def assign_job_args(job_args)
+      @form21a_attachment_guid,
+      @application_id,
+      @document_type,
+      @original_file_name,
+      @content_type = job_args
+    end
+
+    def append_terminal_attempt!(submission:, classification:, terminal_status:, exception:)
+      submission.submission_attempts.create!(
+        status: terminal_status,
+        failure_classification: classification,
+        last_http_status: http_status_for(exception),
+        attempted_at: Time.current,
+        metadata: attempt_metadata(exception).merge('terminal' => true),
+        error_message: exception.message,
+        response: response_data_for(exception)
+      )
+    end
+
+    def log_retries_exhausted_recording_failure(tracking_error, original_exception)
+      Rails.logger.error(
+        'UploadForm21aDocumentToGCLAWSJob: Failed to record exhausted upload state. ' \
+        "guid=#{form21a_attachment_guid} application_id=#{application_id} " \
+        "document_type=#{document_type} content_type=#{content_type}",
+        exception: tracking_error
+      )
+
+      Rails.logger.error(
+        'UploadForm21aDocumentToGCLAWSJob: All retries exhausted. ' \
+        "guid=#{form21a_attachment_guid} " \
+        "application_id=#{application_id} " \
+        "document_type=#{document_type} " \
+        "content_type=#{content_type}",
+        exception: original_exception
+      )
+    end
+
+    def find_or_create_submission
+      Form21aDocumentSubmission.find_or_create_by!(
+        form21a_attachment_guid:
+      ) do |submission|
+        submission.form_id = FORM_ID
+        submission.application_id = application_id
+        submission.document_type = document_type
+        submission.content_type = content_type
+        submission.latest_status = 'pending'
+        submission.original_file_name = safe_original_file_name
+        submission.identifiers = submission_identifiers
+      end
+    end
+
+    def submission_identifiers
+      {
+        'form21a_attachment_guid' => form21a_attachment_guid,
+        'application_id' => application_id,
+        'document_type' => document_type
+      }
+    end
+
+    def failure_classification_for(exception)
+      status = http_status_for(exception)
+      return 'permanent' if status&.between?(400, 499)
+      return 'permanent' if permanent_failure_exception?(exception)
+
+      'transient'
+    end
+
+    def permanent_failure_exception?(exception)
+      exception.is_a?(ArgumentError) || exception.is_a?(ActiveRecord::RecordNotFound)
+    end
+
+    def failed_status_for(classification)
+      classification == 'permanent' ? 'failed_permanent' : 'failed_transient'
+    end
+
+    def http_status_for(exception)
+      return exception.status if exception.respond_to?(:status)
+
+      nil
+    end
+
+    def attempt_metadata(exception)
+      {
+        'error_class' => exception.class.name,
+        'job_class' => self.class.name,
+        'form21a_attachment_guid' => form21a_attachment_guid,
+        'application_id' => application_id,
+        'document_type' => document_type
+      }
+    end
+
+    def response_data_for(exception)
+      return {} unless exception.is_a?(GclawsDocumentUploadError)
+
+      {
+        'status' => exception.status,
+        'body' => exception.response_body
+      }.compact
+    end
+
+    def emit_retries_exhausted_alert(classification:, terminal_status:, exception:)
+      emit_retries_exhausted_datadog(
+        classification:,
+        terminal_status:
+      )
+
+      log_retries_exhausted_alert(
+        classification:,
+        terminal_status:,
+        exception:
+      )
+
+      notify_retries_exhausted_slack(
+        classification:,
+        terminal_status:,
+        exception:
+      )
+    end
+
+    def emit_retries_exhausted_datadog(classification:, terminal_status:)
+      StatsD.increment(
+        DATADOG_EXHAUSTED_METRIC,
+        tags: [
+          "classification:#{classification}",
+          "terminal_status:#{terminal_status}",
+          "document_type:#{document_type}",
+          "content_type:#{content_type}"
+        ]
+      )
+    end
+
+    def log_retries_exhausted_alert(classification:, terminal_status:, exception:)
+      Rails.logger.error(
+        'UploadForm21aDocumentToGCLAWSJob: All retries exhausted; terminal upload failure recorded. ' \
+        "guid=#{form21a_attachment_guid} " \
+        "application_id=#{application_id} " \
+        "document_type=#{document_type} " \
+        "content_type=#{content_type} " \
+        "classification=#{classification} " \
+        "terminal_status=#{terminal_status}",
+        exception:
+      )
+    end
+
+    def notify_retries_exhausted_slack(classification:, terminal_status:, exception:)
+      VBADocuments::Slack::Messenger
+        .new(retries_exhausted_slack_payload(
+               classification:,
+               terminal_status:,
+               exception:
+             ))
+        .notify!
+    rescue => e
+      Rails.logger.error(
+        'UploadForm21aDocumentToGCLAWSJob: Failed to send Slack alert for exhausted upload. ' \
+        "guid=#{form21a_attachment_guid} application_id=#{application_id}",
+        exception: e
+      )
+    end
+
+    def retries_exhausted_slack_payload(classification:, terminal_status:, exception:)
+      {
+        class: self.class.name,
+        alert: '[ALERT] Form 21a document upload retries exhausted: ' \
+               "#{exception.class.name} - #{exception.message}",
+        details: retries_exhausted_slack_details(
+          classification:,
+          terminal_status:,
+          exception:
+        )
+      }
+    end
+
+    def retries_exhausted_slack_details(classification:, terminal_status:, exception:)
+      [
+        "guid: #{form21a_attachment_guid}",
+        "application_id: #{application_id}",
+        "document_type: #{document_type}",
+        "content_type: #{content_type}",
+        "classification: #{classification}",
+        "terminal_status: #{terminal_status}",
+        "exception_class: #{exception.class.name}",
+        "exception_message: #{exception.message}",
+        "backtrace:\n#{formatted_backtrace(exception)}"
+      ].join("\n")
+    end
+
+    def formatted_backtrace(exception)
+      backtrace = Array(exception.backtrace)
+                  .first(SLACK_BACKTRACE_LINE_LIMIT)
+                  .join("\n")
+                  .gsub(Rails.root.to_s, '[APP_ROOT]')
+
+      return backtrace if backtrace.length <= SLACK_BACKTRACE_CHARACTER_LIMIT
+
+      "#{backtrace[0, SLACK_BACKTRACE_CHARACTER_LIMIT]}\n... truncated"
     end
 
     def connection

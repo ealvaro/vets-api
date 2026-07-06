@@ -78,6 +78,18 @@ RSpec.describe AccreditedRepresentativePortal::Form21aDocumentUploadService do
 
         enqueue_uploads
       end
+
+      it 'does not log original file names' do
+        allow(AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob)
+          .to receive(:perform_async)
+        allow(Rails.logger).to receive(:info)
+
+        enqueue_uploads
+
+        expect(Rails.logger).not_to have_received(:info).with(a_string_including('conviction_doc.pdf'))
+        expect(Rails.logger).not_to have_received(:info).with(a_string_including('court_martial.docx'))
+        expect(Rails.logger).not_to have_received(:info).with(a_string_including('court_martial_2.pdf'))
+      end
     end
 
     context 'when form_data is empty' do
@@ -189,7 +201,7 @@ RSpec.describe AccreditedRepresentativePortal::Form21aDocumentUploadService do
           .to receive(:perform_async)
 
         expect(enqueue_uploads).to eq(document_types.size)
-        expect(enqueue_uploads).to eq(13)
+        expect(document_types.size).to eq(13)
       end
 
       it 'maps each document key to the correct GCLAWS document type code' do

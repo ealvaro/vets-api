@@ -277,6 +277,8 @@ app/models/form1010_ezr_attachment.rb @software/vfs-authenticated-experience-bac
 app/models/form1010cg @software/health-apps-backend @software/backend-review-group
 app/models/form1010cg/attachment.rb @software/health-apps-backend @software/backend-review-group
 app/models/form1010cg/submission.rb @software/health-apps-backend @software/backend-review-group
+app/models/form21a_document_submission.rb @software/accredited-representative-crew @software/backend-review-group
+app/models/form21a_document_submission_attempt.rb @software/accredited-representative-crew @software/backend-review-group
 app/models/form526_job_status.rb @software/disability-benefits @software/backend-review-group
 app/models/form526_submission_remediation.rb @software/disability-benefits @software/backend-review-group
 app/models/form526_submission.rb @software/disability-benefits @software/backend-review-group
@@ -1901,6 +1903,8 @@ spec/models/form_profiles/va214502_spec.rb @software/benefits-intake-pingwind @s
 spec/models/form_submission_attempt_spec.rb @software/platform-va-product-forms @software/disability-benefits @software/backend-review-group
 spec/models/form_submission_spec.rb @software/platform-va-product-forms @software/disability-benefits @software/backend-review-group
 spec/models/form1010cg @software/health-apps-backend @software/backend-review-group
+spec/models/form21a_document_submission_attempt_spec.rb @software/accredited-representative-crew @software/backend-review-group
+spec/models/form21a_document_submission_spec.rb @software/accredited-representative-crew @software/backend-review-group
 spec/models/form526_job_status_spec.rb @software/disability-benefits @software/backend-review-group
 spec/models/form526_submission_remediation_spec.rb @software/disability-benefits @software/backend-review-group
 spec/models/form526_submission_spec.rb @software/disability-benefits @software/backend-review-group
