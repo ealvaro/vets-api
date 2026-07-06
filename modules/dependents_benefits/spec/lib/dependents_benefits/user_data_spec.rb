@@ -24,18 +24,20 @@ RSpec.describe DependentsBenefits::UserData do
   let(:component) { described_class.name }
   let(:claim_data) do
     {
-      'veteran_information' => {
-        'full_name' => {
-          'first' => 'Jane',
-          'middle' => 'Marie',
-          'last' => 'Smith'
+      'dependents_application' => {
+        'veteran_information' => {
+          'full_name' => {
+            'first' => 'Jane',
+            'middle' => 'Marie',
+            'last' => 'Smith'
+          },
+          'birth_date' => '1985-05-15'
         },
-        'birth_date' => '1985-05-15'
-      },
-      'veteran_contact_information' => {
-        'email_address' => 'jane.smith@example.com'
-      },
-      'file_number' => 'claim-file-123'
+        'veteran_contact_information' => {
+          'email_address' => 'jane.smith@example.com'
+        },
+        'file_number' => 'claim-file-123'
+      }
     }
   end
 
@@ -186,7 +188,7 @@ RSpec.describe DependentsBenefits::UserData do
       )
 
       claim_data_with_no_middle = claim_data.dup
-      claim_data_with_no_middle['veteran_information']['full_name'].delete('middle')
+      claim_data_with_no_middle['dependents_application']['veteran_information']['full_name'].delete('middle')
       user_data = described_class.new(user_without_middle, claim_data_with_no_middle)
       json_string = user_data.get_user_json
       parsed_json = JSON.parse(json_string)

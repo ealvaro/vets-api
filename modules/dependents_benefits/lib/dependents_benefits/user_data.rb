@@ -39,14 +39,15 @@ module DependentsBenefits
     # @param claim_data [Hash] The claim form data containing veteran information
     # @raise [Common::Exceptions::UnprocessableEntity] if initialization fails
     def initialize(user, claim_data)
-      @first_name = user.first_name.presence || claim_data.dig(KEY, 'full_name', 'first')
-      @middle_name = user.middle_name.presence || claim_data.dig(KEY, 'full_name', 'middle')
-      @last_name = user.last_name.presence || claim_data.dig(KEY, 'full_name', 'last')
+      @first_name = user.first_name.presence || claim_data.dig('dependents_application', KEY, 'full_name', 'first')
+      @middle_name = user.middle_name.presence || claim_data.dig('dependents_application', KEY, 'full_name', 'middle')
+      @last_name = user.last_name.presence || claim_data.dig('dependents_application', KEY, 'full_name', 'last')
       @ssn = user.ssn.presence
       @uuid = user.uuid.presence
-      @birth_date = user.birth_date.presence || claim_data.dig(KEY, 'birth_date')
+      @birth_date = user.birth_date.presence || claim_data.dig('dependents_application', KEY, 'birth_date')
       @common_name = user.common_name.presence
-      @email = user.email.presence || claim_data.dig('veteran_contact_information', 'email_address')
+      @email = user.email.presence || claim_data.dig('dependents_application', 'veteran_contact_information',
+                                                     'email_address')
       @icn = user.icn.presence
       @participant_id = user.participant_id.presence
       # Set notification_email from form's email if va_profile_email is not available
