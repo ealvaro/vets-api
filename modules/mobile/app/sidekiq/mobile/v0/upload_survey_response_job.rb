@@ -74,7 +74,7 @@ module Mobile
                                       .upload_csv(
                                         csv_data,
                                         sharepoint_path,
-                                        "#{survey_type_snake}_#{Date.current.strftime('%Y%m%d')}.csv"
+                                        "#{survey_type_snake}_#{Time.current.utc.strftime('%Y%m%d_%H%M%S%L')}.csv"
                                       )
 
         raise UploadError, "SharePoint upload failed with status: #{response.status}" unless response.success?

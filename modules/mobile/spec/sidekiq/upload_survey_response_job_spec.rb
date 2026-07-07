@@ -86,13 +86,15 @@ RSpec.describe Mobile::V0::UploadSurveyResponseJob, type: :job do
         response = instance_double(Faraday::Response, success?: true, status: 201)
         captured_csv = nil
         captured_path = nil
+        captured_filename = nil
 
         expect(SharePoint::Service).to receive(:new)
           .with(sharepoint_feature: :mobile_survey_storage)
           .and_return(service)
-        expect(service).to receive(:upload_csv) do |csv_data, path, _filename|
+        expect(service).to receive(:upload_csv) do |csv_data, path, filename|
           captured_csv = csv_data
           captured_path = path
+          captured_filename = filename
           response
         end
 
@@ -109,6 +111,7 @@ RSpec.describe Mobile::V0::UploadSurveyResponseJob, type: :job do
         expect(rows[1][3]).to eq('Great')
         expect(rows[1][4]).to eq('iOS')
         expect(captured_path).to eq('Survey Responses/give_feedback')
+        expect(captured_filename).to match(/\Agive_feedback_\d{8}_\d{9}\.csv\z/)
 
         # Verify only giveFeedback rows were deleted
         expect(Mobile::SurveyResponse.where(survey_type: 'giveFeedback').count).to eq(0)
