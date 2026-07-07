@@ -77,10 +77,10 @@ RSpec.describe DebtsApi::V0::Form5655Submission do
 
   describe '.submit_to_vba' do
     let(:form5655_submission) { create(:debts_api_form5655_submission) }
-    let(:guy) { create(:form5655_submission) }
 
     before do
       allow(form5655_submission).to receive(:create_transaction_log_if_needed)
+      allow(Flipper).to receive(:enabled?).with(:financial_management_disable_vba_submissions).and_return(false)
     end
 
     it 'enqueues a VBA submission job' do
@@ -95,6 +95,7 @@ RSpec.describe DebtsApi::V0::Form5655Submission do
       expect(StatsD).to receive(:increment).with(
         "#{DebtsApi::V0::Form5655::VBASubmissionJob::STATS_KEY}.initiated"
       )
+
       form5655_submission.submit_to_vba
     end
 
@@ -107,6 +108,55 @@ RSpec.describe DebtsApi::V0::Form5655Submission do
       expect(form5655_submission).to have_received(:user_cache_id).with(no_args)
       expect(DebtsApi::V0::Form5655::VBASubmissionJob.jobs.last['args'])
         .to eq([form5655_submission.id, 'cache-id'])
+    end
+
+    context 'when VBA submissions are disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:financial_management_disable_vba_submissions)
+          .and_return(true)
+      end
+
+      it 'does not enqueue a VBA submission job' do
+        expect do
+          form5655_submission.submit_to_vba
+        end.not_to change(DebtsApi::V0::Form5655::VBASubmissionJob.jobs, :size)
+      end
+
+      it 'does not build the VBA user cache' do
+        allow(form5655_submission).to receive(:user_cache_id)
+
+        form5655_submission.submit_to_vba
+
+        expect(form5655_submission).not_to have_received(:user_cache_id)
+      end
+
+      it 'does not create a transaction log' do
+        form5655_submission.submit_to_vba
+
+        expect(form5655_submission).not_to have_received(:create_transaction_log_if_needed)
+      end
+
+      it 'still increments the StatsD counter' do
+        allow(StatsD).to receive(:increment)
+
+        expect(StatsD).to receive(:increment).with(
+          "#{DebtsApi::V0::Form5655::VBASubmissionJob::STATS_KEY}.initiated"
+        )
+
+        form5655_submission.submit_to_vba
+      end
+
+      it 'logs that the VBA submission was skipped' do
+        allow(StatsD).to receive(:increment)
+        allow(Rails.logger).to receive(:info)
+
+        form5655_submission.submit_to_vba
+
+        expect(Rails.logger).to have_received(:info).with(
+          "Form5655Submission VBA skip for form: #{form5655_submission.id}"
+        )
+      end
     end
   end
 

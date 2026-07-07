@@ -41,6 +41,10 @@ RSpec.describe DebtsApi::V0::Form5655Submission, type: :model do
   end
 
   describe '#submit_to_vba' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:financial_management_disable_vba_submissions).and_return(false)
+    end
+
     it 'creates transaction log and marks as submitted' do
       allow(DebtsApi::V0::Form5655::VBASubmissionJob).to receive(:perform_async)
       allow(form5655_submission).to receive_messages(user_cache_id: 'cache123',

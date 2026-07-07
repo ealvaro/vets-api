@@ -442,6 +442,7 @@ RSpec.describe DebtsApi::V0::FinancialStatusReportService, type: :service do
       valid_form_data.deep_transform_keys! { |key| key.to_s.camelize(:lower) }
       mock_sharepoint_upload
       allow(User).to receive(:find).with(user.uuid).and_return(user)
+      allow(Flipper).to receive(:enabled?).with(:financial_management_disable_vba_submissions).and_return(false)
     end
 
     it 'enqueues a VBA submission job' do

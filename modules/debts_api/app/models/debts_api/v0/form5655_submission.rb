@@ -56,10 +56,15 @@ module DebtsApi
     end
 
     def submit_to_vba
-      transaction_log = create_transaction_log_if_needed
       StatsD.increment("#{DebtsApi::V0::Form5655::VBASubmissionJob::STATS_KEY}.initiated")
-      DebtsApi::V0::Form5655::VBASubmissionJob.perform_async(id, user_cache_id)
-      transaction_log&.mark_submitted
+
+      if Flipper.enabled?(:financial_management_disable_vba_submissions)
+        Rails.logger.info("Form5655Submission VBA skip for form: #{id}")
+      else
+        transaction_log = create_transaction_log_if_needed
+        DebtsApi::V0::Form5655::VBASubmissionJob.perform_async(id, user_cache_id)
+        transaction_log&.mark_submitted
+      end
     end
 
     def submit_to_vha

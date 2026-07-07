@@ -1300,6 +1300,9 @@ features:
     actor_type: user
     description: Enables the Financial Management app to only use the VBS API
     enable_in_development: true
+  financial_management_disable_vba_submissions:
+    actor_type: user
+    description: Logs and disables 5655 VBA submissions
   find_a_representative_enable_api:
     actor_type: user
     description: Enables all Find a Representative api endpoints
