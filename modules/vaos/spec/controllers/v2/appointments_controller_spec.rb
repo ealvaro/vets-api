@@ -29,29 +29,6 @@ RSpec.describe VAOS::V2::AppointmentsController, type: :request do
     end
   end
 
-  describe '#appointment_error_status' do
-    let(:controller) { described_class.new }
-
-    it 'returns :conflict for conflict error' do
-      expect(controller.send(:appointment_error_status, 'conflict')).to eq(:conflict)
-    end
-
-    it 'returns :bad_request for bad-request error' do
-      expect(controller.send(:appointment_error_status, 'bad-request')).to eq(:bad_request)
-    end
-
-    it 'returns :bad_gateway for internal-error error' do
-      expect(controller.send(:appointment_error_status, 'internal-error')).to eq(:bad_gateway)
-    end
-
-    it 'returns :unprocessable_content for other errors' do
-      expect(controller.send(:appointment_error_status, 'too-far-in-the-future')).to eq(:unprocessable_content)
-      expect(controller.send(:appointment_error_status, 'already-canceled')).to eq(:unprocessable_content)
-      expect(controller.send(:appointment_error_status, 'too-late-to-cancel')).to eq(:unprocessable_content)
-      expect(controller.send(:appointment_error_status, 'unknown-error')).to eq(:unprocessable_content)
-    end
-  end
-
   describe '#appointment_facility_ids' do
     let(:controller) { described_class.new }
 

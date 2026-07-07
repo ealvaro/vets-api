@@ -8,13 +8,10 @@ module VAOS
     class AppointmentsController < VAOS::BaseController
       before_action :authorize_with_facilities
 
-      include VAOS::CommunityCareConstants
       include VAOS::FacilityConstants
 
       # Local constants for this controller
       PARTIAL_RESPONSE_METRIC = 'api.vaos.va_mobile.response.partial'
-      APPT_DRAFT_CREATION_SUCCESS_METRIC = "#{STATSD_PREFIX}.appointment_draft_creation.success".freeze
-      APPT_DRAFT_CREATION_FAILURE_METRIC = "#{STATSD_PREFIX}.appointment_draft_creation.failure".freeze
       PAP_COMPLIANCE_TELE = 'PAP COMPLIANCE/TELE'
       APPT_INDEX_VAOS = "GET '/vaos/v1/patients/<icn>/appointments'"
       APPT_INDEX_VPG = "GET '/vpg/v1/patients/<icn>/appointments'"
@@ -25,7 +22,6 @@ module VAOS
       REASON = 'reason'
       REASON_CODE = 'reason_code'
       COMMENT = 'comment'
-      CACHE_ERROR_MSG = 'Error fetching referral data from cache'
 
       def index
         appointments[:data].each do |appt|
@@ -75,24 +71,6 @@ module VAOS
         serializer = VAOS::V2::VAOSSerializer.new
         serialized = serializer.serialize(new_appointment, 'appointments')
         render json: { data: serialized }, status: :created
-      end
-
-      def create_draft
-        referral_id = draft_params[:referral_number]
-        referral_consult_id = draft_params[:referral_consult_id]
-        draft_appt = VAOS::V2::CreateEpsDraftAppointment.call(current_user, referral_id, referral_consult_id)
-
-        if draft_appt.error
-          render json: { errors: [{ title: 'Appointment creation failed', detail: draft_appt.error[:message] }] },
-                 status: draft_appt.error[:status]
-        else
-          ccra_referral_service.clear_referral_cache(referral_id, current_user.icn)
-          render json: Eps::DraftAppointmentSerializer.new(draft_appt), status: :created
-        end
-      rescue Redis::BaseError => e
-        handle_redis_error(e)
-      rescue => e
-        handle_appointment_creation_error(e)
       end
 
       def update
@@ -256,12 +234,6 @@ module VAOS
         params.permit(:_include)
       end
 
-      def draft_params
-        params.require(:referral_number)
-        params.require(:referral_consult_id)
-        params.permit(:referral_number, :referral_consult_id)
-      end
-
       def avs_binaries_params
         params.require(:appointment_id)
         params.require(:doc_ids)
@@ -406,110 +378,6 @@ module VAOS
         else
           APPT_CREATE_VAOS
         end
-      end
-
-      ##
-      # Handles Redis connection and operational errors throughout the controller.
-      # Provides a consistent error response when Redis is unavailable or operations fail.
-      #
-      # @param error [Redis::BaseError] The Redis exception that was raised
-      # @return [void]
-      # @see Redis::BaseError
-      def handle_redis_error(error)
-        error_data = {
-          error_class: error.class.name,
-          error_message: error.message,
-          user_uuid: current_user&.uuid
-        }
-        Rails.logger.error("#{CC_APPOINTMENTS}: Redis error", error_data)
-        render json: { errors: [{ title: 'Appointment creation failed', detail: 'Redis connection error' }] },
-               status: :bad_gateway
-      end
-
-      ##
-      # Gets a CCRA referral service instance
-      #
-      # @return [Ccra::ReferralService] The CCRA referral service
-      def ccra_referral_service
-        @ccra_referral_service ||= Ccra::ReferralService.new(current_user)
-      end
-
-      ##
-      # Maps appointment error codes to appropriate HTTP status codes
-      # This method handles string error codes from appointment responses
-      #
-      # @param error_code [String] The error code from the appointment response
-      # @return [Symbol] The corresponding HTTP status code symbol
-      #
-      def appointment_error_status(error_code)
-        case error_code
-        when 'not-found', 404
-          :not_found # 404
-        when 'conflict', 409
-          :conflict # 409
-        when 'bad-request', 400
-          :bad_request # 400
-        when 'internal-error', 500, 502
-          :bad_gateway # 502
-        else
-          # too-far-in-the-future, already-canceled, too-late-to-cancel, etc.
-          :unprocessable_content # 422
-        end
-      end
-
-      ##
-      # Handles appointment-related errors throughout the controller.
-      # Maps error codes to appropriate HTTP status codes and renders
-      # standardized error responses.
-      #
-      # @param e [Exception] The exception that was raised
-      # @return [void] Renders JSON error response with appropriate HTTP status
-      #
-      def handle_appointment_creation_error(e)
-        error_data = {
-          error_class: e.class.name,
-          error_message: e.message,
-          user_uuid: current_user&.uuid
-        }
-
-        Rails.logger.error("#{CC_APPOINTMENTS}: Appointment creation error", error_data)
-
-        if e.is_a?(ActionController::ParameterMissing)
-          status_code = :bad_request
-        else
-          original_status = e.respond_to?(:original_status) ? e.original_status : nil
-          status_code = appointment_error_status(original_status)
-        end
-        render(json: appt_creation_failed_error(error: e, status: status_code), status: status_code)
-      end
-
-      ##
-      # Formats a standardized error response for appointment creation failures.
-      # Extracts error details from exception objects and builds a consistent
-      # error structure with metadata for debugging and monitoring.
-      #
-      # @param error [Exception, nil] The exception that caused the failure
-      # @param title [String, nil] Custom error title (defaults to 'Appointment creation failed')
-      # @param detail [String, nil] Custom error detail (defaults to 'Could not create appointment')
-      # @param status [String, Integer, nil] Status code for error metadata
-      # @return [Hash] Formatted error response with title, detail, and metadata
-      #
-      def appt_creation_failed_error(error: nil, title: nil, detail: nil, status: nil)
-        default_title = 'Appointment creation failed'
-        default_detail = 'Could not create appointment'
-        status_code = error.respond_to?(:original_status) ? error.original_status : status
-        {
-          errors: [{
-            title: title || default_title,
-            detail: detail || default_detail,
-            meta: {
-              original_detail: error.try(:response_values)&.dig(:detail),
-              original_error: error.try(:message) || 'Unknown error',
-              code: status_code,
-              backend_response: error.try(:original_body)
-            }
-          }]
-        }
       end
     end
   end
