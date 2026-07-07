@@ -18,7 +18,7 @@ module V0
     before_action :record_submission_attempt, only: :create
     before_action :initialize_claim, only: %i[create download_pdf]
 
-    rescue_from ::Form1010cg::Service::InvalidVeteranStatus, with: :backend_service_outage
+    rescue_from ::Form1010cg::Service::InvalidVeteranStatus, with: :veteran_not_found
 
     def create
       if @claim.valid?
@@ -111,13 +111,13 @@ module V0
       @claim = SavedClaim::CaregiversAssistanceClaim.new(form: form_submission)
     end
 
-    def backend_service_outage
+    def veteran_not_found
       auditor.record(
         :submission_failure_client_qualification,
         claim_guid: @claim.guid
       )
 
-      render_errors Common::Exceptions::ServiceOutage.new(nil, detail: 'Backend Service Outage')
+      render_errors Common::Exceptions::ResourceNotFound.new(detail: 'Veteran not found')
     end
 
     def auditor

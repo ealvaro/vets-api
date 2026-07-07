@@ -84,7 +84,7 @@ RSpec.describe 'V0::CaregiversAssistanceClaims', type: :request do
           ).and_raise(Form1010cg::Service::InvalidVeteranStatus)
         end
 
-        it 'returns backend service exception' do
+        it 'returns not found error' do
           expect(Rails.logger).not_to receive(:error).with(
             'CaregiverAssistanceClaim: error submitting claim',
             { saved_claim_guid: claim.guid, error: instance_of(Form1010cg::Service::InvalidVeteranStatus) }
@@ -92,9 +92,9 @@ RSpec.describe 'V0::CaregiversAssistanceClaims', type: :request do
 
           subject
 
-          expect(response).to have_http_status(:service_unavailable)
+          expect(response).to have_http_status(:not_found)
           expect(JSON.parse(response.body)['errors'][0]['detail']).to eq(
-            'Backend Service Outage'
+            'Veteran not found'
           )
         end
       end
