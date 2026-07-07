@@ -1,0 +1,195 @@
+name: Breakers Circuit Audit
+
+# Runs on every PR that touches:
+#   - lib/**            (where Configuration classes live)
+#   - modules/**/lib/** (module-level configurations)
+#   - config/initializers/breakers.rb (the registration file itself)
+#
+# Purpose: enforce that every Common::Client::Configuration::Base descendant
+# modified or introduced by a VFS team's PR is properly registered with the
+# Breakers circuit breaker client and has its :breakers middleware wired in.
+#
+# The rake task (rakelib/breakers_audit.rake) exits non-zero if any class
+# fails the four-criteria check, which fails this workflow and blocks merge.
+#
+# To debug a failure locally:
+#   bundle exec rake breakers:validate
+#   VERBOSE=1 bundle exec rake "breakers:validate[YourService::Configuration]"
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'lib/**/*.rb'
+      - 'modules/**/lib/**/*.rb'
+      - 'config/initializers/breakers.rb'
+      - 'rakelib/breakers_audit.rake'
+
+permissions:
+  id-token: write
+  contents: read
+  checks: write
+
+jobs:
+  breakers_audit:
+    permissions: write-all
+    name: Breakers Circuit Audit
+    env:
+      CI: true
+      RAILS_ENV: test
+      TERM: xterm-256color
+      DOCKER_BUILDKIT: 1
+      COMPOSE_DOCKER_CLI_BUILD: 1
+      COMPOSE_BASH_CMD: docker compose -f docker-compose.test.yml run web bash -c
+    runs-on: ubuntu-16-cores-latest
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 1
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6
+        with:
+          role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
+          aws-region: us-gov-west-1
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /dsva-vagov/vets-api/prod/env_vars/BUNDLE_ENTERPRISE__CONTRIBSYS__COM
+          env_variable_name: BUNDLE_ENTERPRISE__CONTRIBSYS__COM
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /dsva-vagov/vets-api/common/ECR_REGISTRY
+          env_variable_name: ECR_REGISTRY
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /devops/dockerhub/vavfsbot_user
+          env_variable_name: DOCKERHUB_USER
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /devops/dockerhub/vavfsbot_password
+          env_variable_name: DOCKERHUB_PASSWORD
+
+      - name: Login to DockerHub
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4
+        with:
+          username: ${{ env.DOCKERHUB_USER }}
+          password: ${{ env.DOCKERHUB_PASSWORD }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
+        with:
+          mask-password: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
+
+      - name: Generate cross-repo token for gems
+        id: app-token
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
+        with:
+          client-id: ${{ vars.GEM_APP_CLIENT_ID }}
+          private-key: ${{ secrets.GEM_APP_PRIVATE_KEY }}
+          owner: software
+          github-api-url: https://va.ghe.com/api/v3
+
+      - name: Build and Cache Docker Image
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7
+        env:
+          DOCKER_BUILD_SUMMARY: false
+        with:
+          build-args: |
+            BUNDLE_ENTERPRISE__CONTRIBSYS__COM=${{ env.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
+            BUNDLE_VA__GHE__COM=x-access-token:${{ steps.app-token.outputs.token }}
+            USER_ID=1001
+          context: .
+          push: false
+          load: true
+          tags: vets-api
+          cache-from: type=gha
+          cache-to: type=gha,mode=min
+
+      - name: Set up test database
+        run: |
+          docker compose -f docker-compose.test.yml run web bash \
+            -c "bundle exec rails db:create db:schema:load"
+
+      - name: Run Breakers audit
+        timeout-minutes: 20
+        run: |
+          docker compose -f docker-compose.test.yml run web bash \
+            -c "CI=true DISABLE_BOOTSNAP=true bundle exec rake breakers:validate"
+
+      - name: Post audit summary on failure
+        if: failure()
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.payload.pull_request.number
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: [
+                '## :rotating_light: Breakers Circuit Audit Failed',
+                '',
+                'One or more `Common::Client::Configuration::Base` descendants in this PR',
+                'did not pass the four-criteria breakers check:',
+                '',
+                '1. Inherits from `Common::Client::Configuration::REST` or `::SOAP`',
+                '2. Defines a non-empty `service_name`',
+                '3. Defines a URI-parseable `base_path`',
+                '4. Wires `:breakers` middleware into its Faraday `connection`',
+                '',
+                '**To diagnose:**',
+                '```bash',
+                'bundle exec rake breakers:validate',
+                'VERBOSE=1 bundle exec rake "breakers:validate[YourService::Configuration]"',
+                '```',
+                '',
+                '**To fix:**',
+                '- Add `faraday.use(:breakers, service_name:)` to your `connection` method',
+                '- Register your service in `config/initializers/breakers.rb`',
+                '- See the [Breakers audit README](../blob/master/rakelib/breakers_audit.rake)',
+                '  (top of file) for full guidance',
+              ].join('\n')
+            })
+
+      - name: Add failure label
+        if: failure()
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.payload.pull_request.number
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              labels: ['breakers-audit-failure'],
+            })
+
+      - name: Remove failure label on success
+        if: success()
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.payload.pull_request.number
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                name: 'breakers-audit-failure',
+              })
+            } catch (e) {
+              if (e.status !== 404) throw e
+            }

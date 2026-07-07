@@ -670,7 +670,7 @@ iam_ssoe:
   timeout: 20
 ibm:
   breakers_error_threshold: 80
-  host: ~
+  host: www.example.com
   path: "/api/validated-forms"
   use_mocks: true
   version: v1
