@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'roo'
-require 'octokit'
 
 # rubocop:disable Rails/Output
 module RepresentationManagement
@@ -22,11 +21,6 @@ module RepresentationManagement
   # This service is designed for console use and outputs progress via puts
   # to ensure visibility in the Rails console environment.
   class DataComparisonService
-    # Constants for GitHub file location
-    GITHUB_ORG = 'software'
-    GITHUB_REPO = 'va.gov-team-sensitive'
-    GITHUB_PATH = 'products/accredited-representation-management/data/rep-org-addresses.xlsx'
-
     def initialize
       @results = {}
     end
@@ -37,13 +31,7 @@ module RepresentationManagement
       print_header(start_time)
 
       begin
-        file_content = fetch_and_validate_file
-        return unless file_content
-
-        file_data = extract_and_report_file_data(file_content)
-        db_data = query_and_report_database_data
-        compare_and_report(file_data, db_data)
-        print_completion(start_time)
+        download_and_process(start_time)
       rescue => e
         handle_error(e)
       end
@@ -58,16 +46,25 @@ module RepresentationManagement
       puts "#{'=' * 80}\n\n"
     end
 
-    def fetch_and_validate_file
-      puts "[#{Time.zone.now}] Step 1/4: Downloading Excel file from GitHub..."
-      file_content = download_file
-      puts "[#{Time.zone.now}]   ✓ File downloaded successfully\n\n" if file_content
-      file_content
+    def download_and_process(start_time)
+      puts "[#{Time.zone.now}] Step 1/4: Downloading Excel file from GCLAWS..."
+      RepresentationManagement::GCLAWS::XlsxClient.download_accreditation_xlsx do |result|
+        if result[:success]
+          puts "[#{Time.zone.now}]   ✓ File downloaded successfully\n\n"
+          file_data = extract_and_report_file_data(result[:file_path])
+          db_data = query_and_report_database_data
+          compare_and_report(file_data, db_data)
+          print_completion(start_time)
+        else
+          puts "[#{Time.zone.now}]   ERROR: Failed to download file from GCLAWS"
+          puts "[#{Time.zone.now}]   Error: #{result[:error]}"
+        end
+      end
     end
 
-    def extract_and_report_file_data(file_content)
+    def extract_and_report_file_data(file_path)
       puts "[#{Time.zone.now}] Step 2/4: Extracting identifiers from Excel file..."
-      file_data = extract_identifiers_from_file(file_content)
+      file_data = extract_identifiers_from_file(file_path)
       puts "[#{Time.zone.now}]   ✓ Found #{file_data[:individuals].size} unique individuals"
       puts "[#{Time.zone.now}]   ✓ Found #{file_data[:organizations].size} unique organizations\n\n"
       file_data
@@ -106,46 +103,12 @@ module RepresentationManagement
       puts "\nComparison failed. Please check the error above."
     end
 
-    # Downloads the Excel file from GitHub
-    # @return [String, nil] File content or nil if download failed
-    def download_file
-      setup_github_client
-      file_info = fetch_github_file_info
-      fetch_file_content(file_info.download_url)
-    rescue => e
-      puts "[#{Time.zone.now}]   ERROR: Failed to download file from GitHub"
-      puts "[#{Time.zone.now}]   Error: #{e.message}"
-      puts "[#{Time.zone.now}]   Check GitHub access token and network connectivity"
-      nil
-    end
-
-    # Sets up the Octokit GitHub client with an access token
-    def setup_github_client
-      @github_client = Octokit::Client.new(access_token: Settings.xlsx_file_fetcher.github_access_token,
-                                           api_endpoint: 'https://api.va.ghe.com')
-    end
-
-    # Retrieves the file information for the XLSX file from GitHub
-    # @return [Sawyer::Resource] The file information resource from GitHub
-    def fetch_github_file_info
-      @github_client.contents("#{GITHUB_ORG}/#{GITHUB_REPO}", path: GITHUB_PATH)
-    end
-
-    # Downloads the file content from a given URL
-    # @param url [String] The URL to download the file content from
-    # @return [String] The body of the HTTP response, or nil if not successful
-    def fetch_file_content(url)
-      uri = URI.parse(url)
-      response = Net::HTTP.get_response(uri)
-      response.body if response.is_a?(Net::HTTPSuccess)
-    end
-
     # Extracts all unique registration numbers and POA codes from the Excel file
-    # @param file_content [String] The raw file content
+    # @param file_path [String] Path to the downloaded XLSX file
     # @return [Hash] Hash with :individuals and :organizations Sets
-    def extract_identifiers_from_file(file_content)
+    def extract_identifiers_from_file(file_path)
       puts "[#{Time.zone.now}]   Opening Excel file..."
-      xlsx = Roo::Spreadsheet.open(StringIO.new(file_content), extension: :xlsx)
+      xlsx = Roo::Spreadsheet.open(file_path, extension: :xlsx)
 
       individuals = Set.new
       organizations = Set.new

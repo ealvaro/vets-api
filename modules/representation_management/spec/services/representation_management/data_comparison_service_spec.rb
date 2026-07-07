@@ -4,8 +4,6 @@ require 'rails_helper'
 
 RSpec.describe RepresentationManagement::DataComparisonService do
   let(:service) { described_class.new }
-  let(:mock_github_client) { instance_double(Octokit::Client) }
-  let(:mock_file_info) { double('file_info', download_url: 'https://raw.githubusercontent.com/test/file.xlsx') }
 
   before do
     # Suppress puts output in tests
@@ -27,8 +25,9 @@ RSpec.describe RepresentationManagement::DataComparisonService do
 
     context 'when successful' do
       before do
+        allow(RepresentationManagement::GCLAWS::XlsxClient).to receive(:download_accreditation_xlsx)
+          .and_yield({ success: true, file_path: '/tmp/test.xlsx' })
         allow(service).to receive_messages(
-          download_file: 'fake_xlsx_content',
           extract_identifiers_from_file: file_data,
           query_database_models: db_data
         )
@@ -39,7 +38,7 @@ RSpec.describe RepresentationManagement::DataComparisonService do
       end
 
       it 'calls all major steps in order' do
-        expect(service).to receive(:fetch_and_validate_file).ordered.and_call_original
+        expect(service).to receive(:download_and_process).ordered.and_call_original
         expect(service).to receive(:extract_and_report_file_data).ordered.and_call_original
         expect(service).to receive(:query_and_report_database_data).ordered.and_call_original
         expect(service).to receive(:compare_and_report).ordered.and_call_original
@@ -65,7 +64,8 @@ RSpec.describe RepresentationManagement::DataComparisonService do
 
     context 'when download fails' do
       before do
-        allow(service).to receive(:download_file).and_return(nil)
+        allow(RepresentationManagement::GCLAWS::XlsxClient).to receive(:download_accreditation_xlsx)
+          .and_yield({ success: false, error: 'Download failed' })
       end
 
       it 'exits early without proceeding to extraction' do
@@ -79,11 +79,11 @@ RSpec.describe RepresentationManagement::DataComparisonService do
       end
     end
 
-    context 'when an error occurs during fetch' do
+    context 'when an error occurs during download' do
       let(:error) { StandardError.new('Network error') }
 
       before do
-        allow(service).to receive(:fetch_and_validate_file).and_raise(error)
+        allow(RepresentationManagement::GCLAWS::XlsxClient).to receive(:download_accreditation_xlsx).and_raise(error)
       end
 
       it 'handles the error gracefully' do
@@ -100,79 +100,14 @@ RSpec.describe RepresentationManagement::DataComparisonService do
       let(:error) { StandardError.new('Excel parsing error') }
 
       before do
-        allow(service).to receive(:download_file).and_return('fake_content')
+        allow(RepresentationManagement::GCLAWS::XlsxClient).to receive(:download_accreditation_xlsx)
+          .and_yield({ success: true, file_path: '/tmp/test.xlsx' })
         allow(service).to receive(:extract_identifiers_from_file).and_raise(error)
       end
 
       it 'handles the error and prints error details' do
         expect(service).to receive(:handle_error).with(error)
         service.run
-      end
-    end
-  end
-
-  describe '#download_file' do
-    before do
-      xlsx_file_fetcher = double('xlsx_file_fetcher', github_access_token: 'fake_github_token')
-      allow(Settings).to receive(:xlsx_file_fetcher).and_return(xlsx_file_fetcher)
-      allow(Octokit::Client).to receive(:new).with(access_token: 'fake_github_token',
-                                                   api_endpoint: 'https://api.va.ghe.com')
-                                             .and_return(mock_github_client)
-      allow(mock_github_client).to receive(:contents)
-        .with('software/va.gov-team-sensitive',
-              path: 'products/accredited-representation-management/data/rep-org-addresses.xlsx')
-        .and_return(mock_file_info)
-    end
-
-    context 'when GitHub API and HTTP request succeed' do
-      before do
-        stub_request(:get, 'https://raw.githubusercontent.com/test/file.xlsx')
-          .to_return(status: 200, body: 'excel_file_content')
-      end
-
-      it 'returns file content' do
-        result = service.send(:download_file)
-        expect(result).to eq('excel_file_content')
-      end
-
-      it 'sets up GitHub client with correct token' do
-        expect(Octokit::Client).to receive(:new).with(access_token: 'fake_github_token',
-                                                      api_endpoint: 'https://api.va.ghe.com')
-        service.send(:download_file)
-      end
-    end
-
-    context 'when HTTP request fails' do
-      before do
-        allow(service).to receive(:setup_github_client)
-        allow(service).to receive(:fetch_github_file_info).and_return(mock_file_info)
-        allow(service).to receive(:fetch_file_content).and_raise(StandardError.new('HTTP request failed'))
-      end
-
-      it 'returns nil' do
-        result = service.send(:download_file)
-        expect(result).to be_nil
-      end
-
-      it 'outputs error message' do
-        expect(service).to receive(:puts).with(/ERROR: Failed to download file/)
-        service.send(:download_file)
-      end
-    end
-
-    context 'when GitHub API raises an error' do
-      before do
-        allow(mock_github_client).to receive(:contents).and_raise(Octokit::NotFound.new)
-      end
-
-      it 'returns nil' do
-        result = service.send(:download_file)
-        expect(result).to be_nil
-      end
-
-      it 'outputs error details' do
-        expect(service).to receive(:puts).with(/ERROR: Failed to download file/)
-        service.send(:download_file)
       end
     end
   end
@@ -219,35 +154,35 @@ RSpec.describe RepresentationManagement::DataComparisonService do
       end
 
       it 'extracts individuals and organizations into Sets' do
-        result = service.send(:extract_identifiers_from_file, 'fake_content')
+        result = service.send(:extract_identifiers_from_file, '/tmp/fake.xlsx')
 
         expect(result[:individuals]).to be_a(Set)
         expect(result[:organizations]).to be_a(Set)
       end
 
       it 'extracts all individual registration numbers' do
-        result = service.send(:extract_identifiers_from_file, 'fake_content')
+        result = service.send(:extract_identifiers_from_file, '/tmp/fake.xlsx')
 
         expect(result[:individuals]).to include('11111', '22222', '33333', '44444')
         expect(result[:individuals].size).to eq(4)
       end
 
       it 'extracts all organization POA codes' do
-        result = service.send(:extract_identifiers_from_file, 'fake_content')
+        result = service.send(:extract_identifiers_from_file, '/tmp/fake.xlsx')
 
         expect(result[:organizations]).to include('A1Q', 'B2R')
         expect(result[:organizations].size).to eq(2)
       end
 
       it 'normalizes organization POA codes to uppercase' do
-        result = service.send(:extract_identifiers_from_file, 'fake_content')
+        result = service.send(:extract_identifiers_from_file, '/tmp/fake.xlsx')
 
         expect(result[:organizations]).to include('B2R')
         expect(result[:organizations]).not_to include('b2r')
       end
 
       it 'converts all numbers to strings' do
-        result = service.send(:extract_identifiers_from_file, 'fake_content')
+        result = service.send(:extract_identifiers_from_file, '/tmp/fake.xlsx')
 
         expect(result[:individuals]).to all(be_a(String))
       end
@@ -265,7 +200,7 @@ RSpec.describe RepresentationManagement::DataComparisonService do
       end
 
       it 'stores each unique number only once' do
-        result = service.send(:extract_identifiers_from_file, 'fake_content')
+        result = service.send(:extract_identifiers_from_file, '/tmp/fake.xlsx')
 
         expect(result[:individuals]).to eq(Set.new(['12345']))
         expect(result[:individuals].size).to eq(1)
@@ -552,21 +487,6 @@ RSpec.describe RepresentationManagement::DataComparisonService do
     end
   end
 
-  describe 'GitHub constants' do
-    it 'has correct GitHub organization constant' do
-      expect(described_class::GITHUB_ORG).to eq('software')
-    end
-
-    it 'has correct GitHub repository constant' do
-      expect(described_class::GITHUB_REPO).to eq('va.gov-team-sensitive')
-    end
-
-    it 'has correct GitHub file path constant' do
-      expected_path = 'products/accredited-representation-management/data/rep-org-addresses.xlsx'
-      expect(described_class::GITHUB_PATH).to eq(expected_path)
-    end
-  end
-
   describe '#handle_error' do
     let(:error) { StandardError.new('Test error message') }
 
@@ -587,80 +507,6 @@ RSpec.describe RepresentationManagement::DataComparisonService do
     it 'outputs failure message' do
       expect(service).to receive(:puts).with(/Comparison failed/)
       service.send(:handle_error, error)
-    end
-  end
-
-  describe 'private helper methods' do
-    describe '#setup_github_client' do
-      before do
-        xlsx_file_fetcher = double('xlsx_file_fetcher', github_access_token: 'test_token_12345')
-        allow(Settings).to receive(:xlsx_file_fetcher).and_return(xlsx_file_fetcher)
-      end
-
-      it 'creates Octokit client with access token from settings' do
-        expect(Octokit::Client).to receive(:new).with(access_token: 'test_token_12345',
-                                                      api_endpoint: 'https://api.va.ghe.com')
-        service.send(:setup_github_client)
-      end
-
-      it 'stores client in instance variable' do
-        allow(Octokit::Client).to receive(:new).and_return(mock_github_client)
-        service.send(:setup_github_client)
-
-        expect(service.instance_variable_get(:@github_client)).to eq(mock_github_client)
-      end
-    end
-
-    describe '#fetch_github_file_info' do
-      before do
-        service.instance_variable_set(:@github_client, mock_github_client)
-      end
-
-      it 'calls contents with correct repository and path' do
-        expect(mock_github_client).to receive(:contents)
-          .with('software/va.gov-team-sensitive',
-                path: 'products/accredited-representation-management/data/rep-org-addresses.xlsx')
-          .and_return(mock_file_info)
-
-        service.send(:fetch_github_file_info)
-      end
-    end
-
-    describe '#fetch_file_content' do
-      let(:url) { 'https://example.com/test.xlsx' }
-
-      context 'when request is successful' do
-        before do
-          stub_request(:get, url).to_return(status: 200, body: 'file_content')
-        end
-
-        it 'returns the response body' do
-          result = service.send(:fetch_file_content, url)
-          expect(result).to eq('file_content')
-        end
-      end
-
-      context 'when request fails' do
-        before do
-          stub_request(:get, url).to_return(status: 500, body: 'Server Error')
-        end
-
-        it 'returns nil' do
-          result = service.send(:fetch_file_content, url)
-          expect(result).to be_nil
-        end
-      end
-
-      context 'when request redirects' do
-        before do
-          stub_request(:get, url).to_return(status: 302, body: '')
-        end
-
-        it 'returns nil for non-success responses' do
-          result = service.send(:fetch_file_content, url)
-          expect(result).to be_nil
-        end
-      end
     end
   end
 end
