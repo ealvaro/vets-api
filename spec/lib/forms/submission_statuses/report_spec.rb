@@ -538,6 +538,7 @@ describe Forms::SubmissionStatuses::Report, feature: :form_submission,
       end
 
       it 'increments error metric for the gateway' do
+        allow(StatsD).to receive(:increment)
         expect(StatsD).to receive(:increment).with(
           'api.forms.submission_statuses.gateway',
           tags: ['service:lighthouse_benefits_intake', 'result:error']
@@ -582,6 +583,255 @@ describe Forms::SubmissionStatuses::Report, feature: :form_submission,
         allow(StatsD).to receive(:measure)
 
         report.run
+      end
+    end
+
+    context 'status distribution per gateway' do
+      before do
+        allow(StatsD).to receive(:increment)
+        allow(StatsD).to receive(:measure)
+      end
+
+      context 'for a single gateway with multiple status values' do
+        before do
+          create(:form_submission, :with_form214142, user_account_id: user_account.id)
+          create(:form_submission, :with_form214140, user_account_id: user_account.id)
+          create(:form_submission, :with_form210845, user_account_id: user_account.id)
+
+          allow_any_instance_of(benefits_intake_gateway).to receive(:lighthouse_submissions).and_return([])
+          allow(BenefitsIntake::Service).to receive(:new).and_return(benefits_intake_service)
+          allow(benefits_intake_service).to receive(:bulk_status).and_return(
+            double(body: {
+                     'data' => [
+                       { 'id' => '4b846069-e496-4f83-8587-42b570f24483',
+                         'attributes' => { 'guid' => '4b846069-e496-4f83-8587-42b570f24483',
+                                           'status' => 'error', 'updated_at' => 1.day.ago } },
+                       { 'id' => 'a1b2c3d4-e496-4f83-8587-42b570f24483',
+                         'attributes' => { 'guid' => 'a1b2c3d4-e496-4f83-8587-42b570f24483',
+                                           'status' => 'error', 'updated_at' => 1.day.ago } },
+                       { 'id' => 'd0c6cea6-9885-4e2f-8e0c-708d5933833a',
+                         'attributes' => { 'guid' => 'd0c6cea6-9885-4e2f-8e0c-708d5933833a',
+                                           'status' => 'expired', 'updated_at' => 1.day.ago } }
+                     ]
+                   })
+          )
+        end
+
+        it 'emits a per-status counter aggregated by status value' do
+          expect(StatsD).to receive(:increment).with(
+            'api.forms.submission_statuses.gateway.status', 2,
+            tags: ['service:lighthouse_benefits_intake', 'status:error']
+          )
+          expect(StatsD).to receive(:increment).with(
+            'api.forms.submission_statuses.gateway.status', 1,
+            tags: ['service:lighthouse_benefits_intake', 'status:expired']
+          )
+
+          subject.run
+        end
+
+        it 'keeps error and expired distinguishable per gateway' do
+          subject.run
+
+          expect(StatsD).to have_received(:increment).with(
+            'api.forms.submission_statuses.gateway.status', 2,
+            tags: ['service:lighthouse_benefits_intake', 'status:error']
+          )
+          expect(StatsD).to have_received(:increment).with(
+            'api.forms.submission_statuses.gateway.status', 1,
+            tags: ['service:lighthouse_benefits_intake', 'status:expired']
+          )
+        end
+      end
+
+      context 'when the status is nil' do
+        before do
+          create(:form_submission, :with_form214142, user_account_id: user_account.id)
+
+          allow_any_instance_of(benefits_intake_gateway).to receive(:lighthouse_submissions).and_return([])
+          allow_any_instance_of(benefits_intake_gateway).to receive(:intake_statuses).and_return([nil, nil])
+        end
+
+        it 'reports the status as none' do
+          expect(StatsD).to receive(:increment).with(
+            'api.forms.submission_statuses.gateway.status', 1,
+            tags: ['service:lighthouse_benefits_intake', 'status:none']
+          )
+
+          subject.run
+        end
+      end
+
+      context 'when the status is not in the known allowlist' do
+        before do
+          create(:form_submission, :with_form214142, user_account_id: user_account.id)
+
+          allow_any_instance_of(benefits_intake_gateway).to receive(:lighthouse_submissions).and_return([])
+          allow(BenefitsIntake::Service).to receive(:new).and_return(benefits_intake_service)
+          allow(benefits_intake_service).to receive(:bulk_status).and_return(
+            double(body: {
+                     'data' => [
+                       { 'id' => '4b846069-e496-4f83-8587-42b570f24483',
+                         'attributes' => { 'guid' => '4b846069-e496-4f83-8587-42b570f24483',
+                                           'status' => 'some_unexpected_value', 'updated_at' => 1.day.ago } }
+                     ]
+                   })
+          )
+        end
+
+        it 'buckets the status into other to bound cardinality' do
+          expect(StatsD).to receive(:increment).with(
+            'api.forms.submission_statuses.gateway.status', 1,
+            tags: ['service:lighthouse_benefits_intake', 'status:other']
+          )
+
+          subject.run
+        end
+
+        it 'logs the raw unrecognized status value with its count and gateway' do
+          expect(Rails.logger).to receive(:warn).with(
+            'Unrecognized submission status(es) bucketed to "other" in Forms::SubmissionStatuses::Report',
+            service: 'lighthouse_benefits_intake',
+            unrecognized_statuses: { 'some_unexpected_value' => 1 }
+          )
+
+          subject.run
+        end
+      end
+
+      context 'when all statuses are recognized' do
+        before do
+          create(:form_submission, :with_form214142, user_account_id: user_account.id)
+
+          allow_any_instance_of(benefits_intake_gateway).to receive(:lighthouse_submissions).and_return([])
+          allow(BenefitsIntake::Service).to receive(:new).and_return(benefits_intake_service)
+          allow(benefits_intake_service).to receive(:bulk_status).and_return(
+            double(body: {
+                     'data' => [
+                       { 'id' => '4b846069-e496-4f83-8587-42b570f24483',
+                         'attributes' => { 'guid' => '4b846069-e496-4f83-8587-42b570f24483',
+                                           'status' => 'received', 'updated_at' => 1.day.ago } }
+                     ]
+                   })
+          )
+        end
+
+        it 'does not log any unrecognized status warning' do
+          expect(Rails.logger).not_to receive(:warn).with(
+            'Unrecognized submission status(es) bucketed to "other" in Forms::SubmissionStatuses::Report',
+            anything
+          )
+
+          subject.run
+        end
+      end
+
+      context 'across multiple gateways' do
+        subject(:report) do
+          described_class.new(
+            user_account:,
+            allowed_forms:,
+            gateway_options: {
+              benefits_intake_enabled: true,
+              ivc_champva_enabled: true,
+              user_email: 'test@example.com'
+            }
+          )
+        end
+
+        before do
+          create(:form_submission, :with_form214142, user_account_id: user_account.id)
+          allow_any_instance_of(benefits_intake_gateway).to receive(:lighthouse_submissions).and_return([])
+          allow(BenefitsIntake::Service).to receive(:new).and_return(benefits_intake_service)
+          allow(benefits_intake_service).to receive(:bulk_status).and_return(
+            double(body: {
+                     'data' => [
+                       { 'id' => '4b846069-e496-4f83-8587-42b570f24483',
+                         'attributes' => { 'guid' => '4b846069-e496-4f83-8587-42b570f24483',
+                                           'status' => 'received', 'updated_at' => 1.day.ago } }
+                     ]
+                   })
+          )
+
+          create(
+            :ivc_champva_form,
+            email: 'test@example.com',
+            form_number: '10-10D',
+            form_uuid: SecureRandom.uuid,
+            s3_status: '[200]',
+            pega_status: 'Processed',
+            ves_status: nil
+          )
+        end
+
+        it 'tags each status counter with its originating gateway' do
+          expect(StatsD).to receive(:increment).with(
+            'api.forms.submission_statuses.gateway.status', 1,
+            tags: ['service:lighthouse_benefits_intake', 'status:received']
+          )
+          expect(StatsD).to receive(:increment).with(
+            'api.forms.submission_statuses.gateway.status', 1,
+            tags: ['service:ivc_champva', 'status:vbms']
+          )
+
+          report.run
+        end
+      end
+
+      context 'when a gateway produces a symbol status' do
+        subject(:report) do
+          described_class.new(
+            user_account:,
+            allowed_forms:,
+            gateway_options: {
+              benefits_intake_enabled: true,
+              hca_status_card_enabled: true,
+              user_email: 'test@example.com'
+            }
+          )
+        end
+
+        before do
+          allow_any_instance_of(benefits_intake_gateway).to receive(:submissions).and_return([])
+          allow_any_instance_of(benefits_intake_gateway).to receive(:lighthouse_submissions).and_return([])
+          allow_any_instance_of(benefits_intake_gateway).to receive(:intake_statuses).and_return([nil, nil])
+
+          # HCA1010EZ maps parsed_status :enrolled to the symbol :vbms
+          allow(HealthCareApplication).to receive(:enrollment_status).with(user_account.icn, true).and_return(
+            {
+              application_date: (DateTime.current - 15.days).to_s,
+              effective_date: (DateTime.current - 1.day).to_s,
+              parsed_status: :enrolled
+            }
+          )
+        end
+
+        it 'coerces the symbol status to a string and matches the known allowlist' do
+          expect(StatsD).to receive(:increment).with(
+            'api.forms.submission_statuses.gateway.status', 1,
+            tags: ['service:hca1010_ez', 'status:vbms']
+          )
+
+          report.run
+        end
+
+        it 'does not bucket the recognized symbol status into other' do
+          expect(StatsD).not_to receive(:increment).with(
+            'api.forms.submission_statuses.gateway.status', anything,
+            tags: ['service:hca1010_ez', 'status:other']
+          )
+
+          report.run
+        end
+
+        it 'does not log an unrecognized status warning for a recognized symbol status' do
+          expect(Rails.logger).not_to receive(:warn).with(
+            'Unrecognized submission status(es) bucketed to "other" in Forms::SubmissionStatuses::Report',
+            anything
+          )
+
+          report.run
+        end
       end
     end
   end

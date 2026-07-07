@@ -13,6 +13,15 @@ module Forms
   module SubmissionStatuses
     class Report
       STATSD_KEY_PREFIX = 'api.forms.submission_statuses.gateway'
+      STATUS_STATSD_KEY = "#{STATSD_KEY_PREFIX}.status".freeze
+
+      # Submission statuses used for the `STATUS_STATSD_KEY` metric tags.
+      KNOWN_STATUSES = %w[
+        pending uploaded received processing success vbms error expired
+        in_progress claimReceived complete
+      ].freeze
+      UNKNOWN_STATUS_TAG = 'other'
+      BLANK_STATUS_TAG = 'none'
 
       FORMATTERS = {
         'lighthouse_benefits_intake' => Formatters::BenefitsIntakeFormatter.new,
@@ -66,11 +75,12 @@ module Forms
           formatter = FORMATTERS[service]
           raise "Missing formatter for service: #{service}" unless formatter
 
-          formatter.format_data(dataset_config[:data])
-        end
+          recent_results = formatter.format_data(dataset_config[:data]).select do |result|
+            submission_recent?(result)
+          end
 
-        results = results.select do |result|
-          submission_recent?(result)
+          track_status_distribution(service, recent_results)
+          recent_results
         end
 
         OpenStruct.new(
@@ -148,6 +158,45 @@ module Forms
         else
           StatsD.increment(STATSD_KEY_PREFIX, tags: ["service:#{@current_service}", 'result:success'])
         end
+      end
+
+      # Emits a per-status, per-gateway counter feeding the submission-status
+      # distribution panels in Datadog.
+      def track_status_distribution(service, results)
+        status_counts = Hash.new(0)
+        unrecognized_counts = Hash.new(0)
+
+        results.each do |result|
+          raw_status = result.status.to_s
+          normalized = normalize_status_tag(raw_status)
+          status_counts[normalized] += 1
+          unrecognized_counts[raw_status] += 1 if normalized == UNKNOWN_STATUS_TAG
+        end
+
+        status_counts.each do |status, count|
+          StatsD.increment(STATUS_STATSD_KEY, count, tags: ["service:#{service}", "status:#{status}"])
+        end
+
+        log_unrecognized_statuses(service, unrecognized_counts)
+      end
+
+      def normalize_status_tag(status)
+        status = status.to_s
+        return BLANK_STATUS_TAG if status.blank?
+
+        KNOWN_STATUSES.include?(status) ? status : UNKNOWN_STATUS_TAG
+      end
+
+      # Logs the raw status string(s) bucketed to `other` (PII-safe) so a
+      # `status:other` spike in Datadog can be traced to the unmapped value.
+      def log_unrecognized_statuses(service, unrecognized_counts)
+        return if unrecognized_counts.empty?
+
+        Rails.logger.warn(
+          'Unrecognized submission status(es) bucketed to "other" in Forms::SubmissionStatuses::Report',
+          service:,
+          unrecognized_statuses: unrecognized_counts
+        )
       end
 
       def measure_gateway(service)
