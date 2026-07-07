@@ -93,6 +93,7 @@ module CheckIn
     # VDS site-info clinic list lookup during MFS v3 migration
     STATSD_VDS_SITE_INFO_CLINICS_LOOKUP_MISS = 'api.check_in.vds_site_info.clinics.lookup_miss'
     STATSD_VDS_SITE_INFO_CLINICS_SKIPPED_FLAG_OFF = 'api.check_in.vds_site_info.clinics.skipped_flag_off'
+    STATSD_VDS_SITE_INFO_CLINICS_VISTA_SITE_MISSING = 'api.check_in.vds_site_info.clinics.vista_site_missing'
 
     # Enrichment fetch failed; appointment still returned without the facility/clinic decoration
     STATSD_FACILITY_ENRICHMENT_FAILED = 'api.check_in.vaos.facilities.enrichment_failed'

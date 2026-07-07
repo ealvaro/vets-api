@@ -41,12 +41,15 @@ module CheckIn
         end
       end
 
-      def get_clinic_with_cache(facility_id:, clinic_id:)
+      def get_clinic_with_cache(facility_id:, clinic_id:, facility: nil)
         if facilities_v3_enabled?
           return nil unless vds_site_info_clinics_enabled?
 
-          clinics = Rails.cache.fetch(vds_site_clinics_cache_key(facility_id), expires_in: 12.hours) do
-            vds_site_info_clinics_service.get_clinics(site_id: facility_id)
+          site_id = vista_site_for_vds_clinics(facility:, location_id: facility_id, clinic_id:)
+          return nil unless site_id
+
+          clinics = Rails.cache.fetch(vds_site_clinics_cache_key(site_id), expires_in: 12.hours) do
+            vds_site_info_clinics_service.get_clinics(site_id:)
           rescue Common::Exceptions::BackendServiceException, Breakers::OutageException => e
             # Best-effort enrichment: e.g. a non-VistA (Oracle Health) site_id sent to the VDS
             # site-info endpoint returns a 400. Cache the miss and degrade to nil so the appointment
@@ -56,10 +59,10 @@ module CheckIn
           end
           return nil if clinics.nil?
 
-          clinic_from_vds_list(clinics, clinic_id, site_id: facility_id)
+          clinic_from_vds_list(clinics, clinic_id, site_id:)
         else
           Rails.cache.fetch("check_in.vaos_clinic_#{facility_id}_#{clinic_id}", expires_in: 12.hours) do
-            get_clinic(facility_id:, clinic_id:)
+            get_clinic(facility_id:, clinic_id:, facility:)
           rescue Common::Exceptions::BackendServiceException, Breakers::OutageException => e
             record_enrichment_failure(kind: 'clinic', facility_id:, clinic_id:, error: e,
                                       metric: CheckIn::Constants::STATSD_CLINIC_ENRICHMENT_FAILED)
@@ -67,12 +70,15 @@ module CheckIn
         end
       end
 
-      def get_clinic(facility_id:, clinic_id:)
+      def get_clinic(facility_id:, clinic_id:, facility: nil)
         if facilities_v3_enabled?
           return nil unless vds_site_info_clinics_enabled?
 
-          clinics = vds_site_info_clinics_service.get_clinics(site_id: facility_id)
-          clinic_from_vds_list(clinics, clinic_id, site_id: facility_id)
+          site_id = vista_site_for_vds_clinics(facility:, location_id: facility_id, clinic_id:)
+          return nil unless site_id
+
+          clinics = vds_site_info_clinics_service.get_clinics(site_id:)
+          clinic_from_vds_list(clinics, clinic_id, site_id:)
         else
           with_monitoring do
             response = perform(:get, clinics_url(facility_id:, clinic_id:), {}, headers)
@@ -103,6 +109,13 @@ module CheckIn
         end
       end
 
+      def log_vds_clinic_vista_site_missing(location_id:, clinic_id:)
+        StatsD.increment(CheckIn::Constants::STATSD_VDS_SITE_INFO_CLINICS_VISTA_SITE_MISSING)
+        Rails.logger.info('HCE-Check-In') do
+          "appointments_vds_clinic_vista_site_missing location_id=#{location_id} clinic_id=#{clinic_id}"
+        end
+      end
+
       def vds_site_info_clinics_service
         @vds_site_info_clinics_service ||= CheckIn::Vds::SiteInfo::ClinicsService.new
       end
@@ -125,6 +138,16 @@ module CheckIn
 
       def vds_site_info_clinics_enabled?
         Flipper.enabled?(:check_in_experience_vds_site_info_clinics_enabled)
+      end
+
+      # VDS-Site-Info lists clinics by VistA site id from MFS v3 facility enrichment. VAOS locationId
+      # may be an institution id (e.g. 983GC); do not pass it to VDS when vistaSite is unavailable.
+      def vista_site_for_vds_clinics(facility:, location_id:, clinic_id:)
+        site_id = facility&.with_indifferent_access&.dig(:vistaSite).presence
+        return site_id if site_id
+
+        log_vds_clinic_vista_site_missing(location_id:, clinic_id:)
+        nil
       end
 
       def facilities_url(facility_id:)

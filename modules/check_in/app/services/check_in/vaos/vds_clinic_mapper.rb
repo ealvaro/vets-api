@@ -25,7 +25,9 @@ module CheckIn
       end
 
       def self.friendly_name(clinic)
-        clinic[:friendlyName].presence
+        # VDS-Site-Info migration guide documents friendlyName; production may still send
+        # patientFriendlyName until upstream fully migrates.
+        clinic[:friendlyName].presence || clinic[:patientFriendlyName].presence
       end
       private_class_method :friendly_name
 

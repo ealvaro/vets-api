@@ -68,5 +68,29 @@ describe CheckIn::VAOS::VdsClinicMapper do
       expect(result[:data][:friendlyName]).to be_nil
       expect(result[:data][:serviceName]).to eq('INTERNAL NAME')
     end
+
+    it 'maps patientFriendlyName when friendlyName is absent' do
+      clinic = {
+        clinicIen: '1081',
+        name: 'FTC AMPUTATION',
+        patientFriendlyName: 'Friendly Name FTC Amputation'
+      }
+      result = described_class.to_clinic_info(clinic)
+
+      expect(result[:data][:friendlyName]).to eq('Friendly Name FTC Amputation')
+      expect(result[:data][:serviceName]).to eq('FTC AMPUTATION')
+    end
+
+    it 'prefers friendlyName over patientFriendlyName when both are present' do
+      clinic = {
+        clinicIen: '1081',
+        name: 'FTC AMPUTATION',
+        friendlyName: 'Migration guide name',
+        patientFriendlyName: 'Legacy patient name'
+      }
+      result = described_class.to_clinic_info(clinic)
+
+      expect(result[:data][:friendlyName]).to eq('Migration guide name')
+    end
   end
 end

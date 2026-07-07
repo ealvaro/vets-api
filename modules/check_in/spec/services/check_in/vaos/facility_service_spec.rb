@@ -133,6 +133,7 @@ describe CheckIn::VAOS::FacilityService do
       context 'when facilities v3 and VDS site info clinics flippers are enabled' do
         let(:facility_id) { '534' }
         let(:clinic_id) { '1081' }
+        let(:facility) { { vistaSite: facility_id }.with_indifferent_access }
         let(:vds_clinics) do
           [
             {
@@ -170,7 +171,7 @@ describe CheckIn::VAOS::FacilityService do
         end
 
         it 'returns clinic data mapped from VDS-Site-Info list' do
-          response = subject.get_clinic(facility_id:, clinic_id:)
+          response = subject.get_clinic(facility_id:, clinic_id:, facility:)
           expect(response).to eq(mapped_clinic_response.with_indifferent_access)
         end
 
@@ -178,7 +179,7 @@ describe CheckIn::VAOS::FacilityService do
           allow(StatsD).to receive(:increment)
           expect(Rails.logger).to receive(:info).with('HCE-Check-In')
 
-          expect(subject.get_clinic(facility_id:, clinic_id: '9999')).to be_nil
+          expect(subject.get_clinic(facility_id:, clinic_id: '9999', facility:)).to be_nil
 
           expect(StatsD).to have_received(:increment).with(
             CheckIn::Constants::STATSD_VDS_SITE_INFO_CLINICS_LOOKUP_MISS,
@@ -196,12 +197,63 @@ describe CheckIn::VAOS::FacilityService do
             .with("/vds/info/v1/sites/#{facility_id}/clinics", {})
             .and_return(empty_response)
 
-          expect(subject.get_clinic(facility_id:, clinic_id:)).to be_nil
+          expect(subject.get_clinic(facility_id:, clinic_id:, facility:)).to be_nil
 
           expect(StatsD).to have_received(:increment).with(
             CheckIn::Constants::STATSD_VDS_SITE_INFO_CLINICS_LOOKUP_MISS,
             tags: ['reason:empty_site_list']
           )
+        end
+
+        it 'skips VDS lookup when facility enrichment did not provide vistaSite' do
+          allow(StatsD).to receive(:increment)
+          expect(Rails.logger).to receive(:info).with('HCE-Check-In')
+          expect_any_instance_of(Faraday::Connection).not_to receive(:get)
+
+          expect(subject.get_clinic(facility_id:, clinic_id:)).to be_nil
+
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::STATSD_VDS_SITE_INFO_CLINICS_VISTA_SITE_MISSING
+          )
+        end
+
+        context 'when location_id is an institution id and facility has vistaSite' do
+          let(:facility_id) { '983GC' }
+          let(:vista_site_id) { '983' }
+          let(:facility) { { vistaSite: vista_site_id }.with_indifferent_access }
+          let(:vds_clinics) do
+            [
+              {
+                clinicIen: clinic_id,
+                name: 'FTC AMPUTATION',
+                patientFriendlyName: 'Friendly Name FTC Amputation'
+              }
+            ]
+          end
+          let(:mapped_clinic_response) do
+            {
+              data: {
+                clinicId: clinic_id,
+                serviceName: 'FTC AMPUTATION',
+                friendlyName: 'Friendly Name FTC Amputation',
+                physicalLocation: nil
+              }
+            }
+          end
+          let(:faraday_response) { double('Faraday::Response') }
+          let(:faraday_env) { double('Faraday::Env', status: 200, body: vds_clinics.to_json) }
+
+          before do
+            allow_any_instance_of(Faraday::Connection).to receive(:get)
+              .with("/vds/info/v1/sites/#{vista_site_id}/clinics", {})
+              .and_return(faraday_response)
+            allow(faraday_response).to receive(:env).and_return(faraday_env)
+          end
+
+          it 'looks up clinics by vistaSite and maps patientFriendlyName' do
+            response = subject.get_clinic(facility_id:, clinic_id:, facility:)
+            expect(response).to eq(mapped_clinic_response.with_indifferent_access)
+          end
         end
       end
 
@@ -214,6 +266,17 @@ describe CheckIn::VAOS::FacilityService do
 
         it 'uses MFS v2 clinic-by-id instead of VDS' do
           response = subject.get_clinic(facility_id:, clinic_id:)
+          expect(response).to eq(clinic_response.with_indifferent_access)
+        end
+
+        it 'uses location_id for MFS v2 even when facility has vistaSite' do
+          facility = { vistaSite: '983' }.with_indifferent_access
+          expect_any_instance_of(Faraday::Connection).to receive(:get)
+            .with("/facilities/v2/facilities/983GC/clinics/#{clinic_id}", {})
+            .and_return(faraday_response)
+          allow(faraday_response).to receive(:env).and_return(faraday_env)
+
+          response = subject.get_clinic(facility_id: '983GC', clinic_id:, facility:)
           expect(response).to eq(clinic_response.with_indifferent_access)
         end
       end
@@ -372,6 +435,7 @@ describe CheckIn::VAOS::FacilityService do
       context 'when facilities v3 and VDS site info clinics are enabled and VDS clinic list is cached' do
         let(:facility_id) { '534' }
         let(:clinic_id) { '1081' }
+        let(:facility) { { vistaSite: facility_id }.with_indifferent_access }
         let(:vds_clinics) do
           [
             {
@@ -409,7 +473,7 @@ describe CheckIn::VAOS::FacilityService do
 
         it 'returns mapped clinic from VDS list cache without HTTP' do
           expect_any_instance_of(described_class).not_to receive(:perform)
-          response = subject.get_clinic_with_cache(facility_id:, clinic_id:)
+          response = subject.get_clinic_with_cache(facility_id:, clinic_id:, facility:)
           expect(response).to eq(mapped_clinic_response.with_indifferent_access)
         end
       end
@@ -514,7 +578,7 @@ describe CheckIn::VAOS::FacilityService do
       end
     end
 
-    context 'when the VDS clinic list fetch fails for a non-VistA (Oracle Health) site' do
+    context 'when facility enrichment did not provide vistaSite for VDS clinic lookup' do
       let(:facility_id) { '983GC' }
 
       before do
@@ -522,30 +586,58 @@ describe CheckIn::VAOS::FacilityService do
           .with(:check_in_experience_va_mobile_facilities_v3_enabled).and_return(true)
         allow(Flipper).to receive(:enabled?)
           .with(:check_in_experience_vds_site_info_clinics_enabled).and_return(true)
+      end
+
+      it 'returns nil without calling VDS with the institution location id' do
+        expect_any_instance_of(Faraday::Connection).not_to receive(:get)
+        expect(subject.get_clinic_with_cache(facility_id:, clinic_id:)).to be_nil
+      end
+
+      it 'logs and metrics the missing vistaSite' do
+        allow(StatsD).to receive(:increment)
+        expect(Rails.logger).to receive(:info).with('HCE-Check-In')
+
+        subject.get_clinic_with_cache(facility_id:, clinic_id:)
+
+        expect(StatsD).to have_received(:increment).with(
+          CheckIn::Constants::STATSD_VDS_SITE_INFO_CLINICS_VISTA_SITE_MISSING
+        )
+      end
+    end
+
+    context 'when the VDS clinic list fetch fails for a valid vista site' do
+      let(:facility_id) { '983GC' }
+      let(:facility) { { vistaSite: '983' }.with_indifferent_access }
+
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:check_in_experience_va_mobile_facilities_v3_enabled).and_return(true)
+        allow(Flipper).to receive(:enabled?)
+          .with(:check_in_experience_vds_site_info_clinics_enabled).and_return(true)
         allow_any_instance_of(Faraday::Connection).to receive(:get)
-          .with("/vds/info/v1/sites/#{facility_id}/clinics", {})
+          .with('/vds/info/v1/sites/983/clinics', {})
           .and_raise(exception)
       end
 
       it 'returns nil so the appointment is still rendered without clinic info' do
-        expect(subject.get_clinic_with_cache(facility_id:, clinic_id:)).to be_nil
+        expect(subject.get_clinic_with_cache(facility_id:, clinic_id:, facility:)).to be_nil
       end
 
       it 'increments the clinic enrichment failure metric' do
-        subject.get_clinic_with_cache(facility_id:, clinic_id:)
+        subject.get_clinic_with_cache(facility_id:, clinic_id:, facility:)
         expect(StatsD).to have_received(:increment)
           .with(CheckIn::Constants::STATSD_CLINIC_ENRICHMENT_FAILED)
       end
 
       it 'caches the miss so the site is not re-fetched within the response' do
-        subject.get_clinic_with_cache(facility_id:, clinic_id:)
-        subject.get_clinic_with_cache(facility_id:, clinic_id:)
+        subject.get_clinic_with_cache(facility_id:, clinic_id:, facility:)
+        subject.get_clinic_with_cache(facility_id:, clinic_id:, facility:)
         expect(StatsD).to have_received(:increment)
           .with(CheckIn::Constants::STATSD_CLINIC_ENRICHMENT_FAILED).once
       end
 
-      it 'logs the non-VistA likely cause along with the VDS path context' do
-        logs = hce_logs_during { subject.get_clinic_with_cache(facility_id:, clinic_id:) }
+      it 'logs the enrichment failure with VDS path context' do
+        logs = hce_logs_during { subject.get_clinic_with_cache(facility_id:, clinic_id:, facility:) }
         log = logs.find { |line| line.include?('enrichment_skipped') }
 
         expect(log).to include('appointments_clinic_enrichment_skipped', 'facility_id=983GC',

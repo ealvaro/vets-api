@@ -44,7 +44,11 @@ module CheckIn
 
           if appt[:clinic].present?
             appt[:clinicInfo] =
-              facility_service.get_clinic_with_cache(facility_id: appt[:locationId], clinic_id: appt[:clinic])
+              facility_service.get_clinic_with_cache(
+                facility_id: appt[:locationId],
+                clinic_id: appt[:clinic],
+                facility: appt[:facility]
+              )
           end
         end
       end
