@@ -90,8 +90,9 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ steps.ecr-login.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ github.event.workflow_run.head_commit.id }}
-          cache-from: type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.event.workflow_run.head_commit.id }}
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-from: type=registry,ref=${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
           cache-to: type=inline
   deploy:
     needs: build_and_push
