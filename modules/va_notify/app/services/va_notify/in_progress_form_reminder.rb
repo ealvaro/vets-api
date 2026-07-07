@@ -17,7 +17,7 @@ module VANotify
       return if veteran.first_name.blank?
 
       if only_one_supported_in_progress_form?
-        template_id = VANotify::InProgressFormHelper::TEMPLATE_ID.fetch(in_progress_form.form_id)
+        template_id = find_template_id(in_progress_form)
         send_single(in_progress_form, template_id)
       elsif oldest_in_progress_form?
         template_id = VANotify::InProgressFormHelper::TEMPLATE_ID.fetch('generic')
@@ -61,7 +61,7 @@ module VANotify
 
     def enabled?
       case @in_progress_form.form_id
-      when '686C-674'
+      when '686C-674', '686C-674-V2'
         true
       when '1010ez'
         Flipper.enabled?(:in_progress_form_reminder_1010ez)
@@ -110,6 +110,28 @@ module VANotify
       end.join("\n^---\n")
       personalisation['first_name'] = veteran.first_name.upcase
       personalisation
+    end
+
+    def find_template_id(in_progress_form)
+      if in_progress_form.form_id == '686C-674-V2'
+        claim = ::DependentsBenefits::PrimaryDependencyClaim.new(form: in_progress_form.form_data)
+        key = begin
+          if claim.submittable_686? && claim.submittable_674?
+            '686C-674-V2'
+          elsif claim.submittable_686?
+            '686C-only'
+          elsif claim.submittable_674?
+            '674-only'
+          else
+            'generic'
+          end
+        rescue
+          'generic'
+        end
+        VANotify::InProgressFormHelper::TEMPLATE_ID.fetch(key)
+      else
+        VANotify::InProgressFormHelper::TEMPLATE_ID.fetch(in_progress_form.form_id)
+      end
     end
   end
 end

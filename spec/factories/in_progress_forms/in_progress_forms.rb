@@ -361,6 +361,81 @@ FactoryBot.define do
       end
     end
 
+    factory :in_progress_686c_674_form do
+      user_uuid { SecureRandom.uuid }
+      user_account { create(:user_account) }
+      form_id { '686C-674-V2' }
+      metadata do
+        {
+          version: 1,
+          returnUrl: 'foo.com'
+        }
+      end
+      form_data do
+        # form data truncated for brevity
+        {
+          'view:selectable686_options' => { 'add_spouse' => true, 'report674' => true },
+          'view:686_information' => {},
+          'veteran_information' =>
+            {
+              'full_name' => { 'first' => 'first_name', 'middle' => 'J', 'last' => 'last_name' },
+              'ssn' => '111223333',
+              'birth_date' => '1985-03-07'
+            }
+        }.to_json
+      end
+    end
+
+    factory :in_progress_686_only_form do
+      user_uuid { SecureRandom.uuid }
+      user_account { create(:user_account) }
+      form_id { '686C-674-V2' }
+      metadata do
+        {
+          version: 1,
+          returnUrl: 'foo.com'
+        }
+      end
+      form_data do
+        # form data truncated for brevity
+        {
+          'view:selectable686_options' => { 'add_spouse' => true },
+          'view:686_information' => {},
+          'veteran_information' =>
+            {
+              'full_name' => { 'first' => 'first_name', 'middle' => 'J', 'last' => 'last_name' },
+              'ssn' => '111223333',
+              'birth_date' => '1985-03-07'
+            }
+        }.to_json
+      end
+    end
+
+    factory :in_progress_674_only_form do
+      user_uuid { SecureRandom.uuid }
+      user_account { create(:user_account) }
+      form_id { '686C-674-V2' }
+      metadata do
+        {
+          version: 1,
+          returnUrl: 'foo.com'
+        }
+      end
+      form_data do
+        # form data truncated for brevity
+        {
+          'view:selectable686_options' => { 'report674' => true },
+          'view:686_information' => {},
+          'veteran_information' =>
+            {
+              'full_name' => { 'first' => 'first_name', 'middle' => 'J', 'last' => 'last_name' },
+              'ssn' => '111223333',
+              'birth_date' => '1985-03-07'
+            }
+        }.to_json
+      end
+    end
+
     factory :in_progress_1010ez_form do
       user_uuid { SecureRandom.uuid }
       form_id { '1010ez' }

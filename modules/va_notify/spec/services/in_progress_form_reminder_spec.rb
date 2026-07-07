@@ -49,11 +49,14 @@ describe VANotify::InProgressFormReminder, type: :worker do
     end
 
     describe 'single relevant in_progress_form' do
-      it 'delegates to VANotify::V2::QueueUserAccountJob' do
-        user_with_icn = double('VANotify::Veteran', icn: 'icn', first_name: 'first_name', uuid: 'uuid')
-        allow(VANotify::Veteran).to receive(:new).and_return(user_with_icn)
+      let(:user_with_icn) { double('VANotify::Veteran', icn: 'icn', first_name: 'first_name', uuid: 'uuid') }
 
+      before do
+        allow(VANotify::Veteran).to receive(:new).and_return(user_with_icn)
         allow(VANotify::V2::QueueUserAccountJob).to receive(:enqueue)
+      end
+
+      it 'delegates to VANotify::V2::QueueUserAccountJob' do
         expiration_date = in_progress_form.expires_at.strftime('%B %d, %Y')
 
         Sidekiq::Testing.inline! do
@@ -73,6 +76,90 @@ describe VANotify::InProgressFormReminder, type: :worker do
                     'function' => '686C-674 in progress reminder', 'service' => 'va-notify'
                   }
                 } })
+      end
+
+      context 'with a 686+674 V2 form' do
+        let(:in_progress_form) do
+          create(:in_progress_686c_674_form, user_uuid: user.uuid, user_account: create(:user_account))
+        end
+
+        it 'uses the correct template id' do
+          expiration_date = in_progress_form.expires_at.strftime('%B %d, %Y')
+
+          Sidekiq::Testing.inline! do
+            described_class.new.perform(in_progress_form.id)
+          end
+
+          expect(VANotify::V2::QueueUserAccountJob).to have_received(:enqueue)
+            .with(in_progress_form.user_account_id, 'fake_template_686_674_id',
+                  {
+                    'first_name' => 'FIRST_NAME',
+                    'date' => expiration_date,
+                    'form_age' => ''
+                  },
+                  'Settings.vanotify.services.va_gov.api_key',
+                  { callback_metadata: {
+                    form_number: '686C-674-V2', notification_type: 'in_progress_reminder', statsd_tags: {
+                      'function' => '686C-674-V2 in progress reminder', 'service' => 'va-notify'
+                    }
+                  } })
+        end
+      end
+
+      context 'with a 686-only form' do
+        let(:in_progress_form) do
+          create(:in_progress_686_only_form, user_uuid: user.uuid, user_account: create(:user_account))
+        end
+
+        it 'uses the correct template id' do
+          expiration_date = in_progress_form.expires_at.strftime('%B %d, %Y')
+
+          Sidekiq::Testing.inline! do
+            described_class.new.perform(in_progress_form.id)
+          end
+
+          expect(VANotify::V2::QueueUserAccountJob).to have_received(:enqueue)
+            .with(in_progress_form.user_account_id, 'fake_template_686_only_id',
+                  {
+                    'first_name' => 'FIRST_NAME',
+                    'date' => expiration_date,
+                    'form_age' => ''
+                  },
+                  'Settings.vanotify.services.va_gov.api_key',
+                  { callback_metadata: {
+                    form_number: '686C-674-V2', notification_type: 'in_progress_reminder', statsd_tags: {
+                      'function' => '686C-674-V2 in progress reminder', 'service' => 'va-notify'
+                    }
+                  } })
+        end
+      end
+
+      context 'with a 674-only form' do
+        let(:in_progress_form) do
+          create(:in_progress_674_only_form, user_uuid: user.uuid, user_account: create(:user_account))
+        end
+
+        it 'uses the correct template id' do
+          expiration_date = in_progress_form.expires_at.strftime('%B %d, %Y')
+
+          Sidekiq::Testing.inline! do
+            described_class.new.perform(in_progress_form.id)
+          end
+
+          expect(VANotify::V2::QueueUserAccountJob).to have_received(:enqueue)
+            .with(in_progress_form.user_account_id, 'fake_template_674_only_id',
+                  {
+                    'first_name' => 'FIRST_NAME',
+                    'date' => expiration_date,
+                    'form_age' => ''
+                  },
+                  'Settings.vanotify.services.va_gov.api_key',
+                  { callback_metadata: {
+                    form_number: '686C-674-V2', notification_type: 'in_progress_reminder', statsd_tags: {
+                      'function' => '686C-674-V2 in progress reminder', 'service' => 'va-notify'
+                    }
+                  } })
+        end
       end
     end
 

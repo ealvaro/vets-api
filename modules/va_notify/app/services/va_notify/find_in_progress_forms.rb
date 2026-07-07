@@ -4,6 +4,7 @@ module VANotify
   class FindInProgressForms
     RELEVANT_FORMS = %w[
       686C-674
+      686C-674-V2
       1010ez
       21-526EZ
     ].freeze

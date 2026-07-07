@@ -17,6 +17,26 @@ describe VANotify::InProgressFormHelper do
     end
   end
 
+  describe '686C-674-V2' do
+    context 'with a 686+674' do
+      it 'knows the template id' do
+        expect(described_class::TEMPLATE_ID.fetch('686C-674-V2')).to eq('fake_template_686_674_id')
+      end
+    end
+
+    context 'with a 686 only' do
+      it 'knows the template id' do
+        expect(described_class::TEMPLATE_ID.fetch('686C-only')).to eq('fake_template_686_only_id')
+      end
+    end
+
+    context 'with a 674 only' do
+      it 'knows the template id' do
+        expect(described_class::TEMPLATE_ID.fetch('674-only')).to eq('fake_template_674_only_id')
+      end
+    end
+  end
+
   describe '.form_age' do
     it '7 days ago' do
       in_progress_form = create_in_progress_form_days_ago(7, form_id: '686C-674')

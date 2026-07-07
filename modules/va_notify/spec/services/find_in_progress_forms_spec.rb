@@ -9,14 +9,14 @@ describe VANotify::FindInProgressForms do
   end
 
   it 'verify correct form ids' do
-    expect(described_class::RELEVANT_FORMS).to eq(%w[686C-674 1010ez 21-526EZ])
+    expect(described_class::RELEVANT_FORMS).to match_array(%w[686C-674 1010ez 21-526EZ 686C-674-V2])
   end
 
   describe '#to_notify' do
     let(:user) { create(:user, uuid: SecureRandom.uuid) }
 
     it 'fetches only relevant forms by id' do
-      in_progress_form_1 = create_in_progress_form_days_ago(7, user_uuid: user.uuid, form_id: '686C-674')
+      in_progress_form_1 = create_in_progress_form_days_ago(7, user_uuid: user.uuid, form_id: '686C-674-V2')
       in_progress_form_2 = create_in_progress_form_days_ago(7, user_uuid: user.uuid, form_id: '1010ez')
       create_in_progress_form_days_ago(7, user_uuid: create(:user, uuid: SecureRandom.uuid).uuid, form_id: 'something')
       create_in_progress_form_days_ago(7, form_id: '1010')
