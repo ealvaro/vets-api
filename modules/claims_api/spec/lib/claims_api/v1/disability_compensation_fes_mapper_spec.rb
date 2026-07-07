@@ -94,6 +94,23 @@ describe ClaimsApi::V1::DisabilityCompensationFesMapper do
             expect(form526[:claimDate]).to eq('2023-05-15')
           end
         end
+
+        context 'when auto_claim.created_at is nil' do
+          let(:auto_claim) do
+            claim = create(:auto_established_claim,
+                           form_data: form_data['data']['attributes'],
+                           auth_headers:)
+            allow(claim).to receive(:created_at).and_return(nil)
+            claim
+          end
+
+          it 'falls back to Date.current.strftime in YYYY-MM-DD format' do
+            form_data['data']['attributes'].delete('claimDate')
+
+            expected_date = Date.current.strftime('%Y-%m-%d')
+            expect(form526[:claimDate]).to eq(expected_date)
+          end
+        end
       end
 
       describe 'veteran information' do

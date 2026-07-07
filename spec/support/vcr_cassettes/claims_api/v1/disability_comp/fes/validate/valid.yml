@@ -5,7 +5,7 @@ http_interactions:
     uri: "<CLAIMS_API_BD_URL>/oauth2/benefits-documents/system/v1/token"
     body:
       encoding: US-ASCII
-      string: grant_type=client_credentials&client_assertion_type=urn%3Aietf%3Aparams%3Aoauth%3Aclient-assertion-type%3Ajwt-bearer&client_assertion=< long value here >&scope=documents.read+documents.write
+      string: <valid data here>
     headers:
       Accept:
       - application/json
@@ -21,21 +21,21 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 30 Oct 2025 19:10:41 GMT
+      - Tue, 30 Jun 2026 22:14:13 GMT
       Content-Type:
       - application/json; charset=utf-8
       Connection:
       - keep-alive
+      Ratelimit-Remaining:
+      - '239'
+      Ratelimit-Reset:
+      - '47'
+      Ratelimit-Limit:
+      - '240'
       X-Ratelimit-Remaining-Minute:
       - '239'
       X-Ratelimit-Limit-Minute:
       - '240'
-      Ratelimit-Remaining:
-      - '239'
-      Ratelimit-Limit:
-      - '240'
-      Ratelimit-Reset:
-      - '19'
       Vary:
       - Origin
       Cache-Control:
@@ -43,34 +43,33 @@ http_interactions:
       Pragma:
       - no-cache
       Etag:
-      - W/"408-+y2gQnrdOLBPhY25pCnmn32RgyA:dtagent10321250808084810r9+A"
+      - W/"420-6j137mpoq0dwDjY4QwF3UiQJBlc:dtagent10335260518104739XnCJ"
       Server-Timing:
-      - dtSInfo;desc="0", dtRpid;desc="-409302290"
+      - dtSInfo;desc="0", dtRpid;desc="1388355694"
       X-Envoy-Upstream-Service-Time:
-      - '353'
-      Strict-Transport-Security:
-      - max-age=16000000; includeSubDomains; preload;
+      - '442'
+      Correlation-Id:
+      - 41e12b41-128b-4018-b985-a6c6acbe281e#1288
       Access-Control-Allow-Origin:
       - "*"
-      Correlation-Id:
-      - 54b83c80-2263-4277-8e60-c4c67c05bdaf#791911
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
       Transfer-Encoding:
       - chunked
     body:
       encoding: ASCII-8BIT
-      string: '{"access_token":"< token value here >","token_type":"Bearer","scope":"documents.write
-        documents.read","expires_in":600,"state":null}'
-  recorded_at: Thu, 30 Oct 2025 19:10:37 GMT
+      string: '{"access_token":"token"}'
+  recorded_at: Tue, 30 Jun 2026 22:14:07 GMT
 - request:
     method: post
     uri: "<FES_BASE_URL>/form526-establishment-service/v1/validate"
     body:
       encoding: UTF-8
-      string: '{"data":{"serviceTransactionId":"vagov-70971c8c-6a6b-44ac-bc89-38f295bbacaa","veteranParticipantId":4194974289,"claimantParticipantId":4194974289,"form526":{"veteran":{"currentMailingAddress":{"addressLine1":"1234
-        Couch Street","addressLine2":"Apt. 22","country":"USA","zipFirstFive":"12345","zipLastFour":"6789","addressType":"DOMESTIC","city":"Portland","state":"OR"}},"disabilities":[{"ratedDisabilityId":"1100583","diagnosticCode":9999,"disabilityActionType":"NEW","name":"PTSD
+      string: '{"data":{"serviceTransactionId":"vagov-42bceacb-abac-45fe-90a0-864ae86b4fdb","veteranParticipantId":1987227138,"claimantParticipantId":1987227138,"claimSubmissionSource":"VSOREP","form526":{"veteran":{"currentMailingAddress":{"addressLine1":"1234
+        Couch Street","addressLine2":"Apt. 22","city":"Portland","country":"USA","zipFirstFive":"12345","zipLastFour":"6789","addressType":"DOMESTIC","state":"OR"}},"disabilities":[{"ratedDisabilityId":"1100583","diagnosticCode":9999,"disabilityActionType":"NEW","name":"PTSD
         (post traumatic stress disorder)"},{"name":"PTSD personal trauma","disabilityActionType":"NEW"}],"serviceInformation":{"servicePeriods":[{"activeDutyEndDate":"1990-01-02","serviceBranch":"Air
         Force","activeDutyBeginDate":"1980-02-05"},{"activeDutyEndDate":"1999-01-01","serviceBranch":"Air
-        Force","activeDutyBeginDate":"1990-04-05"}],"reservesNationalGuardService":{"obligationTermOfServiceFromDate":"2000-01-01","obligationTermOfServiceToDate":"2000-01-02"}},"claimDate":"2025-10-29"}}}'
+        Force","activeDutyBeginDate":"1990-04-05"}],"reservesNationalGuardService":{"obligationTermOfServiceFromDate":"2000-01-01","obligationTermOfServiceToDate":"2000-01-02"}},"claimDate":"2026-06-29"}}}'
     headers:
       Va-Eauth-Csid:
       - DSLogon
@@ -85,23 +84,23 @@ http_interactions:
       Va-Eauth-Lastname:
       - FORD
       Va-Eauth-Issueinstant:
-      - '2025-10-30T19:10:37Z'
+      - '2026-06-30T22:14:07Z'
       Va-Eauth-Dodedipnid:
-      - '9790579428'
+      - '1716062603'
       Va-Eauth-Birlsfilenumber:
       - '123412345'
       Va-Eauth-Pid:
-      - '4194974289'
+      - '1987227138'
       Va-Eauth-Pnid:
       - '796043735'
       Va-Eauth-Birthdate:
       - '1956-05-06T00:00:00+00:00'
       Va-Eauth-Authorization:
-      - '{"authorizationResponse":{"status":"VETERAN","idType":"SSN","id":"796043735","edi":"9790579428","firstName":"WESLEY","lastName":"FORD","birthDate":"1956-05-06T00:00:00+00:00","gender":"UNKNOWN"}}'
+      - '{"authorizationResponse":{"status":"VETERAN","idType":"SSN","id":"796043735","edi":"1716062603","firstName":"WESLEY","lastName":"FORD","birthDate":"1956-05-06T00:00:00+00:00","gender":"UNKNOWN"}}'
       Va-Eauth-Authenticationauthority:
       - eauth
       Va-Eauth-Service-Transaction-Id:
-      - vagov-70971c8c-6a6b-44ac-bc89-38f295bbacaa
+      - vagov-42bceacb-abac-45fe-90a0-864ae86b4fdb
       Authorization: Bearer <TOKEN>
       Content-Type:
       - application/json; charset=UTF-8
@@ -117,7 +116,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 30 Oct 2025 19:10:42 GMT
+      - Tue, 30 Jun 2026 22:14:22 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -125,17 +124,17 @@ http_interactions:
       X-Oneagent-Js-Injection:
       - 'true'
       Server-Timing:
-      - dtRpid;desc="-968190423", dtSInfo;desc="0"
+      - dtRpid;desc="959083951", dtSInfo;desc="0"
       Pragma:
       - no-cache
       Cache-Control:
       - no-cache, no-store
       X-Envoy-Upstream-Service-Time:
-      - '88'
+      - '669'
       Strict-Transport-Security:
       - max-age=16000000; includeSubDomains; preload;
     body:
       encoding: UTF-8
-      string: '{"data":{"valid":true,"success":{"validationToken":"< value here >","validUntil":111111111111}}}'
-  recorded_at: Thu, 30 Oct 2025 19:10:37 GMT
-recorded_with: VCR 6.3.1
+      string: '{"data":{"isValid":true,"success":{"validationToken":"token_here","validUntil":1111111111111}}}'
+  recorded_at: Tue, 30 Jun 2026 22:14:07 GMT
+recorded_with: VCR 6.4.0
