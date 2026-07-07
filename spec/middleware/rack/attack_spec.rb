@@ -166,6 +166,22 @@ RSpec.describe Rack::Attack do
     end
   end
 
+  describe 'facilities_api/v2/ccp/ip across sub-routes' do
+    let(:limit) { 8 }
+
+    it 'shares its limit between provider and pharmacy' do
+      shared_headers = { 'X-Real-Ip' => '5.6.7.8' }
+
+      limit.times do
+        get '/facilities_api/v2/ccp/provider', nil, shared_headers
+        expect(last_response).not_to have_http_status(:too_many_requests)
+      end
+
+      get '/facilities_api/v2/ccp/pharmacy', nil, shared_headers
+      expect(last_response).to have_http_status(:too_many_requests)
+    end
+  end
+
   describe 'ask_va_api/zip_state_validation' do
     let(:endpoint) { '/ask_va_api/v0/zip_state_validation' }
     let(:headers) { { 'X-Real-Ip' => '1.2.3.4' } }
