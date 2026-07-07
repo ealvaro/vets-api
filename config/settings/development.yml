@@ -1006,6 +1006,10 @@ medical_expense_reports:
 memorials:
   prefill: true
 mhv:
+  aal:
+    app_token: fake-token
+    mock: true
+    x_api_key: fake-x-api-key
   account:
     mock: false
   api_gateway:

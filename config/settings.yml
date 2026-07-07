@@ -998,6 +998,10 @@ medical_expense_reports:
 memorials:
   prefill: true
 mhv:
+  aal:
+    app_token: <%= ENV['mhv__aal__app_token'] %>
+    mock: false
+    x_api_key: <%= ENV['mhv__aal__x_api_key'] %>
   account:
     mock: <%= ENV['mhv__account__mock'] %>
   api_gateway:

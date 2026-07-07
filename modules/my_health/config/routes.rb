@@ -36,7 +36,7 @@ MyHealth::Engine.routes.draw do
   namespace :v1 do
     resources :tooltips, only: %i[index create update], controller: 'tooltips', defaults: { format: :json }
 
-    resources :aal, only: %i[create], controller: 'aal', defaults: { format: :json }
+    resources :aal, only: %i[create index], controller: 'aal', defaults: { format: :json }
 
     resources :unique_user_metrics, only: %i[create], controller: 'unique_user_metrics', defaults: { format: :json }
 

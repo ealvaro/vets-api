@@ -20,4 +20,10 @@ module AAL
     redis_ttl REDIS_CONFIG[:aal_sm_store][:each_ttl]
     redis_key :user_id
   end
+
+  class AALClientSession < Common::Client::Session
+    redis_store REDIS_CONFIG[:aal_store][:namespace]
+    redis_ttl REDIS_CONFIG[:aal_store][:each_ttl]
+    redis_key :user_id
+  end
 end

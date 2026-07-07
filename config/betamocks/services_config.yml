@@ -305,6 +305,20 @@
       :cache_multiple_responses:
         :uid_location: url
         :uid_locator: '\/rxrefill\/(.+)'
+    # AAL session
+    - :method: :get
+      :path: "/v1/usermgmt/auth/session"
+      :file_path: "mhv/session"
+      :cache_multiple_responses:
+        :uid_location: header
+        :uid_locator: 'mhvCorrelationId'
+    # AAL activities
+    - :method: :get
+      :path: "/v1/usermgmt/external/activities"
+      :file_path: "mhv/aal/activities"
+      :cache_multiple_responses:
+        :uid_location: header
+        :uid_locator: 'Token'
     # MHV account create
     - :method: :post
       :path: 'usermgmt/alter/register'

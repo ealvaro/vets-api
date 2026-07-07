@@ -80,6 +80,7 @@ module MyHealth
                      when :mr then AAL::MRClient
                      when :rx then AAL::RXClient
                      when :sm then AAL::SMClient
+                     when :aal then AAL::AALClient
                      else
                        raise Common::Exceptions::BadRequest,
                              detail: "Unknown product: #{effective_product}"

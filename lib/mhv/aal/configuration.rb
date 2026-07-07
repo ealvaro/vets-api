@@ -8,7 +8,6 @@ require 'common/client/middleware/response/raise_custom_error'
 require 'common/client/middleware/response/mhv_errors'
 require 'common/client/middleware/response/snakecase'
 require 'faraday/multipart'
-require 'sm/middleware/response/sm_parser'
 
 module AAL
   class Configuration < Common::Client::Configuration::REST
@@ -29,6 +28,7 @@ module AAL
     def connection
       Faraday.new(base_path, headers: base_request_headers, request: request_options) do |conn|
         conn.use(:breakers, service_name:)
+        conn.use Betamocks::Middleware if ActiveModel::Type::Boolean.new.cast(mock?)
         conn.request :multipart_request
         conn.request :multipart
         conn.request :camelcase
@@ -46,6 +46,18 @@ module AAL
         conn.adapter Faraday.default_adapter
       end
     end
+
+    ##
+    # Whether Betamocks should mock this configuration's HTTP calls. Overridden per
+    # subclass to read that product's own settings namespace, so enabling one
+    # product's mock flag never affects the others. The base is namespace-agnostic
+    # and defaults to disabled.
+    #
+    # @return [Boolean, String, nil] raw mock setting; cast to Boolean by #connection
+    #
+    def mock?
+      false
+    end
   end
 
   class MRConfiguration < Configuration
@@ -55,6 +67,10 @@ module AAL
 
     def x_api_key
       Settings.mhv.medical_records.x_api_key
+    end
+
+    def mock?
+      Settings.mhv.medical_records&.mock
     end
   end
 
@@ -66,6 +82,10 @@ module AAL
     def x_api_key
       Settings.mhv.rx.x_api_key
     end
+
+    def mock?
+      Settings.mhv.rx&.mock
+    end
   end
 
   class SMConfiguration < Configuration
@@ -75,6 +95,24 @@ module AAL
 
     def x_api_key
       Settings.mhv.sm.x_api_key
+    end
+
+    def mock?
+      Settings.mhv.sm&.mock
+    end
+  end
+
+  class AALConfiguration < Configuration
+    def app_token
+      Settings.mhv.aal.app_token
+    end
+
+    def x_api_key
+      Settings.mhv.aal.x_api_key
+    end
+
+    def mock?
+      Settings.mhv.aal&.mock
     end
   end
 end

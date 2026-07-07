@@ -45,12 +45,19 @@ module AAL
     ##
     # Retrieve paginated account activity logs from MHV.
     #
-    # @param [ActionController::Parameters] params - Query parameters
+    # Query param keys are converted from snake_case to lowerCamelCase to match the
+    # MHV AAL API contract (e.g. from_date -> fromDate, to_date -> toDate). Param
+    # values are left untouched, and single-word keys (page, limit, sort, select,
+    # style) are unaffected by the conversion.
+    #
+    # @param [ActionController::Parameters, Hash] params - Query parameters
     #   (from_date, to_date, page, limit, sort, select, style)
     # @return [Faraday::Response] the API response
     #
     def get_activities(params = {})
-      perform(:get, 'usermgmt/external/activities', params, token_headers)
+      query = params.respond_to?(:to_unsafe_h) ? params.to_unsafe_h : params.to_h
+      query = query.transform_keys { |key| key.to_s.camelize(:lower) }
+      perform(:get, 'usermgmt/external/activities', query, token_headers)
     end
 
     private
@@ -130,6 +137,17 @@ module AAL
 
     def session_config_key
       :mhv_aal_sm_session_lock
+    end
+  end
+
+  class AALClient < Client
+    include Common::Client::Concerns::MHVSessionBasedClient
+
+    configuration AAL::AALConfiguration
+    client_session AAL::AALClientSession
+
+    def session_config_key
+      :mhv_aal_session_lock
     end
   end
 end

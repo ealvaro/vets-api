@@ -86,6 +86,12 @@ development: &defaults
   mhv_aal_sm_session_lock:
     namespace: mhv-aal-sm-session-lock
     each_ttl: 10
+  aal_store:
+    namespace: aal-service
+    each_ttl: 600 # 10 minutes
+  mhv_aal_session_lock:
+    namespace: mhv-aal-session-lock
+    each_ttl: 10
   mdot:
     namespace: mdot
     each_ttl: 1800

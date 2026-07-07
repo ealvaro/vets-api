@@ -93,6 +93,47 @@ RSpec.describe AAL::Client do
         .with(:get, 'usermgmt/external/activities', {}, anything)
       client.get_activities
     end
+
+    it 'camelizes snake_case keys to match the MHV AAL API contract' do
+      params = {
+        'from_date' => 'Tuesday, 30 Apr 2024 04:00:00 GMT',
+        'to_date' => 'Thursday, 30 Apr 2025 17:56:22 GMT',
+        'page' => '0',
+        'limit' => '20',
+        'sort' => 'desc(completionTime)',
+        'select' => 'action,performedBy,description',
+        'style' => 'compact'
+      }
+      expected = {
+        'fromDate' => 'Tuesday, 30 Apr 2024 04:00:00 GMT',
+        'toDate' => 'Thursday, 30 Apr 2025 17:56:22 GMT',
+        'page' => '0',
+        'limit' => '20',
+        'sort' => 'desc(completionTime)',
+        'select' => 'action,performedBy,description',
+        'style' => 'compact'
+      }
+      expect(client).to receive(:perform)
+        .with(:get, 'usermgmt/external/activities', expected, anything)
+      client.get_activities(params)
+    end
+
+    it 'camelizes keys when given ActionController::Parameters' do
+      params = ActionController::Parameters.new(
+        from_date: 'Tuesday, 30 Apr 2024 04:00:00 GMT',
+        to_date: 'Thursday, 30 Apr 2025 17:56:22 GMT'
+      ).permit(:from_date, :to_date)
+
+      captured = nil
+      allow(client).to receive(:perform) { |*args| captured = args[2] }
+
+      client.get_activities(params)
+
+      expect(captured.to_h).to eq(
+        'fromDate' => 'Tuesday, 30 Apr 2024 04:00:00 GMT',
+        'toDate' => 'Thursday, 30 Apr 2025 17:56:22 GMT'
+      )
+    end
   end
 
   describe '#aal_redis_key' do

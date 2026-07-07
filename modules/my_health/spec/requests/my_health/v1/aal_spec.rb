@@ -105,4 +105,151 @@ RSpec.describe 'MyHealth::V1::AALController', type: :request do
       expect(response).to have_http_status(:no_content)
     end
   end
+
+  describe 'GET /my_health/v1/aal (account activity log)' do
+    let(:activities_response_body) do
+      {
+        'content' => [
+          {
+            'activityId' => 1,
+            'userProfileId' => 12_345,
+            'patientId' => 67_890,
+            'action' => 'LOGIN',
+            'status' => 'true',
+            'performerType' => 'SELF',
+            'activityType' => 'LOGIN_LOGOUT',
+            'detailValue' => 'User logged in',
+            'completionTime' => '2026-03-04T14:30:00Z'
+          },
+          {
+            'activityId' => 2,
+            'userProfileId' => 12_345,
+            'patientId' => 67_890,
+            'action' => 'VIEW_ALLERGY',
+            'status' => 'true',
+            'performerType' => 'SELF',
+            'activityType' => 'ALLERGY',
+            'detailValue' => nil,
+            'completionTime' => '2026-03-04T14:35:00Z'
+          }
+        ],
+        'pageable' => { 'pageNumber' => 0, 'pageSize' => 20 },
+        'totalElements' => 2,
+        'totalPages' => 1,
+        'first' => true,
+        'last' => true,
+        'numberOfElements' => 2,
+        'empty' => false
+      }
+    end
+
+    context 'when the user has no MHV Correlation ID' do
+      let(:current_user) { build(:user) }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_account_activity_log_enabled, anything).and_return(true)
+        sign_in_as(current_user, stub_mhv_account: true)
+      end
+
+      it 'returns 403 Forbidden and never authenticates the AAL client' do
+        expect_any_instance_of(AAL::AALClient).not_to receive(:authenticate)
+
+        get '/my_health/v1/aal'
+
+        expect(current_user.mhv_correlation_id).to be_nil
+        expect(response).to have_http_status(:forbidden)
+        json = JSON.parse(response.body)
+        expect(json['errors'].first['detail']).to eq('You do not have access to the AAL service')
+      end
+    end
+
+    context 'when the feature toggle is disabled' do
+      let(:current_user) { build(:user, :mhv) }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_account_activity_log_enabled, anything).and_return(false)
+        sign_in_as(current_user, stub_mhv_account: true)
+      end
+
+      it 'returns 403 Forbidden and never authenticates the AAL client' do
+        expect_any_instance_of(AAL::AALClient).not_to receive(:authenticate)
+
+        get '/my_health/v1/aal'
+
+        expect(response).to have_http_status(:forbidden)
+        json = JSON.parse(response.body)
+        expect(json['errors'].first['detail']).to eq('Account activity log feature is not enabled')
+      end
+    end
+
+    context 'when the user is authorized and the feature is enabled' do
+      let(:current_user) { build(:user, :mhv) }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_account_activity_log_enabled, anything).and_return(true)
+        sign_in_as(current_user, stub_mhv_account: true)
+      end
+
+      it 'authenticates the AAL client exactly once and returns paginated activity logs' do
+        api_response = double('Faraday response', body: activities_response_body)
+        allow_any_instance_of(AAL::AALClient).to receive(:get_activities).and_return(api_response)
+        expect_any_instance_of(AAL::AALClient).to receive(:authenticate).once
+
+        get '/my_health/v1/aal'
+
+        expect(response).to have_http_status(:ok)
+        json = JSON.parse(response.body)
+
+        expect(json['data']).to be_an(Array)
+        expect(json['data'].size).to eq(2)
+        expect(json['data'].first['type']).to eq('activities')
+        expect(json['data'].first['attributes']['action']).to eq('LOGIN')
+        expect(json['data'].first['attributes']['activity_type']).to eq('LOGIN_LOGOUT')
+        expect(json['data'].first['attributes']['performer_type']).to eq('SELF')
+        expect(json['meta']['pagination']['total_elements']).to eq(2)
+        expect(json['meta']['pagination']['page_number']).to eq(0)
+      end
+
+      it 'forwards the permitted query parameters to the client' do
+        api_response = double('Faraday response', body: activities_response_body)
+        allow_any_instance_of(AAL::AALClient).to receive(:authenticate)
+        expect_any_instance_of(AAL::AALClient).to receive(:get_activities).with(
+          ActionController::Parameters.new(
+            'from_date' => 'Tuesday, 30 Apr 2024 04:00:00 GMT',
+            'page' => '0',
+            'limit' => '20'
+          ).permit(:from_date, :to_date, :page, :limit, :sort, :select, :style)
+        ).and_return(api_response)
+
+        get '/my_health/v1/aal',
+            params: { from_date: 'Tuesday, 30 Apr 2024 04:00:00 GMT', page: 0, limit: 20 }
+
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'returns an empty data array when there are no activities' do
+        empty_response_body = {
+          'content' => [],
+          'pageable' => { 'pageNumber' => 0, 'pageSize' => 20 },
+          'totalElements' => 0,
+          'totalPages' => 0,
+          'first' => true,
+          'last' => true,
+          'numberOfElements' => 0,
+          'empty' => true
+        }
+        api_response = double('Faraday response', body: empty_response_body)
+        allow_any_instance_of(AAL::AALClient).to receive(:authenticate)
+        allow_any_instance_of(AAL::AALClient).to receive(:get_activities).and_return(api_response)
+
+        get '/my_health/v1/aal'
+
+        expect(response).to have_http_status(:ok)
+        json = JSON.parse(response.body)
+        expect(json['data']).to eq([])
+        expect(json['meta']['pagination']['total_elements']).to eq(0)
+        expect(json['meta']['pagination']['empty_page']).to be(true)
+      end
+    end
+  end
 end
