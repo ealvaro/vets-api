@@ -21,10 +21,10 @@ on:
     branches:
       - master
     paths:
-      - 'lib/**/*.rb'
-      - 'modules/**/lib/**/*.rb'
-      - 'config/initializers/breakers.rb'
       - 'rakelib/breakers_audit.rake'
+      - 'config/initializers/breakers.rb'
+      - 'lib/**/configuration.rb'
+      - 'modules/**/lib/**/configuration.rb'
 
 permissions:
   id-token: write
