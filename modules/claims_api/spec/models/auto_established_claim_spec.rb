@@ -99,6 +99,27 @@ RSpec.describe ClaimsApi::AutoEstablishedClaim, type: :model do
     end
   end
 
+  describe '#belongs_to_veteran?' do
+    let(:claim) { create(:auto_established_claim, veteran_icn: '1012861229V078999') }
+
+    it 'returns true when the ICN matches' do
+      expect(claim.belongs_to_veteran?('1012861229V078999')).to be true
+    end
+
+    it 'returns false when the ICN does not match' do
+      expect(claim.belongs_to_veteran?('9999999999V999999')).to be false
+    end
+
+    it 'returns false when the ICN is nil' do
+      expect(claim.belongs_to_veteran?(nil)).to be false
+    end
+
+    it 'returns false when veteran_icn is nil' do
+      claim.veteran_icn = nil
+      expect(claim.belongs_to_veteran?('1012861229V078999')).to be false
+    end
+  end
+
   describe 'translate form_data' do
     it 'checks an active claim date' do
       payload = JSON.parse(pending_record.to_internal)

@@ -10,11 +10,12 @@ RSpec.describe ClaimsApi::V1::Forms::DisabilityCompensationController, type: :co
       )
     )
   end
+  let(:veteran_icn) { '1012861229V078999' }
   let(:veteran) do
     OpenStruct.new(
       middle_name: 'William',
       mpi: OpenStruct.new(
-        icn: '1012861229V078999'
+        icn: veteran_icn
       )
     )
   end
@@ -147,6 +148,7 @@ RSpec.describe ClaimsApi::V1::Forms::DisabilityCompensationController, type: :co
     let(:pending_claim) do
       create(
         :auto_established_claim,
+        veteran_icn:,
         form_data: { 'autoCestPDFGenerationDisabled' => auto_cest_pdf_generation_disabled }
       )
     end
@@ -175,6 +177,21 @@ RSpec.describe ClaimsApi::V1::Forms::DisabilityCompensationController, type: :co
       allow(controller).to receive(:claims_v1_logging)
       allow(controller).to receive(:render)
       allow(controller).to receive(:params).and_return(upload_form_526_params)
+      allow(controller).to receive_messages(params: upload_form_526_params, target_veteran: veteran)
+    end
+
+    context 'when pending? returns false' do
+      it 'confirms pending? returns false (not nil) for missing records' do
+        expect(ClaimsApi::AutoEstablishedClaim.pending?('nonexistent')).to be(false)
+      end
+
+      it "returns a 'resource not found' error" do
+        allow(ClaimsApi::AutoEstablishedClaim).to receive(:pending?).and_return(false)
+        expect { upload_form_526! }
+          .to raise_error(Common::Exceptions::ResourceNotFound) { |error|
+            expect(error.errors.first.detail.squish).to eq(not_found_error)
+          }
+      end
     end
 
     describe 'with FES service enabled' do
@@ -238,7 +255,7 @@ RSpec.describe ClaimsApi::V1::Forms::DisabilityCompensationController, type: :co
       end
 
       context 'when autoCestPDFGenerationDisabled is not present on the form' do
-        let(:pending_claim) { create(:auto_established_claim, form_data: {}) }
+        let(:pending_claim) { create(:auto_established_claim, veteran_icn:, form_data: {}) }
 
         it "returns a 'resource not found' error" do
           expect { upload_form_526! }
@@ -251,6 +268,23 @@ RSpec.describe ClaimsApi::V1::Forms::DisabilityCompensationController, type: :co
       context 'when the pending claim cannot be found' do
         before do
           allow(ClaimsApi::AutoEstablishedClaim).to receive(:pending?).and_return(nil)
+        end
+
+        it "returns a 'resource not found' error" do
+          expect { upload_form_526! }
+            .to raise_error(Common::Exceptions::ResourceNotFound) { |error|
+              expect(error.errors.first.detail.squish).to eq(not_found_error)
+            }
+        end
+      end
+
+      context 'when the claim belongs to a different veteran' do
+        let(:pending_claim) do
+          create(
+            :auto_established_claim,
+            veteran_icn: 'different_icn',
+            form_data: { 'autoCestPDFGenerationDisabled' => true }
+          )
         end
 
         it "returns a 'resource not found' error" do
@@ -325,7 +359,7 @@ RSpec.describe ClaimsApi::V1::Forms::DisabilityCompensationController, type: :co
       end
 
       context 'when autoCestPDFGenerationDisabled is not present on the form' do
-        let(:pending_claim) { create(:auto_established_claim, form_data: {}) }
+        let(:pending_claim) { create(:auto_established_claim, veteran_icn:, form_data: {}) }
 
         it "returns a 'resource not found' error" do
           expect { upload_form_526! }
@@ -346,6 +380,72 @@ RSpec.describe ClaimsApi::V1::Forms::DisabilityCompensationController, type: :co
               expect(error.errors.first.detail.squish).to eq(not_found_error)
             }
         end
+      end
+
+      context 'when the claim belongs to a different veteran' do
+        let(:pending_claim) do
+          create(
+            :auto_established_claim,
+            veteran_icn: 'different_icn',
+            form_data: { 'autoCestPDFGenerationDisabled' => true }
+          )
+        end
+
+        it "returns a 'resource not found' error" do
+          expect { upload_form_526! }
+            .to raise_error(Common::Exceptions::ResourceNotFound) { |error|
+              expect(error.errors.first.detail.squish).to eq(not_found_error)
+            }
+        end
+      end
+    end
+  end
+
+  describe '#upload_supporting_documents' do
+    def upload_supporting_documents!
+      subject.send(:upload_supporting_documents)
+    end
+
+    let(:claim_record) { create(:auto_established_claim, veteran_icn:) }
+    let(:attachment) do
+      Rack::Test::UploadedFile.new(
+        Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'extras.pdf'),
+        'application/pdf'
+      )
+    end
+    let(:upload_supporting_docs_params) do
+      ActionController::Parameters.new(
+        'id' => claim_record&.id || '123',
+        'attachment1' => attachment
+      )
+    end
+
+    before do
+      allow(controller).to receive(:claims_v1_logging)
+      allow(controller).to receive(:render)
+      allow(controller).to receive_messages(params: upload_supporting_docs_params, target_veteran: veteran)
+      allow(controller).to receive(:documents).and_return([attachment])
+    end
+
+    context 'when the claim belongs to a different veteran' do
+      let(:claim_record) { create(:auto_established_claim, veteran_icn: 'different_icn') }
+
+      it "returns a 'resource not found' error" do
+        expect { upload_supporting_documents! }
+          .to raise_error(Common::Exceptions::ResourceNotFound) { |error|
+            expect(error.errors.first.detail.squish).to eq('Resource not found')
+          }
+      end
+    end
+
+    context 'when the claim cannot be found' do
+      let(:claim_record) { nil }
+
+      it "returns a 'resource not found' error" do
+        expect { upload_supporting_documents! }
+          .to raise_error(Common::Exceptions::ResourceNotFound) { |error|
+            expect(error.errors.first.detail.squish).to eq('Resource not found')
+          }
       end
     end
   end

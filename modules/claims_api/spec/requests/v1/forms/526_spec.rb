@@ -3963,8 +3963,10 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
   end
 
   describe '#upload_documents' do
-    let(:auto_claim) { create(:auto_established_claim) }
-    let(:non_auto_claim) { create(:auto_established_claim, :autoCestPDFGeneration_disabled) }
+    let(:auto_claim) { create(:auto_established_claim, veteran_icn: '1013062086V794840') }
+    let(:non_auto_claim) do
+      create(:auto_established_claim, :autoCestPDFGeneration_disabled, veteran_icn: '1013062086V794840')
+    end
     let(:binary_params) do
       { attachment1: Rack::Test::UploadedFile.new(Rails.root.join(*'/modules/claims_api/spec/fixtures/extras.pdf'
                                                                    .split('/')).to_s),

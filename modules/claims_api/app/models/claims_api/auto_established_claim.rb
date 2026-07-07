@@ -115,6 +115,10 @@ module ClaimsApi
       end
     end
 
+    def belongs_to_veteran?(icn)
+      veteran_icn.present? && veteran_icn == icn
+    end
+
     def set_header_hash
       headers = auth_headers.except('va_eauth_authenticationauthority',
                                     'va_eauth_service_transaction_id',

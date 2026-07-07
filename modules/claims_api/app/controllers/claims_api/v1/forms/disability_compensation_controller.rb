@@ -115,8 +115,11 @@ module ClaimsApi
           validate_documents_content_type
           validate_documents_page_size
 
-          pending_claim = ClaimsApi::AutoEstablishedClaim.pending?(params[:id])
-          raise ::Common::Exceptions::ResourceNotFound.new(detail: 'Resource not found') unless pending_claim
+          # pending? returns false (not nil) when not found; coerce to nil so safe-nav works correctly
+          pending_claim = ClaimsApi::AutoEstablishedClaim.pending?(params[:id]) || nil
+          unless pending_claim&.belongs_to_veteran?(target_veteran.mpi.icn)
+            raise ::Common::Exceptions::ResourceNotFound.new(detail: 'Resource not found')
+          end
 
           establish_and_upload(pending_claim)
           render json: ClaimsApi::AutoEstablishedClaimSerializer.new(pending_claim)
@@ -134,7 +137,9 @@ module ClaimsApi
                             #{documents.length} #{'attachment'.pluralize(documents.length)}")
 
           claim = ClaimsApi::AutoEstablishedClaim.get_by_id_or_evss_id(params[:id])
-          raise ::Common::Exceptions::ResourceNotFound.new(detail: 'Resource not found') unless claim
+          unless claim&.belongs_to_veteran?(target_veteran.mpi.icn)
+            raise ::Common::Exceptions::ResourceNotFound.new(detail: 'Resource not found')
+          end
 
           documents.each do |document|
             claim_document = claim.supporting_documents.build

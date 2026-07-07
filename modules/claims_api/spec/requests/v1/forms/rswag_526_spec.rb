@@ -297,7 +297,10 @@ Rspec.describe 'Disability Claims', openapi_spec: 'modules/claims_api/app/swagge
                                             'disability', 'upload.json').read)
 
           let(:scopes) { %w[claim.write] }
-          let(:auto_claim) { create(:auto_established_claim, status: ClaimsApi::AutoEstablishedClaim::PENDING) }
+          let(:auto_claim) do
+            create(:auto_established_claim, status: ClaimsApi::AutoEstablishedClaim::PENDING,
+                                            veteran_icn: '1013062086V794840')
+          end
           let(:attachment) do
             Rack::Test::UploadedFile.new(Rails.root.join(*'/modules/claims_api/spec/fixtures/extras.pdf'.split('/'))
                                                      .to_s)
@@ -434,7 +437,9 @@ Rspec.describe 'Disability Claims', openapi_spec: 'modules/claims_api/app/swagge
                                             'default.json').read)
 
           let(:scopes) { %w[claim.write] }
-          let(:auto_claim) { create(:auto_established_claim, :autoCestPDFGeneration_disabled) }
+          let(:auto_claim) do
+            create(:auto_established_claim, :autoCestPDFGeneration_disabled, veteran_icn: '1013062086V794840')
+          end
           let(:attachment) do
             Rack::Test::UploadedFile.new(Rails.root.join(*'/modules/claims_api/spec/fixtures/extras.pdf'.split('/'))
                                                      .to_s)
@@ -686,7 +691,7 @@ Rspec.describe 'Disability Claims', openapi_spec: 'modules/claims_api/app/swagge
                                             'disability', 'attachments.json').read)
 
           let(:scopes) { %w[claim.write] }
-          let(:auto_claim) { create(:auto_established_claim, :pending) }
+          let(:auto_claim) { create(:auto_established_claim, :pending, veteran_icn: '1013062086V794840') }
           let(:attachment1) do
             Rack::Test::UploadedFile.new(Rails.root.join(*'/modules/claims_api/spec/fixtures/extras.pdf'.split('/'))
                                                      .to_s)
