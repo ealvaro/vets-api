@@ -1,6 +1,12 @@
 # frozen_string_literal: true
 
 module Idp
+  # Canonical CAVE scan_status values (the shared failure contract). Single source of truth
+  # referenced by both Idp::Client (StatsD metric bucketing) and V0::CaveController (envelope
+  # validation) so the two can't drift. Also bounds metric-name cardinality: only these values
+  # (plus explicit 'no_scan_status' / 'unknown_scan_status' buckets) ever appear in a metric name.
+  SCAN_STATUSES = %w[pending completed completed_with_errors failed].freeze
+
   class Error < StandardError
     attr_reader :error_type, :operation, :upstream_status, :upstream_body, :upstream_headers, :failure_category
 

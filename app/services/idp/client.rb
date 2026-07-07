@@ -10,6 +10,7 @@ module Idp
   class Client
     DEFAULT_TIMEOUT = 15
     ERROR_DETAIL_LOG_LIMIT = 500
+    STATSD_KEY = 'api.cave.idp_client'
     HMAC_HEADER_USER_ID = 'X-IDP-User-Id'
     HMAC_HEADER_TIMESTAMP = 'X-IDP-Timestamp'
     HMAC_HEADER_KEY_ID = 'X-IDP-Key-Id'
@@ -312,16 +313,36 @@ module Idp
     end
 
     def log_request_success(operation:, start:, response:)
+      body = response.body
+      scan_status = body.is_a?(Hash) ? body['scan_status'] : nil
+
       Rails.logger.info('[Idp::Client] request success', {
-                          operation:,
-                          duration: request_duration(start),
-                          status: response.status
-                        })
+        operation:,
+        duration: request_duration(start),
+        status: response.status,
+        scan_status:,
+        error: (body['error'] if body.is_a?(Hash)),
+        warnings: (body['warnings'] if body.is_a?(Hash))
+      }.compact)
+
+      # Bound the metric-name segment to a fixed set so a bogus upstream scan_status can't create
+      # unbounded StatsD cardinality. The RAW value is still logged above; only the metric name
+      # is bucketed.
+      outcome = if scan_status.nil?
+                  'no_scan_status'
+                elsif Idp::SCAN_STATUSES.include?(scan_status)
+                  scan_status
+                else
+                  'unknown_scan_status'
+                end
+      StatsD.increment("#{STATSD_KEY}.#{operation}.#{outcome}")
     end
 
     def raise_idp_error(error:, operation:, start:, error_context:)
       error_type = extract_error_type(error_context[:body])
       log_request_error(operation:, start:, error:, error_type:, error_context:)
+      StatsD.increment("#{STATSD_KEY}.#{operation}.error",
+                       tags: ["failure_category:#{error_context[:failure_category]}"])
 
       raise Idp::Error.new(
         error.message,

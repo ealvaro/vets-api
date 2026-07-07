@@ -177,6 +177,58 @@ RSpec.describe Idp::Client do
       }
     end
 
+    it 'logs scan_status and increments a per-outcome StatsD metric on success' do
+      stub_request(:get, %r{#{Regexp.escape(request_url)}/status}).to_return(
+        status: 200,
+        body: { scan_status: 'failed', error: { error_message: 'boom' } }.to_json,
+        headers: { 'Content-Type' => 'application/json' }
+      )
+      allow(Rails.logger).to receive(:info)
+
+      expect { client.status('abc123', user_id:) }
+        .to trigger_statsd_increment('api.cave.idp_client.status.failed')
+      expect(Rails.logger).to have_received(:info)
+        .with('[Idp::Client] request success', hash_including(scan_status: 'failed'))
+    end
+
+    it 'buckets an unrecognized scan_status into a fixed metric name (bounds cardinality)' do
+      stub_request(:get, %r{#{Regexp.escape(request_url)}/status}).to_return(
+        status: 200,
+        body: { scan_status: 'BLARGH' }.to_json,
+        headers: { 'Content-Type' => 'application/json' }
+      )
+      allow(Rails.logger).to receive(:info)
+
+      expect { client.status('abc123', user_id:) }
+        .to trigger_statsd_increment('api.cave.idp_client.status.unknown_scan_status')
+        .and not_trigger_statsd_increment('api.cave.idp_client.status.BLARGH')
+      # the RAW value is still logged even though it is bucketed in the metric name
+      expect(Rails.logger).to have_received(:info)
+        .with('[Idp::Client] request success', hash_including(scan_status: 'BLARGH'))
+    end
+
+    it 'buckets a missing scan_status under no_scan_status' do
+      stub_request(:get, %r{#{Regexp.escape(request_url)}/output}).to_return(
+        status: 200,
+        body: { forms: [] }.to_json,
+        headers: { 'Content-Type' => 'application/json' }
+      )
+
+      expect { client.output('abc123', type: 'artifact', user_id:) }
+        .to trigger_statsd_increment('api.cave.idp_client.output.no_scan_status')
+    end
+
+    it 'increments the scan_status bucket for a known status' do
+      stub_request(:get, %r{#{Regexp.escape(request_url)}/status}).to_return(
+        status: 200,
+        body: { scan_status: 'completed' }.to_json,
+        headers: { 'Content-Type' => 'application/json' }
+      )
+
+      expect { client.status('abc123', user_id:) }
+        .to trigger_statsd_increment('api.cave.idp_client.status.completed')
+    end
+
     it 'sends output request and returns parsed payload' do
       stub_request(:get, %r{#{Regexp.escape(request_url)}/output}).to_return(
         status: 200,

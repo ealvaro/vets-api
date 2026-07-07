@@ -7,6 +7,31 @@ RSpec.describe CaveSubmission, type: :model do
     it { is_expected.to belong_to(:saved_claim).optional }
   end
 
+  describe 'validations' do
+    it 'is invalid without a cave_response' do
+      submission = described_class.new(cave_response: nil)
+      expect(submission).not_to be_valid
+      expect(submission.errors[:cave_response]).to include("can't be blank")
+    end
+
+    it 'is invalid when cave_response is not valid JSON' do
+      submission = described_class.new(cave_response: 'not-json')
+      expect(submission).not_to be_valid
+      expect(submission.errors[:cave_response]).to include('must be valid JSON')
+    end
+
+    it 'does not persist a malformed cave_response' do
+      submission = described_class.new(cave_response: 'not-json')
+      expect(submission.save).to be(false)
+      expect { submission.save! }.to raise_error(ActiveRecord::RecordInvalid)
+    end
+
+    it 'is valid with a well-formed JSON object cave_response' do
+      submission = described_class.new(cave_response: { 'FIRST_NAME' => 'Ada' }.to_json)
+      expect(submission).to be_valid
+    end
+  end
+
   describe '#parsed_response' do
     let(:payload) { { 'answer' => 'yes', 'score' => 42 } }
     let(:submission) { described_class.new(cave_response: payload.to_json) }
@@ -19,6 +44,15 @@ RSpec.describe CaveSubmission, type: :model do
       result1 = submission.parsed_response
       result2 = submission.parsed_response
       expect(result1).to be(result2)
+    end
+
+    it 'returns nil and logs when cave_response is corrupt JSON' do
+      submission = described_class.new(cave_response: 'not-json')
+      allow(Rails.logger).to receive(:warn)
+
+      expect(submission.parsed_response).to be_nil
+      expect(Rails.logger).to have_received(:warn)
+        .with('CaveSubmission#parsed_response: corrupt cave_response JSON', hash_including(:error))
     end
   end
 

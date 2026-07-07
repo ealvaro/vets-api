@@ -98,6 +98,100 @@ RSpec.describe 'CAVE API', type: :request do
       expect(parsed_response['scan_status']).to eq('completed')
     end
 
+    it 'forwards a pending scan_status without treating it as terminal' do
+      sign_in_as(user)
+      allow(client).to receive(:status).with('abc123', user_id: idp_user_id).and_return('scan_status' => 'pending')
+
+      get '/v0/cave/abc123/status'
+
+      expect(response).to have_http_status(:ok)
+      expect(parsed_response['scan_status']).to eq('pending')
+    end
+
+    # A `failed` scan_status is a TERMINAL 2xx result, not a 5xx: the frontend poller treats 5xx
+    # as retryable and only stops on a terminal scanStatus in a 2xx body. So `failed` returns 200
+    # with the failure conveyed in the body (still logged + metered), never a 502.
+    it 'returns a failed scan_status as a 200 passthrough (not a retryable 502)' do
+      sign_in_as(user)
+      allow(client).to receive(:status).with('abc123', user_id: idp_user_id).and_return(
+        'scan_status' => 'failed',
+        'error' => { 'error_message' => 'Unable to classify document' }
+      )
+
+      expect { get '/v0/cave/abc123/status' }
+        .to trigger_statsd_increment('api.cave.status.failed')
+
+      expect(response).to have_http_status(:ok)
+      expect(parsed_response['scan_status']).to eq('failed')
+      expect(parsed_response['error']).to eq('error_message' => 'Unable to classify document')
+    end
+
+    it 'logs the failed outcome while passing the body through' do
+      sign_in_as(user)
+      allow(client).to receive(:status).with('abc123', user_id: idp_user_id).and_return(
+        'scan_status' => 'failed',
+        'error' => { 'error_message' => 'Unable to classify document' }
+      )
+      allow(Rails.logger).to receive(:info)
+
+      get '/v0/cave/abc123/status'
+
+      expect(Rails.logger).to have_received(:info)
+        .with('[CaveController] CAVE outcome', hash_including(scan_status: 'failed'))
+    end
+
+    it 'forwards completed_with_errors as 200 preserving structured warnings' do
+      sign_in_as(user)
+      allow(client).to receive(:status).with('abc123', user_id: idp_user_id).and_return(
+        'scan_status' => 'completed_with_errors',
+        'warnings' => [{ 'warning_message' => 'Low confidence on DATE_OF_BIRTH' }]
+      )
+
+      expect { get '/v0/cave/abc123/status' }
+        .to trigger_statsd_increment('api.cave.status.completed_with_warnings')
+
+      expect(response).to have_http_status(:ok)
+      expect(parsed_response['scan_status']).to eq('completed_with_errors')
+      expect(parsed_response['warnings']).to eq([{ 'warning_message' => 'Low confidence on DATE_OF_BIRTH' }])
+    end
+
+    it 'wraps a single Hash warnings value in an array WITHOUT flattening it to key/value pairs' do
+      sign_in_as(user)
+      allow(client).to receive(:status).with('abc123', user_id: idp_user_id).and_return(
+        'scan_status' => 'completed_with_errors',
+        'warnings' => { 'step' => 'extraction', 'warning_message' => 'Low confidence' }
+      )
+
+      get '/v0/cave/abc123/status'
+
+      expect(response).to have_http_status(:ok)
+      # the structured Hash stays a Hash inside a one-element array, NOT [["step",...],...]
+      expect(parsed_response['warnings']).to eq(
+        [{ 'step' => 'extraction', 'warning_message' => 'Low confidence' }]
+      )
+    end
+
+    it 'rejects a missing scan_status with a logged 502' do
+      sign_in_as(user)
+      allow(client).to receive(:status).with('abc123', user_id: idp_user_id).and_return('id' => 'abc123')
+      allow(Rails.logger).to receive(:error)
+
+      expect { get '/v0/cave/abc123/status' }
+        .to trigger_statsd_increment('api.cave.status.invalid_scan_status')
+
+      expect(response).to have_http_status(:bad_gateway)
+      expect(Rails.logger).to have_received(:error).with('[CaveController] invalid CAVE scan_status', anything)
+    end
+
+    it 'rejects an unrecognized scan_status value with a 502' do
+      sign_in_as(user)
+      allow(client).to receive(:status).with('abc123', user_id: idp_user_id).and_return('scan_status' => 'bogus')
+
+      get '/v0/cave/abc123/status'
+
+      expect(response).to have_http_status(:bad_gateway)
+    end
+
     it 'preserves actionable upstream not found errors' do
       sign_in_as(user)
       allow(client).to receive(:status).with('abc123', user_id: idp_user_id).and_raise(
@@ -148,22 +242,47 @@ RSpec.describe 'CAVE API', type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
+    # `output` returns the extracted `forms` payload, which carries NO top-level scan_status;
+    # scan_status envelope validation applies only to `status`. `output` is guarded by
+    # payload-shape validation (non-empty Hash) instead.
     it 'defaults the type to artifact' do
       sign_in_as(user)
-      allow(client).to receive(:output).with('abc123', type: 'artifact', user_id: idp_user_id).and_return('forms' => [])
+      allow(client).to receive(:output).with('abc123', type: 'artifact', user_id: idp_user_id)
+                                       .and_return('forms' => [{ 'mmsFormValidationId' => 'form-1' }])
 
       get '/v0/cave/abc123/output'
 
       expect(response).to have_http_status(:ok)
+      expect(parsed_response['forms']).to eq([{ 'mmsFormValidationId' => 'form-1' }])
     end
 
     it 'uses provided type' do
       sign_in_as(user)
-      allow(client).to receive(:output).with('abc123', type: 'form', user_id: idp_user_id).and_return('forms' => [])
+      allow(client).to receive(:output).with('abc123', type: 'form', user_id: idp_user_id)
+                                       .and_return('forms' => [{ 'mmsFormValidationId' => 'form-1' }])
 
       get '/v0/cave/abc123/output', params: { type: 'form' }
 
       expect(response).to have_http_status(:ok)
+    end
+
+    it 'meters a successful output response' do
+      sign_in_as(user)
+      allow(client).to receive(:output).with('abc123', type: 'artifact', user_id: idp_user_id)
+                                       .and_return('forms' => [])
+
+      expect { get '/v0/cave/abc123/output' }
+        .to trigger_statsd_increment('api.cave.output.success')
+    end
+
+    it 'rejects a malformed (non-Hash) output payload with a 502' do
+      sign_in_as(user)
+      allow(client).to receive(:output).with('abc123', type: 'artifact', user_id: idp_user_id).and_return([])
+
+      expect { get '/v0/cave/abc123/output' }
+        .to trigger_statsd_increment('api.cave.output.invalid_payload')
+
+      expect(response).to have_http_status(:bad_gateway)
     end
 
     it 'keeps transport failures generic' do
@@ -218,6 +337,38 @@ RSpec.describe 'CAVE API', type: :request do
       expect(submission.cave_document_id).to eq('abc123')
       expect(submission.kvpid).to eq('kvp1')
       expect(submission.idp_user_id).to eq(idp_user_id)
+    end
+
+    it 'meters a successful download persist' do
+      sign_in_as(user)
+      allow(client).to receive(:download).with('abc123', kvpid: 'kvp1', user_id: idp_user_id)
+                                         .and_return('FIRST_NAME' => 'Ada')
+
+      expect { get '/v0/cave/abc123/download', params: { kvpid: 'kvp1' } }
+        .to trigger_statsd_increment('api.cave.download.success')
+    end
+
+    it 'rejects a malformed (non-Hash) download payload with a 502 instead of persisting it' do
+      sign_in_as(user)
+      allow(client).to receive(:download).with('abc123', kvpid: 'kvp1', user_id: idp_user_id).and_return([])
+      allow(Rails.logger).to receive(:error)
+
+      expect do
+        expect { get '/v0/cave/abc123/download', params: { kvpid: 'kvp1' } }
+          .to trigger_statsd_increment('api.cave.download.invalid_payload')
+      end.not_to change(CaveSubmission, :count)
+
+      expect(response).to have_http_status(:bad_gateway)
+    end
+
+    it 'rejects an empty-Hash download payload with a 502' do
+      sign_in_as(user)
+      allow(client).to receive(:download).with('abc123', kvpid: 'kvp1', user_id: idp_user_id).and_return({})
+
+      expect { get '/v0/cave/abc123/download', params: { kvpid: 'kvp1' } }
+        .not_to change(CaveSubmission, :count)
+
+      expect(response).to have_http_status(:bad_gateway)
     end
 
     it 'preserves actionable upstream ownership failures' do
@@ -278,6 +429,41 @@ RSpec.describe 'CAVE API', type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(parsed_response).to eq(payload)
+    end
+
+    it 'meters a successful update' do
+      sign_in_as(user)
+      allow(client).to receive(:update)
+        .with('abc123', kvpid: 'kvp1', payload:, user_id: idp_user_id)
+        .and_return(payload)
+
+      expect { post '/v0/cave/abc123/update?kvpid=kvp1', params: payload.to_json, headers: json_headers }
+        .to trigger_statsd_increment('api.cave.update.success')
+    end
+
+    it 'treats an empty-object update echo as a successful mutation' do
+      sign_in_as(user)
+      allow(client).to receive(:update)
+        .with('abc123', kvpid: 'kvp1', payload:, user_id: idp_user_id)
+        .and_return({})
+
+      expect { post '/v0/cave/abc123/update?kvpid=kvp1', params: payload.to_json, headers: json_headers }
+        .to trigger_statsd_increment('api.cave.update.success')
+
+      expect(response).to have_http_status(:ok)
+      expect(parsed_response).to eq({})
+    end
+
+    it 'rejects a malformed (non-Hash) update response with a 502' do
+      sign_in_as(user)
+      allow(client).to receive(:update)
+        .with('abc123', kvpid: 'kvp1', payload:, user_id: idp_user_id)
+        .and_return([])
+
+      expect { post '/v0/cave/abc123/update?kvpid=kvp1', params: payload.to_json, headers: json_headers }
+        .to trigger_statsd_increment('api.cave.update.invalid_payload')
+
+      expect(response).to have_http_status(:bad_gateway)
     end
 
     it 'keeps non-intake upstream 400 errors generic' do

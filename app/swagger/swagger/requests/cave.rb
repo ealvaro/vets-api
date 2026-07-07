@@ -26,25 +26,54 @@ module Swagger
 
       swagger_schema :CaveStatusResponse do
         key :required, [:scan_status]
+        key :description, <<~DESC
+          Envelope-bearing CAVE response. `scan_status` is the shared failure contract and is
+          always one of four values. ALL four are returned as HTTP 200 with this body; the
+          failure/partial-success is conveyed in the body (not via an HTTP error status) so the
+          frontend poller can stop on a terminal `scan_status`:
+            - `pending`               processing has not finished
+            - `completed`             processing succeeded
+            - `completed_with_errors` processing finished but returned recoverable `warnings`
+            - `failed`                processing failed (terminal); `error` describes the failure
+
+          HTTP 502 is reserved for transport-level problems (upstream unreachable/error) and for
+          a missing/unrecognized `scan_status` or malformed payload — never for a valid `failed`.
+        DESC
 
         property :id, type: :string, example: 'abc123'
-        property :scan_status, type: :string, enum: %w[pending completed failed], example: 'completed'
+        property :scan_status,
+                 type: :string,
+                 enum: %w[pending completed completed_with_errors failed],
+                 example: 'completed'
+        # Present when scan_status is `failed`; passed through unchanged in the 200 body so the
+        # frontend can surface the failure detail. NOT converted to an HTTP error status.
         property :error, type: :object do
+          key :description, 'Present when scan_status is `failed`; describes the failure.'
           property :scan_status, type: :string, example: 'failed'
           property :step, type: :string, example: 'classification'
           property :error_type, type: :string, example: 'processing_error'
           property :error_message, type: :string, example: 'Unable to classify document'
         end
+        # Present when scan_status is `completed_with_errors`; recoverable, non-fatal issues.
         property :warnings do
           key :type, :array
+          key :description, 'Present when scan_status is `completed_with_errors`; recoverable issues.'
           items do
             key :type, :object
+            property :step, type: :string, example: 'extraction'
+            property :warning_type, type: :string, example: 'low_confidence_field'
+            property :warning_message, type: :string, example: 'Low confidence on DATE_OF_BIRTH'
           end
         end
       end
 
       swagger_schema :CaveOutputResponse do
-        key :description, 'Output extracted by the upstream document processor. Payload shape varies by document type.'
+        key :description, <<~DESC
+          Extracted `forms` payload from the upstream document processor. Payload shape varies by
+          document type. Unlike CaveStatusResponse this is NOT the doc-status envelope: it carries
+          no top-level `scan_status`. vets-api validates the payload shape (a non-empty object) and
+          returns HTTP 502 if the upstream returns an unusable body.
+        DESC
 
         property :forms do
           key :type, :array

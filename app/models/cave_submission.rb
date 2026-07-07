@@ -11,10 +11,16 @@ class CaveSubmission < ApplicationRecord
 
   belongs_to :saved_claim, optional: true
 
+  validates :cave_response, presence: true
+  validate :cave_response_is_valid_json
+
   before_create :set_delete_date
 
   def parsed_response
     @parsed_response ||= JSON.parse(cave_response)
+  rescue JSON::ParserError => e
+    Rails.logger.warn('CaveSubmission#parsed_response: corrupt cave_response JSON', id:, error: e.message)
+    nil
   end
 
   # The persisted user-correction change-log records for this submission ([] if none).
@@ -28,6 +34,16 @@ class CaveSubmission < ApplicationRecord
   end
 
   private
+
+  # Guards against persisting a row whose cave_response cannot be parsed back out. Without this,
+  # a malformed payload would be stored silently and only blow up later at read time.
+  def cave_response_is_valid_json
+    return if cave_response.blank?
+
+    JSON.parse(cave_response)
+  rescue JSON::ParserError
+    errors.add(:cave_response, 'must be valid JSON')
+  end
 
   def set_delete_date
     self.delete_date ||= RETENTION_DAYS.days.from_now

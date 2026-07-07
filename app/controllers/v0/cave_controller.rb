@@ -4,6 +4,20 @@ module V0
   class CaveController < ApplicationController
     service_tag 'cave'
 
+    STATSD_KEY = 'api.cave'
+
+    # The shared CAVE failure contract. bio-cave returns exactly one of these values as the
+    # top-level `scan_status` on the doc-status envelope (`status`). vets-api validates the
+    # envelope, logs/meters the outcome, and forwards a normalized shape rather than
+    # blind-proxying an HTTP-200 body that actually represents a failure.
+    #
+    # VALID_SCAN_STATUSES points at the single source of truth in Idp so the controller and the
+    # Idp::Client metric bucketing can't drift. The named constants below are semantic handles
+    # for the case statement in render_cave_envelope.
+    SCAN_STATUS_COMPLETED_WITH_ERRORS = 'completed_with_errors'
+    SCAN_STATUS_FAILED = 'failed'
+    VALID_SCAN_STATUSES = Idp::SCAN_STATUSES
+
     before_action :require_cave_feature_enabled
     before_action :log_cave_request, only: %i[create status output download update]
     after_action :log_cave_response, only: %i[create status output download update]
@@ -19,18 +33,28 @@ module V0
     end
 
     def status
-      render json: client.status(document_id, user_id: idp_user_id)
+      body = client.status(document_id, user_id: idp_user_id)
+      render_cave_envelope(body)
     end
 
     def output
       type = params[:type].presence || 'artifact'
-      render json: client.output(document_id, type:, user_id: idp_user_id)
+      body = client.output(document_id, type:, user_id: idp_user_id)
+
+      # `output` returns the extracted `forms` payload, NOT the doc-status envelope, so it has no
+      # top-level `scan_status`. Validate the payload shape (a non-empty Hash) rather than the
+      # scan_status contract, which only applies to `status`.
+      validate_payload_shape!('output', body)
+      increment_outcome('output', 'success')
+      render json: body
     end
 
     def download
       kvpid = params.require(:kvpid)
 
       raw_payload = client.download(document_id, kvpid:, user_id: idp_user_id)
+
+      validate_payload_shape!('download', raw_payload)
 
       cave_submission = CaveSubmission.new(
         cave_response: raw_payload.to_json,
@@ -40,6 +64,7 @@ module V0
       )
       cave_submission.save!
 
+      increment_outcome('download', 'success')
       render json: {
         cave_submission_id: cave_submission.id,
         raw_payload:
@@ -47,6 +72,9 @@ module V0
     end
 
     def diff
+      # Intentionally NOT envelope/payload-shape validated: `diff` is a LOCAL computation
+      # (Idp::JsonDiff) over the request's own lhs/rhs, which diff_payload already validates.
+      # There is no backend response envelope to guard here.
       payload = diff_payload
 
       render json: Idp::JsonDiff.new(lhs: payload['lhs'], rhs: payload['rhs']).call
@@ -54,12 +82,19 @@ module V0
 
     def update
       kvpid = params.require(:kvpid)
-      render json: client.update(
+      body = client.update(
         document_id,
         kvpid:,
         payload: update_payload,
         user_id: idp_user_id
       )
+
+      # `update` proxies the backend's replacement KVP payload (no scan_status envelope). It gets
+      # the Hash-shape guard, but allows an empty `{}` echo since that is a valid successful
+      # mutation (unlike download/output where an empty body is a real failure).
+      validate_payload_shape!('update', body, allow_empty: true)
+      increment_outcome('update', 'success')
+      render json: body
     end
 
     private
@@ -95,6 +130,101 @@ module V0
       raise Common::Exceptions::BadRequest, detail: 'Request body must be a JSON object'
     rescue JSON::ParserError
       raise Common::Exceptions::BadRequest, detail: 'Request body must be valid JSON'
+    end
+
+    # Validate + normalize the envelope-bearing CAVE doc-status response (the `status` action)
+    # before it is forwarded to the website. The backend can return HTTP 200 with a body that
+    # represents a failure (`scan_status: failed`) or a partial success
+    # (`scan_status: completed_with_errors`); blind-proxying those made silent failures look
+    # like successes (they weren't logged/metered and the shape wasn't normalized).
+    #
+    # ALL four valid statuses return HTTP 200 with the scan_status envelope in the body. The
+    # frontend poller treats 5xx as a retryable transport error and only stops on a terminal
+    # scanStatus IN a 2xx body, so a `failed` doc must surface as a 200 (with the failure in the
+    # body) — raising 502 would make a permanently-failed doc poll until the deadline. We still
+    # log + meter the outcome per status. 502 is reserved for genuine transport problems: a
+    # missing/unknown scan_status (render_invalid_scan_status) or a malformed non-Hash payload
+    # (validate_payload_shape!).
+    #   - failed                -> 200 passthrough (failure conveyed in body), metered .failed
+    #   - completed_with_errors -> 200 with body + normalized `warnings` array
+    #   - pending / completed   -> 200 passthrough
+    #   - missing/unknown       -> 502 Bad Gateway (invalid_scan_status)
+    def render_cave_envelope(body)
+      scan_status = body.is_a?(Hash) ? body['scan_status'] : nil
+
+      return render_invalid_scan_status(scan_status) unless VALID_SCAN_STATUSES.include?(scan_status)
+
+      log_cave_outcome(scan_status:, body:)
+
+      case scan_status
+      when SCAN_STATUS_FAILED
+        increment_outcome(action_name, 'failed')
+        render json: body
+      when SCAN_STATUS_COMPLETED_WITH_ERRORS
+        increment_outcome(action_name, 'completed_with_warnings')
+        render json: body.merge('warnings' => normalized_warnings(body['warnings']))
+      else
+        increment_outcome(action_name, 'success')
+        render json: body
+      end
+    end
+
+    # Normalizes `warnings` to an Array WITHOUT flattening a structured Hash. Ruby's `Array({...})`
+    # would turn a warnings Hash into [[key, value], ...] pairs and corrupt it, so wrap non-Array
+    # values in a one-element array instead. Absent/blank warnings become [].
+    def normalized_warnings(warnings)
+      return [] if warnings.blank?
+      return warnings if warnings.is_a?(Array)
+
+      [warnings]
+    end
+
+    def render_invalid_scan_status(scan_status)
+      increment_outcome(action_name, 'invalid_scan_status')
+      Rails.logger.error('[CaveController] invalid CAVE scan_status', {
+        request_id: request.request_id,
+        action: action_name,
+        document_id: params[:id],
+        scan_status:
+      }.compact)
+      raise Common::Exceptions::BadGateway,
+            detail: 'Document processing service returned an unrecognized response'
+    end
+
+    # Rejects a malformed CAVE payload (download's KVP artifact, output's forms body) before it
+    # is used. The payload must be a JSON object; a non-Hash (Array, String, nil) would poison a
+    # persisted row or forward a garbage success to the website.
+    #
+    # allow_empty: download/output require a NON-empty Hash (an empty artifact/forms body is a
+    # real failure). `update` passes allow_empty: true because echoing back an empty object `{}`
+    # is a legitimate successful mutation (the request parser only requires a JSON object).
+    def validate_payload_shape!(action, raw_payload, allow_empty: false)
+      return if raw_payload.is_a?(Hash) && (allow_empty || raw_payload.present?)
+
+      increment_outcome(action, 'invalid_payload')
+      Rails.logger.error('[CaveController] invalid CAVE payload', {
+        request_id: request.request_id,
+        action: action_name,
+        document_id: params[:id],
+        payload_class: raw_payload.class.name
+      }.compact)
+      raise Common::Exceptions::BadGateway,
+            detail: 'Document processing service returned an unrecognized response'
+    end
+
+    def log_cave_outcome(scan_status:, body:)
+      Rails.logger.info('[CaveController] CAVE outcome', {
+        request_id: request.request_id,
+        action: action_name,
+        document_id: params[:id],
+        scan_status:,
+        error: body['error'],
+        warnings: body['warnings']
+      }.compact)
+    end
+
+    def increment_outcome(action, outcome)
+      StatsD.increment("#{STATSD_KEY}.#{action}.#{outcome}")
     end
 
     def client
