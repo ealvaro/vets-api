@@ -1,0 +1,65 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://fake_url.com/api/v1/claims
+    body:
+      encoding: UTF-8
+      string: '{"serviceTypeCode":"CP","programTypeCode":"CPL","benefitClaimTypeCode":"130DCY686","claimant":{"participantId":600056778},"veteran":{"participantId":600056778,"firstName":"GRIFFITH","lastName":"DENIS"},"dateOfClaim":"2026-06-29T16:22:13Z","tempStationOfJurisdiction":281,"submtrRoleTypeCd":"VBA","submtrApplcnTypeCd":"VBMS"}'
+    headers:
+      Authorization:
+      - Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJhY2M2MjJmZC0wODVkLTQ2N2MtYjU3ZC01NTA0MGE3NTVkMWEiLCJpYXQiOjE3ODI3NTAxMTQsImV4cCI6MTc4Mjc1MjExNCwiaXNzIjoidmV0cy1hcGkiLCJhcHBsaWNhdGlvbklEIjoiVkJNUyIsInVzZXJJRCI6IlZBR09WU1lTQUNDVCIsInN0YXRpb25JRCI6IjI4MyJ9.CG3iR_hDW1P-O9P6rQNRKBXHzJl4cOulOWqXKMu_NC0
+      Accept:
+      - application/json
+      User-Agent:
+      - Faraday v2.14.3
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+  response:
+    status:
+      code: 201
+      message: Created
+    headers:
+      Date:
+      - Mon, 29 Jun 2026 16:22:21 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      X-Oneagent-Js-Injection:
+      - 'true'
+      Server-Timing:
+      - dtRpid;desc="-1209650300", dtSInfo;desc="0"
+      Vary:
+      - Origin,Access-Control-Request-Method,Access-Control-Request-Headers
+      X-Content-Type-Options:
+      - nosniff
+      X-Xss-Protection:
+      - '0'
+      Cache-Control:
+      - no-cache, no-store, max-age=0, must-revalidate
+      Pragma:
+      - no-cache
+      Expires:
+      - '0'
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      X-Frame-Options:
+      - DENY
+      Content-Security-Policy:
+      - script-src 'self'
+      X-Envoy-Upstream-Service-Time:
+      - '1241'
+    body:
+      encoding: UTF-8
+      string: |-
+        {
+          "messages" : [ ],
+          "claimId" : 600964424
+        }
+  recorded_at: Mon, 29 Jun 2026 16:22:21 GMT
+recorded_with: VCR 6.4.0

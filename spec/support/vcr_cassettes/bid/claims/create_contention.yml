@@ -1,0 +1,68 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://fake_url.com/api/v1/claims/600964424/contentions
+    body:
+      encoding: UTF-8
+      string: '{"createContentions":[{"medicalInd":true,"beginDate":"2026-06-29T16:23:26Z","createDate":"2026-06-29T16:23:26Z","altContentionName":"My
+        Test Contention","contentionTypeCode":"NEW","classificationType":1250,"diagnosticTypeCode":"6100","claimantText":"test
+        claimant text","contentionStatusTypeCode":"C","originalSourceTypeCode":"PHYS"}]}'
+    headers:
+      Authorization:
+      - Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJhY2M2MjJmZC0wODVkLTQ2N2MtYjU3ZC01NTA0MGE3NTVkMWEiLCJpYXQiOjE3ODI3NTAxMTQsImV4cCI6MTc4Mjc1MjExNCwiaXNzIjoidmV0cy1hcGkiLCJhcHBsaWNhdGlvbklEIjoiVkJNUyIsInVzZXJJRCI6IlZBR09WU1lTQUNDVCIsInN0YXRpb25JRCI6IjI4MyJ9.CG3iR_hDW1P-O9P6rQNRKBXHzJl4cOulOWqXKMu_NC0
+      Accept:
+      - application/json
+      User-Agent:
+      - Faraday v2.14.3
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+  response:
+    status:
+      code: 201
+      message: Created
+    headers:
+      Date:
+      - Mon, 29 Jun 2026 16:23:34 GMT
+      Content-Type:
+      - application/problem+json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      X-Oneagent-Js-Injection:
+      - 'true'
+      Server-Timing:
+      - dtRpid;desc="-396883015", dtSInfo;desc="0"
+      Vary:
+      - Origin,Access-Control-Request-Method,Access-Control-Request-Headers
+      X-Content-Type-Options:
+      - nosniff
+      X-Xss-Protection:
+      - '0'
+      Cache-Control:
+      - no-cache, no-store, max-age=0, must-revalidate
+      Pragma:
+      - no-cache
+      Expires:
+      - '0'
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      X-Frame-Options:
+      - DENY
+      Content-Security-Policy:
+      - script-src 'self'
+      X-Envoy-Upstream-Service-Time:
+      - '46'
+    body:
+      encoding: UTF-8
+      string: |-
+        {
+          "messages" : [ ],
+          "contentionIds" : [ 868026 ],
+          "claimantTexts" : [ "test claimant text" ]
+        }
+  recorded_at: Mon, 29 Jun 2026 16:23:34 GMT
+recorded_with: VCR 6.4.0
