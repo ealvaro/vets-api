@@ -24,7 +24,7 @@ class Rack::Attack
   # Rate-limit PPMS lookup, in order to bore abusers.
   # See https://va.ghe.com/software/va.gov-team-sensitive/blob/master/Postmortems/2021-08-16-facility-locator-possible-DOS.md
   # for details. Covers all ccp sub-routes (index, provider, pharmacy, urgent_care, specialties).
-  throttle('facilities_api/v2/ccp/ip', limit: 8, period: 1.minute) do |req|
+  throttle('facilities_api/v2/ccp/ip', limit: 30, period: 1.minute) do |req|
     req.remote_ip if req.path.starts_with?('/facilities_api/v2/ccp')
   end
 

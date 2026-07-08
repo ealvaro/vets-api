@@ -138,7 +138,7 @@ RSpec.describe Rack::Attack do
   describe 'facilities_api/v2/ccp/ip' do
     let(:endpoint) { '/facilities_api/v2/ccp/provider' }
     let(:headers) { { 'X-Real-Ip' => '1.2.3.4' } }
-    let(:limit) { 8 }
+    let(:limit) { 30 }
 
     before do
       limit.times do
@@ -167,7 +167,7 @@ RSpec.describe Rack::Attack do
   end
 
   describe 'facilities_api/v2/ccp/ip across sub-routes' do
-    let(:limit) { 8 }
+    let(:limit) { 30 }
 
     it 'shares its limit between provider and pharmacy' do
       shared_headers = { 'X-Real-Ip' => '5.6.7.8' }
