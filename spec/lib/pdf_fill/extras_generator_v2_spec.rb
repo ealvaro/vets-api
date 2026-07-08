@@ -447,6 +447,15 @@ describe PdfFill::ExtrasGeneratorV2 do
         expect(pdf).not_to have_received(:markup)
       end
     end
+
+    context 'when omit_footer is set' do
+      subject { described_class.new(submit_date:, omit_footer: true) }
+
+      it 'does not add the built-in footer even when submit_date is present' do
+        subject.add_footer(pdf)
+        expect(pdf).not_to have_received(:markup)
+      end
+    end
   end
 
   describe '#measure_content_heights' do

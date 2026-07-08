@@ -5,6 +5,7 @@ require 'lighthouse/benefits_intake/service'
 require 'lighthouse/benefits_intake/metadata'
 require 'medical_expense_reports/notification_email'
 require 'medical_expense_reports/monitor'
+require 'medical_expense_reports/pdf_fill/va21p8416'
 require 'pdf_utilities/datestamp_pdf'
 
 require 'bigdecimal'
@@ -38,12 +39,16 @@ module MedicalExpenseReports
       #
       # @param saved_claim_id [Integer] the claim id
       # @param user_account_uuid [UUID] the user submitting the form
+      # @param current_loa [Integer, nil] the submitter's current Level of Assurance, used to stamp
+      #   the authentication level in the PDF footer watermark (nil when unauthenticated)
       #
       # @return [UUID] benefits intake upload uuid
       #
-      def perform(saved_claim_id, user_account_uuid = nil)
+      def perform(saved_claim_id, user_account_uuid = nil, current_loa = nil)
         return unless Flipper.enabled?(:medical_expense_reports_form_enabled)
 
+        @current_loa = current_loa
+        @intermediate_pdf_paths = []
         init(saved_claim_id, user_account_uuid)
         # benefits_intake_uuid comes from here
         @intake_service ||= reset_intake_service
@@ -64,8 +69,16 @@ module MedicalExpenseReports
       #
       # @return [String] the intake service UUID for the submission
       def process_submission
-        # generate and validate claim pdf documents
-        @form_path = process_document(@claim.to_pdf(@claim.id, extras_redesign: true, omit_esign_stamp: true))
+        # generate and validate claim pdf documents.
+        # omit_esign_stamp/omit_footer suppress the shared machinery's hardcoded-IAL2 footer so we can
+        # stamp a footer whose authentication level reflects the submitter's actual LOA on every page.
+        raw_pdf = @claim.to_pdf(@claim.id, extras_redesign: true, omit_esign_stamp: true, omit_footer: true)
+        @intermediate_pdf_paths << raw_pdf
+        stamped_pdf = MedicalExpenseReports::PdfFill::Va21p8416.stamp_submission_footer(
+          raw_pdf, @claim.created_at, footer_loa
+        )
+        @intermediate_pdf_paths << stamped_pdf
+        @form_path = process_document(stamped_pdf)
         @attachment_paths = @claim.persistent_attachments.map { |pa| process_document(pa.to_pdf) }
         form = @claim.parsed_form
         @metadata = generate_metadata(form)
@@ -78,6 +91,18 @@ module MedicalExpenseReports
         monitor.track_submission_success(@claim, @intake_service, @user_account_uuid)
 
         @intake_service.uuid
+      end
+
+      # LOA used for the footer authentication stamp. Falls back to LOA 1 (signed in) for an
+      # authenticated submitter whose LOA is missing or non-positive — e.g. a job enqueued before the
+      # current_loa argument existed and replayed during a deploy — so authenticated submitters are
+      # never stamped "not signed in". Remains nil for unauthenticated submitters.
+      #
+      # @return [Integer, nil]
+      def footer_loa
+        return @current_loa if @current_loa.to_i.positive?
+
+        @user_account_uuid.present? ? 1 : nil
       end
 
       # Number of in-home care rows IBM expects.
@@ -251,6 +276,11 @@ module MedicalExpenseReports
       def cleanup_file_paths
         Common::FileHelpers.delete_file_if_exists(@form_path) if @form_path
         @attachment_paths&.each { |p| Common::FileHelpers.delete_file_if_exists(p) }
+        # Remove the intermediate PDFs produced between to_pdf and process_document (the raw fill and
+        # the footer-stamped copy), skipping @form_path which is deleted above.
+        @intermediate_pdf_paths&.each do |p|
+          Common::FileHelpers.delete_file_if_exists(p) unless p == @form_path
+        end
       rescue => e
         monitor.track_file_cleanup_error(@claim, @intake_service, @user_account_uuid, e)
       end

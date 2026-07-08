@@ -103,6 +103,98 @@ module MedicalExpenseReports
       # Default label column width (points) for redesigned extras in this form
       DEFAULT_LABEL_WIDTH = 130
 
+      # Leading text for the submission date/timestamp/authentication watermark.
+      # @see https://design.va.gov/patterns/ask-users-for/signature#date-and-timestamp-watermark-format
+      SUBMISSION_STAMP_PREFIX = 'Signed electronically and submitted via VA.gov at '
+      # Font size (points) for the two-line submission footer watermark. Kept small and unobtrusive.
+      SUBMISSION_STAMP_FONT_SIZE = 7
+      # Padding (points) from the right page edge for the right-justified footer. The footer is
+      # anchored to the bottom-right so it clears the bottom-left 'VA.GOV' datestamp that
+      # SubmitClaimJob#process_document applies to every page.
+      SUBMISSION_STAMP_RIGHT_MARGIN = 10
+      # Padding (points) from the bottom page edge for the footer's lowest line.
+      SUBMISSION_STAMP_BOTTOM_MARGIN = 6
+      # StatsD metric emitted when footer stamping fails (fail-open path) so the gap is observable.
+      SUBMISSION_STAMP_ERROR_METRIC = 'api.medical_expense_reports.submission_footer_error'
+
+      # Build the authentication-level sentence for the submission watermark based on the
+      # submitter's Level of Assurance (LOA). Mirrors the three variants in the VA.gov design system.
+      #
+      # @param loa [Integer, nil] the submitter's current LOA (nil when unauthenticated)
+      # @return [String] the authentication-level sentence
+      def self.authentication_stamp_text(loa)
+        case loa
+        when 3
+          'Signee signed with an identity-verified account.'
+        when 1, 2
+          'Signee signed in but hasn’t verified their identity.'
+        else
+          'Signee not signed in.'
+        end
+      end
+
+      # Format a timestamp for the watermark as "HH:MM UTC YYYY-MM-DD" in UTC.
+      #
+      # @param timestamp [Time, ActiveSupport::TimeWithZone] the time to format
+      # @return [String]
+      def self.format_submission_timestamp(timestamp)
+        "#{timestamp.utc.strftime('%H:%M')} UTC #{timestamp.utc.strftime('%Y-%m-%d')}"
+      end
+
+      # Stamp the date/timestamp/authentication-level watermark onto the bottom-right of every page,
+      # as two right-justified lines (submission line + authentication line).
+      #
+      # The timestamp must reflect when the form was initially submitted (not when the PDF was
+      # generated), so callers pass the claim's submission time. The footer is drawn with HexaPDF
+      # directly onto every page's overlay canvas; this reliably reaches merged-in overflow/attachment
+      # pages, which a pdftk stamp does not cover on the first pass.
+      #
+      # @param pdf_path [String] path to the assembled PDF to stamp
+      # @param timestamp [Time, ActiveSupport::TimeWithZone] the submission time (UTC watermark)
+      # @param loa [Integer, nil] the submitter's current LOA (nil when unauthenticated)
+      # @return [String] path to the stamped PDF, or the original path if stamping fails (fail-open)
+      def self.stamp_submission_footer(pdf_path, timestamp, loa)
+        return pdf_path if timestamp.blank?
+
+        lines = ["#{SUBMISSION_STAMP_PREFIX}#{format_submission_timestamp(timestamp)}.",
+                 authentication_stamp_text(loa)]
+
+        output_path = "#{Common::FileHelpers.random_file_path}.pdf"
+        doc = HexaPDF::Document.open(pdf_path)
+        font = doc.fonts.add('Helvetica')
+        doc.pages.each { |page| draw_footer_on_page(page, font, lines) }
+        # validate: false — VA templates use AcroForm field names with periods that newer HexaPDF
+        # versions reject during write-time validation (see PdfFill::Filler#merge_pdfs).
+        doc.write(output_path, validate: false)
+        output_path
+      rescue => e
+        # Fail open: a footer-stamping failure must not block the veteran's submission. Log and emit a
+        # metric so the (rare) gap is observable in Datadog, then return the original PDF so the claim
+        # still submits without the watermark.
+        Rails.logger.error('MedicalExpenseReports 21P-8416: Error stamping submission footer',
+                           error: e.message, backtrace: e.backtrace)
+        StatsD.increment(SUBMISSION_STAMP_ERROR_METRIC)
+        pdf_path
+      end
+
+      # Draw the right-justified footer lines anchored to the bottom-right of a single page.
+      #
+      # @param page [HexaPDF::Type::Page] the page to stamp
+      # @param font [HexaPDF::Font::Type1Wrapper] the Helvetica font (used for width measurement)
+      # @param lines [Array<String>] the footer lines, top to bottom
+      def self.draw_footer_on_page(page, font, lines)
+        size = SUBMISSION_STAMP_FONT_SIZE
+        page_width = page.box(:media).width
+        canvas = page.canvas(type: :overlay)
+        canvas.font('Helvetica', size:)
+        lines.each_with_index do |line, index|
+          text_width = font.decode_utf8(line).sum(&:width) * size / 1000.0
+          x = page_width - SUBMISSION_STAMP_RIGHT_MARGIN - text_width
+          y = SUBMISSION_STAMP_BOTTOM_MARGIN + ((lines.size - 1 - index) * (size + 2))
+          canvas.text(line, at: [x, y])
+        end
+      end
+
       # Stamp a typed signature string onto the PDF using DatestampPdf.
       #
       # @param pdf_path [String] Path to the PDF to stamp

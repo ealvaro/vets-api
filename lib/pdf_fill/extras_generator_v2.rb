@@ -366,6 +366,12 @@ module PdfFill
       @show_jumplinks         = options[:show_jumplinks] || false
       @section_coordinates    = options[:section_coordinates] || []
       @use_hexapdf            = options[:use_hexapdf] || false
+      # Opt-in suppression of the built-in "Signed electronically..." footer (see #add_footer).
+      # The default footer hardcodes an IAL2 ("identity-verified account") authentication level.
+      # Forms that must stamp a dynamic authentication level based on the submitter's LOA
+      # (e.g. 21P-8416) set this true and apply their own footer on every page after generation.
+      # Defaults to false so every other form's output is unchanged.
+      @omit_footer            = options[:omit_footer] || false
       @questions              = {}
       super(options)
     end
@@ -682,6 +688,9 @@ module PdfFill
     end
 
     def add_footer(pdf)
+      # Skip the built-in IAL2 footer when the caller supplies its own (see @omit_footer).
+      return if @omit_footer
+
       if @submit_date.present?
         ts = format_timestamp(@submit_date)
         txt = "Signed electronically and submitted via VA.gov at #{ts}. " \

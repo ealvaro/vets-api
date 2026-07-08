@@ -19,7 +19,9 @@ RSpec.describe MedicalExpenseReports::BenefitsIntake::SubmitClaimJob, :uploader_
     let(:pdf_path) { 'random/path/to/pdf' }
     let(:location) { 'test_location' }
     let(:omit_esign_stamp) { true }
+    let(:omit_footer) { true }
     let(:extras_redesign) { true }
+    let(:current_loa) { 3 }
     let(:parsed_form) do
       {
         'veteranFullName' => { 'first' => 'John', 'last' => 'Doe' },
@@ -31,7 +33,9 @@ RSpec.describe MedicalExpenseReports::BenefitsIntake::SubmitClaimJob, :uploader_
     before do
       job.instance_variable_set(:@claim, claim)
       allow(MedicalExpenseReports::SavedClaim).to receive(:find).and_return(claim)
-      allow(claim).to receive(:to_pdf).with(claim.id, { extras_redesign:, omit_esign_stamp: }).and_return(pdf_path)
+      allow(claim).to receive(:to_pdf)
+        .with(claim.id, { extras_redesign:, omit_esign_stamp:, omit_footer: }).and_return(pdf_path)
+      allow(MedicalExpenseReports::PdfFill::Va21p8416).to receive(:stamp_submission_footer).and_return(pdf_path)
       allow(claim).to receive_messages(persistent_attachments: [], parsed_form:)
 
       job.instance_variable_set(:@intake_service, service)
@@ -68,6 +72,21 @@ RSpec.describe MedicalExpenseReports::BenefitsIntake::SubmitClaimJob, :uploader_
         expect(result).to eq(service.uuid)
       end
 
+      it 'cleans up the intermediate PDFs generated before process_document' do
+        raw_path = 'tmp/raw.pdf'
+        stamped_path = 'tmp/stamped.pdf'
+        form_path = 'tmp/form.pdf'
+        allow(claim).to receive(:to_pdf).and_return(raw_path)
+        allow(MedicalExpenseReports::PdfFill::Va21p8416).to receive(:stamp_submission_footer).and_return(stamped_path)
+        allow(job).to receive(:process_document).and_return(form_path)
+        allow(Common::FileHelpers).to receive(:delete_file_if_exists)
+
+        job.perform(claim.id, user_account_uuid, current_loa)
+
+        expect(Common::FileHelpers).to have_received(:delete_file_if_exists).with(raw_path)
+        expect(Common::FileHelpers).to have_received(:delete_file_if_exists).with(stamped_path)
+      end
+
       it 'returns early when flipper is disabled' do
         allow(Flipper).to receive(:enabled?).with(:medical_expense_reports_form_enabled).and_return(false)
 
@@ -83,7 +102,10 @@ RSpec.describe MedicalExpenseReports::BenefitsIntake::SubmitClaimJob, :uploader_
     it 'submits the saved claim successfully' do
       allow(job).to receive(:process_document).and_return(pdf_path)
 
-      expect(claim).to receive(:to_pdf).with(claim.id, { extras_redesign:, omit_esign_stamp: }).and_return(pdf_path)
+      expect(claim).to receive(:to_pdf)
+        .with(claim.id, { extras_redesign:, omit_esign_stamp:, omit_footer: }).and_return(pdf_path)
+      expect(MedicalExpenseReports::PdfFill::Va21p8416).to receive(:stamp_submission_footer)
+        .with(pdf_path, claim.created_at, current_loa).and_return(pdf_path)
       expect(Lighthouse::Submission).to receive(:create)
       expect(Lighthouse::SubmissionAttempt).to receive(:create)
       expect(Datadog::Tracing).to receive(:active_trace)
@@ -94,7 +116,7 @@ RSpec.describe MedicalExpenseReports::BenefitsIntake::SubmitClaimJob, :uploader_
       )
       expect(job).to receive(:cleanup_file_paths)
 
-      job.perform(claim.id, :user_account_uuid)
+      job.perform(claim.id, :user_account_uuid, current_loa)
     end
 
     it 'is unable to find user_account' do
@@ -252,6 +274,26 @@ RSpec.describe MedicalExpenseReports::BenefitsIntake::SubmitClaimJob, :uploader_
     it 'errors and logs but does not reraise' do
       expect(monitor).to receive(:track_file_cleanup_error)
       job.send(:cleanup_file_paths)
+    end
+  end
+
+  describe '#footer_loa' do
+    it 'returns the provided positive LOA' do
+      job.instance_variable_set(:@current_loa, 3)
+      job.instance_variable_set(:@user_account_uuid, 'uuid')
+      expect(job.send(:footer_loa)).to eq(3)
+    end
+
+    it 'falls back to LOA 1 for an authenticated submitter whose LOA is missing (deploy replay)' do
+      job.instance_variable_set(:@current_loa, nil)
+      job.instance_variable_set(:@user_account_uuid, 'uuid')
+      expect(job.send(:footer_loa)).to eq(1)
+    end
+
+    it 'returns nil for an unauthenticated submitter' do
+      job.instance_variable_set(:@current_loa, nil)
+      job.instance_variable_set(:@user_account_uuid, nil)
+      expect(job.send(:footer_loa)).to be_nil
     end
   end
 

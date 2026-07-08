@@ -347,7 +347,10 @@ module PdfFill
             sections:,
             label_width: form_class::DEFAULT_LABEL_WIDTH,
             show_jumplinks: fill_options.fetch(:show_jumplinks, false),
-            use_hexapdf: fill_options.fetch(:use_hexapdf, false)
+            use_hexapdf: fill_options.fetch(:use_hexapdf, false),
+            # Let forms that stamp a dynamic (LOA-based) authentication footer opt out of the
+            # built-in hardcoded-IAL2 footer on overflow pages. Defaults to false (unchanged).
+            omit_footer: fill_options.fetch(:omit_footer, false)
           )
         else
           ExtrasGenerator.new(use_hexapdf: fill_options.fetch(:use_hexapdf, false))

@@ -67,7 +67,7 @@ module MedicalExpenseReports
         # claim submission, so submit_claim_to_bpds_safely swallows MPI/BGS/KMS errors here.
         submit_claim_to_bpds_safely(claim) if medical_expense_reports_bpds_parallel_enabled?
 
-        MedicalExpenseReports::BenefitsIntake::SubmitClaimJob.perform_async(claim.id, current_user&.user_account_uuid)
+        enqueue_submission(claim)
 
         monitor.track_create_success(in_progress_form, claim, current_user)
 
@@ -82,6 +82,31 @@ module MedicalExpenseReports
       end
 
       private
+
+      # Enqueues the Benefits Intake submission job for the saved claim.
+      #
+      # The submitter's current LOA is passed through so the PDF footer watermark can indicate the
+      # correct authentication level (unauthenticated / IAL1 / IAL2).
+      #
+      # @param claim [MedicalExpenseReports::SavedClaim]
+      def enqueue_submission(claim)
+        MedicalExpenseReports::BenefitsIntake::SubmitClaimJob.perform_async(
+          claim.id, current_user&.user_account_uuid, submitter_loa
+        )
+      end
+
+      # The submitter's current Level of Assurance for the PDF footer authentication stamp.
+      # Returns nil only when there is no signed-in user (unauthenticated). A signed-in user whose
+      # LOA is unresolved or non-positive (nil/0) falls back to LOA 1 so they are never mislabeled
+      # "not signed in".
+      #
+      # @return [Integer, nil]
+      def submitter_loa
+        return nil unless current_user
+
+        loa = current_user.loa&.dig(:current)
+        loa.to_i.positive? ? loa : 1
+      end
 
       # Raises an exception if the medical expense reports flipper flag isn't enabled.
       def check_flipper_flag

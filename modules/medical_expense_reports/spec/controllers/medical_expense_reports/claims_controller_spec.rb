@@ -142,5 +142,29 @@ RSpec.describe MedicalExpenseReports::V0::ClaimsController, type: :request do
     end
   end
 
+  describe '#submitter_loa' do
+    let(:instance) { described_class.new }
+
+    it 'returns nil when there is no signed-in user (unauthenticated)' do
+      allow(instance).to receive(:current_user).and_return(nil)
+      expect(instance.send(:submitter_loa)).to be_nil
+    end
+
+    it "returns the signed-in user's current LOA" do
+      allow(instance).to receive(:current_user).and_return(double('user', loa: { current: 3 }))
+      expect(instance.send(:submitter_loa)).to eq(3)
+    end
+
+    it 'falls back to LOA 1 for a signed-in user whose LOA is unresolved' do
+      allow(instance).to receive(:current_user).and_return(double('user', loa: {}))
+      expect(instance.send(:submitter_loa)).to eq(1)
+    end
+
+    it 'falls back to LOA 1 for a signed-in user with a non-positive LOA (0)' do
+      allow(instance).to receive(:current_user).and_return(double('user', loa: { current: 0 }))
+      expect(instance.send(:submitter_loa)).to eq(1)
+    end
+  end
+
   # end RSpec.describe
 end
