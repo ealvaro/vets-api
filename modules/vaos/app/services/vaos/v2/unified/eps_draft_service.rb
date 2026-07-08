@@ -20,9 +20,9 @@ module VAOS
       #    also caches the draft id under +(user.uuid, referral_number)+ for
       #    later reuse by {VAOS::V2::Unified::EpsBookingService}).
       #
-      # Mirrors the +validate_referral_not_used+ + +create_draft_appointment+
-      # precheck that existed in the legacy {VAOS::V2::CreateEpsDraftAppointment}
-      # service. Without this, a duplicate booking attempt against an
+      # Mirrors the referral-already-used precheck from the legacy EPS
+      # draft-creation service (removed with POST /vaos/v2/appointments/draft).
+      # Without this, a duplicate booking attempt against an
       # already-used referral would mint a wasted Wellhive draft and surface a
       # generic 4xx at submit time instead of a clean 422 with PII logging.
       #
@@ -107,8 +107,7 @@ module VAOS
 
         def log_personal_information_error(error_class, referral_number, failure_reason)
           # +create+ (not +create!+) so a logging hiccup never breaks the main
-          # flow; this matches the pattern in the legacy
-          # +CreateEpsDraftAppointment+ service.
+          # flow.
           PersonalInformationLog.create(
             error_class:,
             data: {

@@ -53,8 +53,8 @@ RSpec.describe VAOS::V2::Unified::EpsDraftService do
       end
     end
 
-    # Mirrors +VAOS::V2::CreateEpsDraftAppointment#validate_referral_not_used+
-    # behavior. Without this branch the unified flow would let a duplicate
+    # Mirrors the legacy EPS draft-creation referral-already-used precheck.
+    # Without this branch the unified flow would let a duplicate
     # booking attempt mint a wasted Wellhive draft and surface a generic 4xx
     # at submit time instead of a clean 422 with PII logging.
     context 'when the referral has already been used' do

@@ -7,8 +7,8 @@ module VAOS
     # {VAOS::V2::ReferralsController}. Emits error-level logs and StatsD counters
     # when scheduling-critical fields are blank. Does not alter the HTTP response.
     #
-    # Field rules overlap with {VAOS::V2::CreateEpsDraftAppointment#validate_referral_data},
-    # which blocks legacy EPS draft creation; this monitor only records gaps at
+    # Field rules match the referral-data validation the EPS scheduling flow
+    # uses to block draft creation; this monitor only records gaps at
     # list/detail read time.
     #
     class ReferralMissingDataMonitor
