@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_30_173823) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_07_200917) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -1849,6 +1849,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_30_173823) do
     t.index ["config_type", "config_id"], name: "index_sign_in_config_certificates_on_config"
   end
 
+  create_table "sign_in_webauthn_credentials", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "aaguid"
+    t.string "authenticator_attachment"
+    t.boolean "backed_up", default: false, null: false
+    t.boolean "backup_eligible", default: false, null: false
+    t.datetime "created_at", null: false
+    t.string "credential_id", null: false
+    t.datetime "last_used_at"
+    t.text "public_key", null: false
+    t.bigint "sign_count", default: 0, null: false
+    t.string "transports", default: [], array: true
+    t.datetime "updated_at", null: false
+    t.index ["credential_id"], name: "index_sign_in_webauthn_credentials_on_credential_id", unique: true
+  end
+
   create_table "spool_file_events", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "filename"
@@ -2044,8 +2059,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_30_173823) do
     t.string "icn"
     t.boolean "locked", default: false, null: false
     t.datetime "updated_at", null: false
+    t.string "webauthn_handle"
     t.index ["icn"], name: "index_user_accounts_on_icn", unique: true
     t.index ["locked"], name: "index_user_accounts_on_locked", where: "(locked = true)"
+    t.index ["webauthn_handle"], name: "index_user_accounts_on_webauthn_handle", unique: true, where: "(webauthn_handle IS NOT NULL)"
   end
 
   create_table "user_action_events", force: :cascade do |t|
@@ -2097,6 +2114,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_30_173823) do
     t.datetime "updated_at", null: false
     t.uuid "user_account_id"
     t.datetime "verified_at"
+    t.uuid "webauthn_credential_id"
     t.index ["backing_idme_uuid"], name: "index_user_verifications_on_backing_idme_uuid"
     t.index ["clear_uuid"], name: "index_user_verifications_on_clear_uuid", unique: true
     t.index ["dslogon_uuid"], name: "index_user_verifications_on_dslogon_uuid", unique: true
@@ -2105,6 +2123,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_30_173823) do
     t.index ["mhv_uuid"], name: "index_user_verifications_on_mhv_uuid", unique: true
     t.index ["user_account_id"], name: "index_user_verifications_on_user_account_id"
     t.index ["verified_at"], name: "index_user_verifications_on_verified_at"
+    t.index ["webauthn_credential_id"], name: "index_user_verifications_on_webauthn_credential_id", unique: true, where: "(webauthn_credential_id IS NOT NULL)"
   end
 
   create_table "va_notify_in_progress_reminders_sent", force: :cascade do |t|
@@ -2485,6 +2504,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_30_173823) do
   add_foreign_key "user_actions", "user_verifications", column: "acting_user_verification_id"
   add_foreign_key "user_actions", "user_verifications", column: "subject_user_verification_id"
   add_foreign_key "user_credential_emails", "user_verifications"
+  add_foreign_key "user_verifications", "sign_in_webauthn_credentials", column: "webauthn_credential_id", validate: false
   add_foreign_key "user_verifications", "user_accounts"
   add_foreign_key "va_notify_in_progress_reminders_sent", "user_accounts"
   add_foreign_key "veteran_device_records", "devices"
