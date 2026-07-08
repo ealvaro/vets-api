@@ -335,6 +335,27 @@ RSpec.describe 'Vass::V0::Appointments - Create Appointment', type: :request do
           expect(json_response['errors'].first['code']).to eq('invalid_veteran_time_zone')
           expect(json_response['errors'].first['detail']).to eq('Unknown veteran time zone')
         end
+
+        it 'logs the rejected zone with reason and tags the failure metric with the reason' do
+          allow(Rails.logger).to receive(:error).and_call_original
+          allow(StatsD).to receive(:increment).and_call_original
+
+          expect(Rails.logger).to receive(:error)
+            .with(a_string_including('"error_code":"invalid_veteran_time_zone"', '"reason":"unknown_iana"',
+                                     '"iana":"Not/A_Real_Zone"'))
+            .and_call_original
+
+          post('/vass/v0/appointment',
+               params: appointment_params.merge(veteran_time_zone: 'Not/A_Real_Zone').to_json,
+               headers:)
+
+          expect(response).to have_http_status(:bad_request)
+          expect(StatsD).to have_received(:increment).with(
+            'api.vass.controller.appointments.create.failure',
+            hash_including(tags: array_including('error_type:invalid_veteran_time_zone', 'reason:unknown_iana',
+                                                 'http_status:400'))
+          ).at_least(:once)
+        end
       end
 
       context 'when veteran_time_zone is valid IANA but unmapped for VASS' do
@@ -356,6 +377,27 @@ RSpec.describe 'Vass::V0::Appointments - Create Appointment', type: :request do
 
           expect(json_response['errors'].first['code']).to eq('invalid_veteran_time_zone')
           expect(json_response['errors'].first['detail']).to eq('Unsupported veteran time zone')
+        end
+
+        it 'logs the rejected zone with reason and tags the failure metric with the reason' do
+          allow(Rails.logger).to receive(:error).and_call_original
+          allow(StatsD).to receive(:increment).and_call_original
+
+          expect(Rails.logger).to receive(:error)
+            .with(a_string_including('"error_code":"invalid_veteran_time_zone"', '"reason":"unmapped"',
+                                     '"iana":"Pacific/Kiritimati"'))
+            .and_call_original
+
+          post('/vass/v0/appointment',
+               params: appointment_params.merge(veteran_time_zone: 'Pacific/Kiritimati').to_json,
+               headers:)
+
+          expect(response).to have_http_status(:bad_request)
+          expect(StatsD).to have_received(:increment).with(
+            'api.vass.controller.appointments.create.failure',
+            hash_including(tags: array_including('error_type:invalid_veteran_time_zone', 'reason:unmapped',
+                                                 'http_status:400'))
+          ).at_least(:once)
         end
       end
 

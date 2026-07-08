@@ -186,8 +186,7 @@ module Vass
 
         render_booking_response(save_appointment_with_service(appointment_id))
       rescue Vass::Errors::InvalidVeteranTimeZoneError => e
-        track_failure(APPOINTMENTS_CREATE, error_type: 'invalid_veteran_time_zone')
-        render_error('invalid_veteran_time_zone', e.message, :bad_request)
+        handle_invalid_veteran_time_zone(e)
       rescue Vass::Errors::VassApiError,
              Vass::Errors::ServiceError,
              Vass::Errors::AuthenticationError,
@@ -197,6 +196,28 @@ module Vass
       end
 
       private
+
+      ##
+      # Logs the rejected veteran time zone with request/audit context and its
+      # reason (blank / unknown_iana / unmapped), tags the failure metric with
+      # that reason so it is chartable by cause, then renders a 400.
+      #
+      # @param error [Vass::Errors::InvalidVeteranTimeZoneError]
+      #
+      def handle_invalid_veteran_time_zone(error)
+        reason_tags = { reason: error.reason }.compact
+        log_vass_error('invalid_veteran_time_zone',
+                       vass_uuid: @current_veteran_id,
+                       message: error.message,
+                       **reason_tags,
+                       **error.log_metadata,
+                       **audit_metadata)
+        track_failure(APPOINTMENTS_CREATE,
+                      error_type: 'invalid_veteran_time_zone',
+                      http_status: 400,
+                      additional_tags: reason_tags)
+        render_error('invalid_veteran_time_zone', error.message, :bad_request)
+      end
 
       ##
       # Tracks infrastructure metrics for availability check scenarios.

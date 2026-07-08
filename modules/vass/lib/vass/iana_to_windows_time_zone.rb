@@ -1,5 +1,9 @@
 # frozen_string_literal: true
 
+# vass.rb eagerly requires this file during Bundler.require, before the app's
+# top-level lib/ is on $LOAD_PATH, so require_relative (not require) is needed.
+require_relative '../../../../lib/logging/helper/data_scrubber'
+
 module Vass
   ##
   # Maps IANA time zone identifiers (from browsers) to Windows time zone IDs
@@ -44,16 +48,46 @@ module Vass
     #
     def windows_id!
       iana = @iana_string.to_s.strip
-      raise Vass::Errors::InvalidVeteranTimeZoneError, 'Veteran time zone is required' if iana.blank?
+      fail_invalid!('blank', 'Veteran time zone is required') if iana.blank?
 
       zone = Time.find_zone(iana)
-      raise Vass::Errors::InvalidVeteranTimeZoneError, 'Unknown veteran time zone' unless zone
+      fail_invalid!('unknown_iana', 'Unknown veteran time zone', iana: scrub_zone(iana)) unless zone
 
       identifier = zone.tzinfo.canonical_identifier
       windows = self.class.mapping[identifier] || self.class.mapping[iana]
-      raise Vass::Errors::InvalidVeteranTimeZoneError, 'Unsupported veteran time zone' unless windows
+      unless windows
+        fail_invalid!('unmapped', 'Unsupported veteran time zone',
+                      iana: scrub_zone(iana), canonical_identifier: identifier)
+      end
 
       windows
+    end
+
+    private
+
+    ##
+    # Raises with the rejection reason and the scrubbed offending identifier
+    # (so a missing IANA/Windows mapping can be added to
+    # {config/iana_to_windows_time_zone.yml}) attached. The caller logs the
+    # single audit entry; keeping logging out of here avoids double-logging.
+    #
+    # @param reason [String] Why the zone was rejected: 'blank', 'unknown_iana', 'unmapped'
+    # @param message [String] Client-safe error message
+    # @param metadata [Hash] Zone identifiers (iana, canonical_identifier) for diagnosis
+    # @raise [Vass::Errors::InvalidVeteranTimeZoneError]
+    #
+    def fail_invalid!(reason, message, **metadata)
+      raise Vass::Errors::InvalidVeteranTimeZoneError.new(message, reason:, log_metadata: metadata)
+    end
+
+    ##
+    # Scrubs and bounds the client-supplied zone string before logging.
+    #
+    # @param value [String] Raw IANA zone string from the request
+    # @return [String] Scrubbed value truncated to a loggable length
+    #
+    def scrub_zone(value)
+      ::Logging::Helper::DataScrubber.scrub(value.to_s).truncate(64)
     end
   end
 end
