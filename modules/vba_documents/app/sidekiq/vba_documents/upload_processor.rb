@@ -23,8 +23,7 @@ module VBADocuments
     sidekiq_retries_exhausted do |msg|
       upload = VBADocuments::UploadSubmission.find_by(guid: msg['args'].first)
 
-      if Flipper.enabled?(:vba_documents_enable_kafka_tracking) &&
-         upload.present? && upload.uploaded_pdf&.dig('doc_type') == '21P-527EZ'
+      if upload.present? && upload.uploaded_pdf&.dig('doc_type') == '21P-527EZ'
         begin
           Kafka.submit_event(
             icn: upload.metadata['icn'],
@@ -86,8 +85,7 @@ module VBADocuments
         @upload.update(uploaded_pdf: inspector.pdf_data)
 
         # Kafka event tracking for 527EZ on document receipt
-        if Flipper.enabled?(:vba_documents_enable_kafka_tracking) &&
-           @upload.uploaded_pdf&.dig('doc_type') == '21P-527EZ'
+        if @upload.uploaded_pdf&.dig('doc_type') == '21P-527EZ'
           begin
             Kafka.submit_event(
               icn: @upload.metadata['icn'],
@@ -238,8 +236,7 @@ module VBADocuments
       @upload.track_uploaded_received(:cause, @cause)
 
       # Kafka event tracking for 527EZ
-      if Flipper.enabled?(:vba_documents_enable_kafka_tracking) &&
-         @upload.uploaded_pdf&.dig('doc_type') == '21P-527EZ'
+      if @upload.uploaded_pdf&.dig('doc_type') == '21P-527EZ'
         begin
           Kafka.submit_event(
             icn: @upload.metadata['icn'],

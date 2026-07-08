@@ -2956,9 +2956,6 @@ features:
       Enables VASS request-otp to accept the base64 data invitation URL parameter
       (GetVeteran email field key) instead of legacy veteranContactEmail only.
     enable_in_development: true
-  vba_documents_enable_kafka_tracking:
-    actor_type: user
-    description: Enables Kafka event tracking for 21P-527EZ uploads
   vba_documents_virus_scan:
     actor_type: user
     description: ClamAV virus scanning for Benefits Intake API upload submissions

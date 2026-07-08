@@ -208,7 +208,6 @@ RSpec.describe VBADocuments::UploadProcessor, type: :job do
         allow(CentralMail::Service).to receive(:new) { client_stub }
         allow(faraday_response).to receive_messages(status: 200, body: '', success?: true)
         allow(client_stub).to receive(:upload).and_return(faraday_response)
-        allow(Flipper).to receive(:enabled?).with(:vba_documents_enable_kafka_tracking).and_return(true)
       end
 
       it 'submits a received event for 21P-527EZ uploads after pdf inspection' do
@@ -246,17 +245,6 @@ RSpec.describe VBADocuments::UploadProcessor, type: :job do
       it 'does not submit a received event for non-21P-527EZ uploads' do
         allow(VBADocuments::PDFInspector).to receive(:new).and_return(
           instance_double(VBADocuments::PDFInspector, pdf_data: pdf_data_non_527ez)
-        )
-
-        expect(Kafka).not_to receive(:submit_event)
-
-        described_class.new.perform(upload.guid, test_caller)
-      end
-
-      it 'does not submit events when feature flag is disabled' do
-        allow(Flipper).to receive(:enabled?).with(:vba_documents_enable_kafka_tracking).and_return(false)
-        allow(VBADocuments::PDFInspector).to receive(:new).and_return(
-          instance_double(VBADocuments::PDFInspector, pdf_data: pdf_data_527ez)
         )
 
         expect(Kafka).not_to receive(:submit_event)
@@ -308,10 +296,6 @@ RSpec.describe VBADocuments::UploadProcessor, type: :job do
     end
 
     context 'sidekiq retries exhausted callback' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:vba_documents_enable_kafka_tracking).and_return(true)
-      end
-
       it 'submits an error event for 21P-527EZ uploads' do
         tracked_upload = create(
           :upload_submission,
