@@ -47,8 +47,7 @@ module DebtsApi
         'debt_amounts' => debt_amounts,
         'debt_type' => VHA_TYPE_KEY,
         'flags' => enabled_flags,
-        'streamlined' => @streamlined_data,
-        'zipcode' => @form_data.dig('personalData', 'address', 'zipOrPostalCode') || '???'
+        'streamlined' => @streamlined_data
       }
     end
 

@@ -191,27 +191,6 @@ module DebtsApi
       form
     end
 
-    def build_public_metadata(form_builder, form, debts)
-      begin
-        enabled_flags = Flipper.features.select { |feature| feature.enabled?(@user) }.map do |feature|
-          feature.name.to_s
-        end.sort
-      rescue => e
-        Rails.logger.error('Failed to source user flags', e.message)
-        enabled_flags = []
-      end
-      debt_amounts = debts.nil? ? [] : debts.map { |debt| debt['currentAR'] || debt['pHAmtDue'] }
-      debt_type = debts&.pick('debtType')
-      {
-        'combined' => form_builder.is_combined,
-        'debt_amounts' => debt_amounts,
-        'debt_type' => debt_type,
-        'flags' => enabled_flags,
-        'streamlined' => form_builder.streamlined_data,
-        'zipcode' => form.dig('personalData', 'address', 'zipOrPostalCode') || '???'
-      }
-    end
-
     def persist_vha_form_submission(fsr_builder)
       fsr_builder.vha_forms.map(&:persist_form_submission)
     end

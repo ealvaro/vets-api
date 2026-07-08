@@ -44,8 +44,7 @@ module DebtsApi
         'debt_amounts' => debt_amounts,
         'debt_type' => VBA_TYPE_KEY,
         'flags' => enabled_flags,
-        'streamlined' => nil,
-        'zipcode' => @form_data.dig('personalData', 'address', 'zipOrPostalCode') || '???'
+        'streamlined' => nil
       }
     end
 
