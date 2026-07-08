@@ -729,6 +729,9 @@ lgy:
   app_id: VAGOVSERVICE
   base_url: <%= ENV['lgy__base_url'] %>
   mock_coe: <%= ENV['lgy__mock_coe'] %>
+lgy_mobile:
+  api_key: <%= ENV['lgy_mobile__api_key'] %>
+  app_id: <%= ENV['lgy_mobile__app_id'] %>
 lgy_sahsha:
   api_key: <%= ENV['lgy_sahsha__api_key'] %>
   app_id: <%= ENV['lgy_sahsha__app_id'] %>

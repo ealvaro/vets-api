@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'common/exceptions/record_not_found'
-require 'lgy/service'
+require 'mobile/v0/lgy/service'
 require 'lighthouse/letters_generator/content'
 require 'lighthouse/letters_generator/service'
 
@@ -240,7 +240,7 @@ module Mobile
       end
 
       def lgy_service
-        LGY::Service.new(edipi: @current_user.edipi, icn: @current_user.icn)
+        Mobile::V0::Lgy::Service.new(edipi: @current_user.edipi, icn: @current_user.icn)
       end
     end
   end

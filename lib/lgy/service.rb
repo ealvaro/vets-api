@@ -174,15 +174,13 @@ module LGY
 
     def request_headers
       {
-        Authorization: "api-key { \"appId\":\"#{Settings.lgy.app_id}\", \"apiKey\": \"#{Settings.lgy.api_key}\"}"
+        Authorization: "api-key { \"appId\":\"#{config.app_id}\", \"apiKey\": \"#{config.api_key}\"}"
       }
     end
 
     def sahsha_request_headers
       {
-        Authorization: "api-key { \"appId\":\"#{Settings.lgy_sahsha.app_id}\", \"apiKey\": \"#{
-          Settings.lgy_sahsha.api_key
-        }\"}"
+        Authorization: "api-key { \"appId\":\"#{config.sahsha_app_id}\", \"apiKey\": \"#{config.sahsha_api_key}\"}"
       }
     end
 

@@ -728,6 +728,9 @@ lgy:
   app_id: ~
   base_url: http://www.example.com
   mock_coe: true
+lgy_mobile:
+  api_key: ~
+  app_id: ~
 lgy_sahsha:
   api_key: ~
   app_id: ~

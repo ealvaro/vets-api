@@ -23,6 +23,26 @@ module LGY
       Settings.lgy.base_url
     end
 
+    # @return [String] the LGY app id
+    def app_id
+      Settings.lgy.app_id
+    end
+
+    # @return [String] the LGY api key
+    def api_key
+      Settings.lgy.api_key
+    end
+
+    # @return [String] the LGY SAHSHA app id
+    def sahsha_app_id
+      Settings.lgy_sahsha.app_id
+    end
+
+    # @return [String] the LGY SAHSHA api key
+    def sahsha_api_key
+      Settings.lgy_sahsha.api_key
+    end
+
     def service_name
       'LoanGuaranty'
     end
