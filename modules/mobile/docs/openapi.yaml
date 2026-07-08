@@ -329,58 +329,6 @@ paths:
       security:
         - Bearer: []
       summary: /v0/appointments/cancel/{cancelId}
-  /v0/appointments/check-in:
-    post:
-      description: Check into an appointment.
-      parameters:
-        - $ref: '#/components/parameters/InflectionHeader'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              properties:
-                appointmentIEN:
-                  type: string
-                locationId:
-                  type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: ./schemas/AppointmentCheckin.yml
-          description: OK
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: ./schemas/AppointmentCheckinErrors400.yml
-          description: Bad request.
-        '401':
-          $ref: '#/components/responses/401'
-        '403':
-          $ref: '#/components/responses/403'
-        '404':
-          $ref: '#/components/responses/404'
-        '408':
-          $ref: '#/components/responses/408'
-        '422':
-          $ref: '#/components/responses/422'
-        '500':
-          content:
-            application/json:
-              schema:
-                $ref: ./schemas/AppointmentCheckinErrors500.yml
-          description: An internal API error occurred.
-        '502':
-          $ref: '#/components/responses/502'
-        '503':
-          $ref: '#/components/responses/503'
-        '504':
-          $ref: '#/components/responses/504'
-      security:
-        - Bearer: []
-      summary: /v0/appointments/check-in
   /v0/appointments/check-in/demographics:
     get:
       description: Retrieves demographics confirmation information which includes a field indicating if insurance verification is needed, patient contact information, emergency contact information and next-of-kin contact information.

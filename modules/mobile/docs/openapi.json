@@ -1165,94 +1165,6 @@
         "summary": "/v0/appointments/cancel/{cancelId}"
       }
     },
-    "/v0/appointments/check-in": {
-      "post": {
-        "description": "Check into an appointment.",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/InflectionHeader"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "properties": {
-                  "appointmentIEN": {
-                    "type": "string"
-                  },
-                  "locationId": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AppointmentCheckin"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AppointmentCheckinErrors400"
-                }
-              }
-            },
-            "description": "Bad request."
-          },
-          "401": {
-            "$ref": "#/components/responses/401"
-          },
-          "403": {
-            "$ref": "#/components/responses/403"
-          },
-          "404": {
-            "$ref": "#/components/responses/404"
-          },
-          "408": {
-            "$ref": "#/components/responses/408"
-          },
-          "422": {
-            "$ref": "#/components/responses/422"
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AppointmentCheckinErrors500"
-                }
-              }
-            },
-            "description": "An internal API error occurred."
-          },
-          "502": {
-            "$ref": "#/components/responses/502"
-          },
-          "503": {
-            "$ref": "#/components/responses/503"
-          },
-          "504": {
-            "$ref": "#/components/responses/504"
-          }
-        },
-        "security": [
-          {
-            "Bearer": []
-          }
-        ],
-        "summary": "/v0/appointments/check-in"
-      }
-    },
     "/v0/appointments/check-in/demographics": {
       "get": {
         "description": "Retrieves demographics confirmation information which includes a field indicating if insurance verification is needed, patient contact information, emergency contact information and next-of-kin contact information.",
@@ -11499,223 +11411,6 @@
           }
         }
       },
-      "AppointmentCheckin": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "data"
-        ],
-        "properties": {
-          "data": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "type",
-              "id",
-              "attributes"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "example": "check_in"
-              },
-              "id": {
-                "type": "string",
-                "example": "75db6a5c-84ae-4ca4-bba2-ef4c41d563ab",
-                "description": "user uuid"
-              },
-              "attributes": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "id",
-                  "code",
-                  "message"
-                ],
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "example": "75db6a5c-84ae-4ca4-bba2-ef4c41d563ab",
-                    "description": "user uuid"
-                  },
-                  "code": {
-                    "type": "string",
-                    "example": "check-in-success"
-                  },
-                  "message": {
-                    "type": "string",
-                    "example": "Check-In successful"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "AppointmentCheckinErrors400": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "errors"
-        ],
-        "properties": {
-          "errors": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "title",
-                "detail",
-                "code",
-                "status"
-              ],
-              "properties": {
-                "title": {
-                  "type": "string",
-                  "example": "Unsuccessful Operation"
-                },
-                "detail": {
-                  "type": [
-                    "array",
-                    "string"
-                  ],
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "example": "12345"
-                      },
-                      "errors": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "additionalProperties": false,
-                          "properties": {
-                            "status": {
-                              "type": "string",
-                              "enum": [
-                                "400"
-                              ]
-                            },
-                            "title": {
-                              "type": "string",
-                              "enum": [
-                                "patient-contact-info-needs-update",
-                                "patient-emergency-contact-needs-update",
-                                "patient-next-of-kin-needs-update",
-                                "patient-insurance-needs-update",
-                                "appointment-check-in-too-late"
-                              ]
-                            }
-                          }
-                        }
-                      },
-                      "message": {
-                        "type": "string",
-                        "example": "Check-in unsuccessful with appointmentIen: 38846, patientDfn: 366, stationNo: 530"
-                      },
-                      "type": {
-                        "type": "string",
-                        "example": "AuthenticatedCheckinResponse"
-                      }
-                    }
-                  }
-                },
-                "code": {
-                  "type": "string",
-                  "example": "CHIP_400"
-                },
-                "status": {
-                  "type": "string",
-                  "enum": [
-                    "400"
-                  ]
-                }
-              }
-            }
-          }
-        }
-      },
-      "AppointmentCheckinErrors500": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "errors"
-        ],
-        "properties": {
-          "errors": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "title",
-                "detail",
-                "code",
-                "status"
-              ],
-              "properties": {
-                "title": {
-                  "type": "string",
-                  "example": "Internal Server Error"
-                },
-                "detail": {
-                  "type": "array",
-                  "description": "Detail status and title can be found at either errors[0]['detail'][0] or errors[0]['detail'][0]['errors'][0].",
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "properties": {
-                      "errors": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "additionalProperties": false,
-                          "properties": {
-                            "status": {
-                              "type": "string",
-                              "enum": [
-                                "500"
-                              ]
-                            },
-                            "title": {
-                              "type": "string",
-                              "example": "Authenticated Check-in vista error"
-                            }
-                          }
-                        }
-                      },
-                      "status": {
-                        "type": "string",
-                        "enum": [
-                          "500"
-                        ]
-                      },
-                      "title": {
-                        "type": "string",
-                        "example": "Authenticated Check-in vista error"
-                      }
-                    }
-                  }
-                },
-                "code": {
-                  "type": "string",
-                  "example": "CHIP_500"
-                },
-                "status": {
-                  "type": "string",
-                  "enum": [
-                    "500"
-                  ]
-                }
-              }
-            }
-          }
-        }
-      },
       "AppointmentCheckinDemographics": {
         "type": "object",
         "additionalProperties": false,
@@ -12027,6 +11722,83 @@
                       }
                     }
                   }
+                }
+              }
+            }
+          }
+        }
+      },
+      "AppointmentCheckinErrors500": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "errors"
+        ],
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "title",
+                "detail",
+                "code",
+                "status"
+              ],
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "example": "Internal Server Error"
+                },
+                "detail": {
+                  "type": "array",
+                  "description": "Detail status and title can be found at either errors[0]['detail'][0] or errors[0]['detail'][0]['errors'][0].",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "errors": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "500"
+                              ]
+                            },
+                            "title": {
+                              "type": "string",
+                              "example": "Authenticated Check-in vista error"
+                            }
+                          }
+                        }
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "500"
+                        ]
+                      },
+                      "title": {
+                        "type": "string",
+                        "example": "Authenticated Check-in vista error"
+                      }
+                    }
+                  }
+                },
+                "code": {
+                  "type": "string",
+                  "example": "CHIP_500"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "500"
+                  ]
                 }
               }
             }
@@ -13567,7 +13339,7 @@
         "properties": {
           "tracked_item_id": {
             "type": "integer",
-            "example": 360052
+            "example": "360_052"
           },
           "file_type": {
             "type": "integer",
@@ -13600,7 +13372,7 @@
           },
           "tracked_item_id": {
             "type": "integer",
-            "example": 360052
+            "example": "360_052"
           },
           "description": {
             "type": "string",
