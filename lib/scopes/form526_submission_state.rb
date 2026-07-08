@@ -113,16 +113,24 @@ module Scopes
       }
 
       scope :failure_type, lambda {
-        # filtering in stages avoids timeouts. see doc for more info
-        allids = where(submitted_claim_id: nil).pluck(:id)
-        filter1 = where(id: allids - accepted_to_primary_path.pluck(:id)).pluck(:id)
-        filter2 = where(id: filter1 - accepted_to_backup_path.pluck(:id)).pluck(:id)
-        filter3 = where(id: filter2 - remediated.pluck(:id)).pluck(:id)
-        filter4 = where(id: filter3 - paranoid_success.pluck(:id)).pluck(:id)
-        filter5 = where(id: filter4 - success_by_age.pluck(:id)).pluck(:id)
-        filter_final = where(id: filter5 - incomplete_type.pluck(:id)).pluck(:id)
+        # Anything that is not success_type or incomplete_type. Each success/incomplete
+        # subset is plucked independently and subtracted in Ruby to avoid the PG timeouts
+        # that a single chained where.not(id: subquery) caused. See doc for more info.
+        #
+        # NOTE: accepted_to_primary_path is intentionally NOT subtracted. Every record in
+        # it has a non-nil submitted_claim_id, so it can never overlap with the
+        # `submitted_claim_id: nil` base set below. Plucking it loaded the entire all-time
+        # primary-success set into memory every run for zero effect on the result.
+        #
+        # NOTE: success_by_age is a strict subset of the paranoid_success enum scope, so it
+        # is already removed by the paranoid_success subtraction and does not need its own.
+        ids = where(submitted_claim_id: nil).pluck(:id)
+        ids -= accepted_to_backup_path.where(submitted_claim_id: nil).pluck(:id)
+        ids -= remediated.where(submitted_claim_id: nil).pluck(:id)
+        ids -= paranoid_success.where(submitted_claim_id: nil).pluck(:id)
+        ids -= incomplete_type.pluck(:id)
 
-        where(id: filter_final, submitted_claim_id: nil)
+        where(id: ids, submitted_claim_id: nil)
       }
     end
     # rubocop:enable Metrics/BlockLength
