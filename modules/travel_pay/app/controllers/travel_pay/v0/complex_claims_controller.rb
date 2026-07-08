@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'logging/monitor'
+
 module TravelPay
   module V0
     class ComplexClaimsController < ApplicationController
@@ -11,6 +13,7 @@ module TravelPay
 
       before_action :complex_claims_enabled?
 
+      # Submits a previously created complex claim by claim_id.
       def submit
         claim_id = params[:claim_id]
         validate_uuid_exists!(claim_id, 'Claim')
@@ -22,6 +25,13 @@ module TravelPay
 
         increment_submit_statsd('success')
         render json: submitted_claim, status: :created
+      rescue Common::Exceptions::BackendServiceException => e
+        increment_submit_statsd('failure')
+        raise if unified_error_handling_enabled?
+
+        monitor.track_request(:error, "BTSSS error submitting complex claim: #{e.message}",
+                              'travel_pay.claims.complex.submit.backend_error')
+        render json: { error: 'Error submitting complex claim' }, status: e.original_status || :bad_gateway
       rescue Faraday::Error => e
         increment_submit_statsd('failure')
         raise if unified_error_handling_enabled?
@@ -32,13 +42,10 @@ module TravelPay
         raise
       end
 
+      # Creates a complex claim, resolving or creating an appointment first.
       def create
         appointment_source = validate_appointment_source!(request.query_parameters[:appointment_source])
-        permitted_params = require_and_permit_claim_params(params)
-        validate_required_params!(permitted_params)
-        validate_datetime_format!(permitted_params[:appointment_date_time])
-
-        appt_id = resolve_appt_id!(permitted_params)
+        appt_id = resolve_appt_id!(validated_claim_params!)
         claim_id = create_claim(appt_id, 'Complex')
         increment_statsd(appointment_source, 'success')
         render json: { claimId: claim_id }, status: :created
@@ -46,8 +53,12 @@ module TravelPay
         increment_statsd(appointment_source, 'failure')
         raise if unified_error_handling_enabled?
 
-        Rails.logger.error("Appointment not found: #{e.message}")
-        render json: { error: e.message }, status: :not_found
+        legacy_handle_create_not_found(e)
+      rescue Common::Exceptions::BackendServiceException => e
+        increment_statsd(appointment_source, 'failure')
+        raise if unified_error_handling_enabled?
+
+        legacy_handle_create_backend_error(e)
       rescue Faraday::Error => e
         increment_statsd(appointment_source, 'failure')
         raise if unified_error_handling_enabled?
@@ -143,6 +154,29 @@ module TravelPay
         Rails.logger.error("Faraday error creating complex claim: #{e.message}")
         status_code = (e.respond_to?(:response) && e.response && e.response[:status]) || :internal_server_error
         render json: { error: 'Error creating complex claim' }, status: status_code
+      end
+
+      def legacy_handle_create_not_found(e)
+        monitor.track_request(:error, "Appointment not found: #{e.message}",
+                              'travel_pay.claims.complex.create.not_found')
+        render json: { error: e.message }, status: :not_found
+      end
+
+      def legacy_handle_create_backend_error(e)
+        monitor.track_request(:error, "BTSSS error creating complex claim: #{e.message}",
+                              'travel_pay.claims.complex.create.backend_error')
+        render json: { error: 'Error creating complex claim' }, status: e.original_status || :bad_gateway
+      end
+
+      def monitor
+        @monitor ||= Logging::Monitor.new('travel-pay-complex-claims')
+      end
+
+      def validated_claim_params!
+        permitted = require_and_permit_claim_params(params)
+        validate_required_params!(permitted)
+        validate_datetime_format!(permitted[:appointment_date_time])
+        permitted
       end
 
       def complex_claims_enabled?
