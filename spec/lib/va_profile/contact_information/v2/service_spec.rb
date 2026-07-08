@@ -851,6 +851,63 @@ describe VAProfile::ContactInformation::V2::Service do
     end
   end
 
+  context 'When measuring VA Profile contact-info request latency' do
+    let(:latency_metric) { "#{VAProfile::Service::STATSD_KEY_PREFIX}.contact_info.latency" }
+
+    context 'for a write (post/put) call' do
+      let(:email) { build(:email, source_system_user: user.icn) }
+
+      it 'measures latency on the success path tagged with operation and contact_type' do
+        VCR.use_cassette('va_profile/v2/contact_information/post_email_success', VCR::MATCH_EVERYTHING) do
+          email.email_address = 'person42@example.com'
+
+          expect { subject.post_email(email) }.to trigger_statsd_measure(
+            latency_metric,
+            tags: ['operation:create', 'contact_type:email']
+          )
+        end
+      end
+
+      it 'measures latency on the failure path' do
+        VCR.use_cassette('va_profile/v2/contact_information/post_email_w_id_error', VCR::MATCH_EVERYTHING) do
+          email.id = 42
+          email.email_address = 'person42@example.com'
+
+          expect do
+            expect { subject.post_email(email) }.to raise_error(Common::Exceptions::BackendServiceException)
+          end.to trigger_statsd_measure(
+            latency_metric,
+            tags: ['operation:create', 'contact_type:email']
+          )
+        end
+      end
+    end
+
+    context 'for a transaction status polling call' do
+      it 'measures latency tagged with operation and contact_type' do
+        transaction_id = '5b4550b3-2bcb-4fef-8906-35d0b4b310a8'
+
+        VCR.use_cassette('va_profile/v2/contact_information/email_transaction_status') do
+          expect { subject.get_email_transaction_status(transaction_id) }.to trigger_statsd_measure(
+            latency_metric,
+            tags: ['operation:poll_status', 'contact_type:email']
+          )
+        end
+      end
+    end
+
+    context 'for a read (get_person) call', :skip_va_profile_user do
+      it 'measures latency tagged with operation and contact_type' do
+        VCR.use_cassette('va_profile/v2/contact_information/person', VCR::MATCH_EVERYTHING) do
+          expect { subject.get_person }.to trigger_statsd_measure(
+            latency_metric,
+            tags: ['operation:read', 'contact_type:person']
+          )
+        end
+      end
+    end
+  end
+
   describe '#get_person error', :skip_va_profile_user do
     let(:user) { build(:user, :loa3) }
 

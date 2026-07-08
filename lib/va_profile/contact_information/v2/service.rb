@@ -44,7 +44,9 @@ module VAProfile
           with_monitoring do
             verify_vet360_id!
 
-            raw_response = perform(:get, "#{MPI::Constants::VA_ROOT_OID}/#{ERB::Util.url_encode(vet360_aaid)}")
+            raw_response = measure_latency(operation: 'read', contact_type: 'person') do
+              perform(:get, "#{MPI::Constants::VA_ROOT_OID}/#{ERB::Util.url_encode(vet360_aaid)}")
+            end
             PersonResponse.from(raw_response)
           end
         rescue Common::Client::Errors::ClientError => e
@@ -237,6 +239,19 @@ module VAProfile
 
         private
 
+        # Emits `api.va_profile.contact_info.latency` (ms), success and failure, via `ensure`.
+        # Tags stay low-cardinality and PII-safe. Not registered via StatsDMetric.
+        # Matches the `measure_gateway` pattern in Forms::SubmissionStatuses::Report.
+        def measure_latency(operation:, contact_type: nil)
+          start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          yield
+        ensure
+          duration = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000
+          tags = ["operation:#{operation}"]
+          tags << "contact_type:#{contact_type}" if contact_type
+          StatsD.measure("#{STATSD_KEY_PREFIX}.contact_info.latency", duration, tags:)
+        end
+
         def verify_vet360_id!
           if @user&.vet360_id.blank?
             raise Errors::MissingUserVAProfileIdError,
@@ -318,11 +333,16 @@ module VAProfile
         end
 
         def post_or_put_data(method, model, path, response_class)
-          with_monitoring do
-            verify_user!
-            request_path = "#{MPI::Constants::VA_ROOT_OID}/#{ERB::Util.url_encode(vaprofile_aaid)}" + "/#{path}"
-            raw_response = perform(method, request_path, model.in_json)
-            response_class.from(raw_response)
+          operation = method == :post ? 'create' : 'update'
+          contact_type = VAProfile::Stats.contact_type_from_path(path)
+
+          measure_latency(operation:, contact_type:) do
+            with_monitoring do
+              verify_user!
+              request_path = "#{MPI::Constants::VA_ROOT_OID}/#{ERB::Util.url_encode(vaprofile_aaid)}" + "/#{path}"
+              raw_response = perform(method, request_path, model.in_json)
+              response_class.from(raw_response)
+            end
           end
         rescue => e
           log_transaction_failure(method, path, e)
@@ -330,11 +350,15 @@ module VAProfile
         end
 
         def get_transaction_status(path, response_class)
-          with_monitoring do
-            raw_response = perform(:get, path)
-            VAProfile::Stats.increment_transaction_results(raw_response, path:)
+          contact_type = VAProfile::Stats.contact_type_from_path(path)
 
-            response_class.from(raw_response)
+          measure_latency(operation: 'poll_status', contact_type:) do
+            with_monitoring do
+              raw_response = perform(:get, path)
+              VAProfile::Stats.increment_transaction_results(raw_response, path:)
+
+              response_class.from(raw_response)
+            end
           end
         rescue => e
           log_transaction_status_failure(path, response_class, e)

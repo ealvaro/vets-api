@@ -53,17 +53,23 @@ module VAProfile
         StatsD.increment("#{STATSD_KEY_PREFIX}.exceptions", tags: ["exception:#{key.downcase}"])
       end
 
-      private
-
-      def status_in(response)
-        response&.body&.dig('tx_status')&.upcase
-      end
-
+      # Derives a contact_type tag from a request path. Handles write paths ('telephones')
+      # and status paths ('telephones/status/123'); returns a KNOWN_CONTACT_TYPES value or nil.
+      #
+      # @param path [String, nil] the request path
+      # @return [String, nil] one of KNOWN_CONTACT_TYPES ('address'/'email'/'telephone'), or nil
+      #
       def contact_type_from_path(path)
         segment = path.to_s.split('/').first
         return unless segment
 
         KNOWN_CONTACT_TYPES.find { |type| segment.start_with?(type) }
+      end
+
+      private
+
+      def status_in(response)
+        response&.body&.dig('tx_status')&.upcase
       end
 
       def error_code_in(response)
