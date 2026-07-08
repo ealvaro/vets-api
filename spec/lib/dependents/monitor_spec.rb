@@ -146,7 +146,8 @@ RSpec.describe Dependents::Monitor do
                                                        function: 'track_event',
                                                        line: a_kind_of(Integer),
                                                        service: 'dependents-application',
-                                                       statsd: 'test.monitor.exhaustion'
+                                                       statsd: 'test.monitor.exhaustion',
+                                                       safe_keys: []
                                                      })
 
         monitor_v2.track_event('error', 'Error!', 'test.monitor.exhaustion', error: 'test')
@@ -170,7 +171,8 @@ RSpec.describe Dependents::Monitor do
                                                       function: 'track_event',
                                                       line: a_kind_of(Integer),
                                                       service: 'dependents-application',
-                                                      statsd: 'test.monitor.success'
+                                                      statsd: 'test.monitor.success',
+                                                      safe_keys: []
                                                     })
 
         monitor_v2.track_event('info', 'Success!', 'test.monitor.success', error: 'test')
@@ -194,7 +196,8 @@ RSpec.describe Dependents::Monitor do
                                                       function: 'track_event',
                                                       line: a_kind_of(Integer),
                                                       service: 'dependents-application',
-                                                      statsd: 'test.monitor.failure'
+                                                      statsd: 'test.monitor.failure',
+                                                      safe_keys: []
                                                     })
 
         monitor_v2.track_event('warn', 'Oops!', 'test.monitor.failure', error: 'test')
@@ -234,7 +237,8 @@ RSpec.describe Dependents::Monitor do
                                                       function: 'track_event',
                                                       line: a_kind_of(Integer),
                                                       service: 'dependents-application',
-                                                      statsd: 'test.monitor.success'
+                                                      statsd: 'test.monitor.success',
+                                                      safe_keys: []
                                                     })
 
         monitor_v2.track_event('info', 'Success!', 'test.monitor.success', error: 'test')

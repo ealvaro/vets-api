@@ -75,7 +75,8 @@ module Logging
         function:,
         file:,
         line:,
-        context: filtered_context
+        context: filtered_context,
+        safe_keys: @safe_keys
       }
       Rails.logger.public_send(level, message.to_s, **payload)
     end
