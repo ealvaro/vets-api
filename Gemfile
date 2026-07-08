@@ -181,6 +181,7 @@ gem 'vets_json_schema', git: 'https://va.ghe.com/software/vets-json-schema', bra
 gem 'virtus'
 gem 'warden-github'
 gem 'waterdrop'
+gem 'webauthn'
 gem 'will_paginate'
 gem 'with_advisory_lock'
 
