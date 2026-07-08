@@ -872,6 +872,7 @@ config/initializers/okcomputer.rb @software/backend-review-group
 config/initializers/octokit.rb @software/backend-review-group
 config/initializers/override_redirect_to_logging.rb @software/octo-identity
 config/initializers/rack_attack.rb @software/backend-review-group
+config/initializers/rack_forwarded_header_priority.rb @software/backend-review-group
 config/initializers/rails_semantic_logger_patch.rb @software/backend-review-group
 config/initializers/rack_timeout.rb @software/backend-review-group
 config/initializers/renderers.rb @software/vfs-facilities-frontend @software/backend-review-group
