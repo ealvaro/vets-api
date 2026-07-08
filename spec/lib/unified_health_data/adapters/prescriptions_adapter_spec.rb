@@ -1685,14 +1685,16 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
       vista_medication_data.merge(
         'isTrackable' => true,
         'dispStatus' => 'Active: Shipped',
-        'trackingInfo' => [
-          {
-            'trackingNumber' => '1Z999AA10123456784',
-            'shippedDate' => shipped_date,
-            'deliveryService' => 'UPS',
-            'otherPrescriptionListIncluded' => []
-          }
-        ],
+        'trackingList' => {
+          'tracking' => [
+            {
+              'trackingNumber' => '1Z999AA10123456784',
+              'completeDateTime' => shipped_date,
+              'carrier' => 'UPS',
+              'otherPrescriptionListIncluded' => []
+            }
+          ]
+        },
         'rxRFRecords' => {
           'rfRecord' => [
             {
@@ -1781,7 +1783,7 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
 
     context 'when prescription has no tracking info' do
       it 'does not modify disp_status or is_trackable' do
-        # Default vista_medication_data has no trackingInfo
+        # Default vista_medication_data has no trackingList
         result = subject.parse(unified_response)
         vista_rx = result[:prescriptions].find { |p| p.prescription_id == '28148665' }
 
@@ -1793,20 +1795,22 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
     context 'when prescription has multiple tracking entries' do
       let(:vista_med_with_multiple_tracking) do
         vista_med_with_tracking.merge(
-          'trackingInfo' => [
-            {
-              'trackingNumber' => '1Z999AA10123456784',
-              'shippedDate' => 20.days.ago.utc.iso8601(3),
-              'deliveryService' => 'UPS',
-              'otherPrescriptionListIncluded' => []
-            },
-            {
-              'trackingNumber' => '1Z999AA10123456785',
-              'shippedDate' => 3.days.ago.utc.iso8601(3),
-              'deliveryService' => 'USPS',
-              'otherPrescriptionListIncluded' => []
-            }
-          ]
+          'trackingList' => {
+            'tracking' => [
+              {
+                'trackingNumber' => '1Z999AA10123456784',
+                'completeDateTime' => 20.days.ago.utc.iso8601(3),
+                'carrier' => 'UPS',
+                'otherPrescriptionListIncluded' => []
+              },
+              {
+                'trackingNumber' => '1Z999AA10123456785',
+                'completeDateTime' => 3.days.ago.utc.iso8601(3),
+                'carrier' => 'USPS',
+                'otherPrescriptionListIncluded' => []
+              }
+            ]
+          }
         )
       end
 
@@ -1831,14 +1835,16 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
     context 'when tracking has invalid shipped date' do
       let(:vista_med_with_bad_tracking) do
         vista_med_with_tracking.merge(
-          'trackingInfo' => [
-            {
-              'trackingNumber' => '1Z999AA10123456784',
-              'shippedDate' => 'not-a-date',
-              'deliveryService' => 'UPS',
-              'otherPrescriptionListIncluded' => []
-            }
-          ]
+          'trackingList' => {
+            'tracking' => [
+              {
+                'trackingNumber' => '1Z999AA10123456784',
+                'completeDateTime' => 'not-a-date',
+                'carrier' => 'UPS',
+                'otherPrescriptionListIncluded' => []
+              }
+            ]
+          }
         )
       end
 

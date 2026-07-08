@@ -79,38 +79,32 @@ module UnifiedHealthData
       end
 
       def build_tracking_information(medication)
-        tracking_info = medication['trackingInfo'] || []
-        return [] unless tracking_info.is_a?(Array)
-
-        tracking_info.map do |tracking|
+        extract_tracking_array(medication).map do |tracking|
           {
             prescription_name: medication['prescriptionName'],
             prescription_number: medication['prescriptionNumber'],
-            ndc_number: medication['ndcNumber'],
+            ndc_number: tracking['ndc'] || medication['ndc'],
             prescription_id: medication['prescriptionId'],
             tracking_number: tracking['trackingNumber'],
-            complete_date_time: format_shipped_date(tracking['shippedDate']),
-            carrier: tracking['deliveryService'],
-            other_prescriptions: build_other_prescriptions(tracking['otherPrescriptionListIncluded'] || [])
+            complete_date_time: format_shipped_date(tracking['completeDateTime']),
+            carrier: tracking['carrier'],
+            others_in_same_package: tracking['othersInSamePackage'] || false
           }
         end
+      end
+
+      # Extracts the tracking array from the medication.
+      # Format: trackingList is a Hash with a 'tracking' array.
+      def extract_tracking_array(medication)
+        tracking_list = medication['trackingList']
+        return [] unless tracking_list.is_a?(Hash)
+
+        entries = tracking_list['tracking']
+        entries.is_a?(Array) ? entries : []
       end
 
       def format_shipped_date(date_string)
         convert_to_iso8601(date_string, field_name: 'shipped_date')
-      end
-
-      def build_other_prescriptions(other_prescriptions)
-        return [] unless other_prescriptions.is_a?(Array)
-
-        other_prescriptions.map do |prescription|
-          {
-            prescription_name: prescription['prescriptionName'],
-            prescription_number: prescription['prescriptionNumber'],
-            ndc_number: prescription['ndcNumber'],
-            station_number: prescription['stationNumber']
-          }
-        end
       end
 
       def build_dispenses_information(medication)

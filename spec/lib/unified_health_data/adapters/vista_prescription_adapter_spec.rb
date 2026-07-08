@@ -45,35 +45,25 @@ describe UnifiedHealthData::Adapters::VistaPrescriptionAdapter do
       'dispensedDate' => 'Tue, 15 Jul 2025 00:00:00 EDT',
       'stationNumber' => '660',
       'cmopDivisionPhone' => '555-9876',
-      'ndcNumber' => '00093-1058-01',
+      'ndc' => '00093-1058-01',
       'dataSourceSystem' => 'VISTA',
-      'trackingInfo' => [
-        {
-          'trackingNumber' => '1Z999AA1012345675',
-          'shippedDate' => 'Wed, 16 Jul 2025 10:30:00 EDT',
-          'deliveryService' => 'UPS',
-          'otherPrescriptionListIncluded' => [
-            {
-              'prescriptionName' => 'LISINOPRIL 10MG TAB',
-              'prescriptionNumber' => '3636487',
-              'ndcNumber' => '00591-0405-01',
-              'stationNumber' => '660'
-            },
-            {
-              'prescriptionName' => 'ATORVASTATIN 20MG TAB',
-              'prescriptionNumber' => '3636488',
-              'ndcNumber' => '00071-0155-23',
-              'stationNumber' => '660'
-            }
-          ]
-        },
-        {
-          'trackingNumber' => '1Z999AA1012345676',
-          'shippedDate' => 'Thu, 17 Jul 2025 14:15:00 EDT',
-          'deliveryService' => 'UPS',
-          'otherPrescriptionListIncluded' => []
-        }
-      ]
+      'trackingList' => {
+        'tracking' => [
+          {
+            'trackingNumber' => '1Z999AA1012345675',
+            'completeDateTime' => 'Wed, 16 Jul 2025 10:30:00 EDT',
+            'carrier' => 'UPS',
+            'ndc' => '00093-1058-01',
+            'othersInSamePackage' => true
+          },
+          {
+            'trackingNumber' => '1Z999AA1012345676',
+            'completeDateTime' => 'Thu, 17 Jul 2025 14:15:00 EDT',
+            'carrier' => 'UPS',
+            'othersInSamePackage' => false
+          }
+        ]
+      }
     }
   end
 
@@ -429,26 +419,22 @@ describe UnifiedHealthData::Adapters::VistaPrescriptionAdapter do
   end
 
   describe '#build_tracking_information' do
-    context 'with trackingInfo present' do
+    context 'with trackingList (current format)' do
       let(:medication_with_tracking) do
         base_vista_medication.merge(
           'isTrackable' => true,
-          'ndcNumber' => '12345-678-90',
-          'trackingInfo' => [
-            {
-              'trackingNumber' => '1Z999AA1012345675',
-              'shippedDate' => 'Wed, 07 Sep 2016 00:00:00 EDT',
-              'deliveryService' => 'UPS',
-              'otherPrescriptionListIncluded' => [
-                {
-                  'prescriptionName' => 'LISINOPRIL 10MG TAB',
-                  'prescriptionNumber' => 'RX456',
-                  'ndcNumber' => '00591-0405-01',
-                  'stationNumber' => '660'
-                }
-              ]
-            }
-          ]
+          'ndc' => '12345-678-90',
+          'trackingList' => {
+            'tracking' => [
+              {
+                'trackingNumber' => '1Z999AA1012345675',
+                'completeDateTime' => 'Wed, 07 Sep 2016 00:00:00 EDT',
+                'carrier' => 'UPS',
+                'ndc' => '99999-111-22',
+                'othersInSamePackage' => true
+              }
+            ]
+          }
         )
       end
 
@@ -462,19 +448,12 @@ describe UnifiedHealthData::Adapters::VistaPrescriptionAdapter do
         expect(tracking).to include(
           prescription_name: 'Test Medication',
           prescription_number: 'RX123',
-          ndc_number: '12345-678-90',
+          ndc_number: '99999-111-22',
           prescription_id: '12345',
           tracking_number: '1Z999AA1012345675',
-          complete_date_time: '2016-09-07T04:00:00.000Z', # Converted to UTC ISO format
+          complete_date_time: '2016-09-07T04:00:00.000Z',
           carrier: 'UPS',
-          other_prescriptions: [
-            {
-              prescription_name: 'LISINOPRIL 10MG TAB',
-              prescription_number: 'RX456',
-              ndc_number: '00591-0405-01',
-              station_number: '660'
-            }
-          ]
+          others_in_same_package: true
         )
       end
 
@@ -489,27 +468,22 @@ describe UnifiedHealthData::Adapters::VistaPrescriptionAdapter do
       let(:medication_multiple_tracking) do
         base_vista_medication.merge(
           'isTrackable' => true,
-          'trackingInfo' => [
-            {
-              'trackingNumber' => 'TRACK001',
-              'shippedDate' => 'Mon, 05 Sep 2016 08:00:00 EDT',
-              'deliveryService' => 'USPS',
-              'otherPrescriptionListIncluded' => []
-            },
-            {
-              'trackingNumber' => 'TRACK002',
-              'shippedDate' => 'Tue, 06 Sep 2016 10:30:00 EDT',
-              'deliveryService' => 'FedEx',
-              'otherPrescriptionListIncluded' => [
-                {
-                  'prescriptionName' => 'METFORMIN 500MG TAB',
-                  'prescriptionNumber' => 'RX789',
-                  'ndcNumber' => '00093-1058-01',
-                  'stationNumber' => '660'
-                }
-              ]
-            }
-          ]
+          'trackingList' => {
+            'tracking' => [
+              {
+                'trackingNumber' => 'TRACK001',
+                'completeDateTime' => 'Mon, 05 Sep 2016 08:00:00 EDT',
+                'carrier' => 'USPS',
+                'othersInSamePackage' => false
+              },
+              {
+                'trackingNumber' => 'TRACK002',
+                'completeDateTime' => 'Tue, 06 Sep 2016 10:30:00 EDT',
+                'carrier' => 'FedEx',
+                'othersInSamePackage' => true
+              }
+            ]
+          }
         )
       end
 
@@ -524,14 +498,14 @@ describe UnifiedHealthData::Adapters::VistaPrescriptionAdapter do
       end
     end
 
-    context 'with no trackingInfo' do
-      it 'returns empty array when trackingInfo is nil' do
+    context 'with no tracking data' do
+      it 'returns empty array when trackingList is not present' do
         result = subject.send(:build_tracking_information, base_vista_medication)
         expect(result).to eq([])
       end
 
-      it 'returns empty array when trackingInfo is empty array' do
-        medication_empty_tracking = base_vista_medication.merge('trackingInfo' => [])
+      it 'returns empty array when trackingList has empty tracking array' do
+        medication_empty_tracking = base_vista_medication.merge('trackingList' => { 'tracking' => [] })
         result = subject.send(:build_tracking_information, medication_empty_tracking)
         expect(result).to eq([])
       end
@@ -543,13 +517,16 @@ describe UnifiedHealthData::Adapters::VistaPrescriptionAdapter do
       end
     end
 
-    context 'with invalid trackingInfo format' do
-      let(:medication_invalid_tracking) do
-        base_vista_medication.merge('trackingInfo' => 'not-an-array')
+    context 'with invalid tracking format' do
+      it 'returns empty array when trackingList is not a hash' do
+        medication = base_vista_medication.merge('trackingList' => 'not-a-hash')
+        result = subject.send(:build_tracking_information, medication)
+        expect(result).to eq([])
       end
 
-      it 'returns empty array when trackingInfo is not an array' do
-        result = subject.send(:build_tracking_information, medication_invalid_tracking)
+      it 'returns empty array when trackingList.tracking is not an array' do
+        medication = base_vista_medication.merge('trackingList' => { 'tracking' => 'bad' })
+        result = subject.send(:build_tracking_information, medication)
         expect(result).to eq([])
       end
     end
@@ -565,13 +542,15 @@ describe UnifiedHealthData::Adapters::VistaPrescriptionAdapter do
       it 'uses isTrackable field from Vista data when false' do
         medication_not_trackable_with_data = base_vista_medication.merge(
           'isTrackable' => false,
-          'trackingInfo' => [
-            {
-              'trackingNumber' => '1Z999AA1012345675',
-              'shippedDate' => 'Wed, 07 Sep 2016 00:00:00 EDT',
-              'deliveryService' => 'UPS'
-            }
-          ]
+          'trackingList' => {
+            'tracking' => [
+              {
+                'trackingNumber' => '1Z999AA1012345675',
+                'completeDateTime' => 'Wed, 07 Sep 2016 00:00:00 EDT',
+                'carrier' => 'UPS'
+              }
+            ]
+          }
         )
         result = subject.parse(medication_not_trackable_with_data)
         expect(result.is_trackable).to be(false)
@@ -633,70 +612,6 @@ describe UnifiedHealthData::Adapters::VistaPrescriptionAdapter do
         expect(Rails.logger).to have_received(:warn).with(
           "Failed to parse shipped_date 'invalid-date-format': no time information in \"invalid-date-format\""
         )
-      end
-    end
-  end
-
-  describe '#build_other_prescriptions' do
-    context 'with valid other prescriptions array' do
-      let(:other_prescriptions) do
-        [
-          {
-            'prescriptionName' => 'LISINOPRIL 10MG TAB',
-            'prescriptionNumber' => 'RX456',
-            'ndcNumber' => '00591-0405-01',
-            'stationNumber' => '660'
-          },
-          {
-            'prescriptionName' => 'ATORVASTATIN 20MG TAB',
-            'prescriptionNumber' => 'RX789',
-            'ndcNumber' => '00071-0155-23',
-            'stationNumber' => '660'
-          }
-        ]
-      end
-
-      it 'returns formatted other prescriptions array' do
-        result = subject.send(:build_other_prescriptions, other_prescriptions)
-
-        expect(result).to be_an(Array)
-        expect(result.length).to eq(2)
-
-        expect(result).to contain_exactly(
-          {
-            prescription_name: 'LISINOPRIL 10MG TAB',
-            prescription_number: 'RX456',
-            ndc_number: '00591-0405-01',
-            station_number: '660'
-          },
-          {
-            prescription_name: 'ATORVASTATIN 20MG TAB',
-            prescription_number: 'RX789',
-            ndc_number: '00071-0155-23',
-            station_number: '660'
-          }
-        )
-      end
-    end
-
-    context 'with empty array' do
-      it 'returns empty array' do
-        result = subject.send(:build_other_prescriptions, [])
-        expect(result).to eq([])
-      end
-    end
-
-    context 'with nil input' do
-      it 'returns empty array' do
-        result = subject.send(:build_other_prescriptions, nil)
-        expect(result).to eq([])
-      end
-    end
-
-    context 'with non-array input' do
-      it 'returns empty array for non-array input' do
-        result = subject.send(:build_other_prescriptions, 'not-an-array')
-        expect(result).to eq([])
       end
     end
   end
@@ -893,14 +808,14 @@ describe UnifiedHealthData::Adapters::VistaPrescriptionAdapter do
       expect(first_tracking[:tracking_number]).to eq('1Z999AA1012345675')
       expect(first_tracking[:carrier]).to eq('UPS')
       expect(first_tracking[:complete_date_time]).to eq('2025-07-16T14:30:00.000Z')
-      expect(first_tracking[:other_prescriptions].size).to eq(2)
+      expect(first_tracking[:others_in_same_package]).to be(true)
 
       # Check second tracking entry
       second_tracking = prescription.tracking.second
       expect(second_tracking[:tracking_number]).to eq('1Z999AA1012345676')
       expect(second_tracking[:carrier]).to eq('UPS')
       expect(second_tracking[:complete_date_time]).to eq('2025-07-17T18:15:00.000Z')
-      expect(second_tracking[:other_prescriptions]).to eq([])
+      expect(second_tracking[:others_in_same_package]).to be(false)
     end
   end
 
