@@ -33,9 +33,9 @@ module AskVAApi
             expect(response.map(&:topic_type).uniq).to eq(['Topic'])
           end
 
-          it 'returns items sorted by name' do
-            names = response.map(&:name)
-            expect(names).to eq(names.sort)
+          it 'returns items sorted by rank_order' do
+            rank_orders = response.map(&:rank_order)
+            expect(rank_orders).to eq(rank_orders.sort)
           end
         end
 
@@ -63,6 +63,46 @@ module AskVAApi
 
             it 'fetches data using Crm::CacheData service and returns an array of Entity instances' do
               expect(retriever.call).to all(be_a(entity_class))
+            end
+          end
+
+          context 'when sorting with RankOrder values present' do
+            let(:parent_id) { 'cat-1' }
+            let(:parsed_data) do
+              { Topics: [{ Id: 1, Name: 'Zebra', ParentId: 'cat-1', RankOrder: 1 },
+                         { Id: 2, Name: 'Apple', ParentId: 'cat-1', RankOrder: 2 },
+                         { Id: 3, Name: 'Other Topic', ParentId: 'cat-2', RankOrder: 1 }] }
+            end
+
+            before do
+              allow(Crm::CacheData).to receive(:new).and_return(static_data_service)
+              allow(static_data_service).to receive(:call).and_return(parsed_data)
+            end
+
+            it 'sorts by RankOrder as the primary sort key' do
+              expect(retriever.call.map(&:rank_order)).to eq([1, 2])
+            end
+
+            it 'does not fall back to Name when all RankOrder values are present' do
+              expect(retriever.call.map(&:name)).to eq(%w[Zebra Apple])
+            end
+          end
+
+          context 'when any RankOrder value is nil' do
+            let(:parent_id) { 'cat-1' }
+            let(:parsed_data) do
+              { Topics: [{ Id: 1, Name: 'Banana', ParentId: 'cat-1', RankOrder: 2 },
+                         { Id: 2, Name: 'Apple', ParentId: 'cat-1', RankOrder: nil },
+                         { Id: 3, Name: 'Cherry', ParentId: 'cat-1', RankOrder: 1 }] }
+            end
+
+            before do
+              allow(Crm::CacheData).to receive(:new).and_return(static_data_service)
+              allow(static_data_service).to receive(:call).and_return(parsed_data)
+            end
+
+            it 'falls back to sorting by Name' do
+              expect(retriever.call.map(&:name)).to eq(%w[Apple Banana Cherry])
             end
           end
 

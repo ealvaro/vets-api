@@ -24,9 +24,8 @@ module AskVAApi
       def filter_data(data)
         return [] if data[:Topics].blank?
 
-        data[:Topics]
-          .select { |t| t[:ParentId].nil? }
-          .sort_by { |cat| cat[:RankOrder] }
+        categories = data[:Topics].select { |t| t[:ParentId].nil? }
+        sort_by_rank_order_or_name(categories)
       end
     end
   end

@@ -29,9 +29,8 @@ module AskVAApi
       def filter_data(data)
         return [] if data[:Topics].blank?
 
-        data[:Topics]
-          .select { |topic| topic[:ParentId] == @parent_id }
-          .sort_by { |topic| topic[:Name] }
+        subtopics = data[:Topics].select { |topic| topic[:ParentId] == @parent_id }
+        sort_by_rank_order_or_name(subtopics)
       end
     end
   end

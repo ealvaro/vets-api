@@ -59,6 +59,43 @@ module AskVAApi
             end
           end
 
+          context 'when sorting with RankOrder values present' do
+            let(:parsed_data) do
+              { Topics: [{ Id: 1, Name: 'Zebra', ParentId: nil, RankOrder: 1 },
+                         { Id: 2, Name: 'Apple', ParentId: nil, RankOrder: 2 }] }
+            end
+
+            before do
+              allow(Crm::CacheData).to receive(:new).and_return(static_data_service)
+              allow(static_data_service).to receive(:call).and_return(parsed_data)
+            end
+
+            it 'sorts by RankOrder as the primary sort key' do
+              expect(retriever.call.map(&:rank_order)).to eq([1, 2])
+            end
+
+            it 'does not fall back to Name when all RankOrder values are present' do
+              expect(retriever.call.map(&:name)).to eq(%w[Zebra Apple])
+            end
+          end
+
+          context 'when any RankOrder value is nil' do
+            let(:parsed_data) do
+              { Topics: [{ Id: 1, Name: 'Banana', ParentId: nil, RankOrder: 2 },
+                         { Id: 2, Name: 'Apple', ParentId: nil, RankOrder: nil },
+                         { Id: 3, Name: 'Cherry', ParentId: nil, RankOrder: 1 }] }
+            end
+
+            before do
+              allow(Crm::CacheData).to receive(:new).and_return(static_data_service)
+              allow(static_data_service).to receive(:call).and_return(parsed_data)
+            end
+
+            it 'falls back to sorting by Name' do
+              expect(retriever.call.map(&:name)).to eq(%w[Apple Banana Cherry])
+            end
+          end
+
           context 'when an error occurs during data retrieval' do
             let(:body) do
               '{"Data":null,"Message":"Data Validation: null ,"ExceptionOccurred":' \

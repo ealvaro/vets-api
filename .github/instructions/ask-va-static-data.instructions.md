@@ -174,9 +174,8 @@ module AskVAApi
       def filter_data(data)
         return [] if data[:Topics].blank?
 
-        data[:Topics]
-          .select { |topic| topic[:ParentId] == @parent_id }
-          .sort_by { |topic| topic[:Name] }
+        topics = data[:Topics].select { |topic| topic[:ParentId] == @parent_id }
+        sort_by_rank_order_or_name(topics)
       end
     end
   end
@@ -196,11 +195,62 @@ The cache returns a hash with `{ Topics: [...] }`. Each item has:
 - `Id`, `Name`, `ParentId`, `Description`, `RequiresAuthentication`, `AllowAttachments`, `RankOrder`, `DisplayName`, `TopicType`, `ContactPreferences`
 
 Filtering by hierarchy:
-- **Categories:** `ParentId.nil?` (top-level), sorted by `RankOrder`
-- **Topics:** `ParentId == category_id`, sorted by `Name`
-- **Subtopics:** `ParentId == topic_id`, sorted by `Name`
+- **Categories:** `ParentId.nil?` (top-level)
+- **Topics:** `ParentId == category_id`
+- **Subtopics:** `ParentId == topic_id`
+
+Sorting: all three use `RankOrder` primary with a `Name` fallback — see "Sorting Static Data" below.
 
 Mock data: `modules/ask_va_api/config/locales/static_data.json` (used when `user_mock_data` param is truthy).
+
+---
+
+## Sorting Static Data
+
+### When to use
+When filtering categories/topics/subtopics in a retriever's `filter_data`.
+
+### Pattern
+All three retrievers sort via the shared `BaseRetriever#sort_by_rank_order_or_name` helper. It sorts
+by `RankOrder` when every item has one, and falls back to `Name` (with `.to_s`) when **any** item in
+the filtered set has a `nil` `RankOrder`:
+
+```ruby
+# BaseRetriever (private) — the single source of truth for static-data ordering
+def sort_by_rank_order_or_name(items)
+  if items.any? { |item| item[:RankOrder].nil? }
+    items.sort_by { |item| item[:Name].to_s }
+  else
+    items.sort_by { |item| item[:RankOrder] }
+  end
+end
+
+# Each retriever's filter_data: do the select, then delegate sorting
+def filter_data(data)
+  return [] if data[:Topics].blank?
+
+  items = data[:Topics].select { |t| t[:ParentId] == @parent_id } # categories use ParentId.nil?
+  sort_by_rank_order_or_name(items)
+end
+```
+
+**Anti-pattern:**
+```ruby
+# DON'T inline a per-retriever sort — it drifts. Categories once sorted by RankOrder while
+# topics/subtopics sorted by Name, causing inconsistent ordering across sibling endpoints.
+data[:Topics].select { |t| t[:ParentId] == @parent_id }.sort_by { |t| t[:Name] }
+```
+
+**Why:** `RankOrder` is the CRM's intended display order; `Name` is only a safe fallback when the
+cache omits ranks. Keeping the logic in `BaseRetriever` guarantees categories, topics, and subtopics
+stay consistent and future changes happen in one place. `.to_s` avoids `nil` comparison errors.
+
+### Testing gotcha: mock data has all RankOrders populated (with ties)
+`static_data.json` gives **every** item a `RankOrder` (values `0..18` + `999`, many ties). So a
+mock-data (`user_mock_data: true`) spec asserting `names == names.sort` will FAIL under RankOrder
+sorting — assert `rank_orders == rank_orders.sort` instead. To exercise the `Name` fallback, stub
+`Crm::CacheData` (`user_mock_data: false`) with data where at least one `RankOrder` is `nil`. To
+prove `RankOrder` wins, use data whose RankOrder order differs from Name order.
 
 ---
 

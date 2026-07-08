@@ -29,6 +29,14 @@ module AskVAApi
       raise NotImplementedError, 'Subclasses must implement the filter_data method'
     end
 
+    def sort_by_rank_order_or_name(items)
+      if items.any? { |item| item[:RankOrder].nil? }
+        items.sort_by { |item| item[:Name].to_s }
+      else
+        items.sort_by { |item| item[:RankOrder] }
+      end
+    end
+
     def handle_response_data(response:, error_class:)
       return response[:Data] if response.is_a?(Hash)
 
