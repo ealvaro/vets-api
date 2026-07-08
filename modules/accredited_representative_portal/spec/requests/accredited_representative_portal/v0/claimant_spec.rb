@@ -74,12 +74,13 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantController, type: :re
 
     context 'when providing complete search params' do
       context 'mpi returns no records' do
-        it 'returns a 404 error' do
+        it 'returns nil' do
           VCR.use_cassette('mpi/find_candidate/icn_not_found') do
             post('/accredited_representative_portal/v0/claimant/search', params: {
                    first_name: 'John', last_name: 'Smith', dob: '1980-01-01', ssn: '666-66-6666'
                  })
-            expect(response).to have_http_status(:not_found)
+            expect(response).to have_http_status(:ok)
+            expect(parsed_response.fetch('data')).to be_nil
           end
         end
       end
@@ -188,14 +189,14 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantController, type: :re
             .to receive(:get_power_of_attorney).and_return({ 'data' => {} })
         end
 
-        it 'returns a 404 and does not expose claimant details' do
+        it 'returns nil and does not expose claimant details' do
           VCR.use_cassette('mpi/find_candidate/valid_icn_full') do
             post('/accredited_representative_portal/v0/claimant/search', params: {
                    first_name: 'John', last_name: 'Smith', dob: '1980-01-01', ssn: '666-66-6666'
                  })
           end
-          expect(response).to have_http_status(:not_found)
-          expect(parsed_response.dig('data', 'firstName')).to be_nil
+          expect(response).to have_http_status(:ok)
+          expect(parsed_response.fetch('data')).to be_nil
         end
       end
     end

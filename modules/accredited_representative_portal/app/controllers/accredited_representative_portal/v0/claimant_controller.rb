@@ -21,7 +21,7 @@ module AccreditedRepresentativePortal
           ).profile
 
         claimant_profile.present? or
-          raise Common::Exceptions::RecordNotFound, 'Claimant not found'
+          return render json: { data: nil }
 
         @icn = claimant_profile.icn
 
@@ -31,7 +31,7 @@ module AccreditedRepresentativePortal
         # still-pending request. Resolved requests (declined/expired/accepted-elsewhere)
         # do not grant continued visibility into the claimant.
         (claimant_representative.present? || power_of_attorney_requests.unresolved.exists?) or
-          raise Common::Exceptions::RecordNotFound, 'Claimant not found'
+          return render json: { data: nil }
 
         serializer =
           ClaimantSerializer.new(
