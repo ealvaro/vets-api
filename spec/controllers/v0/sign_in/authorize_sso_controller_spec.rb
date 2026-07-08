@@ -172,17 +172,72 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
         end
       end
 
+      context 'when an expired authorize_sso_id is replayed with a failed access token' do
+        let(:authorize_sso_params) { { authorize_sso_id: } }
+        let(:expected_error_message) { "Invalid params: Client can't be blank" }
+
+        before do
+          request.cookies.clear
+          allow(Flipper).to receive(:enabled?).with(:identity_auth_sso_enabled).and_return(true)
+        end
+
+        it 'does not raise a 500 and renders the sign-in error page' do
+          response = subject
+
+          expect(response).to have_http_status(:ok)
+          expect(response.body).to include('/v0/sign_in/error')
+        end
+      end
+
       context 'when redirecting to USIP and the identity_auth_sso_enabled flag is disabled' do
         before do
           request.cookies.clear
           allow(Flipper).to receive(:enabled?).with(:identity_auth_sso_enabled).and_return(false)
         end
 
-        let(:expected_query_params) { authorize_sso_params.merge(oauth: true).to_query }
+        context 'and the client is an okta client' do
+          before do
+            allow(IdentitySettings.sign_in).to receive(:okta_client_id).and_return(client_id)
+          end
 
-        it 'redirects to USIP without stashing a container' do
-          expect(subject).to redirect_to("http://localhost:3001/sign-in?#{expected_query_params}")
-          expect(SignIn::AuthorizeSSOContainer.find(authorize_sso_id)).to be_nil
+          let(:expected_query_params) { authorize_sso_params.merge(oauth: true).to_query }
+
+          it 'redirects to USIP without stashing a container' do
+            expect(subject).to redirect_to("http://localhost:3001/sign-in?#{expected_query_params}")
+            expect(SignIn::AuthorizeSSOContainer.find(authorize_sso_id)).to be_nil
+          end
+        end
+
+        context 'and the client is not an okta client' do
+          let(:expected_query_params) { authorize_sso_params.merge(oauth: true, authorize_sso_id:).to_query }
+
+          it 'redirects to USIP and still stashes a container' do
+            expect(subject).to redirect_to("http://localhost:3001/sign-in?#{expected_query_params}")
+            expect(SignIn::AuthorizeSSOContainer.find(authorize_sso_id)).to have_attributes(client_id:)
+          end
+        end
+      end
+
+      context 'and a container exists for a replayed authorize_sso_id' do
+        let(:authorize_sso_params) { { authorize_sso_id: } }
+        let!(:authorize_sso_container) do
+          create(:authorize_sso_container,
+                 uuid: authorize_sso_id,
+                 client_id:,
+                 code_challenge:,
+                 code_challenge_method:,
+                 client_state: state,
+                 app_name:)
+        end
+
+        before do
+          request.cookies.clear
+          allow(Flipper).to receive(:enabled?).with(:identity_auth_sso_enabled).and_return(false)
+        end
+
+        it 'does not consume the container, so a retry can still succeed' do
+          subject
+          expect(SignIn::AuthorizeSSOContainer.find(authorize_sso_id)).not_to be_nil
         end
       end
     end
@@ -309,7 +364,7 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
         end
 
         context 'and the container is missing' do
-          let(:expected_error_message) { 'Authorize SSO request not found or expired' }
+          let(:expected_error_message) { 'Invalid params: client_id' }
           let(:client_id_param) { '' }
 
           it_behaves_like 'an error response' do
@@ -326,6 +381,14 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
           it 'does not invoke the user code map creator' do
             expect(SignIn::AuthSSO::SessionValidator).not_to receive(:new)
             subject
+          end
+
+          it 'logs that the authorize sso request was not found or expired' do
+            subject
+            expect(Rails.logger).to have_received(:info).with(
+              '[SignInService] [V0::SignInController] authorize sso request not found or expired',
+              { authorize_sso_id: }
+            )
           end
         end
       end

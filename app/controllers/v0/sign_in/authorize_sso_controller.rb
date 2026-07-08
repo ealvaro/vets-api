@@ -10,9 +10,11 @@ module V0
         validate_authorize_sso_params!
 
         user_code_map = authorize_sso_user_code_map
-        response_params = { code: user_code_map.login_code,
-                            type: user_code_map.type,
-                            state: user_code_map.client_state }.compact_blank
+        response_params = {
+          code: user_code_map.login_code,
+          type: user_code_map.type,
+          state: user_code_map.client_state
+        }.compact_blank
 
         redirect_url = ::SignIn::RedirectUrlGenerator.new(
           redirect_uri: user_code_map.client_config.redirect_uri,
@@ -20,6 +22,8 @@ module V0
           terms_redirect_uri: user_code_map.client_config.terms_of_use_url,
           params_hash: response_params
         ).perform
+
+        ::SignIn::AuthorizeSSOContainer.delete(@authorize_sso_id) if @authorize_sso_id
 
         log_authorize_sso_success
         render body: redirect_url, content_type: 'text/html', status: :found
@@ -32,53 +36,52 @@ module V0
       private
 
       def authorize_sso_user_code_map
-        client_id = authorize_sso_params[:client_id]
         code_challenge = authorize_sso_params[:code_challenge]
         code_challenge_method = authorize_sso_params[:code_challenge_method]
         client_state = authorize_sso_params[:state]
         nonce = authorize_sso_params[:nonce]
-        user_attributes = ::SignIn::AuthSSO::SessionValidator.new(access_token: @access_token, client_id:).perform
         app_name = authorize_sso_params[:app_name]
+        user_attributes = ::SignIn::AuthSSO::SessionValidator.new(access_token:, client_id:).perform
+        acr = user_attributes[:acr]
+        type = user_attributes[:type]
+        operation = ::SignIn::Constants::Auth::AUTHORIZE_SSO
+        verified_icn = user_attributes[:icn]
 
-        state_payload_jwt = ::SignIn::StatePayloadJwtEncoder.new(
-          code_challenge:, code_challenge_method:, client_state:,
-          acr: user_attributes[:acr], type: user_attributes[:type],
-          client_config: client_config(client_id),
-          operation: ::SignIn::Constants::Auth::AUTHORIZE_SSO,
-          nonce:,
-          app_name:
-        ).perform
+        client_config = client_config(client_id)
+        state_payload_jwt = ::SignIn::StatePayloadJwtEncoder.new(code_challenge:, code_challenge_method:, client_state:,
+                                                                 acr:, type:, client_config:, operation:, nonce:,
+                                                                 app_name:).perform
 
         state_payload = ::SignIn::StatePayloadJwtDecoder.new(state_payload_jwt:).perform
 
-        ::SignIn::UserCodeMapCreator.new(user_attributes:, state_payload:, verified_icn: user_attributes[:icn],
+        ::SignIn::UserCodeMapCreator.new(user_attributes:, state_payload:, verified_icn:,
                                          request_ip: request.remote_ip).perform
       end
 
       def authorize_sso_params
         @authorize_sso_params ||= authorize_sso_container_params ||
-                                  params.permit(:client_id, :code_challenge, :code_challenge_method, :state,
-                                                :app_name, :nonce)
-      rescue ::SignIn::Errors::MalformedParamsError
-        @authorize_sso_params = {}
-        raise
+                                  params.permit(:client_id, :code_challenge, :code_challenge_method, :state, :app_name,
+                                                :nonce)
+      end
+
+      def client_id
+        authorize_sso_params[:client_id]
       end
 
       def authorize_sso_container_params
         @authorize_sso_id = params[:authorize_sso_id].presence
         return unless @authorize_sso_id
 
-        container = ::SignIn::AuthorizeSSOContainer.pop(@authorize_sso_id)
-        unless container
-          raise ::SignIn::Errors::MalformedParamsError.new(message: 'Authorize SSO request not found or expired')
-        end
+        container = ::SignIn::AuthorizeSSOContainer.find(@authorize_sso_id)
+        return container.to_authorize_sso_params if container
 
-        container.to_authorize_sso_params
+        sign_in_logger.info('authorize sso request not found or expired', { authorize_sso_id: @authorize_sso_id })
+        nil
       end
 
       def validate_authorize_sso_params!
         errors = [].tap do |err|
-          err << 'client_id' if authorize_sso_params[:client_id].blank?
+          err << 'client_id' if client_id.blank?
           if pkce_client?
             err << 'code_challenge' if authorize_sso_params[:code_challenge].blank?
 
@@ -92,7 +95,11 @@ module V0
       end
 
       def pkce_client?
-        client_config(authorize_sso_params[:client_id])&.pkce?
+        client_config(client_id)&.pkce?
+      end
+
+      def okta_client?
+        client_id == IdentitySettings.sign_in.okta_client_id
       end
 
       def redirect_to_usip
@@ -107,17 +114,17 @@ module V0
         redirect_to uri, status: :found, allow_other_host: true
       rescue ::SignIn::Errors::MalformedParamsError => e
         log_authorize_sso_error(e, :error)
-        handle_pre_login_error(e, authorize_sso_params[:client_id])
+        handle_pre_login_error(e, client_id)
       end
 
       def stash_authorize_sso_request
-        return unless Flipper.enabled?(:identity_auth_sso_enabled)
+        return unless stash_authorize_sso_request?
 
         @authorize_sso_id = SecureRandom.uuid
 
         container = ::SignIn::AuthorizeSSOContainer.new(
           uuid: @authorize_sso_id,
-          client_id: authorize_sso_params[:client_id],
+          client_id:,
           code_challenge: authorize_sso_params[:code_challenge],
           code_challenge_method: authorize_sso_params[:code_challenge_method],
           client_state: authorize_sso_params[:state],
@@ -141,7 +148,7 @@ module V0
         log_authorize_sso_error(error, handler)
 
         case handler
-        when :error then handle_pre_login_error(error, authorize_sso_params[:client_id])
+        when :error then handle_pre_login_error(error, client_id)
         when :redirect then redirect_to_usip
         end
       end
@@ -164,11 +171,15 @@ module V0
       end
 
       def authorize_sso_log_params
-        { client_id: authorize_sso_params[:client_id], app_name: authorize_sso_params[:app_name] }
+        { client_id:, app_name: authorize_sso_params[:app_name] }
       end
 
       def authorize_sso_statsd_tags
-        ["client_id:#{authorize_sso_params[:client_id]}"]
+        ["client_id:#{client_id}"]
+      end
+
+      def stash_authorize_sso_request?
+        !okta_client? || Flipper.enabled?(:identity_auth_sso_enabled)
       end
     end
   end
