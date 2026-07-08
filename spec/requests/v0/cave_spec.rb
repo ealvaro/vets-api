@@ -88,21 +88,26 @@ RSpec.describe 'CAVE API', type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
-    it 'proxies the status call' do
+    it 'proxies the status call and meters a completed scan_status as success' do
       sign_in_as(user)
       allow(client).to receive(:status).with('abc123', user_id: idp_user_id).and_return('scan_status' => 'completed')
 
-      get '/v0/cave/abc123/status'
+      expect { get '/v0/cave/abc123/status' }
+        .to trigger_statsd_increment('api.cave.status.success')
 
       expect(response).to have_http_status(:ok)
       expect(parsed_response['scan_status']).to eq('completed')
     end
 
-    it 'forwards a pending scan_status without treating it as terminal' do
+    # A pending poll must not inflate `.success`: the frontend polls `status` repeatedly while a
+    # doc is pending, so pending gets its own bucket and `.success` reflects real completions only.
+    it 'forwards a pending scan_status and meters it separately from success' do
       sign_in_as(user)
       allow(client).to receive(:status).with('abc123', user_id: idp_user_id).and_return('scan_status' => 'pending')
 
-      get '/v0/cave/abc123/status'
+      expect { get '/v0/cave/abc123/status' }
+        .to trigger_statsd_increment('api.cave.status.pending')
+        .and not_trigger_statsd_increment('api.cave.status.success')
 
       expect(response).to have_http_status(:ok)
       expect(parsed_response['scan_status']).to eq('pending')

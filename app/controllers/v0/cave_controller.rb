@@ -14,6 +14,7 @@ module V0
     # VALID_SCAN_STATUSES points at the single source of truth in Idp so the controller and the
     # Idp::Client metric bucketing can't drift. The named constants below are semantic handles
     # for the case statement in render_cave_envelope.
+    SCAN_STATUS_PENDING = 'pending'
     SCAN_STATUS_COMPLETED_WITH_ERRORS = 'completed_with_errors'
     SCAN_STATUS_FAILED = 'failed'
     VALID_SCAN_STATUSES = Idp::SCAN_STATUSES
@@ -147,7 +148,8 @@ module V0
     # (validate_payload_shape!).
     #   - failed                -> 200 passthrough (failure conveyed in body), metered .failed
     #   - completed_with_errors -> 200 with body + normalized `warnings` array
-    #   - pending / completed   -> 200 passthrough
+    #   - pending               -> 200 passthrough, metered .pending
+    #   - completed             -> 200 passthrough, metered .success
     #   - missing/unknown       -> 502 Bad Gateway (invalid_scan_status)
     def render_cave_envelope(body)
       scan_status = body.is_a?(Hash) ? body['scan_status'] : nil
@@ -163,6 +165,9 @@ module V0
       when SCAN_STATUS_COMPLETED_WITH_ERRORS
         increment_outcome(action_name, 'completed_with_warnings')
         render json: body.merge('warnings' => normalized_warnings(body['warnings']))
+      when SCAN_STATUS_PENDING
+        increment_outcome(action_name, 'pending')
+        render json: body
       else
         increment_outcome(action_name, 'success')
         render json: body
