@@ -17,8 +17,6 @@ RSpec.describe 'Mobile::V0::User', type: :request do
     allow(Flipper).to receive(:enabled?).with(:cst_multi_claim_provider_mobile, instance_of(Flipper::Actor)).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:mhv_medications_cerner_pilot, instance_of(User)).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_cerner_pilot, instance_of(User)).and_return(false)
-    allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_allergies_enabled,
-                                              instance_of(User)).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_labs_and_tests_enabled,
                                               instance_of(User)).and_return(false)
   end
@@ -275,8 +273,6 @@ RSpec.describe 'Mobile::V0::User', type: :request do
         allow(Flipper).to receive(:enabled?).with(:mhv_medications_cerner_pilot,
                                                   instance_of(User)).and_return(true)
         allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_cerner_pilot,
-                                                  instance_of(User)).and_return(true)
-        allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_allergies_enabled,
                                                   instance_of(User)).and_return(true)
         allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_labs_and_tests_enabled,
                                                   instance_of(User)).and_return(true)

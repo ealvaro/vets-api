@@ -17,7 +17,6 @@ RSpec.describe 'MyHealth::V2::AllergiesController', :skip_json_api_validation, t
   let(:path) { '/my_health/v2/medical_records/allergies' }
 
   let(:uhd_flipper) { :mhv_accelerated_delivery_uhd_enabled }
-  let(:allergies_flipper) { :mhv_accelerated_delivery_allergies_enabled }
 
   let(:va_patient) { true }
   let(:current_user) { build(:user, :mhv) }
@@ -26,7 +25,6 @@ RSpec.describe 'MyHealth::V2::AllergiesController', :skip_json_api_validation, t
     Timecop.freeze('2025-06-02T08:00:00Z')
     sign_in_as(current_user, stub_mhv_account: true)
     allow(Flipper).to receive(:enabled?).with(uhd_flipper, instance_of(User)).and_return(true)
-    allow(Flipper).to receive(:enabled?).with(allergies_flipper, instance_of(User)).and_return(true)
   end
 
   after do

@@ -20,8 +20,6 @@ RSpec.describe 'Mobile::V1::AllergyIntolerances', :skip_json_api_validation, typ
     Timecop.freeze('2025-06-02T08:00:00Z')
     allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_enabled,
                                               instance_of(User)).and_return(true)
-    allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_allergies_enabled,
-                                              instance_of(User)).and_return(true)
   end
 
   after do
@@ -107,16 +105,6 @@ RSpec.describe 'Mobile::V1::AllergyIntolerances', :skip_json_api_validation, typ
     end
 
     context 'feature flags disabled' do
-      it 'returns a 403 when the allergies feature flag is disabled' do
-        allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_allergies_enabled,
-                                                  instance_of(User)).and_return(false)
-        get '/mobile/v1/health/allergy-intolerances', headers: sis_headers
-        expect(response).to have_http_status(:forbidden)
-        json_response = JSON.parse(response.body)
-        expect(json_response['error']['code']).to eq('FEATURE_NOT_AVAILABLE')
-        expect(json_response['error']['message']).to eq('This feature is not currently available')
-      end
-
       it 'returns a 404 when the main accelerated feature flag is disabled' do
         allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_enabled,
                                                   instance_of(User)).and_return(false)

@@ -15,8 +15,6 @@ RSpec.describe MyHealth::V2::Concerns::ErrorHandler, :skip_json_api_validation, 
     sign_in_as(current_user)
     allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_enabled,
                                               instance_of(User)).and_return(true)
-    allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_allergies_enabled,
-                                              instance_of(User)).and_return(true)
   end
 
   after do

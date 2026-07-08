@@ -22,8 +22,7 @@ module Mobile
 
       def service_auth_map # rubocop:disable Metrics/MethodLength
         @service_auth_map ||= {
-          allergiesOracleHealthEnabled: versioned_flagged_access?(%i[mhv_accelerated_delivery_allergies_enabled
-                                                                     mhv_accelerated_delivery_uhd_enabled],
+          allergiesOracleHealthEnabled: versioned_flagged_access?(%i[mhv_accelerated_delivery_uhd_enabled],
                                                                   :allergies_oracle_health),
           appeals: access?(appeals: :access?),
           appointments: access?(vaos: :access?) && @user.icn.present? && access?(vaos: :facilities_access?) &&

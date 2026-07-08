@@ -9,15 +9,14 @@ module Mobile
     # Mobile (v1) controller for a Veteran's allergy records served through the
     # Unified Health Data (UHD) Medical Records service.
     #
-    # Gated behind the +:mhv_accelerated_delivery_uhd_enabled+ and
-    # +:mhv_accelerated_delivery_allergies_enabled+ feature flags. Paginates
-    # results; SCDF partial-failure warnings are not surfaced to the mobile app.
+    # Gated behind the +:mhv_accelerated_delivery_uhd_enabled+ feature flag.
+    # Paginates results; SCDF partial-failure warnings are not surfaced to the
+    # mobile app.
     #
     class AllergyIntolerancesController < ApplicationController
       service_tag 'mhv-medical-records'
 
       before_action :controller_enabled?
-      before_action :validate_feature_flag
 
       ##
       # Lists the current user's allergies, paginated.
@@ -42,17 +41,6 @@ module Mobile
       end
 
       private
-
-      def validate_feature_flag
-        return if Flipper.enabled?(:mhv_accelerated_delivery_allergies_enabled, @current_user)
-
-        render json: {
-          error: {
-            code: 'FEATURE_NOT_AVAILABLE',
-            message: 'This feature is not currently available'
-          }
-        }, status: :forbidden
-      end
 
       def pagination_contract
         Mobile::V0::Contracts::PaginationBase.new.call(
