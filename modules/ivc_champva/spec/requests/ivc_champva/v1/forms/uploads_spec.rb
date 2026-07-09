@@ -1428,420 +1428,60 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     end
   end
 
-  describe '#get_attachment_ids_and_form' do
-    let(:controller) { IvcChampva::V1::UploadsController.new }
-    let(:mock_user) { double('User', loa: { current: 3 }) }
+  # NOTE: #get_attachment_ids_and_form was removed from the controller during the
+  # DataTransformations refactor. Attachment ID building is now tested via:
+  #   - spec/services/data_transformations_spec.rb (default logic)
+  #   - spec/services/claims_attachment_ids_spec.rb (DTA/CVA/PDI overrides)
+  # The metadata generation tests below remain here as they test form model behavior directly.
 
-    before do
-      allow(Flipper).to receive(:enabled?).with(:champva_form_versioning, anything).and_return(false)
-      allow(controller).to receive_messages(
-        params: { form_number: '10-10D' },
-        current_user: mock_user
-      )
-    end
-
-    context 'with form 10-10D' do
-      let(:parsed_form_data) do
+  describe 'resubmission metadata generation' do
+    context 'when PDI number is selected' do
+      let(:pdi_form_data) do
         {
-          'form_number' => '10-10D',
-          'applicants' => [
-            { 'first_name' => 'John', 'last_name' => 'Doe' },
-            { 'first_name' => 'Jane', 'last_name' => 'Doe' }
-          ],
-          'supporting_docs' => [
-            { 'confirmation_code' => 'code1', 'attachment_id' => 'doc1' },
-            { 'confirmation_code' => 'code2', 'attachment_id' => 'doc2' }
-          ]
-        }
-      end
-
-      it 'returns attachment ids and form with correct data' do
-        # Mock the supporting documents in the database
-        record1 = double('Record1', created_at: 1.day.ago, file: double(id: 'file1'))
-        record2 = double('Record2', created_at: Time.zone.now, file: double(id: 'file2'))
-        allow(PersistentAttachments::MilitaryRecords).to receive(:find_by).with(guid: 'code1').and_return(record1)
-        allow(PersistentAttachments::MilitaryRecords).to receive(:find_by).with(guid: 'code2').and_return(record2)
-
-        # Create actual form instance
-        form_instance = IvcChampva::VHA1010d.new(parsed_form_data)
-        allow(IvcChampva::VHA1010d).to receive(:new).with(parsed_form_data).and_return(form_instance)
-        allow(form_instance).to receive(:track_user_identity)
-        allow(form_instance).to receive(:track_current_user_loa)
-        allow(form_instance).to receive(:track_email_usage)
-
-        attachment_ids, form = controller.send(:get_attachment_ids_and_form, parsed_form_data)
-
-        # Verify attachment IDs are correct and in order
-        expect(attachment_ids).to eq(%w[vha_10_10d doc1 doc2])
-
-        # Verify form is of correct type and contains the data
-        expect(form).to be_a(IvcChampva::VHA1010d)
-        expect(form.instance_variable_get(:@data)).to eq(parsed_form_data)
-      end
-    end
-
-    context 'with form without applicants array' do
-      let(:parsed_form_data) do
-        {
-          'form_number' => '10-10D',
-          'supporting_docs' => [
-            { 'confirmation_code' => 'code1', 'attachment_id' => 'doc1' }
-          ]
-        }
-      end
-
-      it 'returns at least one form ID and supporting docs' do
-        record1 = double('Record1', created_at: Time.zone.now, file: double(id: 'file1'))
-        allow(PersistentAttachments::MilitaryRecords).to receive(:find_by).with(guid: 'code1').and_return(record1)
-
-        allow_any_instance_of(IvcChampva::VHA1010d).to receive(:track_user_identity)
-        allow_any_instance_of(IvcChampva::VHA1010d).to receive(:track_current_user_loa)
-        allow_any_instance_of(IvcChampva::VHA1010d).to receive(:track_email_usage)
-
-        attachment_ids, form = controller.send(:get_attachment_ids_and_form, parsed_form_data)
-
-        expect(attachment_ids).to eq(%w[vha_10_10d doc1])
-        expect(form).to be_a(IvcChampva::VHA1010d)
-      end
-    end
-
-    context 'with form having no supporting docs' do
-      let(:parsed_form_data) do
-        {
-          'form_number' => '10-10D',
-          'applicants' => [
-            { 'first_name' => 'John', 'last_name' => 'Doe' }
-          ]
-        }
-      end
-
-      it 'returns only form IDs' do
-        allow_any_instance_of(IvcChampva::VHA1010d).to receive(:track_user_identity)
-        allow_any_instance_of(IvcChampva::VHA1010d).to receive(:track_current_user_loa)
-        allow_any_instance_of(IvcChampva::VHA1010d).to receive(:track_email_usage)
-
-        attachment_ids, form = controller.send(:get_attachment_ids_and_form, parsed_form_data)
-
-        expect(attachment_ids).to eq(['vha_10_10d'])
-        expect(form).to be_a(IvcChampva::VHA1010d)
-      end
-    end
-
-    context 'with form 10-7959A resubmissions' do
-      before do
-        allow(controller).to receive_messages(
-          params: { form_number: '10-7959A' },
-          current_user: mock_user
-        )
-        # Enable the feature flag for resubmission attachment ID logic
-        allow(Flipper).to receive(:enabled?).with(:champva_resubmission_attachment_ids).and_return(true)
-      end
-
-      context 'when PDI number is selected' do
-        let(:parsed_form_data) do
-          {
-            'form_number' => '10-7959A',
-            'claim_status' => 'resubmission',
-            'pdi_or_claim_number' => 'PDI number',
-            'identifying_number' => 'PDI123456',
-            'claims' => [
-              { 'provider_name' => 'Test Provider' }
-            ],
-            'supporting_docs' => [
-              { 'confirmation_code' => 'code1', 'attachment_id' => 'Medical Records' },
-              { 'confirmation_code' => 'code2', 'attachment_id' => 'EOB' }
-            ]
-          }
-        end
-
-        it 'labels all documents including main claim sheet as CVA Bene Response' do
-          # Mock tracking methods
-          allow_any_instance_of(IvcChampva::VHA107959a).to receive(:track_user_identity)
-          allow_any_instance_of(IvcChampva::VHA107959a).to receive(:track_current_user_loa)
-          allow_any_instance_of(IvcChampva::VHA107959a).to receive(:track_email_usage)
-
-          # Ensure DTA flag is off so no extra stamped doc is added
-          allow(Flipper).to receive(:enabled?).with(:champva_claims_duty_to_assist).and_return(false)
-
-          attachment_ids, form = controller.send(:get_attachment_ids_and_form, parsed_form_data)
-
-          # Verify: all documents (1 main form + 2 supporting docs) get "CVA Bene Response"
-          expect(attachment_ids).to eq(['CVA Bene Response', 'CVA Bene Response', 'CVA Bene Response'])
-          expect(form).to be_a(IvcChampva::VHA107959a)
-        end
-      end
-
-      context 'when Claim control number is selected' do
-        let(:parsed_form_data) do
-          {
-            'form_number' => '10-7959A',
-            'claim_status' => 'resubmission',
-            'pdi_or_claim_number' => 'Control number',
-            'identifying_number' => 'CLAIM789',
-            'claims' => [
-              { 'provider_name' => 'Test Provider' }
-            ],
-            'supporting_docs' => [
-              { 'confirmation_code' => 'code1', 'attachment_id' => 'Medical Records' },
-              { 'confirmation_code' => 'code2', 'attachment_id' => 'EOB' }
-            ]
-          }
-        end
-
-        it 'sets main claim sheet to CVA Reopen and preserves supporting doc types' do
-          # Mock the supporting documents in the database
-          record1 = double('Record1', created_at: 1.day.ago, file: double(id: 'file1'))
-          record2 = double('Record2', created_at: Time.zone.now, file: double(id: 'file2'))
-          allow(PersistentAttachments::MilitaryRecords).to receive(:find_by).with(guid: 'code1').and_return(record1)
-          allow(PersistentAttachments::MilitaryRecords).to receive(:find_by).with(guid: 'code2').and_return(record2)
-
-          # Mock tracking methods but let stamp_metadata work naturally
-          allow_any_instance_of(IvcChampva::VHA107959a).to receive(:track_user_identity)
-          allow_any_instance_of(IvcChampva::VHA107959a).to receive(:track_current_user_loa)
-          allow_any_instance_of(IvcChampva::VHA107959a).to receive(:track_email_usage)
-
-          # Ensure DTA flag is off so no extra stamped doc is added
-          allow(Flipper).to receive(:enabled?).with(:champva_claims_duty_to_assist).and_return(false)
-
-          attachment_ids, form = controller.send(:get_attachment_ids_and_form, parsed_form_data)
-
-          # Verify: main claim sheet gets "CVA Reopen", supporting docs retain their types
-          expect(attachment_ids).to eq(['CVA Reopen', 'Medical Records', 'EOB'])
-          expect(form).to be_a(IvcChampva::VHA107959a)
-        end
-      end
-
-      context 'when feature flag is disabled' do
-        let(:parsed_form_data) do
-          {
-            'form_number' => '10-7959A',
-            'claim_status' => 'resubmission',
-            'pdi_or_claim_number' => 'Control number',
-            'identifying_number' => 'CLAIM789',
-            'claims' => [
-              { 'provider_name' => 'Test Provider' }
-            ],
-            'supporting_docs' => [
-              { 'confirmation_code' => 'code1', 'attachment_id' => 'Medical Records' }
-            ]
-          }
-        end
-
-        before do
-          # Disable the feature flag
-          allow(Flipper).to receive(:enabled?).with(:champva_resubmission_attachment_ids).and_return(false)
-        end
-
-        it 'uses default behavior when feature flag is disabled' do
-          # Mock the supporting documents in the database
-          record1 = double('Record1', created_at: 1.day.ago, file: double(id: 'file1'))
-          allow(PersistentAttachments::MilitaryRecords).to receive(:find_by).with(guid: 'code1').and_return(record1)
-
-          # Mock tracking methods
-          allow_any_instance_of(IvcChampva::VHA107959a).to receive(:track_user_identity)
-          allow_any_instance_of(IvcChampva::VHA107959a).to receive(:track_current_user_loa)
-          allow_any_instance_of(IvcChampva::VHA107959a).to receive(:track_email_usage)
-
-          # Ensure DTA flag is off so no extra stamped doc is added
-          allow(Flipper).to receive(:enabled?).with(:champva_claims_duty_to_assist).and_return(false)
-
-          attachment_ids, form = controller.send(:get_attachment_ids_and_form, parsed_form_data)
-
-          # Verify: when feature flag is disabled, uses default behavior (no special resubmission logic)
-          expect(attachment_ids).to eq(['vha_10_7959a', 'Medical Records'])
-          expect(form).to be_a(IvcChampva::VHA107959a)
-        end
-      end
-
-      context 'metadata generation for resubmissions' do
-        context 'when PDI number is selected' do
-          let(:pdi_form_data) do
-            {
-              'form_number' => '10-7959A',
-              'claim_status' => 'resubmission',
-              'pdi_or_claim_number' => 'PDI number',
-              'identifying_number' => 'PDI123456',
-              'applicant_name' => { 'first' => 'Test', 'last' => 'User' },
-              'applicant_address' => { 'postal_code' => '12345' },
-              'applicant_member_number' => '123456789',
-              'primary_contact_info' => { 'email' => 'test@example.com' }
-            }
-          end
-
-          it 'includes pdi_number in metadata and excludes claim_number' do
-            form = IvcChampva::VHA107959a.new(pdi_form_data)
-            metadata = form.metadata
-
-            expect(metadata['pdi_number']).to eq('PDI123456')
-            expect(metadata['claim_number']).to be_nil
-            expect(metadata['pdi_or_claim_number']).to eq('PDI number')
-            expect(metadata['claim_status']).to eq('resubmission')
-          end
-        end
-
-        context 'when Control number is selected' do
-          let(:claim_form_data) do
-            {
-              'form_number' => '10-7959A',
-              'claim_status' => 'resubmission',
-              'pdi_or_claim_number' => 'Control number',
-              'identifying_number' => 'CLAIM789',
-              'applicant_name' => { 'first' => 'Test', 'last' => 'User' },
-              'applicant_address' => { 'postal_code' => '12345' },
-              'applicant_member_number' => '123456789',
-              'primary_contact_info' => { 'email' => 'test@example.com' }
-            }
-          end
-
-          it 'includes claim_number in metadata and excludes pdi_number' do
-            form = IvcChampva::VHA107959a.new(claim_form_data)
-            metadata = form.metadata
-
-            expect(metadata['claim_number']).to eq('CLAIM789')
-            expect(metadata['pdi_number']).to be_nil
-            expect(metadata['pdi_or_claim_number']).to eq('Control number')
-            expect(metadata['claim_status']).to eq('resubmission')
-          end
-        end
-      end
-    end
-  end
-
-  describe '#build_pdi_resubmission_attachment_ids' do
-    let(:controller) { IvcChampva::V1::UploadsController.new }
-
-    it 'labels all documents as CVA Bene Response for PDI resubmissions' do
-      parsed_form_data = {
-        'supporting_docs' => [
-          { 'confirmation_code' => 'code1', 'attachment_id' => 'Medical Records' },
-          { 'confirmation_code' => 'code2', 'attachment_id' => 'EOB' }
-        ]
-      }
-      applicant_rounded_number = 1
-
-      result = controller.send(:build_pdi_resubmission_attachment_ids, 'vha_10_7959a', parsed_form_data,
-                               applicant_rounded_number)
-
-      # 1 main form + 2 supporting docs = 3 total, all "CVA Bene Response"
-      expect(result).to eq(['CVA Bene Response', 'CVA Bene Response', 'CVA Bene Response'])
-    end
-
-    it 'handles submissions with no supporting docs' do
-      parsed_form_data = { 'supporting_docs' => nil }
-      applicant_rounded_number = 1
-
-      result = controller.send(:build_pdi_resubmission_attachment_ids, 'vha_10_7959a', parsed_form_data,
-                               applicant_rounded_number)
-
-      # Just 1 main form
-      expect(result).to eq(['CVA Bene Response'])
-    end
-
-    it 'handles multiple main form pages' do
-      parsed_form_data = {
-        'supporting_docs' => [
-          { 'confirmation_code' => 'code1', 'attachment_id' => 'Medical Records' }
-        ]
-      }
-      applicant_rounded_number = 2
-
-      result = controller.send(:build_pdi_resubmission_attachment_ids, 'vha_10_7959a', parsed_form_data,
-                               applicant_rounded_number)
-
-      # 2 main form pages + 1 supporting doc = 3 total
-      expect(result).to eq(['CVA Bene Response', 'CVA Bene Response', 'CVA Bene Response'])
-    end
-  end
-
-  describe '#build_attachment_ids DTA integration' do
-    let(:controller) { IvcChampva::V1::UploadsController.new }
-
-    before do
-      allow(Flipper).to receive(:enabled?).and_call_original
-      allow(Flipper).to receive(:enabled?).with(:champva_resubmission_attachment_ids).and_return(true)
-    end
-
-    context 'when DTA applies' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:champva_claims_duty_to_assist).and_return(true)
-      end
-
-      it 'overrides PDI resubmission logic with DTA attachment IDs' do
-        parsed_form_data = {
+          'form_number' => '10-7959A',
           'claim_status' => 'resubmission',
           'pdi_or_claim_number' => 'PDI number',
-          'has_claim_docs' => false,
-          'supporting_docs' => [
-            { 'confirmation_code' => 'code1', 'attachment_id' => 'Medical Records' }
-          ]
+          'identifying_number' => 'PDI123456',
+          'applicant_name' => { 'first' => 'Test', 'last' => 'User' },
+          'applicant_address' => { 'postal_code' => '12345' },
+          'applicant_member_number' => '123456789',
+          'primary_contact_info' => { 'email' => 'test@example.com' }
         }
-
-        result = controller.send(:build_attachment_ids, 'vha_10_7959a', parsed_form_data, 1)
-
-        # DTA takes priority - all docs get "Duty to Assist"
-        expect(result).to eq(['Duty to Assist', 'Duty to Assist'])
       end
 
-      it 'overrides Control number resubmission logic with DTA attachment IDs' do
-        parsed_form_data = {
-          'claim_status' => 'resubmission',
-          'pdi_or_claim_number' => 'Control number',
-          'has_claim_docs' => false,
-          'supporting_docs' => [
-            { 'confirmation_code' => 'code1', 'attachment_id' => 'Medical Records' }
-          ]
-        }
+      it 'includes pdi_number in metadata and excludes claim_number' do
+        form = IvcChampva::VHA107959a.new(pdi_form_data)
+        metadata = form.metadata
 
-        # Mock the database lookup for supporting_document_ids
-        record = double('Record', created_at: Time.zone.now, file: double(id: 'file1'))
-        allow(PersistentAttachments::MilitaryRecords).to receive(:find_by).and_return(record)
-
-        result = controller.send(:build_attachment_ids, 'vha_10_7959a', parsed_form_data, 1)
-
-        # DTA takes priority - all docs get "Duty to Assist"
-        expect(result).to eq(['Duty to Assist', 'Duty to Assist'])
+        expect(metadata['pdi_number']).to eq('PDI123456')
+        expect(metadata['claim_number']).to be_nil
+        expect(metadata['pdi_or_claim_number']).to eq('PDI number')
+        expect(metadata['claim_status']).to eq('resubmission')
       end
     end
 
-    context 'when DTA does not apply (has_claim_docs is true)' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:champva_claims_duty_to_assist).and_return(true)
-      end
-
-      it 'uses PDI resubmission logic when PDI number selected' do
-        parsed_form_data = {
-          'claim_status' => 'resubmission',
-          'pdi_or_claim_number' => 'PDI number',
-          'has_claim_docs' => true,
-          'supporting_docs' => [
-            { 'confirmation_code' => 'code1', 'attachment_id' => 'Medical Records' }
-          ]
-        }
-
-        result = controller.send(:build_attachment_ids, 'vha_10_7959a', parsed_form_data, 1)
-
-        # PDI logic applies - all docs get "CVA Bene Response"
-        expect(result).to eq(['CVA Bene Response', 'CVA Bene Response'])
-      end
-
-      it 'uses Control number resubmission logic when Control number selected' do
-        parsed_form_data = {
+    context 'when Control number is selected' do
+      let(:claim_form_data) do
+        {
+          'form_number' => '10-7959A',
           'claim_status' => 'resubmission',
           'pdi_or_claim_number' => 'Control number',
-          'has_claim_docs' => true,
-          'supporting_docs' => [
-            { 'confirmation_code' => 'code1', 'attachment_id' => 'Medical Records' }
-          ]
+          'identifying_number' => 'CLAIM789',
+          'applicant_name' => { 'first' => 'Test', 'last' => 'User' },
+          'applicant_address' => { 'postal_code' => '12345' },
+          'applicant_member_number' => '123456789',
+          'primary_contact_info' => { 'email' => 'test@example.com' }
         }
+      end
 
-        # Mock the database lookup for supporting_document_ids
-        record = double('Record', created_at: Time.zone.now, file: double(id: 'file1'))
-        allow(PersistentAttachments::MilitaryRecords).to receive(:find_by).and_return(record)
+      it 'includes claim_number in metadata and excludes pdi_number' do
+        form = IvcChampva::VHA107959a.new(claim_form_data)
+        metadata = form.metadata
 
-        result = controller.send(:build_attachment_ids, 'vha_10_7959a', parsed_form_data, 1)
-
-        # Control number logic - main form "CVA Reopen", supporting docs retain types
-        expect(result).to eq(['CVA Reopen', 'Medical Records'])
+        expect(metadata['claim_number']).to eq('CLAIM789')
+        expect(metadata['pdi_number']).to be_nil
+        expect(metadata['pdi_or_claim_number']).to eq('Control number')
+        expect(metadata['claim_status']).to eq('resubmission')
       end
     end
   end
@@ -1901,88 +1541,8 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     end
   end
 
-  describe '#supporting_document_ids' do
-    let(:controller) { IvcChampva::V1::UploadsController.new }
-    let(:parsed_form_data) do
-      {
-        'form_number' => '10-10D',
-        'supporting_docs' => [
-          { 'confirmation_code' => 'code1', 'attachment_id' => 'doc1' },
-          { 'confirmation_code' => 'code2', 'attachment_id' => 'doc2' },
-          { 'confirmation_code' => 'code3', 'attachment_id' => 'doc3' }
-        ]
-      }
-    end
-
-    context 'with valid supporting documents' do
-      before do
-        # Set up records in the database with specific creation times for testing order
-        allow(PersistentAttachments::MilitaryRecords).to receive(:find_by)
-          .with(guid: 'code1')
-          .and_return(double('Record1', created_at: 2.days.ago, file: double(id: 'file1')))
-        allow(PersistentAttachments::MilitaryRecords).to receive(:find_by)
-          .with(guid: 'code2')
-          .and_return(double('Record2', created_at: 1.day.ago, file: double(id: 'file2')))
-        allow(PersistentAttachments::MilitaryRecords).to receive(:find_by)
-          .with(guid: 'code3')
-          .and_return(double('Record3', created_at: Time.zone.now, file: double(id: 'file3')))
-      end
-
-      it 'orders supporting document ids by date created' do
-        result = controller.send(:supporting_document_ids, parsed_form_data)
-        # Should be ordered from oldest to newest based on created_at
-        expect(result).to eq(%w[doc1 doc2 doc3])
-      end
-
-      it 'returns empty array when no supporting docs exist' do
-        form_data_without_docs = { 'form_number' => '10-10D' }
-        result = controller.send(:supporting_document_ids, form_data_without_docs)
-        expect(result).to eq([])
-      end
-
-      it 'handles claim_ids for form 10-7959a' do
-        form_data_with_claim_ids = {
-          'form_number' => '10-7959A',
-          'supporting_docs' => [
-            { 'claim_id' => 'claim1', 'confirmation_code' => 'code1' },
-            { 'claim_id' => 'claim2', 'confirmation_code' => 'code2' }
-          ]
-        }
-
-        # Mock records with created_at and file.id so we can test the fallback behavior
-        record1 = double('Record1', created_at: 2.days.ago, file: double(id: 'file1'))
-        record2 = double('Record2', created_at: 1.day.ago, file: double(id: 'file2'))
-
-        # Return nil for these specific codes to trigger the claim_id fallback
-        allow(PersistentAttachments::MilitaryRecords).to receive(:find_by)
-          .with(guid: 'code1')
-          .and_return(record1)
-        allow(PersistentAttachments::MilitaryRecords).to receive(:find_by)
-          .with(guid: 'code2')
-          .and_return(record2)
-
-        result = controller.send(:supporting_document_ids, form_data_with_claim_ids)
-        expect(result).to eq(%w[claim1 claim2])
-      end
-    end
-
-    context 'with invalid supporting documents' do
-      it 'raises an error when supporting doc is not found in database' do
-        invalid_form_data = {
-          'form_number' => '10-10D',
-          'supporting_docs' => [
-            { 'confirmation_code' => 'invalid_code', 'attachment_id' => 'doc1' }
-          ]
-        }
-        allow(PersistentAttachments::MilitaryRecords).to receive(:find_by)
-          .with(guid: 'invalid_code')
-          .and_return(nil)
-
-        expect { controller.send(:supporting_document_ids, invalid_form_data) }
-          .to raise_error(NoMethodError)
-      end
-    end
-  end
+  # NOTE: #supporting_document_ids moved to DataTransformations mixin.
+  # See spec/services/data_transformations_spec.rb for unit tests.
 
   describe '#get_file_paths_and_metadata' do
     let(:controller) { IvcChampva::V1::UploadsController.new }
@@ -2005,10 +1565,16 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
         end
 
         it 'returns the correct file paths, metadata, and attachment IDs' do
-          allow(controller).to receive(:get_attachment_ids_and_form).and_return([%w[doc1 doc2], form_class.new({})])
+          form_instance = form_class.new({})
+          allow(controller).to receive(:get_form_id).and_return("vha_#{form_number.tr('-', '_').downcase}")
+          allow(IvcChampva::FormVersionManager).to receive(:create_form_instance).and_return(form_instance)
+          allow(form_instance).to receive_messages(
+            prepare_submission_data: [%w[doc1 doc2], nil],
+            validated_metadata: { 'metadata' => {} },
+            handle_attachments: ['file_path']
+          )
+          allow(controller).to receive(:track_form_submission_metrics)
           allow_any_instance_of(IvcChampva::PdfFiller).to receive(:generate).and_return('file_path')
-          allow(IvcChampva::MetadataValidator).to receive(:validate).and_return({ 'metadata' => {} })
-          allow_any_instance_of(form_class).to receive(:handle_attachments).and_return(['file_path'])
 
           file_paths, metadata = controller.send(:get_file_paths_and_metadata, parsed_form_data)
 
@@ -2030,16 +1596,18 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
         'supporting_docs' => [{ 'confirmation_code' => 'abc', 'attachment_id' => 'Birth certificate' }]
       }
     end
-    let(:form_instance) { double('FormInstance', metadata: { 'uuid' => SecureRandom.uuid }) }
+    let(:form_instance) do
+      double('FormInstance',
+             metadata: { 'uuid' => SecureRandom.uuid },
+             supporting_document_ids: ['Birth certificate'])
+    end
 
     before do
       allow(controller).to receive(:form_id_for_form_number).with('10-10D-EXTENDED').and_return('vha_10_10d')
       allow(IvcChampva::FormVersionManager).to receive(:create_form_instance).and_return(form_instance)
       allow(controller).to receive(:track_form_submission_metrics)
-      allow(controller).to receive_messages(
-        supporting_document_ids: ['Birth certificate'],
-        docs_only_resubmission_supporting_paths_from_form: ['/tmp/supporting.pdf']
-      )
+      allow(controller).to receive(:docs_only_resubmission_supporting_paths_from_form)
+        .and_return(['/tmp/supporting.pdf'])
       allow(IvcChampva::MetadataValidator).to receive(:validate) { |metadata| metadata }
     end
 
@@ -2204,103 +1772,8 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     end
   end
 
-  describe '#add_blank_doc_and_stamp integration' do
-    let(:controller) { IvcChampva::V1::UploadsController.new }
-    let(:parsed_form_data) { { 'form_number' => '10-7959A', 'supporting_docs' => [] } }
-
-    let(:form) do
-      instance_double(IvcChampva::VHA107959a,
-                      form_id: '10-7959A',
-                      methods: [:stamp_metadata],
-                      stamp_metadata: { metadata: { 'test_key' => 'test_value' }, attachment_id: 'Test Attachment' })
-    end
-
-    it 'creates and adds a supporting document' do
-      expect(IvcChampva::PdfStamper).to receive(:stamp_metadata_items)
-      expect(controller).to receive(:create_custom_attachment).and_return({ 'attachment_id' => 'doc1' })
-
-      expect do
-        controller.send(:add_blank_doc_and_stamp, form, parsed_form_data)
-      end.to change { parsed_form_data['supporting_docs'].length }.from(0).to(1)
-
-      expect(parsed_form_data['supporting_docs']).to include({ 'attachment_id' => 'doc1' })
-    end
-  end
-
-  describe '#add_blank_doc_and_stamp without stamp_metadata method' do
-    let(:controller) { IvcChampva::V1::UploadsController.new }
-    let(:form) { instance_double(IvcChampva::VHA1010d) }
-    let(:parsed_form_data) { { 'form_number' => '10-10D' } }
-
-    before do
-      allow(form).to receive(:methods).and_return([])
-    end
-
-    it 'does nothing when form has no stamp_metadata method' do
-      expect(IvcChampva::PdfStamper).not_to receive(:stamp_metadata_items)
-
-      controller.send(:add_blank_doc_and_stamp, form, parsed_form_data)
-    end
-  end
-
-  describe '#build_stamped_page' do
-    let(:controller) { IvcChampva::V1::UploadsController.new }
-    let(:blank_page_path) { 'tmp/test_blank.pdf' }
-
-    let(:form) do
-      instance_double(IvcChampva::VHA107959a,
-                      form_id: 'vha_10_7959a',
-                      uuid: 'test-uuid',
-                      methods: [:stamp_metadata],
-                      stamp_metadata: { metadata: { 'test_key' => 'test_value' }, attachment_id: 'Duty to Assist' })
-    end
-
-    before do
-      allow(IvcChampva::Attachments).to receive(:get_blank_page).and_return(blank_page_path)
-      allow(IvcChampva::PdfStamper).to receive(:stamp_metadata_items)
-      allow(IvcChampva::FormVersionManager).to receive(:get_legacy_form_id)
-        .with('vha_10_7959a').and_return('vha_10_7959a')
-      allow(FileUtils).to receive(:mv)
-    end
-
-    it 'returns a hash with file_path using the legacy form ID and attachment_id' do
-      result = controller.send(:build_stamped_page, form)
-
-      expect(result).to be_a(Hash)
-      expect(result[:file_path]).to eq('tmp/test-uuid_vha_10_7959a_form_page.pdf')
-      expect(result[:attachment_id]).to eq('Duty to Assist')
-    end
-
-    it 'stamps the blank page with form metadata' do
-      expect(IvcChampva::PdfStamper).to receive(:stamp_metadata_items)
-        .with(blank_page_path, { 'test_key' => 'test_value' })
-
-      controller.send(:build_stamped_page, form)
-    end
-
-    it 'does not add anything to supporting_docs' do
-      parsed_form_data = { 'supporting_docs' => [] }
-      controller.send(:build_stamped_page, form)
-
-      expect(parsed_form_data['supporting_docs']).to be_empty
-    end
-  end
-
-  describe '#build_stamped_page without stamp_metadata method' do
-    let(:controller) { IvcChampva::V1::UploadsController.new }
-    let(:form) { instance_double(IvcChampva::VHA1010d) }
-
-    before do
-      allow(form).to receive(:methods).and_return([])
-    end
-
-    it 'returns nil when form has no stamp_metadata method' do
-      expect(IvcChampva::PdfStamper).not_to receive(:stamp_metadata_items)
-
-      result = controller.send(:build_stamped_page, form)
-      expect(result).to be_nil
-    end
-  end
+  # NOTE: #add_blank_doc_and_stamp and #build_stamped_page moved to DataTransformations mixin.
+  # See spec/services/data_transformations_spec.rb for unit tests.
 
   describe '#validate_mpi_profiles' do
     let(:controller) { IvcChampva::V1::UploadsController.new }
@@ -2566,14 +2039,16 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
 
     before do
       allow(controller).to receive(:instance_variable_get).with('@current_user').and_return(nil)
-      allow(controller).to receive_messages(get_attachment_ids_and_form: [['doc1'], mock_form],
-                                            should_generate_ves_json?: false)
+      allow(controller).to receive(:get_form_id).and_return('vha_10_10d')
+      allow(controller).to receive_messages(should_generate_ves_json?: false,
+                                            track_form_submission_metrics: nil)
       allow(controller).to receive(:generate_ves_json_file)
       allow(Flipper).to receive(:enabled?).with(:champva_send_ohi_ves_to_pega, nil).and_return(false)
-      allow(IvcChampva::FormVersionManager).to receive(:get_legacy_form_id).and_return('vha_10_10d')
+      allow(IvcChampva::FormVersionManager).to receive_messages(create_form_instance: mock_form,
+                                                                get_legacy_form_id: 'vha_10_10d')
       allow_any_instance_of(IvcChampva::PdfFiller).to receive(:generate).and_return('test_path.pdf')
-      allow(IvcChampva::MetadataValidator).to receive(:validate).and_return({})
-      allow(mock_form).to receive(:handle_attachments).and_return(['test_path.pdf'])
+      allow(mock_form).to receive_messages(prepare_submission_data: [['doc1'], nil], validated_metadata: {},
+                                           handle_attachments: ['test_path.pdf'])
     end
 
     context 'when VES JSON generation conditions are met (old flag path)' do
@@ -2630,10 +2105,8 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
 
       before do
         allow(Flipper).to receive(:enabled?).with(:champva_send_ohi_ves_to_pega, nil).and_return(true)
-        allow(controller).to receive_messages(
-          get_attachment_ids_and_form: [['vha_10_10d'], mock_form]
-        )
-        allow(mock_form).to receive(:handle_attachments).and_return(['test-uuid-123_vha_10_10d-tmp.pdf'])
+        allow(mock_form).to receive_messages(prepare_submission_data: [['vha_10_10d'], nil],
+                                             handle_attachments: ['test-uuid-123_vha_10_10d-tmp.pdf'])
         allow(controller).to receive(:generate_ves_json_files)
           .and_return([{ path: ves_json_path, attachment_id: 'VES JSON' }])
       end
@@ -2685,13 +2158,12 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
         end
 
         before do
-          allow(controller).to receive_messages(
-            get_attachment_ids_and_form: [
-              ['vha_10_10d', 'VA form 10-7959c', 'VA form 10-7959c'], mock_form
-            ]
+          allow(mock_form).to receive_messages(
+            prepare_submission_data: [
+              ['vha_10_10d', 'VA form 10-7959c', 'VA form 10-7959c'], nil
+            ],
+            handle_attachments: ['test-uuid-123_vha_10_10d-tmp.pdf', ohi_pdf_one, ohi_pdf_two]
           )
-          allow(mock_form).to receive(:handle_attachments)
-            .and_return(['test-uuid-123_vha_10_10d-tmp.pdf', ohi_pdf_one, ohi_pdf_two])
           allow(controller).to receive(:generate_ves_json_files)
             .and_return([
                           { path: ves_json_path, attachment_id: 'VES JSON' },

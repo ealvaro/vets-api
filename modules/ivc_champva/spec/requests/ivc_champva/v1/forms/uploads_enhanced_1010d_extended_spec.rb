@@ -130,10 +130,8 @@ RSpec.describe 'IvcChampva::V1::Uploads — 10-10D supplemental docs-only resubm
     allow(controller).to receive(:form_id_for_form_number).with('10-10D-SUPPLEMENTAL').and_return('vha_10_10d')
     allow(IvcChampva::FormVersionManager).to receive(:create_form_instance).and_return(form_instance)
     allow(controller).to receive(:track_form_submission_metrics)
-    allow(controller).to receive_messages(
-      supporting_document_ids: ['Birth certificate'],
-      docs_only_resubmission_supporting_paths_from_form: ['/tmp/supporting.pdf']
-    )
+    allow(form_instance).to receive(:supporting_document_ids).and_return(['Birth certificate'])
+    allow(controller).to receive(:docs_only_resubmission_supporting_paths_from_form).and_return(['/tmp/supporting.pdf'])
     allow(IvcChampva::MetadataValidator).to receive(:validate) { |m| m }
 
     # Without claim_id, form's own uuid is preserved

@@ -1283,238 +1283,44 @@ module IvcChampva
         error_conditions.any? { |condition| error_message_downcase.include?(condition) } && attempt <= max_attempts
       end
 
-      def get_attachment_ids_and_form(parsed_form_data)
-        base_form_id = get_form_id
-        form = IvcChampva::FormVersionManager.create_form_instance(base_form_id, parsed_form_data, @current_user)
-
-        form_class = form.class
-        additional_pdf_count = form_class.const_defined?(:ADDITIONAL_PDF_COUNT) ? form_class::ADDITIONAL_PDF_COUNT : 1
-        applicant_key = form_class.const_defined?(:ADDITIONAL_PDF_KEY) ? form_class::ADDITIONAL_PDF_KEY : 'applicants'
-
-        applicants_count = parsed_form_data[applicant_key]&.count.to_i
-        total_applicants_count = applicants_count.to_f / additional_pdf_count
-        # Must always be at least 1, so that `attachment_ids` still contains the
-        # `form_id` even on forms that don't have an `applicants` array (e.g. FMP2)
-        applicant_rounded_number = total_applicants_count.ceil.zero? ? 1 : total_applicants_count.ceil
-
-        if Flipper.enabled?(:champva_claims_duty_to_assist, @current_user)
-          stamped_page = build_stamped_page(form)
-        else
-          add_blank_doc_and_stamp(form, parsed_form_data)
-          stamped_page = nil
-        end
-
-        track_form_submission_metrics(form)
-
-        attachment_ids = build_attachment_ids(base_form_id, parsed_form_data, applicant_rounded_number)
-        attachment_ids = [base_form_id] if attachment_ids.empty?
-
-        [attachment_ids.compact, form, stamped_page]
-      end
-
-      def supporting_document_ids(parsed_form_data)
-        cached_uploads = []
-        parsed_form_data['supporting_docs']&.each do |d|
-          # Get the database record that corresponds to this file upload:
-          record = PersistentAttachments::MilitaryRecords.find_by(guid: d['confirmation_code'])
-          # Push to our array with some extra information so we can sort by date uploaded:
-          cached_uploads.push({ attachment_id: d['attachment_id'],
-                                created_at: record.created_at,
-                                file_name: record.file.id })
-        end
-
-        # Sort by date created so we have the file's upload order and
-        # reduce down to just the attachment id strings:
-        attachment_ids = cached_uploads.sort_by { |h| h[:created_at] }.pluck(:attachment_id)&.compact.presence
-
-        # Return either the attachment IDs or `claim_id`s (fallback for form 10-7959a):
-        attachment_ids || parsed_form_data['supporting_docs']&.pluck('attachment_id')&.compact.presence ||
-          parsed_form_data['supporting_docs']&.pluck('claim_id')&.compact.presence || []
-      end
-
-      ##
-      # Builds the attachment_ids array for the given form submission.
-      # For 10-7959a resubmissions:
-      #  - If DTA applies (has_claim_docs == false): all documents labeled "Duty to Assist"
-      #  - If Control number selected: the main claim sheet is labeled "CVA Reopen",
-      #    supporting docs retain original types.
-      #  - If PDI selected: all documents labeled "CVA Bene Response".
-      # For all other cases, uses the standard logic.
-      #
-      # @param [String] form_id The mapped form ID (e.g., 'vha_10_7959a')
-      # @param [Hash] parsed_form_data complete form submission data object
-      # @param [Integer] applicant_rounded_number number of main form attachments needed
-      # @return [Array<String>] array of attachment_ids for all documents
-      def build_attachment_ids(form_id, parsed_form_data, applicant_rounded_number)
-        Datadog::Tracing.trace('IVC Champva Forms - Build Attachment IDs') do # seems quick, but lots nested
-          # DTA takes highest priority for 10-7959a resubmissions
-          if dta_applies?(form_id, parsed_form_data)
-            build_dta_attachment_ids(parsed_form_data, applicant_rounded_number)
-          elsif Flipper.enabled?(:champva_resubmission_attachment_ids) &&
-                form_id == 'vha_10_7959a' &&
-                parsed_form_data['claim_status'] == 'resubmission'
-            selector = parsed_form_data['pdi_or_claim_number']
-
-            if selector == 'Control number'
-              # Relabel main claim sheet as CVA Reopen; supporting docs retain original types.
-              main = Array.new(applicant_rounded_number) { 'CVA Reopen' }
-              main.concat(supporting_document_ids(parsed_form_data))
-            elsif selector == 'PDI number'
-              # Main form keeps default form_id; all supporting docs get relabeled to "CVA Bene Response".
-              build_pdi_resubmission_attachment_ids(form_id, parsed_form_data, applicant_rounded_number)
-            else
-              build_default_attachment_ids(form_id, parsed_form_data, applicant_rounded_number)
-            end
-          else
-            build_default_attachment_ids(form_id, parsed_form_data, applicant_rounded_number)
-          end
-        end
-      end
-
-      ##
-      # Checks if Duty to Assist (DTA) applies to this submission.
-      # DTA applies when:
-      #  - Feature flag is enabled
-      #  - Form is 10-7959a
-      #  - It's a resubmission
-      #  - has_claim_docs is explicitly false
-      #
-      # @param [String] form_id The mapped form ID
-      # @param [Hash] parsed_form_data complete form submission data object
-      # @return [Boolean] true if DTA applies
-      def dta_applies?(form_id, parsed_form_data)
-        Flipper.enabled?(:champva_claims_duty_to_assist) &&
-          form_id == 'vha_10_7959a' &&
-          parsed_form_data['claim_status'] == 'resubmission' &&
-          parsed_form_data['has_claim_docs'] == false
-      end
-
-      ##
-      # Builds the attachment_ids array for DTA submissions.
-      # All documents (main form, DTA info PDF, and supporting docs) are labeled "Duty to Assist".
-      #
-      # @param [Hash] parsed_form_data complete form submission data object
-      # @param [Integer] applicant_rounded_number number of main form attachments needed
-      # @return [Array<String>] array of attachment_ids
-      def build_dta_attachment_ids(parsed_form_data, applicant_rounded_number)
-        supporting_doc_count = parsed_form_data['supporting_docs']&.count.to_i
-        total_doc_count = applicant_rounded_number + supporting_doc_count
-        Array.new(total_doc_count) { 'Duty to Assist' }
-      end
-
-      ##
-      # Builds the default attachment_ids array using the standard logic.
-      #
-      # @param [String] form_id The mapped form ID
-      # @param [Hash] parsed_form_data complete form submission data object
-      # @param [Integer] applicant_rounded_number number of main form attachments needed
-      # @return [Array<String>] array of attachment_ids
-      def build_default_attachment_ids(form_id, parsed_form_data, applicant_rounded_number)
-        attachment_ids = Array.new(applicant_rounded_number) { form_id }
-        attachment_ids.concat(supporting_document_ids(parsed_form_data))
-      end
-
-      ##
-      # Builds the attachment_ids array for PDI number resubmissions.
-      # All documents (main form and supporting docs) are labeled "CVA Bene Response".
-      #
-      # @param [String] _form_id The mapped form ID (unused, all docs get same label)
-      # @param [Hash] parsed_form_data complete form submission data object
-      # @param [Integer] applicant_rounded_number number of main form attachments needed
-      # @return [Array<String>] array of attachment_ids
-      def build_pdi_resubmission_attachment_ids(_form_id, parsed_form_data, applicant_rounded_number)
-        supporting_doc_count = parsed_form_data['supporting_docs']&.count.to_i
-        total_doc_count = applicant_rounded_number + supporting_doc_count
-        Array.new(total_doc_count) { 'CVA Bene Response' }
-      end
-
-      ##
-      # Add a blank page to the PDF with stamped metadata if the form allows it.
-      #
-      # This method checks if the form has a `stamp_metadata` method that returns a hash.
-      # If so, it creates a blank page, stamps it with the provided metadata values,
-      # and adds it as a supporting document to the parsed form data.
-      #
-      # @param form [Object] The form object that may contain stamp_metadata method
-      # @param parsed_form_data [Hash] The parsed form data where the supporting document will be added
-      # @return [nil] This method doesn't return any value
-      def add_blank_doc_and_stamp(form, parsed_form_data)
-        Datadog::Tracing.trace('IVC Champva Forms - Add Blank Document') do
-          # Only triggers if the form in question has a method that returns values
-          # we want to stamp.
-          if form.methods.include?(:stamp_metadata)
-            stamps = form.stamp_metadata
-
-            if !stamps.nil? && stamps.is_a?(Hash)
-              blank_page_path = IvcChampva::Attachments.get_blank_page
-              IvcChampva::PdfStamper.stamp_metadata_items(blank_page_path, stamps[:metadata])
-              att = create_custom_attachment(form, blank_page_path, stamps[:attachment_id])
-              add_supporting_doc(parsed_form_data, att)
-            end
-          end
-        end
-      end
-
-      ##
-      # creates a stamped blank page and returns file info directly,
-      # bypassing the supporting_docs pipeline so the page gets named form_page
-      # instead of supporting_doc-N (which would inflate the confirmation email count).
-      #
-      # @param form [Object] The form object that may contain stamp_metadata method
-      # @return [Hash, nil] { file_path:, attachment_id: } or nil when not applicable
-      def build_stamped_page(form)
-        Datadog::Tracing.trace('IVC Champva Forms - Build Stamped Page') do
-          return unless form.methods.include?(:stamp_metadata)
-
-          stamps = form.stamp_metadata
-          return if stamps.nil? || !stamps.is_a?(Hash)
-
-          blank_page_path = IvcChampva::Attachments.get_blank_page
-          IvcChampva::PdfStamper.stamp_metadata_items(blank_page_path, stamps[:metadata])
-
-          legacy_form_id = IvcChampva::FormVersionManager.get_legacy_form_id(form.form_id)
-          stamped_name = "#{form.uuid}_#{legacy_form_id}_form_page.pdf"
-          stamped_path = File.join('tmp', stamped_name)
-          FileUtils.mv(blank_page_path, stamped_path)
-
-          { file_path: stamped_path, attachment_id: stamps[:attachment_id] }
-        end
-      end
-
-      # TODO: add documentation comments and consider renaming, this method also triggers
-      # - PDF filling
-      # - metadata validation
-      # - generation of VES JSON files
       def get_file_paths_and_metadata(parsed_form_data)
         Datadog::Tracing.trace('IVC Champva Forms - Get File Paths and Metadata and Other Work') do
           if docs_only_resubmission_flow_enabled?(parsed_form_data)
             return get_docs_only_resubmission_file_paths_and_metadata(parsed_form_data)
           end
 
-          attachment_ids, form, stamped_page = get_attachment_ids_and_form(parsed_form_data)
+          base_form_id = get_form_id
+          form = IvcChampva::FormVersionManager.create_form_instance(base_form_id, parsed_form_data, @current_user)
+          track_form_submission_metrics(form)
 
-          # Use the actual form ID for PDF generation, but legacy form ID for S3/metadata
-          actual_form_id = form.form_id
-          legacy_form_id = IvcChampva::FormVersionManager.get_legacy_form_id(actual_form_id)
+          attachment_ids, stamped_page = form.prepare_submission_data(
+            base_form_id, parsed_form_data, @current_user, controller: self
+          )
 
-          filler = IvcChampva::PdfFiller.new(form_number: actual_form_id, form:, uuid: form.uuid, name: legacy_form_id)
-
-          file_path = @current_user ? filler.generate(@current_user.loa[:current]) : filler.generate
-
-          # Get validated metadata
-          metadata = IvcChampva::MetadataValidator.validate(form.metadata)
-
-          file_paths = form.handle_attachments(file_path)
-
-          if stamped_page
-            file_paths << stamped_page[:file_path]
-            attachment_ids << stamped_page[:attachment_id]
-          end
+          file_paths, metadata, legacy_form_id = generate_pdf_and_assemble_paths(form, attachment_ids, stamped_page)
 
           append_ves_json_files(form, parsed_form_data, [file_paths, attachment_ids, metadata, legacy_form_id])
 
           [file_paths, metadata.merge({ 'attachment_ids' => attachment_ids })]
         end
+      end
+
+      def generate_pdf_and_assemble_paths(form, attachment_ids, stamped_page)
+        actual_form_id = form.form_id
+        legacy_form_id = IvcChampva::FormVersionManager.get_legacy_form_id(actual_form_id)
+
+        filler = IvcChampva::PdfFiller.new(form_number: actual_form_id, form:, uuid: form.uuid, name: legacy_form_id)
+        file_path = @current_user ? filler.generate(@current_user.loa[:current]) : filler.generate
+
+        metadata = form.validated_metadata
+        file_paths = form.handle_attachments(file_path)
+
+        if stamped_page
+          file_paths << stamped_page[:file_path]
+          attachment_ids << stamped_page[:attachment_id]
+        end
+
+        [file_paths, metadata, legacy_form_id]
       end
 
       def docs_only_resubmission?(parsed_form_data)
@@ -1698,7 +1504,7 @@ module IvcChampva
           form = IvcChampva::FormVersionManager.create_form_instance(base_form_id, parsed_form_data, @current_user)
           track_form_submission_metrics(form)
 
-          attachment_ids = supporting_document_ids(parsed_form_data)
+          attachment_ids = form.supporting_document_ids(parsed_form_data)
           if attachment_ids.blank?
             raise ArgumentError, 'supporting documents must resolve to at least one attachment id for upload'
           end

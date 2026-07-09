@@ -30,6 +30,11 @@ module IvcChampva
       @parsed_form_data = if options[:parsed_form_data] && Flipper.enabled?(:champva_store_request_json, @current_user)
                             options[:parsed_form_data]
                           end
+      @form_recorder = IvcChampva::FormRecorder.new(
+        @metadata, @form_id,
+        current_user: @current_user,
+        parsed_form_data: @parsed_form_data
+      )
     end
 
     ##
@@ -117,14 +122,15 @@ module IvcChampva
         }"
 
         file_name = File.basename(file_path).gsub('-tmp', '')
-        response_status = upload(file_name, file_path, metadata_for_s3(attachment_id, file_path))
+        response_status = upload(file_name, file_path,
+                                 IvcChampva::DataTransformations.metadata_for_s3(@metadata, attachment_id, file_path))
         if bypass_ves_json_flag
-          insert_form(file_name, response_status) if @insert_db_row && file_name.exclude?('_ves.json')
+          @form_recorder.insert_form(file_name, response_status) if @insert_db_row && file_name.exclude?('_ves.json')
         else
-          insert_form(file_name, response_status) if @insert_db_row # rubocop:disable Style/IfInsideElse
+          @form_recorder.insert_form(file_name, response_status) if @insert_db_row # rubocop:disable Style/IfInsideElse
         end
 
-        insert_combined_docs(file_path)
+        @form_recorder.insert_combined_docs(file_path, @merge_map, insert_db_row: @insert_db_row)
 
         response_status
       end.compact
@@ -142,19 +148,7 @@ module IvcChampva
           IvcChampva::PdfCombiner.combine(combined_pdf_path, @file_paths.compact, @current_user)
         end
 
-        attachment_id = @form_id
-        file_name = File.basename(combined_pdf_path)
-
-        Rails.logger.info "IVC Champva Forms - FileUploader: Starting upload with attachment_id: #{
-          sanitize_for_logging(attachment_id)
-        }"
-
-        # Upload the combined PDF
-        response_status = upload(file_name, combined_pdf_path, metadata_for_s3(attachment_id))
-
-        insert_combined_pdf_and_docs(file_name, response_status) if @insert_db_row
-
-        [response_status]
+        [upload_combined_pdf(combined_pdf_path)]
       rescue => e
         Rails.logger.error("FMP Single File Upload: Error during PDF combining for submission #{@metadata['uuid']}:" \
                            "#{e.message}")
@@ -164,91 +158,19 @@ module IvcChampva
       end
     end
 
-    def insert_combined_pdf_and_docs(file_name, response_status)
-      Datadog::Tracing.trace('IVC Champva Forms - Insert Combined PDF and Docs') do
-        insert_form(file_name, response_status)
+    def upload_combined_pdf(combined_pdf_path)
+      file_name = File.basename(combined_pdf_path)
 
-        @file_paths.each do |file_path|
-          next if file_path.blank?
+      Rails.logger.info "IVC Champva Forms - FileUploader: Starting upload with attachment_id: #{
+        sanitize_for_logging(@form_id)
+      }"
 
-          original_file_name = File.basename(file_path).gsub('-tmp', '')
-          insert_form(original_file_name, nil)
-        end
-      end
-    end
+      response_status = upload(file_name, combined_pdf_path,
+                               IvcChampva::DataTransformations.metadata_for_s3(@metadata, @form_id))
 
-    ##
-    # Inserts DB records for each original file that was combined into the given PDF.
-    # These records exist for email counting (file_name contains 'supporting_doc')
-    # but have nil s3_status since they were not individually uploaded to S3.
-    # No-op when DB insertion is disabled or the file wasn't produced by combining.
-    #
-    # @param [String] file_path Path to the combined file (key in @merge_map)
-    def insert_combined_docs(file_path)
-      return unless @insert_db_row && @merge_map.key?(file_path)
+      @form_recorder.insert_combined_pdf_and_docs(file_name, response_status, @file_paths) if @insert_db_row
 
-      @merge_map[file_path].each do |file_info|
-        original_name = File.basename(file_info[:file_path]).gsub('-tmp', '')
-        insert_form(original_name, nil)
-      end
-    end
-
-    ##
-    # Creates a modified metadata hash to be attached to individual files upon upload to S3.
-    # When per_file_metadata is present and a file_path is provided, merges any
-    # file-specific metadata overrides for the current file.
-    #
-    # @param [Integer, String] attachment_id Either a number or a string describing the file,
-    # e.g., 'Social Security card'
-    # @param [String, nil] file_path Optional file path for per-file metadata lookup
-    #
-    # @return [Hash] modified metadata object
-    def metadata_for_s3(attachment_id, file_path = nil)
-      key = attachment_id.is_a?(Integer) ? 'claim_id' : 'attachment_id'
-      result = @metadata
-               .except('primaryContactInfo', 'attachment_ids', 'supportingDocApplicants', 'additional_file_metadata')
-               .merge({ key => attachment_id.to_s })
-
-      if file_path && @metadata['additional_file_metadata']
-        file_name = File.basename(file_path).gsub('-tmp', '')
-        file_overrides = @metadata['additional_file_metadata'][file_name]
-        result.merge!(file_overrides) if file_overrides
-      end
-
-      result
-    end
-
-    ##
-    # Inserts a record of a particular file and its S3 upload status to the IVC database.
-    # The record may later be asyncronously updated via the PEGA callback API.
-    #
-    # @param [String] file_name Name of file, e.g.,
-    # XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXXX_vha_10_10d_supporting_doc-0.pdf
-    # @param [String] response_status Stringified array containing an HTTP status code and an optional error
-    # message string.
-    #
-    # @return [IvcChampvaForm]
-    def insert_form(file_name, response_status)
-      Datadog::Tracing.trace('IVC Champva Forms - Insert Form') do
-        pega_status = response_status&.first == 200 ? 'Submitted' : nil
-        IvcChampvaForm.create!(
-          form_uuid: @metadata['uuid'],
-          email: validate_email(@metadata&.dig('primaryContactInfo', 'email')),
-          first_name: @metadata&.dig('primaryContactInfo', 'name', 'first'),
-          last_name: @metadata&.dig('primaryContactInfo', 'name', 'last'),
-          submitted_by_icn: @current_user&.icn,
-          form_number: @metadata['docType'],
-          file_name:,
-          s3_status: response_status&.to_s,
-          pega_status:,
-          request_json: @parsed_form_data&.to_json
-        )
-
-        monitor.track_insert_form(@metadata['uuid'], @form_id)
-      end
-    rescue ActiveRecord::RecordInvalid => e
-      Rails.logger.error("Database Insertion Error for #{@metadata['uuid']}: #{e.message}")
-      raise
+      response_status
     end
 
     ##
@@ -312,18 +234,6 @@ module IvcChampva
         region: Settings.ivc_forms.s3.region,
         bucket: Settings.ivc_forms.s3.bucket
       )
-    end
-
-    ##
-    # Checks provided email against a regex to determine if it is valid, returning nil if not.
-    #
-    # @param [String] email An email address to validate
-    #
-    # @return [String, nil] Email is returned if valid, else nil is returned
-    def validate_email(email)
-      return nil unless email.present? && email.match?(/\A[\w+\-.]+@[a-z\d-]+(\.[a-z]+)*\.[a-z]+\z/i)
-
-      email
     end
 
     # Returns sanitized string that is safe for logging

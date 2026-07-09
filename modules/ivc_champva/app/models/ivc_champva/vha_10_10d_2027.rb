@@ -9,6 +9,7 @@ module IvcChampva
 
     include Virtus.model(nullify_blank: true)
     include Attachments
+    include DataTransformations
     include StampableLogging
     include SubmissionTracking
 

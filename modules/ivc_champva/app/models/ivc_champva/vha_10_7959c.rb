@@ -9,6 +9,7 @@ module IvcChampva
 
     include Vets::Model
     include Attachments
+    include DataTransformations
     include SubmissionTracking
 
     attribute :data, Hash

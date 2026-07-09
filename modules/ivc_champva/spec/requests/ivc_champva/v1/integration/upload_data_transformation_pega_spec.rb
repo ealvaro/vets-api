@@ -689,11 +689,13 @@ RSpec.describe 'Transformation Pega', type: :request do
 
     before do
       allow(controller).to receive(:instance_variable_get).with('@current_user').and_return(nil)
-      allow(controller).to receive_messages(get_attachment_ids_and_form: [['vha_10_10d'], mock_form])
-      allow(IvcChampva::FormVersionManager).to receive(:get_legacy_form_id).and_return('vha_10_10d')
+      allow(controller).to receive(:get_form_id).and_return('vha_10_10d')
+      allow(controller).to receive(:track_form_submission_metrics)
+      allow(IvcChampva::FormVersionManager).to receive_messages(create_form_instance: mock_form,
+                                                                get_legacy_form_id: 'vha_10_10d')
       allow_any_instance_of(IvcChampva::PdfFiller).to receive(:generate).and_return(pdf_path)
-      allow(IvcChampva::MetadataValidator).to receive(:validate).and_return({})
-      allow(mock_form).to receive(:handle_attachments).and_return([pdf_path])
+      allow(mock_form).to receive_messages(prepare_submission_data: [['vha_10_10d'], nil], validated_metadata: {},
+                                           handle_attachments: [pdf_path])
       allow(IvcChampva::VesDataFormatter).to receive(:format_for_request).and_return(mock_ves_request)
       allow(File).to receive(:write)
     end
@@ -734,13 +736,10 @@ RSpec.describe 'Transformation Pega', type: :request do
 
       before do
         allow(Flipper).to receive(:enabled?).with(:champva_send_ohi_ves_to_pega, nil).and_return(true)
-        allow(controller).to receive_messages(
-          get_attachment_ids_and_form: [
-            ['vha_10_10d', 'VA form 10-7959c', 'VA form 10-7959c'], mock_form
-          ]
+        allow(mock_form).to receive_messages(
+          prepare_submission_data: [['vha_10_10d', 'VA form 10-7959c', 'VA form 10-7959c'],
+                                    nil], handle_attachments: [pdf_path, ohi_pdf_one, ohi_pdf_two]
         )
-        allow(mock_form).to receive(:handle_attachments)
-          .and_return([pdf_path, ohi_pdf_one, ohi_pdf_two])
         allow(IvcChampva::VesDataFormatter).to receive(:format_for_ohi_request)
           .and_return([mock_ohi_request_a, mock_ohi_request_b])
       end
@@ -776,9 +775,12 @@ RSpec.describe 'Transformation Pega', type: :request do
 
       before do
         allow(Flipper).to receive(:enabled?).with(:champva_send_ohi_ves_to_pega, nil).and_return(true)
-        allow(controller).to receive_messages(get_attachment_ids_and_form: [['vha_10_7959c'], mock_form])
-        allow(IvcChampva::FormVersionManager).to receive(:get_legacy_form_id).and_return('vha_10_7959c')
-        allow(mock_form).to receive(:handle_attachments).and_return([ohi_pdf])
+        allow(controller).to receive(:get_form_id).and_return('vha_10_7959c')
+        allow(controller).to receive(:track_form_submission_metrics)
+        allow(IvcChampva::FormVersionManager).to receive_messages(create_form_instance: mock_form,
+                                                                  get_legacy_form_id: 'vha_10_7959c')
+        allow(mock_form).to receive_messages(prepare_submission_data: [['vha_10_7959c'], nil], validated_metadata: {},
+                                             handle_attachments: [ohi_pdf])
         allow(IvcChampva::VesDataFormatter).to receive(:format_for_ohi_request)
           .and_return([mock_ohi_request])
       end
@@ -810,7 +812,6 @@ RSpec.describe 'Transformation Pega', type: :request do
 
       before do
         allow(Flipper).to receive(:enabled?).with(:champva_send_ohi_ves_to_pega, nil).and_return(false)
-        allow(controller).to receive(:should_generate_ves_json?).and_return(false)
       end
 
       it 'does not include additional_file_metadata' do

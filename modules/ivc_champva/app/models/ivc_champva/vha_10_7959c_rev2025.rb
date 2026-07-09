@@ -20,6 +20,7 @@ module IvcChampva
 
     include Vets::Model
     include Attachments
+    include DataTransformations
     include StampableLogging
     include SubmissionTracking
 

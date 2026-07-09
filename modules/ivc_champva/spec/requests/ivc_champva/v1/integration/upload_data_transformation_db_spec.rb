@@ -22,6 +22,10 @@ RSpec.describe 'IvcChampva Upload Data Transformation Chain Integration Test', t
   let(:test_file_path) { Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'files', 'test.pdf') }
   let(:form_uuid) { 'test-form-uuid-12345' }
 
+  def form_id_for(form_number)
+    "vha_#{form_number.tr('-', '_').downcase}"
+  end
+
   before do
     @original_aws_config = Aws.config.dup
     Aws.config.update(stub_responses: true)
@@ -135,14 +139,19 @@ RSpec.describe 'IvcChampva Upload Data Transformation Chain Integration Test', t
 
       # Process through controller
       controller = IvcChampva::V1::UploadsController.new
-      allow(controller).to receive(:get_attachment_ids_and_form).and_return([['Test Document'], form_instance])
+      allow(controller).to receive(:get_form_id).and_return(form_id_for(form_number))
+      allow(IvcChampva::FormVersionManager).to receive(:create_form_instance).and_return(form_instance)
+      allow(form_instance).to receive_messages(prepare_submission_data: [['Test Document'], nil],
+                                               validated_metadata:)
+      allow(controller).to receive(:track_form_submission_metrics)
       file_paths, merged_metadata = controller.send(:get_file_paths_and_metadata, request_data)
       transformations[:file_paths_after_handle_attachments] = file_paths.dup
       transformations[:metadata_after_merge] = merged_metadata.dup
 
       # Process through file uploader
       file_uploader = IvcChampva::FileUploader.new(form_number, merged_metadata, file_paths, insert_db_row: true)
-      allow(file_uploader).to receive(:insert_form) do |_file_name, _response_status|
+      form_recorder = file_uploader.instance_variable_get(:@form_recorder)
+      allow(form_recorder).to receive(:insert_form) do |_file_name, _response_status|
         transformations[:db_record] = db_record
         db_record
       end
@@ -255,7 +264,11 @@ RSpec.describe 'IvcChampva Upload Data Transformation Chain Integration Test', t
 
       controller = IvcChampva::V1::UploadsController.new
       attachment_ids = %w[ID1 ID2 ID3]
-      allow(controller).to receive(:get_attachment_ids_and_form).and_return([attachment_ids, form_instance])
+      allow(controller).to receive(:get_form_id).and_return(form_id_for(form_number))
+      allow(IvcChampva::FormVersionManager).to receive(:create_form_instance).and_return(form_instance)
+      allow(form_instance).to receive_messages(prepare_submission_data: [attachment_ids, nil],
+                                               validated_metadata: original_metadata)
+      allow(controller).to receive(:track_form_submission_metrics)
 
       _file_paths, merged_metadata = controller.send(:get_file_paths_and_metadata, request_data)
 
@@ -335,19 +348,23 @@ RSpec.describe 'IvcChampva Upload Data Transformation Chain Integration Test', t
 
       allow_any_instance_of(IvcChampva::FileUploader).to receive_messages(
         upload: [200, nil],
-        insert_form: @test_db_record,
         send: @test_db_record
       )
+      allow_any_instance_of(IvcChampva::FormRecorder).to receive(:insert_form).and_return(@test_db_record)
       allow(IvcChampvaForm).to receive(:find_by).with(form_uuid: unique_identifier).and_return(@test_db_record)
     end
 
     it 'creates a database record with correct attributes' do
       # Process from form instance through to database
       form_instance = form_class.new(@request_data)
-      IvcChampva::MetadataValidator.validate(form_instance.metadata)
+      validated = IvcChampva::MetadataValidator.validate(form_instance.metadata)
 
       controller = IvcChampva::V1::UploadsController.new
-      allow(controller).to receive(:get_attachment_ids_and_form).and_return([['Test Document'], form_instance])
+      allow(controller).to receive(:get_form_id).and_return(form_id_for(form_number))
+      allow(IvcChampva::FormVersionManager).to receive(:create_form_instance).and_return(form_instance)
+      allow(form_instance).to receive_messages(prepare_submission_data: [['Test Document'], nil],
+                                               validated_metadata: validated)
+      allow(controller).to receive(:track_form_submission_metrics)
       file_paths, merged_metadata = controller.send(:get_file_paths_and_metadata, @request_data)
 
       file_uploader = IvcChampva::FileUploader.new(form_number, merged_metadata, file_paths, insert_db_row: true)
@@ -429,7 +446,11 @@ RSpec.describe 'IvcChampva Upload Data Transformation Chain Integration Test', t
 
         # Process through controller
         controller = IvcChampva::V1::UploadsController.new
-        allow(controller).to receive(:get_attachment_ids_and_form).and_return([['Test Document'], form_instance])
+        allow(controller).to receive(:get_form_id).and_return(form_id_for(form_number))
+        allow(IvcChampva::FormVersionManager).to receive(:create_form_instance).and_return(form_instance)
+        allow(form_instance).to receive_messages(prepare_submission_data: [['Test Document'], nil],
+                                                 validated_metadata:)
+        allow(controller).to receive(:track_form_submission_metrics)
         file_paths, merged_metadata = controller.send(:get_file_paths_and_metadata, @tracking_request)
 
         # Create mock database record that includes all relevant fields from metadata
@@ -458,10 +479,9 @@ RSpec.describe 'IvcChampva Upload Data Transformation Chain Integration Test', t
 
         # Mock form uploader
         file_uploader = IvcChampva::FileUploader.new(form_number, merged_metadata, file_paths, insert_db_row: true)
-        allow(file_uploader).to receive_messages(
-          insert_form: test_db_record,
-          upload: [200, nil]
-        )
+        form_recorder = file_uploader.instance_variable_get(:@form_recorder)
+        allow(form_recorder).to receive(:insert_form).and_return(test_db_record)
+        allow(file_uploader).to receive(:upload).and_return([200, nil])
 
         # Verify ALL metadata fields remain consistent through each step
         validated_metadata.each_key do |field|
