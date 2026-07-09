@@ -238,4 +238,63 @@ describe IvcChampva::PdfFiller do
       JSON.parse(test_file)
     end
   end
+
+  describe 'mapped template parity' do
+    let(:uuid) { 'parity-test-uuid' }
+    let(:filler) { described_class.new(form_number:, form:, uuid:) }
+    let(:original_output) do
+      allow(Flipper).to receive(:enabled?).and_return(false)
+      filler.send(:mapped_data)
+    end
+    let(:mapped_output) do
+      allow(Flipper).to receive(:enabled?).with(:champva_form_mapper_classes).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:champva_foreign_address_fix).and_return(false)
+      filler.send(:mapped_data)
+    end
+
+    before do
+      allow(File).to receive(:exist?).and_return(true)
+      allow(IvcChampva::PdfStamper).to receive(:stamp_pdf)
+      allow(PdfForms).to receive(:new).and_return(double(fill_form: true))
+      allow(Common::FileHelpers).to receive(:delete_file_if_exists)
+    end
+
+    shared_examples 'parity' do
+      it 'produces identical output from original and mapped ERB templates' do
+        expect(mapped_output).to eq(original_output)
+      end
+    end
+
+    context 'vha_10_7959c_rev2025' do
+      let(:form_number) { 'vha_10_7959c_rev2025' }
+      let(:fixture_data) { JSON.parse(File.read("modules/ivc_champva/spec/fixtures/form_json/#{form_number}.json")) }
+      let(:form) { IvcChampva::VHA107959cRev2025.new(fixture_data) }
+
+      include_examples 'parity'
+    end
+
+    context 'vha_10_10d_2027' do
+      let(:form_number) { 'vha_10_10d_2027' }
+      let(:fixture_data) { JSON.parse(File.read('modules/ivc_champva/spec/fixtures/form_json/vha_10_10d.json')) }
+      let(:form) { IvcChampva::VHA1010d2027.new(fixture_data) }
+
+      include_examples 'parity'
+    end
+
+    context 'vha_10_7959a_2027' do
+      let(:form_number) { 'vha_10_7959a_2027' }
+      let(:fixture_data) { JSON.parse(File.read("modules/ivc_champva/spec/fixtures/form_json/#{form_number}.json")) }
+      let(:form) { IvcChampva::VHA107959a2027.new(fixture_data) }
+
+      include_examples 'parity'
+    end
+
+    context 'vha_10_7959f_2_2025' do
+      let(:form_number) { 'vha_10_7959f_2_2025' }
+      let(:fixture_data) { JSON.parse(File.read('modules/ivc_champva/spec/fixtures/form_json/vha_10_7959f_2.json')) }
+      let(:form) { IvcChampva::VHA107959f22025.new(fixture_data) }
+
+      include_examples 'parity'
+    end
+  end
 end

@@ -81,12 +81,36 @@ module IvcChampva
       pdftk.fill_form(stamped_template_path, generated_form_path, mapped_data, flatten: true)
     end
 
+    FORM_MAPPERS = {
+      'vha_10_7959c_rev2025' => IvcChampva::FormMappers::VHA107959cRev2025,
+      'vha_10_10d_2027' => IvcChampva::FormMappers::VHA1010d2027,
+      'vha_10_7959a_2027' => IvcChampva::FormMappers::VHA107959a2027,
+      'vha_10_7959f_2_2025' => IvcChampva::FormMappers::VHA107959f22025
+    }.freeze
+
     def mapped_data
-      template = Rails.root.join('modules', 'ivc_champva', 'app', 'form_mappings', "#{form_number}.json.erb").read
+      template_name = resolve_template_name
+      template = Rails.root.join('modules', 'ivc_champva', 'app', 'form_mappings', "#{template_name}.json.erb").read
       b = binding
       b.local_variable_set(:data, form)
+
+      mapper_class = FORM_MAPPERS[form_number]
+      b.local_variable_set(:mapper, mapper_class.new(form.data).mapped_fields) if mapper_class && use_mapped_template?
+
       result = ERB.new(template).result(b)
       JSON.parse(escape_json_string(result))
+    end
+
+    def resolve_template_name
+      use_mapped_template? ? "#{form_number}_mapped" : form_number.to_s
+    end
+
+    def use_mapped_template?
+      Flipper.enabled?(:champva_form_mapper_classes) && mapped_template_path.exist?
+    end
+
+    def mapped_template_path
+      Rails.root.join('modules', 'ivc_champva', 'app', 'form_mappings', "#{form_number}_mapped.json.erb")
     end
 
     def escape_json_string(str)
