@@ -19,6 +19,59 @@ RSpec.describe Rack::Attack do
     Rack::Attack.cache.store = Rack::Attack::StoreProxy::RedisStoreProxy.new($redis)
   end
 
+  describe Rack::Attack::Request do
+    describe '#remote_ip' do
+      subject(:remote_ip) { described_class.new(env).remote_ip }
+
+      let(:env) do
+        Rack::MockRequest.env_for('/', 'REMOTE_ADDR' => remote_addr, 'HTTP_X_REAL_IP' => forwarded_ip)
+      end
+      let(:forwarded_ip) { '203.0.113.5' }
+
+      context 'when HTTP_X_REAL_IP is sent by a trusted proxy' do
+        let(:remote_addr) { '10.0.0.1' }
+
+        before do
+          allow(Rails.application.config.action_dispatch)
+            .to receive(:trusted_proxies).and_return([IPAddr.new('10.0.0.0/8')])
+        end
+
+        it 'uses the IP forwarded by the trusted proxy' do
+          expect(remote_ip).to eq(forwarded_ip)
+        end
+      end
+
+      context 'when HTTP_X_REAL_IP is sent by an untrusted connection' do
+        let(:remote_addr) { '203.0.113.9' }
+
+        before do
+          allow(Rails.application.config.action_dispatch)
+            .to receive(:trusted_proxies).and_return([IPAddr.new('10.0.0.0/8')])
+        end
+
+        it 'ignores the spoofable header and falls back to the connecting IP' do
+          expect(remote_ip).to eq(remote_addr)
+        end
+      end
+
+      context 'when no trusted_proxies are configured' do
+        let(:remote_addr) { '203.0.113.9' }
+
+        it 'never trusts the header' do
+          expect(remote_ip).to eq(remote_addr)
+        end
+      end
+
+      context 'when only the literal X-Real-Ip env key is set (Rack::Test-style injection)' do
+        let(:env) { Rack::MockRequest.env_for('/', 'REMOTE_ADDR' => '203.0.113.9', 'X-Real-Ip' => '198.51.100.1') }
+
+        it 'still honors it for backward-compatible test env injection' do
+          expect(remote_ip).to eq('198.51.100.1')
+        end
+      end
+    end
+  end
+
   describe '#throttled_response' do
     it 'adds X-RateLimit-* headers to the response' do
       post('/v0/limited', headers:)

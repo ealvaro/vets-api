@@ -4,7 +4,27 @@ class Rack::Attack
   # we're behind a load balancer and/or proxy, which is what request.ip returns
   class Request < ::Rack::Request
     def remote_ip
-      @remote_ip ||= (env['X-Real-Ip'] || ip).to_s
+      # HTTP_X_REAL_IP is the real one: our revproxy sets `X-Real-IP`, and Rack/Puma
+      # normalizes incoming headers to `HTTP_` + upcased + underscored env keys, so
+      # that's the only way this header actually shows up on a real request. It's only
+      # trustworthy when it comes from a proxy we've configured Rails to trust -- otherwise
+      # a direct caller could set it themselves to rotate their throttle bucket.
+      # `X-Real-Ip` (no HTTP_ prefix) never gets set by an actual request, but is kept here
+      # because spec/middleware/rack/attack_spec.rb injects it as a literal env key via
+      # Rack::Test rather than a real header, so it needs to be checked too.
+      @remote_ip ||= (trusted_x_real_ip || env['X-Real-Ip'] || ip).to_s
+    end
+
+    private
+
+    def trusted_x_real_ip
+      return nil unless env['HTTP_X_REAL_IP']
+
+      trusted_proxies = Array(Rails.application.config.action_dispatch.trusted_proxies)
+      case env['REMOTE_ADDR']
+      when *trusted_proxies
+        env['HTTP_X_REAL_IP']
+      end
     end
   end
 
