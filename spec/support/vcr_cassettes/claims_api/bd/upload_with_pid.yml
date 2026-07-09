@@ -1,0 +1,130 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: "<CLAIMS_API_BD_URL>/oauth2/benefits-documents/system/v1/token"
+    body:
+      encoding: US-ASCII
+      string: grant_type=client_credentials&client_assertion_type=urn%3Aietf%3Aparams%3Aoauth%3Aclient-assertion-type%3Ajwt-bearer&client_assertion=<CLIENT_ASSERTION>&scope=documents.read+documents.write
+    headers:
+      Accept:
+      - application/json
+      Content-Type:
+      - application/x-www-form-urlencoded
+      User-Agent:
+      - Vets.gov Agent
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Tue, 07 Jul 2026 14:42:51 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Connection:
+      - keep-alive
+      Ratelimit-Reset:
+      - '10'
+      Ratelimit-Limit:
+      - '240'
+      X-Ratelimit-Remaining-Minute:
+      - '239'
+      X-Ratelimit-Limit-Minute:
+      - '240'
+      Ratelimit-Remaining:
+      - '239'
+      Vary:
+      - Origin
+      Cache-Control:
+      - no-cache, no-store
+      Pragma:
+      - no-cache
+      Etag:
+      - W/"409-/pHAUTP7S+TwoN+/aWWmVwVH1cs:dtagent10335260518104739XnCJ"
+      Server-Timing:
+      - dtSInfo;desc="0", dtRpid;desc="-501105919"
+      X-Envoy-Upstream-Service-Time:
+      - '374'
+      Correlation-Id:
+      - 4b3d8194-769e-4a05-86dc-64b3085cdefb#8978
+      Access-Control-Allow-Origin:
+      - "*"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      Transfer-Encoding:
+      - chunked
+    body:
+      encoding: ASCII-8BIT
+      string: '{"access_token":"<BD_TOKEN>","token_type":"Bearer","scope":"documents.write
+        documents.read","expires_in":600,"state":null}'
+  recorded_at: Tue, 07 Jul 2026 14:42:51 GMT
+- request:
+    method: post
+    uri: "<CLAIMS_API_BD_URL>/services/benefits-documents/v1/documents"
+    body:
+      encoding: ASCII-8BIT
+      string: !binary |-
+        LS0tLS0tLS0tLS0tLVJ1YnlNdWx0aXBhcnRQb3N0LTE3MTgxMWY1MjEyODU5ZGJkNjUyZmNlN2U5MjJmNTA3DQpDb250ZW50LURpc3Bvc2l0aW9uOiBmb3JtLWRhdGE7IG5hbWU9InBhcmFtZXRlcnMiOyBmaWxlbmFtZT0icGFyYW1zMjAyNjA3MDctNTAyNzUtdTdmMDB5Ig0KQ29udGVudC1MZW5ndGg6IDE1MA0KQ29udGVudC1UeXBlOiBhcHBsaWNhdGlvbi9qc29uDQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiBiaW5hcnkNCg0KeyJkYXRhIjp7InN5c3RlbU5hbWUiOiJWQS5nb3YiLCJkb2NUeXBlIjoiTDEyMiIsImZpbGVOYW1lIjoiNjAwOTY2MzUzXzUyNkVaLnBkZiIsInRyYWNrZWRJdGVtSWRzIjpbXSwiY2xhaW1JZCI6NjAwOTY2MzUzLCJwYXJ0aWNpcGFudElkIjoiNjAwMDQzMjAxIn19DQotLS0tLS0tLS0tLS0tUnVieU11bHRpcGFydFBvc3QtMTcxODExZjUyMTI4NTlkYmQ2NTJmY2U3ZTkyMmY1MDcNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJwZGZfcGF0aDIwMjYwNzA3LTUwMjc1LXNnMTFpbS5wZGYiDQpDb250ZW50LUxlbmd0aDogMTIyNg0KQ29udGVudC1UeXBlOiBhcHBsaWNhdGlvbi9wZGYNCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IGJpbmFyeQ0KDQolUERGLTEuMwol/////woxIDAgb2JqCjw8IC9DcmVhdG9yIDxmZWZmMDA1MDAwNzIwMDYxMDA3NzAwNmU+Ci9Qcm9kdWNlciA8ZmVmZjAwNTAwMDcyMDA2MTAwNzcwMDZlPgo+PgplbmRvYmoKMiAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZwovUGFnZXMgMyAwIFIKPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzCi9Db3VudCAxCi9LaWRzIFs1IDAgUl0KPj4KZW5kb2JqCjQgMCBvYmoKPDwgL0xlbmd0aCAyMjgKPj4Kc3RyZWFtCnEKCkJUCjM2LjAgNzE5LjUxMiBUZAovRjIuMCAxNiBUZgpbPDQxNjQ+IDEwIDw2NDY5NzQ2OTZmNmU2MTZjMjA0OTZlNjY+IDIwIDw2ZjcyNmQ2MTc0Njk2ZjZlPl0gVEoKRVQKCgpCVAozNi4wIDY5My4zNDQgVGQKL0YyLjAgMTIgVGYKWzwzMTQxMmUyMDQ2NmY2ZjIwNGM2OTZlNjUyMDMyM2E+XSBUSgpFVAoKCkJUCjM2LjAgNjc5LjA2NCBUZAovRjEuMCAxMiBUZgpbPDYyNjE3Mj5dIFRKCkVUCgpRCgplbmRzdHJlYW0KZW5kb2JqCjUgMCBvYmoKPDwgL1R5cGUgL1BhZ2UKL1BhcmVudCAzIDAgUgovTWVkaWFCb3ggWzAgMCA2MTIuMCA3OTIuMF0KL0Nyb3BCb3ggWzAgMCA2MTIuMCA3OTIuMF0KL0JsZWVkQm94IFswIDAgNjEyLjAgNzkyLjBdCi9UcmltQm94IFswIDAgNjEyLjAgNzkyLjBdCi9BcnRCb3ggWzAgMCA2MTIuMCA3OTIuMF0KL0NvbnRlbnRzIDQgMCBSCi9SZXNvdXJjZXMgPDwgL1Byb2NTZXQgWy9QREYgL1RleHQgL0ltYWdlQiAvSW1hZ2VDIC9JbWFnZUldCi9Gb250IDw8IC9GMi4wIDYgMCBSCi9GMS4wIDcgMCBSCj4+Cj4+Cj4+CmVuZG9iago2IDAgb2JqCjw8IC9UeXBlIC9Gb250Ci9TdWJ0eXBlIC9UeXBlMQovQmFzZUZvbnQgL0hlbHZldGljYS1Cb2xkCi9FbmNvZGluZyAvV2luQW5zaUVuY29kaW5nCj4+CmVuZG9iago3IDAgb2JqCjw8IC9UeXBlIC9Gb250Ci9TdWJ0eXBlIC9UeXBlMQovQmFzZUZvbnQgL0hlbHZldGljYQovRW5jb2RpbmcgL1dpbkFuc2lFbmNvZGluZwo+PgplbmRvYmoKeHJlZgowIDgKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDE1IDAwMDAwIG4gCjAwMDAwMDAxMDkgMDAwMDAgbiAKMDAwMDAwMDE1OCAwMDAwMCBuIAowMDAwMDAwMjE1IDAwMDAwIG4gCjAwMDAwMDA0OTQgMDAwMDAgbiAKMDAwMDAwMDc5MiAwMDAwMCBuIAowMDAwMDAwODk0IDAwMDAwIG4gCnRyYWlsZXIKPDwgL1NpemUgOAovUm9vdCAyIDAgUgovSW5mbyAxIDAgUgo+PgpzdGFydHhyZWYKOTkxCiUlRU9GCg0KLS0tLS0tLS0tLS0tLVJ1YnlNdWx0aXBhcnRQb3N0LTE3MTgxMWY1MjEyODU5ZGJkNjUyZmNlN2U5MjJmNTA3LS0NCg==
+    headers:
+      Authorization: Bearer <TOKEN>
+      User-Agent:
+      - "<FARADAY_VERSION>"
+      Content-Type:
+      - multipart/form-data; boundary=-----------RubyMultipartPost-171811f5212859dbd652fce7e922f507
+      Content-Length:
+      - '1939'
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Tue, 07 Jul 2026 14:42:51 GMT
+      Content-Type:
+      - application/json
+      Connection:
+      - keep-alive
+      Ratelimit-Reset:
+      - '9'
+      X-Ratelimit-Remaining-Minute:
+      - '59'
+      X-Ratelimit-Limit-Minute:
+      - '60'
+      Ratelimit-Remaining:
+      - '59'
+      Ratelimit-Limit:
+      - '60'
+      X-Payload-Inspected:
+      - 'true'
+      X-Scan-Duration:
+      - '45'
+      Pragma:
+      - no-cache
+      - no-cache
+      X-Envoy-Upstream-Service-Time:
+      - '612'
+      Correlation-Id:
+      - 3fa2542f-7f0b-4717-a028-0d91a2f99332#5221
+      Access-Control-Allow-Origin:
+      - "*"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      - max-age=31536000; includeSubDomains; preload
+      X-Frame-Options:
+      - SAMEORIGIN
+      Cache-Control:
+      - no-cache, no-store
+      Transfer-Encoding:
+      - chunked
+    body:
+      encoding: ASCII-8BIT
+      string: '{"data":{"success":true,"requestId":6497}}'
+  recorded_at: Tue, 07 Jul 2026 14:42:52 GMT
+recorded_with: VCR 6.4.0

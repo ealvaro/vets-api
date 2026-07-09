@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'bd/bd'
 
 RSpec.describe ClaimsApi::ClaimUploader, type: :job do
   subject { described_class }
@@ -44,6 +45,7 @@ RSpec.describe ClaimsApi::ClaimUploader, type: :job do
 
   let(:auto_claim) do
     claim = create(:auto_established_claim, evss_id: '12345', status: 'pending')
+    claim.auth_headers['va_eauth_pid'] = '600043284'
     claim.set_file_data!(
       Rack::Test::UploadedFile.new(
         Rails.root.join(*'/modules/claims_api/spec/fixtures/extras.pdf'.split('/')).to_s
@@ -128,6 +130,21 @@ RSpec.describe ClaimsApi::ClaimUploader, type: :job do
         ClaimsApi::DisabilityCompensation::DisabilityDocumentService
       ).to receive(:create_upload).with(args).and_return true
       subject.new.perform(supporting_document.id, 'document')
+    end
+
+    it 'sends participantId instead of fileNumber in the upload body' do
+      upload_body = nil
+      allow_any_instance_of(ClaimsApi::BD).to receive(:upload_document) do |_instance, **args|
+        upload_body = args[:body]
+        { data: { success: true, requestId: 99 } }
+      end
+
+      subject.new.perform(auto_claim.id, 'claim')
+
+      params_json = upload_body[:parameters].read
+      data = JSON.parse(params_json)['data']
+      expect(data['participantId']).to eq('600043284')
+      expect(data).not_to have_key('fileNumber')
     end
 
     it 'is an attachment resulting in error' do

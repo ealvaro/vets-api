@@ -24,7 +24,8 @@ RSpec.describe ClaimsApi::DisabilityCompensationBenefitsDocumentsUploader, type:
     temp['data']['attributes']
   end
   let(:claim) do
-    claim = create(:auto_established_claim, evss_id: '12345')
+    claim = create(:auto_established_claim, evss_id: '600966353')
+    claim.auth_headers['va_eauth_pid'] = '600043201'
     claim.set_file_data!(
       Rack::Test::UploadedFile.new(
         Rails.root.join(*'/modules/claims_api/spec/fixtures/extras.pdf'.split('/')).to_s
@@ -80,6 +81,28 @@ RSpec.describe ClaimsApi::DisabilityCompensationBenefitsDocumentsUploader, type:
       claim.reload
       expect(claim.status).to eq('established')
       expect(claim.evss_response).to be_nil
+    end
+
+    it 'sends participantId instead of fileNumber in the upload body' do
+      # comment out stub_claims_api_auth_token to re-record the VCR cassette
+
+      multipart_body = nil
+      VCR.use_cassette('claims_api/bd/upload_with_pid') do
+        service.perform(claim.id)
+
+        # Grab the upload interaction before VCR ejects the cassette
+        multipart_body = VCR.current_cassette.serializable_hash['http_interactions'][1]
+                            .dig('request', 'body', 'string')
+      end
+
+      claim.reload
+      expect(claim.status).to eq('established')
+
+      # Parse the multipart request body to verify participantId is used
+      body_str = multipart_body.encode('UTF-8', invalid: :replace, undef: :replace, replace: '')
+
+      expect(body_str).to include('"participantId":"600043201"')
+      expect(body_str).not_to include('fileNumber')
     end
   end
 

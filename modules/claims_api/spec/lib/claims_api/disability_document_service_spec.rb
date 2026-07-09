@@ -41,4 +41,91 @@ describe ClaimsApi::DisabilityCompensation::DisabilityDocumentService do
       expect(result).to eq 'John_Smith_600_400_688_original_filename.pdf'
     end
   end
+
+  describe '#generate_body' do
+    let(:pdf_path) { Rails.root.join(*'/modules/claims_api/spec/fixtures/extras.pdf'.split('/')).to_s }
+
+    context 'when participantId is present in auth_headers' do
+      let(:claim) do
+        create(:auto_established_claim, evss_id: 600_400_688,
+                                        auth_headers: {
+                                          'va_eauth_firstName' => 'John',
+                                          'va_eauth_lastName' => 'Smith',
+                                          'va_eauth_pid' => '600043284',
+                                          'va_eauth_birlsfilenumber' => '796378782'
+                                        })
+      end
+
+      it 'uses participantId and does not include fileNumber' do
+        result = subject.send(:generate_body, claim:, doc_type: 'L122', pdf_path:)
+        params_json = result[:parameters].read
+        data = JSON.parse(params_json)['data']
+
+        expect(data['participantId']).to eq('600043284')
+        expect(data).not_to have_key('fileNumber')
+      end
+    end
+
+    context 'when participantId is not present in auth_headers' do
+      let(:claim) do
+        create(:auto_established_claim, evss_id: 600_400_688,
+                                        auth_headers: {
+                                          'va_eauth_firstName' => 'John',
+                                          'va_eauth_lastName' => 'Smith',
+                                          'va_eauth_pid' => nil,
+                                          'va_eauth_birlsfilenumber' => '796378782'
+                                        })
+      end
+
+      it 'falls back to fileNumber' do
+        result = subject.send(:generate_body, claim:, doc_type: 'L122', pdf_path:)
+        params_json = result[:parameters].read
+        data = JSON.parse(params_json)['data']
+
+        expect(data['fileNumber']).to eq('796378782')
+        expect(data).not_to have_key('participantId')
+      end
+    end
+
+    context 'when participantId is an empty string in auth_headers' do
+      let(:claim) do
+        create(:auto_established_claim, evss_id: 600_400_688,
+                                        auth_headers: {
+                                          'va_eauth_firstName' => 'John',
+                                          'va_eauth_lastName' => 'Smith',
+                                          'va_eauth_pid' => '',
+                                          'va_eauth_birlsfilenumber' => '796378782'
+                                        })
+      end
+
+      it 'falls back to fileNumber' do
+        result = subject.send(:generate_body, claim:, doc_type: 'L122', pdf_path:)
+        params_json = result[:parameters].read
+        data = JSON.parse(params_json)['data']
+
+        expect(data['fileNumber']).to eq('796378782')
+        expect(data).not_to have_key('participantId')
+      end
+    end
+
+    context 'when va_eauth_pid key is absent from auth_headers' do
+      let(:claim) do
+        create(:auto_established_claim, evss_id: 600_400_688,
+                                        auth_headers: {
+                                          'va_eauth_firstName' => 'John',
+                                          'va_eauth_lastName' => 'Smith',
+                                          'va_eauth_birlsfilenumber' => '796378782'
+                                        })
+      end
+
+      it 'falls back to fileNumber' do
+        result = subject.send(:generate_body, claim:, doc_type: 'L122', pdf_path:)
+        params_json = result[:parameters].read
+        data = JSON.parse(params_json)['data']
+
+        expect(data['fileNumber']).to eq('796378782')
+        expect(data).not_to have_key('participantId')
+      end
+    end
+  end
 end
