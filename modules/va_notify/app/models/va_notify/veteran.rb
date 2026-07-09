@@ -19,7 +19,7 @@ module VANotify
 
     def first_name
       @first_name ||= case in_progress_form.form_id
-                      when '686C-674'
+                      when '686C-674', '686C-674-V2'
                         JSON.parse(in_progress_form.form_data).dig('veteran_information', 'full_name', 'first')
                       when '1010ez'
                         JSON.parse(in_progress_form.form_data).dig('veteran_full_name', 'first')
