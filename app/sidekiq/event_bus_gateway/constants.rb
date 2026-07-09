@@ -74,6 +74,32 @@ module EventBusGateway
     # Controls the sidekiq (infrastructure level) retry when the letter ready notification job fails.
     SIDEKIQ_RETRY_COUNT_FIRST_NOTIFICATION = 5
 
+    # Lighthouse/VBMS doc type id for a benefits decision letter (a.k.a. "184").
+    DECISION_LETTER_DOC_TYPE = '184'
+
+    # Claim-letter propagation-lag re-check offsets (measurement only). Each entry
+    # enqueues one deferred LetterReadyClaimLetterRecheckJob at that offset after a
+    # notification to sample whether a decision letter has since become available.
+    # The label is used as a DataDog tag so a lag distribution can be built per offset.
+    # The 3d/7d offsets exist to catch letters that don't land until after a weekend
+    # (or holiday), so the tail isn't right-censored at 24h.
+    CLAIM_LETTER_RECHECK_INTERVALS = {
+      '15m' => 15.minutes,
+      '1h' => 1.hour,
+      '4h' => 4.hours,
+      '24h' => 24.hours,
+      '3d' => 3.days,
+      '7d' => 7.days
+    }.freeze
+
+    # Recency window for the alternate "available" signal: a decision letter counts
+    # as present-now when its received_at falls within this window of the re-check.
+    # Logged alongside the set-change delta so we can compare the two definitions
+    # against real data before committing to a gate (see story open question). This
+    # signal keys off received_at, which is known to be unreliable (backdated /
+    # future-dated) — hence it is measured, not yet trusted.
+    CLAIM_LETTER_RECENCY_WINDOW = 7.days
+
     # Hostname mapping for different environments
     HOSTNAME_MAPPING = {
       'dev-api.va.gov' => 'dev.va.gov',

@@ -6,19 +6,19 @@ require 'claim_letters/providers/claim_letters/lighthouse_claim_letters_provider
 require_relative 'constants'
 require_relative 'errors'
 require_relative 'letter_ready_job_concern'
+require_relative 'claim_letter_snapshot_concern'
 require_relative 'letter_ready_email_job'
 require_relative 'letter_ready_push_job'
 require_relative 'letter_ready_sms_job'
+require_relative 'letter_ready_claim_letter_recheck_job'
 
 module EventBusGateway
   class LetterReadyNotificationJob
     include Sidekiq::Job
     include LetterReadyJobConcern
+    include ClaimLetterSnapshotConcern
 
     STATSD_METRIC_PREFIX = 'event_bus_gateway.letter_ready_notification'
-
-    # Lighthouse/VBMS doc type id for a benefits decision letter (a.k.a. "184").
-    DECISION_LETTER_DOC_TYPE = '184'
 
     sidekiq_options retry: Constants::SIDEKIQ_RETRY_COUNT_FIRST_NOTIFICATION
 
@@ -39,8 +39,9 @@ module EventBusGateway
       icn = get_icn(participant_id)
 
       # Snapshot the most recent claim letter visible for this user as the
-      # decision-letter event arrives (logging only; never affects the send).
-      log_most_recent_claim_letter(icn)
+      # decision-letter event arrives (logging only; never affects the send) and,
+      # when enabled, schedule deferred re-checks to measure propagation lag.
+      process_claim_letter_snapshot(participant_id, icn)
 
       # Determine which notification types are requested based on template IDs
       requested_types = requested_notification_types(email_template_id, sms_template_id, push_template_id)
@@ -75,11 +76,22 @@ module EventBusGateway
       types
     end
 
-    # Logs the most recent claim letter available for the user when the decision
-    # letter event arrives. Gated behind a feature flag and fully guarded: any
-    # failure here is logged but never interrupts the notification flow.
-    def log_most_recent_claim_letter(icn)
+    # Snapshots the most recent claim letter available for the user when the
+    # decision letter event arrives. When the logging flag is on, logs the
+    # snapshot; when the re-check flag is on, schedules deferred re-checks to
+    # measure propagation lag. Both share a single BD fetch. Gated behind feature
+    # flags and fully guarded: any failure here is logged but never interrupts the
+    # notification flow.
+    def process_claim_letter_snapshot(participant_id, icn)
       return if icn.blank?
+
+      # The logging flag defines the sampled cohort and pays the BD fetch cost.
+      # Re-checks add MORE BD load, so they are deliberately confined to that same
+      # cohort: nothing runs here unless the logging flag samples this user. Two
+      # separate percentage flags would hash to different ~1% populations, so we
+      # gate the re-check *inside* the logging flag rather than beside it. With the
+      # re-check flag at 100% the re-check cohort is exactly the logging cohort;
+      # lower it to sample a subset. Re-checks never run outside the logging cohort.
       return unless Flipper.enabled?(:event_bus_gateway_log_most_recent_claim_letter, Flipper::Actor.new(icn))
 
       user = build_user_from_icn(icn, uuid: user_account(icn)&.id)
@@ -87,27 +99,44 @@ module EventBusGateway
 
       ::Rails.logger.info('LetterReadyNotificationJob most recent claim letter',
                           most_recent_claim_letter_payload(letters))
+
+      # Only re-check the "miss" cases: when a recent decision letter is already
+      # present at send time there is nothing to wait for, so we skip the deferred
+      # re-checks (and their BD load) entirely. The propagation-lag question only
+      # applies to notifications where no recent letter was available yet.
+      if Flipper.enabled?(:event_bus_gateway_claim_letter_recheck, Flipper::Actor.new(icn)) &&
+         !recent_decision_letter?(letters)
+        schedule_claim_letter_rechecks(participant_id, letters)
+      end
     rescue => e
       handle_claim_letter_log_error(e)
     end
 
     def most_recent_claim_letter_payload(letters)
-      decision_letters = letters.select { |d| d[:doc_type] == DECISION_LETTER_DOC_TYPE }
       most_recent = most_recent_letter(letters)
-      most_recent_decision = most_recent_letter(decision_letters)
 
-      {
+      most_recent_details = {
         message_type: 'ebg.letter_ready.most_recent_claim_letter',
-        letter_count: letters.size,
-        decision_letter_count: decision_letters.size,
         most_recent_received_at: format_letter_date(most_recent&.dig(:received_at)),
         most_recent_upload_date: format_letter_date(most_recent&.dig(:upload_date)),
         most_recent_doc_type: most_recent&.dig(:doc_type),
         most_recent_type_description: most_recent&.dig(:type_description),
-        most_recent_document_id: most_recent&.dig(:document_id),
-        most_recent_decision_received_at: format_letter_date(most_recent_decision&.dig(:received_at)),
-        most_recent_decision_document_id: most_recent_decision&.dig(:document_id)
+        most_recent_document_id: most_recent&.dig(:document_id)
       }
+
+      decision_letter_snapshot(letters).merge(most_recent_details)
+    end
+
+    # Enqueues one measurement re-check per configured interval, carrying the
+    # participant id, the original send time, the interval label, and the
+    # send-time decision-letter snapshot (counts/dates only — no new PII).
+    def schedule_claim_letter_rechecks(participant_id, letters)
+      snapshot = decision_letter_snapshot(letters).transform_keys(&:to_s)
+      original_sent_at = Time.current.utc.iso8601
+
+      Constants::CLAIM_LETTER_RECHECK_INTERVALS.each do |label, interval|
+        LetterReadyClaimLetterRecheckJob.perform_in(interval, participant_id, original_sent_at, label, snapshot)
+      end
     end
 
     def handle_claim_letter_log_error(error)
@@ -118,45 +147,6 @@ module EventBusGateway
       tags = Constants::DD_TAGS + ["error:#{error.class.name}"]
       StatsD.increment("#{STATSD_METRIC_PREFIX}.most_recent_claim_letter_failure", tags:)
       nil
-    end
-
-    # Returns the letter with the newest received_at. Computes the max rather than
-    # trusting provider sort order; falls back to the first letter if none are dated.
-    def most_recent_letter(letters)
-      return nil if letters.blank?
-
-      dated = letters.select { |d| d[:received_at].present? }
-      return letters.first if dated.empty?
-
-      dated.max_by { |d| d[:received_at].to_datetime }
-    end
-
-    def format_letter_date(value)
-      return nil if value.blank?
-
-      value.respond_to?(:iso8601) ? value.iso8601 : value.to_s
-    end
-
-    # Builds a minimal LOA3 user from the ICN so the claim letters providers can
-    # resolve participant_id/file_number via MPI, mirroring a real page request.
-    # Uses the UserAccount UUID when available so provider log lines correlate
-    # back to the veteran; falls back to a random UUID when there's no account.
-    def build_user_from_icn(icn, uuid: nil)
-      uuid = SecureRandom.uuid if uuid.blank?
-      user_identity = UserIdentity.new(
-        icn:,
-        uuid:,
-        loa: { current: 3, highest: 3 }
-      )
-      user = User.new(uuid: user_identity.uuid)
-      user.instance_variable_set(:@identity, user_identity)
-      user
-    end
-
-    # Always uses the Lighthouse Benefits Documents provider (the strategic
-    # claim-letters source) regardless of the VBMS migration flag.
-    def claim_letters_service(user)
-      LighthouseClaimLettersProvider.new(user)
     end
 
     def should_send_email?(email_template_id, icn)

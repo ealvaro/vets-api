@@ -33,6 +33,9 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
     allow(Flipper).to receive(:enabled?)
       .with(:event_bus_gateway_log_most_recent_claim_letter, instance_of(Flipper::Actor))
       .and_return(false)
+    allow(Flipper).to receive(:enabled?)
+      .with(:event_bus_gateway_claim_letter_recheck, instance_of(Flipper::Actor))
+      .and_return(false)
   end
 
   let(:participant_id) { '1234' }
@@ -828,6 +831,116 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
         expect(EventBusGateway::LetterReadyEmailJob).to receive(:perform_async)
 
         subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+      end
+    end
+  end
+
+  describe '#perform claim letter recheck scheduling' do
+    # A "miss" at send time: the only decision letter is older than the recency
+    # window, so there is something to wait for and re-checks should be scheduled.
+    let(:old_decision_date) { Time.zone.today - 30 }
+    let(:letters) do
+      [
+        { doc_type: '184', document_id: 'doc-new', type_description: 'Decision Letter',
+          received_at: old_decision_date, upload_date: old_decision_date },
+        { doc_type: '702', document_id: 'doc-other', type_description: 'Other',
+          received_at: old_decision_date, upload_date: old_decision_date }
+      ]
+    end
+    let(:provider) { instance_double(LighthouseClaimLettersProvider, get_letters: letters) }
+
+    before do
+      # Re-checks are confined to the logging cohort, so both flags must be on.
+      allow(Flipper).to receive(:enabled?)
+        .with(:event_bus_gateway_log_most_recent_claim_letter, instance_of(Flipper::Actor))
+        .and_return(true)
+      allow(Flipper).to receive(:enabled?)
+        .with(:event_bus_gateway_claim_letter_recheck, instance_of(Flipper::Actor))
+        .and_return(true)
+      allow_any_instance_of(described_class).to receive(:claim_letters_service).and_return(provider)
+    end
+
+    it 'enqueues one recheck per configured interval carrying the send-time snapshot' do
+      EventBusGateway::Constants::CLAIM_LETTER_RECHECK_INTERVALS.each do |label, interval|
+        expect(EventBusGateway::LetterReadyClaimLetterRecheckJob).to receive(:perform_in).with(
+          interval,
+          participant_id,
+          kind_of(String),
+          label,
+          hash_including(
+            'letter_count' => 2,
+            'decision_letter_count' => 1,
+            'decision_letter_document_ids' => ['doc-new'],
+            'most_recent_decision_received_at' => old_decision_date.iso8601,
+            'most_recent_decision_document_id' => 'doc-new'
+          )
+        )
+      end
+
+      subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+    end
+
+    context 'when a recent decision letter is already present at send time' do
+      let(:letters) do
+        [
+          { doc_type: '184', document_id: 'doc-fresh', type_description: 'Decision Letter',
+            received_at: 2.days.ago, upload_date: 2.days.ago }
+        ]
+      end
+
+      it 'logs the snapshot but does not schedule rechecks (nothing to wait for)' do
+        expect(Rails.logger).to receive(:info)
+          .with('LetterReadyNotificationJob most recent claim letter', anything)
+        expect(EventBusGateway::LetterReadyClaimLetterRecheckJob).not_to receive(:perform_in)
+
+        subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+      end
+    end
+
+    context 'when the logging (cohort) flag is off but the recheck flag is on' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:event_bus_gateway_log_most_recent_claim_letter, instance_of(Flipper::Actor))
+          .and_return(false)
+      end
+
+      it 'runs nothing — rechecks are confined to the logging cohort' do
+        expect(provider).not_to receive(:get_letters)
+        expect(Rails.logger).not_to receive(:info)
+          .with('LetterReadyNotificationJob most recent claim letter', anything)
+        expect(EventBusGateway::LetterReadyClaimLetterRecheckJob).not_to receive(:perform_in)
+
+        subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+      end
+    end
+
+    context 'when in the logging cohort but the recheck flag is off' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:event_bus_gateway_claim_letter_recheck, instance_of(Flipper::Actor))
+          .and_return(false)
+      end
+
+      it 'logs the snapshot but does not enqueue rechecks (single BD fetch)' do
+        expect(provider).to receive(:get_letters).once.and_return(letters)
+        expect(Rails.logger).to receive(:info)
+          .with('LetterReadyNotificationJob most recent claim letter', anything)
+        expect(EventBusGateway::LetterReadyClaimLetterRecheckJob).not_to receive(:perform_in)
+
+        subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+      end
+    end
+
+    context 'when fetching claim letters raises' do
+      before { allow(provider).to receive(:get_letters).and_raise(StandardError.new('boom')) }
+
+      it 'is fully guarded and still enqueues notifications' do
+        expect(EventBusGateway::LetterReadyClaimLetterRecheckJob).not_to receive(:perform_in)
+        expect(EventBusGateway::LetterReadyEmailJob).to receive(:perform_async)
+
+        expect do
+          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+        end.not_to raise_error
       end
     end
   end

@@ -325,6 +325,9 @@ features:
     actor_type: user
     description: Enables text if no benefit letters exist
     enable_in_development: true
+  event_bus_gateway_claim_letter_recheck:
+    actor_type: user
+    description: When enabled, LetterReadyNotificationJob schedules deferred LetterReadyClaimLetterRecheckJob re-checks that re-query Benefits Documents to measure claim-letter propagation lag. Only takes effect for users already sampled by event_bus_gateway_log_most_recent_claim_letter (that flag defines the cohort); set this to 100% to re-check exactly that cohort
   event_bus_gateway_ep030_decision_letter_notifications:
     description: "Gateway: Enable decision letter email notifications for EP030 higher level reviews"
   event_bus_gateway_ep040_decision_letter_notifications:
