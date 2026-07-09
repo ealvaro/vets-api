@@ -446,6 +446,43 @@ describe ClaimsApi::PowerOfAttorneyRequestService::CreateRequest do
           expect(res).not_to have_key('meta')
         end
       end
+
+      describe 'metadata schema conformance' do
+        it 'the metadata produced by add_meta_ids conforms to the metadata schema' do
+          subject.instance_variable_set(:@vnp_res_object, expected_res)
+
+          result = subject.send(:add_meta_ids, response_obj)
+
+          expect do
+            ClaimsApi::FormSchemas.new(schema_version: 'v2/power_of_attorney_requests')
+                                  .validate!('METADATA', result['meta'])
+          end.not_to raise_error
+        end
+
+        it 'metadata containing unknown keys does not conform to the metadata schema' do
+          bad_res = {
+            'meta' => {
+              'veteran' => {
+                'vnp_mail_id' => '12345',
+                'unexpected_field' => 'should not be here'
+              }
+            }
+          }
+          subject.instance_variable_set(:@vnp_res_object, bad_res)
+
+          result = subject.send(:add_meta_ids, response_obj)
+
+          error = nil
+          expect do
+            ClaimsApi::FormSchemas.new(schema_version: 'v2/power_of_attorney_requests')
+                                  .validate!('METADATA', result['meta'])
+          end.to raise_error(JsonSchema::JsonApiMissingAttribute) { |e| error = e }
+
+          json_errors = error.to_json_api[:errors]
+          expect(json_errors.first[:detail]).to include('not defined on the schema')
+          expect(json_errors.first[:source]).to include('/veteran/unexpected_field')
+        end
+      end
     end
   end
 end

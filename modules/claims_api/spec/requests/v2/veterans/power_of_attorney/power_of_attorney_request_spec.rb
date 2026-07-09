@@ -213,6 +213,79 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::PowerOfAttorneyRequest', type: :
               expect(response.headers).to have_key('Location')
             end
           end
+
+          it 'persists a PowerOfAttorneyRequest record with the expected attributes' do
+            mock_ccg(scopes) do |auth_header|
+              allow_any_instance_of(ClaimsApi::PowerOfAttorneyRequestService::Orchestrator)
+                .to receive(:submit_request).and_return(orchestrator_res)
+
+              expect { post request_path, params: request_body, headers: auth_header }
+                .to change(ClaimsApi::PowerOfAttorneyRequest, :count).by(1)
+
+              poa_request = ClaimsApi::PowerOfAttorneyRequest.last
+              expect(poa_request.proc_id).to eq(orchestrator_res['procId'])
+              expect(poa_request.veteran_icn).to eq(veteran_id)
+              expect(poa_request.poa_code).to eq('067')
+            end
+          end
+
+          context 'when the orchestrator response includes metadata' do
+            let(:orchestrator_res_with_meta) do
+              orchestrator_res.merge(
+                'meta' => {
+                  'veteran' => {
+                    'vnp_mail_id' => '151070',
+                    'vnp_email_id' => '151071',
+                    'vnp_phone_id' => '107777',
+                    'phone_data' => {
+                      'areaCode' => '555',
+                      'phoneNumber' => '5551234'
+                    }
+                  }
+                }
+              )
+            end
+
+            it 'persists the metadata from the BGS response to the record' do
+              mock_ccg(scopes) do |auth_header|
+                allow_any_instance_of(ClaimsApi::PowerOfAttorneyRequestService::Orchestrator)
+                  .to receive(:submit_request).and_return(orchestrator_res_with_meta)
+
+                post request_path, params: request_body, headers: auth_header
+
+                poa_request = ClaimsApi::PowerOfAttorneyRequest.last
+                expect(poa_request.metadata).to eq(orchestrator_res_with_meta['meta'])
+              end
+            end
+          end
+
+          context 'when metadata validation fails while persisting the request' do
+            let(:orchestrator_res_with_invalid_meta) do
+              orchestrator_res.merge(
+                'meta' => {
+                  'veteran' => {
+                    'unexpected_field' => 'not allowed'
+                  }
+                }
+              )
+            end
+
+            it 'returns a generic 422 without exposing schema-internal field paths' do
+              mock_ccg(scopes) do |auth_header|
+                allow_any_instance_of(ClaimsApi::PowerOfAttorneyRequestService::Orchestrator)
+                  .to receive(:submit_request).and_return(orchestrator_res_with_invalid_meta)
+
+                post request_path, params: request_body, headers: auth_header
+
+                response_body = JSON.parse(response.body)['errors'][0]
+
+                expect(response).to have_http_status(:unprocessable_content)
+                expect(response_body['detail']).to eq(
+                  'Unable to process Power of Attorney request due to internal validation error.'
+                )
+              end
+            end
+          end
         end
 
         context 'lighthouse_claims_v2_poa_requests_skip_bgs enabled' do

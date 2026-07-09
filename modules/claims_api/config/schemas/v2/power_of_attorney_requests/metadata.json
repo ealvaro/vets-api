@@ -1,0 +1,47 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "veteran": {
+      "$ref": "#/definitions/person_metadata"
+    },
+    "claimant": {
+      "$ref": "#/definitions/person_metadata"
+    }
+  },
+  "definitions": {
+    "person_metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "vnp_mail_id": {
+          "type": "string"
+        },
+        "vnp_email_id": {
+          "type": "string"
+        },
+        "vnp_phone_id": {
+          "type": "string"
+        },
+        "phone_data": {
+          "$ref": "#/definitions/phone_data"
+        }
+      }
+    },
+    "phone_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "countryCode": {
+          "type": "string"
+        },
+        "areaCode": {
+          "type": "string"
+        },
+        "phoneNumber": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

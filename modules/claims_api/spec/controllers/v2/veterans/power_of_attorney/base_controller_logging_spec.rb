@@ -200,4 +200,69 @@ RSpec.describe 'ClaimsApi::V2::Veterans::PowerOfAttorney::BaseController Logging
       end
     end
   end
+
+  describe '#handle_metadata_validation_failure' do
+    let(:metadata_errors) { ['invalid at /veteran: schema violation'] }
+
+    context 'when error is metadata validation for PowerOfAttorneyRequest' do
+      let(:record) { ClaimsApi::PowerOfAttorneyRequest.new }
+      let(:record_invalid_error) { ActiveRecord::RecordInvalid.new(record) }
+
+      before do
+        record.errors.add(:metadata, metadata_errors.first)
+      end
+
+      it 'logs details and raises a generic Lighthouse unprocessable entity error' do
+        allow(Flipper).to receive(:enabled?)
+          .with(:lighthouse_claims_api_v2_poa_request_internal_validation_alerting)
+          .and_return(true)
+
+        expect(controller).to receive(:claims_v2_logging).with(
+          'power_of_attorney_request_metadata_validation_failed',
+          level: :warn,
+          message: { metadata_schema_errors: metadata_errors }.to_json
+        )
+
+        expect(controller).to receive(:request_slack_alert).with(
+          'POA Create Request',
+          'POA Internal Validation Error During Create Request with ' \
+          'metadata_errors: invalid at /veteran: schema violation'
+        )
+
+        expect(controller).to receive(:render_error) do |error|
+          expect(error).to be_a(ClaimsApi::Common::Exceptions::Lighthouse::UnprocessableEntity)
+          expect(error.errors.first[:detail]).to eq(
+            'Unable to process Power of Attorney request due to internal validation error.'
+          )
+        end
+
+        controller.send(:handle_metadata_validation_failure, record_invalid_error)
+      end
+
+      it 'does not send Slack alert when flag is disabled' do
+        allow(Flipper).to receive(:enabled?)
+          .with(:lighthouse_claims_api_v2_poa_request_internal_validation_alerting)
+          .and_return(false)
+
+        expect(controller).to receive(:claims_v2_logging)
+        expect(controller).not_to receive(:request_slack_alert)
+        expect(controller).to receive(:render_error)
+
+        controller.send(:handle_metadata_validation_failure, record_invalid_error)
+      end
+    end
+
+    context 'when error is not a metadata schema validation failure' do
+      let(:record) { ClaimsApi::PowerOfAttorneyRequest.new }
+      let(:record_invalid_error) { ActiveRecord::RecordInvalid.new(record) }
+
+      it 're-raises the original RecordInvalid error and does not log metadata validation failure' do
+        expect(controller).not_to receive(:claims_v2_logging)
+
+        expect do
+          controller.send(:handle_metadata_validation_failure, record_invalid_error)
+        end.to raise_error(ActiveRecord::RecordInvalid)
+      end
+    end
+  end
 end

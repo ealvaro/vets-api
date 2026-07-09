@@ -18,6 +18,9 @@ module ClaimsApi
         include ClaimsApi::DependentClaimantValidation
         FORM_NUMBER_INDIVIDUAL = '2122A'
         VA_NOTIFY_KEY = 'va_notify_recipient_identifier'
+        # Renders a generic 422 only when ClaimsApi::PowerOfAttorneyRequest
+        # metadata schema validation fails; otherwise re-raises.
+        rescue_from ActiveRecord::RecordInvalid, with: :handle_metadata_validation_failure
 
         ##
         # Retrieves the current Power of Attorney (POA) information for a veteran.
@@ -58,6 +61,49 @@ module ClaimsApi
         end
 
         private
+
+        def handle_metadata_validation_failure(error)
+          return raise error unless metadata_schema_validation_error?(error)
+
+          metadata_errors = error.record.errors[:metadata]
+          log_metadata_validation_failure(metadata_errors)
+          notify_metadata_validation_failure(metadata_errors)
+
+          render_error(
+            ::ClaimsApi::Common::Exceptions::Lighthouse::UnprocessableEntity.new(
+              detail: 'Unable to process Power of Attorney request due to internal validation error.'
+            )
+          )
+        end
+
+        def log_metadata_validation_failure(metadata_errors)
+          claims_v2_logging(
+            'power_of_attorney_request_metadata_validation_failed',
+            level: :warn,
+            message: {
+              metadata_schema_errors: metadata_errors
+            }.to_json
+          )
+        end
+
+        # This data is specific to the create_request save
+        def notify_metadata_validation_failure(metadata_errors)
+          return unless notify_metadata_validation_failure?
+
+          request_slack_alert(
+            'POA Create Request',
+            'POA Internal Validation Error During Create Request with ' \
+            "metadata_errors: #{metadata_errors.join('; ')}"
+          )
+        end
+
+        def notify_metadata_validation_failure?
+          Flipper.enabled?(:lighthouse_claims_api_v2_poa_request_internal_validation_alerting)
+        end
+
+        def metadata_schema_validation_error?(error)
+          error.record.is_a?(ClaimsApi::PowerOfAttorneyRequest) && error.record.errors[:metadata].present?
+        end
 
         def shared_form_validation(form_number)
           # validate target veteran exists
