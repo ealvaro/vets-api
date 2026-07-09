@@ -340,6 +340,12 @@ module Form526ClaimFastTrackingConcern
   def conditionally_notify_mas
     return unless read_metadata(:forward_to_mas_all_claims)
 
+    if Flipper.enabled?(:disability_526_pause_mas_notification)
+      Rails.logger.info('MAS notification paused; claim not sent to MAS', submission_id: id, submitted_claim_id:)
+      StatsD.increment("#{RRD_STATSD_KEY_PREFIX}.notify_mas.paused")
+      return
+    end
+
     notify_mas_all_claims_tracking
     client = MailAutomation::Client.new({
                                           file_number: birls_id,

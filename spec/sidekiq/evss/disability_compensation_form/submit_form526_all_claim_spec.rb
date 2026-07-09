@@ -443,6 +443,8 @@ RSpec.describe EVSS::DisabilityCompensationForm::SubmitForm526AllClaim, type: :j
 
         before do
           allow(StatsD).to receive(:increment)
+          allow(Flipper).to receive(:enabled?)
+            .with(:disability_526_pause_mas_notification).and_return(false)
         end
 
         it 'sends form526 to the MAS endpoint successfully' do
@@ -453,6 +455,36 @@ RSpec.describe EVSS::DisabilityCompensationForm::SubmitForm526AllClaim, type: :j
           expect(rrd_submission.form.dig('rrd_metadata', 'mas_packetId')).to eq '12345'
           expect(StatsD).to have_received(:increment)
             .with('worker.rapid_ready_for_decision.notify_mas.success').once
+        end
+
+        context 'when disability_526_pause_mas_notification is enabled' do
+          let(:cassettes) do
+            [open_claims_cassette, rated_disabilities_cassette, submit_form_cassette,
+             lh_claims_cassette, lh_longer_icn_claims]
+          end
+
+          before do
+            allow(Flipper).to receive(:enabled?)
+              .with(:disability_526_pause_mas_notification).and_return(true)
+          end
+
+          it 'does not send to MAS and logs the claim id instead' do
+            allow(Rails.logger).to receive(:info).and_call_original
+            expect(MailAutomation::Client).not_to receive(:new)
+
+            subject.perform_async(submission.id)
+            described_class.drain
+
+            expect(Form526JobStatus.last.status).to eq 'success'
+            paused_submission = Form526Submission.find(Form526JobStatus.last.form526_submission_id)
+            expect(paused_submission.form.dig('rrd_metadata', 'mas_packetId')).to be_nil
+            expect(Rails.logger).to have_received(:info).with(
+              'MAS notification paused; claim not sent to MAS',
+              hash_including(submitted_claim_id: paused_submission.submitted_claim_id)
+            )
+            expect(StatsD).to have_received(:increment)
+              .with('worker.rapid_ready_for_decision.notify_mas.paused').once
+          end
         end
 
         it 'sends an email for tracking purposes' do
@@ -518,6 +550,11 @@ RSpec.describe EVSS::DisabilityCompensationForm::SubmitForm526AllClaim, type: :j
         end
 
         context 'when tracking and APCAS notification are enabled for all claims' do
+          before do
+            allow(Flipper).to receive(:enabled?)
+              .with(:disability_526_pause_mas_notification).and_return(false)
+          end
+
           it 'calls APCAS and sends two emails' do
             VCR.use_cassette('mail_automation/mas_initiate_apcas_request') do
               subject.perform_async(submission.id)

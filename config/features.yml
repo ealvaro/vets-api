@@ -1183,6 +1183,11 @@ features:
     actor_type: user
     description: enables the job that reports new conditions workflow in-progress form stats to Datadog
     enable_in_development: true
+  disability_526_pause_mas_notification:
+    actor_type: user
+    description: >
+      When enabled, pauses sending 526 claims to MAS and instead logs the claim ID
+      so the claims that should have been sent can be manually submitted later.
   disability_526_send_form526_submitted_email:
     actor_type: user
     description: enables sending submitted email in both primary and backup paths
