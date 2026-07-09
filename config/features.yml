@@ -48,6 +48,9 @@ features:
   accredited_representative_portal_skip_itf_check:
     actor_type: user
     description: If enabled, skip existing ITF check in ARP
+  accredited_representative_portal_submit_686c_v2:
+    actor_type: user
+    description: Enables digital 686c form experience in ARP
   accredited_representative_portal_submit_any_file:
     actor_type: user
     description: Enables the submit any file feature on the frontend
