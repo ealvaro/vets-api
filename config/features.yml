@@ -9,8 +9,6 @@
 # The actor_type should be either `user` for features you want to be "sticky" for a logged in user (default)
 #  or `cookie_id` of you wish to use the Google Analytics id as the unique identifier.
 
-# Sorted using http://yaml-sorter.herokuapp.com/
-
 features:
   this_is_only_a_test:
     actor_type: user
