@@ -94,9 +94,13 @@ features:
   arc_appoint_a_representative_use_accredited_models:
     actor_type: user
     description: >
-      Gates accredited_entities_for_appoint vs original_entities routing in the
-      appoint flow. Replaces the shared find_a_representative_use_accredited_models
-      check for appoint controllers.
+      Gates the Appoint a Representative migration to the AccreditedX models: the
+      accredited_entities_for_appoint vs original_entities search routing; representative and
+      organization resolution across the 21-22/21-22a PDF generation and the digital POA
+      submission (AccreditedIndividual/AccreditedOrganization vs the legacy Veteran::Service
+      models); and the digital submission's individual-accept check (Accreditation vs the legacy
+      Veteran::Service::OrganizationRepresentative join). Replaces the shared
+      find_a_representative_use_accredited_models check for appoint controllers.
   arc_find_a_representative_backend_use_accredited_models:
     actor_type: user
     description: >

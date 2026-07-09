@@ -25,8 +25,11 @@ module RepresentationManagement
     private
 
     def find_organization
-      AccreditedOrganization.find_by(id: organization_id) ||
+      if appoint_accredited_models_enabled?
+        AccreditedOrganization.find_by(id: organization_id)
+      else
         Veteran::Service::Organization.find_by(poa: organization_id)
+      end
     end
 
     def organization_exists?

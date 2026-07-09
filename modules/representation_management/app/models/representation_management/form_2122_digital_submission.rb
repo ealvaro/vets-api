@@ -42,8 +42,11 @@ module RepresentationManagement
     private
 
     def find_organization
-      AccreditedOrganization.find_by(id: organization_id) ||
+      if appoint_accredited_models_enabled?
+        AccreditedOrganization.find_by(id: organization_id)
+      else
         Veteran::Service::Organization.find_by(poa: organization_id)
+      end
     end
 
     def organization_exists?
@@ -63,13 +66,36 @@ module RepresentationManagement
       return unless organization.can_accept_digital_poa_requests
 
       poa_code = organization.respond_to?(:poa) ? organization.poa : organization.poa_code
-      return if Veteran::Service::OrganizationRepresentative.active
-                                                            .where(representative_id:,
-                                                                   organization_poa: poa_code)
-                                                            .where.not(acceptance_mode: 'no_acceptance')
-                                                            .exists?
+      return if representative_accepts_for_poa_code?(poa_code)
 
       errors.add(:representative, REP_CANNOT_ACCEPT)
+    end
+
+    # The acceptance-mode lookup is gated by the Appoint a Rep migration flag: when on it reads the
+    # AccreditedX Accreditation join, when off it reads the legacy
+    # Veteran::Service::OrganizationRepresentative join. poa_code and the rep registration number are
+    # identical on both sides.
+    def representative_accepts_for_poa_code?(poa_code)
+      if appoint_accredited_models_enabled?
+        Accreditation.active
+                     .for_organization_poa_codes(poa_code)
+                     .for_registration_numbers(representative_registration_number)
+                     .where.not(acceptance_mode: 'no_acceptance')
+                     .exists?
+      else
+        Veteran::Service::OrganizationRepresentative.active
+                                                    .where(representative_id:, organization_poa: poa_code)
+                                                    .where.not(acceptance_mode: 'no_acceptance')
+                                                    .exists?
+      end
+    end
+
+    def representative_registration_number
+      if representative.is_a?(AccreditedIndividual)
+        representative.registration_number
+      else
+        representative.representative_id
+      end
     end
 
     def user_is_submitting_as_veteran?

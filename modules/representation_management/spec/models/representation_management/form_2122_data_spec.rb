@@ -50,6 +50,12 @@ RSpec.describe RepresentationManagement::Form2122Data, type: :model do
     end
 
     context 'when organization is found in Veteran::Service::Organization' do
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?)
+          .with(:arc_appoint_a_representative_use_accredited_models).and_return(false)
+      end
+
       it 'returns the Veteran::Service::Organization' do
         veteran_org = create(:organization, name: 'Veteran Org Name')
         form_2122_data = described_class.new(organization_id: veteran_org.poa)

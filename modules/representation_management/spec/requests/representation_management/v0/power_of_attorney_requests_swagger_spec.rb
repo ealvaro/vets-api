@@ -16,6 +16,13 @@ RSpec.describe 'Power of Attorney Requests',
     create(:representative, representative_id: SwaggerSharedComponents::V0.poa_request_representative[:id])
   end
 
+  before do
+    # Legacy acceptance fixtures; keep the submission on the legacy join.
+    allow(Flipper).to receive(:enabled?).and_call_original
+    allow(Flipper).to receive(:enabled?)
+      .with(:arc_appoint_a_representative_use_accredited_models).and_return(false)
+  end
+
   path '/representation_management/v0/power_of_attorney_requests' do
     post('Submit a Power of Attorney Request (Form 21-22)') do
       tags 'Power of Attorney Requests'

@@ -118,6 +118,9 @@ RSpec.describe 'RepresentationManagement::V0::PdfGenerator2122a', type: :request
 
     context 'When submitting a legacy representative' do
       before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?)
+          .with(:arc_appoint_a_representative_use_accredited_models).and_return(false)
         legacy_representative = create(:representative, zip_code: '12345')
         params[:pdf_generator2122a][:representative][:id] = legacy_representative.representative_id
         post(base_path, params:)

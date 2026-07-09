@@ -156,8 +156,17 @@ module RepresentationManagement
     end
 
     def find_representative
-      AccreditedIndividual.find_by(id: representative_id) ||
+      if appoint_accredited_models_enabled?
+        AccreditedIndividual.find_by(id: representative_id)
+      else
         Veteran::Service::Representative.find_by(representative_id:)
+      end
+    end
+
+    # Gates the Appoint a Rep migration: when on, resolve/accept against the AccreditedX models;
+    # when off (default), against the legacy Veteran::Service models.
+    def appoint_accredited_models_enabled?
+      Flipper.enabled?(:arc_appoint_a_representative_use_accredited_models)
     end
 
     def representative_exists?

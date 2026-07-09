@@ -55,6 +55,12 @@ RSpec.describe RepresentationManagement::Form2122DigitalSubmission, type: :model
     end
 
     context 'when organization is found in Veteran::Service::Organization' do
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?)
+          .with(:arc_appoint_a_representative_use_accredited_models).and_return(false)
+      end
+
       it 'returns the Veteran::Service::Organization' do
         veteran_org = create(:organization, name: 'Veteran Org Name')
         form = described_class.new(organization_id: veteran_org.poa)
@@ -78,6 +84,13 @@ RSpec.describe RepresentationManagement::Form2122DigitalSubmission, type: :model
     let(:user) { create(:user, :loa3) }
     let(:dependent) { false }
     let(:organization_id) { 'ABC' }
+
+    before do
+      # Default to legacy resolution; the AccreditedX context opts into the flag explicitly.
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:arc_appoint_a_representative_use_accredited_models).and_return(false)
+    end
 
     it { expect(subject).to validate_presence_of(:organization_id) }
 
@@ -135,6 +148,7 @@ RSpec.describe RepresentationManagement::Form2122DigitalSubmission, type: :model
       end
     end
 
+    # Legacy Veteran::Service::OrganizationRepresentative join (flag off, set at the validations level).
     context 'representative_can_accept_for_organization?' do
       let(:organization) { create(:organization, name: 'Test Org', can_accept_digital_poa_requests: true) }
       let(:organization_id) { organization.poa }
@@ -228,38 +242,86 @@ RSpec.describe RepresentationManagement::Form2122DigitalSubmission, type: :model
           )
         end
       end
+    end
 
-      context 'when the organization is an AccreditedOrganization' do
-        let(:accredited_org) do
-          create(:accredited_organization, can_accept_digital_poa_requests: true)
-        end
-        let(:veteran_org) { create(:organization, poa: accredited_org.poa_code) }
-        let(:organization_id) { accredited_org.id }
+    context 'representative_can_accept_for_organization? with the appoint migration flag on (AccreditedX)' do
+      let(:accredited_organization) do
+        create(:accredited_organization, poa_code: 'XYZ', can_accept_digital_poa_requests: true)
+      end
+      let(:accredited_individual) { create(:accredited_individual, registration_number: '67890') }
+      let(:organization_id) { accredited_organization.id }
 
-        context 'when the representative has an active record' do
-          before do
-            create(:veteran_organization_representative,
-                   representative: rep, organization: veteran_org,
-                   acceptance_mode: 'any_request')
-          end
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?)
+          .with(:arc_appoint_a_representative_use_accredited_models).and_return(true)
+        subject.representative_id = accredited_individual.id
+      end
 
-          it 'does not add an error' do
-            subject.valid?
-
-            expect(subject.errors[:representative]).not_to include(
-              RepresentationManagement::Form2122DigitalSubmission::REP_CANNOT_ACCEPT
-            )
-          end
+      context 'when an active any_request accreditation exists' do
+        before do
+          create(:accreditation, accredited_individual:, accredited_organization:, acceptance_mode: 'any_request')
         end
 
-        context 'when the representative has no active record' do
-          it 'adds an error' do
-            subject.valid?
+        it 'does not add an error' do
+          subject.valid?
 
-            expect(subject.errors[:representative]).to include(
-              RepresentationManagement::Form2122DigitalSubmission::REP_CANNOT_ACCEPT
-            )
-          end
+          expect(subject.errors[:representative]).not_to include(
+            RepresentationManagement::Form2122DigitalSubmission::REP_CANNOT_ACCEPT
+          )
+        end
+      end
+
+      context 'when an active self_only accreditation exists' do
+        before do
+          create(:accreditation, accredited_individual:, accredited_organization:, acceptance_mode: 'self_only')
+        end
+
+        it 'does not add an error' do
+          subject.valid?
+
+          expect(subject.errors[:representative]).not_to include(
+            RepresentationManagement::Form2122DigitalSubmission::REP_CANNOT_ACCEPT
+          )
+        end
+      end
+
+      context 'when the accreditation is no_acceptance' do
+        before do
+          create(:accreditation, accredited_individual:, accredited_organization:, acceptance_mode: 'no_acceptance')
+        end
+
+        it 'adds an error' do
+          subject.valid?
+
+          expect(subject.errors[:representative]).to include(
+            RepresentationManagement::Form2122DigitalSubmission::REP_CANNOT_ACCEPT
+          )
+        end
+      end
+
+      context 'when no accreditation exists' do
+        it 'adds an error' do
+          subject.valid?
+
+          expect(subject.errors[:representative]).to include(
+            RepresentationManagement::Form2122DigitalSubmission::REP_CANNOT_ACCEPT
+          )
+        end
+      end
+
+      context 'when the accreditation is deactivated' do
+        before do
+          create(:accreditation, accredited_individual:, accredited_organization:,
+                                 acceptance_mode: 'any_request', deactivated_at: 1.day.ago)
+        end
+
+        it 'adds an error' do
+          subject.valid?
+
+          expect(subject.errors[:representative]).to include(
+            RepresentationManagement::Form2122DigitalSubmission::REP_CANNOT_ACCEPT
+          )
         end
       end
     end

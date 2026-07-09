@@ -9,6 +9,8 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
     let(:organization) { create(:organization, can_accept_digital_poa_requests: accepts_digital_requests) }
     let(:accepts_digital_requests) { true }
     let(:representative) { create(:representative) }
+    let(:submission_organization_id) { organization.poa }
+    let(:submission_representative_id) { representative.representative_id }
     let(:params) do
       {
         power_of_attorney_request: {
@@ -39,11 +41,18 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
             }
           },
           representative: {
-            organization_id: organization.poa,
-            id: representative.representative_id
+            organization_id: submission_organization_id,
+            id: submission_representative_id
           }
         }
       }
+    end
+
+    before do
+      # These cases use legacy acceptance fixtures; keep the submission on the legacy join.
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:arc_appoint_a_representative_use_accredited_models).and_return(false)
     end
 
     context 'when appoint_a_representative_enable_v2_features is enabled' do
@@ -124,6 +133,48 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
         post(base_path, params:)
 
         expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'when the appoint migration flag is enabled (AccreditedX submission)' do
+      let(:accredited_organization) { create(:accredited_organization, can_accept_digital_poa_requests: true) }
+      let(:accredited_individual) { create(:accredited_individual) }
+      let(:submission_organization_id) { accredited_organization.id }
+      let(:submission_representative_id) { accredited_individual.id }
+      let(:poa_request) do
+        OpenStruct.new(id: 'efd18b43-4421-4539-941a-7397fadfe5dc',
+                       created_at: '2025-02-21T00:00:00.000000000Z'.to_datetime,
+                       expires_at: '2025-04-22T00:00:00.000000000Z'.to_datetime)
+      end
+
+      before do
+        sign_in_as(user)
+        allow(Flipper).to receive(:enabled?).with(:appoint_a_representative_enable_v2_features).and_return(true)
+        allow(Flipper).to receive(:enabled?)
+          .with(:arc_appoint_a_representative_use_accredited_models).and_return(true)
+        allow_any_instance_of(RepresentationManagement::PowerOfAttorneyRequestService::Orchestrate)
+          .to receive(:call)
+          .and_return({ request: poa_request })
+      end
+
+      context 'when an active accreditation permits the representative' do
+        before do
+          create(:accreditation, accredited_individual:, accredited_organization:, acceptance_mode: 'any_request')
+        end
+
+        it 'accepts the submission via the Accreditation check and responds 201/created' do
+          post(base_path, params:)
+
+          expect(response).to have_http_status(:created)
+        end
+      end
+
+      context 'when no active accreditation permits the representative' do
+        it 'responds with a 422/unprocessable_entity status' do
+          post(base_path, params:)
+
+          expect(response).to have_http_status(:unprocessable_entity)
+        end
       end
     end
 

@@ -65,6 +65,13 @@ RSpec.describe 'RepresentationManagement::V0::PdfGenerator2122', type: :request 
       }
     end
 
+    before do
+      # Default to legacy resolution; the accredited context opts into the flag explicitly.
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:arc_appoint_a_representative_use_accredited_models).and_return(false)
+    end
+
     context "When representative_submission_method is 'digital'" do
       it 'does not clear the saved form' do
         expect_any_instance_of(ApplicationController).not_to receive(:clear_saved_form).with('21-22')
@@ -127,6 +134,8 @@ RSpec.describe 'RepresentationManagement::V0::PdfGenerator2122', type: :request 
 
     context 'When submitting a valid request with the accredited organization and individual ids' do
       before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:arc_appoint_a_representative_use_accredited_models).and_return(true)
         accredited_organization = create(:accredited_organization)
         accredited_individual = create(:accredited_individual)
         params[:pdf_generator2122][:representative][:organization_id] = accredited_organization.id

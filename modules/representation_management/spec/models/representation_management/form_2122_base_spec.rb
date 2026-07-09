@@ -77,6 +77,12 @@ RSpec.describe RepresentationManagement::Form2122Base, type: :model do
       end
 
       context 'when representative is an instance of Veteran::Service::Representative' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:arc_appoint_a_representative_use_accredited_models).and_return(false)
+        end
+
         it 'returns #phone_number of the representative' do
           representative = create(:representative, phone_number: '5555555555')
           subject.representative_id = representative.representative_id
@@ -101,6 +107,12 @@ RSpec.describe RepresentationManagement::Form2122Base, type: :model do
       end
 
       context 'when representative is an instance of Veteran::Service::Representative' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:arc_appoint_a_representative_use_accredited_models).and_return(false)
+        end
+
         it 'returns the first element in the user_types array' do
           representative = create(:representative, user_types: %w[attorney claim_agents])
           subject.representative_id = representative.representative_id
