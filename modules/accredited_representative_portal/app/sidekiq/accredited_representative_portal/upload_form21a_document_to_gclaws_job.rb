@@ -3,6 +3,7 @@
 require 'tempfile'
 
 module AccreditedRepresentativePortal
+  # rubocop:disable Metrics/ClassLength
   class UploadForm21aDocumentToGCLAWSJob
     include Sidekiq::Job
 
@@ -21,11 +22,45 @@ module AccreditedRepresentativePortal
 
     FORM_ID = '21a'
     DATADOG_EXHAUSTED_METRIC = 'api.form21a.document_upload.retries_exhausted'
+    DATADOG_PERMANENT_METRIC = 'api.form21a.document_upload.failed_permanent'
     SLACK_BACKTRACE_LINE_LIMIT = 50
     SLACK_BACKTRACE_CHARACTER_LIMIT = 4000
 
+    SUCCESS_CLASSIFICATION = 'success'
+    TRANSIENT_CLASSIFICATION = 'transient'
+    PERMANENT_CLASSIFICATION = 'permanent'
+
+    # Keep the permanent 4xx fast-path behind one guard so it can ship disabled
+    # if GCLAWS status codes are not reliable enough.
+    PERMANENT_FAILURE_FAST_PATH_ENABLED = false
+
+    TRANSIENT_UPLOAD_EXCEPTION_NAMES = [
+      'Faraday::TimeoutError',
+      'Faraday::ConnectionFailed',
+      'Faraday::SSLError',
+      'Net::OpenTimeout',
+      'Net::ReadTimeout',
+      'SocketError',
+      'OpenSSL::SSL::SSLError',
+      'Errno::ECONNREFUSED',
+      'Errno::ECONNRESET',
+      'Errno::EHOSTUNREACH',
+      'Errno::ETIMEDOUT'
+    ].freeze
+
+    AMBIGUOUS_4XX_HTTP_STATUSES = [
+      408, # Request Timeout
+      409, # Conflict
+      425, # Too Early
+      429  # Too Many Requests
+    ].freeze
+
     # 3 total attempts: 1 initial + 2 retries
     sidekiq_options retry: 2
+
+    sidekiq_retry_in do |count, _exception|
+      [5, 30][count] || 30
+    end
 
     sidekiq_retries_exhausted do |job, exception|
       new.send(:record_retries_exhausted, job['args'], exception)
@@ -37,16 +72,8 @@ module AccreditedRepresentativePortal
     # @param original_file_name [String] Original filename to send to GCLAWS
     # @param content_type [String] MIME type of the file (e.g., "application/pdf")
     def perform(form21a_attachment_guid, application_id, document_type, original_file_name, content_type)
-      @form21a_attachment_guid = form21a_attachment_guid
-      @application_id = application_id
-      @document_type = document_type
-      @original_file_name = original_file_name
-      @content_type = content_type
-
-      Rails.logger.info(
-        "UploadForm21aDocumentToGCLAWSJob: Starting upload for Form21aAttachment guid=#{form21a_attachment_guid} " \
-        "to application_id=#{application_id}"
-      )
+      assign_job_context(form21a_attachment_guid, application_id, document_type, original_file_name, content_type)
+      log_starting_upload
 
       attachment = find_attachment
       file = retrieve_file(attachment)
@@ -54,13 +81,38 @@ module AccreditedRepresentativePortal
       upload_to_gclaws(file)
       delete_attachment(attachment)
     rescue => e
-      record_failed_attempt(exception: e)
-      raise
+      raise unless handle_failed_upload(e)
     end
 
     private
 
     attr_reader :form21a_attachment_guid, :application_id, :document_type, :original_file_name, :content_type
+
+    def assign_job_context(form21a_attachment_guid, application_id, document_type, original_file_name, content_type)
+      @form21a_attachment_guid = form21a_attachment_guid
+      @application_id = application_id
+      @document_type = document_type
+      @original_file_name = original_file_name
+      @content_type = content_type
+    end
+
+    def log_starting_upload
+      Rails.logger.info(
+        "UploadForm21aDocumentToGCLAWSJob: Starting upload for Form21aAttachment guid=#{form21a_attachment_guid} " \
+        "to application_id=#{application_id}"
+      )
+    end
+
+    def handle_failed_upload(exception)
+      classification = failure_classification_for(exception)
+
+      return false unless record_failed_attempt(exception:, classification:)
+
+      return false unless classification == PERMANENT_CLASSIFICATION
+
+      emit_permanent_failure_alert(exception:)
+      true
+    end
 
     def find_attachment
       Form21aAttachment.find_by!(guid: form21a_attachment_guid)
@@ -101,9 +153,11 @@ module AccreditedRepresentativePortal
 
         handle_response(response)
       end
-    rescue Faraday::TimeoutError, Faraday::ConnectionFailed => e
+    rescue => e
+      raise unless transient_upload_exception?(e)
+
       Rails.logger.error(
-        'UploadForm21aDocumentToGCLAWSJob: Network error while uploading document ' \
+        'UploadForm21aDocumentToGCLAWSJob: Transport error while uploading document ' \
         "guid=#{form21a_attachment_guid} application_id=#{application_id}.",
         exception: e
       )
@@ -154,7 +208,9 @@ module AccreditedRepresentativePortal
     end
 
     def handle_response(response)
-      if response.success?
+      classification = upload_result_classification_for(response:)
+
+      if classification == SUCCESS_CLASSIFICATION
         Rails.logger.info(
           'UploadForm21aDocumentToGCLAWSJob: Successfully uploaded Form21aAttachment ' \
           "guid=#{form21a_attachment_guid} to GCLAWS application_id=#{application_id}"
@@ -162,7 +218,7 @@ module AccreditedRepresentativePortal
       else
         Rails.logger.error(
           "UploadForm21aDocumentToGCLAWSJob: GCLAWS API error for guid=#{form21a_attachment_guid}. " \
-          "Status: #{response.status}"
+          "Status: #{response.status} classification=#{classification}"
         )
 
         raise GclawsDocumentUploadError.new(response.status, response.body)
@@ -183,8 +239,7 @@ module AccreditedRepresentativePortal
       # Don't re-raise - the upload succeeded, deletion failure shouldn't cause retry
     end
 
-    def record_failed_attempt(exception:)
-      classification = failure_classification_for(exception)
+    def record_failed_attempt(exception:, classification:)
       submission = find_or_create_submission
 
       submission.submission_attempts.create!(
@@ -202,17 +257,19 @@ module AccreditedRepresentativePortal
         "guid=#{form21a_attachment_guid} application_id=#{application_id}",
         exception: e
       )
+
+      false
     end
 
     def record_retries_exhausted(job_args, exception)
       assign_job_args(job_args)
 
       classification = failure_classification_for(exception)
-      terminal_status = failed_status_for(classification)
+      terminal_status = terminal_status_for(classification)
       submission = find_or_create_submission
 
-      # The ticket explicitly asks the exhausted hook to append a final terminal attempt row.
-      # This keeps retry failures and terminal exhaustion as separate audit events.
+      # The exhausted hook appends a final terminal attempt row.
+      # This is the handoff point for the scheduled re-driver.
       append_terminal_attempt!(
         submission:,
         classification:,
@@ -289,25 +346,81 @@ module AccreditedRepresentativePortal
       }
     end
 
-    def failure_classification_for(exception)
-      status = http_status_for(exception)
-      return 'permanent' if status&.between?(400, 499)
-      return 'permanent' if permanent_failure_exception?(exception)
+    def upload_result_classification_for(response: nil, exception: nil)
+      return PERMANENT_CLASSIFICATION if permanent_failure_exception?(exception)
+      return TRANSIENT_CLASSIFICATION if transient_upload_exception?(exception)
 
-      'transient'
+      status = http_status_for(exception) || response_status_for(response)
+
+      return SUCCESS_CLASSIFICATION if exception.nil? && status&.between?(200, 299)
+      return TRANSIENT_CLASSIFICATION if status&.between?(500, 599)
+
+      if unambiguous_client_error_status?(status) && permanent_failure_fast_path_enabled?
+        return PERMANENT_CLASSIFICATION
+      end
+
+      TRANSIENT_CLASSIFICATION
+    end
+
+    def failure_classification_for(exception)
+      classification = upload_result_classification_for(exception:)
+
+      return PERMANENT_CLASSIFICATION if classification == PERMANENT_CLASSIFICATION
+
+      TRANSIENT_CLASSIFICATION
     end
 
     def permanent_failure_exception?(exception)
       exception.is_a?(ArgumentError) || exception.is_a?(ActiveRecord::RecordNotFound)
     end
 
+    def transient_upload_exception?(exception)
+      return false unless exception
+
+      exception.class.ancestors.any? do |ancestor|
+        TRANSIENT_UPLOAD_EXCEPTION_NAMES.include?(ancestor.name)
+      end
+    end
+
+    def unambiguous_client_error_status?(status)
+      return false unless status&.between?(400, 499)
+
+      AMBIGUOUS_4XX_HTTP_STATUSES.exclude?(status)
+    end
+
+    def permanent_failure_fast_path_enabled?
+      PERMANENT_FAILURE_FAST_PATH_ENABLED
+    end
+
     def failed_status_for(classification)
-      classification == 'permanent' ? 'failed_permanent' : 'failed_transient'
+      classification == PERMANENT_CLASSIFICATION ? 'failed_permanent' : 'failed_transient'
+    end
+
+    def terminal_status_for(classification)
+      failed_status_for(classification)
     end
 
     def http_status_for(exception)
-      return exception.status if exception.respond_to?(:status)
+      return normalized_http_status(exception.status) if exception.respond_to?(:status)
 
+      response = exception.response if exception.respond_to?(:response)
+
+      return normalized_http_status(response.status) if response.respond_to?(:status)
+
+      return normalized_http_status(response[:status] || response['status']) if response.respond_to?(:[])
+
+      nil
+    end
+
+    def response_status_for(response)
+      return nil unless response.respond_to?(:status)
+
+      normalized_http_status(response.status)
+    end
+
+    def normalized_http_status(status)
+      Integer(status)
+    rescue ArgumentError, TypeError
       nil
     end
 
@@ -317,7 +430,8 @@ module AccreditedRepresentativePortal
         'job_class' => self.class.name,
         'form21a_attachment_guid' => form21a_attachment_guid,
         'application_id' => application_id,
-        'document_type' => document_type
+        'document_type' => document_type,
+        'permanent_fast_path_enabled' => permanent_failure_fast_path_enabled?
       }
     end
 
@@ -328,6 +442,25 @@ module AccreditedRepresentativePortal
         'status' => exception.status,
         'body' => exception.response_body
       }.compact
+    end
+
+    def emit_permanent_failure_alert(exception:)
+      StatsD.increment(
+        DATADOG_PERMANENT_METRIC,
+        tags: [
+          "document_type:#{document_type}",
+          "content_type:#{content_type}"
+        ]
+      )
+
+      Rails.logger.error(
+        'UploadForm21aDocumentToGCLAWSJob: Permanent upload failure recorded; no in-job retry will be attempted. ' \
+        "guid=#{form21a_attachment_guid} " \
+        "application_id=#{application_id} " \
+        "document_type=#{document_type} " \
+        "content_type=#{content_type}",
+        exception:
+      )
     end
 
     def emit_retries_exhausted_alert(classification:, terminal_status:, exception:)
@@ -455,4 +588,5 @@ module AccreditedRepresentativePortal
       raise ArgumentError, 'Missing OGC Form 21a API key'
     end
   end
+  # rubocop:enable Metrics/ClassLength
 end

@@ -4,6 +4,10 @@ require 'rails_helper'
 require_relative '../../spec_helper'
 
 RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob, type: :job do
+  def enable_permanent_fast_path
+    stub_const("#{described_class}::PERMANENT_FAILURE_FAST_PATH_ENABLED", true)
+  end
+
   let(:form21a_attachment_guid) { SecureRandom.uuid }
   let(:application_id) { '12345' }
   let(:document_type) { 1 }
@@ -64,8 +68,32 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
       )
   end
 
+  def expect_permanent_failure_metric
+    expect(StatsD).to receive(:increment).with(
+      'api.form21a.document_upload.failed_permanent',
+      tags: [
+        "document_type:#{document_type}",
+        "content_type:#{content_type}"
+      ]
+    )
+  end
+
   def submission
     Form21aDocumentSubmission.find_by!(form21a_attachment_guid:)
+  end
+
+  describe 'Sidekiq retry configuration' do
+    it 'uses two bounded in-job retries' do
+      expect(described_class.sidekiq_options['retry']).to eq(2)
+    end
+
+    it 'uses short retry backoff intervals' do
+      exception = StandardError.new('upload failed')
+
+      expect(described_class.sidekiq_retry_in_block.call(0, exception)).to eq(5)
+      expect(described_class.sidekiq_retry_in_block.call(1, exception)).to eq(30)
+      expect(described_class.sidekiq_retry_in_block.call(2, exception)).to eq(30)
+    end
   end
 
   describe '#perform' do
@@ -139,18 +167,22 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
     end
 
     context 'when attachment does not exist' do
-      it 'logs an error and raises for retry' do
-        expect(Rails.logger).to receive(:info).with(/Starting upload/)
-        expect(Rails.logger).to receive(:error).with(/Form21aAttachment not found/)
+      it 'logs an error and does not retry' do
+        allow(Rails.logger).to receive(:error)
+        allow(StatsD).to receive(:increment)
 
-        expect { perform_job }.to raise_error(ActiveRecord::RecordNotFound)
+        expect(Rails.logger).to receive(:info).with(/Starting upload/)
+
+        expect { perform_job }.not_to raise_error
+
+        expect(Rails.logger).to have_received(:error).with(/Form21aAttachment not found/)
       end
 
       it 'records a permanent failed attempt' do
+        expect_permanent_failure_metric
+
         expect do
           perform_job
-        rescue ActiveRecord::RecordNotFound
-          nil
         end.to change(Form21aDocumentSubmission, :count).by(1)
                                                         .and change(Form21aDocumentSubmissionAttempt, :count).by(1)
 
@@ -174,14 +206,17 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
           'job_class' => described_class.name,
           'form21a_attachment_guid' => form21a_attachment_guid,
           'application_id' => application_id,
-          'document_type' => document_type
+          'document_type' => document_type,
+          'permanent_fast_path_enabled' => false
         )
       end
 
       it 'does not make an HTTP request' do
         stub = stub_request(:post, document_upload_url)
 
-        expect { perform_job }.to raise_error(ActiveRecord::RecordNotFound)
+        allow(StatsD).to receive(:increment)
+
+        expect { perform_job }.not_to raise_error
 
         expect(stub).not_to have_been_requested
       end
@@ -229,7 +264,8 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
           'job_class' => described_class.name,
           'form21a_attachment_guid' => form21a_attachment_guid,
           'application_id' => application_id,
-          'document_type' => document_type
+          'document_type' => document_type,
+          'permanent_fast_path_enabled' => false
         )
       end
 
@@ -290,30 +326,11 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
         allow_any_instance_of(FormAttachment).to receive(:get_file).and_return(mock_file)
       end
 
-      it 'raises an argument error before making the HTTP request' do
-        stub = stub_request(:post, document_upload_url)
+      it 'records a permanent failed attempt and does not retry' do
+        expect_permanent_failure_metric
 
-        expect { perform_job }.to raise_error(
-          ArgumentError,
-          'Unsupported content type for Form21aAttachment upload: image/png'
-        )
-
-        expect(stub).not_to have_been_requested
-      end
-
-      it 'does not delete the attachment' do
         expect do
           perform_job
-        rescue ArgumentError
-          nil
-        end.not_to change(FormAttachment, :count)
-      end
-
-      it 'records a permanent failed attempt' do
-        expect do
-          perform_job
-        rescue ArgumentError
-          nil
         end.to change(Form21aDocumentSubmission, :count).by(1)
                                                         .and change(Form21aDocumentSubmissionAttempt, :count).by(1)
 
@@ -328,6 +345,45 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
           'Unsupported content type for Form21aAttachment upload: image/png'
         )
       end
+
+      it 'raises for retry when the permanent failed attempt cannot be recorded' do
+        tracking_error = StandardError.new('tracking failed')
+
+        allow(Form21aDocumentSubmission).to receive(:find_or_create_by!).and_raise(tracking_error)
+        allow(Rails.logger).to receive(:error)
+
+        expect do
+          perform_job
+        end.to raise_error(
+          ArgumentError,
+          'Unsupported content type for Form21aAttachment upload: image/png'
+        )
+
+        expect(Rails.logger).to have_received(:error).with(
+          a_string_including(
+            'UploadForm21aDocumentToGCLAWSJob: Failed to record Form21aDocumentSubmissionAttempt.',
+            "guid=#{form21a_attachment_guid}",
+            "application_id=#{application_id}"
+          ),
+          exception: tracking_error
+        )
+      end
+
+      it 'does not make the HTTP request' do
+        stub = stub_request(:post, document_upload_url)
+
+        allow(StatsD).to receive(:increment)
+
+        expect { perform_job }.not_to raise_error
+
+        expect(stub).not_to have_been_requested
+      end
+
+      it 'does not delete the attachment' do
+        allow(StatsD).to receive(:increment)
+
+        expect { perform_job }.not_to change(FormAttachment, :count)
+      end
     end
 
     context 'when GCLAWS API returns an error' do
@@ -336,7 +392,7 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
         allow_any_instance_of(FormAttachment).to receive(:get_file).and_return(mock_file)
       end
 
-      it 'logs the error and raises for retry' do
+      it 'logs the error and raises for retry for 5xx responses' do
         stub_failed_upload(status: 500, body: { error: 'Internal Server Error' })
 
         expect(Rails.logger).to receive(:info).with(/Starting upload/)
@@ -392,7 +448,7 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
         )
       end
 
-      it 'records a permanent failed attempt for 4xx responses' do
+      it 'treats clean 4xx responses as transient when the permanent fast-path is disabled' do
         stub_failed_upload(status: 422, body: { error: 'Validation failed' })
 
         expect do
@@ -401,6 +457,39 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
           nil
         end.to change(Form21aDocumentSubmission, :count).by(1)
                                                         .and change(Form21aDocumentSubmissionAttempt, :count).by(1)
+
+        attempt = submission.submission_attempts.last
+
+        expect(submission.latest_status).to eq('failed_transient')
+        expect(attempt.status).to eq('failed_transient')
+        expect(attempt.failure_classification).to eq('transient')
+        expect(attempt.last_http_status).to eq(422)
+        expect(attempt.error_message).to eq('GCLAWS Document API returned 422')
+        expect(attempt.response).to eq(
+          'status' => 422,
+          'body' => {
+            'error' => 'Validation failed'
+          }
+        )
+      end
+
+      it 'raises for retry for clean 4xx responses when the permanent fast-path is disabled' do
+        stub_failed_upload(status: 422, body: { error: 'Validation failed' })
+
+        expect { perform_job }.to raise_error(
+          described_class::GclawsDocumentUploadError,
+          'GCLAWS Document API returned 422'
+        )
+      end
+
+      it 'records a permanent failed attempt for clean 4xx responses when the permanent fast-path is enabled' do
+        enable_permanent_fast_path
+
+        stub_failed_upload(status: 422, body: { error: 'Validation failed' })
+
+        expect_permanent_failure_metric
+
+        expect { perform_job }.not_to raise_error
 
         attempt = submission.submission_attempts.last
 
@@ -415,6 +504,36 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
             'error' => 'Validation failed'
           }
         )
+      end
+
+      it 'does not delete the attachment for clean 4xx responses when the permanent fast-path is enabled' do
+        enable_permanent_fast_path
+
+        stub_failed_upload(status: 422, body: { error: 'Validation failed' })
+
+        allow(StatsD).to receive(:increment)
+
+        expect { perform_job }.not_to change(FormAttachment, :count)
+      end
+
+      it 'treats ambiguous 4xx responses as transient even when the permanent fast-path is enabled' do
+        enable_permanent_fast_path
+
+        stub_failed_upload(status: 429, body: { error: 'Rate limited' })
+
+        expect do
+          perform_job
+        rescue described_class::GclawsDocumentUploadError
+          nil
+        end.to change(Form21aDocumentSubmission, :count).by(1)
+                                                        .and change(Form21aDocumentSubmissionAttempt, :count).by(1)
+
+        attempt = submission.submission_attempts.last
+
+        expect(submission.latest_status).to eq('failed_transient')
+        expect(attempt.status).to eq('failed_transient')
+        expect(attempt.failure_classification).to eq('transient')
+        expect(attempt.last_http_status).to eq(429)
       end
 
       it 'appends attempts to the existing submission on subsequent failures' do
@@ -446,10 +565,10 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
           .to_raise(timeout_error)
       end
 
-      it 'logs the network error and raises for retry' do
+      it 'logs the transport error and raises for retry' do
         expect(Rails.logger).to receive(:info).with(/Starting upload/)
         expect(Rails.logger).to receive(:error).with(
-          a_string_including('Network error while uploading document'),
+          a_string_including('Transport error while uploading document'),
           exception: timeout_error
         )
 
@@ -471,6 +590,36 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
         expect(attempt.failure_classification).to eq('transient')
         expect(attempt.last_http_status).to be_nil
         expect(attempt.error_message).to eq('timeout')
+      end
+    end
+
+    context 'when connection upload fails' do
+      let(:connection_error) { Faraday::ConnectionFailed.new('connection refused') }
+
+      before do
+        form21a_attachment
+        allow_any_instance_of(FormAttachment).to receive(:get_file).and_return(mock_file)
+
+        stub_request(:post, document_upload_url)
+          .with { |request| multipart_request?(request) }
+          .to_raise(connection_error)
+      end
+
+      it 'records a transient failed attempt and raises for retry' do
+        expect do
+          perform_job
+        rescue Faraday::ConnectionFailed
+          nil
+        end.to change(Form21aDocumentSubmission, :count).by(1)
+                                                        .and change(Form21aDocumentSubmissionAttempt, :count).by(1)
+
+        attempt = submission.submission_attempts.last
+
+        expect(submission.latest_status).to eq('failed_transient')
+        expect(attempt.status).to eq('failed_transient')
+        expect(attempt.failure_classification).to eq('transient')
+        expect(attempt.last_http_status).to be_nil
+        expect(attempt.error_message).to eq('connection refused')
       end
     end
 
@@ -540,6 +689,115 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
     end
   end
 
+  describe '#upload_result_classification_for' do
+    subject(:job) { described_class.new }
+
+    it 'classifies 2xx responses as success' do
+      response = double('response', status: 200)
+
+      expect(
+        job.send(:upload_result_classification_for, response:)
+      ).to eq('success')
+    end
+
+    it 'does not classify exceptions with 2xx statuses as success' do
+      exception = double('exception', status: 200)
+
+      expect(
+        job.send(:upload_result_classification_for, exception:)
+      ).to eq('transient')
+    end
+
+    it 'classifies 5xx responses as transient' do
+      response = double('response', status: 503)
+
+      expect(
+        job.send(:upload_result_classification_for, response:)
+      ).to eq('transient')
+    end
+
+    it 'classifies transport exceptions as transient' do
+      exception = Faraday::TimeoutError.new('timeout')
+
+      expect(
+        job.send(:upload_result_classification_for, exception:)
+      ).to eq('transient')
+    end
+
+    it 'classifies deterministic local exceptions as permanent' do
+      expect(
+        job.send(:upload_result_classification_for, exception: ArgumentError.new('unsupported content type'))
+      ).to eq('permanent')
+
+      expect(
+        job.send(:upload_result_classification_for, exception: ActiveRecord::RecordNotFound.new)
+      ).to eq('permanent')
+    end
+
+    it 'defaults clean 4xx responses to transient when the permanent fast-path is disabled' do
+      response = double('response', status: 422)
+
+      expect(
+        job.send(:upload_result_classification_for, response:)
+      ).to eq('transient')
+    end
+
+    it 'classifies clean 4xx responses as permanent when the permanent fast-path is enabled' do
+      enable_permanent_fast_path
+
+      response = double('response', status: 422)
+
+      expect(
+        job.send(:upload_result_classification_for, response:)
+      ).to eq('permanent')
+    end
+
+    it 'keeps ambiguous 4xx responses transient even when the permanent fast-path is enabled' do
+      enable_permanent_fast_path
+
+      response = double('response', status: 429)
+
+      expect(
+        job.send(:upload_result_classification_for, response:)
+      ).to eq('transient')
+    end
+
+    it 'defaults unparseable response statuses to transient' do
+      response = double('response', status: 'not-a-status')
+
+      expect(
+        job.send(:upload_result_classification_for, response:)
+      ).to eq('transient')
+    end
+
+    it 'defaults unparseable exception response statuses to transient' do
+      exception = double('exception', response: { status: 'not-a-status' })
+
+      expect(
+        job.send(:upload_result_classification_for, exception:)
+      ).to eq('transient')
+    end
+
+    it 'defaults unknown exceptions to transient' do
+      exception = StandardError.new('unknown failure')
+
+      expect(
+        job.send(:upload_result_classification_for, exception:)
+      ).to eq('transient')
+    end
+
+    it 'does not inspect the GCLAWS response body when classifying failures' do
+      exception = described_class::GclawsDocumentUploadError.new(
+        500,
+        { 'error' => 'this body should not control classification' }
+      )
+
+      expect(
+        job.send(:upload_result_classification_for, exception:)
+      ).to eq('transient')
+    end
+  end
+
   describe '.sidekiq_retries_exhausted' do
     let(:job) do
       {
@@ -593,7 +851,8 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
         'job_class' => described_class.name,
         'form21a_attachment_guid' => form21a_attachment_guid,
         'application_id' => application_id,
-        'document_type' => document_type
+        'document_type' => document_type,
+        'permanent_fast_path_enabled' => false
       )
       expect(attempt.error_message).to eq('Connection failed')
       expect(Rails.logger).to have_received(:error).with(
@@ -627,6 +886,35 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
       expect(slack_messenger).to have_received(:notify!)
     end
 
+    it 'defaults exhausted 4xx failures to terminal transient when the permanent fast-path is disabled' do
+      exception = described_class::GclawsDocumentUploadError.new(
+        422,
+        { 'error' => 'Validation failed' }
+      )
+
+      allow(StatsD).to receive(:increment)
+
+      expect do
+        described_class.sidekiq_retries_exhausted_block.call(job, exception)
+      end.to change(Form21aDocumentSubmission, :count).by(1)
+                                                      .and change(Form21aDocumentSubmissionAttempt, :count).by(1)
+
+      attempt = submission.submission_attempts.last
+
+      expect(submission.latest_status).to eq('failed_transient')
+      expect(attempt.status).to eq('failed_transient')
+      expect(attempt.failure_classification).to eq('transient')
+      expect(attempt.last_http_status).to eq(422)
+      expect(attempt.error_message).to eq('GCLAWS Document API returned 422')
+      expect(attempt.response).to eq(
+        'status' => 422,
+        'body' => {
+          'error' => 'Validation failed'
+        }
+      )
+      expect(slack_messenger).to have_received(:notify!)
+    end
+
     it 'truncates long Slack backtraces' do
       exception = StandardError.new('Connection failed')
       exception.set_backtrace(
@@ -649,47 +937,6 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
       end
     end
 
-    it 'records a terminal permanent attempt for permanent failures' do
-      exception = described_class::GclawsDocumentUploadError.new(
-        422,
-        { 'error' => 'Validation failed' }
-      )
-
-      allow(StatsD).to receive(:increment)
-
-      expect do
-        described_class.sidekiq_retries_exhausted_block.call(job, exception)
-      end.to change(Form21aDocumentSubmission, :count).by(1)
-                                                      .and change(Form21aDocumentSubmissionAttempt, :count).by(1)
-
-      attempt = submission.submission_attempts.last
-
-      expect(submission.latest_status).to eq('failed_permanent')
-      expect(attempt.status).to eq('failed_permanent')
-      expect(attempt.failure_classification).to eq('permanent')
-      expect(attempt.last_http_status).to eq(422)
-      expect(attempt.error_message).to eq('GCLAWS Document API returned 422')
-      expect(attempt.response).to eq(
-        'status' => 422,
-        'body' => {
-          'error' => 'Validation failed'
-        }
-      )
-      expect(VBADocuments::Slack::Messenger).to have_received(:new).with(
-        hash_including(
-          alert: '[ALERT] Form 21a document upload retries exhausted: ' \
-                 'AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob::GclawsDocumentUploadError - ' \
-                 'GCLAWS Document API returned 422',
-          details: a_string_including(
-            'classification: permanent',
-            'terminal_status: failed_permanent',
-            'exception_message: GCLAWS Document API returned 422'
-          )
-        )
-      )
-      expect(slack_messenger).to have_received(:notify!)
-    end
-
     it 'logs Slack alert failures without raising' do
       exception = StandardError.new('Connection failed')
       slack_error = StandardError.new('Slack failed')
@@ -710,6 +957,16 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
         ),
         exception: slack_error
       )
+    end
+
+    it 'does not re-enqueue the upload job when transient retries are exhausted' do
+      exception = StandardError.new('Connection failed')
+
+      allow(StatsD).to receive(:increment)
+
+      expect(described_class).not_to receive(:perform_async)
+
+      described_class.sidekiq_retries_exhausted_block.call(job, exception)
     end
 
     it 'does not log or send the original file name when retries are exhausted' do
