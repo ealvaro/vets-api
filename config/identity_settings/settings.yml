@@ -119,3 +119,13 @@ terms_of_use:
 request_context:
   signing_key: 6f1bd6813324f34ad0810626a7c6e95d3192dc45bacc630542166163a11ac205
   rotated_signing_keys: []
+
+webauthn:
+  enabled: false
+  rp_id: localhost
+  rp_name: Department of Veterans Affairs (localhost)
+  web_origins:
+    - http://localhost:3000
+    - http://localhost:3001
+    - http://127.0.0.1:3000
+    - http://127.0.0.1:3001

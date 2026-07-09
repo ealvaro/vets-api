@@ -890,6 +890,7 @@ config/initializers/strong_migrations.rb @software/backend-review-group
 config/initializers/vbms.rb @software/backend-review-group
 config/initializers/veteran_facing_services_notification_callbacks.rb @software/benefits-lifestage @software/backend-review-group
 config/initializers/warden_github.rb @software/backend-review-group
+config/initializers/webauthn.rb @software/octo-identity
 config/locales @software/backend-review-group
 config/mpi_schema @software/octo-identity
 config/openapi/openapi.json @software/benefits-optimization-aquia @software/backend-review-group

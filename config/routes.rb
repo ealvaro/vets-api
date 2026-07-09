@@ -44,6 +44,19 @@ Rails.application.routes.draw do
     unless Settings.vsp_environment == 'production'
       resources :client_configs, param: :client_id
       resources :service_account_configs, param: :service_account_id
+
+      namespace :webauthn do
+        scope :registrations, controller: :registrations, as: :registrations do
+          post :options
+          post :verify
+        end
+
+        scope :authentications, controller: :authentications, as: :authentications do
+          post :options_discoverable
+          post :options
+          post :verify
+        end
+      end
     end
   end
 

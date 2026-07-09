@@ -89,3 +89,11 @@ ssoe_get_traits:
   client_key_path: /etc/pki/tls/private/vetsgov-mvi.key
   url: https://services.eauth.va.gov:9303/psim_webservice/IdMSSOeWebService
   mock: false
+
+webauthn:
+  enabled: false
+  rp_id: va.gov
+  rp_name: Department of Veterans Affairs
+  web_origins:
+    - https://va.gov
+    - https://api.va.gov
