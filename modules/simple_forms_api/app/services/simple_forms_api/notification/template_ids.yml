@@ -1,3 +1,7 @@
+vba_10_8678:
+  confirmation: form10_8678_confirmation_email
+  error: form10_8678_error_email
+  received: form10_8678_received_email
 vba_20_10206:
   confirmation: form20_10206_confirmation_email
   error: form20_10206_error_email
@@ -6,6 +10,10 @@ vba_20_10207:
   confirmation: form20_10207_confirmation_email
   error: form20_10207_error_email
   received: form20_10207_received_email
+vba_21_0788:
+  confirmation: form21_0788_confirmation_email
+  error: form21_0788_error_email
+  received: form21_0788_received_email
 vba_21_0845:
   confirmation: form21_0845_confirmation_email
   error: form21_0845_error_email
