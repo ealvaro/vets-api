@@ -8,6 +8,7 @@ class UserAccount < ApplicationRecord
   has_one :user_acceptable_verified_credential, dependent: :destroy
   has_one :veteran_onboarding, primary_key: :id, foreign_key: :user_account_uuid, inverse_of: :user_account,
                                dependent: :destroy
+  has_many :webauthn_credentials, through: :user_verifications, source: :webauthn_credential
 
   validates :icn, uniqueness: true, allow_nil: true
 

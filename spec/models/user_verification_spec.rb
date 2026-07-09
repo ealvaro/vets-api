@@ -12,6 +12,7 @@ RSpec.describe UserVerification, type: :model do
            backing_idme_uuid:,
            verified_at:,
            user_account_id: user_account&.id,
+           webauthn_credential:,
            locked:)
   end
 
@@ -19,6 +20,7 @@ RSpec.describe UserVerification, type: :model do
   let(:logingov_uuid) { nil }
   let(:clear_uuid) { nil }
   let(:mhv_uuid) { nil }
+  let(:webauthn_credential) { nil }
   let(:user_account) { nil }
   let(:backing_idme_uuid) { nil }
   let(:verified_at) { nil }
@@ -234,6 +236,44 @@ RSpec.describe UserVerification, type: :model do
 
           it 'returns clear_uuid' do
             expect(subject).to eq(clear_uuid)
+          end
+        end
+      end
+    end
+
+    describe '#webauthn_credential' do
+      subject { user_verification.webauthn_credential }
+
+      let(:user_account) { create(:user_account) }
+
+      context 'when another credential is defined' do
+        let(:idme_uuid) { 'some-idme-uuid' }
+
+        context 'and webauthn_credential is not defined' do
+          it 'returns nil' do
+            expect(subject).to be_nil
+          end
+        end
+
+        context 'and webauthn_credential is defined' do
+          let(:webauthn_credential) { create(:webauthn_credential) }
+
+          it_behaves_like 'failed credential identifier validation'
+        end
+      end
+
+      context 'when another credential is not defined' do
+        context 'and webauthn_credential is not defined' do
+          let(:webauthn_credential) { nil }
+
+          it_behaves_like 'failed both validations'
+        end
+
+        context 'and webauthn_credential is defined' do
+          let(:webauthn_credential) { create(:webauthn_credential) }
+
+          it 'returns the webauthn credential' do
+            expect(subject).to eq(webauthn_credential)
           end
         end
       end

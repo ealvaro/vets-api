@@ -161,4 +161,25 @@ RSpec.describe UserAccount, type: :model do
       end
     end
   end
+
+  describe '#webauthn_credentials' do
+    subject { user_account.webauthn_credentials }
+
+    let(:user_account) { create(:user_account) }
+
+    context 'when the account has verifications with webauthn credentials' do
+      let(:webauthn_credential) { create(:webauthn_credential) }
+      let!(:user_verification) { create(:user_verification, user_account:, webauthn_credential:, idme_uuid: nil) }
+
+      it 'returns the webauthn credentials associated through user verifications' do
+        expect(subject).to contain_exactly(webauthn_credential)
+      end
+    end
+
+    context 'when the account has no webauthn credentials' do
+      it 'returns an empty collection' do
+        expect(subject).to be_empty
+      end
+    end
+  end
 end

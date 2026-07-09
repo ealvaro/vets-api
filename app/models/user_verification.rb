@@ -4,6 +4,7 @@ class UserVerification < ApplicationRecord
   has_one :deprecated_user_account, dependent: :destroy, required: false
   belongs_to :user_account, dependent: nil
   has_one :user_credential_email, dependent: :destroy, required: false
+  belongs_to :webauthn_credential, class_name: 'SignIn::WebauthnCredential', dependent: :destroy, optional: true
 
   validate :single_credential_identifier
   validate :backing_uuid_credentials
@@ -69,7 +70,7 @@ class UserVerification < ApplicationRecord
   # One, and only one, of these can be defined
   # If two or more are defined, or if none are defined, then a validation error is raised
   def single_credential_identifier
-    unless [idme_uuid, logingov_uuid, clear_uuid, mhv_uuid].count(&:present?) == 1
+    unless [idme_uuid, logingov_uuid, clear_uuid, mhv_uuid, webauthn_credential_id].count(&:present?) == 1
       errors.add(:base, 'Must specify one, and only one, credential identifier')
     end
   end
@@ -77,7 +78,7 @@ class UserVerification < ApplicationRecord
   # All credentials require either an idme_uuid, logingov_uuid, or clear_uuid credential types
   # store the backing idme_uuid as backing_idme_uuid
   def backing_uuid_credentials
-    unless idme_uuid || logingov_uuid || clear_uuid || backing_idme_uuid
+    unless idme_uuid || logingov_uuid || clear_uuid || backing_idme_uuid || webauthn_credential_id
       errors.add(:base, 'Must define either an idme_uuid, logingov_uuid, clear_uuid, or backing_idme_uuid')
     end
   end
