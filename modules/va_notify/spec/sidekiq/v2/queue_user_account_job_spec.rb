@@ -102,6 +102,84 @@ RSpec.describe VANotify::V2::QueueUserAccountJob, type: :job do
     end
   end
 
+  describe '.enqueue_at' do
+    let(:at) { Time.zone.now }
+
+    it 'creates an AttrPackage and schedules the job' do
+      expect(Sidekiq::AttrPackage).to receive(:create).with(personalisation:).and_return(key)
+      expect(described_class).to receive(:perform_at).with(
+        at, user_account.id, template_id, key, api_key_path, callback_options
+      )
+
+      described_class.enqueue_at(
+        at, user_account.id, template_id, personalisation, api_key_path, callback_options
+      )
+    end
+
+    it 'uses empty hash for callback_options when not provided' do
+      expect(Sidekiq::AttrPackage).to receive(:create).with(personalisation:).and_return(key)
+      expect(described_class).to receive(:perform_at).with(at, user_account.id, template_id, key, api_key_path, {})
+
+      described_class.enqueue_at(at, user_account.id, template_id, personalisation, api_key_path)
+    end
+
+    context 'when api_key_path does not start with Settings.' do
+      it 'raises ArgumentError' do
+        expect do
+          described_class.enqueue_at(at, user_account.id, template_id, personalisation, 'invalid_path',
+                                     callback_options)
+        end.to raise_error(ArgumentError, "API key path must start with 'Settings.': invalid_path")
+      end
+
+      it 'does not create an AttrPackage' do
+        expect(Sidekiq::AttrPackage).not_to receive(:create)
+
+        begin
+          described_class.enqueue_at(at, user_account.id, template_id, personalisation, 'invalid_path',
+                                     callback_options)
+        rescue ArgumentError
+          nil
+        end
+      end
+    end
+
+    context 'when Redis fails' do
+      it 'logs error, increments StatsD, and re-raises' do
+        error = Redis::ConnectionError.new('Connection refused')
+        allow(Sidekiq::AttrPackage).to receive(:create).and_raise(error)
+
+        expect(Rails.logger).to receive(:error).with(
+          'VANotify::V2::QueueUserAccountJob enqueue_at failed',
+          { error_class: 'Redis::ConnectionError', template_id: }
+        )
+        expect(StatsD).to receive(:increment).with('api.vanotify.v2.queue_user_account_job.enqueue_failure')
+
+        expect do
+          described_class.enqueue_at(at, user_account.id, template_id, personalisation, api_key_path,
+                                     callback_options)
+        end.to raise_error(Redis::ConnectionError)
+      end
+    end
+
+    context 'when AttrPackage fails' do
+      it 'logs error, increments StatsD, and re-raises' do
+        error = Sidekiq::AttrPackageError.new('create', 'storage failed')
+        allow(Sidekiq::AttrPackage).to receive(:create).and_raise(error)
+
+        expect(Rails.logger).to receive(:error).with(
+          'VANotify::V2::QueueUserAccountJob enqueue_at failed',
+          { error_class: 'Sidekiq::AttrPackageError', template_id: }
+        )
+        expect(StatsD).to receive(:increment).with('api.vanotify.v2.queue_user_account_job.enqueue_failure')
+
+        expect do
+          described_class.enqueue_at(at, user_account.id, template_id, personalisation, api_key_path,
+                                     callback_options)
+        end.to raise_error(Sidekiq::AttrPackageError)
+      end
+    end
+  end
+
   describe 'when errors occur' do
     before do
       allow(Sidekiq::AttrPackage).to receive(:delete).with(key)

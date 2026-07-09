@@ -146,13 +146,14 @@ module SimpleFormsApi
         personalization = get_personalization
         personalization.merge!('first_name' => first_name_from_user_account) if first_name_from_user_account
 
-        VANotify::UserAccountJob.perform_at(
-          at,
-          user_account.id,
-          template_id,
-          personalization,
-          *email_args
-        )
+        if Flipper.enabled?(:va_notify_v2_simple_forms_user_account_email)
+          VANotify::V2::QueueUserAccountJob.enqueue_at(
+            at, user_account.id, template_id, personalization,
+            'Settings.vanotify.services.va_gov.api_key', email_args.last
+          )
+        else
+          VANotify::UserAccountJob.perform_at(at, user_account.id, template_id, personalization, *email_args)
+        end
       end
 
       def send_email_now(template_id)

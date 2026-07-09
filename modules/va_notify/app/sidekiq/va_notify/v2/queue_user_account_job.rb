@@ -60,6 +60,24 @@ module VANotify
         raise
       end
 
+      # rubocop:disable Metrics/ParameterLists
+      def self.enqueue_at(at, user_account_id, template_id, personalisation, api_key_path, callback_options = {})
+        # rubocop:enable Metrics/ParameterLists
+        unless api_key_path.start_with?('Settings.')
+          raise ArgumentError, "API key path must start with 'Settings.': #{api_key_path}"
+        end
+
+        key = Sidekiq::AttrPackage.create(personalisation:)
+        perform_at(at, user_account_id, template_id, key, api_key_path, callback_options)
+      rescue Redis::BaseError, Sidekiq::AttrPackageError => e
+        Rails.logger.error('VANotify::V2::QueueUserAccountJob enqueue_at failed', {
+                             error_class: e.class.name,
+                             template_id:
+                           })
+        StatsD.increment('api.vanotify.v2.queue_user_account_job.enqueue_failure')
+        raise
+      end
+
       private
 
       def fetch_attrs(attr_package_key, template_id = nil)

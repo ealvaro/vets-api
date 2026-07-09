@@ -3532,6 +3532,12 @@ features:
       If enabled, SimpleFormsApi::Notification::FormUploadEmail will use
       VANotify::V2::QueueEmailJob instead of VANotify::EmailJob for both
       immediate sends (#send_email_now) and scheduled sends (#enqueue_email)
+  va_notify_v2_simple_forms_user_account_email:
+    actor_type: user
+    description: >-
+      If enabled, SimpleFormsApi::Notification::Email will use
+      VANotify::V2::QueueUserAccountJob instead of VANotify::UserAccountJob
+      for scheduled emails sent via a UserAccount (#async_job_with_user_account)
   va_notify_delivery_status_update_job:
     actor_type: user
     description: If enabled, VANotify::DelieveryStatusUpdateJob will be used to query VANotify::Notifications

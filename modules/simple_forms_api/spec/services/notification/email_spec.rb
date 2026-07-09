@@ -472,30 +472,84 @@ describe SimpleFormsApi::Notification::Email do
             JSON.parse(fixture_path.read)
           end
           let(:user_account) { create(:user_account) }
+          let(:expected_personalization) do
+            {
+              'confirmation_number' => confirmation_number,
+              'date_submitted' => time.strftime('%B %d, %Y'),
+              'first_name' => 'Bob',
+              'lighthouse_updated_at' => lighthouse_updated_at
+            }
+          end
+          let(:time) { Time.zone.now }
 
-          it 'sends the email at the specified time' do
-            time = Time.zone.now
+          before do
             profile = double(given_names: ['Bob'])
             mpi_profile = double(profile:, error: nil)
-            allow(VANotify::UserAccountJob).to receive(:perform_at)
             allow_any_instance_of(MPI::Service).to receive(:find_profile_by_identifier).and_return(mpi_profile)
-            subject = described_class.new(config, notification_type:, user_account:)
+          end
 
-            subject.send(at: time)
+          context 'when va_notify_v2_simple_forms_user_account_email is disabled' do
+            before do
+              allow(Flipper).to receive(:enabled?)
+                .with(:va_notify_v2_simple_forms_user_account_email).and_return(false)
+              allow(VANotify::UserAccountJob).to receive(:perform_at)
+            end
 
-            expect(VANotify::UserAccountJob).to have_received(:perform_at).with(
-              time,
-              user_account.id,
-              "form21_10210_#{notification_type}_email_template_id",
-              {
-                'confirmation_number' => confirmation_number,
-                'date_submitted' => time.strftime('%B %d, %Y'),
-                'first_name' => 'Bob',
-                'lighthouse_updated_at' => lighthouse_updated_at
-              },
-              'fake_secret',
-              a_hash_including(:callback_metadata)
-            )
+            it 'sends the email at the specified time via V1' do
+              subject = described_class.new(config, notification_type:, user_account:)
+
+              subject.send(at: time)
+
+              expect(VANotify::UserAccountJob).to have_received(:perform_at).with(
+                time,
+                user_account.id,
+                "form21_10210_#{notification_type}_email_template_id",
+                expected_personalization,
+                'fake_secret',
+                a_hash_including(:callback_metadata)
+              )
+            end
+
+            it 'does not call V2 QueueUserAccountJob' do
+              allow(VANotify::V2::QueueUserAccountJob).to receive(:enqueue_at)
+              subject = described_class.new(config, notification_type:, user_account:)
+
+              subject.send(at: time)
+
+              expect(VANotify::V2::QueueUserAccountJob).not_to have_received(:enqueue_at)
+            end
+          end
+
+          context 'when va_notify_v2_simple_forms_user_account_email is enabled' do
+            before do
+              allow(Flipper).to receive(:enabled?)
+                .with(:va_notify_v2_simple_forms_user_account_email).and_return(true)
+              allow(VANotify::V2::QueueUserAccountJob).to receive(:enqueue_at)
+            end
+
+            it 'sends the email at the specified time via V2' do
+              subject = described_class.new(config, notification_type:, user_account:)
+
+              subject.send(at: time)
+
+              expect(VANotify::V2::QueueUserAccountJob).to have_received(:enqueue_at).with(
+                time,
+                user_account.id,
+                "form21_10210_#{notification_type}_email_template_id",
+                expected_personalization,
+                'Settings.vanotify.services.va_gov.api_key',
+                a_hash_including(:callback_metadata)
+              )
+            end
+
+            it 'does not call V1 UserAccountJob' do
+              allow(VANotify::UserAccountJob).to receive(:perform_at)
+              subject = described_class.new(config, notification_type:, user_account:)
+
+              subject.send(at: time)
+
+              expect(VANotify::UserAccountJob).not_to have_received(:perform_at)
+            end
           end
         end
 
