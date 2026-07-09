@@ -36,6 +36,12 @@ module UnifiedHealthData
         oracle_medications = parse_oracle_medications(body)
         prescriptions.concat(oracle_medications) if oracle_medications.present?
 
+        log_upstream_parse_counts(
+          vista_count: vista_medications.size,
+          oracle_count: oracle_medications.size,
+          body:
+        )
+
         # Exclude certain prescriptions based on business rules
         prescriptions.reject! { |prescription| should_exclude_prescription?(prescription) }
 
@@ -193,6 +199,23 @@ module UnifiedHealthData
             OperationOutcomeDetector::ERROR_SEVERITIES.include?(i['severity'])
           end
         end
+      end
+
+      # Logs the raw counts from each data source after initial parsing.
+      # This is the earliest point where we know what the upstream returned
+      def log_upstream_parse_counts(vista_count:, oracle_count:, body:)
+        vista_data = body[SourceConstants::VISTA]
+        oracle_data = body[SourceConstants::ORACLE_HEALTH]
+
+        Rails.logger.info(
+          message: 'UHD prescriptions upstream parse counts',
+          vista_raw_medications_parsed: vista_count,
+          oracle_raw_medications_parsed: oracle_count,
+          vista_medication_list_is_array: vista_data&.dig('medicationList', 'medication').is_a?(Array),
+          oracle_entry_is_array: oracle_data&.dig('entry').is_a?(Array),
+          vista_failed_station_list: vista_data&.dig('failedStationList').presence,
+          service: 'unified_health_data'
+        )
       end
     end
   end

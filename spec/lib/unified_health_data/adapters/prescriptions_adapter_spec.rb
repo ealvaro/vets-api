@@ -1196,6 +1196,109 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
     end
   end
 
+  describe '#parse upstream log counts' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:mhv_medications_display_pending_meds, user).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_medications_management_improvements, user).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_medications_v2_status_mapping, user).and_return(false)
+    end
+
+    it 'logs counts when both sources return medications' do
+      allow(Rails.logger).to receive(:info)
+      allow(Rails.logger).to receive(:warn)
+
+      subject.parse(unified_response)
+
+      expect(Rails.logger).to have_received(:info).with(
+        hash_including(
+          message: 'UHD prescriptions upstream parse counts',
+          vista_raw_medications_parsed: 1,
+          oracle_raw_medications_parsed: 1,
+          vista_medication_list_is_array: true,
+          oracle_entry_is_array: true,
+          vista_failed_station_list: nil,
+          service: 'unified_health_data'
+        )
+      )
+    end
+
+    it 'logs zero counts when upstream returns empty data for both sources' do
+      empty_response = { 'vista' => {}, 'oracle-health' => {} }
+
+      allow(Rails.logger).to receive(:info)
+
+      subject.parse(empty_response)
+
+      expect(Rails.logger).to have_received(:info).with(
+        hash_including(
+          message: 'UHD prescriptions upstream parse counts',
+          vista_raw_medications_parsed: 0,
+          oracle_raw_medications_parsed: 0,
+          vista_medication_list_is_array: false,
+          oracle_entry_is_array: false,
+          vista_failed_station_list: nil,
+          service: 'unified_health_data'
+        )
+      )
+    end
+
+    it 'logs failed station list when VistA stations fail' do
+      response_with_failure = {
+        'vista' => {
+          'failedStationList' => 'Station-979,Station-442',
+          'successfulStationList' => nil,
+          'medicationList' => nil
+        },
+        'oracle-health' => {}
+      }
+
+      allow(Rails.logger).to receive(:info)
+
+      subject.parse(response_with_failure)
+
+      expect(Rails.logger).to have_received(:info).with(
+        hash_including(
+          message: 'UHD prescriptions upstream parse counts',
+          vista_raw_medications_parsed: 0,
+          oracle_raw_medications_parsed: 0,
+          vista_medication_list_is_array: false,
+          oracle_entry_is_array: false,
+          vista_failed_station_list: 'Station-979,Station-442',
+          service: 'unified_health_data'
+        )
+      )
+    end
+
+    it 'logs partial data when some VistA stations fail but others succeed' do
+      allow(Rails.logger).to receive(:info)
+      allow(Rails.logger).to receive(:warn)
+
+      response_partial = {
+        'vista' => {
+          'failedStationList' => 'Station-442',
+          'medicationList' => { 'medication' => [vista_medication_data] }
+        },
+        'oracle-health' => {
+          'entry' => [{ 'resource' => oracle_health_medication_data }]
+        }
+      }
+
+      subject.parse(response_partial)
+
+      expect(Rails.logger).to have_received(:info).with(
+        hash_including(
+          message: 'UHD prescriptions upstream parse counts',
+          vista_raw_medications_parsed: 1,
+          oracle_raw_medications_parsed: 1,
+          vista_medication_list_is_array: true,
+          oracle_entry_is_array: true,
+          vista_failed_station_list: 'Station-442',
+          service: 'unified_health_data'
+        )
+      )
+    end
+  end
+
   describe 'V2 status mapping consolidation' do
     let(:adapter) { subject }
 
