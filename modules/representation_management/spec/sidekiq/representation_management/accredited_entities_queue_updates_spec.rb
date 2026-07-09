@@ -942,7 +942,6 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
     let(:entity_counts) { instance_double(RepresentationManagement::AccreditationApiEntityCount) }
     let(:vso_record) { instance_double(AccreditedOrganization, id: 100) }
     let(:rep_record) { instance_double(AccreditedIndividual, id: 200, raw_address: nil) }
-    let(:accreditation_record) { instance_double(Accreditation, id: 300) }
 
     before do
       job.instance_variable_set(:@entity_counts, entity_counts)
@@ -985,7 +984,7 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
       # Mock record creation
       allow(AccreditedOrganization).to receive_messages(find_or_create_by: vso_record, find_by: vso_record)
       allow(AccreditedIndividual).to receive(:find_or_create_by).and_return(rep_record)
-      allow(Accreditation).to receive(:find_or_create_by).and_return(accreditation_record)
+      allow(RepresentationManagement::AccreditationSync).to receive(:sync!)
 
       # Mock record updates
       allow(vso_record).to receive(:update)
@@ -1008,9 +1007,9 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
         .with(ogc_id: 'dfc36f35-0464-450f-a85b-3fa639705826', individual_type: 'representative')
       expect(rep_record).to have_received(:update)
 
-      # Verify Accreditation was created
-      expect(Accreditation).to have_received(:find_or_create_by)
-        .with(accredited_individual_id: 200, accredited_organization_id: 100)
+      # Verify accreditations were synced for the resolved rep/org pair
+      expect(RepresentationManagement::AccreditationSync).to have_received(:sync!)
+        .with(individual_org_id_pairs: [[200, 100]], organization_ids: [100])
     end
 
     context 'when representative count is invalid' do
@@ -1297,41 +1296,64 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
   end
 
   describe '#create_or_update_accreditations' do
-    let(:vso_record) { instance_double(AccreditedOrganization, id: 100) }
-    let(:accreditation1) { instance_double(Accreditation, id: 300) }
-    let(:accreditation2) { instance_double(Accreditation, id: 301) }
+    let(:present_ogc_id) { SecureRandom.uuid }
+    let(:missing_ogc_id) { SecureRandom.uuid }
+    let!(:rep1) { create(:accredited_individual, individual_type: 'representative') }
+    let!(:rep2) { create(:accredited_individual, individual_type: 'representative') }
+    let!(:vso) do
+      create(:accredited_organization, ogc_id: present_ogc_id, default_new_rep_acceptance_mode: 'any_request')
+    end
 
     before do
       job.instance_variable_set(:@rep_to_vso_associations,
-                                200 => %w[vso-ogc-1 vso-ogc-2],
-                                201 => ['vso-ogc-1'])
+                                rep1.id => [present_ogc_id, missing_ogc_id],
+                                rep2.id => [present_ogc_id])
       job.instance_variable_set(:@accreditation_ids, [])
-
-      allow(AccreditedOrganization).to receive(:find_by).with(ogc_id: 'vso-ogc-1').and_return(vso_record)
-      allow(AccreditedOrganization).to receive(:find_by).with(ogc_id: 'vso-ogc-2').and_return(nil)
-
-      allow(Accreditation).to receive(:find_or_create_by).and_return(accreditation1, accreditation2)
     end
 
-    it 'creates accreditations for valid VSO associations' do
+    it 'creates accreditations seeded with the organization default acceptance_mode' do
+      expect { job.send(:create_or_update_accreditations) }.to change(Accreditation, :count).by(2)
+
+      expect(Accreditation.find_by(accredited_individual_id: rep1.id,
+                                   accredited_organization_id: vso.id).acceptance_mode).to eq('any_request')
+      expect(Accreditation.find_by(accredited_individual_id: rep2.id,
+                                   accredited_organization_id: vso.id).acceptance_mode).to eq('any_request')
+    end
+
+    it 'tracks the active accreditation ids' do
       job.send(:create_or_update_accreditations)
 
-      expect(Accreditation).to have_received(:find_or_create_by)
-        .with(accredited_individual_id: 200, accredited_organization_id: 100)
-      expect(Accreditation).to have_received(:find_or_create_by)
-        .with(accredited_individual_id: 201, accredited_organization_id: 100)
+      expect(job.instance_variable_get(:@accreditation_ids))
+        .to match_array(Accreditation.where(accredited_organization_id: vso.id).pluck(:id))
+    end
 
-      expect(job.instance_variable_get(:@accreditation_ids)).to eq([300, 301])
+    it 'does not overwrite acceptance_mode on existing accreditations' do
+      create(:accreditation, accredited_individual: rep1, accredited_organization: vso, acceptance_mode: 'self_only')
+
+      job.send(:create_or_update_accreditations)
+
+      expect(Accreditation.find_by(accredited_individual_id: rep1.id,
+                                   accredited_organization_id: vso.id).acceptance_mode).to eq('self_only')
+    end
+
+    it 'deactivates accreditations for a processed VSO that has no reps this run' do
+      other_org = create(:accredited_organization)
+      stale = create(:accreditation, accredited_individual: rep1, accredited_organization: other_org)
+      job.instance_variable_set(:@vso_ids, [vso.id, other_org.id])
+
+      job.send(:create_or_update_accreditations)
+
+      expect(stale.reload.deactivated_at).to be_present
     end
 
     it 'logs an error for missing VSOs' do
-      expect(Rails.logger).to receive(:error).with(/VSO not found for ogc_id: vso-ogc-2/)
+      expect(Rails.logger).to receive(:error).with(/VSO not found for ogc_id: #{missing_ogc_id}/)
       job.send(:create_or_update_accreditations)
     end
 
     context 'when an error occurs' do
       before do
-        allow(Accreditation).to receive(:find_or_create_by).and_raise(StandardError.new('DB error'))
+        allow(RepresentationManagement::AccreditationSync).to receive(:sync!).and_raise(StandardError.new('DB error'))
       end
 
       it 'logs an error' do
@@ -1407,104 +1429,6 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
 
       it 'does not delete any organizations' do
         expect { job.send(:delete_removed_accredited_organizations) }.not_to change(AccreditedOrganization, :count)
-      end
-    end
-  end
-
-  describe '#delete_removed_accreditations' do
-    let!(:current_accreditation1) { create(:accreditation) }
-    let!(:current_accreditation2) { create(:accreditation) }
-    let!(:old_accreditation) { create(:accreditation) }
-
-    before do
-      job.instance_variable_set(:@accreditation_ids, [current_accreditation1.id, current_accreditation2.id])
-      job.instance_variable_set(:@force_update_types, [])
-    end
-
-    context 'when no force update types are specified' do
-      it 'deletes accreditations not in the current accreditation ids' do
-        expect { job.send(:delete_removed_accreditations) }
-          .to change(Accreditation, :count).by(-1)
-
-        expect(Accreditation).not_to exist(old_accreditation.id)
-        expect(Accreditation).to exist(current_accreditation1.id)
-        expect(Accreditation).to exist(current_accreditation2.id)
-      end
-    end
-
-    context 'when forcing updates for representatives' do
-      before do
-        job.instance_variable_set(:@force_update_types, [RepresentationManagement::REPRESENTATIVES])
-      end
-
-      it 'deletes accreditations not in the current accreditation ids' do
-        expect { job.send(:delete_removed_accreditations) }
-          .to change(Accreditation, :count).by(-1)
-
-        expect(Accreditation).not_to exist(old_accreditation.id)
-        expect(Accreditation).to exist(current_accreditation1.id)
-        expect(Accreditation).to exist(current_accreditation2.id)
-      end
-    end
-
-    context 'when forcing updates for VSOs' do
-      before do
-        job.instance_variable_set(:@force_update_types, [RepresentationManagement::VSOS])
-      end
-
-      it 'deletes accreditations not in the current accreditation ids' do
-        expect { job.send(:delete_removed_accreditations) }
-          .to change(Accreditation, :count).by(-1)
-
-        expect(Accreditation).not_to exist(old_accreditation.id)
-        expect(Accreditation).to exist(current_accreditation1.id)
-        expect(Accreditation).to exist(current_accreditation2.id)
-      end
-    end
-
-    context 'when forcing updates for representatives and VSOs' do
-      before do
-        job.instance_variable_set(:@force_update_types, [RepresentationManagement::REPRESENTATIVES, RepresentationManagement::VSOS])
-      end
-
-      it 'deletes accreditations not in the current accreditation ids' do
-        expect { job.send(:delete_removed_accreditations) }
-          .to change(Accreditation, :count).by(-1)
-
-        expect(Accreditation).not_to exist(old_accreditation.id)
-      end
-    end
-
-    context 'when forcing updates for types that do not affect accreditations' do
-      before do
-        job.instance_variable_set(:@force_update_types, [RepresentationManagement::AGENTS])
-      end
-
-      it 'does not delete any accreditations' do
-        expect { job.send(:delete_removed_accreditations) }.not_to change(Accreditation, :count)
-      end
-    end
-
-    context 'when forcing updates for agents and attorneys only' do
-      before do
-        job.instance_variable_set(:@force_update_types, [RepresentationManagement::AGENTS, RepresentationManagement::ATTORNEYS])
-      end
-
-      it 'does not delete any accreditations' do
-        expect { job.send(:delete_removed_accreditations) }.not_to change(Accreditation, :count)
-      end
-    end
-
-    context 'when forcing updates for agents but also representatives' do
-      before do
-        job.instance_variable_set(:@force_update_types, [RepresentationManagement::AGENTS, RepresentationManagement::REPRESENTATIVES])
-      end
-
-      it 'deletes accreditations because representatives are included' do
-        expect { job.send(:delete_removed_accreditations) }
-          .to change(Accreditation, :count).by(-1)
-
-        expect(Accreditation).not_to exist(old_accreditation.id)
       end
     end
   end

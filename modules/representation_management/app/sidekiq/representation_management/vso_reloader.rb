@@ -394,6 +394,7 @@ module RepresentationManagement
 
     def process_vso_data(vso_data) # rubocop:disable Metrics/MethodLength
       vso_reps = []
+      rep_org_pairs = []
 
       vso_orgs = vso_data.map do |vso_rep|
         next unless vso_rep['Representative']
@@ -403,8 +404,10 @@ module RepresentationManagement
 
         find_or_create_vso(vso_rep)
         vso_reps << registration_number
+        poa_code = vso_rep['POA'].gsub(/\W/, '')
+        rep_org_pairs << [registration_number, poa_code]
         {
-          poa_code: vso_rep['POA'].gsub(/\W/, ''),
+          poa_code:,
           name: vso_rep['Organization Name'],
           phone: vso_rep['Org Phone'],
           state_code: vso_rep['Org State']
@@ -430,7 +433,39 @@ module RepresentationManagement
 
       AccreditedOrganization.where.not(poa_code: current_poa_codes).destroy_all
 
+      sync_accreditations(rep_org_pairs, current_poa_codes)
+
       vso_reps
+    end
+
+    # Syncs the AccreditedIndividual <-> AccreditedOrganization join (Accreditation) for the VSO
+    # representatives just reloaded, mirroring the legacy organization_representatives population.
+    # Organizations dropped from OGC above are destroyed and cascade their accreditations away; this
+    # seeds/reactivates joins for the retained organizations and soft-deletes any that disappeared.
+    def sync_accreditations(rep_org_pairs, current_poa_codes)
+      return if rep_org_pairs.empty? || current_poa_codes.blank?
+
+      org_id_by_poa = AccreditedOrganization
+                      .where(poa_code: current_poa_codes)
+                      .pluck(:poa_code, :id)
+                      .to_h
+      registration_numbers = rep_org_pairs.map(&:first).compact.uniq
+      individual_id_by_registration_number = AccreditedIndividual
+                                             .where(individual_type: AccreditedIndividual::INDIVIDUAL_TYPE_VSO_REPRESENTATIVE,
+                                                    registration_number: registration_numbers)
+                                             .pluck(:registration_number, :id)
+                                             .to_h
+
+      id_pairs = rep_org_pairs.filter_map do |registration_number, poa_code|
+        individual_id = individual_id_by_registration_number[registration_number]
+        organization_id = org_id_by_poa[poa_code]
+        [individual_id, organization_id] if individual_id && organization_id
+      end
+
+      RepresentationManagement::AccreditationSync.sync!(
+        individual_org_id_pairs: id_pairs,
+        organization_ids: org_id_by_poa.values
+      )
     end
 
     # Maps VSOReloader's rep_type symbols to AccreditationDataIngestionLog entity types

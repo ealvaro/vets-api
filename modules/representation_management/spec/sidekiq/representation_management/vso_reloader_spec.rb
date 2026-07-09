@@ -54,6 +54,53 @@ RSpec.describe RepresentationManagement::VSOReloader, type: :job do
       end
     end
 
+    describe 'accreditation join population' do
+      it 'creates an active Accreditation linking the reloaded rep and org' do
+        VCR.use_cassette('representation_management/representation_management_ogc_vso_rep_data') do
+          RepresentationManagement::AccreditationTotal.destroy_all
+          RepresentationManagement::VSOReloader.new.reload_vso_reps
+
+          rep = AccreditedIndividual.find_by(registration_number: 8240)
+          org = AccreditedOrganization.find_by(poa_code: '095')
+          accreditation = Accreditation.find_by(accredited_individual_id: rep.id, accredited_organization_id: org.id)
+
+          expect(accreditation).to be_present
+          expect(accreditation.deactivated_at).to be_nil
+        end
+      end
+
+      it 'seeds acceptance_mode from the organization default_new_rep_acceptance_mode' do
+        VCR.use_cassette('representation_management/representation_management_ogc_vso_rep_data') do
+          RepresentationManagement::AccreditationTotal.destroy_all
+          # Pre-seed the org default; the reload's org import only updates name/phone/state_code, so it survives.
+          create(:accredited_organization, poa_code: '095', default_new_rep_acceptance_mode: 'any_request')
+
+          RepresentationManagement::VSOReloader.new.reload_vso_reps
+
+          rep = AccreditedIndividual.find_by(registration_number: 8240)
+          org = AccreditedOrganization.find_by(poa_code: '095')
+          accreditation = Accreditation.find_by(accredited_individual_id: rep.id, accredited_organization_id: org.id)
+
+          expect(accreditation.acceptance_mode).to eq('any_request')
+        end
+      end
+
+      it 'preserves acceptance_mode already set on an existing accreditation' do
+        VCR.use_cassette('representation_management/representation_management_ogc_vso_rep_data') do
+          RepresentationManagement::AccreditationTotal.destroy_all
+          org = create(:accredited_organization, poa_code: '095', default_new_rep_acceptance_mode: 'any_request')
+          rep = create(:accredited_individual, individual_type: 'representative', registration_number: '8240')
+          create(:accreditation, accredited_individual: rep, accredited_organization: org,
+                                 acceptance_mode: 'self_only')
+
+          RepresentationManagement::VSOReloader.new.reload_vso_reps
+
+          accreditation = Accreditation.find_by(accredited_individual_id: rep.id, accredited_organization_id: org.id)
+          expect(accreditation.acceptance_mode).to eq('self_only')
+        end
+      end
+    end
+
     context 'existing organizations' do
       let(:org) do
         create(:accredited_organization, poa_code: '091', name: 'Testing', phone: '222-555-5555', state_code: 'ZZ',

@@ -123,7 +123,6 @@ module RepresentationManagement
       remove_skipped_deletions
       delete_removed_accredited_individuals
       delete_removed_accredited_organizations
-      delete_removed_accreditations
     end
 
     # Handles errors during ingestion
@@ -917,43 +916,54 @@ module RepresentationManagement
       end
     end
 
-    # Removes Accreditation records that are no longer valid
-    # When force_update_types is specified, only deletes when representatives or VSOs were processed
+    # Creates or updates Accreditation records based on representative-VSO associations.
     #
-    # @return [void]
-    def delete_removed_accreditations
-      # Only delete accreditation records if representatives or VSOs were processed or no force update specified
-      if @force_update_types.empty? || @force_update_types.intersect?([REPRESENTATIVES, VSOS])
-        delete_removed_records(Accreditation, @accreditation_ids, 'accreditation')
-      end
-    end
-
-    # Creates or updates Accreditation records based on representative-VSO associations
+    # Resolves each association to an [accredited_individual_id, accredited_organization_id] pair and
+    # hands off to AccreditationSync, which seeds acceptance_mode from the organization's
+    # default_new_rep_acceptance_mode on first insert, preserves acceptance_mode on existing rows, and
+    # soft-deletes joins that are no longer present.
     #
     # @return [void]
     def create_or_update_accreditations
+      id_pairs, pair_org_ids = resolve_accreditation_pairs
+      # Scope the sync (and its deactivation) to every VSO processed this run, not just those that still
+      # have reps — otherwise a VSO that lost all of its reps would keep its now-stale accreditations
+      # active. Union in the pair-derived org ids so a reps-only run (empty @vso_ids) still syncs.
+      org_ids = (Array(@vso_ids) + pair_org_ids).uniq
+
+      RepresentationManagement::AccreditationSync.sync!(
+        individual_org_id_pairs: id_pairs,
+        organization_ids: org_ids
+      )
+
+      @accreditation_ids = Accreditation.active.where(accredited_organization_id: org_ids).pluck(:id)
+    rescue => e
+      log_error("Error creating/updating accreditations: #{e.message}")
+    end
+
+    # Resolves each representative-VSO association to an
+    # [accredited_individual_id, accredited_organization_id] pair, plus the unique organization ids seen.
+    #
+    # @return [Array(Array, Array)] the [individual_id, organization_id] pairs and the unique organization ids
+    def resolve_accreditation_pairs
+      id_pairs = []
+      org_ids = []
+
       @rep_to_vso_associations.each do |rep_id, vso_ogc_ids|
         vso_ogc_ids.each do |vso_ogc_id|
-          # Find the VSO by ogc_id
           vso = AccreditedOrganization.find_by(ogc_id: vso_ogc_id)
 
-          # Skip if VSO not found
           if vso.nil?
             log_error("VSO not found for ogc_id: #{vso_ogc_id} when creating accreditation")
             next
           end
 
-          # Find or create the accreditation
-          accreditation = Accreditation.find_or_create_by(
-            accredited_individual_id: rep_id,
-            accredited_organization_id: vso.id
-          )
-
-          @accreditation_ids << accreditation.id
+          id_pairs << [rep_id, vso.id]
+          org_ids << vso.id
         end
       end
-    rescue => e
-      log_error("Error creating/updating accreditations: #{e.message}")
+
+      [id_pairs, org_ids.uniq]
     end
 
     # Completes the ingestion log with overall metrics
