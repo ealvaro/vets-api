@@ -10,11 +10,11 @@
 .github/instructions/my-health-messaging.instructions.md @software/vfs-mhv-integration @software/backend-review-group
 .github/instructions/my-health-prescriptions.instructions.md @software/vfs-mhv-integration @software/backend-review-group
 .gitignore @software/backend-review-group
+.postman_disability_benefits @software/disability-benefits-team-5 @software/backend-review-group
 .reek.yml @software/backend-review-group
 .rubocop.yml @software/backend-review-group
 .rubocop*todo.yml @software/backend-review-group
 .vscode/mcp.json @software/backend-review-group
-.postman_disability_benefits @disability-benefits-team-5 @software/backend-review-group
 app/concerns/rated_disabilities_fetch_concern.rb @software/disability-benefits @software/backend-review-group
 app/concerns/retriable_concern.rb @software/health-apps-backend @software/backend-review-group
 app/controllers/appeals_base_controller.rb @software/backend-review-group
