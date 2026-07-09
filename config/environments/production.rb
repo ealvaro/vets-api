@@ -80,7 +80,9 @@ Rails.application.configure do
   config.rails_semantic_logger.add_file_appender = false
   config.semantic_logger.add_appender(io: $stdout,
                                       level: config.log_level,
-                                      formatter: PIIFilteringFormatter.new)
+                                      formatter: SafeJsonFormatter.new)
+  # Temporarily reverted to SafeJsonFormatter due to false positives in logs from
+  # PIIFilteringFormatter (va.gov-team#147137).
 
   config.semantic_logger.application = if Sidekiq.server?
                                          'vets-api-worker'
