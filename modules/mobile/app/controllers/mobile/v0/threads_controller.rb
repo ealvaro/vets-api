@@ -22,6 +22,10 @@ module Mobile
           event_name: UniqueUserEvents::EventRegistry::SECURE_MESSAGING_INBOX_ACCESSED
         )
 
+        # Add total_entries to metadata for backwards compatibility
+        resource.metadata[:pagination] ||= {}
+        resource.metadata[:pagination][:total_entries] ||= resource.size
+
         options = { meta: resource.metadata }
         render json: MyHealth::V1::ThreadsSerializer.new(resource.data, options)
       end

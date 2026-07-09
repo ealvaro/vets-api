@@ -77,6 +77,9 @@ RSpec.describe 'Mobile::V0::Messaging::Health::Folders::Threads', type: :request
       first_thread = response.parsed_body.dig('data', 0)
       expect(first_thread).to match(example_thread)
 
+      metadata = response.parsed_body['meta']
+      expect(metadata).to include('pagination' => { 'totalEntries' => 10 })
+
       # Verify event logging was called
       expect(UniqueUserEvents).to have_received(:log_event).with(
         user: anything,
