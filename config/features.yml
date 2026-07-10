@@ -2846,14 +2846,6 @@ features:
     actor_type: user
     enable_in_development: true
     description: Check OH migration status for appointments
-  va_online_scheduling_cc_direct_scheduling:
-    actor_type: user
-    description: Enables CC direct scheduling.
-    enable_in_development: true
-  va_online_scheduling_cc_direct_scheduling_chiropractic:
-    actor_type: user
-    description: Adds chiropractic to the list of services that can be direct scheduled.
-    enable_in_development: true
   va_online_scheduling_cc_direct_scheduling_v2:
     actor_type: user
     description: Enables CC and VA unified direct scheduling.
