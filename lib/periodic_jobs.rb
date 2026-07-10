@@ -84,6 +84,9 @@ PERIODIC_JOBS = lambda { |mgr| # rubocop:disable Metrics/BlockLength
   # Generate FormSubmissionAttempt rememdiation statistics from Lighthouse Benefits Intake API
   mgr.register('0 1 * * 1', 'BenefitsIntakeRemediationStatusJob')
 
+  # Poll BIP Forms API for the status of pending DigitalFormsApi::SubmissionAttempt rows (FDF)
+  mgr.register('0 */2 * * *', 'DigitalFormsApi::SubmissionStatusJob')
+
   # Update Lighthouse526DocumentUpload statuses according to Lighthouse Benefits Documents service tracking
   mgr.register('15 * * * *', 'Lighthouse::Form526DocumentUploadPollingJob')
 
