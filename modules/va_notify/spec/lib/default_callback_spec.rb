@@ -86,7 +86,8 @@ describe VANotify::DefaultCallback do
             )
             expect(StatsD).to have_received(:increment).with(
               'silent_failure_avoided',
-              tags: ['service:none-provided', 'function:none-provided']
+              tags: ['service:none-provided', 'function:none-provided',
+                     "template_id:#{notification_record.template_id}"]
             )
           end
         end
@@ -166,7 +167,8 @@ describe VANotify::DefaultCallback do
             )
             expect(StatsD).to have_received(:increment).with(
               'silent_failure_avoided',
-              tags: ['service:none-provided', 'function:none-provided']
+              tags: ['service:none-provided', 'function:none-provided',
+                     "template_id:#{notification_record.template_id}"]
             )
           end
         end
@@ -190,7 +192,8 @@ describe VANotify::DefaultCallback do
           )
           expect(StatsD).to have_received(:increment).with(
             'silent_failure_avoided',
-            tags: ['service:none-provided', 'function:none-provided']
+            tags: ['service:none-provided', 'function:none-provided',
+                   "template_id:#{notification_record.template_id}"]
           )
         end
       end
@@ -257,8 +260,11 @@ describe VANotify::DefaultCallback do
 
           VANotify::DefaultCallback.new(notification_record).call
 
-          expect(StatsD).to have_received(:increment).with('silent_failure_avoided',
-                                                           tags: ['service:none-provided', 'function:none-provided'])
+          expect(StatsD).to have_received(:increment).with(
+            'silent_failure_avoided',
+            tags: ['service:none-provided', 'function:none-provided',
+                   "template_id:#{notification_record.template_id}"]
+          )
         end
       end
 
@@ -272,8 +278,11 @@ describe VANotify::DefaultCallback do
 
           VANotify::DefaultCallback.new(notification_record).call
 
-          expect(StatsD).to have_received(:increment).with('silent_failure',
-                                                           tags: ['service:none-provided', 'function:none-provided'])
+          expect(StatsD).to have_received(:increment).with(
+            'silent_failure',
+            tags: ['service:none-provided', 'function:none-provided',
+                   "template_id:#{notification_record.template_id}"]
+          )
         end
       end
 
@@ -282,13 +291,22 @@ describe VANotify::DefaultCallback do
           build(:notification, status: 'permanent-failure')
         end
 
-        it 'increments StatsD' do
+        it 'increments StatsD and logs error' do
           allow(StatsD).to receive(:increment)
+          allow(Rails.logger).to receive(:error)
 
           VANotify::DefaultCallback.new(notification_record).call
 
-          expect(StatsD).to have_received(:increment).with('silent_failure',
-                                                           tags: ['service:none-provided', 'function:none-provided'])
+          expect(StatsD).to have_received(:increment).with(
+            'silent_failure',
+            tags: ['service:none-provided', 'function:none-provided',
+                   "template_id:#{notification_record.template_id}"]
+          )
+          expect(Rails.logger).to have_received(:error).with(
+            'Error notification to user failed to deliver',
+            notification_record_id: notification_record.id,
+            template_id: notification_record.template_id
+          )
         end
       end
     end

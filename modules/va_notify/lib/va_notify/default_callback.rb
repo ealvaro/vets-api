@@ -65,11 +65,18 @@ module VANotify
     end
 
     def delivered_without_metadata
-      StatsD.increment('silent_failure_avoided', tags: ['service:none-provided', 'function:none-provided'])
+      StatsD.increment('silent_failure_avoided',
+                       tags: ['service:none-provided', 'function:none-provided',
+                              "template_id:#{notification_record.template_id}"])
     end
 
     def permanent_failure_without_metadata
-      StatsD.increment('silent_failure', tags: ['service:none-provided', 'function:none-provided'])
+      StatsD.increment('silent_failure',
+                       tags: ['service:none-provided', 'function:none-provided',
+                              "template_id:#{notification_record.template_id}"])
+      Rails.logger.error('Error notification to user failed to deliver',
+                         notification_record_id: notification_record.id,
+                         template_id: notification_record.template_id)
     end
 
     def validate_and_normalize_statsd_tags
