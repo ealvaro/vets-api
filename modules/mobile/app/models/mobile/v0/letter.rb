@@ -38,6 +38,12 @@ module Mobile
       # to legacy content.
       CONTENT_UPDATES_APP_VERSION = '2.78.0'
 
+      # Minimum mobile app version that can render the typed `content` array description format.
+      # Below this version, letter descriptions fall back to the legacy `paragraphs/lists` shape
+      # (descriptions_legacy.yml) and the medicare_partd → minimum_essential_coverage consolidation
+      # (plus the CONSOLIDATED_COVERAGE_NAME name override) are suppressed.
+      DESCRIPTION_CONTENT_FORMAT_APP_VERSION = '2.80.0'
+
       attribute :name, Types::String
       attribute :letter_type, LETTER_TYPE
       attribute :description, Types::Hash.optional.default(nil)

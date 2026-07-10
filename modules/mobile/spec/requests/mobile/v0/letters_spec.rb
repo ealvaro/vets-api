@@ -357,7 +357,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
 
               it 'includes descriptions in content format and uses Content module names' do
                 VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
-                  get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => '2.78.0' })
+                  get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => '2.80.0' })
 
                   expect(response).to have_http_status(:ok)
                   letters = JSON.parse(response.body).dig('data', 'attributes', 'letters')
@@ -396,11 +396,37 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                 allow_any_instance_of(Mobile::V0::LettersController)
                   .to receive(:lighthouse_service).and_return(service_double)
 
-                get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => '2.78.0' })
+                get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => '2.80.0' })
                 letter_types = JSON.parse(response.body).dig('data', 'attributes', 'letters')
                                    .map { |l| l['letterType'] }
                 expect(letter_types).to include('minimum_essential_coverage')
                 expect(letter_types).not_to include('medicare_partd')
+              end
+            end
+          end
+
+          # Stacking zone: App-Version meets the 2.78.0 descriptions gate but is below the 2.80.0
+          # content-format/consolidation gate. With the flag on we still serve the legacy description
+          # shape and no consolidation — this is the exact partial-gating bug class #146164 fixed.
+          context 'with an App-Version at or above 2.78.0 but below 2.80.0 and description_content_format flag on' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(:cst_letters_description_content_format).and_return(true)
+            end
+
+            it 'serves legacy paragraphs/lists descriptions and does not consolidate health letters' do
+              VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
+                get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => '2.79.0' })
+
+                expect(response).to have_http_status(:ok)
+                letters = JSON.parse(response.body).dig('data', 'attributes', 'letters')
+                letter_types = letters.map { |l| l['letterType'] }
+                proof_of_service = letters.find { |l| l['letterType'] == 'proof_of_service' }
+                mec = letters.find { |l| l['letterType'] == 'minimum_essential_coverage' }
+
+                expect(letter_types).to include('medicare_partd', 'minimum_essential_coverage')
+                expect(proof_of_service['description']['paragraphs']).to be_an(Array)
+                expect(proof_of_service['description']).not_to have_key('content')
+                expect(mec['name']).not_to eq('Creditable coverage for health care and prescription drugs')
               end
             end
           end
@@ -706,12 +732,14 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                 allow(Flipper).to receive(:enabled?).with(:cst_letters_description_content_format).and_return(true)
               end
 
+              # COE description shape follows the same 2.80.0 gate as the rest of the payload, so
+              # we exercise the new shape at 2.80.0 here. The 2.78.0–2.79.x window is covered below.
               it 'uses Content module name and includes COE description in content format' do
                 VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
                   VCR.use_cassette('mobile/lgy/determination_eligible', match_requests_on: %i[method uri]) do
                     VCR.use_cassette('mobile/lgy/application_200_status_submitted',
                                      match_requests_on: %i[method uri]) do
-                      get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => '2.78.0' })
+                      get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => '2.80.0' })
                       expect(response).to have_http_status(:ok)
 
                       letters = JSON.parse(response.body).dig('data', 'attributes', 'letters')
@@ -727,6 +755,33 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                       expect(coe_letter['coeStatus']).to eq('AVAILABLE')
                       assert_schema_conform(200)
                     end
+                  end
+                end
+              end
+            end
+          end
+
+          # Stacking zone for COE: descriptions are present (2.78.0 gate met) but in the legacy
+          # shape (below the 2.80.0 gate) even with the format flag on.
+          context 'with an App-Version at or above 2.78.0 but below 2.80.0 and description_content_format flag on' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(:cst_letters_description_content_format).and_return(true)
+            end
+
+            it 'serves the COE description in legacy paragraphs/lists shape' do
+              VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
+                VCR.use_cassette('mobile/lgy/determination_eligible', match_requests_on: %i[method uri]) do
+                  VCR.use_cassette('mobile/lgy/application_200_status_submitted',
+                                   match_requests_on: %i[method uri]) do
+                    get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => '2.79.0' })
+
+                    letters = JSON.parse(response.body).dig('data', 'attributes', 'letters')
+                    coe_letter = letters.find { |l| l['letterType'] == 'certificate_of_eligibility_home_loan' }
+
+                    expect(coe_letter).to be_present
+                    expect(coe_letter['description']).to be_present
+                    expect(coe_letter['description']['paragraphs']).to be_an(Array)
+                    expect(coe_letter['description']).not_to have_key('content')
                   end
                 end
               end

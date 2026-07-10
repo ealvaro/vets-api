@@ -112,4 +112,14 @@ RSpec.describe Mobile::V0::Letter, type: :model do
       expect(letter.description).to eq({})
     end
   end
+
+  describe 'app-version constants' do
+    it 'sets CONTENT_UPDATES_APP_VERSION to the 2.78.0 descriptions-gate release' do
+      expect(described_class::CONTENT_UPDATES_APP_VERSION).to eq('2.78.0')
+    end
+
+    it 'sets DESCRIPTION_CONTENT_FORMAT_APP_VERSION to the 2.80.0 rendering-support release' do
+      expect(described_class::DESCRIPTION_CONTENT_FORMAT_APP_VERSION).to eq('2.80.0')
+    end
+  end
 end

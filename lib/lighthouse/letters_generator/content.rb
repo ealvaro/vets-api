@@ -2,8 +2,8 @@
 
 module Lighthouse
   module LettersGenerator
-    def self.format_description(letter_type)
-      if Flipper.enabled?(:cst_letters_description_content_format)
+    def self.format_description(letter_type, use_content_format: true)
+      if Flipper.enabled?(:cst_letters_description_content_format) && use_content_format
         Content::LETTER_DESCRIPTIONS[letter_type]
       else
         Content::LETTER_DESCRIPTIONS_LEGACY[letter_type]

@@ -13339,7 +13339,7 @@
         "properties": {
           "tracked_item_id": {
             "type": "integer",
-            "example": "360_052"
+            "example": 360052
           },
           "file_type": {
             "type": "integer",
@@ -13372,7 +13372,7 @@
           },
           "tracked_item_id": {
             "type": "integer",
-            "example": "360_052"
+            "example": 360052
           },
           "description": {
             "type": "string",
@@ -27067,6 +27067,7 @@
                   "benefitsPushNotification": false,
                   "claims": true,
                   "cstLettersContentUpdates": false,
+                  "cstLettersDescriptionContentFormat": false,
                   "cstMultiClaimProvider": false,
                   "decisionLetters": true,
                   "directDepositBenefits": true,

@@ -47,6 +47,7 @@ properties:
           benefitsPushNotification: false
           claims: true
           cstLettersContentUpdates: false
+          cstLettersDescriptionContentFormat: false
           cstMultiClaimProvider: false
           decisionLetters: true
           directDepositBenefits: true

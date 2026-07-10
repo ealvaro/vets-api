@@ -494,6 +494,62 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
         end
       end
 
+      context 'when both flags are enabled but use_content_format is false' do
+        let(:user) { build(:user) }
+        let(:consolidation_response) do
+          {
+            'letters' => [
+              { 'letterType' => 'MEDICARE_PARTD', 'letterName' => 'Medicare Part D letter' },
+              { 'letterType' => 'MINIMUM_ESSENTIAL_COVERAGE', 'letterName' => 'Minimum essential coverage letter' },
+              { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => 'Benefits and service verification' }
+            ],
+            'letterDestination' => { 'name' => 'DOLLY PARTON' }
+          }
+        end
+
+        before do
+          @test_stubs = Faraday::Adapter::Test::Stubs.new
+          test_conn = Faraday.new { |b| b.adapter(:test, @test_stubs) }
+          allow_any_instance_of(Lighthouse::LettersGenerator::Configuration)
+            .to receive(:connection).and_return(test_conn)
+
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:cst_letters_description_content_format).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
+
+          @test_stubs.get('/eligible-letters?icn=DOLLYPARTON') do
+            [200, {}, consolidation_response]
+          end
+        end
+
+        it 'gates description shape, consolidation, and consolidated name together' do
+          expect_any_instance_of(Lighthouse::LettersGenerator::Configuration)
+            .to receive(:get_access_token).once.and_return('faketoken')
+
+          client = Lighthouse::LettersGenerator::Service.new
+          response = client.get_eligible_letter_types('DOLLYPARTON', user, use_content_format: false)
+
+          letter_types = response[:letters].map { |l| l[:letterType] }
+          # Both health letters flow through as distinct entries — no relabel, no dedup.
+          expect(letter_types).to include('medicare_partd', 'minimum_essential_coverage')
+
+          partd_letter = response[:letters].find { |l| l[:letterType] == 'medicare_partd' }
+          mec_letter = response[:letters].find { |l| l[:letterType] == 'minimum_essential_coverage' }
+
+          # Names: upstream/override names, NOT the consolidated CONSOLIDATED_COVERAGE_NAME.
+          expect(partd_letter[:name]).to eq('Creditable prescription drug coverage')
+          expect(mec_letter[:name]).not_to eq('Creditable coverage for health care and prescription drugs')
+          expect(mec_letter[:name]).to eq('Proof of minimum essential coverage')
+
+          # Description shape: legacy paragraphs/lists, never the typed content array.
+          expect(partd_letter[:description].keys).to include('paragraphs')
+          expect(partd_letter[:description].keys).not_to include('content')
+          expect(mec_letter[:description].keys).to include('paragraphs')
+          expect(mec_letter[:description].keys).not_to include('content')
+        end
+      end
+
       context 'no consolidation when cst_letters_description_content_format is disabled' do
         let(:user) { build(:user) }
         let(:consolidation_response) do

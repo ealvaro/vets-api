@@ -39,7 +39,9 @@ module Mobile
       # returns list of letters available for a given user. List includes letter display name and letter type
       def index
         letters = lighthouse_service.get_eligible_letter_types(
-          icn, @current_user, apply_content_updates: content_updates_app_version?
+          icn, @current_user,
+          apply_content_updates: content_updates_app_version?,
+          use_content_format: description_content_format_app_version?
         )[:letters]
         response = letters.filter_map do |letter|
           # The following letters need to be filtered out due to outdated content when flag is off
@@ -113,14 +115,7 @@ module Mobile
         increment_coe_counter(coe_status)
 
         if coe_status[:status].in?(COE_STATUSES)
-          if content_updates_enabled?
-            name = Lighthouse::LettersGenerator::Content::LETTER_NAME_OVERRIDES['certificate_of_eligibility_home_loan']
-            description = Lighthouse::LettersGenerator.format_description('certificate_of_eligibility_home_loan')
-          else
-            name = 'Certificate of Eligibility for Home Loan Letter'
-            description = nil
-          end
-
+          name, description = coe_name_and_description
           Mobile::V0::Letter.new(
             letter_type: COE_LETTER_TYPE, name:,
             reference_number: coe_status[:reference_number], coe_status: coe_status[:status], description:
@@ -131,6 +126,17 @@ module Mobile
         StatsD.increment('mobile.letters.coe_status.failure')
         Rails.logger.error('LGY COE status check failed', error: e.message)
         nil
+      end
+
+      def coe_name_and_description
+        return ['Certificate of Eligibility for Home Loan Letter', nil] unless content_updates_enabled?
+
+        [
+          Lighthouse::LettersGenerator::Content::LETTER_NAME_OVERRIDES['certificate_of_eligibility_home_loan'],
+          Lighthouse::LettersGenerator.format_description(
+            'certificate_of_eligibility_home_loan', use_content_format: description_content_format_app_version?
+          )
+        ]
       end
 
       def apply_name_override(letter)
@@ -208,11 +214,19 @@ module Mobile
       end
 
       def content_updates_app_version?
+        app_version_at_least?(Mobile::V0::Letter::CONTENT_UPDATES_APP_VERSION)
+      end
+
+      def description_content_format_app_version?
+        app_version_at_least?(Mobile::V0::Letter::DESCRIPTION_CONTENT_FORMAT_APP_VERSION)
+      end
+
+      def app_version_at_least?(version)
         return false if request.headers['App-Version'].nil?
 
         begin
-          version = Gem::Version.new(request.headers['App-Version'])
-          version >= Gem::Version.new(Mobile::V0::Letter::CONTENT_UPDATES_APP_VERSION)
+          request_version = Gem::Version.new(request.headers['App-Version'])
+          request_version >= Gem::Version.new(version)
         rescue ArgumentError
           false
         end

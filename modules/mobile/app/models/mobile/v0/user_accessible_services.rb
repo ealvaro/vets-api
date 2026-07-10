@@ -34,6 +34,9 @@ module Mobile
           cstLettersContentUpdates: versioned_flagged_access?(
             %i[cst_letters_content_updates], Mobile::V0::Letter::CONTENT_UPDATES_APP_VERSION
           ),
+          cstLettersDescriptionContentFormat: versioned_flagged_access?(
+            %i[cst_letters_description_content_format], Mobile::V0::Letter::DESCRIPTION_CONTENT_FORMAT_APP_VERSION
+          ),
           cstMultiClaimProvider: @user.icn.present? && Flipper.enabled?(
             :cst_multi_claim_provider_mobile, icn_actor
           ),

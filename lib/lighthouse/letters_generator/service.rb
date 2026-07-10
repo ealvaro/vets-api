@@ -49,14 +49,20 @@ module Lighthouse
       # apply_content_updates controls whether this caller receives the updated letter content:
       # pass false to force the legacy payload regardless of the Flipper flag (mobile uses this to
       # suppress updates on older app versions). Defaults to true, so other callers are unaffected.
-      def get_eligible_letter_types(icn, user = nil, apply_content_updates: true)
+      #
+      # use_content_format controls whether the typed `content` array description shape and the
+      # medicare_partd → minimum_essential_coverage consolidation (plus CONSOLIDATED_COVERAGE_NAME)
+      # are applied: pass false to force the legacy `paragraphs/lists` shape with no consolidation
+      # even when the cst_letters_description_content_format flag is on (mobile uses this to
+      # suppress the new format on clients below the rendering-support release).
+      def get_eligible_letter_types(icn, user = nil, apply_content_updates: true, use_content_format: true)
         endpoint = 'eligible-letters'
         log = "Retrieving eligible letter types and destination from #{config.generator_url}/#{endpoint}"
         params = { icn: }
 
         response = get_from_lighthouse(endpoint, params, log)
         {
-          letters: transform_letters(response.body['letters'], user, apply_content_updates:),
+          letters: transform_letters(response.body['letters'], user, apply_content_updates:, use_content_format:),
           letter_destination: response.body['letterDestination']
         }
       end
@@ -137,19 +143,23 @@ module Lighthouse
         )
       end
 
-      def transform_letters(letters, user = nil, apply_content_updates: true)
+      def transform_letters(letters, user = nil, apply_content_updates: true, use_content_format: true)
         filtered_letters = letters.select { |l| valid_type?(l['letterType'], user) }
         show_updated_content = content_updates_enabled?(user) && apply_content_updates
+        # All three description-content-format behaviors (typed `content` shape,
+        # medicare_partd → minimum_essential_coverage consolidation, and CONSOLIDATED_COVERAGE_NAME)
+        # are gated together on this combined decision so older clients never get a partial update.
+        show_content_format = description_content_format_enabled? && use_content_format
 
         if show_updated_content
           letters_to_transform =
-            if description_content_format_enabled?
+            if show_content_format
               consolidate_coverage_letters(filtered_letters)
             else
               filtered_letters
             end
 
-          sort_letters_by_order(updated_letter_transformation(letters_to_transform))
+          sort_letters_by_order(updated_letter_transformation(letters_to_transform, show_content_format:))
         else
           filtered_letters.map do |letter|
             {
@@ -167,19 +177,21 @@ module Lighthouse
         relabeled.uniq { |l| l['letterType'].downcase }
       end
 
-      def updated_letter_transformation(letters)
+      def updated_letter_transformation(letters, show_content_format:)
         letters.map do |letter|
           letter_type_lower = letter['letterType'].downcase
           {
             letterType: letter_type_lower,
-            name: letter_name(letter_type_lower, letter['letterName']),
-            description: Lighthouse::LettersGenerator.format_description(letter_type_lower)
+            name: letter_name(letter_type_lower, letter['letterName'], show_content_format:),
+            description: Lighthouse::LettersGenerator.format_description(
+              letter_type_lower, use_content_format: show_content_format
+            )
           }
         end
       end
 
-      def letter_name(letter_type, upstream_name)
-        if letter_type == 'minimum_essential_coverage' && description_content_format_enabled?
+      def letter_name(letter_type, upstream_name, show_content_format:)
+        if letter_type == 'minimum_essential_coverage' && show_content_format
           CONSOLIDATED_COVERAGE_NAME
         else
           Content::LETTER_NAME_OVERRIDES[letter_type] || upstream_name
