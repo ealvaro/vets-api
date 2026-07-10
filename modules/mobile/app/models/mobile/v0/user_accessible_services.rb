@@ -47,8 +47,7 @@ module Mobile
                                                          :labs_oracle_health),
           lettersAndDocuments: access?(lighthouse: :access?),
           militaryServiceHistory: access?(vet360: :military_access?),
-          medicationsOracleHealthEnabled: versioned_flagged_access?(%i[mhv_medications_cerner_pilot
-                                                                       mhv_accelerated_delivery_uhd_enabled],
+          medicationsOracleHealthEnabled: versioned_flagged_access?(%i[mhv_accelerated_delivery_uhd_enabled],
                                                                     :medications_oracle_health),
           paymentHistory: access?(bgs: :access?),
           preferredName: access?(demographics: :access_update?) && access?(mpi: :queryable?),

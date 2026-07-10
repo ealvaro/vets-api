@@ -39,8 +39,6 @@ module MyHealth
       # Orders blocked by OH transition rules are partitioned out before submission.
       # Renders a merged result of successful, failed, and blocked refills.
       def refill
-        return unless validate_feature_flag
-
         parsed_orders = orders
         track_refills_requested_by_station(parsed_orders)
         allowed_orders, blocked_failures = oh_transition_filter.partition_orders(parsed_orders)
@@ -68,8 +66,6 @@ module MyHealth
       # @param sort - the attribute to sort on, negated for descending, use sort[]= for multiple argument query params
       #        (ie: ?sort[]=refill_status&sort[]=-prescription_id)
       def index
-        return unless validate_feature_flag
-
         result = service.get_prescriptions(current_only: false)
         prescriptions = apply_recent_submission_overrides(result[:prescriptions].compact)
         source_metadata = result[:metadata]
@@ -93,8 +89,6 @@ module MyHealth
       # @param id [String] the prescription ID (path param)
       # @param station_number [String] the station number (query param, required)
       def show
-        return unless validate_feature_flag
-
         raise Common::Exceptions::ParameterMissing, 'station_number' if params[:station_number].blank?
 
         prescriptions = apply_recent_submission_overrides(
@@ -115,8 +109,6 @@ module MyHealth
       # Returns prescriptions that are eligible for refill or renewal.
       # Includes recently requested prescriptions in response metadata.
       def list_refillable_prescriptions
-        return unless validate_feature_flag
-
         prescriptions = apply_recent_submission_overrides(
           service.get_prescriptions(current_only: false)[:prescriptions].compact
         )
@@ -173,18 +165,6 @@ module MyHealth
 
       def refill_request_tracker
         @refill_request_tracker ||= MHV::Prescriptions::RefillRequestTracker.new(@current_user)
-      end
-
-      def validate_feature_flag
-        return true if Flipper.enabled?(:mhv_medications_cerner_pilot, @current_user)
-
-        render json: {
-          error: {
-            code: 'FEATURE_NOT_AVAILABLE',
-            message: 'This feature is not currently available'
-          }
-        }, status: :forbidden
-        false
       end
 
       def apply_filters_and_sorting(prescriptions)

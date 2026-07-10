@@ -12,7 +12,6 @@ module Mobile
   module V1
     class PrescriptionsController < Mobile::ApplicationController
       before_action { authorize :mhv_prescriptions, :access? }
-      before_action :validate_feature_flag
 
       # Returns paginated, filtered prescriptions for the authenticated user.
       # Excludes Non-VA (NV) meds from the response data but reports their presence in meta.
@@ -138,17 +137,6 @@ module Mobile
         meta.merge!(status_meta(full_list))
         meta.merge!(has_non_va_meds: non_va_meds?(originals))
         meta
-      end
-
-      def validate_feature_flag
-        return if Flipper.enabled?(:mhv_medications_cerner_pilot, @current_user)
-
-        render json: {
-          error: {
-            code: 'FEATURE_NOT_AVAILABLE',
-            message: 'This feature is not currently available'
-          }
-        }, status: :forbidden
       end
 
       def status_meta(prescriptions)

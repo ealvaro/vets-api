@@ -2201,8 +2201,7 @@ paths:
   /v2/prescriptions:
     get:
       description: |
-        List medications for the current user. This endpoint uses the Unified Health Data (Oracle Health) backend
-        and requires the `mhv_medications_cerner_pilot` feature flag to be enabled.
+        List medications for the current user. This endpoint uses the Unified Health Data (Oracle Health) backend.
 
         Supports filtering, sorting, and pagination. Results can be filtered by prescription status and sorted
         by various attributes. Pending (PD) prescriptions are included based on the `mhv_medications_display_pending_meds`
@@ -2275,7 +2274,7 @@ paths:
         List refillable medications for the current user. This endpoint returns prescriptions that can be refilled,
         including those marked as refillable or renewable (Active/Expired within 120 days).
 
-        Uses the Unified Health Data (Oracle Health) backend and requires the `mhv_medications_cerner_pilot` feature flag.
+        Uses the Unified Health Data (Oracle Health) backend.
       operationId: get_v2_list_refillable_prescriptions
       parameters:
         - $ref: "#/components/parameters/InflectionHeader"
@@ -2332,7 +2331,7 @@ paths:
         each containing a station number and prescription ID. Returns detailed results for each refill attempt,
         including successful refills and any errors encountered.
 
-        Uses the Unified Health Data (Oracle Health) backend and requires the `mhv_medications_cerner_pilot` feature flag.
+        Uses the Unified Health Data (Oracle Health) backend.
 
         <strong>NOTES:</strong>
         <ul>
