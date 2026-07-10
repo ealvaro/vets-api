@@ -1403,6 +1403,9 @@ features:
     actor_type: user
     description: Enables form 1995 email submission confirmation (VaNotify)
     enable_in_development: true
+  form10_8678_confirmation_email:
+    actor_type: user
+    description: Enables form 10-8678 email submission confirmation (VaNotify)
   form21_0966_confirmation_email:
     actor_type: user
     description: Enables form 21-0966 email submission confirmation (VaNotify)
@@ -1430,6 +1433,9 @@ features:
     actor_type: user
     description: Enables form 20-10207 email submission confirmation (VaNotify)
     enable_in_development: true
+  form21_0788_confirmation_email:
+    actor_type: user
+    description: Enables form 21-0788 email submission confirmation (VaNotify)
   form21_0845_confirmation_email:
     actor_type: user
     description: Enables form 21-0845 email submission confirmation (VaNotify)
