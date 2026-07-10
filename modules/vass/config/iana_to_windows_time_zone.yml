@@ -159,3 +159,35 @@ Europe/Berlin: W. Europe Standard Time
 Asia/Tokyo: Tokyo Standard Time
 Australia/Sydney: AUS Eastern Standard Time
 UTC: UTC
+# Etc/GMT fixed-offset zones (CLDR supplemental/windowsZones, territory 001).
+# POSIX sign is inverted: Etc/GMT+8 == UTC-08:00, Etc/GMT-5 == UTC+05:00. These observe
+# no DST, so CLDR maps them to fixed-offset / non-DST Windows ids, not to named DST zones.
+Etc/GMT+12: Dateline Standard Time
+Etc/GMT+11: UTC-11
+Etc/GMT+10: Hawaiian Standard Time
+Etc/GMT+9: UTC-09
+Etc/GMT+8: UTC-08
+Etc/GMT+7: US Mountain Standard Time
+Etc/GMT+6: Central America Standard Time
+Etc/GMT+5: SA Pacific Standard Time
+Etc/GMT+4: SA Western Standard Time
+Etc/GMT+3: SA Eastern Standard Time
+Etc/GMT+2: UTC-02
+Etc/GMT+1: Cape Verde Standard Time
+Etc/GMT: UTC
+# Canonical zone for the "UTC" link in modern tzdb; browsers can report it directly.
+Etc/UTC: UTC
+Etc/GMT-1: W. Central Africa Standard Time
+Etc/GMT-2: South Africa Standard Time
+Etc/GMT-3: E. Africa Standard Time
+Etc/GMT-4: Arabian Standard Time
+Etc/GMT-5: West Asia Standard Time
+Etc/GMT-6: Central Asia Standard Time
+Etc/GMT-7: SE Asia Standard Time
+Etc/GMT-8: Singapore Standard Time
+Etc/GMT-9: Tokyo Standard Time
+Etc/GMT-10: West Pacific Standard Time
+Etc/GMT-11: Central Pacific Standard Time
+Etc/GMT-12: UTC+12
+Etc/GMT-13: UTC+13
+Etc/GMT-14: Line Islands Standard Time

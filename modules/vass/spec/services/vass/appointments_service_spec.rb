@@ -169,7 +169,7 @@ describe Vass::AppointmentsService do
 
         expect do
           service_with_mock_client.save_appointment(
-            appointment_params: appointment_params.merge(veteran_time_zone: 'Etc/GMT+3')
+            appointment_params: appointment_params.merge(veteran_time_zone: 'Pacific/Kiritimati')
           )
         end.to raise_error(Vass::Errors::InvalidVeteranTimeZoneError, 'Unsupported veteran time zone')
       end

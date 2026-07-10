@@ -12,6 +12,23 @@ RSpec.describe Vass::IanaToWindowsTimeZone do
       expect(described_class.windows_id_for!('America/Nassau')).to eq('Eastern Standard Time')
     end
 
+    # Etc/GMT zones use the inverted POSIX sign (Etc/GMT+8 == UTC-08:00); spot-check
+    # both signs, zero, and the extremes to guard the mapping and the sign convention.
+    {
+      'Etc/GMT+12' => 'Dateline Standard Time',
+      'Etc/GMT+8' => 'UTC-08',
+      'Etc/GMT+2' => 'UTC-02',
+      'Etc/GMT' => 'UTC',
+      'Etc/UTC' => 'UTC',
+      'Etc/GMT-5' => 'West Asia Standard Time',
+      'Etc/GMT-9' => 'Tokyo Standard Time',
+      'Etc/GMT-14' => 'Line Islands Standard Time'
+    }.each do |iana, windows|
+      it "maps the #{iana} fixed-offset zone to the Windows #{windows} id" do
+        expect(described_class.windows_id_for!(iana)).to eq(windows)
+      end
+    end
+
     it 'raises InvalidVeteranTimeZoneError when blank' do
       expect do
         described_class.windows_id_for!('   ')
