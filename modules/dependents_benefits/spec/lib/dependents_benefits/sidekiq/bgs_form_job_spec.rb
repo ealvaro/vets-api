@@ -7,6 +7,7 @@ require 'bgs/service'
 RSpec.describe DependentsBenefits::Sidekiq::BGSFormJob, type: :job do
   before do
     allow(DependentsBenefits::PdfFill::Filler).to receive(:fill_form).and_return('tmp/pdfs/mock_form_final.pdf')
+    allow(Flipper).to receive(:enabled?).with(:enable_combined_form_bgs_processing).and_return(false)
     # Initialize job with current claim context
     job.instance_variable_set(:@parent_claim_id, parent_claim.id)
   end
@@ -53,6 +54,22 @@ RSpec.describe DependentsBenefits::Sidekiq::BGSFormJob, type: :job do
 
       expect(response).to be_a(DependentsBenefits::ServiceResponse)
       expect(response.success?).to be true
+    end
+
+    context 'with the enable_combined_form_bgs_processing flag enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:enable_combined_form_bgs_processing).and_return(true)
+      end
+
+      it 'is a no-op' do
+        allow(job).to receive_messages(generate_proc_id: 'test-proc-id-123')
+        expect(job).not_to receive(:child_claims)
+        expect(job).not_to receive(:submit_claim_to_service)
+
+        response = job.send(:submit_claims_to_service)
+
+        expect(response).to be_nil
+      end
     end
   end
 

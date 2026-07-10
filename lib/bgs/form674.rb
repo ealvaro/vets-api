@@ -23,13 +23,21 @@ module BGS
       @proc_state = 'Ready'
       @claim_type_end_product = options[:claim_type_end_product]
       @update_proc_state_on_complete = options[:update_proc_state_on_complete]
+      @options = options
     end
 
     def submit(payload)
-      veteran = VnpVeteran.new(proc_id:, payload:, user:, claim_type: '130SCHATTEBN', claim_type_end_product:).create
+      veteran = @options[:veteran] || VnpVeteran.new(proc_id:, payload:, user:, claim_type: '130SCHATTEBN',
+                                                     claim_type_end_product:).create
 
       process_relationships(proc_id, veteran, payload)
 
+      generate_claims(veteran) unless @options[:skip_claim_create]
+    end
+
+    private
+
+    def generate_claims(veteran)
       vnp_benefit_claim = VnpBenefitClaim.new(proc_id:, veteran:, user:)
       vnp_benefit_claim_record = vnp_benefit_claim.create
 
@@ -42,17 +50,15 @@ module BGS
       log_if_ready('21-674 Automatic Claim Prior to submission', "#{stats_key}.automatic.begin")
       benefit_claim_record = BenefitClaim.new(args: benefit_claim_args(vnp_benefit_claim_record, veteran)).create
       log_if_ready("21-674 Automatic Benefit Claim successfully created through BGS: #{
-                   benefit_claim_record[:benefit_claim_id]}", "#{stats_key}.automatic.success")
+                  benefit_claim_record[:benefit_claim_id]}", "#{stats_key}.automatic.success")
 
       begin
         vnp_benefit_claim.update(benefit_claim_record, vnp_benefit_claim_record)
         log_claim_status(benefit_claim_record, proc_id)
-      rescue
+      rescue error
         log_submit_failure(error)
       end
     end
-
-    private
 
     def benefit_claim_args(vnp_benefit_claim_record, veteran)
       {

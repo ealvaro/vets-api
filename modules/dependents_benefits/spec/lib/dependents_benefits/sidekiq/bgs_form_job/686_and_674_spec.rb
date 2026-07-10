@@ -25,6 +25,7 @@ RSpec.describe DependentsBenefits::Sidekiq::BGSFormJob, type: :job do
       DependentsBenefits::Generators::Claim674Generator.new(parent_claim.parsed_form, parent_claim.id, student).generate
     end
 
+    allow(Flipper).to receive(:enabled?).with(:enable_combined_form_bgs_processing).and_return(false)
     allow(BGS::Service).to receive(:new).and_return(bgs_stub)
     allow(bgs_stub).to receive(:create_proc).and_return(create_proc_response)
     allow(bgs_stub).to receive(:create_proc_form)

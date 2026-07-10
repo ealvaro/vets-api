@@ -30,6 +30,7 @@ module BGS
       @note_text = nil
       @proc_id = options[:proc_id] if options.present?
       @claim_type_end_product = options[:claim_type_end_product]
+      @options = options
     end
 
     # rubocop:disable Metrics/MethodLength
@@ -38,38 +39,40 @@ module BGS
       set_claim_type(vnp_proc_state_type_cd, payload['view:selectable686_options'])
 
       @proc_id = create_proc_id_and_form(vnp_proc_state_type_cd) if @proc_id.nil?
-      veteran = VnpVeteran.new(proc_id:, payload:, user:, claim_type: '130DPNEBNADJ', claim_type_end_product:).create
+      veteran = @options[:veteran] || VnpVeteran.new(proc_id:, payload:, user:, claim_type: '130DPNEBNADJ',
+                                                     claim_type_end_product:).create
 
       process_relationships(@proc_id, veteran, payload)
 
-      vnp_benefit_claim = VnpBenefitClaim.new(proc_id:, veteran:, user:)
-      vnp_benefit_claim_record = vnp_benefit_claim.create
+      unless @options[:skip_claim_create]
+        vnp_benefit_claim = VnpBenefitClaim.new(proc_id:, veteran:, user:)
+        vnp_benefit_claim_record = vnp_benefit_claim.create
 
-      benefit_claim_record = BenefitClaim.new(
-        args: {
-          vnp_benefit_claim: vnp_benefit_claim_record,
-          veteran:,
-          user:,
-          proc_id:,
-          end_product_name: @end_product_name,
-          end_product_code: @end_product_code
-        }
-      ).create
-
-      begin
-        benefit_claim_id = benefit_claim_record[:benefit_claim_id]
-        vnp_benefit_claim.update(benefit_claim_record, vnp_benefit_claim_record)
-        if vnp_proc_state_type_cd == 'MANUAL_VAGOV'
-          prep_manual_claim(benefit_claim_id)
-        else
-          monitor.track_event('info',
-                              "686C Saved Claim submitted automatically to RBPS with proc_state of #{@proc_state}",
-                              "#{stats_key}.automatic", { proc_id: @proc_id, automatic: true })
+        benefit_claim_record = BenefitClaim.new(
+          args: {
+            vnp_benefit_claim: vnp_benefit_claim_record,
+            veteran:,
+            user:,
+            proc_id:,
+            end_product_name: @end_product_name,
+            end_product_code: @end_product_code
+          }
+        ).create
+        begin
+          benefit_claim_id = benefit_claim_record[:benefit_claim_id]
+          vnp_benefit_claim.update(benefit_claim_record, vnp_benefit_claim_record)
+          if vnp_proc_state_type_cd == 'MANUAL_VAGOV'
+            prep_manual_claim(benefit_claim_id)
+          else
+            monitor.track_event('info',
+                                "686C Saved Claim submitted automatically to RBPS with proc_state of #{@proc_state}",
+                                "#{stats_key}.automatic", { proc_id: @proc_id, automatic: true })
+          end
+          bgs_service.update_proc(@proc_id, proc_state: @proc_state)
+        rescue => e
+          monitor.track_event('warn', 'BGS::Form686c.submit failed after creating benefit claim in BGS',
+                              "#{stats_key}.failure", { user_uuid: user.uuid, error: e.message })
         end
-        bgs_service.update_proc(@proc_id, proc_state: @proc_state)
-      rescue => e
-        monitor.track_event('warn', 'BGS::Form686c.submit failed after creating benefit claim in BGS',
-                            "#{stats_key}.failure", { user_uuid: user.uuid, error: e.message })
       end
     end
     # rubocop:enable Metrics/MethodLength

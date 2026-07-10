@@ -122,6 +122,29 @@ RSpec.describe BGS::Form686c do
           end
         end
       end
+
+      context 'with a skip_claim_create flag passed' do
+        let(:form686c) { BGS::Form686c.new(user_struct, saved_claim, skip_claim_create: true) }
+        let(:payload) { build(:form686c_674_v2) }
+
+        it 'calls the methods to transfer data but not create claims' do
+          VCR.use_cassette('bgs/form686c/submit') do
+            VCR.use_cassette('bid/awards/get_awards_pension') do
+              expect_any_instance_of(BGS::Service).to receive(:create_proc).and_call_original
+              expect_any_instance_of(BGS::Service).to receive(:create_proc_form).and_call_original
+              expect_any_instance_of(BGS::VnpVeteran).to receive(:create).and_call_original
+              expect_any_instance_of(BGS::Dependents).to receive(:create_all).and_call_original
+              expect_any_instance_of(BGS::VnpRelationships).to receive(:create_all).and_call_original
+              expect_any_instance_of(BGS::VnpBenefitClaim).not_to receive(:create)
+              expect_any_instance_of(BGS::BenefitClaim).not_to receive(:create)
+              expect_any_instance_of(BGS::VnpBenefitClaim).not_to receive(:update)
+              expect_any_instance_of(BGS::Service).not_to receive(:update_proc)
+
+              subject
+            end
+          end
+        end
+      end
     end
 
     context 'The flipper is turned off' do

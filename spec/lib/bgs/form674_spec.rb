@@ -64,5 +64,22 @@ RSpec.describe BGS::Form674 do
         end
       end
     end
+
+    context 'with a skip_claim_create flag passed in' do
+      it 'calls the data transfer methods, but not the claim creation ones' do
+        VCR.use_cassette('bgs/form674/submit') do
+          expect_any_instance_of(BGS::Service).to receive(:create_proc).and_call_original
+          expect_any_instance_of(BGS::Service).to receive(:create_proc_form).and_call_original
+          expect_any_instance_of(BGS::VnpVeteran).to receive(:create).and_call_original
+          expect_any_instance_of(BGS::StudentSchool).to receive(:create).and_call_original
+          expect_any_instance_of(BGS::VnpRelationships).to receive(:create_all).and_call_original
+          expect_any_instance_of(BGS::BenefitClaim).not_to receive(:create)
+          expect_any_instance_of(BGS::VnpBenefitClaim).not_to receive(:create)
+          expect_any_instance_of(BGS::VnpBenefitClaim).not_to receive(:update)
+
+          BGS::Form674.new(user_struct, saved_claim_674_only, { skip_claim_create: true }).submit(all_flows_v2_payload)
+        end
+      end
+    end
   end
 end

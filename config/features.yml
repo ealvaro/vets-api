@@ -4010,3 +4010,6 @@ features:
   enable_date_last_verified_for_dependents:
     actor_type: user
     description: Enables fetching date-last-verified from Persons API when fetching dependents
+  enable_combined_form_bgs_processing:
+    actor_type: user
+    description: When enabled, attempt to submit 686+674 data to BGS using a single benefit claim

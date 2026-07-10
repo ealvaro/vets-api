@@ -37,7 +37,17 @@ module DependentsBenefits::Sidekiq
     # @raise [DependentSubmissionError] if any claim submission fails
     def submit_claims_to_service
       @proc_id = generate_proc_id
-      super()
+      if Flipper.enabled?(:enable_combined_form_bgs_processing) &&
+         parent_claim.submittable_686? &&
+         parent_claim.submittable_674?
+      # TODO: in future PR
+      # create veteran object in VNP tables
+      # send 686, 674 data
+      # determine correct end product code and if this is manual
+      # create benefit claim with correct end_product_code
+      else
+        super()
+      end
     end
 
     ##
@@ -45,10 +55,10 @@ module DependentsBenefits::Sidekiq
     #
     # @param claim [SavedClaim] The 686c claim to submit
     # @return [void]
-    def submit_686c_form(claim)
+    def submit_686c_form(claim, opts = {})
       claim_data = ::BGS::Job.new.normalize_names_and_addresses!(claim.parsed_form)
 
-      ::BGS::Form686c.new(generate_user_struct, claim, { proc_id: @proc_id }).submit(claim_data)
+      ::BGS::Form686c.new(generate_user_struct, claim, { proc_id: @proc_id }.merge(opts)).submit(claim_data)
     end
 
     ##
@@ -56,7 +66,7 @@ module DependentsBenefits::Sidekiq
     #
     # @param claim [SavedClaim] The 674 claim to submit
     # @return [void]
-    def submit_674_form(claim)
+    def submit_674_form(claim, opts = {})
       claim_data = ::BGS::Job.new.normalize_names_and_addresses!(claim.parsed_form)
 
       # If a 674 is the only claim we are submitting, we need
@@ -69,7 +79,8 @@ module DependentsBenefits::Sidekiq
       end
 
       ::BGS::Form674.new(generate_user_struct, claim,
-                         { proc_id: @proc_id, update_proc_state_on_complete: is_only674 }).submit(claim_data)
+                         { proc_id: @proc_id, update_proc_state_on_complete: is_only674 }
+                         .merge(opts)).submit(claim_data)
     end
 
     ##
@@ -78,8 +89,6 @@ module DependentsBenefits::Sidekiq
     # @return [String] The generated proc ID
     # @raise [DependentsBenefits::DependentSubmissionError] if proc ID generation fails
     def generate_proc_id
-      bgs_service = ::BGS::Service.new(generate_user_struct)
-
       # vnp_proc is BGS's way of grouping related form submissions together
       vnp_response = bgs_service.create_proc(proc_state: 'Started')
       raise 'BGS proc ID generation failed: No proc ID returned' if vnp_response.nil?
@@ -202,6 +211,14 @@ module DependentsBenefits::Sidekiq
       return false if error.nil?
 
       ::BGS::Job::FILTERED_ERRORS.any? { |filtered| error.message.include?(filtered) || error.cause&.message&.include?(filtered) }
+    end
+
+    ##
+    # Service for communicating with BGS
+    #
+    # @return [BGS::Service] the service object
+    def bgs_service
+      @bgs_service ||= ::BGS::Service.new(generate_user_struct)
     end
   end
 end
