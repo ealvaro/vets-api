@@ -1,7 +1,7 @@
 benefit_summary:
   subtitle: Choose topics to include
   paragraphs:
-    - This letter confirms your service history and that you receive VA benefits. It may help you qualify for certain state or local programs. You can customize it to meet your needs.
+    - This letter confirms your service history and that you receive VA benefits. It includes up to 3 periods of service and can be customized to meet your needs. It may help you qualify for certain state or local programs.
     - 'When to use this letter:'
   lists:
     - items:
@@ -39,7 +39,13 @@ proof_of_service:
 
 service_verification:
   paragraphs:
-    - This letter shows your branch of service, the date you started active duty, and the date you were discharged from active duty.
+    - This letter lists every period of service on record with VA, including branch of service, active duty start dates, and discharge dates.
+    - 'When to use this letter:'
+  lists:
+    - items:
+      - Retirement processing
+      - Workers compensation claims
+      - Providing proof of service for multiple enlistment periods
 
 civil_service:
   paragraphs:

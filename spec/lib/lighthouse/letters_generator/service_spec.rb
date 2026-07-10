@@ -296,7 +296,7 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
       let(:eligible_letters_response) do
         {
           'letters' => [
-            { 'letterType' => 'SERVICE_VERIFICATION', 'letterName' => 'Service Verification Letter' },
+            { 'letterType' => 'SERVICE_VERIFICATION', 'letterName' => 'Service verification letter from LH' },
             { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => 'Benefits summary letter from LH' },
             { 'letterType' => 'PROOF_OF_SERVICE', 'letterName' => 'Proof of service letter from LH' }
           ],
@@ -314,7 +314,6 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
         before do
           allow(Flipper).to receive(:enabled?).and_call_original
           allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(false)
-          allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
         end
 
         it 'returns the existing lighthouse shape' do
@@ -328,7 +327,7 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
 
           expect(response[:letters]).to eq(
             [
-              { letterType: 'service_verification', name: 'Service Verification Letter' },
+              { letterType: 'service_verification', name: 'Service verification letter from LH' },
               { letterType: 'benefit_summary', name: 'Benefits summary letter from LH' },
               { letterType: 'proof_of_service', name: 'Proof of service letter from LH' }
             ]
@@ -340,7 +339,6 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
         before do
           allow(Flipper).to receive(:enabled?).and_call_original
           allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(true)
-          allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
         end
 
         context 'when cst_letters_description_content_format is enabled' do
@@ -364,7 +362,7 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
             benefit_summary = response[:letters].first
             service_verification = response[:letters].last
 
-            expect(benefit_summary[:name]).to eq('Benefits and service verification')
+            expect(benefit_summary[:name]).to eq('Benefits and service summary')
             expect(benefit_summary[:description]['content'].first['text']).to start_with(
               'This letter confirms your service history'
             )
@@ -373,11 +371,11 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
             ).to include('Applying for housing assistance')
             expect(benefit_summary[:description]['subtitle']).to eq('Choose topics to include')
 
-            expect(service_verification[:name]).to eq('Service Verification Letter')
+            expect(service_verification[:name]).to eq('Service verification')
             expect(service_verification[:description]).to be_present
             expect(service_verification[:description]['content']).to be_an(Array)
             expect(service_verification[:description]['content'].first['text']).to start_with(
-              'This letter shows your branch of service'
+              'This letter lists every period of service on record '
             )
           end
         end
@@ -399,7 +397,7 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
             benefit_summary = response[:letters].first
             service_verification = response[:letters].last
 
-            expect(benefit_summary[:name]).to eq('Benefits and service verification')
+            expect(benefit_summary[:name]).to eq('Benefits and service summary')
             expect(benefit_summary[:description]['paragraphs']).to be_an(Array)
             expect(benefit_summary[:description]['paragraphs'].first).to start_with(
               'This letter confirms your service history'
@@ -408,11 +406,11 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
             expect(benefit_summary[:description]['lists'].first['items']).to include('Applying for housing assistance')
             expect(benefit_summary[:description]['subtitle']).to eq('Choose topics to include')
 
-            expect(service_verification[:name]).to eq('Service Verification Letter')
+            expect(service_verification[:name]).to eq('Service verification')
             expect(service_verification[:description]).to be_present
             expect(service_verification[:description]['paragraphs']).to be_an(Array)
             expect(service_verification[:description]['paragraphs'].first).to start_with(
-              'This letter shows your branch of service'
+              'This letter lists every period of service on record '
             )
           end
         end
@@ -422,7 +420,6 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
         before do
           allow(Flipper).to receive(:enabled?).and_call_original
           allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(true)
-          allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
         end
 
         it 'returns the legacy lighthouse content regardless of the flag' do
@@ -436,7 +433,7 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
 
           expect(response[:letters]).to eq(
             [
-              { letterType: 'service_verification', name: 'Service Verification Letter' },
+              { letterType: 'service_verification', name: 'Service verification letter from LH' },
               { letterType: 'benefit_summary', name: 'Benefits summary letter from LH' },
               { letterType: 'proof_of_service', name: 'Proof of service letter from LH' }
             ]
@@ -450,7 +447,7 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
           {
             'letters' => [
               { 'letterType' => 'MEDICARE_PARTD', 'letterName' => 'Medicare Part D letter' },
-              { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => 'Benefits and service verification' }
+              { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => 'Benefits and service summary' }
             ],
             'letterDestination' => { 'name' => 'DOLLY PARTON' }
           }
@@ -465,7 +462,6 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
           allow(Flipper).to receive(:enabled?).and_call_original
           allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(true)
           allow(Flipper).to receive(:enabled?).with(:cst_letters_description_content_format).and_return(true)
-          allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
 
           @test_stubs.get('/eligible-letters?icn=DOLLYPARTON') do
             [200, {}, consolidation_response]
@@ -504,7 +500,7 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
           {
             'letters' => [
               { 'letterType' => 'MEDICARE_PARTD', 'letterName' => 'Medicare Part D letter' },
-              { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => 'Benefits and service verification' }
+              { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => 'Benefits and service summary' }
             ],
             'letterDestination' => { 'name' => 'DOLLY PARTON' }
           }
@@ -519,7 +515,6 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
           allow(Flipper).to receive(:enabled?).and_call_original
           allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(true)
           allow(Flipper).to receive(:enabled?).with(:cst_letters_description_content_format).and_return(false)
-          allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
 
           @test_stubs.get('/eligible-letters?icn=DOLLYPARTON') do
             [200, {}, consolidation_response]
@@ -549,7 +544,7 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
             'letters' => [
               { 'letterType' => 'MEDICARE_PARTD', 'letterName' => 'Medicare Part D letter' },
               { 'letterType' => 'MINIMUM_ESSENTIAL_COVERAGE', 'letterName' => 'Minimum essential coverage letter' },
-              { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => 'Benefits and service verification' }
+              { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => 'Benefits and service summary' }
             ],
             'letterDestination' => { 'name' => 'DOLLY PARTON' }
           }
@@ -564,7 +559,6 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
           allow(Flipper).to receive(:enabled?).and_call_original
           allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(true)
           allow(Flipper).to receive(:enabled?).with(:cst_letters_description_content_format).and_return(true)
-          allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
 
           @test_stubs.get('/eligible-letters?icn=DOLLYPARTON') do
             [200, {}, both_letters_response]
@@ -785,62 +779,6 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
     end
   end
 
-  describe 'letters_hide_service_verification_letter flag' do
-    let(:user) { build(:user) }
-    let(:eligible_letters_response) do
-      {
-        'letters' => [
-          { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => 'Benefit summary letter' },
-          { 'letterType' => 'SERVICE_VERIFICATION', 'letterName' => 'Service Verification Letter' },
-          { 'letterType' => 'PROOF_OF_SERVICE', 'letterName' => 'Proof of service letter' }
-        ],
-        'letterDestination' => { 'name' => 'DOLLY PARTON' }
-      }
-    end
-
-    before do
-      expect_any_instance_of(Lighthouse::LettersGenerator::Configuration)
-        .to receive(:get_access_token)
-        .once
-        .and_return('faketoken')
-
-      @stubs.get('/eligible-letters?icn=DOLLYPARTON') do
-        [200, {}, eligible_letters_response]
-      end
-    end
-
-    context 'when letters_hide_service_verification_letter is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).and_call_original
-        allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
-      end
-
-      it 'includes service_verification letter' do
-        client = Lighthouse::LettersGenerator::Service.new
-        response = client.get_eligible_letter_types('DOLLYPARTON', user)
-
-        letter_types = response[:letters].pluck(:letterType)
-        expect(letter_types).to include('service_verification')
-      end
-    end
-
-    context 'when letters_hide_service_verification_letter is enabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).and_call_original
-        allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(true)
-      end
-
-      it 'excludes service_verification letter' do
-        client = Lighthouse::LettersGenerator::Service.new
-        response = client.get_eligible_letter_types('DOLLYPARTON', user)
-
-        letter_types = response[:letters].pluck(:letterType)
-        expect(letter_types).not_to include('service_verification')
-        expect(letter_types).to include('benefit_summary', 'proof_of_service')
-      end
-    end
-  end
-
   describe 'letters_hide_dependent_benefits_summary_letter flag' do
     let(:user) { build(:user) }
     let(:eligible_letters_response) do
@@ -904,7 +842,7 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
         'letters' => [
           { 'letterType' => 'BENEFIT_SUMMARY_DEPENDENT', 'letterName' => 'Dependent Benefit Summary Letter' },
           { 'letterType' => 'PROOF_OF_SERVICE', 'letterName' => 'Proof of service card' },
-          { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => 'Benefits and service verification' }
+          { 'letterType' => 'BENEFIT_SUMMARY', 'letterName' => 'Benefits and service summary' }
         ],
         'letterDestination' => { 'name' => 'TEST USER' }
       }
@@ -925,7 +863,6 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
       before do
         allow(Flipper).to receive(:enabled?).and_call_original
         allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(false)
-        allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:letters_hide_dependent_benefits_summary_letter).and_return(false)
       end
 
@@ -942,7 +879,6 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
       before do
         allow(Flipper).to receive(:enabled?).and_call_original
         allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(true)
-        allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:letters_hide_dependent_benefits_summary_letter).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:fmp_benefits_authorization_letter, user).and_return(true)
       end
@@ -986,7 +922,6 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
       before do
         allow(Flipper).to receive(:enabled?).and_call_original
         allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, user).and_return(false)
-        allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
       end
 
       it 'handles letters with missing letterName gracefully' do

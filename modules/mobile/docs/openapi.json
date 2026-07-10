@@ -22208,7 +22208,7 @@
             "type": "string",
             "enum": [
               "Benefit Summary and Service Verification Letter",
-              "Benefits and service verification",
+              "Benefits and service summary",
               "Benefit Summary Letter",
               "Benefit Verification Letter",
               "Certificate of Eligibility for Home Loan Letter",
@@ -22228,6 +22228,7 @@
               "Proof of service card",
               "Proof of VA income",
               "Service Verification Letter",
+              "Service verification",
               "TSA PreCheck application fee waiver",
               "VA home loan Certificate of Eligibility (COE)"
             ]

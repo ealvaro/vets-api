@@ -34,12 +34,12 @@ module Lighthouse
       # TODO: Remove medicare_partd once cst_letters_description_content_format is fully enabled and all clients
       # have migrated to the new description shape.
       LETTER_NAME_OVERRIDES = {
-        'benefit_summary' => 'Benefits and service verification',
+        'benefit_summary' => 'Benefits and service summary',
         'benefit_verification' => 'Proof of VA income',
         'certificate_of_eligibility' => 'VA home loan Certificate of Eligibility (COE)',
         'certificate_of_eligibility_home_loan' => 'VA home loan Certificate of Eligibility (COE)',
         'proof_of_service' => 'Proof of service card',
-        'service_verification' => 'Service Verification Letter',
+        'service_verification' => 'Service verification',
         'civil_service' => 'Civil service preference',
         'minimum_essential_coverage' => 'Proof of minimum essential coverage',
         'medicare_partd' => 'Creditable prescription drug coverage',

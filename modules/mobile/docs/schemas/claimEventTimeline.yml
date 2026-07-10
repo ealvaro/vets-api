@@ -5,7 +5,7 @@ properties:
     example: 'received_from_you_list'
   tracked_item_id:
     type: integer
-    example: 360_052
+    example: 360052
   description:
     type: string
     example: 'The information provided concerning your prior marital history is inconsistent. In order to resolve these inconsistencies you should submit certified copies of the public record of the termination (death, divorce or annulment) for each of your prior marriages.'

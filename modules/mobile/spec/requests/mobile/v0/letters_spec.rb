@@ -95,48 +95,6 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
     }
   end
 
-  let(:no_service_verification_body) do
-    {
-      'data' => {
-        'id' => user.uuid,
-        'type' => 'letters',
-        'attributes' => {
-          'letters' =>
-            [
-              {
-                'name' => 'Benefit Summary and Service Verification Letter',
-                'letterType' => 'benefit_summary'
-              },
-              {
-                'name' => 'Benefit Verification Letter',
-                'letterType' => 'benefit_verification'
-              },
-              {
-                'name' => 'Civil Service Preference Letter',
-                'letterType' => 'civil_service'
-              },
-              {
-                'name' => 'Commissary Letter',
-                'letterType' => 'commissary'
-              },
-              {
-                'name' => 'Proof of Service Letter',
-                'letterType' => 'proof_of_service'
-              }
-              # {
-              #   'name' => 'Proof of Creditable Prescription Drug Coverage Letter',
-              #   'letterType' => 'medicare_partd'
-              # },
-              # {
-              #   'name' => 'Proof of Minimum Essential Coverage Letter',
-              #   'letterType' => 'minimum_essential_coverage'
-              # },
-            ]
-        }
-      }
-    }
-  end
-
   let(:beneficiary_body) do
     { 'data' =>
        { 'id' => user.uuid,
@@ -178,57 +136,27 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
     end
 
     context 'with a valid lighthouse response' do
-      context 'when :letters_hide_service_verification_letter is enabled' do
-        before do
-          allow(Flipper).to receive(:enabled?).and_call_original
-          allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(true)
-          allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(false)
-        end
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(false)
+      end
 
-        it 'excludes the Service Verification letter' do
-          VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
-            get '/mobile/v0/letters', headers: sis_headers
-            expect(response).to have_http_status(:ok)
-            expect(JSON.parse(response.body)).to eq(no_service_verification_body)
-            assert_schema_conform(200)
-          end
-        end
-
-        it 'excludes the Service Verification letter and filters unlisted letter types' do
-          VCR.use_cassette('mobile/lighthouse_letters/letters_with_extra_types_200',
-                           match_requests_on: %i[method uri]) do
-            get '/mobile/v0/letters', headers: sis_headers
-            expect(response).to have_http_status(:ok)
-            expect(JSON.parse(response.body)).to eq(no_service_verification_body)
-            assert_schema_conform(200)
-          end
+      it 'matches the letters schema' do
+        VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
+          get '/mobile/v0/letters', headers: sis_headers
+          expect(response).to have_http_status(:ok)
+          expect(JSON.parse(response.body)).to eq(letters_body)
+          assert_schema_conform(200)
         end
       end
 
-      context 'when :letters_hide_service_verification_letter is disabled' do
-        before do
-          allow(Flipper).to receive(:enabled?).and_call_original
-          allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
-          allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(false)
-        end
-
-        it 'does not exclude the Service Verification letter and matches the letters schema' do
-          VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
-            get '/mobile/v0/letters', headers: sis_headers
-            expect(response).to have_http_status(:ok)
-            expect(JSON.parse(response.body)).to eq(letters_body)
-            assert_schema_conform(200)
-          end
-        end
-
-        it 'filters unlisted letter types' do
-          VCR.use_cassette('mobile/lighthouse_letters/letters_with_extra_types_200',
-                           match_requests_on: %i[method uri]) do
-            get '/mobile/v0/letters', headers: sis_headers
-            expect(response).to have_http_status(:ok)
-            expect(JSON.parse(response.body)).to eq(letters_body)
-            assert_schema_conform(200)
-          end
+      it 'filters unlisted letter types' do
+        VCR.use_cassette('mobile/lighthouse_letters/letters_with_extra_types_200',
+                         match_requests_on: %i[method uri]) do
+          get '/mobile/v0/letters', headers: sis_headers
+          expect(response).to have_http_status(:ok)
+          expect(JSON.parse(response.body)).to eq(letters_body)
+          assert_schema_conform(200)
         end
       end
 
@@ -253,7 +181,6 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
         context 'when :cst_letters_content_updates is disabled' do
           before do
             allow(Flipper).to receive(:enabled?).and_call_original
-            allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
             allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(false)
           end
 
@@ -317,7 +244,6 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
         context 'when :cst_letters_content_updates is enabled' do
           before do
             allow(Flipper).to receive(:enabled?).and_call_original
-            allow(Flipper).to receive(:enabled?).with(:letters_hide_service_verification_letter).and_return(false)
             allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(true)
           end
 
@@ -392,7 +318,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                     proof_of_service['description']['lists'].first['items']
                   ).to include('Requesting Veteran discounts')
 
-                  expect(benefit_summary['name']).to eq('Benefits and service verification')
+                  expect(benefit_summary['name']).to eq('Benefits and service summary')
                   expect(benefit_verification['name']).to eq('Proof of VA income')
 
                   assert_schema_conform(200)
@@ -448,7 +374,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                     proof_of_service['description']['content'].find { |n| n['type'] == 'list' }['items']
                   ).to include('Requesting Veteran discounts')
 
-                  expect(benefit_summary['name']).to eq('Benefits and service verification')
+                  expect(benefit_summary['name']).to eq('Benefits and service summary')
                   expect(benefit_verification['name']).to eq('Proof of VA income')
 
                   assert_schema_conform(200)
@@ -460,7 +386,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                 allow(service_double).to receive(:get_eligible_letter_types).and_return(
                   {
                     letters: [
-                      { letterType: 'benefit_summary', name: 'Benefits and service verification', description: nil },
+                      { letterType: 'benefit_summary', name: 'Benefits and service summary', description: nil },
                       { letterType: 'minimum_essential_coverage',
                         name: 'Creditable coverage for health care and prescription drugs', description: {} }
                     ],
@@ -535,7 +461,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                       letters = JSON.parse(response.body).dig('data', 'attributes', 'letters')
                       expect(letters.map { |l| l['letterType'] }).to eq(
                         %w[benefit_summary benefit_verification certificate_of_eligibility_home_loan
-                           civil_service commissary proof_of_service]
+                           civil_service commissary proof_of_service service_verification]
                       )
                     end
                   end
@@ -621,7 +547,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                 VCR.use_cassette('mobile/lgy/application_200_status_submitted', match_requests_on: %i[method uri]) do
                   get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => '2.58.0' })
                   expect(response).to have_http_status(:ok)
-                  expect(JSON.parse(response.body)).to eq(no_service_verification_body)
+                  expect(JSON.parse(response.body)).to eq(letters_body)
                   assert_schema_conform(200)
                 end
               end
@@ -636,7 +562,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                 VCR.use_cassette('mobile/lgy/application_200_status_submitted', match_requests_on: %i[method uri]) do
                   get '/mobile/v0/letters', headers: sis_headers
                   expect(response).to have_http_status(:ok)
-                  expect(JSON.parse(response.body)).to eq(no_service_verification_body)
+                  expect(JSON.parse(response.body)).to eq(letters_body)
                   assert_schema_conform(200)
                 end
               end
@@ -651,7 +577,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                 VCR.use_cassette('mobile/lgy/application_200_status_submitted', match_requests_on: %i[method uri]) do
                   get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => 'foobar' })
                   expect(response).to have_http_status(:ok)
-                  expect(JSON.parse(response.body)).to eq(no_service_verification_body)
+                  expect(JSON.parse(response.body)).to eq(letters_body)
                   assert_schema_conform(200)
                 end
               end
@@ -667,7 +593,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
               VCR.use_cassette('mobile/lgy/determination_not_found', match_requests_on: %i[method uri]) do
                 get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => '2.59.0' })
                 expect(response).to have_http_status(:ok)
-                expect(JSON.parse(response.body)).to eq(no_service_verification_body)
+                expect(JSON.parse(response.body)).to eq(letters_body)
                 assert_schema_conform(200)
                 expect(StatsD).to have_received(:increment).with('mobile.letters.coe_status.total')
                 expect(StatsD).to have_received(:increment).with('mobile.letters.coe_status.failure')
@@ -682,7 +608,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
               VCR.use_cassette('mobile/lgy/application_200_status_submitted', match_requests_on: %i[method uri]) do
                 get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => '2.59.0' })
                 expect(response).to have_http_status(:ok)
-                expect(JSON.parse(response.body)).to eq(no_service_verification_body)
+                expect(JSON.parse(response.body)).to eq(letters_body)
                 assert_schema_conform(200)
               end
             end
@@ -765,7 +691,7 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
                       expect(coe_letter['coeStatus']).to eq('AVAILABLE')
                       expect(letters.map { |l| l['letterType'] }).to eq(
                         %w[benefit_summary benefit_verification certificate_of_eligibility_home_loan
-                           proof_of_service civil_service minimum_essential_coverage medicare_partd
+                           proof_of_service service_verification civil_service minimum_essential_coverage medicare_partd
                            commissary]
                       )
                       assert_schema_conform(200)

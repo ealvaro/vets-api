@@ -139,6 +139,7 @@ module Mobile
 
         name = 'Benefit Summary and Service Verification Letter' if letter[:letterType] == 'benefit_summary'
         name = 'Foreign Medical Program Enrollment Letter' if letter[:letterType] == 'foreign_medical_program'
+        name = 'Service Verification Letter' if letter[:letterType] == 'service_verification'
         name
       end
 
