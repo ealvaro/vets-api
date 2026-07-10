@@ -4,7 +4,7 @@
   "form1[0].Page_1[0].NAMEVETERAN[0]": "<%= form.full_name %>",
   "form1[0].Page_1[0].NAMEVETERAN2[0]": "<%= form.ssn %>",
   "form1[0].Page_1[0].VAFileNumber[0]": "<%= form.file_number %>",
-  "form1[0].Page_1[0].VAFileNumber[1]": "<%= form.data['date_of_birth'] %>",
+  "form1[0].Page_1[0].VAFileNumber[1]": "<%= form.format_date_mm_dd_yyyy(form.data['date_of_birth']) %>",
 
   <%# Section 2 (INFORMATION ON CLAIMANT OR INDIVIDUAL ACTING ON BEHALF OF A MINOR CHILD) %>
 

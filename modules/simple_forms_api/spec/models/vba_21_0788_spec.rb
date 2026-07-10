@@ -662,4 +662,21 @@ RSpec.describe SimpleFormsApi::VBA210788 do
       expect(form.departure_date).to eq('03/13/2013')
     end
   end
+
+  describe '#format_date_mm_dd_yyyy' do
+    it 'turns date strings into MM/DD/YYYY format' do
+      # Parseable
+      expect(form.format_date_mm_dd_yyyy('1948-11-17')).to eq('11/17/1948')
+      expect(form.format_date_mm_dd_yyyy('1948/11/17')).to eq('11/17/1948')
+
+      # Not parseable
+      expect(form.format_date_mm_dd_yyyy('11-17-1948')).to eq('')
+      expect(form.format_date_mm_dd_yyyy('11/17/1948')).to eq('')
+      expect(form.format_date_mm_dd_yyyy('')).to eq('')
+      expect(form.format_date_mm_dd_yyyy(12)).to eq('')
+      expect(form.format_date_mm_dd_yyyy(true)).to eq('')
+      expect(form.format_date_mm_dd_yyyy(false)).to eq('')
+      expect(form.format_date_mm_dd_yyyy('99-99-99')).to eq('')
+    end
+  end
 end

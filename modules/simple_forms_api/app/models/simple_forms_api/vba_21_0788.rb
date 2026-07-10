@@ -180,7 +180,17 @@ module SimpleFormsApi
     def signature_date
       return Time.current.in_time_zone('America/Chicago').strftime('%m/%d/%Y') unless data['signature_date']
 
-      Date.parse(data['signature_date']).strftime('%m/%d/%Y')
+      format_date_mm_dd_yyyy(data['signature_date'])
+    end
+
+    def format_date_mm_dd_yyyy(date_string = '')
+      # parsable_date?(date_string) ? Date.strptime(Date.parse(date_string.to_s).to_s).strftime('%m/%d/%Y') : ''
+      return '' unless date_string.is_a?(String) && date_string.match?(%r{\A\d{4}[-/]\d{2}[-/]\d{2}\z})
+
+      format = date_string.include?('/') ? '%Y/%m/%d' : '%Y-%m-%d'
+      Date.strptime(date_string, format).strftime('%m/%d/%Y')
+    rescue ArgumentError
+      ''
     end
 
     def other_relationship_text
@@ -225,7 +235,7 @@ module SimpleFormsApi
           next if p['stepchild_departure_date'].blank?
           next unless parsable_date?(p['stepchild_departure_date'])
 
-          Date.strptime(p['stepchild_departure_date']).strftime('%m/%d/%Y')
+          format_date_mm_dd_yyyy(p['stepchild_departure_date'])
         end
       end.compact
       dates.join(',')
