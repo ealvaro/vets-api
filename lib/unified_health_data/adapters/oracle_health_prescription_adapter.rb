@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative '../facility_service'
 require_relative 'facility_name_resolver'
 require_relative 'date_time_helpers'
 require_relative 'medication_dispense_helpers'

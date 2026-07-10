@@ -1417,6 +1417,70 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
     end
   end
 
+  describe 'GET /my_health/v2/prescriptions with VistA tracking data' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:mhv_medications_cerner_pilot, anything).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:mhv_medications_management_improvements, anything).and_return(true)
+    end
+
+    it 'returns VistA prescriptions with tracking_list populated from trackingList.tracking' do
+      VCR.use_cassette('unified_health_data/get_prescriptions_vista_with_tracking',
+                       match_requests_on: %i[method path]) do
+        get('/my_health/v2/prescriptions', headers:)
+
+        expect(response).to have_http_status(:success)
+
+        json_response = JSON.parse(response.body)
+        prescriptions = json_response['data']
+
+        expect(prescriptions.length).to eq(3)
+
+        # All prescriptions should have tracking data
+        prescriptions.each do |rx|
+          attrs = rx['attributes']
+          tracking_list = attrs['tracking_list']
+
+          expect(tracking_list).to be_an(Array)
+          expect(tracking_list.length).to eq(1)
+          expect(tracking_list.first).to include(
+            'tracking_number' => a_string_matching(/^\d+$/),
+            'carrier' => 'USPS',
+            'complete_date_time' => a_string_matching(/^\d{4}-\d{2}-\d{2}T/)
+          )
+          expect(attrs['tracking']).to be(true)
+          expect(attrs['is_trackable']).to be(true)
+          expect(attrs['source_ehr']).to eq('vista')
+        end
+      end
+    end
+
+    it 'returns correct prescription details for VistA medication with tracking' do
+      VCR.use_cassette('unified_health_data/get_prescriptions_vista_with_tracking',
+                       match_requests_on: %i[method path]) do
+        get('/my_health/v2/prescriptions', headers:)
+
+        json_response = JSON.parse(response.body)
+        ketoconazole = json_response['data'].find do |rx|
+          rx['attributes']['prescription_name'] == 'KETOCONAZOLE 2% SHAMPOO'
+        end
+
+        expect(ketoconazole).to be_present
+        attrs = ketoconazole['attributes']
+
+        expect(attrs['prescription_id']).to eq('343522427253')
+        expect(attrs['prescription_number']).to eq('27482653')
+        expect(attrs['station_number']).to eq('612')
+        expect(attrs['refill_status']).to eq('active')
+        expect(attrs['facility_name']).to eq('No CA Healthcare Sys-Martinez')
+
+        tracking = attrs['tracking_list'].first
+        expect(tracking['carrier']).to eq('USPS')
+        expect(tracking['tracking_number']).to eq('92612901001308001743')
+        expect(tracking['others_in_same_package']).to be(true)
+      end
+    end
+  end
+
   describe 'GET /my_health/v2/prescriptions has_failed_stations meta' do
     before do
       allow(Flipper).to receive(:enabled?).with(:mhv_medications_cerner_pilot, anything).and_return(true)

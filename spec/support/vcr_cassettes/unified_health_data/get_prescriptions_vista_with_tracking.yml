@@ -1,0 +1,82 @@
+---
+http_interactions:
+- recorded_at: Thu, 02 Jul 2026 07:24:33 GMT
+  request:
+    body:
+      encoding: UTF-8
+      string: '{"appId":"<APPID>","appToken":"<APP_TOKEN>","subject":"Proxy Client","userType":"SYSTEM"}'
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Content-Type:
+      - application/json
+      User-Agent:
+      - <FARADAY_VERSION>
+    method: post
+    uri: "<MHV_UHD_SECURITY_HOST>/mhvapi/security/v1/login"
+  response:
+    body:
+      encoding: UTF-8
+      string: '{"id":702,"name":"VA.gov SCDF Proxy Client","permissions":["PHR-RW","Patient","System"]}'
+    headers:
+      Authorization: Bearer <TOKEN>
+      Cache-Control:
+      - no-cache, no-store, max-age=0, must-revalidate
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 02 Jul 2026 07:24:33 GMT
+      Pragma:
+      - no-cache
+      X-Content-Type-Options:
+      - nosniff
+    status:
+      code: 200
+      message: OK
+- recorded_at: Thu, 02 Jul 2026 07:24:35 GMT
+  request:
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Authorization: Bearer <TOKEN>
+      User-Agent:
+      - <FARADAY_VERSION>
+      X-Api-Key:
+      - <X_API_KEY>
+    method: get
+    uri: "<MHV_UHD_HOST>/v1/medicalrecords/medications?endDate=2026-07-08&patientId=1000123456V123456&startDate=1900-01-01"
+  response:
+    body:
+      encoding: ASCII-8BIT
+      string: '{"vista": {"failedStationList": "", "successfulStationList": null, "lastUpdatedTime": "Thu, 02 Jul 2026 07:24:33 EDT", "medicationList": {"medication": [{"refillStatus": "active", "refillSubmitDate": "Mon, 29 Jun 2026 04:00:00 EDT", "refillDate": "Mon, 29 Jun 2026 04:00:00 EDT", "refillRemaining": 0, "facilityName": "No CA Healthcare Sys-Martinez", "facilityApiName": "No CA Healthcare Sys-Martinez", "isRefillable": false, "isTrackable": true, "prescriptionId": 343522427253, "sig": "APPLY TO SCALP TWICE WEEKLY", "orderedDate": "Mon, 29 Dec 2025 00:00:00 EST", "quantity": "120", "expirationDate": "Tue, 30 Dec 2026 00:00:00 EST", "prescriptionNumber": "27482653", "prescriptionName": "KETOCONAZOLE 2% SHAMPOO", "dispensedDate": "Wed, 31 Dec 2025 05:00:00 EST", "stationNumber": "612", "inCernerTransition": false, "notRefillableDisplayMessage": null, "cmopDivisionPhone": "(866) 600-8279", "cmopNdcNumber": "00713059204", "id": 343522427253, "userId": 16955595, "providerFirstName":
+        null, "providerLastName": "SOOD, APRA", "remarks": null, "divisionName": null, "modifiedDate": null, "institutionId": null, "dialCmopDivisionPhone": "8666008279", "dispStatus": "Active: Shipped", "ndc": "00713-0280-31", "reason": null, "prescriptionNumberIndex": null, "prescriptionSource": "RX", "disclaimer": null, "indicationForUse": null, "indicationForUseFlag": null, "category": "Rx Medication", "orderableItem": "KETOCONAZOLE 2% SHAMPOO", "shape": null, "color": null, "frontImprint": null, "backImprint": null, "dataSourceSystem": "VISTA", "isRenewable": false, "notRenewableReason": null, "renewalSubmittedTimestamp": null, "trackingList": {"tracking": [{"id": 1854350001, "stationNumber": "612", "rxNumber": "27482653", "carrier": "USPS", "trackingNumber": "92612901001308001743", "completeDateTime": "Wed, 01 Jul 2026 16:19:09 EDT", "divisionPhone": "(866) 600-8279", "ndc": "00713-0280-31", "dateLoaded": "Thu, 02 Jul 2026 07:24:33 EDT", "isLocalTracking": false, "viewImageDisplayed":
+        true, "othersInSamePackage": true}]}, "rxRFRecords": {"rfRecord": [{"refillStatus": "active", "refillSubmitDate": "Mon, 29 Jun 2026 04:00:00 EDT", "refillDate": "Mon, 29 Jun 2026 04:00:00 EDT", "facilityName": "No CA Healthcare Sys-Martinez", "facilityApiName": "No CA Healthcare Sys-Martinez", "sig": "APPLY TO SCALP TWICE WEEKLY", "quantity": 120, "prescriptionName": "KETOCONAZOLE 2% SHAMPOO", "id": 22010001, "prescriptionNumber": "27482653", "cmopDivisionPhone": "(866) 600-8279", "cmopNdcNumber": "00713059204", "remarks": null, "dialCmopDivisionPhone": "8666008279", "disclaimer": null, "dispensedDate": "Tue, 01 Jul 2026 04:00:00 EDT"}]}, "tracking": true}, {"refillStatus": "active", "refillSubmitDate": "Mon, 29 Jun 2026 04:00:00 EDT", "refillDate": "Mon, 29 Jun 2026 04:00:00 EDT", "refillRemaining": 0, "facilityName": "No CA Healthcare Sys-Martinez", "facilityApiName": "No CA Healthcare Sys-Martinez", "isRefillable": false, "isTrackable": true, "prescriptionId": 355127895917, "sig":
+        "TAKE ONE CAPSULE BY MOUTH TWICE DAILY", "orderedDate": "Mon, 22 Jun 2026 04:00:00 EDT", "quantity": "15", "expirationDate": "Tue, 25 Mar 2027 00:00:00 EST", "prescriptionNumber": "27548173", "prescriptionName": "DOXYCYCLINE HYCLATE 100MG TAB", "dispensedDate": "Wed, 26 Mar 2026 04:00:00 EDT", "stationNumber": "612", "inCernerTransition": false, "notRefillableDisplayMessage": null, "cmopDivisionPhone": "(866) 600-8279", "cmopNdcNumber": "24658031010", "id": 355127895917, "userId": 16955595, "providerFirstName": null, "providerLastName": "SOOD, APRA", "remarks": null, "divisionName": null, "modifiedDate": null, "institutionId": null, "dialCmopDivisionPhone": "8666008279", "dispStatus": "Active: Shipped", "ndc": "00591-5553-01", "reason": null, "prescriptionNumberIndex": null, "prescriptionSource": "RX", "disclaimer": null, "indicationForUse": null, "indicationForUseFlag": null, "category": "Rx Medication", "orderableItem": "DOXYCYCLINE HYCLATE 100MG TAB", "shape": null, "color": null,
+        "frontImprint": null, "backImprint": null, "dataSourceSystem": "VISTA", "isRenewable": false, "notRenewableReason": null, "renewalSubmittedTimestamp": null, "trackingList": {"tracking": [{"id": 1854350002, "stationNumber": "612", "rxNumber": "27548173", "carrier": "USPS", "trackingNumber": "92612901001308001744", "completeDateTime": "Wed, 01 Jul 2026 16:19:09 EDT", "divisionPhone": "(866) 600-8279", "ndc": "00591-5553-01", "dateLoaded": "Thu, 02 Jul 2026 07:24:33 EDT", "isLocalTracking": false, "viewImageDisplayed": true, "othersInSamePackage": true}]}, "rxRFRecords": {"rfRecord": [{"refillStatus": "active", "refillSubmitDate": "Mon, 29 Jun 2026 04:00:00 EDT", "refillDate": "Mon, 29 Jun 2026 04:00:00 EDT", "facilityName": "No CA Healthcare Sys-Martinez", "facilityApiName": "No CA Healthcare Sys-Martinez", "sig": "TAKE ONE CAPSULE BY MOUTH TWICE DAILY", "quantity": 15, "prescriptionName": "DOXYCYCLINE HYCLATE 100MG TAB", "id": 22010002, "prescriptionNumber": "27548173", "cmopDivisionPhone":
+        "(866) 600-8279", "cmopNdcNumber": "24658031010", "remarks": null, "dialCmopDivisionPhone": "8666008279", "disclaimer": null, "dispensedDate": "Tue, 01 Jul 2026 04:00:00 EDT"}]}, "tracking": true}, {"refillStatus": "active", "refillSubmitDate": null, "refillDate": "Mon, 05 Jul 2026 04:00:00 EDT", "refillRemaining": 2, "facilityName": "No CA Healthcare Sys-Martinez", "facilityApiName": "No CA Healthcare Sys-Martinez", "isRefillable": true, "isTrackable": true, "prescriptionId": 366260379369, "sig": "TAKE ONE TABLET BY MOUTH ONCE DAILY AS NEEDED FOR ANXIETY", "orderedDate": "Mon, 22 Jun 2026 04:00:00 EDT", "quantity": "10", "expirationDate": "Tue, 23 Dec 2026 00:00:00 EST", "prescriptionNumber": "27525983A", "prescriptionName": "LORAZEPAM 1MG TAB", "dispensedDate": "Tue, 01 Jul 2026 04:00:00 EDT", "stationNumber": "612", "inCernerTransition": false, "notRefillableDisplayMessage": null, "cmopDivisionPhone": null, "cmopNdcNumber": null, "id": 366260379369, "userId": 16955595, "providerFirstName":
+        null, "providerLastName": "HUA-RUPP, KIM-LONG", "remarks": null, "divisionName": null, "modifiedDate": null, "institutionId": null, "dialCmopDivisionPhone": "", "dispStatus": "Active: Shipped", "ndc": "00603-1293-21", "reason": null, "prescriptionNumberIndex": null, "prescriptionSource": "RX", "disclaimer": null, "indicationForUse": null, "indicationForUseFlag": null, "category": "Rx Medication", "orderableItem": "LORAZEPAM 1MG TAB", "shape": null, "color": null, "frontImprint": null, "backImprint": null, "dataSourceSystem": "VISTA", "isRenewable": false, "notRenewableReason": null, "renewalSubmittedTimestamp": null, "trackingList": {"tracking": [{"id": 1854350003, "stationNumber": "612", "rxNumber": "27525983A", "carrier": "USPS", "trackingNumber": "92612901001308001886", "completeDateTime": "Wed, 01 Jul 2026 08:16:50 EDT", "divisionPhone": "(866) 600-8279", "ndc": "00603-1293-21", "dateLoaded": "Thu, 02 Jul 2026 07:24:33 EDT", "isLocalTracking": false, "viewImageDisplayed": true,
+        "othersInSamePackage": false}]}, "rxRFRecords": {"rfRecord": [{"refillStatus": "active", "refillSubmitDate": null, "refillDate": "Mon, 05 Jul 2026 04:00:00 EDT", "facilityName": "No CA Healthcare Sys-Martinez", "facilityApiName": "No CA Healthcare Sys-Martinez", "sig": "TAKE ONE TABLET BY MOUTH ONCE DAILY AS NEEDED FOR ANXIETY", "quantity": 10, "prescriptionName": "LORAZEPAM 1MG TAB", "id": 22010003, "prescriptionNumber": "27525983A", "cmopDivisionPhone": null, "cmopNdcNumber": null, "remarks": "RENEWED FROM RX # 27525983", "dialCmopDivisionPhone": "", "disclaimer": null, "dispensedDate": "Tue, 01 Jul 2026 04:00:00 EDT"}]}, "tracking": true}]}, "errors": [], "infoMessages": []}, "oracle-health": {}}'
+    headers:
+      Cache-Control:
+      - no-cache, no-store, max-age=0, must-revalidate
+      Content-Length:
+      - '7704'
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 02 Jul 2026 07:24:35 GMT
+      Pragma:
+      - no-cache
+      X-Content-Type-Options:
+      - nosniff
+    status:
+      code: 200
+      message: OK
+recorded_with: VCR 6.3.1
