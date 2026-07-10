@@ -91,8 +91,9 @@ RSpec.describe ClaimsApi::DisabilityCompensationBenefitsDocumentsUploader, type:
         service.perform(claim.id)
 
         # Grab the upload interaction before VCR ejects the cassette
-        multipart_body = VCR.current_cassette.serializable_hash['http_interactions'][1]
-                            .dig('request', 'body', 'string')
+        upload_request = VCR.current_cassette.serializable_hash['http_interactions'][1]
+                            .dig('request', 'body') || {}
+        multipart_body = upload_request['string'] || Base64.decode64(upload_request.fetch('base64_string'))
       end
 
       claim.reload
