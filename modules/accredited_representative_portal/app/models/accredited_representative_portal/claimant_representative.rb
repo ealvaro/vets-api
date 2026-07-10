@@ -52,28 +52,40 @@ module AccreditedRepresentativePortal
       private
 
       def allowed_for_claimant?(membership)
-        # We only reach here when the claimant already has an accepted POA held by this
-        # rep's org: the caller resolves the claimant's active POA code (from the Benefits
-        # Claims API, which reflects only established POAs) to this membership. Once a POA
-        # is accepted it belongs to the whole org, so any rep with an active accreditation
-        # in it may VIEW the claimant, regardless of acceptance_mode. acceptance_mode
-        # (including no_acceptance) and the self_only "named in 16A" rule only govern ACTING
-        # on a pending request, which is enforced separately by
-        # PowerOfAttorneyRequestPolicy#can_accept?.
-        #
-        # This active-accreditation check also excludes attorney and claims-agent
-        # memberships, which PowerOfAttorneyHolderMemberships#all builds without an
-        # OrganizationRepresentative record, so it is not redundant with that builder.
+        holder = membership.power_of_attorney_holder
+
+        # Explicit allow-list: fail closed for any unexpected/blank holder type rather than defaulting
+        # to allowed.
+        case holder.type
+        when PowerOfAttorneyHolder::Types::ATTORNEY, PowerOfAttorneyHolder::Types::CLAIMS_AGENT
+          # Attorneys and claims agents hold POA as individuals — they have no organization and
+          # therefore no OrganizationRepresentative/Accreditation record. Reaching here means the
+          # claimant's established POA code (from the Benefits Claims API, which reflects only
+          # established POAs) already matches this membership, which is sufficient for them to VIEW
+          # the claimant.
+          true
+        when PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION
+          # Once a POA is accepted it belongs to the whole org, so any rep with an active accreditation
+          # in it may VIEW the claimant, regardless of acceptance_mode. acceptance_mode (including
+          # no_acceptance) and the self_only "named in 16A" rule only govern ACTING on a pending
+          # request, which is enforced separately by PowerOfAttorneyRequestPolicy#can_accept?.
+          active_accreditation?(holder, membership.registration_number)
+        else
+          false
+        end
+      end
+
+      def active_accreditation?(holder, registration_number)
         if AccreditedRepresentativePortal.use_accredited_models?
           Accreditation
             .active
-            .for_organization_poa_codes(membership.power_of_attorney_holder.poa_code)
-            .for_registration_numbers(membership.registration_number)
+            .for_organization_poa_codes(holder.poa_code)
+            .for_registration_numbers(registration_number)
             .exists?
         else
           Veteran::Service::OrganizationRepresentative.active.exists?(
-            organization_poa: membership.power_of_attorney_holder.poa_code,
-            representative_id: membership.registration_number
+            organization_poa: holder.poa_code,
+            representative_id: registration_number
           )
         end
       end

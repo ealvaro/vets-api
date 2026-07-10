@@ -256,14 +256,71 @@ module AccreditedRepresentativePortal # rubocop:disable Metrics/ModuleLength
         end
       end
 
+      # Attorneys and claims agents hold POA as individuals — they have no organization and therefore
+      # no OrganizationRepresentative / Accreditation record. Reaching the finder means the claimant's
+      # established POA code already matches the rep's own poa_code, so they must be able to VIEW the
+      # claimant. Regression #28447 applied the org-membership check to every holder type and wrongly
+      # excluded them.
+      shared_examples 'individual holder claimant representative' do
+        let!(:representative_user_account) do
+          create(:user_account, icn: representative_icn)
+        end
+
+        %i[attorney claims_agent].each do |holder_type|
+          context "when the representative is a #{holder_type} holding the claimant's POA" do
+            let!(:representative) do
+              create_holder_registration(
+                type: holder_type,
+                registration_number:,
+                poa_codes: [poa_code],
+                email: representative_email
+              )
+            end
+
+            it 'returns a claimant representative without an organization membership' do
+              expect(claimant_representative).to have_attributes(
+                claimant_id: be_a(String),
+                accredited_individual_registration_number: registration_number
+              )
+            end
+          end
+        end
+      end
+
       context 'with legacy models' do
         include_context 'with legacy poa holders'
         include_examples 'claimant representative finder'
+        include_examples 'individual holder claimant representative'
       end
 
       context 'with accredited models' do
         include_context 'with accredited poa holders'
         include_examples 'claimant representative finder'
+        include_examples 'individual holder claimant representative'
+      end
+    end
+
+    describe 'Finder#allowed_for_claimant?' do
+      # Fail closed: the allow-list must deny any holder type that is not one of the known VSO /
+      # attorney / claims-agent types, rather than defaulting to allowed.
+      it 'denies a membership whose holder type is unrecognized' do
+        holder = PowerOfAttorneyHolder.new(
+          type: 'something_unexpected',
+          poa_code: 'YHZ',
+          name: 'Mystery Holder',
+          can_accept_digital_poa_requests: false,
+          acceptance_mode: nil
+        )
+        membership = PowerOfAttorneyHolderMemberships::Membership.new(
+          registration_number: '10000',
+          power_of_attorney_holder: holder
+        )
+        finder = described_class::Finder.new(
+          claimant_icn: '1012666182V203559',
+          power_of_attorney_holder_memberships: nil
+        )
+
+        expect(finder.send(:allowed_for_claimant?, membership)).to be(false)
       end
     end
   end
