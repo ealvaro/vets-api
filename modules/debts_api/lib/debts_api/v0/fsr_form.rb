@@ -40,6 +40,12 @@ module DebtsApi
         [existing, resolution_text].compact_blank.join(' ')
     end
 
+    def extract_resolution_options(debts)
+      return [] if debts.blank?
+
+      debts.pluck('resolutionOption').compact.uniq
+    end
+
     def get_resolution_option_text(debts)
       debts.filter_map { |debt| format_resolution(debt) }.join(', ')
     end

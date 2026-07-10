@@ -151,10 +151,14 @@ RSpec.describe DebtsApi::V0::Form5655::VBASubmissionJob, type: :worker do
       end
 
       it 'handles MissingUserAttributesError' do
+        statsd_key = DebtsApi::V0::Form5655Submission::STATS_KEY
         expect(StatsD).to receive(:increment).with(
           "#{DebtsApi::V0::Form5655::VBASubmissionJob::STATS_KEY}.retries_exhausted"
         )
-        expect(StatsD).to receive(:increment).with("#{DebtsApi::V0::Form5655Submission::STATS_KEY}.failure")
+        expect(StatsD).to receive(:increment).with(
+          "#{statsd_key}.failure",
+          hash_including(tags: kind_of(Array))
+        )
         expect(StatsD).to receive(:increment).with('api.fsr_submission.send_failed_form_email.enqueue')
         expect(StatsD).to receive(:increment).with(
           'shared.sidekiq.default.DebtManagementCenter_VANotifyEmailJob.enqueue'
@@ -171,6 +175,7 @@ RSpec.describe DebtsApi::V0::Form5655::VBASubmissionJob, type: :worker do
       end
 
       it 'handles unexpected errors' do
+        statsd_key = DebtsApi::V0::Form5655Submission::STATS_KEY
         expect(StatsD).to receive(:increment).with(
           "#{DebtsApi::V0::Form5655::VBASubmissionJob::STATS_KEY}.retries_exhausted"
         )
@@ -178,7 +183,10 @@ RSpec.describe DebtsApi::V0::Form5655::VBASubmissionJob, type: :worker do
           'shared.sidekiq.default.DebtManagementCenter_VANotifyEmailJob.enqueue'
         )
         expect(StatsD).to receive(:increment).with('api.fsr_submission.send_failed_form_email.enqueue')
-        expect(StatsD).to receive(:increment).with("#{DebtsApi::V0::Form5655Submission::STATS_KEY}.failure")
+        expect(StatsD).to receive(:increment).with(
+          "#{statsd_key}.failure",
+          hash_including(tags: kind_of(Array))
+        )
         expect(Rails.logger).to receive(:error).with(
           "Form5655Submission id: #{form_submission.id} failed", 'VBASubmissionJob#perform: abc-123'
         )

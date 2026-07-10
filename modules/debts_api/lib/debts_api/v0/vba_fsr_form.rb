@@ -39,12 +39,15 @@ module DebtsApi
     def build_public_metadata
       enabled_flags = enabled_feature_flags(@user)
       debt_amounts = @debts.pluck(VBA_AMOUNT_KEY)
+      resolution_options = extract_resolution_options(@debts)
+
       {
         'combined' => @is_combined,
         'debt_amounts' => debt_amounts,
         'debt_type' => VBA_TYPE_KEY,
         'flags' => enabled_flags,
-        'streamlined' => nil
+        'streamlined' => nil,
+        'resolution_options' => resolution_options
       }
     end
 

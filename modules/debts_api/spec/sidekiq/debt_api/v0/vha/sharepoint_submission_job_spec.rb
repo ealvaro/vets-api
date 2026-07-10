@@ -34,7 +34,11 @@ RSpec.describe DebtsApi::V0::Form5655::VHA::SharepointSubmissionJob, type: :work
         statsd_key = DebtsApi::V0::Form5655::VHA::SharepointSubmissionJob::STATS_KEY
 
         ["#{statsd_key}.failure", "#{statsd_key}.retries_exhausted", 'api.fsr_submission.failure'].each do |key|
-          expect(StatsD).to receive(:increment).with(key)
+          if key == 'api.fsr_submission.failure'
+            expect(StatsD).to receive(:increment).with(key, hash_including(tags: kind_of(Array)))
+          else
+            expect(StatsD).to receive(:increment).with(key)
+          end
         end
 
         config.sidekiq_retries_exhausted_block.call(msg, standard_exception)

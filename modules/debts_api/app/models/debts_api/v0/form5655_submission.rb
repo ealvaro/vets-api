@@ -105,7 +105,11 @@ module DebtsApi
       update(error_message: message)
       find_transaction_log&.mark_failed
       Rails.logger.error("Form5655Submission id: #{id} failed", message)
-      StatsD.increment("#{STATS_KEY}.failure")
+
+      # Tag each resolution option for detailed monitoring
+      resolution_tags = build_resolution_tags
+
+      StatsD.increment("#{STATS_KEY}.failure", tags: resolution_tags)
       StatsD.increment("#{STATS_KEY}.combined.failure") if public_metadata['combined']
       begin
         send_failed_form_email unless message.match?(/sharepoint/i)
@@ -148,7 +152,11 @@ module DebtsApi
     def register_success
       submitted!
       find_transaction_log&.mark_completed
-      StatsD.increment("#{STATS_KEY}.success")
+
+      # Tag each resolution option for detailed monitoring
+      resolution_tags = build_resolution_tags
+
+      StatsD.increment("#{STATS_KEY}.success", tags: resolution_tags)
       StatsD.increment("#{STATS_KEY}.combined.success") if public_metadata['combined']
     end
 
@@ -233,6 +241,15 @@ module DebtsApi
         transactionable: self,
         transaction_type: 'waiver'
       )
+    end
+
+    def build_resolution_tags
+      return [] unless public_metadata['debt_type'] == 'DEBT'
+
+      options = public_metadata['resolution_options']
+      return [] unless options.is_a?(Array)
+
+      options.map { |option| "resolution:#{option}" }
     end
   end
 end

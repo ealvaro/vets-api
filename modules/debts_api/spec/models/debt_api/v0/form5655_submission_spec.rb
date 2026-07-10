@@ -293,7 +293,7 @@ RSpec.describe DebtsApi::V0::Form5655Submission do
       expect(StatsD).to receive(:increment).with(
         'api.fsr_submission.send_failed_form_email.enqueue'
       )
-      expect(StatsD).to receive(:increment).with('api.fsr_submission.failure')
+      expect(StatsD).to receive(:increment).with('api.fsr_submission.failure', hash_including(tags: kind_of(Array)))
       form5655_submission.register_failure(message)
       expect(form5655_submission.error_message).to eq(message)
     end
@@ -319,7 +319,7 @@ RSpec.describe DebtsApi::V0::Form5655Submission do
         expect(StatsD).to receive(:increment).with(
           'api.fsr_submission.send_failed_form_email.enqueue'
         )
-        expect(StatsD).to receive(:increment).with('api.fsr_submission.failure')
+        expect(StatsD).to receive(:increment).with('api.fsr_submission.failure', hash_including(tags: kind_of(Array)))
         expect(StatsD).to receive(:increment).with('api.fsr_submission.combined.failure')
         form5655_submission.register_failure(message)
         expect(form5655_submission.error_message).to eq(message)
@@ -521,6 +521,82 @@ RSpec.describe DebtsApi::V0::Form5655Submission do
 
       it 'returns only VHA copay identifiers' do
         expect(form5655_submission.debt_identifiers).to eq(['3fa85f64-5717-4562-b3fc-2c963f66afa6'])
+      end
+    end
+  end
+
+  describe 'hardship tracking' do
+    context 'when submission has hardship suspension' do
+      let(:submission) do
+        create(:debts_api_form5655_submission,
+               public_metadata: {
+                 'debt_type' => 'DEBT',
+                 'resolution_options' => %w[hardship-suspension waiver]
+               })
+      end
+
+      it 'tags success metrics with resolution options' do
+        expect(StatsD).to receive(:increment).with(
+          'api.fsr_submission.success',
+          tags: %w[resolution:hardship-suspension resolution:waiver]
+        )
+        submission.register_success
+      end
+
+      it 'tags failure metrics with resolution options' do
+        # Stub the send_failed_form_email method to avoid the extra StatsD call
+        allow(submission).to receive(:send_failed_form_email)
+        expect(StatsD).to receive(:increment).with(
+          'api.fsr_submission.failure',
+          tags: %w[resolution:hardship-suspension resolution:waiver]
+        )
+        submission.register_failure('Test error')
+      end
+    end
+
+    context 'when baseline submission' do
+      let(:submission) do
+        create(:debts_api_form5655_submission,
+               public_metadata: {
+                 'debt_type' => 'DEBT',
+                 'resolution_options' => %w[waiver]
+               })
+      end
+
+      it 'tags success metrics with resolution options' do
+        expect(StatsD).to receive(:increment).with(
+          'api.fsr_submission.success',
+          tags: ['resolution:waiver']
+        )
+        submission.register_success
+      end
+
+      it 'tags failure metrics with resolution options' do
+        # Stub the send_failed_form_email method to avoid the extra StatsD call
+        allow(submission).to receive(:send_failed_form_email)
+        expect(StatsD).to receive(:increment).with(
+          'api.fsr_submission.failure',
+          tags: ['resolution:waiver']
+        )
+        submission.register_failure('Test error')
+      end
+    end
+
+    context 'when VHA copay submission' do
+      let(:submission) do
+        create(:debts_api_form5655_submission,
+               public_metadata: {
+                 'debt_type' => 'COPAY',
+                 'resolution_options' => %w[compromise]
+               })
+      end
+
+      it 'does not tag resolution options for non-DEBT submissions' do
+        expect(StatsD).to receive(:increment).with(
+          'api.fsr_submission.success',
+          tags: []
+        )
+        submission.register_success
       end
     end
   end

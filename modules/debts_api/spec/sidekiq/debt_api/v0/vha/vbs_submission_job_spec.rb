@@ -60,7 +60,11 @@ RSpec.describe DebtsApi::V0::Form5655::VHA::VBSSubmissionJob, type: :worker do
           'api.fsr_submission.send_failed_form_email.enqueue',
           'shared.sidekiq.default.DebtManagementCenter_VANotifyEmailJob.enqueue'
         ].each do |key|
-          expect(StatsD).to receive(:increment).with(key)
+          if key == 'api.fsr_submission.failure'
+            expect(StatsD).to receive(:increment).with(key, hash_including(tags: kind_of(Array)))
+          else
+            expect(StatsD).to receive(:increment).with(key)
+          end
         end
 
         expect(Rails.logger).to receive(:error).with(
