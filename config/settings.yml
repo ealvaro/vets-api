@@ -1878,7 +1878,9 @@ vanotify:
         form10297_confirmation_email: <%= ENV['vanotify__services__va_gov__template_id__form10297_confirmation_email'] %>
         form10297_denied_confirmation_email: <%= ENV['vanotify__services__va_gov__template_id__form10297_denied_confirmation_email'] %>
         form10297_under_review_confirmation_email: <%= ENV['vanotify__services__va_gov__template_id__form10297_under_review_confirmation_email'] %>
-
+        form10_8678_confirmation_email: <%= ENV['bio__form10_8678__email__confirmation_template_id']%>
+        form10_8678_error_email: <%= ENV['bio__form10_8678__email__error_template_id']%>
+        form10_8678_received_email: <%= ENV['bio__form10_8678__email__received_template_id']%>
         form1880_reminder_email: <%= ENV['vanotify__services__va_gov__template_id__form1880_reminder_email'] %>
         form1900_action_needed_email: <%= ENV['vanotify__services__va_gov__template_id__form1900_action_needed_email'] %>
         form1990_chapter1606_approved_confirmation_email: <%= ENV['vanotify__services__va_gov__template_id__form1990_chapter1606_approved_confirmation_email'] %>
@@ -1893,9 +1895,6 @@ vanotify:
         form1990meb_denied_confirmation_email: <%= ENV['vanotify__services__va_gov__template_id__form1990meb_denied_confirmation_email'] %>
         form1990meb_offramp_confirmation_email: <%= ENV['vanotify__services__va_gov__template_id__form1990meb_offramp_confirmation_email'] %>
         form1995_confirmation_email: <%= ENV['vanotify__services__va_gov__template_id__form1995_confirmation_email'] %>
-        form10_8678_confirmation_email: <%= ENV['bio__form10_8678__email__confirmation_template_id']%>
-        form10_8678_error_email: <%= ENV['bio__form10_8678__email__error_template_id']%>
-        form10_8678_received_email: <%= ENV['bio__form10_8678__email__received_template_id']%>
         form20_10206_confirmation_email: <%= ENV['vanotify__services__va_gov__template_id__form20_10206_confirmation_email'] %>
         form20_10206_error_email: <%= ENV['vanotify__services__va_gov__template_id__form20_10206_error_email'] %>
         form20_10206_received_email: <%= ENV['vanotify__services__va_gov__template_id__form20_10206_received_email'] %>

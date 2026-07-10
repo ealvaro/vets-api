@@ -1897,6 +1897,9 @@ vanotify:
         form10297_confirmation_email: form10297_confirmation_email_template_id
         form10297_denied_confirmation_email: form10297_denied_confirmation_email_template_id
         form10297_under_review_confirmation_email: form10297_under_review_confirmation_email_template_id
+        form10_8678_confirmation_email: form10_8678_confirmation_email_template_id
+        form10_8678_error_email: form10_8678_error_email_template_id
+        form10_8678_received_email: form10_8678_received_email_template_id
         form1880_reminder_email: form1880_reminder_email_template_id
         form1900_action_needed_email: form1900_action_needed_email_template_id
         form1990_chapter1606_approved_confirmation_email: form1990_chapter1606_approved_confirmation_email_template_id
@@ -1911,9 +1914,6 @@ vanotify:
         form1990meb_denied_confirmation_email: form1990meb_denied_confirmation_email_template_id
         form1990meb_offramp_confirmation_email: form1990meb_offramp_confirmation_email_template_id
         form1995_confirmation_email: form1995_confirmation_email_template_id
-        form10_8678_confirmation_email: form10_8678_confirmation_email_template_id
-        form10_8678_error_email: form10_8678_error_email_template_id
-        form10_8678_received_email: form10_8678_received_email_template_id
         form20_10206_confirmation_email: form20_10206_confirmation_email_template_id
         form20_10206_error_email: form20_10206_error_email_template_id
         form20_10206_received_email: form20_10206_received_email_template_id
