@@ -67,7 +67,18 @@ module VAProfile
       end
 
       def self.sort_by_begin_date(service_episodes)
-        service_episodes.sort_by { |se| se.begin_date || (Time.zone.today + 3650) }
+        far_future = Time.zone.today + 3650
+        service_episodes.sort_by { |se| parse_begin_date(se.begin_date) || far_future }
+      end
+
+      def self.parse_begin_date(begin_date)
+        return begin_date if begin_date.is_a?(Date) || begin_date.is_a?(Time)
+        return nil if begin_date.blank?
+
+        Date.parse(begin_date)
+      rescue ArgumentError, TypeError
+        Rails.logger.debug('VAProfile service history unparseable begin_date', begin_date:)
+        nil
       end
 
       def self.include_academy_attendance?(current_user)
