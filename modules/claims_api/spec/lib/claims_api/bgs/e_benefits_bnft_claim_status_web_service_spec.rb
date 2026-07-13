@@ -53,4 +53,21 @@ describe ClaimsApi::EbenefitsBnftClaimStatusWebService do
       end
     end
   end
+
+  describe '#update_from_remote' do
+    let(:claim_id) { '600118851' }
+
+    context 'with real BGS cassette' do
+      it 'returns a mapped EVSS claim' do
+        integration_service = described_class.new(external_uid: '600061742', external_key: '600061742')
+
+        VCR.use_cassette('claims_api/bgs/claims/claim') do
+          claim = integration_service.update_from_remote(claim_id)
+
+          expect(claim).to be_a(ClaimsApi::EVSSClaim)
+          expect(claim.evss_id.to_s).to eq(claim_id)
+        end
+      end
+    end
+  end
 end

@@ -123,13 +123,31 @@ Rspec.describe 'EVSS Claims management', openapi_spec: 'modules/claims_api/app/s
                                             'default.json').read)
 
           let(:scopes) { %w[claim.read] }
+          let(:target_veteran) do
+            OpenStruct.new(
+              icn: '1012832025V743496',
+              first_name: 'Wesley',
+              last_name: 'Ford',
+              loa: { current: 3, highest: 3 },
+              edipi: '1007697216',
+              ssn: '796043735',
+              participant_id: '600061742',
+              mpi: OpenStruct.new(
+                icn: '1012832025V743496',
+                profile: OpenStruct.new(ssn: '796043735')
+              )
+            )
+          end
 
           before do |example|
             stub_poa_verification
 
-            allow_any_instance_of(ClaimsApi::EbenefitsBnftClaimStatusWebService).to receive(:all).and_raise(
-              Common::Exceptions::ResourceNotFound.new(detail: 'The Resource was not found.')
-            )
+            allow_any_instance_of(ClaimsApi::V1::ApplicationController)
+              .to receive(:target_veteran).and_return(target_veteran)
+            # Return empty claims list to trigger 404
+            allow_any_instance_of(ClaimsApi::EbenefitsBnftClaimStatusWebService)
+              .to receive(:all).and_return([])
+
             mock_acg(scopes) do
               VCR.use_cassette('claims_api/bgs/claims/claims') do
                 submit_request(example.metadata)
@@ -192,8 +210,28 @@ Rspec.describe 'EVSS Claims management', openapi_spec: 'modules/claims_api/app/s
           schema JSON.parse(Rails.root.join('spec', 'support', 'schemas', 'claims_api', 'claim.json').read)
 
           let(:scopes) { %w[claim.read] }
+          let(:target_veteran) do
+            OpenStruct.new(
+              icn: '1012832025V743496',
+              first_name: 'WESLEY',
+              last_name: 'FORD',
+              loa: { current: 3, highest: 3 },
+              edipi: '1007697216',
+              ssn: '796043735',
+              participant_id: '600061742',
+              mpi: OpenStruct.new(
+                icn: '1012832025V743496',
+                profile: OpenStruct.new(ssn: '796043735')
+              )
+            )
+          end
           let(:claim) do
-            create(:auto_established_claim_with_supporting_documents, :established, source: 'abraham lincoln')
+            create(
+              :auto_established_claim_with_supporting_documents,
+              :established,
+              source: 'abraham lincoln',
+              veteran_icn: target_veteran.mpi.icn
+            )
           end
           let(:id) { claim.id }
 
@@ -202,6 +240,8 @@ Rspec.describe 'EVSS Claims management', openapi_spec: 'modules/claims_api/app/s
 
             mock_acg(scopes) do
               VCR.use_cassette('claims_api/bgs/claims/claim') do
+                allow_any_instance_of(ClaimsApi::V1::ApplicationController)
+                  .to receive(:target_veteran).and_return(target_veteran)
                 submit_request(example.metadata)
               end
             end

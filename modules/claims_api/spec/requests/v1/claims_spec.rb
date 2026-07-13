@@ -45,6 +45,10 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
 
   before do
     stub_poa_verification
+    # Stub participant validation for legacy request specs that use VCR cassettes with
+    # participant IDs that may not match the test veteran.
+    allow_any_instance_of(ClaimsApi::V1::ClaimsController)
+      .to receive(:validate_bgs_participant!).and_return(nil)
   end
 
   context 'index' do
@@ -82,6 +86,297 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
     end
   end
 
+  describe 'SHOW endpoint validates user request access against ICN and BGS' do
+    let(:veteran_id) { '1012667169V030190' }
+    let(:bgs_claim_response) { build(:bgs_response_with_one_lc_status).to_h }
+    let(:bnft_claim_web_service) { ClaimsApi::EbenefitsBnftClaimStatusWebService }
+    let(:evss_id) { '111111111' }
+    let(:veteran_participant_id) { '600045025' }
+    let(:evss_claim_data) do
+      {
+        'date' => '11/06/2018',
+        'max_est_claim_date' => '11/06/2019',
+        'claim_complete_date' => nil,
+        'waiver5103_submitted' => false,
+        'attention_needed' => 'No',
+        'development_letter_sent' => 'No',
+        'decision_notification_sent' => 'No',
+        'status_type' => 'Compensation',
+        'poa' => 'Disabled American Veterans',
+        'contention_list' => [],
+        'claim_tracked_items' => {},
+        'vba_document_list' => [],
+        'claim_phase_dates' => {
+          'latest_phase_type' => 'Claim received'
+        }
+      }
+    end
+
+    before do
+      allow_any_instance_of(ClaimsApi::V1::ClaimsController)
+        .to receive(:validate_bgs_participant!).and_call_original
+    end
+
+    def mock_target_veteran(icn, participant_id, ssn: '796043735')
+      OpenStruct.new(
+        icn:,
+        first_name: 'Wesley',
+        last_name: 'Ford',
+        loa: { current: 3, highest: 3 },
+        edipi: '1007697216',
+        ssn:,
+        participant_id:,
+        mpi: OpenStruct.new(
+          icn:,
+          profile: OpenStruct.new(ssn:)
+        )
+      )
+    end
+
+    def stub_evss_service_response
+      bgs_claim = {
+        benefit_claim_details_dto: {
+          bnft_claim_id: evss_id,
+          ptcpnt_vet_id: veteran_participant_id,
+          ptcpnt_clmant_id: veteran_participant_id
+        }
+      }
+      allow_any_instance_of(bnft_claim_web_service)
+        .to receive(:find_benefit_claim_details_by_benefit_claim_id)
+        .and_return(bgs_claim)
+      allow_any_instance_of(bnft_claim_web_service)
+        .to receive(:transform_bgs_claim_to_evss)
+        .and_return(ClaimsApi::EVSSClaim.new(evss_id:, data: evss_claim_data))
+    end
+
+    def make_claim_request(headers, claim_id: bgs_claim_id)
+      get "/services/claims/v1/claims/#{claim_id}", params: { id: claim_id }, headers:
+    end
+
+    describe 'using a lighthouse claim id' do
+      let(:lh_claim) do
+        create(
+          :auto_established_claim,
+          status: 'PENDING',
+          veteran_icn: veteran_id,
+          evss_id: nil
+        )
+      end
+
+      context 'User is a veteran trying to access their claim information with a lighthouse claim id' do
+        it 'validates successfully and returns the claim information', run_at: 'Wed, 13 Dec 2017 03:28:23 GMT' do
+          mock_acg(scopes) do |auth_header|
+            VCR.use_cassette('claims_api/bgs/tracked_items/find_tracked_items') do
+              VCR.use_cassette('claims_api/evss/documents/get_claim_documents') do
+                allow_any_instance_of(ClaimsApi::V1::ApplicationController)
+                  .to receive(:target_veteran).and_return(mock_target_veteran(veteran_id, veteran_participant_id))
+
+                expect(ClaimsApi::AutoEstablishedClaim)
+                  .to receive(:get_by_id_and_icn).and_return(lh_claim)
+
+                make_claim_request(auth_header, claim_id: lh_claim.id)
+
+                json_response = JSON.parse(response.body)
+                expect(response).to have_http_status(:ok)
+                expect(json_response.keys).to include('data')
+                expect(json_response['data']['id']).to eq(lh_claim.id)
+              end
+            end
+          end
+        end
+      end
+
+      context 'User is a veteran attempting to access a claim that does not belong to them' do
+        it 'raises a not found error', run_at: 'Wed, 13 Dec 2017 03:28:23 GMT' do
+          mock_acg(scopes) do |auth_header|
+            VCR.use_cassette('claims_api/bgs/tracked_items/find_tracked_items') do
+              VCR.use_cassette('claims_api/evss/documents/get_claim_documents') do
+                allow_any_instance_of(ClaimsApi::V1::ClaimsController)
+                  .to receive(:target_veteran).and_return(mock_target_veteran('some-other-icn', veteran_participant_id))
+
+                make_claim_request(auth_header, claim_id: lh_claim.id)
+
+                expect(response).to have_http_status(:not_found)
+                expect(JSON.parse(response.body)['errors'][0]['detail']).to eq('Claim not found')
+              end
+            end
+          end
+        end
+      end
+
+      context "POA accessing a veteran's claim with header request" do
+        it 'validates successfully and returns the claim information', run_at: 'Wed, 13 Dec 2017 03:28:23 GMT' do
+          mock_acg(scopes) do |auth_header|
+            VCR.use_cassette('claims_api/bgs/tracked_items/find_tracked_items') do
+              VCR.use_cassette('claims_api/evss/documents/get_claim_documents') do
+                # target_veteran represents the veteran the POA is acting on behalf of
+                allow_any_instance_of(ClaimsApi::V1::ApplicationController)
+                  .to receive(:target_veteran).and_return(mock_target_veteran(veteran_id, veteran_participant_id))
+
+                expect(ClaimsApi::AutoEstablishedClaim)
+                  .to receive(:get_by_id_and_icn).and_return(lh_claim)
+
+                header_request_headers = request_headers.merge(auth_header).merge(
+                  {
+                    'X-VA-First-Name' => 'POA',
+                    'X-VA-Last-Name' => 'Representative',
+                    'X-VA-SSN' => '111223333'
+                  }
+                )
+
+                make_claim_request(header_request_headers, claim_id: lh_claim.id)
+
+                json_response = JSON.parse(response.body)
+                expect(response).to have_http_status(:ok)
+                expect(json_response.keys).to include('data')
+                expect(json_response['data']['id']).to eq(lh_claim.id)
+              end
+            end
+          end
+        end
+      end
+    end
+
+    describe 'using an evss_id when no lighthouse claim is found' do
+      # currently coupled to this feature flag, and can be updated once the feature flag is removed
+      before do
+        allow_any_instance_of(Flipper).to receive(:enabled?).with(:claims_status_v1_bgs_enabled).and_return(true)
+        # No lighthouse claim exists for this ID — controller falls through to the numeric BGS branch
+        allow(ClaimsApi::AutoEstablishedClaim).to receive(:get_by_id_and_icn).and_return(nil)
+      end
+
+      context 'User is a veteran trying to access their claim information with an evss_id' do
+        it 'validates successfully and returns the claim information', run_at: 'Wed, 13 Dec 2017 03:28:23 GMT' do
+          mock_acg(scopes) do |auth_header|
+            VCR.use_cassette('claims_api/bgs/tracked_items/find_tracked_items') do
+              VCR.use_cassette('claims_api/evss/documents/get_claim_documents') do
+                allow_any_instance_of(ClaimsApi::V1::ClaimsController)
+                  .to receive(:target_veteran).and_return(mock_target_veteran(veteran_id, veteran_participant_id))
+
+                stub_evss_service_response
+
+                make_claim_request(auth_header, claim_id: evss_id)
+
+                json_response = JSON.parse(response.body)
+                expect(response).to have_http_status(:ok)
+                expect(json_response.keys).to include('data')
+                expect(json_response['data']['id']).to eq(evss_id)
+                expect(response).to match_response_schema('claims_api/claim')
+              end
+            end
+          end
+        end
+      end
+
+      context 'User is a veteran attempting to access a claim that does not belong to them' do
+        before do
+          allow_any_instance_of(ClaimsApi::V1::ClaimsController)
+            .to receive(:validate_bgs_participant!)
+            .and_raise(
+              Common::Exceptions::ResourceNotFound.new(detail: ClaimsApi::V1::ClaimsController::INVALID_CLAIM_ACCESS_DETAIL)
+            )
+        end
+
+        it 'raises a not found error', run_at: 'Wed, 13 Dec 2017 03:28:23 GMT' do
+          mock_acg(scopes) do |auth_header|
+            allow_any_instance_of(ClaimsApi::V1::ClaimsController)
+              .to receive(:target_veteran).and_return(mock_target_veteran(veteran_id, veteran_participant_id))
+            # Claim belongs to a different participant — validation should reject the request
+            allow_any_instance_of(bnft_claim_web_service)
+              .to receive(:find_benefit_claim_details_by_benefit_claim_id)
+              .and_return(
+                {
+                  benefit_claim_details_dto: {
+                    ptcpnt_vet_id: 'some-other-participant-id',
+                    ptcpnt_clmant_id: 'some-other-participant-id'
+                  }
+                }
+              )
+            allow_any_instance_of(bnft_claim_web_service)
+              .to receive(:transform_bgs_claim_to_evss)
+              .and_return(ClaimsApi::EVSSClaim.new(evss_id:, data: evss_claim_data))
+
+            make_claim_request(auth_header, claim_id: evss_id)
+
+            expect(response).to have_http_status(:not_found)
+            expect(JSON.parse(response.body)['errors'][0]['detail']).to eq('Claim not found')
+          end
+        end
+      end
+
+      context "POA accessing a veteran's claim with header request" do
+        it 'validates successfully and returns the claim information', run_at: 'Wed, 13 Dec 2017 03:28:23 GMT' do
+          mock_acg(scopes) do |auth_header|
+            VCR.use_cassette('claims_api/bgs/tracked_items/find_tracked_items') do
+              VCR.use_cassette('claims_api/evss/documents/get_claim_documents') do
+                # target_veteran represents the veteran the POA is acting on behalf of
+                allow_any_instance_of(ClaimsApi::V1::ApplicationController)
+                  .to receive(:target_veteran).and_return(mock_target_veteran(veteran_id, veteran_participant_id))
+
+                # BGS claim participant IDs match the veteran — validation should pass
+                stub_evss_service_response
+
+                header_request_headers = request_headers.merge(auth_header).merge(
+                  {
+                    'X-VA-First-Name' => 'POA',
+                    'X-VA-Last-Name' => 'Representative',
+                    'X-VA-SSN' => '111223333'
+                  }
+                )
+
+                make_claim_request(header_request_headers, claim_id: evss_id)
+
+                json_response = JSON.parse(response.body)
+                expect(response).to have_http_status(:ok)
+                expect(json_response.keys).to include('data')
+                expect(json_response['data']['id']).to eq(evss_id)
+                expect(response).to match_response_schema('claims_api/claim')
+              end
+            end
+          end
+        end
+      end
+    end
+
+    context "The BGS claim ptcpnt_vet_id or ptcpnt_clmant_id does not match the veteran's participant ID" do
+      before do
+        allow_any_instance_of(Flipper).to receive(:enabled?).with(:claims_status_v1_bgs_enabled).and_return(true)
+        allow(ClaimsApi::AutoEstablishedClaim).to receive(:get_by_id_and_icn).and_return(nil)
+        allow_any_instance_of(ClaimsApi::V1::ClaimsController)
+          .to receive(:validate_bgs_participant!)
+          .and_raise(
+            Common::Exceptions::ResourceNotFound.new(detail: ClaimsApi::V1::ClaimsController::INVALID_CLAIM_ACCESS_DETAIL)
+          )
+      end
+
+      it 'raises a not found error', run_at: 'Wed, 13 Dec 2017 03:28:23 GMT' do
+        mock_acg(scopes) do |auth_header|
+          allow_any_instance_of(ClaimsApi::V1::ClaimsController)
+            .to receive(:target_veteran).and_return(mock_target_veteran(veteran_id, veteran_participant_id))
+          allow_any_instance_of(bnft_claim_web_service)
+            .to receive(:find_benefit_claim_details_by_benefit_claim_id)
+            .and_return(
+              {
+                benefit_claim_details_dto: {
+                  ptcpnt_vet_id: 'some-other-participant-id',
+                  ptcpnt_clmant_id: 'some-other-participant-id'
+                }
+              }
+            )
+          allow_any_instance_of(bnft_claim_web_service)
+            .to receive(:transform_bgs_claim_to_evss)
+            .and_return(ClaimsApi::EVSSClaim.new(evss_id:, data: evss_claim_data))
+
+          make_claim_request(auth_header)
+
+          expect(response).to have_http_status(:not_found)
+          expect(JSON.parse(response.body)['errors'][0]['detail'])
+            .to eq('Claim not found')
+        end
+      end
+    end
+  end
+
   context 'for a single claim' do
     it 'shows a single Claim', run_at: 'Wed, 13 Dec 2017 03:28:23 GMT' do
       mock_acg(scopes) do |auth_header|
@@ -111,6 +406,7 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
                    source: 'abraham lincoln',
                    auth_headers: { some: 'data' },
                    evss_id: 600_118_851,
+                   veteran_icn: '1013062086V794840',
                    id: 'd5536c5c-0465-4038-a368-1a9d9daf65c9')
             VCR.use_cassette('claims_api/bgs/claims/claim') do
               get(
@@ -131,6 +427,7 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
                    source: 'abraham lincoln',
                    auth_headers: { some: 'data' },
                    evss_id: 600_118_851,
+                   veteran_icn: '1013062086V794840',
                    id: 'd5536c5c-0465-4038-a368-1a9d9daf65c9')
             VCR.use_cassette('claims_api/bgs/claims/claim') do
               get(
@@ -152,6 +449,7 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
                    source: 'abraham lincoln',
                    auth_headers: { some: 'data' },
                    evss_id: 600_118_851,
+                   veteran_icn: '1013062086V794840',
                    id: 'd5536c5c-0465-4038-a368-1a9d9daf65c9')
             VCR.use_cassette('claims_api/bgs/claims/claim') do
               get(
@@ -174,6 +472,7 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
                  source: 'oddball',
                  auth_headers: { some: 'data' },
                  evss_id: 600_118_851,
+                 veteran_icn: '1013062086V794840',
                  id: 'd5536c5c-0465-4038-a368-1a9d9daf65c9')
           expect_any_instance_of(claims_service).to receive(:update_from_remote)
             .and_raise(StandardError.new('no claim found'))
@@ -259,6 +558,7 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
                  source: 'abraham lincoln',
                  auth_headers: auth_header,
                  evss_id: 600_118_851,
+                 veteran_icn: '1013062086V794840',
                  id: 'd5536c5c-0465-4038-a368-1a9d9daf65c9',
                  status: 'errored',
                  evss_response: [{ 'key' => 'Error', 'severity' => 'FATAL', 'text' => 'Failed' }])
@@ -276,6 +576,7 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
                  source: 'abraham lincoln',
                  auth_headers: auth_header,
                  evss_id: 600_118_851,
+                 veteran_icn: '1013062086V794840',
                  id: 'd5536c5c-0465-4038-a368-1a9d9daf65c9',
                  status: 'errored',
                  evss_response: nil)
@@ -294,6 +595,7 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
                    source: 'abraham lincoln',
                    auth_headers: auth_header,
                    evss_id: 600_118_851,
+                   veteran_icn: '1013062086V794840',
                    id: 'd5536c5c-0465-4038-a368-1a9d9daf65c9',
                    status: 'errored',
                    evss_response: [{ 'key' => 'Error', 'severity' => 'FATAL', 'text' => 'BD upload failed' }])
@@ -406,6 +708,7 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
                source: 'abraham lincoln',
                auth_headers: auth_header,
                evss_id: 600_118_851,
+               veteran_icn: '1013062086V794840',
                id: 'd5536c5c-0465-4038-a368-1a9d9daf65c9',
                status: 'errored',
                evss_response: err_message)

@@ -27,6 +27,7 @@ module ClaimsApi
     # BEGIN: switching v1 from evss to bgs. Delete after EVSS is no longer available. Fix controller first.
     def update_from_remote(id)
       bgs_claim = find_benefit_claim_details_by_benefit_claim_id(id)
+
       transform_bgs_claim_to_evss(bgs_claim)
     end
 
