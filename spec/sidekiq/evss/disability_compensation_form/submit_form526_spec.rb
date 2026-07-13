@@ -161,7 +161,7 @@ RSpec.describe EVSS::DisabilityCompensationForm::SubmitForm526, type: :job do
           allow(Form526Submission).to receive(:find).and_return(form526_submission)
           allow(form526_submission).to receive(:submit_with_birls_id_that_hasnt_been_tried_yet!).and_return(nil)
           allow(Flipper).to receive(:enabled?).with(:disability_compensation_pif_fail_notification).and_return(true)
-          allow(form526_submission).to receive(:get_first_name).and_raise(StandardError.new('Email error'))
+          allow(Form526SubmissionFailedEmailJob).to receive(:perform_async).and_raise(StandardError.new('Email error'))
 
           expect(Rails.logger).to receive(:error).with(
             'Form526 Exhausted or Errored (retryable-error-path)',

@@ -341,13 +341,12 @@ class Form526Submission < ApplicationRecord
       # If the received_email_from_polling feature enabled, skip this call
       unless Flipper.enabled?(:disability_526_call_received_email_from_polling,
                               OpenStruct.new({ flipper_id: user_uuid }))
-        submission.send_received_email('Form526Submission#workflow_complete_handler')
+        submission.send_received_email('Form526Submission#workflow_complete_handler', options['first_name'])
       end
       submission.workflow_complete = true
       submission.save
     else
-      params = submission.personalization_parameters(options['first_name'])
-      Form526SubmissionFailedEmailJob.perform_async(params)
+      Form526SubmissionFailedEmailJob.perform_async(submission.id)
     end
   end
 
@@ -477,9 +476,9 @@ class Form526Submission < ApplicationRecord
   # Primary Path: when the poll for PollForm526PDF job is successful
   # Backup Path: when Form526StatusPollingJob reaches "paranoid_success" status
   # @param invoker: string where the Received Email trigger is being called from
-  def send_received_email(invoker)
+  def send_received_email(invoker, first_name = nil)
     Rails.logger.info("Form526ConfirmationEmailJob called for user #{user_uuid}, submission: #{id} from #{invoker}")
-    first_name = get_first_name
+    first_name = get_first_name if first_name.nil?
     params = personalization_parameters(first_name)
     Form526ConfirmationEmailJob.perform_async(params)
   end

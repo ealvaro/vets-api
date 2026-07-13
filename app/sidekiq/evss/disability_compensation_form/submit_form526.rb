@@ -59,9 +59,7 @@ module EVSS
         begin
           notify_enabled = Flipper.enabled?(:disability_compensation_pif_fail_notification)
           if submission && next_birls_jid.nil? && msg['error_message'] == 'PIF in use' && notify_enabled
-            first_name = submission.get_first_name&.capitalize || 'Sir or Madam'
-            params = submission.personalization_parameters(first_name)
-            Form526SubmissionFailedEmailJob.perform_async(params)
+            Form526SubmissionFailedEmailJob.perform_async(submission.id, 'pif')
           end
         rescue => e
           log_error(msg, e)

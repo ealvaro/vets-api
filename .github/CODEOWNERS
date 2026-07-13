@@ -2227,6 +2227,7 @@ spec/sidekiq/form526_failure_state_snapshot_job_spec.rb @software/disability-ben
 spec/sidekiq/form526_new_conditions_state_snapshot_job_spec.rb @software/disability-benefits @software/backend-review-group
 spec/sidekiq/form526_paranoid_success_polling_job_spec.rb @software/disability-benefits @software/backend-review-group
 spec/sidekiq/form526_status_polling_job_spec.rb @software/disability-benefits @software/backend-review-group
+spec/sidekiq/form526_submission_failed_email_job_spec.rb @software/disability-benefits @software/backend-review-group
 spec/sidekiq/form526_submission_failure_email_job_spec.rb @software/disability-benefits @software/backend-review-group
 spec/sidekiq/form526_submission_processing_report_job_spec.rb @software/disability-benefits @software/backend-review-group
 spec/sidekiq/form5655 @software/vsa-debt-resolution @software/backend-review-group
