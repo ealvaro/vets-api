@@ -4016,3 +4016,6 @@ features:
   enable_combined_form_bgs_processing:
     actor_type: user
     description: When enabled, attempt to submit 686+674 data to BGS using a single benefit claim
+  va_dependents_stepchild_flow:
+    actor_type: user
+    description: If enabled, show the latest flow to add a stepchild through dependents form 686c-674
