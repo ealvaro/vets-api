@@ -9,6 +9,7 @@ require 'scopes/form526_submission_state'
 class Form526Submission < ApplicationRecord
   extend Logging::ThirdPartyTransaction::MethodWrapper
   include Form526ClaimFastTrackingConcern
+  include Form526ConditionsLoggingConcern
   include Form526MPIConcern
   include Scopes::Form526SubmissionState
 
@@ -92,6 +93,7 @@ class Form526Submission < ApplicationRecord
   def start
     log_max_cfi_metrics_on_submit
     log_document_type_metrics
+    log_conditions_date_metrics
     start_evss_submission_job
   end
 

@@ -206,6 +206,7 @@ app/models/concerns/authorization.rb @software/backend-review-group @software/oc
 app/models/concerns/coe_claim_form_validation.rb @software/va-core-veteran-experiences @software/backend-review-group
 app/models/concerns/coe_claim_form_validation/ @software/va-core-veteran-experiences @software/backend-review-group
 app/models/concerns/form526_claim_fast_tracking_concern.rb @software/disability-benefits @software/backend-review-group
+app/models/concerns/form526_conditions_logging_concern.rb @software/disability-benefits @software/backend-review-group
 app/models/concerns/ibm_data_dictionary.rb @software/benefits-optimization-aquia @software/backend-review-group
 app/models/concerns/form526_mpi_concern.rb @software/disability-benefits @software/backend-review-group
 app/models/concerns/form526_rapid_ready_for_decision_concern.rb @software/disability-benefits @software/backend-review-group
@@ -1978,6 +1979,7 @@ spec/models/veteran_enrollment_system/form1095_b/form1095_b_spec.rb @software/ba
 spec/models/veteran_onboarding_spec.rb @software/backend-review-group @software/va-core-veteran-experiences
 spec/models/concerns/coe_claim_form_validation/ @software/va-core-veteran-experiences @software/backend-review-group
 spec/models/concerns/form526_claim_fast_tracking_concern_spec.rb @software/disability-benefits @software/backend-review-group
+spec/models/concerns/form526_conditions_logging_concern_spec.rb @software/disability-benefits @software/backend-review-group
 spec/models/concerns/ibm_data_dictionary_spec.rb @software/benefits-optimization-aquia @software/backend-review-group
 spec/models/concerns/pension_award_helper_spec.rb @software/benefits-dependents-management @software/backend-review-group
 spec/models/concerns/signature_required_spec.rb @software/vfs-mhv-integration @software/backend-review-group
