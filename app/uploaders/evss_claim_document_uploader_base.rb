@@ -23,7 +23,7 @@ class EVSSClaimDocumentUploaderBase < CarrierWave::Uploader::Base
   before :store, :validate_file_size
 
   def size_range
-    (1.byte)...(99.megabytes)
+    (1.byte)...(100.megabytes)
   end
 
   def extension_allowlist
@@ -31,7 +31,7 @@ class EVSSClaimDocumentUploaderBase < CarrierWave::Uploader::Base
   end
 
   def max_file_size_non_pdf
-    50.megabytes
+    100.megabytes
   end
 
   # EVSS will split PDF's larger than 50mb before sending to VBA who has a limit of 50mb. so,
@@ -39,7 +39,7 @@ class EVSSClaimDocumentUploaderBase < CarrierWave::Uploader::Base
   def validate_file_size(file)
     if file.content_type != 'application/pdf' && file.size > max_file_size_non_pdf
       raise CarrierWave::IntegrityError, I18n.t(:'errors.messages.max_size_error',
-                                                max_size: '50MB')
+                                                max_size: '100MB')
     end
   end
 end
