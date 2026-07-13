@@ -277,7 +277,7 @@ RSpec.describe HCA::EzrSubmissionJob, type: :job do
 
         it 'logs the error' do
           allow(ezr_service).to receive(:submit_sync).with(form).once.and_raise(error)
-          expect(Rails.logger).to receive(:error)
+          allow(Rails.logger).to receive(:error)
           expect(Form1010Ezr::Service).to receive(:log_submission_failure).with(
             form,
             '[10-10EZR] failure'
@@ -432,6 +432,45 @@ RSpec.describe HCA::EzrSubmissionJob, type: :job do
         expect(ezr_service).to receive(:submit_sync).with(form)
 
         subject
+      end
+    end
+
+    context 'with attachment logging' do
+      subject do
+        described_class.new.perform(encrypted_form_with_attachments, user.uuid)
+      end
+
+      let(:form_with_attachments) do
+        form.merge({
+                     'attachments' => [
+                       { 'confirmationCode' => 'guid1', 'dd214' => false },
+                       { 'confirmationCode' => 'guid2', 'dd214' => true }
+                     ]
+                   })
+      end
+      let(:encrypted_form_with_attachments) { HealthCareApplication::LOCKBOX.encrypt(form_with_attachments.to_json) }
+
+      it 'logs submission with attachment guids on success' do
+        expect(ezr_service).to receive(:submit_sync).with(form_with_attachments)
+        allow(Rails.logger).to receive(:info)
+
+        subject
+
+        expect(Rails.logger).to have_received(:info).with(/\[HCA_SUBMISSION\].*attachment_guids=guid1,guid2/)
+      end
+
+      it 'logs submission failure with attachment guids' do
+        allow(ezr_service).to receive(:submit_sync).with(form_with_attachments).once.and_raise(HCA::SOAPParser::ValidationError)
+        allow(Flipper).to receive(:enabled?).with(:ezr_use_va_notify_on_submission_failure).and_return(false)
+        allow(Rails.logger).to receive(:error)
+        allow(StatsD).to receive(:increment)
+
+        subject
+
+        expect(Rails.logger).to have_received(:error).with(
+          /\[HCA_SUBMISSION_FAILED\].*attachment_guids=guid1,guid2/,
+          hash_including(exception: anything)
+        )
       end
     end
   end

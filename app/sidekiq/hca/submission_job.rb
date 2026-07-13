@@ -74,7 +74,11 @@ module HCA
 
     def perform(user_identifier, encrypted_form, health_care_application_id, google_analytics_client_id)
       @health_care_application = HealthCareApplication.find(health_care_application_id)
+      form = nil
+      current_retry_attempt = retry_attempt
       form = self.class.decrypt_form(encrypted_form)
+      attachment_guids = extract_attachment_guids(form, fallback: 'none')
+      log_submission_start(health_care_application_id, attachment_guids, current_retry_attempt)
 
       result = submit(user_identifier, form, google_analytics_client_id)
       return unless result
@@ -82,8 +86,10 @@ module HCA
       Rails.logger.info "[10-10EZ] - SubmissionID=#{result[:formSubmissionId]}"
       @health_care_application.form = form.to_json
       @health_care_application.set_result_on_success!(result)
-    rescue
+    rescue => e
       @health_care_application.update!(state: 'error')
+      failed_guids = extract_attachment_guids(form, fallback: 'unknown')
+      log_submission_failure(health_care_application_id, failed_guids, current_retry_attempt, e)
 
       raise
     end
@@ -101,6 +107,41 @@ module HCA
         state: 'failed',
         form: form.to_json,
         google_analytics_client_id:
+      )
+    end
+
+    def retry_attempt
+      sidekiq_context = Thread.current[:sidekiq_context]
+      return nil unless sidekiq_context.is_a?(Hash)
+
+      retry_count = sidekiq_context[:retry_count] || sidekiq_context['retry_count']
+      retry_count&.to_i
+    end
+
+    def extract_attachment_guids(form, fallback:)
+      form&.dig('attachments')
+          &.map { |attachment| attachment['confirmationCode'] }
+          &.compact
+          &.join(',')
+          .presence || fallback
+    end
+
+    def log_submission_start(health_care_application_id, attachment_guids, current_retry_attempt)
+      Rails.logger.info(
+        '[HCA_SUBMISSION] 10-10EZ async submission initiated | ' \
+        "health_care_application_id=#{health_care_application_id} | " \
+        "attachment_guids=#{attachment_guids} | " \
+        "retry_attempt=#{current_retry_attempt}"
+      )
+    end
+
+    def log_submission_failure(health_care_application_id, attachment_guids, current_retry_attempt, error)
+      Rails.logger.error(
+        '[HCA_SUBMISSION_FAILED] 10-10EZ async submission failed | ' \
+        "health_care_application_id=#{health_care_application_id} | " \
+        "attachment_guids=#{attachment_guids} | " \
+        "retry_attempt=#{current_retry_attempt}",
+        exception: error
       )
     end
   end

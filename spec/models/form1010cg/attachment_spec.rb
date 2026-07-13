@@ -61,7 +61,13 @@ RSpec.describe Form1010cg::Attachment, type: :model do
         type: 'application/pdf'
       )
     end
-    let(:attachment_uploader) { instance_double(Form1010cg::PoaUploader, filename: 'locked_pdf_password_is_test.pdf') }
+    let(:attachment_uploader) do
+      instance_double(
+        Form1010cg::PoaUploader,
+        filename: 'locked_pdf_password_is_test.pdf',
+        store_dir: guid
+      )
+    end
 
     before do
       allow(Form1010cg::PoaUploader).to receive(:new).and_return(attachment_uploader)

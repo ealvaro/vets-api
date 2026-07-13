@@ -25,8 +25,19 @@ class FormAttachment < ApplicationRecord
   def set_file_data!(file, file_password = nil)
     attachment_uploader = get_attachment_uploader
     file = unlock_pdf(file, file_password) if !file_password.nil? && File.extname(file).downcase == '.pdf'
+
     attachment_uploader.store!(file)
     self.file_data = { filename: attachment_uploader.filename }.to_json
+
+    log_s3_key = redacted_s3_key_for_log(attachment_uploader.store_dir, attachment_uploader.filename)
+
+    Rails.logger.info(
+      '[HCA_S3_WRITE] S3 object written | ' \
+      "correlation_id=#{guid} | " \
+      "s3_key=#{log_s3_key}"
+    )
+
+    file_data
   rescue UploaderVirusScan::VirusFoundError
     Rails.logger.warn("#{self.class.name}#set_file_data!: virus detected in upload")
     raise Common::Exceptions::UnprocessableEntity.new(
@@ -44,10 +55,24 @@ class FormAttachment < ApplicationRecord
 
   def get_file
     attachment_uploader = get_attachment_uploader
-    attachment_uploader.retrieve_from_store!(
-      parsed_file_data['filename']
+    filename = parsed_file_data['filename']
+    log_s3_key = redacted_s3_key_for_log(attachment_uploader.store_dir, filename)
+
+    attachment_uploader.retrieve_from_store!(filename)
+    Rails.logger.info(
+      '[HCA_S3_READ] S3 object retrieved | ' \
+      "correlation_id=#{guid} | " \
+      "s3_key=#{log_s3_key}"
     )
     attachment_uploader.file
+  rescue => e
+    Rails.logger.error(
+      '[HCA_S3_READ_FAILURE] S3 object retrieval failed | ' \
+      "correlation_id=#{guid} | " \
+      "s3_key=#{log_s3_key}",
+      exception: e
+    )
+    raise
   end
 
   private
@@ -89,5 +114,11 @@ class FormAttachment < ApplicationRecord
 
   def get_attachment_uploader
     @au ||= self.class::ATTACHMENT_UPLOADER_CLASS.new(guid)
+  end
+
+  def redacted_s3_key_for_log(store_dir, filename)
+    return "#{store_dir}/#{filename}" if filename.to_s == guid.to_s
+
+    "#{store_dir}/[REDACTED]"
   end
 end

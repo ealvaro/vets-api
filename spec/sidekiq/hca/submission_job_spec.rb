@@ -147,7 +147,7 @@ RSpec.describe HCA::SubmissionJob, type: :job do
     context 'with a successful submission' do
       before do
         expect(hca_service).to receive(:submit_form).with(form).once.and_return(result)
-        expect(Rails.logger).to receive(:info).with("[10-10EZ] - SubmissionID=#{result[:formSubmissionId]}")
+        allow(Rails.logger).to receive(:info)
       end
 
       it 'calls the service and save the results' do
@@ -157,6 +157,49 @@ RSpec.describe HCA::SubmissionJob, type: :job do
         expect(health_care_application.success?).to be(true)
         expect(health_care_application.form_submission_id).to eq(result[:formSubmissionId])
         expect(health_care_application.timestamp).to eq(result[:timestamp])
+        expect(Rails.logger).to have_received(:info).with("[10-10EZ] - SubmissionID=#{result[:formSubmissionId]}")
+      end
+    end
+
+    context 'with attachment logging' do
+      subject do
+        described_class.new.perform(
+          user_identifier,
+          encrypted_form_with_attachments,
+          health_care_application.id,
+          google_analytics_client_id
+        )
+      end
+
+      let(:form_with_attachments) do
+        form.merge({
+                     'attachments' => [
+                       { 'confirmationCode' => 'guid1', 'dd214' => false },
+                       { 'confirmationCode' => 'guid2', 'dd214' => true }
+                     ]
+                   })
+      end
+      let(:encrypted_form_with_attachments) { HealthCareApplication::LOCKBOX.encrypt(form_with_attachments.to_json) }
+
+      it 'logs submission with attachment guids on success' do
+        expect(hca_service).to receive(:submit_form).with(form_with_attachments).once.and_return(result)
+        allow(Rails.logger).to receive(:info)
+
+        subject
+
+        expect(Rails.logger).to have_received(:info).with(/\[HCA_SUBMISSION\].*attachment_guids=guid1,guid2/)
+      end
+
+      it 'logs submission failure with attachment guids' do
+        expect(hca_service).to receive(:submit_form).with(form_with_attachments).once.and_raise(Common::Client::Errors::HTTPError)
+        allow(Rails.logger).to receive(:error)
+
+        expect { subject }.to raise_error(Common::Client::Errors::HTTPError)
+
+        expect(Rails.logger).to have_received(:error).with(
+          /\[HCA_SUBMISSION_FAILED\].*attachment_guids=guid1,guid2/,
+          hash_including(exception: anything)
+        )
       end
     end
   end

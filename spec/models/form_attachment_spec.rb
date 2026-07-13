@@ -50,6 +50,14 @@ RSpec.describe FormAttachment do
 
       context 'when file is not a pdf' do
         it 'does not call unlock_pdf' do
+          uploader_double = instance_double(PreneedAttachmentUploader)
+          allow(preneed_attachment).to receive(:get_attachment_uploader).and_return(uploader_double)
+          allow(uploader_double).to receive_messages(
+            store!: true,
+            filename: 'doctors-note.jpg',
+            store_dir: 'preneed_attachments/test-guid'
+          )
+
           file = Rack::Test::UploadedFile.new(Rails.root.join('spec', 'fixtures', 'files', 'doctors-note.jpg'),
                                               'image/jpeg')
           expect(preneed_attachment).not_to receive(:unlock_pdf)
@@ -118,6 +126,105 @@ RSpec.describe FormAttachment do
       file = preneed_attachment2.get_file
 
       expect(file.exists?).to be(true)
+    end
+  end
+
+  describe 'S3 read logging' do
+    it 'logs successful S3 read' do
+      form_attachment = FormAttachment.new(guid: 'test-guid-123')
+      form_attachment.file_data = { filename: 'test.pdf' }.to_json
+
+      uploader_double = instance_double(HCAAttachmentUploader)
+      allow(form_attachment).to receive(:get_attachment_uploader).and_return(uploader_double)
+      allow(uploader_double).to receive_messages(
+        store_dir: 'hca_attachments',
+        retrieve_from_store!: true,
+        file: 'file_obj'
+      )
+
+      allow(Rails.logger).to receive(:info)
+
+      form_attachment.get_file
+
+      expect(Rails.logger).to have_received(:info).with(
+        %r{\[HCA_S3_READ\].*correlation_id=#{form_attachment.guid}.*s3_key=hca_attachments/\[REDACTED\]}
+      )
+    end
+
+    it 'logs S3 read failure with exception parameter' do
+      form_attachment = FormAttachment.new(guid: 'test-guid-456')
+      form_attachment.file_data = { filename: 'missing.pdf' }.to_json
+
+      uploader_double = instance_double(HCAAttachmentUploader)
+      allow(form_attachment).to receive(:get_attachment_uploader).and_return(uploader_double)
+      allow(uploader_double).to receive(:store_dir).and_return('hca_attachments')
+      allow(uploader_double).to receive(:retrieve_from_store!).and_raise(Errno::ENOENT, 'File not found')
+
+      allow(Rails.logger).to receive(:error)
+
+      expect { form_attachment.get_file }.to raise_error(Errno::ENOENT)
+
+      expect(Rails.logger).to have_received(:error)
+        .with(
+          %r{\[HCA_S3_READ_FAILURE\].*correlation_id=#{form_attachment.guid}.*s3_key=hca_attachments/\[REDACTED\]},
+          hash_including(exception: anything)
+        )
+    end
+  end
+
+  describe 'S3 write logging' do
+    it 'logs successful S3 write' do
+      form_attachment = FormAttachment.new(guid: 'write-guid-123')
+
+      uploader_double = instance_double(HCAAttachmentUploader)
+      allow(form_attachment).to receive(:get_attachment_uploader).and_return(uploader_double)
+      allow(uploader_double).to receive_messages(
+        store_dir: 'hca_attachments',
+        filename: 'doc.pdf',
+        store!: true
+      )
+
+      file = Rack::Test::UploadedFile.new(Rails.root.join('spec', 'fixtures', 'preneeds', 'extras.pdf'))
+
+      allow(Rails.logger).to receive(:info)
+
+      form_attachment.set_file_data!(file)
+
+      expect(Rails.logger).to have_received(:info).with(
+        /\[HCA_S3_WRITE\].*correlation_id=#{form_attachment.guid}/
+      )
+    end
+
+    it 'logs S3 write failure on virus detected' do
+      form_attachment = FormAttachment.new(guid: 'virus-guid')
+
+      uploader_double = instance_double(HCAAttachmentUploader)
+      allow(form_attachment).to receive(:get_attachment_uploader).and_return(uploader_double)
+      allow(uploader_double).to receive(:store!).and_raise(UploaderVirusScan::VirusFoundError)
+
+      file = Rack::Test::UploadedFile.new(Rails.root.join('spec', 'fixtures', 'preneeds', 'extras.pdf'))
+
+      allow(Rails.logger).to receive(:warn)
+
+      expect { form_attachment.set_file_data!(file) }.to raise_error(Common::Exceptions::UnprocessableEntity)
+
+      expect(Rails.logger).to have_received(:warn).with(/virus detected/)
+    end
+
+    it 'logs S3 write failure on integrity error' do
+      form_attachment = FormAttachment.new(guid: 'integrity-guid')
+
+      uploader_double = instance_double(HCAAttachmentUploader)
+      allow(form_attachment).to receive(:get_attachment_uploader).and_return(uploader_double)
+      allow(uploader_double).to receive(:store!).and_raise(CarrierWave::IntegrityError, 'File size too large')
+
+      file = Rack::Test::UploadedFile.new(Rails.root.join('spec', 'fixtures', 'preneeds', 'extras.pdf'))
+
+      allow(Rails.logger).to receive(:warn)
+
+      expect { form_attachment.set_file_data!(file) }.to raise_error(Common::Exceptions::UnprocessableEntity)
+
+      expect(Rails.logger).to have_received(:warn).with(/File size too large/)
     end
   end
 end

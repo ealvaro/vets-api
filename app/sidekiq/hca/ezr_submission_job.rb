@@ -103,11 +103,18 @@ module HCA
     private_class_method :send_v2_failure_email, :send_v1_failure_email
 
     def perform(encrypted_form, user_uuid)
+      parsed_form = nil
+      current_retry_attempt = retry_attempt
       user = User.find(user_uuid)
       parsed_form = self.class.decrypt_form(encrypted_form)
-      Form1010Ezr::Service.new(user).submit_sync(parsed_form)
+      log_submission_start_with_attachments(user_uuid, parsed_form, current_retry_attempt)
+
+      submit_form(user, parsed_form)
     rescue VALIDATION_ERROR => e
       StatsD.increment("#{STATSD_KEY_PREFIX}.enrollment_system_validation_error")
+      failed_guids = extract_attachment_guids(parsed_form, fallback: 'unknown')
+      log_submission_failure(user_uuid, failed_guids, current_retry_attempt, e)
+
       PersonalInformationLog.create!(data: parsed_form, error_class: 'Form1010Ezr EnrollmentSystemValidationFailure')
       log_validation_error(parsed_form, e)
       self.class.send_failure_email(parsed_form) if Flipper.enabled?(:ezr_use_va_notify_on_submission_failure)
@@ -136,6 +143,50 @@ module HCA
       Rails.logger.info("Form1010Ezr FailedDidNotRetry: #{e.message}")
 
       Form1010Ezr::Service.log_submission_failure(parsed_form, '[10-10EZR] failure did not retry')
+    end
+
+    def retry_attempt
+      sidekiq_context = Thread.current[:sidekiq_context]
+      return nil unless sidekiq_context.is_a?(Hash)
+
+      retry_count = sidekiq_context[:retry_count] || sidekiq_context['retry_count']
+      retry_count&.to_i
+    end
+
+    def submit_form(user, parsed_form)
+      Form1010Ezr::Service.new(user).submit_sync(parsed_form)
+    end
+
+    def extract_attachment_guids(parsed_form, fallback:)
+      parsed_form&.dig('attachments')
+                 &.map { |attachment| attachment['confirmationCode'] }
+                 &.compact
+                 &.join(',')
+                 .presence || fallback
+    end
+
+    def log_submission_start_with_attachments(user_uuid, parsed_form, current_retry_attempt)
+      attachment_guids = extract_attachment_guids(parsed_form, fallback: 'none')
+      log_submission_start(user_uuid, attachment_guids, current_retry_attempt)
+    end
+
+    def log_submission_start(user_uuid, attachment_guids, current_retry_attempt)
+      Rails.logger.info(
+        '[HCA_SUBMISSION] 10-10EZR async submission initiated | ' \
+        "user_uuid=#{user_uuid} | " \
+        "attachment_guids=#{attachment_guids} | " \
+        "retry_attempt=#{current_retry_attempt}"
+      )
+    end
+
+    def log_submission_failure(user_uuid, attachment_guids, current_retry_attempt, error)
+      Rails.logger.error(
+        '[HCA_SUBMISSION_FAILED] 10-10EZR async submission failed | ' \
+        "user_uuid=#{user_uuid} | " \
+        "attachment_guids=#{attachment_guids} | " \
+        "retry_attempt=#{current_retry_attempt}",
+        exception: error
+      )
     end
   end
 end
