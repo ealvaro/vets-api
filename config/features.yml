@@ -1083,9 +1083,6 @@ features:
   dependents_bypass_schema_validation:
     actor_type: user
     description: Bypasses vets_json_schema validation for dependency claims
-  disability_526_add_person_refresh_fix:
-    actor_type: user
-    description: Enables a profile dispatch to allow user with recently added missing IDs to enter the 526 form without a refresh
   disability_526_form4142_polling_records:
     actor_type: user
     description: enables creation of, and tracking of, sent form 4142 documents, from the 526 flow, to the Lighthouse Benefits Intake API
@@ -4013,9 +4010,6 @@ features:
     description: Enables prefill update for 21p-526ez and 21p-0969 forms
   mms_structured_data_prefix:
     actor_type: user
-  error_113_tech_support_line_active:
-    actor_type: user
-    description: Shows the tech support phone number and call-to-action on the error 113 sign-in page when enabled.
   enable_date_last_verified_for_dependents:
     actor_type: user
     description: Enables fetching date-last-verified from Persons API when fetching dependents
