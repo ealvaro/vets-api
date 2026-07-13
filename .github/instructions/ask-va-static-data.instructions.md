@@ -199,7 +199,7 @@ Filtering by hierarchy:
 - **Topics:** `ParentId == category_id`
 - **Subtopics:** `ParentId == topic_id`
 
-Sorting: all three use `RankOrder` primary with a `Name` fallback — see "Sorting Static Data" below.
+Sorting: all three sort by `RankOrder` ascending with an alphabetical `Name` tie-break — see "Sorting Static Data" below.
 
 Mock data: `modules/ask_va_api/config/locales/static_data.json` (used when `user_mock_data` param is truthy).
 
@@ -212,17 +212,12 @@ When filtering categories/topics/subtopics in a retriever's `filter_data`.
 
 ### Pattern
 All three retrievers sort via the shared `BaseRetriever#sort_by_rank_order_or_name` helper. It sorts
-by `RankOrder` when every item has one, and falls back to `Name` (with `.to_s`) when **any** item in
-the filtered set has a `nil` `RankOrder`:
+by `RankOrder` ascending and breaks ties alphabetically by `Name`, using a single compound sort key:
 
 ```ruby
 # BaseRetriever (private) — the single source of truth for static-data ordering
 def sort_by_rank_order_or_name(items)
-  if items.any? { |item| item[:RankOrder].nil? }
-    items.sort_by { |item| item[:Name].to_s }
-  else
-    items.sort_by { |item| item[:RankOrder] }
-  end
+  items.sort_by { |item| [item[:RankOrder].to_i, item[:Name].to_s] }
 end
 
 # Each retriever's filter_data: do the select, then delegate sorting
@@ -234,23 +229,41 @@ def filter_data(data)
 end
 ```
 
+**`RankOrder` is always numeric** — the CRM coalesces `nil` to `0`, so `RankOrder` is never `nil` in
+practice. `0` means "unranked"; because it is the smallest rank, unranked items sort first,
+alphabetically among themselves. `.to_i` is only a defensive safety net (`nil.to_i == 0`).
+
 **Anti-pattern:**
 ```ruby
-# DON'T inline a per-retriever sort — it drifts. Categories once sorted by RankOrder while
-# topics/subtopics sorted by Name, causing inconsistent ordering across sibling endpoints.
+# DON'T branch on nil and sort the whole list by Name — that drops the alphabetical
+# tie-break at non-zero ranks and mis-orders equal-rank siblings.
+def sort_by_rank_order_or_name(items)
+  return items.sort_by { |i| i[:Name].to_s } if items.any? { |i| i[:RankOrder].nil? }
+
+  items.sort_by { |i| i[:RankOrder] }
+end
+
+# DON'T inline a per-retriever sort — it drifts across sibling endpoints.
 data[:Topics].select { |t| t[:ParentId] == @parent_id }.sort_by { |t| t[:Name] }
 ```
 
-**Why:** `RankOrder` is the CRM's intended display order; `Name` is only a safe fallback when the
-cache omits ranks. Keeping the logic in `BaseRetriever` guarantees categories, topics, and subtopics
-stay consistent and future changes happen in one place. `.to_s` avoids `nil` comparison errors.
+**Why:** `RankOrder` is the CRM's intended display order; the alphabetical tie-break gives a stable,
+predictable order for equal ranks (including the large `0`/unranked group). Keeping the logic in
+`BaseRetriever` guarantees categories, topics, and subtopics stay consistent and future changes happen
+in one place. (ask-va#2579)
 
-### Testing gotcha: mock data has all RankOrders populated (with ties)
-`static_data.json` gives **every** item a `RankOrder` (values `0..18` + `999`, many ties). So a
-mock-data (`user_mock_data: true`) spec asserting `names == names.sort` will FAIL under RankOrder
-sorting — assert `rank_orders == rank_orders.sort` instead. To exercise the `Name` fallback, stub
-`Crm::CacheData` (`user_mock_data: false`) with data where at least one `RankOrder` is `nil`. To
-prove `RankOrder` wins, use data whose RankOrder order differs from Name order.
+### Testing the sort behavior
+- **Mock data has every `RankOrder` populated** (`static_data.json`, values `0..18` + `999`, many
+  ties). A `user_mock_data: true` spec asserting `names == names.sort` will FAIL — assert
+  `rank_orders == rank_orders.sort` instead.
+- **`Metrics/ModuleLength` (RuboCop) is enforced on spec files here** (only `Metrics/BlockLength` is
+  excluded for specs). Adding several `context` blocks to each resource spec can push the spec
+  `module` past the 100-line limit. Put exhaustive shared-behavior coverage in a dedicated
+  `spec/app/lib/ask_va_api/base_retriever_spec.rb` — call the private helper via
+  `retriever.send(:sort_by_rank_order_or_name, items)` — and keep each resource spec to one focused
+  case (e.g., `nil`→`0` ordering) confirming the behavior flows through per resource.
+- To prove ties break alphabetically, use data whose `Name` order differs from insertion order at the
+  same `RankOrder` (e.g., `Zebra` and `Apple` both rank 2 → `Apple` first).
 
 ---
 

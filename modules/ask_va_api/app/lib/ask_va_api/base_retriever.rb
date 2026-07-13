@@ -30,11 +30,7 @@ module AskVAApi
     end
 
     def sort_by_rank_order_or_name(items)
-      if items.any? { |item| item[:RankOrder].nil? }
-        items.sort_by { |item| item[:Name].to_s }
-      else
-        items.sort_by { |item| item[:RankOrder] }
-      end
+      items.sort_by { |item| [item[:RankOrder].to_i, item[:Name].to_s] }
     end
 
     def handle_response_data(response:, error_class:)

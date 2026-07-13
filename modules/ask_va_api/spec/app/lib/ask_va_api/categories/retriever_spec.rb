@@ -74,12 +74,12 @@ module AskVAApi
               expect(retriever.call.map(&:rank_order)).to eq([1, 2])
             end
 
-            it 'does not fall back to Name when all RankOrder values are present' do
+            it 'orders by RankOrder ascending' do
               expect(retriever.call.map(&:name)).to eq(%w[Zebra Apple])
             end
           end
 
-          context 'when any RankOrder value is nil' do
+          context 'when a RankOrder is nil' do
             let(:parsed_data) do
               { Topics: [{ Id: 1, Name: 'Banana', ParentId: nil, RankOrder: 2 },
                          { Id: 2, Name: 'Apple', ParentId: nil, RankOrder: nil },
@@ -91,8 +91,8 @@ module AskVAApi
               allow(static_data_service).to receive(:call).and_return(parsed_data)
             end
 
-            it 'falls back to sorting by Name' do
-              expect(retriever.call.map(&:name)).to eq(%w[Apple Banana Cherry])
+            it 'treats nil as rank 0, placing it first, then sorts the rest by RankOrder' do
+              expect(retriever.call.map(&:name)).to eq(%w[Apple Cherry Banana])
             end
           end
 
