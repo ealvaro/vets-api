@@ -103,6 +103,62 @@ RSpec.describe BGS::PaymentService do
       end
     end
 
+    context 'when file_number is missing' do
+      let(:file_number) { nil }
+      let(:ssn_number) { '796043735' }
+
+      it 'uses SSN as fallback and logs the usage' do
+        payment = {
+          payment_type: 'Compensation & Pension - Recurring',
+          payee_type: 'Veteran',
+          beneficiary_participant_id: participant_id,
+          recipient_participant_id: participant_id
+        }
+        response = { payments: { payment: } }
+        payment_information = double('payment information')
+        service = BGS::PaymentService.new(user)
+
+        allow(service).to receive(:service).and_return(double(payment_information:))
+        expect(payment_information).to receive(:retrieve_payment_summary_with_bdn)
+          .with(participant_id, ssn_number, '00', ssn_number)  # SSN used as file_number
+          .and_return(response)
+
+        expect(Rails.logger).to receive(:info).with('Using SSN as fallback for missing file_number',
+                                                    participant_id_present: true)
+        expect(StatsD).to receive(:increment).with('api.payment_history.file_number_fallback')
+
+        expect(service.payment_history(person)[:payments][:payment]).to eq([payment])
+      end
+    end
+
+    context 'when file_number is blank' do
+      let(:file_number) { '' }
+      let(:ssn_number) { '796043735' }
+
+      it 'uses SSN as fallback and logs the usage' do
+        payment = {
+          payment_type: 'Compensation & Pension - Recurring',
+          payee_type: 'Veteran',
+          beneficiary_participant_id: participant_id,
+          recipient_participant_id: participant_id
+        }
+        response = { payments: { payment: } }
+        payment_information = double('payment information')
+        service = BGS::PaymentService.new(user)
+
+        allow(service).to receive(:service).and_return(double(payment_information:))
+        expect(payment_information).to receive(:retrieve_payment_summary_with_bdn)
+          .with(participant_id, ssn_number, '00', ssn_number)  # SSN used as file_number
+          .and_return(response)
+
+        expect(Rails.logger).to receive(:info).with('Using SSN as fallback for missing file_number',
+                                                    participant_id_present: true)
+        expect(StatsD).to receive(:increment).with('api.payment_history.file_number_fallback')
+
+        expect(service.payment_history(person)[:payments][:payment]).to eq([payment])
+      end
+    end
+
     context 'error' do
       let(:file_number) { '000000000' }
       let(:participant_id) { '000000000' }

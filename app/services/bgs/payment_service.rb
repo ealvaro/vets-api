@@ -13,9 +13,10 @@ module BGS
     end
 
     def payment_history(person)
+      file_number = ensure_file_number(person)
       response = service.payment_information.retrieve_payment_summary_with_bdn(
         person.participant_id,
-        person.file_number,
+        file_number,
         '00', # payee code
         person.ssn_number
       )
@@ -67,6 +68,19 @@ module BGS
 
     def monitor
       @monitor ||= BGS::Monitor.new
+    end
+
+    def ensure_file_number(person)
+      return person.file_number if person.file_number.present?
+
+      # Use SSN as fallback if file_number is missing or blank
+      file_number = person.ssn_number
+
+      Rails.logger.info('Using SSN as fallback for missing file_number',
+                        participant_id_present: person.participant_id.present?)
+      StatsD.increment('api.payment_history.file_number_fallback')
+
+      file_number
     end
   end
 end
