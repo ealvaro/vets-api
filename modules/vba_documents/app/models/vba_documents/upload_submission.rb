@@ -140,7 +140,7 @@ module VBADocuments
       return true if status == 'vbms' ||
                      status == 'expired' ||
                      (status == 'success' && metadata[FINAL_SUCCESS_STATUS_KEY].present?) ||
-                     (status == 'error' && code.start_with?('DOC1')) || # non-upstream errors only
+                     (status == 'error' && code&.start_with?('DOC1')) || # non-upstream errors only
                      (status == 'error' && code == 'DOC202' &&
                        (Time.zone.now - created_at) / 1.day > MAX_UPSTREAM_ERROR_AGE_DAYS)
 

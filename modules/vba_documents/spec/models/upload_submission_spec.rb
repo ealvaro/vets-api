@@ -571,6 +571,11 @@ describe VBADocuments::UploadSubmission, type: :model do
     it 'returns true when status is error and the error code is DOC1XX (validation error)' do
       expect(upload_error_validation.in_final_status?).to be(true)
     end
+
+    it 'returns false when status is error and code is nil' do
+      upload = create(:upload_submission, status: 'error', code: nil)
+      expect(upload.in_final_status?).to be(false)
+    end
   end
 
   describe '#track_upload_timeout_error' do
