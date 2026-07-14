@@ -435,6 +435,23 @@ RSpec.describe UnifiedHealthData::Client do
           .with(headers: { 'Authorization' => 'Bearer gateway-token' })
       end
     end
+
+    context 'when mhv_uhd_api_gateway_security_endpoint is enabled but reached directly (NLB, no gateway remap)' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_uhd_api_gateway_security_endpoint).and_return(true)
+        stub_request(:post, gateway_security_url)
+          .to_return(status: 200, headers: { 'authorization' => 'Bearer nlb-token' })
+        stub_request(:get, %r{#{Regexp.escape(host)}/v1/medicalrecords/})
+          .to_return(status: 200, body: '{}', headers: { 'Content-Type' => 'application/json' })
+      end
+
+      it 'falls back to the standard authorization header from the login response' do
+        client.get_allergies_by_date(patient_id: '123', start_date: '2024-01-01', end_date: '2025-01-01')
+
+        expect(WebMock).to have_requested(:get, %r{#{Regexp.escape(host)}/v1/medicalrecords/allergies})
+          .with(headers: { 'Authorization' => 'Bearer nlb-token' })
+      end
+    end
   end
 
   # WebMock is used instead of VCR cassettes here because these tests verify URL-encoding

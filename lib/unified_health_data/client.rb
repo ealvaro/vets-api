@@ -198,7 +198,11 @@ module UnifiedHealthData
           }.to_json
         end
         if Flipper.enabled?(:mhv_uhd_api_gateway_security_endpoint)
-          response.headers['x-amzn-remapped-authorization']
+          # The AWS API Gateway remaps the login response's `Authorization` header to
+          # `x-amzn-remapped-authorization`. When the security endpoint is reached
+          # directly (e.g. via the fwdproxy NLB backend, bypassing the gateway) it
+          # returns the standard `authorization` header instead, so fall back to it.
+          response.headers['x-amzn-remapped-authorization'] || response.headers['authorization']
         else
           response.headers['authorization']
         end
