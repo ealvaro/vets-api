@@ -8,7 +8,7 @@ RSpec.describe V0::SignIn::OktaLogoutController, type: :controller do
 
     let!(:client_config) { create(:client_config, logout_redirect_uri:) }
     let(:okta_client_id) { client_config.client_id }
-    let(:logout_redirect_uri) { 'https://some-logout-redirect-uri.com' }
+    let(:logout_redirect_uri) { 'some-logout-redirect-uri' }
     let(:access_token) { SignIn::AccessTokenJwtEncoder.new(access_token: access_token_object).perform }
     let(:authorization) { "Bearer #{access_token}" }
     let(:created_at) { 1.day.ago }
@@ -64,7 +64,7 @@ RSpec.describe V0::SignIn::OktaLogoutController, type: :controller do
       end
 
       context 'and the client configuration has a configured logout redirect uri' do
-        let(:logout_redirect_uri) { 'https://some-logout-redirect-uri.com' }
+        let(:logout_redirect_uri) { 'some-logout-redirect-uri' }
 
         it 'redirects to the configured logout redirect uri' do
           expect(subject).to redirect_to(logout_redirect_uri)
