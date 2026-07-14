@@ -280,6 +280,7 @@ describe 'IntentToFile', openapi_spec: Rswag::TextHelpers.new.claims_api_docs do
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_ccg(scopes) do
               VCR.use_cassette('claims_api/bgs/intent_to_file_web_service/insert_intent_to_file') do

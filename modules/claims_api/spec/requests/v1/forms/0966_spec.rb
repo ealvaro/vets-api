@@ -26,6 +26,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::0966', type: :request do
 
   before do
     stub_poa_verification
+    stub_claims_api_poa_lookup
   end
 
   describe '#0966' do

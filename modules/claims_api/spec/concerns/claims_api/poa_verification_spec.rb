@@ -131,9 +131,9 @@ describe ClaimsApi::PoaVerification do
         allow_any_instance_of(subject.class).to receive(
           :token
         ).and_return(double(client_credentials_token?: false))
-        veteran_user = double('Veteran::User')
-        allow(Veteran::User).to receive(:new).and_return(veteran_user)
-        allow(veteran_user).to receive(:power_of_attorney).and_return(double(try: 'some_code'))
+        poa_lookup = double('ClaimsApi::PoaLookupService')
+        allow(ClaimsApi::PoaLookupService).to receive(:new).and_return(poa_lookup)
+        allow(poa_lookup).to receive(:power_of_attorney).and_return(double(try: 'some_code'))
       end
 
       it 'handles an Unauthorized error' do

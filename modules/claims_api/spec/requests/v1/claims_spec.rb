@@ -45,6 +45,8 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
 
   before do
     stub_poa_verification
+    stub_claims_api_poa_lookup
+
     # Stub participant validation for legacy request specs that use VCR cassettes with
     # participant IDs that may not match the test veteran.
     allow_any_instance_of(ClaimsApi::V1::ClaimsController)

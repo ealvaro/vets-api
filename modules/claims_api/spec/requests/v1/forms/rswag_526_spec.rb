@@ -103,6 +103,7 @@ Rspec.describe 'Disability Claims', openapi_spec: 'modules/claims_api/app/swagge
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               VCR.use_cassette('claims_api/bgs/claims/claims') do
@@ -145,6 +146,7 @@ Rspec.describe 'Disability Claims', openapi_spec: 'modules/claims_api/app/swagge
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               VCR.use_cassette('claims_api/bgs/claims/claims') do
@@ -180,6 +182,7 @@ Rspec.describe 'Disability Claims', openapi_spec: 'modules/claims_api/app/swagge
 
           def make_stubbed_request(example)
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               VCR.use_cassette('claims_api/bgs/claims/claims') do
@@ -309,6 +312,7 @@ Rspec.describe 'Disability Claims', openapi_spec: 'modules/claims_api/app/swagge
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               allow_any_instance_of(ClaimsApi::SupportingDocumentUploader).to receive(:store!)
@@ -339,6 +343,7 @@ Rspec.describe 'Disability Claims', openapi_spec: 'modules/claims_api/app/swagge
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
             mock_acg(scopes) do
               submit_request(example.metadata)
             end
@@ -372,6 +377,7 @@ Rspec.describe 'Disability Claims', openapi_spec: 'modules/claims_api/app/swagge
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               allow_any_instance_of(ClaimsApi::SupportingDocumentUploader).to receive(:store!)
@@ -409,6 +415,7 @@ Rspec.describe 'Disability Claims', openapi_spec: 'modules/claims_api/app/swagge
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               allow_any_instance_of(ClaimsApi::SupportingDocumentUploader).to receive(:store!)
@@ -448,6 +455,7 @@ Rspec.describe 'Disability Claims', openapi_spec: 'modules/claims_api/app/swagge
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               allow_any_instance_of(ClaimsApi::SupportingDocumentUploader).to receive(:store!)
@@ -523,6 +531,7 @@ Rspec.describe 'Disability Claims', openapi_spec: 'modules/claims_api/app/swagge
           before do |example|
             allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_enable_FES).and_return(false)
             stub_poa_verification
+            stub_claims_api_poa_lookup
             stub_claims_api_auth_token
 
             VCR.use_cassette('claims_api/evss/disability_compensation_form/form_526_valid_validation') do
@@ -572,6 +581,7 @@ Rspec.describe 'Disability Claims', openapi_spec: 'modules/claims_api/app/swagge
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             VCR.use_cassette('claims_api/evss/disability_compensation_form/form_526_valid_validation') do
               mock_acg(scopes) do
@@ -608,6 +618,7 @@ Rspec.describe 'Disability Claims', openapi_spec: 'modules/claims_api/app/swagge
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               VCR.use_cassette('claims_api/evss/disability_compensation_form/form_526_invalid_validation') do
@@ -704,6 +715,7 @@ Rspec.describe 'Disability Claims', openapi_spec: 'modules/claims_api/app/swagge
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               allow_any_instance_of(ClaimsApi::SupportingDocumentUploader).to receive(:store!)
@@ -745,6 +757,7 @@ Rspec.describe 'Disability Claims', openapi_spec: 'modules/claims_api/app/swagge
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               allow_any_instance_of(ClaimsApi::SupportingDocumentUploader).to receive(:store!)
@@ -785,6 +798,7 @@ Rspec.describe 'Disability Claims', openapi_spec: 'modules/claims_api/app/swagge
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               allow_any_instance_of(ClaimsApi::SupportingDocumentUploader).to receive(:store!)

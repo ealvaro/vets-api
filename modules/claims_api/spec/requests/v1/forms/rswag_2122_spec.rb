@@ -148,6 +148,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
             allow_any_instance_of(ClaimsApi::V1::Forms::PowerOfAttorneyController)
               .to receive(:validate_poa_code_for_current_user!).and_return(true)
             stub_poa_verification
+            stub_claims_api_poa_lookup
             allow_any_instance_of(pws)
               .to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
             allow_any_instance_of(ClaimsApi::V1::Forms::PowerOfAttorneyController)
@@ -194,6 +195,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               allow(ClaimsApi::ValidatedToken).to receive(:new).and_return(nil)
@@ -237,6 +239,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
             allow_any_instance_of(ClaimsApi::V1::Forms::PowerOfAttorneyController)
               .to receive(:check_request_ssn_matches_mpi).and_return(nil)
             stub_poa_verification
+            stub_claims_api_poa_lookup
             mock_acg(scopes) do
               submit_request(example.metadata)
             end
@@ -325,6 +328,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
           before do |example|
             stub_mpi(build(:mpi_profile, participant_id: veteran_participant_id))
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               allow_any_instance_of(pws)
@@ -368,6 +372,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
             allow_any_instance_of(ClaimsApi::V1::Forms::PowerOfAttorneyController)
               .to receive(:check_request_ssn_matches_mpi).and_return(nil)
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               allow_any_instance_of(ClaimsApi::PowerOfAttorneyUploader).to receive(:store!)
@@ -408,6 +413,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
             allow_any_instance_of(ClaimsApi::V1::Forms::PowerOfAttorneyController)
               .to receive(:check_request_ssn_matches_mpi).and_return(nil)
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               allow_any_instance_of(ClaimsApi::PowerOfAttorneyUploader).to receive(:store!)
@@ -444,6 +450,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               allow_any_instance_of(pws)
@@ -487,6 +494,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
             allow_any_instance_of(ClaimsApi::V1::Forms::PowerOfAttorneyController)
               .to receive(:check_request_ssn_matches_mpi).and_return(nil)
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               allow_any_instance_of(pws)
@@ -522,6 +530,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
             allow_any_instance_of(ClaimsApi::V1::Forms::PowerOfAttorneyController)
               .to receive(:check_request_ssn_matches_mpi).and_return(nil)
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               allow_any_instance_of(BGS::PersonWebService)
@@ -597,6 +606,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
           before do |example|
             stub_mpi(build(:mpi_profile, participant_id: veteran_participant_id))
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               submit_request(example.metadata)
@@ -637,6 +647,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               allow(ClaimsApi::ValidatedToken).to receive(:new).and_return(nil)
@@ -676,6 +687,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               submit_request(example.metadata)
@@ -746,6 +758,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
             create(:representative, first_name: 'Abraham', last_name: 'Lincoln', poa_codes: %w[A01])
 
             mock_acg(scopes) do
@@ -783,6 +796,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               allow(ClaimsApi::ValidatedToken).to receive(:new).and_return(nil)
@@ -814,6 +828,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               allow(BGS::PowerOfAttorneyVerifier).to receive(:new).and_return(bgs_poa_verifier)
@@ -891,6 +906,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
             allow_any_instance_of(ClaimsApi::V1::Forms::PowerOfAttorneyController)
               .to receive(:check_request_ssn_matches_mpi).and_return(nil)
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               submit_request(example.metadata)
@@ -927,6 +943,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               allow(ClaimsApi::ValidatedToken).to receive(:new).and_return(nil)
@@ -960,6 +977,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
             allow_any_instance_of(ClaimsApi::V1::Forms::PowerOfAttorneyController)
               .to receive(:check_request_ssn_matches_mpi).and_return(nil)
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               submit_request(example.metadata)

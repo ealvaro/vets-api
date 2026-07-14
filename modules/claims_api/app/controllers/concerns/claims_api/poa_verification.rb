@@ -78,7 +78,7 @@ module ClaimsApi
       def verify_power_of_attorney!
         return if token.client_credentials_token?
 
-        target_veteran_to_verify = ::Veteran::User.new(target_veteran)
+        target_veteran_to_verify = ClaimsApi::PoaLookupService.new(target_veteran)
         poa_code_to_verify = target_veteran_to_verify.power_of_attorney.try(:code)
         valid_poa_code_for_current_user?(poa_code_to_verify)
       rescue ::Common::Exceptions::UnprocessableEntity

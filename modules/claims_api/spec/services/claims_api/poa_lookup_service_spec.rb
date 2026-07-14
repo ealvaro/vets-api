@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-describe Veteran::User do
+describe ClaimsApi::PoaLookupService do
   context 'initialization' do
     let(:user) do
       ClaimsApi::Veteran.new(
@@ -21,9 +21,9 @@ describe Veteran::User do
       VCR.use_cassette('claims_api/bgs/claimant_web_service/find_poa_by_participant_id') do
         allow_any_instance_of(org_web_service).to receive(:find_poa_history_by_ptcpnt_id)
           .and_return({ person_poa_history: { person_poa: [{ begin_dt: Time.zone.now, legacy_poa_cd: '033' }] } })
-        veteran = Veteran::User.new(user)
-        expect(veteran.power_of_attorney.code).to eq('074')
-        expect(veteran.previous_power_of_attorney.code).to eq('033')
+        lookup = ClaimsApi::PoaLookupService.new(user)
+        expect(lookup.power_of_attorney.code).to eq('074')
+        expect(lookup.previous_power_of_attorney.code).to eq('033')
       end
     end
 
@@ -31,9 +31,9 @@ describe Veteran::User do
       VCR.use_cassette('claims_api/bgs/claimant_web_service/not_find_poa_by_participant_id') do
         allow_any_instance_of(org_web_service).to receive(:find_poa_history_by_ptcpnt_id)
           .and_return({ person_poa_history: nil })
-        veteran = Veteran::User.new(user)
-        expect(veteran.power_of_attorney).to be_nil
-        expect(veteran.previous_power_of_attorney).to be_nil
+        lookup = ClaimsApi::PoaLookupService.new(user)
+        expect(lookup.power_of_attorney).to be_nil
+        expect(lookup.previous_power_of_attorney).to be_nil
       end
     end
 
@@ -41,9 +41,9 @@ describe Veteran::User do
       VCR.use_cassette('claims_api/bgs/claimant_web_service/not_find_poa_by_participant_id') do
         allow_any_instance_of(org_web_service).to receive(:find_poa_history_by_ptcpnt_id)
           .and_return(nil)
-        veteran = Veteran::User.new(user)
-        expect(veteran.power_of_attorney).to be_nil
-        expect(veteran.previous_power_of_attorney).to be_nil
+        lookup = ClaimsApi::PoaLookupService.new(user)
+        expect(lookup.power_of_attorney).to be_nil
+        expect(lookup.previous_power_of_attorney).to be_nil
       end
     end
 
@@ -59,8 +59,8 @@ describe Veteran::User do
                           ]
                         }
                       })
-        veteran = Veteran::User.new(user)
-        expect(veteran.previous_power_of_attorney.code).to eq('133')
+        lookup = ClaimsApi::PoaLookupService.new(user)
+        expect(lookup.previous_power_of_attorney.code).to eq('133')
       end
     end
 
@@ -68,9 +68,9 @@ describe Veteran::User do
       VCR.use_cassette('claims_api/bgs/claimant_web_service/find_poa_by_participant_id') do
         allow_any_instance_of(org_web_service).to receive(:find_poa_history_by_ptcpnt_id)
           .and_return({ person_poa_history: { person_poa: { begin_dt: Time.zone.now, legacy_poa_cd: '033' } } })
-        veteran = Veteran::User.new(user)
-        expect(veteran.power_of_attorney.code).to eq('074')
-        expect(veteran.previous_power_of_attorney.code).to eq('033')
+        lookup = ClaimsApi::PoaLookupService.new(user)
+        expect(lookup.power_of_attorney.code).to eq('074')
+        expect(lookup.previous_power_of_attorney.code).to eq('033')
       end
     end
   end

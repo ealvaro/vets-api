@@ -60,6 +60,7 @@ Rspec.describe 'EVSS Claims management', openapi_spec: 'modules/claims_api/app/s
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               VCR.use_cassette('claims_api/bgs/claims/claims_trimmed_down') do
@@ -94,6 +95,7 @@ Rspec.describe 'EVSS Claims management', openapi_spec: 'modules/claims_api/app/s
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               VCR.use_cassette('claims_api/bgs/claims/claims') do
@@ -141,6 +143,7 @@ Rspec.describe 'EVSS Claims management', openapi_spec: 'modules/claims_api/app/s
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             allow_any_instance_of(ClaimsApi::V1::ApplicationController)
               .to receive(:target_veteran).and_return(target_veteran)
@@ -237,6 +240,7 @@ Rspec.describe 'EVSS Claims management', openapi_spec: 'modules/claims_api/app/s
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               VCR.use_cassette('claims_api/bgs/claims/claim') do
@@ -272,6 +276,7 @@ Rspec.describe 'EVSS Claims management', openapi_spec: 'modules/claims_api/app/s
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               VCR.use_cassette('claims_api/bgs/claims/claim') do
@@ -305,6 +310,7 @@ Rspec.describe 'EVSS Claims management', openapi_spec: 'modules/claims_api/app/s
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             allow(ClaimsApi::AutoEstablishedClaim).to receive(:find_by).and_return(nil)
 
@@ -340,6 +346,7 @@ Rspec.describe 'EVSS Claims management', openapi_spec: 'modules/claims_api/app/s
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             claim.status = ClaimsApi::AutoEstablishedClaim::ERRORED
             claim.evss_response = [] # induce a 422 response

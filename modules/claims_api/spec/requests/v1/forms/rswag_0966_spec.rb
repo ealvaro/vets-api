@@ -77,6 +77,7 @@ Rspec.describe 'Intent to file', openapi_spec: 'modules/claims_api/app/swagger/c
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               VCR.use_cassette('claims_api/bgs/intent_to_file_web_service/insert_intent_to_file') do
@@ -110,6 +111,7 @@ Rspec.describe 'Intent to file', openapi_spec: 'modules/claims_api/app/swagger/c
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               VCR.use_cassette('claims_api/bgs/intent_to_file_web_service/insert_intent_to_file') do
@@ -143,6 +145,7 @@ Rspec.describe 'Intent to file', openapi_spec: 'modules/claims_api/app/swagger/c
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               expect_any_instance_of(
@@ -178,6 +181,7 @@ Rspec.describe 'Intent to file', openapi_spec: 'modules/claims_api/app/swagger/c
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               VCR.use_cassette('claims_api/bgs/intent_to_file_web_service/insert_intent_to_file') do
@@ -244,6 +248,7 @@ Rspec.describe 'Intent to file', openapi_spec: 'modules/claims_api/app/swagger/c
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
             Timecop.freeze(Time.zone.parse('2020-01-01T08:00:00Z'))
 
             mock_acg(scopes) do
@@ -279,6 +284,7 @@ Rspec.describe 'Intent to file', openapi_spec: 'modules/claims_api/app/swagger/c
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               VCR.use_cassette('claims_api/bgs/intent_to_file_web_service/get_intent_to_file') do
@@ -314,6 +320,7 @@ Rspec.describe 'Intent to file', openapi_spec: 'modules/claims_api/app/swagger/c
             allow_any_instance_of(BGS::IntentToFileWebService)
               .to receive(:find_intent_to_file_by_ptcpnt_id_itf_type_cd).and_return([])
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               VCR.use_cassette('claims_api/bgs/intent_to_file_web_service/get_intent_to_file') do
@@ -346,6 +353,7 @@ Rspec.describe 'Intent to file', openapi_spec: 'modules/claims_api/app/swagger/c
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               VCR.use_cassette('claims_api/bgs/intent_to_file_web_service/get_intent_to_file') do
@@ -413,6 +421,7 @@ Rspec.describe 'Intent to file', openapi_spec: 'modules/claims_api/app/swagger/c
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               VCR.use_cassette('claims_api/bgs/intent_to_file_web_service/insert_intent_to_file') do
@@ -446,6 +455,7 @@ Rspec.describe 'Intent to file', openapi_spec: 'modules/claims_api/app/swagger/c
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               VCR.use_cassette('claims_api/bgs/intent_to_file_web_service/insert_intent_to_file') do
@@ -479,6 +489,7 @@ Rspec.describe 'Intent to file', openapi_spec: 'modules/claims_api/app/swagger/c
 
           before do |example|
             stub_poa_verification
+            stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
               VCR.use_cassette('claims_api/bgs/intent_to_file_web_service/insert_intent_to_file') do

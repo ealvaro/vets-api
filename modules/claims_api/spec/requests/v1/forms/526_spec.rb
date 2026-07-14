@@ -30,6 +30,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
 
   before do
     stub_poa_verification
+    stub_claims_api_poa_lookup
     Timecop.freeze(Time.zone.now)
     stub_claims_api_auth_token
 

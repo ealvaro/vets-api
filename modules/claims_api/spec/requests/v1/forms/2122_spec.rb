@@ -36,6 +36,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
 
   before do
     stub_poa_verification
+    stub_claims_api_poa_lookup
     allow(Flipper).to receive(:enabled?).with(:claims_load_testing).and_return false
     allow(Flipper).to receive(:enabled?).with(:claims_api_use_person_web_service).and_return true
     allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_poa_dependent_claimants)

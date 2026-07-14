@@ -94,14 +94,14 @@ describe FakeTargetVeteranController do
     let(:rep) { double('Representative', poa_codes: ['A1B']) }
     let(:veteran_poa_code) { 'A1B' }
     let(:power_of_attorney) { double('PowerOfAttorney', code: veteran_poa_code) }
-    let(:veteran_user) { double('Veteran::User', power_of_attorney:) }
+    let(:poa_lookup) { double('ClaimsApi::PoaLookupService', power_of_attorney:) }
 
     before do
       allow(controller.current_user).to receive_messages(first_name: 'John', last_name: 'Doe')
       allow(Veteran::Service::Representative).to receive(:all_for_user).with(
         first_name: 'John', last_name: 'Doe'
       ).and_return([rep])
-      allow(Veteran::User).to receive(:new).and_return(veteran_user)
+      allow(ClaimsApi::PoaLookupService).to receive(:new).and_return(poa_lookup)
       allow(controller).to receive(:target_veteran).and_return(target_vet)
     end
 
@@ -152,7 +152,7 @@ describe FakeTargetVeteranController do
     end
 
     context 'when power_of_attorney is nil' do
-      let(:veteran_user) { double('Veteran::User', power_of_attorney: nil) }
+      let(:poa_lookup) { double('ClaimsApi::PoaLookupService', power_of_attorney: nil) }
 
       it 'returns false' do
         expect(controller.user_represents_veteran?).to be(false)
