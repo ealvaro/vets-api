@@ -12,64 +12,46 @@ RSpec.describe 'V0::IntentsToFile', type: :request do
   end
 
   describe 'GET /v0/intents_to_file' do
-    context 'when cst_intents_to_file feature flag is disabled' do
-      before { allow(Flipper).to receive(:enabled?).with(:cst_intents_to_file, anything).and_return(false) }
+    context 'when all three ITF types have active records' do
+      it 'returns ITFs for all types' do
+        VCR.use_cassettes([
+                            { name: 'lighthouse/benefits_claims/intent_to_file/200_response' },
+                            { name: 'lighthouse/benefits_claims/intent_to_file/200_response_pension' },
+                            { name: 'lighthouse/benefits_claims/intent_to_file/200_response_survivor' }
+                          ]) do
+          get '/v0/intents_to_file'
 
-      it 'returns an empty array without calling Lighthouse' do
-        expect_any_instance_of(BenefitsClaims::Service).not_to receive(:get_intent_to_file)
+          expect(response).to have_http_status(:ok)
+          body = JSON.parse(response.body)
+          expect(body['data'].length).to eq(3)
 
-        get '/v0/intents_to_file'
-
-        expect(response).to have_http_status(:ok)
-        body = JSON.parse(response.body)
-        expect(body['data']).to eq([])
-      end
-    end
-
-    context 'when cst_intents_to_file feature flag is enabled' do
-      before { allow(Flipper).to receive(:enabled?).with(:cst_intents_to_file, anything).and_return(true) }
-
-      context 'when all three ITF types have active records' do
-        it 'returns ITFs for all types' do
-          VCR.use_cassettes([
-                              { name: 'lighthouse/benefits_claims/intent_to_file/200_response' },
-                              { name: 'lighthouse/benefits_claims/intent_to_file/200_response_pension' },
-                              { name: 'lighthouse/benefits_claims/intent_to_file/200_response_survivor' }
-                            ]) do
-            get '/v0/intents_to_file'
-
-            expect(response).to have_http_status(:ok)
-            body = JSON.parse(response.body)
-            expect(body['data'].length).to eq(3)
-
-            types = body['data'].map { |itf| itf['type'] }
-            expect(types).to contain_exactly('compensation', 'pension', 'survivor')
-          end
+          types = body['data'].map { |itf| itf['type'] }
+          expect(types).to contain_exactly('compensation', 'pension', 'survivor')
         end
+      end
 
-        it 'records Datadog metrics for types and statuses' do
-          VCR.use_cassettes([
-                              { name: 'lighthouse/benefits_claims/intent_to_file/200_response' },
-                              { name: 'lighthouse/benefits_claims/intent_to_file/200_response_pension' },
-                              { name: 'lighthouse/benefits_claims/intent_to_file/200_response_survivor' }
-                            ]) do
-            allow(StatsD).to receive(:increment)
+      it 'records Datadog metrics for types and statuses' do
+        VCR.use_cassettes([
+                            { name: 'lighthouse/benefits_claims/intent_to_file/200_response' },
+                            { name: 'lighthouse/benefits_claims/intent_to_file/200_response_pension' },
+                            { name: 'lighthouse/benefits_claims/intent_to_file/200_response_survivor' }
+                          ]) do
+          allow(StatsD).to receive(:increment)
 
-            get '/v0/intents_to_file'
+          get '/v0/intents_to_file'
 
-            expect(StatsD).to have_received(:increment).with(
-              'api.intents_to_file.fetch',
-              tags: array_including('type:compensation', 'status:active')
-            )
-            expect(StatsD).to have_received(:increment).with(
-              'api.intents_to_file.fetch',
-              tags: array_including('type:pension', 'status:active')
-            )
-            expect(StatsD).to have_received(:increment).with(
-              'api.intents_to_file.fetch',
-              tags: array_including('type:survivor', 'status:active')
-            )
-          end
+          expect(StatsD).to have_received(:increment).with(
+            'api.intents_to_file.fetch',
+            tags: array_including('type:compensation', 'status:active')
+          )
+          expect(StatsD).to have_received(:increment).with(
+            'api.intents_to_file.fetch',
+            tags: array_including('type:pension', 'status:active')
+          )
+          expect(StatsD).to have_received(:increment).with(
+            'api.intents_to_file.fetch',
+            tags: array_including('type:survivor', 'status:active')
+          )
         end
       end
 

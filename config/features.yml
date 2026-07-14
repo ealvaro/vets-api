@@ -803,10 +803,6 @@ features:
     actor_type: user
     description: When enabled, CST does not show Attorney Fees, Secondary Action Required, or Stage 2 Development on mobile
     enable_in_development: false
-  cst_intents_to_file:
-    actor_type: user
-    description: Gates the intents to file endpoint and frontend functionality for retrieving all ITFs from Lighthouse Benefits Claims API v2.
-    enable_in_development: true
   cst_filter_ep_960:
     actor_type: user
     description: When enabled, benefits_claims/get_claims service filters 960 EP code claims from the response

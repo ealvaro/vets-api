@@ -1469,7 +1469,6 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
 
       before do
         allow_any_instance_of(Auth::ClientCredentials::Service).to receive(:get_token).and_return('fake_token')
-        allow(Flipper).to receive(:enabled?).with(:cst_intents_to_file, anything).and_return(true)
       end
 
       it 'supports getting all intents to file' do

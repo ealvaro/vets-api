@@ -20,8 +20,6 @@ module V0
     ].freeze
 
     def index
-      return render json: { data: [] } unless Flipper.enabled?(:cst_intents_to_file, @current_user)
-
       itfs = fetch_all_itfs
       record_itf_metrics(itfs)
 
