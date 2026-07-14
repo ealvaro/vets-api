@@ -30,7 +30,7 @@ jobs:
           github-api-url: https://va.ghe.com/api/v3
 
       - name: Set Up Ruby
-        uses: ruby/setup-ruby@89f90524b88a01fe6e0b732220432cc6142926af # v1
+        uses: ruby/setup-ruby@d45b1a4e94b71acab930e56e79c6aa188764e7f9 # v1
         env:
           BUNDLE_VA__GHE__COM: x-access-token:${{ steps.app-token.outputs.token }}
         with:
