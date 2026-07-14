@@ -1694,6 +1694,8 @@ vanotify:
       email:
         error:
           template_id: <%= ENV['vanotify__services__22_10278__email__error__template_id'] %>
+        received:
+          template_id: <%= ENV['vanotify__services__22_10278__email__received__template_id'] %>
     accredited_representative_portal:
       api_key: <%= ENV['vanotify__services__accredited_representative_portal__api_key'] %>
       email:

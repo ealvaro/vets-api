@@ -1713,6 +1713,8 @@ vanotify:
       email:
         error:
           template_id: form10278_error_email_template_id
+        received:
+          template_id: form10278_received_email_template_id
     accredited_representative_portal:
       api_key: fake_secret
       email:

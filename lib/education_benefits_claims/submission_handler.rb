@@ -55,10 +55,8 @@ module EducationBenefitsClaims
 
     # handle a success result
     def on_success
-      # No success emails needed currently. In the future, we
-      # can handle per-claim-type success emails by doing something
-      # like claim.has_email_type(:received) or similar
-      true
+      notification_email.deliver(:received) if claim.form_id == '22-10278'
+      super
     end
 
     # handle a stale result

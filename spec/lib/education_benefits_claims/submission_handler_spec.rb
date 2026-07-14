@@ -85,6 +85,16 @@ RSpec.describe EducationBenefitsClaims::SubmissionHandler do
     it 'sends a received email' do
       expect(instance.handle(:success)).to be true
     end
+
+    context 'with a 10278 form' do
+      let(:handler) { described_class.for_form_id('22-10278') }
+      let(:claim) { create(:va10278) }
+
+      it 'sends a received email' do
+        expect(notification).to receive(:deliver).with(:received).and_return true
+        instance.handle(:success)
+      end
+    end
   end
 
   describe '#on_stale' do
