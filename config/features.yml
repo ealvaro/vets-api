@@ -2146,6 +2146,10 @@ features:
     actor_type: user
     description: Enables/disables the PHR refresh for MHV users when logging into VA.gov
     enable_in_development: true
+  mhv_medical_records_recency_indicator:
+    actor_type: user
+    description: Displays recency indicators for Medical Records
+    enable_in_development: true
   mhv_medical_records_new_eligibility_check:
     actor_type: user
     description: Enables/disables Medical Records new access policy
