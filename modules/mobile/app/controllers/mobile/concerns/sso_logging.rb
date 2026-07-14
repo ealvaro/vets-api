@@ -38,9 +38,9 @@ module Mobile::Concerns::SSOLogging
 
     def credential_uuid
       case @current_user.identity.sign_in[:service_name]
-      when SAML::User::IDME_CSID
+      when SignIn::Constants::Auth::IDME
         @current_user.identity.idme_uuid
-      when SAML::User::LOGINGOV_CSID
+      when SignIn::Constants::Auth::LOGINGOV
         @current_user.identity.logingov_uuid
       end
     end

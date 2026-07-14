@@ -19,8 +19,8 @@ FactoryBot.define do
 
     sign_in do
       {
-        service_name: SAML::User::IDME_CSID,
-        auth_broker: SAML::URLService::BROKER_CODE,
+        service_name: SignIn::Constants::Auth::IDME,
+        auth_broker: SignIn::Constants::Auth::BROKER_CODE,
         client_id: create(:client_config).client_id
       }
     end
@@ -46,8 +46,8 @@ FactoryBot.define do
 
     sign_in do
       {
-        service_name: SAML::User::MHV_ORIGINAL_CSID,
-        auth_broker: SAML::URLService::BROKER_CODE,
+        service_name: SignIn::Constants::Auth::MHV,
+        auth_broker: SignIn::Constants::Auth::BROKER_CODE,
         client_id: create(:client_config).client_id
       }
     end
@@ -74,7 +74,7 @@ FactoryBot.define do
     sign_in do
       {
         service_name: 'dslogon',
-        auth_broker: SAML::URLService::BROKER_CODE,
+        auth_broker: SignIn::Constants::Auth::BROKER_CODE,
         client_id: create(:client_config).client_id
       }
     end
@@ -92,8 +92,8 @@ FactoryBot.define do
 
     sign_in do
       {
-        service_name: SAML::User::IDME_CSID,
-        auth_broker: SAML::URLService::BROKER_CODE,
+        service_name: SignIn::Constants::Auth::IDME,
+        auth_broker: SignIn::Constants::Auth::BROKER_CODE,
         client_id: create(:client_config).client_id
       }
     end

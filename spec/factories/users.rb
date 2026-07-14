@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'saml/url_service'
-
 FactoryBot.define do
   factory :user, class: 'User' do
     uuid { user_verification.user_account.id }
@@ -60,12 +58,29 @@ FactoryBot.define do
       vha_facility_hash { { '200CRNR' => %w[123456], '200MHV' => %w[123456] } }
       vet360_id { '1' }
       should_stub_mpi { true }
+      service_name do
+        case authn_context
+        when IAL::LOGIN_GOV_IAL1,
+             IAL::LOGIN_GOV_IAL1_2FA,
+             IAL::LOGIN_GOV_IAL1_MFA,
+             IAL::LOGIN_GOV_IAL2,
+             IAL::LOGIN_GOV_IAL2_2FA,
+             IAL::LOGIN_GOV_IAL2_MFA
+          SignIn::Constants::Auth::LOGINGOV
+        when LOA::IDME_MHV_LOA1,
+             LOA::IDME_MHV_LOA3,
+             'myhealthevet_multifactor'
+          SignIn::Constants::Auth::MHV
+        else
+          SignIn::Constants::Auth::IDME
+        end
+      end
 
       sign_in do
         {
-          service_name: SAML::User::AUTHN_CONTEXTS[authn_context][:sign_in][:service_name],
-          auth_broker: SAML::URLService::BROKER_CODE,
-          client_id: SAML::URLService::UNIFIED_SIGN_IN_CLIENTS.first
+          service_name:,
+          auth_broker: SignIn::Constants::Auth::BROKER_CODE,
+          client_id: 'vaweb'
         }
       end
 
@@ -180,9 +195,9 @@ FactoryBot.define do
 
       sign_in do
         {
-          service_name: SAML::User::AUTHN_CONTEXTS[authn_context][:sign_in][:service_name],
-          auth_broker: SAML::URLService::BROKER_CODE,
-          client_id: SAML::URLService::UNIFIED_SIGN_IN_CLIENTS.first
+          service_name:,
+          auth_broker: SignIn::Constants::Auth::BROKER_CODE,
+          client_id: 'vaweb'
         }
       end
 
@@ -198,9 +213,9 @@ FactoryBot.define do
 
       sign_in do
         {
-          service_name: SAML::User::AUTHN_CONTEXTS[authn_context][:sign_in][:service_name],
-          auth_broker: SAML::URLService::BROKER_CODE,
-          client_id: SAML::URLService::UNIFIED_SIGN_IN_CLIENTS.first
+          service_name:,
+          auth_broker: SignIn::Constants::Auth::BROKER_CODE,
+          client_id: 'vaweb'
         }
       end
 
@@ -216,9 +231,9 @@ FactoryBot.define do
 
       sign_in do
         {
-          service_name: SAML::User::AUTHN_CONTEXTS[authn_context][:sign_in][:service_name],
-          auth_broker: SAML::URLService::BROKER_CODE,
-          client_id: SAML::URLService::UNIFIED_SIGN_IN_CLIENTS.first
+          service_name:,
+          auth_broker: SignIn::Constants::Auth::BROKER_CODE,
+          client_id: 'vaweb'
         }
       end
 
@@ -232,9 +247,9 @@ FactoryBot.define do
       authn_context { LOA::IDME_LOA1_VETS }
       sign_in do
         {
-          service_name: SAML::User::AUTHN_CONTEXTS[authn_context][:sign_in][:service_name],
-          auth_broker: SAML::URLService::BROKER_CODE,
-          client_id: SAML::URLService::UNIFIED_SIGN_IN_CLIENTS.first
+          service_name:,
+          auth_broker: SignIn::Constants::Auth::BROKER_CODE,
+          client_id: 'vaweb'
         }
       end
 
@@ -248,9 +263,9 @@ FactoryBot.define do
 
       sign_in do
         {
-          service_name: SAML::User::AUTHN_CONTEXTS[authn_context][:sign_in][:service_name],
-          auth_broker: SAML::URLService::BROKER_CODE,
-          client_id: SAML::URLService::UNIFIED_SIGN_IN_CLIENTS.first
+          service_name:,
+          auth_broker: SignIn::Constants::Auth::BROKER_CODE,
+          client_id: 'vaweb'
         }
       end
 
@@ -267,9 +282,9 @@ FactoryBot.define do
       authn_context { IAL::LOGIN_GOV_IAL1 }
       sign_in do
         {
-          service_name: SAML::User::AUTHN_CONTEXTS[authn_context][:sign_in][:service_name],
-          auth_broker: SAML::URLService::BROKER_CODE,
-          client_id: SAML::URLService::UNIFIED_SIGN_IN_CLIENTS.first
+          service_name:,
+          auth_broker: SignIn::Constants::Auth::BROKER_CODE,
+          client_id: 'vaweb'
         }
       end
 
@@ -366,9 +381,9 @@ FactoryBot.define do
       authn_context { LOA::IDME_LOA3_VETS }
       sign_in do
         {
-          service_name: SAML::User::AUTHN_CONTEXTS[authn_context][:sign_in][:service_name],
-          auth_broker: 'sis',
-          client_id: SAML::URLService::MOBILE_CLIENT_ID
+          service_name:,
+          auth_broker: SignIn::Constants::Auth::BROKER_CODE,
+          client_id: 'mobile'
         }
       end
       loa do
@@ -383,9 +398,9 @@ FactoryBot.define do
       authn_context { LOA::IDME_LOA3_VETS }
       sign_in do
         {
-          service_name: SAML::User::AUTHN_CONTEXTS[authn_context][:sign_in][:service_name],
-          auth_broker: 'sis',
-          client_id: SAML::URLService::MOBILE_CLIENT_ID
+          service_name:,
+          auth_broker: SignIn::Constants::Auth::BROKER_CODE,
+          client_id: 'mobile'
         }
       end
       loa do
@@ -420,9 +435,9 @@ FactoryBot.define do
 
       sign_in do
         {
-          service_name: SAML::User::MHV_ORIGINAL_CSID,
-          auth_broker: SAML::URLService::BROKER_CODE,
-          client_id: SAML::URLService::UNIFIED_SIGN_IN_CLIENTS.first
+          service_name:,
+          auth_broker: SignIn::Constants::Auth::BROKER_CODE,
+          client_id: 'vaweb'
         }
       end
 
@@ -459,8 +474,8 @@ FactoryBot.define do
       sign_in do
         {
           service_name: 'dslogon',
-          auth_broker: SAML::URLService::BROKER_CODE,
-          client_id: SAML::URLService::UNIFIED_SIGN_IN_CLIENTS.first
+          auth_broker: SignIn::Constants::Auth::BROKER_CODE,
+          client_id: 'vaweb'
         }
       end
 

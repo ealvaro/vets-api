@@ -64,9 +64,9 @@ module UserAudit
         return 'icn' if user_account.icn.present?
 
         case user_verification.credential_type
-        when SAML::User::IDME_CSID         then 'idme_uuid'
-        when SAML::User::LOGINGOV_CSID     then 'logingov_uuid'
-        when SAML::User::MHV_ORIGINAL_CSID then 'mhv_id'
+        when SignIn::Constants::Auth::IDME     then 'idme_uuid'
+        when SignIn::Constants::Auth::LOGINGOV then 'logingov_uuid'
+        when SignIn::Constants::Auth::MHV      then 'mhv_id'
         end
       end
 

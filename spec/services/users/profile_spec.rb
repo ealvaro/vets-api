@@ -92,9 +92,9 @@ RSpec.describe Users::Profile do
         end
 
         it 'includes sign_in' do
-          expect(profile[:sign_in]).to eq(service_name: SAML::User::IDME_CSID,
-                                          auth_broker: SAML::URLService::BROKER_CODE,
-                                          client_id: SAML::URLService::UNIFIED_SIGN_IN_CLIENTS.first)
+          expect(profile[:sign_in]).to eq(service_name: SignIn::Constants::Auth::IDME,
+                                          auth_broker: SignIn::Constants::Auth::BROKER_CODE,
+                                          client_id: 'vaweb')
         end
 
         context 'multifactor' do
@@ -105,7 +105,7 @@ RSpec.describe Users::Profile do
           end
 
           it 'includes sign_in.service_name' do
-            expect(profile[:sign_in][:service_name]).to eq(SAML::User::IDME_CSID)
+            expect(profile[:sign_in][:service_name]).to eq(SignIn::Constants::Auth::IDME)
           end
         end
       end
@@ -115,9 +115,9 @@ RSpec.describe Users::Profile do
         let!(:user_verification) { create(:mhv_user_verification, mhv_uuid: user.mhv_credential_uuid) }
 
         it 'includes sign_in' do
-          expect(profile[:sign_in]).to eq(service_name: SAML::User::MHV_ORIGINAL_CSID,
-                                          auth_broker: SAML::URLService::BROKER_CODE,
-                                          client_id: SAML::URLService::UNIFIED_SIGN_IN_CLIENTS.first)
+          expect(profile[:sign_in]).to eq(service_name: SignIn::Constants::Auth::MHV,
+                                          auth_broker: SignIn::Constants::Auth::BROKER_CODE,
+                                          client_id: 'vaweb')
         end
       end
 
@@ -711,12 +711,12 @@ RSpec.describe Users::Profile do
 
       it 'no session object indicates no SSOe authentication' do
         expect(subject.session)
-          .to eq({ auth_broker: SAML::URLService::BROKER_CODE, ssoe: false, transactionid: nil })
+          .to eq({ auth_broker: SignIn::Constants::Auth::BROKER_CODE, ssoe: false, transactionid: nil })
       end
 
       it 'with a transaction in the Session shows a SSOe authentication' do
         expect(scaffold_with_ssoe.session)
-          .to eq({ auth_broker: SAML::URLService::BROKER_CODE, ssoe: true, transactionid: 'a' })
+          .to eq({ auth_broker: SignIn::Constants::Auth::BROKER_CODE, ssoe: true, transactionid: 'a' })
       end
     end
 

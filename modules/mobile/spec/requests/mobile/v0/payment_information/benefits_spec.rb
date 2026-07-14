@@ -34,7 +34,7 @@ RSpec.describe 'Mobile::V0::PaymentInformation::Benefits', type: :request do
       }
     }
   end
-  let!(:user) { sis_user(icn: '1012666073V986297', sign_in: { service_name: SAML::User::IDME_CSID }) }
+  let!(:user) { sis_user(icn: '1012666073V986297', sign_in: { service_name: SignIn::Constants::Auth::IDME }) }
 
   before do
     Settings.mobile_lighthouse.rsa_key = rsa_key.to_s

@@ -17,13 +17,13 @@ class UserVerification < ApplicationRecord
   def self.find_by_type!(type, identifier)
     user_verification =
       case type
-      when SAML::User::LOGINGOV_CSID
+      when SignIn::Constants::Auth::LOGINGOV
         find_by(logingov_uuid: identifier)
-      when SAML::User::IDME_CSID
+      when SignIn::Constants::Auth::IDME
         find_by(idme_uuid: identifier)
-      when SAML::User::MHV_ORIGINAL_CSID
+      when SignIn::Constants::Auth::MHV
         find_by(mhv_uuid: identifier)
-      when SAML::User::CLEAR_CSID
+      when SignIn::Constants::Auth::CLEAR
         find_by(clear_uuid: identifier)
       end
     raise ActiveRecord::RecordNotFound unless user_verification
@@ -50,11 +50,11 @@ class UserVerification < ApplicationRecord
   end
 
   def credential_type
-    return SAML::User::IDME_CSID if idme_uuid
-    return SAML::User::LOGINGOV_CSID if logingov_uuid
-    return SAML::User::CLEAR_CSID if clear_uuid
+    return SignIn::Constants::Auth::IDME if idme_uuid
+    return SignIn::Constants::Auth::LOGINGOV if logingov_uuid
+    return SignIn::Constants::Auth::CLEAR if clear_uuid
 
-    SAML::User::MHV_ORIGINAL_CSID if mhv_uuid
+    SignIn::Constants::Auth::MHV if mhv_uuid
   end
 
   def credential_identifier

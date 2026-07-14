@@ -370,7 +370,7 @@ RSpec.describe ApplicationController, type: :controller do
         'patientIcn' => '123498767V234859',
         'signIn' => {
           'serviceName' => 'idme',
-          'authBroker' => 'iam',
+          'authBroker' => SignIn::Constants::Auth::BROKER_CODE,
           'clientId' => 'vaweb'
         },
         'credential_used' => 'idme',

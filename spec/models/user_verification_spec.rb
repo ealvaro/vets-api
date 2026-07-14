@@ -411,7 +411,7 @@ RSpec.describe UserVerification, type: :model do
 
     context 'when idme_uuid is present' do
       let(:idme_uuid) { 'some-idme-uuid' }
-      let(:expected_credential_type) { SAML::User::IDME_CSID }
+      let(:expected_credential_type) { SignIn::Constants::Auth::IDME }
 
       it 'returns expected credential type' do
         expect(subject).to eq(expected_credential_type)
@@ -421,7 +421,7 @@ RSpec.describe UserVerification, type: :model do
     context 'when mhv_uuid is present' do
       let(:mhv_uuid) { 'some-mhv-uuid' }
       let(:backing_idme_uuid) { 'some-backing-idme-uuid' }
-      let(:expected_credential_type) { SAML::User::MHV_ORIGINAL_CSID }
+      let(:expected_credential_type) { SignIn::Constants::Auth::MHV }
 
       it 'returns expected credential type' do
         expect(subject).to eq(expected_credential_type)
@@ -430,7 +430,7 @@ RSpec.describe UserVerification, type: :model do
 
     context 'when logingov_uuid is present' do
       let(:logingov_uuid) { 'some-logingov-uuid' }
-      let(:expected_credential_type) { SAML::User::LOGINGOV_CSID }
+      let(:expected_credential_type) { SignIn::Constants::Auth::LOGINGOV }
 
       it 'returns expected credential type' do
         expect(subject).to eq(expected_credential_type)
@@ -439,7 +439,7 @@ RSpec.describe UserVerification, type: :model do
 
     context 'when clear_uuid is present' do
       let(:clear_uuid) { 'some-clear-uuid' }
-      let(:expected_credential_type) { SAML::User::CLEAR_CSID }
+      let(:expected_credential_type) { SignIn::Constants::Auth::CLEAR }
 
       it 'returns expected credential type' do
         expect(subject).to eq(expected_credential_type)

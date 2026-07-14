@@ -496,9 +496,9 @@ class User < Common::RedisStore
   # fall back to idme
   def get_user_verification
     case identity_sign_in&.dig(:service_name)
-    when SAML::User::MHV_ORIGINAL_CSID
+    when SignIn::Constants::Auth::MHV
       return UserVerification.find_by(mhv_uuid: mhv_credential_uuid) if mhv_credential_uuid
-    when SAML::User::LOGINGOV_CSID
+    when SignIn::Constants::Auth::LOGINGOV
       return UserVerification.find_by(logingov_uuid:) if logingov_uuid
     end
     return nil unless idme_uuid
