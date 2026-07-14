@@ -17,7 +17,7 @@ module Forms
 
       # Submission statuses used for the `STATUS_STATSD_KEY` metric tags.
       KNOWN_STATUSES = %w[
-        pending uploaded received processing success vbms error expired
+        pending submitting submitted uploaded received processing success vbms error expired
         in_progress claimReceived complete
       ].freeze
       UNKNOWN_STATUS_TAG = 'other'

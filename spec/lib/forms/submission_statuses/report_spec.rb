@@ -726,6 +726,55 @@ describe Forms::SubmissionStatuses::Report, feature: :form_submission,
         end
       end
 
+      context "when the status is 'submitted' or 'submitting'" do
+        before do
+          create(:form_submission, :with_form214142, user_account_id: user_account.id)
+          create(:form_submission, :with_form214140, user_account_id: user_account.id)
+
+          allow_any_instance_of(benefits_intake_gateway).to receive(:lighthouse_submissions).and_return([])
+          allow(BenefitsIntake::Service).to receive(:new).and_return(benefits_intake_service)
+          allow(benefits_intake_service).to receive(:bulk_status).and_return(
+            double(body: {
+                     'data' => [
+                       { 'id' => '4b846069-e496-4f83-8587-42b570f24483',
+                         'attributes' => { 'guid' => '4b846069-e496-4f83-8587-42b570f24483',
+                                           'status' => 'submitted', 'updated_at' => 1.day.ago } },
+                       { 'id' => 'a1b2c3d4-e496-4f83-8587-42b570f24483',
+                         'attributes' => { 'guid' => 'a1b2c3d4-e496-4f83-8587-42b570f24483',
+                                           'status' => 'submitting', 'updated_at' => 1.day.ago } }
+                     ]
+                   })
+          )
+        end
+
+        it 'tracks submitted as its own status rather than bucketing it into other' do
+          expect(StatsD).to receive(:increment).with(
+            'api.forms.submission_statuses.gateway.status', 1,
+            tags: ['service:lighthouse_benefits_intake', 'status:submitted']
+          )
+
+          subject.run
+        end
+
+        it 'tracks submitting as its own status rather than bucketing it into other' do
+          expect(StatsD).to receive(:increment).with(
+            'api.forms.submission_statuses.gateway.status', 1,
+            tags: ['service:lighthouse_benefits_intake', 'status:submitting']
+          )
+
+          subject.run
+        end
+
+        it 'does not log an unrecognized status warning for either status' do
+          expect(Rails.logger).not_to receive(:warn).with(
+            'Unrecognized submission status(es) bucketed to "other" in Forms::SubmissionStatuses::Report',
+            anything
+          )
+
+          subject.run
+        end
+      end
+
       context 'across multiple gateways' do
         subject(:report) do
           described_class.new(
