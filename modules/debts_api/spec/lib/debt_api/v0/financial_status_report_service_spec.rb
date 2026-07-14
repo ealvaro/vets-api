@@ -7,6 +7,8 @@ require 'debt_management_center/sharepoint/request'
 require_relative '../../../support/financial_status_report_helpers'
 
 RSpec.describe DebtsApi::V0::FinancialStatusReportService, type: :service do
+  let(:lockbox) { Lockbox.new(key: Settings.lockbox.master_key, encode: true) }
+
   before do
     mock_pdf_fill
   end
@@ -71,44 +73,24 @@ RSpec.describe DebtsApi::V0::FinancialStatusReportService, type: :service do
         allow(Flipper).to receive(:enabled?).with(:fsr_zero_silent_errors_in_progress_email).and_return(true)
       end
 
-      it 'fires the confirmation email with cache_key instead of user info' do
+      it 'fires the confirmation email with encrypted user PII' do
         VCR.use_cassette('dmc/submit_fsr') do
           VCR.use_cassette('bgs/people_service/person_data') do
             service = described_class.new(user)
-            allow(Sidekiq::AttrPackage).to receive(:create).and_return('test_cache_key')
-
-            expect(Sidekiq::AttrPackage).to receive(:create).with(
-              email: user.email,
-              first_name: user.first_name
-            ).and_return('test_cache_key')
-
-            expect(DebtsApi::V0::Form5655::SendConfirmationEmailJob).to receive(:perform_in).with(
-              5.minutes,
-              hash_including(
+            expect(DebtsApi::V0::Form5655::SendConfirmationEmailJob).to receive(:perform_in) do |delay, args|
+              expect(delay).to eq(5.minutes)
+              expect(args).to include(
                 'submission_type' => 'fsr',
-                'cache_key' => 'test_cache_key',
                 'template_id' => 'fake_template_id',
                 'user_uuid' => user.uuid
               )
-            )
-            expect(DebtsApi::V0::Form5655::SendConfirmationEmailJob).not_to receive(:perform_in).with(
-              anything,
-              hash_including('email' => user.email)
-            )
+              expect(args).not_to have_key('cache_key')
+              expect(lockbox.decrypt(args.dig('user_pii', :email))).to eq(user.email)
+              expect(lockbox.decrypt(args.dig('user_pii', :first_name))).to eq(user.first_name)
+            end
             expect(service).to receive(:submit_combined_fsr)
             service.submit_financial_status_report(combined_form_data)
           end
-        end
-      end
-
-      it 'raises when AttrPackage.create fails' do
-        VCR.use_cassette('bgs/people_service/person_data') do
-          service = described_class.new(user)
-          allow(Sidekiq::AttrPackage).to receive(:create).and_raise(
-            Sidekiq::AttrPackageError.new('create', 'Redis connection failed')
-          )
-
-          expect { service.submit_financial_status_report(combined_form_data) }.to raise_error(Sidekiq::AttrPackageError)
         end
       end
     end
@@ -169,29 +151,24 @@ RSpec.describe DebtsApi::V0::FinancialStatusReportService, type: :service do
         end
       end
 
-      it 'sends a confirmation email with cache_key instead of user info' do
+      it 'sends a confirmation email with encrypted user PII' do
         allow(Settings).to receive(:vsp_environment).and_return('production')
-        allow(Sidekiq::AttrPackage).to receive(:create).and_return('test_cache_key')
 
         VCR.use_cassette('dmc/submit_fsr') do
           VCR.use_cassette('bgs/people_service/person_data') do
             service = described_class.new(user_data)
 
-            expect(Sidekiq::AttrPackage).to receive(:create).with(
-              email: user_data.email.downcase,
-              personalisation: {
-                'name' => user_data.first_name,
+            expect(DebtManagementCenter::VANotifyEmailJob).to receive(:perform_async) do |email, template_id,
+                                                                                          personalisation, options|
+              expect(lockbox.decrypt(email)).to eq(user_data.email.downcase)
+              expect(template_id).to eq(described_class::VBA_CONFIRMATION_TEMPLATE)
+              expect(lockbox.decrypt(personalisation['name'])).to eq(user_data.first_name)
+              expect(personalisation).to include(
                 'time' => '48 hours',
                 'date' => Time.zone.now.strftime('%m/%d/%Y')
-              }
-            ).and_return('test_cache_key')
-
-            expect(DebtManagementCenter::VANotifyEmailJob).to receive(:perform_async).with(
-              nil,
-              described_class::VBA_CONFIRMATION_TEMPLATE,
-              nil,
-              { id_type: 'email', cache_key: 'test_cache_key' }
-            )
+              )
+              expect(options).to eq(id_type: 'email')
+            end
             service.submit_vba_fsr(valid_form_data)
           end
         end
@@ -437,8 +414,13 @@ RSpec.describe DebtsApi::V0::FinancialStatusReportService, type: :service do
     let(:vha_form_data) { get_fixture_absolute('modules/debts_api/spec/fixtures/fsr_forms/vha_fsr_form') }
     let(:combined_form_data) { get_fixture_absolute('modules/debts_api/spec/fixtures/fsr_forms/combined_fsr_form') }
     let!(:user) { build(:user, :loa3, :with_terms_of_use_agreement) }
+    let(:batch) { instance_double(Sidekiq::Batch) }
 
     before do
+      stub_const('Sidekiq::Batch', Class.new) unless defined?(Sidekiq::Batch)
+      allow(Sidekiq::Batch).to receive(:new).and_return(batch)
+      allow(batch).to receive(:on)
+      allow(batch).to receive(:jobs).and_yield
       valid_form_data.deep_transform_keys! { |key| key.to_s.camelize(:lower) }
       mock_sharepoint_upload
       allow(User).to receive(:find).with(user.uuid).and_return(user)
@@ -555,8 +537,13 @@ RSpec.describe DebtsApi::V0::FinancialStatusReportService, type: :service do
     let(:valid_vba_form_data) { get_fixture_absolute('modules/debts_api/spec/fixtures/fsr_forms/vba_fsr_form') }
     let(:valid_vha_form_data) { get_fixture_absolute('modules/debts_api/spec/fixtures/fsr_forms/vha_fsr_form') }
     let(:user) { build(:user, :loa3, :with_terms_of_use_agreement) }
+    let(:batch) { instance_double(Sidekiq::Batch) }
 
     before do
+      stub_const('Sidekiq::Batch', Class.new) unless defined?(Sidekiq::Batch)
+      allow(Sidekiq::Batch).to receive(:new).and_return(batch)
+      allow(batch).to receive(:on)
+      allow(batch).to receive(:jobs).and_yield
       mock_sharepoint_upload
       allow(User).to receive(:find).with(user.uuid).and_return(user)
     end
@@ -610,36 +597,27 @@ RSpec.describe DebtsApi::V0::FinancialStatusReportService, type: :service do
       service.create_vha_fsr(builder)
     end
 
-    it 'passes cache_key in batch callback options instead of user info' do
+    it 'passes encrypted user PII in batch callback options' do
       allow(StatsD).to receive(:increment)
-      allow(Sidekiq::AttrPackage).to receive(:create).and_return('test_cache_key')
+      allow(user).to receive(:email).and_return('test@example.com')
 
       service = described_class.new(user)
       builder = DebtsApi::V0::FsrFormBuilder.new(valid_vha_form_data, '', user)
 
-      batch_double = instance_double(Sidekiq::Batch)
-      allow(Sidekiq::Batch).to receive(:new).and_return(batch_double)
-      allow(batch_double).to receive(:jobs).and_yield
-
-      expect(Sidekiq::AttrPackage).to receive(:create).with(
-        email: user.email&.downcase,
-        personalisation: {
-          'name' => user.first_name,
-          'time' => '48 hours',
-          'date' => Time.zone.now.strftime('%m/%d/%Y')
-        }
-      ).and_return('test_cache_key')
-
-      expect(batch_double).to receive(:on).with(
+      expect(batch).to receive(:on).with(
         :success,
         'DebtsApi::V0::FinancialStatusReportService#send_vha_confirmation_email',
-        hash_including('cache_key' => 'test_cache_key', 'template_id' => anything)
-      )
-      expect(batch_double).not_to receive(:on).with(
-        anything,
-        anything,
-        hash_including('email' => anything)
-      )
+        anything
+      ) do |_status, _callback, options|
+        expect(lockbox.decrypt(options['email'])).to eq(user.email&.downcase)
+        expect(lockbox.decrypt(options['personalisation']['name'])).to eq(user.first_name)
+        expect(options['personalisation'].except('name')).to eq(
+          'time' => '48 hours',
+          'date' => Time.zone.now.strftime('%m/%d/%Y')
+        )
+        expect(options).to have_key('template_id')
+        expect(options).not_to have_key('cache_key')
+      end
 
       service.create_vha_fsr(builder)
     end
@@ -651,16 +629,20 @@ RSpec.describe DebtsApi::V0::FinancialStatusReportService, type: :service do
         allow(Flipper).to receive(:enabled?).with(:fsr_zero_silent_errors_in_progress_email).and_return(false)
       end
 
-      it 'creates a va notify job with cache_key instead of user info' do
+      it 'creates a va notify job with encrypted user PII' do
         service = described_class.new
+        encrypted_email = lockbox.encrypt('test@example.com')
+        personalisation = { 'name' => lockbox.encrypt('Jane') }
+
         expect(DebtManagementCenter::VANotifyEmailJob).to receive(:perform_async).with(
-          nil,
+          encrypted_email,
           'template_123',
-          nil,
-          { id_type: 'email', failure_mailer: false, cache_key: 'test_cache_key' }
+          personalisation,
+          { id_type: 'email', failure_mailer: false }
         )
         service.send_vha_confirmation_email('ok',
-                                            { 'cache_key' => 'test_cache_key',
+                                            { 'email' => encrypted_email,
+                                              'personalisation' => personalisation,
                                               'template_id' => 'template_123' })
       end
     end
@@ -674,7 +656,8 @@ RSpec.describe DebtsApi::V0::FinancialStatusReportService, type: :service do
         service = described_class.new
         expect(DebtManagementCenter::VANotifyEmailJob).not_to receive(:perform_async)
         service.send_vha_confirmation_email('ok',
-                                            { 'cache_key' => 'test_cache_key',
+                                            { 'email' => lockbox.encrypt('test@example.com'),
+                                              'personalisation' => {},
                                               'template_id' => 'template_123' })
       end
     end

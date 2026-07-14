@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'user_profile_attribute_service'
-require 'sidekiq/attr_package'
 
 module DebtsApi
   class V0::Form5655Submission < ApplicationRecord
@@ -11,6 +10,7 @@ module DebtsApi
     FORM_ID = '5655'
     ZSF_DD_TAG_SERVICE = 'debt-resolution'
     ZSF_DD_TAG_FUNCTION = 'register_failure'
+    LOCKBOX = Lockbox.new(key: Settings.lockbox.master_key, encode: true)
     enum :state, { unassigned: 0, in_progress: 1, submitted: 2, failed: 3 }
 
     self.table_name = 'form5655_submissions'
@@ -122,17 +122,14 @@ module DebtsApi
     def send_failed_form_email
       StatsD.increment("#{STATS_KEY}.send_failed_form_email.enqueue")
       submission_email = ipf_form['personal_data']['email_address'].downcase
-      cache_key = Sidekiq::AttrPackage.create(
-        expires_in: 30.days,
-        email: submission_email,
-        personalisation: failure_email_personalization_info
-      )
+      personalisation = failure_email_personalization_info
+      personalisation['first_name'] = encrypt_if_present(personalisation['first_name'])
       jid = DebtManagementCenter::VANotifyEmailJob.perform_in(
         24.hours,
-        nil,
+        encrypt_if_present(submission_email),
         SUBMISSION_FAILURE_EMAIL_TEMPLATE_ID,
-        nil,
-        { id_type: 'email', failure_mailer: true, cache_key: }
+        personalisation,
+        { id_type: 'email', failure_mailer: true }
       )
 
       Rails.logger.info("Failed 5655 email enqueued form: #{id} email scheduled with jid: #{jid}")
@@ -147,6 +144,10 @@ module DebtsApi
         'updated_at' => updated_at,
         'confirmation_number' => id
       }
+    end
+
+    def encrypt_if_present(value)
+      LOCKBOX.encrypt(value) unless value.nil?
     end
 
     def register_success

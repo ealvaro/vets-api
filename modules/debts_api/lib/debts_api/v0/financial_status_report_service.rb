@@ -12,7 +12,6 @@ require 'debt_management_center/sharepoint/request'
 require 'debts_api/v0/form5655/send_confirmation_email_job'
 require 'pdf_fill/filler'
 require 'sidekiq'
-require 'sidekiq/attr_package'
 require 'json'
 
 module DebtsApi
@@ -43,6 +42,8 @@ module DebtsApi
       '75' => 'Post-9/11 GI Bill debt for tuition (school liable)'
     }.freeze
 
+    LOCKBOX = Lockbox.new(key: Settings.lockbox.master_key, encode: true)
+
     ##
     # Submit a financial status report to the Debt Management Center
     #
@@ -51,12 +52,11 @@ module DebtsApi
     #
     def submit_financial_status_report(form)
       if Flipper.enabled?(:fsr_zero_silent_errors_in_progress_email)
-        cache_key = Sidekiq::AttrPackage.create(email: @user.email, first_name: @user.first_name)
         DebtsApi::V0::Form5655::SendConfirmationEmailJob.perform_in(
           5.minutes,
           {
             'submission_type' => 'fsr',
-            'cache_key' => cache_key,
+            'user_pii' => lockbox_user_pii(@user),
             'user_uuid' => @user.uuid,
             'template_id' => IN_PROGRESS_TEMPLATE_ID
           }
@@ -172,13 +172,13 @@ module DebtsApi
 
     def send_vha_confirmation_email(_status, options)
       return if Flipper.enabled?(:fsr_zero_silent_errors_in_progress_email)
-      return if options['cache_key'].blank?
+      return if options['email'].blank?
 
       DebtManagementCenter::VANotifyEmailJob.perform_async(
-        nil,
+        options['email'],
         options['template_id'],
-        nil,
-        { id_type: 'email', failure_mailer: false, cache_key: options['cache_key'] }
+        options['personalisation'],
+        { id_type: 'email', failure_mailer: false }
       )
     end
 
@@ -208,14 +208,12 @@ module DebtsApi
       email = @user.email&.downcase
       if email.present?
         template = vha_submissions.any?(&:streamlined?) ? STREAMLINED_CONFIRMATION_TEMPLATE : VHA_CONFIRMATION_TEMPLATE
-        cache_key = Sidekiq::AttrPackage.create(
-          email:,
-          personalisation: email_personalization_info
-        )
+        personalisation = email_personalization_info.merge('name' => encrypt_if_present(@user.first_name))
         submission_batch.on(
           :success,
           'DebtsApi::V0::FinancialStatusReportService#send_vha_confirmation_email',
-          'cache_key' => cache_key,
+          'email' => encrypt_if_present(email),
+          'personalisation' => personalisation,
           'template_id' => template
         )
       end
@@ -254,12 +252,9 @@ module DebtsApi
       email = @user.email&.downcase
       return if email.blank?
 
-      cache_key = Sidekiq::AttrPackage.create(
-        email:,
-        personalisation: email_personalization_info
-      )
+      personalisation = email_personalization_info.merge('name' => encrypt_if_present(@user.first_name))
       DebtManagementCenter::VANotifyEmailJob.perform_async(
-        nil, template_id, nil, { id_type: 'email', cache_key: }
+        encrypt_if_present(email), template_id, personalisation, { id_type: 'email' }
       )
     end
 
@@ -269,6 +264,17 @@ module DebtsApi
 
     def vbs_settings
       Settings.mcp.vbs_v2
+    end
+
+    def lockbox_user_pii(user)
+      {
+        email: encrypt_if_present(user.email),
+        first_name: encrypt_if_present(user.first_name)
+      }
+    end
+
+    def encrypt_if_present(value)
+      LOCKBOX.encrypt(value) unless value.nil?
     end
   end
 end

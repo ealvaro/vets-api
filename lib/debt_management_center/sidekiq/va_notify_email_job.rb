@@ -8,6 +8,7 @@ module DebtManagementCenter
     include Sidekiq::Job
     sidekiq_options retry: 14
     STATS_KEY = 'api.dmc.va_notify_email'
+    LOCKBOX = Lockbox.new(key: Settings.lockbox.master_key, encode: true)
     VA_NOTIFY_CALLBACK_OPTIONS = {
       callback_metadata: {
         notification_type: 'error',
@@ -45,10 +46,9 @@ module DebtManagementCenter
       cache_key = options['cache_key']
 
       send_email(identifier, template_id, personalisation, options)
-      cleanup_and_record_success(cache_key, options['failure_mailer'])
+      record_success(options['failure_mailer'])
       Sidekiq::AttrPackage.delete(cache_key) if cache_key
     rescue Sidekiq::AttrPackageError => e
-      # Log AttrPackage errors as application logic errors (no retries)
       Rails.logger.error('VANotifyEmailJob AttrPackage error', scrub_pii({ error: e.message }))
       raise ArgumentError, e.message
     rescue => e
@@ -62,7 +62,7 @@ module DebtManagementCenter
       notify_client.send_email(email_params(identifier, template_id, personalisation, options))
     end
 
-    def cleanup_and_record_success(_cache_key, use_failure_mailer)
+    def record_success(use_failure_mailer)
       if use_failure_mailer == true
         StatsD.increment("#{DebtsApi::V0::Form5655Submission::STATS_KEY}.send_failed_form_email.success")
       end
@@ -113,15 +113,17 @@ module DebtManagementCenter
     end
 
     def plain_personalisation(personalisation)
-      return personalisation if personalisation.blank? || personalisation['first_name'].blank?
+      return personalisation if personalisation.blank?
 
-      personalisation.merge('first_name' => plain_value(personalisation['first_name']))
+      personalisation.merge(
+        personalisation.slice('first_name', 'name').transform_values { |value| plain_value(value) }
+      )
     end
 
     def plain_value(value)
       return value if value.blank?
 
-      DebtsApi::V0::DigitalDisputeSubmission::LOCKBOX.decrypt(value)
+      LOCKBOX.decrypt(value)
     rescue ActiveSupport::MessageEncryptor::InvalidMessage, Lockbox::DecryptionError
       value
     end

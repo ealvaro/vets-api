@@ -4,6 +4,8 @@ require 'rails_helper'
 require 'debt_management_center/sidekiq/va_notify_email_job'
 
 RSpec.describe DebtsApi::V0::Form5655Submission do
+  let(:lockbox) { Lockbox.new(key: Settings.lockbox.master_key, encode: true) }
+
   describe 'scopes' do
     let!(:first_record) do
       create(
@@ -345,7 +347,7 @@ RSpec.describe DebtsApi::V0::Form5655Submission do
       )
     end
 
-    it 'sends an email with cache_key instead of user info' do
+    it 'sends an email with encrypted user PII' do
       Timecop.freeze(Time.new(2025, 1, 1).utc) do
         expected_personalization_info = {
           'first_name' => 'Travis',
@@ -354,33 +356,18 @@ RSpec.describe DebtsApi::V0::Form5655Submission do
           'updated_at' => form5655_submission.updated_at
         }
 
-        allow(Sidekiq::AttrPackage).to receive(:create).and_return('test_cache_key')
-
-        expect(Sidekiq::AttrPackage).to receive(:create).with(
-          hash_including(
-            email: 'test2@test1.net',
-            personalisation: expected_personalization_info
-          )
-        ).and_return('test_cache_key')
-
-        expect(DebtManagementCenter::VANotifyEmailJob).to receive(:perform_in).with(
-          24.hours,
-          nil,
-          'fake_template_id',
-          nil,
-          { id_type: 'email', failure_mailer: true, cache_key: 'test_cache_key' }
-        )
+        expect(DebtManagementCenter::VANotifyEmailJob).to receive(:perform_in) do |delay, email, template_id,
+                                                                                   personalisation, options|
+          expect(delay).to eq(24.hours)
+          expect(lockbox.decrypt(email)).to eq('test2@test1.net')
+          expect(template_id).to eq('fake_template_id')
+          expect(lockbox.decrypt(personalisation['first_name'])).to eq('Travis')
+          expect(personalisation.except('first_name')).to eq(expected_personalization_info.except('first_name'))
+          expect(options).to eq(id_type: 'email', failure_mailer: true)
+        end
 
         form5655_submission.send_failed_form_email
       end
-    end
-
-    it 'raises when AttrPackage.create fails' do
-      allow(Sidekiq::AttrPackage).to receive(:create).and_raise(
-        Sidekiq::AttrPackageError.new('create', 'Redis connection failed')
-      )
-
-      expect { form5655_submission.send_failed_form_email }.to raise_error(Sidekiq::AttrPackageError)
     end
   end
 

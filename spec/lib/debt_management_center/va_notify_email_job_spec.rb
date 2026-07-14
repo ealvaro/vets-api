@@ -8,7 +8,7 @@ RSpec.describe DebtManagementCenter::VANotifyEmailJob, type: :worker do
   let(:template_id) { 'template-123' }
   let(:va_notify_client) { instance_double(VaNotify::Service) }
   let(:email_options) { { 'id_type' => 'email' } }
-  let(:lockbox) { DebtsApi::V0::DigitalDisputeSubmission::LOCKBOX }
+  let(:lockbox) { Lockbox.new(key: Settings.lockbox.master_key, encode: true) }
 
   before do
     allow(VaNotify::Service).to receive(:new).and_return(va_notify_client)
@@ -21,20 +21,26 @@ RSpec.describe DebtManagementCenter::VANotifyEmailJob, type: :worker do
   end
 
   describe 'Lockbox decryption' do
-    it 'decrypts identifier and personalisation first_name with Lockbox before sending to VaNotify' do
+    it 'decrypts identifier and personalisation names with Lockbox before sending to VaNotify' do
+      first_name = 'Jane'
       encrypted_email = lockbox.encrypt('veteran@va.gov')
-      encrypted_first_name = lockbox.encrypt('Jane')
+      encrypted_first_name = lockbox.encrypt(first_name)
+      encrypted_name = lockbox.encrypt(first_name)
 
       expect(va_notify_client).to receive(:send_email).with(
         hash_including(
           email_address: 'veteran@va.gov',
           template_id:,
-          personalisation: hash_including('first_name' => 'Jane')
+          personalisation: hash_including('first_name' => first_name, 'name' => first_name)
         )
       )
       perform_job(
         identifier: encrypted_email,
-        personalisation: { 'first_name' => encrypted_first_name, 'date_submitted' => '01/15/2025' }
+        personalisation: {
+          'first_name' => encrypted_first_name,
+          'name' => encrypted_name,
+          'date_submitted' => '01/15/2025'
+        }
       )
     end
 
@@ -72,58 +78,60 @@ RSpec.describe DebtManagementCenter::VANotifyEmailJob, type: :worker do
       end
     end
 
-    describe 'cache_key and plain_pii' do
-      context 'when options have no cache_key (not using cache)' do
-        it 'does not call AttrPackage.find' do
-          expect(Sidekiq::AttrPackage).not_to receive(:find)
-          perform_job(identifier: 'user@example.com', personalisation: { 'first_name' => 'Test' })
-        end
-      end
+    it 'sends direct email params to VaNotify' do
+      expect(va_notify_client).to receive(:send_email).with(
+        hash_including(
+          email_address: 'user@example.com',
+          template_id:,
+          personalisation: hash_including('first_name' => 'Test')
+        )
+      )
+      perform_job(identifier: 'user@example.com', personalisation: { 'first_name' => 'Test' })
+    end
 
-      context 'when options have cache_key (using cache)' do
-        let(:cache_key) { 'cache_key_abc' }
-        let(:cache_options) { { 'cache_key' => cache_key }.merge(email_options) }
-
-        it 'fetches identifier and personalisation from AttrPackage and sends them to VaNotify' do
-          allow(Sidekiq::AttrPackage).to receive(:find).with(cache_key).and_return(
-            email: 'cached@example.com',
-            personalisation: { 'first_name' => 'CachedFirst', 'date_submitted' => '01/01/2025' }
-          )
-          expect(va_notify_client).to receive(:send_email).with(
-            hash_including(
-              email_address: 'cached@example.com',
-              template_id:,
-              personalisation: hash_including('first_name' => 'CachedFirst')
-            )
-          )
-          described_class.new.perform(nil, template_id, nil, cache_options)
-        end
-
-        it 'calls AttrPackage.find with the cache_key' do
-          allow(Sidekiq::AttrPackage).to receive(:find).with(cache_key).and_return(
-            email: 'cached@example.com',
-            personalisation: { 'first_name' => 'Cached' }
-          )
-          expect(Sidekiq::AttrPackage).to receive(:find).with(cache_key)
-          described_class.new.perform(nil, template_id, nil, cache_options)
-        end
-
-        it 'raises AttrPackageError when cache_key is present but find returns nil' do
-          allow(Sidekiq::AttrPackage).to receive(:find).with(cache_key).and_return(nil)
-          expect { described_class.new.perform(nil, template_id, nil, cache_options) }
-            .to raise_error(ArgumentError, /AttrPackage.*error/)
-        end
+    context 'when cache_key is not provided' do
+      it 'does not read from AttrPackage' do
+        expect(Sidekiq::AttrPackage).not_to receive(:find)
+        perform_job(identifier: 'user@example.com', personalisation: { 'first_name' => 'Test' })
       end
     end
 
-    it 'deletes the cache key after sending email' do
-      cache_key = 'test_cache_key'
-      allow(Sidekiq::AttrPackage).to receive(:find).with(cache_key).and_return(
-        email: 'test@example.com',
-        personalisation: {}
-      )
-      expect(Sidekiq::AttrPackage).to receive(:delete).with(cache_key)
-      described_class.new.perform(nil, template_id, nil, { 'cache_key' => cache_key })
+    context 'when cache_key is provided' do
+      let(:cache_key) { 'cache_key_abc' }
+      let(:cache_options) { email_options.merge('cache_key' => cache_key) }
+
+      it 'sends cached email params to VaNotify' do
+        allow(Sidekiq::AttrPackage).to receive(:find).with(cache_key).and_return(
+          email: 'cached@example.com',
+          personalisation: { 'first_name' => 'CachedFirst', 'date_submitted' => '01/01/2025' }
+        )
+
+        expect(va_notify_client).to receive(:send_email).with(
+          hash_including(
+            email_address: 'cached@example.com',
+            template_id:,
+            personalisation: hash_including('first_name' => 'CachedFirst')
+          )
+        )
+        described_class.new.perform(nil, template_id, nil, cache_options)
+      end
+
+      it 'deletes the cache key after sending email' do
+        allow(Sidekiq::AttrPackage).to receive(:find).with(cache_key).and_return(
+          email: 'cached@example.com',
+          personalisation: {}
+        )
+
+        expect(Sidekiq::AttrPackage).to receive(:delete).with(cache_key)
+        described_class.new.perform(nil, template_id, nil, cache_options)
+      end
+
+      it 'raises an argument error when the cached attributes are missing' do
+        allow(Sidekiq::AttrPackage).to receive(:find).with(cache_key).and_return(nil)
+
+        expect { described_class.new.perform(nil, template_id, nil, cache_options) }
+          .to raise_error(ArgumentError, /AttrPackage.*error/)
+      end
     end
   end
 
@@ -148,9 +156,10 @@ RSpec.describe DebtManagementCenter::VANotifyEmailJob, type: :worker do
       config.sidekiq_retries_exhausted_block.call(exhausted_job, exception)
     end
 
-    it 'deletes redis cache_key when retries expire' do
+    it 'deletes cache_key when retries expire' do
       cache_key = 'test_cache_key_123'
       job = { 'args' => [nil, nil, nil, { 'cache_key' => cache_key }] }
+
       expect(Sidekiq::AttrPackage).to receive(:delete).with(cache_key)
       allow(StatsD).to receive(:increment)
       allow(Rails.logger).to receive(:error)
