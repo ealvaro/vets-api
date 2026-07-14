@@ -66,7 +66,7 @@ services:
       - ./data:/var/lib/postgresql/data:cached
   web:
     <<: *common
-    command: bash -c "bundle exec rake db:migrate || bundle exec rake db:reset db:migrate && bundle exec rails s -b 0.0.0.0"
+    command: bash -c "bundle exec rails db:migrate db:seed || bundle exec rails db:reset && bundle exec rails s -b 0.0.0.0"
     ports:
       - 3000:3000
   worker:
