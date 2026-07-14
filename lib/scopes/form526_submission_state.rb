@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 module Scopes
-  # rubocop:disable Metrics/ModuleLength
   module Form526SubmissionState
     extend ActiveSupport::Concern
 
@@ -54,21 +53,22 @@ module Scopes
       }
 
       scope :remediated, lambda {
-        ids = joins(
-          "INNER JOIN (
-            SELECT form526_submission_id, MAX(created_at) AS max_created_at
-            FROM form526_submission_remediations
-            GROUP BY form526_submission_id
-          ) AS latest_remediations
-          ON form526_submissions.id = latest_remediations.form526_submission_id"
-        ).joins(
-          "INNER JOIN form526_submission_remediations
-          ON form526_submission_remediations.form526_submission_id = latest_remediations.form526_submission_id
-          AND form526_submission_remediations.created_at = latest_remediations.max_created_at"
-        ).where(
-          form526_submission_remediations: { success: true }
-        ).select(:id)
-        where(id: ids) # HACK: allow clean scope joining. Could be removed in favor of Arel
+        # IDs of submissions whose most recent remediation succeeded.
+        #
+        # Computed from form526_submission_remediations alone via DISTINCT ON (a single
+        # scan + sort) rather than a GROUP BY + self-join that also scanned
+        # form526_submissions twice. The result is materialized to an id array (like the
+        # other scopes here) so the outer query is a plan-stable `id IN (...)` instead of
+        # an `id IN (subquery)` semi-join. The semi-join's cost was estimated
+        # inconsistently by the planner and intermittently flipped to a plan that timed out.
+        latest_remediations = Form526SubmissionRemediation
+                              .select('DISTINCT ON (form526_submission_id) form526_submission_id, success')
+                              .order(:form526_submission_id, created_at: :desc, id: :desc)
+        remediated_ids = Form526SubmissionRemediation
+                         .from(latest_remediations, :form526_submission_remediations)
+                         .where(success: true)
+                         .pluck(:form526_submission_id)
+        where(id: remediated_ids)
       }
 
       scope :with_exhausted_primary_jobs, lambda {
@@ -135,5 +135,4 @@ module Scopes
     end
     # rubocop:enable Metrics/BlockLength
   end
-  # rubocop:enable Metrics/ModuleLength
 end
