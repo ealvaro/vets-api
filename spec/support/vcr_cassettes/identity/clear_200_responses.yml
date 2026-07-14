@@ -1,0 +1,320 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://verified.clearme.com/integrations/oauth2/token
+    body:
+      encoding: US-ASCII
+      string: grant_type=authorization_code&code=ory_ac_ns8mleZmsOccbUlPJHwzO8yaD9jS7kc-aV2t33brlSA.XRadxV5ECSQlltjmrGFE0teiFcYZs-accWw2wpkrZK0&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fv0%2Fsign_in%2Fcallback&client_id=<CLEAR_CLIENT_ID>&client_<DMC_TOKEN>=WTSJpP7Y4OLU1sSSy1ArvwXxV0&code_verifier=9vLLo0Ka5m_tDFnNQO3Pqgrk7FWZHWxTf1aUYekFuREWH7blg6XuNV5eDQ8AZfVVuKZHd7r1Dot-ofJM1JMqog
+    headers:
+      Accept:
+      - application/json
+      Content-Type:
+      - application/x-www-form-urlencoded
+      User-Agent:
+      - Vets.gov Agent
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Fri, 26 Jun 2026 22:15:22 GMT
+      Content-Type:
+      - application/json;charset=UTF-8
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Cache-Control:
+      - no-store
+      Pragma:
+      - no-cache
+      Vary:
+      - Origin
+      - Origin
+      Set-Cookie:
+      - __cf_bm=yKRU30UD0eTbugUHIfTQsQHjv7Drg0Q_dTBBnIAvPWo-1782512122.348872-1.0.1.1-tBE_JMXYYEwqNvW2.IyB6bQ5vchadDY1.ct_W0jWyrn_t6BDzqWpKBP1sHv77oOgaS3hIFNRQGWC6UE8hlHPfjtg_ilVL3AdbmWXaQy326wdEdrpCOJCGwLpTRyP4klS;
+        HttpOnly; SameSite=None; Secure; Path=/; Domain=clearme.com; Expires=Fri,
+        26 Jun 2026 22:45:22 GMT
+      Cf-Cache-Status:
+      - DYNAMIC
+      Server:
+      - cloudflare
+      Cf-Ray:
+      - a11f91fcad0feb37-DFW
+    body:
+      encoding: ASCII-8BIT
+      string: '{"access_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImQ1ZGRkMzE1LWYyMjEtNGY5NS1iODJhLWM0YzVmNDVkM2M3YSIsInR5cCI6IkpXVCJ9.eyJhdWQiOltdLCJjbGllbnRfaWQiOiJhZDEzZjgyZC0xMTc1LTQ4NzMtOGRkOC02YzQ2MDQxOWEyZjQiLCJjb20iOnsiY2xlYXJtZSI6eyJwYXJ0bmVyX3Njb3BlZF91c2VyX2lkIjoiblljTnQyc1FLMWEwOTNpVENjdG5NZWRUREhCZ0VHc29CVXc3U2FnYjBRIn19LCJleHAiOjE3ODI1MTU3MjIsImlhdCI6MTc4MjUxMjEyMiwiaXNzIjoiaHR0cHM6Ly92ZXJpZmllZC5jbGVhcm1lLmNvbS9pbnRlZ3JhdGlvbnMiLCJqdGkiOiI3ZjE0YzcxYS1kNTg1LTRhOWYtODljZi04MDg3YjY5ZWM2NTkiLCJzY3AiOlsib2ZmbGluZSIsIm9wZW5pZCIsIm9mZmxpbmVfYWNjZXNzIl0sInN1YiI6Im5ZY050MnNRSzFhMDkzaVRDY3RuTWVkVERIQmdFR3NvQlV3N1NhZ2IwUSIsInZlcmlmaWNhdGlvbl9jb21wbGV0ZWRfYXQiOiIyMDI2LTA2LTI2VDIyOjE0OjQ2IiwidmVyaWZpY2F0aW9uX2lkIjoidmVyaWZ5X05MUDJqYXhKOEVtUFc5TWxHWVhleFJ3MXVVdFVFZFFmIiwidmVyaWZpY2F0aW9uX2lzX3NhbmRib3giOnRydWUsInZlcmlmaWNhdGlvbl9zdGF0dXMiOiJzdWNjZXNzIn0.ZQirMul6PtlptpKCN8w2-Yy45lfAzHcue3sEg3tRT9oOb9aOOGcPmj2RE-EZhGYGrnJjdfnt4EkF-RjIj2hag4MfHGTMx9Cqdr4iuXctypEX3H5x2mH-IRDtD1wyqW2fGb_1RJtzXGgCqn8EdZowjECAawzVMSUsAalZ9kDvz_2VCr2Yr4Hd_n97cJS8p7Wz7lFWtFWYwKpwPvQcwuPbK0_8Gu-N3To3buSUKDh3Tk3oQcj6xb6b8xSOBiM3-HRA5LgGZ-vUryZEzj07QSUlBPcI4alRXLX0iQgR6E8-8bUyAdtnoos5hwqEBXyqDiDaJda7lqnUreapDi_p3kU7wVQ1aDt_RmV8gScYQ2__-OoignM8snKueDqeDJOr0b9LtzQF3V1v6qS_ml8WiO7r46Rup540CAfEo3I_Dt95Ce0qJAmrXtsuf8T_0mSGoEVvZTRJqLD0SEzeYhcL8pgG3hmO534osRnEOli9-Tc4C5Wy01obFh3RNJ7CUv3pqfkmWUxLaWDr4QarwxUvdF1pzUmoAjRew3Qns9KRqO3WpIML2J4r_oMmFxn7z1Fl5t4fX3nb5nyb9WenOcr7ThqwVtIiMHTKvZmWEv5NDoN05L3nbDmGMPn7Q9jpEN2gBov2ebX4bLRdJliVQEBx5II2WxU53l14SqMzJ828AkexVUw","expires_in":3599,"id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6IjExYTJkMjFhLTBkMGQtNDdkYi1iOTk0LTliYjAxMDg3OTliNyIsInR5cCI6IkpXVCJ9.eyJhZGRyZXNzIjoiMTIzIFRlc3QgU3QsIEFwdC4gQSwgVGVzdCBDaXR5LCBOWSAxMjM0NSBVU0EiLCJhbXIiOlsic2VsZmllIiwic21zIl0sImF0X2hhc2giOiJ1bHliOFpOMWlOenNwZExxYVBTUHFBIiwiYXVkIjpbImFkMTNmODJkLTExNzUtNDg3My04ZGQ4LTZjNDYwNDE5YTJmNCJdLCJhdXRoX3RpbWUiOjE3ODI1MTIwODksImJpcnRoZGF0ZSI6IjE5OTAtMDEtMDEiLCJlbWFpbCI6ImZvdW5kQGNsZWFybWUuY29tIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJleHAiOjE3ODI1MTU3MjIsImZhbWlseV9uYW1lIjoiRG9lIiwiZ2VuZGVyIjoiTSIsImdpdmVuX25hbWUiOiJKb2huIiwiaWF0IjoxNzgyNTEyMTIyLCJpc3MiOiJodHRwczovL3ZlcmlmaWVkLmNsZWFybWUuY29tL2ludGVncmF0aW9ucyIsImp0aSI6Ijc5MjY2NTg0LWQyYmQtNDQ5YS1iMzlhLWQ4MzAwNTg3Yzk3NyIsIm1pZGRsZV9uYW1lIjoiTWFyayIsInBob25lX251bWJlciI6IisxNDA4MjIyMjIyMiIsInBob25lX251bWJlcl92ZXJpZmllZCI6dHJ1ZSwicHJlZmVycmVkX3VzZXJuYW1lIjoiZm91bmRAY2xlYXJtZS5jb20iLCJyYXQiOjE3ODI1MTIwNjUsInNpZCI6IjRiZmYwOWI2LThmZmItNDA0Ni1hZWMzLTU5NzI1NzFjNWQ3MSIsInN1YiI6Im5ZY050MnNRSzFhMDkzaVRDY3RuTWVkVERIQmdFR3NvQlV3N1NhZ2IwUSIsInZlcmlmaWNhdGlvbl9pZCI6InZlcmlmeV9OTFAyamF4SjhFbVBXOU1sR1lYZXhSdzF1VXRVRWRRZiJ9.gXNF0qMBo3SWW1vnMI5IE8dPd61Mq1g0_H8RCidYE7TY16e1Re1lWfjaXtWAsjyiXCIXTm-e-I7I9Wj-LXCVedBtYS_vfB-UD8_C5HToA5H63Jr_HOeNUrRPFF2krVNiNSWDLZWbgqjPBqVwXrwu3twsr_sJisnZRrIob7Jh2Th36fJJN_CJ9B9QUVz_mpxv6DG3qFUWYegRjzLzoGlXkecFsSaHVvkaBloI8OYs_DB8vacv0tfvxwyiayorItkAywoQH6OhKb-s9mnapZ5iPqtb2z7xapB_DOtYHA4_AvAVzmNonPISp_hnGHpPX4iOThPzeqRXb3LKYNwxRqUR1JkX33N-_D7ux4T6xr01J4bknCv6uW8K54EClpJcNe1Pm0QWoDK4_Pn6J9_exzRnOAKdURgHEhAAASkHrQNGzhj2vbQBABI4XAem7Rtz8Pyz3feJDAELiFy1I3uV6_eGo0-uPGVVtTrCc_-esWr3zFqNs2MsMshgW8IdPnbVk50tInKpdK1_kJ3z-EjwXcWZe4aEPjiWSa3W1k1rn-8M7LH99eXXMRXpYgmCH3K7doMNfB9Acrx0EMOw_D6h7g7fA6CAm30sz5nBpduSdNa2ftsuj-o-ovaMSJPM9hnY4s6MiMVhJC5bLcXuTlE3XMzYVVWnsR7qAujt8q4N3cCC54g","scope":"offline
+        openid offline_access","token_type":"bearer"}'
+  recorded_at: Fri, 26 Jun 2026 22:15:22 GMT
+- request:
+    method: get
+    uri: https://verified.clearme.com/v1/verification_sessions/verify_NLP2jaxJ8EmPW9MlGYXexRw1uUtUEdQf?reveal_sensitive_data=true
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Accept:
+      - application/json
+      Content-Type:
+      - application/json
+      User-Agent:
+      - Vets.gov Agent
+      Authorization: Bearer <TOKEN>
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Fri, 26 Jun 2026 22:15:23 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Set-Cookie:
+      - __cf_bm=RNXGOzo7g_3PFfl2cDDX05YLf8vx_aBMxB631PRC2mQ-1782512122.749125-1.0.1.1-3WKMYcXYB3fA8qOBdkTsQ5yIm8q02Crhk44291_aWww0PkQFJ9qhAvKzjUIubBKixjZyafQLdgX_YEPbef9DgrpwyIq3u782aPB4cwC_ZQ_LTHgxdlvoKo9CBUYtkTO2;
+        HttpOnly; SameSite=None; Secure; Path=/; Domain=clearme.com; Expires=Fri,
+        26 Jun 2026 22:45:23 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      Cf-Cache-Status:
+      - DYNAMIC
+      Cf-Ray:
+      - a11f91ff2961478b-DFW
+    body:
+      encoding: ASCII-8BIT
+      string: |-
+        {
+         "id": "verify_NLP2jaxJ8EmPW9MlGYXexRw1uUtUEdQf",
+         "object_name": "verification_session",
+         "activated_authentication_methods": [],
+         "authenticated": true,
+         "authentication_methods": [
+          "selfie",
+          "sms"
+         ],
+         "check_metadata": [],
+         "checks": [
+          {
+           "name": "Age on Gov ID is 18 or over",
+           "value": true,
+           "status": "completed"
+          },
+          {
+           "name": "Device is trustworthy",
+           "value": true,
+           "status": "completed"
+          },
+          {
+           "name": "Gov ID Full name matches SSN9",
+           "value": true,
+           "status": "completed"
+          },
+          {
+           "name": "Gov ID Last name matches SSN9",
+           "value": true,
+           "status": "completed"
+          },
+          {
+           "name": "Gov ID SSN9 is formatted correctly",
+           "value": true,
+           "status": "completed"
+          },
+          {
+           "name": "Gov ID SSN9 is not deceased",
+           "value": true,
+           "status": "completed"
+          },
+          {
+           "name": "Gov ID back is not suspicious",
+           "value": true,
+           "status": "completed"
+          },
+          {
+           "name": "Gov ID captured image is acceptable",
+           "value": true,
+           "status": "completed"
+          },
+          {
+           "name": "Gov ID front is not suspicious",
+           "value": true,
+           "status": "completed"
+          },
+          {
+           "name": "Gov ID full name was extracted",
+           "value": true,
+           "status": "completed"
+          },
+          {
+           "name": "Gov ID is likely authentic",
+           "value": true,
+           "status": "completed"
+          },
+          {
+           "name": "Gov ID is not expired",
+           "value": true,
+           "status": "completed"
+          },
+          {
+           "name": "Gov ID type is an eligible document type",
+           "value": true,
+           "status": "completed"
+          },
+          {
+           "name": "Gov ID was processed",
+           "value": true,
+           "status": "completed"
+          },
+          {
+           "name": "Phone number matches user's information",
+           "value": true,
+           "status": "completed"
+          },
+          {
+           "name": "Selfie matches portrait on Gov ID",
+           "value": true,
+           "status": "completed"
+          },
+          {
+           "name": "Selfie passes liveness check",
+           "value": true,
+           "status": "completed"
+          },
+          {
+           "name": "User's information matches a trusted source",
+           "value": true,
+           "status": "completed"
+          }
+         ],
+         "collected_traits": null,
+         "completed_at": 1782512086,
+         "created_at": 1782512066,
+         "custom_fields": {},
+         "email": "found@clearme.com",
+         "expires_at": 1783376066,
+         "fields_to_collect": [],
+         "idv_status": "success",
+         "ip": [
+          "2600:1700:24d1:7960:188c:5517:857:38bc"
+         ],
+         "is_data_granted": null,
+         "legacy_clear_partner_information": {
+          "preferred_username": "verify_NLP2jaxJ8EmPW9MlGYXexRw1uUtUEdQf"
+         },
+         "phone": "+14082222222",
+         "project_id": "project_tMtLNgsGgrwSRbrGXdBWaLT6UEpE1AaZ2SQwT1unX6",
+         "redirect_url": "https://verified.clearme.com/verify/oauth2/callback",
+         "report_id": null,
+         "sessions": [
+          {
+           "location": {
+            "country": "United States",
+            "country_iso": "US",
+            "subdivision": null,
+            "subdivision_type": null,
+            "city": "Dallas",
+            "lat": "32.78306",
+            "lon": "-96.80667",
+            "ip": "2600:1700:24d1:7960:188c:5517:857:38bc"
+           },
+           "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+           "created_at": 1782512066,
+           "ip": "2600:1700:24d1:7960:188c:5517:857:38bc",
+           "locale": "en-US",
+           "zoneinfo": "America/Chicago"
+          }
+         ],
+         "status": "success",
+         "status_details": null,
+         "token": "verify_token_FTZmSBlZ9QyTKeyMYpUKjlElHXForfkE",
+         "traits": {
+          "address": {
+           "line1": "123 Test St",
+           "line2": "Apt. A",
+           "city": "Test City",
+           "state": "NY",
+           "postal_code": "12345",
+           "country": "USA"
+          },
+          "dob": {
+           "day": 1,
+           "month": 1,
+           "year": 1990
+          },
+          "email": "found@clearme.com",
+          "first_name": "John",
+          "last_name": "Doe",
+          "middle_name": "Mark",
+          "second_family_name": null,
+          "full_last_name": "Doe",
+          "phone": "+14082222222",
+          "ssn4": null,
+          "ssn9": "REDACTED",
+          "identification_number": null,
+          "identification_type": null,
+          "document": {
+           "nationality": null,
+           "document_type": "drivers_license",
+           "document_subtypes": null,
+           "issuing_country": "USA",
+           "issuing_subdivision": "NJ",
+           "document_number": "REDACTED",
+           "date_of_expiry": {
+            "day": 24,
+            "month": 12,
+            "year": 2031
+           },
+           "gender": "M",
+           "address": {
+            "line1": "123 Test St",
+            "line2": "Apt A",
+            "city": "Test City",
+            "state": "NJ",
+            "postal_code": "12345",
+            "country": "US"
+           },
+           "date_of_birth": {
+            "day": 1,
+            "month": 1,
+            "year": 1990
+           },
+           "first_name": "JOHN",
+           "last_name": "DOE",
+           "middle_name": null,
+           "full_name": "JOHN DOE"
+          },
+          "document_front": "REDACTED_BASE64",
+          "document_back": "REDACTED_BASE64",
+          "parsed_fields": [
+           "name",
+           "dob",
+           "address"
+          ],
+          "face_scan_preview": "REDACTED_BASE64",
+          "member_type": null,
+          "health_insurance": null,
+          "verified_email": null,
+          "historical_data": null
+         },
+         "updated_at": 1782512086,
+         "user_agent": [
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
+         ],
+         "user_created": false,
+         "user_id": "nYcNt2sQK1a093iTCctnMedTDHBgEGsoBUw7Sagb0Q",
+         "user_profile_information": null,
+         "user_profile_match_status": "not_applicable",
+         "verified_info": null
+        }
+  recorded_at: Fri, 26 Jun 2026 22:15:23 GMT
+recorded_with: VCR 6.4.0
