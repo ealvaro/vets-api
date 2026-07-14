@@ -73,6 +73,14 @@ describe Common::Client::Concerns::MHVJwtSessionClient do
       end
     end
 
+    context 'when only the standard authorization header is present (direct NLB, no gateway remap)' do
+      it 'falls back to the standard authorization header and returns the JWT token' do
+        headers = { 'authorization' => 'Bearer sample.jwt.token' }
+        token = dummy_instance.send(:get_jwt_from_headers, headers)
+        expect(token).to eq('sample.jwt.token')
+      end
+    end
+
     context 'when authorization header is missing' do
       it 'raises an Unauthorized exception' do
         headers = {}

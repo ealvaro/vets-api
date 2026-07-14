@@ -56,8 +56,11 @@ module Common
         private
 
         def get_jwt_from_headers(res_headers)
-          # Get the JWT token from the headers
-          auth_header = res_headers['x-amzn-remapped-authorization']
+          # The AWS API Gateway remaps the login response's `Authorization` header to
+          # `x-amzn-remapped-authorization`. When the security endpoint is reached
+          # directly (e.g. via the fwdproxy NLB backend, bypassing the gateway) it
+          # returns the standard `authorization` header instead, so fall back to it.
+          auth_header = res_headers['x-amzn-remapped-authorization'] || res_headers['authorization']
           if auth_header.nil? || !auth_header.start_with?('Bearer ')
             raise Common::Exceptions::Unauthorized, detail: 'Invalid or missing authorization header'
           end
