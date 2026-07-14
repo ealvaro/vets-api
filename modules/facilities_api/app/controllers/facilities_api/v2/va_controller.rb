@@ -2,7 +2,13 @@
 
 module FacilitiesApi
   class V2::VAController < ApplicationController
+    include FacilitiesApi::V2::FacilitiesErrorHandler
     skip_before_action :verify_authenticity_token
+    before_action :validate_facility_id, only: :show
+
+    # Facility ids are a 2-3 letter facility-type prefix (vha, vba, nca, vc),
+    # an underscore, and an alphanumeric station number (e.g. vha_402GA)
+    FACILITY_ID_REGEX = /\A[a-zA-Z]{2,3}_[a-zA-Z0-9]{1,7}\z/
 
     def search
       params[:facilityIds] = params[:ids] if params[:ids].present?
@@ -60,6 +66,11 @@ module FacilitiesApi
 
     def covid_mobile_params?
       lighthouse_params.fetch(:type, '')[/health/i] && lighthouse_params[:services]&.any?(/Covid19Vaccine/i)
+    end
+
+    def validate_facility_id
+      raise Common::Exceptions::InvalidFieldValue.new('id', params[:id]) unless
+        params[:id].to_s.match?(FACILITY_ID_REGEX)
     end
   end
 end

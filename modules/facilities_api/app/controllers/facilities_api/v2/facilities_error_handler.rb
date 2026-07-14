@@ -26,12 +26,17 @@ module FacilitiesApi::V2::FacilitiesErrorHandler
     json_error(method, e, "Invalid field value: #{e.field}", '400', :bad_request)
   rescue Common::Exceptions::RecordNotFound, Faraday::ResourceNotFound, Net::HTTPNotFound => e
     json_error(method, e, 'Not Found', '404', :not_found)
-  rescue Common::Exceptions::ServiceUnavailable => e
+  rescue Common::Exceptions::ServiceUnavailable, JSON::ParserError => e
     json_error(method, e, 'Service Unavailable', '503', :service_unavailable)
   rescue Common::Exceptions::Timeout, Common::Exceptions::GatewayTimeout, Net::ReadTimeout, Faraday::TimeoutError => e
     json_error(method, e, 'Gateway Timeout', '504', :gateway_timeout)
-  rescue Common::Exceptions::BackendServiceException, Common::Client::Errors::ClientError,
-         Common::Client::Errors::ParsingError, JSON::ParserError => e
+  rescue Common::Exceptions::BackendServiceException => e
+    # Upstream 4xx means our request was rejected as invalid;
+    # let global ExceptionHandling render it as a client error
+    raise e if e.original_status&.between?(400, 499)
+
+    json_error(method, e, 'Bad Gateway', '502', :bad_gateway)
+  rescue Common::Client::Errors::ClientError, Common::Client::Errors::ParsingError => e
     json_error(method, e, 'Bad Gateway', '502', :bad_gateway)
   rescue ActionController::ParameterMissing
     raise # Let global ExceptionHandling format this properly
@@ -60,7 +65,13 @@ module FacilitiesApi::V2::FacilitiesErrorHandler
     end
 
     real_status = Rack::Utils.status_code(status)
-    render json: { errors: [{ title:, detail: error.message, code: }] }, status: real_status
+
+    # JSON::ParserError messages embed fragments of the unparseable upstream response
+    # (e.g. HTML error pages), so fall back to the title rather than echoing the raw
+    # message to the client. The original exception is still captured by the monitor above.
+    detail = error.is_a?(JSON::ParserError) ? title : error.message
+
+    render json: { errors: [{ title:, detail:, code: }] }, status: real_status
   end
 
   def monitor

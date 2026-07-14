@@ -5,6 +5,12 @@ module FacilitiesApi
     module PPMS
       module Middleware
         class PPMSParser < Faraday::Middleware
+          # Upstream statuses we want surfaced as their own client-error type rather
+          # than collapsed into a generic bad gateway. When PPMS returns a blank error
+          # code, these become PPMS_404 / PPMS_429 (see exceptions.en.yml) so the
+          # controller renders 404 / 429; every other status falls back to PPMS_502.
+          PASSTHROUGH_STATUSES = [404, 429].freeze
+
           def on_complete(env)
             env.body = parse_body(env)
           end
@@ -19,13 +25,18 @@ module FacilitiesApi
               hsh['value'] = []
               hsh
             elsif hsh['error']
-              hsh['error']['code'] = '_502' if hsh['error']['code'].blank? # Set code so matches in exceptions.en.yml
+              # Set code so it matches a key in exceptions.en.yml
+              hsh['error']['code'] = error_code_for(env.status) if hsh['error']['code'].blank?
               hsh['error']['detail'] = hsh['error']['message']
               hsh['error']['source'] = hsh.dig('error', 'innererror', 'message')
               hsh['error']
             else
               hsh
             end
+          end
+
+          def error_code_for(status)
+            PASSTHROUGH_STATUSES.include?(status) ? "_#{status}" : '_502'
           end
         end
       end

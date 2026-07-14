@@ -810,6 +810,18 @@ en:
         code: 'PAGERDUTY_429'
         detail: "Exceeded PagerDuty's API rate limit"
         status: 429
+      PPMS_404:
+        <<: *external_defaults
+        title: Not found
+        code: 'PPMS_404'
+        detail: 'No community care providers were found'
+        status: 404
+      PPMS_429:
+        <<: *external_defaults
+        title: Too many requests
+        code: 'PPMS_429'
+        detail: 'PPMS rate limit exceeded'
+        status: 429
       PPMS_502:
         <<: *external_defaults
         title: Bad Gateway

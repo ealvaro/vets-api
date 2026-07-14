@@ -597,17 +597,52 @@ RSpec.describe 'FacilitiesApi::V2::Ccp', team: :facilities, type: :request, vcr:
       end
 
       context 'when PPMS API returns unparseable HTML (JSON::ParserError)' do
-        it 'returns 502 error' do
+        it 'returns 503 error' do
           allow_any_instance_of(FacilitiesApi::V2::PPMS::Client).to receive(:facility_service_locator)
             .and_raise(JSON::ParserError.new("unexpected character: '<html>' at line 1 column 1"))
 
           get '/facilities_api/v2/ccp',
               params: { lat: 40.0, long: -74.0, type: 'provider', specialties: ['213E00000X'] }
 
-          expect(response).to have_http_status(:bad_gateway)
+          expect(response).to have_http_status(:service_unavailable)
           response_json = JSON.parse(response.body)
-          expect(response_json['errors'].first['title']).to eq('Bad Gateway')
-          expect(response_json['errors'].first['code']).to eq('502')
+          expect(response_json['errors'].first['title']).to eq('Service Unavailable')
+          expect(response_json['errors'].first['code']).to eq('503')
+          # The raw upstream fragment (e.g. '<html>') must not leak to the client
+          expect(response_json['errors'].first['detail']).to eq('Service Unavailable')
+          expect(response.body).not_to include('<html>')
+        end
+      end
+
+      context 'when PPMS responds with an upstream 404' do
+        it 'renders a 404 (not 502)' do
+          key = 'PPMS_404'
+          response_values = { status: 404, detail: 'Not found', code: key, source: nil }
+          allow_any_instance_of(FacilitiesApi::V2::PPMS::Client).to receive(:facility_service_locator)
+            .and_raise(Common::Exceptions::BackendServiceException.new(key, response_values, 404))
+
+          get '/facilities_api/v2/ccp',
+              params: { lat: 40.0, long: -74.0, type: 'provider', specialties: ['213E00000X'] }
+
+          expect(response).not_to have_http_status(:bad_gateway)
+          expect(response).to have_http_status(:not_found)
+          expect(JSON.parse(response.body)['errors'].first['code']).to eq('PPMS_404')
+        end
+      end
+
+      context 'when PPMS responds with an upstream 429' do
+        it 'renders a 429 (not 502)' do
+          key = 'PPMS_429'
+          response_values = { status: 429, detail: 'Rate limit exceeded', code: key, source: nil }
+          allow_any_instance_of(FacilitiesApi::V2::PPMS::Client).to receive(:facility_service_locator)
+            .and_raise(Common::Exceptions::BackendServiceException.new(key, response_values, 429))
+
+          get '/facilities_api/v2/ccp',
+              params: { lat: 40.0, long: -74.0, type: 'provider', specialties: ['213E00000X'] }
+
+          expect(response).not_to have_http_status(:bad_gateway)
+          expect(response).to have_http_status(:too_many_requests)
+          expect(JSON.parse(response.body)['errors'].first['code']).to eq('PPMS_429')
         end
       end
 

@@ -96,6 +96,19 @@ RSpec.describe 'FacilitiesApi::V2::Va', team: :facilities, type: :request, vcr: 
       expect(response).to have_http_status(:bad_request)
     end
 
+    context 'when Lighthouse returns unparseable JSON' do
+      it 'returns 503 error' do
+        allow_any_instance_of(FacilitiesApi::V2::Lighthouse::Client).to receive(:get_facilities)
+          .and_raise(JSON::ParserError.new("unexpected character: '<html>' at line 1 column 1"))
+
+        post '/facilities_api/v2/va', params: { ids: 'vha_648A4' }
+
+        expect(response).to have_http_status(:service_unavailable)
+        expect(parsed_body['errors'].first['title']).to eq('Service Unavailable')
+        expect(parsed_body['errors'].first['code']).to eq('503')
+      end
+    end
+
     it "sends a 'lighthouse.facilities.v2.request.faraday' notification to any subscribers listening" do
       allow(StatsD).to receive(:measure)
 
@@ -504,6 +517,90 @@ RSpec.describe 'FacilitiesApi::V2::Va', team: :facilities, type: :request, vcr: 
             }
           }
         )
+      end
+    end
+
+    context 'with an invalid facility id' do
+      it 'returns 400 without calling Lighthouse' do
+        expect_any_instance_of(FacilitiesApi::V2::Lighthouse::Client).not_to receive(:get_by_id)
+
+        get '/facilities_api/v2/va/12345'
+
+        expect(response).to have_http_status(:bad_request)
+        expect(parsed_body['errors'].first['title']).to eq('Invalid field value: id')
+        expect(parsed_body['errors'].first['code']).to eq('400')
+      end
+
+      it 'returns 400 for an id with special characters' do
+        get '/facilities_api/v2/va/vha_%22%3E%3Cscript%3E'
+
+        expect(response).to have_http_status(:bad_request)
+      end
+
+      it 'returns 400 for an SSTI-style probe without calling Lighthouse' do
+        expect_any_instance_of(FacilitiesApi::V2::Lighthouse::Client).not_to receive(:get_by_id)
+
+        get '/facilities_api/v2/va/%7B%7B%207%20*%207%20%7D%7D' # {{ 7 * 7 }}
+
+        expect(response).to have_http_status(:bad_request)
+      end
+
+      it 'returns 400 for an id missing a station number' do
+        get '/facilities_api/v2/va/vha_'
+
+        expect(response).to have_http_status(:bad_request)
+      end
+    end
+
+    context 'when Lighthouse returns unparseable JSON' do
+      it 'returns 503 error' do
+        allow_any_instance_of(FacilitiesApi::V2::Lighthouse::Client).to receive(:get_by_id)
+          .and_raise(JSON::ParserError.new("unexpected character: '<html>' at line 1 column 1"))
+
+        get '/facilities_api/v2/va/vha_648A4'
+
+        expect(response).to have_http_status(:service_unavailable)
+        expect(parsed_body['errors'].first['title']).to eq('Service Unavailable')
+        expect(parsed_body['errors'].first['code']).to eq('503')
+      end
+    end
+
+    context 'when Lighthouse responds with an upstream 4xx' do
+      # A BackendServiceException carrying an upstream 4xx status should be
+      # re-raised so the global ExceptionHandling renders it as the consistent
+      # client-error type, rather than being masked as a 502 Bad Gateway.
+      def raise_backend_service_exception(original_status)
+        key = "LIGHTHOUSE_FACILITIES#{original_status}"
+        response_values = {
+          status: original_status,
+          detail: 'upstream error',
+          code: key,
+          source: 'Lighthouse Facilities'
+        }
+        allow_any_instance_of(FacilitiesApi::V2::Lighthouse::Client).to receive(:get_by_id)
+          .and_raise(Common::Exceptions::BackendServiceException.new(key, response_values, original_status))
+      end
+
+      it 'renders a 404 (not 502) when Lighthouse returns 404' do
+        raise_backend_service_exception(404)
+
+        get '/facilities_api/v2/va/vha_648A4'
+
+        expect(response).not_to have_http_status(:bad_gateway)
+        expect(response).to have_http_status(:not_found)
+        expect(parsed_body['errors'].first['code']).to eq('LIGHTHOUSE_FACILITIES404')
+      end
+
+      it 'renders a client error (not 502) when Lighthouse returns 429' do
+        # There is no LIGHTHOUSE_FACILITIES429 mapping in exceptions.en.yml, so this
+        # renders as the generic VA900 client error (400) -- the important behavior is
+        # that the upstream 4xx is surfaced as a client error rather than a 502.
+        raise_backend_service_exception(429)
+
+        get '/facilities_api/v2/va/vha_648A4'
+
+        expect(response).not_to have_http_status(:bad_gateway)
+        expect(response.status).to be_between(400, 499)
       end
     end
   end
