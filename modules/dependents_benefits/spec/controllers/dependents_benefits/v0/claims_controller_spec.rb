@@ -308,4 +308,38 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
       subject.send(:log_validation_error_to_metadata, in_progress_form, claim)
     end
   end
+
+  describe '#fetch_in_progress_form' do
+    before do
+      subject.instance_variable_set('@current_user', user)
+    end
+
+    context 'with a V2 in progress form only' do
+      let!(:in_progress_form_v2) { create(:in_progress_form, form_id: DependentsBenefits::FORM_ID_V2, user_uuid: user.uuid, metadata: {}) }
+
+      it 'returns the right IPF' do
+        result = subject.send(:fetch_in_progress_form)
+        expect(result).to eq(in_progress_form_v2)
+      end
+    end
+
+    context 'with a V1 in progress form only' do
+      let!(:in_progress_form_v1) { create(:in_progress_form, form_id: DependentsBenefits::FORM_ID, user_uuid: user.uuid, metadata: {}) }
+
+      it 'returns the right IPF' do
+        result = subject.send(:fetch_in_progress_form)
+        expect(result).to eq(in_progress_form_v1)
+      end
+    end
+
+    context 'with a V2 and V1 in progress form' do
+      let!(:in_progress_form_v2) { create(:in_progress_form, form_id: DependentsBenefits::FORM_ID_V2, user_uuid: user.uuid, metadata: {}) }
+      let!(:in_progress_form_v1) { create(:in_progress_form, form_id: DependentsBenefits::FORM_ID, user_uuid: user.uuid, metadata: {}) }
+
+      it 'returns the right IPF' do
+        result = subject.send(:fetch_in_progress_form)
+        expect(result).to eq(in_progress_form_v2)
+      end
+    end
+  end
 end

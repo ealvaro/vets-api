@@ -43,7 +43,7 @@ module DependentsBenefits
         claim = create_parent_claim(dependent_params.to_json)
 
         # Populate the form_start_date from the IPF if available
-        in_progress_form = current_user ? InProgressForm.form_for_user(claim.form_id, current_user) : nil
+        in_progress_form = fetch_in_progress_form
         claim.form_start_date = in_progress_form.created_at if in_progress_form
 
         unless claim.save
@@ -222,6 +222,20 @@ module DependentsBenefits
       # Creates the BGS dependency verification service for the current user
       def dependency_verification_service
         @dependency_verification_service ||= BGS::DependencyVerificationService.new(current_user)
+      end
+
+      # Finds the relevant InProgressForm
+      def fetch_in_progress_form
+        # While we transition from non-modularized 686 to modularized 686
+        # there will be a little overlap in what `form_id` is being used
+        # for InProgressForms. So rather than just checking for claim.form_id
+        # we need to check for the alternate form_id as well. Fortunately, the
+        # two form versions use the exact same schema and front end, so their
+        # InProgressFrom representations are interchangeable
+        return nil unless current_user
+
+        InProgressForm.form_for_user(DependentsBenefits::FORM_ID_V2, current_user) ||
+          InProgressForm.form_for_user(DependentsBenefits::FORM_ID, current_user)
       end
 
       # Calls the Persons API to fetch additional information for a users dependents,
