@@ -10,7 +10,7 @@ To provide a consistent, structured set of exception classes that can be raised 
 
 ### Base Classes
 
-**`BaseError`** — the root class all exceptions inherit from. Defines the interface (`errors`, `status_code`, `message`) and i18n lookup conventions. Subclasses must implement `errors`. Also exposes `log_to_sentry?` (legacy naming — controls whether the exception is reported to the error tracking backend).
+**`BaseError`** — the root class all exceptions inherit from. Defines the interface (`errors`, `status_code`, `message`) and i18n lookup conventions. Subclasses must implement `errors`. Also exposes `reportable?` (controls whether the exception is reported to the error tracking backend).
 
 **`SerializableError`** — a plain Ruby object (not an exception itself) that wraps error attributes into a JSONAPI-compatible structure. Fields include `title`, `detail`, `code`, `status`, `source`, `links`, and `meta`. Used internally by exception classes when building their `errors` array.
 

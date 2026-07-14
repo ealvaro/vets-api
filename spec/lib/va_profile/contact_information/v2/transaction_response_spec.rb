@@ -155,7 +155,7 @@ describe VAProfile::ContactInformation::V2::TransactionResponse do
         end
         let(:user) { build(:user, :loa3) }
 
-        it 'logs that error to sentry' do
+        it 'logs that error' do
           allow(Rails.logger).to receive(:error)
           expect(Rails.logger).to receive(:error).with(
             'va profile mpi not found',
@@ -215,7 +215,7 @@ describe VAProfile::ContactInformation::V2::TransactionResponse do
           ] }
       end
 
-      it 'logs that error to sentry' do
+      it 'logs that error' do
         redacted_response_body = described_class.redact_response_body(body)
 
         expect(Rails.logger).to receive(:error).with(

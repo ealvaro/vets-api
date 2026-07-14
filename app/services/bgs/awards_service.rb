@@ -18,7 +18,7 @@ module BGS
     def get_awards
       service.awards.find_award_by_participant_id(participant_id, ssn) || service.awards.find_award_by_ssn(ssn)
     rescue => e
-      Rails.logger.error(scrub_pii(e.message), scrub_pii({ user_account_id:, team: Constants::SENTRY_REPORTING_TEAM }))
+      Rails.logger.error(scrub_pii(e.message), scrub_pii({ user_account_id:, team: Constants::ERROR_REPORTING_TEAM }))
 
       false
     end

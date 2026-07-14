@@ -27,9 +27,7 @@ describe 'bb client' do
     end
   end
 
-  context 'with sentry enabled' do
-    before { allow(Settings.sentry).to receive(:dsn).and_return('asdf') }
-
+  context 'extract status and report logging' do
     it 'logs failed extract statuses', :vcr do
       VCR.use_cassette('bb_client/gets_a_list_of_extract_statuses') do
         msg = 'Final health record refresh contained one or more error statuses'

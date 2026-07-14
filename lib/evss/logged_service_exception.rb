@@ -13,7 +13,7 @@ module EVSS
     private
 
     def log_exception(res_body, user, req_body)
-      # don't need to log GET exceptions, those are already logged to sentry with the response body saved
+      # don't need to log GET exceptions, those are already logged with the response body saved
       return if req_body.blank?
 
       PersonalInformationLog.create(

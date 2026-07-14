@@ -66,7 +66,7 @@ describe VAProfile::MilitaryPersonnel::Service do
         end
       end
 
-      it 'logs exception to sentry' do
+      it 'logs exception' do
         VCR.use_cassette('va_profile/military_personnel/post_read_service_history_404') do
           expect(Rails.logger).to receive(:error).with(
             instance_of(String),

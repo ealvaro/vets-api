@@ -497,6 +497,7 @@ app/serializers/user_serializer.rb @software/octo-identity
 app/serializers/user_verification_serializer.rb @software/octo-identity
 app/serializers/valid_va_file_number_serializer.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 app/services/bgs/awards_service.rb @software/backend-review-group
+app/services/bgs/constants.rb @software/backend-review-group @software/benefits-dependents-management
 app/services/bgs/dependency_verification_service.rb @software/benefits-dependents-management @software/backend-review-group
 app/services/bgs/dependent_service.rb @software/benefits-dependents-management @software/backend-review-group
 app/services/bgs/payment_service.rb @software/vsa-debt-resolution @software/backend-review-group

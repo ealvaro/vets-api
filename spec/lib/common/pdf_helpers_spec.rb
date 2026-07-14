@@ -11,7 +11,7 @@ describe Common::PdfHelpers do
     let(:password) { 'test' }
 
     context 'when provided password is incorrect' do
-      it 'logs a message to sentry' do
+      it 'logs a message' do
         error_message = nil
         allow(Rails.logger).to receive(:warn) do |message|
           error_message = message
@@ -28,7 +28,7 @@ describe Common::PdfHelpers do
     end
 
     context 'when provided password is correct' do
-      it 'does not log a message to sentry' do
+      it 'does not log a message' do
         input_file = Rack::Test::UploadedFile.new('spec/fixtures/files/aes256_password.pdf', 'application/pdf')
         output_file = Tempfile.new(['encrypted_attachment', '.pdf'])
 

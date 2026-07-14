@@ -9,12 +9,12 @@ en:
         # links: optional, could contain an 'about' link to further details
         # source: optional, an object containing references to the source of the error (pointer to json in validation)
         # meta: optional, contains information suitable for debugging, VISIBLE IN PRODUCTION
-        # sentry_type: optional, defaults to 'error', supported values = debug, info, warn, error, fatal, and 'none'
+        # reportable: optional, defaults to true; set to false to skip error reporting for an expected exception
         detail: ~
         links: ~
         source: ~
         meta: ~
-        sentry_type: 'error'
+        reportable: true
       backend_service_exception: &external_defaults
         <<: *defaults
         title: 'Operation failed'

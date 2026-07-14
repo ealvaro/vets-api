@@ -25,10 +25,6 @@ RSpec.describe Swagger::Requests::SurvivorsBenefitsClaims, skip: 'TODO after sch
     end
 
     context 'with invalid params' do
-      before do
-        allow(Settings.sentry).to receive(:dsn).and_return('asdf')
-      end
-
       let(:params) do
         {
           survivorsBenefitsClaim: {

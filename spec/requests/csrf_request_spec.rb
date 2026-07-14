@@ -6,7 +6,6 @@ RSpec.describe 'CSRF scenarios' do
   # ActionController::Base.allow_forgery_protection = false in the 'test' environment
   # We explicitly enable it for this spec
   before do
-    allow(Settings.sentry).to receive(:dsn).and_return('truthy')
     @original_val = ActionController::Base.allow_forgery_protection
     allow(ActionController::Base).to receive(:allow_forgery_protection).and_return(true)
     # innocuous route chosen for setting the CSRF token in the response header

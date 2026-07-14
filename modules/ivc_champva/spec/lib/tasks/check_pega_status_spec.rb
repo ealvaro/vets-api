@@ -2,6 +2,7 @@
 
 # rubocop:disable Layout/LineLength
 require 'rails_helper'
+require 'rake'
 
 RSpec.describe 'ivc_champva:check_pega_status', type: :task do
   before(:all) do

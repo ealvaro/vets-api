@@ -143,9 +143,9 @@ RSpec.describe 'VBADocument::Internal::V1::UploadComplete', type: :request do
           expect(response).to have_http_status(:no_content)
           upload.reload
           expect(upload.status).to eq('uploaded')
-          # if duplicate notifications occur or the upload processor job kicks in before the notification happens sentry
-          # receives exceptions it shouldn't.  We should simply log this and do nothing.  We simulate via a duplicate
-          # notification.
+          # if duplicate notifications occur or the upload processor job kicks in before the notification happens the
+          # logger receives exceptions it shouldn't.  We should simply log this and do nothing.  We simulate via a
+          # duplicate notification.
           # https://vajira.max.gov/browse/API-12668
           post('/services/vba_documents/internal/v1/upload_complete', params: body, headers:)
           expect(response).to have_http_status(:no_content)

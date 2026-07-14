@@ -17,7 +17,7 @@ module BGS
     def get_documents
       service.uploaded_document.find_by_participant_id(participant_id) || [] # rubocop:disable Rails/DynamicFindBy
     rescue => e
-      Rails.logger.error(scrub_pii(e.message), { user_account:, team: Constants::SENTRY_REPORTING_TEAM })
+      Rails.logger.error(scrub_pii(e.message), { user_account:, team: Constants::ERROR_REPORTING_TEAM })
 
       []
     end

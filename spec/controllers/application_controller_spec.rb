@@ -47,7 +47,7 @@ RSpec.describe ApplicationController, type: :controller do
       raise Common::Exceptions::BackendServiceException, 'RX139'
     end
 
-    def common_error_with_warning_sentry
+    def common_error_with_warning
       raise Common::Exceptions::BackendServiceException, 'VAOS_409A'
     end
 
@@ -74,11 +74,10 @@ RSpec.describe ApplicationController, type: :controller do
       get 'routing_error' => 'anonymous#routing_error'
       get 'forbidden' => 'anonymous#forbidden'
       get 'breakers_outage' => 'anonymous#breakers_outage'
-      get 'common_error_with_warning_sentry' => 'anonymous#common_error_with_warning_sentry'
+      get 'common_error_with_warning' => 'anonymous#common_error_with_warning'
       get 'record_not_found' => 'anonymous#record_not_found'
       get 'other_error' => 'anonymous#other_error'
       get 'client_connection_failed' => 'anonymous#client_connection_failed'
-      get 'client_connection_failed_no_sentry' => 'anonymous#client_connection_failed_no_sentry'
       get 'test_authentication' => 'anonymous#test_authentication'
     end
   end
@@ -91,7 +90,7 @@ RSpec.describe ApplicationController, type: :controller do
     it 'sets error state on spans for handled exceptions' do
       allow(Datadog::Tracing).to receive(:active_span).and_return(active_span)
       expect(active_span).to receive(:set_error).with(Common::Exceptions::BackendServiceException)
-      get :common_error_with_warning_sentry
+      get :common_error_with_warning
     end
 
     it 'does not set error state on spans for expected exceptions' do

@@ -68,7 +68,7 @@ describe VAProfile::Demographics::Service,  feature: :personal_info,
         end
       end
 
-      it 'logs exception to sentry' do
+      it 'logs exception' do
         VCR.use_cassette('va_profile/demographics/demographics_error_404', VCR::MATCH_EVERYTHING) do
           expect(Rails.logger).to receive(:error).with(
             instance_of(String),

@@ -25,10 +25,6 @@ RSpec.describe Swagger::Requests::IncreaseCompensationClaims, skip: 'TODO after 
     end
 
     context 'with invalid params' do
-      before do
-        allow(Settings.sentry).to receive(:dsn).and_return('asdf')
-      end
-
       let(:params) do
         {
           IncreaseCompensationClaim: {

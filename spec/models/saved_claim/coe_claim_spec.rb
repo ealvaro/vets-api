@@ -129,7 +129,7 @@ RSpec.describe SavedClaim::CoeClaim do
       allow(Flipper).to receive(:enabled?).with(:coe_form_rebuild_cveteam).and_return(false)
     end
 
-    it 'logs an error to sentry if edipi is nil' do
+    it 'logs an error if edipi is nil' do
       coe_claim = create(:coe_claim)
       allow(coe_claim).to receive(:prepare_form_data).and_return({})
       allow_any_instance_of(LGY::Service).to receive(:put_application).and_return({})
@@ -137,7 +137,7 @@ RSpec.describe SavedClaim::CoeClaim do
       coe_claim.send_to_lgy(edipi: nil, icn: nil)
     end
 
-    it 'logs an error to sentry if edipi is an empty string' do
+    it 'logs an error if edipi is an empty string' do
       coe_claim = create(:coe_claim)
       allow(coe_claim).to receive(:prepare_form_data).and_return({})
       allow_any_instance_of(LGY::Service).to receive(:put_application).and_return({})

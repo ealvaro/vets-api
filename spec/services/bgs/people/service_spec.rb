@@ -44,7 +44,7 @@ RSpec.describe BGS::People::Service do
         end
       end
 
-      it 'logs an exception to sentry' do
+      it 'logs an exception' do
         VCR.use_cassette('bgs/people_service/no_person_data') do
           service = BGS::People::Service.new(user)
           expect(Rails.logger).to receive(:error).with(expected_error.message, expected_error_message_team)
@@ -64,7 +64,7 @@ RSpec.describe BGS::People::Service do
         allow_any_instance_of(BGS::Services).to receive(:people).and_raise(server_error)
       end
 
-      it 'logs an exception to sentry' do
+      it 'logs an exception' do
         service = BGS::People::Service.new(user)
         expect(Rails.logger).to receive(:error).with(be_a(String), expected_error_message_team)
         service.find_person_by_participant_id

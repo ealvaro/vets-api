@@ -206,7 +206,7 @@ class SourceAppMiddleware
     if source_app.nil?
       source_app = 'not_provided'
     elsif SOURCE_APP_NAMES.exclude?(source_app)
-      # TODO: - Use sentry to notify us instead. It must be done in a rate-limited way
+      # TODO: - Seek alternative notification approach. It must be done in a rate-limited way
       #        so as not to allow for a malicious client to overflow worker queues
       Rails.logger.warn "Unrecognized value for HTTP_SOURCE_APP_NAME request header... [#{source_app}]"
       source_app = 'not_in_allowlist'

@@ -583,7 +583,7 @@ RSpec.describe SAML::User do
         context 'MHV outbound-redirect flow' do
           let(:client_id) { 'myvahealth' }
 
-          it 'does not validate and logs a Sentry warning' do
+          it 'does not validate and logs a warning' do
             expect(Rails.logger).to receive(:warn).with(expected_log, expected_error_data)
             expect { subject.validate! }.not_to raise_error
           end
@@ -756,7 +756,7 @@ RSpec.describe SAML::User do
         context 'MHV outbound-redirect flow' do
           let(:client_id) { 'mhv' }
 
-          it 'logs a Sentry warning and allows login' do
+          it 'logs a warning and allows login' do
             expect(Rails.logger).to receive(:warn).with(expected_log, expected_error_data)
             expect { subject.validate! }.not_to raise_error
           end

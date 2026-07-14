@@ -95,16 +95,16 @@ module CheckIn
       phone_number = redis_client.patient_cell_phone(uuid:) || redis_client.mobile_phone(uuid:)
       phone_last_four = extract_phone_last_four(phone_number)
 
-      sentry_context = { template_id:, phone_last_four: }
-      sentry_context[:claim_number] = claim_number if claim_number
+      context = { template_id:, phone_last_four: }
+      context[:claim_number] = claim_number if claim_number
 
       # Use logging helper for class method context
       Rails.logger.error(
         scrub_pii(ex.message),
-        scrub_pii(sentry_context.merge({ error: :check_in_va_notify_job, team: 'check-in' }))
+        scrub_pii(context.merge({ error: :check_in_va_notify_job, team: 'check-in' }))
       )
       Rails.logger.error(
-        scrub_pii("Travel Claim Notification retries exhausted: #{ex.message} - Context: #{sentry_context}")
+        scrub_pii("Travel Claim Notification retries exhausted: #{ex.message} - Context: #{context}")
       )
 
       facility_type = determine_facility_type_from_template(template_id)

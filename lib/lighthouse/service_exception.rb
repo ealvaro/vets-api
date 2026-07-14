@@ -24,7 +24,7 @@ module Lighthouse
       400 => Common::Exceptions::BadRequest
     }.freeze
 
-    # sends error logs to sentry that contains the client id and url that the consumer was trying call
+    # sends error logs to Rails.logger that contains the client id and url that the consumer was trying call
     # raises an error based off of what the response status was
     # formats the Lighthouse exception for the controller ExceptionHandling to report out to the consumer
     # @option options [string] :invoker where this method was called from

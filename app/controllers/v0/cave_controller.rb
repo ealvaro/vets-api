@@ -284,7 +284,7 @@ module V0
 
       mark_error_spans(active_span:, rack_span:, error:, status_code:, error_code:)
       log_upstream_request_failure(error:, status_code:, error_code:)
-      report_service_error_to_sentry(error:, status_code:, error_code:)
+      report_service_error(error:, status_code:, error_code:)
 
       render json: {
         errors: [
@@ -399,7 +399,7 @@ module V0
       }.compact)
     end
 
-    def report_service_error_to_sentry(error:, status_code:, error_code:)
+    def report_service_error(error:, status_code:, error_code:)
       Rails.logger.error(error.message, {
         cave_document_id: params[:id],
         cave_endpoint: request.path,

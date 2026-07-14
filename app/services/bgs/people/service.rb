@@ -27,12 +27,12 @@ module BGS
         raw_response = service.people.find_person_by_ptcpnt_id(participant_id, ssn)
         if raw_response.blank?
           exception = VAFileNumberNotFound.new
-          Rails.logger.error(scrub_pii(exception.message), { user_account:, team: Constants::SENTRY_REPORTING_TEAM })
+          Rails.logger.error(scrub_pii(exception.message), { user_account:, team: Constants::ERROR_REPORTING_TEAM })
 
         end
         BGS::People::Response.new(raw_response, status: :ok)
       rescue => e
-        Rails.logger.error(scrub_pii(e.message), { user_account:, team: Constants::SENTRY_REPORTING_TEAM })
+        Rails.logger.error(scrub_pii(e.message), { user_account:, team: Constants::ERROR_REPORTING_TEAM })
 
         BGS::People::Response.new(nil, status: :error)
       end

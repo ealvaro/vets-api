@@ -92,8 +92,6 @@ RSpec.describe 'V0::EducationBenefitsClaims', type: %i[request serializer] do
         }
       end
 
-      before { allow(Settings.sentry).to receive(:dsn).and_return('asdf') }
-
       it 'renders json of the errors' do
         subject
         expect(response).to have_http_status(:unprocessable_entity)

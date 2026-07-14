@@ -1391,8 +1391,6 @@ search_gsa:
   mock_search: <%= ENV['search_gsa__mock_search'] %>
   url: <%= ENV['search_gsa__url'] %>
 secret_key_base: <%= ENV['secret_key_base'] %>
-sentry:
-  dsn: <%= ENV['sentry__dsn'] %>
 sharepoint:
   mobile_survey_storage:
     authentication_url: https://login.microsoftonline.com

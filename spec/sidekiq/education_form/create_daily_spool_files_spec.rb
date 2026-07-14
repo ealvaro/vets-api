@@ -350,7 +350,7 @@ RSpec.describe EducationForm::CreateDailySpoolFiles, form: :education_benefits, 
         expect(Flipper).to receive(:enabled?).with(:spool_testing_error_2).and_return(false).at_least(:once)
       end
 
-      it 'logs exception to sentry' do
+      it 'logs exception' do
         local_mock = instance_double(SFTPWriter::Local)
 
         expect(EducationBenefitsClaim.unprocessed).not_to be_empty
