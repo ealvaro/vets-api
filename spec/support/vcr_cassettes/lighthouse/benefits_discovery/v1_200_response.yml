@@ -1,0 +1,34 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: <LIGHTHOUSE_BENEFITS_DISCOVERY_HOST>/benefits-discovery-service/v1/recommendations
+    body:
+      encoding: UTF-8
+      string: '{"icn":"1012345678V123456","dateOfBirth":"1990-01-01"}'
+    headers:
+      Accept:
+      - application/json
+      Content-Type:
+      - application/json
+      User-Agent:
+      - Vets.gov Agent
+      Authorization: Bearer <TOKEN>
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json; charset=utf-8
+      Cache-Control:
+      - no-cache, no-store
+      Pragma:
+      - no-cache
+    body:
+      encoding: UTF-8
+      string: '{"recommended":[{"benefitCode":"HEALTH","benefitName":"Health","benefitUrl":"https://www.va.gov/health-care/"}],"not_recommended":[{"benefitCode":"DU","benefitName":"Discharge Upgrade","benefitUrl":"https://www.va.gov/discharge-upgrade-instructions/introduction/"}],"undetermined":[]}'
+  recorded_at: Wed, 18 Jun 2025 00:00:00 GMT
+recorded_with: VCR 6.2.0

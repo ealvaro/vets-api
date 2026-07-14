@@ -18,6 +18,14 @@ module BenefitsDiscovery
       response.body
     end
 
+    def fetch_v1_recommendations(icn:, date_of_birth: nil)
+      payload = { icn: }
+      payload[:dateOfBirth] = date_of_birth if date_of_birth.present?
+      body = payload.to_json
+      response = perform(:post, 'benefits-discovery-service/v1/recommendations', body, headers)
+      response.body
+    end
+
     private
 
     attr_reader :api_key, :app_id

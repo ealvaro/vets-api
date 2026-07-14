@@ -71,6 +71,10 @@ Rails.application.routes.draw do
     end
   end
 
+  namespace :benefits_discovery do
+    post 'v1/recommendations', to: 'gateway#recommendations'
+  end
+
   namespace :v0, defaults: { format: 'json' } do
     resources :onsite_notifications, only: %i[create index update]
     resources :in_progress_forms, only: %i[index show update destroy]

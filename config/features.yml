@@ -188,6 +188,9 @@ features:
     actor_type: user
     description: Enables the After Visit Summary API.
     enable_in_development: true
+  bds_gateway_enabled:
+    description: Enables the BDS Gateway v1 recommendations endpoint
+    enable_in_development: true
   benefits_claims_lighthouse_provider:
     actor_type: user
     description: Master flag — enables the Lighthouse provider for benefits claims

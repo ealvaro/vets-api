@@ -86,4 +86,44 @@ RSpec.describe BenefitsDiscovery::Service do
       end
     end
   end
+
+  describe '#fetch_v1_recommendations' do
+    let(:icn) { '1012345678V123456' }
+    let(:date_of_birth) { '1990-01-01' }
+
+    it 'returns recommendations for the given ICN and date of birth' do
+      VCR.use_cassette('lighthouse/benefits_discovery/v1_200_response',
+                       match_requests_on: %i[method uri body]) do
+        response = subject.fetch_v1_recommendations(icn:, date_of_birth:)
+        expect(response).to eq(
+          {
+            'recommended' => [
+              {
+                'benefit_code' => 'HEALTH',
+                'benefit_name' => 'Health',
+                'benefit_url' => 'https://www.va.gov/health-care/'
+              }
+            ],
+            'not_recommended' => [
+              {
+                'benefit_code' => 'DU',
+                'benefit_name' => 'Discharge Upgrade',
+                'benefit_url' => 'https://www.va.gov/discharge-upgrade-instructions/introduction/'
+              }
+            ],
+            'undetermined' => []
+          }
+        )
+      end
+    end
+
+    it 'raises client error when downstream responds with an error' do
+      VCR.use_cassette('lighthouse/benefits_discovery/v1_400_response',
+                       match_requests_on: %i[method uri body]) do
+        expect do
+          subject.fetch_v1_recommendations(icn: 'bad', date_of_birth: 'bad')
+        end.to raise_error(Common::Client::Errors::ClientError)
+      end
+    end
+  end
 end

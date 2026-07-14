@@ -19,6 +19,7 @@ app/concerns/rated_disabilities_fetch_concern.rb @software/disability-benefits @
 app/concerns/retriable_concern.rb @software/health-apps-backend @software/backend-review-group
 app/controllers/appeals_base_controller.rb @software/backend-review-group
 app/controllers/application_controller.rb @software/backend-review-group @software/octo-identity
+app/controllers/benefits_discovery/gateway_controller.rb @software/ves-benefits-discovery-service-devs @software/backend-review-group
 app/controllers/claims_base_controller.rb @software/backend-review-group
 app/controllers/concerns/appointment_authorization.rb @software/backend-review-group
 app/controllers/concerns/authentication_and_sso_concerns.rb @software/octo-identity
@@ -1068,7 +1069,7 @@ lib/lighthouse/benefits_claims @software/disability-benefits @software/benefits-
 lib/lighthouse/benefits_claims/monitor.rb @software/benefits-lifestage @software/disability-benefits @software/backend-review-group
 lib/lighthouse/benefits_claims/utilities/helpers.rb @software/benefits-management-tools-be @software/backend-review-group
 lib/lighthouse/benefits_claims/service.rb @software/accredited-representative-crew @software/backend-review-group
-lib/lighthouse/benefits_discovery @software/va-core-veteran-experiences @software/backend-review-group
+lib/lighthouse/benefits_discovery @software/va-core-veteran-experiences @software/ves-benefits-discovery-service-devs @software/backend-review-group
 lib/lighthouse/benefits_documents/ @software/benefits-management-tools-be @software/disability-benefits @software/backend-review-group
 lib/lighthouse/benefits_education @software/va-core-veteran-experiences @software/backend-review-group
 lib/lighthouse/benefits_intake @software/benefits-lifestage @software/disability-benefits @software/backend-review-group
@@ -1337,6 +1338,7 @@ spec/config/initializers/betamocks_spec.rb @software/backend-review-group
 spec/config/initializers/committee_spec.rb @software/backend-review-group
 spec/config/initializers/staccato_spec.rb @software/health-apps-backend @software/backend-review-group
 spec/controllers/application_controller_spec.rb @software/backend-review-group @software/octo-identity
+spec/controllers/benefits_discovery/gateway_controller_spec.rb @software/ves-benefits-discovery-service-devs @software/backend-review-group
 spec/controllers/concerns/email_verification_error_handler_spec.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
 spec/controllers/concerns/chatbot/requires_edipi_spec.rb @software/vfs-virtual-agent-chatbot @software/backend-review-group
 spec/controllers/concerns/third_party_transaction_logging_spec.rb @software/backend-review-group
@@ -1725,7 +1727,7 @@ spec/lib/lgy @software/benefits-non-disability @software/backend-review-group
 spec/lib/lighthouse/auth @software/benefits-management-tools-be @software/backend-review-group
 spec/lib/lighthouse/benefits_claims @software/disability-benefits @software/benefits-management-tools-be @software/backend-review-group
 spec/lib/lighthouse/benefits_claims/service_spec.rb @software/accredited-representative-crew @software/backend-review-group
-spec/lib/lighthouse/benefits_discovery @software/va-core-veteran-experiences @software/backend-review-group
+spec/lib/lighthouse/benefits_discovery @software/va-core-veteran-experiences @software/ves-benefits-discovery-service-devs @software/backend-review-group
 spec/lib/lighthouse/benefits_documents @software/backend-review-group @software/benefits-management-tools-be
 spec/lib/lighthouse/benefits_documents/service_spec.rb @software/benefits-management-tools-be @software/backend-review-group
 spec/lib/lighthouse/benefits_documents/update_documents_status_service_spec.rb @software/benefits-management-tools-be @software/backend-review-group
