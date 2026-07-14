@@ -197,12 +197,13 @@ module Users
     # rubocop:enable Metrics/MethodLength
 
     def veteran_status
+      status = RESPONSE_STATUS[:ok]
       if user.edipi.blank?
         log_for_missing_edipi
-        return build_veteran_status_object(nil, nil)
+        return { status:, is_veteran: nil, served_in_military: nil }
       end
 
-      build_veteran_status_object(user.veteran?, user.served_in_military?)
+      { status:, is_veteran: user.veteran?, served_in_military: user.served_in_military? }
     rescue => e
       handle_service_error(e, 'VAProfile', 'veteran_status')
       nil
@@ -272,16 +273,7 @@ module Users
     end
 
     def log_for_missing_edipi
-      Rails.logger.info(
-        'Skipping VAProfile veteran status call, No EDIPI present',
-        user_uuid: user.uuid,
-        loa: user.loa
-      )
-    end
-
-    def build_veteran_status_object(is_veteran, served_in_military)
-      Rails.logger.info('user_veteran_status', user_uuid: user.uuid, is_veteran:)
-      { status: RESPONSE_STATUS[:ok], is_veteran:, served_in_military: }
+      Rails.logger.info('Skipping VAProfile veteran status call, No EDIPI present', user_uuid: user.uuid, loa: user.loa)
     end
 
     def handle_service_error(error, service, method_name)

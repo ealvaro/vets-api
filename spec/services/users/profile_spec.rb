@@ -509,21 +509,6 @@ RSpec.describe Users::Profile do
             expect(subject.status).to eq 200
           end
         end
-
-        it 'logs veteran status' do
-          VCR.use_cassette('va_profile/veteran_status/va_profile_veteran_status_200',
-                           match_requests_on: %i[method body], allow_playback_repeats: true) do
-            allow(Rails.logger).to receive(:info)
-            Users::Profile.new(user).send(:veteran_status)
-            expect(Rails.logger).to have_received(:info).with(
-              'user_veteran_status',
-              hash_including(
-                user_uuid: user.uuid,
-                is_veteran: user.veteran?
-              )
-            )
-          end
-        end
       end
 
       context 'when a veteran status is not found' do

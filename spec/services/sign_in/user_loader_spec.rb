@@ -34,6 +34,10 @@ RSpec.describe SignIn::UserLoader do
     end
     let(:tou_response) { 'accepted' }
 
+    before do
+      allow(Identity::LogUserVeteranStatusJob).to receive(:perform_async)
+    end
+
     shared_examples 'reloaded user' do
       context 'and associated session cannot be found' do
         let(:session) { nil }
@@ -167,6 +171,12 @@ RSpec.describe SignIn::UserLoader do
 
         it 'reloads user object so that MPI can be called for additional attributes' do
           expect(subject.edipi).to eq edipi
+        end
+
+        it 'enqueues user veteran status logging job' do
+          subject
+
+          expect(Identity::LogUserVeteranStatusJob).to have_received(:perform_async).with(user_uuid)
         end
 
         context 'when the user can provision cerner' do

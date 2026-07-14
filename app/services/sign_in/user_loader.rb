@@ -37,6 +37,7 @@ module SignIn
       current_user.invalidate_mpi_cache
       current_user.validate_mpi_profile
       current_user.provision_cerner_async(source: :sis)
+      Identity::LogUserVeteranStatusJob.perform_async(current_user.uuid)
       set_cerner_eligibility_cookie
 
       context = {

@@ -6,6 +6,10 @@ RSpec.describe Login::AfterLoginActions do
   subject(:after_login_actions) { described_class.new(user) }
 
   describe '#perform' do
+    before do
+      allow(Identity::LogUserVeteranStatusJob).to receive(:perform_async)
+    end
+
     context 'creating credential email' do
       let(:user) { create(:user, email:) }
       let(:email) { 'some-email' }
@@ -14,6 +18,12 @@ RSpec.describe Login::AfterLoginActions do
         expect { after_login_actions.perform }.to change(UserCredentialEmail, :count)
         user_credential_email = user.user_verification.user_credential_email
         expect(user_credential_email.credential_email).to eq(email)
+      end
+
+      it 'enqueues user veteran status logging job' do
+        after_login_actions.perform
+
+        expect(Identity::LogUserVeteranStatusJob).to have_received(:perform_async).with(user.uuid)
       end
     end
 

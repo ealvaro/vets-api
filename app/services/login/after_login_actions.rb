@@ -18,6 +18,7 @@ module Login
       Login::UserAcceptableVerifiedCredentialUpdater.new(user_account: @current_user.user_account).perform
       id_mismatch_validations
       current_user.provision_cerner_async(source: :ssoe)
+      Identity::LogUserVeteranStatusJob.perform_async(current_user.uuid)
 
       if Settings.test_user_dashboard.env == 'staging'
         TestUserDashboard::UpdateUser.new(current_user).call(Time.current)
