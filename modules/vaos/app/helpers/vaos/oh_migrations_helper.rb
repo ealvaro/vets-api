@@ -51,7 +51,7 @@ module VAOS
       ELIGIBILITY_END_DAYS = 47
       ELIGIBILITY_DARK_DEPLOY_END_DAYS = 45
       CANCELLATION_START_DAYS = -10
-      CANCELLATION_END_DAYS = 7
+      CANCELLATION_END_DAYS = 10
       CANCELLATION_DARK_DEPLOY_END_DAYS = 5
 
       def self.build_migrations(migrations, migration_entry, today, user)
