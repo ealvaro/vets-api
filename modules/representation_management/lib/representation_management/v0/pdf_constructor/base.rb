@@ -120,13 +120,17 @@ module RepresentationManagement
         #
         # @param phone_number [String] The phone number to be formatted.
         # @return [String] The formatted phone number.
-        def format_phone_number(phone_number)
+        def format_phone_number(phone_number:, add_parentheses: false)
           return '' if phone_number.blank?
 
           phone_number = phone_number.gsub(/\D/, '')
           return phone_number if phone_number.length < 10
 
-          "#{phone_number[0..2]}-#{phone_number[3..5]}-#{phone_number[6..9]}"
+          if add_parentheses
+            "(#{phone_number[0..2]}) #{phone_number[3..5]}-#{phone_number[6..9]}"
+          else
+            "#{phone_number[0..2]}-#{phone_number[3..5]}-#{phone_number[6..9]}"
+          end
         end
 
         # Removes non-digit characters from a phone number.

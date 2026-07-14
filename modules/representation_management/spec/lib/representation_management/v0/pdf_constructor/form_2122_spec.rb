@@ -61,12 +61,6 @@ describe RepresentationManagement::V0::PdfConstructor::Form2122 do
     }
   end
 
-  def field_value(path, field_name)
-    pdf_forms = PdfForms.new(Settings.binaries.pdftk)
-    fields = pdf_forms.get_fields(path)
-    fields.find { |f| f.name == field_name }&.value
-  end
-
   it 'constructs the pdf with conditions present' do
     form = RepresentationManagement::Form2122Data.new(data)
     Tempfile.create do |tempfile|
@@ -191,6 +185,34 @@ describe RepresentationManagement::V0::PdfConstructor::Form2122 do
       expected = "#{long_first} M #{long_last}".truncate(described_class::MAX_16A_LEN, omission: '')
 
       expect(value).to eq(expected)
+    end
+  end
+
+  it 'formats the veteran phone number correctly' do
+    phone_field = 'form1[0].#subform[0].Phone[1]'
+    data_no_rep = data.except(:representative_id)
+    form = RepresentationManagement::Form2122Data.new(data_no_rep)
+
+    Tempfile.create do |tempfile|
+      tempfile.binmode
+      described_class.new(tempfile).construct(form, flatten: false)
+
+      value = field_value(tempfile.path, phone_field)
+      expect(value).to eq('(555) 555-5555')
+    end
+  end
+
+  it 'formats the claimant phone number correctly' do
+    phone_field = 'form1[0].#subform[0].Phone[0]'
+    data_no_rep = data.except(:representative_id)
+    form = RepresentationManagement::Form2122Data.new(data_no_rep)
+
+    Tempfile.create do |tempfile|
+      tempfile.binmode
+      described_class.new(tempfile).construct(form, flatten: false)
+
+      value = field_value(tempfile.path, phone_field)
+      expect(value).to eq('(555) 555-5555')
     end
   end
 end

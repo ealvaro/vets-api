@@ -44,7 +44,7 @@ module RepresentationManagement
             HEREDOC
             pdf.text(city_state_zip)
             pdf.move_down(5)
-            pdf.text(format_phone_number(data.representative_phone))
+            pdf.text(format_phone_number(phone_number: data.representative_phone))
             pdf.text(data.representative.email)
           end
         end

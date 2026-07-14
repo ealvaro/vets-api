@@ -103,9 +103,12 @@ module RepresentationManagement
             "#{PAGE1_KEY}.Claimants_MailingAddress_ZIPOrPostalCode_LastFourNumbers[1]": \
             data.veteran_zip_code_expanded.second,
             # Veteran Phone Number
-            "#{PAGE1_KEY}.TelephoneNumber_IncludeAreaCode[1]": data.veteran_phone,
+            "#{PAGE1_KEY}.Phone[1]": format_phone_number(
+              phone_number: data.veteran_phone,
+              add_parentheses: true
+            ),
             # Veteran Email
-            "#{PAGE1_KEY}.EmailAddress_Optional[0]": data.veteran_email
+            "#{PAGE1_KEY}.EmailAddress_Optional[1]": data.veteran_email
           }
         end
 
@@ -144,9 +147,12 @@ module RepresentationManagement
             "#{PAGE1_KEY}.Claimants_MailingAddress_ZIPOrPostalCode_LastFourNumbers[0]": \
             data.claimant_zip_code_expanded.second,
             # Claimant Phone Number
-            "#{PAGE1_KEY}.TelephoneNumber_IncludeAreaCode[0]": data.claimant_phone,
+            "#{PAGE1_KEY}.Phone[0]": format_phone_number(
+              phone_number: data.claimant_phone,
+              add_parentheses: true
+            ),
             # Claimant Email
-            "#{PAGE1_KEY}.Claimants_EmailAddress_Optional[0]": data.claimant_email
+            "#{PAGE1_KEY}.EmailAddress_Optional[0]": data.claimant_email
           }
         end
 
@@ -193,7 +199,7 @@ module RepresentationManagement
             pdf.text(organization_name)
             add_address(pdf, representative)
             pdf.move_down(5)
-            pdf.text(format_phone_number(data.representative_phone))
+            pdf.text(format_phone_number(phone_number: data.representative_phone))
             pdf.text(representative.email)
           end
         end
@@ -203,7 +209,7 @@ module RepresentationManagement
           pdf.font('soursesanspro') do
             add_address(pdf, organization)
             pdf.move_down(5)
-            pdf.text(format_phone_number(organization.phone))
+            pdf.text(format_phone_number(phone_number: organization.phone))
           end
         end
 

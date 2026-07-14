@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 module PdfFillHelper
+  def field_value(path, field_name)
+    fields = pdf_forms.get_fields(path)
+    fields.find { |f| f.name == field_name }&.value
+  end
+
   # Given two paths to (non-flattened) PDFs this will return true
   # if the PDFs have the same values for every field.
   def pdfs_fields_match?(pdf_1_path, pdf_2_path)

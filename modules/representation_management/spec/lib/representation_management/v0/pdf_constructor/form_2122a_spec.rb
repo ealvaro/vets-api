@@ -6,6 +6,7 @@ require_relative '../../../../support/pdf_fill_helper'
 
 describe RepresentationManagement::V0::PdfConstructor::Form2122a do
   include PdfFillHelper
+
   let(:representative) do
     create(:accredited_individual,
            first_name: 'John',
@@ -162,5 +163,24 @@ describe RepresentationManagement::V0::PdfConstructor::Form2122a do
       expect(reader.pdf_version).not_to be_nil
     end
     # The Tempfile is automatically deleted after the block ends
+  end
+
+  it 'formats the veteran phone number correctly' do
+    form = RepresentationManagement::Form2122aData.new(data)
+    phone_field_area_code = 'form1[0].#subform[0].Telephone_Number_Area_Code[1]'
+    phone_field_middle = 'form1[0].#subform[0].Telephone_Middle_Three_Numbers[0]'
+    phone_field_last = 'form1[0].#subform[0].Telephone_Last_Four_Numbers[1]'
+
+    Tempfile.create do |tempfile|
+      tempfile.binmode
+      RepresentationManagement::V0::PdfConstructor::Form2122a.new(tempfile).construct(form, flatten: false)
+
+      value_area_code = field_value(tempfile.path, phone_field_area_code)
+      value_middle = field_value(tempfile.path, phone_field_middle)
+      value_last = field_value(tempfile.path, phone_field_last)
+      expect(value_area_code).to eq('555')
+      expect(value_middle).to eq('555')
+      expect(value_last).to eq('5555')
+    end
   end
 end
