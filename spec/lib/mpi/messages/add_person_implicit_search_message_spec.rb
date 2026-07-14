@@ -10,6 +10,7 @@ describe MPI::Messages::AddPersonImplicitSearchMessage do
                         birth_date:,
                         idme_uuid:,
                         logingov_uuid:,
+                        clear_uuid:,
                         email:,
                         address:,
                         first_name:)
@@ -20,6 +21,7 @@ describe MPI::Messages::AddPersonImplicitSearchMessage do
   let(:birth_date) { Formatters::DateFormatter.format_date('10-10-2021') }
   let(:idme_uuid) { 'some-idme-uuid' }
   let(:logingov_uuid) { 'some-logingov-uuid' }
+  let(:clear_uuid) { 'some-clear-uuid' }
   let(:email) { 'some-email' }
   let(:telecom_type) { 'H' }
   let(:first_name) { 'some-first-name' }
@@ -116,9 +118,21 @@ describe MPI::Messages::AddPersonImplicitSearchMessage do
 
       context 'and logingov_uuid is not defined' do
         let(:logingov_uuid) { nil }
-        let(:missing_keys) { [:credential_identifier] }
 
-        it_behaves_like 'missing values response'
+        context 'and clear_uuid is defined' do
+          let(:clear_uuid) { 'some-clear-uuid' }
+          let(:csp_uuid) { clear_uuid }
+          let(:csp_type) { MPI::Constants::CLEAR_IDENTIFIER }
+
+          it_behaves_like 'successfully built message'
+        end
+
+        context 'and clear_uuid is not defined' do
+          let(:clear_uuid) { nil }
+          let(:missing_keys) { [:credential_identifier] }
+
+          it_behaves_like 'missing values response'
+        end
       end
     end
 
@@ -129,6 +143,12 @@ describe MPI::Messages::AddPersonImplicitSearchMessage do
 
       context 'and logingov_uuid is defined' do
         let(:logingov_uuid) { 'some-logingov-uuid' }
+
+        it_behaves_like 'successfully built message'
+      end
+
+      context 'and clear_uuid is defined' do
+        let(:clear_uuid) { 'some-clear-uuid' }
 
         it_behaves_like 'successfully built message'
       end

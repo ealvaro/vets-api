@@ -64,7 +64,8 @@ module MPI
                                    address: nil,
                                    phone_number: nil,
                                    idme_uuid: nil,
-                                   logingov_uuid: nil)
+                                   logingov_uuid: nil,
+                                   clear_uuid: nil)
       with_monitoring do
         raw_response = perform(
           :post, '',
@@ -76,6 +77,7 @@ module MPI
                                                             phone_number:,
                                                             idme_uuid:,
                                                             logingov_uuid:,
+                                                            clear_uuid:,
                                                             first_name:).perform,
           soapaction: Constants::ADD_PERSON
         )
@@ -183,7 +185,7 @@ module MPI
                        idme_uuid:,
                        logingov_uuid:,
                        edipi:,
-                       first_name:)
+                       first_name:, clear_uuid: nil)
       with_monitoring do
         raw_response = perform(
           :post, '',
@@ -197,6 +199,7 @@ module MPI
                                                   idme_uuid:,
                                                   logingov_uuid:,
                                                   edipi:,
+                                                  clear_uuid:,
                                                   first_name:).perform,
           soapaction: Constants::UPDATE_PROFILE
         )

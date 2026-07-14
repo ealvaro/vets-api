@@ -181,7 +181,8 @@ module MPI
           vet360_id: parsed_mvi_ids[:vet360_id],
           icn_with_aaid: parsed_mvi_ids[:icn_with_aaid],
           cerner_id: parsed_mvi_ids[:cerner_id],
-          npi_id: parsed_mvi_ids[:npi_id]
+          npi_id: parsed_mvi_ids[:npi_id],
+          clear_id: parsed_mvi_ids[:clear_id]
         }
       end
 

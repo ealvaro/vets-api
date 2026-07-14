@@ -107,6 +107,7 @@ describe MPI::Services::AddPersonResponseCreator do
             'icn=, ' \
             'idme_uuid=, ' \
             'logingov_uuid=, ' \
+            'clear_uuid=, ' \
             "transaction_id=#{transaction_id}"
         end
         let(:birls_id) { '111985523' }

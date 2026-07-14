@@ -33,6 +33,7 @@ module MPI
                           "icn=#{parsed_codes[:icn]}, " \
                           "idme_uuid=#{parsed_codes[:idme_uuid]}, " \
                           "logingov_uuid=#{parsed_codes[:logingov_uuid]}, " \
+                          "clear_uuid=#{parsed_codes[:clear_uuid]}, " \
                           "transaction_id=#{parsed_codes[:transaction_id]}")
         Responses::AddPersonResponse.new(status: :ok, parsed_codes:)
       end

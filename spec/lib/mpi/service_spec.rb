@@ -318,6 +318,7 @@ describe MPI::Service do
                                              phone_number:,
                                              idme_uuid:,
                                              logingov_uuid:,
+                                             clear_uuid:,
                                              first_name:)
     end
 
@@ -338,6 +339,7 @@ describe MPI::Service do
     let(:phone_number) { '123-456-7890' }
     let(:email) { 'some-email' }
     let(:idme_uuid) { 'b2fab2b5-6af0-45e1-a9e2-394347af91ef' }
+    let(:clear_uuid) { 'b2fab2b5-6af0-45e1-a9e2-394347af91ef23' }
     let(:logingov_uuid) { nil }
 
     context 'valid request' do
@@ -478,6 +480,7 @@ describe MPI::Service do
                                  phone_number:,
                                  idme_uuid:,
                                  logingov_uuid:,
+                                 clear_uuid:,
                                  edipi:,
                                  first_name:)
     end
@@ -499,6 +502,7 @@ describe MPI::Service do
       }
     end
     let(:idme_uuid) { 'some-idme-uuid' }
+    let(:clear_uuid) { 'some-clear-uuid' }
     let(:logingov_uuid) { 'some-logingov-uuid' }
     let(:edipi) { 'some-edipi' }
     let(:first_name) { 'some-first-name' }

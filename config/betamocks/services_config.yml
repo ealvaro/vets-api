@@ -610,6 +610,13 @@
       :optional_code_locator: 'modifyCode code="(MVI\.COMP1\.RMS|MVI\.COMP2)"'
   - :method: :post
     :path: <%= URI(IdentitySettings.mvi.url).path %>
+    :file_path: "mvi/profile_clear_uuid"
+    :cache_multiple_responses:
+      :uid_location: body
+      :uid_locator: 'id (?:root="2.16.840.1.113883.4.349" )?extension="(.*)\^PN\^200VCLR\^USDVA\^A"(?:root="2.16.840.1.113883.4.349")?'
+      :optional_code_locator: 'modifyCode code="(MVI\.COMP1\.RMS|MVI\.COMP2)"'
+  - :method: :post
+    :path: <%= URI(IdentitySettings.mvi.url).path %>
     :file_path: "mvi/profile_logingov_uuid"
     :cache_multiple_responses:
       :uid_location: body
@@ -638,6 +645,13 @@
       :optional_code_locator: 'PRPA_IN201301UV02'
   - :method: :post
     :path: <%= URI(IdentitySettings.mvi.url).path %>
+    :file_path: "mvi/add_person_implicit_clear_uuid"
+    :cache_multiple_responses:
+      :uid_location: body
+      :uid_locator: 'id (?:root="2.16.840.1.113883.4.349" )?extension="(.*)\^PN\^200VCLR\^USDVA\^A"(?:root="2.16.840.1.113883.4.349")?'
+      :optional_code_locator: 'PRPA_IN201301UV02'
+  - :method: :post
+    :path: <%= URI(IdentitySettings.mvi.url).path %>
     :file_path: "mvi/unlink_profile_identifier_idme_uuid"
     :cache_multiple_responses:
       :uid_location: body
@@ -656,6 +670,13 @@
     :cache_multiple_responses:
       :uid_location: body
       :uid_locator: 'id (?:root="2.16.840.1.113883.4.349" )?extension="(.*)\^PN\^200VIDM\^USDVA\^A"(?:root="2.16.840.1.113883.4.349")?'
+      :optional_code_locator: 'PRPA_IN201302UV02[\s\S]*\^NI\^200M\^USVHA\^P[\s\S]*use="H"'
+  - :method: :post
+    :path: <%= URI(IdentitySettings.mvi.url).path %>
+    :file_path: "mvi/update_profile_clear_uuid"
+    :cache_multiple_responses:
+      :uid_location: body
+      :uid_locator: 'id (?:root="2.16.840.1.113883.4.349" )?extension="(.*)\^PN\^200VCLR\^USDVA\^A"(?:root="2.16.840.1.113883.4.349")?'
       :optional_code_locator: 'PRPA_IN201302UV02[\s\S]*\^NI\^200M\^USVHA\^P[\s\S]*use="H"'
   - :method: :post
     :path: <%= URI(IdentitySettings.mvi.url).path %>

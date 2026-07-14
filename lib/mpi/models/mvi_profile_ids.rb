@@ -28,6 +28,7 @@ module MPI
         attribute :vet360_id,           :string
         attribute :vha_facility_hash,   hash: true, default: {}
         attribute :vha_facility_ids,    array: true, default: []
+        attribute :clear_id, :string
 
         def mhv_correlation_id
           active_mhv_ids&.first

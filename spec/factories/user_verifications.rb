@@ -6,6 +6,7 @@ FactoryBot.define do
     idme_uuid { Faker::Internet.uuid }
     logingov_uuid { nil }
     dslogon_uuid { nil }
+    clear_uuid { nil }
     mhv_uuid { nil }
     backing_idme_uuid { nil }
     verified_at { Time.zone.now }
@@ -20,9 +21,9 @@ FactoryBot.define do
     user_account { create(:user_account) }
     idme_uuid { Faker::Internet.uuid }
     logingov_uuid { nil }
+    clear_uuid { nil }
     dslogon_uuid { nil }
     mhv_uuid { nil }
-    clear_uuid { nil }
     backing_idme_uuid { nil }
     verified_at { Time.zone.now }
     locked { false }
@@ -32,9 +33,9 @@ FactoryBot.define do
     user_account { create(:user_account) }
     idme_uuid { nil }
     logingov_uuid { Faker::Internet.uuid }
+    clear_uuid { nil }
     dslogon_uuid { nil }
     mhv_uuid { nil }
-    clear_uuid { nil }
     backing_idme_uuid { nil }
     verified_at { Time.zone.now }
     locked { false }
@@ -57,8 +58,8 @@ FactoryBot.define do
     idme_uuid { nil }
     logingov_uuid { nil }
     dslogon_uuid { nil }
-    mhv_uuid { Faker::Internet.uuid }
     clear_uuid { nil }
+    mhv_uuid { Faker::Internet.uuid }
     backing_idme_uuid { Faker::Internet.uuid }
     verified_at { Time.zone.now }
     locked { false }

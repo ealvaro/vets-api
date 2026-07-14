@@ -44,6 +44,7 @@ describe MPI::Responses::AddParser do
         let(:participant_id) { '32397028' }
         let(:logingov_uuid) { 'aa478abc-e494-4af1-9f87-d002f8fe1cda' }
         let(:idme_uuid) { '54e78de6140d473f87960f211be49c08' }
+        let(:clear_uuid) { SecureRandom.alphanumeric(42) }
         let(:edipi) { '2107307560' }
         let(:icn) { '1013677486V514195' }
         let(:error) { 'WRN206' }
@@ -53,6 +54,7 @@ describe MPI::Responses::AddParser do
             { codeSystemName: 'MVI', code: "#{participant_id}^PI^200CORP^USVBA", displayName: 'IEN' },
             { codeSystemName: 'MVI', code: "#{logingov_uuid}^PN^200VLGN^USDVA^A", displayName: 'IEN' },
             { codeSystemName: 'MVI', code: "#{idme_uuid}^PN^200VIDM^USDVA^A", displayName: 'IEN' },
+            { codeSystemName: 'MVI', code: "#{clear_uuid}^PN^200VCLR^USDVA^A", displayName: 'IEN' },
             { codeSystemName: 'MVI', code: "#{edipi}^NI^200DOD^USDOD^A", displayName: 'IEN' },
             { codeSystemName: 'MVI', code: icn, displayName: 'ICN' },
             { codeSystemName: 'MVI', code: error, displayName: 'test error' }
@@ -68,6 +70,7 @@ describe MPI::Responses::AddParser do
             participant_id:,
             logingov_uuid:,
             idme_uuid:,
+            clear_uuid:,
             edipi:,
             icn:
           }

@@ -47,6 +47,8 @@ module MPI
           "#{identifier}^#{Constants::LOGINGOV_FULL_IDENTIFIER}"
         when Constants::MHV_UUID
           "#{identifier}^#{Constants::MHV_FULL_IDENTIFIER}"
+        when Constants::CLEAR_UUID
+          "#{identifier}^#{Constants::CLEAR_FULL_IDENTIFIER}"
         end
       end
 

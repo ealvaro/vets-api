@@ -87,6 +87,8 @@ module MPI
             codes[:logingov_uuid] = sanitize_uuid(attribute[:code])
           when /200DOD/
             codes[:edipi] = sanitize_edipi(attribute[:code])
+          when /200VCLR/
+            codes[:clear_uuid] = sanitize_uuid(attribute[:code])
           else
             if attribute[:displayName] == 'ICN'
               codes[:icn] = attribute[:code]

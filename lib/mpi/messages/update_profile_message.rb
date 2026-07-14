@@ -7,7 +7,8 @@ require 'formatters/date_formatter'
 module MPI
   module Messages
     class UpdateProfileMessage
-      attr_reader :first_name, :last_name, :ssn, :birth_date, :idme_uuid, :logingov_uuid, :icn, :edipi, :email,
+      attr_reader :first_name, :last_name, :ssn, :birth_date, :idme_uuid, :logingov_uuid, :clear_uuid, :icn, :edipi,
+                  :email,
                   :address, :phone_number
 
       # rubocop:disable Metrics/ParameterLists
@@ -21,7 +22,8 @@ module MPI
                      phone_number: nil,
                      idme_uuid: nil,
                      logingov_uuid: nil,
-                     edipi: nil)
+                     edipi: nil,
+                     clear_uuid: nil)
         @first_name = first_name
         @last_name = last_name
         @ssn = ssn
@@ -31,6 +33,7 @@ module MPI
         @address = address
         @idme_uuid = idme_uuid
         @logingov_uuid = logingov_uuid
+        @clear_uuid = clear_uuid
         @edipi = edipi
         @phone_number = phone_number
       end
@@ -52,7 +55,7 @@ module MPI
         missing_values << :email if email.blank?
         missing_values << :birth_date if birth_date.blank?
         missing_values << :icn if icn.blank?
-        missing_values << :uuid if logingov_uuid.blank? && edipi.blank? && idme_uuid.blank?
+        missing_values << :uuid if logingov_uuid.blank? && edipi.blank? && idme_uuid.blank? && clear_uuid.blank?
         raise Errors::ArgumentError, "Required values missing: #{missing_values}" if missing_values.present?
       end
 
@@ -128,13 +131,15 @@ module MPI
           Constants::DSLOGON_FULL_IDENTIFIER
         elsif logingov_uuid
           Constants::LOGINGOV_FULL_IDENTIFIER
-        else
+        elsif idme_uuid
           Constants::IDME_FULL_IDENTIFIER
+        else
+          Constants::CLEAR_FULL_IDENTIFIER
         end
       end
 
       def csp_uuid
-        edipi || logingov_uuid || idme_uuid
+        edipi || logingov_uuid || idme_uuid || clear_uuid
       end
 
       def null_flavor_type

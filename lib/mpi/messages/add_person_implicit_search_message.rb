@@ -9,7 +9,7 @@ module MPI
   module Messages
     class AddPersonImplicitSearchMessage
       attr_reader :first_name, :last_name, :ssn, :birth_date, :idme_uuid, :logingov_uuid, :email, :address,
-                  :phone_number
+                  :phone_number, :clear_uuid
 
       # rubocop:disable Metrics/ParameterLists
       def initialize(first_name:,
@@ -20,7 +20,8 @@ module MPI
                      address: nil,
                      phone_number: nil,
                      idme_uuid: nil,
-                     logingov_uuid: nil)
+                     logingov_uuid: nil,
+                     clear_uuid: nil)
         @first_name = first_name
         @last_name = last_name
         @ssn = ssn
@@ -30,6 +31,7 @@ module MPI
         @idme_uuid = idme_uuid
         @logingov_uuid = logingov_uuid
         @phone_number = phone_number
+        @clear_uuid = clear_uuid
       end
       # rubocop:enable Metrics/ParameterLists
 
@@ -47,7 +49,7 @@ module MPI
         missing_values = []
         missing_values << :last_name if last_name.blank?
         missing_values << :birth_date if birth_date.blank?
-        missing_values << :credential_identifier if idme_uuid.blank? && logingov_uuid.blank?
+        missing_values << :credential_identifier if idme_uuid.blank? && logingov_uuid.blank? && clear_uuid.blank?
         raise Errors::ArgumentError, "Required values missing: #{missing_values}" if missing_values.present?
       end
 
@@ -119,11 +121,17 @@ module MPI
       end
 
       def csp_identifier
-        idme_uuid ? Constants::IDME_FULL_IDENTIFIER : Constants::LOGINGOV_FULL_IDENTIFIER
+        if idme_uuid
+          Constants::IDME_FULL_IDENTIFIER
+        elsif logingov_uuid
+          Constants::LOGINGOV_FULL_IDENTIFIER
+        else
+          Constants::CLEAR_FULL_IDENTIFIER
+        end
       end
 
       def csp_uuid
-        idme_uuid || logingov_uuid
+        idme_uuid || logingov_uuid || clear_uuid
       end
 
       def null_flavor_type

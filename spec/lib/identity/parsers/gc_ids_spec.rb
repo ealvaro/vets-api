@@ -27,6 +27,7 @@ describe Identity::Parsers::GCIds do
           vba_corp_id: nil,
           vba_corp_ids: nil,
           idme_id: nil,
+          clear_id: nil,
           logingov_id: nil,
           vha_facility_ids: nil,
           cerner_facility_ids: nil,

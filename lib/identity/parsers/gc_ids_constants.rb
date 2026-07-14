@@ -41,6 +41,9 @@ module Identity
       # IDME_ID_REGEX, ex. 54e78de6140d473f87960f211be49c08^PN^200VIDM^USDVA^A
       IDME_ID_REGEX = /^\w+\^PN\^200VIDM\^USDVA\^A$/
 
+      # CLEAR_ID_REGEX, ex. 3mfsPYduiyY4l04EB5z1IXumxc4XFV6wQlgAUptW44^PN^200VCLR^USDVA^A
+      CLEAR_ID_REGEX = /^\w+\^PN\^200VCLR\^USDVA\^A$/
+
       # LOGINGOV_ID_REGEX, ex. aa478abc-e494-4af1-9f87-d002f8fe1cda^PN^200VLGN^USDVA^A
       LOGINGOV_ID_REGEX = /^[\w-]+\^PN\^200VLGN\^USDVA\^A$/
 
@@ -79,6 +82,7 @@ module Identity
         vba_corp_id: { regex: VBA_CORP_ID_REGEX, root_oid: VA_ROOT_OID, type: :single_id },
         vba_corp_ids: { regex: VBA_CORP_ID_REGEX, root_oid: VA_ROOT_OID, type: :multiple_ids },
         idme_id: { regex: IDME_ID_REGEX, root_oid: VA_ROOT_OID, type: :single_id },
+        clear_id: { regex: CLEAR_ID_REGEX, root_oid: VA_ROOT_OID, type: :single_id },
         logingov_id: { regex: LOGINGOV_ID_REGEX, root_oid: VA_ROOT_OID, type: :single_id },
         cerner_id: { regex: CERNER_ID_REGEX, root_oid: VA_ROOT_OID, type: :single_id },
         vet360_id: { regex: VET360_ID_REGEX, root_oid: VA_ROOT_OID, type: :single_id },

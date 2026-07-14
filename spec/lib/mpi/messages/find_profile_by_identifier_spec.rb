@@ -73,6 +73,13 @@ describe MPI::Messages::FindProfileByIdentifier do
       it_behaves_like 'successfully built request'
     end
 
+    context 'when identifier type is CLEAR_UUID' do
+      let(:identifier_type) { MPI::Constants::CLEAR_UUID }
+      let(:expected_identifier) { "#{identifier}^#{MPI::Constants::CLEAR_FULL_IDENTIFIER}" }
+
+      it_behaves_like 'successfully built request'
+    end
+
     context 'when identifier type is MHV_UUID' do
       let(:identifier_type) { MPI::Constants::MHV_UUID }
       let(:expected_identifier) { "#{identifier}^#{MPI::Constants::MHV_FULL_IDENTIFIER}" }

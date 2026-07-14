@@ -319,6 +319,7 @@ describe MPI::Responses::ProfileParser do
           mhv_ien: nil,
           mhv_iens: [],
           cerner_id: nil,
+          clear_id: nil,
           cerner_facility_ids: []
         )
       end

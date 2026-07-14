@@ -12,6 +12,7 @@ describe MPI::Messages::UpdateProfileMessage do
                         email:,
                         idme_uuid:,
                         logingov_uuid:,
+                        clear_uuid:,
                         edipi:,
                         address:,
                         first_name:)
@@ -24,6 +25,7 @@ describe MPI::Messages::UpdateProfileMessage do
   let(:birth_date) { Formatters::DateFormatter.format_date('10-10-2021') }
   let(:idme_uuid) { 'some-idme-uuid' }
   let(:logingov_uuid) { 'some-logingov-uuid' }
+  let(:clear_uuid) { 'some-clear-uuid' }
   let(:first_name) { 'some-first-name' }
   let(:email) { 'some-email' }
   let(:telecom_type) { 'H' }
@@ -154,9 +156,22 @@ describe MPI::Messages::UpdateProfileMessage do
 
         context 'and idme_uuid is not defined' do
           let(:idme_uuid) { nil }
-          let(:missing_keys) { :uuid }
 
-          it_behaves_like 'error response'
+          context 'and clear_uuid is defined' do
+            let(:clear_uuid) { 'some-clear-uuid' }
+            let(:csp_uuid) { clear_uuid }
+            let(:csp_identifier) { MPI::Constants::CLEAR_FULL_IDENTIFIER }
+            let(:root) { MPI::Constants::VA_ROOT_OID }
+
+            it_behaves_like 'successfully built message'
+          end
+
+          context 'and clear_uuid is not defined' do
+            let(:clear_uuid) { nil }
+            let(:missing_keys) { :uuid }
+
+            it_behaves_like 'error response'
+          end
         end
       end
     end
