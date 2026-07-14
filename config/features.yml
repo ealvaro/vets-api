@@ -3436,6 +3436,9 @@ features:
   va_notify_request_level_callbacks:
     actor_type: user
     description: If enabled, emails and sms sent through VaNotify::Service will authenticate request-level callback data
+  va_notify_v2_contact_info_change:
+    actor_type: user
+    description: If enabled, VAProfile::ContactInformation::V2::Service will use VANotify::V2::QueueEmailJob instead of VANotify::EmailJob
   va_notify_v2_form0994_confirmation_email:
     actor_type: user
     description: >-

@@ -287,7 +287,10 @@ module VAProfile
         end
 
         def get_email_personalisation(type)
-          { 'contact_info' => EMAIL_PERSONALISATIONS[type] }
+          {
+            'contact_info' => EMAIL_PERSONALISATIONS[type],
+            'first_name' => @user&.first_name
+          }
         end
 
         def send_contact_change_notification(transaction_status, personalisation)
@@ -300,11 +303,15 @@ module VAProfile
             email = @user.va_profile_email
             return if email.blank?
 
-            VANotifyEmailJob.perform_async(
-              email,
-              CONTACT_INFO_CHANGE_TEMPLATE,
-              get_email_personalisation(personalisation)
-            )
+            if Flipper.enabled?(:va_notify_v2_contact_info_change)
+              enqueue_email_job(email, get_email_personalisation(personalisation))
+            else
+              VANotifyEmailJob.perform_async(
+                email,
+                CONTACT_INFO_CHANGE_TEMPLATE,
+                get_email_personalisation(personalisation)
+              )
+            end
 
             TransactionNotification.create(transaction_id:)
           end
@@ -318,18 +325,31 @@ module VAProfile
             return if old_email.nil?
 
             personalisation = get_email_personalisation(:email)
-
-            VANotifyEmailJob.perform_async(old_email.email, CONTACT_INFO_CHANGE_TEMPLATE, personalisation)
-            if transaction_status.new_email.present?
-              VANotifyEmailJob.perform_async(
-                transaction_status.new_email,
-                CONTACT_INFO_CHANGE_TEMPLATE,
-                personalisation
-              )
+            if Flipper.enabled?(:va_notify_v2_contact_info_change)
+              enqueue_email_job(old_email.email, personalisation)
+              enqueue_email_job(transaction_status.new_email, personalisation) if transaction_status.new_email.present?
+            else
+              VANotifyEmailJob.perform_async(old_email.email, CONTACT_INFO_CHANGE_TEMPLATE, personalisation)
+              if transaction_status.new_email.present?
+                VANotifyEmailJob.perform_async(
+                  transaction_status.new_email,
+                  CONTACT_INFO_CHANGE_TEMPLATE,
+                  personalisation
+                )
+              end
             end
 
             old_email.destroy
           end
+        end
+
+        def enqueue_email_job(email, personalisation)
+          VANotify::V2::QueueEmailJob.enqueue(
+            email,
+            CONTACT_INFO_CHANGE_TEMPLATE,
+            personalisation,
+            'Settings.vanotify.services.va_gov.api_key'
+          )
         end
 
         def post_or_put_data(method, model, path, response_class)

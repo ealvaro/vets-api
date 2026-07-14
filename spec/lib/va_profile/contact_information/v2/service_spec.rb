@@ -534,22 +534,55 @@ describe VAProfile::ContactInformation::V2::Service do
           OldEmail.create(email: 'email@email.com', transaction_id:)
         end
 
-        it 'calls send_email_change_notification' do
-          VCR.use_cassette('va_profile/v2/contact_information/email_transaction_status', VCR::MATCH_EVERYTHING) do
-            expect(VANotifyEmailJob).to receive(:perform_async).with(
-              'email@email.com',
-              described_class::CONTACT_INFO_CHANGE_TEMPLATE,
-              { 'contact_info' => 'Email address' }
-            )
-            expect(VANotifyEmailJob).to receive(:perform_async).with(
-              'person43@example.com',
-              described_class::CONTACT_INFO_CHANGE_TEMPLATE,
-              { 'contact_info' => 'Email address' }
-            )
+        context 'when the V2 flag is enabled' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:va_notify_v2_contact_info_change).and_return(true)
+          end
 
-            subject.get_email_transaction_status(transaction_id)
+          it 'calls send_email_change_notification' do
+            VCR.use_cassette('va_profile/v2/contact_information/email_transaction_status', VCR::MATCH_EVERYTHING) do
+              expect(VANotify::V2::QueueEmailJob).to receive(:enqueue).with(
+                'email@email.com',
+                described_class::CONTACT_INFO_CHANGE_TEMPLATE,
+                { 'contact_info' => 'Email address', 'first_name' => user.first_name },
+                'Settings.vanotify.services.va_gov.api_key'
+              )
+              expect(VANotify::V2::QueueEmailJob).to receive(:enqueue).with(
+                'person43@example.com',
+                described_class::CONTACT_INFO_CHANGE_TEMPLATE,
+                { 'contact_info' => 'Email address', 'first_name' => user.first_name },
+                'Settings.vanotify.services.va_gov.api_key'
+              )
 
-            expect(OldEmail.find(transaction_id)).to be_nil
+              subject.get_email_transaction_status(transaction_id)
+
+              expect(OldEmail.find(transaction_id)).to be_nil
+            end
+          end
+        end
+
+        context 'when the V2 flag is disabled' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:va_notify_v2_contact_info_change).and_return(false)
+          end
+
+          it 'calls send_email_change_notification' do
+            VCR.use_cassette('va_profile/v2/contact_information/email_transaction_status', VCR::MATCH_EVERYTHING) do
+              expect(VANotifyEmailJob).to receive(:perform_async).with(
+                'email@email.com',
+                described_class::CONTACT_INFO_CHANGE_TEMPLATE,
+                { 'contact_info' => 'Email address', 'first_name' => user.first_name }
+              )
+              expect(VANotifyEmailJob).to receive(:perform_async).with(
+                'person43@example.com',
+                described_class::CONTACT_INFO_CHANGE_TEMPLATE,
+                { 'contact_info' => 'Email address', 'first_name' => user.first_name }
+              )
+
+              subject.get_email_transaction_status(transaction_id)
+
+              expect(OldEmail.find(transaction_id)).to be_nil
+            end
           end
         end
       end
@@ -605,36 +638,107 @@ describe VAProfile::ContactInformation::V2::Service do
           TransactionNotification.create(transaction_id:)
         end
 
-        it 'doesnt send an email' do
-          expect(VANotifyEmailJob).not_to receive(:perform_async)
-          subject.send(:send_contact_change_notification, transaction_status, :address)
+        context 'when the V2 flag is enabled' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:va_notify_v2_contact_info_change).and_return(true)
+          end
+
+          it 'doesnt send an email' do
+            expect(VANotify::V2::QueueEmailJob).not_to receive(:enqueue)
+            expect(VANotifyEmailJob).not_to receive(:perform_async)
+            subject.send(:send_contact_change_notification, transaction_status, :address)
+          end
+        end
+
+        context 'when the V2 flag is disabled' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:va_notify_v2_contact_info_change).and_return(false)
+          end
+
+          it 'doesnt send an email' do
+            expect(VANotify::V2::QueueEmailJob).not_to receive(:enqueue)
+            expect(VANotifyEmailJob).not_to receive(:perform_async)
+            subject.send(:send_contact_change_notification, transaction_status, :address)
+          end
         end
       end
 
       context 'transaction notification doesnt exist' do
         context 'users email is blank' do
-          it 'doesnt send an email' do
-            expect(user).to receive(:va_profile_email).and_return(nil)
+          context 'when the V2 flag is enabled' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(:va_notify_v2_contact_info_change).and_return(true)
+            end
 
-            expect(VANotifyEmailJob).not_to receive(:perform_async)
-            subject.send(:send_contact_change_notification, transaction_status, :email)
+            it 'doesnt send an email' do
+              expect(user).to receive(:va_profile_email).and_return(nil)
+
+              expect(VANotify::V2::QueueEmailJob).not_to receive(:enqueue)
+              expect(VANotifyEmailJob).not_to receive(:perform_async)
+              subject.send(:send_contact_change_notification, transaction_status, :email)
+            end
+          end
+
+          context 'when the V2 flag is disabled' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(:va_notify_v2_contact_info_change).and_return(false)
+            end
+
+            it 'doesnt send an email' do
+              expect(user).to receive(:va_profile_email).and_return(nil)
+
+              expect(VANotify::V2::QueueEmailJob).not_to receive(:enqueue)
+              expect(VANotifyEmailJob).not_to receive(:perform_async)
+              subject.send(:send_contact_change_notification, transaction_status, :email)
+            end
           end
         end
 
         context 'users email exists' do
-          it 'sends an email' do
-            VCR.use_cassette('va_profile/v2/contact_information/person', VCR::MATCH_EVERYTHING) do
-              allow(VAProfile::Configuration::SETTINGS.contact_information).to receive(:cache_enabled).and_return(true)
+          context 'when the V2 flag is enabled' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(:va_notify_v2_contact_info_change).and_return(true)
+            end
 
-              expect(VANotifyEmailJob).to receive(:perform_async).with(
-                user.va_profile_email,
-                described_class::CONTACT_INFO_CHANGE_TEMPLATE,
-                { 'contact_info' => 'Email address' }
-              )
+            it 'sends an email' do
+              VCR.use_cassette('va_profile/v2/contact_information/person', VCR::MATCH_EVERYTHING) do
+                allow(VAProfile::Configuration::SETTINGS.contact_information).to receive(:cache_enabled)
+                  .and_return(true)
 
-              subject.send(:send_contact_change_notification, transaction_status, :email)
+                expect(VANotify::V2::QueueEmailJob).to receive(:enqueue).with(
+                  user.va_profile_email,
+                  described_class::CONTACT_INFO_CHANGE_TEMPLATE,
+                  { 'contact_info' => 'Email address', 'first_name' => user.first_name },
+                  'Settings.vanotify.services.va_gov.api_key'
+                )
 
-              expect(TransactionNotification.find(transaction_id).present?).to be(true)
+                subject.send(:send_contact_change_notification, transaction_status, :email)
+
+                expect(TransactionNotification.find(transaction_id).present?).to be(true)
+              end
+            end
+          end
+
+          context 'when the V2 flag is disabled' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(:va_notify_v2_contact_info_change).and_return(false)
+            end
+
+            it 'sends an email' do
+              VCR.use_cassette('va_profile/v2/contact_information/person', VCR::MATCH_EVERYTHING) do
+                allow(VAProfile::Configuration::SETTINGS.contact_information).to receive(:cache_enabled)
+                  .and_return(true)
+
+                expect(VANotifyEmailJob).to receive(:perform_async).with(
+                  user.va_profile_email,
+                  described_class::CONTACT_INFO_CHANGE_TEMPLATE,
+                  { 'contact_info' => 'Email address', 'first_name' => user.first_name }
+                )
+
+                subject.send(:send_contact_change_notification, transaction_status, :email)
+
+                expect(TransactionNotification.find(transaction_id).present?).to be(true)
+              end
             end
           end
         end
@@ -642,11 +746,32 @@ describe VAProfile::ContactInformation::V2::Service do
     end
 
     context 'if transaction does not have completed success status' do
-      it 'doesnt send an email' do
-        expect(transaction).to receive(:completed_success?).and_return(false)
+      context 'when the V2 flag is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:va_notify_v2_contact_info_change).and_return(true)
+        end
 
-        expect(VANotifyEmailJob).not_to receive(:perform_async)
-        subject.send(:send_contact_change_notification, transaction_status, :address)
+        it 'doesnt send an email' do
+          expect(transaction).to receive(:completed_success?).and_return(false)
+
+          expect(VANotify::V2::QueueEmailJob).not_to receive(:enqueue)
+          expect(VANotifyEmailJob).not_to receive(:perform_async)
+          subject.send(:send_contact_change_notification, transaction_status, :address)
+        end
+      end
+
+      context 'when the V2 flag is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:va_notify_v2_contact_info_change).and_return(false)
+        end
+
+        it 'doesnt send an email' do
+          expect(transaction).to receive(:completed_success?).and_return(false)
+
+          expect(VANotify::V2::QueueEmailJob).not_to receive(:enqueue)
+          expect(VANotifyEmailJob).not_to receive(:perform_async)
+          subject.send(:send_contact_change_notification, transaction_status, :address)
+        end
       end
     end
   end
