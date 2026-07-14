@@ -83,6 +83,20 @@ describe PagerDuty::MaintenanceClient do
     end
   end
 
+  context 'when circuit breaker is open' do
+    it 'logs error and returns empty results' do
+      exception = Breakers::OutageException.new(
+        double('outage', start_time: Time.current),
+        double('service', name: 'PagerDuty')
+      )
+      stub_request(:get, 'https://api.pagerduty.com/maintenance_windows')
+        .with(query: hash_including('service_ids' => %w[ABCDEF BCDEFG]))
+        .to_raise(exception)
+      expect(Rails.logger).to receive(:error).with(/maintenance windows failed/)
+      expect(subject.get_all).to be_empty
+    end
+  end
+
   context 'with bad requests' do
     before { allow(Settings.maintenance).to receive(:services).and_return({ evss: 'XBADXX' }) }
 
