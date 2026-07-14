@@ -155,7 +155,7 @@ module SignIn
     end
 
     def scrub_attribute(attribute)
-      attribute.tr('-', '').downcase
+      attribute&.tr('-', '')&.downcase
     end
 
     def validate_mhv_mpi_record

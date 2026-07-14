@@ -333,6 +333,16 @@ RSpec.describe SignIn::AttributeValidator do
             )
           end
         end
+
+        context 'and the credential ssn is nil while the mpi ssn is present' do
+          let(:ssn) { nil }
+          let(:mpi_ssn) { '098-76-5432' }
+          let(:expected_error) { SignIn::Errors::AttributeMismatchError }
+          let(:expected_error_message) { 'Attribute mismatch, ssn in credential does not match MPI attribute' }
+          let(:expected_error_code) { SignIn::Constants::ErrorCode::SSN_ATTRIBUTE_MISMATCH }
+
+          it_behaves_like 'error response'
+        end
       end
 
       shared_examples 'missing credential attribute' do
