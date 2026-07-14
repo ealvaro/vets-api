@@ -2632,6 +2632,9 @@ features:
     actor_type: user
     description: Enables the VHA Payment history (including copay resolution) feature for combined debt portal
     enable_in_development: true
+  enable_lighthouse_copays:
+    actor_type: user
+    description: Selects Lighthouse (vs VBS) as the medical copays data source — Payment History 2.0
   enable_copays_payment_history:
     actor_type: user
     description: Enables the copays payment history feature — Payment History 2.0
