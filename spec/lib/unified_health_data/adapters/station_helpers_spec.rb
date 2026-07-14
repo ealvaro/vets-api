@@ -252,6 +252,110 @@ describe UnifiedHealthData::Adapters::StationHelpers do
         result = subject.extract_station_number(contained)
         expect(result).to eq('500')
       end
+
+      it 'rejects Organization with sub-OID and falls back to Location' do
+        contained = [
+          {
+            'resourceType' => 'Organization',
+            'id' => 'org-dept',
+            'identifier' => [
+              { 'system' => 'urn:oid:2.16.840.1.113883.4.349.3.984', 'value' => 'urn:va:location:73B0:1914' }
+            ]
+          },
+          {
+            'resourceType' => 'Location',
+            'id' => 'loc-1',
+            'identifier' => [
+              { 'system' => 'urn:oid:2.16.840.1.113883.4.349.4.984', 'value' => 'HospitalLocationTO.123' }
+            ]
+          }
+        ]
+
+        result = subject.extract_station_number(contained)
+        expect(result).to eq('984')
+      end
+    end
+
+    context 'with Location fallback (VistA Conditions/Vitals/Allergies)' do
+      it 'falls back to Location when no Practitioner or Organization exists' do
+        contained = [
+          {
+            'resourceType' => 'Location',
+            'id' => 'location-983',
+            'identifier' => [
+              { 'use' => 'usual', 'system' => 'urn:oid:2.16.840.1.113883.4.349.4.989',
+                'value' => 'HospitalLocationTO.983' }
+            ]
+          }
+        ]
+
+        result = subject.extract_station_number(contained)
+        expect(result).to eq('989')
+      end
+
+      it 'falls back to Location when Practitioner and Organization have no station' do
+        contained = [
+          {
+            'resourceType' => 'Practitioner',
+            'id' => 'prac-1',
+            'identifier' => [
+              { 'use' => 'usual', 'system' => 'urn:oid:2.16.840.1.113883.4.349.4.989',
+                'value' => 'AuthorTO.983' }
+            ]
+          },
+          {
+            'resourceType' => 'Location',
+            'id' => 'location-983',
+            'identifier' => [
+              { 'use' => 'usual', 'system' => 'urn:oid:2.16.840.1.113883.4.349.4.989',
+                'value' => 'HospitalLocationTO.983' }
+            ]
+          }
+        ]
+
+        result = subject.extract_station_number(contained)
+        expect(result).to eq('989')
+      end
+
+      it 'falls back to Location when all Organizations have sub-OIDs (real VistA imaging pattern)' do
+        contained = [
+          {
+            'resourceType' => 'Practitioner',
+            'id' => 'prac-1',
+            'identifier' => [
+              { 'use' => 'usual', 'system' => 'urn:oid:2.16.840.1.113883.4.349.4.989',
+                'value' => 'AuthorTO.983' }
+            ]
+          },
+          {
+            'resourceType' => 'Organization',
+            'id' => 'org-dept',
+            'identifier' => [
+              { 'use' => 'usual', 'system' => 'urn:oid:2.16.840.1.113883.4.349.3.984',
+                'value' => 'urn:va:location:F253:1157' }
+            ]
+          },
+          {
+            'resourceType' => 'Organization',
+            'id' => 'org-station',
+            'identifier' => [
+              { 'use' => 'usual', 'system' => 'urn:oid:2.16.840.1.113883.4.349.3.984',
+                'value' => '983' }
+            ]
+          },
+          {
+            'resourceType' => 'Location',
+            'id' => 'location-983',
+            'identifier' => [
+              { 'use' => 'usual', 'system' => 'urn:oid:2.16.840.1.113883.4.349.4.989',
+                'value' => 'HospitalLocationTO.983' }
+            ]
+          }
+        ]
+
+        result = subject.extract_station_number(contained)
+        expect(result).to eq('989')
+      end
     end
   end
 
@@ -310,7 +414,7 @@ describe UnifiedHealthData::Adapters::StationHelpers do
   end
 
   describe '#extract_station_from_organization' do
-    it 'extracts station number from Organization with VA OID system' do
+    it 'extracts station number from Organization with exact VA OID system' do
       contained = [
         {
           'resourceType' => 'Organization',
@@ -323,6 +427,43 @@ describe UnifiedHealthData::Adapters::StationHelpers do
 
       result = subject.extract_station_from_organization(contained)
       expect(result).to eq('989')
+    end
+
+    it 'rejects sub-OIDs that match via include but not exact match' do
+      contained = [
+        {
+          'resourceType' => 'Organization',
+          'id' => 'org-dept',
+          'identifier' => [
+            { 'system' => 'urn:oid:2.16.840.1.113883.4.349.3.984', 'value' => 'urn:va:location:73B0:1914' }
+          ]
+        }
+      ]
+
+      result = subject.extract_station_from_organization(contained)
+      expect(result).to be_nil
+    end
+
+    it 'finds station from second Organization when first has sub-OID' do
+      contained = [
+        {
+          'resourceType' => 'Organization',
+          'id' => 'org-dept',
+          'identifier' => [
+            { 'system' => 'urn:oid:2.16.840.1.113883.4.349.3.984', 'value' => 'urn:va:location:73B0:1914' }
+          ]
+        },
+        {
+          'resourceType' => 'Organization',
+          'id' => 'org-station',
+          'identifier' => [
+            { 'use' => 'usual', 'system' => 'urn:oid:2.16.840.1.113883.4.349', 'value' => '984' }
+          ]
+        }
+      ]
+
+      result = subject.extract_station_from_organization(contained)
+      expect(result).to eq('984')
     end
 
     it 'returns nil when Organization has no identifiers' do
@@ -353,6 +494,91 @@ describe UnifiedHealthData::Adapters::StationHelpers do
 
       result = subject.extract_station_from_organization(contained)
       expect(result).to be_nil
+    end
+  end
+
+  describe '#extract_station_from_location' do
+    it 'extracts station number from Location OID system suffix' do
+      contained = [
+        {
+          'resourceType' => 'Location',
+          'id' => 'location-983',
+          'identifier' => [
+            { 'use' => 'usual', 'system' => 'urn:oid:2.16.840.1.113883.4.349.4.989',
+              'value' => 'HospitalLocationTO.983' }
+          ]
+        }
+      ]
+
+      result = subject.extract_station_from_location(contained)
+      expect(result).to eq('989')
+    end
+
+    it 'returns nil when Location has no VA OID system' do
+      contained = [
+        {
+          'resourceType' => 'Location',
+          'id' => 'loc-1',
+          'identifier' => [
+            { 'system' => 'http://some-other-system.com', 'value' => 'loc-123' }
+          ]
+        }
+      ]
+
+      result = subject.extract_station_from_location(contained)
+      expect(result).to be_nil
+    end
+
+    it 'returns nil when no Location exists' do
+      contained = [{ 'resourceType' => 'Practitioner', 'id' => 'prac-1' }]
+      result = subject.extract_station_from_location(contained)
+      expect(result).to be_nil
+    end
+
+    it 'returns nil when Location has no identifiers' do
+      contained = [
+        { 'resourceType' => 'Location', 'id' => 'loc-1', 'name' => 'Test Location' }
+      ]
+
+      result = subject.extract_station_from_location(contained)
+      expect(result).to be_nil
+    end
+
+    it 'does not match non-station OID suffixes' do
+      contained = [
+        {
+          'resourceType' => 'Location',
+          'id' => 'loc-1',
+          'identifier' => [
+            { 'system' => 'urn:oid:2.16.840.1.113883.4.349.3.984', 'value' => 'something' }
+          ]
+        }
+      ]
+
+      result = subject.extract_station_from_location(contained)
+      expect(result).to be_nil
+    end
+
+    it 'extracts from second Location when first has no VA OID' do
+      contained = [
+        {
+          'resourceType' => 'Location',
+          'id' => 'loc-1',
+          'identifier' => [
+            { 'system' => 'http://other-system', 'value' => 'abc' }
+          ]
+        },
+        {
+          'resourceType' => 'Location',
+          'id' => 'loc-2',
+          'identifier' => [
+            { 'system' => 'urn:oid:2.16.840.1.113883.4.349.4.500', 'value' => 'HospitalLocationTO.123' }
+          ]
+        }
+      ]
+
+      result = subject.extract_station_from_location(contained)
+      expect(result).to eq('500')
     end
   end
 

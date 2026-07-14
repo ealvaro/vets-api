@@ -11,6 +11,7 @@ module UnifiedHealthData
     # Handles extraction from multiple data sources:
     # - Oracle Health: Practitioner identifiers (SN=XXX format or 3-digit OTHER type)
     # - VistA via UHD: Organization identifiers with VA OID system
+    # - VistA via UHD: Location identifiers with VA OID system suffix
     module StationHelpers
       VA_STATION_OID = 'urn:oid:2.16.840.1.113883.4.349'
 
@@ -55,7 +56,8 @@ module UnifiedHealthData
       # Fallback chain:
       #   1. Practitioner SN=XXX format (most explicit, Oracle Health)
       #   2. Practitioner plain 3-digit number with "OTHER" type (Oracle Health)
-      #   3. Organization with VA OID system (VistA data via UHD)
+      #   3. Organization with exact VA OID system (VistA data via UHD)
+      #   4. Location with VA OID system suffix (VistA Conditions/Vitals/Allergies)
       #
       # @param contained [Array<Hash>] Array of contained FHIR resources
       # @return [String, nil] Station number (e.g., '668') or nil if not found
@@ -67,7 +69,11 @@ module UnifiedHealthData
         return station_number if station_number.present?
 
         # Fallback: Try Organization identifiers (VistA data via UHD)
-        extract_station_from_organization(contained)
+        station_number = extract_station_from_organization(contained)
+        return station_number if station_number.present?
+
+        # Fallback: Try Location identifiers (VistA Conditions/Vitals/Allergies)
+        extract_station_from_location(contained)
       end
 
       # Extracts station number from Practitioner identifiers
@@ -95,23 +101,52 @@ module UnifiedHealthData
 
       # Extracts station number from Organization identifiers
       # Used primarily for VistA data coming through UHD
-      # Looks for identifiers with the VA OID system (urn:oid:2.16.840.1.113883.4.349)
+      # Looks for identifiers with the exact VA OID system (urn:oid:2.16.840.1.113883.4.349)
+      # Searches all Organizations in contained, not just the first, because VistA imaging
+      # records can have multiple Organizations (e.g., a department org with a sub-OID first).
       #
       # @param contained [Array<Hash>] Array of contained FHIR resources
       # @return [String, nil] Station number or nil if not found
       def extract_station_from_organization(contained)
-        organization = contained.find { |r| r['resourceType'] == 'Organization' }
-        return nil unless organization&.dig('identifier')
+        contained.each do |organization|
+          next unless organization['resourceType'] == 'Organization' && organization['identifier']
 
-        organization['identifier'].each do |identifier|
-          system = identifier['system']
-          value = identifier['value']
+          organization['identifier'].each do |identifier|
+            system = identifier['system']
+            value = identifier['value']
 
-          # VA OID system identifier contains station number
-          # Example: {"system": "urn:oid:2.16.840.1.113883.4.349", "value": "989"}
-          next unless system.to_s.include?('2.16.840.1.113883.4.349') && value.present?
+            # Exact match on VA OID system to avoid matching sub-OIDs
+            # (e.g., urn:oid:2.16.840.1.113883.4.349.3.984) whose values are
+            # location URNs, not station numbers.
+            # Example: {"system": "urn:oid:2.16.840.1.113883.4.349", "value": "989"}
+            next unless system.to_s == VA_STATION_OID && value.present?
 
-          return value
+            return value
+          end
+        end
+
+        nil
+      end
+
+      # Extracts station number from Location identifiers
+      # Used for VistA Conditions, Vitals, and Allergies which have Location resources
+      # in contained but no Organization resources.
+      # The station number is encoded in the OID system suffix:
+      #   urn:oid:2.16.840.1.113883.4.349.4.989 → station "989"
+      #
+      # @param contained [Array<Hash>] Array of contained FHIR resources
+      # @return [String, nil] Station number or nil if not found
+      def extract_station_from_location(contained)
+        contained.each do |location|
+          next unless location['resourceType'] == 'Location' && location['identifier']
+
+          location['identifier'].each do |identifier|
+            system = identifier['system'].to_s
+
+            # Match: urn:oid:2.16.840.1.113883.4.349.4.{station_number}
+            match = system.match(/\Aurn:oid:2\.16\.840\.1\.113883\.4\.349\.4\.(\d{3,})\z/)
+            return match[1] if match
+          end
         end
 
         nil
