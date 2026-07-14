@@ -170,7 +170,9 @@ module MyHealth
       def apply_filters_and_sorting(prescriptions)
         prescriptions = apply_filters_to_list(prescriptions) if params[:filter].present?
         prescriptions, sort_metadata = apply_sorting_to_list(prescriptions, params[:sort])
-        [sort_prescriptions_with_pd_at_top(prescriptions), sort_metadata]
+        # Only move PD prescriptions to top when using default sort
+        prescriptions = sort_prescriptions_with_pd_at_top(prescriptions) if params[:sort].blank?
+        [prescriptions, sort_metadata]
       end
 
       def build_response_data(prescriptions, filter_metadata, recently_requested, sort_metadata = {})

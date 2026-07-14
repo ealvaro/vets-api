@@ -33,7 +33,8 @@ module MyHealth
         filter_metadata = build_filter_metadata(resource.data, all_medications_count)
         resource = apply_filters(resource) if params[:filter].present?
         resource = apply_sorting(resource, params[:sort])
-        resource.records = sort_prescriptions_with_pd_at_top(resource.records)
+        # Only move PD prescriptions to top when using default sort
+        resource.records = sort_prescriptions_with_pd_at_top(resource.records) if params[:sort].blank?
         is_using_pagination = params[:page].present? || params[:per_page].present?
         resource = resource.paginate(**pagination_params) if is_using_pagination
         options = { meta: resource.metadata.merge(filter_metadata).merge(recently_requested:) }

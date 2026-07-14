@@ -408,6 +408,63 @@ RSpec.describe 'MyHealth::V1::Prescriptions', type: :request do
       expect(objects).to eq(objects.sort_by { |object| [object['disp_status'], object['prescription_name'].to_s.downcase] })
     end
 
+    it 'respects user sort preference and does not move PD prescriptions to top when explicit sort param provided' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?).with(:mhv_medications_display_pending_meds, anything).and_return(true)
+
+      VCR.use_cassette('rx_client/prescriptions/gets_a_list_of_prescriptions_w_pending_meds') do
+        get '/my_health/v1/prescriptions?sort=alphabetical-rx-name'
+      end
+
+      expect(response).to be_successful
+      response_data = JSON.parse(response.body)['data']
+
+      # Verify both PD and non-PD records are present in the response
+      expect(response_data.any? { |rx| rx.dig('attributes', 'prescription_source') == 'PD' }).to be(true),
+                                                                                                 'Test requires PD prescriptions to be present in the response'
+      expect(response_data.any? { |rx| rx.dig('attributes', 'prescription_source') != 'PD' }).to be(true),
+                                                                                                 'Test requires non-PD prescriptions to be present in the response'
+
+      # When user provides explicit sort, ALL prescriptions (including PD) should follow alphabetical order
+      all_names = response_data.map do |item|
+        item.dig('attributes', 'prescription_name') || item.dig('attributes', 'orderable_item')
+      end.compact.map(&:downcase)
+
+      expect(all_names).to eq(all_names.sort),
+                           'All prescriptions (including PD) should be sorted alphabetically when explicit sort is provided'
+    end
+
+    it 'moves PD prescriptions to top when no sort param is provided (default behavior)' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?).with(:mhv_medications_display_pending_meds, anything).and_return(true)
+
+      VCR.use_cassette('rx_client/prescriptions/gets_a_list_of_prescriptions_w_pending_meds') do
+        get '/my_health/v1/prescriptions?page=1&per_page=99'
+      end
+
+      expect(response).to be_successful
+      response_data = JSON.parse(response.body)['data']
+
+      pd_indices = []
+      non_pd_indices = []
+
+      response_data.each_with_index do |rx, index|
+        if rx['attributes']['prescription_source'] == 'PD'
+          pd_indices << index
+        else
+          non_pd_indices << index
+        end
+      end
+
+      # Ensure both PD and non-PD records are present so the test is meaningful
+      expect(pd_indices).not_to be_empty, 'Test requires PD prescriptions to be present'
+      expect(non_pd_indices).not_to be_empty, 'Test requires non-PD prescriptions to be present'
+
+      # All PD prescriptions should come before all non-PD prescriptions
+      expect(pd_indices.max).to be < non_pd_indices.min,
+                                'PD prescriptions should appear before non-PD prescriptions when using default sort'
+    end
+
     it 'responds to GET #index with refill_status=active' do
       VCR.use_cassette('rx_client/prescriptions/gets_a_list_of_active_prescriptions') do
         get '/my_health/v1/prescriptions?refill_status=active'

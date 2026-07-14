@@ -1373,6 +1373,35 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
         end
       end
     end
+
+    it 'respects user sort preference and does not move PD prescriptions to top when explicit sort param provided' do
+      VCR.use_cassette('unified_health_data/get_prescriptions_with_pd', match_requests_on: %i[method path]) do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?).with(:mhv_uhd_api_gateway_security_endpoint).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:mhv_medications_cerner_pilot, anything).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:mhv_medications_display_pending_meds, anything).and_return(true)
+
+        get('/my_health/v2/prescriptions', params: { sort: 'alphabetical-rx-name' }, headers:)
+
+        json_response = JSON.parse(response.body)
+        expect(response).to have_http_status(:success)
+
+        # Verify both PD and non-PD records are present
+        pd_records = json_response['data'].select { |rx| rx['attributes']['prescription_source'] == 'PD' }
+        non_pd_records = json_response['data'].reject { |rx| rx['attributes']['prescription_source'] == 'PD' }
+        expect(pd_records).not_to be_empty, 'Test requires PD prescriptions to be present'
+        expect(non_pd_records).not_to be_empty, 'Test requires non-PD prescriptions to be present'
+
+        # When user provides explicit sort, prescriptions should follow alphabetical order
+        # (PD prescriptions should NOT be pinned to top, but intermixed alphabetically)
+        names = json_response['data'].map do |rx|
+          rx['attributes']['prescription_name'] || rx['attributes']['orderable_item']
+        end.compact.map(&:downcase)
+
+        expect(names).to eq(names.sort),
+                         'Prescriptions should be sorted alphabetically when explicit sort param is provided'
+      end
+    end
   end
 
   describe 'GET /my_health/v2/prescriptions with VistA tracking data' do

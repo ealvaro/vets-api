@@ -1,0 +1,635 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: "<MHV_UHD_SECURITY_HOST>/mhvapi/security/v1/login"
+    body:
+      encoding: UTF-8
+      string: '{"appId":"<APPID>","appToken":"<APP_TOKEN>","subject":"Proxy Client","userType":"SYSTEM"}'
+    headers:
+      User-Agent:
+      - "<FARADAY_VERSION>"
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Wed, 25 Mar 2026 13:46:29 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      X-Oneagent-Js-Injection:
+      - 'true'
+      Server-Timing:
+      - dtRpid;desc="1590813530", dtSInfo;desc="0"
+      Vary:
+      - Access-Control-Request-Headers
+      - Access-Control-Request-Method
+      - Origin
+      Authorization: Bearer <TOKEN>
+      X-Content-Type-Options:
+      - nosniff
+      X-Xss-Protection:
+      - '0'
+      Cache-Control:
+      - no-cache, no-store, max-age=0, must-revalidate
+      Pragma:
+      - no-cache
+      Expires:
+      - '0'
+      X-Frame-Options:
+      - DENY
+      Strict-Transport-Security:
+      - max-age=16000000; includeSubDomains; preload;
+    body:
+      encoding: UTF-8
+      string: '{"id":702,"name":"VA.gov SCDF Proxy Client","permissions":["system/Practitioner.read","system/Condition.read","system/MedicationDispense.read","system/Appointment.read","system/ServiceRequest.read","Patient","system/Immunization.read","system/Person.read","system/MedicationRequest.read","system/Location.read","system/Procedure.read","System","system/DiagnosticReport.read","system/AllergyIntolerance.read","system/Patient.read","system/Organization.read","system/RelatedPerson.read","system/DocumentReference.read","PHR-RW","system/Observation.read","system/Binary.read","system/Encounter.read"]}'
+  recorded_at: Wed, 25 Mar 2026 13:46:29 GMT
+- request:
+    method: get
+    uri: "<MHV_UHD_HOST>/v1/medicalrecords/medications?endDate=2026-03-25&patientId=1000123456V123456&startDate=1900-01-01"
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      User-Agent:
+      - "<FARADAY_VERSION>"
+      Authorization: Bearer <TOKEN>
+      X-Api-Key:
+      - "<X_API_KEY>"
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Wed, 25 Mar 2026 13:46:45 GMT
+      Content-Type:
+      - application/json
+      Content-Length:
+      - '104258'
+      X-Amzn-Requestid:
+      - 764c2ead-17fe-4297-8ab6-17b745cc1af9
+      X-Xss-Protection:
+      - '0'
+      X-Frame-Options:
+      - DENY
+      X-Oneagent-Js-Injection:
+      - 'true'
+      X-Amzn-Remapped-Connection:
+      - keep-alive
+      X-Amz-Apigw-Id:
+      - ayEQZH77vHMFj5w=
+      Cache-Control:
+      - no-cache, no-store, max-age=0, must-revalidate
+      Vary:
+      - accept-encoding
+      Expires:
+      - '0'
+      Server-Timing:
+      - dtRpid;desc="681881750", dtSInfo;desc="0"
+      X-Content-Type-Options:
+      - nosniff
+      Pragma:
+      - no-cache
+      X-Amzn-Remapped-Date:
+      - Wed, 25 Mar 2026 13:46:45 GMT
+      Strict-Transport-Security:
+      - max-age=16000000; includeSubDomains; preload;
+    body:
+      encoding: ASCII-8BIT
+      string: '{"vista":{"failedStationList":"","successfulStationList":null,"lastUpdatedTime":"Wed,
+        25 Mar 2026 09:46:30 EDT","medicationList":{"medication":[{"refillStatus":"expired","refillSubmitDate":null,"refillDate":"Tue,
+        20 Jan 2026 00:00:00 EST","refillRemaining":0,"facilityName":"DAYT29","facilityApiName":"Dayton
+        Medical Center","isRefillable":false,"isTrackable":false,"prescriptionId":26606964,"sig":"TAKE
+        1 BY MOUTH DAILY --TAKE WITH FOOD TO DECREASE GI DISTRESS--","orderedDate":"Tue,
+        20 Jan 2026 00:00:00 EST","quantity":"3","expirationDate":"Thu, 19 Feb 2026
+        00:00:00 EST","prescriptionNumber":"2721466","prescriptionName":"ERYTHROMYCIN
+        250MG EC TAB","dispensedDate":"Tue, 20 Jan 2026 00:00:00 EST","stationNumber":"989","inCernerTransition":false,"notRefillableDisplayMessage":"A
+        refill request cannot be submitted at this time. Please review the prescription
+        status and fill date. If you need more of this medication, please call the
+        pharmacy phone number on your prescription label.","cmopDivisionPhone":null,"cmopNdcNumber":null,"id":26606964,"userId":17590720,"providerFirstName":"RAJASREE","providerLastName":"VENKATESH","remarks":null,"divisionName":"DAYTON","modifiedDate":"Fri,
+        20 Feb 2026 11:52:44 EST","institutionId":null,"dialCmopDivisionPhone":"","dispStatus":"Expired","ndc":"00044-0207-05","reason":null,"prescriptionNumberIndex":"RX","prescriptionSource":"RX","disclaimer":null,"indicationForUse":null,"indicationForUseFlag":null,"category":"Rx
+        Medication","orderableItem":"ERYTHROMYCIN BASE","shape":null,"color":null,"frontImprint":null,"backImprint":null,"dataSourceSystem":"VISTA","isRenewable":true,"notRenewableReason":null,"trackingList":null,"rxRFRecords":null,"tracking":false},{"refillStatus":"active","refillSubmitDate":null,"refillDate":"Thu,
+        12 Mar 2026 00:00:00 EDT","refillRemaining":0,"facilityName":"DAYT29","facilityApiName":"Dayton
+        Medical Center","isRefillable":false,"isTrackable":false,"prescriptionId":27268253,"sig":"TAKE
+        ONE TABLET BY MOUTH 4 TIMES A DAY FOR PAIN","orderedDate":"Thu, 12 Mar 2026
+        00:00:00 EDT","quantity":"120","expirationDate":"Sat, 11 Apr 2026 00:00:00
+        EDT","prescriptionNumber":"2721487","prescriptionName":"ACETAMINOPHEN 325MG
+        TAB","dispensedDate":"Thu, 12 Mar 2026 00:00:00 EDT","stationNumber":"989","inCernerTransition":false,"notRefillableDisplayMessage":"A
+        refill request cannot be submitted at this time. Please review the prescription
+        status and fill date. If you need more of this medication, please call the
+        pharmacy phone number on your prescription label.","cmopDivisionPhone":null,"cmopNdcNumber":null,"id":27268253,"userId":17590720,"providerFirstName":"VICTORIA","providerLastName":"BORLAND","remarks":null,"divisionName":"DAYTON","modifiedDate":"Wed,
+        25 Mar 2026 09:46:30 EDT","institutionId":null,"dialCmopDivisionPhone":"","dispStatus":"Active","ndc":"51111-0488-93","reason":null,"prescriptionNumberIndex":"RX","prescriptionSource":"RX","disclaimer":null,"indicationForUse":"FOR
+        PAIN","indicationForUseFlag":"1","category":"Rx Medication","orderableItem":"ACETAMINOPHEN","shape":null,"color":null,"frontImprint":null,"backImprint":null,"dataSourceSystem":"VISTA","isRenewable":true,"notRenewableReason":null,"trackingList":null,"rxRFRecords":null,"tracking":false},{"refillStatus":"refillinprocess","refillSubmitDate":"Thu,
+        04 Dec 2025 00:00:00 EST","refillDate":"Sun, 21 Dec 2025 00:00:00 EST","refillRemaining":4,"facilityName":"DAYT29","facilityApiName":"Dayton
+        Medical Center","isRefillable":false,"isTrackable":false,"prescriptionId":26305871,"sig":"TAKE
+        ONE TABLET BY MOUTH DAILY TEST --TAKE WITH FOOD TO DECREASE GI UPSET/DO NOT
+        CRUSH OR CHEW--","orderedDate":"Sat, 01 Nov 2025 00:00:00 EDT","quantity":"30","expirationDate":"Mon,
+        02 Nov 2026 00:00:00 EST","prescriptionNumber":"2721445","prescriptionName":"PROMETHAZINE
+        HCL 25MG TAB","dispensedDate":null,"stationNumber":"989","inCernerTransition":false,"notRefillableDisplayMessage":"A
+        refill request cannot be submitted at this time. Please review the prescription
+        status and fill date. If you need more of this medication, please call the
+        pharmacy phone number on your prescription label.","cmopDivisionPhone":null,"cmopNdcNumber":null,"id":26305871,"userId":17590720,"providerFirstName":"RAJASREE","providerLastName":"VENKATESH","remarks":null,"divisionName":"DAYTON","modifiedDate":"Wed,
+        25 Mar 2026 09:46:30 EDT","institutionId":null,"dialCmopDivisionPhone":"","dispStatus":"Active:
+        Refill in Process","ndc":"00591-5307-01","reason":null,"prescriptionNumberIndex":"RX","prescriptionSource":"PD","disclaimer":null,"indicationForUse":"TEST","indicationForUseFlag":"1","category":"Rx
+        Medication","orderableItem":"PROMETHAZINE","shape":null,"color":null,"frontImprint":null,"backImprint":null,"dataSourceSystem":"VISTA","isRenewable":true,"notRenewableReason":null,"trackingList":null,"rxRFRecords":{"rfRecord":[{"refillStatus":"suspended","refillSubmitDate":"Thu,
+        04 Dec 2025 00:00:00 EST","refillDate":"Mon, 01 Dec 2025 00:00:00 EST","refillRemaining":4,"facilityName":"DAYT29","facilityApiName":"Dayton
+        Medical Center","isRefillable":false,"isTrackable":false,"prescriptionId":26319529,"sig":null,"orderedDate":"Sun,
+        21 Dec 2025 00:00:00 EST","quantity":"30","expirationDate":null,"prescriptionNumber":"2721445","prescriptionName":"PROMETHAZINE
+        HCL 25MG TAB","dispensedDate":null,"stationNumber":"989","inCernerTransition":false,"notRefillableDisplayMessage":null,"cmopDivisionPhone":null,"cmopNdcNumber":null,"id":26319529,"userId":17590720,"providerFirstName":null,"providerLastName":null,"remarks":null,"divisionName":null,"modifiedDate":null,"institutionId":null,"dialCmopDivisionPhone":"","dispStatus":"Suspended","ndc":"00591-5307-01","reason":null,"prescriptionNumberIndex":"RF1","prescriptionSource":"RF","disclaimer":null,"indicationForUse":null,"indicationForUseFlag":null,"category":"Rx
+        Medication","orderableItem":null,"shape":null,"color":null,"frontImprint":null,"backImprint":null,"dataSourceSystem":"VISTA","isRenewable":true,"notRenewableReason":null,"trackingList":null,"rxRFRecords":null,"tracking":false}]},"tracking":false},{"refillStatus":"refillinprocess","refillSubmitDate":"Thu,
+        04 Dec 2025 00:00:00 EST","refillDate":"Thu, 04 Dec 2025 00:00:00 EST","refillRemaining":4,"facilityName":"DAYT29","facilityApiName":"Dayton
+        Medical Center","isRefillable":false,"isTrackable":false,"prescriptionId":26305872,"sig":"TAKE
+        2 TEASPOONFULS MOUTH DAILY --TAKE WITH FOOD--","orderedDate":"Sat, 01 Nov
+        2025 00:00:00 EDT","quantity":"4","expirationDate":"Mon, 02 Nov 2026 00:00:00
+        EST","prescriptionNumber":"2721446","prescriptionName":"AMOXICILLIN 125MG/5ML
+        SUSP","dispensedDate":null,"stationNumber":"989","inCernerTransition":false,"notRefillableDisplayMessage":"A
+        refill request cannot be submitted at this time. Please review the prescription
+        status and fill date. If you need more of this medication, please call the
+        pharmacy phone number on your prescription label.","cmopDivisionPhone":null,"cmopNdcNumber":null,"id":26305872,"userId":17590720,"providerFirstName":"RAJASREE","providerLastName":"VENKATESH","remarks":null,"divisionName":"DAYTON","modifiedDate":"Wed,
+        25 Mar 2026 09:46:30 EDT","institutionId":null,"dialCmopDivisionPhone":"","dispStatus":"Active:
+        Refill in Process","ndc":null,"reason":null,"prescriptionNumberIndex":"RX","prescriptionSource":"RX","disclaimer":null,"indicationForUse":null,"indicationForUseFlag":null,"category":"Rx
+        Medication","orderableItem":"AMOXICILLIN","shape":null,"color":null,"frontImprint":null,"backImprint":null,"dataSourceSystem":"VISTA","isRenewable":true,"notRenewableReason":null,"trackingList":null,"rxRFRecords":{"rfRecord":[{"refillStatus":"suspended","refillSubmitDate":"Thu,
+        04 Dec 2025 00:00:00 EST","refillDate":"Thu, 06 Nov 2025 00:00:00 EST","refillRemaining":4,"facilityName":"DAYT29","facilityApiName":"Dayton
+        Medical Center","isRefillable":false,"isTrackable":false,"prescriptionId":26319530,"sig":null,"orderedDate":"Thu,
+        04 Dec 2025 00:00:00 EST","quantity":"4","expirationDate":null,"prescriptionNumber":"2721446","prescriptionName":"AMOXICILLIN
+        125MG/5ML SUSP","dispensedDate":null,"stationNumber":"989","inCernerTransition":false,"notRefillableDisplayMessage":null,"cmopDivisionPhone":null,"cmopNdcNumber":null,"id":26319530,"userId":17590720,"providerFirstName":null,"providerLastName":null,"remarks":null,"divisionName":null,"modifiedDate":null,"institutionId":null,"dialCmopDivisionPhone":"","dispStatus":"Suspended","ndc":null,"reason":null,"prescriptionNumberIndex":"RF1","prescriptionSource":"RF","disclaimer":null,"indicationForUse":null,"indicationForUseFlag":null,"category":"Rx
+        Medication","orderableItem":null,"shape":null,"color":null,"frontImprint":null,"backImprint":null,"dataSourceSystem":"VISTA","isRenewable":true,"notRenewableReason":null,"trackingList":null,"rxRFRecords":null,"tracking":false}]},"tracking":false},{"refillStatus":"expired","refillSubmitDate":null,"refillDate":"Sun,
+        01 Dec 2024 00:00:00 EST","refillRemaining":5,"facilityName":"DAYT29","facilityApiName":"Dayton
+        Medical Center","isRefillable":false,"isTrackable":false,"prescriptionId":26305873,"sig":"APPLY
+        LIBERAL AMOUNT TO AFFECTED AREA DAILY FOR 30 DAYS TEST","orderedDate":"Sun,
+        01 Dec 2024 00:00:00 EST","quantity":"2","expirationDate":"Tue, 02 Dec 2025
+        00:00:00 EST","prescriptionNumber":"2721447","prescriptionName":"BACITRACIN
+        500 UNIT/GM OINT 30GM","dispensedDate":null,"stationNumber":"989","inCernerTransition":false,"notRefillableDisplayMessage":"A
+        refill request cannot be submitted at this time. Please review the prescription
+        status and fill date. If you need more of this medication, please call the
+        pharmacy phone number on your prescription label.","cmopDivisionPhone":null,"cmopNdcNumber":null,"id":26305873,"userId":17590720,"providerFirstName":"RAJASREE","providerLastName":"VENKATESH","remarks":null,"divisionName":"DAYTON","modifiedDate":"Thu,
+        04 Dec 2025 09:52:33 EST","institutionId":null,"dialCmopDivisionPhone":"","dispStatus":"Expired","ndc":"00713-0280-31","reason":null,"prescriptionNumberIndex":"RX","prescriptionSource":"RX","disclaimer":null,"indicationForUse":"TEST","indicationForUseFlag":"1","category":"Rx
+        Medication","orderableItem":"BACITRACIN","shape":null,"color":null,"frontImprint":null,"backImprint":null,"dataSourceSystem":"VISTA","isRenewable":true,"notRenewableReason":null,"trackingList":null,"rxRFRecords":null,"tracking":false},{"refillStatus":"discontinued","refillSubmitDate":null,"refillDate":"Mon,
+        03 Nov 2025 00:00:00 EST","refillRemaining":4,"facilityName":"DAYT29","facilityApiName":"Dayton
+        Medical Center","isRefillable":false,"isTrackable":false,"prescriptionId":26305874,"sig":"APPLY
+        SMALL AMOUNT DAILY FOR 30 DAYS TEST","orderedDate":"Sat, 01 Nov 2025 00:00:00
+        EDT","quantity":"3","expirationDate":"Mon, 02 Nov 2026 00:00:00 EST","prescriptionNumber":"2721448","prescriptionName":"CLOBETASOL
+        PROPIONATE 0.05% CREAM","dispensedDate":null,"stationNumber":"989","inCernerTransition":false,"notRefillableDisplayMessage":"A
+        refill request cannot be submitted at this time. Please review the prescription
+        status and fill date. If you need more of this medication, please call the
+        pharmacy phone number on your prescription label.","cmopDivisionPhone":null,"cmopNdcNumber":null,"id":26305874,"userId":17590720,"providerFirstName":"RAJASREE","providerLastName":"VENKATESH","remarks":null,"divisionName":"DAYTON","modifiedDate":"Wed,
+        25 Mar 2026 09:46:30 EDT","institutionId":null,"dialCmopDivisionPhone":"","dispStatus":"Discontinued","ndc":"51672-1258-02","reason":null,"prescriptionNumberIndex":"RX","prescriptionSource":"RX","disclaimer":null,"indicationForUse":"TEST","indicationForUseFlag":"1","category":"Rx
+        Medication","orderableItem":"CLOBETASOL","shape":null,"color":null,"frontImprint":null,"backImprint":null,"dataSourceSystem":"VISTA","isRenewable":true,"notRenewableReason":null,"trackingList":null,"rxRFRecords":null,"tracking":false},{"refillStatus":"refillinprocess","refillSubmitDate":"Thu,
+        04 Dec 2025 00:00:00 EST","refillDate":"Thu, 04 Dec 2025 00:00:00 EST","refillRemaining":4,"facilityName":"DAYT29","facilityApiName":"Dayton
+        Medical Center","isRefillable":false,"isTrackable":false,"prescriptionId":26305875,"sig":"APPLY
+        SMALL AMOUNT TO AFFECTED AREA DAILY FOR 30 DAYS TEST","orderedDate":"Thu,
+        06 Nov 2025 00:00:00 EST","quantity":"2","expirationDate":"Sat, 07 Nov 2026
+        00:00:00 EST","prescriptionNumber":"2721449","prescriptionName":"ECONAZOLE
+        NITRATE 1% CREAM","dispensedDate":null,"stationNumber":"989","inCernerTransition":false,"notRefillableDisplayMessage":"A
+        refill request cannot be submitted at this time. Please review the prescription
+        status and fill date. If you need more of this medication, please call the
+        pharmacy phone number on your prescription label.","cmopDivisionPhone":null,"cmopNdcNumber":null,"id":26305875,"userId":17590720,"providerFirstName":"RAJASREE","providerLastName":"VENKATESH","remarks":null,"divisionName":"DAYTON","modifiedDate":"Wed,
+        25 Mar 2026 09:46:30 EDT","institutionId":null,"dialCmopDivisionPhone":"","dispStatus":"Active:
+        Refill in Process","ndc":"00168-0312-30","reason":null,"prescriptionNumberIndex":"RX","prescriptionSource":"RX","disclaimer":null,"indicationForUse":"TEST","indicationForUseFlag":"1","category":"Rx
+        Medication","orderableItem":"ECONAZOLE","shape":null,"color":null,"frontImprint":null,"backImprint":null,"dataSourceSystem":"VISTA","isRenewable":true,"notRenewableReason":null,"trackingList":null,"rxRFRecords":{"rfRecord":[{"refillStatus":"suspended","refillSubmitDate":null,"refillDate":"Fri,
+        07 Nov 2025 00:00:00 EST","refillRemaining":4,"facilityName":"DAYT29","facilityApiName":"Dayton
+        Medical Center","isRefillable":false,"isTrackable":false,"prescriptionId":27052361,"sig":null,"orderedDate":"Mon,
+        23 Feb 2026 00:00:00 EST","quantity":"1","expirationDate":null,"prescriptionNumber":"2721449","prescriptionName":"ECONAZOLE
+        NITRATE 1% CREAM","dispensedDate":"Mon, 23 Feb 2026 00:00:00 EST","stationNumber":"989","inCernerTransition":false,"notRefillableDisplayMessage":null,"cmopDivisionPhone":null,"cmopNdcNumber":null,"id":27052361,"userId":17590720,"providerFirstName":null,"providerLastName":null,"remarks":null,"divisionName":null,"modifiedDate":null,"institutionId":null,"dialCmopDivisionPhone":"","dispStatus":"Suspended","ndc":"00168-0312-30","reason":null,"prescriptionNumberIndex":"PF1","prescriptionSource":"PF","disclaimer":null,"indicationForUse":null,"indicationForUseFlag":null,"category":"Rx
+        Medication","orderableItem":null,"shape":null,"color":null,"frontImprint":null,"backImprint":null,"dataSourceSystem":"VISTA","isRenewable":false,"notRenewableReason":null,"trackingList":null,"rxRFRecords":null,"tracking":false},{"refillStatus":"suspended","refillSubmitDate":"Thu,
+        04 Dec 2025 00:00:00 EST","refillDate":"Fri, 07 Nov 2025 00:00:00 EST","refillRemaining":4,"facilityName":"DAYT29","facilityApiName":"Dayton
+        Medical Center","isRefillable":false,"isTrackable":false,"prescriptionId":26319531,"sig":null,"orderedDate":"Thu,
+        04 Dec 2025 00:00:00 EST","quantity":"2","expirationDate":null,"prescriptionNumber":"2721449","prescriptionName":"ECONAZOLE
+        NITRATE 1% CREAM","dispensedDate":null,"stationNumber":"989","inCernerTransition":false,"notRefillableDisplayMessage":null,"cmopDivisionPhone":null,"cmopNdcNumber":null,"id":26319531,"userId":17590720,"providerFirstName":null,"providerLastName":null,"remarks":null,"divisionName":null,"modifiedDate":null,"institutionId":null,"dialCmopDivisionPhone":"","dispStatus":"Suspended","ndc":"00168-0312-30","reason":null,"prescriptionNumberIndex":"RF1","prescriptionSource":"RF","disclaimer":null,"indicationForUse":null,"indicationForUseFlag":null,"category":"Rx
+        Medication","orderableItem":null,"shape":null,"color":null,"frontImprint":null,"backImprint":null,"dataSourceSystem":"VISTA","isRenewable":true,"notRenewableReason":null,"trackingList":null,"rxRFRecords":null,"tracking":false}]},"tracking":false},{"refillStatus":"refillinprocess","refillSubmitDate":"Mon,
+        16 Mar 2026 00:00:00 EDT","refillDate":"Mon, 16 Mar 2026 00:00:00 EDT","refillRemaining":11,"facilityName":"DAYT29","facilityApiName":"Dayton
+        Medical Center","isRefillable":false,"isTrackable":false,"prescriptionId":27142508,"sig":"TAKE
+        ONE TABLET BY MOUTH DAILY --AVOID GRAPEFRUIT JUICE/AVOID ANTACIDS--","orderedDate":"Mon,
+        02 Mar 2026 00:00:00 EST","quantity":"20","expirationDate":"Wed, 03 Mar 2027
+        00:00:00 EST","prescriptionNumber":"2721483","prescriptionName":"ATORVASTATIN
+        CALCIUM 10MG TAB","dispensedDate":null,"stationNumber":"989","inCernerTransition":false,"notRefillableDisplayMessage":"A
+        refill request cannot be submitted at this time. Please review the prescription
+        status and fill date. If you need more of this medication, please call the
+        pharmacy phone number on your prescription label.","cmopDivisionPhone":null,"cmopNdcNumber":null,"id":27142508,"userId":17590720,"providerFirstName":"VICTORIA","providerLastName":"BORLAND","remarks":"TESTING
+        ","divisionName":"DAYTON","modifiedDate":"Wed, 25 Mar 2026 09:46:30 EDT","institutionId":null,"dialCmopDivisionPhone":"","dispStatus":"Active:
+        Refill in Process","ndc":"00071-0155-23","reason":null,"prescriptionNumberIndex":"RX","prescriptionSource":"RX","disclaimer":null,"indicationForUse":null,"indicationForUseFlag":null,"category":"Rx
+        Medication","orderableItem":"ATORVASTATIN 10MG","shape":null,"color":null,"frontImprint":null,"backImprint":null,"dataSourceSystem":"VISTA","isRenewable":true,"notRenewableReason":null,"trackingList":null,"rxRFRecords":null,"tracking":false},{"refillStatus":"refillinprocess","refillSubmitDate":"Mon,
+        02 Mar 2026 00:00:00 EST","refillDate":"Sun, 22 Mar 2026 00:00:00 EDT","refillRemaining":10,"facilityName":"DAYT29","facilityApiName":"Dayton
+        Medical Center","isRefillable":false,"isTrackable":false,"prescriptionId":27142509,"sig":"TAKE
+        ONE TABLET 4 TIMES A DAY TESTING","orderedDate":"Mon, 02 Mar 2026 00:00:00
+        EST","quantity":"120","expirationDate":"Wed, 03 Mar 2027 00:00:00 EST","prescriptionNumber":"2721484","prescriptionName":"TIZANIDINE
+        HCL 4MG TAB","dispensedDate":null,"stationNumber":"989","inCernerTransition":false,"notRefillableDisplayMessage":"A
+        refill request cannot be submitted at this time. Please review the prescription
+        status and fill date. If you need more of this medication, please call the
+        pharmacy phone number on your prescription label.","cmopDivisionPhone":null,"cmopNdcNumber":null,"id":27142509,"userId":17590720,"providerFirstName":"VICTORIA","providerLastName":"BORLAND","remarks":null,"divisionName":"DAYTON","modifiedDate":"Wed,
+        25 Mar 2026 09:46:30 EDT","institutionId":null,"dialCmopDivisionPhone":"","dispStatus":"Active:
+        Refill in Process","ndc":"59075-0594-15","reason":null,"prescriptionNumberIndex":"RX","prescriptionSource":"PD","disclaimer":null,"indicationForUse":"TESTING","indicationForUseFlag":"1","category":"Rx
+        Medication","orderableItem":"TIZANIDINE","shape":null,"color":null,"frontImprint":null,"backImprint":null,"dataSourceSystem":"VISTA","isRenewable":true,"notRenewableReason":null,"trackingList":null,"rxRFRecords":{"rfRecord":[{"refillStatus":"suspended","refillSubmitDate":"Mon,
+        02 Mar 2026 00:00:00 EST","refillDate":"Mon, 02 Mar 2026 00:00:00 EST","refillRemaining":10,"facilityName":"DAYT29","facilityApiName":"Dayton
+        Medical Center","isRefillable":false,"isTrackable":false,"prescriptionId":27153495,"sig":null,"orderedDate":"Sun,
+        22 Mar 2026 00:00:00 EDT","quantity":"120","expirationDate":null,"prescriptionNumber":"2721484","prescriptionName":"TIZANIDINE
+        HCL 4MG TAB","dispensedDate":null,"stationNumber":"989","inCernerTransition":false,"notRefillableDisplayMessage":null,"cmopDivisionPhone":null,"cmopNdcNumber":null,"id":27153495,"userId":17590720,"providerFirstName":null,"providerLastName":null,"remarks":null,"divisionName":null,"modifiedDate":null,"institutionId":null,"dialCmopDivisionPhone":"","dispStatus":"Suspended","ndc":"59075-0594-15","reason":null,"prescriptionNumberIndex":"RF1","prescriptionSource":"RF","disclaimer":null,"indicationForUse":null,"indicationForUseFlag":null,"category":"Rx
+        Medication","orderableItem":null,"shape":null,"color":null,"frontImprint":null,"backImprint":null,"dataSourceSystem":"VISTA","isRenewable":true,"notRenewableReason":null,"trackingList":null,"rxRFRecords":null,"tracking":false}]},"tracking":false},{"refillStatus":"refillinprocess","refillSubmitDate":"Mon,
+        16 Mar 2026 00:00:00 EDT","refillDate":"Sun, 22 Mar 2026 00:00:00 EDT","refillRemaining":5,"facilityName":"DAYT29","facilityApiName":"Dayton
+        Medical Center","isRefillable":false,"isTrackable":false,"prescriptionId":27142510,"sig":"TAKE
+        1 TABLET DAILY BLOOD PRESSURE","orderedDate":"Mon, 02 Mar 2026 00:00:00 EST","quantity":"30","expirationDate":"Wed,
+        03 Mar 2027 00:00:00 EST","prescriptionNumber":"2721485","prescriptionName":"HCTZ
+        50/TRIAMTERENE 75MG TAB","dispensedDate":"Mon, 02 Mar 2026 00:00:00 EST","stationNumber":"989","inCernerTransition":false,"notRefillableDisplayMessage":"A
+        refill request cannot be submitted at this time. Please review the prescription
+        status and fill date. If you need more of this medication, please call the
+        pharmacy phone number on your prescription label.","cmopDivisionPhone":null,"cmopNdcNumber":null,"id":27142510,"userId":17590720,"providerFirstName":"VICTORIA","providerLastName":"BORLAND","remarks":"TESTING","divisionName":"DAYTON","modifiedDate":"Wed,
+        25 Mar 2026 09:46:30 EDT","institutionId":null,"dialCmopDivisionPhone":"","dispStatus":"Active:
+        Refill in Process","ndc":"00378-1355-00","reason":null,"prescriptionNumberIndex":"RX","prescriptionSource":"RX","disclaimer":null,"indicationForUse":"BLOOD
+        PRESSURE","indicationForUseFlag":"1","category":"Rx Medication","orderableItem":"HYDROCHLOROTHIAZIDE/TRIAMTERENE","shape":null,"color":null,"frontImprint":null,"backImprint":null,"dataSourceSystem":"VISTA","isRenewable":true,"notRenewableReason":null,"trackingList":null,"rxRFRecords":{"rfRecord":[{"refillStatus":"suspended","refillSubmitDate":"Mon,
+        16 Mar 2026 00:00:00 EDT","refillDate":"Mon, 02 Mar 2026 00:00:00 EST","refillRemaining":5,"facilityName":"DAYT29","facilityApiName":"Dayton
+        Medical Center","isRefillable":false,"isTrackable":false,"prescriptionId":27328295,"sig":null,"orderedDate":"Sun,
+        22 Mar 2026 00:00:00 EDT","quantity":"30","expirationDate":null,"prescriptionNumber":"2721485","prescriptionName":"HCTZ
+        50/TRIAMTERENE 75MG TAB","dispensedDate":null,"stationNumber":"989","inCernerTransition":false,"notRefillableDisplayMessage":null,"cmopDivisionPhone":null,"cmopNdcNumber":null,"id":27328295,"userId":17590720,"providerFirstName":null,"providerLastName":null,"remarks":null,"divisionName":null,"modifiedDate":null,"institutionId":null,"dialCmopDivisionPhone":"","dispStatus":"Suspended","ndc":"00378-1355-00","reason":null,"prescriptionNumberIndex":"RF1","prescriptionSource":"RF","disclaimer":null,"indicationForUse":null,"indicationForUseFlag":null,"category":"Rx
+        Medication","orderableItem":null,"shape":null,"color":null,"frontImprint":null,"backImprint":null,"dataSourceSystem":"VISTA","isRenewable":true,"notRenewableReason":null,"trackingList":null,"rxRFRecords":null,"tracking":false}]},"tracking":false},{"refillStatus":"refillinprocess","refillSubmitDate":"Tue,
+        17 Mar 2026 00:00:00 EDT","refillDate":"Sun, 22 Mar 2026 00:00:00 EDT","refillRemaining":6,"facilityName":"DAYT29","facilityApiName":"Dayton
+        Medical Center","isRefillable":false,"isTrackable":false,"prescriptionId":27142511,"sig":"TAKE
+        ONE TABLET DAILY TESTING","orderedDate":"Mon, 02 Mar 2026 00:00:00 EST","quantity":"30","expirationDate":"Wed,
+        03 Mar 2027 00:00:00 EST","prescriptionNumber":"2721486","prescriptionName":"TAMOXIFEN
+        CITRATE 10MG TAB","dispensedDate":"Mon, 02 Mar 2026 00:00:00 EST","stationNumber":"989","inCernerTransition":false,"notRefillableDisplayMessage":"A
+        refill request cannot be submitted at this time. Please review the prescription
+        status and fill date. If you need more of this medication, please call the
+        pharmacy phone number on your prescription label.","cmopDivisionPhone":null,"cmopNdcNumber":null,"id":27142511,"userId":17590720,"providerFirstName":"VICTORIA","providerLastName":"BORLAND","remarks":null,"divisionName":"DAYTON","modifiedDate":"Wed,
+        25 Mar 2026 09:46:30 EDT","institutionId":null,"dialCmopDivisionPhone":"","dispStatus":"Active:
+        Refill in Process","ndc":"00310-0600-60","reason":null,"prescriptionNumberIndex":"RX","prescriptionSource":"RX","disclaimer":null,"indicationForUse":"TESTING","indicationForUseFlag":"1","category":"Rx
+        Medication","orderableItem":"TAMOXIFEN CITRATE","shape":null,"color":null,"frontImprint":null,"backImprint":null,"dataSourceSystem":"VISTA","isRenewable":true,"notRenewableReason":null,"trackingList":null,"rxRFRecords":{"rfRecord":[{"refillStatus":"suspended","refillSubmitDate":"Tue,
+        17 Mar 2026 00:00:00 EDT","refillDate":"Mon, 02 Mar 2026 00:00:00 EST","refillRemaining":6,"facilityName":"DAYT29","facilityApiName":"Dayton
+        Medical Center","isRefillable":false,"isTrackable":false,"prescriptionId":27340254,"sig":null,"orderedDate":"Sun,
+        22 Mar 2026 00:00:00 EDT","quantity":"30","expirationDate":null,"prescriptionNumber":"2721486","prescriptionName":"TAMOXIFEN
+        CITRATE 10MG TAB","dispensedDate":null,"stationNumber":"989","inCernerTransition":false,"notRefillableDisplayMessage":null,"cmopDivisionPhone":null,"cmopNdcNumber":null,"id":27340254,"userId":17590720,"providerFirstName":null,"providerLastName":null,"remarks":null,"divisionName":null,"modifiedDate":null,"institutionId":null,"dialCmopDivisionPhone":"","dispStatus":"Suspended","ndc":"00310-0600-60","reason":null,"prescriptionNumberIndex":"RF1","prescriptionSource":"RF","disclaimer":null,"indicationForUse":null,"indicationForUseFlag":null,"category":"Rx
+        Medication","orderableItem":null,"shape":null,"color":null,"frontImprint":null,"backImprint":null,"dataSourceSystem":"VISTA","isRenewable":true,"notRenewableReason":null,"trackingList":null,"rxRFRecords":null,"tracking":false}]},"tracking":false},{"refillStatus":"refillinprocess","refillSubmitDate":"Mon,
+        15 Dec 2025 00:00:00 EST","refillDate":"Mon, 15 Dec 2025 00:00:00 EST","refillRemaining":5,"facilityName":"DAYT29","facilityApiName":"Dayton
+        Medical Center","isRefillable":false,"isTrackable":false,"prescriptionId":26348089,"sig":"TAKE
+        ONE TABLET BY MOUTH TWICE A DAY DIABETE","orderedDate":"Thu, 11 Dec 2025 00:00:00
+        EST","quantity":"60","expirationDate":"Sat, 12 Dec 2026 00:00:00 EST","prescriptionNumber":"2721450","prescriptionName":"METFORMIN
+        HCL 500MG TAB","dispensedDate":null,"stationNumber":"989","inCernerTransition":false,"notRefillableDisplayMessage":"A
+        refill request cannot be submitted at this time. Please review the prescription
+        status and fill date. If you need more of this medication, please call the
+        pharmacy phone number on your prescription label.","cmopDivisionPhone":null,"cmopNdcNumber":null,"id":26348089,"userId":17590720,"providerFirstName":"BHAVIN","providerLastName":"PATEL","remarks":"TESTING","divisionName":"DAYTON","modifiedDate":"Wed,
+        25 Mar 2026 09:46:30 EDT","institutionId":null,"dialCmopDivisionPhone":"","dispStatus":"Active:
+        Refill in Process","ndc":"57664-0397-13","reason":null,"prescriptionNumberIndex":"RX","prescriptionSource":"RX","disclaimer":null,"indicationForUse":"DIABETE","indicationForUseFlag":"1","category":"Rx
+        Medication","orderableItem":"METFORMIN","shape":null,"color":null,"frontImprint":null,"backImprint":null,"dataSourceSystem":"VISTA","isRenewable":true,"notRenewableReason":null,"trackingList":null,"rxRFRecords":null,"tracking":false}]},"errors":[],"infoMessages":[]},"oracle-health":{"resourceType":"Bundle","total":6,"entry":[{"resource":{"resourceType":"Patient","id":"72228720","meta":{"versionId":"115","lastUpdated":"2026-02-24T22:49:20.000Z","tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"text":{"status":"generated","div":"<div
+        xmlns=\"http://www.w3.org/1999/xhtml\"><p><b>Patient</b></p><p><b>Name</b>:
+        BEARDEDIPO, VANCE J</p><p><b>Status</b>: Active</p><p><b>DOB</b>: Jun 23,
+        1950</p><p><b>Administrative Gender</b>: Male</p><p><b>Marital Status</b>:
+        Married</p></div>"},"extension":[{"id":"9915439822","url":"https://fhir-ehr.cerner.com/r4/StructureDefinition/communication-preference","extension":[{"url":"communication-type","valueCodeableConcept":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4640016","code":"343369339","display":"Clinical
+        Communications","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/communication-topic","code":"progress-update","display":"Progress
+        Update","userSelected":false}],"text":"Clinical Communications"}},{"url":"contact-method","valueCodeableConcept":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/23042","code":"21714207","display":"Patient
+        Portal","userSelected":true},{"system":"http://hl7.org/fhir/contact-point-system","code":"url","display":"URL","userSelected":false}],"text":"Patient
+        Portal"}}]},{"id":"9915439820","url":"https://fhir-ehr.cerner.com/r4/StructureDefinition/communication-preference","extension":[{"url":"communication-type","valueCodeableConcept":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4640016","code":"343369329","display":"Appointment
+        Reminders","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/communication-topic","code":"appointment-reminder","display":"Appointment
+        Reminder","userSelected":false}],"text":"Appointment Reminders"}},{"url":"contact-method","valueCodeableConcept":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/23042","code":"21714207","display":"Patient
+        Portal","userSelected":true},{"system":"http://hl7.org/fhir/contact-point-system","code":"url","display":"URL","userSelected":false}],"text":"Patient
+        Portal"}}]},{"url":"http://hl7.org/fhir/us/core/StructureDefinition/us-core-race","extension":[{"url":"ombCategory","valueCoding":{"system":"urn:oid:2.16.840.1.113883.6.238","code":"2106-3","display":"White","userSelected":false}},{"url":"text","valueString":"White"}]},{"url":"http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity","extension":[{"url":"ombCategory","valueCoding":{"system":"urn:oid:2.16.840.1.113883.6.238","code":"2186-5","display":"Not
+        Hispanic or Latino","userSelected":false}},{"url":"text","valueString":"Not
+        Hispanic or Latino"}]}],"identifier":[{"id":"CI-9915145808-0","use":"usual","type":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4","code":"10","display":"MRN","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"MR","display":"Medical
+        record number","userSelected":false}],"text":"MRN"},"_system":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason","valueCode":"unknown"}]},"value":"108229556000001","_value":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/rendered-value","valueString":"108229556000001"}]}},{"id":"CI-9915145804-2","use":"usual","type":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4","code":"22","display":"DOD
+        ID","userSelected":true}],"text":"DOD ID"},"system":"urn:oid:2.16.840.1.113883.3.42.10001.100001.12","value":"1606730850","_value":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/rendered-value","valueString":"1606730850"}]},"period":{"start":"2025-11-03T16:52:12.000Z"}},{"id":"CI-9915148410-3","use":"usual","type":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4","code":"670843","display":"Messaging","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"U","display":"Unspecified
+        identifier","userSelected":false}],"text":"Messaging"},"system":"urn:oid:2.16.840.1.113883.3.8901.2","value":"1000123456V123456","_value":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/rendered-value","valueString":"1000123456V123456"}]},"period":{"start":"2025-11-03T17:50:10.000Z"}},{"id":"CI-9915146287-4","use":"usual","type":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4","code":"670843","display":"Messaging","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"U","display":"Unspecified
+        identifier","userSelected":false}],"text":"Messaging"},"_system":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason","valueCode":"unknown"}]},"value":"72228720","_value":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/rendered-value","valueString":"72228720"}]},"period":{"start":"2025-11-03T16:59:00.000Z"}},{"id":"CI-9915148408-5","use":"usual","type":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4","code":"165915171","display":"Federated
+        Person Principal","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"AN","display":"Account
+        number","userSelected":false}],"text":"Federated Person Principal"},"system":"urn:oid:2.16.840.1.113883.3.13.6","value":"URN:CERNER:IDENTITY-FEDERATION:REALM:F0FDED0D-D00B-4B28-9190-853247FD9F9D:PRINCIPAL:1606730850","_value":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/rendered-value","valueString":"URN:CERNER:IDENTITY-FEDERATION:REALM:F0FDED0D-D00B-4B28-9190-853247FD9F9D:PRINCIPAL:1606730850"}]},"period":{"start":"2025-11-03T17:50:10.000Z"}},{"id":"CI-9915146288-6","use":"usual","type":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4","code":"165915171","display":"Federated
+        Person Principal","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"AN","display":"Account
+        number","userSelected":false}],"text":"Federated Person Principal"},"system":"urn:oid:2.16.840.1.113883.3.13.6","value":"URN:CERNER:IDENTITY-FEDERATION:REALM:829576ED-6BD8-497F-BAED-C95DDA9E75DB:PRINCIPAL:1606730850","_value":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/rendered-value","valueString":"URN:CERNER:IDENTITY-FEDERATION:REALM:829576ED-6BD8-497F-BAED-C95DDA9E75DB:PRINCIPAL:1606730850"}]},"period":{"start":"2025-11-03T16:59:00.000Z"}},{"id":"CI-9915145810-7","use":"usual","type":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4","code":"165915179","display":"MIllennium
+        Person Identifier","userSelected":true}],"text":"MIllennium Person Identifier"},"_system":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason","valueCode":"unknown"}]},"value":"5555194","_value":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/rendered-value","valueString":"5555194"}]},"period":{"start":"2025-11-03T16:52:12.000Z"}},{"id":"CI-9915145802-8","use":"usual","type":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4","code":"246779987","display":"Veteran
+        ID","userSelected":true}],"text":"Veteran ID"},"system":"urn:oid:2.16.840.1.113883.4.349","value":"1000123456V123456","_value":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/rendered-value","valueString":"1000123456V123456"}]},"period":{"start":"2025-11-03T16:52:12.000Z"}}],"active":true,"name":[{"id":"CI-72228720-0","use":"official","text":"BEARDEDIPO,
+        VANCE J","family":"BEARDEDIPO","given":["VANCE","J"]}],"telecom":[{"id":"CI-PH-865253010-0","extension":[{"url":"http://hl7.org/fhir/StructureDefinition/iso21090-TEL-address","valueUrl":"+2406207154"}],"system":"phone","value":"2406207154","use":"work","rank":1,"period":{"start":"2025-11-03T16:52:12.000Z"}},{"id":"CI-PH-865253012-1","extension":[{"url":"http://hl7.org/fhir/StructureDefinition/iso21090-TEL-address","valueUrl":"+8168034488"}],"system":"phone","value":"8168034488","use":"home","rank":1,"period":{"start":"2025-11-03T16:52:12.000Z"}},{"id":"CI-PH-865253014-2","extension":[{"url":"http://hl7.org/fhir/StructureDefinition/iso21090-TEL-address","valueUrl":"+8167979560"}],"system":"phone","value":"8167979560","use":"mobile","rank":1,"period":{"start":"2025-11-03T16:52:12.000Z"}},{"id":"CI-EM-865253016-0","system":"email","value":"tes12345678987654321234567t@gmail.com","use":"home","rank":1,"period":{"start":"2025-11-03T16:52:12.000Z"}}],"gender":"male","birthDate":"1950-06-23","address":[{"id":"CI-950673177-0","text":"PIERRE,
+        SD \nUS","city":"PIERRE","state":"SD","country":"US","period":{"start":"2025-11-14T15:24:00.000Z"}},{"id":"CI-950642280-1","use":"home","text":"7924
+        N MICHIGAN AVE\nKANSAS CITY, MO 64118-1563\nUS","line":["7924 N MICHIGAN AVE"],"city":"KANSAS
+        CITY","district":"Clay","state":"MO","postalCode":"64118-1563","country":"US","period":{"start":"2024-02-09T18:46:33.000Z"}},{"id":"CI-950642278-2","use":"billing","text":"7924
+        N MICHIGAN AVE\nKANSAS CITY, MO 64118-1563\nUS","line":["7924 N MICHIGAN AVE"],"city":"KANSAS
+        CITY","district":"Clay","state":"MO","postalCode":"64118-1563","country":"US","period":{"start":"2024-01-03T19:51:19.000Z"}}],"maritalStatus":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/38","code":"309237","display":"Married","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-MaritalStatus","code":"M","display":"Married","userSelected":false}],"text":"Married"},"multipleBirthBoolean":false,"contact":[{"relationship":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/351","code":"1152","display":"Emergency
+        Contact","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v2-0131","code":"C","display":"Emergency
+        Contact","userSelected":false}],"text":"Emergency Contact"}],"name":{"id":"CI-72228721-0","use":"official","text":"BEARDED,
+        WILFREDO","family":"BEARDED","given":["WILFREDO"]},"telecom":[{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/iso21090-TEL-address","valueUrl":"4444444444"}],"system":"phone","value":"4444444444","use":"home","rank":1,"period":{"start":"2025-11-03T16:52:12.000Z"}}],"period":{"start":"2025-11-03T16:52:12.000Z"}},{"relationship":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/351","code":"1159","display":"Next
+        of Kin","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v2-0131","code":"N","display":"Next-of-Kin","userSelected":false}],"text":"Next
+        of Kin"}],"name":{"id":"CI-72228722-1","use":"official","text":"BAZNER, REUBEN","family":"BAZNER","given":["REUBEN"]},"telecom":[{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/iso21090-TEL-address","valueUrl":"2223334545"}],"system":"phone","value":"2223334545","use":"home","rank":1,"period":{"start":"2025-11-03T16:52:12.000Z"}}],"address":{"use":"home","text":"715
+        MURCHY PLACE\nFORT COLLINS, CO 80521\nUS","line":["715 MURCHY PLACE"],"city":"FORT
+        COLLINS","state":"CO","postalCode":"80521","country":"US"},"period":{"start":"2025-11-03T16:52:12.000Z"}}],"communication":[{"language":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/36","code":"151","display":"English","userSelected":true},{"system":"urn:ietf:bcp:47","code":"en","display":"English","userSelected":false}],"text":"English"},"preferred":true}]}},{"resource":{"resourceType":"MedicationRequest","id":"20851448383","meta":{"versionId":"0","lastUpdated":"2025-12-12T15:53:15Z","tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"text":{"status":"generated","div":"<div
+        xmlns=\"http://www.w3.org/1999/xhtml\"><p><b>Medication Request</b></p><p><b>Status</b>:
+        Active</p><p><b>Intent</b>: Order</p><p><b>Medication</b>: acetaminophen (acetaminophen
+        325 mg oral tablet)</p><p><b>Dosage Instructions</b>: 3 tab(s), Oral, every
+        8 hr, PRN: pain or fever, 100 tab(s), 0 Refill(s)</p><p><b>Patient</b>: BEARDEDIPO,
+        VANCE J</p><p><b>Authored On</b>: Dec 12, 2025  9:50 A.M. CST</p></div>"},"contained":[{"resourceType":"Task","id":"fd818224-9337-4c85-8193-98df8845b4c4","meta":{"extension":[{"url":"http://va.gov/mhv/rx/notes","valueString":"Pharmacy
+        not found - unable to submit refill request"},{"url":"http://va.gov/mhv/rx/owner","valueString":"ORACLE_HEALTH"},{"url":"http://va.gov/mhv/rx/station-number","valueString":"668"}],"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"status":"failed","intent":"order","focus":{"reference":"MedicationRequest/20851448383"},"executionPeriod":{"start":"2025-12-16T20:00:59+00:00"},"requester":{"reference":"Patient/1000123456V123456"}},{"resourceType":"Encounter","id":"322677167","meta":{"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"text":{"status":"generated","div":"<div
+        xmlns=\"http://www.w3.org/1999/xhtml\"><p><b>Encounter</b></p><p><b>Patient</b>:
+        BEARDEDIPO, VANCE J</p><p><b>Location</b>: 668 Mann-Grandstaff WA VA Medical
+        Center, 668 Bldg 41, 668 Speech &amp; Aud</p><p><b>Type</b>: Outpatient</p><p><b>Service
+        Type</b>: Audiology</p><p><b>Class</b>: ambulatory</p><p><b>Status</b>: In
+        Progress</p><p><b>Period Start Date</b>: Dec 11, 2025 11:51 A.M. CST</p><p><b>Reason
+        For Visit</b>: Russo - Disappearing appts test</p><p><b>Attending Physician</b>:
+        SMITS, COURTNEY C, AuD</p><p><b>Service Provider</b>: 668 Mann-Grandstaff
+        WA VA Medical Center</p></div>"},"extension":[{"id":"CA-0","url":"https://fhir-ehr.cerner.com/r4/StructureDefinition/custom-attribute","extension":[{"id":"ENCNTR:684109","url":"custom-attribute-name","valueString":"Accident
+        Related Visit"},{"url":"custom-attribute-value","valueCodeableConcept":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/100000","code":"684107","display":"No","userSelected":true}],"text":"No"}}]},{"id":"CA-1","url":"https://fhir-ehr.cerner.com/r4/StructureDefinition/custom-attribute","extension":[{"id":"ENCNTR:34310433","url":"custom-attribute-name","valueString":"Complete
+        Reg?"},{"url":"custom-attribute-value","valueCodeableConcept":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/20322","code":"3542949","display":"Yes","userSelected":true}],"text":"Yes"}}]},{"id":"CA-2","url":"https://fhir-ehr.cerner.com/r4/StructureDefinition/custom-attribute","extension":[{"id":"ENCNTR:419823499","url":"custom-attribute-name","valueString":"VA/DOD
+        Code Values"},{"url":"custom-attribute-value","valueCodeableConcept":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/100389","code":"5311157397","display":"VA
+        Outpatient","userSelected":true}],"text":"VA Outpatient"}}]}],"identifier":[{"use":"usual","type":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/319","code":"1077","display":"FIN
+        NBR","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"AN","display":"Account
+        number","userSelected":false}],"text":"FIN NBR"},"system":"urn:oid:2.16.840.1.113883.3.8901.1","value":"179109107"}],"status":"in-progress","class":{"system":"http://terminology.hl7.org/CodeSystem/v3-ActCode","code":"AMB","display":"ambulatory","userSelected":false},"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/71","code":"309309","display":"Outpatient","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v2-0004","code":"O","display":"Outpatient","userSelected":false}],"text":"Outpatient"}],"serviceType":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/34","code":"29307277","display":"Audiology","userSelected":true},{"system":"http://snomed.info/sct","code":"310004004","display":"Audiological
+        service (qualifier value)","userSelected":false}],"text":"Audiology"},"priority":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/3","code":"670840","display":"Elective","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ActPriority","code":"EL","display":"elective","userSelected":false}],"text":"Elective"},"subject":{"reference":"Patient/72228720","display":"BEARDEDIPO,
+        VANCE J"},"participant":[{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"1119","display":"Attending
+        Provider","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"ATND","display":"attender","userSelected":false}],"text":"Attending
+        Provider"}],"period":{"start":"2025-12-11T16:58:33.000Z"},"individual":{"reference":"Practitioner/10973919","display":"SMITS,
+        COURTNEY C, AuD"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"4199423","display":"Dietitian","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"SPRF","display":"secondary
+        performer","userSelected":false}],"text":"Dietitian"}],"period":{"start":"2026-03-17T16:59:00.000Z"},"individual":{"reference":"Practitioner/72441129","display":"Clark,
+        Sheryl Ann"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"18883355","display":"Covering
+        Provider","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PPRF","display":"primary
+        performer","userSelected":false}],"text":"Covering Provider"}],"period":{"start":"2025-12-12T15:08:21.000Z"},"individual":{"reference":"Practitioner/45628456","display":"Hospitalist1,
+        VA-Physician Middle, EHRM Generic Test User"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"24490347","display":"View
+        Only Position","userSelected":true}],"text":"View Only Position"}],"period":{"start":"2025-12-11T21:26:00.000Z"},"individual":{"reference":"Practitioner/52102491","display":"Pouliot,
+        Duane"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"1350386209","display":"Clinical
+        Pharmacist Practitioner","userSelected":true}],"text":"Clinical Pharmacist
+        Practitioner"}],"period":{"start":"2025-12-11T19:39:00.000Z"},"individual":{"reference":"Practitioner/45621036","display":"Pharmacy
+        Provider1, VA-PharmNet"}}],"appointment":[{"reference":"Appointment/172683333"}],"period":{"start":"2025-12-11T17:51:21.000Z"},"reasonCode":[{"text":"Russo
+        - Disappearing appts test"}],"hospitalization":{"admitSource":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/2","code":"106679635","display":"Patient/Self","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/admit-source","code":"other","display":"Other","userSelected":false}],"text":"Patient/Self"}},"location":[{"location":{"reference":"Location/262177375","display":"668
+        Mann-Grandstaff WA VA Medical Center, 668 Bldg 41, 668 Speech & Aud"},"status":"active"}],"serviceProvider":{"reference":"Organization/1938077","display":"668
+        Mann-Grandstaff WA VA Medical Center"}}],"status":"active","intent":"order","category":[{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/medicationrequest-category","code":"community","display":"Community","userSelected":false}]},{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/medicationrequest-category","code":"discharge","display":"Discharge","userSelected":false}]}],"reportedBoolean":false,"medicationCodeableConcept":{"coding":[{"system":"http://www.nlm.nih.gov/research/umls/rxnorm","code":"313782","display":"Acetaminophen
+        325 MG Oral Tablet","userSelected":false},{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/synonym","code":"2748055","display":"acetaminophen
+        325 mg oral tablet","userSelected":true}],"text":"acetaminophen (acetaminophen
+        325 mg oral tablet)"},"subject":{"reference":"Patient/72228720","display":"BEARDEDIPO,
+        VANCE J"},"encounter":{"reference":"Encounter/322677167"},"authoredOn":"2025-12-12T15:50:43Z","requester":{"reference":"Practitioner/45621036","display":"Pharmacy
+        Provider1, VA-PharmNet"},"courseOfTherapyType":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4009","code":"2338","display":"Soft
+        Stop","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/medicationrequest-course-of-therapy","code":"continuous","display":"Continuous
+        long term therapy","userSelected":false}],"text":"Maintenance"},"dosageInstruction":[{"extension":[{"url":"https://fhir-ehr.cerner.com/r4/StructureDefinition/clinical-instruction","valueString":"3
+        tab(s), Oral, every 8 hr, PRN pain or fever, # 100 tab(s), 0 total refill(s),
+        Maintenance, Medication, Pharmacy: CVS HEALTH #00028 [External Rx]"}],"text":"3
+        tab(s), Oral, every 8 hr, PRN: pain or fever, 100 tab(s), 0 Refill(s)","patientInstruction":"3
+        tabs Oral (given by mouth) every 8 hours as needed pain or fever. Refills:
+        0.","timing":{"repeat":{"boundsPeriod":{"start":"2025-12-12T15:50:00Z"}},"code":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4003","code":"696555","display":"every
+        8 hr","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-GTSAbbreviation","code":"Q8H","display":"every
+        8 hours","userSelected":false},{"system":"http://snomed.info/sct","code":"307469008","display":"Every
+        eight hours (qualifier value)","userSelected":false}],"text":"every 8 hr"}},"asNeededCodeableConcept":{"text":"pain
+        or fever"},"route":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4001","code":"318185","display":"Oral","userSelected":true},{"system":"http://snomed.info/sct","code":"26643006","display":"Oral
+        route (qualifier value)","userSelected":false}],"text":"Oral"},"doseAndRate":[{"doseQuantity":{"value":3.0,"unit":"tab(s)","system":"http://unitsofmeasure.org","code":"{tbl}"}}]}],"dispenseRequest":{"validityPeriod":{"start":"2025-12-12T15:50:43Z"},"numberOfRepeatsAllowed":0,"quantity":{"value":100.0,"unit":"tab(s)","system":"http://unitsofmeasure.org","code":"{tbl}"},"performer":{"display":"CVS
+        HEALTH #00028"}},"substitution":{"allowedBoolean":true}}},{"resource":{"resourceType":"MedicationRequest","id":"20848812135","meta":{"versionId":"1","lastUpdated":"2026-02-27T22:06:23Z","tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"text":{"status":"generated","div":"<div
+        xmlns=\"http://www.w3.org/1999/xhtml\"><p><b>Medication Request</b></p><p><b>Status</b>:
+        Active</p><p><b>Intent</b>: Order</p><p><b>Medication</b>: albuterol (albuterol
+        90 mcg inhaler [18g])</p><p><b>Dosage Instructions</b>: 2 inh(s), Inhale,
+        every 4 hr, PRN: shortness of breath or wheezing, 18 g, 2 Refill(s)</p><p><b>Patient</b>:
+        BEARDEDIPO, VANCE J</p><p><b>Authored On</b>: Nov 17, 2025  3:21 P.M. CST</p></div>"},"contained":[{"resourceType":"MedicationDispense","id":"1854451423","meta":{"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"text":{"status":"generated","div":"<div
+        xmlns=\"http://www.w3.org/1999/xhtml\"><p><b>Medication Dispense</b></p><p><b>Patient</b>:
+        BEARDEDIPO, VANCE J</p><p><b>Medication</b>: albuterol 90 mcg/inh Aerosol</p><p><b>Authorizing
+        Prescription</b>: MedicationRequest/20848812135</p><p><b>Status</b>: Completed</p><p><b>Performers</b>:
+        SYSTEM, SYSTEM, Organization/1485482</p><p><b>Type</b>: REFILL_COMPLETE</p><p><b>Dispense
+        Quantity</b>: 18.0 g</p><p><b>Dosage Instructions</b>: T2 AEROSOL INHA Q4H</p><p><b>Dispense
+        Date Time</b>: Mar 20, 2026  9:15 A.M. CDT</p></div>"},"status":"completed","category":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4500","code":"638955","display":"Retail","userSelected":true},{"system":"http://terminology.hl7.org/fhir/CodeSystem/medicationdispense-category","code":"community","display":"Community","userSelected":false}],"text":"Retail"},"medicationCodeableConcept":{"text":"albuterol
+        90 mcg/inh Aerosol"},"subject":{"reference":"Patient/72228720","display":"BEARDEDIPO,
+        VANCE J"},"context":{"reference":"Encounter/322653334"},"performer":[{"actor":{"reference":"Practitioner/1","display":"SYSTEM,
+        SYSTEM"}},{"actor":{"reference":"Organization/1485482"}}],"location":{"reference":"Location/280263893","display":"668-RX-MAIN-OP"},"authorizingPrescription":[{"reference":"MedicationRequest/20848812135"}],"type":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v3-ActCode","code":"RFC","display":"Refill
+        - Complete","userSelected":false}],"text":"REFILL_COMPLETE"},"quantity":{"value":18.0,"unit":"g","system":"http://unitsofmeasure.org","code":"g"},"daysSupply":{"value":2.0,"unit":"days","system":"http://unitsofmeasure.org","code":"d"},"whenHandedOver":"2026-03-20T14:15:59.000Z","dosageInstruction":[{"text":"T2
+        AEROSOL INHA Q4H","timing":{"code":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4003","code":"696547","display":"every
+        4 hr","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-GTSAbbreviation","code":"Q4H","display":"Q4H","userSelected":false}],"text":"every
+        4 hr"}},"asNeededBoolean":true,"route":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4001","code":"318168","display":"Inhale","userSelected":true},{"system":"http://snomed.info/sct","code":"447694001","display":"Respiratory
+        tract route (qualifier value)","userSelected":false}],"text":"Inhale"},"doseAndRate":[{"doseQuantity":{"value":18.0,"unit":"g","system":"http://unitsofmeasure.org","code":"g"}}]}]},{"resourceType":"MedicationDispense","id":"1854364634","meta":{"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"text":{"status":"generated","div":"<div
+        xmlns=\"http://www.w3.org/1999/xhtml\"><p><b>Medication Dispense</b></p><p><b>Patient</b>:
+        BEARDEDIPO, VANCE J</p><p><b>Medication</b>: albuterol 90 mcg/inh Aerosol</p><p><b>Authorizing
+        Prescription</b>: MedicationRequest/20848812135</p><p><b>Status</b>: Completed</p><p><b>Performers</b>:
+        Pharmacist1, VA-PharmNet, Organization/1485482</p><p><b>Type</b>: FIRST_FILL_COMPLETE</p><p><b>Dispense
+        Quantity</b>: 18.0 g</p><p><b>Dosage Instructions</b>: T2 AEROSOL INHA Q4H</p><p><b>Dispense
+        Date Time</b>: Nov 17, 2025  3:35 P.M. CST</p></div>"},"extension":[{"url":"http://va.gov/fhir/StructureDefinition/shipping-info","extension":[{"url":"Prescription
+        Number","valueString":"RX-PLACER-001"},{"url":"Tracking Number","valueString":"9400111899223100000001"},{"url":"Shipped
+        Date","valueString":"2026-01-10 14:35:02.0"},{"url":"Delivery Service","valueString":"USPS"},{"url":"Prescription
+        Name","valueString":"albuterol 90 mcg/inh Aerosol"},{"url":"NDC Code","valueString":"00487-9801-01"}]}],"status":"completed","category":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4500","code":"638955","display":"Retail","userSelected":true},{"system":"http://terminology.hl7.org/fhir/CodeSystem/medicationdispense-category","code":"community","display":"Community","userSelected":false}],"text":"Retail"},"medicationCodeableConcept":{"text":"albuterol
+        90 mcg/inh Aerosol"},"subject":{"reference":"Patient/72228720","display":"BEARDEDIPO,
+        VANCE J"},"context":{"reference":"Encounter/322653334"},"performer":[{"actor":{"reference":"Practitioner/45630404","display":"Pharmacist1,
+        VA-PharmNet"}},{"actor":{"reference":"Organization/1485482"}}],"location":{"reference":"Location/280263893","display":"668-RX-MAIN-OP"},"authorizingPrescription":[{"reference":"MedicationRequest/20848812135"}],"type":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v3-ActCode","code":"FFC","display":"First
+        Fill - Complete","userSelected":false}],"text":"FIRST_FILL_COMPLETE"},"quantity":{"value":18.0,"unit":"g","system":"http://unitsofmeasure.org","code":"g"},"daysSupply":{"value":2.0,"unit":"days","system":"http://unitsofmeasure.org","code":"d"},"whenHandedOver":"2025-11-17T21:35:02.000Z","dosageInstruction":[{"text":"T2
+        AEROSOL INHA Q4H","timing":{"code":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4003","code":"696547","display":"every
+        4 hr","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-GTSAbbreviation","code":"Q4H","display":"Q4H","userSelected":false}],"text":"every
+        4 hr"}},"asNeededBoolean":true,"route":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4001","code":"318168","display":"Inhale","userSelected":true},{"system":"http://snomed.info/sct","code":"447694001","display":"Respiratory
+        tract route (qualifier value)","userSelected":false}],"text":"Inhale"},"doseAndRate":[{"doseQuantity":{"value":18.0,"unit":"g","system":"http://unitsofmeasure.org","code":"g"}}]}]},{"resourceType":"Task","id":"43087951-95d1-4a71-bc32-32d194561fd4","meta":{"extension":[{"url":"http://va.gov/mhv/rx/notes","valueString":"Already
+        in Queue"},{"url":"http://va.gov/mhv/rx/owner","valueString":"ORACLE_HEALTH"},{"url":"http://va.gov/mhv/rx/station-number","valueString":"668"}],"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"status":"requested","intent":"order","focus":{"reference":"MedicationRequest/20848812135"},"executionPeriod":{"start":"2025-11-26T15:55:17+00:00"},"requester":{"reference":"Patient/1000123456V123456"}},{"resourceType":"Task","id":"5e5b66f9-76ca-4f69-8613-76a774550034","meta":{"extension":[{"url":"http://va.gov/mhv/rx/notes","valueString":"java.lang.Exception:
+        Failed to send HL7 message after 3 attempts"},{"url":"http://va.gov/mhv/rx/owner","valueString":"ORACLE_HEALTH"},{"url":"http://va.gov/mhv/rx/station-number","valueString":"668"}],"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"status":"failed","intent":"order","focus":{"reference":"MedicationRequest/20848812135"},"executionPeriod":{"start":"2025-12-09T17:56:41+00:00"},"requester":{"reference":"Patient/1000123456V123456"}},{"resourceType":"Task","id":"bd10912f-a721-42b0-9f9c-1bcc36775f3d","meta":{"extension":[{"url":"http://va.gov/mhv/rx/notes","valueString":"Error
+        processing HL7 response: ORC segment not found in response"},{"url":"http://va.gov/mhv/rx/owner","valueString":"ORACLE_HEALTH"},{"url":"http://va.gov/mhv/rx/station-number","valueString":"668"}],"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"status":"failed","intent":"order","focus":{"reference":"MedicationRequest/20848812135"},"executionPeriod":{"start":"2025-12-09T17:48:54+00:00"},"requester":{"reference":"Patient/1000123456V123456"}},{"resourceType":"Task","id":"214c8511-bcd3-4b41-8ae4-6289ca130160","meta":{"extension":[{"url":"http://va.gov/mhv/rx/notes","valueString":"java.lang.Exception:
+        Failed to send HL7 message after 3 attempts"},{"url":"http://va.gov/mhv/rx/owner","valueString":"ORACLE_HEALTH"},{"url":"http://va.gov/mhv/rx/station-number","valueString":"668"}],"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"status":"failed","intent":"order","focus":{"reference":"MedicationRequest/20848812135"},"executionPeriod":{"start":"2025-12-09T17:50:20+00:00"},"requester":{"reference":"Patient/1000123456V123456"}},{"resourceType":"Task","id":"05841b30-a41e-4e36-84a6-b942893c6d1c","meta":{"extension":[{"url":"http://va.gov/mhv/rx/notes","valueString":"java.lang.Exception:
+        Failed to send HL7 message after 1 attempts"},{"url":"http://va.gov/mhv/rx/owner","valueString":"ORACLE_HEALTH"},{"url":"http://va.gov/mhv/rx/station-number","valueString":"668"}],"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"status":"failed","intent":"order","focus":{"reference":"MedicationRequest/20848812135"},"executionPeriod":{"start":"2025-12-12T22:25:36+00:00"},"requester":{"reference":"Patient/1000123456V123456"}},{"resourceType":"Task","id":"b9a6f873-6cfc-4035-93b8-8cb5269595db","meta":{"extension":[{"url":"http://va.gov/mhv/rx/notes","valueString":"java.lang.Exception:
+        Failed to send HL7 message after 1 attempts"},{"url":"http://va.gov/mhv/rx/owner","valueString":"ORACLE_HEALTH"},{"url":"http://va.gov/mhv/rx/station-number","valueString":"668"}],"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"status":"failed","intent":"order","focus":{"reference":"MedicationRequest/20848812135"},"executionPeriod":{"start":"2025-12-12T22:28:35+00:00"},"requester":{"reference":"Patient/1000123456V123456"}},{"resourceType":"Task","id":"ae9ec7ef-38b2-4b99-b08d-a4e63ba0d07b","meta":{"extension":[{"url":"http://va.gov/mhv/rx/notes","valueString":"Already
+        in Queue"},{"url":"http://va.gov/mhv/rx/owner","valueString":"ORACLE_HEALTH"},{"url":"http://va.gov/mhv/rx/station-number","valueString":"668"}],"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"status":"requested","intent":"order","focus":{"reference":"MedicationRequest/20848812135"},"executionPeriod":{"start":"2025-12-04T18:59:51+00:00"},"requester":{"reference":"Patient/1000123456V123456"}},{"resourceType":"Task","id":"814cd131-8dfe-4aec-9a20-0680f634601b","meta":{"extension":[{"url":"http://va.gov/mhv/rx/notes","valueString":"Already
+        in Queue"},{"url":"http://va.gov/mhv/rx/owner","valueString":"ORACLE_HEALTH"},{"url":"http://va.gov/mhv/rx/station-number","valueString":"668"}],"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"status":"requested","intent":"order","focus":{"reference":"MedicationRequest/20848812135"},"executionPeriod":{"start":"2025-12-04T19:00:33+00:00"},"requester":{"reference":"Patient/1000123456V123456"}},{"resourceType":"Task","id":"e826a82e-723b-4521-b564-b2a8f2f7ab56","meta":{"extension":[{"url":"http://va.gov/mhv/rx/notes","valueString":"Already
+        in Queue"},{"url":"http://va.gov/mhv/rx/owner","valueString":"ORACLE_HEALTH"},{"url":"http://va.gov/mhv/rx/station-number","valueString":"668"}],"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"status":"requested","intent":"order","focus":{"reference":"MedicationRequest/20848812135"},"executionPeriod":{"start":"2025-12-16T20:02:28+00:00"},"requester":{"reference":"Patient/1000123456V123456"}},{"resourceType":"Task","id":"99be9534-3b52-46e3-9387-df407ab8df0e","meta":{"extension":[{"url":"http://va.gov/mhv/rx/notes","valueString":"java.lang.Exception:
+        Failed to send HL7 message after 3 attempts"},{"url":"http://va.gov/mhv/rx/owner","valueString":"ORACLE_HEALTH"},{"url":"http://va.gov/mhv/rx/station-number","valueString":"668"}],"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"status":"failed","intent":"order","focus":{"reference":"MedicationRequest/20848812135"},"executionPeriod":{"start":"2025-12-09T17:57:16+00:00"},"requester":{"reference":"Patient/1000123456V123456"}},{"resourceType":"Task","id":"f2877614-ee4e-4b1e-9d3c-0ed265b99d30","meta":{"extension":[{"url":"http://va.gov/mhv/rx/notes","valueString":"Error
+        processing HL7 response: ORC segment not found in response"},{"url":"http://va.gov/mhv/rx/owner","valueString":"ORACLE_HEALTH"},{"url":"http://va.gov/mhv/rx/station-number","valueString":"668"}],"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"status":"failed","intent":"order","focus":{"reference":"MedicationRequest/20848812135"},"executionPeriod":{"start":"2026-03-20T18:56:13+00:00"},"requester":{"reference":"Patient/1000123456V123456"}},{"resourceType":"Task","id":"b05148b3-713b-4354-a666-504739e6c8c2","meta":{"extension":[{"url":"http://va.gov/mhv/rx/notes","valueString":"20260320185909+0000"},{"url":"http://va.gov/mhv/rx/owner","valueString":"ORACLE_HEALTH"},{"url":"http://va.gov/mhv/rx/station-number","valueString":"668"}],"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"status":"requested","intent":"order","focus":{"reference":"MedicationRequest/20848812135"},"executionPeriod":{"start":"2026-03-20T18:59:11+00:00"},"requester":{"reference":"Patient/1000123456V123456"}},{"resourceType":"Task","id":"07ee347c-0491-4245-8fa3-38f86218a3b4","meta":{"extension":[{"url":"http://va.gov/mhv/rx/notes","valueString":"Already
+        in Queue"},{"url":"http://va.gov/mhv/rx/owner","valueString":"ORACLE_HEALTH"},{"url":"http://va.gov/mhv/rx/station-number","valueString":"668"}],"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"status":"requested","intent":"order","focus":{"reference":"MedicationRequest/20848812135"},"executionPeriod":{"start":"2026-03-20T18:59:55+00:00"},"requester":{"reference":"Patient/1000123456V123456"}},{"resourceType":"Encounter","id":"322653334","meta":{"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"text":{"status":"generated","div":"<div
+        xmlns=\"http://www.w3.org/1999/xhtml\"><p><b>Encounter</b></p><p><b>Patient</b>:
+        BEARDEDIPO, VANCE J</p><p><b>Location</b>: Ambulatory Pharmacy</p><p><b>Type</b>:
+        Lifetime Pharmacy</p><p><b>Class</b>: Recurring patient</p><p><b>Status</b>:
+        In Progress</p><p><b>Period Start Date</b>: Nov  3, 2025 10:52 A.M. CST</p><p><b>Service
+        Provider</b>: Ambulatory Pharmacy</p></div>"},"extension":[{"url":"https://fhir-ehr.cerner.com/r4/StructureDefinition/estimated-financial-responsibility-amount","valueMoney":{"value":0.0,"currency":"USD"}}],"identifier":[{"use":"usual","type":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/319","code":"1077","display":"FIN
+        NBR","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"AN","display":"Account
+        number","userSelected":false}],"text":"FIN NBR"},"system":"urn:oid:2.16.840.1.113883.3.8901.1","value":"LPE1606730850","period":{"start":"2025-11-03T16:52:15.000Z"}}],"status":"in-progress","class":{"system":"http://terminology.hl7.org/CodeSystem/v2-0004","code":"R","display":"Recurring
+        patient","userSelected":false},"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/71","code":"19962609","display":"Lifetime
+        Pharmacy","userSelected":true},{"system":"http://snomed.info/sct","code":"13081000175105","display":"Seen
+        in pharmacy clinic (finding)","userSelected":false},{"system":"http://snomed.info/sct","code":"13081000175105","display":"Seen
+        in pharmacy clinic (finding)","userSelected":false}],"text":"Lifetime Pharmacy"}],"subject":{"reference":"Patient/72228720","display":"BEARDEDIPO,
+        VANCE J"},"participant":[{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"681274","display":"Database
+        Coordinator","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PART","display":"Participation","userSelected":false}],"text":"Database
+        Coordinator"}],"period":{"start":"2026-02-10T14:20:00.000Z"},"individual":{"reference":"Practitioner/47910004","display":"Jakubowski,
+        Mark P"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"18883355","display":"Covering
+        Provider","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PPRF","display":"primary
+        performer","userSelected":false}],"text":"Covering Provider"}],"period":{"start":"2026-01-20T20:08:02.000Z"},"individual":{"reference":"Practitioner/45632912","display":"PCP1,
+        VA-Physician, prefixgreaterthan20letterswhichisveryuncertain"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"1350386209","display":"Clinical
+        Pharmacist Practitioner","userSelected":true}],"text":"Clinical Pharmacist
+        Practitioner"}],"period":{"start":"2025-12-04T19:44:00.000Z"},"individual":{"reference":"Practitioner/54166790","display":"Shaughnessy,
+        Nik, Cerner Consulting"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"1350386209","display":"Clinical
+        Pharmacist Practitioner","userSelected":true}],"text":"Clinical Pharmacist
+        Practitioner"}],"period":{"start":"2025-12-03T20:16:13.000Z"},"individual":{"reference":"Practitioner/45621036","display":"Pharmacy
+        Provider1, VA-PharmNet"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"681274","display":"Database
+        Coordinator","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PART","display":"Participation","userSelected":false}],"text":"Database
+        Coordinator"}],"period":{"start":"2025-11-18T17:58:00.000Z"},"individual":{"reference":"Practitioner/4507286","display":"Barrera
+        (Cerner), Reinaldo, Cerner AMS"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"2796735","display":"Pharmacist","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PPRF","display":"primary
+        performer","userSelected":false}],"text":"Pharmacist"}],"period":{"start":"2025-11-17T21:36:00.000Z"},"individual":{"reference":"Practitioner/45630404","display":"Pharmacist1,
+        VA-PharmNet"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"681274","display":"Database
+        Coordinator","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PART","display":"Participation","userSelected":false}],"text":"Database
+        Coordinator"}],"period":{"start":"2025-11-03T16:57:00.000Z"},"individual":{"reference":"Practitioner/8305155","display":"Skojec,
+        Steve, (CERNER)"}}],"period":{"start":"2025-11-03T16:52:14.000Z"},"location":[{"location":{"reference":"Location/110107739","display":"Ambulatory
+        Pharmacy"},"status":"active"}],"serviceProvider":{"reference":"Organization/1485482","display":"Ambulatory
+        Pharmacy"}}],"status":"active","intent":"order","category":[{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/medicationrequest-category","code":"community","display":"Community","userSelected":false}]},{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/medicationrequest-category","code":"discharge","display":"Discharge","userSelected":false}]}],"reportedBoolean":false,"medicationCodeableConcept":{"coding":[{"system":"http://www.nlm.nih.gov/research/umls/rxnorm","code":"2123076","display":"NDA020983
+        200 ACTUAT Albuterol 0.09 MG/ACTUAT Metered Dose Inhaler","userSelected":false},{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/synonym","code":"108684447","display":"albuterol
+        90 mcg inhaler [18g]","userSelected":true}],"text":"albuterol (albuterol 90
+        mcg inhaler [18g])"},"subject":{"reference":"Patient/72228720","display":"BEARDEDIPO,
+        VANCE J"},"encounter":{"reference":"Encounter/322653334"},"authoredOn":"2025-11-17T21:21:48Z","requester":{"reference":"Practitioner/10978786","display":"Sauer,
+        Mark, PharmD"},"courseOfTherapyType":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4009","code":"2338","display":"Soft
+        Stop","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/medicationrequest-course-of-therapy","code":"continuous","display":"Continuous
+        long term therapy","userSelected":false}],"text":"Soft Stop"},"dosageInstruction":[{"extension":[{"url":"https://fhir-ehr.cerner.com/r4/StructureDefinition/clinical-instruction","valueString":"=
+        2 inh(s), Inhale, every 4 hr, PRN shortness of breath or wheezing, # 18 g,
+        2 total refill(s), Soft Stop [Federal Rx: #18 last filled 02/27/26]"}],"text":"2
+        inh(s), Inhale, every 4 hr, PRN: shortness of breath or wheezing, 18 g, 2
+        Refill(s)","patientInstruction":"2 Inhalation Inhalation (breathe in) every
+        4 hours as needed shortness of breath or wheezing. Refills: 2.","timing":{"repeat":{"boundsPeriod":{"start":"2025-11-17T08:00:00Z"}},"code":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4003","code":"696547","display":"every
+        4 hr","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-GTSAbbreviation","code":"Q4H","display":"Q4H","userSelected":false},{"system":"http://snomed.info/sct","code":"225756002","display":"Every
+        four hours (qualifier value)","userSelected":false}],"text":"every 4 hr"}},"asNeededCodeableConcept":{"text":"shortness
+        of breath or wheezing"},"route":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4001","code":"318168","display":"Inhale","userSelected":true},{"system":"http://snomed.info/sct","code":"447694001","display":"Respiratory
+        tract route (qualifier value)","userSelected":false}],"text":"Inhale"},"doseAndRate":[{"doseQuantity":{"value":2.0,"unit":"inh(s)","system":"http://unitsofmeasure.org","code":"{Inhalation}"}}]}],"dispenseRequest":{"validityPeriod":{"start":"2025-11-17T21:21:48Z","end":"2026-11-17T07:59:59Z"},"numberOfRepeatsAllowed":2,"quantity":{"value":18.0,"unit":"g","system":"http://unitsofmeasure.org","code":"g"},"expectedSupplyDuration":{"value":2,"unit":"day(s)","system":"http://unitsofmeasure.org","code":"d"}},"priorPrescription":{"reference":"MedicationRequest/20848812055"}}},{"resource":{"resourceType":"MedicationRequest","id":"20848639997","meta":{"versionId":"0","lastUpdated":"2025-11-04T15:28:33Z","tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"text":{"status":"generated","div":"<div
+        xmlns=\"http://www.w3.org/1999/xhtml\"><p><b>Medication Request</b></p><p><b>Status</b>:
+        Active</p><p><b>Intent</b>: Plan</p><p><b>Medication</b>: aspirin (aspirin
+        81 mg oral delayed release tablet)</p><p><b>Dosage Instructions</b>: 1 tab(s),
+        Oral, Daily, 90 tab(s), 0 Refill(s)</p><p><b>Patient</b>: BEARDEDIPO, VANCE
+        J</p><p><b>Authored On</b>: Nov  4, 2025  9:27 A.M. CST</p></div>"},"contained":[{"resourceType":"Encounter","id":"322653394","meta":{"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"text":{"status":"generated","div":"<div
+        xmlns=\"http://www.w3.org/1999/xhtml\"><p><b>Encounter</b></p><p><b>Patient</b>:
+        BEARDEDIPO, VANCE J</p><p><b>Location</b>: 668 Mann-Grandstaff WA VA Medical
+        Center, 668 Bldg 01, 668 Cardiology</p><p><b>Type</b>: Outpatient</p><p><b>Service
+        Type</b>: Cardiology</p><p><b>Class</b>: ambulatory</p><p><b>Status</b>: In
+        Progress</p><p><b>Period Start Date</b>: Nov  3, 2025 12:08 P.M. CST</p><p><b>Attending
+        Physician</b>: PCP8, VA-Physician</p><p><b>Service Provider</b>: 668 Mann-Grandstaff
+        WA VA Medical Center</p></div>"},"extension":[{"id":"CA-0","url":"https://fhir-ehr.cerner.com/r4/StructureDefinition/custom-attribute","extension":[{"id":"ENCNTR:684109","url":"custom-attribute-name","valueString":"Accident
+        Related Visit"},{"url":"custom-attribute-value","valueCodeableConcept":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/100000","code":"684107","display":"No","userSelected":true}],"text":"No"}}]},{"id":"CA-1","url":"https://fhir-ehr.cerner.com/r4/StructureDefinition/custom-attribute","extension":[{"id":"ENCNTR:419823499","url":"custom-attribute-name","valueString":"VA/DOD
+        Code Values"},{"url":"custom-attribute-value","valueCodeableConcept":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/100389","code":"5311157397","display":"VA
+        Outpatient","userSelected":true}],"text":"VA Outpatient"}}]},{"id":"CA-2","url":"https://fhir-ehr.cerner.com/r4/StructureDefinition/custom-attribute","extension":[{"id":"ENCNTR:34310433","url":"custom-attribute-name","valueString":"Complete
+        Reg?"},{"url":"custom-attribute-value","valueCodeableConcept":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/20322","code":"3542949","display":"Yes","userSelected":true}],"text":"Yes"}}]}],"identifier":[{"use":"usual","type":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/319","code":"1077","display":"FIN
+        NBR","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"AN","display":"Account
+        number","userSelected":false}],"text":"FIN NBR"},"system":"urn:oid:2.16.840.1.113883.3.8901.1","value":"179105395"}],"status":"in-progress","class":{"system":"http://terminology.hl7.org/CodeSystem/v3-ActCode","code":"AMB","display":"ambulatory","userSelected":false},"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/71","code":"309309","display":"Outpatient","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v2-0004","code":"O","display":"Outpatient","userSelected":false}],"text":"Outpatient"}],"serviceType":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/34","code":"33536475","display":"Cardiology","userSelected":true},{"system":"http://snomed.info/sct","code":"789718008","display":"Cardiology
+        service (qualifier value)","userSelected":false}],"text":"Cardiology"},"priority":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/3","code":"670840","display":"Elective","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ActPriority","code":"EL","display":"elective","userSelected":false}],"text":"Elective"},"subject":{"reference":"Patient/72228720","display":"BEARDEDIPO,
+        VANCE J"},"participant":[{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"1119","display":"Attending
+        Provider","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"ATND","display":"attender","userSelected":false}],"text":"Attending
+        Provider"}],"period":{"start":"2025-11-03T18:08:00.000Z"},"individual":{"reference":"Practitioner/45632950","display":"PCP8,
+        VA-Physician"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"1123","display":"Ordering
+        Physician","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PPRF","display":"primary
+        performer","userSelected":false}],"text":"Ordering Physician"}],"period":{"start":"2025-11-05T16:40:25.000Z"},"individual":{"reference":"Practitioner/45632950","display":"PCP8,
+        VA-Physician"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"4199423","display":"Dietitian","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"SPRF","display":"secondary
+        performer","userSelected":false}],"text":"Dietitian"}],"period":{"start":"2026-03-17T16:59:00.000Z"},"individual":{"reference":"Practitioner/72441129","display":"Clark,
+        Sheryl Ann"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"681274","display":"Database
+        Coordinator","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PART","display":"Participation","userSelected":false}],"text":"Database
+        Coordinator"}],"period":{"start":"2026-03-11T15:37:00.000Z"},"individual":{"reference":"Practitioner/15087890","display":"Adkisson,
+        Ethan"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"681274","display":"Database
+        Coordinator","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PART","display":"Participation","userSelected":false}],"text":"Database
+        Coordinator"}],"period":{"start":"2026-01-07T15:19:41.000Z"},"individual":{"reference":"Practitioner/10727478","display":"Cantu,
+        Armando, Cerner Consulting"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"36902175515","display":"Ambulatory/Outpatient
+        Nurse","userSelected":true}],"text":"Ambulatory/Outpatient Nurse"}],"period":{"start":"2025-12-04T17:16:55.000Z"},"individual":{"reference":"Practitioner/71003354","display":"RN:
+        Outpatient5, VA-RN"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"681274","display":"Database
+        Coordinator","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PART","display":"Participation","userSelected":false}],"text":"Database
+        Coordinator"}],"period":{"start":"2025-12-03T18:08:46.000Z"},"individual":{"reference":"Practitioner/15087893","display":"Mathes,
+        Calvan"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"1350386209","display":"Clinical
+        Pharmacist Practitioner","userSelected":true}],"text":"Clinical Pharmacist
+        Practitioner"}],"period":{"start":"2025-12-02T21:47:00.000Z"},"individual":{"reference":"Practitioner/62079858","display":"Utz,
+        Kenneth"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"681274","display":"Database
+        Coordinator","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PART","display":"Participation","userSelected":false}],"text":"Database
+        Coordinator"}],"period":{"start":"2025-12-02T19:52:00.000Z"},"individual":{"reference":"Practitioner/10727478","display":"Cantu,
+        Armando, Cerner Consulting"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"4199419","display":"HIM
+        Manager","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PART","display":"Participation","userSelected":false}],"text":"HIM
+        Manager"}],"period":{"start":"2025-11-25T15:59:00.000Z"},"individual":{"reference":"Practitioner/45632614","display":"Managers1,
+        VA-HIM"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"681274","display":"Database
+        Coordinator","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PART","display":"Participation","userSelected":false}],"text":"Database
+        Coordinator"}],"period":{"start":"2025-11-17T22:52:00.000Z"},"individual":{"reference":"Practitioner/10727478","display":"Cantu,
+        Armando, Cerner Consulting"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"49423871","display":"Psychologist","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PPRF","display":"primary
+        performer","userSelected":false}],"text":"Psychologist"}],"period":{"start":"2025-11-17T20:57:00.000Z"},"individual":{"reference":"Practitioner/45634131","display":"PsychTherapy1,
+        VA-BH"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"18883355","display":"Covering
+        Provider","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PPRF","display":"primary
+        performer","userSelected":false}],"text":"Covering Provider"}],"period":{"start":"2025-11-17T19:40:00.000Z"},"individual":{"reference":"Practitioner/45621158","display":"Cardiovascular1,
+        VA-Physician"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"681274","display":"Database
+        Coordinator","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PART","display":"Participation","userSelected":false}],"text":"Database
+        Coordinator"}],"period":{"start":"2025-11-13T17:42:00.000Z"},"individual":{"reference":"Practitioner/11552399","display":"Handwerk,
+        David, Cerner Consulting"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"113116337","display":"Registered
+        Nurse","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"SPRF","display":"secondary
+        performer","userSelected":false}],"text":"Registered Nurse"}],"period":{"start":"2025-11-07T20:14:54.000Z"},"individual":{"reference":"Practitioner/45630210","display":"Nurse2,
+        VA-BH"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"36902175515","display":"Ambulatory/Outpatient
+        Nurse","userSelected":true}],"text":"Ambulatory/Outpatient Nurse"}],"period":{"start":"2025-11-07T17:04:39.000Z"},"individual":{"reference":"Practitioner/71003307","display":"RN:
+        Outpatient2, VA-RN"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"18883355","display":"Covering
+        Provider","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PPRF","display":"primary
+        performer","userSelected":false}],"text":"Covering Provider"}],"period":{"start":"2025-11-06T18:43:00.000Z"},"individual":{"reference":"Practitioner/45628456","display":"Hospitalist1,
+        VA-Physician Middle, EHRM Generic Test User"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"4180548","display":"Radiologist","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PPRF","display":"primary
+        performer","userSelected":false}],"text":"Radiologist"}],"period":{"start":"2025-11-06T18:31:00.000Z"},"individual":{"reference":"Practitioner/45633018","display":"Radiologist1,
+        VA-RadNet"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"681274","display":"Database
+        Coordinator","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PART","display":"Participation","userSelected":false}],"text":"Database
+        Coordinator"}],"period":{"start":"2025-11-05T16:46:00.000Z"},"individual":{"reference":"Practitioner/8401712","display":"Hanners,
+        Stephanie, Cerner Consulting"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"681274","display":"Database
+        Coordinator","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PART","display":"Participation","userSelected":false}],"text":"Database
+        Coordinator"}],"period":{"start":"2025-11-05T15:27:00.000Z"},"individual":{"reference":"Practitioner/8305155","display":"Skojec,
+        Steve, (CERNER)"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"681274","display":"Database
+        Coordinator","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PART","display":"Participation","userSelected":false}],"text":"Database
+        Coordinator"}],"period":{"start":"2025-11-05T13:46:00.000Z"},"individual":{"reference":"Practitioner/8291870","display":"Leighow,
+        Carla, Cerner Consulting"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"681274","display":"Database
+        Coordinator","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PART","display":"Participation","userSelected":false}],"text":"Database
+        Coordinator"}],"period":{"start":"2025-11-04T18:04:25.000Z"},"individual":{"reference":"Practitioner/53411716","display":"Hatfield,
+        Richard, Cerner Consulting"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"36902175515","display":"Ambulatory/Outpatient
+        Nurse","userSelected":true}],"text":"Ambulatory/Outpatient Nurse"}],"period":{"start":"2025-11-04T15:26:00.000Z"},"individual":{"reference":"Practitioner/71003295","display":"RN:
+        Outpatient, VA-RN"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"4199423","display":"Dietitian","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"SPRF","display":"secondary
+        performer","userSelected":false}],"text":"Dietitian"}],"period":{"start":"2025-11-03T20:47:00.000Z"},"individual":{"reference":"Practitioner/45630048","display":"Dietitian1,
+        VA-Diet"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"18883355","display":"Covering
+        Provider","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PPRF","display":"primary
+        performer","userSelected":false}],"text":"Covering Provider"}],"period":{"start":"2025-11-03T18:09:18.000Z"},"individual":{"reference":"Practitioner/45632912","display":"PCP1,
+        VA-Physician, prefixgreaterthan20letterswhichisveryuncertain"}}],"appointment":[{"reference":"Appointment/172642377"},{"reference":"Appointment/172659918"},{"reference":"Appointment/172659919"},{"reference":"Appointment/172659920"}],"period":{"start":"2025-11-03T18:08:00.000Z"},"hospitalization":{"admitSource":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/2","code":"106679635","display":"Patient/Self","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/admit-source","code":"other","display":"Other","userSelected":false}],"text":"Patient/Self"}},"location":[{"location":{"reference":"Location/258494895","display":"668
+        Mann-Grandstaff WA VA Medical Center, 668 Bldg 01, 668 Cardiology"},"status":"active"}],"serviceProvider":{"reference":"Organization/1938077","display":"668
+        Mann-Grandstaff WA VA Medical Center"}}],"status":"active","intent":"plan","category":[{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/medicationrequest-category","code":"community","display":"Community","userSelected":false}]},{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/medication-statement-category","code":"patientspecified","display":"Patient
+        Specified","userSelected":false}]}],"reportedBoolean":true,"medicationCodeableConcept":{"coding":[{"system":"http://www.nlm.nih.gov/research/umls/rxnorm","code":"308416","display":"aspirin
+        81 MG Delayed Release Oral Tablet","userSelected":false},{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/synonym","code":"2750116","display":"aspirin
+        81 mg oral delayed release tablet","userSelected":true}],"text":"aspirin (aspirin
+        81 mg oral delayed release tablet)"},"subject":{"reference":"Patient/72228720","display":"BEARDEDIPO,
+        VANCE J"},"encounter":{"reference":"Encounter/322653394"},"authoredOn":"2025-11-04T15:27:49Z","requester":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason","valueCode":"unknown"}]},"courseOfTherapyType":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4009","code":"2338","display":"Soft
+        Stop","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/medicationrequest-course-of-therapy","code":"continuous","display":"Continuous
+        long term therapy","userSelected":false}],"text":"Maintenance"},"dosageInstruction":[{"extension":[{"url":"https://fhir-ehr.cerner.com/r4/StructureDefinition/clinical-instruction","valueString":"1
+        tab(s), Oral, Daily, # 90 tab(s), 0 total refill(s), Maintenance"}],"text":"1
+        tab(s), Oral, Daily, 90 tab(s), 0 Refill(s)","patientInstruction":"1 tabs
+        Oral (given by mouth) every day.","timing":{"repeat":{"boundsPeriod":{"start":"2025-11-04T15:27:00Z"}},"code":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4003","code":"696530","display":"Daily","userSelected":true},{"system":"http://snomed.info/sct","code":"229797004","display":"Once
+        daily (qualifier value)","userSelected":false},{"system":"http://terminology.hl7.org/CodeSystem/v3-GTSAbbreviation","code":"QD","display":"QD","userSelected":false}],"text":"Daily"}},"route":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4001","code":"318185","display":"Oral","userSelected":true},{"system":"http://snomed.info/sct","code":"26643006","display":"Oral
+        route (qualifier value)","userSelected":false}],"text":"Oral"},"doseAndRate":[{"doseQuantity":{"value":1.0,"unit":"tab(s)","system":"http://unitsofmeasure.org","code":"{tbl}"}}]}],"dispenseRequest":{"validityPeriod":{"start":"2025-11-04T15:27:49Z"},"numberOfRepeatsAllowed":0,"quantity":{"value":90.0,"unit":"tab(s)","system":"http://unitsofmeasure.org","code":"{tbl}"}},"substitution":{"allowedBoolean":true}}},{"resource":{"resourceType":"MedicationRequest","id":"20848828719","meta":{"versionId":"0","lastUpdated":"2025-11-21T15:18:55Z","tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"text":{"status":"generated","div":"<div
+        xmlns=\"http://www.w3.org/1999/xhtml\"><p><b>Medication Request</b></p><p><b>Status</b>:
+        Active</p><p><b>Intent</b>: Order</p><p><b>Medication</b>: atorvastatin (atorvastatin
+        20 mg tablet)</p><p><b>Dosage Instructions</b>: 1 tab(s), Oral, Daily, 30
+        EA, 0 Refill(s)</p><p><b>Patient</b>: BEARDEDIPO, VANCE J</p><p><b>Authored
+        On</b>: Nov 21, 2025  9:14 A.M. CST</p></div>"},"contained":[{"resourceType":"Encounter","id":"322674207","meta":{"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"text":{"status":"generated","div":"<div
+        xmlns=\"http://www.w3.org/1999/xhtml\"><p><b>Encounter</b></p><p><b>Patient</b>:
+        BEARDEDIPO, VANCE J</p><p><b>Location</b>: 515 Battle Creek MI VA Medical
+        Center, 515 Bldg 3, 515-OPTO-CL</p><p><b>Type</b>: Outpatient</p><p><b>Service
+        Type</b>: Optometry</p><p><b>Class</b>: ambulatory</p><p><b>Status</b>: In
+        Progress</p><p><b>Period Start Date</b>: Nov 18, 2025  2:33 P.M. CST</p><p><b>Attending
+        Physician</b>: Cerner, Cerner</p><p><b>Service Provider</b>: 515 Battle Creek
+        MI VA Medical Center</p></div>"},"extension":[{"id":"CA-0","url":"https://fhir-ehr.cerner.com/r4/StructureDefinition/custom-attribute","extension":[{"id":"ENCNTR:684109","url":"custom-attribute-name","valueString":"Accident
+        Related Visit"},{"url":"custom-attribute-value","valueCodeableConcept":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/100000","code":"684107","display":"No","userSelected":true}],"text":"No"}}]},{"id":"CA-1","url":"https://fhir-ehr.cerner.com/r4/StructureDefinition/custom-attribute","extension":[{"id":"ENCNTR:419823499","url":"custom-attribute-name","valueString":"VA/DOD
+        Code Values"},{"url":"custom-attribute-value","valueCodeableConcept":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/100389","code":"5311157397","display":"VA
+        Outpatient","userSelected":true}],"text":"VA Outpatient"}}]},{"id":"CA-2","url":"https://fhir-ehr.cerner.com/r4/StructureDefinition/custom-attribute","extension":[{"id":"ENCNTR:34310433","url":"custom-attribute-name","valueString":"Complete
+        Reg?"},{"url":"custom-attribute-value","valueCodeableConcept":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/20322","code":"3542949","display":"Yes","userSelected":true}],"text":"Yes"}}]}],"identifier":[{"use":"usual","type":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/319","code":"1077","display":"FIN
+        NBR","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"AN","display":"Account
+        number","userSelected":false}],"text":"FIN NBR"},"system":"urn:oid:2.16.840.1.113883.3.8901.1","value":"179106736"}],"status":"in-progress","class":{"system":"http://terminology.hl7.org/CodeSystem/v3-ActCode","code":"AMB","display":"ambulatory","userSelected":false},"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/71","code":"309309","display":"Outpatient","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v2-0004","code":"O","display":"Outpatient","userSelected":false}],"text":"Outpatient"}],"serviceType":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/34","code":"107995793","display":"Optometry","userSelected":true},{"system":"http://snomed.info/sct","code":"310105000","display":"Optometry
+        service (qualifier value)","userSelected":false}],"text":"Optometry"},"priority":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/3","code":"670840","display":"Elective","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ActPriority","code":"EL","display":"elective","userSelected":false}],"text":"Elective"},"subject":{"reference":"Patient/72228720","display":"BEARDEDIPO,
+        VANCE J"},"participant":[{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"1119","display":"Attending
+        Provider","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"ATND","display":"attender","userSelected":false}],"text":"Attending
+        Provider"}],"period":{"start":"2025-11-18T20:33:00.000Z"},"individual":{"reference":"Practitioner/40168660","display":"Cerner,
+        Cerner"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"296150471","display":"Chart
+        Review","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PART","display":"Participation","userSelected":false}],"text":"Chart
+        Review"}],"period":{"start":"2025-12-16T17:33:00.000Z"},"individual":{"reference":"Practitioner/45632123","display":"Amb
+        Oncology RN1, VA-Oncology"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"18883355","display":"Covering
+        Provider","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PPRF","display":"primary
+        performer","userSelected":false}],"text":"Covering Provider"}],"period":{"start":"2025-12-10T19:58:00.000Z"},"individual":{"reference":"Practitioner/58081944","display":"Deperio,
+        Marilou L, RN"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"4180548","display":"Radiologist","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PPRF","display":"primary
+        performer","userSelected":false}],"text":"Radiologist"}],"period":{"start":"2025-12-01T17:01:01.000Z"},"individual":{"reference":"Practitioner/45633018","display":"Radiologist1,
+        VA-RadNet"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"18883355","display":"Covering
+        Provider","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PPRF","display":"primary
+        performer","userSelected":false}],"text":"Covering Provider"}],"period":{"start":"2025-11-19T18:12:36.000Z"},"individual":{"reference":"Practitioner/45632912","display":"PCP1,
+        VA-Physician, prefixgreaterthan20letterswhichisveryuncertain"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"681274","display":"Database
+        Coordinator","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PART","display":"Participation","userSelected":false}],"text":"Database
+        Coordinator"}],"period":{"start":"2025-11-18T21:39:00.000Z"},"individual":{"reference":"Practitioner/51676068","display":"Kerns,
+        Jennifer, Cerner Consulting"}},{"type":[{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/333","code":"681274","display":"Database
+        Coordinator","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationType","code":"PART","display":"Participation","userSelected":false}],"text":"Database
+        Coordinator"}],"period":{"start":"2025-11-18T20:34:00.000Z"},"individual":{"reference":"Practitioner/8401712","display":"Hanners,
+        Stephanie, Cerner Consulting"}}],"period":{"start":"2025-11-18T20:33:00.000Z"},"hospitalization":{"admitSource":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/2","code":"106679635","display":"Patient/Self","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/admit-source","code":"other","display":"Other","userSelected":false}],"text":"Patient/Self"}},"location":[{"location":{"reference":"Location/1406068211","display":"515
+        Battle Creek MI VA Medical Center, 515 Bldg 3, 515-OPTO-CL"},"status":"active"}],"serviceProvider":{"reference":"Organization/2044138","display":"515
+        Battle Creek MI VA Medical Center"}}],"status":"active","intent":"order","category":[{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/medicationrequest-category","code":"community","display":"Community","userSelected":false}]},{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/medicationrequest-category","code":"discharge","display":"Discharge","userSelected":false}]}],"reportedBoolean":false,"medicationCodeableConcept":{"coding":[{"system":"http://www.nlm.nih.gov/research/umls/rxnorm","code":"617310","display":"atorvastatin
+        20 MG Oral Tablet","userSelected":false},{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/synonym","code":"108685457","display":"atorvastatin
+        20 mg tablet","userSelected":true}],"text":"atorvastatin (atorvastatin 20
+        mg tablet)"},"subject":{"reference":"Patient/72228720","display":"BEARDEDIPO,
+        VANCE J"},"encounter":{"reference":"Encounter/322674207"},"authoredOn":"2025-11-21T15:14:35Z","requester":{"reference":"Practitioner/45632912","display":"PCP1,
+        VA-Physician"},"courseOfTherapyType":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4009","code":"2338","display":"Soft
+        Stop","userSelected":true},{"system":"http://terminology.hl7.org/CodeSystem/medicationrequest-course-of-therapy","code":"continuous","display":"Continuous
+        long term therapy","userSelected":false}],"text":"Soft Stop"},"dosageInstruction":[{"extension":[{"url":"https://fhir-ehr.cerner.com/r4/StructureDefinition/clinical-instruction","valueString":"1
+        tab(s), Oral, Daily, # 30 EA, 0 total refill(s), Soft Stop, Pharmacy: Mann-Grandstaff
+        VAMC [Not filled]"}],"text":"1 tab(s), Oral, Daily, 30 EA, 0 Refill(s)","patientInstruction":"1
+        tabs Oral (given by mouth) every day. Refills: 0.","timing":{"repeat":{"boundsPeriod":{"start":"2025-11-21T15:14:00Z"}},"code":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4003","code":"696530","display":"Daily","userSelected":true},{"system":"http://snomed.info/sct","code":"229797004","display":"Once
+        daily (qualifier value)","userSelected":false},{"system":"http://terminology.hl7.org/CodeSystem/v3-GTSAbbreviation","code":"QD","display":"QD","userSelected":false}],"text":"Daily"}},"route":{"coding":[{"system":"https://fhir.cerner.com/d45741b3-8335-463d-ab16-8c5f0bcf78ed/codeSet/4001","code":"318185","display":"Oral","userSelected":true},{"system":"http://snomed.info/sct","code":"26643006","display":"Oral
+        route (qualifier value)","userSelected":false}],"text":"Oral"},"doseAndRate":[{"doseQuantity":{"value":20.0,"unit":"mg","system":"http://unitsofmeasure.org","code":"mg"}}]}],"dispenseRequest":{"validityPeriod":{"start":"2025-11-21T15:14:35Z"},"numberOfRepeatsAllowed":0,"quantity":{"value":30.0,"unit":"EA","system":"http://unitsofmeasure.org","code":"{Each}"},"expectedSupplyDuration":{"value":30,"unit":"day(s)","system":"http://unitsofmeasure.org","code":"d"},"performer":{"display":"Mann-Grandstaff
+        VAMC"}},"substitution":{"allowedBoolean":true},"priorPrescription":{"reference":"MedicationRequest/20849072835"}}},{"resource":{"resourceType":"OperationOutcome","id":"06a325b3-35f6-4ab3-a596-ee6ebc8a85c5","meta":{"tag":[{"system":"http://va.gov/mhv/fhir/tag/source-system","code":"oracle-health"}]},"issue":[{"severity":"information","code":"informational","diagnostics":"Success"},{"severity":"information","code":"informational","diagnostics":"Overall
+        message outcome"}]}}]}}'
+  recorded_at: Wed, 25 Mar 2026 13:46:46 GMT
+recorded_with: VCR 6.4.0
