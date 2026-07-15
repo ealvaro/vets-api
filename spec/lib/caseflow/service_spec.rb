@@ -80,7 +80,31 @@ RSpec.describe Caseflow::Service do
       end
     end
 
-    context 'when an exception is raised while logging null description issues' do
+    context 'when tracking incomplete appeal history' do
+      let(:appeals) do
+        [
+          { 'id' => 'A1', 'attributes' => { 'incompleteHistory' => true } },
+          { 'id' => 'A2', 'attributes' => { 'incompleteHistory' => false } },
+          { 'id' => 'A3', 'attributes' => {} }
+        ]
+      end
+
+      before { allow(StatsD).to receive(:increment) }
+
+      it 'increments the appeals_fetched denominator once per appeal' do
+        expect(StatsD).to receive(:increment).with('api.appeals.appeals_fetched').exactly(3).times
+
+        subject.send(:track_appeals_with_incomplete_history, appeals)
+      end
+
+      it 'increments appeals_with_incomplete_history only for appeals flagged incompleteHistory' do
+        expect(StatsD).to receive(:increment).with('api.appeals.appeals_with_incomplete_history').once
+
+        subject.send(:track_appeals_with_incomplete_history, appeals)
+      end
+    end
+
+    context 'when an exception is raised while monitoring appeals data quality' do
       let(:user) { build(:user, :loa3, ssn: '120495723') }
 
       before do
@@ -99,7 +123,7 @@ RSpec.describe Caseflow::Service do
           { match_requests_on: %i[method uri body] }
         ) do
           expect(Rails.logger).to receive(:error).with(
-            'Logging null description issues for appeals failed: test error'
+            'Monitoring appeals data quality failed: test error'
           )
 
           subject.get_appeals(user)

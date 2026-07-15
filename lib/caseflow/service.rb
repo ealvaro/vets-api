@@ -36,16 +36,17 @@ module Caseflow
           additional_headers.merge('ssn' => user.ssn)
         )
 
-        # Track null issue descriptions in appeals
-        # If we are seeing a lot of these, we will need to take further action
+        # Track data-quality signals in the appeals payload (null issue descriptions,
+        # incomplete event history). If we are seeing a lot of these, we will need to take
+        # further action.
         begin
           appeals = response.body['data']
-          handle_appeals_with_null_issue_descriptions(user, appeals) if appeals.present?
+          monitor_appeals_data_quality(user, appeals) if appeals.present?
         rescue Faraday::ParsingError, JSON::ParserError => e
           Rails.logger.error("Caseflow returned an unparseable response body: #{e.message}")
           raise # re-raise so it propagates up to the controller / error middleware
         rescue => e
-          Rails.logger.error("Logging null description issues for appeals failed: #{e.message}")
+          Rails.logger.error("Monitoring appeals data quality failed: #{e.message}")
         end
 
         Caseflow::Responses::Caseflow.new(response.body, response.status)
@@ -126,6 +127,25 @@ module Caseflow
 
       if appeals_with_null_issue_descriptions.any?
         log_appeals_with_no_issue_descriptions(user, appeals_with_null_issue_descriptions)
+      end
+    end
+
+    def monitor_appeals_data_quality(user, appeals)
+      handle_appeals_with_null_issue_descriptions(user, appeals)
+      track_appeals_with_incomplete_history(appeals)
+    end
+
+    # Increments statsd metrics tracking how often Caseflow returns appeals with an incomplete
+    # event history. This flag is surfaced to veterans as the "missingEvents" alert on the appeal
+    # status page. We currently have no measure of how often it occurs; emit a per-appeal
+    # denominator (appeals_fetched) alongside the incomplete-history count so the frequency/rate
+    # can be derived in DataDog. See ticket #147270.
+    def track_appeals_with_incomplete_history(appeals)
+      appeals.each do |appeal|
+        StatsD.increment("#{STATSD_KEY_PREFIX}.appeals_fetched")
+        if appeal.dig('attributes', 'incompleteHistory')
+          StatsD.increment("#{STATSD_KEY_PREFIX}.appeals_with_incomplete_history")
+        end
       end
     end
 
