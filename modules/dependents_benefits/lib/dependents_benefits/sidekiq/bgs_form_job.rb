@@ -3,6 +3,9 @@
 require 'bgs/job'
 require 'bgs/form686c'
 require 'bgs/form674'
+require 'bgs/vnp_veteran'
+require 'bgs/vnp_benefit_claim'
+require 'bgs/benefit_claim'
 require 'dependents_benefits/sidekiq/dependent_submission_job'
 
 module DependentsBenefits::Sidekiq
@@ -28,6 +31,17 @@ module DependentsBenefits::Sidekiq
     # 21-674 School Attendance Approval form_id
     SCHOOL_ATTENDANCE_APPROVAL = DependentsBenefits::SCHOOL_ATTENDANCE_APPROVAL
 
+    # Reasons for manual processing
+    MANUAL_REASON_NOTES = {
+      report_death: 'for removal of a child/dependent parent due to death.',
+      add_spouse: 'to add a spouse due to civic/non-ceremonial marriage.',
+      report_stepchild_not_in_household: 'for removal of a step-child that has left household.',
+      report_marriage_of_child_under18: 'for removal of a married minor child.',
+      report_child18_or_older_is_not_attending_school:
+        'for removal of a schoolchild over 18 who has stopped attending school.',
+      report674: 'along with a 674.'
+    }.with_indifferent_access.freeze
+
     private
 
     ##
@@ -40,14 +54,136 @@ module DependentsBenefits::Sidekiq
       if Flipper.enabled?(:enable_combined_form_bgs_processing) &&
          parent_claim.submittable_686? &&
          parent_claim.submittable_674?
-      # TODO: in future PR
-      # create veteran object in VNP tables
-      # send 686, 674 data
-      # determine correct end product code and if this is manual
-      # create benefit claim with correct end_product_code
+
+        monitor.track_info_event('686C+674 combined claim submission started',
+                                 action: 'combined.start',
+                                 proc_id: @proc_id,
+                                 parent_claim_id: parent_claim.id)
+
+        benefit_claim_data = send_combined_bgs_data
+
+        # determine correct end product code and if this requires manual processing
+        proc_state = check_for_manual_claim(benefit_claim_data[:benefit_claim_id])
+
+        bgs_service.update_proc(@proc_id, proc_state:)
+        monitor.track_info_event("686C+674 combined claim submitted to RBPS with proc_state of #{proc_state}",
+                                 action: 'combined.success', proc_id: @proc_id, automatic: proc_state == 'Ready',
+                                 parent_claim_id: parent_claim.id)
+
+        DependentsBenefits::ServiceResponse.new(status: true)
       else
         super()
       end
+    end
+
+    ##
+    # Create veteran, send claim data to BGS
+    #
+    # @return [BGS::VnpVeteran data]
+    def send_combined_bgs_data
+      # create veteran object in VNP tables
+      user = generate_user_struct
+      veteran = ::BGS::VnpVeteran.new(proc_id:, payload: normalized_form_data, user:, claim_type: '130DPNEBNADJ',
+                                      claim_type_end_product: nil).create
+
+      # send 686, 674 data
+      child_claims.each do |claim|
+        service_response = send_combined_claim_part(claim, veteran)
+        raise DependentSubmissionError, service_response&.error unless service_response&.success?
+      end
+
+      # create benefit claim with correct end_product_code
+      create_combined_benefit_claim(
+        veteran:, user:, ep_name: '130 - Automated Dependency 686c', ep_code: '130DPNEBNADJ'
+      )
+    end
+
+    ##
+    # Submit an individual child claims to BGS
+    #
+    # @return [void]
+    def send_combined_claim_part(claim, veteran)
+      submission = find_or_create_form_submission(claim)
+      submission_attempt = create_form_submission_attempt(submission)
+      claim.user_data # populates and retrieves if not already present on claim
+      if claim.form_id == DependentsBenefits::ADD_REMOVE_DEPENDENT
+        submit_686c_form(claim, { veteran:, skip_claim_create: true })
+      elsif claim.form_id == DependentsBenefits::SCHOOL_ATTENDANCE_APPROVAL
+        submit_674_form(claim, { veteran:, skip_claim_create: true })
+      end
+      mark_submission_attempt_succeeded(submission_attempt)
+      DependentsBenefits::ServiceResponse.new(status: true)
+    rescue => e
+      monitor.track_error_event("Submission attempt failure in #{self.class}",
+                                action: 'claim.error', component:, error: e.message,
+                                parent_claim_id:, saved_claim_id: claim.id, proc_id:)
+      mark_submission_attempt_failed(submission_attempt, e)
+      mark_in_progress_form_pending
+      DependentsBenefits::ServiceResponse.new(status: false, error: e.message)
+    end
+
+    ##
+    # Create combined benefit claim
+    #
+    # @param veteran [VnpVeteran] The veteran object
+    # @param user [Hash] The user object
+    # @return [Hash] benefit claim data
+    def create_combined_benefit_claim(veteran:, user:, ep_name:, ep_code:)
+      vnp_benefit_claim = ::BGS::VnpBenefitClaim.new(proc_id:, veteran:, user:)
+      vnp_benefit_claim_record = vnp_benefit_claim.create
+
+      benefit_claim_record = ::BGS::BenefitClaim.new(
+        args: {
+          vnp_benefit_claim: vnp_benefit_claim_record,
+          veteran:,
+          user:,
+          proc_id:,
+          end_product_name: ep_name,
+          end_product_code: ep_code
+        }
+      ).create
+      vnp_benefit_claim.update(benefit_claim_record, vnp_benefit_claim_record)
+      benefit_claim_record
+    end
+
+    ##
+    # Determine if a 686+674 claim needs manual processing
+    #
+    # @param form_data[Hash] form data
+    # @return [String] desired proc_state
+    def check_for_manual_claim(benefit_claim_id)
+      manual_reason = manual_processing_reason
+
+      if manual_reason.present?
+        # manual claims warrant a note to tell RBPS why it requires manual processing
+        note_text = 'Claim set to manual by VA.gov: This application needs manual review ' \
+                    "because a 686 was submitted #{MANUAL_REASON_NOTES[manual_reason]}"
+        bgs_service.create_note(benefit_claim_id, note_text)
+        'MANUAL_VAGOV'
+      else
+        'Ready'
+      end
+    end
+
+    ##
+    # Loop through possible manual processing situations
+    #
+    # @return [String | nil] reason for manual processing
+    def manual_processing_reason
+      selectable_options = normalized_form_data['view:selectable686_options']
+      dependents_app = normalized_form_data['dependents_application']
+
+      selectable_options.each do |option, is_selected|
+        return option if ::BGS::Form686c::REMOVE_CHILD_OPTIONS.include?(option) && is_selected
+      end
+
+      # if the user is adding a spouse and the marriage type is anything other than CEREMONIAL, set the status to manual
+      marriage_type = dependents_app.dig('current_marriage_information', 'type_of_marriage')
+      return 'add_spouse' if selectable_options['add_spouse'] && ::BGS::Form686c::MARRIAGE_TYPES.include?(marriage_type)
+
+      # search through the array of "deaths" and check if the dependent_type = "CHILD" or "DEPENDENT_PARENT"
+      death_types = (dependents_app['deaths'] || []).map { |e| e['dependent_type'] }
+      'report_death' if selectable_options['report_death'] && death_types.intersect?(::BGS::Form686c::RELATIONSHIPS)
     end
 
     ##
@@ -81,6 +217,14 @@ module DependentsBenefits::Sidekiq
       ::BGS::Form674.new(generate_user_struct, claim,
                          { proc_id: @proc_id, update_proc_state_on_complete: is_only674 }
                          .merge(opts)).submit(claim_data)
+    end
+
+    ##
+    # Normalize form data
+    #
+    # @return [Hash]
+    def normalized_form_data
+      @normalized_form_data ||= ::BGS::Job.new.normalize_names_and_addresses!(parent_claim.parsed_form)
     end
 
     ##

@@ -22,6 +22,10 @@ RSpec.describe DependentsBenefits::Sidekiq::BGSFormJob, type: :job do
   let(:job) { described_class.new }
 
   describe '#submit_claims_to_service' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:enable_combined_form_bgs_processing).and_return(false)
+    end
+
     it 'sets @proc_id to the result of generate_proc_id' do
       allow(job).to receive_messages(child_claims: [saved_claim],
                                      submit_claim_to_service: DependentsBenefits::ServiceResponse.new(status: true),
@@ -56,19 +60,102 @@ RSpec.describe DependentsBenefits::Sidekiq::BGSFormJob, type: :job do
       expect(response.success?).to be true
     end
 
-    context 'with the enable_combined_form_bgs_processing flag enabled' do
+    context 'with enable_combined_form_bgs_processing flag enabled and a combined form' do
+      let(:parent_claim) { create(:dependents_claim) }
+      let(:form_data) { parent_claim.parsed_form }
+      let(:bgs_service_stub) { double('BGS::Service') }
+      let(:bid_awards_stub) { double('BID::Awards::Service') }
+
       before do
+        saved_claim.destroy!
+        current_group.destroy!
+        parent_group.destroy!
         allow(Flipper).to receive(:enabled?).with(:enable_combined_form_bgs_processing).and_return(true)
+        user_data = DependentsBenefits::UserData.new(user, parent_claim.parsed_form)
+        SavedClaimGroup.new(claim_group_guid: parent_claim.guid,
+                            parent_claim_id: parent_claim.id,
+                            saved_claim_id: parent_claim.id,
+                            user_data: user_data.get_user_json).save!
+        DependentsBenefits::Generators::Claim686cGenerator.new(form_data, parent_claim.id).generate
+        form_data.dig('dependents_application', 'student_information')&.each do |student|
+          DependentsBenefits::Generators::Claim674Generator.new(form_data, parent_claim.id, student).generate
+        end
+
+        allow(BGS::Service).to receive(:new).and_return(bgs_service_stub)
+        allow(bgs_service_stub).to receive_messages(create_participant: {}, find_benefit_claim_type_increment: {},
+                                                    create_address: {}, get_regional_office_by_zip_code: {},
+                                                    create_relationship: {}, vnp_create_benefit_claim: {},
+                                                    vnp_benefit_claim_update: {},
+                                                    create_child_school: {}, create_note: {}, update_proc: {},
+                                                    create_child_student: {}, create_proc: {}, create_proc_form: {},
+                                                    find_regional_offices: {}, create_person: {}, create_phone: {})
+        allow(bgs_service_stub).to receive(:insert_benefit_claim).and_return({
+                                                                               benefit_claim_record: {
+                                                                                 benefit_claim_id: '9876',
+                                                                                 claim_type_code: 'EP123',
+                                                                                 participant_claimant_id: '111',
+                                                                                 program_type_code: '222',
+                                                                                 service_type_code: '333',
+                                                                                 status_type_code: '444'
+                                                                               }
+                                                                             })
+        allow(BID::Awards::Service).to receive(:new).and_return(bid_awards_stub)
+        allow(bid_awards_stub).to receive(:get_awards_pension).and_return(
+          OpenStruct.new({ body: { 'awards_pension' => { 'is_in_receipt_of_pension' => false } } })
+        )
       end
 
-      it 'is a no-op' do
-        allow(job).to receive_messages(generate_proc_id: 'test-proc-id-123')
-        expect(job).not_to receive(:child_claims)
-        expect(job).not_to receive(:submit_claim_to_service)
+      it 'is set up correctly' do
+        expect(parent_claim.submittable_686?).to be(true)
+        expect(parent_claim.submittable_674?).to be(true)
+        expect(DependentsBenefits::PrimaryDependencyClaim.count).to eq(1)
+        expect(DependentsBenefits::AddRemoveDependent.count).to eq(1)
+        expect(DependentsBenefits::SchoolAttendanceApproval.count).to eq(1)
+      end
 
-        response = job.send(:submit_claims_to_service)
+      it 'makes the right BGS calls' do
+        expect(bgs_service_stub).to receive(:create_proc).with(proc_state: 'Started').and_return({ vnp_proc_id: '123' })
+        expect(bgs_service_stub).to receive(:create_proc_form).with('123', '21-686c')
+        expect(bgs_service_stub).to receive(:create_proc_form).with('123', '21-674')
+        %i[create_participant find_benefit_claim_type_increment
+           create_address get_regional_office_by_zip_code
+           create_relationship create_child_school create_person create_phone].each do |method_name|
+          expect(bgs_service_stub).to receive(method_name)
+        end
 
-        expect(response).to be_nil
+        expect(bgs_service_stub).to receive(:vnp_create_benefit_claim).once
+        expect(bgs_service_stub).to receive(:vnp_benefit_claim_update).once
+        expect(bgs_service_stub).to receive(:insert_benefit_claim).with(
+          hash_including({
+                           ssn: user.ssn,
+                           ptcpnt_id_claimant: user.participant_id,
+                           end_product_name: '130 - Automated Dependency 686c',
+                           end_product_code: '130DPNEBNADJ'
+                         })
+        ).once
+        expected_note = 'Claim set to manual by VA.gov: This application needs manual review because' \
+                        ' a 686 was submitted for removal of a step-child that has left household.'
+        expect(bgs_service_stub).to receive(:create_note).with('9876', expected_note).once
+        expect(bgs_service_stub).to receive(:update_proc).with('123', proc_state: 'MANUAL_VAGOV')
+
+        job.perform(parent_claim.id)
+      end
+
+      it 'creates the expected submission attempts' do
+        expect(BGS::Submission.count).to eq(0)
+        expect(BGS::SubmissionAttempt.count).to eq(0)
+
+        job.perform(parent_claim.id)
+
+        expect(BGS::Submission.count).to eq(2)
+        expect(BGS::SubmissionAttempt.count).to eq(2)
+
+        child_claim_ids = SavedClaimGroup.child_claims_for(parent_claim.id).pluck(:saved_claim_id)
+        child_claims = SavedClaim.where(id: child_claim_ids)
+        child_claims.each do |claim|
+          submission = BGS::Submission.find_by(saved_claim_id: claim.id)
+          expect(submission.latest_attempt.status).to eq('submitted')
+        end
       end
     end
   end
