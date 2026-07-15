@@ -2248,6 +2248,7 @@ vff_simple_forms:
   aws:
     bucket: ~
     region: ~
+  prefill: true
 vha:
   sharepoint:
     authentication_url: https://accounts.accesscontrol.windows.net

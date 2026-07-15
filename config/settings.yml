@@ -2233,6 +2233,7 @@ vff_simple_forms:
   aws:
     bucket: <%= ENV['vff_simple_forms__aws__bucket'] %>
     region: us-gov-west-1
+  prefill: true
 vha:
   sharepoint:
     authentication_url: https://accounts.accesscontrol.windows.net

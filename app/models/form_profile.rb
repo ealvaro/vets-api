@@ -148,7 +148,8 @@ class FormProfile
     pension_burial: %w[21P-0969 21P-530EZ 21P-527EZ 21-2680 21P-601 21P-0537],
     survivors_benefits: %w[21P-534EZ],
     vre_counseling: ['28-8832'],
-    vre_readiness: %w[28-1900]
+    vre_readiness: %w[28-1900],
+    vff_simple_forms: ['20-10206']
   }.freeze
 
   FORM_ID_TO_CLASS = {
@@ -161,6 +162,7 @@ class FormProfile
     '40-1330M' => ::FormProfiles::VA1330m,
     '20-0995' => ::FormProfiles::VA0995,
     '20-0996' => ::FormProfiles::VA0996,
+    '20-10206' => ::FormProfiles::VA2010206,
     '21-0538' => DependentsVerification::FormProfiles::VA210538,
     '21-0966' => ::FormProfiles::VA210966,
     '21-22' => ::FormProfiles::VA2122,
@@ -252,7 +254,10 @@ class FormProfile
 
   def self.prefill_enabled_forms
     forms = %w[40-10007 0873]
-    ALL_FORMS.each { |type, form_list| forms += form_list if Settings[type].prefill }
+    boolean = ActiveModel::Type::Boolean.new
+    ALL_FORMS.each do |type, form_list|
+      forms += form_list if boolean.cast(Settings[type]&.prefill)
+    end
     forms
   end
 
