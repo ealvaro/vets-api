@@ -180,6 +180,15 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
         post(:create, params: test_form, as: :json)
         expect(response).to have_http_status(:ok)
       end
+
+      it 'removes any in-progress form' do
+        in_progress_form = create(:in_progress_form, form_id: claim.form_id, user_uuid: user.uuid, metadata: {})
+        allow(InProgressForm).to receive(:form_for_user).and_return(in_progress_form)
+
+        expect(InProgressForm.count).to eq(1)
+        post(:create, params: test_form, as: :json)
+        expect(InProgressForm.count).to eq(0)
+      end
     end
 
     context 'with invalid params' do

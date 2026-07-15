@@ -114,6 +114,8 @@ module DependentsBenefits
         # Enqueue all submission jobs for the created claim.
         DependentsBenefits::ClaimProcessor.enqueue_submissions(claim.id)
 
+        clear_saved_form(in_progress_form.form_id) if in_progress_form
+
         render json: SavedClaimSerializer.new(claim)
       end
 
