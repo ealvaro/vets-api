@@ -36,7 +36,7 @@ module SignIn
     # rubocop:enable Metrics/ParameterLists
 
     def perform
-      validate_pkce_params! if client_config.pkce?
+      validate_pkce_params! if client_config.auth_method_pkce?
       validate_scope!
       validate_state_payload!
       save_state_code
@@ -129,7 +129,7 @@ module SignIn
     end
 
     def remove_base64_padding(data)
-      return unless client_config.pkce? && data
+      return unless client_config.auth_method_pkce? && data
 
       Base64.urlsafe_encode64(Base64.urlsafe_decode64(data.to_s), padding: false)
     rescue ArgumentError

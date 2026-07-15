@@ -47,8 +47,8 @@ module SignIn
     def client_config_params
       params.require(:client_config).permit(:client_id, :authentication, :redirect_uri, :refresh_token_duration,
                                             :access_token_duration, :access_token_audience, :logout_redirect_uri,
-                                            :pkce, :terms_of_use_url, :enforced_terms, :shared_sessions, :anti_csrf,
-                                            :description, :json_api_compatibility, :client_secret,
+                                            :pkce, :auth_method, :terms_of_use_url, :enforced_terms, :shared_sessions,
+                                            :anti_csrf, :description, :json_api_compatibility, :client_secret,
                                             access_token_attributes: [],
                                             service_levels: [],
                                             credential_service_providers: [],

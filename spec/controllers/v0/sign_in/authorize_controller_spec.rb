@@ -9,8 +9,11 @@ RSpec.describe V0::SignIn::AuthorizeController, type: :controller do
     end
 
     let!(:client_config) do
-      create(:client_config, authentication:, pkce:, credential_service_providers:, service_levels:, shared_sessions:)
+      create(:client_config, authentication:, pkce:, credential_service_providers:, service_levels:, shared_sessions:,
+                             auth_method:)
     end
+    let(:pkce) { true }
+    let(:auth_method) { pkce ? 'pkce' : 'private_key_jwt' }
     let(:authorize_params) do
       {}.merge(type)
         .merge(code_challenge)
@@ -27,7 +30,6 @@ RSpec.describe V0::SignIn::AuthorizeController, type: :controller do
     let(:code_challenge) { { code_challenge: 'some-code-challenge' } }
     let(:code_challenge_method) { { code_challenge_method: 'some-code-challenge-method' } }
     let(:client_id) { { client_id: client_id_value } }
-    let(:pkce) { true }
     let(:scope) { { scope: 'some-scope' } }
     let(:shared_sessions) { false }
     let(:credential_service_providers) { %w[idme logingov mhv] }

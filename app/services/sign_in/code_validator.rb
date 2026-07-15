@@ -24,12 +24,16 @@ module SignIn
 
     def validations
       validate_code_container
-      if client_config.pkce?
+
+      case client_config.auth_method
+      when 'pkce'
         validate_code_challenge
-      elsif client_config.client_secret_configured?
+      when 'client_secret'
         validate_client_secret
-      else
+      when 'private_key_jwt'
         validate_client_assertion
+      else
+        raise Errors::InvalidClientConfigError.new(message: 'Client configuration is invalid')
       end
     end
 

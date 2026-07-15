@@ -41,7 +41,7 @@ RSpec.describe SignIn::CodeValidator do
                user_verification_id:)
       end
       let(:client_id) { client_config.client_id }
-      let(:client_config) { create(:client_config, pkce:) }
+      let(:client_config) { create(:client_config, pkce:, auth_method: 'pkce') }
       let(:pkce) { true }
       let(:code_container_code) { code }
       let(:code_challenge) { 'some-code-challenge' }
@@ -122,7 +122,9 @@ RSpec.describe SignIn::CodeValidator do
       end
 
       context 'and client is configured with private key jwt authentication type' do
-        let(:client_config) { create(:client_config, pkce:, certs: [client_assertion_certificate]) }
+        let(:client_config) do
+          create(:client_config, certs: [client_assertion_certificate], auth_method: 'private_key_jwt')
+        end
         let(:pkce) { false }
         let(:private_key) { OpenSSL::PKey::RSA.new(File.read(private_key_path)) }
         let(:private_key_path) { 'spec/fixtures/sign_in/sample_client.pem' }
@@ -285,7 +287,9 @@ RSpec.describe SignIn::CodeValidator do
         let(:pkce) { false }
         let(:stored_client_secret) { 'super-secret-client-secret' }
         let(:client_secret) { stored_client_secret }
-        let(:client_config) { create(:client_config, pkce:, client_secret: stored_client_secret) }
+        let(:client_config) do
+          create(:client_config, pkce:, client_secret: stored_client_secret, auth_method: 'client_secret')
+        end
 
         context 'and provided client id does not match the code container client id' do
           let(:provided_client_id) { 'some-other-client-id' }
@@ -329,6 +333,24 @@ RSpec.describe SignIn::CodeValidator do
               expect(subject.client_config).to eq(client_config)
             end
           end
+        end
+      end
+
+      context 'and client config has no auth_method configured' do
+        let(:client_config) { create(:client_config, auth_method: 'pkce') }
+        let(:invalid_config) { client_config.tap { |c| c.auth_method = nil } }
+
+        let(:expected_error) { SignIn::Errors::InvalidClientConfigError }
+        let(:expected_error_message) { 'Client configuration is invalid' }
+
+        before do
+          allow(SignIn::ClientConfig).to receive(:find_by)
+            .with(client_id: code_container.client_id)
+            .and_return(invalid_config)
+        end
+
+        it 'raises an invalid client config error' do
+          expect { subject }.to raise_error(expected_error, expected_error_message)
         end
       end
 

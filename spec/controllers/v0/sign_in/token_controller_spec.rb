@@ -59,10 +59,12 @@ RSpec.describe V0::SignIn::TokenController, type: :controller do
              anti_csrf:,
              pkce:,
              enforced_terms:,
-             shared_sessions:)
+             shared_sessions:,
+             auth_method:)
     end
-    let(:enforced_terms) { nil }
     let(:pkce) { true }
+    let(:auth_method) { pkce ? 'pkce' : 'private_key_jwt' }
+    let(:enforced_terms) { nil }
     let(:anti_csrf) { false }
     let(:loa) { nil }
     let(:shared_sessions) { false }
@@ -408,13 +410,8 @@ RSpec.describe V0::SignIn::TokenController, type: :controller do
 
               context 'and client_assertion is a valid jwt' do
                 let!(:client_config) do
-                  create(:client_config,
-                         authentication:,
-                         anti_csrf:,
-                         pkce:,
-                         enforced_terms:,
-                         shared_sessions:,
-                         certs:)
+                  create(:client_config, authentication:, anti_csrf:, enforced_terms:, shared_sessions:, certs:,
+                                         auth_method: 'private_key_jwt')
                 end
 
                 let(:private_key) { OpenSSL::PKey::RSA.new(File.read(private_key_path)) }
@@ -588,7 +585,7 @@ RSpec.describe V0::SignIn::TokenController, type: :controller do
             let(:client_secret_plain) { 'super-secret-client-secret' }
             let!(:client_config) do
               create(:client_config, authentication:, anti_csrf:, pkce:, enforced_terms:, shared_sessions:,
-                                     client_secret: client_secret_plain)
+                                     client_secret: client_secret_plain, auth_method: 'client_secret')
             end
 
             context 'and the authorization header is malformed' do

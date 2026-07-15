@@ -24,7 +24,7 @@ RSpec.describe SignIn::ClientSecretValidator do
     let(:expected_log_prefix) { '[SignInService] [SignIn::ClientSecretValidator]' }
     let(:expected_log_message) { 'error' }
     let(:stored_client_secret) { 'expected-client-secret' }
-    let(:client_config) { create(:client_config, pkce: false, client_secret: stored_client_secret) }
+    let(:client_config) { create(:client_config, client_secret: stored_client_secret, auth_method: 'client_secret') }
     let(:client_id) { client_config.client_id }
     let(:client_secret) { stored_client_secret }
     let(:expected_error) { SignIn::Errors::ClientSecretInvalidError }

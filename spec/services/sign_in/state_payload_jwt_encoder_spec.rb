@@ -26,8 +26,9 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
     let(:type) { 'some-type' }
     let(:scope) { nil }
     let(:nonce) { nil }
-    let(:client_config) { create(:client_config, pkce:, shared_sessions:, authentication:) }
+    let(:client_config) { create(:client_config, pkce:, shared_sessions:, authentication:, auth_method:) }
     let(:pkce) { true }
+    let(:auth_method) { 'pkce' }
     let(:shared_sessions) { false }
     let(:authentication) { SignIn::Constants::Auth::API }
     let(:client_state_minimum_length) { SignIn::Constants::Auth::CLIENT_STATE_MINIMUM_LENGTH }
@@ -208,6 +209,7 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
 
     context 'when client configuration is not configured for pkce authentication' do
       let(:pkce) { false }
+      let(:auth_method) { 'private_key_jwt' }
       let(:code_challenge) { nil }
 
       it_behaves_like 'validated code challenge state payload jwt'
@@ -215,6 +217,7 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
 
     context 'when nonce is provided' do
       let(:pkce) { false }
+      let(:auth_method) { 'private_key_jwt' }
       let(:code_challenge) { nil }
       let(:nonce) { 'test-nonce-value' }
       let(:code) { 'some-state-code-value' }
@@ -238,6 +241,7 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
 
     context 'redirect_uri is provided when Settings.review_instance_slug.present' do
       let(:pkce) { false }
+      let(:auth_method) { 'private_key_jwt' }
       let(:code_challenge) { nil }
       let(:review_slug) { 'review_123' }
       let(:code) { 'some-state-code-value' }
@@ -262,6 +266,7 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
 
     context 'app_name is provided' do
       let(:pkce) { false }
+      let(:auth_method) { 'private_key_jwt' }
       let(:code_challenge) { nil }
       let(:app_name) { 'some-app-name' }
       let(:code) { 'some-state-code-value' }

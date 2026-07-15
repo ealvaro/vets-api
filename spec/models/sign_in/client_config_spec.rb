@@ -6,7 +6,6 @@ RSpec.describe SignIn::ClientConfig, type: :model do
   let(:client_config) do
     create(:client_config,
            client_id:,
-           pkce:,
            auth_method:,
            authentication:,
            shared_sessions:,
@@ -24,7 +23,6 @@ RSpec.describe SignIn::ClientConfig, type: :model do
            credential_service_providers:)
   end
   let(:client_id) { 'some-client-id' }
-  let(:pkce) { true }
   let(:auth_method) { 'pkce' }
   let(:authentication) { SignIn::Constants::Auth::API }
   let(:anti_csrf) { false }
@@ -352,11 +350,52 @@ RSpec.describe SignIn::ClientConfig, type: :model do
       end
     end
 
+    describe '#auth_method' do
+      context 'when auth_method is nil' do
+        let(:auth_method) { nil }
+        let(:expected_error_message) { "Validation failed: Auth method can't be blank" }
+        let(:expected_error) { ActiveRecord::RecordInvalid }
+
+        it 'raises validation error' do
+          expect { subject }.to raise_error(expected_error, expected_error_message)
+        end
+      end
+
+      context 'when auth_method is pkce and no credentials are set' do
+        let(:auth_method) { 'pkce' }
+
+        it 'does not raise validation error' do
+          expect { subject }.not_to raise_error
+        end
+      end
+
+      context 'when auth_method is client_secret with no certs' do
+        let(:auth_method) { 'client_secret' }
+
+        it 'does not raise validation error' do
+          expect { subject }.not_to raise_error
+        end
+      end
+
+      context 'when auth_method is private_key_jwt with certs and no secret' do
+        let(:auth_method) { 'private_key_jwt' }
+        let!(:certificate) { create(:sign_in_certificate) }
+        let!(:config_certificate) { create(:sign_in_config_certificate, config: client_config, cert: certificate) }
+
+        it 'does not raise validation error' do
+          expect { subject }.not_to raise_error
+        end
+      end
+    end
+
     describe '#client_secret' do
       let(:stored_secret) { 'super-secret-value' }
 
       context 'when client_secret is configured for a PKCE client' do
-        let(:expected_error_message) { 'Validation failed: Client secret cannot be configured for PKCE clients' }
+        let(:auth_method) { 'pkce' }
+        let(:expected_error_message) do
+          'Validation failed: Auth method pkce cannot have client_secret or certificates'
+        end
         let(:expected_error) { ActiveRecord::RecordInvalid }
 
         it 'raises validation error' do
@@ -368,9 +407,9 @@ RSpec.describe SignIn::ClientConfig, type: :model do
       context 'when client_secret is configured alongside certificates' do
         let!(:certificate) { create(:sign_in_certificate) }
         let!(:config_certificate) { create(:sign_in_config_certificate, config: client_config, cert: certificate) }
-        let(:pkce) { false }
+        let(:auth_method) { 'client_secret' }
         let(:expected_error_message) do
-          'Validation failed: Client secret cannot be configured alongside certificates'
+          'Validation failed: Auth method client_secret cannot have certificates'
         end
         let(:expected_error) { ActiveRecord::RecordInvalid }
 
@@ -404,7 +443,7 @@ RSpec.describe SignIn::ClientConfig, type: :model do
 
   describe '#client_secret=' do
     let(:stored_secret) { 'super-secret-value' }
-    let(:secret_client_config) { create(:client_config, pkce: false) }
+    let(:secret_client_config) { create(:client_config, auth_method: 'client_secret') }
 
     it 'stores a digest when assigned a secret' do
       secret_client_config.update!(client_secret: stored_secret)
@@ -434,7 +473,7 @@ RSpec.describe SignIn::ClientConfig, type: :model do
 
   describe '#authenticate_client_secret' do
     let(:stored_secret) { 'super-secret-value' }
-    let(:secret_client_config) { create(:client_config, pkce: false) }
+    let(:secret_client_config) { create(:client_config, auth_method: 'client_secret') }
 
     before { secret_client_config.update!(client_secret: stored_secret) }
 
@@ -450,24 +489,6 @@ RSpec.describe SignIn::ClientConfig, type: :model do
       allow(secret_client_config).to receive(:client_secret_digest).and_return('invalid-digest')
 
       expect(secret_client_config.authenticate_client_secret(stored_secret)).to be(false)
-    end
-  end
-
-  describe '#client_secret_configured?' do
-    let(:secret_client_config) { create(:client_config, pkce: false) }
-
-    context 'when a client secret digest is present' do
-      before { secret_client_config.update!(client_secret: 'super-secret-value') }
-
-      it 'returns true' do
-        expect(secret_client_config.client_secret_configured?).to be(true)
-      end
-    end
-
-    context 'when a client secret digest is not present' do
-      it 'returns false' do
-        expect(secret_client_config.client_secret_configured?).to be(false)
-      end
     end
   end
 

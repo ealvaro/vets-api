@@ -95,7 +95,7 @@ module V0
       end
 
       def pkce_client?
-        client_config(client_id)&.pkce?
+        client_config(authorize_sso_params[:client_id])&.auth_method_pkce?
       end
 
       def okta_client?

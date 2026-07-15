@@ -5,7 +5,6 @@ FactoryBot.define do
     client_id { SecureRandom.hex }
     authentication { SignIn::Constants::Auth::API }
     anti_csrf { false }
-    pkce { true }
     redirect_uri { Faker::Internet.url }
     logout_redirect_uri { Faker::Internet.url }
     access_token_duration { SignIn::Constants::AccessToken::VALIDITY_LENGTH_SHORT_MINUTES }
@@ -19,6 +18,7 @@ FactoryBot.define do
     terms_of_use_url { Faker::Internet.url }
     shared_sessions { false }
     oidc { false }
+    auth_method { 'pkce' }
 
     trait :with_certificates do
       ignore do

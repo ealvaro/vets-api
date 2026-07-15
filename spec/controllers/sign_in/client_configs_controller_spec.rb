@@ -64,7 +64,7 @@ RSpec.describe SignIn::ClientConfigsController, type: :controller do
         secret = 'super-secret-value'
 
         post :create,
-             params: { client_config: valid_attributes.merge(pkce: false, client_secret: secret) },
+             params: { client_config: valid_attributes.merge(auth_method: 'client_secret', client_secret: secret) },
              as: :json
 
         created_client_config = SignIn::ClientConfig.find_by!(client_id: valid_attributes[:client_id])
@@ -91,7 +91,8 @@ RSpec.describe SignIn::ClientConfigsController, type: :controller do
         let!(:cert) { create(:sign_in_certificate) }
 
         it 'associates the existing cert with the client config' do
-          post :create, params: { client_config: valid_attributes.merge(certs_attributes: [cert.attributes]) },
+          post :create, params: { client_config: valid_attributes.merge(auth_method: 'private_key_jwt',
+                                                                        certs_attributes: [cert.attributes]) },
                         as: :json
 
           expect(response).to have_http_status(:created)
@@ -111,7 +112,8 @@ RSpec.describe SignIn::ClientConfigsController, type: :controller do
         let(:cert) { build(:sign_in_certificate) }
 
         it 'creates a new certificate and associates it with the client config' do
-          post :create, params: { client_config: valid_attributes.merge(certs_attributes: [cert.attributes]) },
+          post :create, params: { client_config: valid_attributes.merge(auth_method: 'private_key_jwt',
+                                                                        certs_attributes: [cert.attributes]) },
                         as: :json
 
           expect(response).to have_http_status(:created)
@@ -145,7 +147,7 @@ RSpec.describe SignIn::ClientConfigsController, type: :controller do
       end
 
       it 'updates the client secret digest without exposing it in the response' do
-        secret_client_config = create(:client_config, pkce: false)
+        secret_client_config = create(:client_config, auth_method: 'client_secret')
         secret = 'updated-super-secret'
 
         put :update,
@@ -172,7 +174,8 @@ RSpec.describe SignIn::ClientConfigsController, type: :controller do
       it 'updates the certs for the client config' do
         put :update,
             params: {
-              client_id:, client_config: valid_attributes.merge(certs_attributes: [cert.attributes])
+              client_id:, client_config: valid_attributes.merge(auth_method: 'private_key_jwt',
+                                                                certs_attributes: [cert.attributes])
             }, as: :json
 
         expect(response).to have_http_status(:ok)
@@ -189,6 +192,7 @@ RSpec.describe SignIn::ClientConfigsController, type: :controller do
       end
 
       context 'when certs_attributes contains _destroy' do
+        let(:client_config) { create(:client_config, auth_method: 'private_key_jwt') }
         let(:cert_to_destroy) { create(:sign_in_certificate) }
 
         before do

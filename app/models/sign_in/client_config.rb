@@ -32,7 +32,8 @@ module SignIn
     validates :credential_service_providers, presence: true,
                                              inclusion: { in: Constants::Auth::CSP_TYPES, allow_nil: false }
     validates :json_api_compatibility, inclusion: [true, false]
-    validate :validate_client_secret_configuration
+    validates :auth_method, presence: true
+    validate :auth_method_matches_credentials
 
     enum :auth_method, { pkce: 'pkce', client_secret: 'client_secret', private_key_jwt: 'private_key_jwt' },
          prefix: true
@@ -85,10 +86,6 @@ module SignIn
       false
     end
 
-    def client_secret_configured?
-      client_secret_digest.present?
-    end
-
     def certs_attributes=(attributes)
       normalized_attributes = attributes.is_a?(Hash) ? attributes.values : Array(attributes)
       self.config_certificates_attributes = normalized_attributes.map do |cert_attrs|
@@ -138,11 +135,18 @@ module SignIn
       %w[test localhost development].include?(Settings.vsp_environment)
     end
 
-    def validate_client_secret_configuration
-      return unless client_secret_configured?
-
-      errors.add(:client_secret, 'cannot be configured for PKCE clients') if pkce?
-      errors.add(:client_secret, 'cannot be configured alongside certificates') if active_config_certificates?
+    def auth_method_matches_credentials
+      case auth_method
+      when 'pkce'
+        if client_secret_digest.present? || active_config_certificates?
+          errors.add(:auth_method,
+                     'pkce cannot have client_secret or certificates')
+        end
+      when 'client_secret'
+        errors.add(:auth_method, 'client_secret cannot have certificates') if active_config_certificates?
+      when 'private_key_jwt'
+        errors.add(:auth_method, 'private_key_jwt cannot have client_secret') if client_secret_digest.present?
+      end
     end
   end
 end

@@ -26,10 +26,11 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
     end
 
     let(:shared_sessions) { true }
-    let(:pkce) { true }
     let!(:client_config) do
-      create(:client_config, shared_sessions:, json_api_compatibility: false, client_id:, pkce:)
+      create(:client_config, shared_sessions:, json_api_compatibility: false, client_id:, pkce:, auth_method:)
     end
+    let(:pkce) { true }
+    let(:auth_method) { pkce ? 'pkce' : 'private_key_jwt' }
 
     let!(:user_account) { create(:user_account) }
     let!(:terms_of_use_agreement) { create(:terms_of_use_agreement, user_account:) }
@@ -318,6 +319,7 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
 
       context 'and the client is not configured for pkce authentication' do
         let(:pkce) { false }
+        let(:auth_method) { 'private_key_jwt' }
         let(:code_challenge) { nil }
         let(:code_challenge_method) { nil }
 

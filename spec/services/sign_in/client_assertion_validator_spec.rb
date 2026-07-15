@@ -29,7 +29,9 @@ RSpec.describe SignIn::ClientAssertionValidator do
     let(:client_assertion) { JWT.encode(client_assertion_payload, private_key, client_assertion_encode_algorithm) }
     let(:client_assertion_type) { 'some-client-assertion-type' }
     let(:client_id) { client_config.client_id }
-    let(:client_config) { create(:client_config, certs: [client_assertion_certificate]) }
+    let(:client_config) do
+      create(:client_config, certs: [client_assertion_certificate], auth_method: 'private_key_jwt')
+    end
     let(:certificate_path) { 'spec/fixtures/sign_in/sample_client.crt' }
     let(:token_route) { "https://#{Settings.hostname}#{SignIn::Constants::Auth::TOKEN_ROUTE_PATH}" }
 
