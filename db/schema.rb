@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_14_141334) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_15_150006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -1428,26 +1428,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_14_141334) do
   end
 
   create_table "ivc_champva_applicants", force: :cascade do |t|
-    t.string "applicant_first_name"
-    t.string "applicant_icn", null: false
-    t.string "applicant_last_name"
+    t.text "applicant_first_name_ciphertext"
+    t.text "applicant_icn_ciphertext"
+    t.text "applicant_last_name_ciphertext"
     t.datetime "created_at", null: false
     t.boolean "eligibility_resolved", default: false, null: false
+    t.text "encrypted_kms_key"
+    t.boolean "needs_kms_rotation", default: false, null: false
     t.string "person_type", null: false, comment: "SPONSOR or BENEFICIARY, as returned by VES ICN lookup"
     t.string "sponsor_eligibility_reason"
     t.string "sponsor_eligibility_status"
-    t.string "sponsor_icn"
+    t.text "sponsor_icn_ciphertext"
     t.uuid "transaction_uuid", null: false
     t.datetime "updated_at", null: false
     t.string "ves_eligibility_reason"
     t.string "ves_eligibility_status"
-    t.index ["applicant_icn"], name: "index_ivc_champva_applicants_on_applicant_icn"
-    t.index ["transaction_uuid", "applicant_icn"], name: "index_ivc_champva_applicants_on_txn_uuid_and_icn", unique: true
+    t.index ["needs_kms_rotation"], name: "index_ivc_champva_applicants_on_needs_kms_rotation"
+    t.index ["transaction_uuid", "applicant_icn_ciphertext"], name: "index_ivc_champva_applicants_on_txn_uuid_and_icn_ciphertext", unique: true
     t.index ["transaction_uuid"], name: "index_ivc_champva_applicants_on_transaction_uuid"
   end
 
   create_table "ivc_champva_forms", force: :cascade do |t|
     t.boolean "application_decided", default: false, null: false
+    t.boolean "application_is_closed", default: false, null: false
     t.uuid "application_uuid"
     t.string "case_id"
     t.datetime "created_at", null: false
