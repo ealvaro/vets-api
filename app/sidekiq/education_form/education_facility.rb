@@ -112,6 +112,8 @@ module EducationForm
         record.educationProgram&.address || record.relativeAddress
       when '1995'
         record.newSchool&.address || record.veteranAddress
+      when '0989'
+        record.mailingAddress
       end
     end
 

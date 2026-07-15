@@ -4,7 +4,7 @@ require 'rails_helper'
 require 'education_benefits_claims/monitor'
 
 RSpec.describe EducationBenefitsClaims::Monitor do
-  let(:claim) { create(:va0989) }
+  let(:claim) { create(:va10278) }
   let(:monitor) { described_class.new(claim) }
 
   describe '#service_name' do
@@ -27,7 +27,7 @@ RSpec.describe EducationBenefitsClaims::Monitor do
 
   describe '#form_id' do
     it 'returns expected value' do
-      expect(monitor.send(:form_id)).to eq('22-0989')
+      expect(monitor.send(:form_id)).to eq('22-10278')
     end
   end
 end

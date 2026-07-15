@@ -11,44 +11,8 @@ class SavedClaim::EducationBenefits::VA0989 < SavedClaim::EducationBenefits
     60.days
   end
 
-  def after_submit(user)
-    user_account_uuid = user&.user_account_uuid
-    EducationForm::SubmitEducationBenefitsClaimJob.perform_async(id, user_account_uuid)
-  end
-
-  def generate_benefits_intake_metadata
-    ::BenefitsIntake::Metadata.generate(
-      parsed_form['applicantName']['first'],
-      parsed_form['applicantName']['last'],
-      parsed_form['vaFileNumber'] || parsed_form['ssn'],
-      parsed_form['mailingAddress']['postalCode'],
-      self.class.to_s,
-      '22-0989', # doc type
-      'EDU' # busines line
-    )
-  end
-
-  # The `email_type` here needs to match one of the keys
-  # in config/settings.yml under vanotify.services.<some_service>
-  # By default, an `:error` email type is sent when the submit claim
-  # job is exhausted (`monitor.track_submission_exhaustion`).
-  # Otherwise, the email_types can pretty much be whatever you
-  # want. It's common to have a `:received` type also for when
-  # the submission reaches VBMS state in the benefits intake API
-  def send_email(email_type)
-    EducationBenefitsClaims::NotificationEmail.new(id).deliver(email_type)
-  end
-
-  # the personalization params to send with VANotify
-  def personalisation
-    {
-      first_name: parsed_form['applicantName']['first'],
-      last_name: parsed_form['applicantName']['last']
-    }
-  end
-
-  # the email address to send VANotify success/failure emails to
-  def email
-    parsed_form['emailAddress']
+  def after_submit(_user)
+    # 22-0989 is delivered via the nightly education spool file, not Benefits Intake.
+    # PdfFill::Forms::Va220989 remains available for QA and possible future veteran PDF download.
   end
 end

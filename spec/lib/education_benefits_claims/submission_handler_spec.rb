@@ -6,8 +6,8 @@ require 'education_benefits_claims/monitor'
 require 'education_benefits_claims/notification_email'
 
 RSpec.describe EducationBenefitsClaims::SubmissionHandler do
-  let(:handler) { described_class.for_form_id('22-0989') }
-  let(:claim) { create(:va0989) }
+  let(:handler) { described_class.for_form_id('22-10278') }
+  let(:claim) { create(:va10278) }
   let(:monitor) { double(EducationBenefitsClaims::Monitor) }
   let(:notification) { double(EducationBenefitsClaims::NotificationEmail) }
   let(:instance) { handler.new(claim.id) }
@@ -20,8 +20,8 @@ RSpec.describe EducationBenefitsClaims::SubmissionHandler do
   describe '::for_form_id' do
     context 'with a valid form type' do
       it 'returns a class with the right constant set' do
-        klass = described_class.for_form_id('22-0989')
-        expect(klass::FORM_ID).to eq('22-0989')
+        klass = described_class.for_form_id('22-10278')
+        expect(klass::FORM_ID).to eq('22-10278')
         expect(klass.superclass).to eq(EducationBenefitsClaims::SubmissionHandler)
       end
     end
@@ -34,14 +34,14 @@ RSpec.describe EducationBenefitsClaims::SubmissionHandler do
   end
 
   describe '::pending_attempts' do
-    let(:claim) { create(:va0989) }
+    let(:claim) { create(:va10278) }
     let!(:submissions) do
       [
-        create(:lighthouse_submission, :pending, saved_claim: claim, form_id: '22-0989'), # found
-        create(:lighthouse_submission, :pending, saved_claim: claim, form_id: '22-0989'), # found
-        create(:lighthouse_submission, :failure, saved_claim: claim, form_id: '22-0989'), # wrong status
-        create(:lighthouse_submission, :vbms, saved_claim: claim, form_id: '22-0989'), # wrong status
-        create(:lighthouse_submission, :pending, saved_claim: create(:va10278), form_id: '22-10278') # wrong form type
+        create(:lighthouse_submission, :pending, saved_claim: claim, form_id: '22-10278'), # found
+        create(:lighthouse_submission, :pending, saved_claim: claim, form_id: '22-10278'), # found
+        create(:lighthouse_submission, :failure, saved_claim: claim, form_id: '22-10278'), # wrong status
+        create(:lighthouse_submission, :vbms, saved_claim: claim, form_id: '22-10278'), # wrong status
+        create(:lighthouse_submission, :pending, saved_claim: create(:va0989), form_id: '22-0989') # other form type
       ]
     end
 
@@ -55,7 +55,7 @@ RSpec.describe EducationBenefitsClaims::SubmissionHandler do
 
   describe 'registered handlers in SubmissionStatusJob' do
     it 'registers subclasses with FORM_ID defined, not the parent class' do
-      %w[22-0989 22-10278].each do |form_id|
+      %w[22-10278].each do |form_id|
         handler = BenefitsIntake::SubmissionStatusJob::FORM_HANDLERS[form_id]
         expect(handler).not_to be_nil, "No handler registered for #{form_id}"
         expect(handler).to be < EducationBenefitsClaims::SubmissionHandler
