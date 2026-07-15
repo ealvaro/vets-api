@@ -617,7 +617,7 @@ GEM
     hashery (2.1.2)
     hashie (5.1.0)
       logger
-    hexapdf (1.8.0)
+    hexapdf (1.9.1)
       cmdparse (~> 3.0, >= 3.0.3)
       geom2d (~> 0.4, >= 0.4.1)
       openssl (>= 2.2.1)
@@ -654,7 +654,7 @@ GEM
     iso_country_codes (0.7.8)
     jar-dependencies (0.5.7)
     jmespath (1.6.2)
-    jruby-openssl (0.16.0-java)
+    jruby-openssl (0.16.1-java)
     json (2.19.9)
     json (2.19.9-java)
     json-schema (5.2.2)
