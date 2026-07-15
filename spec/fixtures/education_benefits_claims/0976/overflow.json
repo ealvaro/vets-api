@@ -151,14 +151,14 @@
       "programName": "English",
       "totalProgramLength": "1 year",
       "weeksPerTerm": 12,
-      "entryRequirements": "test requirement",
+      "entryRequirements": "Applicants must complete English 101 with a grade of C or B.",
       "creditHours": 10
     },
     {
-      "programName": "Politics",
+      "programName": "Business Administration",
       "totalProgramLength": "1 year",
       "weeksPerTerm": 12,
-      "entryRequirements": "test requirement",
+      "entryRequirements": "PASS ACCOUNTING AND BUSINESS REQUIREMENTS EXAMINATIONS FOR EACH COURSE THE PERSON IS ASSIGNED TO",
       "creditHours": 10
     },
     {

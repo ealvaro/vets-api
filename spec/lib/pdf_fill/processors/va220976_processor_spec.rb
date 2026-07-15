@@ -126,9 +126,37 @@ describe PdfFill::Processors::VA220976Processor do
         expect(get_field_value(fields, 'sco_name')).to eq 'John A Doe'
         expect(get_field_value(fields, 'authorizing_official_signature')).to eq 'John Doe'
 
-        expect(get_field_value(fields, 'degree_program_3_name')).to eq 'Politics'
+        # 'Business Administration' (program index 3) has entryRequirements text longer than
+        # ENTRY_REQUIREMENTS_CHAR_LIMIT, so it's extracted in full to the overflow page
+        expect(get_field_value(fields, 'degree_program_3_name')).to eq 'See Additional Page'
+        expect(get_field_value(fields, 'degree_program_3_entry_requirements')).to be_nil
         expect(get_field_value(fields, 'branch_3_name')).to eq 'Branch 4'
         expect(get_field_value(fields, 'faculty_6_name')).to eq 'John A Doe6'
+      end
+    end
+
+    context 'when a program has entry requirements text that overflows the pdf field' do
+      let(:saved_claim) { create(:va0976) }
+      let(:long_entry_requirements) { 'A' * (described_class::ENTRY_REQUIREMENTS_CHAR_LIMIT + 1) }
+
+      before do
+        form_data['programs'][0]['entryRequirements'] = long_entry_requirements
+      end
+
+      it 'creates a combined pdf with an overflow page' do
+        processor.process
+        expect(File.exist?('tmp/pdfs/22-0976_abc_final.pdf')).to be(true)
+      end
+
+      it 'replaces the program name with See Additional Page and moves the full program to the overflow page' do
+        processor.process
+        fields = PdfForms.new(Settings.binaries.pdftk).get_fields('tmp/pdfs/22-0976_abc_final.pdf')
+
+        expect(get_field_value(fields, 'degree_program_0_name')).to eq 'See Additional Page'
+        expect(get_field_value(fields, 'degree_program_0_entry_requirements')).to be_nil
+        expect(get_field_value(fields, 'degree_program_0_length')).to be_nil
+        expect(get_field_value(fields, 'degree_program_0_weeks_per_term')).to be_nil
+        expect(get_field_value(fields, 'degree_program_0_credit_hours')).to be_nil
       end
     end
   end

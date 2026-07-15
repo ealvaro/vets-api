@@ -14,6 +14,10 @@ module PdfFill
       DEFAULT_PROGRAMS_LIMIT = 4
       DEFAULT_BRANCHES_LIMIT = 4
       DEFAULT_FACULTY_LIMIT = 7
+      # The entryRequirements field on the pdf is small, so any program whose text is
+      # longer than this is extracted in full to the overflow page, leaving only
+      # 'See Additional Page' in that program's Program Name box on the main form
+      ENTRY_REQUIREMENTS_CHAR_LIMIT = 60
       TMP_DIR = 'tmp/pdfs'
       FORM_CLASS = PdfFill::Forms::Va220976
 
@@ -31,9 +35,11 @@ module PdfFill
         programs = merged_form_data['programs'] || []
         branches = merged_form_data['branches'] || []
         faculty = merged_form_data['faculty'] || []
+
         if programs.size <= DEFAULT_PROGRAMS_LIMIT &&
            branches.size <= DEFAULT_BRANCHES_LIMIT &&
-           faculty.size <= DEFAULT_FACULTY_LIMIT
+           faculty.size <= DEFAULT_FACULTY_LIMIT &&
+           programs.none? { |program_data| entry_requirements_overflow?(program_data) }
           generate_default_form(merged_form_data, hash_converter)
         else
           generate_extended_form(merged_form_data, hash_converter)
@@ -60,14 +66,19 @@ module PdfFill
         extra_faculty = extract_extra_from_array(merged_form_data['faculty'] || [],
                                                  DEFAULT_FACULTY_LIMIT)
 
+        # of the programs that remain on the pdf (<= DEFAULT_PROGRAMS_LIMIT), any whose
+        # entry requirements text is too long are pulled out to the overflow page in full
+        entry_requirements_overflow = extract_entry_requirements_overflow(merged_form_data['programs'] || [])
+        additional_programs = extra_programs + entry_requirements_overflow
+
         # convert data that will fit naturally onto the pdf
         pdf_data_hash = hash_converter.transform_data(form_data: merged_form_data, pdftk_keys: FORM_CLASS::KEY)
 
-        add_extras(hash_converter, extra_programs, :program_to_text, 0, 'Additional Programs')
-        add_extras(hash_converter, extra_branches, :branch_to_text, extra_programs.size,
+        add_extras(hash_converter, additional_programs, :program_to_text, 0, 'Additional Programs')
+        add_extras(hash_converter, extra_branches, :branch_to_text, additional_programs.size,
                    'Additional Branches')
         add_extras(hash_converter, extra_faculty, :faculty_to_text,
-                   extra_programs.size + extra_branches.size, 'Additional Officials and Faculty')
+                   additional_programs.size + extra_branches.size, 'Additional Officials and Faculty')
 
         # fill in pdf and append extra pages
         file_path = File.join(TMP_DIR, "22-0976_#{@file_name_suffix}.pdf")
@@ -79,6 +90,25 @@ module PdfFill
         extra = arr[count..] || []
         arr.pop(extra.size)
         extra
+      end
+
+      # Pulls any program whose entryRequirements text exceeds ENTRY_REQUIREMENTS_CHAR_LIMIT
+      # out of the visible programs array (in full, for later rendering on the overflow page),
+      # replacing it in place with just a 'See Additional Page' Program Name so its position
+      # in the pdf's program list is preserved.
+      def extract_entry_requirements_overflow(programs)
+        programs.each_with_object([]) do |program_data, overflow|
+          next unless entry_requirements_overflow?(program_data)
+
+          overflow << program_data.dup
+          program_data.clear
+          program_data['programName'] = 'See Additional Page'
+        end
+      end
+
+      def entry_requirements_overflow?(program_data)
+        entry_requirements = program_data['entryRequirements']
+        entry_requirements.present? && entry_requirements.size > ENTRY_REQUIREMENTS_CHAR_LIMIT
       end
 
       def add_extras(converter, arr, to_text_method, start_i, label)
