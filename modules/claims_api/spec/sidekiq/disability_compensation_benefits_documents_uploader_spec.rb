@@ -248,10 +248,8 @@ RSpec.describe ClaimsApi::DisabilityCompensationBenefitsDocumentsUploader, type:
   end
 
   describe 'when an errored job has a time limitation' do
-    it 'logs to the ClaimsApi Logger' do
-      described_class.within_sidekiq_retries_exhausted_block do
-        expect(subject).to be_expired_in 48.hours
-      end
+    it 'retries for 48 hours' do
+      expect(described_class.get_sidekiq_options['retry_for']).to eq(48.hours)
     end
   end
 end

@@ -9,7 +9,7 @@ module ClaimsApi
     # rubocop:disable Metrics/MethodLength
     class Form526EstablishmentUpload < ClaimsApi::ServiceBase
       LOG_TAG = 'form_526_v1_establishment_upload'
-      sidekiq_options expires_in: 48.hours, retry: true
+      sidekiq_options retry_for: 48.hours
 
       def perform(claim_id)
         log_job_progress(claim_id,

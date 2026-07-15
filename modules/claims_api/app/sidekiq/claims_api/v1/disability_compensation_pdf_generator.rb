@@ -8,7 +8,7 @@ module ClaimsApi
     class DisabilityCompensationPdfGenerator < ClaimsApi::ServiceBase
       EVSS_DOCUMENT_TYPE = 'L023'
       LOG_TAG = '526_v2_PDF_Generator_job'
-      sidekiq_options expires_in: 48.hours, retry: true
+      sidekiq_options retry_for: 48.hours
 
       # rubocop:disable Metrics/MethodLength
       def perform(claim_id, middle_initial)

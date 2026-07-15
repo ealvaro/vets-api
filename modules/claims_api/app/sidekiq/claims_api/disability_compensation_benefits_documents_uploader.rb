@@ -6,7 +6,7 @@ require 'bd/bd'
 module ClaimsApi
   class DisabilityCompensationBenefitsDocumentsUploader < ClaimsApi::ServiceBase
     LOG_TAG = 'Benefits_Documents_Uploader_job'
-    sidekiq_options expires_in: 48.hours, retry: true
+    sidekiq_options retry_for: 48.hours
 
     def perform(claim_id, version = :v2)
       @version = version
