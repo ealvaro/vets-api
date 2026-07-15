@@ -115,10 +115,41 @@ module Cave
     end
 
     # Parses a full name string into { first, middle, last, suffix }, mirroring
-    # parseFullName in normalize.js (2 -> first/last, 3 -> first/middle/last, 4+ -> +suffix).
+    # parseFullName in normalize.js.
+    #
+    # Ordering: DD-214 Field 1 (and death-certificate names) arrive in
+    # "Last, First, Middle" order, e.g. "ARTHUR, DONALD, CALDWELL JR.". The comma
+    # is the only signal of that ordering, so when a comma is present the text
+    # before the first comma is the surname and the remainder is
+    # First [Middle...] [Suffix]. Without a comma the value is assumed to already
+    # be in natural order and parsed positionally (2 -> first/last,
+    # 3 -> first/middle/last, 4+ -> +suffix).
     def parse_full_name(raw)
       return {} unless raw.is_a?(String)
 
+      parse_last_first_name(raw) || parse_positional_name(raw)
+    end
+
+    # Parses the "Last, First, Middle" comma form. Returns nil when there is no
+    # usable comma so the caller can fall back to positional parsing.
+    def parse_last_first_name(raw)
+      comma_idx = raw.index(',')
+      return nil unless comma_idx
+
+      last_tokens = raw[0...comma_idx].strip.split(/\s+/).reject(&:empty?)
+      rest_tokens = (raw[(comma_idx + 1)..] || '').delete(',').strip.split(/\s+/).reject(&:empty?)
+      return nil if last_tokens.empty? || rest_tokens.empty?
+
+      middle, suffix = split_middle_and_suffix(rest_tokens[1..] || [])
+      result = { first: title_case(rest_tokens[0]), last: last_tokens.map { |t| title_case(t) }.join(' ') }
+      result[:middle] = middle unless middle.empty?
+      result[:suffix] = suffix if suffix
+      result
+    end
+
+    # Parses a comma-free name assumed to be in natural order
+    # (2 -> first/last, 3 -> first/middle/last, 4+ -> +suffix).
+    def parse_positional_name(raw)
       tokens = raw.delete(',').strip.split(/\s+/).reject(&:empty?)
       return {} if tokens.empty?
 
@@ -135,6 +166,16 @@ module Cave
           suffix: normalize_suffix(tokens[3..].join(' '))
         }.compact
       end
+    end
+
+    # Splits the trailing suffix (if any) off a [first, middle...] token list,
+    # returning [middle_string, suffix_or_nil].
+    def split_middle_and_suffix(middle_tokens)
+      if middle_tokens.any?
+        suffix = normalize_suffix(middle_tokens[-1])
+        return [middle_tokens[0...-1].map { |t| title_case(t) }.join(' '), suffix] if suffix
+      end
+      [middle_tokens.map { |t| title_case(t) }.join(' '), nil]
     end
 
     def title_case(str)
