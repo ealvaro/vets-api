@@ -5,7 +5,14 @@ module VAOS
     module Unified
       class BaseProvider
         attr_accessor :id, :name, :facility_name, :address, :phone, :latitude, :longitude,
-                      :provider_type, :distance_from_user, :next_available_date
+                      :provider_type, :distance_from_user, :next_available_date,
+                      # Populated by {Unified::ProviderRanker}. +match_score+ (0-100) and
+                      # +rationale+ drive ranked provider search; +recommended+ marks the group's
+                      # best-scoring provider (which may not sit first -- the referral's matched
+                      # provider is pinned to the top of the EPS group regardless of score);
+                      # +seen_before+ is the phase-2 continuity signal (nil = unknown, not yet
+                      # joined against appt history).
+                      :match_score, :rationale, :recommended, :seen_before
 
         def initialize(attrs = {})
           attrs.each { |key, value| send(:"#{key}=", value) if respond_to?(:"#{key}=") }

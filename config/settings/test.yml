@@ -2037,6 +2037,24 @@ vaos:
     # +Settings.vaos.unified_scheduling.allowed_parent_stations+ to a list directly.
     allowed_parent_stations: ~
     default_radius_miles: 25
+    # ProviderRanker tuning; mirrors config/settings.yml (see comments there).
+    ranking:
+      eps:
+        caps:
+          distance_miles: 60
+          wait_days: 30
+        weights:
+          availability: 0.45
+          continuity: 0.10
+          proximity: 0.45
+      va:
+        caps:
+          distance_miles: 60
+          wait_days: 30
+        weights:
+          availability: 0.45
+          continuity: 0.10
+          proximity: 0.45
 vass:
   api_url: <%= ENV['vass__api_url'] || 'https://api.vass.va.gov' %>
   auth_url: https://login.microsoftonline.us

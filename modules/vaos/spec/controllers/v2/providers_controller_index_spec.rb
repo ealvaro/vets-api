@@ -52,8 +52,16 @@ RSpec.describe VAOS::V2::ProvidersController, type: :request do
     end
 
     context 'when called with valid params' do
+      let(:search_service) { instance_double(VAOS::V2::Unified::ProviderSearchService) }
+
       before do
         sign_in_as(create(:user, :loa3))
+        # The test env enables every Flipper flag by default (see config/initializers/flipper.rb),
+        # so stub the provider-ranker flag off here to exercise the legacy flat-list response.
+        # The grouped/ranked shape is covered in its own context below.
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?)
+          .with(:unified_appointments_internal_provider_ranker, anything).and_return(false)
 
         allow(VAOS::ReferralEncryptionService).to receive(:decrypt)
           .with(referral_id).and_return(decrypted_id)
@@ -62,7 +70,6 @@ RSpec.describe VAOS::V2::ProvidersController, type: :request do
         allow(Ccra::ReferralService).to receive(:new).and_return(referral_service)
         allow(referral_service).to receive(:get_referral).and_return(referral)
 
-        search_service = instance_double(VAOS::V2::Unified::ProviderSearchService)
         allow(VAOS::V2::Unified::ProviderSearchService).to receive(:new).and_return(search_service)
         allow(search_service).to receive(:search).and_return([eps_provider, va_provider])
       end
@@ -143,6 +150,8 @@ RSpec.describe VAOS::V2::ProvidersController, type: :request do
         it 'omits onlineScheduling when the flag is disabled' do
           allow(Flipper).to receive(:enabled?).and_call_original
           allow(Flipper).to receive(:enabled?)
+            .with(:unified_appointments_internal_provider_ranker, anything).and_return(false)
+          allow(Flipper).to receive(:enabled?)
             .with(:va_online_scheduling_cc_direct_scheduling_v2_post_mvp, anything).and_return(false)
 
           get '/vaos/v2/providers', params: { referral_id: }
@@ -154,12 +163,66 @@ RSpec.describe VAOS::V2::ProvidersController, type: :request do
         it 'includes onlineScheduling when the flag is enabled' do
           allow(Flipper).to receive(:enabled?).and_call_original
           allow(Flipper).to receive(:enabled?)
+            .with(:unified_appointments_internal_provider_ranker, anything).and_return(false)
+          allow(Flipper).to receive(:enabled?)
             .with(:va_online_scheduling_cc_direct_scheduling_v2_post_mvp, anything).and_return(true)
 
           get '/vaos/v2/providers', params: { referral_id: }
 
           body = JSON.parse(response.body)
           expect(body['data']).to all(satisfy { |p| p['attributes'].key?('onlineScheduling') })
+        end
+      end
+
+      context 'and the ranked-providers flag is enabled (hard cutover)' do
+        let(:second_eps_provider) do
+          VAOS::V2::Unified::EpsProvider.new(
+            id: 'bestMatch1',
+            name: 'Dr. Best Match',
+            npi: '2222222',
+            distance_from_user: 1.4
+          )
+        end
+
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:unified_appointments_internal_provider_ranker, anything).and_return(true)
+          # search_grouped sets the recommended marker on each group's best-scoring
+          # provider; here the pinned referral provider sits first but the second
+          # row carries the marker.
+          va_provider.recommended = true
+          eps_provider.recommended = false
+          eps_provider.rationale = '2 mi away'
+          second_eps_provider.recommended = true
+          second_eps_provider.rationale = '1 mi away · available today'
+          allow(search_service).to receive(:search_grouped)
+            .and_return(va: [va_provider], eps: [eps_provider, second_eps_provider])
+        end
+
+        it 'splits the response into separate vaProviders and epsProviders groups' do
+          get '/vaos/v2/providers', params: { referral_id: }
+
+          expect(response).to have_http_status(:ok)
+          body = JSON.parse(response.body)
+          expect(body['data'].keys).to contain_exactly('vaProviders', 'epsProviders')
+          expect(body['data']['vaProviders'].map { |p| p['id'] }).to eq(['455'])
+          expect(body['data']['epsProviders'].map { |p| p['id'] }).to eq(%w[9mN718pH bestMatch1])
+        end
+
+        it 'echoes the recommended marker (best match), not list position' do
+          get '/vaos/v2/providers', params: { referral_id: }
+
+          eps_group = JSON.parse(response.body)['data']['epsProviders']
+          expect(eps_group.first['attributes']['recommended']).to be(false)
+          expect(eps_group.last['attributes']['recommended']).to be(true)
+        end
+
+        it 'exposes a rationale on every ranked row' do
+          get '/vaos/v2/providers', params: { referral_id: }
+
+          eps_group = JSON.parse(response.body)['data']['epsProviders']
+          expect(eps_group.map { |p| p['attributes']['rationale'] })
+            .to eq(['2 mi away', '1 mi away · available today'])
         end
       end
     end

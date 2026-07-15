@@ -60,6 +60,58 @@ module VAOS
         # @return [Array<BaseProvider>] Combined, sorted provider list
         #
         def search(referral:, radius: self.class.default_radius_miles)
+          va_providers, eps_providers = fetch_and_enrich(referral:, radius:)
+          combine_and_sort(va_providers, eps_providers, referral)
+        end
+
+        ##
+        # Ranked variant of {#search}. VA and EPS providers are ranked *separately* (see
+        # {ProviderRanker}) -- never merged into one list -- and returned as two groups so the
+        # controller can emit them under distinct payload keys. The referral's matched CC provider
+        # is still pinned to the top of the EPS group. Gated behind the
+        # +unified_appointments_internal_provider_ranker+ Flipper flag at the controller.
+        #
+        # @param referral [Object] A CCRA referral object with category_of_care, provider NPI, etc.
+        # @param radius [Integer] Search radius in miles (defaults to {.default_radius_miles})
+        # @return [Hash{Symbol=>Array<BaseProvider>}] +{ va: [...], eps: [...] }+, each ranked best-first
+        #
+        def search_grouped(referral:, radius: self.class.default_radius_miles)
+          va_providers, eps_providers = fetch_and_enrich(referral:, radius:)
+          referral_provider, other_eps = partition_referral_provider(eps_providers, referral)
+
+          record_search_result_metrics(va_providers, eps_providers)
+
+          {
+            va: mark_recommended(ranker(:va).rank(va_providers)),
+            eps: mark_recommended(build_eps_group(referral_provider, other_eps))
+          }
+        end
+
+        private
+
+        # The referral's matched provider keeps the top slot but still runs through the ranker
+        # (via a single-element rank) so it carries a match_score and rationale like its peers --
+        # otherwise the pinned card would render with no explanation.
+        def build_eps_group(referral_provider, other_eps)
+          eps_ranker = ranker(:eps)
+          ranked = eps_ranker.rank(other_eps)
+          return ranked if referral_provider.nil?
+
+          [*eps_ranker.rank([referral_provider]), *ranked]
+        end
+
+        # Flags the group's best-scoring provider (ties -> earliest in list) so the FE badges the
+        # true best match. Position won't do: the pinned referral provider sits first regardless
+        # of score, so "first in the group" and "best match" can be different providers.
+        def mark_recommended(providers)
+          best = providers.max_by(&:match_score)
+          providers.each { |provider| provider.recommended = provider.equal?(best) }
+        end
+
+        # Shared pipeline for both {#search} and {#search_grouped}: resolve the user address, fetch
+        # VA + EPS providers in parallel, then enrich each with next-available dates. Returns the two
+        # raw (unsorted, unranked) provider lists.
+        def fetch_and_enrich(referral:, radius:)
           user_address = resolve_user_address
           unless user_address&.latitude && user_address.longitude
             raise Common::Exceptions::UnprocessableEntity.new(
@@ -78,10 +130,19 @@ module VAOS
             enrich_eps_next_available!(eps_providers, referral)
           end
 
-          combine_and_sort(va_providers, eps_providers, referral)
+          [va_providers, eps_providers]
         end
 
-        private
+        # Builds a {ProviderRanker} for the given care type (+:va+ or +:eps+) from Settings, so
+        # product can tune "closer vs. sooner vs. same-clinic" per type without a deploy. Missing
+        # config falls back to the ranker's own defaults.
+        def ranker(type)
+          cfg = Settings.vaos&.unified_scheduling&.ranking&.public_send(type)
+          ProviderRanker.new(
+            weights: cfg&.weights.to_h,
+            caps: cfg&.caps.to_h
+          )
+        end
 
         def resolve_user_address
           current_user.vet360_contact_info&.residential_address
@@ -521,6 +582,12 @@ module VAOS
             p.distance_from_user || Float::INFINITY
           end
 
+          record_search_result_metrics(va_providers, eps_providers)
+
+          referral_provider ? [referral_provider] + sorted_others : sorted_others
+        end
+
+        def record_search_result_metrics(va_providers, eps_providers)
           if va_providers.any? || eps_providers.any?
             StatsD.increment("#{STATSD_KEY_PREFIX}.search.success", tags: [
                                "va_count:#{va_providers.size}",
@@ -529,8 +596,6 @@ module VAOS
           else
             StatsD.increment("#{STATSD_KEY_PREFIX}.search.no_results")
           end
-
-          referral_provider ? [referral_provider] + sorted_others : sorted_others
         end
 
         def partition_referral_provider(eps_providers, referral)

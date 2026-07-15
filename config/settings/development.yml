@@ -2039,6 +2039,24 @@ vaos:
     # comma-delimited list (e.g. "983,442") if you want to mimic the prod scope.
     allowed_parent_stations: ~
     default_radius_miles: 25
+    # ProviderRanker tuning; mirrors config/settings.yml (see comments there).
+    ranking:
+      eps:
+        caps:
+          distance_miles: 60
+          wait_days: 30
+        weights:
+          availability: 0.45
+          continuity: 0.10
+          proximity: 0.45
+      va:
+        caps:
+          distance_miles: 60
+          wait_days: 30
+        weights:
+          availability: 0.45
+          continuity: 0.10
+          proximity: 0.45
 vass:
   api_url: https://fake-api.com
   auth_url: https://fake-auth-url.com

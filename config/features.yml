@@ -2951,6 +2951,17 @@ features:
       so we can see which non-PC referrals are being rerouted. When ENABLED,
       CCRA categories use their explicit CCRA_TO_TARGETS entry; categories with
       no entry still fall back to primaryCare with logging.
+  unified_appointments_internal_provider_ranker:
+    actor_type: user
+    enable_in_development: false
+    description: >-
+      Owned by VAOS (Oracle Health Unified Scheduling). Enables the deterministic weighted
+      provider ranking (VAOS::V2::Unified::ProviderRanker) on unified provider search. HARD
+      CUTOVER: when enabled, GET /vaos/v2/providers returns separate vaProviders/epsProviders
+      groups (each ranked, every row carrying a rationale, with the group's best-scoring
+      provider marked recommended -- the referral's matched provider stays pinned first in the
+      EPS group regardless of score) instead of the legacy flat, distance-sorted array.
+      Requires the coordinated frontend change to consume the grouped shape.
   va_online_scheduling_unified_eps_next_available:
     actor_type: user
     enable_in_development: false

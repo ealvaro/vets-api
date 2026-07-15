@@ -6,7 +6,13 @@ module VAOS
       # @param include_online_scheduling [Boolean] When true, adds the +onlineScheduling+ attribute
       #   indicating whether each provider can be scheduled online (vs. call-to-schedule only).
       #   Gated by the post-MVP flag so the key only appears once the enhancement is enabled.
-      def serialize(providers, referral_npi: nil, include_online_scheduling: false)
+      # @param ranked [Boolean] When true, adds the ranked-search attributes: +rationale+ (the
+      #   human-readable explanation from {Unified::ProviderRanker}) and +recommended+ (true on the
+      #   group's best-scoring provider, as marked by ProviderSearchService#search_grouped -- not
+      #   necessarily the first row, since the referral's matched provider is pinned to the top of
+      #   the EPS group regardless of score). Left off for the legacy flat-list path so that payload
+      #   is unchanged; +matchScore+ is intentionally kept internal and not surfaced in phase 1.
+      def serialize(providers, referral_npi: nil, include_online_scheduling: false, ranked: false)
         providers.map.with_index do |provider, index|
           attrs = {
             name: provider.name,
@@ -23,12 +29,21 @@ module VAOS
           }.merge(type_specific_attributes(provider))
 
           attrs[:onlineScheduling] = provider.online_scheduling? if include_online_scheduling
+          attrs.merge!(ranked_attributes(provider)) if ranked
 
           { id: provider.id, type: 'unified_provider', attributes: attrs }
         end
       end
 
       private
+
+      # +recommended+ echoes the model marker set by ProviderSearchService#mark_recommended
+      # (the group's best-scoring provider), NOT list position -- the pinned referral provider
+      # sits first regardless of score. +matchScore+ is intentionally omitted: separate VA/EPS
+      # ranking makes cross-group scores non-comparable, so phase 1 surfaces order + rationale only.
+      def ranked_attributes(provider)
+        { rationale: provider.rationale, recommended: provider.recommended == true }
+      end
 
       def type_specific_attributes(provider)
         case provider

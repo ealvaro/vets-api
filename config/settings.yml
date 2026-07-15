@@ -2022,6 +2022,28 @@ vaos:
     # production. See VAOS::V2::Unified::ParentStationFilter.
     allowed_parent_stations: <%= ENV['vaos__unified_scheduling__allowed_parent_stations'] %>
     default_radius_miles: <%= ENV['vaos__unified_scheduling__default_radius_miles'] || 25 %>
+    # Weights + normalization caps for VAOS::V2::Unified::ProviderRanker. VA and EPS providers are
+    # ranked separately, so each care type has its own tunable block. Weights are relative (they need
+    # not sum to 1; the ranker renormalizes over whichever signals a provider actually has). caps are
+    # the normalization ceilings: a provider at/beyond the cap scores 0 for that factor. Product can
+    # tune "closer vs. sooner vs. same-clinic" here; missing values fall back to the ranker defaults.
+    ranking:
+      eps:
+        caps:
+          distance_miles: 60
+          wait_days: 30
+        weights:
+          availability: 0.45
+          continuity: 0.10
+          proximity: 0.45
+      va:
+        caps:
+          distance_miles: 60
+          wait_days: 30
+        weights:
+          availability: 0.45
+          continuity: 0.10
+          proximity: 0.45
 vass:
   api_url: <%= ENV['vass__api_url'] %>
   auth_url: https://login.microsoftonline.us

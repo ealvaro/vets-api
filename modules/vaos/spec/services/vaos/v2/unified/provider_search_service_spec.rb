@@ -1337,6 +1337,61 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
         end
       end
     end
+
+    describe '#search_grouped (ranked vaProviders/epsProviders groups)' do
+      let(:far_eps_provider) do
+        eps_provider_hash.merge(
+          id: 'far123',
+          individual_providers: [{ name: 'Dr. Far', npi: '9999999' }],
+          location: {
+            address: '500 Far Ave, Orlando, FL, 32801, US',
+            latitude: 28.5383,
+            longitude: -81.3792
+          }
+        )
+      end
+
+      before do
+        allow(eps_provider_service).to receive(:search_by_location)
+          .and_return([eps_provider_hash, far_eps_provider])
+      end
+
+      it 'returns separately ranked va and eps groups with the referral provider pinned first in eps' do
+        result = service.search_grouped(referral:)
+
+        expect(result.keys).to contain_exactly(:va, :eps)
+        expect(result[:va].map(&:provider_type)).to all(eq('va'))
+        expect(result[:eps].first.npi).to eq('91560381x')
+      end
+
+      it 'annotates the pinned referral provider like its ranked peers' do
+        pinned = service.search_grouped(referral:)[:eps].first
+
+        expect(pinned.match_score).to be_a(Numeric)
+        expect(pinned.rationale).to be_present
+      end
+
+      it 'marks exactly one provider per non-empty group as recommended: the best-scoring one' do
+        result = service.search_grouped(referral:)
+
+        result.each_value do |group|
+          next if group.empty?
+
+          recommended = group.select(&:recommended)
+          expect(recommended.size).to eq(1)
+          expect(recommended.first.match_score).to eq(group.map(&:match_score).max)
+        end
+      end
+
+      it 'returns empty groups without error when nothing is found' do
+        allow(lighthouse_client).to receive(:get_facilities).and_return([])
+        allow(eps_provider_service).to receive(:search_by_location).and_return([])
+
+        result = service.search_grouped(referral:)
+
+        expect(result).to eq(va: [], eps: [])
+      end
+    end
   end
 
   describe '.default_radius_miles' do

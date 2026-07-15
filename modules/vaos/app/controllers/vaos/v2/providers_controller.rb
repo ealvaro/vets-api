@@ -4,26 +4,52 @@ module VAOS
   module V2
     class ProvidersController < VAOS::BaseController
       # GET /vaos/v2/providers
-      # Returns a unified list of VA and CC providers near the user's address,
-      # filtered by the referral's category of care. The referral's matched
-      # provider is pinned to the top of the list.
+      # Returns VA and CC providers near the user's address, filtered by the referral's category of
+      # care. The referral's matched provider is pinned to the top of the CC results.
+      #
+      # Response shape is gated by the +unified_appointments_internal_provider_ranker+ flag
+      # (hard cutover):
+      #   * flag OFF (legacy): +data+ is a single flat array, sorted by distance.
+      #   * flag ON (ranked):  +data+ is +{ vaProviders: [...], epsProviders: [...] }+, each ranked
+      #     separately by {Unified::ProviderRanker}.
       def index
         referral = fetch_referral
-        providers = unified_search_service.search(
-          referral:,
-          radius: radius_param
-        )
 
-        serialized = unified_serializer.serialize(
+        if provider_ranker_enabled?
+          render json: { data: ranked_provider_groups(referral) }
+        else
+          render json: { data: legacy_provider_list(referral) }
+        end
+      end
+
+      private
+
+      def ranked_provider_groups(referral)
+        grouped = unified_search_service.search_grouped(referral:, radius: radius_param)
+
+        {
+          vaProviders: serialize_group(grouped[:va], referral),
+          epsProviders: serialize_group(grouped[:eps], referral)
+        }
+      end
+
+      def serialize_group(providers, referral)
+        unified_serializer.serialize(
+          providers,
+          referral_npi: referral.provider_npi,
+          include_online_scheduling: call_to_schedule_providers_enabled?,
+          ranked: true
+        )
+      end
+
+      def legacy_provider_list(referral)
+        providers = unified_search_service.search(referral:, radius: radius_param)
+        unified_serializer.serialize(
           providers,
           referral_npi: referral.provider_npi,
           include_online_scheduling: call_to_schedule_providers_enabled?
         )
-
-        render json: { data: serialized }
       end
-
-      private
 
       def fetch_referral
         referral_id = params.require(:referral_id)
@@ -51,6 +77,12 @@ module VAOS
       # Flag gating the call-to-schedule (non-online-scheduling) provider enhancements.
       def call_to_schedule_providers_enabled?
         Flipper.enabled?(:va_online_scheduling_cc_direct_scheduling_v2_post_mvp, current_user)
+      end
+
+      # Flag gating the deterministic ranked-provider response. Hard cutover: flips the response
+      # shape from a flat array to separate +vaProviders+/+epsProviders+ groups (see #index).
+      def provider_ranker_enabled?
+        Flipper.enabled?(:unified_appointments_internal_provider_ranker, current_user)
       end
 
       def unified_search_service
