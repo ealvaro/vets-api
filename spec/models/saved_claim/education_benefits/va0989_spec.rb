@@ -24,9 +24,51 @@ RSpec.describe SavedClaim::EducationBenefits::VA0989 do
     let(:claim) { create(:va0989) }
     let(:user) { create(:user) }
 
-    it 'does not queue a Benefits Intake upload job (0989 uses the nightly spool file)' do
+    it 'queues up a submit claim job' do
       claim.after_submit(user)
-      expect(EducationForm::SubmitEducationBenefitsClaimJob.jobs).to be_empty
+      expect(EducationForm::SubmitEducationBenefitsClaimJob.jobs.size).to eq(1)
+      expect(EducationForm::SubmitEducationBenefitsClaimJob.jobs[0]['args'].first).to eq(claim.id)
+      expect(EducationForm::SubmitEducationBenefitsClaimJob.jobs[0]['args'].second).to eq(user.user_account.id)
+    end
+
+    context 'with a nil user' do
+      let(:user) { nil }
+
+      it 'queues up a submit claim job, but without an account uuid' do
+        claim.after_submit(user)
+        expect(EducationForm::SubmitEducationBenefitsClaimJob.jobs.size).to eq(1)
+        expect(EducationForm::SubmitEducationBenefitsClaimJob.jobs[0]['args'].first).to eq(claim.id)
+        expect(EducationForm::SubmitEducationBenefitsClaimJob.jobs[0]['args'].second).to be_nil
+      end
+    end
+  end
+
+  describe 'generate_benefits_intake_metadata' do
+    it 'returns the right metadata' do
+      expect(instance.generate_benefits_intake_metadata).to eq({
+                                                                 'veteranFirstName' => 'John',
+                                                                 'veteranLastName' => 'Doe',
+                                                                 'fileNumber' => '123456789',
+                                                                 'zipCode' => '98101',
+                                                                 'source' => 'SavedClaim::EducationBenefits::VA0989',
+                                                                 'docType' => '22-0989',
+                                                                 'businessLine' => 'EDU'
+                                                               })
+    end
+  end
+
+  describe 'personalisation' do
+    it 'returns the right values' do
+      expect(instance.personalisation).to eq({
+                                               first_name: 'John',
+                                               last_name: 'Doe'
+                                             })
+    end
+  end
+
+  describe 'email' do
+    it 'returns the right values' do
+      expect(instance.email).to eq('john@example.com')
     end
   end
 end

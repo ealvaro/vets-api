@@ -8,6 +8,7 @@ module EducationBenefitsClaims
   # @see BenefitsIntake::SubmissionHandler::SavedClaim
   class SubmissionHandler < ::BenefitsIntake::SubmissionHandler::SavedClaim
     VALID_FORM_IDS = %w[
+      22-0989
       22-10278
     ].freeze
     # A little bit of metaprogramming here: we want one handler to handle

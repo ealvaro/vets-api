@@ -1703,6 +1703,11 @@ vanotify:
         submitted:
           flipper_id: survivors_benefits_submitted_email_notification
           template_id: form8416_submitted_email_template_id
+    "22_0989":
+      api_key: fake_secret
+      email:
+        error:
+          template_id: form0989_error_email_template_id
     "22_10278":
       api_key: fake_secret
       email:

@@ -8,8 +8,4 @@ FactoryBot.define do
   factory :va0989_not_closed, class: 'SavedClaim::EducationBenefits::VA0989', parent: :education_benefits do
     form { Rails.root.join('spec', 'fixtures', 'education_benefits_claims', '0989', 'not_closed.json').read }
   end
-
-  factory :va0989_optional_blanks, class: 'SavedClaim::EducationBenefits::VA0989', parent: :education_benefits do
-    form { Rails.root.join('spec', 'fixtures', 'education_benefits_claims', '0989', 'optional_blanks.json').read }
-  end
 end
