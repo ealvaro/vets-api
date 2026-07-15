@@ -2,9 +2,12 @@
 
 module ClaimsApi
   class ClaimUploader < ClaimsApi::ServiceBase
-    sidekiq_options retry: true, unique_until: :success
+    sidekiq_options retry: true, retry_for: 48.hours
 
-    def perform(uuid, record_type)
+    def perform(uuid, _record_type)
+      # _record_type kept for backward compatibility with queued jobs that still have this argument.
+      # Previously used to distinguish 'document' vs 'claim' records during manual re-enqueuing.
+      # Now Sidekiq's built-in retry handles rescheduling, so this parameter is no longer referenced.
       claim_object = ClaimsApi::SupportingDocument.find_by(id: uuid) ||
                      ClaimsApi::AutoEstablishedClaim.find_by(id: uuid)
 
@@ -15,7 +18,7 @@ module ClaimsApi
         ClaimsApi::Logger.log('lighthouse_claim_uploader',
                               message: "evss id: #{auto_claim&.evss_id} was nil, for uuid: #{uuid}")
 
-        self.class.perform_in(30.minutes, uuid, record_type)
+        raise "evss_id not yet available for uuid: #{uuid}"
       else
         uploader = claim_object.uploader
         original_filename = claim_object.file_data['filename']

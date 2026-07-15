@@ -101,11 +101,12 @@ RSpec.describe ClaimsApi::ClaimUploader, type: :job do
     expect(auto_claim.uploader.blank?).to be(false)
   end
 
-  it 'if an evss_id is nil, and claim is errored, it reschedules the sidekiq job to the future' do
-    subject.new.perform(errored_auto_claim.id, 'claim')
+  it 'raises when evss_id is nil so Sidekiq retries automatically' do
+    expect do
+      subject.new.perform(errored_auto_claim.id, 'claim')
+    end.to raise_error(RuntimeError, /evss_id not yet available/)
 
-    expect(subject.jobs.count).to eq(1)
-    expect(subject.jobs.first['args']).to eq([errored_auto_claim.id, 'claim'])
+    expect(subject.jobs).to be_empty
   end
 
   describe 'BD document type' do
