@@ -12,7 +12,7 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
     let(:client_id) { { client_id: client_id_value } }
     let(:client_id_value) { client_config.client_id }
     let!(:client_config) { create(:client_config, logout_redirect_uri:) }
-    let(:logout_redirect_uri) { 'some-logout-redirect-uri' }
+    let(:logout_redirect_uri) { 'https://some-logout-redirect-uri.com' }
     let(:post_logout_redirect_uri) { nil }
     let(:access_token) { SignIn::AccessTokenJwtEncoder.new(access_token: access_token_object).perform }
     let(:authorization) { "Bearer #{access_token}" }
@@ -86,7 +86,7 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
       end
 
       context 'when client configuration has configured a logout redirect uri' do
-        let(:logout_redirect_uri) { 'some-logout-redirect-uri' }
+        let(:logout_redirect_uri) { 'https://some-logout-redirect-uri.com' }
         let(:expected_error_status) { :redirect }
 
         it 'returns expected status' do
@@ -149,7 +149,7 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
 
         context 'and client configuration has configured a logout redirect uri' do
           let(:logingov_client_id) { IdentitySettings.logingov.client_id }
-          let(:logout_redirect_uri) { 'some-logout-redirect-uri' }
+          let(:logout_redirect_uri) { 'https://some-logout-redirect-uri.com' }
           let(:logingov_logout_redirect_uri) { IdentitySettings.logingov.logout_redirect_uri }
           let(:random_seed) { 'some-random-seed' }
           let(:ssl_key) { OpenSSL::PKey::RSA.generate(2048) }
@@ -199,7 +199,7 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
         end
 
         context 'and client configuration has configured a logout redirect uri' do
-          let(:logout_redirect_uri) { 'some-logout-redirect-uri' }
+          let(:logout_redirect_uri) { 'https://some-logout-redirect-uri.com' }
           let(:expected_status) { :redirect }
 
           it 'returns redirect status' do
@@ -275,7 +275,7 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
         end
 
         context 'and client_id has a client configuration with a configured logout redirect uri' do
-          let(:logout_redirect_uri) { 'some-logout-redirect-uri' }
+          let(:logout_redirect_uri) { 'https://some-logout-redirect-uri.com' }
           let(:expected_status) { :redirect }
 
           it 'returns redirect status' do
