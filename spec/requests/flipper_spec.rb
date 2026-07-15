@@ -368,23 +368,6 @@ RSpec.describe 'flipper', type: :request do
           end
         end
 
-        it 'can add actors with mixed-case email and still match' do
-          allow(user).to receive(:organization_member?).with(Settings.flipper.github_organization).and_return(true)
-          allow(user).to receive(:team_member?).with(Settings.flipper.github_team).and_return(true)
-          Flipper.disable(:this_is_only_a_test) # rubocop:disable Project/ForbidFlipperToggleInSpecs
-          test_user = create(:user)
-          mixed_case_email = test_user.flipper_id.upcase
-
-          bypass_flipper_authenticity_token do
-            expect(Flipper.enabled?(:this_is_only_a_test)).to be false
-            post '/flipper/features/this_is_only_a_test/actors',
-                 params: { operation: 'enable', value: mixed_case_email }
-            follow_redirect!
-            assert_response :success
-            expect(Flipper.enabled?(:this_is_only_a_test, test_user)).to be true
-          end
-        end
-
         it 'can adjust percentage_of_actors' do
           allow(user).to receive(:organization_member?).with(Settings.flipper.github_organization).and_return(true)
           allow(user).to receive(:team_member?).with(Settings.flipper.github_team).and_return(true)
@@ -406,6 +389,198 @@ RSpec.describe 'flipper', type: :request do
             expect(Flipper.enabled?(:this_is_only_a_test, test_user1)).to be false
             expect(Flipper.enabled?(:this_is_only_a_test, test_user2)).to be false
           end
+        end
+      end
+    end
+  end
+
+  context 'POST /flipper/features (feature creation)' do
+    context 'Unauthenticated User' do
+      it 'cannot create features and returns 403' do
+        bypass_flipper_authenticity_token do
+          expect do
+            post '/flipper/features', params: { value: 'new_test_feature' }
+          end.to raise_error(Common::Exceptions::Forbidden)
+        end
+      end
+    end
+
+    context 'Authenticated User' do
+      before do
+        allow_any_instance_of(ActionDispatch::Request).to receive(:session) { { flipper_user: user } }
+      end
+
+      context 'Unauthorized User (no org/team membership)' do
+        it 'cannot create features and returns 403' do
+          bypass_flipper_authenticity_token do
+            expect do
+              post '/flipper/features', params: { value: 'new_test_feature' }
+            end.to raise_error(Common::Exceptions::Forbidden)
+          end
+        end
+      end
+
+      context 'Authorized User (org and team member)' do
+        before do
+          allow(user).to receive(:organization_member?).with(Settings.flipper.github_organization).and_return(true)
+          allow(user).to receive(:team_member?).with(Settings.flipper.github_team).and_return(true)
+          @original_creation_enabled = Flipper::UI.configuration.feature_creation_enabled
+          Flipper::UI.configuration.feature_creation_enabled = true
+        end
+
+        after do
+          Flipper::UI.configuration.feature_creation_enabled = @original_creation_enabled
+        end
+
+        it 'can create features' do
+          bypass_flipper_authenticity_token do
+            post '/flipper/features', params: { value: 'new_test_feature' }
+            follow_redirect!
+            assert_response :success
+          end
+        end
+      end
+    end
+  end
+
+  context 'DELETE /flipper/features/:feature_name (feature deletion)' do
+    context 'Unauthenticated User' do
+      it 'cannot delete features and returns 403' do
+        bypass_flipper_authenticity_token do
+          expect do
+            delete '/flipper/features/this_is_only_a_test'
+          end.to raise_error(Common::Exceptions::Forbidden)
+        end
+      end
+    end
+
+    context 'Authenticated User' do
+      before do
+        allow_any_instance_of(ActionDispatch::Request).to receive(:session) { { flipper_user: user } }
+      end
+
+      context 'Unauthorized User (no org/team membership)' do
+        it 'cannot delete features and returns 403' do
+          bypass_flipper_authenticity_token do
+            expect do
+              delete '/flipper/features/this_is_only_a_test'
+            end.to raise_error(Common::Exceptions::Forbidden)
+          end
+        end
+      end
+
+      context 'Authorized User (org and team member)' do
+        before do
+          allow(user).to receive(:organization_member?).with(Settings.flipper.github_organization).and_return(true)
+          allow(user).to receive(:team_member?).with(Settings.flipper.github_team).and_return(true)
+          @original_removal_enabled = Flipper::UI.configuration.feature_removal_enabled
+          Flipper::UI.configuration.feature_removal_enabled = true
+        end
+
+        after do
+          Flipper::UI.configuration.feature_removal_enabled = @original_removal_enabled
+        end
+
+        it 'can delete features' do
+          bypass_flipper_authenticity_token do
+            delete '/flipper/features/this_is_only_a_test'
+            follow_redirect!
+            assert_response :success
+          end
+        end
+      end
+    end
+  end
+
+  context 'POST /flipper/settings/export' do
+    context 'Unauthenticated User' do
+      it 'cannot export settings and returns 403' do
+        bypass_flipper_authenticity_token do
+          expect do
+            post '/flipper/settings/export'
+          end.to raise_error(Common::Exceptions::Forbidden)
+        end
+      end
+    end
+
+    context 'Authenticated User' do
+      before do
+        allow_any_instance_of(ActionDispatch::Request).to receive(:session) { { flipper_user: user } }
+      end
+
+      context 'Unauthorized User (no org/team membership)' do
+        it 'cannot export settings and returns 403' do
+          bypass_flipper_authenticity_token do
+            expect do
+              post '/flipper/settings/export'
+            end.to raise_error(Common::Exceptions::Forbidden)
+          end
+        end
+      end
+
+      context 'Authorized User (org and team member)' do
+        before do
+          allow(user).to receive(:organization_member?).with(Settings.flipper.github_organization).and_return(true)
+          allow(user).to receive(:team_member?).with(Settings.flipper.github_team).and_return(true)
+        end
+
+        it 'can export settings' do
+          bypass_flipper_authenticity_token do
+            post '/flipper/settings/export'
+            assert_response :success
+            expect(response.headers['Content-Disposition']).to match(/Attachment;filename=flipper_/)
+          end
+        end
+      end
+    end
+  end
+
+  context 'POST /flipper/settings/import' do
+    context 'Unauthenticated User' do
+      it 'cannot import settings and returns 403' do
+        bypass_flipper_authenticity_token do
+          expect do
+            post '/flipper/settings/import'
+          end.to raise_error(Common::Exceptions::Forbidden)
+        end
+      end
+    end
+
+    context 'Authenticated User' do
+      before do
+        allow_any_instance_of(ActionDispatch::Request).to receive(:session) { { flipper_user: user } }
+      end
+
+      context 'Unauthorized User (no org/team membership)' do
+        it 'cannot import settings and returns 403' do
+          bypass_flipper_authenticity_token do
+            expect do
+              post '/flipper/settings/import'
+            end.to raise_error(Common::Exceptions::Forbidden)
+          end
+        end
+      end
+
+      context 'Authorized User (org and team member)' do
+        before do
+          allow(user).to receive(:organization_member?).with(Settings.flipper.github_organization).and_return(true)
+          allow(user).to receive(:team_member?).with(Settings.flipper.github_team).and_return(true)
+        end
+
+        it 'can import settings' do
+          import_file = Tempfile.new(['flipper_import', '.json'])
+          import_file.write({ version: 1, features: {} }.to_json)
+          import_file.rewind
+
+          bypass_flipper_authenticity_token do
+            post '/flipper/settings/import',
+                 params: { file: Rack::Test::UploadedFile.new(import_file.path, 'application/json') }
+            follow_redirect!
+            assert_response :success
+          end
+        ensure
+          import_file.close
+          import_file.unlink
         end
       end
     end

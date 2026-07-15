@@ -3,9 +3,10 @@
 module Flipper
   class RouteAuthorizationConstraint
     def self.matches?(request)
-      # Confirm that requests to toggle (POST to /boolean) are authorized
-      url_pattern = %r{\A/flipper/features/[^/]+/(boolean|actors|groups|percentage_of_actors|percentage_of_time)\z}
-      if request.method == 'POST' && request.path.match?(url_pattern)
+      # Enforce org/team authorization for all mutating requests (POST, DELETE, PUT, PATCH).
+      # This covers feature toggles, feature creation/deletion, import/export, and any future
+      # mutating endpoints added by upstream gem updates.
+      if %w[POST DELETE PUT PATCH].include?(request.method)
         return true if authorized?(request.session[:flipper_user])
 
         raise Common::Exceptions::Forbidden
