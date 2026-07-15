@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_07_200917) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_14_141334) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -1152,6 +1152,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_07_200917) do
     t.uuid "form21a_attachment_guid", null: false, comment: "guid of the Form21aAttachment / S3 object"
     t.string "form_id", null: false, comment: "form type of the submission"
     t.datetime "last_attempted_at", comment: "timestamp of the last upload attempt"
+    t.datetime "last_stuck_alerted_at", comment: "timestamp when Ops was last alerted that this document upload was stuck"
     t.enum "latest_status", default: "pending", enum_type: "form21a_document_submission_status"
     t.boolean "needs_kms_rotation", default: false, null: false
     t.datetime "next_retry_at", comment: "timestamp when this document is eligible for re-drive"
@@ -1160,6 +1161,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_07_200917) do
     t.datetime "updated_at", null: false
     t.index ["application_id"], name: "idx_form21a_doc_subs_on_application_id"
     t.index ["form21a_attachment_guid"], name: "idx_form21a_doc_subs_on_attachment_guid", unique: true
+    t.index ["last_stuck_alerted_at"], name: "idx_form21a_doc_subs_on_last_stuck_alerted_at"
     t.index ["latest_status", "next_retry_at"], name: "idx_form21a_doc_subs_on_status_and_retry_at"
     t.index ["needs_kms_rotation"], name: "idx_form21a_doc_subs_on_needs_kms_rotation"
   end
