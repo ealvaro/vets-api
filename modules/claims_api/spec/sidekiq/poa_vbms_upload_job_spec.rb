@@ -156,6 +156,32 @@ RSpec.describe ClaimsApi::PoaVBMSUploadJob, type: :job do
     end
   end
 
+  describe 'when uploading a PDF for a dependent' do
+    let(:power_of_attorney) { create_poa }
+    let(:action) { 'put' }
+
+    before do
+      power_of_attorney.update(
+        auth_headers: power_of_attorney.auth_headers.merge(
+          'dependent' => { 'participant_id' => '000000000000', ssn: '111111111' }
+        )
+      )
+    end
+
+    it 'calls the PoaAssignDependentClaimantJob instead of the PoaUpdater for put requests' do
+      expect_any_instance_of(ClaimsApi::PoaDocumentService).to receive(:create_upload).with(
+        poa: power_of_attorney,
+        pdf_path: anything,
+        doc_type: power_of_attorney.file_data['doc_type'],
+        action:
+      )
+      expect(ClaimsApi::PoaAssignDependentClaimantJob).to receive(:perform_async).with(power_of_attorney.id)
+      expect(ClaimsApi::PoaUpdater).not_to receive(:perform_async)
+
+      subject.new.perform(power_of_attorney.id, action)
+    end
+  end
+
   private
 
   def create_poa

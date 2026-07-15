@@ -1010,6 +1010,48 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
           expect(response).to have_http_status(:not_found)
         end
       end
+
+      context 'when an upload occurs for a dependent claimant' do
+        let(:dependent_headers) do
+          {
+            'va_eauth_pid' => veteran_participant_id,
+            'dependent' => {
+              'participant_id' => '000000000000',
+              'first_name' => 'First',
+              'last_name' => 'Last',
+              'ssn' => '1111111111'
+            }
+          }
+        end
+        let(:dependent_poa) do
+          create(:power_of_attorney, auth_headers: dependent_headers)
+        end
+
+        it 'queues PoaVBMSUploadJob which will route to PoaAssignDependentClaimantJob' do
+          mock_acg(scopes) do |auth_header|
+            allow_any_instance_of(pws)
+              .to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
+            allow_any_instance_of(ClaimsApi::V1::Forms::PowerOfAttorneyController)
+              .to receive(:check_request_ssn_matches_mpi).and_return(nil)
+
+            put("#{path}/#{dependent_poa.id}", params: binary_params, headers: headers.merge(auth_header))
+
+            expect(response).to have_http_status(:success)
+            dependent_poa.reload
+            expect(dependent_poa.status).to eq('submitted')
+
+            # The controller enqueues PoaVBMSUploadJob; assert it is queued with the correct POA id
+            expect(ClaimsApi::PoaVBMSUploadJob.jobs.map { |j| j['args'].first })
+              .to include(dependent_poa.id)
+
+            # Run the job inline to verify it routes to PoaAssignDependentClaimantJob, not PoaUpdater
+            allow_any_instance_of(ClaimsApi::PoaDocumentService).to receive(:create_upload)
+            expect(ClaimsApi::PoaAssignDependentClaimantJob).to receive(:perform_async).with(dependent_poa.id)
+            expect(ClaimsApi::PoaUpdater).not_to receive(:perform_async)
+            ClaimsApi::PoaVBMSUploadJob.new.perform(dependent_poa.id, 'put')
+          end
+        end
+      end
     end
 
     describe '#validate' do

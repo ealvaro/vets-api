@@ -16,7 +16,7 @@ module ClaimsApi
 
       benefits_doc_upload(poa: power_of_attorney, pdf_path: file_path, action:, doc_type: 'L075')
 
-      ClaimsApi::PoaUpdater.perform_async(power_of_attorney.id)
+      run_update_poa_job(power_of_attorney)
     rescue Errno::ENOENT
       rescue_file_not_found(power_of_attorney)
       raise
@@ -48,6 +48,17 @@ module ClaimsApi
 
     def benefits_doc_upload(poa:, pdf_path:, doc_type:, action:)
       PoaDocumentService.new.create_upload(poa:, pdf_path:, action:, doc_type:)
+    end
+
+    # run job for dependent if dependent is in the auth headers
+    # running async to keep in line with existing logic, but this could be run synchronously
+    # to ensure the update occurs before PDF is uploaded like PoaFormBuilderJob
+    def run_update_poa_job(power_of_attorney)
+      if dependent_filing?(power_of_attorney)
+        ClaimsApi::PoaAssignDependentClaimantJob.perform_async(power_of_attorney.id)
+      else
+        ClaimsApi::PoaUpdater.perform_async(power_of_attorney.id)
+      end
     end
   end
 end
