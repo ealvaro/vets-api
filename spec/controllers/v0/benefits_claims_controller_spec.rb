@@ -1053,6 +1053,25 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
         end
       end
 
+      context 'when a Lighthouse SUCCESS submission also appears in supportingDocuments' do
+        # Regression coverage for filter_evidence_submissions_for_display. Uses the production
+        # job_class literal that Lighthouse::EvidenceSubmissions::DocumentUpload actually sets
+        # (existing :bd_lh_* factories use a legacy string that predates that worker).
+        before do
+          create(:bd_lh_evidence_submission_success,
+                 claim_id:,
+                 job_class: 'Lighthouse::EvidenceSubmissions::DocumentUpload')
+        end
+
+        it 'suppresses the SUCCESS submission so it does not duplicate the supportingDocument copy' do
+          VCR.use_cassette('lighthouse/benefits_claims/show/200_response') do
+            get(:show, params: { id: claim_id })
+          end
+          evidence_submissions = JSON.parse(response.body).dig('data', 'attributes', 'evidenceSubmissions')
+          expect(evidence_submissions).to eq([])
+        end
+      end
+
       context 'when record has a tracked item' do
         let(:tracked_item_id) { 394_443 }
 
@@ -1875,44 +1894,39 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
       end
     end
 
-    context 'when filter_duplicate_evidence_submissions is called directly' do
+    context 'when filter_evidence_submissions_for_display is called directly' do
       let(:controller) { described_class.new }
-      let(:mock_evidence_submission) do
-        double('EvidenceSubmission',
-               id: 1,
-               template_metadata: {
-                 personalisation: {
-                   file_name: 'test_document.pdf'
-                 }
-               }.to_json)
+
+      it 'drops Lighthouse SUCCESS submissions (they surface via supportingDocuments)' do
+        lighthouse_success = EvidenceSubmission.new(
+          upload_status: BenefitsDocuments::Constants::UPLOAD_STATUS[:SUCCESS],
+          job_class: 'Lighthouse::EvidenceSubmissions::DocumentUpload'
+        )
+        champva_success = EvidenceSubmission.new(
+          upload_status: BenefitsDocuments::Constants::UPLOAD_STATUS[:SUCCESS],
+          job_class: nil
+        )
+
+        result = controller.send(
+          :filter_evidence_submissions_for_display, [lighthouse_success, champva_success]
+        )
+        expect(result).to eq([champva_success])
       end
 
-      it 'correctly filters duplicates when supporting documents match' do
-        claim_data = {
-          'attributes' => {
-            'supportingDocuments' => [
-              { 'originalFileName' => 'test_document.pdf' },
-              { 'originalFileName' => 'other_document.pdf' }
-            ]
-          }
-        }
+      it 'keeps in-flight Lighthouse submissions so they can power the in-progress UI' do
+        lighthouse_pending = EvidenceSubmission.new(
+          upload_status: BenefitsDocuments::Constants::UPLOAD_STATUS[:PENDING],
+          job_class: 'Lighthouse::EvidenceSubmissions::DocumentUpload'
+        )
+        lighthouse_failed = EvidenceSubmission.new(
+          upload_status: BenefitsDocuments::Constants::UPLOAD_STATUS[:FAILED],
+          job_class: 'Lighthouse::EvidenceSubmissions::DocumentUpload'
+        )
 
-        result = controller.send(:filter_duplicate_evidence_submissions, [mock_evidence_submission], claim_data)
-        expect(result).to be_empty
-      end
-
-      it 'correctly includes evidence submissions when no duplicates exist' do
-        claim_data = {
-          'attributes' => {
-            'supportingDocuments' => [
-              { 'originalFileName' => 'different_document.pdf' },
-              { 'originalFileName' => 'other_document.pdf' }
-            ]
-          }
-        }
-
-        result = controller.send(:filter_duplicate_evidence_submissions, [mock_evidence_submission], claim_data)
-        expect(result).to eq([mock_evidence_submission])
+        result = controller.send(
+          :filter_evidence_submissions_for_display, [lighthouse_pending, lighthouse_failed]
+        )
+        expect(result).to eq([lighthouse_pending, lighthouse_failed])
       end
     end
   end
@@ -1921,199 +1935,76 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
     let(:controller) { described_class.new }
     let(:claim_id) { '600383363' }
 
-    describe '#filter_duplicate_evidence_submissions' do
-      let(:evidence_submission1) do
-        double('EvidenceSubmission',
-               id: 1,
-               template_metadata: { personalisation: { file_name: 'document1.pdf' } }.to_json)
-      end
-      let(:evidence_submission2) do
-        double('EvidenceSubmission',
-               id: 2,
-               template_metadata: { personalisation: { file_name: 'document2.pdf' } }.to_json)
-      end
-      let(:evidence_submission3) do
-        double('EvidenceSubmission',
-               id: 3,
-               template_metadata: { personalisation: { file_name: 'document3.pdf' } }.to_json)
-      end
-      let(:evidence_submissions) { [evidence_submission1, evidence_submission2, evidence_submission3] }
-
-      let(:claim_data) do
-        {
-          'id' => claim_id,
-          'attributes' => {
-            'supportingDocuments' => supporting_documents
-          }
-        }
+    describe '#filter_evidence_submissions_for_display' do
+      # Real (unsaved) EvidenceSubmission instances — no DB touch, no stubs. Lets the tests
+      # describe the domain state (status + provider) without caring which accessor the
+      # controller happens to read.
+      def build_es(upload_status:, job_class:)
+        EvidenceSubmission.new(upload_status:, job_class:)
       end
 
-      context 'when no supporting documents exist' do
-        let(:supporting_documents) { [] }
+      let(:lighthouse_job) { 'Lighthouse::EvidenceSubmissions::DocumentUpload' }
+      let(:success) { BenefitsDocuments::Constants::UPLOAD_STATUS[:SUCCESS] }
+      let(:created) { BenefitsDocuments::Constants::UPLOAD_STATUS[:CREATED] }
+      let(:queued) { BenefitsDocuments::Constants::UPLOAD_STATUS[:QUEUED] }
+      let(:pending) { BenefitsDocuments::Constants::UPLOAD_STATUS[:PENDING] }
+      let(:failed) { BenefitsDocuments::Constants::UPLOAD_STATUS[:FAILED] }
 
-        it 'returns all evidence submissions unchanged' do
-          result = controller.send(:filter_duplicate_evidence_submissions, evidence_submissions, claim_data)
-          expect(result).to eq(evidence_submissions)
+      context 'with a Lighthouse SUCCESS submission' do
+        it 'drops it so it does not duplicate the supportingDocument copy' do
+          es = build_es(upload_status: success, job_class: lighthouse_job)
+          expect(controller.send(:filter_evidence_submissions_for_display, [es])).to eq([])
         end
       end
 
-      context 'when supportingDocuments is nil' do
-        let(:claim_data) do
-          {
-            'id' => claim_id,
-            'attributes' => {}
-          }
-        end
-
-        it 'returns all evidence submissions unchanged' do
-          result = controller.send(:filter_duplicate_evidence_submissions, evidence_submissions, claim_data)
-          expect(result).to eq(evidence_submissions)
-        end
-      end
-
-      context 'when supporting documents exist but no file names match' do
-        let(:supporting_documents) do
-          [
-            { 'originalFileName' => 'different1.pdf' },
-            { 'originalFileName' => 'different2.pdf' }
+      context 'with a Lighthouse submission in an in-flight state' do
+        # Suppressing anything other than SUCCESS would break the in-progress and failed-upload
+        # UIs, which both consume this same endpoint's evidenceSubmissions list.
+        it 'keeps CREATED, QUEUED, PENDING, and FAILED submissions' do
+          in_flight = [
+            build_es(upload_status: created, job_class: lighthouse_job),
+            build_es(upload_status: queued, job_class: lighthouse_job),
+            build_es(upload_status: pending, job_class: lighthouse_job),
+            build_es(upload_status: failed, job_class: lighthouse_job)
           ]
-        end
-
-        it 'returns all evidence submissions unchanged' do
-          result = controller.send(:filter_duplicate_evidence_submissions, evidence_submissions, claim_data)
-          expect(result).to eq(evidence_submissions)
+          expect(controller.send(:filter_evidence_submissions_for_display, in_flight)).to eq(in_flight)
         end
       end
 
-      context 'when supporting documents contain matching file names' do
-        let(:supporting_documents) do
-          [
-            { 'originalFileName' => 'document1.pdf' },  # matches evidence_submission1
-            { 'originalFileName' => 'different.pdf' },
-            { 'originalFileName' => 'document3.pdf' }   # matches evidence_submission3
+      context 'with a CHAMPVA submission (job_class is nil)' do
+        it 'keeps SUCCESS submissions — CHAMPVA never produces a supportingDocument' do
+          es = build_es(upload_status: success, job_class: nil)
+          expect(controller.send(:filter_evidence_submissions_for_display, [es])).to eq([es])
+        end
+
+        it 'keeps in-flight and failed submissions' do
+          in_flight = [
+            build_es(upload_status: created, job_class: nil),
+            build_es(upload_status: pending, job_class: nil),
+            build_es(upload_status: failed, job_class: nil)
           ]
-        end
-
-        it 'filters out evidence submissions with matching file names' do
-          result = controller.send(:filter_duplicate_evidence_submissions, evidence_submissions, claim_data)
-          expect(result).to eq([evidence_submission2])
-          expect(result).not_to include(evidence_submission1)
-          expect(result).not_to include(evidence_submission3)
+          expect(controller.send(:filter_evidence_submissions_for_display, in_flight)).to eq(in_flight)
         end
       end
 
-      context 'when supporting documents have nil originalFileName' do
-        let(:supporting_documents) do
-          [
-            { 'originalFileName' => nil },
-            { 'originalFileName' => 'document2.pdf' }
-          ]
-        end
+      context 'with a mixed list of submissions' do
+        it 'drops only Lighthouse SUCCESS rows and preserves everything else' do
+          keep_champva_success = build_es(upload_status: success, job_class: nil)
+          keep_lighthouse_pending = build_es(upload_status: pending, job_class: lighthouse_job)
+          keep_lighthouse_failed = build_es(upload_status: failed, job_class: lighthouse_job)
+          drop_lighthouse_success = build_es(upload_status: success, job_class: lighthouse_job)
 
-        it 'handles nil originalFileName gracefully and filters matching files' do
-          result = controller.send(:filter_duplicate_evidence_submissions, evidence_submissions, claim_data)
-          expect(result).to eq([evidence_submission1, evidence_submission3])
-          expect(result).not_to include(evidence_submission2)
-        end
-      end
-
-      context 'when evidence submission has invalid JSON metadata' do
-        let(:evidence_submission_invalid) do
-          double('EvidenceSubmission',
-                 id: 4,
-                 template_metadata: 'invalid json')
-        end
-        let(:evidence_submissions) { [evidence_submission1, evidence_submission_invalid] }
-        let(:supporting_documents) do
-          [{ 'originalFileName' => 'document1.pdf' }]
-        end
-
-        before do
-          allow(Rails.logger).to receive(:warn)
-        end
-
-        it 'logs warning but does not filter out submission with invalid metadata' do
-          result = controller.send(:filter_duplicate_evidence_submissions, evidence_submissions, claim_data)
-
-          expect(result).to eq([evidence_submission_invalid])
-          expect(result).not_to include(evidence_submission1)
-          expect(Rails.logger).to have_received(:error).with(
-            '[BenefitsClaimsController] Error parsing evidence submission metadata',
-            { evidence_submission_id: 4 }
+          result = controller.send(
+            :filter_evidence_submissions_for_display,
+            [drop_lighthouse_success, keep_champva_success, keep_lighthouse_pending, keep_lighthouse_failed]
           )
+          expect(result).to eq([keep_champva_success, keep_lighthouse_pending, keep_lighthouse_failed])
         end
       end
 
-      context 'when evidence submission has nil template_metadata' do
-        let(:evidence_submission_nil) do
-          double('EvidenceSubmission',
-                 id: 5,
-                 template_metadata: nil)
-        end
-        let(:evidence_submissions) { [evidence_submission1, evidence_submission_nil] }
-        let(:supporting_documents) do
-          [{ 'originalFileName' => 'document1.pdf' }]
-        end
-
-        it 'does not filter out submission with nil metadata' do
-          result = controller.send(:filter_duplicate_evidence_submissions, evidence_submissions, claim_data)
-
-          expect(result).to eq([evidence_submission_nil])
-          expect(result).not_to include(evidence_submission1)
-        end
-      end
-
-      context 'when evidence submission has valid JSON but missing personalisation key' do
-        let(:evidence_submission_missing_key) do
-          double('EvidenceSubmission',
-                 id: 6,
-                 template_metadata: { other_data: 'value' }.to_json)
-        end
-        let(:evidence_submissions) { [evidence_submission1, evidence_submission_missing_key] }
-        let(:supporting_documents) do
-          [{ 'originalFileName' => 'document1.pdf' }]
-        end
-
-        before do
-          allow(Rails.logger).to receive(:warn)
-        end
-
-        it 'logs warning about missing personalisation and does not filter out submission' do
-          result = controller.send(:filter_duplicate_evidence_submissions, evidence_submissions, claim_data)
-
-          expect(result).to eq([evidence_submission_missing_key])
-          expect(result).not_to include(evidence_submission1)
-          expect(Rails.logger).to have_received(:warn).with(
-            '[BenefitsClaimsController] Missing or invalid personalisation in evidence submission metadata',
-            { evidence_submission_id: 6 }
-          )
-        end
-      end
-
-      context 'when evidence submission has personalisation as non-hash' do
-        let(:evidence_submission_invalid_personalisation) do
-          double('EvidenceSubmission',
-                 id: 7,
-                 template_metadata: { personalisation: 'not a hash' }.to_json)
-        end
-        let(:evidence_submissions) { [evidence_submission1, evidence_submission_invalid_personalisation] }
-        let(:supporting_documents) do
-          [{ 'originalFileName' => 'document1.pdf' }]
-        end
-
-        before do
-          allow(Rails.logger).to receive(:warn)
-        end
-
-        it 'logs warning about invalid personalisation and does not filter out submission' do
-          result = controller.send(:filter_duplicate_evidence_submissions, evidence_submissions, claim_data)
-
-          expect(result).to eq([evidence_submission_invalid_personalisation])
-          expect(result).not_to include(evidence_submission1)
-          expect(Rails.logger).to have_received(:warn).with(
-            '[BenefitsClaimsController] Missing or invalid personalisation in evidence submission metadata',
-            { evidence_submission_id: 7 }
-          )
+      context 'with an empty submission list' do
+        it 'returns an empty array' do
+          expect(controller.send(:filter_evidence_submissions_for_display, [])).to eq([])
         end
       end
     end

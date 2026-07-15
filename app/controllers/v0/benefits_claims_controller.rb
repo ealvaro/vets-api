@@ -71,6 +71,8 @@ module V0
 
     IVC_CHAMPVA_ACCEPTED_FILE_TYPES = %w[pdf jpg jpeg png].freeze
 
+    LIGHTHOUSE_DOCUMENT_UPLOAD_JOB_CLASS = Lighthouse::EvidenceSubmissions::DocumentUpload.name
+
     def index
       claims = if Flipper.enabled?(FEATURE_MULTI_CLAIM_PROVIDER, @current_user)
                  get_claims_from_providers
@@ -266,44 +268,21 @@ module V0
     end
 
     def add_evidence_submissions(claim, evidence_submissions)
-      non_duplicate_submissions = filter_duplicate_evidence_submissions(evidence_submissions, claim)
+      displayable = filter_evidence_submissions_for_display(evidence_submissions)
       tracked_items = claim['attributes']['trackedItems']
-      non_duplicate_submissions.map { |es| build_filtered_evidence_submission_record(es, tracked_items) }
+      displayable.map { |es| build_filtered_evidence_submission_record(es, tracked_items) }
     end
 
-    def filter_duplicate_evidence_submissions(evidence_submissions, claim)
-      supporting_documents = claim['attributes']['supportingDocuments'] || []
-      received_file_names = supporting_documents.map { |doc| doc['originalFileName'] }.compact
-
-      return evidence_submissions if received_file_names.empty?
-
-      evidence_submissions.reject do |evidence_submission|
-        file_name = extract_evidence_submission_file_name(evidence_submission)
-        file_name && received_file_names.include?(file_name)
+    # Lighthouse uploads surface via supportingDocuments once VBMS ingests them. Returning the
+    # corresponding SUCCESS EvidenceSubmission rows here would render the same file twice on the
+    # "Files received" tab (often as foo.jpg + foo.pdf because VBMS converts images). CHAMPVA
+    # uploads never produce a supportingDocument, so they're the only path that still needs this
+    # rendering. In-flight Lighthouse rows (CREATED/QUEUED/PENDING/FAILED) still flow through so
+    # they can power the in-progress and failed-upload UIs.
+    def filter_evidence_submissions_for_display(evidence_submissions)
+      evidence_submissions.reject do |es|
+        es.completed? && es.job_class == LIGHTHOUSE_DOCUMENT_UPLOAD_JOB_CLASS
       end
-    end
-
-    def extract_evidence_submission_file_name(evidence_submission)
-      return nil if evidence_submission.template_metadata.nil?
-
-      metadata = JSON.parse(evidence_submission.template_metadata)
-      personalisation = metadata['personalisation']
-
-      if personalisation.is_a?(Hash) && personalisation['file_name']
-        personalisation['file_name']
-      else
-        ::Rails.logger.warn(
-          '[BenefitsClaimsController] Missing or invalid personalisation in evidence submission metadata',
-          { evidence_submission_id: evidence_submission.id }
-        )
-        nil
-      end
-    rescue JSON::ParserError, TypeError
-      ::Rails.logger.error(
-        '[BenefitsClaimsController] Error parsing evidence submission metadata',
-        { evidence_submission_id: evidence_submission.id }
-      )
-      nil
     end
 
     def filter_failed_evidence_submissions
@@ -345,7 +324,7 @@ module V0
         failed_date: evidence_submission.failed_date,
         file_name: personalisation['file_name'],
         id: evidence_submission.id,
-        lighthouse_upload: evidence_submission.job_class == 'Lighthouse::EvidenceSubmissions::DocumentUpload',
+        lighthouse_upload: evidence_submission.job_class == LIGHTHOUSE_DOCUMENT_UPLOAD_JOB_CLASS,
         tracked_item_id: evidence_submission.tracked_item_id,
         tracked_item_display_name:,
         tracked_item_friendly_name:,
