@@ -3376,6 +3376,13 @@ features:
       A switch that enables one way mileage expenses for Travel Pay reimbursement.
       Enabled - The mileage expense endpoint uses the v4 Travel Pay API.
       Disabled - The mileage expense endpoint uses the v2 Travel Pay API.
+  travel_pay_enable_caregiver_filing:
+    actor_type: user
+    enable_in_development: true
+    description: >-
+      A switch that enables claims to be filed for a Veteran by their caregiver
+      Enabled - The caregivers UX will be available to users
+      Disabled - The caregivers UX will be unavailable to users
   travel_pay_unified_error_handling:
     actor_type: user
     enable_in_development: true
