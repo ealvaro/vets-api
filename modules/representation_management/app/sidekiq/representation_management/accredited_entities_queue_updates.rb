@@ -39,6 +39,12 @@ module RepresentationManagement
     VSOS = RepresentationManagement::VSOS
     ENTITY_CONFIG = RepresentationManagement::ENTITY_CONFIG
 
+    # Entity types small enough to fetch in a single page. Fetching everything in one request
+    # avoids the GCLAWS multi-page boundary bug, which duplicates records across adjacent pages
+    # and silently drops others. Larger types (attorneys, representatives) continue to paginate
+    # at the client default until GCLAWS supports a unique sort column for stable pagination.
+    SINGLE_PAGE_FETCH_TYPES = [AGENTS, VSOS].freeze
+
     # Main job method that processes accredited entities
     #
     # @param force_update_types [Array<String>] Optional array of entity types to force update
@@ -73,6 +79,11 @@ module RepresentationManagement
       @processing_error_types = []
       @expected_counts = {}
       @count_mismatch_types = []
+      @logged_errors = Hash.new(0)
+      # Raw count of representative rows processed (not deduplicated). One person can be accredited
+      # with multiple VSOs, so the API returns multiple rows per individual. This raw count is what
+      # the count validation compares against the API's totalRecords.
+      @representative_rows_processed = 0
     end
 
     def setup_daily_report
@@ -87,6 +98,7 @@ module RepresentationManagement
 
       # Add deletion skip summary
       add_deletion_skip_summary
+      add_error_summary
       add_address_quality_report_by_individual_type
 
       @report << "\nJob Duration: #{duration}\n"
@@ -120,9 +132,11 @@ module RepresentationManagement
     #
     # @return [void]
     def cleanup_removed_records
+      log_progress('Cleaning up removed records...')
       remove_skipped_deletions
       delete_removed_accredited_individuals
       delete_removed_accredited_organizations
+      log_progress('  Cleanup complete.')
     end
 
     # Handles errors during ingestion
@@ -159,11 +173,29 @@ module RepresentationManagement
       expected = @expected_counts[type].to_i
       actual = get_processed_count_for_type(type)
       label = type.to_s.humanize
+      # For representatives, `actual` is the raw rows processed (the basis for validation); also show
+      # the deduplicated unique count so the report reflects both numbers.
+      suffix = type == :representatives ? " (#{@representative_ids.uniq.compact.size} unique)" : ''
       if expected.positive?
         change = ((actual - expected).to_f / expected * 100).round(2)
-        "  - #{label}: Expected #{expected}, Processed #{actual} (#{change}% change)\n"
+        "  - #{label}: Expected #{expected}, Processed #{actual}#{suffix} (#{change}% change)\n"
       else
-        "  - #{label}: Expected #{expected}, Processed #{actual}\n"
+        "  - #{label}: Expected #{expected}, Processed #{actual}#{suffix}\n"
+      end
+    end
+
+    # Adds a deduplicated error summary to the report
+    #
+    # @return [void]
+    def add_error_summary
+      return if @logged_errors.blank?
+
+      repeated = @logged_errors.select { |_, count| count > 1 }
+      return if repeated.empty?
+
+      @report << "\n\u274c **Errors (deduplicated):**\n"
+      repeated.each do |message, count|
+        @report << "  - (#{count}x) #{message}\n"
       end
     end
 
@@ -176,7 +208,9 @@ module RepresentationManagement
       when :agents then @agent_ids.uniq.compact.size
       when :attorneys then @attorney_ids.uniq.compact.size
       when :veteran_service_organizations then @vso_ids.uniq.compact.size
-      when :representatives then @representative_ids.uniq.compact.size
+      # Use the raw rows processed (not the deduplicated @representative_ids) so this matches the
+      # basis used by validate_all_counts and lines up with the API's totalRecords count.
+      when :representatives then @representative_rows_processed.to_i
       else 0
       end
     end
@@ -198,6 +232,7 @@ module RepresentationManagement
     rescue => e
       @processing_error_types << entity_type unless @processing_error_types.include?(entity_type)
       @ingestion_log&.mark_entity_failed!(entity_type, error: e.message)
+      log_progress("  ❌ Error processing #{entity_type}: #{e.message}")
       log_error("Error processing #{entity_type}: #{e.message}")
     end
 
@@ -237,7 +272,9 @@ module RepresentationManagement
     #
     # @return [void]
     def process_agents
+      log_progress('Processing agents...')
       update_agents
+      log_progress("  Agents processed: #{@agent_ids.uniq.compact.size}")
       @report << "Agents processed: #{@agent_ids.uniq.compact.size}\n"
       validate_agent_addresses
     end
@@ -246,7 +283,9 @@ module RepresentationManagement
     #
     # @return [void]
     def process_attorneys
+      log_progress('Processing attorneys...')
       update_attorneys
+      log_progress("  Attorneys processed: #{@attorney_ids.uniq.compact.size}")
       @report << "Attorneys processed: #{@attorney_ids.uniq.compact.size}\n"
       validate_attorney_addresses
     end
@@ -268,7 +307,9 @@ module RepresentationManagement
       @count_mismatch_types << entity_type_sym unless @count_mismatch_types.include?(entity_type_sym)
       @expected_counts[entity_type_sym] ||= @entity_counts.current_api_counts[entity_type_sym]
       entity_display = entity_type.capitalize
-      log_error("#{entity_display} count decreased by more than #{DECREASE_THRESHOLD * 100}% - skipping update")
+      message = "#{entity_display} count decreased by more than #{DECREASE_THRESHOLD * 100}% - skipping update"
+      log_progress("  ⚠️  #{message}")
+      log_error(message)
       @ingestion_log&.mark_entity_failed!(
         entity_type,
         error: 'Count validation failed',
@@ -358,15 +399,21 @@ module RepresentationManagement
     # @return [void]
     def process_vsos_and_reps
       # Process VSOs first (must exist before representatives can reference them)
+      log_progress('Processing VSOs...')
       update_vsos
+      log_progress("  VSOs processed: #{@vso_ids.uniq.compact.size}")
       @report << "VSOs processed: #{@vso_ids.uniq.compact.size}\n"
       @ingestion_log&.mark_entity_success!(VSOS, count: @vso_ids.uniq.compact.size)
 
       # Process representatives
+      log_progress('Processing representatives...')
       update_reps
-      @report << "Representatives processed: #{@representative_ids.uniq.compact.size} (deduplicated)\n"
+      rep_rows = @representative_rows_processed.to_i
+      rep_unique = @representative_ids.uniq.compact.size
+      log_progress("  Representatives processed: #{rep_rows} rows (#{rep_unique} unique)")
+      @report << "Representatives processed: #{rep_rows} rows (#{rep_unique} unique)\n"
       validate_rep_addresses
-      @ingestion_log&.mark_entity_success!(REPRESENTATIVES, count: @representative_ids.uniq.compact.size)
+      @ingestion_log&.mark_entity_success!(REPRESENTATIVES, count: rep_unique)
     end
 
     # Marks organizations and representatives as failed
@@ -399,12 +446,14 @@ module RepresentationManagement
     def update_entities(entity_type)
       config = ENTITY_CONFIG[entity_type]
       page = 1
+      page_size = single_page_size(entity_type)
 
       loop do
-        response = client.get_accredited_entities(type: entity_type, page:)
+        response = fetch_entities_page(entity_type, page, page_size)
         entities = response.body['items']
         break if entities.empty?
 
+        log_progress("  Page #{page}: #{entities.size} #{entity_type}")
         entities.each { |entity| handle_entity_record(entity, config) }
         page += 1
       end
@@ -418,12 +467,14 @@ module RepresentationManagement
     # @return [void]
     def update_vsos
       page = 1
+      page_size = single_page_size(VSOS)
 
       loop do
-        response = client.get_accredited_entities(type: VSOS, page:)
+        response = fetch_entities_page(VSOS, page, page_size)
         vsos = response.body['items']
         break if vsos.empty?
 
+        log_progress("  Page #{page}: #{vsos.size} VSOs")
         vsos.each { |vso| handle_vso_record(vso) }
         page += 1
       end
@@ -437,16 +488,23 @@ module RepresentationManagement
     # @param vso [Hash] VSO data from the API
     # @return [void]
     def handle_vso_record(vso)
+      # Skip rows without a POA code — it's the unique key on accredited_organizations, so a blank
+      # value would only fail validation and land in the (deduped) rescue, adding noise to the
+      # error summary rather than surfacing a real problem.
+      return if vso['poa'].blank?
+
       vso_hash = data_transform_for_vso(vso)
 
-      # Find or create record by ogc_id and poa_code
-      record = AccreditedOrganization.find_or_create_by(ogc_id: vso['vsoid'], poa_code: vso['poa'])
+      # Find or create by poa_code, which is the unique key on accredited_organizations. ogc_id
+      # (organization.id) is set/updated via vso_hash below — keying the lookup on ogc_id here
+      # would collide with the unique poa_code index whenever an existing row's ogc_id differs.
+      record = AccreditedOrganization.find_or_create_by(poa_code: vso['poa'])
 
       # Update record
       record.update(vso_hash)
       @vso_ids << record.id
     rescue => e
-      log_error("Error handling VSO record with ID #{vso['vsoid']}: #{e.message}")
+      log_error("Error handling VSO record with POA #{vso['poa']}: #{e.message}")
     end
 
     # Transforms VSO data from the GCLAWS API into a format suitable for the AccreditedOrganization model
@@ -455,9 +513,9 @@ module RepresentationManagement
     # @return [Hash] Transformed data for AccreditedOrganization record
     def data_transform_for_vso(vso)
       {
-        ogc_id: vso['vsoid'],
+        ogc_id: vso.dig('organization', 'id'),
         poa_code: vso['poa'],
-        name: vso['organization']['text']
+        name: vso.dig('organization', 'name')
       }
     end
 
@@ -472,6 +530,7 @@ module RepresentationManagement
         representatives = response.body['items']
         break if representatives.empty?
 
+        log_progress("  Page #{page}: #{representatives.size} representatives")
         representatives.each { |rep| handle_representative_record(rep) }
         page += 1
       end
@@ -482,16 +541,23 @@ module RepresentationManagement
 
     # Process individual representative record
     #
-    # @param rep [Hash] Representative data from the API
+    # @param rep [Hash] Representative data from the API (flat structure)
     # @return [void]
     def handle_representative_record(rep)
+      # Skip rows without a registration number — it's part of the natural key and required by the
+      # unique index, so a blank value would only fail validation and land in the (deduped) rescue,
+      # adding noise to the error summary rather than surfacing a real problem.
+      return if rep['number'].blank?
+
       rep_hash = data_transform_for_representative(rep)
 
-      # Find or create record by ogc_id and individual_type
-      rep_ogc_id = rep['representative']['id']
+      # Find or create record by the natural key (registration_number + individual_type), which
+      # matches the unique index on the table. ogc_id is set/updated via rep_hash below.
+      # registration_number is cast to a string to stay consistent with the XLSX ingestion path,
+      # which stores registration numbers as strings.
       record = AccreditedIndividual.find_or_create_by(
-        ogc_id: rep_ogc_id,
-        individual_type: 'representative'
+        individual_type: 'representative',
+        registration_number: rep['number'].to_s
       )
 
       # Check if address validation is needed
@@ -501,25 +567,36 @@ module RepresentationManagement
       # Update record
       record.update(rep_hash)
       @representative_ids << record.id
+      # Count every processed row (not deduplicated) for count validation against the API total.
+      @representative_rows_processed = @representative_rows_processed.to_i + 1
 
-      # Track VSO associations for this representative
-      vso_ogc_id = rep['veteransServiceOrganization']['id']
+      # Track VSO associations for this representative.
+      #
+      # A representative's `organizationID` is the same UUID as a VSO's `organization.id`, which we
+      # persist as the AccreditedOrganization's `ogc_id`. That shared UUID is the link between a rep
+      # and their organization: accreditation pairs are later resolved via
+      # AccreditedOrganization.find_by(ogc_id: vso_ogc_id). This linkage was confirmed against
+      # staging data (81 of 82 organizations matched). If a rep's `organizationID` has no matching
+      # org `ogc_id`, the association is simply skipped downstream (no accreditation created) rather
+      # than raising — so divergence degrades gracefully instead of erroring.
+      vso_ogc_id = rep['organizationID']
       @rep_to_vso_associations[record.id] ||= []
       @rep_to_vso_associations[record.id] << vso_ogc_id unless @rep_to_vso_associations[record.id].include?(vso_ogc_id)
     rescue => e
-      log_error("Error handling representative record with ID #{rep['representative']['id']}: #{e.message}")
+      log_error("Error handling representative record with registration number #{rep['number']}: #{e.message}")
     end
 
     # Transforms representative data from the GCLAWS API into a format suitable for the AccreditedIndividual model
+    # Note: The representative API response uses a flat structure (not nested like VSOs)
     #
-    # @param rep [Hash] Raw representative data from the GCLAWS API
+    # @param rep [Hash] Raw representative data from the GCLAWS API (flat structure)
     # @return [Hash] Transformed data for AccreditedIndividual record
     def data_transform_for_representative(rep)
-      data_transform_for_entity(rep['representative'], 'representative', {
-                                  phone: rep['representative']['workNumber'],
-                                  email: rep['representative']['workEmailAddress'],
+      data_transform_for_entity(rep, 'representative', {
+                                  phone: rep['workPhoneNumber'],
+                                  email: rep['workEmailAddress'],
                                   raw_address: raw_address_for_representative(rep),
-                                  registration_number: rep.dig('representative', 'number')
+                                  ogc_id: rep['accrRepresentativeId']
                                 })
     end
 
@@ -604,17 +681,20 @@ module RepresentationManagement
     #
     # @return [void]
     def validate_all_counts
-      entity_mappings = {
-        agents: @agent_ids,
-        attorneys: @attorney_ids,
-        veteran_service_organizations: @vso_ids,
-        representatives: @representative_ids
+      processed_counts = {
+        agents: @agent_ids.uniq.compact.size,
+        attorneys: @attorney_ids.uniq.compact.size,
+        veteran_service_organizations: @vso_ids.uniq.compact.size,
+        # Representatives are deduplicated by registration_number (one person can be accredited with
+        # multiple VSOs, producing multiple API rows). Validate against the raw number of rows
+        # processed so it lines up with the API's totalRecords count rather than the unique count.
+        representatives: @representative_rows_processed.to_i
       }
 
-      entity_mappings.each do |type_key, ids|
+      processed_counts.each do |type_key, processed_count|
         next unless @expected_counts[type_key]
 
-        counts_match_expected?(type_key.to_s, ids.uniq.compact.size)
+        counts_match_expected?(type_key.to_s, processed_count)
       end
     end
 
@@ -689,11 +769,19 @@ module RepresentationManagement
     # @param config [Hash] Configuration for the entity type
     # @return [void]
     def handle_entity_record(entity, config)
+      # Skip rows without a registration number — it's part of the natural key and required by the
+      # unique index, so a blank value would only fail validation and land in the (deduped) rescue,
+      # adding noise to the error summary rather than surfacing a real problem.
+      return if entity['number'].blank?
+
       api_type = config[:api_type]
       entity_hash = send("data_transform_for_#{api_type}", entity)
 
-      # Find or create record
-      entity_identifier = { individual_type: config[:individual_type], ogc_id: entity['id'] }
+      # Find or create record by the natural key (registration_number + individual_type), which
+      # matches the unique index on the table. ogc_id is set/updated via entity_hash below.
+      # registration_number is cast to a string to stay consistent with the XLSX ingestion path,
+      # which stores registration numbers as strings.
+      entity_identifier = { individual_type: config[:individual_type], registration_number: entity['number'].to_s }
       record = AccreditedIndividual.find_or_create_by(entity_identifier)
 
       # Check if address validation is needed
@@ -738,7 +826,7 @@ module RepresentationManagement
     def data_transform_for_entity(entity, entity_type, extra_attrs = {})
       {
         individual_type: entity_type,
-        registration_number: entity['number'],
+        registration_number: entity['number'].to_s,
         poa_code: entity['poa'],
         ogc_id: entity['id'],
         first_name: entity['firstName'],
@@ -844,11 +932,62 @@ module RepresentationManagement
       RepresentationManagement::GCLAWS::Client
     end
 
-    # Logs an error message to the Rails logger
+    # Computes a one-request page size for the given type: totalRecords + 100, rounded up to the
+    # next hundred. Returns nil for types that should keep paginating at the client default, or
+    # when the total is unavailable.
+    #
+    # @param entity_type [String] The entity type
+    # @return [Integer, nil]
+    def single_page_size(entity_type)
+      return nil unless SINGLE_PAGE_FETCH_TYPES.include?(entity_type)
+
+      # current_api_counts lazily fetches totals directly from the API and is independent of
+      # save_api_counts, so this still returns a real total on forced runs (where save_api_counts is
+      # skipped). It only falls back to nil — and therefore paginated fetching — if the count
+      # endpoint itself returns no total (e.g. the API is unavailable).
+      total = @entity_counts&.current_api_counts&.dig(entity_type.to_sym).to_i
+      return nil unless total.positive?
+
+      ((total + 100) / 100.0).ceil * 100
+    end
+
+    # Fetches a page of entities, passing an explicit page size only when one is provided so that
+    # paginated types keep using the client's default page size.
+    #
+    # @param entity_type [String] The entity type
+    # @param page [Integer] The page number
+    # @param page_size [Integer, nil] Optional page size
+    # @return [Faraday::Response]
+    def fetch_entities_page(entity_type, page, page_size)
+      if page_size
+        client.get_accredited_entities(type: entity_type, page:, page_size:)
+      else
+        client.get_accredited_entities(type: entity_type, page:)
+      end
+    end
+
+    # Outputs progress messages to stdout when running in an interactive terminal (e.g., Rails console).
+    # Silently no-ops when running as a background Sidekiq job or in the test environment.
+    #
+    # @param message [String] The progress message to display
+    # @return [void]
+    def log_progress(message)
+      return if Rails.env.test?
+
+      puts message if $stdout.tty? # rubocop:disable Rails/Output
+    end
+
+    # Logs an error message to the Rails logger.
+    # Deduplicates identical messages: only logs to Slack and Rails on the first occurrence,
+    # and tracks counts for summary reporting.
     #
     # @param message [String] The error message to log
     # @return [void]
     def log_error(message)
+      @logged_errors ||= Hash.new(0)
+      @logged_errors[message] += 1
+      return if @logged_errors[message] > 1
+
       log_to_slack_channel("RepresentationManagement::AccreditedEntitiesQueueUpdates error: #{message}")
       Rails.logger.error("RepresentationManagement::AccreditedEntitiesQueueUpdates error: #{message}")
     end

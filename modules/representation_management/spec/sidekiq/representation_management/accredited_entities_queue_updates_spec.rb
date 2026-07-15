@@ -77,10 +77,10 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
 
       # Mock API responses
       allow(client).to receive(:get_accredited_entities)
-        .with(type: RepresentationManagement::AGENTS, page: 1)
+        .with(hash_including(type: RepresentationManagement::AGENTS, page: 1))
         .and_return(instance_double(Faraday::Response, body: agent_response))
       allow(client).to receive(:get_accredited_entities)
-        .with(type: RepresentationManagement::AGENTS, page: 2)
+        .with(hash_including(type: RepresentationManagement::AGENTS, page: 2))
         .and_return(instance_double(Faraday::Response, body: empty_response))
       allow(client).to receive(:get_accredited_entities)
         .with(type: RepresentationManagement::ATTORNEYS, page: 1)
@@ -91,10 +91,10 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
 
       # Mock record creation
       allow(AccreditedIndividual).to receive(:find_or_create_by)
-        .with({ individual_type: 'claims_agent', ogc_id: '123' })
+        .with({ individual_type: 'claims_agent', registration_number: 'A123' })
         .and_return(agent_record)
       allow(AccreditedIndividual).to receive(:find_or_create_by)
-        .with({ individual_type: 'attorney', ogc_id: '789' })
+        .with({ individual_type: 'attorney', registration_number: 'B789' })
         .and_return(attorney_record)
 
       # Mock record updates
@@ -134,9 +134,9 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
 
       # Verify records were created and updated
       expect(AccreditedIndividual).to have_received(:find_or_create_by)
-        .with(individual_type: 'claims_agent', ogc_id: '123')
+        .with(individual_type: 'claims_agent', registration_number: 'A123')
       expect(AccreditedIndividual).to have_received(:find_or_create_by)
-        .with(individual_type: 'attorney', ogc_id: '789')
+        .with(individual_type: 'attorney', registration_number: 'B789')
       expect(agent_record).to have_received(:update)
       expect(attorney_record).to have_received(:update)
     end
@@ -170,20 +170,20 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
       it 'still updates attorneys' do
         job.perform
         expect(AccreditedIndividual).to have_received(:find_or_create_by)
-          .with(individual_type: 'attorney', ogc_id: '789')
+          .with(individual_type: 'attorney', registration_number: 'B789')
       end
 
       context 'when forcing claims_agent updates' do
         it 'updates agents despite invalid count' do
           job.perform([RepresentationManagement::AGENTS])
           expect(AccreditedIndividual).to have_received(:find_or_create_by)
-            .with(individual_type: 'claims_agent', ogc_id: '123')
+            .with(individual_type: 'claims_agent', registration_number: 'A123')
         end
 
         it 'does not update attorneys' do
           job.perform([RepresentationManagement::AGENTS])
           expect(AccreditedIndividual).not_to have_received(:find_or_create_by)
-            .with(individual_type: 'attorney', ogc_id: '789')
+            .with(individual_type: 'attorney', registration_number: 'B789')
         end
       end
     end
@@ -210,20 +210,20 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
       it 'still updates agents' do
         job.perform
         expect(AccreditedIndividual).to have_received(:find_or_create_by)
-          .with(individual_type: 'claims_agent', ogc_id: '123')
+          .with(individual_type: 'claims_agent', registration_number: 'A123')
       end
 
       context 'when forcing attorney updates' do
         it 'updates attorneys despite invalid count' do
           job.perform([RepresentationManagement::ATTORNEYS])
           expect(AccreditedIndividual).to have_received(:find_or_create_by)
-            .with(individual_type: 'attorney', ogc_id: '789')
+            .with(individual_type: 'attorney', registration_number: 'B789')
         end
 
         it 'does not update agents' do
           job.perform([RepresentationManagement::ATTORNEYS])
           expect(AccreditedIndividual).not_to have_received(:find_or_create_by)
-            .with(individual_type: 'claims_agent', ogc_id: '123')
+            .with(individual_type: 'claims_agent', registration_number: 'A123')
         end
       end
     end
@@ -240,9 +240,9 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
 
         # Verify no records were processed
         expect(AccreditedIndividual).not_to have_received(:find_or_create_by)
-          .with(individual_type: 'claims_agent', ogc_id: '123')
+          .with(individual_type: 'claims_agent', registration_number: 'A123')
         expect(AccreditedIndividual).not_to have_received(:find_or_create_by)
-          .with(individual_type: 'attorney', ogc_id: '789')
+          .with(individual_type: 'attorney', registration_number: 'B789')
       end
 
       it 'tracks both types in @count_mismatch_types for reporting and deletion skips' do
@@ -312,9 +312,9 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
         .and_return(response2)
 
       allow(AccreditedIndividual).to receive(:find_or_create_by) do |args|
-        case args[:ogc_id]
-        when '123' then record1
-        when '456' then record2
+        case args[:registration_number]
+        when 'A123' then record1
+        when 'A456' then record2
         else
           instance_double(AccreditedIndividual, id: SecureRandom.uuid, raw_address: nil)
         end
@@ -345,9 +345,9 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
       job.send(:update_agents)
 
       expect(AccreditedIndividual).to have_received(:find_or_create_by)
-        .with(individual_type: 'claims_agent', ogc_id: '123')
+        .with(individual_type: 'claims_agent', registration_number: 'A123')
       expect(AccreditedIndividual).to have_received(:find_or_create_by)
-        .with(individual_type: 'claims_agent', ogc_id: '456')
+        .with(individual_type: 'claims_agent', registration_number: 'A456')
     end
 
     it 'updates records with transformed data' do
@@ -474,9 +474,9 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
 
       # Use flexible argument matcher for find_or_create_by
       allow(AccreditedIndividual).to receive(:find_or_create_by) do |args|
-        case args[:ogc_id]
-        when '789' then record1
-        when '012' then record2
+        case args[:registration_number]
+        when 'B789' then record1
+        when 'B012' then record2
         else
           instance_double(AccreditedIndividual, id: SecureRandom.uuid, raw_address: nil)
         end
@@ -503,9 +503,9 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
       job.send(:update_attorneys)
 
       expect(AccreditedIndividual).to have_received(:find_or_create_by)
-        .with(hash_including(individual_type: 'attorney', ogc_id: '789'))
+        .with(hash_including(individual_type: 'attorney', registration_number: 'B789'))
       expect(AccreditedIndividual).to have_received(:find_or_create_by)
-        .with(hash_including(individual_type: 'attorney', ogc_id: '012'))
+        .with(hash_including(individual_type: 'attorney', registration_number: 'B012'))
     end
 
     it 'updates records with transformed data' do
@@ -906,30 +906,21 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
         'number' => 210,
         'acceptsElectronicPoas' => false,
         'poa' => 'JQ8',
-        'organization' => { 'id' => '09901a71-a3ce-4a85-a5bd-172cce0b6439', 'text' => 'Less Law Firm' }
+        'organization' => { 'id' => '09901a71-a3ce-4a85-a5bd-172cce0b6439', 'name' => 'Less Law Firm' }
       }
     end
 
     let(:rep1) do
       {
-        'id' => 'ea154c64-bf20-47e0-9866-86ae988776a8',
-        'representative' => {
-          'lastName' => 'aalaam',
-          'middleName' => '',
-          'firstName' => 'judy',
-          'workNumber' => '555-1234',
-          'workEmailAddress' => 'judy@example.com',
-          'id' => 'dfc36f35-0464-450f-a85b-3fa639705826'
-        },
-        'veteransServiceOrganization' => {
-          'name' => 'Less Law Firm',
-          'poa' => 'JQ8',
-          'number' => 210,
-          'id' => '9c6f8595-4e84-42e5-b90a-270c422c373a'
-        },
+        'accrRepresentativeId' => 'dfc36f35-0464-450f-a85b-3fa639705826',
+        'number' => 500,
+        'organizationID' => '09901a71-a3ce-4a85-a5bd-172cce0b6439',
+        'poa' => 'JQ8',
         'lastName' => 'aalaam',
         'firstName' => 'judy',
         'middleName' => '',
+        'workPhoneNumber' => '555-1234',
+        'workEmailAddress' => 'judy@example.com',
         'workAddress1' => '123 Work St',
         'workAddress2' => '',
         'workAddress3' => '',
@@ -967,10 +958,10 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
 
       # Mock VSO API responses
       allow(client).to receive(:get_accredited_entities)
-        .with(type: RepresentationManagement::VSOS, page: 1)
+        .with(hash_including(type: RepresentationManagement::VSOS, page: 1))
         .and_return(instance_double(Faraday::Response, body: vso_response))
       allow(client).to receive(:get_accredited_entities)
-        .with(type: RepresentationManagement::VSOS, page: 2)
+        .with(hash_including(type: RepresentationManagement::VSOS, page: 2))
         .and_return(instance_double(Faraday::Response, body: empty_response))
 
       # Mock Representative API responses
@@ -999,12 +990,12 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
 
       # Verify VSO was processed
       expect(AccreditedOrganization).to have_received(:find_or_create_by)
-        .with(ogc_id: '9c6f8595-4e84-42e5-b90a-270c422c373a', poa_code: 'JQ8')
+        .with(poa_code: 'JQ8')
       expect(vso_record).to have_received(:update)
 
       # Verify Representative was processed
       expect(AccreditedIndividual).to have_received(:find_or_create_by)
-        .with(ogc_id: 'dfc36f35-0464-450f-a85b-3fa639705826', individual_type: 'representative')
+        .with(individual_type: 'representative', registration_number: '500')
       expect(rep_record).to have_received(:update)
 
       # Verify accreditations were synced for the resolved rep/org pair
@@ -1085,7 +1076,7 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
         'number' => 210,
         'acceptsElectronicPoas' => false,
         'poa' => 'JQ8',
-        'organization' => { 'id' => '09901a71-a3ce-4a85-a5bd-172cce0b6439', 'text' => 'Less Law Firm' }
+        'organization' => { 'id' => '09901a71-a3ce-4a85-a5bd-172cce0b6439', 'name' => 'Less Law Firm' }
       }
     end
 
@@ -1095,7 +1086,7 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
         'number' => 194,
         'acceptsElectronicPoas' => true,
         'poa' => 'JOW',
-        'organization' => { 'id' => '46f8ef08-4cbc-487b-83df-5ff69ea8893d', 'text' => 'ABC Test' }
+        'organization' => { 'id' => '46f8ef08-4cbc-487b-83df-5ff69ea8893d', 'name' => 'ABC Test' }
       }
     end
 
@@ -1114,9 +1105,9 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
         .and_return(instance_double(Faraday::Response, body: vso_response2))
 
       allow(AccreditedOrganization).to receive(:find_or_create_by) do |args|
-        case args[:ogc_id]
-        when '9c6f8595-4e84-42e5-b90a-270c422c373a' then vso_record1
-        when '8f8d4051-ddcc-4730-973e-9688559a91fc' then vso_record2
+        case args[:poa_code]
+        when 'JQ8' then vso_record1
+        when 'JOW' then vso_record2
         end
       end
 
@@ -1128,17 +1119,17 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
       job.send(:update_vsos)
 
       expect(AccreditedOrganization).to have_received(:find_or_create_by)
-        .with(ogc_id: '9c6f8595-4e84-42e5-b90a-270c422c373a', poa_code: 'JQ8')
+        .with(poa_code: 'JQ8')
       expect(AccreditedOrganization).to have_received(:find_or_create_by)
-        .with(ogc_id: '8f8d4051-ddcc-4730-973e-9688559a91fc', poa_code: 'JOW')
+        .with(poa_code: 'JOW')
 
       expect(vso_record1).to have_received(:update).with(
-        ogc_id: '9c6f8595-4e84-42e5-b90a-270c422c373a',
+        ogc_id: '09901a71-a3ce-4a85-a5bd-172cce0b6439',
         poa_code: 'JQ8',
         name: 'Less Law Firm'
       )
       expect(vso_record2).to have_received(:update).with(
-        ogc_id: '8f8d4051-ddcc-4730-973e-9688559a91fc',
+        ogc_id: '46f8ef08-4cbc-487b-83df-5ff69ea8893d',
         poa_code: 'JOW',
         name: 'ABC Test'
       )
@@ -1164,24 +1155,15 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
 
     let(:rep1) do
       {
-        'id' => 'ea154c64-bf20-47e0-9866-86ae988776a8',
-        'representative' => {
-          'lastName' => 'aalaam',
-          'middleName' => '',
-          'firstName' => 'judy',
-          'workNumber' => '555-1234',
-          'workEmailAddress' => 'judy@example.com',
-          'id' => 'dfc36f35-0464-450f-a85b-3fa639705826'
-        },
-        'veteransServiceOrganization' => {
-          'name' => 'Less Law Firm',
-          'poa' => 'JQ8',
-          'number' => 210,
-          'id' => '9c6f8595-4e84-42e5-b90a-270c422c373a'
-        },
+        'accrRepresentativeId' => 'dfc36f35-0464-450f-a85b-3fa639705826',
+        'number' => 500,
+        'organizationID' => '09901a71-a3ce-4a85-a5bd-172cce0b6439',
+        'poa' => 'JQ8',
         'lastName' => 'aalaam',
         'firstName' => 'judy',
         'middleName' => '',
+        'workPhoneNumber' => '555-1234',
+        'workEmailAddress' => 'judy@example.com',
         'workAddress1' => '123 Work St',
         'workAddress2' => '',
         'workAddress3' => '',
@@ -1193,24 +1175,15 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
 
     let(:rep2) do
       {
-        'id' => 'b50ee54b-ff87-4c78-b41d-7ffe1a8f89e5',
-        'representative' => {
-          'lastName' => 'abad',
-          'middleName' => 'M',
-          'firstName' => 'julia',
-          'workNumber' => '555-5678',
-          'workEmailAddress' => 'julia@example.com',
-          'id' => '35d586dc-58cd-4569-a030-557197725165'
-        },
-        'veteransServiceOrganization' => {
-          'name' => 'Less Law Firm',
-          'poa' => 'JQ8',
-          'number' => 210,
-          'id' => '9c6f8595-4e84-42e5-b90a-270c422c373a'
-        },
+        'accrRepresentativeId' => '35d586dc-58cd-4569-a030-557197725165',
+        'number' => 501,
+        'organizationID' => '09901a71-a3ce-4a85-a5bd-172cce0b6439',
+        'poa' => 'JQ8',
         'lastName' => 'abad',
         'firstName' => 'julia',
         'middleName' => 'M',
+        'workPhoneNumber' => '555-5678',
+        'workEmailAddress' => 'julia@example.com',
         'workAddress1' => '456 Office Blvd',
         'workAddress2' => 'Suite 100',
         'workAddress3' => '',
@@ -1237,9 +1210,9 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
         .and_return(instance_double(Faraday::Response, body: rep_response2))
 
       allow(AccreditedIndividual).to receive(:find_or_create_by) do |args|
-        case args[:ogc_id]
-        when 'dfc36f35-0464-450f-a85b-3fa639705826' then rep_record1
-        when '35d586dc-58cd-4569-a030-557197725165' then rep_record2
+        case args[:registration_number]
+        when '500' then rep_record1
+        when '501' then rep_record2
         end
       end
 
@@ -1251,9 +1224,9 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
       job.send(:update_reps)
 
       expect(AccreditedIndividual).to have_received(:find_or_create_by)
-        .with(ogc_id: 'dfc36f35-0464-450f-a85b-3fa639705826', individual_type: 'representative')
+        .with(individual_type: 'representative', registration_number: '500')
       expect(AccreditedIndividual).to have_received(:find_or_create_by)
-        .with(ogc_id: '35d586dc-58cd-4569-a030-557197725165', individual_type: 'representative')
+        .with(individual_type: 'representative', registration_number: '501')
 
       expect(rep_record1).to have_received(:update)
       expect(rep_record2).to have_received(:update)
@@ -1265,8 +1238,8 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
       job.send(:update_reps)
 
       associations = job.instance_variable_get(:@rep_to_vso_associations)
-      expect(associations[200]).to eq(['9c6f8595-4e84-42e5-b90a-270c422c373a'])
-      expect(associations[201]).to eq(['9c6f8595-4e84-42e5-b90a-270c422c373a'])
+      expect(associations[200]).to eq(['09901a71-a3ce-4a85-a5bd-172cce0b6439'])
+      expect(associations[201]).to eq(['09901a71-a3ce-4a85-a5bd-172cce0b6439'])
     end
 
     it 'adds address validation data when address has changed' do
@@ -1436,19 +1409,15 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
   describe '#data_transform_for_representative' do
     let(:rep) do
       {
-        'id' => 'ea154c64-bf20-47e0-9866-86ae988776a8',
-        'representative' => {
-          'lastName' => 'aalaam',
-          'middleName' => 'M',
-          'firstName' => 'judy',
-          'workNumber' => '555-1234',
-          'workEmailAddress' => 'judy@example.com',
-          'id' => 'dfc36f35-0464-450f-a85b-3fa639705826',
-          'number' => 'R123456'
-        },
+        'accrRepresentativeId' => 'dfc36f35-0464-450f-a85b-3fa639705826',
+        'number' => 'R123456',
+        'organizationID' => '09901a71-a3ce-4a85-a5bd-172cce0b6439',
+        'poa' => 'JQ8',
         'lastName' => 'aalaam',
         'firstName' => 'judy',
         'middleName' => 'M',
+        'workPhoneNumber' => '555-1234',
+        'workEmailAddress' => 'judy@example.com',
         'workAddress1' => '123 Work St',
         'workAddress2' => 'Apt 2',
         'workAddress3' => '',
@@ -1638,9 +1607,9 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
           .and_return(instance_double(Faraday::Response, body: { 'items' => [] }))
 
         allow(AccreditedIndividual).to receive(:find_or_create_by) do |args|
-          case args[:ogc_id]
-          when '123' then record_with_number
-          when '456' then record_without_number
+          case args[:registration_number]
+          when 'A123' then record_with_number
+          when nil then record_without_number
           end
         end
 
@@ -1655,21 +1624,18 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
           .with(hash_including(registration_number: 'A123'))
       end
 
-      it 'updates agent records with nil registration_number when number is missing' do
+      it 'skips agent records when the registration number is missing' do
         job.send(:update_agents)
 
-        expect(record_without_number).to have_received(:update)
+        expect(AccreditedIndividual).not_to have_received(:find_or_create_by)
           .with(hash_including(registration_number: nil))
+        expect(record_without_number).not_to have_received(:update)
       end
 
-      it 'ensures all agent updates include registration_number key' do
+      it 'ensures all processed agent updates include registration_number key' do
         job.send(:update_agents)
 
         expect(record_with_number).to have_received(:update) do |attrs|
-          expect(attrs).to have_key(:registration_number)
-        end
-
-        expect(record_without_number).to have_received(:update) do |attrs|
           expect(attrs).to have_key(:registration_number)
         end
       end
@@ -1720,9 +1686,9 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
           .and_return(instance_double(Faraday::Response, body: { 'items' => [] }))
 
         allow(AccreditedIndividual).to receive(:find_or_create_by) do |args|
-          case args[:ogc_id]
-          when '789' then record_with_number
-          when '012' then record_without_number
+          case args[:registration_number]
+          when 'B789' then record_with_number
+          when '' then record_without_number
           end
         end
 
@@ -1737,21 +1703,18 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
           .with(hash_including(registration_number: 'B789'))
       end
 
-      it 'updates attorney records with empty string registration_number when number is empty' do
+      it 'skips attorney records when the registration number is empty' do
         job.send(:update_attorneys)
 
-        expect(record_without_number).to have_received(:update)
+        expect(AccreditedIndividual).not_to have_received(:find_or_create_by)
           .with(hash_including(registration_number: ''))
+        expect(record_without_number).not_to have_received(:update)
       end
 
-      it 'ensures all attorney updates include registration_number key' do
+      it 'ensures all processed attorney updates include registration_number key' do
         job.send(:update_attorneys)
 
         expect(record_with_number).to have_received(:update) do |attrs|
-          expect(attrs).to have_key(:registration_number)
-        end
-
-        expect(record_without_number).to have_received(:update) do |attrs|
           expect(attrs).to have_key(:registration_number)
         end
       end
@@ -1760,16 +1723,11 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
     context 'when processing representatives' do
       let(:rep_with_id) do
         {
-          'id' => 'ea154c64-bf20-47e0-9866-86ae988776a8',
-          'representative' => {
-            'lastName' => 'aalaam',
-            'firstName' => 'judy',
-            'id' => 'dfc36f35-0464-450f-a85b-3fa639705826',
-            'number' => 'R123456'
-          },
-          'veteransServiceOrganization' => {
-            'id' => '9c6f8595-4e84-42e5-b90a-270c422c373a'
-          },
+          'accrRepresentativeId' => 'dfc36f35-0464-450f-a85b-3fa639705826',
+          'number' => 'R123456',
+          'organizationID' => '09901a71-a3ce-4a85-a5bd-172cce0b6439',
+          'lastName' => 'aalaam',
+          'firstName' => 'judy',
           'workAddress1' => '123 Work St',
           'workCity' => 'Work City',
           'workState' => 'CA',
@@ -1779,16 +1737,11 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
 
       let(:rep_without_id) do
         {
-          'id' => 'b50ee54b-ff87-4c78-b41d-7ffe1a8f89e5',
-          'representative' => {
-            'lastName' => 'abad',
-            'firstName' => 'julia',
-            'id' => nil,
-            'number' => nil
-          },
-          'veteransServiceOrganization' => {
-            'id' => '8f8d4051-ddcc-4730-973e-9688559a91fc'
-          },
+          'accrRepresentativeId' => nil,
+          'number' => nil,
+          'organizationID' => '46f8ef08-4cbc-487b-83df-5ff69ea8893d',
+          'lastName' => 'abad',
+          'firstName' => 'julia',
           'workAddress1' => '456 Office Blvd',
           'workCity' => 'Office Town',
           'workState' => 'NY',
@@ -1812,8 +1765,8 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
           .and_return(instance_double(Faraday::Response, body: { 'items' => [] }))
 
         allow(AccreditedIndividual).to receive(:find_or_create_by) do |args|
-          case args[:ogc_id]
-          when 'dfc36f35-0464-450f-a85b-3fa639705826' then record_with_id
+          case args[:registration_number]
+          when 'R123456' then record_with_id
           when nil then record_without_id
           end
         end
@@ -1829,21 +1782,18 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
           .with(hash_including(registration_number: 'R123456'))
       end
 
-      it 'updates representative records with nil registration_number when representative number is missing' do
+      it 'skips representative records when the representative number is missing' do
         job.send(:update_reps)
 
-        expect(record_without_id).to have_received(:update)
+        expect(AccreditedIndividual).not_to have_received(:find_or_create_by)
           .with(hash_including(registration_number: nil))
+        expect(record_without_id).not_to have_received(:update)
       end
 
-      it 'ensures all representative updates include registration_number key' do
+      it 'ensures all processed representative updates include registration_number key' do
         job.send(:update_reps)
 
         expect(record_with_id).to have_received(:update) do |attrs|
-          expect(attrs).to have_key(:registration_number)
-        end
-
-        expect(record_without_id).to have_received(:update) do |attrs|
           expect(attrs).to have_key(:registration_number)
         end
       end
@@ -1868,12 +1818,10 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
 
       it 'includes registration_number in representative transformation' do
         rep = {
-          'representative' => {
-            'id' => 'rep-id-789',
-            'number' => 'rep-number-789',
-            'firstName' => 'Bob',
-            'lastName' => 'Wilson'
-          },
+          'accrRepresentativeId' => 'rep-id-789',
+          'number' => 'rep-number-789',
+          'firstName' => 'Bob',
+          'lastName' => 'Wilson',
           'workCity' => 'Test City',
           'workState' => 'TX'
         }
@@ -1883,12 +1831,12 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
         expect(result[:registration_number]).to eq('rep-number-789')
       end
 
-      it 'handles nil registration_number values gracefully' do
+      it 'coerces a nil registration_number to an empty string' do
         agent = { 'number' => nil, 'id' => '999', 'firstName' => 'Test', 'lastName' => 'User' }
         result = job.send(:data_transform_for_agent, agent)
 
         expect(result).to have_key(:registration_number)
-        expect(result[:registration_number]).to be_nil
+        expect(result[:registration_number]).to eq('')
       end
 
       it 'handles empty string registration_number values gracefully' do
@@ -1949,7 +1897,7 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
     context 'when API error occurs during agent processing' do
       before do
         allow(client).to receive(:get_accredited_entities)
-          .with(type: RepresentationManagement::AGENTS, page: 1)
+          .with(hash_including(type: RepresentationManagement::AGENTS, page: 1))
           .and_raise(StandardError.new('API connection failed'))
       end
 
@@ -1975,7 +1923,7 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
           .with(type: RepresentationManagement::AGENTS, page: 1)
           .and_return(instance_double(Faraday::Response, body: { 'items' => [] }))
         allow(client).to receive(:get_accredited_entities)
-          .with(type: RepresentationManagement::VSOS, page: 1)
+          .with(hash_including(type: RepresentationManagement::VSOS, page: 1))
           .and_raise(StandardError.new('VSO API timeout'))
 
         allow(entity_counts).to receive(:current_api_counts).and_return({
@@ -2125,7 +2073,7 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
         items.each_with_index do |item, idx|
           record = instance_double(AccreditedIndividual, id: 5000 + idx, raw_address: nil)
           allow(AccreditedIndividual).to receive(:find_or_create_by)
-            .with(hash_including(individual_type: 'attorney', ogc_id: item['id']))
+            .with(hash_including(individual_type: 'attorney', registration_number: item['number']))
             .and_return(record)
           allow(record).to receive(:update)
         end
@@ -2191,7 +2139,7 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
 
         # Agent processing fails
         allow(client).to receive(:get_accredited_entities)
-          .with(type: RepresentationManagement::AGENTS, page: 1)
+          .with(hash_including(type: RepresentationManagement::AGENTS, page: 1))
           .and_raise(StandardError.new('Agent API failed'))
       end
 
@@ -2236,7 +2184,7 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
 
         # Agent processing fails
         allow(client).to receive(:get_accredited_entities)
-          .with(type: RepresentationManagement::AGENTS, page: 1)
+          .with(hash_including(type: RepresentationManagement::AGENTS, page: 1))
           .and_raise(StandardError.new('Agent API failed'))
 
         # Attorney processing succeeds
@@ -2298,10 +2246,10 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
 
         # But we only process 1 (simulating disconnection)
         allow(client).to receive(:get_accredited_entities)
-          .with(type: RepresentationManagement::AGENTS, page: 1)
+          .with(hash_including(type: RepresentationManagement::AGENTS, page: 1))
           .and_return(instance_double(Faraday::Response, body: { 'items' => [agent_data] }))
         allow(client).to receive(:get_accredited_entities)
-          .with(type: RepresentationManagement::AGENTS, page: 2)
+          .with(hash_including(type: RepresentationManagement::AGENTS, page: 2))
           .and_return(instance_double(Faraday::Response, body: { 'items' => [] }))
 
         allow(AccreditedIndividual).to receive(:find_or_create_by)
@@ -2420,6 +2368,123 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
         expect(processing_errors).to include(RepresentationManagement::VSOS)
         expect(processing_errors).to include(RepresentationManagement::REPRESENTATIVES)
       end
+    end
+  end
+
+  describe '#validate_all_counts representative deduplication' do
+    before do
+      job.instance_variable_set(:@agent_ids, [])
+      job.instance_variable_set(:@attorney_ids, [])
+      job.instance_variable_set(:@vso_ids, [])
+      # Only a handful of unique individuals despite many raw rows processed.
+      job.instance_variable_set(:@representative_ids, [1, 2, 3])
+      job.instance_variable_set(:@count_mismatch_types, [])
+      job.instance_variable_set(:@expected_counts, { representatives: 100 })
+      allow(Rails.logger).to receive(:error)
+    end
+
+    it 'validates against raw rows processed rather than the deduplicated count' do
+      # 90 raw rows vs 100 expected is a 10% decrease (within tolerance), even though only 3
+      # unique representative ids were tracked. The deduplicated count would falsely flag a mismatch.
+      job.instance_variable_set(:@representative_rows_processed, 90)
+
+      job.send(:validate_all_counts)
+
+      expect(job.instance_variable_get(:@count_mismatch_types)).not_to include(:representatives)
+    end
+
+    it 'flags a mismatch when the raw rows processed drop below the threshold' do
+      job.instance_variable_set(:@representative_rows_processed, 50)
+
+      job.send(:validate_all_counts)
+
+      expect(job.instance_variable_get(:@count_mismatch_types)).to include(:representatives)
+    end
+  end
+
+  describe '#get_processed_count_for_type' do
+    before do
+      job.instance_variable_set(:@agent_ids, [1, 1, 2])
+      job.instance_variable_set(:@attorney_ids, [3, 4])
+      job.instance_variable_set(:@vso_ids, [5])
+      job.instance_variable_set(:@representative_ids, [6, 7, 8])
+      job.instance_variable_set(:@representative_rows_processed, 42)
+    end
+
+    it 'returns deduplicated counts for agents, attorneys, and VSOs' do
+      expect(job.send(:get_processed_count_for_type, :agents)).to eq(2)
+      expect(job.send(:get_processed_count_for_type, :attorneys)).to eq(2)
+      expect(job.send(:get_processed_count_for_type, :veteran_service_organizations)).to eq(1)
+    end
+
+    it 'returns the raw rows processed for representatives to match validate_all_counts' do
+      expect(job.send(:get_processed_count_for_type, :representatives)).to eq(42)
+    end
+  end
+
+  describe '#single_page_size' do
+    let(:entity_counts) { instance_double(RepresentationManagement::AccreditationApiEntityCount) }
+
+    before do
+      job.instance_variable_set(:@entity_counts, entity_counts)
+      allow(entity_counts).to receive(:current_api_counts).and_return({
+                                                                        agents: 666,
+                                                                        attorneys: 5933,
+                                                                        representatives: 18_693,
+                                                                        veteran_service_organizations: 87
+                                                                      })
+    end
+
+    it 'sizes agents to totalRecords + 100 rounded up to the next hundred' do
+      expect(job.send(:single_page_size, RepresentationManagement::AGENTS)).to eq(800)
+    end
+
+    it 'sizes VSOs to totalRecords + 100 rounded up to the next hundred' do
+      expect(job.send(:single_page_size, RepresentationManagement::VSOS)).to eq(200)
+    end
+
+    it 'returns nil for paginated types (attorneys, representatives)' do
+      expect(job.send(:single_page_size, RepresentationManagement::ATTORNEYS)).to be_nil
+      expect(job.send(:single_page_size, RepresentationManagement::REPRESENTATIVES)).to be_nil
+    end
+
+    it 'returns nil when the total is unavailable' do
+      allow(entity_counts).to receive(:current_api_counts).and_return({})
+      expect(job.send(:single_page_size, RepresentationManagement::AGENTS)).to be_nil
+    end
+  end
+
+  describe 'single-page fetch for agents' do
+    let(:entity_counts) { instance_double(RepresentationManagement::AccreditationApiEntityCount) }
+    let(:agent) do
+      {
+        'id' => '1', 'number' => 10, 'poa' => 'ABC', 'firstName' => 'A', 'lastName' => 'B',
+        'workAddress1' => 'x', 'workZip' => '12345'
+      }
+    end
+
+    before do
+      job.instance_variable_set(:@entity_counts, entity_counts)
+      job.instance_variable_set(:@agent_ids, [])
+      job.instance_variable_set(:@agent_ids_for_address_validation, [])
+      job.instance_variable_set(:@processing_error_types, [])
+      allow(entity_counts).to receive(:current_api_counts).and_return({ agents: 666 })
+      allow(client).to receive(:get_accredited_entities)
+        .with(type: RepresentationManagement::AGENTS, page: 1, page_size: 800)
+        .and_return(instance_double(Faraday::Response, body: { 'items' => [agent] }))
+      allow(client).to receive(:get_accredited_entities)
+        .with(type: RepresentationManagement::AGENTS, page: 2, page_size: 800)
+        .and_return(instance_double(Faraday::Response, body: { 'items' => [] }))
+      record = instance_double(AccreditedIndividual, id: 1, raw_address: nil)
+      allow(AccreditedIndividual).to receive(:find_or_create_by).and_return(record)
+      allow(record).to receive(:update).and_return(true)
+    end
+
+    it 'requests agents in a single large page sized to totalRecords' do
+      job.send(:update_agents)
+
+      expect(client).to have_received(:get_accredited_entities)
+        .with(type: RepresentationManagement::AGENTS, page: 1, page_size: 800)
     end
   end
 end
