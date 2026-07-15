@@ -207,10 +207,6 @@ features:
     actor_type: user
     description: Enables IVC CHAMPVA form status entries in My VA submission statuses/cards
     enable_in_development: true
-  ivc_champva_poll_pega_status_job:
-    actor_type: user
-    description: Enables CHAMPVA PEGA status polling job execution
-    enable_in_development: true
   benefits_documents_use_lighthouse:
     actor_type: user
     description: Use lighthouse instead of EVSS to upload benefits documents.

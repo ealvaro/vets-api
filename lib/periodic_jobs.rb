@@ -266,9 +266,6 @@ PERIODIC_JOBS = lambda { |mgr| # rubocop:disable Metrics/BlockLength
   # Every 15min job that sends missing Pega statuses to DataDog
   mgr.register('*/15 * * * *', 'IvcChampva::MissingFormStatusJob')
 
-  # Daily job that polls the Pega reporting API to update pega_status on non-complete forms
-  mgr.register('0 2 * * *', 'IvcChampva::PollPegaStatusJob')
-
   # Daily job that sends notification emails to Pega of missing form statuses
   mgr.register('0 0 * * *', 'IvcChampva::NotifyPegaMissingFormStatusJob')
 
