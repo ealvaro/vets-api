@@ -57,11 +57,11 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
         expect(body['data']['attributes']['start']).to eq('2026-04-15T14:00:00Z')
       end
 
-      it 'increments create.success tagged provider_type:va' do
+      it 'increments booking success tagged provider_type:va via the booking service' do
         post('/vaos/v2/unified_bookings', params: va_params.to_json, headers:)
 
         expect(StatsD).to have_received(:increment)
-          .with('api.vaos.unified_booking.create.success', tags: ['provider_type:va'])
+          .with('api.vaos.unified_booking.success', tags: ['provider_type:va'])
       end
 
       it 'builds the correct VAOS request body' do
@@ -169,11 +169,14 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
           expect(body['errors']).to be_present
         end
 
-        it 'increments create.failure tagged provider_type:va' do
+        it 'increments booking failure tagged provider_type:va via the booking service' do
           post('/vaos/v2/unified_bookings', params: va_params.to_json, headers:)
 
           expect(StatsD).to have_received(:increment)
-            .with('api.vaos.unified_booking.create.failure', tags: ['provider_type:va'])
+            .with(
+              'api.vaos.unified_booking.failure',
+              tags: ['provider_type:va', 'error_type:backend_service_exception']
+            )
         end
       end
 
@@ -232,11 +235,11 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
         expect(body['data']['attributes']['status']).to eq('booked')
       end
 
-      it 'increments create.success tagged provider_type:eps' do
+      it 'increments booking success tagged provider_type:eps via the booking service' do
         post('/vaos/v2/unified_bookings', params: eps_params.to_json, headers:)
 
         expect(StatsD).to have_received(:increment)
-          .with('api.vaos.unified_booking.create.success', tags: ['provider_type:eps'])
+          .with('api.vaos.unified_booking.success', tags: ['provider_type:eps'])
       end
 
       it 'calls the guarded draft service then submit_appointment' do
@@ -342,6 +345,22 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
         expect(response).to have_http_status(:bad_request)
       end
 
+      # BookingArgumentError is raised inside EpsBookingService (via BaseBookingService#book),
+      # which emits api.vaos.unified_booking.failure before re-raising. The controller then
+      # remaps it to ParameterMissing for the HTTP response without a second StatsD increment.
+      it 'increments booking failure via the service when BookingArgumentError is remapped to 400' do
+        post('/vaos/v2/unified_bookings',
+             params: eps_params.except(:referral_number).to_json,
+             headers:)
+
+        expect(response).to have_http_status(:bad_request)
+        expect(StatsD).to have_received(:increment)
+          .with(
+            'api.vaos.unified_booking.failure',
+            tags: ['provider_type:eps', 'error_type:booking_argument_error']
+          )
+      end
+
       it 'returns 400 when network_id is missing' do
         post('/vaos/v2/unified_bookings',
              params: eps_params.except(:network_id).to_json,
@@ -364,11 +383,14 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
           expect(body['errors']).to be_present
         end
 
-        it 'increments create.failure tagged provider_type:eps' do
+        it 'increments booking failure tagged provider_type:eps via the booking service' do
           post('/vaos/v2/unified_bookings', params: eps_params.to_json, headers:)
 
           expect(StatsD).to have_received(:increment)
-            .with('api.vaos.unified_booking.create.failure', tags: ['provider_type:eps'])
+            .with(
+              'api.vaos.unified_booking.failure',
+              tags: ['provider_type:eps', 'error_type:backend_service_exception']
+            )
         end
       end
 

@@ -335,6 +335,20 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
       expect(results.map(&:provider_type)).to eq(['eps'])
     end
 
+    it 'emits a clinic_fetch.failure metric when get_facility_clinics raises' do
+      allow(StatsD).to receive(:increment)
+      allow(systems_service).to receive(:get_facility_clinics)
+        .and_raise(Common::Exceptions::BackendServiceException.new('VAOS_502'))
+
+      results = service.search(referral:)
+
+      expect(results.map(&:provider_type)).to eq(['eps'])
+      expect(StatsD).to have_received(:increment).with(
+        'api.vaos.unified_provider_search.clinic_fetch.failure',
+        tags: ['provider_type:va']
+      )
+    end
+
     it 'uses the default 25-mile radius' do
       service.search(referral:)
 

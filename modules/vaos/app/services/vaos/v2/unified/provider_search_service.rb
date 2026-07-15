@@ -196,7 +196,7 @@ module VAOS
                                original_status: e.try(:original_status),
                                user_uuid: @cached_user_uuid
                              }.compact)
-          StatsD.increment("#{STATSD_KEY_PREFIX}.va_search.failure")
+          StatsD.increment("#{STATSD_KEY_PREFIX}.va_search.failure", tags: ['provider_type:va'])
           []
         end
 
@@ -290,7 +290,7 @@ module VAOS
             "#{log_prefix}: next-available enrichment failed",
             { error_class: e.class.name, user_uuid: @cached_user_uuid }.compact
           )
-          StatsD.increment("#{STATSD_KEY_PREFIX}.next_available_enrichment.failure")
+          StatsD.increment("#{STATSD_KEY_PREFIX}.next_available_enrichment.failure", tags: ['provider_type:va'])
           {}
         end
 
@@ -332,7 +332,7 @@ module VAOS
             "#{log_prefix}: next-available-slot fetch failed for site #{location_id}",
             { error_class: error.class.name, user_uuid: @cached_user_uuid }.compact
           )
-          StatsD.increment("#{STATSD_KEY_PREFIX}.next_available_slot.failure")
+          StatsD.increment("#{STATSD_KEY_PREFIX}.next_available_slot.failure", tags: ['provider_type:va'])
         end
 
         # Preserves the clinic's local date (no UTC shift) by parsing the offset
@@ -346,7 +346,7 @@ module VAOS
             "#{log_prefix}: next-available slot start could not be parsed as ISO8601",
             { error_class: e.class.name, user_uuid: @cached_user_uuid }.compact
           )
-          StatsD.increment("#{STATSD_KEY_PREFIX}.next_available_date_parse.failure")
+          StatsD.increment("#{STATSD_KEY_PREFIX}.next_available_date_parse.failure", tags: ['provider_type:va'])
           nil
         end
 
@@ -436,7 +436,7 @@ module VAOS
             "#{log_prefix}: EPS next-available enrichment failed",
             { error_class: e.class.name, user_uuid: @cached_user_uuid }.compact
           )
-          StatsD.increment("#{STATSD_KEY_PREFIX}.eps_next_available_enrichment.failure")
+          StatsD.increment("#{STATSD_KEY_PREFIX}.eps_next_available_enrichment.failure", tags: ['provider_type:eps'])
           {}
         end
 
@@ -445,7 +445,7 @@ module VAOS
             "#{log_prefix}: EPS next-available-slot fetch failed for provider #{provider.id}",
             { error_class: error.class.name, user_uuid: @cached_user_uuid }.compact
           )
-          StatsD.increment("#{STATSD_KEY_PREFIX}.eps_next_available_slot.failure")
+          StatsD.increment("#{STATSD_KEY_PREFIX}.eps_next_available_slot.failure", tags: ['provider_type:eps'])
         end
 
         def log_eps_draft_resolution_failure(error)
@@ -453,7 +453,7 @@ module VAOS
             "#{log_prefix}: EPS draft resolution failed for next-available enrichment",
             { error_class: error.class.name, user_uuid: @cached_user_uuid }.compact
           )
-          StatsD.increment("#{STATSD_KEY_PREFIX}.eps_draft_resolution.failure")
+          StatsD.increment("#{STATSD_KEY_PREFIX}.eps_draft_resolution.failure", tags: ['provider_type:eps'])
         end
 
         def fetch_eps_providers(user_address, radius, eps_client:, specialty_ids:, name_patterns:)
@@ -474,7 +474,7 @@ module VAOS
                                original_status: e.try(:original_status),
                                user_uuid: @cached_user_uuid
                              }.compact)
-          StatsD.increment("#{STATSD_KEY_PREFIX}.eps_search.failure")
+          StatsD.increment("#{STATSD_KEY_PREFIX}.eps_search.failure", tags: ['provider_type:eps'])
           []
         end
 
@@ -563,6 +563,10 @@ module VAOS
               clinical_service:,
               user_uuid: @cached_user_uuid
             }.compact
+          )
+          StatsD.increment(
+            "#{STATSD_KEY_PREFIX}.clinic_fetch.failure",
+            tags: ['provider_type:va']
           )
           []
         end

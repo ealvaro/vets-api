@@ -7,6 +7,8 @@ module VAOS
       # VAOS SystemsService, community care via EPS ProviderService. VA providers must include
       # +location_id+ and +id+ (clinic IEN; see VAProvider).
       class SlotsService
+        STATSD_KEY_PREFIX = 'api.vaos.unified_slots'
+
         def initialize(user)
           @user = user
         end
@@ -64,7 +66,9 @@ module VAOS
             start_dt:,
             end_dt:
           )
-          Array(raw).map { |slot| VASlot.from_vaos_slot(slot, location_id: provider.location_id) }
+          slots = Array(raw).map { |slot| VASlot.from_vaos_slot(slot, location_id: provider.location_id) }
+          log_fetch_success(provider.provider_type, slots)
+          slots
         end
 
         def fetch_eps_slots(provider, start_dt, end_dt, appointment_id)
@@ -85,7 +89,26 @@ module VAOS
           # CC providers need ~3 business days to accept and prep for a
           # referral; Wellhive doesn't apply this floor for us, so any slot
           # within the cutoff is one the provider will reject.
-          CCLeadTimeFilter.filter(slots)
+          filtered = CCLeadTimeFilter.filter(slots)
+          log_lead_time_filtered(provider.provider_type, slots.size - filtered.size)
+          log_fetch_success(provider.provider_type, filtered)
+          filtered
+        end
+
+        def log_fetch_success(provider_type, slots)
+          tags = ["provider_type:#{provider_type}"]
+          StatsD.increment("#{STATSD_KEY_PREFIX}.fetch.success", tags:)
+          StatsD.increment("#{STATSD_KEY_PREFIX}.fetch.no_results", tags:) if slots.blank?
+        end
+
+        def log_lead_time_filtered(provider_type, count)
+          return if count.zero?
+
+          StatsD.increment(
+            "#{STATSD_KEY_PREFIX}.lead_time.filtered",
+            count,
+            tags: ["provider_type:#{provider_type}"]
+          )
         end
 
         def systems_service

@@ -12,17 +12,18 @@ module VAOS
       VALID_PROVIDER_TYPES = %w[va eps].freeze
 
       def index
-        validate_provider_type!
-        referral = fetch_referral
-        provider = build_provider
-        draft_id = maybe_create_draft(referral)
-        slots = fetch_slots(provider, referral, draft_id)
+        StatsD.measure("#{STATSD_KEY_PREFIX}.index.duration", tags: ["provider_type:#{provider_type_for_metrics}"]) do
+          validate_provider_type!
+          referral = fetch_referral
+          provider = build_provider
+          draft_id = maybe_create_draft(referral)
+          slots = fetch_slots(provider, referral, draft_id)
 
-        render json: serialize_response(provider, slots, draft_id), status: :ok
-      rescue Common::Exceptions::BaseError
-        raise
+          log_index_success(slots)
+          render json: serialize_response(provider, slots, draft_id), status: :ok
+        end
       rescue => e
-        log_error(e)
+        log_index_failure(e)
         raise
       end
 
@@ -119,7 +120,7 @@ module VAOS
         return nil unless provider_type == 'eps'
 
         draft_id = eps_draft_service.create_for_referral(referral)
-        StatsD.increment("#{STATSD_KEY_PREFIX}.draft_created")
+        StatsD.increment("#{STATSD_KEY_PREFIX}.draft_created", tags: ['provider_type:eps'])
         draft_id
       end
 
@@ -166,9 +167,15 @@ module VAOS
         @eps_draft_service ||= Unified::EpsDraftService.new(current_user)
       end
 
-      def log_error(error)
+      def log_index_success(slots)
+        tags = ["provider_type:#{provider_type}"]
+        StatsD.increment("#{STATSD_KEY_PREFIX}.index.success", tags:)
+        StatsD.increment("#{STATSD_KEY_PREFIX}.index.no_results", tags:) if slots.blank?
+      end
+
+      def log_index_failure(error)
         Rails.logger.error(
-          "#{STATSD_KEY_PREFIX}.controller_error",
+          "#{STATSD_KEY_PREFIX}.index.failure",
           {
             error_class: error.class.name,
             provider_type: provider_type_safe,
@@ -176,13 +183,25 @@ module VAOS
           }
         )
         StatsD.increment(
-          "#{STATSD_KEY_PREFIX}.controller_error",
-          tags: ["provider_type:#{provider_type_safe}", "error_type:#{error.class.name.demodulize.underscore}"]
+          "#{STATSD_KEY_PREFIX}.index.failure",
+          tags: [
+            "provider_type:#{provider_type_safe}",
+            "error_type:#{error.class.name.demodulize.underscore}"
+          ]
         )
       end
 
       def provider_type_safe
-        @provider_type || 'unknown'
+        normalize_provider_type_tag(@provider_type || params[:provider_type])
+      end
+
+      def provider_type_for_metrics
+        normalize_provider_type_tag(params[:provider_type])
+      end
+
+      def normalize_provider_type_tag(value)
+        normalized = value.to_s.presence
+        VALID_PROVIDER_TYPES.include?(normalized) ? normalized : 'unknown'
       end
     end
   end

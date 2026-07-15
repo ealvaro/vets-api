@@ -3,27 +3,12 @@
 require 'rails_helper'
 
 RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
-  before do
-    allow(Settings.mhv).to receive(:facility_range).and_return([[1, 999]])
-    sign_in_as(current_user)
-    allow_any_instance_of(VAOS::UserService).to receive(:session).and_return('stubbed_token')
-    allow(Rails.logger).to receive(:info)
-    allow(Rails.logger).to receive(:error)
-    allow(Rails.logger).to receive(:warn)
-    allow(StatsD).to receive(:increment)
-
-    allow(VAOS::ReferralEncryptionService).to receive(:decrypt).with('encrypted-ref-id').and_return('consult-123')
-    allow(Ccra::ReferralService).to receive(:new).and_return(mock_referral_service)
-    allow(mock_referral_service).to receive(:get_referral).and_return(mock_referral)
-  end
-
+  let(:measure_yields) { ->(*_args, **_kwargs, &block) { block&.call } }
   let(:current_user) { build(:user, :vaos) }
   let(:headers) { { 'Content-Type' => 'application/json', 'Accept' => 'application/json' } }
-
   let(:mock_referral_service) { instance_double(Ccra::ReferralService) }
   let(:mock_eps_draft_service) { instance_double(VAOS::V2::Unified::EpsDraftService) }
   let(:mock_eps_provider_service) { instance_double(Eps::ProviderService) }
-
   let(:mock_referral) do
     OpenStruct.new(
       referral_number: 'VA0000005678',
@@ -32,9 +17,7 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
       category_of_care: 'optometry'
     )
   end
-
   let(:draft_id) { 'draft-abc' }
-
   let(:mock_eps_slots_response) do
     OpenStruct.new(
       slots: [
@@ -44,6 +27,21 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
           provider_service_id: 'prov-789' }
       ]
     )
+  end
+
+  before do
+    allow(Settings.mhv).to receive(:facility_range).and_return([[1, 999]])
+    sign_in_as(current_user)
+    allow_any_instance_of(VAOS::UserService).to receive(:session).and_return('stubbed_token')
+    allow(Rails.logger).to receive(:info)
+    allow(Rails.logger).to receive(:error)
+    allow(Rails.logger).to receive(:warn)
+    allow(StatsD).to receive(:increment)
+    allow(StatsD).to receive(:measure, &measure_yields)
+
+    allow(VAOS::ReferralEncryptionService).to receive(:decrypt).with('encrypted-ref-id').and_return('consult-123')
+    allow(Ccra::ReferralService).to receive(:new).and_return(mock_referral_service)
+    allow(mock_referral_service).to receive(:get_referral).and_return(mock_referral)
   end
 
   describe 'GET /vaos/v2/provider_slots' do
@@ -128,6 +126,22 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
           .with('prov-789', hash_including(appointmentTypeId: 'ov'))
       end
 
+      it 'increments index.success and draft_created tagged provider_type:eps' do
+        get('/vaos/v2/provider_slots', params: base_params, headers:)
+
+        expect(StatsD).to have_received(:increment)
+          .with('api.vaos.unified_slots.index.success', tags: ['provider_type:eps'])
+        expect(StatsD).to have_received(:increment)
+          .with('api.vaos.unified_slots.draft_created', tags: ['provider_type:eps'])
+      end
+
+      it 'records index duration with provider_type tag' do
+        get('/vaos/v2/provider_slots', params: base_params, headers:)
+
+        expect(StatsD).to have_received(:measure)
+          .with('api.vaos.unified_slots.index.duration', tags: ['provider_type:eps'])
+      end
+
       it 'returns 400 when provider_service_id is missing' do
         get('/vaos/v2/provider_slots', params: base_params.except(:provider_service_id), headers:)
 
@@ -150,6 +164,16 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
           get('/vaos/v2/provider_slots', params: base_params, headers:)
 
           expect(response).to have_http_status(:bad_gateway)
+        end
+
+        it 'increments index.failure tagged provider_type:eps' do
+          get('/vaos/v2/provider_slots', params: base_params, headers:)
+
+          expect(StatsD).to have_received(:increment)
+            .with(
+              'api.vaos.unified_slots.index.failure',
+              tags: ['provider_type:eps', 'error_type:backend_service_exception']
+            )
         end
       end
     end
@@ -301,6 +325,21 @@ RSpec.describe 'VAOS::V2::UnifiedSlots', :skip_mvi, type: :request do
             headers:)
 
         expect(response).to have_http_status(:bad_request)
+      end
+
+      it 'tags invalid provider_type metrics as unknown' do
+        get('/vaos/v2/provider_slots',
+            params: { referral_id: 'encrypted-ref-id', provider_service_id: 'prov-789',
+                      provider_type: 'invalid' },
+            headers:)
+
+        expect(StatsD).to have_received(:measure)
+          .with('api.vaos.unified_slots.index.duration', tags: ['provider_type:unknown'])
+        expect(StatsD).to have_received(:increment)
+          .with(
+            'api.vaos.unified_slots.index.failure',
+            tags: ['provider_type:unknown', 'error_type:invalid_field_value']
+          )
       end
     end
 

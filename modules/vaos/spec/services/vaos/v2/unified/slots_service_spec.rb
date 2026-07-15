@@ -6,6 +6,8 @@ RSpec.describe VAOS::V2::Unified::SlotsService do
   let(:user) { build(:user, :vaos) }
   let(:service) { described_class.new(user) }
 
+  before { allow(StatsD).to receive(:increment) }
+
   describe '#slots_for' do
     context 'with an unsupported provider' do
       let(:provider) { VAOS::V2::Unified::BaseProvider.new(id: 'x') }
@@ -75,6 +77,17 @@ RSpec.describe VAOS::V2::Unified::SlotsService do
 
           slots = service.slots_for(provider:, start_dt:, end_dt:)
           expect(slots).to eq([])
+        end
+
+        it 'emits fetch success and no_results metrics for empty VA slot responses' do
+          allow(systems_service).to receive(:get_available_slots).and_return([])
+
+          service.slots_for(provider:, start_dt:, end_dt:)
+
+          expect(StatsD).to have_received(:increment)
+            .with('api.vaos.unified_slots.fetch.success', tags: ['provider_type:va'])
+          expect(StatsD).to have_received(:increment)
+            .with('api.vaos.unified_slots.fetch.no_results', tags: ['provider_type:va'])
         end
       end
 
@@ -226,6 +239,19 @@ RSpec.describe VAOS::V2::Unified::SlotsService do
             slots = service.slots_for(provider:, start_dt:, end_dt:, appointment_id:)
             expect(slots.map(&:id)).to eq(['far'])
           end
+        end
+
+        it 'emits a lead_time.filtered metric for dropped near-term EPS slots' do
+          allow(eps_service).to receive(:get_provider_slots).and_return(
+            OpenStruct.new(slots: [near_slot, far_slot])
+          )
+
+          Timecop.freeze(Time.zone.parse('2026-05-11T10:00:00-04:00')) do
+            service.slots_for(provider:, start_dt:, end_dt:, appointment_id:)
+          end
+
+          expect(StatsD).to have_received(:increment)
+            .with('api.vaos.unified_slots.lead_time.filtered', 1, tags: ['provider_type:eps'])
         end
       end
     end

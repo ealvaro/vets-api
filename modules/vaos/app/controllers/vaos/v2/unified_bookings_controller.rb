@@ -31,21 +31,19 @@ module VAOS
       def create
         validate_provider_type!
         confirmation = perform_booking
-        StatsD.increment("#{STATSD_KEY_PREFIX}.create.success", tags: ["provider_type:#{provider_type}"])
         render json: serialize_confirmation(confirmation), status: :created
       rescue VAOS::V2::Unified::BookingArgumentError => e
         # Surface the booking service's specific message (e.g. "referral_number or
         # referral_id is required for EPS booking") so the client gets an actionable
         # 400 instead of a generic parameter-missing complaint about an internal
         # variable name. Maps to Common::Exceptions::ParameterMissing (HTTP 400).
-        log_create_failure
         raise Common::Exceptions::ParameterMissing.new('booking_params', detail: e.message)
-      rescue Common::Exceptions::BaseError
-        log_create_failure
+      rescue Common::Exceptions::BaseError => e
+        log_booking_failure(e) unless booking_error_already_logged?(e)
         raise
       rescue => e
-        log_error(e) unless e.is_a?(VAOS::V2::Unified::BaseBookingService::AlreadyLogged)
-        log_create_failure
+        log_error(e) unless booking_error_already_logged?(e)
+        log_booking_failure(e) unless booking_error_already_logged?(e)
         raise
       end
 
@@ -275,8 +273,18 @@ module VAOS
         )
       end
 
-      def log_create_failure
-        StatsD.increment("#{STATSD_KEY_PREFIX}.create.failure", tags: ["provider_type:#{provider_type_safe}"])
+      def log_booking_failure(error)
+        StatsD.increment(
+          "#{STATSD_KEY_PREFIX}.failure",
+          tags: [
+            "provider_type:#{provider_type_safe}",
+            "error_type:#{error.class.name.demodulize.underscore}"
+          ]
+        )
+      end
+
+      def booking_error_already_logged?(error)
+        error.is_a?(VAOS::V2::Unified::BaseBookingService::AlreadyLogged)
       end
 
       def vaos_appointments_service
@@ -292,7 +300,8 @@ module VAOS
       end
 
       def provider_type_safe
-        @provider_type || 'unknown'
+        normalized = (@provider_type || params[:provider_type]).to_s.presence
+        VALID_PROVIDER_TYPES.include?(normalized) ? normalized : 'unknown'
       end
     end
   end

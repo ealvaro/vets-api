@@ -18,7 +18,10 @@ RSpec.describe VAOS::V2::Unified::EpsDraftService do
 
   let(:draft_response) { OpenStruct.new(id: 'eps-draft-1', state: 'draft') }
 
-  before { allow(PersonalInformationLog).to receive(:create) }
+  before do
+    allow(PersonalInformationLog).to receive(:create)
+    allow(StatsD).to receive(:increment)
+  end
 
   describe '#create_for_referral' do
     context 'when the referral has not been used' do
@@ -90,6 +93,17 @@ RSpec.describe VAOS::V2::Unified::EpsDraftService do
         expect { service.create_for_referral(referral) }
           .to raise_error(Common::Exceptions::UnprocessableEntity)
       end
+
+      it 'increments a StatsD counter tagged eps_draft_referral_already_used' do
+        expect { service.create_for_referral(referral) }
+          .to raise_error(Common::Exceptions::UnprocessableEntity)
+
+        expect(StatsD).to have_received(:increment)
+          .with(
+            'api.vaos.unified_eps_draft.eps_draft_referral_already_used',
+            tags: ['provider_type:eps']
+          )
+      end
     end
 
     # Distinct from "already used" so operators can tell upstream availability
@@ -129,6 +143,17 @@ RSpec.describe VAOS::V2::Unified::EpsDraftService do
 
         expect { service.create_for_referral(referral) }
           .to raise_error(Common::Exceptions::BadGateway)
+      end
+
+      it 'increments a StatsD counter tagged eps_draft_existing_appointment_check_failed' do
+        expect { service.create_for_referral(referral) }
+          .to raise_error(Common::Exceptions::BadGateway)
+
+        expect(StatsD).to have_received(:increment)
+          .with(
+            'api.vaos.unified_eps_draft.eps_draft_existing_appointment_check_failed',
+            tags: ['provider_type:eps']
+          )
       end
     end
 

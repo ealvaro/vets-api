@@ -32,6 +32,8 @@ module VAOS
       # {VAOS::V2::AppointmentsService}.
       #
       class EpsDraftService
+        STATSD_KEY_PREFIX = 'api.vaos.unified_eps_draft'
+
         ##
         # @param user [User] the authenticated veteran
         # @param appointments_service [VAOS::V2::AppointmentsService, nil] optional
@@ -115,6 +117,10 @@ module VAOS
               user_uuid: user&.uuid,
               failure_reason:
             }.compact
+          )
+          StatsD.increment(
+            "#{STATSD_KEY_PREFIX}.#{error_class}",
+            tags: ['provider_type:eps']
           )
         end
 
