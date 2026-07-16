@@ -44,6 +44,12 @@ module SimpleFormsApi
       def retrieve_presigned_url
         archive = config.submission_archive_class.new(config:, id:, type: upload_type)
         @archive_path, @manifest_row = archive.retrieval_data
+
+        if upload_type == :submission
+          url = presigned_url_with_submission_fallback(archive)
+          return url if url
+        end
+
         generate_presigned_url(type: upload_type)
       end
 
@@ -130,6 +136,68 @@ module SimpleFormsApi
 
       def generate_presigned_url(type: upload_type)
         s3_uploader.get_s3_link(s3_upload_file_path(type))
+      end
+
+      def presigned_url_with_submission_fallback(archive)
+        return nil if manifest_row.nil?
+
+        candidates = archive.form_number_candidates
+        primary_form_number = candidates.first
+
+        candidates.each do |form_number|
+          s3_path = s3_submission_file_path(form_number:)
+          uploader = config.uploader_class.new(config:, directory: s3_directory_path_for(form_number))
+          probe_result = submission_pdf_exists?(uploader, s3_path, form_number:)
+
+          return nil if probe_result.nil?
+          next unless probe_result
+
+          log_legacy_submission_pdf_path(form_number, primary_form_number, s3_path)
+          return uploader.get_s3_link(s3_path)
+        end
+
+        nil
+      end
+
+      def submission_pdf_exists?(uploader, s3_path, form_number:)
+        uploader.s3_exists?(s3_path)
+      rescue => e
+        config.log_error(
+          "Error probing S3 for submission PDF #{id}",
+          e,
+          form_number:,
+          s3_path:
+        )
+        nil
+      end
+
+      def log_legacy_submission_pdf_path(form_number, primary_form_number, s3_path)
+        return if form_number == primary_form_number
+
+        config.log_info(
+          "Found submission PDF at legacy S3 path for #{id}",
+          form_number:,
+          s3_path:
+        )
+      end
+
+      def s3_directory_path_for(form_number)
+        build_path(
+          :dir,
+          parent_dir,
+          upload_type.to_s,
+          dated_directory_name(form_number, submission_date)
+        )
+      end
+
+      def submission_date
+        manifest_row[0]
+      end
+
+      def s3_submission_file_path(form_number:)
+        dir = s3_directory_path_for(form_number)
+        filename = unique_file_name(form_number, id, submission_date)
+        build_path(:file, dir, filename, ext: '.pdf')
       end
 
       def s3_upload_file_path(type)

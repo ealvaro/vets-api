@@ -299,6 +299,73 @@ RSpec.describe SimpleFormsApi::FormRemediation::SubmissionArchive do
         end
       end
 
+      describe '#form_number_candidates' do
+        let(:form_data601) do
+          Rails.root.join(fixtures_path, 'form_json', 'vba_21_4140.json').read
+        end
+        let(:metadata601) do
+          {
+            'veteranFirstName' => 'John',
+            'veteranLastName' => 'Veteran',
+            'fileNumber' => '321540987',
+            'zipCode' => '12345',
+            'source' => 'VA Platform Digital Forms',
+            'docType' => 'StructuredData:21P-601',
+            'businessLine' => 'CMP'
+          }
+        end
+        let(:submission601) do
+          create(:form_submission, :pending, form_type: '21P-601', form_data: form_data601)
+        end
+        let(:archive601) do
+          described_class.new(
+            id: benefits_intake_uuid,
+            config: SimpleFormsApi::FormRemediation::Configuration::VffConfig.new,
+            type: :submission,
+            submission: submission601,
+            file_path:,
+            attachments: [],
+            metadata: metadata601
+          )
+        end
+
+        it 'returns current path first, then legacy StructuredData variants, then plain form id' do
+          allow(Flipper).to receive(:enabled?)
+            .with(:simple_forms_s3_mms_prefix_bugfix)
+            .and_return(true)
+
+          expect(archive601.form_number_candidates).to eq(
+            ['StructuredData_21P-601', 'StructuredData:21P-601', '21P-601']
+          )
+        end
+
+        it 'returns the colon path first when the flipper is disabled' do
+          allow(Flipper).to receive(:enabled?)
+            .with(:simple_forms_s3_mms_prefix_bugfix)
+            .and_return(false)
+
+          expect(archive601.form_number_candidates).to eq(
+            ['StructuredData:21P-601', 'StructuredData_21P-601', '21P-601']
+          )
+        end
+
+        it 'returns only the plain form id when docType has no StructuredData prefix' do
+          metadata = metadata601.merge('docType' => '20-10207')
+          submission = create(:form_submission, :pending, form_type: '20-10207', form_data: form_data601)
+          archive = described_class.new(
+            id: benefits_intake_uuid,
+            config: SimpleFormsApi::FormRemediation::Configuration::VffConfig.new,
+            type: :submission,
+            submission:,
+            file_path:,
+            attachments: [],
+            metadata:
+          )
+
+          expect(archive.form_number_candidates).to eq(['20-10207'])
+        end
+      end
+
       describe '#retrieval_data' do
         subject(:retrieval_data) { archive_instance.retrieval_data }
 
@@ -321,6 +388,7 @@ RSpec.describe SimpleFormsApi::FormRemediation::SubmissionArchive do
       end
     end
   end
+
   describe '#submission_file_name' do
     let(:archive_instance) { described_class.new(**hydrated_submission_args) }
     let(:type) { 'submission' }

@@ -241,4 +241,47 @@ RSpec.describe SimpleFormsApi::FormRemediation::Uploader do
       end
     end
   end
+
+  describe '#s3_exists?' do
+    subject(:s3_exists?) { uploader_instance.s3_exists?(file_path) }
+
+    let(:file_path) { 'submission/5.15.26-Form21P-601/test.pdf' }
+    let(:s3_object) { instance_double(Aws::S3::Object) }
+
+    before do
+      allow(Aws::S3::Client).to receive(:new).and_return(instance_double(Aws::S3::Client))
+      allow(Aws::S3::Resource).to receive(:new).and_return(
+        instance_double(Aws::S3::Resource, bucket: instance_double(Aws::S3::Bucket, object: s3_object))
+      )
+    end
+
+    context 'when the object exists' do
+      before { allow(s3_object).to receive(:exists?).and_return(true) }
+
+      it { is_expected.to be(true) }
+    end
+
+    context 'when the object does not exist' do
+      before { allow(s3_object).to receive(:exists?).and_raise(Aws::S3::Errors::NotFound.new(nil, 'not found')) }
+
+      it { is_expected.to be(false) }
+    end
+
+    context 'when the object raises NoSuchKey' do
+      before { allow(s3_object).to receive(:exists?).and_raise(Aws::S3::Errors::NoSuchKey.new(nil, 'no key')) }
+
+      it { is_expected.to be(false) }
+    end
+
+    context 'when a transient AWS error occurs' do
+      let(:error) { Aws::S3::Errors::ServiceError.new(nil, 'timeout') }
+
+      before { allow(s3_object).to receive(:exists?).and_raise(error) }
+
+      it 'delegates to config.handle_error' do
+        s3_exists?
+        expect(config).to have_received(:handle_error).with('An error occurred while checking the file.', error)
+      end
+    end
+  end
 end

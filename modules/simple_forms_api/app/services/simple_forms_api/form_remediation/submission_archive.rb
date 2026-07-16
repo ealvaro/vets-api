@@ -43,6 +43,23 @@ module SimpleFormsApi
         [final_path, manifest_entry]
       end
 
+      # Ordered S3 path segments for download lookup. Current {#form_number} first, then legacy
+      # StructuredData variants, then the plain submission form id.
+      def form_number_candidates
+        current = form_number
+        doc_type = metadata&.dig('docType')
+        plain = submission&.form_type.presence || submission_form_number
+
+        candidates = [current]
+        if doc_type&.start_with?('StructuredData:')
+          candidates << doc_type.gsub(':', '_')
+          candidates << doc_type
+        end
+        candidates << plain if plain.present?
+
+        candidates.compact.uniq
+      end
+
       private
 
       attr_reader :archive_type, :attachments, :config, :file_path, :id, :metadata, :pdf_already_exists, :submission,

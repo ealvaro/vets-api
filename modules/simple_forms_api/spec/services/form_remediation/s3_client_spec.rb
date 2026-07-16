@@ -74,11 +74,16 @@ RSpec.describe SimpleFormsApi::FormRemediation::S3Client do
     allow(SimpleFormsApi::FormRemediation::SubmissionArchive).to(receive(:new).and_return(submission_archive_double))
     allow(submission_archive_double).to receive_messages(
       build!: [local_archive_path, manifest_entry],
-      retrieval_data: [local_archive_path, manifest_entry]
+      retrieval_data: [local_archive_path, manifest_entry],
+      form_number_candidates: [form_type]
     )
     allow(SimpleFormsApi::FormRemediation::Uploader).to receive_messages(new: uploader)
-    allow(uploader).to receive(:get_s3_link).with(s3_archive_path).and_return('/s3_url/stuff.pdf')
-    allow(uploader).to receive_messages(get_s3_file: s3_file, store!: carrier_wave_file)
+    allow(uploader).to receive_messages(
+      get_s3_link: '/s3_url/stuff.pdf',
+      s3_exists?: true,
+      get_s3_file: s3_file,
+      store!: carrier_wave_file
+    )
     allow(Rails.logger).to receive(:info).and_call_original
     allow(Rails.logger).to receive(:error).and_call_original
   end
@@ -92,6 +97,13 @@ RSpec.describe SimpleFormsApi::FormRemediation::S3Client do
 
         it 'returns the s3 link' do
           expect(fetch_presigned_url).to eq('/s3_url/stuff.pdf')
+        end
+
+        if archive_type == :remediation
+          it 'does not probe legacy S3 paths' do
+            fetch_presigned_url
+            expect(uploader).not_to have_received(:s3_exists?)
+          end
         end
       end
 
@@ -203,6 +215,146 @@ RSpec.describe SimpleFormsApi::FormRemediation::S3Client do
 
           include_examples 's3 client acts as expected'
         end
+      end
+    end
+  end
+
+  describe '.fetch_presigned_url submission legacy path fallback' do
+    subject(:fetch_presigned_url) do
+      described_class.fetch_presigned_url(benefits_intake_uuid, config:, type: :submission)
+    end
+
+    let(:type) { :submission }
+    let(:form_type) { '21P-601' }
+    let(:metadata) do
+      super().merge('docType' => 'StructuredData:21P-601')
+    end
+    let(:current_form_number) { 'StructuredData_21P-601' }
+    let(:legacy_form_number) { 'StructuredData:21P-601' }
+    let(:submission_date) { submission.created_at }
+    let(:current_s3_path) do
+      dir = "submission/#{dated_directory_name(current_form_number, submission_date)}"
+      "#{dir}/#{unique_file_name(current_form_number, benefits_intake_uuid, submission_date)}.pdf"
+    end
+    let(:legacy_s3_path) do
+      dir = "submission/#{dated_directory_name(legacy_form_number, submission_date)}"
+      "#{dir}/#{unique_file_name(legacy_form_number, benefits_intake_uuid, submission_date)}.pdf"
+    end
+
+    before do
+      allow(submission_archive_double).to receive(:form_number_candidates).and_return(
+        [current_form_number, legacy_form_number, form_type]
+      )
+      allow(uploader).to receive(:s3_exists?).with(current_s3_path).and_return(false)
+      allow(uploader).to receive(:s3_exists?).with(legacy_s3_path).and_return(true)
+      allow(uploader).to receive(:get_s3_link).with(legacy_s3_path).and_return('/s3_url/legacy.pdf')
+    end
+
+    it 'returns a presigned url for the legacy path' do
+      expect(fetch_presigned_url).to eq('/s3_url/legacy.pdf')
+    end
+
+    it 'logs when a legacy path is used' do
+      allow(config).to receive(:log_info).and_call_original
+
+      fetch_presigned_url
+
+      expect(config).to have_received(:log_info).with(
+        "Found submission PDF at legacy S3 path for #{benefits_intake_uuid}",
+        form_number: legacy_form_number,
+        s3_path: legacy_s3_path
+      )
+    end
+
+    context 'when the current path exists' do
+      before do
+        allow(uploader).to receive(:s3_exists?).with(current_s3_path).and_return(true)
+        allow(uploader).to receive(:get_s3_link).with(current_s3_path).and_return('/s3_url/current.pdf')
+      end
+
+      it 'returns a presigned url for the current path' do
+        expect(fetch_presigned_url).to eq('/s3_url/current.pdf')
+      end
+
+      it 'does not log legacy path recovery' do
+        allow(config).to receive(:log_info).and_call_original
+
+        fetch_presigned_url
+
+        expect(config).not_to have_received(:log_info).with(
+          a_string_including('legacy S3 path'),
+          anything
+        )
+      end
+    end
+
+    context 'when probing S3 raises a transient error' do
+      let(:error) { Aws::S3::Errors::ServiceError.new(nil, 'timeout') }
+
+      before do
+        allow(uploader).to receive(:s3_exists?).with(current_s3_path).and_raise(error)
+        allow(config).to receive(:log_error).and_call_original
+      end
+
+      it 'falls back to the default presigned url path' do
+        expect(fetch_presigned_url).to eq('/s3_url/stuff.pdf')
+        expect(uploader).to have_received(:get_s3_link)
+      end
+
+      it 'logs the probe error' do
+        fetch_presigned_url
+
+        expect(config).to have_received(:log_error).with(
+          "Error probing S3 for submission PDF #{benefits_intake_uuid}",
+          error,
+          form_number: current_form_number,
+          s3_path: current_s3_path
+        )
+      end
+    end
+
+    context 'when only the plain form id path exists' do
+      let(:plain_s3_path) do
+        dir = "submission/#{dated_directory_name(form_type, submission_date)}"
+        "#{dir}/#{unique_file_name(form_type, benefits_intake_uuid, submission_date)}.pdf"
+      end
+
+      before do
+        allow(uploader).to receive(:s3_exists?).with(current_s3_path).and_return(false)
+        allow(uploader).to receive(:s3_exists?).with(legacy_s3_path).and_return(false)
+        allow(uploader).to receive(:s3_exists?).with(plain_s3_path).and_return(true)
+        allow(uploader).to receive(:get_s3_link).with(plain_s3_path).and_return('/s3_url/plain.pdf')
+      end
+
+      it 'returns a presigned url for the plain form id path' do
+        expect(fetch_presigned_url).to eq('/s3_url/plain.pdf')
+      end
+    end
+
+    context 'when no candidate paths exist in S3' do
+      before do
+        allow(uploader).to receive(:s3_exists?).and_return(false)
+      end
+
+      it 'falls back to the default presigned url path' do
+        expect(fetch_presigned_url).to eq('/s3_url/stuff.pdf')
+        expect(uploader).to have_received(:get_s3_link)
+      end
+    end
+
+    context 'when manifest row is nil' do
+      before do
+        allow(submission_archive_double).to receive(:retrieval_data).and_return([local_archive_path, nil])
+        allow(described_class).to receive(:new).and_wrap_original do |method, **args|
+          instance = method.call(**args)
+          allow(instance).to receive(:generate_presigned_url).and_return('/s3_url/stuff.pdf')
+          instance
+        end
+      end
+
+      it 'skips legacy path probing and falls back to the default presigned url path' do
+        expect(fetch_presigned_url).to eq('/s3_url/stuff.pdf')
+        expect(uploader).not_to have_received(:s3_exists?)
       end
     end
   end

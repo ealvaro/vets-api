@@ -116,6 +116,14 @@ module SimpleFormsApi
         config.handle_error('An error occurred while downloading the file.', e)
       end
 
+      def s3_exists?(file_path)
+        s3_obj(file_path).exists?
+      rescue Aws::S3::Errors::NotFound, Aws::S3::Errors::NoSuchKey
+        false
+      rescue => e
+        config.handle_error('An error occurred while checking the file.', e)
+      end
+
       private
 
       attr_reader :config
