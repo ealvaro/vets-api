@@ -2007,6 +2007,13 @@ features:
   mhv_medications_management_improvements:
     actor_type: user
     description: Enables improvements to medication management functionality
+  mhv_medications_ndc_fallback:
+    actor_type: user
+    description: >-
+      If enabled, prescriptions without a CMOP NDC will fall back to the
+      VistA-sourced NDC for Krames PMI documentation lookup, unlocking the
+      "Learn more about this medication" link for local pharmacy fills.
+    enable_in_development: true
   mhv_scdf_for_labs_enabled:
     actor_type: user
     description: Controls whether labs and test and imaging is pulled from SCDF service

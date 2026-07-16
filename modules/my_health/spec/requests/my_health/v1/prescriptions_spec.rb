@@ -590,8 +590,9 @@ RSpec.describe 'MyHealth::V1::Prescriptions', type: :request do
       end
 
       it 'returns error when NDC number is missing' do
+        allow(Flipper).to receive(:enabled?).with(:mhv_medications_ndc_fallback, anything).and_return(true)
         allow_any_instance_of(Rx::Client).to receive(:get_rx_details).and_return(
-          double('Rx', cmop_ndc_value: nil)
+          double('Rx', cmop_ndc_value: nil, ndc: nil)
         )
 
         get '/my_health/v1/prescriptions/13650541/documentation'
@@ -599,6 +600,33 @@ RSpec.describe 'MyHealth::V1::Prescriptions', type: :request do
         expect(response).to have_http_status(:unprocessable_entity)
         error = JSON.parse(response.body)
         expect(error).to include('errors')
+      end
+
+      it 'falls back to VistA ndc when cmop_ndc_value is blank and flag is enabled' do
+        allow(Flipper).to receive(:enabled?).with(:mhv_medications_ndc_fallback, anything).and_return(true)
+        allow_any_instance_of(Rx::Client).to receive(:get_rx_details).and_return(
+          double('Rx', cmop_ndc_value: nil, ndc: '00173-9447-00')
+        )
+        allow_any_instance_of(Rx::Client).to receive(:get_rx_documentation)
+          .with('00173-9447-00')
+          .and_return({ data: '<h1>Test Medication</h1>' })
+
+        get '/my_health/v1/prescriptions/21296515/documentation'
+
+        expect(response).to be_successful
+        attrs = JSON.parse(response.body)['data']['attributes']
+        expect(attrs['html']).to include('<h1>Test Medication</h1>')
+      end
+
+      it 'does not fall back to VistA ndc when flag is disabled' do
+        allow(Flipper).to receive(:enabled?).with(:mhv_medications_ndc_fallback, anything).and_return(false)
+        allow_any_instance_of(Rx::Client).to receive(:get_rx_details).and_return(
+          double('Rx', cmop_ndc_value: nil, ndc: '00173-9447-00')
+        )
+
+        get '/my_health/v1/prescriptions/21296515/documentation'
+
+        expect(response).to have_http_status(:unprocessable_entity)
       end
 
       it 'returns 503 when upstream service fails' do

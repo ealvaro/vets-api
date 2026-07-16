@@ -50,7 +50,7 @@ RSpec.describe ClaimsApi::RevisedDisabilityCompensationValidations do
     end
 
     context 'when claim date is in the future' do
-      let(:form_attributes) { { 'claimDate' => 1.day.from_now.iso8601 } }
+      let(:form_attributes) { { 'claimDate' => 1.day.from_now.to_date.iso8601 } }
 
       it 'raises an InvalidFieldValue error' do
         expect { subject.validate_form_526_submission_claim_date! }

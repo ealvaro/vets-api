@@ -9,13 +9,16 @@ module MyHealth
 
         raise Common::Exceptions::RecordNotFound, id if rx.nil?
 
-        if rx&.cmop_ndc_value.blank?
+        ndc_value = rx.cmop_ndc_value.presence
+        ndc_value ||= rx.ndc.presence if Flipper.enabled?(:mhv_medications_ndc_fallback, current_user)
+
+        if ndc_value.blank?
           raise Common::Exceptions::UnprocessableEntity.new(
             detail: 'Prescription is missing required drug information (NDC)'
           )
         end
 
-        documentation = client.get_rx_documentation(rx.cmop_ndc_value)
+        documentation = client.get_rx_documentation(ndc_value)
         prescription_documentation = PrescriptionDocumentation.new({ html: documentation[:data] })
         render json: PrescriptionDocumentationSerializer.new(prescription_documentation)
       end
