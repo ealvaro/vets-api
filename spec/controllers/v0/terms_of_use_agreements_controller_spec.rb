@@ -72,6 +72,27 @@ RSpec.describe V0::TermsOfUseAgreementsController, type: :controller do
       it_behaves_like 'authenticated get latest agreement'
     end
 
+    context 'when authenticated with an expired sign in service cookie' do
+      let(:access_token_object) { create(:access_token, expiration_time:) }
+      let(:access_token_cookie) { SignIn::AccessTokenJwtEncoder.new(access_token: access_token_object).perform }
+      let(:expiration_time) { 1.day.ago }
+      let(:expected_error_json) { { 'errors' => 'Access token has expired' } }
+
+      before do
+        cookies[SignIn::Constants::Auth::ACCESS_TOKEN_COOKIE_NAME] = access_token_cookie
+      end
+
+      it 'returns a single forbidden response' do
+        subject
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it 'renders the access token expired error' do
+        subject
+        expect(JSON.parse(response.body)).to eq(expected_error_json)
+      end
+    end
+
     context 'when user is authenticated with a one time terms code' do
       let(:terms_code) { SecureRandom.hex }
       let!(:terms_code_container) do

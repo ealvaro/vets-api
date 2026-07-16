@@ -120,8 +120,7 @@ module V0
 
     def terms_authenticate
       terms_code_temporary_auth? ? authenticate_one_time_terms_code : authenticate_current_user
-
-      raise Common::Exceptions::Unauthorized unless @user_account
+      raise Common::Exceptions::Unauthorized unless @user_account || performed?
     end
 
     def mpi_profile
