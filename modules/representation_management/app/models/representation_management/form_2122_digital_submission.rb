@@ -99,6 +99,7 @@ module RepresentationManagement
     end
 
     def user_is_submitting_as_veteran?
+      return if Flipper.enabled?(:form2122_non_veteran_digital_submit)
       return unless dependent
 
       errors.add(:user, DEPENDENT_SUBMITTER)

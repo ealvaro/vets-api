@@ -9,6 +9,7 @@ RSpec.describe AccreditedRepresentativePortal::SendPoaRequestToCorpDbService do
 
     before do
       allow(BenefitsClaims::Service).to receive(:new).and_return(service_instance)
+      allow(Flipper).to receive(:enabled?).with(:form2122_non_veteran_digital_submit, any_args).and_return(false)
     end
 
     context 'when all fields are present' do
@@ -75,6 +76,77 @@ RSpec.describe AccreditedRepresentativePortal::SendPoaRequestToCorpDbService do
           expect(attributes[:consentAddressChange]).to be(true)
           consent_limits = parsed_data['authorizations']['recordDisclosureLimitations']
           expect(attributes[:consentLimits]).to match_array(consent_limits)
+        end
+      end
+    end
+
+    context 'when non-veteran claimant data is added' do
+      let(:parsed_data) do
+        {
+          'veteran' => {
+            'serviceNumber' => '123678453',
+            'serviceBranch' => 'ARMY',
+            'address' => {
+              'addressLine1' => '2719 Hyperion Ave',
+              'addressLine2' => 'Apt 2',
+              'city' => 'Los Angeles',
+              'stateCode' => 'CA',
+              'zipCode' => '92264',
+              'zipCodeSuffix' => '0200',
+              'countryCode' => 'US'
+            },
+            'phone' => '5555551234',
+            'email' => 'test@test.com',
+            'insuranceNumber' => '1234567890'
+          },
+          'dependent' => {
+            'address' => {
+              'addressLine1' => '2719 Hyperion Ave',
+              'addressLine2' => 'Apt 2',
+              'city' => 'Los Angeles',
+              'stateCode' => 'CA',
+              'zipCode' => '92264',
+              'zipCodeSuffix' => '0200',
+              'countryCode' => 'US'
+            },
+            'relationship' => 'Spouse'
+          },
+          'authorizations' => {
+            'recordDisclosureLimitations' => %w[DRUG_ABUSE SICKLE_CELL HIV ALCOHOLISM],
+            'addressChange' => true
+          }
+        }
+      end
+
+      before do
+        allow(poa_request.power_of_attorney_form).to receive(:parsed_data).and_return(parsed_data)
+      end
+
+      context 'Flipper is disabled' do
+        it 'does not send claimant data' do
+          described_class.call(poa_request)
+
+          expect(service_instance).to have_received(:submit_power_of_attorney_request) do |payload|
+            attributes = payload[:data][:attributes]
+
+            expect(attributes[:claimant]).to be_nil
+          end
+        end
+      end
+
+      context 'Flipper is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:form2122_non_veteran_digital_submit, any_args).and_return(true)
+        end
+
+        it 'sends claimant data' do
+          described_class.call(poa_request)
+
+          expect(service_instance).to have_received(:submit_power_of_attorney_request) do |payload|
+            attributes = payload[:data][:attributes]
+
+            expect(attributes[:claimant]).not_to be_nil
+          end
         end
       end
     end

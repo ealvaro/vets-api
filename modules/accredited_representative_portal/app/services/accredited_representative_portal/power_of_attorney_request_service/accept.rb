@@ -169,6 +169,9 @@ module AccreditedRepresentativePortal
       def form_payload
         {}.tap do |a|
           a[:veteran] = veteran_data
+          if Flipper.enabled?(:form2122_non_veteran_digital_submit) && form_data['dependent'].present?
+            a[:claimant] = claimant_data
+          end
           a[:serviceOrganization] = organization_data
           a[:recordConsent] = form_data.dig('authorizations', 'recordDisclosureLimitations').blank?
           a[:consentLimits] = form_data.dig('authorizations', 'recordDisclosureLimitations')
@@ -198,6 +201,18 @@ module AccreditedRepresentativePortal
           v[:serviceNumber] = service_number if service_number.present?
           v[:insuranceNumber] = insurance_number if insurance_number.present?
         end
+      end
+
+      def claimant_data
+        {
+          claimantId: poa_request.claimant.icn,
+          address: address_data(form_data.dig('dependent', 'address') || {}),
+          relationship: form_data.dig('dependent', 'relationship'),
+          # optional fields
+          dateOfBirth: form_data.dig('dependent', 'dateOfBirth'),
+          phone: phone_data(form_data.dig('dependent', 'phone')),
+          email: form_data.dig('dependent', 'email')
+        }
       end
 
       def phone_data(phone)

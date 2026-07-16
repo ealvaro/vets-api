@@ -8,8 +8,8 @@ module AccreditedRepresentativePortal
 
     def initialize(poa_request)
       @poa_request = poa_request
-      @veteran_id  = poa_request.claimant.icn
-      @service     = BenefitsClaims::Service.new(@veteran_id)
+      @claimant_id = poa_request.claimant.icn
+      @service = BenefitsClaims::Service.new(@claimant_id)
     end
 
     def call
@@ -24,13 +24,16 @@ module AccreditedRepresentativePortal
     def build_payload
       {
         data: {
-          attributes: {
-            veteran: veteran_payload,
-            representative: representative_payload,
-            recordConsent: authorizations['recordDisclosureLimitations'].blank?,
-            consentAddressChange: authorizations['addressChange'] == true,
-            consentLimits: authorizations['recordDisclosureLimitations'] || []
-          }
+          attributes: {}.tap do |h|
+            h[:veteran] = veteran_payload
+            if Flipper.enabled?(:form2122_non_veteran_digital_submit) && form_data.fetch('dependent').present?
+              h[:claimant] = claimant_payload
+            end
+            h[:representative] = representative_payload
+            h[:recordConsent] = authorizations['recordDisclosureLimitations'].blank?
+            h[:consentAddressChange] = authorizations['addressChange'] == true
+            h[:consentLimits] = authorizations['recordDisclosureLimitations'] || []
+          end
         }
       }
     end
@@ -39,14 +42,26 @@ module AccreditedRepresentativePortal
       {
         serviceNumber: veteran['serviceNumber'],
         serviceBranch: veteran['serviceBranch'],
-        address: address_payload,
-        phone: phone_payload,
+        address: address_payload(veteran['address']),
+        phone: phone_payload(veteran['phone']),
         email: veteran['email'],
         insuranceNumber: veteran['insuranceNumber']
       }
     end
 
-    def address_payload
+    def claimant_payload
+      {
+        claimantId: @claimant_id,
+        address: address_payload(claimant['address'] || {}),
+        relationship: claimant['relationship'],
+        # optional fields
+        dateOfBirth: claimant['dateOfBirth'],
+        phone: phone_payload(claimant['phone']),
+        email: claimant['email']
+      }
+    end
+
+    def address_payload(address)
       {
         addressLine1: address['addressLine1'],
         addressLine2: address['addressLine2'],
@@ -58,8 +73,8 @@ module AccreditedRepresentativePortal
       }
     end
 
-    def phone_payload
-      digits = (veteran['phone'] || '').gsub(/\D/, '')
+    def phone_payload(phone)
+      digits = (phone || '').gsub(/\D/, '')
       {
         areaCode: digits[0, 3],
         phoneNumber: digits[3, 7]
@@ -78,8 +93,8 @@ module AccreditedRepresentativePortal
       @veteran ||= form_data.fetch('veteran')
     end
 
-    def address
-      @address ||= veteran.fetch('address')
+    def claimant
+      @claimant ||= form_data.fetch('dependent')
     end
 
     def authorizations

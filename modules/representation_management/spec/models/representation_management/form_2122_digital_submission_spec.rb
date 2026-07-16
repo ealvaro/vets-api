@@ -330,12 +330,32 @@ RSpec.describe RepresentationManagement::Form2122DigitalSubmission, type: :model
       context 'when the user is not submitting as the Veteran' do
         let(:dependent) { true }
 
-        it 'adds the dependent submitter error to the form' do
-          subject.valid?
+        context 'with Flipper off' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:form2122_non_veteran_digital_submit, any_args).and_return(false)
+          end
 
-          error_message = RepresentationManagement::Form2122DigitalSubmission::DEPENDENT_SUBMITTER
+          it 'adds the dependent submitter error to the form' do
+            subject.valid?
 
-          expect(subject.errors[:user]).to include(error_message)
+            error_message = RepresentationManagement::Form2122DigitalSubmission::DEPENDENT_SUBMITTER
+
+            expect(subject.errors[:user]).to include(error_message)
+          end
+        end
+
+        context 'with Flipper on' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:form2122_non_veteran_digital_submit, any_args).and_return(true)
+          end
+
+          it 'does not add the dependent submitter error to the form' do
+            subject.valid?
+
+            error_message = RepresentationManagement::Form2122DigitalSubmission::DEPENDENT_SUBMITTER
+
+            expect(subject.errors[:user]).not_to include(error_message)
+          end
         end
       end
 

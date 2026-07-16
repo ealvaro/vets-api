@@ -66,6 +66,18 @@ RSpec.describe AccreditedRepresentativePortal::PowerOfAttorneyRequestService::Ac
             'zipCodeSuffix' => '6789'
           }
         },
+        'dependent' => {
+          'address' => {
+            'addressLine1' => '123 Main St',
+            'addressLine2' => 'Apt 4',
+            'city' => 'Springfield',
+            'stateCode' => 'VA',
+            'country' => 'US',
+            'zipCode' => '12345',
+            'zipCodeSuffix' => '6789'
+          },
+          'relationship' => 'Spouse'
+        },
         'authorizations' => {
           'recordDisclosureLimitations' => nil,
           'addressChange' => true
@@ -84,6 +96,7 @@ RSpec.describe AccreditedRepresentativePortal::PowerOfAttorneyRequestService::Ac
 
       monitor.track_duration('ar.poa.submission.enqueue_failed.duration', from: poa_request.created_at)
     end
+    allow(Flipper).to receive(:enabled?).with(:form2122_non_veteran_digital_submit, any_args).and_return(false)
   end
 
   def stub_benefits_claims_submit2122_returning(id:)
@@ -98,65 +111,148 @@ RSpec.describe AccreditedRepresentativePortal::PowerOfAttorneyRequestService::Ac
   end
 
   describe 'happy path' do
-    it 'creates acceptance, submits, enqueues job, tracks metrics, and returns the submission' do
-      stub_benefits_claims_submit2122_returning(id: 'svc-123')
-      allow(AccreditedRepresentativePortal::PowerOfAttorneyFormSubmissionJob)
-        .to receive(:perform_async)
+    context 'with flipper off' do
+      it 'creates acceptance, submits, enqueues job, tracks metrics, and returns the submission' do
+        stub_benefits_claims_submit2122_returning(id: 'svc-123')
+        allow(AccreditedRepresentativePortal::PowerOfAttorneyFormSubmissionJob)
+          .to receive(:perform_async)
 
-      expect do
-        result = service_call
+        expect do
+          result = service_call
 
-        expect(result).to be_a(AccreditedRepresentativePortal::PowerOfAttorneyFormSubmission)
-        expect(result.status).to eq('enqueue_succeeded')
-        expect(result.service_id).to eq('svc-123')
-        expect(JSON.parse(result.service_response)).to eq({ 'data' => { 'id' => 'svc-123' } })
+          expect(result).to be_a(AccreditedRepresentativePortal::PowerOfAttorneyFormSubmission)
+          expect(result.status).to eq('enqueue_succeeded')
+          expect(result.service_id).to eq('svc-123')
+          expect(JSON.parse(result.service_response)).to eq({ 'data' => { 'id' => 'svc-123' } })
 
-        expect(AccreditedRepresentativePortal::PowerOfAttorneyFormSubmissionJob)
-          .to have_received(:perform_async).with(result.id)
+          expect(AccreditedRepresentativePortal::PowerOfAttorneyFormSubmissionJob)
+            .to have_received(:perform_async).with(result.id)
 
-        expect(AccreditedRepresentativePortal::PowerOfAttorneyRequestDecision)
-          .to have_received(:create_acceptance!)
-      end.to change(AccreditedRepresentativePortal::PowerOfAttorneyFormSubmission, :count).by(1)
+          expect(AccreditedRepresentativePortal::PowerOfAttorneyRequestDecision)
+            .to have_received(:create_acceptance!)
+        end.to change(AccreditedRepresentativePortal::PowerOfAttorneyFormSubmission, :count).by(1)
+      end
+
+      it 'builds the correct payload for submit2122' do
+        svc = stub_benefits_claims_submit2122_returning(id: 'svc-xyz')
+        allow(AccreditedRepresentativePortal::PowerOfAttorneyFormSubmissionJob)
+          .to receive(:perform_async)
+
+        described_class.new(poa_request, creator.uuid, memberships).call
+
+        expect(svc).to have_received(:submit2122) do |payload|
+          expect(payload).to include(
+            :veteran, :serviceOrganization, :recordConsent, :consentLimits, :consentAddressChange
+          )
+
+          expect(payload[:serviceOrganization]).to eq(
+            poaCode: poa_request.power_of_attorney_holder_poa_code,
+            registrationNumber: 'REG-777'
+          )
+
+          expect(payload[:veteran][:email]).to eq('vet@example.com')
+          expect(payload[:veteran][:serviceNumber]).to eq('SVC123')
+          expect(payload[:veteran][:insuranceNumber]).to eq('INS999')
+          expect(payload[:veteran][:phone]).to eq(
+            areaCode: '202',
+            phoneNumber: '5550123',
+            phoneNumberExt: '77'
+          )
+          expect(payload[:veteran][:address]).to include(
+            addressLine1: '123 Main St',
+            addressLine2: 'Apt 4',
+            city: 'Springfield',
+            stateCode: 'VA',
+            countryCode: 'US',
+            zipCode: '12345',
+            zipCodeSuffix: '6789'
+          )
+
+          expect(payload[:recordConsent]).to be(true)
+          expect(payload[:consentLimits]).to be_nil
+          expect(payload[:consentAddressChange]).to be(true)
+
+          expect(payload[:claimant]).to be_nil
+        end
+      end
     end
 
-    it 'builds the correct payload for submit2122' do
-      svc = stub_benefits_claims_submit2122_returning(id: 'svc-xyz')
-      allow(AccreditedRepresentativePortal::PowerOfAttorneyFormSubmissionJob)
-        .to receive(:perform_async)
+    context 'with flipper on' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:form2122_non_veteran_digital_submit, any_args).and_return(true)
+      end
 
-      described_class.new(poa_request, creator.uuid, memberships).call
+      it 'creates acceptance, submits, enqueues job, tracks metrics, and returns the submission' do
+        stub_benefits_claims_submit2122_returning(id: 'svc-123')
+        allow(AccreditedRepresentativePortal::PowerOfAttorneyFormSubmissionJob)
+          .to receive(:perform_async)
 
-      expect(svc).to have_received(:submit2122) do |payload|
-        expect(payload).to include(
-          :veteran, :serviceOrganization, :recordConsent, :consentLimits, :consentAddressChange
-        )
+        expect do
+          result = service_call
 
-        expect(payload[:serviceOrganization]).to eq(
-          poaCode: poa_request.power_of_attorney_holder_poa_code,
-          registrationNumber: 'REG-777'
-        )
+          expect(result).to be_a(AccreditedRepresentativePortal::PowerOfAttorneyFormSubmission)
+          expect(result.status).to eq('enqueue_succeeded')
+          expect(result.service_id).to eq('svc-123')
+          expect(JSON.parse(result.service_response)).to eq({ 'data' => { 'id' => 'svc-123' } })
 
-        expect(payload[:veteran][:email]).to eq('vet@example.com')
-        expect(payload[:veteran][:serviceNumber]).to eq('SVC123')
-        expect(payload[:veteran][:insuranceNumber]).to eq('INS999')
-        expect(payload[:veteran][:phone]).to eq(
-          areaCode: '202',
-          phoneNumber: '5550123',
-          phoneNumberExt: '77'
-        )
-        expect(payload[:veteran][:address]).to include(
-          addressLine1: '123 Main St',
-          addressLine2: 'Apt 4',
-          city: 'Springfield',
-          stateCode: 'VA',
-          countryCode: 'US',
-          zipCode: '12345',
-          zipCodeSuffix: '6789'
-        )
+          expect(AccreditedRepresentativePortal::PowerOfAttorneyFormSubmissionJob)
+            .to have_received(:perform_async).with(result.id)
 
-        expect(payload[:recordConsent]).to be(true)
-        expect(payload[:consentLimits]).to be_nil
-        expect(payload[:consentAddressChange]).to be(true)
+          expect(AccreditedRepresentativePortal::PowerOfAttorneyRequestDecision)
+            .to have_received(:create_acceptance!)
+        end.to change(AccreditedRepresentativePortal::PowerOfAttorneyFormSubmission, :count).by(1)
+      end
+
+      it 'builds the correct payload for submit2122' do
+        svc = stub_benefits_claims_submit2122_returning(id: 'svc-xyz')
+        allow(AccreditedRepresentativePortal::PowerOfAttorneyFormSubmissionJob)
+          .to receive(:perform_async)
+
+        described_class.new(poa_request, creator.uuid, memberships).call
+
+        expect(svc).to have_received(:submit2122) do |payload|
+          expect(payload).to include(
+            :veteran, :serviceOrganization, :recordConsent, :consentLimits, :consentAddressChange
+          )
+
+          expect(payload[:serviceOrganization]).to eq(
+            poaCode: poa_request.power_of_attorney_holder_poa_code,
+            registrationNumber: 'REG-777'
+          )
+
+          expect(payload[:veteran][:email]).to eq('vet@example.com')
+          expect(payload[:veteran][:serviceNumber]).to eq('SVC123')
+          expect(payload[:veteran][:insuranceNumber]).to eq('INS999')
+          expect(payload[:veteran][:phone]).to eq(
+            areaCode: '202',
+            phoneNumber: '5550123',
+            phoneNumberExt: '77'
+          )
+          expect(payload[:veteran][:address]).to include(
+            addressLine1: '123 Main St',
+            addressLine2: 'Apt 4',
+            city: 'Springfield',
+            stateCode: 'VA',
+            countryCode: 'US',
+            zipCode: '12345',
+            zipCodeSuffix: '6789'
+          )
+          expect(payload[:claimant][:address]).to include(
+            addressLine1: '123 Main St',
+            addressLine2: 'Apt 4',
+            city: 'Springfield',
+            stateCode: 'VA',
+            countryCode: 'US',
+            zipCode: '12345',
+            zipCodeSuffix: '6789'
+          )
+          expect(payload[:claimant][:relationship]).to eq('Spouse')
+          expect(payload[:claimant][:claimantId]).to eq(poa_request.claimant.icn)
+
+          expect(payload[:recordConsent]).to be(true)
+          expect(payload[:consentLimits]).to be_nil
+          expect(payload[:consentAddressChange]).to be(true)
+        end
       end
     end
   end
