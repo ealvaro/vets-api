@@ -30,6 +30,22 @@ RSpec.describe Lighthouse::FailureNotification, type: :job do
     allow(Rails.logger).to receive(:info)
   end
 
+  describe '#notify_client' do
+    it 'builds the VaNotify::Service with the CST callback class and DD-attributed callback_metadata' do
+      expect(VaNotify::Service).to receive(:new).with(
+        Settings.vanotify.services.benefits_management_tools.api_key,
+        {
+          callback_klass: 'Lighthouse::EvidenceSubmissions::VANotifyEmailStatusCallback',
+          callback_metadata: {
+            notification_type: 'error',
+            statsd_tags: { service: 'claim-status', function: 'evidence_submission_failure_email' }
+          }
+        }
+      )
+      subject.new.notify_client
+    end
+  end
+
   context 'when Lighthouse::FailureNotification is called' do
     it 'enqueues a failure notification mailer to send to the veteran' do
       allow(VaNotify::Service).to receive(:new) { notify_client_stub }

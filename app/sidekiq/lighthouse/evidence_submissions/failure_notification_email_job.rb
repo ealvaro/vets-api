@@ -33,8 +33,16 @@ module Lighthouse
       end
 
       def notify_client
-        VaNotify::Service.new(NOTIFY_SETTINGS.api_key,
-                              { callback_klass: 'Lighthouse::EvidenceSubmissions::VANotifyEmailStatusCallback' })
+        VaNotify::Service.new(
+          NOTIFY_SETTINGS.api_key,
+          {
+            callback_klass: 'Lighthouse::EvidenceSubmissions::VANotifyEmailStatusCallback',
+            callback_metadata: {
+              notification_type: 'error',
+              statsd_tags: { service: 'claim-status', function: 'evidence_submission_failure_email' }
+            }
+          }
+        )
       end
 
       def send_failed_evidence_submissions

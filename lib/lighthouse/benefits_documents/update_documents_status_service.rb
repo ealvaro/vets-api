@@ -42,6 +42,12 @@ module BenefitsDocuments
           request_id: status_response['requestId']
         )
         BenefitsDocuments::UploadStatusUpdater.call(status_response, pending_evidence_submission)
+      rescue => e
+        Rails.logger.error(
+          'BenefitsDocuments::UpdateDocumentsStatusService failed to update EvidenceSubmission for request_id',
+          { request_id: status_response['requestId'], error_class: e.class.name, error: e.message }
+        )
+        StatsD.increment('worker.lighthouse.cst_document_uploads.evidence_submission_update_error')
       end
     end
   end
