@@ -15,7 +15,8 @@ RSpec.describe UnifiedHealthData::FacilityNameCacheJob, type: :job do
       double('Facility', id: 'vha_648', name: 'Portland VA Medical Center'),
       double('Facility', id: 'vha_556', name: 'Captain James A. Lovell Federal Health Care Center'),
       double('Facility', id: 'vba_123', name: 'Non-VHA Facility'), # Should be filtered out
-      double('Facility', id: 'vha_442', name: 'Cheyenne VA Medical Center')
+      double('Facility', id: 'vha_442', name: 'Cheyenne VA Medical Center'),
+      double('Facility', id: nil, name: 'Malformed Facility') # Should be skipped
     ]
   end
 
@@ -37,6 +38,7 @@ RSpec.describe UnifiedHealthData::FacilityNameCacheJob, type: :job do
 
     # Mock Rails logger
     allow(Rails.logger).to receive(:info)
+    allow(Rails.logger).to receive(:warn)
     allow(Rails.logger).to receive(:error)
   end
 
@@ -51,7 +53,7 @@ RSpec.describe UnifiedHealthData::FacilityNameCacheJob, type: :job do
 
         job.perform
 
-        # Should cache only VHA facilities (excluding vba_123)
+        # Should cache only VHA facilities (excluding vba_123 and nil-id facility)
         expect(Rails.cache).to have_received(:write).with('uhd:facility_names:648', 'Portland VA Medical Center',
                                                           expires_in: 4.hours)
         expect(Rails.cache).to have_received(:write).with('uhd:facility_names:556',
@@ -65,6 +67,9 @@ RSpec.describe UnifiedHealthData::FacilityNameCacheJob, type: :job do
         job.perform
 
         expect(Rails.logger).to have_received(:info).with(
+          '[UnifiedHealthData] - Fetched 1 pages from Lighthouse API'
+        )
+        expect(Rails.logger).to have_received(:info).with(
           '[UnifiedHealthData] - Cache operation complete: 3 facilities cached'
         )
       end
@@ -74,6 +79,8 @@ RSpec.describe UnifiedHealthData::FacilityNameCacheJob, type: :job do
 
         expect(StatsD).to have_received(:increment).with('unified_health_data.facility_name_cache_job.complete')
         expect(StatsD).to have_received(:gauge).with('unified_health_data.facility_name_cache_job.facilities_cached', 3)
+        expect(StatsD).to have_received(:gauge)
+          .with('unified_health_data.facility_name_cache_job.skipped_malformed', 1)
       end
     end
 
@@ -84,11 +91,47 @@ RSpec.describe UnifiedHealthData::FacilityNameCacheJob, type: :job do
       end
 
       it 'logs the error and re-raises' do
-        expect { job.perform }.to raise_error('Failed to cache facility names: API Error')
+        expect { job.perform }.to raise_error(StandardError, 'API Error')
 
         expect(Rails.logger).to have_received(:error)
           .with('[UnifiedHealthData] - Error in UnifiedHealthData::FacilityNameCacheJob: API Error')
         expect(StatsD).to have_received(:increment).with('unified_health_data.facility_name_cache_job.error')
+      end
+    end
+
+    context 'when facilities have nil ids' do
+      let(:nil_id_facilities) do
+        [
+          double('Facility', id: nil, name: 'Malformed 1'),
+          double('Facility', id: nil, name: 'Malformed 2'),
+          double('Facility', id: 'vha_648', name: 'Portland VA Medical Center')
+        ]
+      end
+
+      before do
+        allow(mock_response).to receive(:facilities).and_return(nil_id_facilities)
+      end
+
+      it 'skips nil-id facilities without crashing' do
+        job.perform
+
+        expect(Rails.cache).to have_received(:write).with('uhd:facility_names:648', 'Portland VA Medical Center',
+                                                          expires_in: 4.hours)
+        expect(Rails.cache).not_to have_received(:write).with(include(':'), nil, anything)
+      end
+
+      it 'logs a warning for skipped malformed facilities' do
+        job.perform
+
+        expect(Rails.logger).to have_received(:warn)
+          .with(include('Skipped 2 facilities with nil id'))
+      end
+
+      it 'increments a StatsD counter for skipped malformed facilities' do
+        job.perform
+
+        expect(StatsD).to have_received(:gauge)
+          .with('unified_health_data.facility_name_cache_job.skipped_malformed', 2)
       end
     end
 
@@ -144,6 +187,8 @@ RSpec.describe UnifiedHealthData::FacilityNameCacheJob, type: :job do
           page: '2',
           per_page: '1000'
         )
+        expect(Rails.logger).to have_received(:info)
+          .with('[UnifiedHealthData] - Fetched 2 pages from Lighthouse API')
       end
     end
   end

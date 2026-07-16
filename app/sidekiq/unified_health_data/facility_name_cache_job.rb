@@ -46,7 +46,7 @@ module UnifiedHealthData
     rescue => e
       Rails.logger.error("[UnifiedHealthData] - Error in #{self.class.name}: #{e.message}")
       StatsD.increment('unified_health_data.facility_name_cache_job.error')
-      raise "Failed to cache facility names: #{e.message}"
+      raise
     end
 
     private
@@ -54,6 +54,7 @@ module UnifiedHealthData
     def fetch_vha_facilities
       facilities_client = Lighthouse::Facilities::V1::Client.new
       all_facilities = []
+      page_count = 0
 
       Rails.logger.info('[UnifiedHealthData] - Fetching VHA facilities from Lighthouse API')
 
@@ -64,7 +65,10 @@ module UnifiedHealthData
       )
 
       loop do
-        all_facilities.concat(extract_vha_facilities(response))
+        page_count += 1
+        page_url = response.links&.dig('self') || "page #{page_count}"
+        page_facilities = extract_vha_facilities(response, page_count, page_url)
+        all_facilities.concat(page_facilities)
 
         # Check if there's a next page link
         break unless response.links&.dig('next')
@@ -72,17 +76,43 @@ module UnifiedHealthData
         response = fetch_next_page(facilities_client, response.links['next'])
       end
 
+      Rails.logger.info("[UnifiedHealthData] - Fetched #{page_count} pages from Lighthouse API")
       # Convert to hash for easy lookup
       all_facilities.to_h { |facility| [facility[:station_number], facility[:name]] }
     end
 
-    def extract_vha_facilities(response)
-      response.facilities.filter_map do |facility|
+    def extract_vha_facilities(response, page_num = 1, page_url = 'unknown')
+      nil_id_count = 0
+      facilities_list = response.facilities
+      total_facilities = facilities_list.size
+
+      facilities = facilities_list.filter_map do |facility|
+        if facility.id.nil?
+          nil_id_count += 1
+          next
+        end
+
         next unless facility.id.start_with?('vha_')
 
         station_number = facility.id.sub(/^vha_/, '')
         { station_number:, name: facility.name }
       end
+
+      log_extraction_results(page_num, page_url, total_facilities, facilities.size, nil_id_count)
+      facilities
+    end
+
+    def log_extraction_results(page_num, page_url, total_count, vha_count, nil_id_count)
+      Rails.logger.info(
+        "[UnifiedHealthData] - Page #{page_num} (#{page_url}): #{total_count} total, #{vha_count} VHA"
+      )
+
+      return unless nil_id_count.positive?
+
+      Rails.logger.warn(
+        "[UnifiedHealthData] - Page #{page_num}: Skipped #{nil_id_count} facilities with nil id"
+      )
+      StatsD.gauge('unified_health_data.facility_name_cache_job.skipped_malformed', nil_id_count)
     end
 
     def fetch_next_page(client, next_url)
