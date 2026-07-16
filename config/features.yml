@@ -1688,6 +1688,10 @@ features:
     actor_type: user
     description: Enable/disable in progress form reminder age param
     enable_in_development: true
+  clear_signin_enabled:
+    actor_type: user
+    description: Enable/disable the clear sign-in button on the unified sign-in page. 
+    enable_in_development: true
   clear_stale_in_progress_reminders_sent:
     actor_type: user
     description: Enable/disable clearing of one-time in progress reminders after 60 days
