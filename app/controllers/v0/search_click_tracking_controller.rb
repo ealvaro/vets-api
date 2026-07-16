@@ -15,10 +15,10 @@ module V0
     #
     def create
       response = SearchClickTracking::Service.new(url, query, position, user_agent, module_code).track_click
-      if response.success?
-        render nothing: true, status: :no_content
-      else
+      if response.respond_to?(:success?) && response.respond_to?(:body) && !response.success?
         render json: response.body, status: :bad_request
+      else
+        render nothing: true, status: :no_content
       end
     end
 

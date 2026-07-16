@@ -36,6 +36,7 @@ module SearchClickTracking
         Faraday.post(url_with_params, '')
       end
     rescue => e
+      Rails.logger.warn('SearchClickTracking::Service#track_click error', exception: e)
       e
     end
 

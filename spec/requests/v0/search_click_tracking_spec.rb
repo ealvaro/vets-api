@@ -30,6 +30,17 @@ Rspec.describe 'V0::SearchClickTracking', type: :request do
       end
     end
 
+    context 'when upstream connection fails' do
+      it 'returns 204 without raising' do
+        allow_any_instance_of(SearchClickTracking::Service)
+          .to receive(:track_click)
+          .and_return(Faraday::ConnectionFailed.new('connection failed'))
+
+        post '/v0/search_click_tracking', params: { position: 0, query: 'testQuery', url: 'https://www.testurl.com', user_agent: 'testUserAgent', module_code: 'I14Y' }
+        expect(response).to have_http_status(:no_content)
+      end
+    end
+
     context 'with a missing parameter' do
       let(:query_params) do
         URI.encode_www_form(
