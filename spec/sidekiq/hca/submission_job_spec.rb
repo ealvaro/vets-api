@@ -187,7 +187,14 @@ RSpec.describe HCA::SubmissionJob, type: :job do
 
         subject
 
-        expect(Rails.logger).to have_received(:info).with(/\[HCA_SUBMISSION\].*attachment_guids=guid1,guid2/)
+        expected_pattern = Regexp.new(
+          "\\[HCA_SUBMISSION\\].*correlation_id=#{health_care_application.id}" \
+          ".*health_care_application_id=#{health_care_application.id}.*attachment_guids=guid1,guid2"
+        )
+
+        expect(Rails.logger).to have_received(:info).with(
+          expected_pattern
+        )
       end
 
       it 'logs submission failure with attachment guids' do
@@ -196,9 +203,15 @@ RSpec.describe HCA::SubmissionJob, type: :job do
 
         expect { subject }.to raise_error(Common::Client::Errors::HTTPError)
 
+        expected_pattern = Regexp.new(
+          "\\[HCA_SUBMISSION_FAILED\\].*correlation_id=#{health_care_application.id}" \
+          ".*health_care_application_id=#{health_care_application.id}.*attachment_guids=guid1,guid2" \
+          '.*error_class=Common::Client::Errors::HTTPError' \
+          '.*exception_class=Common::Client::Errors::HTTPError'
+        )
+
         expect(Rails.logger).to have_received(:error).with(
-          /\[HCA_SUBMISSION_FAILED\].*attachment_guids=guid1,guid2/,
-          hash_including(exception: anything)
+          expected_pattern
         )
       end
     end

@@ -104,16 +104,15 @@ module HCA
 
     def perform(encrypted_form, user_uuid)
       parsed_form = nil
-      current_retry_attempt = retry_attempt
       user = User.find(user_uuid)
       parsed_form = self.class.decrypt_form(encrypted_form)
-      log_submission_start_with_attachments(user_uuid, parsed_form, current_retry_attempt)
+      log_submission_start_with_attachments(parsed_form)
 
       submit_form(user, parsed_form)
     rescue VALIDATION_ERROR => e
       StatsD.increment("#{STATSD_KEY_PREFIX}.enrollment_system_validation_error")
       failed_guids = extract_attachment_guids(parsed_form, fallback: 'unknown')
-      log_submission_failure(user_uuid, failed_guids, current_retry_attempt, e)
+      log_submission_failure(failed_guids, e)
 
       PersonalInformationLog.create!(data: parsed_form, error_class: 'Form1010Ezr EnrollmentSystemValidationFailure')
       log_validation_error(parsed_form, e)
@@ -123,8 +122,8 @@ module HCA
       self.class.send_failure_email(parsed_form) if Flipper.enabled?(:ezr_use_va_notify_on_submission_failure)
       # The Sidekiq::JobRetry::Skip error will fail the job and not retry it
       raise Sidekiq::JobRetry::Skip
-    rescue
-      StatsD.increment("#{STATSD_KEY_PREFIX}.async.retries")
+    rescue => e
+      log_retryable_submission_failure(parsed_form, e)
       raise
     end
 
@@ -145,12 +144,10 @@ module HCA
       Form1010Ezr::Service.log_submission_failure(parsed_form, '[10-10EZR] failure did not retry')
     end
 
-    def retry_attempt
-      sidekiq_context = Thread.current[:sidekiq_context]
-      return nil unless sidekiq_context.is_a?(Hash)
-
-      retry_count = sidekiq_context[:retry_count] || sidekiq_context['retry_count']
-      retry_count&.to_i
+    def log_retryable_submission_failure(parsed_form, error)
+      StatsD.increment("#{STATSD_KEY_PREFIX}.async.retries")
+      failed_guids = extract_attachment_guids(parsed_form, fallback: 'unknown')
+      log_submission_failure(failed_guids, error)
     end
 
     def submit_form(user, parsed_form)
@@ -165,28 +162,33 @@ module HCA
                  .presence || fallback
     end
 
-    def log_submission_start_with_attachments(user_uuid, parsed_form, current_retry_attempt)
+    def log_submission_start_with_attachments(parsed_form)
       attachment_guids = extract_attachment_guids(parsed_form, fallback: 'none')
-      log_submission_start(user_uuid, attachment_guids, current_retry_attempt)
+      log_submission_start(attachment_guids)
     end
 
-    def log_submission_start(user_uuid, attachment_guids, current_retry_attempt)
+    def log_submission_start(attachment_guids)
+      correlation_id = current_correlation_id(attachment_guids)
       Rails.logger.info(
         '[HCA_SUBMISSION] 10-10EZR async submission initiated | ' \
-        "user_uuid=#{user_uuid} | " \
-        "attachment_guids=#{attachment_guids} | " \
-        "retry_attempt=#{current_retry_attempt}"
+        "correlation_id=#{correlation_id} | " \
+        "attachment_guids=#{attachment_guids}"
       )
     end
 
-    def log_submission_failure(user_uuid, attachment_guids, current_retry_attempt, error)
+    def log_submission_failure(attachment_guids, error)
+      correlation_id = current_correlation_id(attachment_guids)
       Rails.logger.error(
         '[HCA_SUBMISSION_FAILED] 10-10EZR async submission failed | ' \
-        "user_uuid=#{user_uuid} | " \
+        "correlation_id=#{correlation_id} | " \
         "attachment_guids=#{attachment_guids} | " \
-        "retry_attempt=#{current_retry_attempt}",
-        exception: error
+        "error_class=#{error.class.name} | " \
+        "exception_class=#{error.class.name}"
       )
+    end
+
+    def current_correlation_id(fallback)
+      jid.presence || fallback
     end
   end
 end

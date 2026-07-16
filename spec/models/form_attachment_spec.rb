@@ -151,7 +151,7 @@ RSpec.describe FormAttachment do
       )
     end
 
-    it 'logs S3 read failure with exception parameter' do
+    it 'logs S3 read failure with safe error metadata only' do
       form_attachment = FormAttachment.new(guid: 'test-guid-456')
       form_attachment.file_data = { filename: 'missing.pdf' }.to_json
 
@@ -164,10 +164,15 @@ RSpec.describe FormAttachment do
 
       expect { form_attachment.get_file }.to raise_error(Errno::ENOENT)
 
+      expected_pattern = Regexp.new(
+        "\\[HCA_S3_READ_FAILURE\\].*correlation_id=#{form_attachment.guid}" \
+        '.*s3_key=hca_attachments/\\[REDACTED\\].*error_code=Errno::ENOENT' \
+        '.*exception_class=Errno::ENOENT'
+      )
+
       expect(Rails.logger).to have_received(:error)
         .with(
-          %r{\[HCA_S3_READ_FAILURE\].*correlation_id=#{form_attachment.guid}.*s3_key=hca_attachments/\[REDACTED\]},
-          hash_including(exception: anything)
+          expected_pattern
         )
     end
   end

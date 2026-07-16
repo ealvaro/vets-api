@@ -456,7 +456,9 @@ RSpec.describe HCA::EzrSubmissionJob, type: :job do
 
         subject
 
-        expect(Rails.logger).to have_received(:info).with(/\[HCA_SUBMISSION\].*attachment_guids=guid1,guid2/)
+        expect(Rails.logger).to have_received(:info).with(
+          /\[HCA_SUBMISSION\].*correlation_id=guid1,guid2.*attachment_guids=guid1,guid2/
+        )
       end
 
       it 'logs submission failure with attachment guids' do
@@ -467,9 +469,32 @@ RSpec.describe HCA::EzrSubmissionJob, type: :job do
 
         subject
 
+        expected_pattern = Regexp.new(
+          '\\[HCA_SUBMISSION_FAILED\\].*correlation_id=guid1,guid2' \
+          '.*attachment_guids=guid1,guid2.*error_class=HCA::SOAPParser::ValidationError' \
+          '.*exception_class=HCA::SOAPParser::ValidationError'
+        )
+
         expect(Rails.logger).to have_received(:error).with(
-          /\[HCA_SUBMISSION_FAILED\].*attachment_guids=guid1,guid2/,
-          hash_including(exception: anything)
+          expected_pattern
+        )
+      end
+
+      it 'logs submission failure with attachment guids for generic errors' do
+        allow(ezr_service).to receive(:submit_sync).with(form_with_attachments).once.and_raise(Common::Client::Errors::HTTPError)
+        allow(Rails.logger).to receive(:error)
+
+        expect { subject }.to trigger_statsd_increment('api.1010ezr.async.retries')
+          .and raise_error(Common::Client::Errors::HTTPError)
+
+        expected_pattern = Regexp.new(
+          '\\[HCA_SUBMISSION_FAILED\\].*correlation_id=guid1,guid2' \
+          '.*attachment_guids=guid1,guid2.*error_class=Common::Client::Errors::HTTPError' \
+          '.*exception_class=Common::Client::Errors::HTTPError'
+        )
+
+        expect(Rails.logger).to have_received(:error).with(
+          expected_pattern
         )
       end
     end

@@ -66,16 +66,35 @@ class FormAttachment < ApplicationRecord
     )
     attachment_uploader.file
   rescue => e
-    Rails.logger.error(
-      '[HCA_S3_READ_FAILURE] S3 object retrieval failed | ' \
-      "correlation_id=#{guid} | " \
-      "s3_key=#{log_s3_key}",
-      exception: e
-    )
+    log_s3_read_failure(guid, log_s3_key, e)
     raise
   end
 
   private
+
+  def log_s3_read_failure(correlation_id, s3_key, error)
+    error_details = extract_s3_error_details(error)
+    Rails.logger.error(
+      '[HCA_S3_READ_FAILURE] S3 object retrieval failed | ' \
+      "correlation_id=#{correlation_id} | " \
+      "s3_key=#{s3_key} | " \
+      "error_code=#{error_details[:code]} | " \
+      "exception_class=#{error.class.name}"
+    )
+  end
+
+  def extract_s3_error_details(error)
+    case error
+    when Aws::S3::Errors::ServiceError
+      {
+        code: error.class.name.split('::').last
+      }
+    else
+      {
+        code: error.class.name
+      }
+    end
+  end
 
   def unlock_pdf(file, file_password)
     tmpf = Tempfile.new(['decrypted_form_attachment', '.pdf'])
