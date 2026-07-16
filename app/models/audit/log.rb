@@ -7,6 +7,7 @@ module Audit
       logingov_uuid: 'logingov_uuid',
       idme_uuid: 'idme_uuid',
       mhv_id: 'mhv_id',
+      clear_uuid: 'clear_uuid',
       system_hostname: 'system_hostname'
     }.freeze
 

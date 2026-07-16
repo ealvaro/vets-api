@@ -21,6 +21,7 @@ RSpec.describe Audit::Log, type: :model do
         icn: 'icn',
         logingov_uuid: 'logingov_uuid',
         idme_uuid: 'idme_uuid',
+        clear_uuid: 'clear_uuid',
         mhv_id: 'mhv_id',
         system_hostname: 'system_hostname'
       }

@@ -19,6 +19,7 @@ describe MPIData, :skip_mvi do
       expect(mpi_data.user_edipi).to eq(user.identity.edipi)
       expect(mpi_data.user_logingov_uuid).to eq(user.identity.logingov_uuid)
       expect(mpi_data.user_idme_uuid).to eq(user.identity.idme_uuid)
+      expect(mpi_data.user_clear_uuid).to eq(user.identity.clear_uuid)
       expect(mpi_data.user_uuid).to eq(user.identity.uuid)
     end
   end

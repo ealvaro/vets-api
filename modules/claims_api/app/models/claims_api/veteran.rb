@@ -20,6 +20,7 @@ module ClaimsApi
        icn
        idme_uuid
        logingov_uuid
+       clear_uuid
        uuid
        icn_with_aaid
        search_token
@@ -107,6 +108,7 @@ module ClaimsApi
         mhv_icn: identity.mhv_icn,
         idme_uuid: identity.idme_uuid,
         logingov_uuid: identity.logingov_uuid,
+        clear_uuid: identity.clear_uuid,
         ssn: identity.ssn,
         va_profile: OpenStruct.new(birth_date: identity.birth_date),
         edipi: identity&.edipi,

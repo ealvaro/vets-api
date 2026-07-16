@@ -24,6 +24,7 @@ class MPIData < Common::RedisStore
                 :user_edipi,
                 :user_logingov_uuid,
                 :user_idme_uuid,
+                :user_clear_uuid,
                 :user_uuid
 
   # Creates a new MPIData instance for a user identity.
@@ -42,6 +43,7 @@ class MPIData < Common::RedisStore
     mvi.user_edipi = user_identity.edipi
     mvi.user_logingov_uuid = user_identity.logingov_uuid
     mvi.user_idme_uuid = user_identity.idme_uuid
+    mvi.user_clear_uuid = user_identity.clear_uuid
     mvi.user_uuid = user_identity.uuid
     mvi
   end
@@ -230,6 +232,8 @@ class MPIData < Common::RedisStore
       user_logingov_uuid
     elsif user_idme_uuid.present?
       user_idme_uuid
+    elsif user_clear_uuid.present?
+      user_clear_uuid
     else
       user_uuid
     end
@@ -245,6 +249,8 @@ class MPIData < Common::RedisStore
                                              identifier_type: MPI::Constants::LOGINGOV_UUID)
     elsif user_idme_uuid.present?
       mpi_service.find_profile_by_identifier(identifier: user_idme_uuid, identifier_type: MPI::Constants::IDME_UUID)
+    elsif user_clear_uuid.present?
+      mpi_service.find_profile_by_identifier(identifier: user_clear_uuid, identifier_type: MPI::Constants::CLEAR_UUID)
     else
       mpi_service.find_profile_by_attributes(first_name: user_first_name,
                                              last_name: user_last_name,

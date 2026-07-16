@@ -81,6 +81,7 @@ RSpec.describe UserAudit::Appenders::AuditLogAppender do
             appender.log(log)
 
             audit_log = Audit::Log.last
+
             expect(audit_log.subject_user_identifier).to eq(subject_user_verification.credential_identifier)
             expect(audit_log.subject_user_identifier_type).to eq(expected_identifier_type)
             expect(audit_log.acting_user_identifier).to eq(acting_user_verification.credential_identifier)
@@ -98,6 +99,14 @@ RSpec.describe UserAudit::Appenders::AuditLogAppender do
           let!(:subject_user_verification) { create(:logingov_user_verification, user_account: subject_user_account) }
           let!(:acting_user_verification) { create(:logingov_user_verification, user_account: acting_user_account) }
           let(:expected_identifier_type) { 'logingov_uuid' }
+
+          it_behaves_like 'a csp identifier'
+        end
+
+        context 'when the user_verification is clear' do
+          let(:expected_identifier_type) { 'clear_uuid' }
+          let!(:subject_user_verification) { create(:clear_user_verification, user_account: subject_user_account) }
+          let!(:acting_user_verification) { create(:clear_user_verification, user_account: acting_user_account) }
 
           it_behaves_like 'a csp identifier'
         end

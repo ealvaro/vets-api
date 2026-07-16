@@ -69,6 +69,7 @@ class User < Common::RedisStore
   delegate :authn_context, to: :identity, allow_nil: true
   delegate :email, to: :identity, allow_nil: true
   delegate :idme_uuid, to: :identity, allow_nil: true
+  delegate :clear_uuid, to: :identity, allow_nil: true
   delegate :loa3?, to: :identity, allow_nil: true
   delegate :logingov_uuid, to: :identity, allow_nil: true
   delegate :mhv_credential_uuid, to: :identity, allow_nil: true
@@ -500,6 +501,8 @@ class User < Common::RedisStore
       return UserVerification.find_by(mhv_uuid: mhv_credential_uuid) if mhv_credential_uuid
     when SignIn::Constants::Auth::LOGINGOV
       return UserVerification.find_by(logingov_uuid:) if logingov_uuid
+    when SignIn::Constants::Auth::CLEAR
+      return UserVerification.find_by(clear_uuid:) if clear_uuid
     end
     return nil unless idme_uuid
 

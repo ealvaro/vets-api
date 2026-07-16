@@ -223,6 +223,10 @@ RSpec.describe Users::Profile do
         expect(profile[:idme_uuid]).to eq(user.idme_uuid)
       end
 
+      it 'includes clear_uuid' do
+        expect(profile[:clear_uuid]).to eq(user.clear_uuid)
+      end
+
       it 'includes id_theft_flag' do
         expect(profile[:id_theft_flag]).to eq(user.id_theft_flag)
       end

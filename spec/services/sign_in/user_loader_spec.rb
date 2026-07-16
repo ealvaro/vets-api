@@ -56,6 +56,7 @@ RSpec.describe SignIn::UserLoader do
         end
         let(:edipi) { 'some-mpi-edipi' }
         let(:idme_uuid) { user_verification.idme_uuid }
+        let(:clear_uuid) { user_verification.clear_uuid }
         let(:email) { session.credential_email }
         let(:authn_context) { SignIn::Constants::Auth::IDME_LOA3 }
         let(:service_name) { user_verification.credential_type }
@@ -135,6 +136,7 @@ RSpec.describe SignIn::UserLoader do
           expect(reloaded_user.loa).to eq(user_loa)
           expect(reloaded_user.mhv_icn).to eq(user_icn)
           expect(reloaded_user.idme_uuid).to eq(idme_uuid)
+          expect(reloaded_user.clear_uuid).to eq(clear_uuid)
           expect(reloaded_user.last_signed_in).to eq(session.created_at)
           expect(reloaded_user.email).to eq(email)
           expect(reloaded_user.authn_context).to eq(authn_context)
@@ -150,7 +152,8 @@ RSpec.describe SignIn::UserLoader do
               user_uuid:,
               user_credentials: {
                 idme: user_account.user_verifications.idme.count,
-                logingov: user_account.user_verifications.logingov.count
+                logingov: user_account.user_verifications.logingov.count,
+                clear: user_account.user_verifications.clear.count
               },
               credential_uuid: user_verification.credential_identifier,
               icn: user_icn,

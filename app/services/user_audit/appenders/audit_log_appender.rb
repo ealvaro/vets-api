@@ -66,6 +66,7 @@ module UserAudit
         case user_verification.credential_type
         when SignIn::Constants::Auth::IDME     then 'idme_uuid'
         when SignIn::Constants::Auth::LOGINGOV then 'logingov_uuid'
+        when SignIn::Constants::Auth::CLEAR    then 'clear_uuid'
         when SignIn::Constants::Auth::MHV      then 'mhv_id'
         end
       end

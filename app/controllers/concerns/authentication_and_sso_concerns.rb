@@ -174,7 +174,8 @@ module AuthenticationAndSSOConcerns # rubocop:disable Metrics/ModuleLength
       user_verifications = @current_user.user_account.user_verifications
       {
         idme: user_verifications.idme.count,
-        logingov: user_verifications.logingov.count
+        logingov: user_verifications.logingov.count,
+        clear: user_verifications.clear.count
       }
     end
   end
@@ -185,6 +186,8 @@ module AuthenticationAndSSOConcerns # rubocop:disable Metrics/ModuleLength
       @current_user.identity.idme_uuid
     when SAML::User::LOGINGOV_CSID
       @current_user.identity.logingov_uuid
+    when SAML::User::CLEAR_CSID
+      @current_user.identity.clear_uuid
     end
   end
 

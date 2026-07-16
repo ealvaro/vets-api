@@ -91,6 +91,7 @@ module Users
         sec_id: user.sec_id,
         logingov_uuid: user.logingov_uuid,
         idme_uuid: user.idme_uuid,
+        clear_uuid: user.clear_uuid,
         id_theft_flag: user.id_theft_flag,
         initial_sign_in: user.initial_sign_in
       }

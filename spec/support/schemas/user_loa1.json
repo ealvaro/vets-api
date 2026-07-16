@@ -115,6 +115,7 @@
                 "npi_id",
                 "logingov_uuid",
                 "idme_uuid",
+                "clear_uuid",
                 "id_theft_flag"
               ],
               "properties": {
@@ -244,6 +245,12 @@
                   ]
                 },
                 "idme_uuid": {
+                  "type": [
+                    "string",
+                    null
+                  ]
+                },
+                "clear_uuid": {
                   "type": [
                     "string",
                     null

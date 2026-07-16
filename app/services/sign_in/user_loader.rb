@@ -129,7 +129,8 @@ module SignIn
         user_verifications = user_account.user_verifications
         {
           idme: user_verifications.idme.count,
-          logingov: user_verifications.logingov.count
+          logingov: user_verifications.logingov.count,
+          clear: user_verifications.clear.count
         }
       end
     end
