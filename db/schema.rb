@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_15_150006) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_15_170002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -1485,10 +1485,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_15_150006) do
     t.text "encrypted_kms_key"
     t.text "first_name_ciphertext"
     t.text "last_name_ciphertext"
+    t.boolean "needs_kms_rotation", default: false, null: false
     t.string "reason"
     t.text "sponsor_icn_ciphertext"
     t.uuid "transaction_uuid", null: false
     t.datetime "updated_at", null: false
+    t.index ["needs_kms_rotation"], name: "index_ivc_champva_sponsors_on_needs_kms_rotation_true", where: "(needs_kms_rotation = true)"
     t.index ["transaction_uuid"], name: "index_ivc_champva_sponsors_on_transaction_uuid", unique: true
   end
 
