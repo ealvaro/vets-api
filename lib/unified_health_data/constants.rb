@@ -111,6 +111,29 @@ module UnifiedHealthData
       ORGANIZATION: 'Organization',
       PRACTITIONER: 'Practitioner'
     }.freeze
+
+    module PrescriptionStatuses
+      # Internal refill status values
+      STATUS_ACTIVE = 'active'
+      STATUS_SUBMITTED = 'submitted'
+      STATUS_REFILL_IN_PROCESS = 'refillinprocess'
+      STATUS_PROVIDER_HOLD = 'providerHold'
+      STATUS_DISCONTINUED = 'discontinued'
+      STATUS_EXPIRED = 'expired'
+      STATUS_PENDING = 'pending'
+      STATUS_UNKNOWN = 'unknown'
+
+      # Display status values (user-facing)
+      DISP_ACTIVE = 'Active'
+      DISP_ACTIVE_NON_VA = 'Active: Non-VA'
+      DISP_ACTIVE_SUBMITTED = 'Active: Submitted'
+      DISP_ACTIVE_REFILL_IN_PROCESS = 'Active: Refill in Process'
+      DISP_ACTIVE_SHIPPED = 'Active: Shipped'
+      DISP_ACTIVE_ON_HOLD = 'Active: On hold'
+      DISP_DISCONTINUED = 'Discontinued'
+      DISP_EXPIRED = 'Expired'
+      DISP_UNKNOWN = 'Unknown'
+    end
   end
 
   VITAL_LOINC_CODES = {

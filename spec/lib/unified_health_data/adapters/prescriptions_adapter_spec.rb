@@ -1825,6 +1825,39 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
         }
       }
     end
+
+    # Recently dispensed (filled) but not yet shipped: Active disp_status, a
+    # recent dispensed date, and no tracking entries.
+    let(:dispensed_date) { 3.days.ago.utc.iso8601(3) }
+
+    let(:vista_med_awaiting_tracking) do
+      vista_medication_data.merge(
+        'dispStatus' => 'Active',
+        'isTrackable' => false,
+        'dispensedDate' => dispensed_date,
+        'rxRFRecords' => {
+          'rfRecord' => [
+            {
+              'refillStatus' => 'active',
+              'dispensedDate' => dispensed_date,
+              'prescriptionName' => 'COAL TAR 2.5% TOP SOLN',
+              'id' => 1002,
+              'prescriptionNumber' => '3636485'
+            }
+          ]
+        }
+      )
+    end
+
+    let(:awaiting_tracking_response) do
+      {
+        'vista' => {
+          'medicationList' => {
+            'medication' => [vista_med_awaiting_tracking]
+          }
+        }
+      }
+    end
   end
 
   describe 'shipped tracking logic when mhv_medications_management_improvements is enabled' do
@@ -2009,6 +2042,173 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
     end
   end
 
+  describe 'awaiting tracking logic when mhv_medications_management_improvements is enabled' do
+    include_context 'shipped tracking test data'
+
+    before do
+      allow(Flipper).to receive(:enabled?).with(:mhv_medications_display_pending_meds, user).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_medications_v2_status_mapping, anything).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_medications_management_improvements, user).and_return(true)
+    end
+
+    context 'when recently dispensed with no tracking' do
+      it 'sets is_awaiting_tracking to true' do
+        result = subject.parse(awaiting_tracking_response)
+        rx = result[:prescriptions].first
+
+        expect(rx.is_awaiting_tracking).to be true
+      end
+
+      it 'reclassifies the prescription as an in-progress refill' do
+        result = subject.parse(awaiting_tracking_response)
+        rx = result[:prescriptions].first
+
+        expect(rx.disp_status).to eq('Active: Refill in Process')
+        expect(rx.refill_status).to eq('refillinprocess')
+      end
+
+      it 'resets is_trackable to false so no tracking affordance is offered' do
+        vista_med_awaiting_tracking['isTrackable'] = true
+
+        result = subject.parse(awaiting_tracking_response)
+        rx = result[:prescriptions].first
+
+        expect(rx.is_awaiting_tracking).to be true
+        expect(rx.is_trackable).to be false
+      end
+    end
+
+    context 'with an Oracle Health prescription recently dispensed with no tracking' do
+      let(:oracle_dispensed_date) { 3.days.ago.utc.iso8601(3) }
+      let(:oracle_med_awaiting_tracking) do
+        oracle_health_medication_data.merge(
+          'contained' => [
+            {
+              'resourceType' => 'MedicationDispense',
+              'id' => 'dispense-1',
+              'whenHandedOver' => oracle_dispensed_date,
+              'quantity' => { 'value' => 30 },
+              'location' => { 'display' => 'Main Pharmacy' }
+            }
+          ]
+        )
+      end
+      let(:oracle_awaiting_tracking_response) do
+        {
+          'oracle-health' => {
+            'entry' => [{ 'resource' => oracle_med_awaiting_tracking }]
+          }
+        }
+      end
+
+      it 'reclassifies the Oracle Health prescription as an in-progress refill' do
+        result = subject.parse(oracle_awaiting_tracking_response)
+        rx = result[:prescriptions].first
+
+        expect(rx.source_ehr).to eq(UnifiedHealthData::Prescription::SOURCE_EHR_ORACLE_HEALTH)
+        expect(rx.is_awaiting_tracking).to be true
+        expect(rx.disp_status).to eq('Active: Refill in Process')
+        expect(rx.refill_status).to eq('refillinprocess')
+        expect(rx.is_trackable).to be false
+      end
+
+      context 'when dispensed beyond the 15-day window' do
+        let(:oracle_dispensed_date) { 20.days.ago.utc.iso8601(3) }
+
+        it 'does not reclassify the Oracle Health prescription' do
+          result = subject.parse(oracle_awaiting_tracking_response)
+          rx = result[:prescriptions].first
+
+          expect(rx.is_awaiting_tracking).to be false
+          expect(rx.disp_status).not_to eq('Active: Refill in Process')
+        end
+      end
+    end
+
+    context 'when mhv_medications_v2_status_mapping is also enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_medications_v2_status_mapping, user).and_return(true)
+      end
+
+      it 'maps the reclassified disp_status to In progress while keeping refill_status refillinprocess' do
+        result = subject.parse(awaiting_tracking_response)
+        rx = result[:prescriptions].first
+
+        expect(rx.is_awaiting_tracking).to be true
+        expect(rx.disp_status).to eq('In progress')
+        expect(rx.refill_status).to eq('refillinprocess')
+      end
+    end
+
+    context 'when dispensed beyond the 15-day window' do
+      let(:dispensed_date) { 20.days.ago.utc.iso8601(3) }
+
+      it 'sets is_awaiting_tracking to false' do
+        result = subject.parse(awaiting_tracking_response)
+        rx = result[:prescriptions].first
+
+        expect(rx.is_awaiting_tracking).to be false
+      end
+    end
+
+    context 'when dispensed exactly 15 days ago (boundary)' do
+      let(:frozen_time) { Time.zone.parse('2026-03-12 12:00:00 UTC') }
+      let(:dispensed_date) { (frozen_time - 15.days).utc.iso8601(3) }
+
+      it 'sets is_awaiting_tracking to true (inclusive boundary)' do
+        Timecop.freeze(frozen_time) do
+          result = subject.parse(awaiting_tracking_response)
+          rx = result[:prescriptions].first
+
+          expect(rx.is_awaiting_tracking).to be true
+        end
+      end
+    end
+
+    context 'when the prescription already has tracking' do
+      it 'sets is_awaiting_tracking to false' do
+        result = subject.parse(vista_response_with_tracking)
+        rx = result[:prescriptions].first
+
+        expect(rx.is_awaiting_tracking).to be false
+      end
+    end
+
+    context 'when disp_status is not Active' do
+      let(:vista_med_awaiting_tracking) do
+        vista_medication_data.merge(
+          'dispStatus' => 'Active: Refill in Process',
+          'isTrackable' => false,
+          'dispensedDate' => 3.days.ago.utc.iso8601(3)
+        )
+      end
+
+      it 'sets is_awaiting_tracking to false' do
+        result = subject.parse(awaiting_tracking_response)
+        rx = result[:prescriptions].first
+
+        expect(rx.is_awaiting_tracking).to be false
+      end
+    end
+
+    context 'when there is no dispensed date' do
+      let(:vista_med_awaiting_tracking) do
+        vista_medication_data.merge(
+          'dispStatus' => 'Active',
+          'isTrackable' => false,
+          'dispensedDate' => nil
+        )
+      end
+
+      it 'sets is_awaiting_tracking to false' do
+        result = subject.parse(awaiting_tracking_response)
+        rx = result[:prescriptions].first
+
+        expect(rx.is_awaiting_tracking).to be_falsey
+      end
+    end
+  end
+
   describe 'shipped tracking logic when mhv_medications_management_improvements is disabled' do
     include_context 'shipped tracking test data'
 
@@ -2024,6 +2224,13 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
 
       expect(rx.disp_status).to eq('Active: Shipped')
       expect(rx.is_trackable).to be true
+    end
+
+    it 'defaults is_awaiting_tracking to false (never nil) so the serialized value stays boolean' do
+      result = subject.parse(awaiting_tracking_response)
+      rx = result[:prescriptions].first
+
+      expect(rx.is_awaiting_tracking).to be false
     end
   end
 end

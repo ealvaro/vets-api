@@ -25,6 +25,7 @@ module UnifiedHealthData
                  :is_refillable,
                  :is_renewable,
                  :is_trackable,
+                 :is_awaiting_tracking,
                  :tracking,
                  :prescription_source,
                  :instructions,

@@ -27,6 +27,10 @@ module UnifiedHealthData
     attribute :is_renewable, Bool
     attribute :is_renewal_flow_enabled, Bool
     attribute :is_trackable, Bool
+    # Defaults to false so the serialized value is always a boolean. When the
+    # management-improvements flag is disabled the adapter never sets this, and we
+    # want flag-disabled callers to receive false rather than null.
+    attribute :is_awaiting_tracking, Bool, default: false
     attribute :tracking, Array, default: []
     attribute :instructions, String
     attribute :facility_phone_number, String

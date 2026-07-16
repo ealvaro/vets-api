@@ -10,6 +10,8 @@ module UnifiedHealthData
   module Adapters
     class PrescriptionsAdapter
       include V2StatusMapping
+      # Prescription status constants (STATUS_* / DISP_*) live in Constants::PrescriptionStatuses.
+      include UnifiedHealthData::Constants::PrescriptionStatuses
 
       # Number of days after the most recent shipped date during which a prescription remains trackable.
       SHIPPED_TRACKING_WINDOW_DAYS = 15
@@ -51,6 +53,7 @@ module UnifiedHealthData
         # Apply shipped tracking logic (sets is_trackable to false if shipped beyond 15-day window)
         if Flipper.enabled?(:mhv_medications_management_improvements, @current_user)
           apply_shipped_tracking_logic(prescriptions)
+          apply_awaiting_tracking_logic(prescriptions)
         end
 
         # Apply V2 status mapping to all prescriptions when Cerner pilot flag is enabled
@@ -141,7 +144,7 @@ module UnifiedHealthData
       # against a 15-day window. If shipped beyond 15 days, sets is_trackable to false.
       def apply_shipped_tracking_logic(prescriptions)
         prescriptions.each do |rx|
-          next unless rx.disp_status == 'Active: Shipped'
+          next unless rx.disp_status == DISP_ACTIVE_SHIPPED
 
           most_recent_date = most_recent_shipped_date(rx)
           next unless most_recent_date
@@ -167,6 +170,74 @@ module UnifiedHealthData
         return prescriptions unless Flipper.enabled?(:mhv_medications_v2_status_mapping, @current_user)
 
         apply_v2_status_mapping_to_all(prescriptions)
+      end
+
+      # For prescriptions that have been recently dispensed (filled) but do not yet have
+      # shipping/tracking information, reclassifies them as an in-progress refill. This covers
+      # the gap between "Refill in progress" and "Refill shipped": once a fill completes the
+      # prescription returns to an 'Active' disp_status with a dispensed date set, but no
+      # tracking entry exists until the pharmacy ships it. Rather than surfacing a distinct
+      # state, we treat the fill as "Refill in Process" so every surface renders the existing
+      # in-progress treatment. The same 15-day window used for shipped tracking bounds how long
+      # we keep a fill in this state. is_awaiting_tracking is retained as the detection signal.
+      #
+      # @param prescriptions [Array<UnifiedHealthData::Prescription>] parsed prescriptions, mutated in place
+      # @return [void]
+      def apply_awaiting_tracking_logic(prescriptions)
+        prescriptions.each do |rx|
+          awaiting = awaiting_tracking?(rx)
+          rx.is_awaiting_tracking = awaiting
+          next unless awaiting
+
+          rx.disp_status = DISP_ACTIVE_REFILL_IN_PROCESS
+          rx.refill_status = STATUS_REFILL_IN_PROCESS
+          # There is no shipment yet, so there is nothing to track. Clear is_trackable so a
+          # tracking affordance is not offered against an empty/incomplete tracking list.
+          rx.is_trackable = false
+        end
+      end
+
+      # Determines whether a prescription is a recently dispensed fill that is still
+      # awaiting shipping/tracking information. Qualifies only when the prescription is
+      # 'Active', has no tracking entry yet, and its most recent dispensed date falls
+      # within the shipped-tracking window.
+      #
+      # @param rx [UnifiedHealthData::Prescription] the prescription to evaluate
+      # @return [Boolean] true when the fill is awaiting tracking, false otherwise
+      def awaiting_tracking?(rx)
+        return false unless rx.disp_status == DISP_ACTIVE
+        return false if recent_tracking?(rx)
+
+        dispensed_date = most_recent_dispensed_date(rx)
+        return false unless dispensed_date
+
+        # sorted_dispensed_date is date-only, so compare at date granularity to keep
+        # the 15-day boundary inclusive regardless of the current time of day.
+        dispensed_date.to_date >= SHIPPED_TRACKING_WINDOW_DAYS.days.ago.to_date
+      end
+
+      # If any tracking entry has a completion date, the fill has shipped and is
+      # therefore not awaiting tracking. Checks every entry (not just the first)
+      # because tracking can contain multiple entries and any of them may carry the
+      # completion date, while others can have a blank complete_date_time.
+      #
+      # @param rx [UnifiedHealthData::Prescription] the prescription to evaluate
+      # @return [Boolean] true when a tracking entry with a completion date exists
+      def recent_tracking?(rx)
+        return false if rx.tracking.blank?
+
+        rx.tracking.any? do |t|
+          t.is_a?(Hash) && t[:complete_date_time].present?
+        end
+      end
+
+      def most_recent_dispensed_date(rx)
+        raw = rx.sorted_dispensed_date.presence || rx.dispensed_date.presence
+        return nil if raw.blank?
+
+        Time.zone.parse(raw.to_s)
+      rescue ArgumentError, TypeError
+        nil
       end
 
       # Checks whether either data source reported a failure in the UHD response.
