@@ -12,8 +12,12 @@ RSpec.describe Vass::IanaToWindowsTimeZone do
       expect(described_class.windows_id_for!('America/Nassau')).to eq('Eastern Standard Time')
     end
 
-    # Etc/GMT zones use the inverted POSIX sign (Etc/GMT+8 == UTC-08:00); spot-check
-    # both signs, zero, and the extremes to guard the mapping and the sign convention.
+    # Zones that must resolve directly from the YAML mapping:
+    #   - Etc/GMT zones use the inverted POSIX sign (Etc/GMT+8 == UTC-08:00); spot-check
+    #     both signs, zero, and the extremes to guard the mapping and the sign convention.
+    #   - Legacy tzdb backward-compat aliases (e.g. America/Indianapolis, US/Eastern) that
+    #     the data source reports as canonical to themselves, so they cannot resolve via
+    #     canonical resolution and must be mapped directly.
     {
       'Etc/GMT+12' => 'Dateline Standard Time',
       'Etc/GMT+8' => 'UTC-08',
@@ -22,9 +26,14 @@ RSpec.describe Vass::IanaToWindowsTimeZone do
       'Etc/UTC' => 'UTC',
       'Etc/GMT-5' => 'West Asia Standard Time',
       'Etc/GMT-9' => 'Tokyo Standard Time',
-      'Etc/GMT-14' => 'Line Islands Standard Time'
+      'Etc/GMT-14' => 'Line Islands Standard Time',
+      'America/Indianapolis' => 'Eastern Standard Time',
+      'US/Eastern' => 'Eastern Standard Time',
+      'US/Pacific' => 'Pacific Standard Time',
+      'US/Arizona' => 'US Mountain Standard Time',
+      'Navajo' => 'Mountain Standard Time'
     }.each do |iana, windows|
-      it "maps the #{iana} fixed-offset zone to the Windows #{windows} id" do
+      it "maps the #{iana} zone to the Windows #{windows} id" do
         expect(described_class.windows_id_for!(iana)).to eq(windows)
       end
     end

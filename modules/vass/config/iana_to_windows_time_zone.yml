@@ -191,3 +191,24 @@ Etc/GMT-11: Central Pacific Standard Time
 Etc/GMT-12: UTC+12
 Etc/GMT-13: UTC+13
 Etc/GMT-14: Line Islands Standard Time
+# Legacy US backward-compat aliases (tzdb `backward` file). Some runtimes report these
+# older names directly, and this TZInfo data source treats them as canonical-to-themselves
+# rather than collapsing them to the modern zone, so the canonical fallback misses them.
+# Each Windows id matches the alias's canonical target already mapped above.
+America/Fort_Wayne: Eastern Standard Time
+America/Indianapolis: Eastern Standard Time
+America/Knox_IN: Central Standard Time
+America/Louisville: Eastern Standard Time
+Navajo: Mountain Standard Time
+US/Alaska: Alaskan Standard Time
+US/Aleutian: Aleutian Standard Time
+US/Arizona: US Mountain Standard Time
+US/Central: Central Standard Time
+US/East-Indiana: Eastern Standard Time
+US/Eastern: Eastern Standard Time
+US/Hawaii: Hawaiian Standard Time
+US/Indiana-Starke: Central Standard Time
+US/Michigan: Eastern Standard Time
+US/Mountain: Mountain Standard Time
+US/Pacific: Pacific Standard Time
+US/Samoa: UTC-11
