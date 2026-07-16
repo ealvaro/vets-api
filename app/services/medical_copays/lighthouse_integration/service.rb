@@ -11,12 +11,14 @@ require 'lighthouse/healthcare_cost_and_coverage/organization/service'
 require 'lighthouse/healthcare_cost_and_coverage/patient/service'
 require 'concurrent-ruby'
 require_relative 'data_extractor'
+require_relative 'organization_helper'
 require_relative 'exceptions'
 
 module MedicalCopays
   module LighthouseIntegration
     class Service
       include MedicalCopays::LighthouseIntegration::InvoiceEntryChargeItemHelper
+      include OrganizationHelper
       include DataExtractor
       # Encounter API lacks _id filter; fetch all and filter client-side
       ENCOUNTER_FETCH_LIMIT = 200
@@ -265,29 +267,6 @@ module MedicalCopays
         end
 
         [org_id, org_city]
-      end
-
-      def retrieve_organization_address(org_id)
-        return nil if org_id.blank?
-
-        address = Rails.cache.fetch("lighthouse:org:#{org_id}:address", expires_in: 24.hours) do
-          org_data = organization_service.read(org_id)
-          org_data.dig('entry', 0, 'resource', 'address', 0)
-        end
-
-        return nil unless address
-
-        {
-          address_line1: address.dig('line', 0),
-          address_line2: address.dig('line', 1),
-          address_line3: address.dig('line', 2),
-          city: address['city'],
-          state: address['state'],
-          postalCode: address['postalCode']
-        }
-      rescue => e
-        Rails.logger.error { "Failed to fetch organization address: #{e.class}" }
-        raise e
       end
 
       def fetch_invoice_dependencies(invoice_data, invoice_id)

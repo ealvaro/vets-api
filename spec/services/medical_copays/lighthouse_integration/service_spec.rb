@@ -23,6 +23,69 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
     }
   end
 
+  describe '#fetch_organization' do
+    let(:service) { described_class.new('123') }
+    let(:memory_store) { ActiveSupport::Cache::MemoryStore.new }
+    let(:organization_id) { '4-5pFm5BMGzyD' }
+    let(:organization_resource) do
+      {
+        'resourceType' => 'Organization',
+        'id' => organization_id,
+        'address' => [
+          {
+            'line' => ['8300 RED BUG LAKE RD'],
+            'city' => 'OVIEDO',
+            'state' => 'FL',
+            'postalCode' => '327656801'
+          }
+        ]
+      }
+    end
+    let(:organization_bundle) { { 'entry' => [{ 'resource' => organization_resource }] } }
+    let(:organization_client) do
+      instance_double(Lighthouse::HealthcareCostAndCoverage::Organization::Service, read: organization_bundle)
+    end
+
+    before do
+      allow(Rails).to receive(:cache).and_return(memory_store)
+      allow(service).to receive(:organization_service).and_return(organization_client)
+    end
+
+    it 'reads upstream once and serves repeat lookups from the cache' do
+      2.times { service.fetch_organization(organization_id) }
+
+      expect(organization_client).to have_received(:read).once
+    end
+
+    it 'records a miss on the first lookup and a hit on the second' do
+      expect { service.fetch_organization(organization_id) }
+        .to trigger_statsd_increment('api.mcp.lighthouse.org_cache', tags: ['result:miss'])
+      expect { service.fetch_organization(organization_id) }
+        .to trigger_statsd_increment('api.mcp.lighthouse.org_cache', tags: ['result:hit'])
+    end
+
+    it 'records the metric under a caller-provided key' do
+      expect { service.fetch_organization(organization_id, 'api.mcp.facility_accounts.org_cache') }
+        .to trigger_statsd_increment('api.mcp.facility_accounts.org_cache', tags: ['result:miss'])
+    end
+
+    it 'returns nil without a lookup when the org id is blank' do
+      expect(service.fetch_organization(nil)).to be_nil
+      expect(organization_client).not_to have_received(:read)
+    end
+
+    context 'when Lighthouse returns no organization' do
+      let(:organization_bundle) { { 'entry' => [] } }
+
+      it 'does not cache the empty result' do
+        2.times { service.fetch_organization(organization_id) }
+
+        expect(organization_client).to have_received(:read).twice
+        expect(memory_store.exist?("lighthouse:org:#{organization_id}")).to be(false)
+      end
+    end
+  end
+
   describe 'StatsD metrics' do
     let(:service) { described_class.new('123') }
 
