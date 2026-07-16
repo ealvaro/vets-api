@@ -4,6 +4,7 @@ module TravelPay
   module V0
     class AppointmentsController < ApplicationController
       include FeatureFlagHelper
+      include ErrorHandling
 
       before_action :check_feature_flag
 
@@ -13,9 +14,13 @@ module TravelPay
         Rails.logger.info(message: 'Travel Pay appointment search END')
         render json: { data: appointments }, status: :ok
       rescue Common::Exceptions::BackendServiceException => e
+        raise if unified_error_handling_enabled?
+
         Rails.logger.error("TravelPay: BTSSS error searching appointments: #{e.message}")
         render json: { error: 'Error searching appointments' }, status: e.original_status
       rescue Faraday::Error => e
+        raise if unified_error_handling_enabled?
+
         TravelPay::ServiceError.raise_mapped_error(e)
       end
 
@@ -25,9 +30,13 @@ module TravelPay
         Rails.logger.info(message: 'Travel Pay appointment create END')
         render json: { data: appointment }, status: :created
       rescue Common::Exceptions::BackendServiceException => e
+        raise if unified_error_handling_enabled?
+
         Rails.logger.error("TravelPay: BTSSS error creating appointment: #{e.message}")
         render json: { error: 'Error creating appointment' }, status: e.original_status
       rescue Faraday::Error => e
+        raise if unified_error_handling_enabled?
+
         TravelPay::ServiceError.raise_mapped_error(e)
       end
 

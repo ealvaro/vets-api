@@ -7,6 +7,7 @@ module TravelPay
     class ExpensesController < ApplicationController
       include FeatureFlagHelper
       include IdValidation
+      include ErrorHandling
 
       before_action :validate_claim_id!, only: %i[create show]
       before_action :validate_expense_id!, only: %i[destroy show update]
@@ -27,8 +28,12 @@ module TravelPay
 
         render json: expense, status: :ok
       rescue ArgumentError => e
+        raise if unified_error_handling_enabled?
+
         raise Common::Exceptions::BadRequest, detail: e.message
       rescue Faraday::Error => e
+        raise if unified_error_handling_enabled?
+
         TravelPay::ServiceError.raise_mapped_error(e)
       end
 
@@ -46,10 +51,17 @@ module TravelPay
         render json: created_expense, status: :created
       rescue ArgumentError => e
         increment_expense_statsd(params[:expense_type], 'failure')
+        raise if unified_error_handling_enabled?
+
         raise Common::Exceptions::BadRequest, detail: e.message
       rescue Faraday::Error => e
         increment_expense_statsd(params[:expense_type], 'failure')
+        raise if unified_error_handling_enabled?
+
         TravelPay::ServiceError.raise_mapped_error(e)
+      rescue
+        increment_expense_statsd(params[:expense_type], 'failure')
+        raise
       end
 
       def update
@@ -63,10 +75,16 @@ module TravelPay
 
         render json: { id: response_data['id'] }, status: :ok
       rescue ArgumentError => e
+        raise if unified_error_handling_enabled?
+
         raise Common::Exceptions::BadRequest, detail: e.message
       rescue Faraday::ClientError, Faraday::ServerError => e
+        raise if unified_error_handling_enabled?
+
         TravelPay::ServiceError.raise_mapped_error(e)
       rescue Common::Exceptions::BackendServiceException => e
+        raise if unified_error_handling_enabled?
+
         Rails.logger.error("Error updating expense: #{e.message}")
         render json: { error: 'Error updating expense' }, status: e.original_status
       end
@@ -82,10 +100,16 @@ module TravelPay
 
         render json: { id: response_data['id'] }, status: :ok
       rescue ArgumentError => e
+        raise if unified_error_handling_enabled?
+
         raise Common::Exceptions::BadRequest, detail: e.message
       rescue Faraday::ClientError, Faraday::ServerError => e
+        raise if unified_error_handling_enabled?
+
         TravelPay::ServiceError.raise_mapped_error(e)
       rescue Common::Exceptions::BackendServiceException => e
+        raise if unified_error_handling_enabled?
+
         Rails.logger.error("Error deleting expense: #{e.message}")
         render json: { error: 'Error deleting expense' }, status: e.original_status
       end

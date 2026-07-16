@@ -28,6 +28,7 @@ RSpec.describe TravelPay::V0::AppointmentsController, type: :request do
     allow(Flipper).to receive(:enabled?).with(:travel_pay_power_switch, instance_of(User)).and_return(true)
     allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_user_created_appointments,
                                               instance_of(User)).and_return(true)
+    allow(Flipper).to receive(:enabled?).with(:travel_pay_unified_error_handling, instance_of(User)).and_return(true)
 
     auth_manager_double = instance_double(
       TravelPay::AuthManager,
@@ -89,17 +90,21 @@ RSpec.describe TravelPay::V0::AppointmentsController, type: :request do
           [502, :bad_gateway],
           [503, :service_unavailable],
           [504, :gateway_timeout]
-        ].each do |status_code, expected_status|
-          it "maps upstream #{status_code} to #{expected_status}" do
+        ].each do |upstream_status, expected_status|
+          it "maps upstream #{upstream_status} to #{expected_status}" do
             allow_any_instance_of(TravelPay::AppointmentsService)
               .to receive(:search_appointments)
-              .and_raise(Common::Exceptions::BackendServiceException.new(nil, { detail: 'upstream error' },
-                                                                         status_code))
+              .and_raise(Common::Exceptions::BackendServiceException.new("BTSSS-API_#{upstream_status}",
+                                                                         { status: upstream_status },
+                                                                         upstream_status))
 
             get '/travel_pay/v0/appointments/search',
                 headers: { 'Authorization' => 'Bearer vagov_token' }
 
             expect(response).to have_http_status(expected_status)
+            body = JSON.parse(response.body)
+            expect(body['errors']).to be_present
+            expect(body['errors'].first['code']).to eq("BTSSS-API_#{upstream_status}")
           end
         end
       end
@@ -162,19 +167,72 @@ RSpec.describe TravelPay::V0::AppointmentsController, type: :request do
           [502, :bad_gateway],
           [503, :service_unavailable],
           [504, :gateway_timeout]
-        ].each do |status_code, expected_status|
-          it "maps upstream #{status_code} to #{expected_status}" do
+        ].each do |upstream_status, expected_status|
+          it "maps upstream #{upstream_status} to #{expected_status}" do
             allow_any_instance_of(TravelPay::AppointmentsService)
               .to receive(:create_appointment)
-              .and_raise(Common::Exceptions::BackendServiceException.new(nil, { detail: 'upstream error' },
-                                                                         status_code))
+              .and_raise(Common::Exceptions::BackendServiceException.new("BTSSS-API_#{upstream_status}",
+                                                                         { status: upstream_status },
+                                                                         upstream_status))
 
             post '/travel_pay/v0/appointments',
                  params: create_params,
                  headers: { 'Authorization' => 'Bearer vagov_token' }
 
             expect(response).to have_http_status(expected_status)
+            body = JSON.parse(response.body)
+            expect(body['errors']).to be_present
+            expect(body['errors'].first['code']).to eq("BTSSS-API_#{upstream_status}")
           end
+        end
+      end
+
+      context 'when a Faraday connection error occurs' do
+        it 'returns 503 with BTSSS error code' do
+          allow_any_instance_of(TravelPay::AppointmentsService)
+            .to receive(:create_appointment)
+            .and_raise(Faraday::ConnectionFailed.new('Failed to connect'))
+
+          post '/travel_pay/v0/appointments',
+               params: create_params,
+               headers: { 'Authorization' => 'Bearer vagov_token' }
+
+          expect(response).to have_http_status(:service_unavailable)
+          body = JSON.parse(response.body)
+          expect(body['errors'].first['code']).to eq('BTSSS-API_CONNECTION_FAILED')
+        end
+      end
+
+      context 'when a Faraday timeout occurs' do
+        it 'returns 504 with BTSSS timeout error code' do
+          allow_any_instance_of(TravelPay::AppointmentsService)
+            .to receive(:create_appointment)
+            .and_raise(Faraday::TimeoutError)
+
+          post '/travel_pay/v0/appointments',
+               params: create_params,
+               headers: { 'Authorization' => 'Bearer vagov_token' }
+
+          expect(response).to have_http_status(:gateway_timeout)
+          body = JSON.parse(response.body)
+          expect(body['errors'].first['code']).to eq('BTSSS-API_CONNECTION_TIMEOUT')
+        end
+      end
+
+      context 'when a Faraday client error with upstream status occurs' do
+        it 'returns the upstream status with the matching BTSSS code' do
+          error = Faraday::ClientError.new('Bad request', { status: 400, body: 'invalid' })
+          allow_any_instance_of(TravelPay::AppointmentsService)
+            .to receive(:create_appointment)
+            .and_raise(error)
+
+          post '/travel_pay/v0/appointments',
+               params: create_params,
+               headers: { 'Authorization' => 'Bearer vagov_token' }
+
+          expect(response).to have_http_status(:bad_request)
+          body = JSON.parse(response.body)
+          expect(body['errors'].first['code']).to eq('BTSSS-API_400')
         end
       end
     end
@@ -195,6 +253,57 @@ RSpec.describe TravelPay::V0::AppointmentsController, type: :request do
              headers: { 'Authorization' => 'Bearer vagov_token' }
 
         expect(response).to have_http_status(:service_unavailable)
+      end
+    end
+  end
+
+  context 'with unified error handling disabled (legacy)' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:travel_pay_unified_error_handling,
+                                                instance_of(User)).and_return(false)
+    end
+
+    describe 'GET #index' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:travel_pay_enable_user_created_appointments, instance_of(User))
+          .and_return(true)
+      end
+
+      it 'renders legacy error response for BackendServiceException' do
+        allow_any_instance_of(TravelPay::AppointmentsService)
+          .to receive(:search_appointments)
+          .and_raise(Common::Exceptions::BackendServiceException.new(nil, { detail: 'upstream error' }, 503))
+
+        get '/travel_pay/v0/appointments/search',
+            headers: { 'Authorization' => 'Bearer vagov_token' }
+
+        expect(response).to have_http_status(:service_unavailable)
+        body = JSON.parse(response.body)
+        expect(body['error']).to eq('Error searching appointments')
+      end
+    end
+
+    describe 'POST #create' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:travel_pay_enable_user_created_appointments, instance_of(User))
+          .and_return(true)
+      end
+
+      it 'renders legacy error response for BackendServiceException' do
+        allow_any_instance_of(TravelPay::AppointmentsService)
+          .to receive(:create_appointment)
+          .and_raise(Common::Exceptions::BackendServiceException.new(nil, { detail: 'upstream error' }, 500))
+
+        post '/travel_pay/v0/appointments',
+             params: { facility_id: 'abc', appointment_name: 'test',
+                       appointment_date_time: '2026-03-31T08:00:00Z', completed: true },
+             headers: { 'Authorization' => 'Bearer vagov_token' }
+
+        expect(response).to have_http_status(:internal_server_error)
+        body = JSON.parse(response.body)
+        expect(body['error']).to eq('Error creating appointment')
       end
     end
   end

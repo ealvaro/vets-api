@@ -23,7 +23,17 @@ module TravelPay
         return if env.success?
 
         body = env[:body]
-        return unless body.is_a?(Hash)
+
+        # When the response body is not JSON (e.g., gateway-level 502/503 errors
+        # that return HTML or plain text), convert it to the Hash structure that
+        # RaiseCustomError expects so that `detail` is populated in logs.
+        unless body.is_a?(Hash)
+          env[:body] = {
+            'detail' => body.to_s.truncate(200),
+            'code' => env.status.to_s
+          }
+          return
+        end
 
         body['detail'] = build_detail(body) if body.key?('message')
         body['code'] = body['statusCode']&.to_s if body.key?('statusCode')

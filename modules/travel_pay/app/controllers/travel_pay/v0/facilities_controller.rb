@@ -4,6 +4,7 @@ module TravelPay
   module V0
     class FacilitiesController < ApplicationController
       include FeatureFlagHelper
+      include ErrorHandling
 
       before_action :check_feature_flag
 
@@ -20,9 +21,13 @@ module TravelPay
         facilities_response = facilities_client.get_related_facilities(home_facility_id, permitted_params)
         render json: facilities_response.body, status: facilities_response.status
       rescue Common::Exceptions::BackendServiceException => e
+        raise if unified_error_handling_enabled?
+
         Rails.logger.error("TravelPay: BTSSS error retrieving facilities: #{e.message}")
         render json: { error: 'Error retrieving facilities' }, status: e.original_status
       rescue Faraday::Error => e
+        raise if unified_error_handling_enabled?
+
         TravelPay::ServiceError.raise_mapped_error(e)
       end
 

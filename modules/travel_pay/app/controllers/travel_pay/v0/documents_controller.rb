@@ -5,8 +5,7 @@ module TravelPay
     class DocumentsController < ApplicationController
       include FeatureFlagHelper
       include IdValidation
-
-      rescue_from Common::Exceptions::BadRequest, with: :render_bad_request
+      include ErrorHandling
 
       before_action :check_feature_flag, only: %i[create destroy]
 
@@ -20,11 +19,17 @@ module TravelPay
           filename: document_data[:filename]
         )
       rescue Faraday::ResourceNotFound => e
+        raise if unified_error_handling_enabled?
+
         handle_resource_not_found_error(e)
       rescue Faraday::Error => e
+        raise if unified_error_handling_enabled?
+
         Rails.logger.error("Error downloading document: #{e.message}")
         render json: { error: 'Error downloading document' }, status: e.response[:status]
       rescue Common::Exceptions::BackendServiceException => e
+        raise if unified_error_handling_enabled?
+
         Rails.logger.error("Error downloading document: #{e.message}")
         render json: { error: 'Error downloading document' }, status: e.original_status
       end
@@ -42,16 +47,14 @@ module TravelPay
         response_data = service.upload_document(claim_id, document)
         increment_create_statsd(document, 'success')
         render json: { documentId: response_data['documentId'] }, status: :created
-      rescue Common::Exceptions::BadRequest
+      rescue Faraday::ResourceNotFound, Faraday::Error => e
+        increment_create_statsd(document, 'failure')
+        raise if unified_error_handling_enabled?
+
+        legacy_handle_create_error(e)
+      rescue
         increment_create_statsd(document, 'failure')
         raise
-      rescue Faraday::ResourceNotFound => e
-        increment_create_statsd(document, 'failure')
-        handle_resource_not_found_error(e)
-      rescue Faraday::Error => e
-        increment_create_statsd(document, 'failure')
-        Rails.logger.error("Error uploading document: #{e.message}")
-        render json: { error: 'Error uploading document' }, status: e.response[:status]
       end
 
       def destroy
@@ -66,12 +69,18 @@ module TravelPay
         render json: { documentId: response_data['documentId'] }, status: :ok
       rescue Faraday::ResourceNotFound => e
         # API 404
+        raise if unified_error_handling_enabled?
+
         handle_resource_not_found_error(e)
       rescue Faraday::ClientError => e
         # 400-level errors (bad request, unauthorized, forbidden)
+        raise if unified_error_handling_enabled?
+
         handle_faraday_error(e, 'Client error deleting document', log_prefix: 'Deleting document: ')
       rescue Faraday::ServerError => e
         # 500-level errors
+        raise if unified_error_handling_enabled?
+
         handle_faraday_error(e, 'Server error deleting document', log_prefix: 'Deleting document: ')
       end
 
@@ -104,23 +113,22 @@ module TravelPay
         )
       end
 
+      def legacy_handle_create_error(e)
+        case e
+        when Faraday::ResourceNotFound
+          handle_resource_not_found_error(e)
+        else
+          Rails.logger.error("Error uploading document: #{e.message}")
+          render json: { error: 'Error uploading document' }, status: e.response[:status]
+        end
+      end
+
       def increment_create_statsd(document, result)
         document_type = File.basename(document&.original_filename.to_s, '.*') == 'proof-of-attendance' ? 'poa' : 'other'
 
         StatsD.increment('travel_pay.documents.create',
                          tags: ["document_type:#{document_type}",
                                 "result:#{result}"])
-      end
-
-      def render_bad_request(e)
-        # Extract the first detail from errors array, fallback to generic
-        error_detail = if e.respond_to?(:errors) && e.errors.any?
-                         e.errors.first[:detail] || 'Bad request'
-                       else
-                         'Bad request'
-                       end
-
-        render json: { errors: [{ detail: error_detail }] }, status: :bad_request
       end
 
       def auth_manager

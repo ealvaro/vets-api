@@ -3,11 +3,17 @@
 module TravelPay
   module V0
     class ContactsController < ApplicationController
-      rescue_from Common::Exceptions::BackendServiceException, with: :render_backend_service_exception
+      include ErrorHandling
 
       def show
         contact = client.get_contact
         render json: contact.body, status: contact.status
+      rescue Common::Exceptions::BackendServiceException => e
+        raise if unified_error_handling_enabled?
+
+        message = "TravelPay: BTSSS error retrieving contact: #{e.message}"
+        Rails.logger.error(message)
+        render json: { error: 'Error retrieving contact' }, status: e.original_status
       end
 
       private
@@ -22,12 +28,6 @@ module TravelPay
 
       def client
         @client ||= TravelPay::ContactClient.new(auth_session)
-      end
-
-      def render_backend_service_exception(e)
-        message = "TravelPay: BTSSS error retrieving contact: #{e.message}"
-        Rails.logger.error(message)
-        render json: { error: 'Error retrieving contact' }, status: e.original_status
       end
     end
   end

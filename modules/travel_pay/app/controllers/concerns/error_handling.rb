@@ -21,7 +21,12 @@ module ErrorHandling
 
     exception = normalize_exception(e)
     log_exception(e, exception)
-    render json: { errors: exception.errors }, status: exception.status_code
+
+    response_body = { errors: exception.errors }
+    cid = extract_correlation_id(e)
+    response_body[:meta] = { correlation_id: cid } if cid.present?
+
+    render json: response_body, status: exception.status_code
   end
 
   def unified_error_handling_enabled?
@@ -67,6 +72,26 @@ module ErrorHandling
     else
       Common::Exceptions::BackendServiceException.new('BTSSS-API_CONNECTION_FAILED', { status: 503 }, 503)
     end
+  end
+
+  def extract_correlation_id(e)
+    return unless e.respond_to?(:response) && e.response.is_a?(Hash)
+
+    e.response.dig(:request, :headers, 'X-Correlation-ID') ||
+      extract_body_correlation_id(e.response[:body])
+  end
+
+  def extract_body_correlation_id(body)
+    return if body.blank?
+
+    parsed = body.is_a?(String) ? JSON.parse(body) : body
+    parsed&.dig('correlationId')
+  rescue JSON::ParserError => e
+    Rails.logger.warn(
+      'Failed to parse BTSSS response body for correlation ID',
+      error: e.message
+    )
+    nil
   end
 
   ##

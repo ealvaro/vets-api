@@ -5,6 +5,7 @@ module TravelPay
     class ClaimsController < ApplicationController
       include AppointmentHelper
       include ClaimHelper
+      include ErrorHandling
 
       after_action :scrub_logs, only: [:show]
       before_action :check_smoc_feature_flag, only: [:create]
@@ -13,8 +14,12 @@ module TravelPay
         claims = claims_service.get_claims_by_date_range(params)
         render json: claims, status: claims[:metadata]['status']
       rescue Faraday::ResourceNotFound => e
+        raise if unified_error_handling_enabled?
+
         handle_resource_not_found_error(e.message, e.response[:request][:headers]['X-Correlation-ID'])
       rescue Faraday::Error => e
+        raise if unified_error_handling_enabled?
+
         TravelPay::ServiceError.raise_mapped_error(e)
       end
 
@@ -24,20 +29,15 @@ module TravelPay
           raise Common::Exceptions::ServiceUnavailable, message:
         end
 
-        begin
-          claim = claims_service.get_claim_details(params[:id])
-        rescue Faraday::ResourceNotFound => e
-          handle_resource_not_found_error(e.message, e.response[:request][:headers]['X-Correlation-ID'])
-          return
-        rescue Faraday::Error => e
-          TravelPay::ServiceError.raise_mapped_error(e)
-        rescue ArgumentError => e
-          raise Common::Exceptions::BadRequest, message: e.message
-        end
+        claim = fetch_claim_details(params[:id])
+        return if performed?
 
         if claim.nil?
-          handle_resource_not_found_error("Claim not found. ID provided: #{params[:id]}",
-                                          e.response[:request][:headers]['X-Correlation-ID'])
+          if unified_error_handling_enabled?
+            raise Common::Exceptions::ResourceNotFound.new(detail: "Claim not found. ID provided: #{params[:id]}")
+          end
+
+          handle_resource_not_found_error("Claim not found. ID provided: #{params[:id]}", nil)
           return
         end
 
@@ -45,27 +45,7 @@ module TravelPay
       end
 
       def create
-        begin
-          Rails.logger.info(message: 'SMOC transaction START')
-
-          appt_id = find_or_create_appt_id!('SMOC', params)
-          claim_id = create_claim(appt_id, 'SMOC')
-          Rails.logger.info(message: "SMOC transaction: Add expense to claim #{claim_id.slice(0, 8)}")
-          expense_service.add_expense({ 'claim_id' => claim_id, 'appt_date' => params['appointment_date_time'] })
-
-          Rails.logger.info(message: "SMOC transaction: Submit claim #{claim_id.slice(0, 8)}")
-          submitted_claim = claims_service.submit_claim(claim_id)
-
-          Rails.logger.info(message: 'SMOC transaction END')
-          increment_smoc_statsd('success')
-        rescue ArgumentError => e
-          increment_smoc_statsd('failure')
-          raise Common::Exceptions::BadRequest, detail: e.message
-        rescue Faraday::Error => e
-          increment_smoc_statsd('failure')
-          TravelPay::ServiceError.raise_mapped_error(e)
-        end
-
+        submitted_claim = execute_smoc_transaction
         render json: submitted_claim, status: :created
       end
 
@@ -91,11 +71,58 @@ module TravelPay
         StatsD.increment('travel_pay.claims.smoc.create', tags: ["result:#{result}"])
       end
 
+      def fetch_claim_details(claim_id)
+        claims_service.get_claim_details(claim_id)
+      rescue Faraday::ResourceNotFound => e
+        raise if unified_error_handling_enabled?
+
+        handle_resource_not_found_error(e.message, e.response[:request][:headers]['X-Correlation-ID'])
+        nil
+      rescue Faraday::Error => e
+        raise if unified_error_handling_enabled?
+
+        TravelPay::ServiceError.raise_mapped_error(e)
+      rescue ArgumentError => e
+        raise if unified_error_handling_enabled?
+
+        raise Common::Exceptions::BadRequest, message: e.message
+      end
+
+      def execute_smoc_transaction
+        Rails.logger.info(message: 'SMOC transaction START')
+        appt_id = find_or_create_appt_id!('SMOC', params)
+        claim_id = create_claim(appt_id, 'SMOC')
+        Rails.logger.info(message: "SMOC transaction: Add expense to claim #{claim_id.slice(0, 8)}")
+        expense_service.add_expense({ 'claim_id' => claim_id, 'appt_date' => params['appointment_date_time'] })
+        Rails.logger.info(message: "SMOC transaction: Submit claim #{claim_id.slice(0, 8)}")
+        submitted_claim = claims_service.submit_claim(claim_id)
+        Rails.logger.info(message: 'SMOC transaction END')
+        increment_smoc_statsd('success')
+        submitted_claim
+      rescue ArgumentError, Faraday::Error => e
+        increment_smoc_statsd('failure')
+        raise if unified_error_handling_enabled?
+
+        legacy_handle_smoc_error(e)
+      rescue
+        increment_smoc_statsd('failure')
+        raise
+      end
+
       def check_smoc_feature_flag
         unless Flipper.enabled?(:travel_pay_submit_mileage_expense, @current_user)
           message = 'Travel Pay mileage expense submission unavailable per feature toggle'
           Rails.logger.error(message:)
           raise Common::Exceptions::ServiceUnavailable, message:
+        end
+      end
+
+      def legacy_handle_smoc_error(e)
+        case e
+        when ArgumentError
+          raise Common::Exceptions::BadRequest, detail: e.message
+        when Faraday::Error
+          TravelPay::ServiceError.raise_mapped_error(e)
         end
       end
 

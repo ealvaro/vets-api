@@ -92,6 +92,43 @@ RSpec.describe TravelPay::Middleware::BtsssErrors do
       env = env_for(status: 500, body: 'Internal Server Error')
       expect { middleware.on_complete(env) }.not_to raise_error
     end
+
+    it 'converts a string body to a Hash with detail and code' do
+      env = env_for(status: 502, body: '<html>Bad Gateway</html>')
+      middleware.on_complete(env)
+
+      expect(env[:body]).to be_a(Hash)
+      expect(env[:body]['detail']).to eq('<html>Bad Gateway</html>')
+      expect(env[:body]['code']).to eq('502')
+    end
+
+    it 'converts a string body for 503 errors' do
+      env = env_for(status: 503, body: 'Service Unavailable')
+      middleware.on_complete(env)
+
+      expect(env[:body]).to be_a(Hash)
+      expect(env[:body]['detail']).to eq('Service Unavailable')
+      expect(env[:body]['code']).to eq('503')
+    end
+
+    it 'truncates long non-JSON bodies to 200 characters' do
+      long_body = 'x' * 500
+      env = env_for(status: 502, body: long_body)
+      middleware.on_complete(env)
+
+      expect(env[:body]['detail'].length).to be <= 200
+    end
+  end
+
+  context 'when the response body is nil' do
+    it 'converts nil body to a Hash with detail and code' do
+      env = env_for(status: 500, body: nil)
+      middleware.on_complete(env)
+
+      expect(env[:body]).to be_a(Hash)
+      expect(env[:body]['detail']).to eq('')
+      expect(env[:body]['code']).to eq('500')
+    end
   end
 
   context 'when the response body has no message or statusCode' do
@@ -100,13 +137,6 @@ RSpec.describe TravelPay::Middleware::BtsssErrors do
       env = env_for(status: 400, body:)
       middleware.on_complete(env)
       expect(env[:body]).to eq({ 'error' => 'something else' })
-    end
-  end
-
-  context 'when the response body is nil' do
-    it 'does not raise an error' do
-      env = env_for(status: 500, body: nil)
-      expect { middleware.on_complete(env) }.not_to raise_error
     end
   end
 end
