@@ -1195,6 +1195,10 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
     end
 
     context 'V2 filter parameters' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_medications_v2_status_mapping, anything).and_return(true)
+      end
+
       it 'filters prescriptions by is_trackable=true (shipped)' do
         VCR.use_cassette('unified_health_data/get_prescriptions_success', match_requests_on: %i[method path]) do
           get('/my_health/v2/prescriptions?filter[[is_trackable][eq]]=true', headers:)
@@ -1405,10 +1409,16 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
   end
 
   describe 'GET /my_health/v2/prescriptions with VistA tracking data' do
+    # Freeze time so the 15-day shipped-tracking window (apply_shipped_tracking_logic) is
+    # evaluated deterministically against the fixed cassette dates (lastUpdatedTime: Jul 2, 2026).
+    # Without this, is_trackable flips depending on the current wall-clock date.
     before do
+      Timecop.freeze(Time.zone.parse('2026-07-05T12:00:00Z'))
       allow(Flipper).to receive(:enabled?).with(:mhv_medications_cerner_pilot, anything).and_return(true)
       allow(Flipper).to receive(:enabled?).with(:mhv_medications_management_improvements, anything).and_return(true)
     end
+
+    after { Timecop.return }
 
     it 'returns VistA prescriptions with tracking_list populated from trackingList.tracking' do
       VCR.use_cassette('unified_health_data/get_prescriptions_vista_with_tracking',
