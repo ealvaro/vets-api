@@ -1593,7 +1593,8 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
                   claim_id: '600383363',
                   tracked_item_id: 395_084,
                   tracked_item_type: 'PMR Pending',
-                  tracked_item_status: 'NEEDED_FROM_OTHERS' })
+                  tracked_item_status: 'NEEDED_FROM_OTHERS',
+                  suspense_date: '2023-04-15' })
         expect(Rails.logger)
           .to have_received(:info)
           .with('Evidence Request Types',
@@ -1601,7 +1602,8 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
                   claim_id: '600383363',
                   tracked_item_id: 394_443,
                   tracked_item_type: 'Submit buddy statement(s)',
-                  tracked_item_status: 'NEEDED_FROM_YOU' })
+                  tracked_item_status: 'NEEDED_FROM_YOU',
+                  suspense_date: nil })
       end
 
       context 'claim title generator' do

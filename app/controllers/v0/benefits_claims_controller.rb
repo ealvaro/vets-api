@@ -357,7 +357,8 @@ module V0
                               claim_id:,
                               tracked_item_id: ti['id'],
                               tracked_item_type: ti['displayName'],
-                              tracked_item_status: ti['status'] })
+                              tracked_item_status: ti['status'],
+                              suspense_date: ti['suspenseDate'] })
       end
     end
 
