@@ -10,7 +10,7 @@
 .github/instructions/my-health-messaging.instructions.md @software/vfs-mhv-integration
 .github/instructions/my-health-prescriptions.instructions.md @software/vfs-mhv-integration
 .gitignore @software/va-platform-backend
-.postman_disability_benefits @software/disability-benefits-team-5
+.postman_disability_benefits @software/disability-benefits
 .reek.yml @software/va-platform-backend
 .rubocop.yml @software/va-platform-backend
 .rubocop*todo.yml @software/va-platform-backend
