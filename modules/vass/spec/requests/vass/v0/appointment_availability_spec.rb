@@ -63,6 +63,10 @@ RSpec.describe 'Vass::V0::Appointments - Appointment Availability', type: :reque
           allow(StatsD).to receive(:increment).and_call_original
 
           expect(StatsD).to receive(:increment).with(
+            'api.vass.controller.appointments.availability.total',
+            hash_including(tags: array_including('service:vass', 'endpoint:availability'))
+          ).and_call_original
+          expect(StatsD).to receive(:increment).with(
             'api.vass.controller.appointments.availability.success',
             hash_including(tags: array_including('service:vass', 'endpoint:availability'))
           ).and_call_original

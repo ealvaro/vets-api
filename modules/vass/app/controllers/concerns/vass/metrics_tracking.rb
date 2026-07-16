@@ -14,7 +14,7 @@ module Vass
   #   track_failure(APPOINTMENTS_CREATE, error_type: exception.class.name)
   #
   # @example Track an infrastructure event
-  #   track_infrastructure_metric(SESSION_OTP_GENERATED)
+  #   track_infrastructure_metric(SESSION_OTP_EXPIRED)
   #
   module MetricsTracking
     extend ActiveSupport::Concern
@@ -64,6 +64,17 @@ module Vass
     end
 
     ##
+    # Records a total/request metric for a controller action (denominator).
+    #
+    # @param metric_base [String] Base metric name (e.g., APPOINTMENTS_AVAILABILITY)
+    # @param additional_tags [Hash] Optional additional tags
+    #
+    def track_total(metric_base, additional_tags: {})
+      tags = build_metric_tags(additional_tags:)
+      StatsD.increment("#{metric_base}.#{TOTAL}", tags:)
+    end
+
+    ##
     # Records an infrastructure metric (rate limiting, session, Redis).
     # Uses a simpler tag set as these are not HTTP operations.
     #
@@ -72,7 +83,7 @@ module Vass
     #
     # @example
     #   track_infrastructure_metric(RATE_LIMIT_GENERATION_EXCEEDED)
-    #   track_infrastructure_metric(SESSION_OTP_GENERATED, identifier: uuid)
+    #   track_infrastructure_metric(SESSION_OTP_INVALID, additional_tags: { attempt: 1 })
     #
     def track_infrastructure_metric(metric_name, additional_tags: {})
       tags = [SERVICE_TAG]

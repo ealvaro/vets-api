@@ -477,6 +477,68 @@ RSpec.describe Vass::V0::SessionsController, type: :controller do
       end
     end
 
+    context 'when authenticated session creation fails' do
+      before do
+        allow(Vass::V0::Session).to receive(:build).and_return(session_model)
+        allow(session_model).to receive_messages(
+          valid_for_validation?: true,
+          valid_otp?: true,
+          otp_expired?: false,
+          validate_and_generate_jwt: jwt_result,
+          uuid:
+        )
+        allow(session_model).to receive(:create_authenticated_session).and_return(false)
+        allow(redis_client).to receive_messages(validation_rate_limit_exceeded?: false,
+                                                redis_session_expiry: 2.hours)
+      end
+
+      it 'returns service unavailable and does not emit success' do
+        expect(StatsD).to receive(:increment).with(
+          'api.vass.controller.sessions.authenticate_otp.failure',
+          hash_including(tags: array_including('service:vass', 'error_type:metadata_not_found'))
+        )
+        expect(StatsD).not_to receive(:increment).with(
+          'api.vass.controller.sessions.authenticate_otp.success',
+          anything
+        )
+
+        post :authenticate_otp, params:, format: :json
+
+        expect(response).to have_http_status(:service_unavailable)
+        json_response = JSON.parse(response.body)
+        expect(json_response['errors'][0]['code']).to eq('service_error')
+      end
+    end
+
+    context 'with expired OTP' do
+      before do
+        allow(Vass::V0::Session).to receive(:build).and_return(session_model)
+        allow(session_model).to receive_messages(
+          valid_for_validation?: true,
+          otp_expired?: true,
+          uuid:
+        )
+        allow(redis_client).to receive_messages(validation_rate_limit_exceeded?: false)
+      end
+
+      it 'returns unauthorized and tracks controller failure' do
+        expect(StatsD).to receive(:increment).with(
+          'api.vass.infrastructure.session.otp.expired',
+          tags: ['service:vass']
+        )
+        expect(StatsD).to receive(:increment).with(
+          'api.vass.controller.sessions.authenticate_otp.failure',
+          hash_including(tags: array_including('service:vass', 'error_type:otp_expired'))
+        )
+
+        post :authenticate_otp, params:, format: :json
+
+        expect(response).to have_http_status(:unauthorized)
+        json_response = JSON.parse(response.body)
+        expect(json_response['errors'][0]['code']).to eq('otp_expired')
+      end
+    end
+
     context 'with invalid OTP' do
       before do
         allow(Vass::V0::Session).to receive(:build).and_return(session_model)

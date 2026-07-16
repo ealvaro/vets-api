@@ -518,6 +518,25 @@ RSpec.describe 'Vass::V0::Sessions', type: :request do
         expect(json_response['errors']).to be_present
         expect(json_response['errors'][0]['code']).to eq('otp_expired')
       end
+
+      it 'tracks infrastructure and controller failure metrics' do
+        allow(StatsD).to receive(:increment).and_call_original
+        expect(StatsD).to receive(:increment).with(
+          'api.vass.infrastructure.session.otp.expired',
+          hash_including(tags: array_including('service:vass'))
+        ).and_call_original
+        expect(StatsD).to receive(:increment).with(
+          'api.vass.controller.sessions.authenticate_otp.failure',
+          hash_including(tags: array_including('service:vass', 'endpoint:authenticate_otp',
+                                               'error_type:otp_expired'))
+        ).and_call_original
+        expect(StatsD).not_to receive(:increment).with(
+          'api.vass.controller.sessions.authenticate_otp.success',
+          anything
+        )
+
+        post '/vass/v0/authenticate-otp', params:, as: :json
+      end
     end
 
     context 'when validation rate limit is exceeded' do

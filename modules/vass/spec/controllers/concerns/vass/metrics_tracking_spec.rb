@@ -21,6 +21,11 @@ RSpec.describe Vass::MetricsTracking, type: :controller do
       render json: { status: 'ok' }, status: :ok
     end
 
+    def test_total
+      track_total(Vass::MetricsConstants::APPOINTMENTS_AVAILABILITY)
+      render json: { status: 'ok' }, status: :ok
+    end
+
     def test_with_additional_tags
       track_success(Vass::MetricsConstants::APPOINTMENTS_CREATE, additional_tags: { cohort: 'morning' })
       render json: { status: 'ok' }, status: :ok
@@ -32,6 +37,7 @@ RSpec.describe Vass::MetricsTracking, type: :controller do
       get 'test_success' => 'anonymous#test_success'
       post 'test_failure' => 'anonymous#test_failure'
       get 'test_infrastructure' => 'anonymous#test_infrastructure'
+      get 'test_total' => 'anonymous#test_total'
       get 'test_with_additional_tags' => 'anonymous#test_with_additional_tags'
     end
   end
@@ -103,6 +109,24 @@ RSpec.describe Vass::MetricsTracking, type: :controller do
       )
 
       get :test_infrastructure
+      expect(response).to have_http_status(:ok)
+    end
+  end
+
+  describe '#track_total' do
+    it 'increments total metric with standard controller tags' do
+      expect(StatsD).to receive(:increment).with(
+        'api.vass.controller.appointments.availability.total',
+        hash_including(
+          tags: array_including(
+            'service:vass',
+            'endpoint:test_total',
+            'http_method:GET'
+          )
+        )
+      )
+
+      get :test_total
       expect(response).to have_http_status(:ok)
     end
   end

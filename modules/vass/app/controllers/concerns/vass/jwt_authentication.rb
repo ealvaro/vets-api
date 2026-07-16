@@ -26,6 +26,7 @@ module Vass
   module JwtAuthentication
     extend ActiveSupport::Concern
     include Vass::MetricsConstants
+    include Vass::MetricsTracking
 
     included do
       attr_reader :current_veteran_id, :current_jti
@@ -71,40 +72,40 @@ module Vass
 
     def handle_missing_token
       log_auth_failure('missing_token')
+      track_jwt_auth_failure(SESSION_JWT_MISSING, reason: 'missing_token')
       raise Vass::Errors::AuthenticationError, Vass::Errors::AuthenticationError::MISSING_TOKEN
     end
 
     def handle_missing_veteran_id
       log_auth_failure('missing_veteran_id')
+      track_jwt_auth_failure(SESSION_JWT_INVALID, reason: 'missing_veteran_id')
       raise Vass::Errors::AuthenticationError, Vass::Errors::AuthenticationError::INVALID_TOKEN
     end
 
     def handle_revoked_token
       log_auth_failure('revoked_token')
+      track_jwt_auth_failure(SESSION_JWT_REVOKED, reason: 'revoked_token')
       raise Vass::Errors::AuthenticationError, Vass::Errors::AuthenticationError::REVOKED_TOKEN
     end
 
     def handle_expired_token
       log_auth_failure('expired_token')
-      track_session_timeout
+      track_jwt_auth_failure(SESSION_JWT_EXPIRED, reason: 'expired_token')
       raise Vass::Errors::AuthenticationError, Vass::Errors::AuthenticationError::EXPIRED_TOKEN
-    end
-
-    ##
-    # Tracks session timeout event with StatsD metric and detailed logging.
-    #
-    def track_session_timeout
-      StatsD.increment(SESSION_JWT_EXPIRED, tags: [SERVICE_TAG])
-      log_vass_error(
-        'session_timeout',
-        level: :warn,
-        failure_type: 'jwt_expired'
-      )
     end
 
     def handle_invalid_token(exception)
       log_auth_failure('invalid_token', error_class: exception.class.name)
+      track_jwt_auth_failure(SESSION_JWT_INVALID, reason: 'invalid_token')
       raise Vass::Errors::AuthenticationError, Vass::Errors::AuthenticationError::INVALID_TOKEN
+    end
+
+    ##
+    # Records JWT auth failure infrastructure metrics. Logging is handled by
+    # log_auth_failure (and ApplicationController on rescue) to avoid duplicate logs.
+    #
+    def track_jwt_auth_failure(metric_name, reason:)
+      track_infrastructure_metric(metric_name, additional_tags: { reason: })
     end
 
     ##
@@ -166,6 +167,7 @@ module Vass
       JWT.decode(token, jwt_secret, true, { algorithm: 'HS256', verify_expiration: false })[0]
     rescue JWT::DecodeError => e
       log_auth_failure('revocation_decode_error', error_class: e.class.name)
+      track_jwt_auth_failure(SESSION_JWT_INVALID, reason: 'revocation_decode_error')
       nil
     end
 

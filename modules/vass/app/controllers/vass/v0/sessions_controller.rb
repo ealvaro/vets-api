@@ -71,7 +71,8 @@ module Vass
         jwt_result = session.validate_and_generate_jwt
         jwt_token = jwt_result[:token]
         jti = jwt_result[:jti]
-        session.create_authenticated_session(jti:)
+        return handle_session_creation_failure(session) unless session.create_authenticated_session(jti:)
+
         handle_successful_authentication(session, jwt_token, jti)
       rescue Vass::Errors::RateLimitError => e
         handle_authenticate_otp_error(e, session, :rate_limit)
@@ -528,12 +529,33 @@ module Vass
       def handle_expired_otp(session)
         log_vass_error('otp_expired', vass_uuid: session.uuid, level: :warn)
         track_infrastructure_metric(SESSION_OTP_EXPIRED)
+        track_failure(SESSIONS_AUTHENTICATE_OTP, error_type: 'otp_expired', http_status: 401)
         render_session_error_response(
           code: 'otp_expired',
           detail: 'OTP has expired. Please request a new one.',
           status: :unauthorized
         )
         false
+      end
+
+      ##
+      # Handles failure to create the authenticated Redis session after OTP validation
+      # (e.g. veteran metadata missing). Does not issue a JWT success metric.
+      #
+      # @param session [Vass::V0::Session] Session instance
+      #
+      def handle_session_creation_failure(session)
+        log_vass_error(
+          'session_creation_failed',
+          vass_uuid: session.uuid,
+          failure_type: 'metadata_not_found'
+        )
+        track_failure(SESSIONS_AUTHENTICATE_OTP, error_type: 'metadata_not_found', http_status: 503)
+        render_session_error_response(
+          code: 'service_error',
+          detail: 'Unable to complete authentication. Please request a new OTP.',
+          status: :service_unavailable
+        )
       end
 
       ##
@@ -576,13 +598,6 @@ module Vass
           attempt_number:,
           failure_type: 'invalid_otp_code'
         )
-      end
-
-      ##
-      # Logs validation error (no PHI).
-      #
-      def log_validation_error
-        log_vass_error('validation_error', level: :warn)
       end
 
       ##

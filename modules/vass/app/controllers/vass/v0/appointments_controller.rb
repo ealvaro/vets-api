@@ -24,6 +24,7 @@ module Vass
       # Stores appointmentId in Redis for subsequent booking steps.
       #
       def availability
+        track_total(APPOINTMENTS_AVAILABILITY)
         result = @appointments_service.get_current_cohort_availability(veteran_id: @current_veteran_id)
 
         if result[:status] == :available_slots
@@ -107,13 +108,13 @@ module Vass
         appointment_id = params[:appointment_id]
 
         response = @appointments_service.get_appointment(appointment_id:)
-        track_success(APPOINTMENTS_SHOW)
         render_vass_response(
           response,
           success_data: ->(r) { r['data'] },
           error_code: 'appointment_not_found',
           error_message: 'Appointment not found',
-          error_status: :not_found
+          error_status: :not_found,
+          metric_base: APPOINTMENTS_SHOW
         )
       rescue Vass::Errors::VassApiError,
              Vass::Errors::ServiceError,
@@ -141,13 +142,13 @@ module Vass
         appointment_id = params[:appointment_id]
 
         response = @appointments_service.cancel_appointment(appointment_id:)
-        track_success(APPOINTMENTS_CANCEL)
         render_vass_response(
           response,
           success_data: { appointmentId: appointment_id },
           error_code: 'cancellation_failed',
           error_message: 'Failed to cancel appointment',
-          error_status: :unprocessable_content
+          error_status: :unprocessable_content,
+          metric_base: APPOINTMENTS_CANCEL
         )
       rescue Vass::Errors::VassApiError,
              Vass::Errors::ServiceError,
@@ -304,6 +305,7 @@ module Vass
 
         unless edipi
           log_vass_error('missing_edipi', vass_uuid: @current_veteran_id, **audit_metadata)
+          track_infrastructure_metric(AUTH_MISSING_EDIPI)
           return render_error('missing_edipi', 'Veteran EDIPI not found. Please re-authenticate.', :unauthorized)
         end
 
@@ -422,13 +424,13 @@ module Vass
       # @param response [Hash] Parsed SaveAppointment response from VASS API
       #
       def render_booking_response(response)
-        track_success(APPOINTMENTS_CREATE)
         render_vass_response(
           response,
           success_data: ->(r) { { appointment_id: r.dig('data', 'appointment_id') } },
           error_code: 'appointment_save_failed',
           error_message: 'Failed to save appointment',
-          error_status: :unprocessable_content
+          error_status: :unprocessable_content,
+          metric_base: APPOINTMENTS_CREATE
         )
       end
 
@@ -455,18 +457,32 @@ module Vass
       ##
       # Generic method to render VASS API response.
       # Handles the common pattern of checking success and rendering appropriate response.
+      # Controller success/failure metrics fire only after the response body outcome is known.
       #
       # @param response [Hash] Response from VASS API
-      # @param success_data [Hash, Proc] Data to render on success (or proc that returns data)
-      # @param error_code [String] Error code for failure case
-      # @param error_message [String] Error message for failure case
-      # @param error_status [Symbol] HTTP status for failure case
+      # @param options [Hash] Render options
+      # @option options [Hash, Proc] :success_data Data to render on success (or proc)
+      # @option options [String] :error_code Error code for failure case
+      # @option options [String] :error_message Error message for failure case
+      # @option options [Symbol] :error_status HTTP status for failure case
+      # @option options [String, nil] :metric_base Optional controller metric base
       #
-      def render_vass_response(response, success_data:, error_code:, error_message:, error_status:)
+      def render_vass_response(response, **options)
+        success_data = options.fetch(:success_data)
+        error_code = options.fetch(:error_code)
+        error_message = options.fetch(:error_message)
+        error_status = options.fetch(:error_status)
+        metric_base = options[:metric_base]
+
         if response['success']
           data = success_data.is_a?(Proc) ? success_data.call(response) : success_data
+          track_success(metric_base) if metric_base
           render_camelized_json({ data: })
         else
+          if metric_base
+            track_failure(metric_base, error_type: error_code,
+                                       http_status: Rack::Utils.status_code(error_status))
+          end
           render_error(error_code, error_message, error_status)
         end
       end

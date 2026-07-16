@@ -228,32 +228,79 @@ All errors are logged without PHI and rendered in JSON:API format.
 
 ## Monitoring
 
-All endpoints and service calls are instrumented with StatsD. Metrics are available in Datadog under the `vass` namespace.
+All endpoints and service calls are instrumented with StatsD. Traces/logs group under the Datadog APM service name `vass` (`service_tag 'vass'` on `Vass::ApplicationController`).
 
-### StatsD Metrics
+Naming convention: `api.vass.{layer}.{component}.{action}.{outcome}`  
+See `lib/vass/metrics_constants.rb` and `app/controllers/concerns/vass/metrics_tracking.rb`.
 
-All VASS API operations are tracked via the `Common::Client::Concerns::Monitoring` module in the client layer:
+### Why some events appear on two metrics
 
-**Client Layer Metrics:**
+Controller metrics answer “did this HTTP endpoint succeed or fail?”  
+Infrastructure metrics answer “which product/auth outcome was it?” (expired OTP, rate limit, identity mismatch, no slots, etc.).
 
-- `api.vass.oauth_token_request.total`
-- `api.vass.oauth_token_request.fail`
-- `api.vass.get_appointment_availability.total`
-- `api.vass.get_appointment_availability.fail`
-- `api.vass.save_appointment.total`
-- `api.vass.save_appointment.fail`
-- `api.vass.cancel_appointment.total`
-- `api.vass.cancel_appointment.fail`
-- `api.vass.get_veteran_appointment.total`
-- `api.vass.get_veteran_appointment.fail`
-- `api.vass.get_veteran_appointments.total`
-- `api.vass.get_veteran_appointments.fail`
-- `api.vass.get_veteran.total`
-- `api.vass.get_veteran.fail`
-- `api.vass.get_agent_skills.total`
-- `api.vass.get_agent_skills.fail`
+For several user-error paths we emit both on purpose — for example an expired OTP increments:
 
-All failure metrics include error tags: `error:ErrorClassName` and `status:HTTPStatus`
+1. `api.vass.infrastructure.session.otp.expired` (breakdown by outcome)
+2. `api.vass.controller.sessions.authenticate_otp.failure` (endpoint failure rate)
+
+Same pattern for invalid OTP, OTP generation/validation rate limits, and identity validation failures. **Do not add those two series together** when counting unique user errors — pick controller for endpoint health, or infrastructure for outcome mix.
+
+Availability soft outcomes (no cohorts / next cohort / already booked / no slots) are **infrastructure-only**. Use `appointments.availability.total` as the request denominator.
+
+Upstream `success: false` responses can also show up as `http_200_errors` + client `.fail` + controller `.failure` (different layers). Treat them as layered signals, not a single summed error total.
+
+### Controller metrics
+
+Pattern: `api.vass.controller.{sessions|appointments}.{action}.{success|failure|total}`
+
+Tags: `service:vass`, `endpoint`, `http_method`, optional `http_status`, `error_type` on failures.
+
+| Metric base | When |
+|-------------|------|
+| `…sessions.request_otp` | Send OTP |
+| `…sessions.authenticate_otp` | Verify OTP / issue JWT (`.failure` includes expired OTP and metadata_not_found) |
+| `…sessions.revoke_token` | Logout |
+| `…appointments.availability` | Slot fetch — also emits `.total` on every attempt |
+| `…appointments.create` / `.show` / `.cancel` / `.topics` | Book / details / cancel / topics |
+
+Availability `.success` fires only for `:available_slots`. Soft outcomes do not increment `.failure`.
+
+### Infrastructure metrics
+
+Pattern: `api.vass.infrastructure.*`  
+Tags: `service:vass` (plus `attempt:` / `reason:` where noted).
+
+| Metric | When |
+|--------|------|
+| `…rate_limit.generation.exceeded` | OTP send rate limited |
+| `…rate_limit.validation.exceeded` | OTP validate rate limited |
+| `…session.otp.expired` / `.invalid` | Expired / wrong OTP (`attempt:N` on invalid) |
+| `…session.jwt.expired` / `.missing` / `.invalid` / `.revoked` | JWT auth failures (`reason:` tag) |
+| `…auth.identity_validation.failure` | Last name/DOB mismatch |
+| `…auth.missing_edipi` | Session has no EDIPI after JWT auth |
+| `…availability.no_cohorts` | Outside all cohorts |
+| `…availability.next_cohort` | Booking window not open yet |
+| `…availability.already_booked` | Veteran already booked |
+| `…availability.no_slots_available` | In window, zero bookable slots |
+
+### Client / middleware metrics
+
+Upstream VASS HTTP calls use `Common::Client::Concerns::Monitoring` (`STATSD_KEY_PREFIX = 'api.vass'`):
+
+- `api.vass.oauth_token_request.total` / `.fail`
+- `api.vass.get_appointment_availability.total` / `.fail`
+- `api.vass.save_appointment.total` / `.fail`
+- `api.vass.cancel_appointment.total` / `.fail`
+- `api.vass.get_veteran_appointment.total` / `.fail`
+- `api.vass.get_veteran_appointments.total` / `.fail`
+- `api.vass.get_veteran.total` / `.fail`
+- `api.vass.get_agent_skills.total` / `.fail`
+
+Client failure tags use platform conventions: `error:ErrorClassName`, optional `status:HTTPStatus` (these do not include `service:vass`).
+
+HTTP 200 responses with JSON `success: false` also increment `api.vass.http_200_errors` (tag `error_status`) via `Vass::ResponseMiddleware`.
+
+Outgoing call **latency** is covered by Datadog APM on the `vass` service (not a custom `StatsD.measure`).
 
 ## Support
 

@@ -7,27 +7,26 @@ module Vass
   # Naming Convention: api.vass.{layer}.{component}.{action}.{outcome}
   #
   # Layers:
-  #   - controller: User-facing API endpoints (success/failure)
-  #   - infrastructure: Rate limiting, OTP/session lifecycle, VANotify
+  #   - controller: User-facing API endpoints (success/failure/total)
+  #   - infrastructure: Rate limiting, OTP/session lifecycle, auth, availability soft outcomes
   #
-  # Controller Metrics (7 endpoints × 2 outcomes = 14 metrics):
-  #   Each endpoint tracks: .success, .failure
+  # Dual-count rule:
+  #   Some user-error paths increment both an infrastructure counter and controller .failure
+  #   (rate limits, invalid OTP, identity validation, OTP expired). Soft availability outcomes
+  #   are infrastructure-only; use .total + infra counters for availability denominators.
   #
-  # Infrastructure Metrics (4 metrics):
-  #   OTP lifecycle (expired/invalid), rate limiting (generation/validation)
-  #
-  # Tags (consistent across all metrics):
+  # Tags (consistent across controller/infra metrics):
   #   - service:vass (always present)
   #   - endpoint:{action_name} (controller metrics)
   #   - http_method:{GET|POST} (controller metrics)
   #   - http_status:{200|400|401|404|500|502} (controller metrics)
-  #   - error_type:{ErrorClassName} (failure metrics only)
+  #   - error_type:{ErrorClassName|string_code} (failure metrics only)
+  #   - reason:{token_reason} (JWT auth infrastructure failures)
   #
   module MetricsConstants
     # Base prefixes
     METRIC_PREFIX = 'api.vass'
     CONTROLLER_PREFIX = "#{METRIC_PREFIX}.controller".freeze
-    SERVICE_PREFIX = "#{METRIC_PREFIX}.service".freeze
     INFRASTRUCTURE_PREFIX = "#{METRIC_PREFIX}.infrastructure".freeze
 
     # Service identification
@@ -36,6 +35,7 @@ module Vass
     # Outcome suffixes
     SUCCESS = 'success'
     FAILURE = 'failure'
+    TOTAL = 'total'
 
     # ========================================
     # Controller Metrics - Sessions
@@ -65,11 +65,15 @@ module Vass
     SESSION_OTP_EXPIRED = "#{INFRASTRUCTURE_PREFIX}.session.otp.expired".freeze
     SESSION_OTP_INVALID = "#{INFRASTRUCTURE_PREFIX}.session.otp.invalid".freeze
     SESSION_JWT_EXPIRED = "#{INFRASTRUCTURE_PREFIX}.session.jwt.expired".freeze
+    SESSION_JWT_MISSING = "#{INFRASTRUCTURE_PREFIX}.session.jwt.missing".freeze
+    SESSION_JWT_INVALID = "#{INFRASTRUCTURE_PREFIX}.session.jwt.invalid".freeze
+    SESSION_JWT_REVOKED = "#{INFRASTRUCTURE_PREFIX}.session.jwt.revoked".freeze
 
     # ========================================
     # Infrastructure Metrics - Auth Failures
     # ========================================
     AUTH_IDENTITY_VALIDATION_FAILURE = "#{INFRASTRUCTURE_PREFIX}.auth.identity_validation.failure".freeze
+    AUTH_MISSING_EDIPI = "#{INFRASTRUCTURE_PREFIX}.auth.missing_edipi".freeze
 
     # ========================================
     # Infrastructure Metrics - Availability Scenarios
