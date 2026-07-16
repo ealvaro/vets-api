@@ -1,14 +1,15 @@
 # Validates backend approval requirements for PRs
 # Runs on PR updates and review submissions to ensure proper approval from backend-review-group
 # or exemption through team-based file ownership
-name: Backend Approval
+name: Require Backend Approval
 
 on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
   pull_request_review:
     types: [submitted, dismissed]
 
 permissions:
-  id-token: write
   contents: read
   pull-requests: write
 
@@ -16,13 +17,10 @@ concurrency:
   group: backend-approval-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
-env:
-  AWS_REGION: us-gov-west-1
-
 jobs:
   backend-approval-check:
     if: ${{ github.actor != 'github-copilot' }}
-    name: Succeed if backend approval is confirmed
+    name: Check for backend-review-group approval 
     runs-on: ubuntu-latest
     permissions: write-all
 
@@ -166,12 +164,6 @@ jobs:
 
           echo "all_files_exempt=${all_files_exempt}" >> "$GITHUB_OUTPUT"
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6
-        with:
-          role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
-          aws-region: ${{ env.AWS_REGION }}
-
       - name: Determine approval status
         id: approval_status
         env:
@@ -285,7 +277,7 @@ jobs:
             gh pr edit "${PR_NUMBER}" --add-label "${label}" 2>/dev/null || echo "  [WARN] Could not add ${label}"
           done
 
-      - name: Fail if backend approval required
+      - name: Echo status if backend approval required
         if: steps.approval_status.outputs.requires_approval == 'true'
         run: |
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -299,9 +291,9 @@ jobs:
           echo "  • Exempt teams: octo-identity, mobile-api-team"
           echo ""
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          exit 1
+          exit 0
 
-      - name: Confirm approval success
+      - name: Echo status if backend approval is not required
         if: steps.approval_status.outputs.requires_approval == 'false'
         run: |
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -319,3 +311,30 @@ jobs:
 
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           exit 0
+
+      - name: Set commit status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_HOST: va.ghe.com
+          EXEMPT: ${{ steps.approval_status.outputs.exempt }}
+          EXEMPT_REASON: ${{ steps.approval_status.outputs.exempt_reason }}
+          BACKEND_APPROVED: ${{ steps.approval_status.outputs.backend_approved }}
+        run: |
+          STATE="failure"
+          DESCRIPTION="Requires approval from backend-review-group"
+
+          if [[ "${EXEMPT}" == "true" ]]; then
+            STATE="success"
+            DESCRIPTION="Exempt: ${EXEMPT_REASON}"
+          elif [[ "${BACKEND_APPROVED}" == "true" ]]; then
+            STATE="success"
+            DESCRIPTION="Backend approval confirmed"
+          fi
+
+          echo "Setting commit status: ${STATE} - ${DESCRIPTION}"
+
+          gh api --hostname va.ghe.com repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }} \
+            -f state="${STATE}" \
+            -f context="Backend Approval Check" \
+            -f description="${DESCRIPTION}"
