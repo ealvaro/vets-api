@@ -64,7 +64,12 @@ RSpec.describe 'RepresentationManagement::V0::OriginalEntities', type: :request 
     end
 
     context 'when there are search results' do
-      it 'returns a array of individuals and organizations' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:appoint_a_representative_trigram_order_search,
+                                                  any_args).and_return(false)
+      end
+
+      it 'returns an array of individuals and organizations' do
         get path, params: { query: 'Bob' }
 
         parsed_response = JSON.parse(response.body)
@@ -75,6 +80,26 @@ RSpec.describe 'RepresentationManagement::V0::OriginalEntities', type: :request 
         expect(parsed_response[1]['data']['attributes']['full_name']).to eq('Bob Smith')
         expect(parsed_response[2]['data']['attributes']['name']).to eq('Bob Law Firm')
         expect(parsed_response[3]['data']['attributes']['name']).to eq('Bob Smith Firm')
+      end
+    end
+
+    context 'when there are search results (trigram flipper enabled)' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:appoint_a_representative_trigram_order_search,
+                                                  any_args).and_return(true)
+      end
+
+      it 'returns an array of individuals and organizations' do
+        get path, params: { query: 'Bob' }
+
+        parsed_response = JSON.parse(response.body)
+
+        expect(response).to have_http_status(:success)
+        expect(parsed_response.size).to eq(4)
+        expect(parsed_response[0]['data']['attributes']['name']).to eq('Bob Smith Firm')
+        expect(parsed_response[1]['data']['attributes']['name']).to eq('Bob Law Firm')
+        expect(parsed_response[2]['data']['attributes']['full_name']).to eq('Bob Smith')
+        expect(parsed_response[3]['data']['attributes']['full_name']).to eq('Bob Law')
       end
     end
 

@@ -1359,6 +1359,12 @@ features:
     actor_type: user
     description: Enables Appoint a Representative PDF generation endpoint
     enable_in_development: true
+  appoint_a_representative_trigram_order_search:
+    actor_type: user
+    description: >-
+      Toggles the SQL query of the representative search on appoint a representative forms.
+      Enabled uses trigram for order, disabled uses Levenshtein distance
+    enable_in_development: true
   representative_status_enable_v2_features:
     actor_type: user
     description: Enables Representative Status widget 2.0 features for frontend and backend

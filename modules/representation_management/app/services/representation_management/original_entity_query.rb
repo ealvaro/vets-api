@@ -20,18 +20,23 @@ module RepresentationManagement
     def results
       return [] if @query_string.blank?
 
-      array_results = ActiveRecord::Base.connection.exec_query(
-        ActiveRecord::Base.send(:sanitize_sql_array, [
-                                  sql_query_to_select_and_sort_original_entities,
-                                  {
-                                    query_string: @query_string,
-                                    threshold: WORD_SIMILARITY_THRESHOLD,
-                                    max_results: MAXIMUM_RESULT_COUNT
-                                  }
-                                ])
-      )
+      if Flipper.enabled?(:appoint_a_representative_trigram_order_search)
+        representatives, organizations = select_and_sort_original_entities
+        organized_results(representatives, organizations)
+      else
+        array_results = ActiveRecord::Base.connection.exec_query(
+          ActiveRecord::Base.send(:sanitize_sql_array, [
+                                    sql_query_to_select_and_sort_original_entities,
+                                    {
+                                      query_string: @query_string,
+                                      threshold: WORD_SIMILARITY_THRESHOLD,
+                                      max_results: MAXIMUM_RESULT_COUNT
+                                    }
+                                  ])
+        )
 
-      transform_results_to_objects(array_results)
+        transform_results_to_objects(array_results)
+      end
     end
 
     private
@@ -81,6 +86,35 @@ module RepresentationManagement
           :max_results;
       SQL
     end
+
+    def select_and_sort_original_entities
+      representatives = Veteran::Service::Representative
+                        .select('*',
+                                'representative_id AS id',
+                                'full_name AS name',
+                                'full_name AS full_name',
+                                Arel.sql('word_similarity(?, full_name) AS similarity',
+                                         @query_string))
+                        .where.not(location: nil)
+                        .where(['word_similarity(?, full_name) >= ? ', @query_string,
+                                WORD_SIMILARITY_THRESHOLD])
+                        .order('similarity DESC')
+                        .limit(MAXIMUM_RESULT_COUNT)
+
+      organizations = Veteran::Service::Organization
+                      .select('*',
+                              'poa AS id',
+                              'name',
+                              Arel.sql('word_similarity(?, name) AS similarity',
+                                       @query_string))
+                      .where.not(location: nil)
+                      .where(['word_similarity(?, name) >= ? ', @query_string,
+                              WORD_SIMILARITY_THRESHOLD])
+                      .order('similarity DESC')
+                      .limit(MAXIMUM_RESULT_COUNT)
+
+      [representatives, organizations]
+    end
     # rubocop:enable Metrics/MethodLength
 
     # Transforms the raw SQL results into an array of original entity objects.
@@ -104,6 +138,10 @@ module RepresentationManagement
         id = result['id']
         model_type == 'Veteran::Service::Representative' ? representatives[id] : organizations[id]
       end
+    end
+
+    def organized_results(representatives, organizations)
+      (representatives + organizations).sort_by { |result| result['similarity'] }.last(MAXIMUM_RESULT_COUNT).reverse
     end
   end
 end
