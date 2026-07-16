@@ -19,11 +19,16 @@ module Identity
         icn: user.icn,
         user_uuid: user.uuid,
         is_veteran:,
+        mpi_vet_person_type: mpi_vet_person_type(user),
         safe_keys: [:icn]
       )
     end
 
     private
+
+    def mpi_vet_person_type(user)
+      Array(user.person_types).include?('VET')
+    end
 
     def fetch_user_veteran_status(user)
       user.veteran?

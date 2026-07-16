@@ -24,6 +24,7 @@ RSpec.describe Identity::LogUserVeteranStatusJob do
             icn: user.icn,
             user_uuid: user.uuid,
             is_veteran: true,
+            mpi_vet_person_type: true,
             safe_keys: [:icn]
           }
         )
@@ -41,6 +42,7 @@ RSpec.describe Identity::LogUserVeteranStatusJob do
             icn: user.icn,
             user_uuid: user.uuid,
             is_veteran: false,
+            mpi_vet_person_type: true,
             safe_keys: [:icn]
           }
         )
@@ -63,6 +65,7 @@ RSpec.describe Identity::LogUserVeteranStatusJob do
           icn: nil,
           user_uuid: user.uuid,
           is_veteran: false,
+          mpi_vet_person_type: false,
           safe_keys: [:icn]
         }
       )
@@ -84,6 +87,7 @@ RSpec.describe Identity::LogUserVeteranStatusJob do
           icn: user.icn,
           user_uuid: user.uuid,
           is_veteran: false,
+          mpi_vet_person_type: false,
           safe_keys: [:icn]
         }
       )
