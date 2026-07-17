@@ -61,6 +61,14 @@ RSpec.describe EducationForm::EducationFacility do
         end
       end
     end
+
+    context '22-0989' do
+      let(:form) { OpenStruct.new(mailingAddress: western_address) }
+
+      it 'uses the applicant mailing address' do
+        expect(described_class.routing_address(form, form_type: '0989').state).to eq(western_address.state)
+      end
+    end
   end
 
   describe '#regional_office_for' do
@@ -115,6 +123,24 @@ RSpec.describe EducationForm::EducationFacility do
     context '22-10297' do
       it 'routes to Eastern RPO' do
         education_benefits_claim.saved_claim.form_id = '22-10297'
+        expect(described_class.region_for(education_benefits_claim)).to eq(:eastern)
+      end
+    end
+
+    context '22-0989' do
+      it 'routes to Western RPO using the applicant mailing address' do
+        form = education_benefits_claim.parsed_form
+        form['mailingAddress'] = { 'state' => 'CA', 'country' => 'USA' }
+        education_benefits_claim.saved_claim.form = form.to_json
+        education_benefits_claim.saved_claim.form_id = '22-0989'
+        expect(described_class.region_for(education_benefits_claim)).to eq(:western)
+      end
+
+      it 'routes to Eastern RPO using the applicant mailing address' do
+        form = education_benefits_claim.parsed_form
+        form['mailingAddress'] = { 'state' => 'NY', 'country' => 'USA' }
+        education_benefits_claim.saved_claim.form = form.to_json
+        education_benefits_claim.saved_claim.form_id = '22-0989'
         expect(described_class.region_for(education_benefits_claim)).to eq(:eastern)
       end
     end

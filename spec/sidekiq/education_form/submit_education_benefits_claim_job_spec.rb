@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe EducationForm::SubmitEducationBenefitsClaimJob, form: :education_benefits, type: :model do
   subject { described_class.new }
 
-  let(:claim) { create(:va0989) }
+  let(:claim) { create(:va10278) }
   let(:stub_service) { double('BenefitsIntake::Service') }
   let(:stub_monitor) { double('EducationBenefitsClaims::Monitor') }
 
