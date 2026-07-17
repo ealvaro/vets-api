@@ -1668,6 +1668,10 @@ features:
     actor_type: user
     description: If enabled shows the digital form experience for form 10-7959f-2 (Foreign Medical Program claim form)
     enable_in_development: true
+  form_107959f2_prefill_enabled:
+    actor_type: user
+    description: If enabled shows prefill read-only page for form 10-7959f-2 (Foreign Medical Program claim form)
+    enable_in_development: true
   form_upload_flow:
     actor_type: user
     description: If enabled shows the find-a-form widget for the Form Upload Flow
