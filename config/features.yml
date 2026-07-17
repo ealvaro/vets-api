@@ -1752,6 +1752,10 @@ features:
     actor_type: user
     description: Enable/disable Slack alerting for internal POA metadata validation failures in production
     enable_in_development: false
+  lighthouse_claims_api_poa_request_pdf_form_update:
+    actor_type: user
+    description: Include dependent birth date and consent disclosure fields in POA request gathered and mapped data for PDF form updates
+    enable_in_development: false
   lighthouse_claims_api_v2_poa_va_notify:
     actor_type: user
     description: Enable/disable the VA notification emails in V2 POA

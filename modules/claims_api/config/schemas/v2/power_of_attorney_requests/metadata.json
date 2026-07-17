@@ -7,6 +7,9 @@
     },
     "claimant": {
       "$ref": "#/definitions/person_metadata"
+    },
+    "form_attributes": {
+      "$ref": "#/definitions/form_attributes"
     }
   },
   "definitions": {
@@ -25,6 +28,9 @@
         },
         "phone_data": {
           "$ref": "#/definitions/phone_data"
+        },
+        "birth_date": {
+          "type": "string"
         }
       }
     },
@@ -40,6 +46,27 @@
         },
         "phoneNumber": {
           "type": "string"
+        }
+      }
+    },
+    "form_attributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "consent_disclosure_affiliated": {
+          "type": "boolean"
+        },
+        "consent_disclosure_individuals": {
+          "type": "boolean"
+        },
+        "firm_or_org_name": {
+          "type": "string"
+        },
+        "individual_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     }

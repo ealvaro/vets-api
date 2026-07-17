@@ -21,6 +21,7 @@ module ClaimsApi
             {
               'claimant' => {
                 'claimantId' => data['claimant']['claimant_id'],
+                'dateOfBirth' => data['claimant']['birth_date'],
                 'address' => {
                   'addressLine1' => data['claimant']['addrs_one_txt'],
                   'addressLine2' => data['claimant']['addrs_two_txt'],
@@ -55,6 +56,27 @@ module ClaimsApi
             end
 
             limits
+          end
+
+          def build_form_attributes_data
+            form_attrs = @data['form_attributes']
+            return {} if form_attrs.blank?
+
+            build_consent_disclosure_attributes(form_attrs).merge(build_name_attributes(form_attrs)).compact
+          end
+
+          def build_consent_disclosure_attributes(form_attrs)
+            {
+              'consentDisclosureAffiliated' => form_attrs['consent_disclosure_affiliated'],
+              'consentDisclosureIndividuals' => form_attrs['consent_disclosure_individuals']
+            }
+          end
+
+          def build_name_attributes(form_attrs)
+            {
+              'firmOrOrgName' => form_attrs['firm_or_org_name'],
+              'individualNames' => form_attrs['individual_names']
+            }
           end
 
           def deep_compact(obj)

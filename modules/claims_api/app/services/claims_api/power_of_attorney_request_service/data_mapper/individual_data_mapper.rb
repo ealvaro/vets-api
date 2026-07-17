@@ -25,6 +25,7 @@ module ClaimsApi
           form_data = build_form_data
           claimant_form_data = build_claimant_form_data(@data) if @data['claimant'].present?
           form_data.merge!(claimant_form_data) if claimant_form_data.present?
+          form_data.merge!(build_form_attributes_data) if @data['form_attributes'].present?
 
           { 'data' => { 'attributes' => deep_compact(form_data) } }
         end

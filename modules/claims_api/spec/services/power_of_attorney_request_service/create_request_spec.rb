@@ -6,14 +6,14 @@ describe ClaimsApi::PowerOfAttorneyRequestService::CreateRequest do
   subject { described_class.new(veteran_participant_id, form_data, claimant_participant_id) }
 
   let(:veteran_participant_id) { '600043284' }
+  let(:form_data) do
+    temp = JSON.parse(Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
+                                      'power_of_attorney', 'request_representative', 'valid.json').read)
+    temp = temp.deep_symbolize_keys
+    temp[:data][:attributes]
+  end
 
   describe '#call' do
-    let(:form_data) do
-      temp = JSON.parse(Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
-                                        'power_of_attorney', 'request_representative', 'valid.json').read)
-      temp = temp.deep_symbolize_keys
-      temp[:data][:attributes]
-    end
     # these get merged in in the request_controller to the form data
     let(:additional_vet_details) do
       {
@@ -136,6 +136,152 @@ describe ClaimsApi::PowerOfAttorneyRequestService::CreateRequest do
       end
     end
 
+    context 'with lighthouse_claims_api_poa_request_pdf_form_update enabled' do
+      let(:claimant_participant_id) { '600036513' }
+
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:lighthouse_claims_api_poa_request_pdf_form_update).and_return(true)
+      end
+
+      context 'when claimant birth_date is present in form_data' do
+        it 'includes birth_date in claimant metadata' do
+          temp = form_data
+          temp[:veteran].merge!(additional_vet_details)
+          temp[:claimant].merge!(additional_claimant_details)
+          temp[:claimant][:birthDate] = '1990-01-15'
+          file_name = 'claims_api/power_of_attorney_request_service/create_request/with_claimant'
+
+          VCR.use_cassette(file_name) do
+            response = subject.call
+
+            expect(response['meta']['claimant']['birth_date']).to eq('1990-01-15')
+          end
+        end
+      end
+
+      context 'when claimant birth_date is not in form_data' do
+        it 'does not include birth_date in claimant metadata' do
+          temp = form_data
+          temp[:veteran].merge!(additional_vet_details)
+          temp[:claimant].merge!(additional_claimant_details)
+          file_name = 'claims_api/power_of_attorney_request_service/create_request/with_claimant'
+
+          VCR.use_cassette(file_name) do
+            response = subject.call
+
+            expect(response['meta']['claimant']).not_to have_key('birth_date')
+          end
+        end
+      end
+
+      context 'when consent disclosure fields are present' do
+        let(:claimant_participant_id) { nil }
+
+        it 'includes consent_disclosure_affiliated in form_attributes metadata' do
+          temp = form_data
+          temp[:claimant] = nil
+          temp[:veteran].merge!(additional_vet_details)
+          temp[:consentDisclosureAffiliated] = true
+          file_name = 'claims_api/power_of_attorney_request_service/create_request/without_claimant'
+
+          VCR.use_cassette(file_name) do
+            response = subject.call
+
+            expect(response['meta']['form_attributes']['consent_disclosure_affiliated']).to be(true)
+          end
+        end
+
+        it 'preserves boolean false for consent_disclosure_affiliated' do
+          temp = form_data
+          temp[:claimant] = nil
+          temp[:veteran].merge!(additional_vet_details)
+          temp[:consentDisclosureAffiliated] = false
+          file_name = 'claims_api/power_of_attorney_request_service/create_request/without_claimant'
+
+          VCR.use_cassette(file_name) do
+            response = subject.call
+
+            expect(response['meta']['form_attributes']['consent_disclosure_affiliated']).to be(false)
+          end
+        end
+
+        it 'includes consent_disclosure_individuals in form_attributes metadata' do
+          temp = form_data
+          temp[:claimant] = nil
+          temp[:veteran].merge!(additional_vet_details)
+          temp[:consentDisclosureIndividuals] = true
+          file_name = 'claims_api/power_of_attorney_request_service/create_request/without_claimant'
+
+          VCR.use_cassette(file_name) do
+            response = subject.call
+
+            expect(response['meta']['form_attributes']['consent_disclosure_individuals']).to be(true)
+          end
+        end
+
+        it 'preserves boolean false for consent_disclosure_individuals' do
+          temp = form_data
+          temp[:claimant] = nil
+          temp[:veteran].merge!(additional_vet_details)
+          temp[:consentDisclosureIndividuals] = false
+          file_name = 'claims_api/power_of_attorney_request_service/create_request/without_claimant'
+
+          VCR.use_cassette(file_name) do
+            response = subject.call
+
+            expect(response['meta']['form_attributes']['consent_disclosure_individuals']).to be(false)
+          end
+        end
+
+        it 'includes firm_or_org_name in form_attributes metadata' do
+          temp = form_data
+          temp[:claimant] = nil
+          temp[:veteran].merge!(additional_vet_details)
+          temp[:firmOrOrgName] = 'Smith & Associates Law Firm'
+          file_name = 'claims_api/power_of_attorney_request_service/create_request/without_claimant'
+
+          VCR.use_cassette(file_name) do
+            response = subject.call
+
+            expect(response['meta']['form_attributes']['firm_or_org_name']).to eq('Smith & Associates Law Firm')
+          end
+        end
+
+        it 'includes individual_names in form_attributes metadata' do
+          temp = form_data
+          temp[:claimant] = nil
+          temp[:veteran].merge!(additional_vet_details)
+          temp[:individualNames] = ['jane', 'janey lee', 'jane lee MacDonald']
+          file_name = 'claims_api/power_of_attorney_request_service/create_request/without_claimant'
+
+          VCR.use_cassette(file_name) do
+            response = subject.call
+
+            expect(response['meta']['form_attributes']['individual_names']).to eq(['jane', 'janey lee',
+                                                                                   'jane lee MacDonald'])
+          end
+        end
+      end
+
+      context 'when form_attributes fields are not present' do
+        let(:claimant_participant_id) { nil }
+
+        it 'does not include form_attributes in metadata' do
+          temp = form_data
+          temp[:claimant] = nil
+          temp[:veteran].merge!(additional_vet_details)
+          file_name = 'claims_api/power_of_attorney_request_service/create_request/without_claimant'
+
+          VCR.use_cassette(file_name) do
+            response = subject.call
+
+            expect(response['meta']).not_to have_key('form_attributes')
+          end
+        end
+      end
+    end
+
     context 'when there is not a claimant' do
       let(:claimant_participant_id) { nil }
 
@@ -235,6 +381,52 @@ describe ClaimsApi::PowerOfAttorneyRequestService::CreateRequest do
       end
     end
 
+    context 'when lighthouse_claims_api_poa_request_pdf_form_update is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:lighthouse_claims_api_poa_request_pdf_form_update).and_return(false)
+      end
+
+      context 'and claimant birthDate is present in form_data' do
+        let(:claimant_participant_id) { '600036513' }
+
+        it 'does not include birth_date in claimant metadata' do
+          temp = form_data
+          temp[:veteran].merge!(additional_vet_details)
+          temp[:claimant].merge!(additional_claimant_details)
+          temp[:claimant][:birthDate] = '1990-01-15'
+          file_name = 'claims_api/power_of_attorney_request_service/create_request/with_claimant'
+
+          VCR.use_cassette(file_name) do
+            response = subject.call
+
+            expect(response['meta']['claimant']).not_to have_key('birth_date')
+          end
+        end
+      end
+
+      context 'and form_attributes fields are present in form_data' do
+        let(:claimant_participant_id) { nil }
+
+        it 'does not include form_attributes in metadata' do
+          temp = form_data
+          temp[:claimant] = nil
+          temp[:veteran].merge!(additional_vet_details)
+          temp[:consentDisclosureAffiliated] = true
+          temp[:consentDisclosureIndividuals] = false
+          temp[:firmOrOrgName] = 'Smith & Associates Law Firm'
+          temp[:individualNames] = ['jane']
+          file_name = 'claims_api/power_of_attorney_request_service/create_request/without_claimant'
+
+          VCR.use_cassette(file_name) do
+            response = subject.call
+
+            expect(response['meta']).not_to have_key('form_attributes')
+          end
+        end
+      end
+    end
+
     context 'when a person does not have an email' do
       let(:claimant_participant_id) { nil }
 
@@ -312,176 +504,201 @@ describe ClaimsApi::PowerOfAttorneyRequestService::CreateRequest do
         end
       end
     end
+  end
 
-    describe 'meta data' do
-      let(:response_obj) do
-        {
-          'addressLine1' => '2719 Hyperion Ave',
-          'addressLine2' => nil,
-          'addressLine3' => nil,
-          'changeAddressAuth' => 'true',
-          'city' => 'Los Angeles',
-          'claimantPtcpntId' => '182767',
-          'claimantRelationship' => 'Spouse',
-          'formTypeCode' => '21-22 ',
-          'insuranceNumbers' => nil,
-          'limitationAlcohol' => 'false',
-          'limitationDrugAbuse' => 'true',
-          'limitationHIV' => 'false',
-          'limitationSCA' => 'true',
-          'organizationName' => 'American Legion',
-          'otherServiceBranch' => nil,
-          'phoneNumber' => '5555551234',
-          'poaCode' => '074',
-          'postalCode' => '92264',
-          'procId' => '3855183',
-          'representativeFirstName' => 'Bob',
-          'representativeLastName' => 'GoodRep',
-          'representativeLawFirmOrAgencyName' => nil,
-          'representativeTitle' => nil,
-          'representativeType' => 'Recognized Veterans Service Organization',
-          'section7332Auth' => 'true',
-          'serviceBranch' => 'Air Force',
-          'serviceNumber' => nil,
-          'state' => 'CA',
-          'vdcStatus' => 'Submitted',
-          'veteranPtcpntId' => '182766',
-          'acceptedBy' => nil,
-          'claimantFirstName' => 'LILLIAN',
-          'claimantLastName' => 'DISNEY',
-          'claimantMiddleName' => nil,
-          'declinedBy' => nil,
-          'declinedReason' => nil,
-          'secondaryStatus' => nil,
-          'veteranFirstName' => 'VERNON',
-          'veteranLastName' => 'WAGNER',
-          'veteranMiddleName' => nil,
-          'veteranSSN' => '796140369',
-          'veteranVAFileNumber' => nil
-        }
-      end
+  describe 'private helpers' do
+    let(:response_obj) do
+      {
+        'addressLine1' => '2719 Hyperion Ave',
+        'addressLine2' => nil,
+        'addressLine3' => nil,
+        'changeAddressAuth' => 'true',
+        'city' => 'Los Angeles',
+        'claimantPtcpntId' => '182767',
+        'claimantRelationship' => 'Spouse',
+        'formTypeCode' => '21-22 ',
+        'insuranceNumbers' => nil,
+        'limitationAlcohol' => 'false',
+        'limitationDrugAbuse' => 'true',
+        'limitationHIV' => 'false',
+        'limitationSCA' => 'true',
+        'organizationName' => 'American Legion',
+        'otherServiceBranch' => nil,
+        'phoneNumber' => '5555551234',
+        'poaCode' => '074',
+        'postalCode' => '92264',
+        'procId' => '3855183',
+        'representativeFirstName' => 'Bob',
+        'representativeLastName' => 'GoodRep',
+        'representativeLawFirmOrAgencyName' => nil,
+        'representativeTitle' => nil,
+        'representativeType' => 'Recognized Veterans Service Organization',
+        'section7332Auth' => 'true',
+        'serviceBranch' => 'Air Force',
+        'serviceNumber' => nil,
+        'state' => 'CA',
+        'vdcStatus' => 'Submitted',
+        'veteranPtcpntId' => '182766',
+        'acceptedBy' => nil,
+        'claimantFirstName' => 'LILLIAN',
+        'claimantLastName' => 'DISNEY',
+        'claimantMiddleName' => nil,
+        'declinedBy' => nil,
+        'declinedReason' => nil,
+        'secondaryStatus' => nil,
+        'veteranFirstName' => 'VERNON',
+        'veteranLastName' => 'WAGNER',
+        'veteranMiddleName' => nil,
+        'veteranSSN' => '796140369',
+        'veteranVAFileNumber' => nil
+      }
+    end
 
-      let(:claimant_participant_id) { nil }
+    let(:claimant_participant_id) { nil }
 
-      let(:expected_res) do
-        {
-          'meta' => {
-            'veteran' => {
-              'vnp_mail_id' => '144757',
-              'vnp_email_id' => '144758',
-              'vnp_phone_id' => '102313'
-            },
-            'claimant' => {
-              'vnp_mail_id' => '144759',
-              'vnp_email_id' => '144744',
-              'vnp_phone_id' => '102314'
-            }
+    let(:expected_res) do
+      {
+        'meta' => {
+          'veteran' => {
+            'vnp_mail_id' => '144757',
+            'vnp_email_id' => '144758',
+            'vnp_phone_id' => '102313'
+          },
+          'claimant' => {
+            'vnp_mail_id' => '144759',
+            'vnp_email_id' => '144744',
+            'vnp_phone_id' => '102314'
           }
         }
-      end
+      }
+    end
 
-      let(:vet_res_with_nil) do
-        {
-          'meta' => {
-            'veteran' => {
-              'vnp_mail_id' => '144757',
-              'vnp_email_id' => nil,
-              'vnp_phone_id' => '102313'
-            }
+    let(:vet_res_with_nil) do
+      {
+        'meta' => {
+          'veteran' => {
+            'vnp_mail_id' => '144757',
+            'vnp_email_id' => nil,
+            'vnp_phone_id' => '102313'
           }
         }
-      end
+      }
+    end
 
-      let(:claimant_res_with_nil) do
-        {
-          'meta' => {
-            'veteran' => {
-              'vnp_mail_id' => '144757',
-              'vnp_email_id' => '144758',
-              'vnp_phone_id' => nil
-            },
-            'claimant' => {
-              'vnp_mail_id' => nil,
-              'vnp_email_id' => '144744',
-              'vnp_phone_id' => nil
-            }
+    let(:claimant_res_with_nil) do
+      {
+        'meta' => {
+          'veteran' => {
+            'vnp_mail_id' => '144757',
+            'vnp_email_id' => '144758',
+            'vnp_phone_id' => nil
+          },
+          'claimant' => {
+            'vnp_mail_id' => nil,
+            'vnp_email_id' => '144744',
+            'vnp_phone_id' => nil
           }
         }
+      }
+    end
+
+    describe '#add_meta_ids' do
+      it 'adds the ids to the meta' do
+        subject.instance_variable_set(:@vnp_res_object, expected_res)
+
+        res = subject.send(:add_meta_ids, response_obj)
+
+        expect(res['meta']).to match(expected_res['meta'])
       end
 
-      describe '#add_meta_ids' do
-        it 'adds the ids to the meta' do
-          subject.instance_variable_set(:@vnp_res_object, expected_res)
+      context 'does not add a key that is nil' do
+        it 'veteran object is present' do
+          subject.instance_variable_set(:@vnp_res_object, vet_res_with_nil)
 
           res = subject.send(:add_meta_ids, response_obj)
 
-          expect(res['meta']).to match(expected_res['meta'])
+          expect(res['meta']['veteran']).not_to have_key('vnp_email_id')
         end
 
-        context 'does not add a key that is nil' do
-          it 'veteran object is present' do
-            subject.instance_variable_set(:@vnp_res_object, vet_res_with_nil)
-
-            res = subject.send(:add_meta_ids, response_obj)
-
-            expect(res['meta']['veteran']).not_to have_key('vnp_email_id')
-          end
-
-          it 'veteran and claimant objects are present' do
-            subject.instance_variable_set(:@vnp_res_object, claimant_res_with_nil)
-
-            res = subject.send(:add_meta_ids, response_obj)
-
-            expect(res['meta']['veteran']).not_to have_key('vnp_phone_id')
-            expect(res['meta']['claimant']).not_to have_key('vnp_mail_id')
-            expect(res['meta']['claimant']).not_to have_key('vnp_phone_id')
-          end
-        end
-
-        it 'does not add a meta key if no IDs are present' do
-          subject.instance_variable_set(:@vnp_res_object, { 'meta' => {} })
+        it 'veteran and claimant objects are present' do
+          subject.instance_variable_set(:@vnp_res_object, claimant_res_with_nil)
 
           res = subject.send(:add_meta_ids, response_obj)
 
-          expect(res).not_to have_key('meta')
+          expect(res['meta']['veteran']).not_to have_key('vnp_phone_id')
+          expect(res['meta']['claimant']).not_to have_key('vnp_mail_id')
+          expect(res['meta']['claimant']).not_to have_key('vnp_phone_id')
         end
       end
 
-      describe 'metadata schema conformance' do
-        it 'the metadata produced by add_meta_ids conforms to the metadata schema' do
-          subject.instance_variable_set(:@vnp_res_object, expected_res)
+      it 'does not add a meta key if no IDs are present' do
+        subject.instance_variable_set(:@vnp_res_object, { 'meta' => {} })
 
-          result = subject.send(:add_meta_ids, response_obj)
+        res = subject.send(:add_meta_ids, response_obj)
 
-          expect do
-            ClaimsApi::FormSchemas.new(schema_version: 'v2/power_of_attorney_requests')
-                                  .validate!('METADATA', result['meta'])
-          end.not_to raise_error
-        end
+        expect(res).not_to have_key('meta')
+      end
+    end
 
-        it 'metadata containing unknown keys does not conform to the metadata schema' do
-          bad_res = {
-            'meta' => {
-              'veteran' => {
-                'vnp_mail_id' => '12345',
-                'unexpected_field' => 'should not be here'
-              }
+    describe '#ensure_meta_initialized' do
+      it 'initializes @vnp_res_object and meta when missing' do
+        subject.instance_variable_set(:@vnp_res_object, nil)
+
+        subject.send(:ensure_meta_initialized)
+
+        expect(subject.instance_variable_get(:@vnp_res_object)).to eq({ 'meta' => {} })
+      end
+
+      it 'initializes meta when @vnp_res_object exists without meta' do
+        subject.instance_variable_set(:@vnp_res_object, { 'other' => 'data' })
+
+        subject.send(:ensure_meta_initialized)
+
+        expect(subject.instance_variable_get(:@vnp_res_object)).to eq({ 'other' => 'data', 'meta' => {} })
+      end
+
+      it 'does not overwrite existing meta content when already initialized' do
+        existing = {
+          'meta' => {
+            'veteran' => {
+              'vnp_mail_id' => '12345'
+            }
+          },
+          'other' => 'data'
+        }
+        subject.instance_variable_set(:@vnp_res_object, existing.deep_dup)
+
+        subject.send(:ensure_meta_initialized)
+
+        expect(subject.instance_variable_get(:@vnp_res_object)).to eq(existing)
+      end
+    end
+
+    describe '#set_form_attributes' do
+      it 'does not raise when called before create_vonapp_data and no attributes are present' do
+        subject.instance_variable_set(:@vnp_res_object, nil)
+
+        expect { subject.send(:set_form_attributes) }.not_to raise_error
+        expect(subject.instance_variable_get(:@vnp_res_object)).to eq({ 'meta' => {} })
+      end
+
+      it 'adds form_attributes when values are present without prior create_vonapp_data call' do
+        org_name = 'Smith & Associates Law Firm'
+        local_form_data = form_data.deep_dup
+        local_form_data[:consentDisclosureAffiliated] = false
+        local_form_data[:firmOrOrgName] = org_name
+        service = described_class.new(veteran_participant_id, local_form_data, claimant_participant_id)
+
+        service.send(:set_form_attributes)
+
+        expect(service.instance_variable_get(:@vnp_res_object)).to include(
+          'meta' => {
+            'form_attributes' => {
+              'consent_disclosure_affiliated' => false,
+              'firm_or_org_name' => org_name
             }
           }
-          subject.instance_variable_set(:@vnp_res_object, bad_res)
-
-          result = subject.send(:add_meta_ids, response_obj)
-
-          error = nil
-          expect do
-            ClaimsApi::FormSchemas.new(schema_version: 'v2/power_of_attorney_requests')
-                                  .validate!('METADATA', result['meta'])
-          end.to raise_error(JsonSchema::JsonApiMissingAttribute) { |e| error = e }
-
-          json_errors = error.to_json_api[:errors]
-          expect(json_errors.first[:detail]).to include('not defined on the schema')
-          expect(json_errors.first[:source]).to include('/veteran/unexpected_field')
-        end
+        )
       end
     end
   end

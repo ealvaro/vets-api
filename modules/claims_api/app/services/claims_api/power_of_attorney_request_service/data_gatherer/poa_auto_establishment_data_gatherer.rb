@@ -43,21 +43,32 @@ module ClaimsApi
           end
 
           data.merge!('registration_number' => @registration_number.to_s)
-          if @claimant.present?
-            claimant_addr_data = gather_vnp_addrs_data('claimant')
+          data.merge!('claimant' => gather_claimant_data) if @claimant.present?
 
-            if @metadata.dig('claimant', 'vnp_phone_id')
-              claimant_phone_data = gather_vnp_phone_data('claimant')
-              claimant_addr_data.merge!(claimant_phone_data)
-            end
-
-            claimant_addr_data.merge!(claimant_addr_data)
-            claimant_addr_data.merge!('claimant_id' => claimant_icn)
-
-            data.merge!('claimant' => claimant_addr_data)
+          if Flipper.enabled?(:lighthouse_claims_api_poa_request_pdf_form_update)
+            form_attributes = @metadata['form_attributes']
+            data.merge!('form_attributes' => form_attributes) if form_attributes.present?
           end
 
           data
+        end
+
+        def gather_claimant_data
+          claimant_data = gather_vnp_addrs_data('claimant')
+
+          if @metadata.dig('claimant', 'vnp_phone_id')
+            claimant_phone_data = gather_vnp_phone_data('claimant')
+            claimant_data.merge!(claimant_phone_data)
+          end
+
+          claimant_data.merge!('claimant_id' => claimant_icn)
+
+          if Flipper.enabled?(:lighthouse_claims_api_poa_request_pdf_form_update)
+            birth_date = @metadata.dig('claimant', 'birth_date')
+            claimant_data.merge!('birth_date' => birth_date) unless birth_date.nil?
+          end
+
+          claimant_data
         end
 
         def read_all_veteran_representative_records

@@ -67,205 +67,394 @@ describe ClaimsApi::PowerOfAttorneyRequestService::DataGatherer::PoaAutoEstablis
     }
   end
 
-  context 'veteran request' do
-    it 'returns the expect data object for a veteran request' do
-      VCR.use_cassette('claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather') do
-        res = subject.gather_data
+  context 'when lighthouse_claims_api_poa_request_pdf_form_update is disabled' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_poa_request_pdf_form_update).and_return(false)
+    end
 
-        expect(res).to eq(gathered_data_obj)
+    context 'veteran request' do
+      it 'returns the expect data object for a veteran request' do
+        VCR.use_cassette('claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather') do
+          res = subject.gather_data
+
+          expect(res).to eq(gathered_data_obj)
+        end
       end
     end
-  end
 
-  context 'request with claimant' do
-    let(:claimant) do
-      OpenStruct.new(
-        icn: '1013093331V548481',
-        first_name: 'Wally',
-        last_name: 'Morell',
-        middle_name: nil,
-        birth_date: '1948-10-30',
-        loa: { current: 3, highest: 3 },
-        edipi: nil,
-        ssn: '796378782',
-        participant_id: '600264235',
-        mpi: OpenStruct.new(
+    context 'request with claimant' do
+      let(:claimant) do
+        OpenStruct.new(
           icn: '1013093331V548481',
-          profile: OpenStruct.new(ssn: '796378782'),
-          birls_id: '796378782'
+          first_name: 'Wally',
+          last_name: 'Morell',
+          middle_name: nil,
+          birth_date: '1948-10-30',
+          loa: { current: 3, highest: 3 },
+          edipi: nil,
+          ssn: '796378782',
+          participant_id: '600264235',
+          mpi: OpenStruct.new(
+            icn: '1013093331V548481',
+            profile: OpenStruct.new(ssn: '796378782'),
+            birls_id: '796378782'
+          )
         )
-      )
-    end
-    let(:proc_id) { '3864478' }
-    let(:metadata) do
-      {
-        'veteran' => { 'vnp_mail_id' => '157653', 'vnp_email_id' => '157652', 'vnp_phone_id' => '111989',
-                       'phone_data' => { 'countryCode' => '1', 'areaCode' => '555', 'phoneNumber' => '5551234' } },
-        'claimant' => { 'vnp_mail_id' => '157655', 'vnp_email_id' => '157654', 'vnp_phone_id' => '111990',
-                        'phone_data' => { 'countryCode' => '1', 'areaCode' => '555', 'phoneNumber' => '5559876' } }
-      }
-    end
-
-    it 'returns the expect data object for a veteran request with claimant' do
-      VCR.use_cassette('claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather_dependent') do
-        res = subject.gather_data
-
-        expect(res).to eq(gathered_data_obj_with_claimant)
       end
-    end
-  end
-
-  describe '#validate_phone_data' do
-    let(:metadata) do
-      {
-        'veteran' => {
-          'vnp_mail_id' => '157252',
-          'vnp_email_id' => '157251',
-          'vnp_phone_id' => '111641',
-          'phone_data' => {
-            'countryCode' => '1',
-            'areaCode' => '555',
-            'phoneNumber' => '5551234'
-          }
-        }
-      }
-    end
-
-    context 'when phone data matches' do
-      let(:fetched_data) { { 'phone_nbr' => '5555551234' } }
-
-      it 'does not raise an error' do
-        res = subject.send(:validate_phone_data, fetched_data['phone_nbr'], 'veteran')
-
-        expect(res).to be_nil
-      end
-    end
-
-    context 'when phone data does not match' do
-      let(:fetched_data) { { 'phone_nbr' => '5559999999' } }
-
-      it 'raises an UnprocessableEntity error' do
-        expect { subject.send(:validate_phone_data, fetched_data['phone_nbr'], 'veteran') }
-          .to raise_error(ClaimsApi::Common::Exceptions::Lighthouse::UnprocessableEntity,
-                          /Phone data mismatch for veteran/)
-      end
-    end
-
-    context 'for claimant' do
+      let(:proc_id) { '3864478' }
       let(:metadata) do
         {
-          'veteran' => { 'vnp_mail_id' => '157252' },
-          'claimant' => {
-            'vnp_phone_id' => '111642',
-            'phone_data' => {
-              'countryCode' => '1',
-              'areaCode' => '555',
-              'phoneNumber' => '9876543'
-            }
-          }
+          'veteran' => { 'vnp_mail_id' => '157653', 'vnp_email_id' => '157652', 'vnp_phone_id' => '111989',
+                         'phone_data' => { 'countryCode' => '1', 'areaCode' => '555', 'phoneNumber' => '5551234' } },
+          'claimant' => { 'vnp_mail_id' => '157655', 'vnp_email_id' => '157654', 'vnp_phone_id' => '111990',
+                          'phone_data' => { 'countryCode' => '1', 'areaCode' => '555', 'phoneNumber' => '5559876' } }
         }
       end
-      let(:fetched_data) { { 'phone_nbr' => '5559876543' } }
 
-      it 'validates claimant phone data correctly' do
-        res = subject.send(:validate_phone_data, fetched_data['phone_nbr'], 'claimant')
+      it 'returns the expect data object for a veteran request with claimant' do
+        VCR.use_cassette(
+          'claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather_dependent'
+        ) do
+          res = subject.gather_data
 
-        expect(res).to be_nil
+          expect(res).to eq(gathered_data_obj_with_claimant)
+        end
       end
     end
 
-    context 'backwards compatibility' do
+    describe '#validate_phone_data' do
       let(:metadata) do
         {
           'veteran' => {
             'vnp_mail_id' => '157252',
             'vnp_email_id' => '157251',
-            'vnp_phone_id' => '111641'
+            'vnp_phone_id' => '111641',
+            'phone_data' => {
+              'countryCode' => '1',
+              'areaCode' => '555',
+              'phoneNumber' => '5551234'
+            }
           }
         }
       end
 
-      let(:fetched_data) { { 'phone_nbr' => '5555551234' } }
-      let(:expected_empty_response) { { 'country_code' => nil, 'area_code' => nil, 'phone_number' => nil } }
-      let(:expected_parsed_response) { { 'country_code' => nil, 'area_code' => '555', 'phone_number' => '5551234' } }
+      context 'when phone data matches' do
+        let(:fetched_data) { { 'phone_nbr' => '5555551234' } }
 
-      context 'when a vnp_phone_id is present but no phone_data in the metadata' do
-        it 'returns the phone number from the vnp phone look up' do
-          VCR.use_cassette('claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather') do
-            res = subject.send(:gather_vnp_phone_data, 'veteran')
+        it 'does not raise an error' do
+          res = subject.send(:validate_phone_data, fetched_data['phone_nbr'], 'veteran')
 
-            expect(res).to eq(expected_parsed_response)
+          expect(res).to be_nil
+        end
+      end
+
+      context 'when phone data does not match' do
+        let(:fetched_data) { { 'phone_nbr' => '5559999999' } }
+
+        it 'raises an UnprocessableEntity error' do
+          expect { subject.send(:validate_phone_data, fetched_data['phone_nbr'], 'veteran') }
+            .to raise_error(ClaimsApi::Common::Exceptions::Lighthouse::UnprocessableEntity,
+                            /Phone data mismatch for veteran/)
+        end
+      end
+
+      context 'for claimant' do
+        let(:metadata) do
+          {
+            'veteran' => { 'vnp_mail_id' => '157252' },
+            'claimant' => {
+              'vnp_phone_id' => '111642',
+              'phone_data' => {
+                'countryCode' => '1',
+                'areaCode' => '555',
+                'phoneNumber' => '9876543'
+              }
+            }
+          }
+        end
+        let(:fetched_data) { { 'phone_nbr' => '5559876543' } }
+
+        it 'validates claimant phone data correctly' do
+          res = subject.send(:validate_phone_data, fetched_data['phone_nbr'], 'claimant')
+
+          expect(res).to be_nil
+        end
+      end
+
+      context 'backwards compatibility' do
+        let(:metadata) do
+          {
+            'veteran' => {
+              'vnp_mail_id' => '157252',
+              'vnp_email_id' => '157251',
+              'vnp_phone_id' => '111641'
+            }
+          }
+        end
+
+        let(:fetched_data) { { 'phone_nbr' => '5555551234' } }
+        let(:expected_empty_response) { { 'country_code' => nil, 'area_code' => nil, 'phone_number' => nil } }
+        let(:expected_parsed_response) { { 'country_code' => nil, 'area_code' => '555', 'phone_number' => '5551234' } }
+
+        context 'when a vnp_phone_id is present but no phone_data in the metadata' do
+          it 'returns the phone number from the vnp phone look up' do
+            VCR.use_cassette('claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather') do
+              res = subject.send(:gather_vnp_phone_data, 'veteran')
+
+              expect(res).to eq(expected_parsed_response)
+            end
+          end
+        end
+
+        context 'when phone_data is missing in metadata and BGS returns nil phone number' do
+          it 'returns fetched data without calling parse_phone_number' do
+            allow_any_instance_of(ClaimsApi::VnpPtcpntPhoneService)
+              .to receive(:vnp_ptcpnt_phone_find_by_primary_key).and_return({ phone_nbr: nil })
+
+            result = subject.send(:gather_vnp_phone_data, 'veteran')
+
+            expect(result).to eq(expected_empty_response)
+          end
+        end
+
+        context 'when phone_data is missing in metadata and BGS returns empty string' do
+          it 'returns fetched data without calling parse_phone_number' do
+            allow_any_instance_of(ClaimsApi::VnpPtcpntPhoneService)
+              .to receive(:vnp_ptcpnt_phone_find_by_primary_key).and_return({ phone_nbr: '' })
+
+            result = subject.send(:gather_vnp_phone_data, 'veteran')
+
+            expect(result).to eq(expected_empty_response)
           end
         end
       end
-
-      context 'when phone_data is missing in metadata and BGS returns nil phone number' do
-        it 'returns fetched data without calling parse_phone_number' do
-          allow_any_instance_of(ClaimsApi::VnpPtcpntPhoneService)
-            .to receive(:vnp_ptcpnt_phone_find_by_primary_key).and_return({ phone_nbr: nil })
-
-          result = subject.send(:gather_vnp_phone_data, 'veteran')
-
-          expect(result).to eq(expected_empty_response)
-        end
-      end
-
-      context 'when phone_data is missing in metadata and BGS returns empty string' do
-        it 'returns fetched data without calling parse_phone_number' do
-          allow_any_instance_of(ClaimsApi::VnpPtcpntPhoneService)
-            .to receive(:vnp_ptcpnt_phone_find_by_primary_key).and_return({ phone_nbr: '' })
-
-          result = subject.send(:gather_vnp_phone_data, 'veteran')
-
-          expect(result).to eq(expected_empty_response)
-        end
-      end
     end
-  end
 
-  describe 'phone data handling' do
-    context 'when no phone data exists in metadata' do
-      let(:metadata) do
-        {
-          'veteran' => {
-            'vnp_mail_id' => '157252',
-            'vnp_email_id' => '157251'
-          }
-        }
-      end
-
-      it 'does not call phone validation or gathering methods for the veteran' do
-        VCR.use_cassette(
-          'claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather_no_phone'
-        ) do
-          expect_any_instance_of(ClaimsApi::VnpPtcpntPhoneService)
-            .not_to receive(:vnp_ptcpnt_phone_find_by_primary_key)
-
-          result = subject.gather_data
-
-          expect(result['phone_number']).to be_nil
-        end
-      end
-
-      context 'when no phone data exists in metadata for the dependent' do
+    describe 'phone data handling' do
+      context 'when no phone data exists in metadata' do
         let(:metadata) do
           {
-            'veteran' => { 'vnp_mail_id' => '157653', 'vnp_email_id' => '157652' },
-            'claimant' => { 'vnp_mail_id' => '157655', 'vnp_email_id' => '157654' }
+            'veteran' => {
+              'vnp_mail_id' => '157252',
+              'vnp_email_id' => '157251'
+            }
           }
         end
 
-        it 'does not call phone validation or gathering methods for the dependent' do
+        it 'does not call phone validation or gathering methods for the veteran' do
           VCR.use_cassette(
-            'claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather_dependent_no_phone'
+            'claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather_no_phone'
           ) do
             expect_any_instance_of(ClaimsApi::VnpPtcpntPhoneService)
               .not_to receive(:vnp_ptcpnt_phone_find_by_primary_key)
 
             result = subject.gather_data
 
-            expect(result.dig('claimant', 'phone_number')).to be_nil
+            expect(result['phone_number']).to be_nil
           end
+        end
+
+        context 'when no phone data exists in metadata for the dependent' do
+          let(:metadata) do
+            {
+              'veteran' => { 'vnp_mail_id' => '157653', 'vnp_email_id' => '157652' },
+              'claimant' => { 'vnp_mail_id' => '157655', 'vnp_email_id' => '157654' }
+            }
+          end
+
+          it 'does not call phone validation or gathering methods for the dependent' do
+            VCR.use_cassette(
+              'claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather_dependent_no_phone'
+            ) do
+              expect_any_instance_of(ClaimsApi::VnpPtcpntPhoneService)
+                .not_to receive(:vnp_ptcpnt_phone_find_by_primary_key)
+
+              result = subject.gather_data
+
+              expect(result.dig('claimant', 'phone_number')).to be_nil
+            end
+          end
+        end
+      end
+    end
+
+    context 'when birth_date is present in claimant metadata but flag is off' do
+      let(:claimant) do
+        OpenStruct.new(
+          icn: '1013093331V548481',
+          first_name: 'Wally',
+          last_name: 'Morell',
+          middle_name: nil,
+          birth_date: '1948-10-30',
+          loa: { current: 3, highest: 3 },
+          edipi: nil,
+          ssn: '796378782',
+          participant_id: '600264235',
+          mpi: OpenStruct.new(
+            icn: '1013093331V548481',
+            profile: OpenStruct.new(ssn: '796378782'),
+            birls_id: '796378782'
+          )
+        )
+      end
+      let(:proc_id) { '3864478' }
+      let(:metadata) do
+        {
+          'veteran' => { 'vnp_mail_id' => '157653', 'vnp_email_id' => '157652', 'vnp_phone_id' => '111989',
+                         'phone_data' => { 'countryCode' => '1', 'areaCode' => '555',
+                                           'phoneNumber' => '5551234' } },
+          'claimant' => { 'vnp_mail_id' => '157655', 'vnp_email_id' => '157654', 'vnp_phone_id' => '111990',
+                          'phone_data' => { 'countryCode' => '1', 'areaCode' => '555',
+                                            'phoneNumber' => '5559876' },
+                          'birth_date' => '1990-01-15' }
+        }
+      end
+
+      it 'does not include birth_date in claimant gathered data' do
+        VCR.use_cassette(
+          'claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather_dependent'
+        ) do
+          res = subject.gather_data
+
+          expect(res['claimant']).not_to have_key('birth_date')
+        end
+      end
+    end
+
+    context 'when form_attributes are present in metadata but flag is off' do
+      let(:metadata) do
+        {
+          'veteran' => { 'vnp_mail_id' => '157252', 'vnp_email_id' => '157251', 'vnp_phone_id' => '111641',
+                         'phone_data' => { 'countryCode' => '1', 'areaCode' => '555',
+                                           'phoneNumber' => '5551234' } },
+          'claimant' => { 'vnp_mail_id' => '157253', 'vnp_email_id' => '157254', 'vnp_phone_id' => '111642',
+                          'phone_data' => { 'countryCode' => '1', 'areaCode' => '555',
+                                            'phoneNumber' => '9876543' } },
+          'form_attributes' => {
+            'consent_disclosure_affiliated' => true,
+            'consent_disclosure_individuals' => false
+          }
+        }
+      end
+
+      it 'does not include form_attributes in gathered data' do
+        VCR.use_cassette('claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather') do
+          res = subject.gather_data
+
+          expect(res).not_to have_key('form_attributes')
+        end
+      end
+    end
+  end
+
+  context 'when lighthouse_claims_api_poa_request_pdf_form_update is enabled' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_poa_request_pdf_form_update).and_return(true)
+    end
+
+    context 'request with claimant' do
+      let(:claimant) do
+        OpenStruct.new(
+          icn: '1013093331V548481',
+          first_name: 'Wally',
+          last_name: 'Morell',
+          middle_name: nil,
+          birth_date: '1948-10-30',
+          loa: { current: 3, highest: 3 },
+          edipi: nil,
+          ssn: '796378782',
+          participant_id: '600264235',
+          mpi: OpenStruct.new(
+            icn: '1013093331V548481',
+            profile: OpenStruct.new(ssn: '796378782'),
+            birls_id: '796378782'
+          )
+        )
+      end
+      let(:proc_id) { '3864478' }
+
+      context 'when birth_date is present in claimant metadata' do
+        let(:metadata) do
+          {
+            'veteran' => { 'vnp_mail_id' => '157653', 'vnp_email_id' => '157652', 'vnp_phone_id' => '111989',
+                           'phone_data' => { 'countryCode' => '1', 'areaCode' => '555',
+                                             'phoneNumber' => '5551234' } },
+            'claimant' => { 'vnp_mail_id' => '157655', 'vnp_email_id' => '157654', 'vnp_phone_id' => '111990',
+                            'phone_data' => { 'countryCode' => '1', 'areaCode' => '555',
+                                              'phoneNumber' => '5559876' },
+                            'birth_date' => '1990-01-15' }
+          }
+        end
+
+        it 'includes birth_date in claimant gathered data' do
+          VCR.use_cassette(
+            'claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather_dependent'
+          ) do
+            res = subject.gather_data
+
+            expect(res.dig('claimant', 'birth_date')).to eq('1990-01-15')
+          end
+        end
+      end
+
+      context 'when birth_date is not in claimant metadata' do
+        let(:metadata) do
+          {
+            'veteran' => { 'vnp_mail_id' => '157653', 'vnp_email_id' => '157652', 'vnp_phone_id' => '111989',
+                           'phone_data' => { 'countryCode' => '1', 'areaCode' => '555',
+                                             'phoneNumber' => '5551234' } },
+            'claimant' => { 'vnp_mail_id' => '157655', 'vnp_email_id' => '157654', 'vnp_phone_id' => '111990',
+                            'phone_data' => { 'countryCode' => '1', 'areaCode' => '555',
+                                              'phoneNumber' => '5559876' } }
+          }
+        end
+
+        it 'does not include birth_date in claimant gathered data' do
+          VCR.use_cassette(
+            'claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather_dependent'
+          ) do
+            res = subject.gather_data
+
+            expect(res['claimant']).not_to have_key('birth_date')
+          end
+        end
+      end
+    end
+
+    context 'when form_attributes are present in metadata' do
+      let(:metadata) do
+        {
+          'veteran' => { 'vnp_mail_id' => '157252', 'vnp_email_id' => '157251', 'vnp_phone_id' => '111641',
+                         'phone_data' => { 'countryCode' => '1', 'areaCode' => '555',
+                                           'phoneNumber' => '5551234' } },
+          'claimant' => { 'vnp_mail_id' => '157253', 'vnp_email_id' => '157254', 'vnp_phone_id' => '111642',
+                          'phone_data' => { 'countryCode' => '1', 'areaCode' => '555',
+                                            'phoneNumber' => '9876543' } },
+          'form_attributes' => {
+            'consent_disclosure_affiliated' => true,
+            'consent_disclosure_individuals' => false
+          }
+        }
+      end
+
+      it 'includes form_attributes in gathered data' do
+        VCR.use_cassette('claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather') do
+          res = subject.gather_data
+
+          expect(res['form_attributes']).to eq({
+                                                 'consent_disclosure_affiliated' => true,
+                                                 'consent_disclosure_individuals' => false
+                                               })
+        end
+      end
+    end
+
+    context 'when form_attributes are not in metadata' do
+      it 'does not include form_attributes in gathered data' do
+        VCR.use_cassette('claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather') do
+          res = subject.gather_data
+
+          expect(res).not_to have_key('form_attributes')
         end
       end
     end

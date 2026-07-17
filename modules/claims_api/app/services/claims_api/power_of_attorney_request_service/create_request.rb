@@ -53,6 +53,7 @@ module ClaimsApi
         create_vonapp_data(@form_data[:veteran], @veteran_vnp_ptcpnt_id, trace_digest, 'veteran')
 
         create_claimant(trace_digest) if @has_claimant
+        set_form_attributes if Flipper.enabled?(:lighthouse_claims_api_poa_request_pdf_form_update)
 
         veteran_rep_obj = create_veteran_representative
         add_meta_ids(veteran_rep_obj)
@@ -62,7 +63,7 @@ module ClaimsApi
 
       def create_vonapp_data(person, vnp_ptcpnt_id, trace_digest, type) # rubocop:disable Metrics/MethodLength
         promises = []
-        @vnp_res_object ||= { 'meta' => {} }
+        ensure_meta_initialized
         @vnp_res_object['meta'][type] ||= {}
 
         promises << Concurrent::Promise.execute do
@@ -113,6 +114,38 @@ module ClaimsApi
       def create_claimant(trace_digest)
         @claimant_vnp_ptcpnt_id = create_vnp_ptcpnt(@claimant_participant_id)[:vnp_ptcpnt_id]
         create_vonapp_data(@form_data[:claimant], @claimant_vnp_ptcpnt_id, trace_digest, 'claimant')
+
+        if Flipper.enabled?(:lighthouse_claims_api_poa_request_pdf_form_update)
+          birth_date = @form_data.dig(:claimant, :birthDate)
+          @vnp_res_object['meta']['claimant']['birth_date'] = birth_date unless birth_date.nil?
+        end
+      end
+
+      def set_form_attributes
+        ensure_meta_initialized
+
+        form_attrs = build_consent_disclosure_attributes.merge(build_name_attributes).compact
+
+        @vnp_res_object['meta']['form_attributes'] = form_attrs if form_attrs.present?
+      end
+
+      def ensure_meta_initialized
+        @vnp_res_object ||= { 'meta' => {} }
+        @vnp_res_object['meta'] ||= {}
+      end
+
+      def build_consent_disclosure_attributes
+        {
+          'consent_disclosure_affiliated' => @form_data[:consentDisclosureAffiliated],
+          'consent_disclosure_individuals' => @form_data[:consentDisclosureIndividuals]
+        }
+      end
+
+      def build_name_attributes
+        {
+          'firm_or_org_name' => @form_data[:firmOrOrgName],
+          'individual_names' => @form_data[:individualNames]
+        }
       end
 
       def create_vnp_proc
