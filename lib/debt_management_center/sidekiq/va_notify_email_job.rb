@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'sidekiq/attr_package'
 require 'logging/helper/data_scrubber'
 
 module DebtManagementCenter
@@ -28,7 +27,6 @@ module DebtManagementCenter
 
     sidekiq_retries_exhausted do |job, ex|
       options = (job['args'][3] || {}).transform_keys(&:to_s)
-      cache_key = options['cache_key']
 
       StatsD.increment("#{STATS_KEY}.retries_exhausted")
       if options['failure_mailer'] == true
@@ -36,21 +34,14 @@ module DebtManagementCenter
         StatsD.increment('silent_failure', tags: %w[service:debt-resolution function:sidekiq_retries_exhausted])
       end
       Rails.logger.error('VANotifyEmailJob retries exhausted', scrub_pii(exception: ex))
-
-      Sidekiq::AttrPackage.delete(cache_key) if cache_key
     end
 
     def perform(identifier, template_id, personalisation = nil, options = {})
       Rails.logger.info("#va_notify_email_job identifier_present=#{identifier.present?}")
       options = (options || {}).transform_keys(&:to_s)
-      cache_key = options['cache_key']
 
       send_email(identifier, template_id, personalisation, options)
       record_success(options['failure_mailer'])
-      Sidekiq::AttrPackage.delete(cache_key) if cache_key
-    rescue Sidekiq::AttrPackageError => e
-      Rails.logger.error('VANotifyEmailJob AttrPackage error', scrub_pii({ error: e.message }))
-      raise ArgumentError, e.message
     rescue => e
       handle_error(e, template_id)
     end
@@ -80,7 +71,7 @@ module DebtManagementCenter
 
     def email_params(identifier, template_id, personalisation, options)
       id_type = options['id_type'] || 'email'
-      identifier, personalisation = plain_pii(identifier, personalisation, options)
+      identifier, personalisation = plain_pii(identifier, personalisation)
 
       case id_type.downcase
       when 'email'
@@ -100,16 +91,8 @@ module DebtManagementCenter
       end
     end
 
-    def plain_pii(identifier, personalisation, options)
-      cache_key = options['cache_key']
-      if cache_key.present?
-        attributes = Sidekiq::AttrPackage.find(cache_key)
-        raise Sidekiq::AttrPackageError.new('find', 'cache miss') unless attributes
-
-        [attributes[:email], attributes[:personalisation]]
-      else
-        [plain_value(identifier), plain_personalisation(personalisation)]
-      end
+    def plain_pii(identifier, personalisation)
+      [plain_value(identifier), plain_personalisation(personalisation)]
     end
 
     def plain_personalisation(personalisation)

@@ -13,7 +13,6 @@ RSpec.describe DebtManagementCenter::VANotifyEmailJob, type: :worker do
   before do
     allow(VaNotify::Service).to receive(:new).and_return(va_notify_client)
     allow(va_notify_client).to receive(:send_email)
-    allow(Sidekiq::AttrPackage).to receive(:delete)
   end
 
   def perform_job(identifier:, personalisation:, **options)
@@ -88,51 +87,6 @@ RSpec.describe DebtManagementCenter::VANotifyEmailJob, type: :worker do
       )
       perform_job(identifier: 'user@example.com', personalisation: { 'first_name' => 'Test' })
     end
-
-    context 'when cache_key is not provided' do
-      it 'does not read from AttrPackage' do
-        expect(Sidekiq::AttrPackage).not_to receive(:find)
-        perform_job(identifier: 'user@example.com', personalisation: { 'first_name' => 'Test' })
-      end
-    end
-
-    context 'when cache_key is provided' do
-      let(:cache_key) { 'cache_key_abc' }
-      let(:cache_options) { email_options.merge('cache_key' => cache_key) }
-
-      it 'sends cached email params to VaNotify' do
-        allow(Sidekiq::AttrPackage).to receive(:find).with(cache_key).and_return(
-          email: 'cached@example.com',
-          personalisation: { 'first_name' => 'CachedFirst', 'date_submitted' => '01/01/2025' }
-        )
-
-        expect(va_notify_client).to receive(:send_email).with(
-          hash_including(
-            email_address: 'cached@example.com',
-            template_id:,
-            personalisation: hash_including('first_name' => 'CachedFirst')
-          )
-        )
-        described_class.new.perform(nil, template_id, nil, cache_options)
-      end
-
-      it 'deletes the cache key after sending email' do
-        allow(Sidekiq::AttrPackage).to receive(:find).with(cache_key).and_return(
-          email: 'cached@example.com',
-          personalisation: {}
-        )
-
-        expect(Sidekiq::AttrPackage).to receive(:delete).with(cache_key)
-        described_class.new.perform(nil, template_id, nil, cache_options)
-      end
-
-      it 'raises an argument error when the cached attributes are missing' do
-        allow(Sidekiq::AttrPackage).to receive(:find).with(cache_key).and_return(nil)
-
-        expect { described_class.new.perform(nil, template_id, nil, cache_options) }
-          .to raise_error(ArgumentError, /AttrPackage.*error/)
-      end
-    end
   end
 
   describe 'sidekiq_retries_exhausted' do
@@ -154,16 +108,6 @@ RSpec.describe DebtManagementCenter::VANotifyEmailJob, type: :worker do
       )
       expect(Rails.logger).to receive(:error).with('VANotifyEmailJob retries exhausted', hash_including(exception:))
       config.sidekiq_retries_exhausted_block.call(exhausted_job, exception)
-    end
-
-    it 'deletes cache_key when retries expire' do
-      cache_key = 'test_cache_key_123'
-      job = { 'args' => [nil, nil, nil, { 'cache_key' => cache_key }] }
-
-      expect(Sidekiq::AttrPackage).to receive(:delete).with(cache_key)
-      allow(StatsD).to receive(:increment)
-      allow(Rails.logger).to receive(:error)
-      config.sidekiq_retries_exhausted_block.call(job, exception)
     end
 
     context 'when firing a silent error email' do
