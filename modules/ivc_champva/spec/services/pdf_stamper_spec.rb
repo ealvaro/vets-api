@@ -39,11 +39,10 @@ describe IvcChampva::PdfStamper do
       end
     end
 
-    # Test for https://va.ghe.com/software/va.gov-team/issues/127995
     context 'when given characters outside of the Windows-1252 character set' do
       let(:data) do
         JSON.parse(File.read("modules/ivc_champva/spec/fixtures/form_json/#{test_payload}.json")).tap do |d|
-          d['statement_of_truth_signature'] = 'Eylül Çamcı'
+          d['statement_of_truth_signature'] = "Eyl\u00fcl \u00c7amc\u0131"
         end
       end
 
@@ -121,7 +120,6 @@ describe IvcChampva::PdfStamper do
         stamp_signature
       end
 
-      # Use a form that is NOT in FORM_REQUIRES_STAMP (10-7959F-2 doesn't require stamping)
       let(:test_payload) { 'vha_10_7959f_2' }
       let(:form_model) { test_payload }
       let(:stamps) { [] }
@@ -344,6 +342,45 @@ describe IvcChampva::PdfStamper do
         it 'proceeds gracefully' do
           expect { perform_multistamp }.to raise_error(StandardError, 'pdftk error')
         end
+      end
+    end
+
+    context 'when pdftk raises PdfForms::PdftkError' do
+      before do
+        allow(Common::FileHelpers).to receive(:random_file_path).and_return(random_path)
+        allow(Common::FileHelpers).to receive(:delete_file_if_exists)
+        allow(PdfFill::Filler::PDF_FORMS).to receive(:multistamp).and_raise(PdfForms::PdftkError, 'pdftk crashed')
+        allow(StatsD).to receive(:increment)
+        allow(described_class).to receive(:perform_multistamp_with_hexapdf)
+        allow(File).to receive(:delete)
+        allow(File).to receive(:rename)
+      end
+
+      it 'falls back to HexaPDF watermark stamping instead of raising' do
+        expect { perform_multistamp }.not_to raise_error
+
+        expect(described_class).to have_received(:perform_multistamp_with_hexapdf).with(
+          stamped_template_path, stamp_path, out_path
+        )
+        expect(StatsD).to have_received(:increment).with('api.ivc_champva.pdftk_fallback')
+        expect(File).to have_received(:delete).with(stamped_template_path)
+        expect(File).to have_received(:rename).with(out_path, stamped_template_path)
+      end
+    end
+
+    context 'when the HexaPDF fallback itself fails' do
+      before do
+        allow(Common::FileHelpers).to receive(:random_file_path).and_return(random_path)
+        allow(Common::FileHelpers).to receive(:delete_file_if_exists)
+        allow(PdfFill::Filler::PDF_FORMS).to receive(:multistamp).and_raise(PdfForms::PdftkError, 'pdftk crashed')
+        allow(StatsD).to receive(:increment)
+        allow(described_class).to receive(:perform_multistamp_with_hexapdf)
+          .and_raise(StandardError, 'hexapdf also failed')
+      end
+
+      it 'still cleans up and reraises, same as any other stamping failure' do
+        expect(Common::FileHelpers).to receive(:delete_file_if_exists).with(out_path)
+        expect { perform_multistamp }.to raise_error(StandardError, 'hexapdf also failed')
       end
     end
   end

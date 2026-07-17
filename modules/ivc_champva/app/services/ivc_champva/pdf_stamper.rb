@@ -3,12 +3,15 @@
 require 'datadog'
 require 'pdf_utilities/datestamp_pdf'
 require 'ivc_champva/monitor'
+require 'hexapdf'
+require 'hexapdf/cli'
 
 module IvcChampva
   class PdfStamper
     FORM_REQUIRES_STAMP = %w[10-10D 10-10D-EXTENDED 10-7959F-1 10-7959A 10-7959C].freeze
     SUBMISSION_TEXT = 'Signed electronically and submitted via VA.gov at '
     SUBMISSION_DATE_TITLE = 'Application Submitted:'
+    PDFTK_FALLBACK_STATS_KEY = 'api.ivc_champva.pdftk_fallback'
 
     # Constant dimensions for stamping on a blank page
     PAGE_HEIGHT = 792    # Total height of the blank page
@@ -189,12 +192,27 @@ module IvcChampva
     end
     # rubocop:enable Metrics/MethodLength
 
-    def self.perform_multistamp(stamped_template_path, stamp_path)
+    # pdftk (specifically pdftk-java) has known, longstanding bugs where certain
+    # non-conforming AcroForm structures in the input PDF cause it to crash with an
+    # unhandled java.lang.ClassCastException (see e.g. gitlab.com/pdftk-java/pdftk
+    # issues #17, #45, #47, #110, #139, #166). When that happens we fall back to
+    # HexaPDF's watermark CLI, which does not share pdftk-java's AcroForm parsing
+    # bugs and is already used elsewhere in this codebase for the same kind of
+    # overlay stamping (see PDFUtilities::PDFStamper).
+    def self.perform_multistamp(stamped_template_path, stamp_path) # rubocop:disable Metrics/MethodLength
       Rails.logger.info 'IVC Champva Forms - PdfStamper: entered perform_multistamp'
       out_path = "#{Common::FileHelpers.random_file_path}.pdf"
       pdftk = PdfFill::Filler::PDF_FORMS
       Rails.logger.info 'IVC Champva Forms - PdfStamper: perform_multistamp calling pdftk.multistamp'
-      pdftk.multistamp(stamped_template_path, stamp_path, out_path)
+      begin
+        pdftk.multistamp(stamped_template_path, stamp_path, out_path)
+      rescue PdfForms::PdftkError => e
+        Rails.logger.warn(
+          "IVC Champva Forms - PdfStamper: pdftk failed (#{e.class}), falling back to HexaPDF watermark stamping"
+        )
+        StatsD.increment(PDFTK_FALLBACK_STATS_KEY)
+        perform_multistamp_with_hexapdf(stamped_template_path, stamp_path, out_path)
+      end
       Rails.logger.info 'IVC Champva Forms - PdfStamper: perform_multistamp post pdftk.multistamp delete'
       File.delete(stamped_template_path)
       Rails.logger.info 'IVC Champva Forms - PdfStamper: perform_multistamp post pdftk.multistamp rename'
@@ -211,6 +229,16 @@ module IvcChampva
       end
       Rails.logger.info 'IVC Champva Forms - PdfStamper: perform_multistamp re-raising error'
       raise
+    end
+
+    # Fallback used when pdftk fails with PdfForms::PdftkError.
+    # Mirrors PDFUtilities::PDFStamper#stamp_pdf's approach.
+    # @see https://github.com/gettalong/hexapdf/blob/master/lib/hexapdf/cli/watermark.rb
+    def self.perform_multistamp_with_hexapdf(stamped_template_path, stamp_path, out_path)
+      reader = PDF::Reader.new(stamp_path)
+      pages = [*1..reader.page_count].join(',')
+
+      HexaPDF::CLI.run(['watermark', '-w', stamp_path, '-i', pages, '-t', 'stamp', stamped_template_path, out_path])
     end
 
     ##
