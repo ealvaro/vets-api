@@ -3874,6 +3874,9 @@ features:
     actor_type: user
     description: Enables modernization refactor of VA Profile Service Component
     enable_in_development: true
+  cve_vap_svc_show_errors:
+    actor_type: user
+    description: When enabled, "no changes" responses from VA Profile service are double-checked to determine if an error occurred.
   cve_veteran_status_new_service:
     actor_type: user
     description: "If enabled, displays new veteran status page"
