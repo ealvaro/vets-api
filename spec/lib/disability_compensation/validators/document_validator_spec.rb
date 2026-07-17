@@ -52,10 +52,45 @@ RSpec.describe DisabilityCompensation::Validators::DocumentValidator do
         expect(subject.validate).to eq(['unable_to_validate'])
       end
 
-      it 'logs the error' do
+      it 'logs the error with truncated message' do
         expect(Rails.logger).to receive(:error).with(
           'DocumentValidator OCR validation failed',
           hash_including(attachment_id: 'L1839', error_class: 'RuntimeError', error_message: 'tesseract not found')
+        )
+        subject.validate
+      end
+    end
+
+    context 'when OCR extraction times out' do
+      before do
+        allow_any_instance_of(RTesseract).to receive(:to_s) { sleep(described_class::OCR_TIMEOUT + 1) }
+        stub_const("#{described_class}::OCR_TIMEOUT", 0.01)
+      end
+
+      it 'returns unable_to_validate warning' do
+        expect(subject.validate).to eq(['unable_to_validate'])
+      end
+
+      it 'logs the timeout with duration' do
+        expect(Rails.logger).to receive(:error).with(
+          'DocumentValidator OCR validation timed out',
+          hash_including(attachment_id: 'L1839', timeout_seconds: 0.01)
+        )
+        subject.validate
+      end
+    end
+
+    context 'when error message is excessively long' do
+      let(:long_pii_message) { "Error processing document #{'x' * 300}" }
+
+      before do
+        allow_any_instance_of(RTesseract).to receive(:to_s).and_raise(RuntimeError, long_pii_message)
+      end
+
+      it 'truncates the error message to 200 characters' do
+        expect(Rails.logger).to receive(:error).with(
+          'DocumentValidator OCR validation failed',
+          hash_including(error_message: a_string_matching(/\A.{200}\z/))
         )
         subject.validate
       end

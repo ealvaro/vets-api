@@ -9,6 +9,9 @@ module DisabilityCompensation
       WRONG_FORM = 'wrong_form'
       UNABLE_TO_VALIDATE = 'unable_to_validate'
 
+      # Maximum time (in seconds) allowed for OCR processing
+      OCR_TIMEOUT = 60
+
       # Values can be:
       #   - An Array of strings: uses default phrase-matching validation
       #   - A class responding to #validate(extracted_text): uses custom validation logic
@@ -29,20 +32,35 @@ module DisabilityCompensation
         return [] unless validator_config
 
         warnings = []
-        extracted_text = perform_ocr
+        extracted_text = Timeout.timeout(OCR_TIMEOUT) { perform_ocr }
         warnings << WRONG_FORM unless document_matches?(validator_config, extracted_text)
         log_warnings(warnings) if warnings.any?
         warnings
+      rescue Timeout::Error
+        log_timeout
+        [UNABLE_TO_VALIDATE]
       rescue => e
-        Rails.logger.error(
-          'DocumentValidator OCR validation failed',
-          { attachment_id: @attachment_id, in_progress_form_id: @in_progress_form_id,
-            error_class: e.class.name, error_message: e.message }
-        )
+        log_error(e)
         [UNABLE_TO_VALIDATE]
       end
 
       private
+
+      def log_timeout
+        Rails.logger.error(
+          'DocumentValidator OCR validation timed out',
+          { attachment_id: @attachment_id, in_progress_form_id: @in_progress_form_id,
+            timeout_seconds: OCR_TIMEOUT }
+        )
+      end
+
+      def log_error(error)
+        Rails.logger.error(
+          'DocumentValidator OCR validation failed',
+          { attachment_id: @attachment_id, in_progress_form_id: @in_progress_form_id,
+            error_class: error.class.name, error_message: error.message.to_s.truncate(200) }
+        )
+      end
 
       def log_warnings(warnings)
         Rails.logger.warn(
@@ -52,7 +70,8 @@ module DisabilityCompensation
       end
 
       def perform_ocr
-        image_path = prepare_image_for_ocr
+        image_path = Rails.root.join("#{Common::FileHelpers.random_file_path}.jpg").to_s
+        prepare_image_for_ocr(image_path)
         RTesseract.new(image_path).to_s
       ensure
         FileUtils.rm_f(image_path) if image_path && File.exist?(image_path)
@@ -66,16 +85,12 @@ module DisabilityCompensation
         end
       end
 
-      def prepare_image_for_ocr
-        image_path = Rails.root.join("#{Common::FileHelpers.random_file_path}.jpg").to_s
-
+      def prepare_image_for_ocr(image_path)
         if pdf_file?
           convert_pdf_to_image(image_path)
         else
           FileUtils.cp(@file_path, image_path)
         end
-
-        image_path
       end
 
       def convert_pdf_to_image(output_path)
@@ -88,6 +103,8 @@ module DisabilityCompensation
         convert << pdf.pages.first.path
         convert << output_path
         convert.call
+      ensure
+        pdf&.destroy!
       end
 
       def pdf_file?
