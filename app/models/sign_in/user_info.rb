@@ -12,7 +12,7 @@ module SignIn
       edipi: '200DOD',
       mhv_ien: '200MHV',
       npi_id: '200ENPI',
-      vhic_id: '200VHIC',
+      vhic_id: '742V1',
       nwhin_id: '200NWS',
       cerner_id: '200CRNR',
       corp_id: '200CORP',

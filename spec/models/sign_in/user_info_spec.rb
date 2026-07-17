@@ -103,7 +103,7 @@ RSpec.describe SignIn::UserInfo do
         end
 
         context 'VHIC ID code' do
-          let(:example_gcid) { '12345^PI^200VHIC^USVHA^P' }
+          let(:example_gcid) { '12345^PI^742V1^USVHA^P' }
 
           it_behaves_like 'valid GCID code'
         end

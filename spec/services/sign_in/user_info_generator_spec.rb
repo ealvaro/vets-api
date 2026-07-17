@@ -42,7 +42,8 @@ RSpec.describe SignIn::UserInfoGenerator do
     [
       '1000123456V123456^NI^200M^USVHA^P',
       '12345^PI^516^USVHA^PCE',
-      '2^PI^553^USVHA^PCE'
+      '2^PI^553^USVHA^PCE',
+      '16015218^PI^742V1^USVHA^A'
     ]
   end
   let(:npi_id) { 'NPI1234567' }
@@ -293,7 +294,7 @@ RSpec.describe SignIn::UserInfoGenerator do
 
       context 'when the gcids are valid' do
         let(:expected_gcids) do
-          '1000123456V123456^NI^200M^USVHA^P|12345^PI^516^USVHA^PCE|2^PI^553^USVHA^PCE'
+          '1000123456V123456^NI^200M^USVHA^P|12345^PI^516^USVHA^PCE|2^PI^553^USVHA^PCE|16015218^PI^742V1^USVHA^A'
         end
 
         it 'includes them in the user info' do
@@ -306,7 +307,8 @@ RSpec.describe SignIn::UserInfoGenerator do
         let(:gcids) do
           [
             '1000123456V123456^NI^200BAD^USVHA^P',
-            '1000123456V123456^NI^200INVALID^USVHA^P'
+            '1000123456V123456^NI^200INVALID^USVHA^P',
+            '12345^PI^200VHIC^USVHA^P'
           ]
         end
 
