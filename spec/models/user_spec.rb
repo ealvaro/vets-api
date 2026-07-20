@@ -1126,7 +1126,7 @@ RSpec.describe User, type: :model do
     let(:user) do
       described_class.new(
         build(:user, :loa3, uuid:,
-                            idme_uuid:, logingov_uuid:,
+                            idme_uuid:, logingov_uuid:, clear_uuid:,
                             edipi:, mhv_credential_uuid:, authn_context:, icn:, user_verification:)
       )
     end
@@ -1134,6 +1134,7 @@ RSpec.describe User, type: :model do
     let(:csp) { 'idme' }
     let(:logingov_uuid) { 'some-logingov-uuid' }
     let(:idme_uuid) { 'some-idme-uuid' }
+    let(:clear_uuid) { 'some-clear-uuid' }
     let(:edipi) { 'some-edipi' }
     let(:mhv_credential_uuid) { 'some-mhv-credential-uuid' }
     let(:icn) { 'some-icn' }
@@ -1143,6 +1144,7 @@ RSpec.describe User, type: :model do
                               mhv_uuid: mhv_credential_uuid,
                               idme_uuid:,
                               logingov_uuid:,
+                              clear_uuid:,
                               icn:).perform
     end
     let!(:user_account) { user_verification&.user_account }
@@ -1192,6 +1194,27 @@ RSpec.describe User, type: :model do
 
         it 'returns user verification with a matching logingov uuid' do
           expect(user.user_verification.logingov_uuid).to eq(logingov_uuid)
+        end
+      end
+
+      context 'when user is logged in with clear' do
+        let(:authn_context) { SignIn::Constants::Auth::CLEAR_IAL2 }
+        let(:csp) { 'clear' }
+
+        context 'and user has a clear_uuid' do
+          it 'returns user verification with a matching clear uuid' do
+            expect(user.user_verification.clear_uuid).to eq(clear_uuid)
+          end
+        end
+
+        context 'and user does not have a clear_uuid' do
+          let(:clear_uuid) { nil }
+          let(:user_verification) { nil }
+          let(:uuid) { SecureRandom.uuid }
+
+          it 'returns nil' do
+            expect(user.user_verification).to be_nil
+          end
         end
       end
 

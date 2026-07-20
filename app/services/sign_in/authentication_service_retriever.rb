@@ -2,6 +2,7 @@
 
 require 'sign_in/logingov/service'
 require 'sign_in/idme/service'
+require 'sign_in/clear/service'
 require 'credential/service'
 
 module SignIn
@@ -27,6 +28,8 @@ module SignIn
       case type
       when Constants::Auth::LOGINGOV
         logingov_auth_service
+      when Constants::Auth::CLEAR
+        clear_auth_service
       else
         idme_auth_service
       end
@@ -38,6 +41,10 @@ module SignIn
 
     def logingov_auth_service
       @logingov_auth_service ||= Logingov::Service.new(optional_scopes: logingov_optional_scopes)
+    end
+
+    def clear_auth_service
+      @clear_auth_service ||= Clear::Service.new
     end
 
     def mock_auth_service

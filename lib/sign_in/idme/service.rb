@@ -49,7 +49,7 @@ module SignIn
         end
       end
 
-      def token(code)
+      def token(code, _state = nil)
         response = perform(
           :post, config.token_path, token_params(code), { 'Content-Type' => 'application/json' }
         )

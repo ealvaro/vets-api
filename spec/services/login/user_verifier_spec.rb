@@ -9,6 +9,7 @@ RSpec.describe Login::UserVerifier do
                           auth_broker:,
                           mhv_uuid:,
                           idme_uuid:,
+                          clear_uuid:,
                           logingov_uuid:,
                           icn:,
                           credential_attributes_digest:).perform
@@ -18,6 +19,7 @@ RSpec.describe Login::UserVerifier do
     let(:mhv_uuid) { 'some-credential-uuid' }
     let(:idme_uuid) { 'some-idme-uuid' }
     let(:logingov_uuid) { 'some-logingov-uuid' }
+    let(:clear_uuid) { 'some-clear-uuid' }
     let(:locked) { false }
     let(:icn) { nil }
     let(:login_type) { nil }
@@ -38,6 +40,7 @@ RSpec.describe Login::UserVerifier do
       let(:mhv_uuid) { authn_identifier }
       let(:idme_uuid) { authn_identifier }
       let(:logingov_uuid) { authn_identifier }
+      let(:clear_uuid) { authn_identifier }
       let(:expected_log) { "[Login::UserVerifier] Nil identifier for type=#{authn_identifier_type}" }
       let(:expected_error) { Login::Errors::UserVerificationNotCreatedError }
 
@@ -461,6 +464,7 @@ RSpec.describe Login::UserVerifier do
         let(:mhv_uuid) { authn_identifier }
         let(:idme_uuid) { authn_identifier }
         let(:logingov_uuid) { authn_identifier }
+        let(:clear_uuid) { authn_identifier }
         let(:expected_log) { "[Login::UserVerifier] Nil identifier for type=#{authn_identifier_type}" }
         let(:expected_error) { Login::Errors::UserVerificationNotCreatedError }
 
@@ -479,6 +483,17 @@ RSpec.describe Login::UserVerifier do
       let(:authn_identifier_type) { :logingov_uuid }
       let(:backing_idme_uuid) { nil }
       let(:linked_user_verification_type) { :logingov_user_verification }
+
+      it_behaves_like 'user_verification with nil credential identifier'
+      it_behaves_like 'user_verification with defined credential identifier'
+    end
+
+    context 'when user credential is clear' do
+      let(:login_type) { SignIn::Constants::Auth::CLEAR }
+      let(:authn_identifier) { clear_uuid }
+      let(:authn_identifier_type) { :clear_uuid }
+      let(:backing_idme_uuid) { nil }
+      let(:linked_user_verification_type) { :clear_user_verification }
 
       it_behaves_like 'user_verification with nil credential identifier'
       it_behaves_like 'user_verification with defined credential identifier'

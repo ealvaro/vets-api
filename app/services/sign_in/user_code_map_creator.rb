@@ -5,6 +5,7 @@ module SignIn
     attr_reader :state_payload,
                 :idme_uuid,
                 :logingov_uuid,
+                :clear_uuid,
                 :credential_email,
                 :all_credential_emails,
                 :verified_icn,
@@ -20,6 +21,7 @@ module SignIn
       @state_payload = state_payload
       @idme_uuid = user_attributes[:idme_uuid]
       @logingov_uuid = user_attributes[:logingov_uuid]
+      @clear_uuid = user_attributes[:clear_uuid]
       @credential_email = user_attributes[:csp_email]
       @all_credential_emails = user_attributes[:all_csp_emails]
       @edipi = user_attributes[:edipi]
@@ -85,6 +87,7 @@ module SignIn
                                                      auth_broker: sign_in[:auth_broker],
                                                      mhv_uuid: mhv_credential_uuid,
                                                      idme_uuid:,
+                                                     clear_uuid:,
                                                      logingov_uuid:,
                                                      icn: verified_icn,
                                                      credential_attributes_digest:).perform

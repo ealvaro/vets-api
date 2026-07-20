@@ -3,6 +3,7 @@
 require 'rails_helper'
 require 'sign_in/idme/service'
 require 'sign_in/logingov/service'
+require 'sign_in/clear/service'
 
 RSpec.describe V0::SignIn::CallbackController, type: :controller do
   describe 'GET callback' do
@@ -37,7 +38,7 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
              authentication:,
              enforced_terms:,
              terms_of_use_url:,
-             credential_service_providers: %w[idme logingov mhv])
+             credential_service_providers: %w[idme logingov mhv clear])
     end
     let(:enforced_terms) { nil }
     let(:terms_of_use_url) { 'some-terms-of-use-url' }
@@ -261,7 +262,8 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
             end
 
             before do
-              allow_any_instance_of(SignIn::Logingov::Service).to receive(:token).with(code_value).and_return(response)
+              allow_any_instance_of(SignIn::Logingov::Service).to receive(:token).with(code_value,
+                                                                                       state_value).and_return(response)
               allow_any_instance_of(SignIn::Logingov::Service).to receive(:user_info).with(token).and_return(user_info)
             end
 
@@ -428,7 +430,8 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
             let(:token) { 'some-token' }
 
             before do
-              allow_any_instance_of(SignIn::Idme::Service).to receive(:token).with(code_value).and_return(response)
+              allow_any_instance_of(SignIn::Idme::Service).to receive(:token).with(code_value,
+                                                                                   state_value).and_return(response)
               allow_any_instance_of(SignIn::Idme::Service).to receive(:user_info).with(token).and_return(user_info)
             end
 
@@ -599,6 +602,117 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
             end
           end
 
+          context 'when type in state JWT is clear' do
+            let(:clear_uuid) { 'some-clear-uuid' }
+            let(:user_verification) { create(:clear_user_verification, clear_uuid:) }
+            let(:address) do
+              { line1: '123 Test St', line2: 'Apt. A', city: 'Test City',
+                state: 'NY', postal_code: '12345', country: 'USA' }
+            end
+            let(:type) { SignIn::Constants::Auth::CLEAR }
+            let(:dob) { { day: 1, month: 1, year: 1990 } }
+            let(:traits) do
+              { first_name: 'John', middle_name: 'Mark', last_name: 'Doe', dob:,
+                ssn9: '123-45-6789', phone: '+14082222222', email: 'found@clearme.com', address: }
+            end
+            let(:user_info) do
+              OpenStruct.new(
+                sub: clear_uuid,
+                level_of_assurance:,
+                credential_ial:,
+                social: '123456789',
+                first_name: 'John',
+                last_name: 'Doe',
+                email: 'some-email',
+                traits:
+              )
+            end
+
+            let(:mpi_profile) do
+              build(:mpi_profile,
+                    ssn: user_info.social,
+                    birth_date: Formatters::DateFormatter.format_date(dob),
+                    given_names: [user_info.first_name],
+                    family_name: user_info.last_name)
+            end
+            let(:response) { OpenStruct.new(access_token: token) }
+            let(:level_of_assurance) { LOA::THREE }
+            let(:credential_ial) { SignIn::Constants::Auth::IAL_TWO }
+            let(:token) { 'some-token' }
+
+            before do
+              allow_any_instance_of(SignIn::Clear::Service).to receive(:token).with(code_value,
+                                                                                    state_value).and_return(response)
+              allow_any_instance_of(SignIn::Clear::Service).to receive(:user_info).with(token).and_return(user_info)
+            end
+
+            context 'and code is given but does not match expected code for auth service' do
+              let(:response) { nil }
+              let(:expected_error) { 'Code is not valid' }
+              let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
+
+              it_behaves_like 'error response'
+            end
+
+            context 'and code is given that matches expected code for auth service' do
+              let(:response) { OpenStruct.new(access_token: token) }
+              let(:level_of_assurance) { LOA::THREE }
+              let(:authentication_time) { 0 }
+              let(:statsd_callback_success) { SignIn::Constants::Statsd::STATSD_SIS_CALLBACK_SUCCESS }
+              let(:client_redirect_uri) { client_config.redirect_uri }
+              let(:meta_refresh_tag) { '<meta http-equiv="refresh" content="0;' }
+              let(:client_code) { 'some-client-code' }
+              let(:expected_log) { '[SignInService] [V0::SignInController] callback' }
+              let(:expected_logger_context) do
+                logger_context = { type:, client_id:, ial:, acr:, icn: mpi_profile.icn,
+                                   credential_uuid: clear_uuid, authentication_time:, operation:, safe_keys: [:icn] }
+                app_name ? logger_context.merge(app_name:) : logger_context
+              end
+
+              context 'and acr is ial2' do
+                let(:acr) { 'ial2' }
+                let(:credential_ial) { SignIn::Constants::Auth::IAL_TWO }
+                let(:ial) { 2 }
+
+                before do
+                  allow(SecureRandom).to receive(:uuid).and_return(client_code)
+                  Timecop.freeze
+                end
+
+                after { Timecop.return }
+
+                it 'returns ok status' do
+                  expect(subject).to have_http_status(:ok)
+                end
+
+                it 'renders the oauth_get_form template with meta refresh tag' do
+                  expect(subject.body).to include(meta_refresh_tag)
+                end
+
+                it 'includes expected code param' do
+                  expect(subject.body).to include(client_code)
+                end
+
+                it 'includes expected state param' do
+                  expect(subject.body).to include(client_state)
+                end
+
+                it 'includes expected type param' do
+                  expect(subject.body).to include(type)
+                end
+
+                it 'logs the successful callback' do
+                  expect(Rails.logger).to receive(:info).with(expected_log, expected_logger_context)
+                  subject
+                end
+
+                it 'updates StatsD with a callback request success' do
+                  expect { subject }.to trigger_statsd_increment(statsd_callback_success, tags: statsd_tags)
+                end
+              end
+            end
+          end
+
           context 'when type in state JWT is mhv' do
             let(:type) { SignIn::Constants::Auth::MHV }
             let(:backing_idme_uuid) { 'some-backing-idme-uuid' }
@@ -628,7 +742,8 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
             end
 
             before do
-              allow_any_instance_of(SignIn::Idme::Service).to receive(:token).with(code_value).and_return(response)
+              allow_any_instance_of(SignIn::Idme::Service).to receive(:token).with(code_value,
+                                                                                   state_value).and_return(response)
               allow_any_instance_of(SignIn::Idme::Service).to receive(:user_info).with(token).and_return(user_info)
             end
 
@@ -780,6 +895,13 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
         context 'and type from state is logingov' do
           let(:type) { SignIn::Constants::Auth::LOGINGOV }
           let(:error_code) { SignIn::Constants::ErrorCode::LOGINGOV_VERIFICATION_DENIED }
+
+          it_behaves_like 'error response'
+        end
+
+        context 'and type from state is clear' do
+          let(:type) { SignIn::Constants::Auth::CLEAR }
+          let(:error_code) { SignIn::Constants::ErrorCode::CLEAR_VERIFICATION_DENIED }
 
           it_behaves_like 'error response'
         end

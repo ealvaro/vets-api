@@ -14,7 +14,7 @@ module MockedAuthentication
                         format: :html)
       end
 
-      def token(code)
+      def token(code, _state = nil)
         {
           access_token: code
         }.merge(logingov_acr(code))

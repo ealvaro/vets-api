@@ -58,7 +58,7 @@ module SignIn
         raise SignIn::Errors::MalformedParamsError.new message: "State is malformed: #{e.message}"
       end
 
-      def token(code)
+      def token(code, _state = nil)
         response = perform(
           :post, config.token_path, token_params(code), { 'Content-Type' => 'application/json' }
         )

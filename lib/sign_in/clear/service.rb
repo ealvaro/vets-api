@@ -46,7 +46,7 @@ module SignIn
         traits = user_info.traits || {}
 
         {
-          clear_uuid: user_info.user_id,
+          clear_uuid: user_info.sub,
           current_ial: credential_level.current_ial,
           max_ial: credential_level.max_ial,
           ssn: traits[:ssn9]&.tr('-', ''),

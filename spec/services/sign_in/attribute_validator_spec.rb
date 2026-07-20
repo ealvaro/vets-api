@@ -22,6 +22,7 @@ RSpec.describe SignIn::AttributeValidator do
         {
           logingov_uuid:,
           idme_uuid:,
+          clear_uuid:,
           current_ial:,
           ssn:,
           birth_date:,
@@ -40,6 +41,7 @@ RSpec.describe SignIn::AttributeValidator do
       end
       let(:logingov_uuid) { nil }
       let(:idme_uuid) { nil }
+      let(:clear_uuid) { nil }
       let(:mhv_credential_uuid) { nil }
       let(:edipi) { nil }
       let(:current_ial) { SignIn::Constants::Auth::IAL_TWO }
@@ -190,6 +192,8 @@ RSpec.describe SignIn::AttributeValidator do
               create(:logingov_user_verification, logingov_uuid:, credential_attributes_digest:)
             when SignIn::Constants::Auth::MHV
               create(:mhv_user_verification, mhv_uuid:, backing_idme_uuid: idme_uuid, credential_attributes_digest:)
+            when SignIn::Constants::Auth::CLEAR
+              create(:clear_user_verification, clear_uuid:, credential_attributes_digest:)
             end
           end
 
@@ -271,7 +275,8 @@ RSpec.describe SignIn::AttributeValidator do
               idme_uuid:,
               logingov_uuid:,
               edipi:,
-              first_name:
+              first_name:,
+              clear_uuid:
             }
           end
 
@@ -467,7 +472,8 @@ RSpec.describe SignIn::AttributeValidator do
               address:,
               phone_number:,
               idme_uuid:,
-              logingov_uuid:
+              logingov_uuid:,
+              clear_uuid:
             }
           end
 
@@ -849,6 +855,59 @@ RSpec.describe SignIn::AttributeValidator do
 
         context 'and credential is missing idme uuid' do
           let(:idme_uuid) { nil }
+          let(:attribute) { 'uuid' }
+
+          it_behaves_like 'missing credential attribute'
+        end
+
+        context 'and credential is missing last_name' do
+          let(:last_name) { nil }
+          let(:attribute) { 'last_name' }
+
+          it_behaves_like 'missing credential attribute'
+        end
+
+        context 'and credential is missing birth_date' do
+          let(:birth_date) { nil }
+          let(:attribute) { 'birth_date' }
+
+          it_behaves_like 'missing credential attribute'
+        end
+
+        context 'and credential is not missing any required attributes' do
+          it_behaves_like 'credential mpi verification'
+          it_behaves_like 'get traits service'
+        end
+      end
+
+      context 'and authentication is with clear' do
+        let(:service_name) { SignIn::Constants::Auth::CLEAR }
+        let(:clear_uuid) { 'some-clear-uuid' }
+        let(:csp_id) { clear_uuid }
+        let(:first_name) { 'some-first-name' }
+        let(:last_name) { 'some-last-name' }
+        let(:ssn) { '444444758' }
+        let(:phone_number) { '123-456-7890' }
+        let(:street) { 'some-street' }
+        let(:street2) { nil }
+        let(:state) { 'some-state' }
+        let(:postal_code) { 'some-postal-code' }
+        let(:city) { 'some-city' }
+        let(:country) { 'USA' }
+        let(:birth_date) { '1930-01-01' }
+        let(:email) { 'some-email' }
+        let(:identifier) { clear_uuid }
+        let(:identifier_type) { MPI::Constants::CLEAR_UUID }
+
+        context 'and credential is missing email' do
+          let(:email) { nil }
+          let(:attribute) { 'email' }
+
+          it_behaves_like 'missing credential attribute'
+        end
+
+        context 'and credential is missing clear uuid' do
+          let(:clear_uuid) { nil }
           let(:attribute) { 'uuid' }
 
           it_behaves_like 'missing credential attribute'

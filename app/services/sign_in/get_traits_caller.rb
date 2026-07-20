@@ -29,9 +29,13 @@ module SignIn
     attr_reader :user_attributes
 
     def credential_method
-      return 'idme' if idme_uuid
-
-      'logingov' if logingov_uuid
+      if idme_uuid
+        'idme'
+      elsif logingov_uuid
+        'logingov'
+      elsif clear_uuid
+        'clear'
+      end
     end
 
     def create_cache_key
@@ -77,10 +81,11 @@ module SignIn
       StatsD.increment('api.ssoe.traits.validation_failure')
     end
 
-    def credential_uuid        = idme_uuid || logingov_uuid
+    def credential_uuid        = idme_uuid || logingov_uuid || clear_uuid
     def credential_email       = user_attributes[:csp_email]
     def idme_uuid              = user_attributes[:idme_uuid]
     def logingov_uuid          = user_attributes[:logingov_uuid]
+    def clear_uuid             = user_attributes[:clear_uuid]
     def first_name             = user_attributes[:first_name]
     def last_name              = user_attributes[:last_name]
     def birth_date             = user_attributes[:birth_date]

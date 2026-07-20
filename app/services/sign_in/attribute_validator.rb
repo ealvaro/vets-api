@@ -57,6 +57,7 @@ module SignIn
                                                                    address:,
                                                                    phone_number:,
                                                                    idme_uuid:,
+                                                                   clear_uuid:,
                                                                    logingov_uuid:)
       unless add_person_response.ok?
         handle_error('User MPI record cannot be created',
@@ -81,6 +82,7 @@ module SignIn
                                                            phone_number:,
                                                            idme_uuid:,
                                                            logingov_uuid:,
+                                                           clear_uuid:,
                                                            edipi:,
                                                            first_name:)
       unless update_profile_response&.ok?
@@ -103,7 +105,7 @@ module SignIn
         credential_attribute_check(:last_name, last_name) unless auto_uplevel
         credential_attribute_check(:birth_date, birth_date) unless auto_uplevel
       end
-      credential_attribute_check(:uuid, logingov_uuid || idme_uuid)
+      credential_attribute_check(:uuid, logingov_uuid || idme_uuid || clear_uuid)
       credential_attribute_check(:email, credential_email)
     end
 
@@ -140,6 +142,7 @@ module SignIn
                                     when Constants::Auth::MHV      then [mhv_credential_uuid, MPI::Constants::MHV_UUID]
                                     when Constants::Auth::IDME     then [idme_uuid, MPI::Constants::IDME_UUID]
                                     when Constants::Auth::LOGINGOV then [logingov_uuid, MPI::Constants::LOGINGOV_UUID]
+                                    when Constants::Auth::CLEAR    then [clear_uuid, MPI::Constants::CLEAR_UUID]
                                     end
       mpi_service.unlink_profile_identifier(icn: verified_icn, identifier:, identifier_type:)
     end
@@ -149,6 +152,7 @@ module SignIn
                                     when Constants::Auth::MHV      then [mhv_credential_uuid, MPI::Constants::MHV_UUID]
                                     when Constants::Auth::IDME     then [idme_uuid, MPI::Constants::IDME_UUID]
                                     when Constants::Auth::LOGINGOV then [logingov_uuid, MPI::Constants::LOGINGOV_UUID]
+                                    when Constants::Auth::CLEAR    then [clear_uuid, MPI::Constants::CLEAR_UUID]
                                     end
       sign_in_logger.info('attribute validator mpi unlink skipped',
                           icn: verified_icn, identifier:, identifier_type:, safe_keys: [:icn])
@@ -205,6 +209,9 @@ module SignIn
         elsif logingov_uuid
           mpi_service.find_profile_by_identifier(identifier: logingov_uuid,
                                                  identifier_type: MPI::Constants::LOGINGOV_UUID)&.profile
+        elsif clear_uuid
+          mpi_service.find_profile_by_identifier(identifier: clear_uuid,
+                                                 identifier_type: MPI::Constants::CLEAR_UUID)&.profile
         elsif mhv_icn
           mpi_service.find_profile_by_identifier(identifier: mhv_icn, identifier_type: MPI::Constants::ICN)&.profile
         end
@@ -223,7 +230,7 @@ module SignIn
     end
 
     def credential_uuid
-      @credential_uuid ||= idme_uuid || logingov_uuid
+      @credential_uuid ||= idme_uuid || logingov_uuid || clear_uuid
     end
 
     def mpi_record_exists?
@@ -252,6 +259,7 @@ module SignIn
 
     def idme_uuid                    = user_attributes[:idme_uuid]
     def logingov_uuid                = user_attributes[:logingov_uuid]
+    def clear_uuid                   = user_attributes[:clear_uuid]
     def auto_uplevel                 = user_attributes[:auto_uplevel]
     def current_ial                  = user_attributes[:current_ial]
     def service_name                 = user_attributes[:service_name]
@@ -272,6 +280,7 @@ module SignIn
       when Constants::Auth::MHV      then mhv_credential_uuid
       when Constants::Auth::IDME     then idme_uuid
       when Constants::Auth::LOGINGOV then logingov_uuid
+      when Constants::Auth::CLEAR    then clear_uuid
       end
     end
 

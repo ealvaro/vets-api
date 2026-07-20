@@ -16,7 +16,7 @@ module V0
         ::SignIn::StatePayloadVerifier.new(state_payload:).perform
 
         handle_credential_provider_error(error, state_payload&.type) if error
-        service_token_response = auth_service(state_payload.type, state_payload.client_id).token(code)
+        service_token_response = auth_service(state_payload.type, state_payload.client_id).token(code, state)
 
         raise ::SignIn::Errors::CodeInvalidError.new message: 'Code is not valid' unless service_token_response
 
@@ -60,6 +60,8 @@ module V0
           error_message = 'User Declined to Authorize Client'
           error_code = if type == ::SignIn::Constants::Auth::LOGINGOV
                          ::SignIn::Constants::ErrorCode::LOGINGOV_VERIFICATION_DENIED
+                       elsif type == ::SignIn::Constants::Auth::CLEAR
+                         ::SignIn::Constants::ErrorCode::CLEAR_VERIFICATION_DENIED
                        else
                          ::SignIn::Constants::ErrorCode::IDME_VERIFICATION_DENIED
                        end
