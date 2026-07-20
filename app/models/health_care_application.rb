@@ -312,15 +312,10 @@ class HealthCareApplication < ApplicationRecord
     personalisation = { 'salutation' => first_name ? "Dear #{first_name}," : '' }
     metadata = { callback_metadata: { notification_type: 'error', form_number: FORM_ID, statsd_tags: DD_ZSF_TAGS } }
 
-    if Flipper.enabled?(:va_notify_v2_health_care_application_model_send_failure_email)
-      VANotify::V2::QueueEmailJob.enqueue(
-        email, template_id, personalisation,
-        'Settings.vanotify.services.health_apps_1010.api_key', metadata
-      )
-    else
-      api_key = Settings.vanotify.services.health_apps_1010.api_key
-      VANotify::EmailJob.perform_async(email, template_id, personalisation, api_key, metadata)
-    end
+    VANotify::V2::QueueEmailJob.enqueue(
+      email, template_id, personalisation,
+      'Settings.vanotify.services.health_apps_1010.api_key', metadata
+    )
 
     StatsD.increment("#{HCA::Service::STATSD_KEY_PREFIX}.submission_failure_email_sent")
   rescue => e
