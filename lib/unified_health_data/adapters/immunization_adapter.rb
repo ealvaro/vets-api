@@ -74,7 +74,7 @@ module UnifiedHealthData
             code_entry['system'] == 'http://hl7.org/fhir/sid/cvx'
           end || vaccine_code['coding'].first
         code = coding && coding['code']
-        code.present? ? code.to_i : nil
+        code.presence&.to_i
       end
 
       def extract_dose_number(protocol_applied)

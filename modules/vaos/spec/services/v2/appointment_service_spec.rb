@@ -2725,7 +2725,6 @@ describe VAOS::V2::AppointmentsService do
 
   describe '#avs_applicable?' do
     before { travel_to(DateTime.parse('2023-09-26T10:00:00-07:00')) }
-    after { travel_back }
 
     let(:past_appointment) { { status: 'booked', start: '2023-09-25T10:00:00-07:00' } }
     let(:fulfilled_appointment) { { status: 'fulfilled', start: '2023-09-25T10:00:00-07:00' } }

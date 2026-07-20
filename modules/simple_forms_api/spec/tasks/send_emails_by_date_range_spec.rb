@@ -17,7 +17,6 @@ RSpec.describe 'simple_forms_api:send_emails_by_date_range', skip: 'flakey', typ
   end
 
   after do
-    travel_back
     task.reenable
   end
 

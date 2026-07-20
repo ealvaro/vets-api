@@ -298,11 +298,9 @@ module ClaimsApi
         status: ClaimsApi::PowerOfAttorney::ERRORED,
         vbms_error_message: FILE_NOT_FOUND_ERROR_MESSAGE
       )
-      if process.present?
-        process.update!(step_status: 'FAILED',
-                        error_messages: [{ title: "#{self.class.name} Error",
-                                           detail: FILE_NOT_FOUND_ERROR_MESSAGE }])
-      end
+      process.presence&.update!(step_status: 'FAILED',
+                                error_messages: [{ title: "#{self.class.name} Error",
+                                                   detail: FILE_NOT_FOUND_ERROR_MESSAGE }])
       ClaimsApi::Logger.log(
         'ServiceBase',
         message: "In file_not_found rescue, the error is: #{FILE_NOT_FOUND_ERROR_MESSAGE}"

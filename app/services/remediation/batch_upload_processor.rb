@@ -2,7 +2,8 @@
 
 require 'csv'
 
-# rubocop:disable Rails/Output -- Intentional stdout for rake task operator console output
+# rubocop:disable Rails/Output, Rails/Exit -- Intentional stdout and abort for rake task operator console output;
+# this service is invoked from a rake task, so aborting on preflight failures is the desired behavior.
 module Remediation
   class BatchUploadProcessor
     LOCK_NAME = 'remediation_batch_upload'
@@ -420,4 +421,4 @@ module Remediation
     end
   end
 end
-# rubocop:enable Rails/Output
+# rubocop:enable Rails/Output, Rails/Exit
