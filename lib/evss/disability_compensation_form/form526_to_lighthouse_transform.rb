@@ -747,6 +747,8 @@ module EVSS
       end
 
       def related_to_toxic_exposure(condition_name, toxic_exposure_conditions)
+        return false if condition_name.blank?
+
         regex_non_word = /[^\w]/
         normalized_condition_name = condition_name.gsub(regex_non_word, '').downcase
         toxic_exposure_conditions[normalized_condition_name].present?

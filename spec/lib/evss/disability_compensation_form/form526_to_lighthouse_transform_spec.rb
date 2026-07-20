@@ -475,6 +475,15 @@ RSpec.describe EVSS::DisabilityCompensationForm::Form526ToLighthouseTransform do
       expect(results.last.is_related_to_toxic_exposure).to be(false)
     end
 
+    it 'does not raise when a disability has no name and toxic exposure conditions are present' do
+      toxic_exposure_conditions = submission.form['form526']['form526']['toxicExposure']['conditions']
+      nameless_data = data.map { |d| d.merge('name' => nil) }
+      results = nil
+      expect { results = transformer.send(:transform_disabilities, nameless_data, toxic_exposure_conditions) }
+        .not_to raise_error
+      expect(results).to all(have_attributes(is_related_to_toxic_exposure: false))
+    end
+
     it 'sets the exposure or event or injury according to the cause' do
       toxic_exposure_conditions = submission.form['form526']['form526']['toxicExposure']['conditions']
       results = transformer.send(:transform_disabilities, data, toxic_exposure_conditions)
