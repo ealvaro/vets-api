@@ -188,9 +188,9 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
                params: [{ stationNumber: '123', id: '99999999999999' }].to_json,
                headers: { 'Content-Type' => 'application/json' }
 
-          expect(response).to have_http_status(:bad_request)
-          expect(response.parsed_body['errors'][0]['code']).to eq('VA900')
-          expect(response.parsed_body['errors'][0]['detail']).to include('Operation failed')
+          expect(response).to have_http_status(:bad_gateway)
+          expect(response.parsed_body['errors'][0]['code']).to eq('UHD_500')
+          expect(response.parsed_body['errors'][0]['detail']).to include('internal error')
         end
       end
     end

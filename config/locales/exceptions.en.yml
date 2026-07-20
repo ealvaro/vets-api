@@ -635,6 +635,58 @@ en:
         detail: "Did not receive a timely response from an upstream server"
         code: 408
         status: 408
+      # UHD (Unified Health Data) error mappings — ensures UHD errors render explicit
+      # 4xx/5xx statuses instead of defaulting to VA900 (400).
+      UHD_400:
+        <<: *external_defaults
+        code: 'UHD_400'
+        detail: 'Bad request to upstream health data service'
+        status: 400
+      UHD_401:
+        <<: *external_defaults
+        code: 'UHD_401'
+        detail: 'Upstream health data service authentication failed'
+        status: 401
+      UHD_403:
+        <<: *external_defaults
+        code: 'UHD_403'
+        detail: 'Upstream health data service authorization failed'
+        status: 403
+      UHD_404:
+        <<: *external_defaults
+        code: 'UHD_404'
+        detail: 'Upstream health data resource not found'
+        status: 404
+      UHD_422:
+        <<: *external_defaults
+        code: 'UHD_422'
+        detail: 'Upstream health data service could not process the request'
+        status: 422
+      UHD_429:
+        <<: *external_defaults
+        code: 'UHD_429'
+        detail: 'Upstream health data service rate limit exceeded'
+        status: 429
+      UHD_500: # Upstream 500 rendered as 502 (Bad Gateway) — vets-api is proxying, not failing internally
+        <<: *external_defaults
+        code: 'UHD_500'
+        detail: 'Upstream health data service encountered an internal error'
+        status: 502
+      UHD_502:
+        <<: *external_defaults
+        code: 'UHD_502'
+        detail: 'Received an invalid response from the upstream health data service'
+        status: 502
+      UHD_503:
+        <<: *external_defaults
+        code: 'UHD_503'
+        detail: 'Upstream health data service is temporarily unavailable'
+        status: 503
+      UHD_504:
+        <<: *external_defaults
+        code: 'UHD_504'
+        detail: 'Upstream health data service did not respond in time'
+        status: 504
       MHVACCTCREATION99: # 'Unknown application error occurred'
         <<: *external_defaults
         code: 'MHVACCTCREATION99'
