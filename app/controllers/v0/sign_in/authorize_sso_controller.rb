@@ -4,24 +4,15 @@ module V0
   module SignIn
     class AuthorizeSSOController < ApplicationController
       skip_before_action :authenticate, only: :authorize_sso
+      before_action :validate_prompt_param, only: :authorize_sso
       before_action :authenticate_authorize_sso, only: :authorize_sso
 
       def authorize_sso
         validate_authorize_sso_params!
 
-        user_code_map = authorize_sso_user_code_map
-        response_params = {
-          code: user_code_map.login_code,
-          type: user_code_map.type,
-          state: user_code_map.client_state
-        }.compact_blank
+        return redirect_to_usip_for_prompt_login if prompt_login?
 
-        redirect_url = ::SignIn::RedirectUrlGenerator.new(
-          redirect_uri: user_code_map.client_config.redirect_uri,
-          terms_code: user_code_map.terms_code,
-          terms_redirect_uri: user_code_map.client_config.terms_of_use_url,
-          params_hash: response_params
-        ).perform
+        redirect_url = authorize_sso_redirect_url(authorize_sso_user_code_map)
 
         ::SignIn::AuthorizeSSOContainer.delete(@authorize_sso_id) if @authorize_sso_id
 
@@ -34,6 +25,21 @@ module V0
       end
 
       private
+
+      def authorize_sso_redirect_url(user_code_map)
+        response_params = {
+          code: user_code_map.login_code,
+          type: user_code_map.type,
+          state: user_code_map.client_state
+        }.compact_blank
+
+        ::SignIn::RedirectUrlGenerator.new(
+          redirect_uri: user_code_map.client_config.redirect_uri,
+          terms_code: user_code_map.terms_code,
+          terms_redirect_uri: user_code_map.client_config.terms_of_use_url,
+          params_hash: response_params
+        ).perform
+      end
 
       def authorize_sso_user_code_map
         code_challenge = authorize_sso_params[:code_challenge]
@@ -61,7 +67,7 @@ module V0
       def authorize_sso_params
         @authorize_sso_params ||= authorize_sso_container_params ||
                                   params.permit(:client_id, :code_challenge, :code_challenge_method, :state, :app_name,
-                                                :nonce)
+                                                :nonce, :prompt)
       end
 
       def client_id
@@ -96,6 +102,25 @@ module V0
 
       def pkce_client?
         client_config(authorize_sso_params[:client_id])&.auth_method_pkce?
+      end
+
+      def validate_prompt_param
+        prompt = authorize_sso_params[:prompt]
+        return if prompt.blank? || ::SignIn::Constants::Auth::PROMPT_TYPES.include?(prompt)
+
+        error = ::SignIn::Errors::MalformedParamsError.new(message: 'Invalid params: prompt')
+        handle_authorize_sso_error(error, :error)
+      end
+
+      def prompt_login?
+        authorize_sso_params[:prompt] == ::SignIn::Constants::Auth::PROMPT_LOGIN
+      end
+
+      def redirect_to_usip_for_prompt_login
+        sign_in_logger.info('authorize sso prompt login redirect', authorize_sso_log_params)
+        StatsD.increment(::SignIn::Constants::Statsd::STATSD_SIS_AUTHORIZE_SSO_REDIRECT,
+                         tags: authorize_sso_statsd_tags)
+        redirect_to_usip
       end
 
       def okta_client?

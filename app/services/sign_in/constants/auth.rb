@@ -58,6 +58,7 @@ module SignIn
       JWT_ENCODE_ALGORITHM = 'RS256'
       LOA = [LOA_ONE = 1, LOA_THREE = 3].freeze
       LOGOUT_ROUTE_PATH = '/v0/sign_in/logout'
+      PROMPT_TYPES = [PROMPT_LOGIN = 'login'].freeze
       REFRESH_ROUTE_PATH = '/v0/sign_in/refresh'
       REFRESH_TOKEN_COOKIE_NAME = 'vagov_refresh_token'
       RESPONSE_TYPES_SUPPORTED = ['code'].freeze

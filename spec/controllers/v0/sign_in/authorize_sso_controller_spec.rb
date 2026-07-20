@@ -146,6 +146,23 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
         it_behaves_like 'a redirect to USIP'
       end
 
+      context 'when a prompt param is present' do
+        let(:authorize_sso_params) { super().merge(prompt:) }
+        let(:prompt) { SignIn::Constants::Auth::PROMPT_LOGIN }
+        let(:expected_error_message) { 'Access token JWT is malformed' }
+
+        before { request.cookies.clear }
+
+        it_behaves_like 'a redirect to USIP'
+
+        context 'and the prompt param is invalid' do
+          let(:prompt) { 'some-prompt' }
+          let(:expected_error_message) { 'Invalid params: prompt' }
+
+          it_behaves_like 'an error response'
+        end
+      end
+
       context 'when stashing the request params fails validation' do
         let(:client_id_param) { '' }
         let(:expected_error_message) { "Invalid params: Client can't be blank" }
@@ -313,6 +330,34 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
               expect(StatsD).to have_received(:increment).with('api.sis.auth_sso.success',
                                                                tags: ["client_id:#{client_id}"])
             end
+          end
+
+          context 'and prompt param is login' do
+            let(:authorize_sso_params) { super().merge(prompt: SignIn::Constants::Auth::PROMPT_LOGIN) }
+            let(:expected_query_params) { authorize_sso_params.merge(oauth: true, authorize_sso_id:).to_query }
+
+            it 'redirects to USIP instead of issuing a login code' do
+              expect(subject).to redirect_to("http://localhost:3001/sign-in?#{expected_query_params}")
+              expect(Rails.logger).to have_received(:info).with(
+                '[SignInService] [V0::SignInController] authorize sso prompt login redirect',
+                { client_id:, app_name: }
+              )
+              expect(StatsD).to have_received(:increment).with('api.sis.auth_sso.redirect',
+                                                               tags: ["client_id:#{client_id}"])
+              expect(SignIn::AuthorizeSSOContainer.find(authorize_sso_id)).to have_attributes(client_id:)
+            end
+
+            it 'does not invoke the session validator' do
+              expect(SignIn::AuthSSO::SessionValidator).not_to receive(:new)
+              subject
+            end
+          end
+
+          context 'and prompt param is invalid' do
+            let(:authorize_sso_params) { super().merge(prompt: 'some-prompt') }
+            let(:expected_error_message) { 'Invalid params: prompt' }
+
+            it_behaves_like 'an error response'
           end
         end
       end
