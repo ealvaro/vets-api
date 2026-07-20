@@ -286,6 +286,10 @@ features:
     actor_type: user
     description: If enabled, Form 21-526EZ will show new UI to encourage veterans to upload a Separation Health Assessment (SHA).
     enable_in_development: false
+  disability_526_new_screener_question_flow:
+    actor_type: user
+    description: If enabled, Form 21-526EZ will use the new reordered introduction flow as well as the new persistence check to conditional skip the screener questions.
+    enable_in_development: false
   disability_526_new_start_experience_enabled:
     actor_type: user
     description: If enabled, Form 21-526EZ will use the new start experience instead of the wizard on the first page of the form.
