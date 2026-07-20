@@ -7,5 +7,6 @@ IvcChampva::Engine.routes.draw do
     post '/forms/docs_only_resubmission', to: 'uploads#submit_docs_only_resubmission'
     post '/forms/submit_supporting_documents', to: 'uploads#submit_supporting_documents'
     post '/forms/status_updates', to: 'pega#update_status'
+    post '/forms/champva_eligibility', to: 'champva_eligibility#update'
   end
 end
