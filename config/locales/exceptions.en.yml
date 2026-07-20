@@ -870,6 +870,12 @@ en:
         code: 'RES_CH31_CASE_DETAILS_403'
         detail: 'Forbidden'
         status: 403
+      NO_APP_IN_RES:
+        <<: *external_defaults
+        title: No App in RES for ICN
+        code: 'NO_APP_IN_RES'
+        detail: 'RES does not have an application associated with this ICN.'
+        status: 403
       RES_CH31_CASE_DETAILS_500:
         <<: *external_defaults
         title: Internal Server Error

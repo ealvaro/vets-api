@@ -5,6 +5,10 @@ module V0
     include IgnoreNotFound
     service_tag 'save-in-progress'
 
+    PREFILL_FAILURE_METRIC = 'api.in_progress_forms.prefill.failure'
+    PREFILL_ROUTE = '/v0/in_progress_forms/:id'
+    PREFILL_MONITORED_FORM_ID = '28-1900'
+
     def index
       # the keys of metadata shouldn't be deeply transformed, which might corrupt some keys
       # See https://va.ghe.com/software/va.gov-team/issues/17595 for more details
@@ -84,6 +88,26 @@ module V0
     # --this ensures that, even if the OliveBranch inflection header isn't used, camelCase keys are sent
     def camelized_prefill_for_user
       camelize_with_olivebranch(FormProfile.for(form_id: params[:id], user: @current_user).prefill.as_json)
+    rescue => e
+      log_prefill_failure(e)
+      raise
+    end
+
+    def log_prefill_failure(error)
+      return unless form_id == PREFILL_MONITORED_FORM_ID
+
+      tags = [
+        "form_id:#{form_id}",
+        'service:save-in-progress',
+        "route:#{PREFILL_ROUTE}",
+        "endpoint:GET /v0/in_progress_forms/#{form_id}",
+        'status:500',
+        "error_class:#{error.class.name.to_s.underscore.tr('/', '.')}"
+      ]
+
+      StatsD.increment(PREFILL_FAILURE_METRIC, tags:)
+    rescue => e
+      Rails.logger.error('Failed to emit prefill failure metric', message: e.message)
     end
 
     def camelize_with_olivebranch(form_json)

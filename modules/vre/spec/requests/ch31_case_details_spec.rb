@@ -47,6 +47,21 @@ RSpec.describe 'VRE::V0::Ch31CaseDetails', type: :request do
       end
     end
 
+    context 'when RES has no application associated with the ICN' do
+      let(:user) { create(:user, icn: '9999999999V999999') }
+
+      it 'returns 403 with NO_APP_IN_RES error details' do
+        VCR.use_cassette('vre/ch31_case_details/403_no_app_in_res') do
+          get '/vre/v0/ch31_case_details'
+          expect(response).to have_http_status(:forbidden)
+          error = JSON.parse(response.body)['errors'].first
+          expect(error['code']).to eq('NO_APP_IN_RES')
+          expect(error['title']).to eq('No App in RES for ICN')
+          expect(error['detail']).to eq('RES does not have an application associated with this ICN.')
+        end
+      end
+    end
+
     context 'when upstream service is not available' do
       let(:user) { create(:user, icn: '1012667145V762142') }
 

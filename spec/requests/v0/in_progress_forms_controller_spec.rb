@@ -296,6 +296,38 @@ RSpec.describe V0::InProgressFormsController do
           get v0_in_progress_form_url('foo'), params: nil
           expect(response).to have_http_status(:internal_server_error)
         end
+
+        it 'emits a prefill failure metric with safe tags for form 28-1900' do
+          # Stub the instance prefill method to simulate backend failure
+          allow_any_instance_of(FormProfile).to receive(:prefill).and_raise(StandardError, 'prefill backend failure')
+
+          expected_tags = [
+            'form_id:28-1900',
+            'service:save-in-progress',
+            'route:/v0/in_progress_forms/:id',
+            'endpoint:GET /v0/in_progress_forms/28-1900',
+            'status:500',
+            'error_class:standard_error'
+          ]
+
+          # Allow any other StatsD calls (e.g. rack middleware) while asserting ours is emitted
+          allow(StatsD).to receive(:increment)
+          expect(StatsD).to receive(:increment).with('api.in_progress_forms.prefill.failure',
+                                                     tags: match_array(expected_tags))
+          get v0_in_progress_form_url('28-1900'), params: nil
+          expect(response).to have_http_status(:internal_server_error)
+        end
+
+        it 'does not emit the prefill failure metric for non-28-1900 forms' do
+          allow(FormProfile).to receive(:prefill_enabled_forms).and_return(['FOO'])
+
+          # Allow other StatsD calls (e.g. rack middleware) but assert our metric is not emitted
+          allow(StatsD).to receive(:increment)
+          expect(StatsD).not_to receive(:increment).with('api.in_progress_forms.prefill.failure', any_args)
+
+          get v0_in_progress_form_url('foo'), params: nil
+          expect(response).to have_http_status(:internal_server_error)
+        end
       end
     end
 

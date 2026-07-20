@@ -1,0 +1,51 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://fake_url.com/suite/webapi/get-ch31-case-details
+    body:
+      encoding: UTF-8
+      string: '{"icn":"9999999999V999999"}'
+    headers:
+      Accept:
+      - application/json
+      Content-Type:
+      - application/json
+      User-Agent:
+      - Vets.gov Agent
+      Appian-API-Key:
+      - eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.dummy-key-for-test
+  response:
+    status:
+      code: 403
+      message: '403'
+    headers:
+      date:
+      - Wed, 16 Jul 2026 10:00:00 GMT
+      content-type:
+      - application/json
+      connection:
+      - keep-alive
+      server:
+      - Apache
+      cache-control:
+      - no-cache, private
+      x-trace-id:
+      - ''
+      x-frame-options:
+      - SAMEORIGIN
+      strict-transport-security:
+      - max-age=16000000; includeSubDomains; preload;
+      x-content-type-options:
+      - nosniff
+      content-security-policy:
+      - report-uri /suite/rest/a/logging/latest/csp/report; report-to report;
+      reporting-endpoints:
+      - report="/suite/rest/a/logging/latest/csp/report"
+      requested-while-authenticated:
+      - 'false'
+    body:
+      encoding: UTF-8
+      string: '{"errors":[{"title":"No App in RES for ICN","details":"RES does not have an application associated with this ICN.","code":"NO_APP_IN_RES"}]}'
+  recorded_at: Wed, 16 Jul 2026 10:00:00 GMT
+recorded_with: VCR 6.3.1

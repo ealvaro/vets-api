@@ -26,7 +26,9 @@ module VRE
         VRE::Ch31CaseDetails::Response.new(raw_response.status, raw_response)
       rescue Common::Exceptions::BackendServiceException => e
         log_error(e)
-        raise e unless service_unavailable?(e)
+        service_unavailable?(e)
+        no_app_in_res!(e)
+        raise e
       end
 
       private
@@ -45,6 +47,13 @@ module VRE
         return false unless e.original_body['error'] == SERVICE_UNAVAILABLE_ERROR
 
         raise e.class.new('RES_CH31_CASE_DETAILS_503', e.response_values)
+      end
+
+      def no_app_in_res!(e)
+        error_code = e.original_body.dig('errors', 0, 'code')
+        return unless error_code == 'NO_APP_IN_RES'
+
+        raise e.class.new('NO_APP_IN_RES', e.response_values, e.original_status, e.original_body)
       end
     end
   end
