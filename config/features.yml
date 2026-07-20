@@ -594,6 +594,14 @@ features:
   chapter_36_form_dd_rum_monitoring:
     actor_type: user
     description: Enables Datadog Real User Monitoring for the Chapter 36 (PCPG) form
+  chapter_36_form_intro_v2_cveteam:
+    actor_type: user
+    description: Enables the Chapter 36 v2 introduction page for the CVE team rollout
+    enable_in_development: true
+  chapter_36_form_rebuild_cveteam:
+    actor_type: user
+    description: Enables the Chapter 36 v2 form and prefill mapping rollout for the CVE team
+    enable_in_development: true
   check_in_experience_enabled:
     actor_type: user
     description: Enables the health care check-in experiences
