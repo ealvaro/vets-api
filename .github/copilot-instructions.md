@@ -23,7 +23,6 @@
 - **Serializers**: End controllers with `render json: object, serializer: SomeSerializer`
 - **Auth**: Most endpoints need `before_action :authenticate_user!`
 - **Jobs**: Use `perform_async` for background work, `perform_in` for delayed
-- **Flipper in tests**: Never use `Flipper.enable/disable` - always stub with `allow(Flipper).to receive(:enabled?).with(:feature).and_return(true)`
 
 ### Common Patterns
 - Controllers in `modules/[name]/app/controllers` or `app/controllers`
@@ -52,7 +51,7 @@
 
 **⚠️ CRITICAL: Treat Settings values like untrusted user input.** Settings values from Parameter Store may arrive as unexpected types. The `config` gem (`config/initializers/config.rb`) has `env_parse_values = true`, which automatically converts numeric strings to integers (e.g., `"0"` becomes `0`). Always use explicit type coercion and safe fallbacks.
 
-When reviewing pull requests that include Settings values, always leave a comment for the author advising them of potential issues with unexpected types. This will cause the author to carefully review that bit of code with the considerations of these instructions in mind.
+When reviewing pull requests that use Settings values, only comment if the value is used in a boolean or integer context without safe type coercion (see Unsafe patterns below) — for example, a bare `if Settings.x.y`, an `== true` comparison, or an unguarded `.to_i`/numeric use without a fallback. Do not comment if the code already uses one of the Safe patterns below (`ActiveModel::Type::Boolean.new.cast()`, explicit `.to_s.downcase == 'true'`, `.present?`/`.blank?`, or `.to_i` with a fallback) — this is already correct and should not be flagged.
 
 **Common Pitfalls:**
 - Numeric strings are auto-converted: `"0"` → `0`, `"123"` → `123` (via `env_parse_values`)
@@ -100,15 +99,25 @@ if Settings.api.url.present?
 
 ## For PR Reviews - Human Judgment Issues
 
-**Note:** This repository uses `master` as the default branch. All PR reviews should compare changes against the `master` branch.
-
 ### ⚠️ NO DUPLICATE COMMENTS - Consolidate Similar Issues
 
+### Priority Order
+The four categories below are ordered by priority: **Security & Privacy > Business Logic > Anti-Patterns > Architecture.** If a PR has issues across multiple categories, surface all of them — priority order is for tie-breaking, not for skipping lower categories. But if you're re-reviewing a PR across multiple pushes and need to decide what's most important to flag first, or a genuinely large PR would produce an excessive number of comments, keep to this order: never drop a Security finding to make room for an Architecture one.
+
+### Surface Findings — Don't Suppress on Low Confidence
+If you identify a genuine issue matching any category below, post it as a normal, visible review comment. Do not move findings into a collapsed "low confidence" section as a way to hedge — human reviewers will not expand collapsed sections, so a suppressed comment is equivalent to not reviewing the code at all.
+
+- If you're confident an issue matches one of the categories below (Security, Business Logic, Anti-Patterns, Architecture), comment on it directly and normally.
+- If you're uncertain whether something is actually a bug (not just uncertain how to phrase it), say so plainly in the comment itself — e.g., "This may be intentional, but X doesn't handle Y — worth confirming." A hedged, visible comment is correct. A confident-sounding comment hidden in a collapsed section is not.
+- Only omit a finding entirely if it falls outside the categories in this document (see "Trust These Guidelines" below) — not because you're unsure how strong the finding is.
+
 ### Security & Privacy Concerns
+**⚠️ Highest priority category — PII/PHI exposure directly harms veterans.** Always surface these even if it means a shorter review elsewhere.
 - **PII in logs**: Check for email, SSN, medical data in log statements
 - **Hardcoded secrets**: API keys, tokens in source code
 - **Missing authentication**: Controllers handling sensitive data without auth checks
 - **Mass assignment**: Direct use of params hash without strong parameters
+- **Removed security controls**: PRs that disable or remove existing security checks (e.g., virus scanning, validation, encryption) without a documented compensating control
 
 ### Business Logic Issues
 - **Non-idempotent operations**: Creates without duplicate protection
@@ -147,30 +156,6 @@ Recommend: Remove PII, move key to env var, add before_action
 - Separate comment for each security issue
 - Flagging things RuboCop catches (style, syntax)
 - Repeating same feedback in different words
-
-## Flipper Usage in Tests
-
-**⚠️ IMPORTANT: DO NOT suggest changes to Flipper stubs that already follow the correct pattern below.**
-
-Avoid enabling or disabling Flipper features in tests. Instead, use stubs to control feature flag behavior:
-
-**❌ ONLY flag these patterns (modifies global state):**
-```ruby
-Flipper.enable(:veteran_benefit_processing)
-Flipper.disable(:legacy_claims_api)
-```
-
-**✅ This is the CORRECT pattern - DO NOT suggest changes to this:**
-```ruby
-# This is the correct way to stub Flipper in tests
-allow(Flipper).to receive(:enabled?).with(:veteran_benefit_processing).and_return(true)
-allow(Flipper).to receive(:enabled?).with(:legacy_claims_api).and_return(false)
-```
-
-**Critical for PR Reviews:**
-- If you see `allow(Flipper).to receive(:enabled?).with(:feature).and_return(true/false)` - this is CORRECT, do not comment
-- ONLY suggest changes when you see actual `Flipper.enable()` or `Flipper.disable()` calls
-- Never suggest replacing correct stubs with identical stubs
 
 ## Testing Patterns
 
