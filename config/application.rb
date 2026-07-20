@@ -31,6 +31,8 @@ module VetsAPI
     # https://guides.rubyonrails.org/configuring.html#default-values-for-target-version-8-1
     config.load_defaults 8.1
 
+    config.yjit = false
+
     # Configuration for the application, engines, and railties goes here.
     #
     # These settings can be overridden in specific environments using the files
