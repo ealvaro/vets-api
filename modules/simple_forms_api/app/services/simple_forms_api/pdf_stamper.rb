@@ -2,6 +2,8 @@
 
 require 'pdf_utilities/datestamp_pdf'
 require 'fileutils'
+require 'hexapdf'
+require 'hexapdf/cli'
 
 module SimpleFormsApi
   class PdfStamper
@@ -10,6 +12,7 @@ module SimpleFormsApi
     SUBMISSION_TEXT = 'Signed electronically and submitted via VA.gov at '
     FORM_UPLOAD_SUBMISSION_TEXT = 'Submitted via VA.gov at '
     MINIMUM_PAGE_COUNT = 5
+    PDFTK_FALLBACK_STATS_KEY = 'api.simple_forms.pdftk_fallback'
 
     def initialize(stamped_template_path:, form: nil, form_number: nil, current_loa: nil, timestamp: nil)
       @stamped_template_path = stamped_template_path
@@ -109,16 +112,43 @@ module SimpleFormsApi
       Common::FileHelpers.delete_file_if_exists(stamp_path) if defined?(stamp_path)
     end
 
+    # pdftk (specifically pdftk-java) has known, longstanding bugs where certain
+    # non-conforming AcroForm structures in the input PDF cause it to crash with an
+    # unhandled java.lang.ClassCastException (see e.g. gitlab.com/pdftk-java/pdftk
+    # issues #17, #45, #47, #110, #139, #166). When that happens we fall back to
+    # HexaPDF's watermark CLI, which does not share pdftk-java's AcroForm parsing
+    # bugs and is already used elsewhere in this codebase for the same kind of
+    # overlay stamping (see PDFUtilities::PDFStamper).
     def perform_multistamp(stamp_path)
       out_path = Rails.root.join("#{Common::FileHelpers.random_file_path}.pdf")
 
       Rails.logger.info("Performing multistamp on #{stamped_template_path} using stamp at #{stamp_path}")
 
-      pdftk.multistamp(stamped_template_path, stamp_path, out_path)
+      begin
+        pdftk.multistamp(stamped_template_path, stamp_path, out_path)
+      rescue PdfForms::PdftkError => e
+        Rails.logger.warn(
+          "SimpleFormsApi::PdfStamper: pdftk failed (#{e.class}), falling back to HexaPDF watermark stamping"
+        )
+        StatsD.increment(PDFTK_FALLBACK_STATS_KEY)
+        perform_multistamp_with_hexapdf(stamp_path, out_path)
+      end
+
       multistamp_cleanup(out_path)
     rescue => e
       Common::FileHelpers.delete_file_if_exists(out_path)
       log_and_raise_error('Simple forms api - Failed to perform multistamp', e)
+    end
+
+    # Fallback used when pdftk fails with PdfForms::PdftkError.
+    # Mirrors PDFUtilities::PDFStamper#stamp_pdf's approach.
+    # @see https://github.com/gettalong/hexapdf/blob/master/lib/hexapdf/cli/watermark.rb
+    def perform_multistamp_with_hexapdf(stamp_path, out_path)
+      reader = PDF::Reader.new(stamp_path)
+      pages = [*1..reader.page_count].join(',')
+
+      HexaPDF::CLI.run(['watermark', '-w', stamp_path.to_s, '-i', pages, '-t', 'stamp',
+                        stamped_template_path.to_s, out_path.to_s])
     end
 
     def multistamp_cleanup(out_path)

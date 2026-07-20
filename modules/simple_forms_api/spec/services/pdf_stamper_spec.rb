@@ -210,4 +210,68 @@ describe SimpleFormsApi::PdfStamper do
       end
     end
   end
+
+  describe '#perform_multistamp' do
+    subject(:perform_multistamp) { instance.send(:perform_multistamp, stamp_path) }
+
+    let(:instance) { described_class.new(stamped_template_path:) }
+    let(:stamped_template_path) do
+      Rails.root.join('tmp', "perform_multistamp_test-#{SecureRandom.hex}.pdf").to_s
+    end
+    let(:stamp_path) { Rails.root.join('tmp', "perform_multistamp_stamp-#{SecureRandom.hex}.pdf").to_s }
+    let(:fixture_pdf) { 'modules/simple_forms_api/spec/fixtures/pdfs/vba_21_0779-completed.pdf' }
+
+    before do
+      FileUtils.cp(fixture_pdf, stamped_template_path)
+      Prawn::Document.generate(stamp_path, margin: [0, 0]) { |pdf| pdf.draw_text('TEST', at: [10, 10]) }
+    end
+
+    after do
+      Common::FileHelpers.delete_file_if_exists(stamped_template_path)
+      Common::FileHelpers.delete_file_if_exists(stamp_path)
+    end
+
+    context 'when pdftk succeeds' do
+      it 'stamps via pdftk and does not fall back to HexaPDF' do
+        expect(HexaPDF::CLI).not_to receive(:run)
+
+        expect { perform_multistamp }.not_to raise_error
+        expect(File).to exist(stamped_template_path)
+      end
+    end
+
+    context 'when pdftk raises PdfForms::PdftkError' do
+      before do
+        allow(PdfFill::Filler::PDF_FORMS).to receive(:multistamp).and_raise(PdfForms::PdftkError, 'pdftk crashed')
+        allow(StatsD).to receive(:increment)
+      end
+
+      it 'falls back to HexaPDF watermark stamping instead of raising' do
+        expect { perform_multistamp }.not_to raise_error
+        expect(File).to exist(stamped_template_path)
+        expect(StatsD).to have_received(:increment).with('api.simple_forms.pdftk_fallback')
+      end
+    end
+
+    context 'when pdftk raises a non-PdftkError' do
+      before do
+        allow(PdfFill::Filler::PDF_FORMS).to receive(:multistamp).and_raise(StandardError, 'some other failure')
+      end
+
+      it 'does not fall back to HexaPDF and re-raises the original error' do
+        expect { perform_multistamp }.to raise_error(/some other failure/)
+      end
+    end
+
+    context 'when the HexaPDF fallback itself fails' do
+      before do
+        allow(PdfFill::Filler::PDF_FORMS).to receive(:multistamp).and_raise(PdfForms::PdftkError, 'pdftk crashed')
+        allow(HexaPDF::CLI).to receive(:run).and_raise('hexapdf also failed')
+      end
+
+      it 'still logs and reraises, same as any other stamping failure' do
+        expect { perform_multistamp }.to raise_error(/hexapdf also failed/)
+      end
+    end
+  end
 end
