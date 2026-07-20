@@ -97,9 +97,7 @@ module Cave
     def diff_fields(document_type, ocr, user_entry)
       document_type[:fields].filter_map do |field|
         ocr_raw = ocr[field.ocr_key]
-        # A missing camel_key and an explicit nil both read as nil and canonicalize
-        # to '' (treated as "no user value"). The frontend includes every catalog key.
-        user_value = user_entry[field.camel_key]
+        user_value = user_value_for(field, user_entry)
         next if ValueNormalizer.canonical(field.type, ocr_raw) == ValueNormalizer.canonical(field.type, user_value)
 
         Record.new(
@@ -109,6 +107,39 @@ module Cave
           ocr_value: ocr_display(ocr_raw),
           user_value: user_display(field.type, user_value)
         )
+      end
+    end
+
+    # The user-final value for a field. Conflict-resolution fields (form_path set) are
+    # corrected on the top-level 534EZ/8416 form, NOT in the artifact editor, so read them
+    # from the submitted form; every other field is read from the idpArtifacts entry.
+    # If a conflict field is absent from the top-level form (e.g. a death-certificate-only
+    # flow carries no serviceBranch / activeServiceDateRange), fall back to the artifact value
+    # so a field the user never touched isn't reported as an OCR -> (none) "change".
+    # (A missing key / explicit nil canonicalizes to '' — treated as "no user value".)
+    def user_value_for(field, user_entry)
+      if field.form_path
+        form_value = dig_form(field.form_path)
+        return form_value unless blank_value?(form_value)
+      end
+      user_entry[field.camel_key]
+    end
+
+    # Walks form_data by a string path, tolerating string- or symbol-keyed hashes.
+    def dig_form(path)
+      path.reduce(form_data) do |node, key|
+        break nil unless node.is_a?(Hash)
+
+        node.key?(key) ? node[key] : node[key.to_sym]
+      end
+    end
+
+    def blank_value?(value)
+      case value
+      when nil then true
+      when String then value.strip.empty?
+      when Hash then value.values.all? { |v| blank_value?(v) }
+      else false
       end
     end
 

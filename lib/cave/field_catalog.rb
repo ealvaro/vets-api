@@ -10,29 +10,48 @@ module Cave
   #                 submitted by vets-website (post-normalization)
   #   * label     - the human-readable label shown on the generated 21-4138 change log
   #   * type      - drives comparison/formatting (see Cave::ValueNormalizer)
+  #   * form_path - (optional) path to the field's user-final value in the top-level submitted
+  #                 form. Set ONLY for the "conflict-resolution" fields that vets-website
+  #                 corrects via the top-level 534EZ/8416 form field rather than the artifact
+  #                 editor (see fieldMapping.js VETERAN_INFO_FIELDS / MILITARY_HISTORY_FIELDS).
+  #                 For those fields the correction lands in the top-level form, NOT in
+  #                 files[].idpArtifacts (which keeps the raw CAVE extraction), so the change
+  #                 log must diff OCR against the top-level form value. Fields without a
+  #                 form_path are edited in the artifact editor and read from idpArtifacts.
+  #                 NOTE: form_path targets the POST-submit-transform shape vets-api actually
+  #                 persists, which can differ from fieldMapping.js's getFormValue (that reads
+  #                 the pre-submit Redux state). SSN is the notable case: getFormValue uses
+  #                 veteranSocialSecurityNumber.ssn, but splitVaSsnField flattens it to a bare
+  #                 string at submit, so the form_path here is [veteranSocialSecurityNumber]
+  #                 (no trailing 'ssn') — do NOT "correct" it to add ssn.
   #
   # Labels and document names mirror vets-website
   # (src/applications/survivors-benefits/cave/fieldMapping.js and the artifact
   # transformers). Keep in sync if the frontend labels change.
   module FieldCatalog
-    Field = Struct.new(:ocr_key, :camel_key, :label, :type, keyword_init: true)
+    Field = Struct.new(:ocr_key, :camel_key, :label, :type, :form_path, keyword_init: true)
 
     DD214 = {
       artifact_key: 'dd214',
       document_name: 'DD-214',
       fields: [
-        Field.new(ocr_key: 'VETERAN_NAME', camel_key: 'veteranName', label: 'Veteran name', type: :name),
-        Field.new(ocr_key: 'VETERAN_SSN', camel_key: 'veteranSsn', label: 'Social Security number', type: :ssn),
-        Field.new(ocr_key: 'VETERAN_DOB', camel_key: 'veteranDob', label: 'Date of birth', type: :date),
+        Field.new(ocr_key: 'VETERAN_NAME', camel_key: 'veteranName', label: 'Veteran name', type: :name,
+                  form_path: %w[veteranFullName]),
+        # form_path is [veteranSocialSecurityNumber] (bare string post-splitVaSsnField), not
+        # [..., 'ssn'] — see the SSN note above.
+        Field.new(ocr_key: 'VETERAN_SSN', camel_key: 'veteranSsn', label: 'Social Security number', type: :ssn,
+                  form_path: %w[veteranSocialSecurityNumber]),
+        Field.new(ocr_key: 'VETERAN_DOB', camel_key: 'veteranDob', label: 'Date of birth', type: :date,
+                  form_path: %w[veteranDateOfBirth]),
         Field.new(ocr_key: 'BRANCH_OF_SERVICE', camel_key: 'branchOfService', label: 'Branch of service',
-                  type: :branch),
+                  type: :branch, form_path: %w[serviceBranch]),
         Field.new(ocr_key: 'GRADE_RATE_RANK', camel_key: 'gradeRateRank', label: 'Grade, rate, or rank', type: :text),
         Field.new(ocr_key: 'PAY_GRADE', camel_key: 'payGrade', label: 'Pay grade', type: :pay_grade),
         Field.new(ocr_key: 'DATE_INDUCTED', camel_key: 'dateInducted', label: 'Date inducted', type: :date),
         Field.new(ocr_key: 'DATE_ENTERED_ACTIVE_SERVICE', camel_key: 'dateEnteredActiveService',
-                  label: 'Date entered active service', type: :date),
+                  label: 'Date entered active service', type: :date, form_path: %w[activeServiceDateRange from]),
         Field.new(ocr_key: 'DATE_SEPARATED_FROM_SERVICE', camel_key: 'dateSeparatedFromService',
-                  label: 'Date separated from service', type: :date),
+                  label: 'Date separated from service', type: :date, form_path: %w[activeServiceDateRange to]),
         Field.new(ocr_key: 'CAUSE_OF_SEPARATION', camel_key: 'causeOfSeparation', label: 'Cause of separation',
                   type: :text),
         Field.new(ocr_key: 'CHARACTER_OF_SERVICE', camel_key: 'characterOfService', label: 'Character of service',
@@ -48,10 +67,12 @@ module Cave
       document_name: 'Death Certificate',
       fields: [
         Field.new(ocr_key: 'DECENDENT_FULL_NAME', camel_key: 'decendentFullName', label: 'Decedent name',
-                  type: :name),
-        Field.new(ocr_key: 'DECENDENT_SSN', camel_key: 'decendentSsn', label: 'Social Security number', type: :ssn),
+                  type: :name, form_path: %w[veteranFullName]),
+        # Bare-string form_path, same as VETERAN_SSN above (see the SSN note).
+        Field.new(ocr_key: 'DECENDENT_SSN', camel_key: 'decendentSsn', label: 'Social Security number', type: :ssn,
+                  form_path: %w[veteranSocialSecurityNumber]),
         Field.new(ocr_key: 'DECENDENT_DATE_OF_DEATH', camel_key: 'decendentDateOfDeath', label: 'Date of death',
-                  type: :date),
+                  type: :date, form_path: %w[veteranDateOfDeath]),
         Field.new(ocr_key: 'DECENDENT_DATE_OF_DISPOSITION', camel_key: 'decendentDateOfDisposition',
                   label: 'Date of disposition', type: :date),
         Field.new(ocr_key: 'CAUSE_OF_DEATH', camel_key: 'causeOfDeath', label: 'Cause of death', type: :text),
