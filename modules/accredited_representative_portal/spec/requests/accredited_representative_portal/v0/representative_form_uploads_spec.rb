@@ -952,25 +952,15 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
     describe '#check_poa_status' do
       let(:icn) { '1234567890V123456' }
 
-      let(:verify_params) do
-        {
-          firstName: 'Peter',
-          lastName: 'Severino',
-          ssn: '091541857',
-          dateOfBirth: '1970-01-01'
-        }
-      end
-
       let(:real_monitor) { double }
+
+      let!(:veteran_temp_identifier) do
+        AccreditedRepresentativePortal::IcnTemporaryIdentifier.save_icn(icn).id
+      end
 
       before do
         allow_any_instance_of(Auth::ClientCredentials::Service)
           .to receive(:get_token).and_return('<TOKEN>')
-
-        allow(AccreditedRepresentativePortal::ClaimantLookupService)
-          .to receive(:get_icn)
-          .with('Peter', 'Severino', '091541857', '1970-01-01')
-          .and_return(icn)
 
         allow(AccreditedRepresentativePortal::Monitoring)
           .to receive(:new)
@@ -978,80 +968,226 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
         allow(real_monitor).to receive(:track_count)
       end
 
-      context 'when claimant is not found' do
-        before do
-          allow(AccreditedRepresentativePortal::ClaimantLookupService)
-            .to receive(:get_icn)
-            .with('Peter', 'Severino', '091541857', '1970-01-01')
-            .and_raise(Common::Exceptions::RecordNotFound, 'Claimant not found')
+      context 'claimant uuid is provided' do
+        let(:verify_params) { { veteranTempId: veteran_temp_identifier } }
+
+        context 'when claimant is not found' do
+          let(:verify_params) { { veteranTempId: 'bogus' } }
+
+          it 'returns a generic 422 failure response' do
+            post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+
+            expect(response).to have_http_status(:unprocessable_content)
+            expect(parsed_response).to eq({
+                                            'status' => 'failure',
+                                            'error' => 'Unable to verify claimant information'
+                                          })
+          end
+
+          it 'registers an attempt and an unauthorized poa check' do
+            expect(real_monitor).to receive(:track_count).with('ar.unique_session.count')
+            expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.attempt')
+            expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.unauthorized')
+            post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+          end
         end
 
-        it 'returns a generic 422 failure response' do
-          post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+        context 'when claimant is found without matching POA' do
+          before do
+            allow_any_instance_of(described_class)
+              .to receive(:authorize).with(icn, policy_class: AccreditedRepresentativePortal::FormSubmissionPolicy)
+              .and_raise(Pundit::NotAuthorizedError)
+          end
 
-          expect(response).to have_http_status(:unprocessable_content)
-          expect(parsed_response).to eq({
-                                          'status' => 'failure',
-                                          'error' => 'Unable to verify claimant information'
-                                        })
+          it 'returns a generic 422 failure response' do
+            post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+
+            expect(response).to have_http_status(:unprocessable_content)
+            expect(parsed_response).to eq({
+                                            'status' => 'failure',
+                                            'error' => 'Unable to verify claimant information'
+                                          })
+          end
+
+          it 'registers an attempt and an unauthorized poa check' do
+            expect(real_monitor).to receive(:track_count).with('ar.unique_session.count')
+            expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.attempt')
+            expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.unauthorized')
+            post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+          end
         end
 
-        it 'registers an attempt and an unauthorized poa check' do
-          expect(real_monitor).to receive(:track_count).with('ar.unique_session.count')
-          expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.attempt')
-          expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.unauthorized')
-          post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
-        end
-      end
+        context 'when claimant is found with matching POA' do
+          before do
+            allow_any_instance_of(described_class)
+              .to receive(:authorize).with(
+                icn, policy_class: AccreditedRepresentativePortal::FormSubmissionPolicy
+              ) do |controller, *|
+                controller.instance_variable_set(:@_pundit_policy_authorized, true)
+                true
+              end
+          end
 
-      context 'when claimant is found without matching POA' do
-        before do
-          allow_any_instance_of(described_class)
-            .to receive(:authorize)
-            .and_raise(Pundit::NotAuthorizedError)
-        end
+          it 'registers an attempt and a successful poa check' do
+            expect(real_monitor).to receive(:track_count).with('ar.unique_session.count')
+            expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.attempt')
+            expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.success')
+            post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+          end
 
-        it 'returns a generic 422 failure response' do
-          post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
-
-          expect(response).to have_http_status(:unprocessable_content)
-          expect(parsed_response).to eq({
-                                          'status' => 'failure',
-                                          'error' => 'Unable to verify claimant information'
-                                        })
-        end
-
-        it 'registers an attempt and an unauthorized poa check' do
-          expect(real_monitor).to receive(:track_count).with('ar.unique_session.count')
-          expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.attempt')
-          expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.unauthorized')
-          post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
-        end
-      end
-
-      context 'when claimant is found with matching POA' do
-        before do
-          allow_any_instance_of(described_class)
-            .to receive(:authorize) do |controller, *|
-              controller.instance_variable_set(:@_pundit_policy_authorized, true)
-              true
+          context 'ARP submit 686cv2 flag is on' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(
+                :accredited_representative_portal_submit_686c_v2
+              ).and_return true
             end
+
+            it 'returns success with the veteran temp id' do
+              post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+
+              expect(response).to have_http_status(:ok)
+              expect(parsed_response).to eq({
+                                              'status' => 'success',
+                                              'veteranTempId' => veteran_temp_identifier
+                                            })
+            end
+          end
+
+          context 'ARP submit 686cv2 flag is off' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(
+                :accredited_representative_portal_submit_686c_v2
+              ).and_return false
+            end
+
+            it 'returns success without the veteran temp id' do
+              post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+
+              expect(response).to have_http_status(:ok)
+              expect(parsed_response).to eq({ 'status' => 'success' })
+            end
+          end
+        end
+      end
+
+      context 'claimant name, ssn, and dob are provided' do
+        let(:verify_params) do
+          {
+            firstName: 'Peter',
+            lastName: 'Severino',
+            ssn: '091541857',
+            dateOfBirth: '1970-01-01'
+          }
         end
 
-        it 'returns success' do
-          post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+        context 'when claimant is not found' do
+          before do
+            allow(AccreditedRepresentativePortal::ClaimantLookupService)
+              .to receive(:get_icn)
+              .with('Peter', 'Severino', '091541857', '1970-01-01')
+              .and_raise(Common::Exceptions::RecordNotFound, 'Claimant not found')
+          end
 
-          expect(response).to have_http_status(:ok)
-          expect(parsed_response).to eq({
-                                          'status' => 'success'
-                                        })
+          it 'returns a generic 422 failure response' do
+            post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+
+            expect(response).to have_http_status(:unprocessable_content)
+            expect(parsed_response).to eq({
+                                            'status' => 'failure',
+                                            'error' => 'Unable to verify claimant information'
+                                          })
+          end
+
+          it 'registers an attempt and an unauthorized poa check' do
+            expect(real_monitor).to receive(:track_count).with('ar.unique_session.count')
+            expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.attempt')
+            expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.unauthorized')
+            post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+          end
         end
 
-        it 'registers an attempt and an successful poa check' do
-          expect(real_monitor).to receive(:track_count).with('ar.unique_session.count')
-          expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.attempt')
-          expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.success')
-          post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+        context 'when claimant is found without matching POA' do
+          before do
+            allow(AccreditedRepresentativePortal::ClaimantLookupService)
+              .to receive(:get_icn)
+              .with('Peter', 'Severino', '091541857', '1970-01-01').and_return(icn)
+            allow_any_instance_of(described_class)
+              .to receive(:authorize)
+              .and_raise(Pundit::NotAuthorizedError)
+          end
+
+          it 'returns a generic 422 failure response' do
+            post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+
+            expect(response).to have_http_status(:unprocessable_content)
+            expect(parsed_response).to eq({
+                                            'status' => 'failure',
+                                            'error' => 'Unable to verify claimant information'
+                                          })
+          end
+
+          it 'registers an attempt and an unauthorized poa check' do
+            expect(real_monitor).to receive(:track_count).with('ar.unique_session.count')
+            expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.attempt')
+            expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.unauthorized')
+            post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+          end
+        end
+
+        context 'when claimant is found with matching POA' do
+          before do
+            allow_any_instance_of(described_class)
+              .to receive(:authorize).with(
+                icn, policy_class: AccreditedRepresentativePortal::FormSubmissionPolicy
+              ) do |controller, *|
+                controller.instance_variable_set(:@_pundit_policy_authorized, true)
+                true
+              end
+
+            allow(AccreditedRepresentativePortal::ClaimantLookupService)
+              .to receive(:get_icn)
+              .with('Peter', 'Severino', '091541857', '1970-01-01').and_return(icn)
+          end
+
+          it 'registers an attempt and a successful poa check' do
+            expect(real_monitor).to receive(:track_count).with('ar.unique_session.count')
+            expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.attempt')
+            expect(real_monitor).to receive(:track_count).with('ar.claims.form_upload.check_poa_status.success')
+            post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+          end
+
+          context 'ARP submit 686cv2 flag is on' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(
+                :accredited_representative_portal_submit_686c_v2
+              ).and_return true
+            end
+
+            it 'returns success with the veteran temp id' do
+              post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+
+              expect(response).to have_http_status(:ok)
+              expect(parsed_response).to eq({
+                                              'status' => 'success',
+                                              'veteranTempId' => veteran_temp_identifier
+                                            })
+            end
+          end
+
+          context 'ARP submit 686cv2 flag is off' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(
+                :accredited_representative_portal_submit_686c_v2
+              ).and_return false
+            end
+
+            it 'returns success without the veteran temp id' do
+              post('/accredited_representative_portal/v0/check_poa_status', params: verify_params)
+
+              expect(response).to have_http_status(:ok)
+              expect(parsed_response).to eq({ 'status' => 'success' })
+            end
+          end
         end
       end
     end

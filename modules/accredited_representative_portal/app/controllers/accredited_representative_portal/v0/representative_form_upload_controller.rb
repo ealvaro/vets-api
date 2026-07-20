@@ -95,7 +95,12 @@ module AccreditedRepresentativePortal
       end
 
       def check_poa_status
-        render json: { status: 'success' }, status: :ok
+        json = { status: 'success' }
+        if Flipper.enabled?(:accredited_representative_portal_submit_686c_v2)
+          json[:veteranTempId] = IcnTemporaryIdentifier.save_icn(claimant_icn).id
+        end
+
+        render json:, status: :ok
       end
 
       private
@@ -176,13 +181,18 @@ module AccreditedRepresentativePortal
       def claimant_icn
         return super unless action_name == 'check_poa_status'
 
-        @claimant_icn ||= ClaimantLookupService.get_icn(
-          params[:firstName],
-          params[:lastName],
-          params[:ssn],
-          params[:dateOfBirth]
-        )
-      rescue Common::Exceptions::BadRequest,
+        @claimant_icn ||= if params[:veteranTempId].present?
+                            IcnTemporaryIdentifier.lookup_icn(params[:veteranTempId])
+                          else
+                            ClaimantLookupService.get_icn(
+                              params[:firstName],
+                              params[:lastName],
+                              params[:ssn],
+                              params[:dateOfBirth]
+                            )
+                          end
+      rescue ActiveRecord::RecordNotFound,
+             Common::Exceptions::BadRequest,
              Common::Exceptions::RecordNotFound
         nil
       end
